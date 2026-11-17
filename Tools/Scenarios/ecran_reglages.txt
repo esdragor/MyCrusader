@@ -1,0 +1,26 @@
+# Ecran Reglages en script (D840 lot 2) : depuis le titre, vrai clic sur Reglages, les 4 onglets, puis c'est toi qui essaies (waitkey). Les reglages ecrits vont dans Saved\Config du dossier -Root, pas dans ta copie.
+frames 30
+open /Game/Maps/MainMenu
+waitmap MainMenu
+wait 3
+hol.Mouse.Click SettingsButton
+wait 2
+capture ecran_reglages_video
+hol.Mouse.Click SoundTab
+wait 1
+capture ecran_reglages_son
+hol.Mouse.Click ControlsTab
+wait 1
+capture ecran_reglages_commandes
+hol.Mouse.Click LanguageTab
+wait 1
+capture ecran_reglages_langue
+hol.Mouse.Click VideoTab
+wait 1
+note 1. Les 4 onglets (Video, Son, Commandes, Langue) et leurs pages ressemblent a ceux d'avant : aucun reglage manquant, rien de coupe.
+note 2. Change un volume (onglet Son), la cadence (Video), la vitesse de camera (Commandes) : tout s'applique tout de suite ; Retour puis Reglages : la valeur est gardee.
+note 3. Fleches, LB/RB, Echap : la navigation entre colonnes marche, Retour ramene au titre. Ne change pas la langue ni la resolution sans les remettre.
+waitkey Entree : j'ai essaye (Retour ramene au titre)
+hol.Mouse.Click BackButton
+wait 1
+capture ecran_reglages_retour

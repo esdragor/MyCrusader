@@ -130,10 +130,35 @@ namespace UE::HeroesOfLiberty::UI::Settings
 	}
 }
 
+namespace UE::HeroesOfLiberty::UI::Settings
+{
+	const TArray<float>& FrameRateValues()
+	{
+		static const TArray<float> Values = { 30.f, 60.f, 120.f, 144.f, 240.f, 0.f };
+		return Values;
+	}
+
+	const TArray<float>& RenderScaleValues()
+	{
+		static const TArray<float> Values = { 50.f, 60.f, 70.f, 80.f, 90.f, 100.f };
+		return Values;
+	}
+}
+
 UHOLSettingsScreen* UHOLSettingsScreen::Open(APlayerController* PlayerController)
 {
 	UHOLRootLayout* Layout = UHOLRootLayout::Get(PlayerController);
-	return Layout ? Cast<UHOLSettingsScreen>(Layout->PushMenu(StaticClass())) : nullptr;
+	if (!Layout)
+	{
+		return nullptr;
+	}
+	const TSubclassOf<UHOLSettingsScreen> ScriptClass = FindScriptClass();
+	if (!ScriptClass)
+	{
+		UE_LOG(LogHOLUI, Warning, TEXT("Settings: no script class (Script/UI/HOLSettingsScreen.as)"));
+		return nullptr;
+	}
+	return Cast<UHOLSettingsScreen>(Layout->PushMenu(ScriptClass));
 }
 
 UHOLSettingsScreen* UHOLSettingsScreen::Find(APlayerController* PlayerController)
@@ -142,190 +167,30 @@ UHOLSettingsScreen* UHOLSettingsScreen::Find(APlayerController* PlayerController
 	return Layout ? Cast<UHOLSettingsScreen>(Layout->GetActiveMenu()) : nullptr;
 }
 
-void UHOLSettingsScreen::BuildLayout()
+TSubclassOf<UHOLSettingsScreen> UHOLSettingsScreen::FindScriptClass()
 {
-	using namespace UE::HeroesOfLiberty::UI::Settings;
-
-	// The values offered, gathered once.
-	TArray<FIntPoint> Supported;
-	UKismetSystemLibrary::GetSupportedFullscreenResolutions(Supported);
-	for (const FIntPoint& Resolution : Supported)
+	// Angelscript's hot reload keeps the older classes, flagged CLASS_NewerVersionExists.
+	for (TObjectIterator<UClass> It; It; ++It)
 	{
-		if (Resolution.X >= MinResolution.X && Resolution.Y >= MinResolution.Y)
+		if (It->IsChildOf(StaticClass()) && !It->HasAnyClassFlags(CLASS_Abstract | CLASS_NewerVersionExists | CLASS_Deprecated))
 		{
-			Resolutions.AddUnique(Resolution);
+			return *It;
 		}
 	}
-	if (const UGameUserSettings* GameSettings = UGameUserSettings::GetGameUserSettings())
-	{
-		FIntPoint Resolution;
-		EWindowMode::Type WindowMode;
-		GetDisplay(*GameSettings, Resolution, WindowMode);
-		Resolutions.AddUnique(Resolution);
-	}
-	Resolutions.Sort([](const FIntPoint& A, const FIntPoint& B) { return A.X != B.X ? A.X < B.X : A.Y < B.Y; });
-	FrameRates = { 30.f, 60.f, 120.f, 144.f, 240.f, 0.f };
-	RenderScales = { 50.f, 60.f, 70.f, 80.f, 90.f, 100.f };
+	return nullptr;
+}
 
-	TArray<FText> ResolutionNames;
-	for (const FIntPoint& Resolution : Resolutions)
-	{
-		ResolutionNames.Add(FText::Format(INVTEXT("{0} × {1}"), FText::AsNumber(Resolution.X, &FNumberFormattingOptions::DefaultNoGrouping()),
-			FText::AsNumber(Resolution.Y, &FNumberFormattingOptions::DefaultNoGrouping())));
-	}
-	TArray<FText> FrameRateNames;
-	for (const float Rate : FrameRates)
-	{
-		FrameRateNames.Add(Rate > 0.f ? FText::AsNumber(FMath::RoundToInt(Rate)) : LOCTEXT("Unlimited", "Illimitée"));
-	}
-	TArray<FText> RenderScaleNames;
-	for (const float Scale : RenderScales)
-	{
-		RenderScaleNames.Add(FText::AsPercent(Scale / 100.f));
-	}
-	TArray<FText> VolumeSteps;
-	for (int32 Step = 0; Step <= NumVolumeSteps; ++Step)
-	{
-		VolumeSteps.Add(FText::AsPercent(static_cast<float>(Step) / NumVolumeSteps));
-	}
-
-	UVerticalBox* Column = MakeCenteredColumn();
-	AddText(Column, TEXT("Heading"), LOCTEXT("Heading", "Réglages"), UHOLTextStyleHeading::StaticClass(), 16.f);
-
-	UHorizontalBox* TabRow = AddButtonRow(Column);
-	VideoTab = AddButton(TabRow, TEXT("VideoTab"), LOCTEXT("Video", "Vidéo"));
-	SoundTab = AddButton(TabRow, TEXT("SoundTab"), LOCTEXT("Sound", "Son"));
-	ControlsTab = AddButton(TabRow, TEXT("ControlsTab"), LOCTEXT("Controls", "Commandes"));
-	LanguageTab = AddButton(TabRow, TEXT("LanguageTab"), LOCTEXT("Language", "Langue"));
-
-	TabPages = WidgetTree->ConstructWidget<UWidgetSwitcher>(UWidgetSwitcher::StaticClass(), TEXT("TabPages"));
-	UVerticalBoxSlot* PagesSlot = Column->AddChildToVerticalBox(TabPages);
-	PagesSlot->SetHorizontalAlignment(HAlign_Center);
-	PagesSlot->SetPadding(FMargin(0.f, 24.f, 0.f, 0.f));
-	const auto AddPage = [this]()
-	{
-		UVerticalBox* Page = WidgetTree->ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass());
-		TabPages->AddChild(Page);
-		return Page;
-	};
-
-	// Video: display on the left, quality on the right, the gamepad hint below.
-	UVerticalBox* Video = AddPage();
-	UHorizontalBox* VideoColumns = WidgetTree->ConstructWidget<UHorizontalBox>(UHorizontalBox::StaticClass());
-	Video->AddChildToVerticalBox(VideoColumns)->SetPadding(FMargin(0.f, 0.f, 0.f, 12.f));
-	UVerticalBox* Display = WidgetTree->ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass());
-	UVerticalBox* Quality = WidgetTree->ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass());
-	VideoColumns->AddChildToHorizontalBox(Display)->SetPadding(FMargin(0.f, 0.f, 24.f, 0.f));
-	VideoColumns->AddChildToHorizontalBox(Quality);
-	ResolutionRotator = AddRotatorRow(Display, TEXT("ResolutionRotator"), LOCTEXT("Resolution", "Résolution"), ResolutionNames, 0, VideoLabelWidth, DisplayRotatorWidth);
-	WindowModeRotator = AddRotatorRow(Display, TEXT("WindowModeRotator"), LOCTEXT("WindowMode", "Affichage"),
-		{ LOCTEXT("Fullscreen", "Plein écran"), LOCTEXT("WindowedFullscreen", "Fenêtre sans bordure"), LOCTEXT("Windowed", "Fenêtre") },
-		0, VideoLabelWidth, DisplayRotatorWidth);
-	VSyncRotator = AddRotatorRow(Display, TEXT("VSyncRotator"), LOCTEXT("VSync", "Synchronisation verticale"), OffOn(), 0, VideoLabelWidth, DisplayRotatorWidth);
-	FrameRateRotator = AddRotatorRow(Display, TEXT("FrameRateRotator"), LOCTEXT("FrameRate", "Images par seconde"), FrameRateNames, 0, VideoLabelWidth, DisplayRotatorWidth);
-	RenderScaleRotator = AddRotatorRow(Display, TEXT("RenderScaleRotator"), LOCTEXT("RenderScale", "Échelle de rendu"), RenderScaleNames, 0, VideoLabelWidth, DisplayRotatorWidth);
-	TArray<FText> QualityNames = LevelNames();
-	QualityNames.Add(LOCTEXT("Custom", "Personnalisée"));
-	QualityRotator = AddRotatorRow(Quality, TEXT("QualityRotator"), LOCTEXT("Quality", "Qualité"), QualityNames, 0, VideoLabelWidth, QualityRotatorWidth);
-	for (const FGroup& Group : Groups())
-	{
-		AddRotatorRow(Quality, FName(FString(TEXT("Quality_")) + Group.Name), Group.Label, LevelNames(), 0, VideoLabelWidth, QualityRotatorWidth);
-	}
-	AddColumnHint(Video);
-
-	UVerticalBox* Sound = AddPage();
-	const TArray<FText> Volumes = VolumeNames();
-	for (int32 Volume = 0; Volume < Volumes.Num(); ++Volume)
-	{
-		AddRotatorRow(Sound, FName(FString::Printf(TEXT("Volume_%s"), *StaticEnum<EHOLVolume>()->GetNameStringByIndex(Volume))),
-			Volumes[Volume], VolumeSteps, NumVolumeSteps);
-	}
-	AddText(Sound, TEXT("SoundNote"), LOCTEXT("SoundNote", "Musique, effets et voix agiront dès que le jeu aura des sons."),
-		UHOLTextStyleNote::StaticClass(), 0.f);
-
-	// Controls: greyed until M4 (D245).
-	UVerticalBox* Controls = AddPage();
-	RemapButton = AddButton(Controls, TEXT("RemapButton"), LOCTEXT("Remap", "Changer les touches"));
-	CameraSpeedRotator = AddRotatorRow(Controls, TEXT("CameraSpeedRotator"), LOCTEXT("CameraSpeed", "Vitesse de la caméra"),
-		{ LOCTEXT("Slow", "Lente"), LOCTEXT("Normal", "Normale"), LOCTEXT("Fast", "Rapide") }, 1);
-	EdgeScrollRotator = AddRotatorRow(Controls, TEXT("EdgeScrollRotator"), LOCTEXT("EdgeScroll", "Défilement au bord de l'écran"), OffOn(), 1);
-	AddText(Controls, TEXT("ControlsNote"), LOCTEXT("RemapNote", "Changer les touches : pas encore dans le jeu."), UHOLTextStyleNote::StaticClass(), 0.f);
-
-	UVerticalBox* Language = AddPage();
-	LanguageRotator = AddRotatorRow(Language, TEXT("LanguageRotator"), LOCTEXT("LanguageLabel", "Langue"), LanguageNames(), 0);
-
-	UHorizontalBox* Buttons = AddButtonRow(Column);
-	BackButton = AddButton(Buttons, TEXT("BackButton"), LOCTEXT("Back", "Retour"));
+void UHOLSettingsScreen::BuildLayout()
+{
+	BP_BuildSettings();
 }
 
 void UHOLSettingsScreen::NativeOnInitialized()
 {
-	using namespace UE::HeroesOfLiberty::UI::Settings;
-
 	Super::NativeOnInitialized();
 
-	const auto Bind = [this](UHOLRotator* Rotator, void (UHOLSettingsScreen::*Handler)(int32))
-	{
-		if (Rotator)
-		{
-			Rotator->OnRotatedEvent.AddWeakLambda(this, [this, Handler](const int32 Value, bool) { (this->*Handler)(Value); });
-		}
-	};
-	Bind(ResolutionRotator, &UHOLSettingsScreen::HandleResolution);
-	Bind(WindowModeRotator, &UHOLSettingsScreen::HandleWindowMode);
-	Bind(VSyncRotator, &UHOLSettingsScreen::HandleVSync);
-	Bind(FrameRateRotator, &UHOLSettingsScreen::HandleFrameRate);
-	Bind(RenderScaleRotator, &UHOLSettingsScreen::HandleRenderScale);
-	Bind(QualityRotator, &UHOLSettingsScreen::HandleQuality);
-	Bind(LanguageRotator, &UHOLSettingsScreen::HandleLanguage);
-	Bind(CameraSpeedRotator, &UHOLSettingsScreen::HandleCameraSpeed);
-	Bind(EdgeScrollRotator, &UHOLSettingsScreen::HandleEdgeScroll);
-
-	const TArray<FGroup> AllGroups = Groups();
-	for (int32 Group = 0; Group < AllGroups.Num(); ++Group)
-	{
-		UHOLRotator* Rotator = Cast<UHOLRotator>(WidgetTree->FindWidget(FName(FString(TEXT("Quality_")) + AllGroups[Group].Name)));
-		GroupRotators.Add(Rotator);
-		if (Rotator)
-		{
-			Rotator->OnRotatedEvent.AddWeakLambda(this, [this, Group](const int32 Value, bool) { HandleGroup(Group, Value); });
-		}
-	}
-	const UEnum* VolumeEnum = StaticEnum<EHOLVolume>();
-	for (int32 Volume = 0; Volume < VolumeEnum->NumEnums() - 1; ++Volume)
-	{
-		UHOLRotator* Rotator = Cast<UHOLRotator>(WidgetTree->FindWidget(FName(FString::Printf(TEXT("Volume_%s"), *VolumeEnum->GetNameStringByIndex(Volume)))));
-		VolumeRotators.Add(Rotator);
-		if (Rotator)
-		{
-			Rotator->OnRotatedEvent.AddWeakLambda(this, [this, Volume](const int32 Value, bool) { HandleVolume(Volume, Value); });
-		}
-	}
-
-	// Greyed until the game has enough actions to remap (D253); camera speed and edge scrolling act since J1.
-	if (RemapButton)
-	{
-		RemapButton->SetIsEnabled(false);
-	}
-
-	const UHOLButton* const Tabs[] = { VideoTab, SoundTab, ControlsTab, LanguageTab };
-	for (int32 Tab = 0; Tab < UE_ARRAY_COUNT(Tabs); ++Tab)
-	{
-		if (UHOLButton* Button = const_cast<UHOLButton*>(Tabs[Tab]))
-		{
-			// Toggleable, or a selected button could never be deselected (the click selects it again, by SelectTab).
-			Button->SetIsSelectable(true);
-			Button->SetIsToggleable(true);
-			Button->OnClicked().AddWeakLambda(this, [this, Tab]() { SelectTab(Tab); });
-		}
-	}
-	if (BackButton)
-	{
-		BackButton->OnClicked().AddUObject(this, &UHOLSettingsScreen::Close);
-	}
-
 	SelectTab(0);
-	Refresh();
+	BP_RefreshSettings();
 }
 
 UWidget* UHOLSettingsScreen::NativeGetDesiredFocusTarget() const
@@ -360,118 +225,330 @@ void UHOLSettingsScreen::SelectTab(const int32 Index)
 	}
 }
 
-void UHOLSettingsScreen::Refresh()
+int32 UHOLSettingsScreen::GetActiveTab() const
+{
+	return TabPages ? TabPages->GetActiveWidgetIndex() : -1;
+}
+
+void UHOLSettingsScreen::CloseSettings()
+{
+	Close();
+}
+
+UVerticalBox* UHOLSettingsScreen::MakeSettingsColumn()
+{
+	return MakeCenteredColumn();
+}
+
+UCommonTextBlock* UHOLSettingsScreen::AddSettingsText(UVerticalBox* Column, const FName Name, const FText& Text, const int32 Style)
+{
+	if (!Column)
+	{
+		return nullptr;
+	}
+	return Style == 0 ? AddText(Column, Name, Text, UHOLTextStyleHeading::StaticClass(), 16.f)
+		: AddText(Column, Name, Text, UHOLTextStyleNote::StaticClass(), 0.f);
+}
+
+UHorizontalBox* UHOLSettingsScreen::AddSettingsRow(UVerticalBox* Column)
+{
+	return Column ? AddButtonRow(Column) : nullptr;
+}
+
+UHOLButton* UHOLSettingsScreen::AddSettingsButton(UHorizontalBox* Row, const FName Name, const FText& Label)
+{
+	return Row ? AddButton(Row, Name, Label) : nullptr;
+}
+
+UHOLButton* UHOLSettingsScreen::AddSettingsPageButton(UVerticalBox* Page, const FName Name, const FText& Label)
+{
+	return Page ? AddButton(Page, Name, Label) : nullptr;
+}
+
+UHOLButton* UHOLSettingsScreen::AddSettingsTab(UHorizontalBox* Row, const FName Name, const FText& Label)
+{
+	UHOLButton* Button = Row ? AddButton(Row, Name, Label) : nullptr;
+	if (Button)
+	{
+		// Toggleable, or a selected button could never be deselected (the click selects it again, by SelectTab).
+		Button->SetIsSelectable(true);
+		Button->SetIsToggleable(true);
+	}
+	return Button;
+}
+
+UWidgetSwitcher* UHOLSettingsScreen::AddSettingsPages(UVerticalBox* Column)
+{
+	if (!Column)
+	{
+		return nullptr;
+	}
+	TabPages = WidgetTree->ConstructWidget<UWidgetSwitcher>(UWidgetSwitcher::StaticClass(), TEXT("TabPages"));
+	UVerticalBoxSlot* PagesSlot = Column->AddChildToVerticalBox(TabPages);
+	PagesSlot->SetHorizontalAlignment(HAlign_Center);
+	PagesSlot->SetPadding(FMargin(0.f, 24.f, 0.f, 0.f));
+	return TabPages;
+}
+
+UVerticalBox* UHOLSettingsScreen::AddSettingsPage()
+{
+	if (!TabPages)
+	{
+		return nullptr;
+	}
+	UVerticalBox* Page = WidgetTree->ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass());
+	TabPages->AddChild(Page);
+	return Page;
+}
+
+UHorizontalBox* UHOLSettingsScreen::AddSettingsPair(UVerticalBox* Page)
+{
+	if (!Page)
+	{
+		return nullptr;
+	}
+	UHorizontalBox* Pair = WidgetTree->ConstructWidget<UHorizontalBox>(UHorizontalBox::StaticClass());
+	Page->AddChildToVerticalBox(Pair)->SetPadding(FMargin(0.f, 0.f, 0.f, 12.f));
+	return Pair;
+}
+
+UVerticalBox* UHOLSettingsScreen::AddSettingsPairColumn(UHorizontalBox* Pair, const bool bLast)
+{
+	if (!Pair)
+	{
+		return nullptr;
+	}
+	UVerticalBox* Column = WidgetTree->ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass());
+	UHorizontalBoxSlot* Slot = Pair->AddChildToHorizontalBox(Column);
+	if (!bLast)
+	{
+		Slot->SetPadding(FMargin(0.f, 0.f, 24.f, 0.f));
+	}
+	return Column;
+}
+
+UCommonTextBlock* UHOLSettingsScreen::AddSettingsHint(UVerticalBox* Page)
+{
+	return Page ? AddColumnHint(Page) : nullptr;
+}
+
+UHOLRotator* UHOLSettingsScreen::AddSettingsRotator(UVerticalBox* Column, const FName Name, const FText& Label, const TArray<FText>& Options,
+	const int32 Index, const int32 Layout)
+{
+	using namespace UE::HeroesOfLiberty::UI::Settings;
+
+	if (!Column)
+	{
+		return nullptr;
+	}
+	UHOLRotator* Rotator = nullptr;
+	if (Layout == 1)
+	{
+		Rotator = AddRotatorRow(Column, Name, Label, Options, Index, VideoLabelWidth, DisplayRotatorWidth);
+	}
+	else if (Layout == 2)
+	{
+		Rotator = AddRotatorRow(Column, Name, Label, Options, Index, VideoLabelWidth, QualityRotatorWidth);
+	}
+	else
+	{
+		Rotator = AddRotatorRow(Column, Name, Label, Options, Index);
+	}
+	if (Rotator)
+	{
+		// Bound after the first value is shown, so that showing it is not a change; every later change, shown or not, goes to the script.
+		Rotator->OnRotatedEvent.AddWeakLambda(this, [this, Name](const int32 Value, bool) { BP_SettingChanged(Name, Value); });
+	}
+	return Rotator;
+}
+
+FText UHOLSettingsScreen::TextOf(const FName Key)
+{
+	using namespace UE::HeroesOfLiberty::UI::Settings;
+
+	const TMap<FName, FText> Texts = {
+		{ TEXT("Heading"), LOCTEXT("Heading", "Réglages") },
+		{ TEXT("Video"), LOCTEXT("Video", "Vidéo") },
+		{ TEXT("Sound"), LOCTEXT("Sound", "Son") },
+		{ TEXT("Controls"), LOCTEXT("Controls", "Commandes") },
+		{ TEXT("Language"), LOCTEXT("Language", "Langue") },
+		{ TEXT("LanguageLabel"), LOCTEXT("LanguageLabel", "Langue") },
+		{ TEXT("Back"), LOCTEXT("Back", "Retour") },
+		{ TEXT("Resolution"), LOCTEXT("Resolution", "Résolution") },
+		{ TEXT("WindowMode"), LOCTEXT("WindowMode", "Affichage") },
+		{ TEXT("VSync"), LOCTEXT("VSync", "Synchronisation verticale") },
+		{ TEXT("FrameRate"), LOCTEXT("FrameRate", "Images par seconde") },
+		{ TEXT("RenderScale"), LOCTEXT("RenderScale", "Échelle de rendu") },
+		{ TEXT("Quality"), LOCTEXT("Quality", "Qualité") },
+		{ TEXT("SoundNote"), LOCTEXT("SoundNote", "Musique, effets et voix agiront dès que le jeu aura des sons.") },
+		{ TEXT("Remap"), LOCTEXT("Remap", "Changer les touches") },
+		{ TEXT("RemapNote"), LOCTEXT("RemapNote", "Changer les touches : pas encore dans le jeu.") },
+		{ TEXT("CameraSpeed"), LOCTEXT("CameraSpeed", "Vitesse de la caméra") },
+		{ TEXT("EdgeScroll"), LOCTEXT("EdgeScroll", "Défilement au bord de l'écran") },
+	};
+	if (const FText* Found = Texts.Find(Key))
+	{
+		return *Found;
+	}
+	const TArray<FGroup> AllGroups = Groups();
+	for (const FGroup& Group : AllGroups)
+	{
+		if (Key == FName(Group.Name))
+		{
+			return Group.Label;
+		}
+	}
+	const TArray<FText> Volumes = VolumeNames();
+	for (int32 Volume = 0; Volume < Volumes.Num(); ++Volume)
+	{
+		if (Key == FName(FString::Printf(TEXT("Volume_%s"), *StaticEnum<EHOLVolume>()->GetNameStringByIndex(Volume))))
+		{
+			return Volumes[Volume];
+		}
+	}
+	UE_LOG(LogHOLUI, Warning, TEXT("Settings: no text for the key %s"), *Key.ToString());
+	return FText::FromName(Key);
+}
+
+TArray<FText> UHOLSettingsScreen::OptionsOf(const FName Kind)
+{
+	using namespace UE::HeroesOfLiberty::UI::Settings;
+
+	if (Kind == FName(TEXT("WindowMode")))
+	{
+		return { LOCTEXT("Fullscreen", "Plein écran"), LOCTEXT("WindowedFullscreen", "Fenêtre sans bordure"), LOCTEXT("Windowed", "Fenêtre") };
+	}
+	if (Kind == FName(TEXT("OffOn")))
+	{
+		return OffOn();
+	}
+	if (Kind == FName(TEXT("FrameRate")))
+	{
+		TArray<FText> Names;
+		for (const float Rate : FrameRateValues())
+		{
+			Names.Add(Rate > 0.f ? FText::AsNumber(FMath::RoundToInt(Rate)) : LOCTEXT("Unlimited", "Illimitée"));
+		}
+		return Names;
+	}
+	if (Kind == FName(TEXT("RenderScale")))
+	{
+		TArray<FText> Names;
+		for (const float Scale : RenderScaleValues())
+		{
+			Names.Add(FText::AsPercent(Scale / 100.f));
+		}
+		return Names;
+	}
+	if (Kind == FName(TEXT("Level")))
+	{
+		return LevelNames();
+	}
+	if (Kind == FName(TEXT("Quality")))
+	{
+		TArray<FText> Names = LevelNames();
+		Names.Add(LOCTEXT("Custom", "Personnalisée"));
+		return Names;
+	}
+	if (Kind == FName(TEXT("Volume")))
+	{
+		TArray<FText> Steps;
+		for (int32 Step = 0; Step <= NumVolumeSteps; ++Step)
+		{
+			Steps.Add(FText::AsPercent(static_cast<float>(Step) / NumVolumeSteps));
+		}
+		return Steps;
+	}
+	if (Kind == FName(TEXT("CameraSpeed")))
+	{
+		return { LOCTEXT("Slow", "Lente"), LOCTEXT("Normal", "Normale"), LOCTEXT("Fast", "Rapide") };
+	}
+	if (Kind == FName(TEXT("Language")))
+	{
+		return LanguageNames();
+	}
+	UE_LOG(LogHOLUI, Warning, TEXT("Settings: no values for the kind %s"), *Kind.ToString());
+	return {};
+}
+
+TArray<FText> UHOLSettingsScreen::GetResolutionNames()
+{
+	using namespace UE::HeroesOfLiberty::UI::Settings;
+
+	Resolutions.Reset();
+	TArray<FIntPoint> Supported;
+	UKismetSystemLibrary::GetSupportedFullscreenResolutions(Supported);
+	for (const FIntPoint& Resolution : Supported)
+	{
+		if (Resolution.X >= MinResolution.X && Resolution.Y >= MinResolution.Y)
+		{
+			Resolutions.AddUnique(Resolution);
+		}
+	}
+	if (const UGameUserSettings* GameSettings = UGameUserSettings::GetGameUserSettings())
+	{
+		FIntPoint Resolution;
+		EWindowMode::Type WindowMode;
+		GetDisplay(*GameSettings, Resolution, WindowMode);
+		Resolutions.AddUnique(Resolution);
+	}
+	Resolutions.Sort([](const FIntPoint& A, const FIntPoint& B) { return A.X != B.X ? A.X < B.X : A.Y < B.Y; });
+	TArray<FText> Names;
+	for (const FIntPoint& Resolution : Resolutions)
+	{
+		Names.Add(FText::Format(INVTEXT("{0} × {1}"), FText::AsNumber(Resolution.X, &FNumberFormattingOptions::DefaultNoGrouping()),
+			FText::AsNumber(Resolution.Y, &FNumberFormattingOptions::DefaultNoGrouping())));
+	}
+	return Names;
+}
+
+int32 UHOLSettingsScreen::GetShownResolutionIndex() const
 {
 	using namespace UE::HeroesOfLiberty::UI::Settings;
 
 	const UHOLGameUserSettings* Settings = UHOLGameUserSettings::Get();
 	if (!Settings)
 	{
-		UE_LOG(LogHOLUI, Error, TEXT("Settings: the game user settings are not UHOLGameUserSettings (DefaultEngine.ini, GameUserSettingsClassName)"));
-		return;
+		return 0;
 	}
-	// The window as it is, which the command line can impose over the saved settings.
 	FIntPoint Resolution;
 	EWindowMode::Type WindowMode;
 	GetDisplay(*Settings, Resolution, WindowMode);
-	if (ResolutionRotator)
-	{
-		ResolutionRotator->SetSelectedItem(FMath::Max(0, Resolutions.IndexOfByKey(Resolution)));
-	}
-	if (WindowModeRotator)
-	{
-		WindowModeRotator->SetSelectedItem(static_cast<int32>(WindowMode));
-	}
-	if (VSyncRotator)
-	{
-		VSyncRotator->SetSelectedItem(Settings->IsVSyncEnabled() ? 1 : 0);
-	}
-	if (FrameRateRotator)
-	{
-		const float Limit = Settings->GetFrameRateLimit();
-		FrameRateRotator->SetSelectedItem(Limit > 0.f ? Nearest(FrameRates, Limit) : FrameRates.Num() - 1);
-	}
-	if (RenderScaleRotator)
-	{
-		float Normalized, Value, Min, Max;
-		Settings->GetResolutionScaleInformationEx(Normalized, Value, Min, Max);
-		RenderScaleRotator->SetSelectedItem(Nearest(RenderScales, Value));
-	}
-	if (QualityRotator)
-	{
-		const int32 Overall = Settings->GetOverallScalabilityLevel();
-		QualityRotator->SetSelectedItem(Overall >= 0 && Overall < NumLevels ? Overall : CustomQuality);
-	}
-	const TArray<FGroup> AllGroups = Groups();
-	for (int32 Group = 0; Group < GroupRotators.Num(); ++Group)
-	{
-		if (GroupRotators[Group])
-		{
-			GroupRotators[Group]->SetSelectedItem(FMath::Clamp((Settings->*AllGroups[Group].Get)(), 0, NumLevels - 1));
-		}
-	}
-	for (int32 Volume = 0; Volume < VolumeRotators.Num(); ++Volume)
-	{
-		if (VolumeRotators[Volume])
-		{
-			VolumeRotators[Volume]->SetSelectedItem(FMath::RoundToInt(Settings->GetVolume(static_cast<EHOLVolume>(Volume)) * NumVolumeSteps));
-		}
-	}
-	if (LanguageRotator)
-	{
-		const FString Current = UKismetInternationalizationLibrary::GetCurrentLanguage();
-		int32 Selected = 0;
-		for (int32 Index = 0; Index < UE_ARRAY_COUNT(Languages); ++Index)
-		{
-			if (Current.StartsWith(Languages[Index]))
-			{
-				Selected = Index;
-			}
-		}
-		LanguageRotator->SetSelectedItem(Selected);
-	}
-	if (CameraSpeedRotator)
-	{
-		CameraSpeedRotator->SetSelectedItem(static_cast<int32>(Settings->GetCameraSpeed()));
-	}
-	if (EdgeScrollRotator)
-	{
-		EdgeScrollRotator->SetSelectedItem(Settings->IsEdgeScrollEnabled() ? 1 : 0);
-	}
+	return FMath::Max(0, Resolutions.IndexOfByKey(Resolution));
 }
 
-void UHOLSettingsScreen::ApplyAndRefresh(const bool bResolutionChanged)
+int32 UHOLSettingsScreen::GetShownWindowMode()
 {
-	if (UHOLGameUserSettings* Settings = UHOLGameUserSettings::Get())
+	using namespace UE::HeroesOfLiberty::UI::Settings;
+
+	const UHOLGameUserSettings* Settings = UHOLGameUserSettings::Get();
+	if (!Settings)
 	{
-		if (bResolutionChanged)
-		{
-			Settings->ApplyResolutionSettings(/*bCheckForCommandLineOverrides*/ false);
-		}
-		Settings->ApplyNonResolutionSettings();
-		Settings->SaveSettings();
+		return 0;
 	}
-	Refresh();
+	FIntPoint Resolution;
+	EWindowMode::Type WindowMode;
+	GetDisplay(*Settings, Resolution, WindowMode);
+	return static_cast<int32>(WindowMode);
 }
 
-void UHOLSettingsScreen::HandleResolution(const int32 Value)
+void UHOLSettingsScreen::ChooseResolution(const int32 Index)
 {
 	using namespace UE::HeroesOfLiberty::UI::Settings;
 
 	UHOLGameUserSettings* Settings = UHOLGameUserSettings::Get();
-	if (Settings && Resolutions.IsValidIndex(Value))
+	if (Settings && Resolutions.IsValidIndex(Index))
 	{
 		// With the window mode shown, not the saved one, which the command line may have overridden.
 		FIntPoint Shown;
 		EWindowMode::Type WindowMode;
 		GetDisplay(*Settings, Shown, WindowMode);
 		Settings->SetFullscreenMode(WindowMode);
-		Settings->SetScreenResolution(Resolutions[Value]);
+		Settings->SetScreenResolution(Resolutions[Index]);
 	}
-	ApplyAndRefresh(/*bResolutionChanged*/ true);
 }
 
-void UHOLSettingsScreen::HandleWindowMode(const int32 Value)
+void UHOLSettingsScreen::ChooseWindowMode(const int32 Mode)
 {
 	using namespace UE::HeroesOfLiberty::UI::Settings;
 
@@ -482,113 +559,134 @@ void UHOLSettingsScreen::HandleWindowMode(const int32 Value)
 		EWindowMode::Type Shown;
 		GetDisplay(*Settings, Resolution, Shown);
 		Settings->SetScreenResolution(Resolution);
-		Settings->SetFullscreenMode(static_cast<EWindowMode::Type>(Value));
+		Settings->SetFullscreenMode(static_cast<EWindowMode::Type>(FMath::Clamp(Mode, 0, 2)));
 	}
-	ApplyAndRefresh(/*bResolutionChanged*/ true);
 }
 
-void UHOLSettingsScreen::HandleVSync(const int32 Value)
+int32 UHOLSettingsScreen::GetFrameRateIndex()
 {
-	if (UHOLGameUserSettings* Settings = UHOLGameUserSettings::Get())
+	using namespace UE::HeroesOfLiberty::UI::Settings;
+
+	const UHOLGameUserSettings* Settings = UHOLGameUserSettings::Get();
+	if (!Settings)
 	{
-		Settings->SetVSyncEnabled(Value == 1);
+		return 0;
 	}
-	ApplyAndRefresh();
+	const float Limit = Settings->GetFrameRateLimit();
+	return Limit > 0.f ? Nearest(FrameRateValues(), Limit) : FrameRateValues().Num() - 1;
 }
 
-void UHOLSettingsScreen::HandleFrameRate(const int32 Value)
-{
-	UHOLGameUserSettings* Settings = UHOLGameUserSettings::Get();
-	if (Settings && FrameRates.IsValidIndex(Value))
-	{
-		Settings->SetFrameRateLimit(FrameRates[Value]);
-	}
-	ApplyAndRefresh();
-}
-
-void UHOLSettingsScreen::HandleRenderScale(const int32 Value)
-{
-	UHOLGameUserSettings* Settings = UHOLGameUserSettings::Get();
-	if (Settings && RenderScales.IsValidIndex(Value))
-	{
-		Settings->SetResolutionScaleValueEx(RenderScales[Value]);
-	}
-	ApplyAndRefresh();
-}
-
-void UHOLSettingsScreen::HandleQuality(const int32 Value)
+void UHOLSettingsScreen::SetFrameRateIndex(const int32 Index)
 {
 	using namespace UE::HeroesOfLiberty::UI::Settings;
 
 	UHOLGameUserSettings* Settings = UHOLGameUserSettings::Get();
+	if (Settings && FrameRateValues().IsValidIndex(Index))
+	{
+		Settings->SetFrameRateLimit(FrameRateValues()[Index]);
+	}
+}
+
+int32 UHOLSettingsScreen::GetRenderScaleIndex()
+{
+	using namespace UE::HeroesOfLiberty::UI::Settings;
+
+	const UHOLGameUserSettings* Settings = UHOLGameUserSettings::Get();
 	if (!Settings)
 	{
-		return;
+		return 0;
 	}
+	float Normalized, Value, Min, Max;
+	Settings->GetResolutionScaleInformationEx(Normalized, Value, Min, Max);
+	return Nearest(RenderScaleValues(), Value);
+}
+
+void UHOLSettingsScreen::SetRenderScaleIndex(const int32 Index)
+{
+	using namespace UE::HeroesOfLiberty::UI::Settings;
+
+	UHOLGameUserSettings* Settings = UHOLGameUserSettings::Get();
+	if (Settings && RenderScaleValues().IsValidIndex(Index))
+	{
+		Settings->SetResolutionScaleValueEx(RenderScaleValues()[Index]);
+	}
+}
+
+int32 UHOLSettingsScreen::GetQualityIndex()
+{
+	using namespace UE::HeroesOfLiberty::UI::Settings;
+
+	const UHOLGameUserSettings* Settings = UHOLGameUserSettings::Get();
+	const int32 Overall = Settings ? Settings->GetOverallScalabilityLevel() : -1;
+	return Overall >= 0 && Overall < NumLevels ? Overall : CustomQuality;
+}
+
+int32 UHOLSettingsScreen::ResolveQualityChoice(const int32 Value)
+{
+	using namespace UE::HeroesOfLiberty::UI::Settings;
+
 	int32 Level = Value;
 	if (Level == CustomQuality)
 	{
 		// "Custom" only shows that the groups differ; it cannot be chosen.
-		const int32 Overall = Settings->GetOverallScalabilityLevel();
+		const UHOLGameUserSettings* Settings = UHOLGameUserSettings::Get();
+		const int32 Overall = Settings ? Settings->GetOverallScalabilityLevel() : -1;
 		const int32 Previous = Overall >= 0 ? Overall : CustomQuality;
 		Level = (Level + UHOLRotator::GetStep(Previous, Value, NumLevels + 1) + NumLevels + 1) % (NumLevels + 1);
 	}
-	Settings->SetOverallScalabilityLevel(Level);
-	ApplyAndRefresh();
+	return Level;
 }
 
-void UHOLSettingsScreen::HandleGroup(const int32 Group, const int32 Value)
+int32 UHOLSettingsScreen::GetGroupLevel(const int32 Group)
+{
+	using namespace UE::HeroesOfLiberty::UI::Settings;
+
+	const TArray<FGroup> AllGroups = Groups();
+	const UHOLGameUserSettings* Settings = UHOLGameUserSettings::Get();
+	if (!Settings || !AllGroups.IsValidIndex(Group))
+	{
+		return 0;
+	}
+	return FMath::Clamp((Settings->*AllGroups[Group].Get)(), 0, NumLevels - 1);
+}
+
+void UHOLSettingsScreen::SetGroupLevel(const int32 Group, const int32 Level)
 {
 	using namespace UE::HeroesOfLiberty::UI::Settings;
 
 	const TArray<FGroup> AllGroups = Groups();
 	if (UHOLGameUserSettings* Settings = UHOLGameUserSettings::Get(); Settings && AllGroups.IsValidIndex(Group))
 	{
-		(Settings->*AllGroups[Group].Set)(Value);
+		(Settings->*AllGroups[Group].Set)(Level);
 	}
-	ApplyAndRefresh();
 }
 
-void UHOLSettingsScreen::HandleVolume(const int32 Volume, const int32 Value)
+int32 UHOLSettingsScreen::GetLanguageIndex()
 {
 	using namespace UE::HeroesOfLiberty::UI::Settings;
 
-	if (UHOLGameUserSettings* Settings = UHOLGameUserSettings::Get())
+	const FString Current = UKismetInternationalizationLibrary::GetCurrentLanguage();
+	int32 Selected = 0;
+	for (int32 Index = 0; Index < UE_ARRAY_COUNT(Languages); ++Index)
 	{
-		Settings->SetVolume(static_cast<EHOLVolume>(Volume), static_cast<float>(Value) / NumVolumeSteps);
+		if (Current.StartsWith(Languages[Index]))
+		{
+			Selected = Index;
+		}
 	}
-	ApplyAndRefresh();
+	return Selected;
 }
 
-void UHOLSettingsScreen::HandleCameraSpeed(const int32 Value)
-{
-	if (UHOLGameUserSettings* Settings = UHOLGameUserSettings::Get())
-	{
-		Settings->SetCameraSpeed(static_cast<EHOLCameraSpeed>(FMath::Clamp(Value, 0, 2)));
-	}
-	ApplyAndRefresh();
-}
-
-void UHOLSettingsScreen::HandleEdgeScroll(const int32 Value)
-{
-	if (UHOLGameUserSettings* Settings = UHOLGameUserSettings::Get())
-	{
-		Settings->SetEdgeScrollEnabled(Value == 1);
-	}
-	ApplyAndRefresh();
-}
-
-void UHOLSettingsScreen::HandleLanguage(const int32 Value)
+void UHOLSettingsScreen::SetLanguageIndex(const int32 Index)
 {
 	using namespace UE::HeroesOfLiberty::UI::Settings;
 
-	if (Value >= 0 && Value < UE_ARRAY_COUNT(Languages))
+	if (Index >= 0 && Index < UE_ARRAY_COUNT(Languages))
 	{
 		// Switched live and saved by the engine ([Internationalization] in GameUserSettings.ini).
-		const bool bSet = UKismetInternationalizationLibrary::SetCurrentLanguage(Languages[Value], /*SaveToConfig*/ true);
-		UE_LOG(LogHOLUI, Display, TEXT("Settings: language %s%s"), Languages[Value], bSet ? TEXT("") : TEXT(" refused"));
+		const bool bSet = UKismetInternationalizationLibrary::SetCurrentLanguage(Languages[Index], /*SaveToConfig*/ true);
+		UE_LOG(LogHOLUI, Display, TEXT("Settings: language %s%s"), Languages[Index], bSet ? TEXT("") : TEXT(" refused"));
 	}
-	Refresh();
 }
 
 #undef LOCTEXT_NAMESPACE
