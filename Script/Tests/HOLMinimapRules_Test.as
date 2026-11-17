@@ -176,3 +176,82 @@ void Test_MinimapCameraFrame(FUnitTest& T)
 	T.AssertEquals(125.0, Picture[2].X, "lower right x");
 	T.AssertEquals(125.0, Picture[2].Y, "lower right y");
 }
+
+// ---- Lot L17-05 (D830, D836, D839, GLORFINDEL-1117c): the script port of HOLMinimapAlertRingTests.cpp and HOLMinimapTerrainTests.cpp, against
+// UHOLMinimapReadLibrary (HOLMinimapRead, S1h): AlertDiameter, GetSourcesSignature (parallel arrays Locations / Remaining, FHOLSource has no USTRUCT),
+// GetConsoleFloat. Same vectors as the C++ tests.
+
+bool MinimapNear(float A, float B, float Tolerance)
+{
+	return Math::Abs(A - B) <= Tolerance;
+}
+
+// HeroesOfLiberty.UI.Minimap.AlertRing (MM-Q1 / D624): the alert circle shrinks from its size (24 px) to 8 px, again and again, on the game's clock.
+void Test_MinimapAlertRing(FUnitTest& T)
+{
+	T.AssertTrue(MinimapNear(HOLMinimapRead::AlertDiameter(0.0f, 1.0f, 24.0f), 24.0f, 0.001f), "age 0: the full size");
+	T.AssertTrue(MinimapNear(HOLMinimapRead::AlertDiameter(0.5f, 1.0f, 24.0f), 16.0f, 0.001f), "half a period: halfway");
+	T.AssertTrue(MinimapNear(HOLMinimapRead::AlertDiameter(0.999f, 1.0f, 24.0f), 8.0f, 0.05f), "just before the period: nearly 8 px");
+	T.AssertTrue(MinimapNear(HOLMinimapRead::AlertDiameter(3.0f, 1.0f, 24.0f), 24.0f, 0.001f), "a period later: again the full size");
+	T.AssertTrue(MinimapNear(HOLMinimapRead::AlertDiameter(3.0f, 6.0f, 24.0f), 16.0f, 0.001f), "a 6 s period, 3 s: halfway");
+	// Sane against the console's values: a period of 0 would divide by zero; a size under 8 px never grows.
+	const float ZeroPeriod = HOLMinimapRead::AlertDiameter(1.0f, 0.0f, 24.0f);
+	T.AssertTrue(ZeroPeriod == ZeroPeriod && Math::Abs(ZeroPeriod) < 1.0e30f, "period 0 stays a number");
+	T.AssertTrue(HOLMinimapRead::AlertDiameter(0.3f, 1.0f, 6.0f) <= 6.0f, "a size under 8 px does not grow past itself");
+	T.AssertTrue(HOLMinimapRead::AlertDiameter(-1.0f, 1.0f, 24.0f) <= 24.0f, "a negative age is the start");
+	// The user's choice (Q-minimap-alerts-vitesse, 2026-11-02): 24 px, one pass in 0.75 s, an alert lives 6 s, no blink.
+	T.AssertTrue(MinimapNear(HOLMinimapRead::GetConsoleFloat("hol.Minimap.AlertShrinkSeconds"), 0.75f, 0.001f), "default pass of the shrinking");
+	T.AssertTrue(MinimapNear(HOLMinimapRead::GetConsoleFloat("hol.Minimap.AlertSize"), 24.0f, 0.001f), "default size");
+	T.AssertTrue(MinimapNear(HOLMinimapRead::GetConsoleFloat("hol.Minimap.AlertSeconds"), 6.0f, 0.001f), "default life");
+	// Shrinking, strictly, over a period (the picture of a ring that moves).
+	float Previous = 1000.0f;
+	for (int Step = 0; Step < 4; ++Step)
+	{
+		const float Diameter = HOLMinimapRead::AlertDiameter(Step * 0.25f, 1.0f, 24.0f);
+		T.AssertTrue(Diameter < Previous, "t = " + (Step * 0.25f) + " s is smaller than the one before");
+		Previous = Diameter;
+	}
+}
+
+// HeroesOfLiberty.UI.Minimap.TerrainSources (P2): the terrain layer is made again only when the standing sources change.
+void Test_MinimapTerrainSources(FUnitTest& T)
+{
+	TArray<FVector> Places;
+	Places.Add(FVector(0.0, 0.0, 0.0));
+	Places.Add(FVector(500.0, 0.0, 0.0));
+	Places.Add(FVector(0.0, 500.0, 0.0));
+	TArray<int32> Left;
+	Left.Add(100);
+	Left.Add(100);
+	Left.Add(100);
+	const int64 Whole = HOLMinimapRead::GetSourcesSignature(Places, Left);
+	T.AssertTrue(HOLMinimapRead::GetSourcesSignature(Places, Left) == Whole, "read twice: the same");
+
+	Left[1] = 40;
+	T.AssertTrue(HOLMinimapRead::GetSourcesSignature(Places, Left) == Whole, "gathered from, still standing: no change");
+
+	Left[1] = 0;
+	const int64 UsedUp = HOLMinimapRead::GetSourcesSignature(Places, Left);
+	T.AssertTrue(UsedUp != Whole, "used up: changed");
+
+	Left[2] = 0;
+	T.AssertTrue(HOLMinimapRead::GetSourcesSignature(Places, Left) != UsedUp, "another used up: changed again");
+
+	Left[1] = 100;
+	Left[2] = 100;
+	T.AssertTrue(HOLMinimapRead::GetSourcesSignature(Places, Left) == Whole, "standing again (a farm field): back to the whole");
+
+	TArray<FVector> More = Places;
+	TArray<int32> MoreLeft = Left;
+	More.Add(FVector(900.0, 900.0, 0.0));
+	MoreLeft.Add(100);
+	T.AssertTrue(HOLMinimapRead::GetSourcesSignature(More, MoreLeft) != Whole, "a source added: changed");
+
+	TArray<FVector> Moved = Places;
+	Moved[2] = FVector(0.0, 800.0, 0.0);
+	T.AssertTrue(HOLMinimapRead::GetSourcesSignature(Moved, Left) != Whole, "a source elsewhere: changed");
+
+	TArray<FVector> NoPlace;
+	TArray<int32> NoLeft;
+	T.AssertTrue(HOLMinimapRead::GetSourcesSignature(NoPlace, NoLeft) == HOLMinimapRead::GetSourcesSignature(NoPlace, NoLeft), "no source: the empty signature, stable");
+}
