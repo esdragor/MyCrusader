@@ -59,16 +59,6 @@ namespace HOLMarket
 		return Settings;
 	}
 
-	FBook NewBook(const FSettings& Settings)
-	{
-		FBook Book;
-		for (int32 Resource = 0; Resource < BookSize; ++Resource)
-		{
-			Book.Prices[Resource] = Settings.BasePrices[Resource];
-		}
-		return Book;
-	}
-
 	FTrade Sell(const FSettings& Settings, const FBook& Book, const int32 Resource, const int32 Lots, const int32 Stock, const int32 FeePercent)
 	{
 		if (const TCHAR* Bad = CheckRequest(Resource, Lots))

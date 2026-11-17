@@ -11,18 +11,18 @@ void Test_SiegeTiers(FUnitTest& T)
 	Names.Add(n"Mangonel");
 	Names.Add(n"Trebuchet");
 	Names.Add(n"Cannon");
-	T.AssertEquals(HOLSiege::EngineCount, Names.Num(), "one unit type name per engine");
+	T.AssertEquals(HOLSiegeCheck::GetEngineCount(), Names.Num(), "one unit type name per engine");
 	for (int Index = 0; Index < Names.Num(); Index++)
 	{
 		int Found = -1;
 		T.AssertTrue(HOLSiegeCheck::FindEngine(Names[Index], Found), f"engine {Index}: its unit type name is an engine");
 		T.AssertEquals(Index, Found, f"engine {Index}: the name finds the engine of the same index");
-		T.AssertEquals(HOLSiegeCheck::GetTier(int(HOLSiege::EngineAt(Index))), HOLSiegeCheck::GetTier(Found), f"engine {Index}: the same tier by index and by name");
+		T.AssertEquals(HOLSiegeCheck::GetTier(Index), HOLSiegeCheck::GetTier(Found), f"engine {Index}: the same tier by index and by name");
 	}
 	// GDD 6.1: Ram 1, Mangonel 2, Trebuchet 3, Cannon 3 (D180); the sum is the whole table at once.
 	int Sum = 0;
-	for (int Index = 0; Index < HOLSiege::EngineCount; Index++)
-		Sum += HOLSiegeCheck::GetTier(int(HOLSiege::EngineAt(Index)));
+	for (int Index = 0; Index < HOLSiegeCheck::GetEngineCount(); Index++)
+		Sum += HOLSiegeCheck::GetTier(Index);
 	T.AssertEquals(9, Sum, "the tiers of the four engines: 1 + 2 + 3 + 3");
 }
 
@@ -46,15 +46,14 @@ void Test_SiegeTechnologyTiersNotBeforeTheWorkshop(FUnitTest& T)
 }
 
 // Siege.TechnologyHealth, the rounding the C++ test does not pin (it only has 400): to nearest, once; the percent is on the health
-// alone. This is the script's HealthWithTechnology; HOLCombat::GetMaxHealth itself (the C++ rule, real unit rows) has no script library
-// and stays tested in C++.
+// alone. This is HOLSiegeCheck::HealthWithTechnology, HOLCombat::GetMaxHealth at level 1 (the C++ rule).
 void Test_SiegeHealthRounding(FUnitTest& T)
 {
-	T.AssertEquals(6, HOLSiege::HealthWithTechnology(5, 10), "5 + 10 % = 5.5 rounds up to 6");
-	T.AssertEquals(5, HOLSiege::HealthWithTechnology(5, 8), "5 + 8 % = 5.4 rounds down to 5");
-	T.AssertEquals(17, HOLSiege::HealthWithTechnology(15, 10), "15 + 10 % = 16.5 rounds up to 17");
-	T.AssertEquals(0, HOLSiege::HealthWithTechnology(0, 20), "no health stays none");
-	T.AssertEquals(15, HOLSiege::HealthWithTechnology(15, -50), "a negative percent is no loss");
-	T.AssertTrue(Math::Abs(HOLSiege::AttackWithTechnology(45, -20) - 45.f) < 0.01f, "a negative attack percent is no loss");
-	T.AssertTrue(Math::Abs(HOLSiege::AttackWithTechnology(45, 0) - 45.f) < 0.01f, "0 percent changes nothing");
+	T.AssertEquals(6, HOLSiegeCheck::HealthWithTechnology(5, 10), "5 + 10 % = 5.5 rounds up to 6");
+	T.AssertEquals(5, HOLSiegeCheck::HealthWithTechnology(5, 8), "5 + 8 % = 5.4 rounds down to 5");
+	T.AssertEquals(17, HOLSiegeCheck::HealthWithTechnology(15, 10), "15 + 10 % = 16.5 rounds up to 17");
+	T.AssertEquals(0, HOLSiegeCheck::HealthWithTechnology(0, 20), "no health stays none");
+	T.AssertEquals(15, HOLSiegeCheck::HealthWithTechnology(15, -50), "a negative percent is no loss");
+	T.AssertTrue(Math::Abs(HOLSiegeCheck::AttackWithTechnology(45, -20) - 45.f) < 0.01f, "a negative attack percent is no loss");
+	T.AssertTrue(Math::Abs(HOLSiegeCheck::AttackWithTechnology(45, 0) - 45.f) < 0.01f, "0 percent changes nothing");
 }

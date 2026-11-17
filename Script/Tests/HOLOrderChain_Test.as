@@ -1,6 +1,6 @@
 // Port of HOLOrderChainTests.cpp (HeroesOfLiberty.Orders.Chains, .BuildingQueue) against UHOLOrderChainReadLibrary (L17-09, ELROND-1117c, D830/D839).
-// Same vectors, names adapted. NOT ported (the library does not expose them): EndBuildingTarget (a template over TWeakObjectPtr), so every
-// assertion that follows an EndBuildingTarget call stays in the C++ test HeroesOfLiberty.Orders.BuildingQueue.
+// Same vectors, names adapted. EndBuildingTarget (a template over TWeakObjectPtr in C++) goes through HOLOrderChainRead::EndBuildingTarget(TargetId, OrderedId) (building ids,
+// 0 = none; S1g suite, SAURON-1117g: compiles only after the build that adds it); its halves are the Test_OrderBuildingQueue_End* tests below.
 
 // One unit as the order processor sees it: its current order and its queue, advanced as StartQueuedMoves does.
 struct FOCUnitModel
@@ -312,4 +312,64 @@ void Test_OrderBuildingQueue_Deposit(FUnitTest& T)
 	T.AssertTrue(OCAdvance(Unit), "Drop-off: unloaded, the next move starts");
 	T.AssertEquals(0, Unit.Queue.Num(), "Drop-off: queue empty");
 	T.AssertTrue(HOLOrderChainRead::KindName(EHOLOrderChainStepKind::Deposit) == "Deposit", "Drop-off: its step name");
+}
+
+// BuildingQueue, the halves after EndBuildingTarget (HOLOrderChainTests.cpp, HeroesOfLiberty.Orders.BuildingQueue).
+void Test_OrderBuildingQueue_EndAfterMove(FUnitTest& T)
+{
+	FOCUnitModel Unit;
+	Unit.bWalking = true;
+	Unit.Queue.Add(HOLOrderChainRead::MakeAttackBuilding(7));
+	T.AssertFalse(OCAdvance(Unit), "After a move: waits while it walks");
+	Unit.bWalking = false;
+	T.AssertTrue(OCAdvance(Unit), "After a move: starts at the arrival");
+	T.AssertFalse(OCIsOver(Unit), "After a move: its order goes on while the building stands");
+	HOLOrderChainRead::EndBuildingTarget(Unit.TargetId, Unit.OrderedId);
+	T.AssertEquals(0, Unit.TargetId, "After a move: no more target");
+	T.AssertEquals(0, Unit.OrderedId, "After a move: its order ended");
+	T.AssertTrue(OCIsOver(Unit), "After a move: the building fallen, its order is over");
+}
+
+void Test_OrderBuildingQueue_EndTwoBuildings(FUnitTest& T)
+{
+	FOCUnitModel Unit;
+	Unit.Queue.Add(HOLOrderChainRead::MakeAttackBuilding(1));
+	Unit.Queue.Add(HOLOrderChainRead::MakeAttackBuilding(2));
+	T.AssertTrue(OCAdvance(Unit), "Two buildings: the first starts");
+	T.AssertFalse(OCAdvance(Unit), "Two buildings: the second waits");
+	HOLOrderChainRead::EndBuildingTarget(Unit.TargetId, Unit.OrderedId);
+	T.AssertTrue(OCAdvance(Unit), "Two buildings: the first fallen, the second starts");
+	T.AssertEquals(2, Unit.TargetId, "Two buildings: strikes the second");
+	T.AssertFalse(OCMaySeek(Unit, false), "Two buildings: the second never dropped for an enemy unit");
+	T.AssertEquals(0, Unit.Queue.Num(), "Two buildings: queue empty");
+	HOLOrderChainRead::EndBuildingTarget(Unit.TargetId, Unit.OrderedId);
+	T.AssertTrue(OCIsOver(Unit), "Two buildings: both fallen, its order over");
+	T.AssertTrue(OCMaySeek(Unit, false), "Two buildings: both fallen, it takes on enemy units again");
+}
+
+void Test_OrderBuildingQueue_EndThenMove(FUnitTest& T)
+{
+	FOCUnitModel Unit;
+	Unit.TargetId = 3;
+	Unit.OrderedId = 3;
+	Unit.Queue.Add(HOLOrderChainRead::MakeMove(FVector(100, 0, 0), false));
+	T.AssertFalse(OCAdvance(Unit), "Then a move: waits while the building stands");
+	HOLOrderChainRead::EndBuildingTarget(Unit.TargetId, Unit.OrderedId);
+	T.AssertTrue(OCAdvance(Unit), "Then a move: starts at the fall");
+	T.AssertTrue(Unit.bWalking, "Then a move: walks");
+}
+
+// A building taken on by itself (Target only) ends without an order to end; a different ordered building is kept.
+void Test_OrderBuildingQueue_EndOwnAndOther(FUnitTest& T)
+{
+	FOCUnitModel Rest;
+	Rest.TargetId = 9;
+	HOLOrderChainRead::EndBuildingTarget(Rest.TargetId, Rest.OrderedId);
+	T.AssertTrue(Rest.TargetId == 0 && Rest.OrderedId == 0, "At rest: its building fallen, nothing left");
+	FOCUnitModel Other;
+	Other.TargetId = 9;
+	Other.OrderedId = 4;
+	HOLOrderChainRead::EndBuildingTarget(Other.TargetId, Other.OrderedId);
+	T.AssertEquals(0, Other.TargetId, "Another building struck: its target ends");
+	T.AssertEquals(4, Other.OrderedId, "Another building struck: the order of 4 stays");
 }

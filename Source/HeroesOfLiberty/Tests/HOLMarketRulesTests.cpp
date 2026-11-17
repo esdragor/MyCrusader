@@ -57,9 +57,12 @@ bool FHOLMarketRulesTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("settings: floor"), S.MinPrice, 20);
 	TestEqual(TEXT("settings: cap"), S.MaxPrice, 300);
 
-	const HOLMarket::FBook Book = HOLMarket::NewBook(S);
-	TestEqual(TEXT("fresh book: wood at 80"), Book.Prices[Wood], 80);
-	TestEqual(TEXT("fresh book: stone at 120"), Book.Prices[Stone], 120);
+	// The book at rest is the script's (UHOLMarketSubsystem::NewBook, Test_MarketNewBookAtRest: wood 80, stone 120); here one written by hand from the bases.
+	HOLMarket::FBook Book;
+	for (int32 Resource = 0; Resource < HOLMarket::BookSize; ++Resource)
+	{
+		Book.Prices[Resource] = S.BasePrices[Resource];
+	}
 
 	// The round trip of the script test: wood sold at 80 pays 56 and falls to 77; bought back at 77 costs 101 and returns to 80.
 	const HOLMarket::FTrade Sold = HOLMarket::Sell(S, Book, Wood, 1, 100, S.FeePercent);
