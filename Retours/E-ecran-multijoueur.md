@@ -1,6 +1,6 @@
 # [À ESSAYER] E-ecran-multijoueur : l'écran Multijoueur (écrit en script) s'ouvre, montre le nom, l'erreur sans gestionnaire et ses 3 boutons
 
-STATUT : LOGIQUE SEULEMENT   (preflight PASS et PNG vu, mais le scénario n'a pas de .json et le geste n'a pas été joué à la main ; jamais listé prêt avant que l'utilisateur essaie)
+STATUT : VU À L'ÉCRAN   (REPRISE 6, 2026-11-17 ~20:30 : d751-root fusionnée avec main 4fd5394, build PASS 169 s, Get-StaleBinaryProblem vide, quick_check tests 1496/1498 (2 Nomad connus), preflight ecran_multijoueur PASS sur le -Root exact, PNG vu : voile sombre derrière la colonne, Créer un salon ACTIF ; le scénario n'a pas de .json, le geste interne n'a pas été joué à la main)
 GESTE: interne   (le scénario ouvre l'écran par commande hol.UI.Open Multiplayer ; aucun vrai clic joué)
 SON: non entendu   (-nosound)
 branches: d751-root
