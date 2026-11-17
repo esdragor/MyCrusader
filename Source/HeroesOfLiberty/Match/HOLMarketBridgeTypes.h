@@ -46,3 +46,25 @@ struct HEROESOFLIBERTY_API FHOLMarketBridgeBook
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "HeroesOfLiberty|Market")
 	TArray<int32> Prices;
 };
+
+/** What one trade did (mirror of HOLMarket::FTrade, MIG-C++-FINAL): Reason is "lots", "resource", "stock", "gold" or empty when done. */
+USTRUCT(BlueprintType)
+struct HEROESOFLIBERTY_API FHOLMarketBridgeTrade
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "HeroesOfLiberty|Market")
+	bool bOk = false;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "HeroesOfLiberty|Market")
+	FString Reason;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "HeroesOfLiberty|Market")
+	int32 Gold = 0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "HeroesOfLiberty|Market")
+	int32 Units = 0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "HeroesOfLiberty|Market")
+	FHOLMarketBridgeBook Book;
+};
