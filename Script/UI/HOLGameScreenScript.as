@@ -806,7 +806,7 @@ FString TalentTipTexts = "";
 		{
 			if (!Row.bStanceEditable || !DipStanceButtons[Slot * 3 + Kind].IsVisible())
 				return false;
-			Controller.RequestStance(Slot, Kind);
+			HOLRpcRequestStance(Controller, Slot, Kind);
 			DipMenuSlot = -1;
 			return true;
 		}
@@ -814,7 +814,7 @@ FString TalentTipTexts = "";
 		{
 			if (!Row.bStanceEditable || !DipChips[Slot].IsVisible())
 				return false;
-			Controller.RequestStance(Slot, HOLDiplomacyPanel::NextStance(Row.MyStance));
+			HOLRpcRequestStance(Controller, Slot, HOLDiplomacyPanel::NextStance(Row.MyStance));
 			return true;
 		}
 		if (Kind == DipKindMenu)
