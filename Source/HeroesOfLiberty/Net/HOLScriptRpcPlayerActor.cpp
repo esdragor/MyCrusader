@@ -170,10 +170,10 @@ bool UHOLRpcBridgeLibrary::HeroTalent(AActor* RpcActor, const int32 Family)
 	return Controller != nullptr;
 }
 
-bool UHOLRpcBridgeLibrary::HeroAbility(AActor* RpcActor, const EHOLHeroAbility Ability, const FVector_NetQuantize Location)
+bool UHOLRpcBridgeLibrary::HeroAbility(AActor* RpcActor, const EHOLHeroAbility Ability, const double X, const double Y, const double Z)
 {
 	AHOLPlayerController* Controller = HOLRpcBridgeL1_Haldir1117o::OwnerController(RpcActor);
-	if (Controller) { Controller->ServerHeroAbility_Implementation(Ability, Location); }
+	if (Controller) { Controller->ServerHeroAbility_Implementation(Ability, FVector_NetQuantize(X, Y, Z)); }
 	return Controller != nullptr;
 }
 

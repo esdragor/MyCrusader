@@ -365,19 +365,19 @@ void Test_FMAssign(FUnitTest& T)
 		{
 			ExtraPlaces = Random.RandRange(1, 5);
 		}
-		double ForwardX = Random.FRandRange(-1.0, 1.0);
-		double ForwardY = Random.FRandRange(-1.0, 1.0);
+		double ForwardX = Random.RandRange(-1.0, 1.0);
+		double ForwardY = Random.RandRange(-1.0, 1.0);
 		FVector2D Forward(ForwardX, ForwardY);
 		HOLFormationRead::MakeMixedRows(Count + ExtraPlaces, Widths);
-		double TargetX = Random.FRandRange(-3000.0, 3000.0);
-		double TargetY = Random.FRandRange(-3000.0, 3000.0);
+		double TargetX = Random.RandRange(-3000.0, 3000.0);
+		double TargetY = Random.RandRange(-3000.0, 3000.0);
 		HOLFormationRead::MakePlaces(Widths, FVector2D(TargetX, TargetY), Forward, 150.0, 150.0, Places);
 		Positions.Reset();
-		double Spread = Random.FRandRange(300.0, 4000.0);
+		double Spread = Random.RandRange(300.0, 4000.0);
 		for (int Unit = 0; Unit < Count; Unit++)
 		{
-			double PosX = Random.FRandRange(-Spread, Spread);
-			double PosY = Random.FRandRange(-Spread, Spread);
+			double PosX = Random.RandRange(-Spread, Spread);
+			double PosY = Random.RandRange(-Spread, Spread);
 			Positions.Add(FVector2D(PosX, PosY));
 		}
 		HOLFormationRead::AssignPlaces(Positions, Places, Forward, PlaceOfUnit);

@@ -311,7 +311,7 @@ class AHOLRpcPlayer : AHOLScriptRpcPlayerActor
 			Log(n"LogHOLMatch", f"RpcHero: ability refused ({Refusal}) for sender slot {Slot}");
 			return;
 		}
-		HOLRpcBridge::HeroAbility(this, Ability, Location);
+		HOLRpcBridge::HeroAbility(this, Ability, Location.X, Location.Y, Location.Z);
 	}
 
 	UFUNCTION(Server)

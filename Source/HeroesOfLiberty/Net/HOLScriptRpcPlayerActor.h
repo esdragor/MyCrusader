@@ -85,7 +85,7 @@ public:
 
 	/** Ability is an EHOLHeroAbility (UENUM); the _Implementation keeps only CloseRanks and Banner. */
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Rpc")
-	static bool HeroAbility(AActor* RpcActor, EHOLHeroAbility Ability, FVector_NetQuantize Location);
+	static bool HeroAbility(AActor* RpcActor, EHOLHeroAbility Ability, double X, double Y, double Z);
 
 	/** UnitIds as int32 (uint32 is not BlueprintCallable): cast back to uint32 for the _Implementation. */
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Rpc")
