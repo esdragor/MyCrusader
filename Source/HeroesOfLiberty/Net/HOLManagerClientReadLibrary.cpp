@@ -48,7 +48,7 @@ namespace
 		}
 	}
 
-	TSharedPtr<FJsonObject> ReadObject(const FString& Json)
+	TSharedPtr<FJsonObject> ReadManagerJsonObject(const FString& Json)
 	{
 		TSharedPtr<FJsonObject> Object;
 		FJsonSerializer::Deserialize(TJsonReaderFactory<>::Create(Json), Object);
@@ -303,19 +303,19 @@ FString UHOLManagerClientReadLibrary::MakeAISlotBody(const bool bHasColorIndex, 
 
 bool UHOLManagerClientReadLibrary::JsonHasField(const FString& Json, const FString& Field)
 {
-	const TSharedPtr<FJsonObject> Object = ReadObject(Json);
+	const TSharedPtr<FJsonObject> Object = ReadManagerJsonObject(Json);
 	return Object.IsValid() && Object->HasField(Field);
 }
 
 FString UHOLManagerClientReadLibrary::JsonField(const FString& Json, const FString& Field)
 {
-	const TSharedPtr<FJsonObject> Object = ReadObject(Json);
+	const TSharedPtr<FJsonObject> Object = ReadManagerJsonObject(Json);
 	return Object.IsValid() ? ValueText(Object->TryGetField(Field)) : FString();
 }
 
 int32 UHOLManagerClientReadLibrary::JsonNumFields(const FString& Json)
 {
-	const TSharedPtr<FJsonObject> Object = ReadObject(Json);
+	const TSharedPtr<FJsonObject> Object = ReadManagerJsonObject(Json);
 	return Object.IsValid() ? Object->Values.Num() : -1;
 }
 
