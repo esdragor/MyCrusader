@@ -14,53 +14,13 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-// S1b (SiegeInProgress.md, GDD 6.1, D23, D77, D180): the C++ copy of the siege engines' rules (the simulation reads C++, D483; the
-// script's Script/Siege/HOLSiegeRules.as is tested with the same cases) and its link with the REAL technology table
+// S1b (SiegeInProgress.md, GDD 6.1, D23, D77, D180): the siege engines' rules (the simulation reads C++, D483; the tier, prototype, reason and
+// FindEngine cases are tested in Script/Siege/HOLSiegeRules_Test.as, Siege.Tiers was removed) and their link with the REAL technology table
 // (Tools/Data/Technologies.csv): the technologies of the siege workshop must open at the tier of the engine they improve. The
 // expectations are the GDD's (Ram 1, Mangonel 2, Trebuchet and Cannon 3; the prototype's two engines), not copies of the rules.
 namespace UE::HeroesOfLiberty::Tests::Siege
 {
 	constexpr EAutomationTestFlags Flags = EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter;
-}
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLSiegeTiersTest, "HeroesOfLiberty.Siege.Tiers", UE::HeroesOfLiberty::Tests::Siege::Flags)
-bool FHOLSiegeTiersTest::RunTest(const FString& Parameters)
-{
-	using namespace HOLSiege;
-
-	// GDD 6.1: the tier of each engine; D77: the prototype's two.
-	TestEqual(TEXT("Ram opens at tier 1"), GetTier(EEngine::Ram), 1);
-	TestEqual(TEXT("Mangonel opens at tier 2"), GetTier(EEngine::Mangonel), 2);
-	TestEqual(TEXT("Trebuchet opens at tier 3"), GetTier(EEngine::Trebuchet), 3);
-	TestEqual(TEXT("Cannon opens at tier 3 (D180)"), GetTier(EEngine::Cannon), 3);
-	TestTrue(TEXT("Ram in the prototype"), InPrototype(EEngine::Ram));
-	TestTrue(TEXT("Mangonel in the prototype"), InPrototype(EEngine::Mangonel));
-	TestFalse(TEXT("Trebuchet not in the prototype"), InPrototype(EEngine::Trebuchet));
-	TestFalse(TEXT("Cannon not in the prototype"), InPrototype(EEngine::Cannon));
-
-	// The reasons, one at a time and in order (the same cases as Script/Siege/HOLSiegeRules_Test.as).
-	TestTrue(TEXT("Ram, tier 1, workshop, paid: available"), Check(EEngine::Ram, 1, true, true) == EBlock::None);
-	TestTrue(TEXT("Ram, tier 0: tier too low"), Check(EEngine::Ram, 0, true, true) == EBlock::TierTooLow);
-	TestTrue(TEXT("Mangonel, tier 1: tier too low"), Check(EEngine::Mangonel, 1, true, true) == EBlock::TierTooLow);
-	TestTrue(TEXT("Mangonel, tier 2: available"), Check(EEngine::Mangonel, 2, true, true) == EBlock::None);
-	TestTrue(TEXT("no workshop"), Check(EEngine::Ram, 1, false, true) == EBlock::NoWorkshop);
-	TestTrue(TEXT("cannot pay"), Check(EEngine::Ram, 1, true, false) == EBlock::CannotPay);
-	TestTrue(TEXT("Trebuchet refused even at tier 3"), Check(EEngine::Trebuchet, 3, true, true) == EBlock::NotInPrototype);
-	TestTrue(TEXT("outside the prototype comes first"), Check(EEngine::Cannon, 0, false, false) == EBlock::NotInPrototype);
-	TestTrue(TEXT("then the tier"), Check(EEngine::Mangonel, 0, false, false) == EBlock::TierTooLow);
-	TestTrue(TEXT("then the workshop"), Check(EEngine::Mangonel, 2, false, false) == EBlock::NoWorkshop);
-	TestTrue(TEXT("then the cost"), Check(EEngine::Mangonel, 2, true, false) == EBlock::CannotPay);
-
-	// S3: a unit type name is an engine only for the four of GDD 6.1; the words the production logs.
-	EEngine Found = EEngine::Cannon;
-	TestTrue(TEXT("Ram is the Ram"), FindEngine(FName(TEXT("Ram")), Found) && Found == EEngine::Ram);
-	TestTrue(TEXT("Mangonel is the Mangonel"), FindEngine(FName(TEXT("Mangonel")), Found) && Found == EEngine::Mangonel);
-	TestTrue(TEXT("Trebuchet is the Trebuchet"), FindEngine(FName(TEXT("Trebuchet")), Found) && Found == EEngine::Trebuchet);
-	TestTrue(TEXT("Cannon is the Cannon"), FindEngine(FName(TEXT("Cannon")), Found) && Found == EEngine::Cannon);
-	TestFalse(TEXT("the Spearman is no engine"), FindEngine(FName(TEXT("Spearman")), Found));
-	TestFalse(TEXT("no name is no engine"), FindEngine(NAME_None, Found));
-	TestEqual(TEXT("tier words"), FString(DescribeBlock(EBlock::TierTooLow)), FString(TEXT("tier too low")));
-	return true;
 }
 
 // The real table: the technologies researched at the siege workshop open at the tier of the engine they improve (GDD 11.1).
