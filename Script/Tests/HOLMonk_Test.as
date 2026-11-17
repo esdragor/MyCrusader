@@ -10,102 +10,113 @@ const int HOLMonkKeep = 0;
 const int HOLMonkWalk = 1;
 const int HOLMonkStop = 2;
 
-// The candidates of a heal as parallel arrays (Y = 0, maximum health 100, camp 1 unless told).
-class FHOLMonkSet
+// The candidates of a heal as parallel arrays (Y = 0, maximum health 100, camp 1 unless told). Free functions on local arrays: a method call of a
+// script class used as an argument of AssertEquals gave a "Null pointer access" (ELROND-1117m probe), so no script class here.
+void MonkAdd(TArray<int>& Ids, TArray<float32>& Xs, TArray<float32>& Ys, TArray<float32>& Healths, TArray<float32>& MaxHealths, TArray<int>& Camps, TArray<int>& Unhealables, int Id, double X, double Health, int Camp = 1, bool bUnhealable = false)
 {
-	TArray<int> Ids;
-	TArray<float32> Xs;
-	TArray<float32> Ys;
-	TArray<float32> Healths;
-	TArray<float32> MaxHealths;
-	TArray<int> Camps;
-	TArray<int> Unhealables;
+	Ids.Add(Id);
+	Xs.Add(float32(X));
+	Ys.Add(float32(0.0));
+	Healths.Add(float32(Health));
+	MaxHealths.Add(float32(100.0));
+	Camps.Add(Camp);
+	Unhealables.Add(bUnhealable ? 1 : 0);
+}
 
-	void Add(int Id, double X, double Health, int Camp = 1, bool bUnhealable = false)
-	{
-		Ids.Add(Id);
-		Xs.Add(float32(X));
-		Ys.Add(float32(0.0));
-		Healths.Add(float32(Health));
-		MaxHealths.Add(float32(100.0));
-		Camps.Add(Camp);
-		Unhealables.Add(bUnhealable ? 1 : 0);
-	}
+int MonkChoose(TArray<int>& Ids, TArray<float32>& Xs, TArray<float32>& Ys, TArray<float32>& Healths, TArray<float32>& MaxHealths, TArray<int>& Camps, TArray<int>& Unhealables, int OrderedId, int KeptId)
+{
+	return HOLHealRead::ChooseTarget(HOLMonkId, 1, 0.0, 0.0, HOLMonkRange, OrderedId, KeptId, Ids, Xs, Ys, Healths, MaxHealths, Camps, Unhealables);
+}
 
-	int Choose(int OrderedId, int KeptId) const
-	{
-		return HOLHealRead::ChooseTarget(HOLMonkId, 1, 0.0, 0.0, HOLMonkRange, OrderedId, KeptId, Ids, Xs, Ys, Healths, MaxHealths, Camps, Unhealables);
-	}
-
-	bool Healable(int Index) const
-	{
-		return HOLHealRead::IsHealable(HOLMonkId, 1, Ids[Index], Xs[Index], Ys[Index], Healths[Index], MaxHealths[Index], Camps[Index], Unhealables[Index] != 0);
-	}
+bool MonkHealable(TArray<int>& Ids, TArray<float32>& Xs, TArray<float32>& Ys, TArray<float32>& Healths, TArray<float32>& MaxHealths, TArray<int>& Camps, TArray<int>& Unhealables, int Index)
+{
+	return HOLHealRead::IsHealable(HOLMonkId, 1, Ids[Index], Xs[Index], Ys[Index], Healths[Index], MaxHealths[Index], Camps[Index], Unhealables[Index] != 0);
 }
 
 // The Monk itself is wounded and alone: it heals nobody; an ally in reach and wounded is the target; 8 m; nearest; kept; ordered.
 void Test_MonkHealRules(FUnitTest& T)
 {
-	FHOLMonkSet Alone;
-	Alone.Add(HOLMonkId, 0.0, 40.0);
-	T.AssertEquals(-1, Alone.Choose(0, 0), "a wounded Monk alone heals nobody: no self-heal");
-	T.AssertEquals(-1, Alone.Choose(0, HOLMonkId), "... even if it kept itself as its target");
+	TArray<int> AIds; TArray<float32> AXs; TArray<float32> AYs; TArray<float32> AHs; TArray<float32> AMs; TArray<int> ACs; TArray<int> AUs;
+	MonkAdd(AIds, AXs, AYs, AHs, AMs, ACs, AUs, HOLMonkId, 0.0, 40.0);
+	int R = MonkChoose(AIds, AXs, AYs, AHs, AMs, ACs, AUs, 0, 0);
+	T.AssertEquals(-1, R, "a wounded Monk alone heals nobody: no self-heal");
+	R = MonkChoose(AIds, AXs, AYs, AHs, AMs, ACs, AUs, 0, HOLMonkId);
+	T.AssertEquals(-1, R, "... even if it kept itself as its target");
 
 	// A healthy ally, an enemy, a King, a siege engine or a dying unit is not a target.
-	FHOLMonkSet Mixed;
-	Mixed.Add(HOLMonkId, 0.0, 40.0);
-	Mixed.Add(2, 300.0, 100.0);
-	Mixed.Add(3, 300.0, 50.0, 2);
-	Mixed.Add(4, 300.0, 50.0, 1, true);	// the King (HOLCanBeHealed) or an engine
-	Mixed.Add(5, 300.0, 50.0, 1, true);
-	Mixed.Add(6, 300.0, 0.0);
-	Mixed.Add(7, 300.0, 60.0);
-	T.AssertEquals(6, Mixed.Choose(0, 0), "the wounded ally is the target (not a healthy one, an enemy, a King, an engine, a dead unit)");
-	T.AssertFalse(Mixed.Healable(1), "a healthy ally is not healable");
-	T.AssertFalse(Mixed.Healable(2), "an enemy is not healable");
-	T.AssertFalse(Mixed.Healable(3), "an unhealable unit is not healable");
-	T.AssertFalse(Mixed.Healable(5), "a dead unit is not healable");
-	T.AssertTrue(Mixed.Healable(6), "a wounded ally is healable");
-	T.AssertFalse(Mixed.Healable(0), "the healer is not healable by itself");
+	TArray<int> MIds; TArray<float32> MXs; TArray<float32> MYs; TArray<float32> MHs; TArray<float32> MMs; TArray<int> MCs; TArray<int> MUs;
+	MonkAdd(MIds, MXs, MYs, MHs, MMs, MCs, MUs, HOLMonkId, 0.0, 40.0);
+	MonkAdd(MIds, MXs, MYs, MHs, MMs, MCs, MUs, 2, 300.0, 100.0);
+	MonkAdd(MIds, MXs, MYs, MHs, MMs, MCs, MUs, 3, 300.0, 50.0, 2);
+	MonkAdd(MIds, MXs, MYs, MHs, MMs, MCs, MUs, 4, 300.0, 50.0, 1, true);	// the King (HOLCanBeHealed) or an engine
+	MonkAdd(MIds, MXs, MYs, MHs, MMs, MCs, MUs, 5, 300.0, 50.0, 1, true);
+	MonkAdd(MIds, MXs, MYs, MHs, MMs, MCs, MUs, 6, 300.0, 0.0);
+	MonkAdd(MIds, MXs, MYs, MHs, MMs, MCs, MUs, 7, 300.0, 60.0);
+	R = MonkChoose(MIds, MXs, MYs, MHs, MMs, MCs, MUs, 0, 0);
+	T.AssertEquals(6, R, "the wounded ally is the target (not a healthy one, an enemy, a King, an engine, a dead unit)");
+	bool bHealable = MonkHealable(MIds, MXs, MYs, MHs, MMs, MCs, MUs, 1);
+	T.AssertFalse(bHealable, "a healthy ally is not healable");
+	bHealable = MonkHealable(MIds, MXs, MYs, MHs, MMs, MCs, MUs, 2);
+	T.AssertFalse(bHealable, "an enemy is not healable");
+	bHealable = MonkHealable(MIds, MXs, MYs, MHs, MMs, MCs, MUs, 3);
+	T.AssertFalse(bHealable, "an unhealable unit is not healable");
+	bHealable = MonkHealable(MIds, MXs, MYs, MHs, MMs, MCs, MUs, 5);
+	T.AssertFalse(bHealable, "a dead unit is not healable");
+	bHealable = MonkHealable(MIds, MXs, MYs, MHs, MMs, MCs, MUs, 6);
+	T.AssertTrue(bHealable, "a wounded ally is healable");
+	bHealable = MonkHealable(MIds, MXs, MYs, MHs, MMs, MCs, MUs, 0);
+	T.AssertFalse(bHealable, "the healer is not healable by itself");
 
 	// 8 m, centre to centre: 800 is in, 801 out.
-	FHOLMonkSet EdgeIn;
-	EdgeIn.Add(HOLMonkId, 0.0, 100.0);
-	EdgeIn.Add(2, 800.0, 50.0);
-	T.AssertEquals(1, EdgeIn.Choose(0, 0), "an ally at 8 m is healed");
-	FHOLMonkSet EdgeOut;
-	EdgeOut.Add(3, 801.0, 50.0);
-	T.AssertEquals(-1, EdgeOut.Choose(0, 0), "an ally past 8 m is not");
+	TArray<int> IIds; TArray<float32> IXs; TArray<float32> IYs; TArray<float32> IHs; TArray<float32> IMs; TArray<int> ICs; TArray<int> IUs;
+	MonkAdd(IIds, IXs, IYs, IHs, IMs, ICs, IUs, HOLMonkId, 0.0, 100.0);
+	MonkAdd(IIds, IXs, IYs, IHs, IMs, ICs, IUs, 2, 800.0, 50.0);
+	R = MonkChoose(IIds, IXs, IYs, IHs, IMs, ICs, IUs, 0, 0);
+	T.AssertEquals(1, R, "an ally at 8 m is healed");
+	TArray<int> OIds; TArray<float32> OXs; TArray<float32> OYs; TArray<float32> OHs; TArray<float32> OMs; TArray<int> OCs; TArray<int> OUs;
+	MonkAdd(OIds, OXs, OYs, OHs, OMs, OCs, OUs, 3, 801.0, 50.0);
+	R = MonkChoose(OIds, OXs, OYs, OHs, OMs, OCs, OUs, 0, 0);
+	T.AssertEquals(-1, R, "an ally past 8 m is not");
 
 	// The nearest, the lowest identifier on a tie, and the kept target (one at a time) before a nearer one.
-	FHOLMonkSet Two;
-	Two.Add(HOLMonkId, 0.0, 100.0);
-	Two.Add(8, 500.0, 50.0);
-	Two.Add(9, 200.0, 50.0);
-	Two.Add(10, -200.0, 50.0);
-	T.AssertEquals(2, Two.Choose(0, 0), "the nearest wounded ally, the lowest identifier on a tie");
-	T.AssertEquals(1, Two.Choose(0, 8), "the target it healed before is kept while healable and in reach, though another is nearer");
-	Two.Healths[1] = 100.0;
-	T.AssertEquals(2, Two.Choose(0, 8), "the kept target healed to full: the nearest wounded one, the next");
-	Two.Xs[2] = 5000.0;
-	T.AssertEquals(3, Two.Choose(0, 9), "the kept target out of reach: another");
+	TArray<int> Ids; TArray<float32> Xs; TArray<float32> Ys; TArray<float32> Hs; TArray<float32> Ms; TArray<int> Cs; TArray<int> Us;
+	MonkAdd(Ids, Xs, Ys, Hs, Ms, Cs, Us, HOLMonkId, 0.0, 100.0);
+	MonkAdd(Ids, Xs, Ys, Hs, Ms, Cs, Us, 8, 500.0, 50.0);
+	MonkAdd(Ids, Xs, Ys, Hs, Ms, Cs, Us, 9, 200.0, 50.0);
+	MonkAdd(Ids, Xs, Ys, Hs, Ms, Cs, Us, 10, -200.0, 50.0);
+	R = MonkChoose(Ids, Xs, Ys, Hs, Ms, Cs, Us, 0, 0);
+	T.AssertEquals(2, R, "the nearest wounded ally, the lowest identifier on a tie");
+	R = MonkChoose(Ids, Xs, Ys, Hs, Ms, Cs, Us, 0, 8);
+	T.AssertEquals(1, R, "the target it healed before is kept while healable and in reach, though another is nearer");
+	Hs[1] = float32(100.0);
+	R = MonkChoose(Ids, Xs, Ys, Hs, Ms, Cs, Us, 0, 8);
+	T.AssertEquals(2, R, "the kept target healed to full: the nearest wounded one, the next");
+	Xs[2] = float32(5000.0);
+	R = MonkChoose(Ids, Xs, Ys, Hs, Ms, Cs, Us, 0, 9);
+	T.AssertEquals(3, R, "the kept target out of reach: another");
 
 	// An order (a right click on an ally): the ordered unit first, though another is nearer or kept; ignored out of reach or healed.
-	Two.Healths[1] = 50.0;
-	Two.Xs[2] = 200.0;
-	T.AssertEquals(1, Two.Choose(8, 0), "the ordered ally, though another is nearer");
-	T.AssertEquals(1, Two.Choose(8, 9), "the ordered ally, though the kept one is another");
-	T.AssertEquals(1, Two.Choose(0, 8), "the kept one without an order");
-	Two.Xs[1] = 5000.0;
-	T.AssertEquals(2, Two.Choose(8, 0), "the ordered ally out of reach: the nearest, the order waits");
-	Two.Xs[1] = 500.0;
-	Two.Healths[1] = 100.0;
-	T.AssertEquals(2, Two.Choose(8, 0), "the ordered ally already healed: the nearest");
-	Two.Healths[1] = 50.0;
-	Two.Camps[1] = 2;
-	T.AssertEquals(2, Two.Choose(8, 0), "an enemy cannot be ordered healed");
+	Hs[1] = float32(50.0);
+	Xs[2] = float32(200.0);
+	R = MonkChoose(Ids, Xs, Ys, Hs, Ms, Cs, Us, 8, 0);
+	T.AssertEquals(1, R, "the ordered ally, though another is nearer");
+	R = MonkChoose(Ids, Xs, Ys, Hs, Ms, Cs, Us, 8, 9);
+	T.AssertEquals(1, R, "the ordered ally, though the kept one is another");
+	R = MonkChoose(Ids, Xs, Ys, Hs, Ms, Cs, Us, 0, 8);
+	T.AssertEquals(1, R, "the kept one without an order");
+	Xs[1] = float32(5000.0);
+	R = MonkChoose(Ids, Xs, Ys, Hs, Ms, Cs, Us, 8, 0);
+	T.AssertEquals(2, R, "the ordered ally out of reach: the nearest, the order waits");
+	Xs[1] = float32(500.0);
+	Hs[1] = float32(100.0);
+	R = MonkChoose(Ids, Xs, Ys, Hs, Ms, Cs, Us, 8, 0);
+	T.AssertEquals(2, R, "the ordered ally already healed: the nearest");
+	Hs[1] = float32(50.0);
+	Cs[1] = 2;
+	R = MonkChoose(Ids, Xs, Ys, Hs, Ms, Cs, Us, 8, 0);
+	T.AssertEquals(2, R, "an enemy cannot be ordered healed");
 
-	// 5 health per second on 50 ms steps: 0.25 a step, 5 after 20 steps, held at the maximum.
+// 5 health per second on 50 ms steps: 0.25 a step, 5 after 20 steps, held at the maximum.
 	double Health = 40.0;
 	for (int Step = 0; Step < 20; ++Step)
 	{
