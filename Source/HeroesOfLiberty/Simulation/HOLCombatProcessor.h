@@ -176,6 +176,8 @@ protected:
 	 * (AuraSources), under its hero's cry (FHOLCombatFragment::CloseRanksMs).
 	 */
 	int32 GetDamageTakenPercent(const FFighter& Victim) const;
+	/** D810 (F5): the match's terrain zones of the step (set at the top of Execute; null on a map without zones): a victim in a painted ford takes 120 % of a hit. */
+	const class UHOLTerrainSubsystem* StepTerrain = nullptr;
 	/** T4: whether Victim stands within an aura of its owner (AuraSources). */
 	bool IsInAura(const FFighter& Victim) const;
 	/** T4: the armour Victim gets from its owner's talents (Boucliers levees: in the aura, HOLHeroAbility::ShieldsUpArmorBonus). */
