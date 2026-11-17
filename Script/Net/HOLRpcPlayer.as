@@ -22,6 +22,15 @@ const FConsoleVariable CVar_RpcScriptHero("hol.Rpc.ScriptHero", 0);
 const FConsoleVariable CVar_RpcScriptSignal("hol.Rpc.ScriptSignal", 0);
 const FConsoleVariable CVar_RpcScriptChat("hol.Rpc.ScriptChat", 0);
 
+// CHEATS A (ELROND-1117q, C++ NOT COMPILED): L4 group A, the seven cheat RPCs. Same guard model: default 0 = the C++ RPC stays the only one (these script RPCs return and do nothing), 1 = the script RPC acts.
+const FConsoleVariable CVar_RpcScriptCheatResources("hol.Rpc.ScriptCheatResources", 0);
+const FConsoleVariable CVar_RpcScriptCheatFastBuild("hol.Rpc.ScriptCheatFastBuild", 0);
+const FConsoleVariable CVar_RpcScriptCheatPopulation("hol.Rpc.ScriptCheatPopulation", 0);
+const FConsoleVariable CVar_RpcScriptCheatTechnology("hol.Rpc.ScriptCheatTechnology", 0);
+const FConsoleVariable CVar_RpcScriptCheatTier("hol.Rpc.ScriptCheatTier", 0);
+const FConsoleVariable CVar_RpcScriptCheatUnitSpeed("hol.Rpc.ScriptCheatUnitSpeed", 0);
+const FConsoleVariable CVar_RpcScriptCheatGatherSpeed("hol.Rpc.ScriptCheatGatherSpeed", 0);
+
 const int HOLRpcSlots = 8; // FHOLMatchConfig::MaxSlots
 const int HOLRpcStanceAlly = 2; // HOLDiplomacy::Enemy 0 / Neutral 1 / Ally 2
 
@@ -141,6 +150,50 @@ int ClientChatRefusal(int SenderSlot, int Channel)
 		return 1;
 	if (Channel < 0)
 		return 2;
+	return 0;
+}
+
+// CHEATS A (ELROND-1117q, C++ NOT COMPILED): refusals of the L4 group A cheat RPCs. R3.5: a cheat is refused unless the cheats are active on the server (bAllowed = FHOLCheatRules::AreCheatsAllowed, read by
+// the bridge); the sender is the owner's slot (D288: a seat is needed). 0 none, 1 cheats off, 2 no seat (spectator, out of range). The effect (stock, cvars, tier override, cap) stays the C++ _Implementation's.
+int CheatRefusal(bool bAllowed, int SenderSlot)
+{
+	if (!bAllowed)
+		return 1;
+	if (SenderSlot < 0 || SenderSlot >= HOLRpcSlots)
+		return 2;
+	return 0;
+}
+
+// Tier: 3 the target is not -2 (everyone), -1 (own slot) or a slot 0..7 (the C++ body ignores a slot outside, silently).
+int CheatTierRefusal(bool bAllowed, int SenderSlot, int TargetSlot)
+{
+	const int Base = CheatRefusal(bAllowed, SenderSlot);
+	if (Base != 0)
+		return Base;
+	if (TargetSlot < -2 || TargetSlot >= HOLRpcSlots)
+		return 3;
+	return 0;
+}
+
+// Technology: 3 no technology named (None). Whether it exists or is already researched stays the C++ body's (it logs a warning).
+int CheatTechnologyRefusal(bool bAllowed, int SenderSlot, FName Technology)
+{
+	const int Base = CheatRefusal(bAllowed, SenderSlot);
+	if (Base != 0)
+		return Base;
+	if (Technology == n"None")
+		return 3;
+	return 0;
+}
+
+// UnitSpeed / GatherSpeed: 3 the scale is not finite (NaN, infinity: x - x is 0 only for a finite x); the C++ body clamps a finite scale to 0.1..10.
+int CheatScaleRefusal(bool bAllowed, int SenderSlot, float Scale)
+{
+	const int Base = CheatRefusal(bAllowed, SenderSlot);
+	if (Base != 0)
+		return Base;
+	if (!(Scale - Scale == 0.0))
+		return 3;
 	return 0;
 }
 
@@ -415,6 +468,113 @@ class AHOLRpcPlayer : AHOLScriptRpcPlayerActor
 			return;
 		// The C++ body only stores the id and sends the load of the player's OWN unit (D288 checked in SendWatchedLoad): no slot refusal here, as in C++.
 		HOLRpcBridge::WatchUnit(this, int(UnitId));
+	}
+
+	// ---- CHEATS A (ELROND-1117q, C++ NOT COMPILED): L4 group A. Guards hol.Rpc.ScriptCheat<Name> (default 0). Each Server RPC refuses unless the cheats are active (R3.5: HOLRpcBridge::CheatRefused, which logs the
+	// C++ line "Cheat refused: ...") and the sender has a seat (D288), then the bridge calls the C++ _Implementation (stock, cvars, tier, cap, journal: one source). FHOLResources travels as 4 ints.
+	UFUNCTION(Server)
+	void ServerCheatResources(int Food, int Wood, int Stone, int Gold)
+	{
+		if (CVar_RpcScriptCheatResources.GetInt() == 0)
+			return;
+		const int Slot = HOLRpcBridge::GetSenderSlot(this);
+		const int Refusal = HOLRpc::CheatRefusal(!HOLRpcBridge::CheatRefused(this, "resources"), Slot);
+		if (Refusal != 0)
+		{
+			Log(n"LogHOLMatch", f"RpcCheat: resources refused ({Refusal}) for sender slot {Slot}");
+			return;
+		}
+		HOLRpcBridge::CheatResources(this, Food, Wood, Stone, Gold);
+	}
+
+	UFUNCTION(Server)
+	void ServerCheatFastBuild(bool bOn)
+	{
+		if (CVar_RpcScriptCheatFastBuild.GetInt() == 0)
+			return;
+		const int Slot = HOLRpcBridge::GetSenderSlot(this);
+		const int Refusal = HOLRpc::CheatRefusal(!HOLRpcBridge::CheatRefused(this, "fast build"), Slot);
+		if (Refusal != 0)
+		{
+			Log(n"LogHOLMatch", f"RpcCheat: fast build refused ({Refusal}) for sender slot {Slot}");
+			return;
+		}
+		HOLRpcBridge::CheatFastBuild(this, bOn);
+	}
+
+	UFUNCTION(Server)
+	void ServerCheatPopulation(int Places)
+	{
+		if (CVar_RpcScriptCheatPopulation.GetInt() == 0)
+			return;
+		const int Slot = HOLRpcBridge::GetSenderSlot(this);
+		const int Refusal = HOLRpc::CheatRefusal(!HOLRpcBridge::CheatRefused(this, "population"), Slot);
+		if (Refusal != 0)
+		{
+			Log(n"LogHOLMatch", f"RpcCheat: population refused ({Refusal}) for sender slot {Slot}");
+			return;
+		}
+		HOLRpcBridge::CheatPopulation(this, Places);
+	}
+
+	UFUNCTION(Server)
+	void ServerCheatTechnology(FName Technology)
+	{
+		if (CVar_RpcScriptCheatTechnology.GetInt() == 0)
+			return;
+		const int Slot = HOLRpcBridge::GetSenderSlot(this);
+		const int Refusal = HOLRpc::CheatTechnologyRefusal(!HOLRpcBridge::CheatRefused(this, "technology"), Slot, Technology);
+		if (Refusal != 0)
+		{
+			Log(n"LogHOLMatch", f"RpcCheat: technology refused ({Refusal}) for sender slot {Slot}");
+			return;
+		}
+		HOLRpcBridge::CheatTechnology(this, Technology);
+	}
+
+	UFUNCTION(Server)
+	void ServerCheatTier(int Tier, int Slot)
+	{
+		if (CVar_RpcScriptCheatTier.GetInt() == 0)
+			return;
+		const int Sender = HOLRpcBridge::GetSenderSlot(this);
+		const int Refusal = HOLRpc::CheatTierRefusal(!HOLRpcBridge::CheatRefused(this, "tier"), Sender, Slot);
+		if (Refusal != 0)
+		{
+			Log(n"LogHOLMatch", f"RpcCheat: tier refused ({Refusal}) for sender slot {Sender}");
+			return;
+		}
+		HOLRpcBridge::CheatTier(this, Tier, Slot);
+	}
+
+	UFUNCTION(Server)
+	void ServerCheatUnitSpeed(float Scale)
+	{
+		if (CVar_RpcScriptCheatUnitSpeed.GetInt() == 0)
+			return;
+		const int Slot = HOLRpcBridge::GetSenderSlot(this);
+		const int Refusal = HOLRpc::CheatScaleRefusal(!HOLRpcBridge::CheatRefused(this, "unit speed"), Slot, Scale);
+		if (Refusal != 0)
+		{
+			Log(n"LogHOLMatch", f"RpcCheat: unit speed refused ({Refusal}) for sender slot {Slot}");
+			return;
+		}
+		HOLRpcBridge::CheatUnitSpeed(this, Scale);
+	}
+
+	UFUNCTION(Server)
+	void ServerCheatGatherSpeed(float Scale)
+	{
+		if (CVar_RpcScriptCheatGatherSpeed.GetInt() == 0)
+			return;
+		const int Slot = HOLRpcBridge::GetSenderSlot(this);
+		const int Refusal = HOLRpc::CheatScaleRefusal(!HOLRpcBridge::CheatRefused(this, "gather speed"), Slot, Scale);
+		if (Refusal != 0)
+		{
+			Log(n"LogHOLMatch", f"RpcCheat: gather speed refused ({Refusal}) for sender slot {Slot}");
+			return;
+		}
+		HOLRpcBridge::CheatGatherSpeed(this, Scale);
 	}
 
 	// ---- T5 lot L1 Signals and chat (HALDIR-1117p, C++ NOT COMPILED). Guards hol.Rpc.ScriptSignal / hol.Rpc.ScriptChat (default 0). The bridge calls the C++ _Implementation (board, fan-out, journal);

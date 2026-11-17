@@ -4739,38 +4739,130 @@ bool AHOLPlayerController::IsCheatRefused(const TCHAR* What) const
 	return true;
 }
 
+// CHEATS A (ELROND-1117q, NOT COMPILED): the L4 group A cheat calls go through the script RPC actor (Script/Net/HOLRpcPlayer.as) when hol.Rpc.ScriptCheat<Name> is 1 (default 0: the C++ RPC, nothing changes).
+// Self-contained (the HOLRpcScriptRoute_Haldir1117n helper is defined further down): the cvars are only READ here (declared by the script, a missing one reads as 0). Unique namespace name (unity builds).
+namespace HOLRpcScriptRoute_Elrond1117q
+{
+	// Ints fill the bool / int32 / uint32 parameters in order, Real the double / float one, Name the FName one. false: no actor, no such function: the caller falls back to the C++ RPC.
+	bool CallCheat(AHOLPlayerController* Controller, const TCHAR* CVarName, const TCHAR* FunctionName, const TArrayView<const int32> Ints, const double* Real, const FName* Name)
+	{
+		const IConsoleVariable* CVar = IConsoleManager::Get().FindConsoleVariable(CVarName);
+		if (!Controller || !CVar || CVar->GetInt() == 0)
+		{
+			return false;
+		}
+		AActor* RpcActor = UHOLRpcBridgeLibrary::FindPlayerActor(Controller);
+		UFunction* Function = RpcActor ? RpcActor->FindFunction(FunctionName) : nullptr;
+		if (!Function || !Function->HasAnyFunctionFlags(FUNC_Net))
+		{
+			return false;
+		}
+		TArray<uint8> Params;
+		Params.SetNumZeroed(FMath::Max<int32>(Function->ParmsSize, 1));
+		Function->InitializeStruct(Params.GetData());
+		int32 IntIndex = 0;
+		for (TFieldIterator<FProperty> It(Function); It && It->HasAnyPropertyFlags(CPF_Parm); ++It)
+		{
+			if (It->HasAnyPropertyFlags(CPF_ReturnParm))
+			{
+				continue;
+			}
+			if (const FDoubleProperty* DoubleProperty = CastField<FDoubleProperty>(*It))
+			{
+				if (Real) { DoubleProperty->SetPropertyValue_InContainer(Params.GetData(), *Real); }
+			}
+			else if (const FFloatProperty* FloatProperty = CastField<FFloatProperty>(*It))
+			{
+				if (Real) { FloatProperty->SetPropertyValue_InContainer(Params.GetData(), static_cast<float>(*Real)); }
+			}
+			else if (const FNameProperty* NameProperty = CastField<FNameProperty>(*It))
+			{
+				if (Name) { NameProperty->SetPropertyValue_InContainer(Params.GetData(), *Name); }
+			}
+			else if (Ints.IsValidIndex(IntIndex))
+			{
+				if (const FBoolProperty* BoolProperty = CastField<FBoolProperty>(*It))
+				{
+					BoolProperty->SetPropertyValue_InContainer(Params.GetData(), Ints[IntIndex] != 0);
+				}
+				else if (const FIntProperty* IntProperty = CastField<FIntProperty>(*It))
+				{
+					IntProperty->SetPropertyValue_InContainer(Params.GetData(), Ints[IntIndex]);
+				}
+				++IntIndex;
+			}
+		}
+		RpcActor->ProcessEvent(Function, Params.GetData());
+		Function->DestroyStruct(Params.GetData());
+		return true;
+	}
+}
+
 void AHOLPlayerController::RequestCheatResources(const FHOLResources& Amount)
 {
+	const int32 StockInts[4] = {Amount.Food, Amount.Wood, Amount.Stone, Amount.Gold};
+	if (HOLRpcScriptRoute_Elrond1117q::CallCheat(this, TEXT("hol.Rpc.ScriptCheatResources"), TEXT("ServerCheatResources"), TArrayView<const int32>(StockInts, 4), nullptr, nullptr))
+	{
+		return;
+	}
 	ServerCheatResources(Amount);
 }
 
 void AHOLPlayerController::RequestCheatFastBuild(const bool bOn)
 {
+	const int32 FastBuildInt = bOn ? 1 : 0;
+	if (HOLRpcScriptRoute_Elrond1117q::CallCheat(this, TEXT("hol.Rpc.ScriptCheatFastBuild"), TEXT("ServerCheatFastBuild"), TArrayView<const int32>(&FastBuildInt, 1), nullptr, nullptr))
+	{
+		return;
+	}
 	ServerCheatFastBuild(bOn);
 }
 
 void AHOLPlayerController::RequestCheatTechnology(const FName Technology)
 {
+	if (HOLRpcScriptRoute_Elrond1117q::CallCheat(this, TEXT("hol.Rpc.ScriptCheatTechnology"), TEXT("ServerCheatTechnology"), TArrayView<const int32>(), nullptr, &Technology))
+	{
+		return;
+	}
 	ServerCheatTechnology(Technology);
 }
 
 void AHOLPlayerController::RequestCheatTier(const int32 Tier, const int32 Slot)
 {
+	const int32 TierInts[2] = {Tier, Slot};
+	if (HOLRpcScriptRoute_Elrond1117q::CallCheat(this, TEXT("hol.Rpc.ScriptCheatTier"), TEXT("ServerCheatTier"), TArrayView<const int32>(TierInts, 2), nullptr, nullptr))
+	{
+		return;
+	}
 	ServerCheatTier(Tier, Slot);
 }
 
 void AHOLPlayerController::RequestCheatPopulation(const int32 Places)
 {
+	if (HOLRpcScriptRoute_Elrond1117q::CallCheat(this, TEXT("hol.Rpc.ScriptCheatPopulation"), TEXT("ServerCheatPopulation"), TArrayView<const int32>(&Places, 1), nullptr, nullptr))
+	{
+		return;
+	}
 	ServerCheatPopulation(Places);
 }
 
 void AHOLPlayerController::RequestCheatUnitSpeed(const float Scale)
 {
+	const double UnitSpeedReal = Scale;
+	if (HOLRpcScriptRoute_Elrond1117q::CallCheat(this, TEXT("hol.Rpc.ScriptCheatUnitSpeed"), TEXT("ServerCheatUnitSpeed"), TArrayView<const int32>(), &UnitSpeedReal, nullptr))
+	{
+		return;
+	}
 	ServerCheatUnitSpeed(Scale);
 }
 
 void AHOLPlayerController::RequestCheatGatherSpeed(const float Scale)
 {
+	const double GatherSpeedReal = Scale;
+	if (HOLRpcScriptRoute_Elrond1117q::CallCheat(this, TEXT("hol.Rpc.ScriptCheatGatherSpeed"), TEXT("ServerCheatGatherSpeed"), TArrayView<const int32>(), &GatherSpeedReal, nullptr))
+	{
+		return;
+	}
 	ServerCheatGatherSpeed(Scale);
 }
 

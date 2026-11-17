@@ -95,6 +95,34 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Rpc")
 	static bool WatchUnit(AActor* RpcActor, int32 UnitId);
 
+	// ---- CHEATS A (ELROND-1117q, NOT COMPILED), MIG2-S3 L4 group A: the seven cheat RPCs. Each calls the owner controller's _Implementation (same body, same journal; the cheat gate IsCheatRefused is theirs). False: no owner controller.
+	/** True when the cheats are refused here (R3.5; logs the C++ line "Cheat refused: What from ..."); also true with no owner controller. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Rpc")
+	static bool CheatRefused(AActor* RpcActor, const FString& What);
+
+	/** FHOLResources is not callable from script: its four stocks travel as ints (Food, Wood, Stone, Gold). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Rpc")
+	static bool CheatResources(AActor* RpcActor, int32 Food, int32 Wood, int32 Stone, int32 Gold);
+
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Rpc")
+	static bool CheatFastBuild(AActor* RpcActor, bool bOn);
+
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Rpc")
+	static bool CheatPopulation(AActor* RpcActor, int32 Places);
+
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Rpc")
+	static bool CheatTechnology(AActor* RpcActor, FName Technology);
+
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Rpc")
+	static bool CheatTier(AActor* RpcActor, int32 Tier, int32 Slot);
+
+	/** Scale as a double (the script's float), narrowed to the C++ float. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Rpc")
+	static bool CheatUnitSpeed(AActor* RpcActor, double Scale);
+
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Rpc")
+	static bool CheatGatherSpeed(AActor* RpcActor, double Scale);
+
 	// ---- HALDIR-1117p (NOT COMPILED), MIG2-S3 T5 lot L1: Signals and chat. Same model: the owner controller's _Implementation does the work (board, fan-out, journal). The fan-out
 	// reaches each viewer by its script Client RPC when hol.Rpc.ScriptSignal / ScriptChat is 1 (HOLPlayerController.cpp, HOLRpcScriptRoute_Haldir1117n::CallEx). False: no owner controller.
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Rpc")

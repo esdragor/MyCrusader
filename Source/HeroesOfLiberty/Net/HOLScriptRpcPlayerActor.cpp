@@ -197,6 +197,62 @@ bool UHOLRpcBridgeLibrary::WatchUnit(AActor* RpcActor, const int32 UnitId)
 	return Controller != nullptr;
 }
 
+// ---- CHEATS A (ELROND-1117q, NOT COMPILED), MIG2-S3 L4 group A (friend class: the _Implementation of the owner controller, same body, same journal, same cheat gate).
+bool UHOLRpcBridgeLibrary::CheatRefused(AActor* RpcActor, const FString& What)
+{
+	const AHOLPlayerController* Controller = HOLRpcBridgeL1_Haldir1117o::OwnerController(RpcActor);
+	return !Controller || Controller->IsCheatRefused(*What);
+}
+
+bool UHOLRpcBridgeLibrary::CheatResources(AActor* RpcActor, const int32 Food, const int32 Wood, const int32 Stone, const int32 Gold)
+{
+	AHOLPlayerController* Controller = HOLRpcBridgeL1_Haldir1117o::OwnerController(RpcActor);
+	if (Controller) { Controller->ServerCheatResources_Implementation(FHOLResources(Food, Wood, Stone, Gold)); }
+	return Controller != nullptr;
+}
+
+bool UHOLRpcBridgeLibrary::CheatFastBuild(AActor* RpcActor, const bool bOn)
+{
+	AHOLPlayerController* Controller = HOLRpcBridgeL1_Haldir1117o::OwnerController(RpcActor);
+	if (Controller) { Controller->ServerCheatFastBuild_Implementation(bOn); }
+	return Controller != nullptr;
+}
+
+bool UHOLRpcBridgeLibrary::CheatPopulation(AActor* RpcActor, const int32 Places)
+{
+	AHOLPlayerController* Controller = HOLRpcBridgeL1_Haldir1117o::OwnerController(RpcActor);
+	if (Controller) { Controller->ServerCheatPopulation_Implementation(Places); }
+	return Controller != nullptr;
+}
+
+bool UHOLRpcBridgeLibrary::CheatTechnology(AActor* RpcActor, const FName Technology)
+{
+	AHOLPlayerController* Controller = HOLRpcBridgeL1_Haldir1117o::OwnerController(RpcActor);
+	if (Controller) { Controller->ServerCheatTechnology_Implementation(Technology); }
+	return Controller != nullptr;
+}
+
+bool UHOLRpcBridgeLibrary::CheatTier(AActor* RpcActor, const int32 Tier, const int32 Slot)
+{
+	AHOLPlayerController* Controller = HOLRpcBridgeL1_Haldir1117o::OwnerController(RpcActor);
+	if (Controller) { Controller->ServerCheatTier_Implementation(Tier, Slot); }
+	return Controller != nullptr;
+}
+
+bool UHOLRpcBridgeLibrary::CheatUnitSpeed(AActor* RpcActor, const double Scale)
+{
+	AHOLPlayerController* Controller = HOLRpcBridgeL1_Haldir1117o::OwnerController(RpcActor);
+	if (Controller) { Controller->ServerCheatUnitSpeed_Implementation(static_cast<float>(Scale)); }
+	return Controller != nullptr;
+}
+
+bool UHOLRpcBridgeLibrary::CheatGatherSpeed(AActor* RpcActor, const double Scale)
+{
+	AHOLPlayerController* Controller = HOLRpcBridgeL1_Haldir1117o::OwnerController(RpcActor);
+	if (Controller) { Controller->ServerCheatGatherSpeed_Implementation(static_cast<float>(Scale)); }
+	return Controller != nullptr;
+}
+
 // ---- HALDIR-1117p (NOT COMPILED), MIG2-S3 T5 lot L1: Signals and chat (friend class: the _Implementation of the owner controller, same body, same journal).
 bool UHOLRpcBridgeLibrary::PostSignal(AActor* RpcActor, const int32 Kind, const double X, const double Y, const double Z)
 {
