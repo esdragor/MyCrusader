@@ -4866,8 +4866,22 @@ void AHOLPlayerController::RequestCheatGatherSpeed(const float Scale)
 	ServerCheatGatherSpeed(Scale);
 }
 
+// CHEATS B (CELEBORN-1117q): forward declaration of the 1117p route helper (defined below the Request functions of the cheats).
+namespace HOLRpcScriptRoute_Haldir1117n
+{
+	bool CallEx(AHOLPlayerController* Controller, const TCHAR* CVarName, const TCHAR* FunctionName, const TArrayView<const int32> Args, const FString* Text, const FVector* Location);
+}
+
 void AHOLPlayerController::RequestCheatWound(const int32 Percent)
 {
+	// CHEATS B (CELEBORN-1117q): through the script actor when hol.Rpc.ScriptCheatWound is 1, else the C++ RPC as before.
+	{
+		const int32 CheatArgs[1] = { Percent };
+		if (HOLRpcScriptRoute_Haldir1117n::CallEx(this, TEXT("hol.Rpc.ScriptCheatWound"), TEXT("ServerCheatWound"), TArrayView<const int32>(CheatArgs, 1), nullptr, nullptr))
+		{
+			return;
+		}
+	}
 	ServerCheatWound(Percent);
 }
 
@@ -5011,6 +5025,15 @@ void AHOLPlayerController::ServerCheatUnitSpeed_Implementation(const float Scale
 
 void AHOLPlayerController::RequestCheatSpawnBuilding(const FName TypeName, const int32 Slot, const FVector& Point)
 {
+	// CHEATS B (CELEBORN-1117q): through the script actor when hol.Rpc.ScriptCheatSpawnBuilding is 1, else the C++ RPC as before.
+	{
+		const FString CheatType = TypeName.ToString();
+		const int32 CheatArgs[1] = { Slot };
+		if (HOLRpcScriptRoute_Haldir1117n::CallEx(this, TEXT("hol.Rpc.ScriptCheatSpawnBuilding"), TEXT("ServerCheatSpawnBuilding"), TArrayView<const int32>(CheatArgs, 1), &CheatType, &Point))
+		{
+			return;
+		}
+	}
 	ServerCheatSpawnBuilding(TypeName, Slot, Point);
 }
 
@@ -5047,6 +5070,14 @@ void AHOLPlayerController::ServerCheatSpawnBuilding_Implementation(const FName T
 
 void AHOLPlayerController::RequestCheatDefeat(const int32 Slot)
 {
+	// CHEATS B (CELEBORN-1117q): through the script actor when hol.Rpc.ScriptCheatDefeat is 1, else the C++ RPC as before.
+	{
+		const int32 CheatArgs[1] = { Slot };
+		if (HOLRpcScriptRoute_Haldir1117n::CallEx(this, TEXT("hol.Rpc.ScriptCheatDefeat"), TEXT("ServerCheatDefeat"), TArrayView<const int32>(CheatArgs, 1), nullptr, nullptr))
+		{
+			return;
+		}
+	}
 	ServerCheatDefeat(Slot);
 }
 
@@ -5088,6 +5119,14 @@ bool AHOLPlayerController::FocusCameraOnForum(const int32 Slot)
 
 void AHOLPlayerController::RequestCheatFallForum(const int32 Slot)
 {
+	// CHEATS B (CELEBORN-1117q): through the script actor when hol.Rpc.ScriptCheatFallForum is 1, else the C++ RPC as before.
+	{
+		const int32 CheatArgs[1] = { Slot };
+		if (HOLRpcScriptRoute_Haldir1117n::CallEx(this, TEXT("hol.Rpc.ScriptCheatFallForum"), TEXT("ServerCheatFallForum"), TArrayView<const int32>(CheatArgs, 1), nullptr, nullptr))
+		{
+			return;
+		}
+	}
 	ServerCheatFallForum(Slot);
 }
 
@@ -5110,6 +5149,14 @@ void AHOLPlayerController::ServerCheatFallForum_Implementation(const int32 Slot)
 
 void AHOLPlayerController::RequestCheatSkipForum(const int32 Slot)
 {
+	// CHEATS B (CELEBORN-1117q): through the script actor when hol.Rpc.ScriptCheatSkipForum is 1, else the C++ RPC as before.
+	{
+		const int32 CheatArgs[1] = { Slot };
+		if (HOLRpcScriptRoute_Haldir1117n::CallEx(this, TEXT("hol.Rpc.ScriptCheatSkipForum"), TEXT("ServerCheatSkipForum"), TArrayView<const int32>(CheatArgs, 1), nullptr, nullptr))
+		{
+			return;
+		}
+	}
 	ServerCheatSkipForum(Slot);
 }
 
@@ -5130,6 +5177,14 @@ void AHOLPlayerController::ServerCheatSkipForum_Implementation(const int32 Slot)
 
 void AHOLPlayerController::RequestCheatHoldPresence(const int32 Slot, const bool bOff, const bool bAttackers, const bool bDefenders, const int32 AttackerSlot)
 {
+	// CHEATS B (CELEBORN-1117q): through the script actor when hol.Rpc.ScriptCheatHoldPresence is 1, else the C++ RPC as before.
+	{
+		const int32 CheatArgs[5] = { Slot, bOff ? 1 : 0, bAttackers ? 1 : 0, bDefenders ? 1 : 0, AttackerSlot };
+		if (HOLRpcScriptRoute_Haldir1117n::CallEx(this, TEXT("hol.Rpc.ScriptCheatHoldPresence"), TEXT("ServerCheatHoldPresence"), TArrayView<const int32>(CheatArgs, 5), nullptr, nullptr))
+		{
+			return;
+		}
+	}
 	ServerCheatHoldPresence(Slot, bOff, bAttackers, bDefenders, AttackerSlot);
 }
 
@@ -5654,6 +5709,14 @@ void AHOLPlayerController::ServerDuelAnswer_Implementation(const bool bAccept)
 
 void AHOLPlayerController::RequestCheatDamageBuilding(const FVector& Point, const int32 Amount, const uint8 AttackType)
 {
+	// CHEATS B (CELEBORN-1117q): through the script actor when hol.Rpc.ScriptCheatDamageBuilding is 1, else the C++ RPC as before.
+	{
+		const int32 CheatArgs[2] = { Amount, static_cast<int32>(AttackType) };
+		if (HOLRpcScriptRoute_Haldir1117n::CallEx(this, TEXT("hol.Rpc.ScriptCheatDamageBuilding"), TEXT("ServerCheatDamageBuilding"), TArrayView<const int32>(CheatArgs, 2), nullptr, &Point))
+		{
+			return;
+		}
+	}
 	ServerCheatDamageBuilding(Point, Amount, AttackType);
 }
 

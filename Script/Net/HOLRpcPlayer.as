@@ -30,6 +30,14 @@ const FConsoleVariable CVar_RpcScriptCheatTechnology("hol.Rpc.ScriptCheatTechnol
 const FConsoleVariable CVar_RpcScriptCheatTier("hol.Rpc.ScriptCheatTier", 0);
 const FConsoleVariable CVar_RpcScriptCheatUnitSpeed("hol.Rpc.ScriptCheatUnitSpeed", 0);
 const FConsoleVariable CVar_RpcScriptCheatGatherSpeed("hol.Rpc.ScriptCheatGatherSpeed", 0);
+// CHEATS B (CELEBORN-1117q, C++ NOT COMPILED): T9 lot L4, the cheat RPCs Wound, DamageBuilding, SpawnBuilding, Defeat, FallForum, SkipForum, HoldPresence. One guard each (default 0: the C++ RPC stays the only one).
+const FConsoleVariable CVar_RpcScriptCheatWound("hol.Rpc.ScriptCheatWound", 0);
+const FConsoleVariable CVar_RpcScriptCheatDamageBuilding("hol.Rpc.ScriptCheatDamageBuilding", 0);
+const FConsoleVariable CVar_RpcScriptCheatSpawnBuilding("hol.Rpc.ScriptCheatSpawnBuilding", 0);
+const FConsoleVariable CVar_RpcScriptCheatDefeat("hol.Rpc.ScriptCheatDefeat", 0);
+const FConsoleVariable CVar_RpcScriptCheatFallForum("hol.Rpc.ScriptCheatFallForum", 0);
+const FConsoleVariable CVar_RpcScriptCheatSkipForum("hol.Rpc.ScriptCheatSkipForum", 0);
+const FConsoleVariable CVar_RpcScriptCheatHoldPresence("hol.Rpc.ScriptCheatHoldPresence", 0);
 
 const int HOLRpcSlots = 8; // FHOLMatchConfig::MaxSlots
 const int HOLRpcStanceAlly = 2; // HOLDiplomacy::Enemy 0 / Neutral 1 / Ally 2
@@ -158,6 +166,12 @@ int ClientChatRefusal(int SenderSlot, int Channel)
 int CheatRefusal(bool bAllowed, int SenderSlot)
 {
 	if (!bAllowed)
+// CHEATS B (CELEBORN-1117q): the cheat RPCs' pure refusals. bCheatsAllowed comes from HOLRpcBridge::CheatsAllowed (the C++ IsCheatRefused: R3.5, cheats off = refused, logs "Cheat refused: ...").
+// 0 = pass to the C++ _Implementation (the board's own rules decide the rest and log their warning), else the reason. Cheats are checked first.
+// Wound hits the sender's own units: 2 no slot (spectator). DamageBuilding: 2 negative amount (would heal).
+int CheatWoundRefusal(bool bCheatsAllowed, int SenderSlot)
+{
+	if (!bCheatsAllowed)
 		return 1;
 	if (SenderSlot < 0 || SenderSlot >= HOLRpcSlots)
 		return 2;
@@ -171,6 +185,23 @@ int CheatTierRefusal(bool bAllowed, int SenderSlot, int TargetSlot)
 	if (Base != 0)
 		return Base;
 	if (TargetSlot < -2 || TargetSlot >= HOLRpcSlots)
+int CheatDamageBuildingRefusal(bool bCheatsAllowed, int Amount)
+{
+	if (!bCheatsAllowed)
+		return 1;
+	if (Amount < 0)
+		return 2;
+	return 0;
+}
+
+// SpawnBuilding: 2 slot outside 0..255 (the C++ limit, any slot unchecked otherwise), 3 no type name.
+int CheatSpawnBuildingRefusal(bool bCheatsAllowed, const FString& TypeName, int Slot)
+{
+	if (!bCheatsAllowed)
+		return 1;
+	if (Slot < 0 || Slot > 255)
+		return 2;
+	if (TypeName.Len() == 0)
 		return 3;
 	return 0;
 }
@@ -193,6 +224,24 @@ int CheatScaleRefusal(bool bAllowed, int SenderSlot, float Scale)
 	if (Base != 0)
 		return Base;
 	if (!(Scale - Scale == 0.0))
+// Defeat / FallForum / SkipForum: the slot named is one of the 8 seats (2 otherwise).
+int CheatSlotRefusal(bool bCheatsAllowed, int Slot)
+{
+	if (!bCheatsAllowed)
+		return 1;
+	if (Slot < 0 || Slot >= HOLRpcSlots)
+		return 2;
+	return 0;
+}
+
+// HoldPresence: the Forum slot is a seat (2); unless bOff, held attackers name a seat as the attacker (3).
+int CheatHoldPresenceRefusal(bool bCheatsAllowed, int Slot, bool bOff, bool bAttackers, bool bDefenders, int AttackerSlot)
+{
+	if (!bCheatsAllowed)
+		return 1;
+	if (Slot < 0 || Slot >= HOLRpcSlots)
+		return 2;
+	if (!bOff && bAttackers && (AttackerSlot < 0 || AttackerSlot >= HOLRpcSlots))
 		return 3;
 	return 0;
 }
@@ -575,6 +624,106 @@ class AHOLRpcPlayer : AHOLScriptRpcPlayerActor
 			return;
 		}
 		HOLRpcBridge::CheatGatherSpeed(this, Scale);
+	// ---- CHEATS B (CELEBORN-1117q, C++ NOT COMPILED): T9 lot L4 cheat RPCs. Guards hol.Rpc.ScriptCheat<Name> (default 0). Each asks the C++ IsCheatRefused through HOLRpcBridge::CheatsAllowed (R3.5), validates with the
+	// HOLRpc::Cheat*Refusal functions, then the bridge calls the C++ _Implementation (the body and its "Cheat: ..." journal stay the single source). SpawnBuilding takes the type as an FString (the route fills it by CallEx).
+	UFUNCTION(Server)
+	void ServerCheatWound(int Percent)
+	{
+		if (CVar_RpcScriptCheatWound.GetInt() == 0)
+			return;
+		const int Slot = HOLRpcBridge::GetSenderSlot(this);
+		const int Refusal = HOLRpc::CheatWoundRefusal(HOLRpcBridge::CheatsAllowed(this, "wound"), Slot);
+		if (Refusal != 0)
+		{
+			Log(n"LogHOLMatch", f"RpcCheat: wound refused ({Refusal}) for sender slot {Slot}");
+			return;
+		}
+		HOLRpcBridge::CheatWound(this, Percent);
+	}
+
+	UFUNCTION(Server)
+	void ServerCheatDamageBuilding(int Amount, int AttackType, FVector Point)
+	{
+		if (CVar_RpcScriptCheatDamageBuilding.GetInt() == 0)
+			return;
+		const int Refusal = HOLRpc::CheatDamageBuildingRefusal(HOLRpcBridge::CheatsAllowed(this, "damage building"), Amount);
+		if (Refusal != 0)
+		{
+			Log(n"LogHOLMatch", f"RpcCheat: damage building refused ({Refusal})");
+			return;
+		}
+		HOLRpcBridge::CheatDamageBuilding(this, Point.X, Point.Y, Point.Z, Amount, AttackType);
+	}
+
+	UFUNCTION(Server)
+	void ServerCheatSpawnBuilding(const FString& TypeName, int Slot, FVector Point)
+	{
+		if (CVar_RpcScriptCheatSpawnBuilding.GetInt() == 0)
+			return;
+		const int Refusal = HOLRpc::CheatSpawnBuildingRefusal(HOLRpcBridge::CheatsAllowed(this, "spawn building"), TypeName, Slot);
+		if (Refusal != 0)
+		{
+			Log(n"LogHOLMatch", f"RpcCheat: spawn building refused ({Refusal}) type {TypeName} slot {Slot}");
+			return;
+		}
+		HOLRpcBridge::CheatSpawnBuilding(this, TypeName, Slot, Point.X, Point.Y, Point.Z);
+	}
+
+	UFUNCTION(Server)
+	void ServerCheatDefeat(int Slot)
+	{
+		if (CVar_RpcScriptCheatDefeat.GetInt() == 0)
+			return;
+		const int Refusal = HOLRpc::CheatSlotRefusal(HOLRpcBridge::CheatsAllowed(this, "defeat"), Slot);
+		if (Refusal != 0)
+		{
+			Log(n"LogHOLMatch", f"RpcCheat: defeat refused ({Refusal}) slot {Slot}");
+			return;
+		}
+		HOLRpcBridge::CheatDefeat(this, Slot);
+	}
+
+	UFUNCTION(Server)
+	void ServerCheatFallForum(int Slot)
+	{
+		if (CVar_RpcScriptCheatFallForum.GetInt() == 0)
+			return;
+		const int Refusal = HOLRpc::CheatSlotRefusal(HOLRpcBridge::CheatsAllowed(this, "fall forum"), Slot);
+		if (Refusal != 0)
+		{
+			Log(n"LogHOLMatch", f"RpcCheat: fall forum refused ({Refusal}) slot {Slot}");
+			return;
+		}
+		HOLRpcBridge::CheatFallForum(this, Slot);
+	}
+
+	UFUNCTION(Server)
+	void ServerCheatSkipForum(int Slot)
+	{
+		if (CVar_RpcScriptCheatSkipForum.GetInt() == 0)
+			return;
+		const int Refusal = HOLRpc::CheatSlotRefusal(HOLRpcBridge::CheatsAllowed(this, "skip forum"), Slot);
+		if (Refusal != 0)
+		{
+			Log(n"LogHOLMatch", f"RpcCheat: skip forum refused ({Refusal}) slot {Slot}");
+			return;
+		}
+		HOLRpcBridge::CheatSkipForum(this, Slot);
+	}
+
+	// The C++ ServerCheatHoldPresence_Implementation has NO IsCheatRefused check (found by CELEBORN-1117q): the script path refuses when cheats are off (stricter, R3.5).
+	UFUNCTION(Server)
+	void ServerCheatHoldPresence(int Slot, bool bOff, bool bAttackers, bool bDefenders, int AttackerSlot)
+	{
+		if (CVar_RpcScriptCheatHoldPresence.GetInt() == 0)
+			return;
+		const int Refusal = HOLRpc::CheatHoldPresenceRefusal(HOLRpcBridge::CheatsAllowed(this, "hold presence"), Slot, bOff, bAttackers, bDefenders, AttackerSlot);
+		if (Refusal != 0)
+		{
+			Log(n"LogHOLMatch", f"RpcCheat: hold presence refused ({Refusal}) slot {Slot}");
+			return;
+		}
+		HOLRpcBridge::CheatHoldPresence(this, Slot, bOff, bAttackers, bDefenders, AttackerSlot);
 	}
 
 	// ---- T5 lot L1 Signals and chat (HALDIR-1117p, C++ NOT COMPILED). Guards hol.Rpc.ScriptSignal / hol.Rpc.ScriptChat (default 0). The bridge calls the C++ _Implementation (board, fan-out, journal);

@@ -122,6 +122,31 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Rpc")
 	static bool CheatGatherSpeed(AActor* RpcActor, double Scale);
+	// ---- CHEATS B (CELEBORN-1117q, NOT COMPILED), MIG2-S3 T9 lot L4: the owner controller's cheat _Implementation does the work (friend class; same body, same "Cheat: ..." journal). False: no owner controller.
+	/** R3.5: true when the cheats are active on this server; false (and the C++ line "Cheat refused: <What> from ...") otherwise. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Rpc")
+	static bool CheatsAllowed(AActor* RpcActor, const FString& What);
+
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Rpc")
+	static bool CheatWound(AActor* RpcActor, int32 Percent);
+
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Rpc")
+	static bool CheatDamageBuilding(AActor* RpcActor, double X, double Y, double Z, int32 Amount, int32 AttackType);
+
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Rpc")
+	static bool CheatSpawnBuilding(AActor* RpcActor, const FString& TypeName, int32 Slot, double X, double Y, double Z);
+
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Rpc")
+	static bool CheatDefeat(AActor* RpcActor, int32 Slot);
+
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Rpc")
+	static bool CheatFallForum(AActor* RpcActor, int32 Slot);
+
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Rpc")
+	static bool CheatSkipForum(AActor* RpcActor, int32 Slot);
+
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Rpc")
+	static bool CheatHoldPresence(AActor* RpcActor, int32 Slot, bool bOff, bool bAttackers, bool bDefenders, int32 AttackerSlot);
 
 	// ---- HALDIR-1117p (NOT COMPILED), MIG2-S3 T5 lot L1: Signals and chat. Same model: the owner controller's _Implementation does the work (board, fan-out, journal). The fan-out
 	// reaches each viewer by its script Client RPC when hol.Rpc.ScriptSignal / ScriptChat is 1 (HOLPlayerController.cpp, HOLRpcScriptRoute_Haldir1117n::CallEx). False: no owner controller.
