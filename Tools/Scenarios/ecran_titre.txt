@@ -1,6 +1,6 @@
 # Ecran titre en script (ECR-1, D840) : l'utilisateur juge "identique a avant ?" en 3 min. Pas de partie : la carte du menu, le titre est la racine du menu.
 # play.ps1 lance la partie du .json (Plain, un humain, une IA sans cerveau) pour passer le pre-vol ; le scenario revient aussitot au menu.
-# GESTE REEL : vrai clic souris hol.Mouse.Click (curseur virtuel de Slate) sur Quitter puis sur Non ; l'utilisateur joue lui-meme pendant le waitkey.
+# GESTE : la boite modale n'est pas trouvee par hol.Mouse.Click (HOLUIMouse.cpp cherche menu, HUD, couche racine, pas la couche modale) : focus puis Entree sur Non ; l'utilisateur joue lui-meme pendant le waitkey.
 frames 30
 open /Game/Maps/MainMenu
 waitmap MainMenu
@@ -9,13 +9,16 @@ frames 20
 capture ecran_titre_menu
 note 1. Titre : "Heroes of Liberty" en grand, puis 4 boutons dans l'ordre Jouer / Multijoueur / Reglages / Quitter, la version en bas a droite, rien de decale ni de coupe (comme avant le passage en script).
 note 2. Essaie chaque bouton (Jouer, Multijoueur, Reglages) : il ouvre le bon ecran, Retour (Echap) revient au titre ; Echap sur le titre ne fait rien. Option : triple clic sur le nom = triche des factions (Nouvelle partie propose alors les Templiers).
-waitkey Entree : reviens sur le titre (Echap depuis un autre ecran) puis Entree : je pose "Quitter le jeu ?" et je clique Non
+waitkey Entree : reviens sur le titre (Echap depuis un autre ecran) puis Entree : je pose "Quitter le jeu ?" et je valide Non
 hol.UI.Open Quit
 waitui
 capture ecran_titre_quitter
 note 3. "Quitter le jeu ?" avec Non au focus (Entree seule ne quitte pas), les boutons Quitter et Non.
-hol.Mouse.Click CancelButton
-waitlog Mouse click CancelButton
+frames 10
+hol.UI.Focus CancelButton
+frames 3
+hol.UI.Key Enter 0 0.1
+wait 0.2
 frames 20
 # The scenario's real end: an agent's play.ps1 -Hidden closes here instead of at its -TimeoutSec; the user's own run ignores it and plays on.
 quit
