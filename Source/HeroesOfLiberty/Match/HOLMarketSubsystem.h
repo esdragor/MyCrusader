@@ -16,8 +16,8 @@
  * subclass is born. There is no C++ copy of these two rules any more: without a script board (no script compiled) the static calls are inert and
  * safe (the book is returned unchanged, the amount received is the amount sent) and log an error. Left in C++: NewBook (HOLGameState), the Slate quote
  * (HOLGameScreen), the taxes of the diplomacy library, HOLPlayerController and HOLAIOrders. The trade itself is now the script's too (UHOLMarketSubsystem::Apply -> HOLMarket::Apply of the script, once per
- * Trade order / Market click, MIG-C++-FINAL); the C++ HOLMarket::Apply/Sell/Buy/BuyWithGold/NewBook remain only for their C++ tests and the
- * Slate quote (HOLGameScreen), to be removed in the next lot once this one is built and green.
+ * Trade order / Market click, MIG-C++-FINAL); the C++ copies HOLMarket::Apply and Buy are gone (MIG-CPP-Market); Sell/BuyWithGold/NewBook remain
+ * for the Slate quote (HOLGameScreen), HOLGameState::ResetMarketBook and the C++ tests of the table chain.
  */
 UCLASS(Abstract)
 class HEROESOFLIBERTY_API UHOLMarketSubsystem : public UWorldSubsystem

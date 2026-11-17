@@ -92,29 +92,6 @@ namespace HOLMarket
 		return Trade;
 	}
 
-	FTrade Buy(const FSettings& Settings, const FBook& Book, const int32 Resource, const int32 Lots, const int32 GoldStock, const int32 FeePercent)
-	{
-		if (const TCHAR* Bad = CheckRequest(Resource, Lots))
-		{
-			return Refuse(Book, Bad);
-		}
-		FTrade Trade;
-		Trade.Book = Book;
-		for (int32 Index = 0; Index < Lots; ++Index)
-		{
-			const int32 Price = Trade.Book.Prices[Resource];
-			Trade.Gold += PurchaseGold(Price, FeePercent);
-			Trade.Book.Prices[Resource] = FMath::Clamp(Price + Settings.Step, Settings.MinPrice, Settings.MaxPrice);
-		}
-		if (Trade.Gold > GoldStock)
-		{
-			return Refuse(Book, TEXT("gold"));
-		}
-		Trade.Units = Lots * Lot;
-		Trade.bOk = true;
-		return Trade;
-	}
-
 	FTrade BuyWithGold(const FSettings& Settings, const FBook& Book, const int32 Resource, const int32 Lots, const int32 GoldStock, const int32 FeePercent)
 	{
 		if (const TCHAR* Bad = CheckRequest(Resource, Lots))
@@ -135,20 +112,6 @@ namespace HOLMarket
 		}
 		Trade.Gold = Lots * Lot;
 		Trade.bOk = true;
-		return Trade;
-	}
-
-	FTrade Apply(const FSettings& Settings, const FBook& Book, const FHOLResources& Stock, const EHOLResource Resource, const int32 Lots, const bool bBuy, const int32 FeePercent, FHOLResources& OutStock)
-	{
-		OutStock = Stock;
-		const int32 Index = static_cast<int32>(Resource);
-		FTrade Trade = bBuy ? BuyWithGold(Settings, Book, Index, Lots, Stock.Gold, FeePercent) : Sell(Settings, Book, Index, Lots, Stock[Resource], FeePercent);
-		if (!Trade.bOk)
-		{
-			return Trade;
-		}
-		OutStock[Resource] += bBuy ? Trade.Units : -Trade.Units;
-		OutStock.Gold += bBuy ? -Trade.Gold : Trade.Gold;
 		return Trade;
 	}
 
