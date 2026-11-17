@@ -29,9 +29,8 @@ struct HEROESOFLIBERTY_API FHOLConstructionBox
  * D830, D839, D836). Wrappers only: no rule here. Enums are passed as ints: EHOLConstructionState 0 Foundation, 1 UnderConstruction,
  * 2 Finished; EHOLAttackType 0 Melee, 1 Ranged, 2 Siege, 3 Hero; EHOLPlacementRefusal 0 None, 1 OutOfMap, 2 Building, 3 Source,
  * 4 EnemyCentre, 5 NavMesh. A resource source as an obstacle is an FVector (X, Y = ground point, Z = body radius).
- * NOT exposed (TYPES_A_EXPOSER): the queue templates (AddToBuildQueue, AdvanceBuildQueue, AdvanceWorkQueue: templates / TFunctionRef),
- * FindFreeFootprint / FindObstacle / FindFreeFootprint (TFunctionRef), FindCampSource (FHOLCampSource), the keep-out and visible-wall
- * functions (FWallBody, EHOLUnitActivity), FindWays, SendsBuildersToGather.
+ * The queues (AddToBuildQueue, AdvanceBuildQueue, AdvanceWorkQueue) are exposed on queues of ints (sites by number, work items encoded by
+ * MakeWorkBuild / MakeWorkGather / MakeWorkDeposit; the open test is a list of closed sites): the templates themselves stay in C++.
  */
 UCLASS()
 class HEROESOFLIBERTY_API UHOLConstructionReadLibrary : public UBlueprintFunctionLibrary
