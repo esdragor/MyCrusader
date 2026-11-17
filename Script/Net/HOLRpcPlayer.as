@@ -176,13 +176,6 @@ int CheatWoundRefusal(bool bCheatsAllowed, int SenderSlot)
 	if (!bCheatsAllowed)
 		return 1;
 	if (SenderSlot < 0 || SenderSlot >= HOLRpcSlots)
-// Economy (T8 L3). The production decides the rest (owner, type, queue, stock, Market, lots: UHOLCommandSubsystem::IssueProductionOrder), as for the C++ RPC. These only check what the RPC itself can know.
-// bHasBuilding = the Building pointer is not null (the caller computes it: the rules stay pure). 0 none, 1 the sender has no slot (spectator, out of range), 2 no building.
-int EconomySeatRefusal(int SenderSlot, bool bHasBuilding)
-{
-	if (SenderSlot < 0 || SenderSlot >= HOLRpcSlots)
-		return 1;
-	if (!bHasBuilding)
 		return 2;
 	return 0;
 }
@@ -203,6 +196,17 @@ int CheatDamageBuildingRefusal(bool bCheatsAllowed, int Amount)
 	return 0;
 }
 
+// Economy (T8 L3). The production decides the rest (owner, type, queue, stock, Market, lots: UHOLCommandSubsystem::IssueProductionOrder), as for the C++ RPC. These only check what the RPC itself can know.
+// bHasBuilding = the Building pointer is not null (the caller computes it: the rules stay pure). 0 none, 1 the sender has no slot (spectator, out of range), 2 no building.
+int EconomySeatRefusal(int SenderSlot, bool bHasBuilding)
+{
+	if (SenderSlot < 0 || SenderSlot >= HOLRpcSlots)
+		return 1;
+	if (!bHasBuilding)
+		return 2;
+	return 0;
+}
+
 // SpawnBuilding: 2 slot outside 0..255 (the C++ limit, any slot unchecked otherwise), 3 no type name.
 int CheatSpawnBuildingRefusal(bool bCheatsAllowed, const FString& TypeName, int Slot)
 {
@@ -211,6 +215,21 @@ int CheatSpawnBuildingRefusal(bool bCheatsAllowed, const FString& TypeName, int 
 	if (Slot < 0 || Slot > 255)
 		return 2;
 	if (TypeName.Len() == 0)
+		return 3;
+	return 0;
+}
+
+// Technology: 3 no technology named (None). Whether it exists or is already researched stays the C++ body's (it logs a warning).
+int CheatTechnologyRefusal(bool bAllowed, int SenderSlot, FName Technology)
+{
+	const int Base = CheatRefusal(bAllowed, SenderSlot);
+	if (Base != 0)
+		return Base;
+	if (Technology == n"None")
+		return 3;
+	return 0;
+}
+
 // ServerQueueProduction: seat and building only (the type is checked by the production at its step).
 int QueueProductionRefusal(int SenderSlot, bool bHasBuilding)
 {
@@ -224,17 +243,6 @@ int CancelProductionRefusal(int SenderSlot, bool bHasBuilding, int Index)
 	if (Seat != 0)
 		return Seat;
 	if (Index < 0)
-		return 3;
-	return 0;
-}
-
-// Technology: 3 no technology named (None). Whether it exists or is already researched stays the C++ body's (it logs a warning).
-int CheatTechnologyRefusal(bool bAllowed, int SenderSlot, FName Technology)
-{
-	const int Base = CheatRefusal(bAllowed, SenderSlot);
-	if (Base != 0)
-		return Base;
-	if (Technology == n"None")
 		return 3;
 	return 0;
 }
@@ -265,6 +273,9 @@ int CheatHoldPresenceRefusal(bool bCheatsAllowed, int Slot, bool bOff, bool bAtt
 		return 2;
 	if (!bOff && bAttackers && (AttackerSlot < 0 || AttackerSlot >= HOLRpcSlots))
 		return 3;
+	return 0;
+}
+
 // ServerTribute: seat, building, then 3 the receiver out of range, 4 a negative resource, 5 an amount that is not positive.
 int TributeRefusal(int SenderSlot, bool bHasBuilding, int Receiver, int Resource, int Amount)
 {
