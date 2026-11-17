@@ -1,0 +1,2 @@
+# <nom de capture> | ce que l'utilisateur doit voir
+ecran_multijoueur_liste | l'ecran Multijoueur : titre, ligne « Votre nom » avec son champ, zone de liste vide, une ligne rouge d'erreur (pas de gestionnaire), boutons Actualiser / Creer un salon (grise) / Retour
