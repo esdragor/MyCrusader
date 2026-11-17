@@ -156,3 +156,5 @@ Colonnes : fichier | tests | lignes | classe | equivalent script ou bibliotheque
 | HOLVisionMatchTests.cpp | 15 | 884 | A | Mass / monde complet (D838) |
 | HOLVolcanoLayoutTests.cpp | 6 | 276 | A | Mass / monde complet (D838) |
 | HOLVolcanoWorldTests.cpp | 11 | 732 | A | Mass / monde complet (D838) |
+
+Classement : HOLManagerClientTests.cpp (10) et les 4 « Lobby » de HOLMapSizeLobbyTests.cpp relevent de MIG-C-ManagerClient (CELEBORN-1117l) ; Read et Send portes (HOLManagerClient_Test.as), ManagerReference/ManagerAIReference restent C++ (FHOLMatchConfig::FromJson, fichiers).

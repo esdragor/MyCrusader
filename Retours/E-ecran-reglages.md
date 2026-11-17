@@ -1,4 +1,4 @@
-# [À ESSAYER] E-ecran-reglages : l'écran Réglages (écrit en script) s'ouvre depuis le titre, a ses 4 onglets, et chaque réglage s'applique et se garde
+# [RÉPONDU 2026-11-17, OK] E-ecran-reglages : l'écran Réglages (écrit en script) s'ouvre depuis le titre, a ses 4 onglets, et chaque réglage s'applique et se garde
 
 STATUT : VU À L'ÉCRAN
 GESTE: réel   (hol.Mouse.Click sur SettingsButton, les 4 onglets et BackButton ; puis l'utilisateur essaie les rotateurs à la main)
@@ -26,3 +26,5 @@ Geste (3 min) :
 Commande complète (copiable telle quelle).
 Lancer UNE commande : `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Celeborn\Tools\Scenarios\play.ps1 ecran_reglages -Root C:\Users\baudo\Documents\HeroesOfLiberty-Celeborn`
 Durée : environ 3 min. Réponse attendue : `OK`, `BUG: ...` ou `REGLAGE: ...`.
+
+Reponse: OK (2026-11-17, ~16:2x, essai joué par l'utilisateur ; D840 lot 2). Fusion dans main en cours (fusion groupée n°5, worktree Sauron, branche visual).
