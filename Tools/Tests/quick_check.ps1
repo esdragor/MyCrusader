@@ -1,4 +1,4 @@
-﻿# Quick check of the project (D267), on two levels (D327):
+# Quick check of the project (D267), on two levels (D327):
 #   - by default (no argument, under a minute): the automation tests in their own process WHILE a single short game goes
 #     through the "smoke" part: the title and New game screens in French, a 2-player match launched from there, the
 #     camera moved by the arrow key, its own centre selected then nothing, 3 Men-at-arms boxed and sent beside an enemy
@@ -3135,8 +3135,8 @@ $SequenceChecks["scripts compiled ($(if ($GameScriptErrors.Count) { $GameScriptE
 # Each capture shows the screen it is named after (the screens on top of the layers when it was taken; in a match,
 # the game HUD of J3).
 $Expected = @{ title = "menu=HOLTitleScreen modal=none"; stackback = "menu=HOLTitleScreen modal=none"; quit = "menu=HOLTitleScreen modal=HOLConfirmDialog";
-    newgame = "menu=HOLNewGameScreen modal=none"; dropdown = "menu=HOLNewGameScreen modal=none"; video = "menu=HOLSettingsScreen modal=none";
-    sound = "menu=HOLSettingsScreen modal=none"; controls = "menu=HOLSettingsScreen modal=none"; language = "menu=HOLSettingsScreen modal=none";
+    newgame = "menu=HOLNewGameScreen modal=none"; dropdown = "menu=HOLNewGameScreen modal=none"; video = "menu=HOLSettingsScreenScript modal=none";
+    sound = "menu=HOLSettingsScreenScript modal=none"; controls = "menu=HOLSettingsScreenScript modal=none"; language = "menu=HOLSettingsScreenScript modal=none";
     start = "hud=HOLGameScreen"; end = "hud=HOLGameScreen"; own = "hud=HOLGameScreen"; other = "hud=HOLGameScreen";
     queue = "hud=HOLGameScreen"; done = "hud=HOLGameScreen"; berries = "hud=HOLGameScreen"; wood = "hud=HOLGameScreen"; idle = "hud=HOLGameScreen";
     popup = "hud=HOLGameScreen"; green = "hud=HOLGameScreen"; red = "hud=HOLGameScreen"; foundations = "hud=HOLGameScreen";
