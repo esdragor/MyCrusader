@@ -10,7 +10,7 @@ const FConsoleVariable CVar_RpcDiplomacyStance("hol.Rpc.DiplomacyStance", 1);
 const FConsoleVariable CVar_RpcProofRoute("hol.Rpc.ProofRoute", 0);
 
 // T3 (SAURON-1117m): the Duel and Match (pause, resume, surrender) lots, same guard model: 0 = the C++ RPC stays the only one (these script RPCs log and do nothing), 1 = the script RPC acts.
-const FConsoleVariable CVar_RpcScriptDuel("hol.Rpc.ScriptDuel", 0);
+const FConsoleVariable CVar_RpcScriptDuel("hol.Rpc.ScriptDuel", 1);
 const FConsoleVariable CVar_RpcScriptMatch("hol.Rpc.ScriptMatch", 1);
 
 // T4 lot L1 (HALDIR-1117o, C++ NOT COMPILED): the Specialization (start, cancel) and Hero (return, talent, ability, rage, watch unit) RPCs, same guard model (default 0: the C++ RPC stays the only one).
