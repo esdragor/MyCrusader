@@ -15,8 +15,9 @@
  * RecoverEverySeconds, HOLMarket::Recover) and what a tribute delivers (once per Tribute order, HOLTribute::Received). Abstract: only a script
  * subclass is born. There is no C++ copy of these two rules any more: without a script board (no script compiled) the static calls are inert and
  * safe (the book is returned unchanged, the amount received is the amount sent) and log an error. Left in C++: NewBook (HOLGameState), the Slate quote
- * (HOLGameScreen), the taxes of the diplomacy library, HOLPlayerController and HOLAIOrders. The trade itself (HOLMarket::Apply) stays C++ for now
- * (the price of each order, higher frequency).
+ * (HOLGameScreen), the taxes of the diplomacy library, HOLPlayerController and HOLAIOrders. The trade itself is now the script's too (UHOLMarketSubsystem::Apply -> HOLMarket::Apply of the script, once per
+ * Trade order / Market click, MIG-C++-FINAL); the C++ copies HOLMarket::Apply and Buy are gone (MIG-CPP-Market); Sell/BuyWithGold/NewBook remain
+ * for the Slate quote (HOLGameScreen), HOLGameState::ResetMarketBook and the C++ tests of the table chain.
  */
 UCLASS(Abstract)
 class HEROESOFLIBERTY_API UHOLMarketSubsystem : public UWorldSubsystem
@@ -33,7 +34,16 @@ public:
 	/** What reaches the receiver of a tribute of Sent at TaxPercent: the board's answer; Sent (and an error logged) when the world has no script board. */
 	static int32 Received(const UWorld* World, int32 Sent, int32 TaxPercent);
 
+	/**
+	 * One trade on a player's stock, the script's rule (HOLMarket::Apply of Script/Economy/HOLMarketRules.as, MIG-C++-FINAL) with the stock moved here as the
+	 * C++ Apply did: OutStock is Stock changed (Stock itself when refused). A refused trade with Reason "board" (and an error logged) when the world has no script board.
+	 */
+	static HOLMarket::FTrade Apply(const UWorld* World, const HOLMarket::FSettings& Settings, const HOLMarket::FBook& Book, const FHOLResources& Stock, EHOLResource Resource, int32 Lots, bool bBuy, FHOLResources& OutStock);
+
 	/** The board's answers (the native events below, i.e. the script rules in the script subclass). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Market")
+	FHOLMarketBridgeTrade TradeNow(const FHOLMarketBridgeSettings& Settings, const FHOLMarketBridgeBook& Book, int32 Resource, int32 Lots, bool bBuy, int32 Stock);
+
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Market")
 	FHOLMarketBridgeBook RecoverNow(const FHOLMarketBridgeSettings& Settings, const FHOLMarketBridgeBook& Book, int32 Intervals);
 
@@ -55,6 +65,11 @@ protected:
 	UFUNCTION(BlueprintNativeEvent, Category = "HeroesOfLiberty|Market")
 	FHOLMarketBridgeBook RecoverPrices(const FHOLMarketBridgeSettings& Settings, const FHOLMarketBridgeBook& Book, int32 Intervals);
 	virtual FHOLMarketBridgeBook RecoverPrices_Implementation(const FHOLMarketBridgeSettings& Settings, const FHOLMarketBridgeBook& Book, int32 Intervals);
+
+	/** One trade at the settings' own tax; Stock is what is given up (the goods of Resource for a sale, the gold for a purchase). The script subclass overrides it (HOLMarket::Apply of the script); the default refuses with Reason "board" and logs an error. */
+	UFUNCTION(BlueprintNativeEvent, Category = "HeroesOfLiberty|Market")
+	FHOLMarketBridgeTrade TradeOnce(const FHOLMarketBridgeSettings& Settings, const FHOLMarketBridgeBook& Book, int32 Resource, int32 Lots, bool bBuy, int32 Stock);
+	virtual FHOLMarketBridgeTrade TradeOnce_Implementation(const FHOLMarketBridgeSettings& Settings, const FHOLMarketBridgeBook& Book, int32 Resource, int32 Lots, bool bBuy, int32 Stock);
 
 	/** What reaches the receiver of Sent at TaxPercent. The script subclass overrides it (HOLTribute::Received of the script); the default is inert: Sent, an error logged. */
 	UFUNCTION(BlueprintNativeEvent, Category = "HeroesOfLiberty|Market")

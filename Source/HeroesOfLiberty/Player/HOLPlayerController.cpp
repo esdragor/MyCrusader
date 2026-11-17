@@ -7,6 +7,7 @@
 #include "Buildings/HOLBuildingTypes.h"
 #include "Buildings/HOLConstructionSubsystem.h"
 #include "Buildings/HOLProductionSubsystem.h"
+#include "Match/HOLMarketSubsystem.h"
 #include "Simulation/HOLUnitTypes.h"
 #include "Commands/HOLCommandSubsystem.h"
 #include "Commands/HOLPlayerOrders.h"
@@ -4006,8 +4007,8 @@ void AHOLPlayerController::ExecuteGridCommand(const FHOLGridCommand& Command)
 		}
 		const int32 Lots = IsInputKeyDown(EKeys::LeftShift) || IsInputKeyDown(EKeys::RightShift) ? 5 : 1;
 		FHOLResources Unused;
-		const HOLMarket::FTrade Quote = HOLMarket::Apply(Settings, HOLGameState->GetMarketBook(), HOLPlayerState->GetResources(), Command.Resource, Lots,
-			Command.bBuy, Settings.FeePercent, Unused);
+		const HOLMarket::FTrade Quote = UHOLMarketSubsystem::Apply(GetWorld(), Settings, HOLGameState->GetMarketBook(), HOLPlayerState->GetResources(), Command.Resource, Lots,
+			Command.bBuy, Unused);
 		if (!Quote.bOk)
 		{
 			FHOLCommandFeedback Feedback;

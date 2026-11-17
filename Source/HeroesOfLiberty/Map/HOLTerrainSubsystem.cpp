@@ -96,6 +96,25 @@ int32 UHOLTerrainSubsystem::GetSpeedPercentAt(const FVector& Location) const
 	return GetSpeedPercentAt(FVector2D(Location.X, Location.Y));
 }
 
+int32 UHOLTerrainSubsystem::GetWalkerSpeedPercentAt(const FVector& Location, const int32 Category) const
+{
+	if (Zones.IsEmpty())
+	{
+		return 100;
+	}
+	return FHOLTerrainRules::GetWalkerSpeedPercentAt(GetMarshSpeedPercent(), Zones, Category, FMath::RoundToInt(Location.X), FMath::RoundToInt(Location.Y), GetRoadSpeedPercent());
+}
+
+bool UHOLTerrainSubsystem::IsOnFord(const FVector& Location) const
+{
+	return !Zones.IsEmpty() && FHOLTerrainRules::IsInZoneOfKind(Zones, HOLTerrainKind::Ford, FMath::RoundToInt(Location.X), FMath::RoundToInt(Location.Y));
+}
+
+int32 UHOLTerrainSubsystem::GetFordDamageTakenPercentAt(const FVector& Location) const
+{
+	return FHOLTerrainRules::GetFordDamageTakenPercent(IsOnFord(Location));
+}
+
 int32 UHOLTerrainSubsystem::GetRoadSpeedPercent()
 {
 	return FMath::Clamp(UE::HeroesOfLiberty::Terrain::RoadSpeedPercent, 100, 300);

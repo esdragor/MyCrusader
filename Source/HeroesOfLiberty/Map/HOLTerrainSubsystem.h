@@ -30,6 +30,13 @@ public:
 	int32 GetSpeedPercentAt(const FVector& Location) const;
 	int32 GetSpeedPercentAt(const FVector2D& Location) const;
 
+	/** D810 (F4): the percent of its normal speed a walker of Category (HOLTerrainWalker) at Location walks at: the marsh / road rule above, and a painted forest slows cavalry and siege (the slowest wins). On foot, and a map without zones: as GetSpeedPercentAt. */
+	int32 GetWalkerSpeedPercentAt(const FVector& Location, int32 Category) const;
+
+	/** D810 (F5): whether Location is in a painted ford, and the percent of a hit a unit standing there takes (100 off a ford and on a map without zones). */
+	bool IsOnFord(const FVector& Location) const;
+	int32 GetFordDamageTakenPercentAt(const FVector& Location) const;
+
 	/** The marsh's strength now (percent), the cvar held to 1..100. */
 	static int32 GetMarshSpeedPercent();
 

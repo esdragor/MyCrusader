@@ -1,7 +1,6 @@
 // Port of the part of HOLProductionTests.cpp (HeroesOfLiberty.Production.Advance) that uses only UHOLProductionReadLibrary (L17-12 PARTIAL, ELROND-1117d, D830/D839).
 // Same vectors as the C++ test (an item started at step 10, 4 build steps), names adapted.
-// NOT ported (the library does not expose FHOLProductionItem, FHOLProductionCost, TFunctionRef): HeroesOfLiberty.Production.Queue (all of it: TryEnqueue, Cancel),
-// the Advance calls and the checks on the queue of HeroesOfLiberty.Production.Advance, and the data tables of HeroesOfLiberty.Production.Tables: they stay in C++.
+// The rest (Queue, the queue half of Advance, Tables) is in HOLProductionQueue_Test.as (GLORFINDEL-1117g), against the C++ wrappers added in the same lot.
 
 // D03: the population cap is what the buildings give, 175 at most.
 void Test_Production_PopulationCap(FUnitTest& T)

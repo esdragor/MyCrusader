@@ -1,4 +1,4 @@
-// MIG-P1d (D830/D835, throwaway branch try-as-rpc, never merged): can a Server and a Client RPC be written in Angelscript with Iris
+// MIG-P1d (D830/D835; PROVEN 2026-11-17: this file lives in Script/Net because the plugin skips Script/Dev, Developers, Examples and Editor outside the interactive editor): can a Server and a Client RPC be written in Angelscript with Iris
 // (net.Iris.UseIrisReplication=1)? The server runs hol.Dev.RpcProbe: each player controller gets a replicated script actor
 // it owns (spawned by the C++ bridge HOLScriptRpcProbeBridge from the game mode PostLogin: a pure script world subsystem never ticked on the dedicated server); on the client, once the probe is its own and hol.Dev.RpcProbeSend is 1, it calls ServerPing (Server RPC), the server
 // logs "RpcProbe: received by the server" and answers ClientPong (Client RPC), the client logs "RpcProbe: received by the client".

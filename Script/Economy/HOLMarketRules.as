@@ -237,6 +237,18 @@ namespace HOLMarket
 		return Trade;
 	}
 
+	// One trade on a stock, the order's end of the chain (MIG-C++-FINAL): a sale is Sell, a purchase is BuyWithGold. Stock is
+	// what is given up: the goods of Resource for a sale, the gold for a purchase. The caller moves the stock by the trade.
+	FHOLMarketTrade Apply(const FHOLMarketSettings& Settings, const FHOLMarketBook& Book, int Resource, int Lots, bool bBuy,
+		int Stock, int FeePercent)
+	{
+		if (bBuy)
+		{
+			return BuyWithGold(Settings, Book, Resource, Lots, Stock, FeePercent);
+		}
+		return Sell(Settings, Book, Resource, Lots, Stock, FeePercent);
+	}
+
 	// The way back to rest: after Intervals intervals (RecoverEverySeconds seconds each) every price has moved
 	// RecoverPoints per interval toward its base, never past it.
 	FHOLMarketBook Recover(const FHOLMarketSettings& Settings, const FHOLMarketBook& Book, int Intervals)
