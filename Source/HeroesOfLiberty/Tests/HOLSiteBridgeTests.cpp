@@ -3,6 +3,7 @@
 #include "Engine/Engine.h"
 #include "Engine/World.h"
 #include "Misc/AutomationTest.h"
+#include "Simulation/HOLSimulationSettings.h"
 #include "Simulation/HOLSiteBoardSubsystem.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
@@ -61,6 +62,14 @@ bool FHOLSiteServerBoardTest::RunTest(const FString& Parameters)
 		Frozen = Board->VictoryStepNow(Frozen, {0, 1}, {0, 1}, VictoryTeams, 2);
 		TestEqual(TEXT("A contested site freezes the count: no winner"), Frozen.Winner, static_cast<int32>(INDEX_NONE));
 
+		// The gold step (S6): the carry is the caller's (in and out), the board gives the whole gold. 1 site at 12 a minute, a carry one gold short.
+		int32 Carry = 0;
+		TestEqual(TEXT("A step with nothing held and no carry pays nothing"), Board->GoldStepNow(Carry, 0, 12), 0);
+		const int32 StepsPerMinute = 60 * GetDefault<UHOLSimulationSettings>()->SimulationRateHz;
+		Carry = StepsPerMinute - 1;
+		TestEqual(TEXT("A carry one short of a gold pays it with the next step's share"), UHOLSiteBoardSubsystem::GoldStep(Board, Carry, 1, 12), 1);
+		TestEqual(TEXT("The rest is handed back to the caller"), Carry, 11);
+
 		// The server's call (the static one) is the board's answer.
 		TestTrue(TEXT("The server's call with the board is the board's answer"), UHOLSiteBoardSubsystem::StepSite(Board, Held, {0, 1, 0}, {0, 1, 0}, Teams, 300, DecaySteps) == Taken);
 		// Without a board there is no rule (the C++ copy is gone): the state is unchanged and an error is logged (once, maybe already earlier).
@@ -71,6 +80,8 @@ bool FHOLSiteServerBoardTest::RunTest(const FString& Parameters)
 		Counting.Held = 3;
 		const FHOLSiteVictoryState Idle = UHOLSiteBoardSubsystem::VictoryStep(nullptr, Counting, {0, 1}, {0, 0}, VictoryTeams, 2);
 		TestTrue(TEXT("Without a board the victory count is left unchanged"), Idle.Leader == 7 && Idle.Held == 3 && Idle.Winner == INDEX_NONE);
+		int32 NoCarry = 5;
+		TestTrue(TEXT("Without a board the gold step pays nothing and keeps the carry"), UHOLSiteBoardSubsystem::GoldStep(nullptr, NoCarry, 1, 12) == 0 && NoCarry == 5);
 	}
 	GEngine->DestroyWorldContext(World);
 	World->DestroyWorld(false);

@@ -434,8 +434,8 @@ void UHOLSiteSubsystem::PayGold(const AHOLGameState& GameState)
 {
 	// S6 (D699): the OWNER alone is paid (its allies get nothing, D703 counts camps for the take, not for the pay), a defeated slot no more.
 	const int32 Slots = FHOLMatchConfig::MaxSlots;
-	const int32 Rate = GetDefault<UHOLSimulationSettings>()->SimulationRateHz;
 	GoldCarry.SetNumZeroed(Slots);
+	UHOLSiteBoardSubsystem* Board = UHOLSiteBoardSubsystem::Find(GetWorld());
 	for (APlayerState* Each : GameState.PlayerArray)
 	{
 		AHOLPlayerState* Player = Cast<AHOLPlayerState>(Each);
@@ -454,7 +454,7 @@ void UHOLSiteSubsystem::PayGold(const AHOLGameState& GameState)
 		{
 			continue;
 		}
-		const int32 Gold = HOLSite::GoldStep(GoldCarry[Slot], Owned, SiteGoldPerMinute, Rate);
+		const int32 Gold = UHOLSiteBoardSubsystem::GoldStep(Board, GoldCarry[Slot], Owned, SiteGoldPerMinute);
 		if (Gold > 0)
 		{
 			FHOLResources Stock = Player->GetResources();

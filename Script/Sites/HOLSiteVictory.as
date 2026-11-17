@@ -114,4 +114,14 @@ namespace HOLSiteVictory
 		Memory.Carry -= Award * StepsPerMinute;
 		return Award;
 	}
+
+	// The same step with the carry kept by the caller (the server's C++ GoldCarry by slot, handed in and back through the bridge).
+	int GoldStepWith(int& Carry, int Sites, int RatePerMinute)
+	{
+		FHOLGoldCarry Memory;
+		Memory.Carry = Carry;
+		const int Award = GoldStep(Memory, Sites, RatePerMinute);
+		Carry = Memory.Carry;
+		return Award;
+	}
 }
