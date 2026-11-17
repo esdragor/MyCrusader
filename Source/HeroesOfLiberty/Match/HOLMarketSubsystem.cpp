@@ -34,6 +34,49 @@ int32 UHOLMarketSubsystem::Received(const UWorld* World, const int32 Sent, const
 	return Sent;
 }
 
+HOLMarket::FTrade UHOLMarketSubsystem::Apply(const UWorld* World, const HOLMarket::FSettings& Settings, const HOLMarket::FBook& Book, const FHOLResources& Stock, const EHOLResource Resource, const int32 Lots, const bool bBuy, FHOLResources& OutStock)
+{
+	OutStock = Stock;
+	UHOLMarketSubsystem* Board = Find(World);
+	if (!Board)
+	{
+		UE_LOG(LogTemp, Error, TEXT("Market: no script board in this world, the trade is refused (Script/Economy/HOLMarketBoardScript.as did not compile?)"));
+		HOLMarket::FTrade Refused;
+		Refused.Reason = FName(TEXT("board"));
+		Refused.Book = Book;
+		return Refused;
+	}
+	const FHOLMarketBridgeTrade Done = Board->TradeNow(ToBridge(Settings), ToBridge(Book), static_cast<int32>(Resource), Lots, bBuy, bBuy ? Stock.Gold : Stock[Resource]);
+	HOLMarket::FTrade Trade;
+	Trade.bOk = Done.bOk;
+	Trade.Reason = Done.Reason.IsEmpty() ? FName() : FName(*Done.Reason);
+	Trade.Gold = Done.Gold;
+	Trade.Units = Done.Units;
+	Trade.Book = FromBridge(Done.Book);
+	if (!Trade.bOk)
+	{
+		Trade.Book = Book;
+		return Trade;
+	}
+	OutStock[Resource] += bBuy ? Trade.Units : -Trade.Units;
+	OutStock.Gold += bBuy ? -Trade.Gold : Trade.Gold;
+	return Trade;
+}
+
+FHOLMarketBridgeTrade UHOLMarketSubsystem::TradeNow(const FHOLMarketBridgeSettings& Settings, const FHOLMarketBridgeBook& Book, const int32 Resource, const int32 Lots, const bool bBuy, const int32 Stock)
+{
+	return TradeOnce(Settings, Book, Resource, Lots, bBuy, Stock);
+}
+
+FHOLMarketBridgeTrade UHOLMarketSubsystem::TradeOnce_Implementation(const FHOLMarketBridgeSettings& Settings, const FHOLMarketBridgeBook& Book, const int32 Resource, const int32 Lots, const bool bBuy, const int32 Stock)
+{
+	UE_LOG(LogTemp, Error, TEXT("Market: TradeOnce has no script implementation, the trade is refused"));
+	FHOLMarketBridgeTrade Refused;
+	Refused.Reason = TEXT("board");
+	Refused.Book = Book;
+	return Refused;
+}
+
 FHOLMarketBridgeBook UHOLMarketSubsystem::RecoverNow(const FHOLMarketBridgeSettings& Settings, const FHOLMarketBridgeBook& Book, const int32 Intervals)
 {
 	return RecoverPrices(Settings, Book, Intervals);

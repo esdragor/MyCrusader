@@ -23,6 +23,30 @@ class UHOLMarketBoardScript : UHOLMarketSubsystem
 		return Out;
 	}
 
+	// One trade (a Trade order, the Market click's quote): HOLMarket::Apply of the script; Stock is what is given up.
+	UFUNCTION(BlueprintOverride)
+	FHOLMarketBridgeTrade TradeOnce(FHOLMarketBridgeSettings Settings, FHOLMarketBridgeBook Book, int Resource, int Lots, bool bBuy, int Stock)
+	{
+		FHOLMarketSettings Rule;
+		Rule.BasePrices = Settings.BasePrices;
+		Rule.Step = Settings.Step;
+		Rule.FeePercent = Settings.FeePercent;
+		Rule.MinPrice = Settings.MinPrice;
+		Rule.MaxPrice = Settings.MaxPrice;
+		Rule.RecoverPoints = Settings.RecoverPoints;
+		Rule.RecoverEverySeconds = Settings.RecoverEverySeconds;
+		FHOLMarketBook RuleBook;
+		RuleBook.Prices = Book.Prices;
+		FHOLMarketTrade Done = HOLMarket::Apply(Rule, RuleBook, Resource, Lots, bBuy, Stock, Settings.FeePercent);
+		FHOLMarketBridgeTrade Out;
+		Out.bOk = Done.bOk;
+		Out.Reason = Done.Reason;
+		Out.Gold = Done.Gold;
+		Out.Units = Done.Units;
+		Out.Book.Prices = Done.Book.Prices;
+		return Out;
+	}
+
 	UFUNCTION(BlueprintOverride)
 	int TributeReceived(int Sent, int TaxPercent)
 	{

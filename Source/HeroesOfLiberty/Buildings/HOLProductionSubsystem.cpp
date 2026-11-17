@@ -219,8 +219,8 @@ void UHOLProductionSubsystem::ApplyMarketTrade(const FHOLProductionCommand& Orde
 		return;
 	}
 	FHOLResources After;
-	const HOLMarket::FTrade Trade = HOLMarket::Apply(MarketSettings, GameState->GetMarketBook(), PlayerState.GetResources(),
-		static_cast<EHOLResource>(Order.Resource), Order.Lots, Order.bBuy, MarketSettings.FeePercent, After);
+	const HOLMarket::FTrade Trade = UHOLMarketSubsystem::Apply(GetWorld(), MarketSettings, GameState->GetMarketBook(), PlayerState.GetResources(),
+		static_cast<EHOLResource>(Order.Resource), Order.Lots, Order.bBuy, After);
 	if (!Trade.bOk)
 	{
 		UE_LOG(LogHOLCommands, Display, TEXT("Market: slot %d cannot %s %d lots of resource %d (%s)"), Order.PlayerIndex,
