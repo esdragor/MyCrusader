@@ -158,7 +158,7 @@ void Test_MapSizeTable(FUnitTest& T)
 	TArray<FString> Keys;
 	Keys.Add("Small"); Keys.Add("Medium"); Keys.Add("Normal"); Keys.Add("Large"); Keys.Add("Huge");
 	const TArray<int> Places = HOLMapSizeInts(2, 4, 6, 8, 8);
-	const TArray<int> Sides = HOLMapSizeInts(110, 154, 183, 203, 220);	// ROUGE-BOUCHON ARWEN-1117i: 202 is the true value, 203 must fail "Large side"
+	const TArray<int> Sides = HOLMapSizeInts(110, 154, 183, 202, 220);
 	T.AssertEquals(5, HOLMapSizeRead::GetNumSizes(), "five sizes");
 	for (int Index = 0; Index < 5; ++Index)
 	{
