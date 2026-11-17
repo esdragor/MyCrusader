@@ -49,9 +49,26 @@ int TableImportNumber(const TArray<FString>& RowNames, const TArray<FString>& Co
 {
 	bool bFound = false;
 	FString Text = TableImportField(RowNames, Columns, Values, Row, Column, bFound);
+	// The export (ExportText_Direct against a null default) writes nothing for a zero or a false: a found, empty number is 0.
+	if (bFound && Text.IsEmpty())
+	{
+		return 0;
+	}
 	bool bOk = false;
 	int Value = TableImportInt(Text, bOk);
 	return (bFound && bOk) ? Value : -1;
+}
+
+// A found bool field: the export writes "True" for true and nothing for false (see TableImportNumber); a missing field is neither.
+bool TableImportBoolIs(const TArray<FString>& RowNames, const TArray<FString>& Columns, const TArray<FString>& Values, const FString& Row, const FString& Column, bool bExpected)
+{
+	bool bFound = false;
+	FString Text = TableImportField(RowNames, Columns, Values, Row, Column, bFound);
+	if (!bFound)
+	{
+		return false;
+	}
+	return bExpected ? (Text == "True") : (Text.IsEmpty() || Text == "False");
 }
 
 // Market.Table: the import reports no problem, the Standard row has the numbers of MK-Q1 = C (D582), every row is coherent.
@@ -259,6 +276,6 @@ void Test_TableImportTechnologyRows(FUnitTest& T)
 	T.AssertEquals("", TableImportField(RowNames, Columns, Values, "PloughI", "Requires", bFound), "PloughI requires nothing");
 	T.AssertEquals(2, TableImportNumber(RowNames, Columns, Values, "PloughII", "MinTier"), "PloughII opens at tier 2");
 	T.AssertEquals("PloughI", TableImportField(RowNames, Columns, Values, "PloughII", "Requires", bFound), "PloughII requires PloughI");
-	T.AssertEquals("True", TableImportField(RowNames, Columns, Values, "PloughI", "Implemented", bFound), "PloughI is implemented");
-	T.AssertEquals("False", TableImportField(RowNames, Columns, Values, "ReinforcedRam", "Implemented", bFound), "ReinforcedRam is not implemented yet (Soon)");
+	T.AssertTrue(TableImportBoolIs(RowNames, Columns, Values, "PloughI", "Implemented", true), "PloughI is implemented");
+	T.AssertTrue(TableImportBoolIs(RowNames, Columns, Values, "ReinforcedRam", "Implemented", false), "ReinforcedRam is not implemented yet (Soon)");
 }
