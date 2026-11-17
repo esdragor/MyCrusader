@@ -24,6 +24,7 @@
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
 #include "HAL/IConsoleManager.h"
+#include "Net/HOLScriptRpcPlayerActor.h"
 #include "HOLCollision.h"
 #include "HeroesOfLibertyLog.h"
 #include "InputAction.h"
@@ -5053,8 +5054,59 @@ void AHOLPlayerController::ServerCheatHoldPresence_Implementation(const int32 Sl
 #endif
 }
 
+// MIG2-S3 (HALDIR-1117n, NOT COMPILED): the interface's Duel / Match calls go through the script RPC actor (Script/Net/HOLRpcPlayer.as) when its cvar is 1 (default 0: the C++ RPC, nothing changes).
+// The cvars are declared by the script (FConsoleVariable); they are only READ here (never registered twice), a missing one reads as 0. Unique namespace name (unity builds).
+namespace HOLRpcScriptRoute_Haldir1117n
+{
+	bool IsOn(const TCHAR* CVarName)
+	{
+		const IConsoleVariable* CVar = IConsoleManager::Get().FindConsoleVariable(CVarName);
+		return CVar && CVar->GetInt() != 0;
+	}
+
+	// Calls the script actor's Server RPC by name with at most one int argument (bool as 0 / 1); false: no actor, no such function (script not loaded): the caller falls back to the C++ RPC.
+	bool Call(AHOLPlayerController* Controller, const TCHAR* CVarName, const TCHAR* FunctionName, const bool bHasArg, const int32 Arg)
+	{
+		if (!Controller || !IsOn(CVarName))
+		{
+			return false;
+		}
+		AActor* RpcActor = UHOLRpcBridgeLibrary::FindPlayerActor(Controller);
+		UFunction* Function = RpcActor ? RpcActor->FindFunction(FunctionName) : nullptr;
+		if (!Function || !Function->HasAnyFunctionFlags(FUNC_Net))
+		{
+			return false;
+		}
+		TArray<uint8> Params;
+		Params.SetNumZeroed(FMath::Max<int32>(Function->ParmsSize, 1));
+		Function->InitializeStruct(Params.GetData());
+		if (bHasArg)
+		{
+			for (TFieldIterator<FProperty> It(Function); It && It->HasAnyPropertyFlags(CPF_Parm); ++It)
+			{
+				if (const FBoolProperty* BoolProperty = CastField<FBoolProperty>(*It))
+				{
+					BoolProperty->SetPropertyValue_InContainer(Params.GetData(), Arg != 0);
+				}
+				else if (const FIntProperty* IntProperty = CastField<FIntProperty>(*It))
+				{
+					IntProperty->SetPropertyValue_InContainer(Params.GetData(), Arg);
+				}
+				break;
+			}
+		}
+		RpcActor->ProcessEvent(Function, Params.GetData());
+		Function->DestroyStruct(Params.GetData());
+		return true;
+	}
+}
+
 void AHOLPlayerController::RequestSurrender()
 {
+	if (HOLRpcScriptRoute_Haldir1117n::Call(this, TEXT("hol.Rpc.ScriptMatch"), TEXT("ServerSurrender"), false, 0))
+	{
+		return;
+	}
 	ServerSurrender();
 }
 
@@ -5155,7 +5207,10 @@ void AHOLPlayerController::RequestDuelChallenge(const int32 TargetSlot)
 {
 	if (!IsSpectator())
 	{
-		ServerDuelChallenge(TargetSlot);
+		if (!HOLRpcScriptRoute_Haldir1117n::Call(this, TEXT("hol.Rpc.ScriptDuel"), TEXT("ServerDuelChallenge"), true, TargetSlot))
+		{
+			ServerDuelChallenge(TargetSlot);
+		}
 	}
 }
 
@@ -5163,7 +5218,10 @@ void AHOLPlayerController::RequestDuelAnswer(const bool bAccept)
 {
 	if (!IsSpectator())
 	{
-		ServerDuelAnswer(bAccept);
+		if (!HOLRpcScriptRoute_Haldir1117n::Call(this, TEXT("hol.Rpc.ScriptDuel"), TEXT("ServerDuelAnswer"), true, bAccept ? 1 : 0))
+		{
+			ServerDuelAnswer(bAccept);
+		}
 	}
 }
 
@@ -6340,13 +6398,19 @@ void AHOLPlayerController::UpdateDrag()
 void AHOLPlayerController::RequestPause()
 {
 	UE_LOG(LogHOLMatch, Display, TEXT("Pause: pause asked by this player"));
-	ServerRequestPause();
+	if (!HOLRpcScriptRoute_Haldir1117n::Call(this, TEXT("hol.Rpc.ScriptMatch"), TEXT("ServerRequestPause"), false, 0))
+	{
+		ServerRequestPause();
+	}
 }
 
 void AHOLPlayerController::RequestResume()
 {
 	UE_LOG(LogHOLMatch, Display, TEXT("Pause: resume asked by this player"));
-	ServerRequestResume();
+	if (!HOLRpcScriptRoute_Haldir1117n::Call(this, TEXT("hol.Rpc.ScriptMatch"), TEXT("ServerRequestResume"), false, 0))
+	{
+		ServerRequestResume();
+	}
 }
 
 bool AHOLPlayerController::IsInputFrozen() const

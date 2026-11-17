@@ -7,6 +7,7 @@
 #include "EngineUtils.h"
 #include "GameFramework/PlayerController.h"
 #include "HeroesOfLibertyLog.h"
+#include "Match/HOLGameState.h"
 #include "Match/HOLPlayerState.h"
 #include "UObject/UObjectIterator.h"
 
@@ -44,6 +45,57 @@ bool UHOLRpcBridgeLibrary::QueueDiplomacyOrder(AActor* RpcActor, const int32 Kin
 		return false;
 	}
 	Commands->IssueDiplomacyOrder(Slot, Kind == 0 ? EHOLDiplomacyOrderKind::Stance : EHOLDiplomacyOrderKind::Vision, OtherSlot, Value);
+	return true;
+}
+
+bool UHOLRpcBridgeLibrary::QueueDuelOrder(AActor* RpcActor, const int32 Kind, const int32 OtherSlot)
+{
+	const int32 Slot = GetSenderSlot(RpcActor);
+	UWorld* World = RpcActor ? RpcActor->GetWorld() : nullptr;
+	UHOLCommandSubsystem* Commands = World ? World->GetSubsystem<UHOLCommandSubsystem>() : nullptr;
+	if (Slot < 0 || !Commands || Kind < 0 || Kind > 2)
+	{
+		return false;
+	}
+	// Same lines as AHOLPlayerController::ServerDuelChallenge_Implementation / ServerDuelAnswer_Implementation.
+	if (Kind == 0)
+	{
+		UE_LOG(LogHOLMatch, Display, TEXT("Duel order: slot %d challenge at slot %d queued"), Slot, OtherSlot);
+		Commands->IssueDuelOrder(Slot, EHOLDuelOrderKind::Challenge, OtherSlot);
+	}
+	else
+	{
+		UE_LOG(LogHOLMatch, Display, TEXT("Duel order: slot %d %s queued"), Slot, Kind == 1 ? TEXT("accept") : TEXT("refuse"));
+		Commands->IssueDuelOrder(Slot, Kind == 1 ? EHOLDuelOrderKind::Accept : EHOLDuelOrderKind::Refuse, INDEX_NONE);
+	}
+	return true;
+}
+
+bool UHOLRpcBridgeLibrary::RequestPause(AActor* RpcActor)
+{
+	const APlayerController* Controller = RpcActor ? Cast<APlayerController>(RpcActor->GetOwner()) : nullptr;
+	const AHOLPlayerState* State = Controller ? Controller->GetPlayerState<AHOLPlayerState>() : nullptr;
+	AHOLGameState* GameState = RpcActor && RpcActor->GetWorld() ? RpcActor->GetWorld()->GetGameState<AHOLGameState>() : nullptr;
+	return State && GameState && GameState->RequestPause(*State, GameState->GetServerWorldTimeSeconds());
+}
+
+bool UHOLRpcBridgeLibrary::RequestResume(AActor* RpcActor)
+{
+	const APlayerController* Controller = RpcActor ? Cast<APlayerController>(RpcActor->GetOwner()) : nullptr;
+	const AHOLPlayerState* State = Controller ? Controller->GetPlayerState<AHOLPlayerState>() : nullptr;
+	AHOLGameState* GameState = RpcActor && RpcActor->GetWorld() ? RpcActor->GetWorld()->GetGameState<AHOLGameState>() : nullptr;
+	return State && GameState && GameState->RequestResume(*State, GameState->GetServerWorldTimeSeconds());
+}
+
+bool UHOLRpcBridgeLibrary::Surrender(AActor* RpcActor)
+{
+	const int32 Slot = GetSenderSlot(RpcActor);
+	AHOLGameState* GameState = RpcActor && RpcActor->GetWorld() ? RpcActor->GetWorld()->GetGameState<AHOLGameState>() : nullptr;
+	if (!GameState || Slot == INDEX_NONE || !GameState->DefeatSlot(Slot, EHOLDefeatReason::Surrender))
+	{
+		UE_LOG(LogHOLMatch, Display, TEXT("Victory: surrender of slot %d refused"), Slot);
+		return false;
+	}
 	return true;
 }
 

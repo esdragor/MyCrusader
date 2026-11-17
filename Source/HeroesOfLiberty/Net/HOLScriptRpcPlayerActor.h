@@ -49,6 +49,25 @@ public:
 	/** Server: queues a diplomacy order (UHOLCommandSubsystem::IssueDiplomacyOrder) for the owner's own slot. Kind 0 stance, 1 vision. False: nothing queued. */
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Rpc")
 	static bool QueueDiplomacyOrder(AActor* RpcActor, int32 Kind, int32 OtherSlot, int32 Value);
+
+	/**
+	 * Server: queues a duel order (UHOLCommandSubsystem::IssueDuelOrder) for the owner's own slot (D288). Kind is an EHOLDuelOrderKind as an int (enum class without UENUM):
+	 * 0 Challenge (OtherSlot = the challenged slot), 1 Accept, 2 Refuse (OtherSlot ignored). Logs the same "Duel order: ... queued" line as the C++ RPC. False: nothing queued.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Rpc")
+	static bool QueueDuelOrder(AActor* RpcActor, int32 Kind, int32 OtherSlot);
+
+	/** Server: AHOLGameState::RequestPause for the owner's player state, at the server time (body of ServerRequestPause_Implementation). False: refused (the game state logs why) or no state. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Rpc")
+	static bool RequestPause(AActor* RpcActor);
+
+	/** Server: AHOLGameState::RequestResume, same model as RequestPause. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Rpc")
+	static bool RequestResume(AActor* RpcActor);
+
+	/** Server: AHOLGameState::DefeatSlot(owner's slot, EHOLDefeatReason::Surrender) (body of ServerSurrender_Implementation); logs "Victory: surrender of slot N refused" when refused. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Rpc")
+	static bool Surrender(AActor* RpcActor);
 };
 
 /** Server entry point the script cannot have by itself (generalises HOLScriptRpcProbeBridge): one actor per script class derived from the base. */

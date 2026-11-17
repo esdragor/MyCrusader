@@ -34,3 +34,11 @@ void Test_RpcMatchRefusal(FUnitTest& T)
 	T.AssertEquals(1, HOLRpc::MatchRefusal(-1), "a spectator cannot pause, resume or surrender");
 	T.AssertEquals(1, HOLRpc::MatchRefusal(8), "a sender past the 8 slots is refused");
 }
+
+// HALDIR-1117n: the kind numbers the bridge HOLRpcBridge::QueueDuelOrder takes (EHOLDuelOrderKind: Challenge 0, Accept 1, Refuse 2; see HOLCommandSubsystem.h).
+void Test_RpcDuelKinds(FUnitTest& T)
+{
+	T.AssertEquals(0, HOLRpc::DuelKindChallenge(), "a challenge is kind 0 (EHOLDuelOrderKind::Challenge)");
+	T.AssertEquals(1, HOLRpc::DuelAnswerKind(true), "accepting is kind 1 (EHOLDuelOrderKind::Accept)");
+	T.AssertEquals(2, HOLRpc::DuelAnswerKind(false), "refusing is kind 2 (EHOLDuelOrderKind::Refuse)");
+}
