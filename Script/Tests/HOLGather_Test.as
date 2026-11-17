@@ -21,7 +21,7 @@ int GatherNL(FHOLGatherLoadScript& Load, int N, double Rate, int Capacity, int& 
 	return Taken;
 }
 
-int GatherNL(FHOLGatherLoadScript& Load, int N, double Rate, int Capacity, int& Remaining, int Resource, int& LostTotal)
+int GatherN(FHOLGatherLoadScript& Load, int N, double Rate, int Capacity, int& Remaining, int Resource = 1)
 {
 	int Ignored = 0;
 	return GatherNL(Load, N, Rate, Capacity, Remaining, Resource, Ignored);
