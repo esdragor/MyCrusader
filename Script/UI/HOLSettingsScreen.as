@@ -28,13 +28,13 @@ class UHOLSettingsScreenScript : UHOLSettingsScreen
 		VolumeNames.Add(n"Voice");
 
 		UVerticalBox Column = MakeSettingsColumn();
-		AddSettingsText(Column, n"Heading", TextOf(n"Heading"), 0);
+		AddSettingsText(Column, n"Heading", UHOLSettingsScreen::TextOf(n"Heading"), 0);
 
 		UHorizontalBox TabRow = AddSettingsRow(Column);
-		VideoTab = AddSettingsTab(TabRow, n"VideoTab", TextOf(n"Video"));
-		SoundTab = AddSettingsTab(TabRow, n"SoundTab", TextOf(n"Sound"));
-		ControlsTab = AddSettingsTab(TabRow, n"ControlsTab", TextOf(n"Controls"));
-		LanguageTab = AddSettingsTab(TabRow, n"LanguageTab", TextOf(n"Language"));
+		VideoTab = AddSettingsTab(TabRow, n"VideoTab", UHOLSettingsScreen::TextOf(n"Video"));
+		SoundTab = AddSettingsTab(TabRow, n"SoundTab", UHOLSettingsScreen::TextOf(n"Sound"));
+		ControlsTab = AddSettingsTab(TabRow, n"ControlsTab", UHOLSettingsScreen::TextOf(n"Controls"));
+		LanguageTab = AddSettingsTab(TabRow, n"LanguageTab", UHOLSettingsScreen::TextOf(n"Language"));
 		TabLinks();
 
 		AddSettingsPages(Column);
@@ -44,16 +44,16 @@ class UHOLSettingsScreenScript : UHOLSettingsScreen
 		UHorizontalBox Pair = AddSettingsPair(Video);
 		UVerticalBox Display = AddSettingsPairColumn(Pair, false);
 		UVerticalBox Quality = AddSettingsPairColumn(Pair, true);
-		ResolutionRotator = AddSettingsRotator(Display, n"ResolutionRotator", TextOf(n"Resolution"), GetResolutionNames(), 0, 1);
-		WindowModeRotator = AddSettingsRotator(Display, n"WindowModeRotator", TextOf(n"WindowMode"), OptionsOf(n"WindowMode"), 0, 1);
-		VSyncRotator = AddSettingsRotator(Display, n"VSyncRotator", TextOf(n"VSync"), OptionsOf(n"OffOn"), 0, 1);
-		FrameRateRotator = AddSettingsRotator(Display, n"FrameRateRotator", TextOf(n"FrameRate"), OptionsOf(n"FrameRate"), 0, 1);
-		RenderScaleRotator = AddSettingsRotator(Display, n"RenderScaleRotator", TextOf(n"RenderScale"), OptionsOf(n"RenderScale"), 0, 1);
-		QualityRotator = AddSettingsRotator(Quality, n"QualityRotator", TextOf(n"Quality"), OptionsOf(n"Quality"), 0, 2);
+		ResolutionRotator = AddSettingsRotator(Display, n"ResolutionRotator", UHOLSettingsScreen::TextOf(n"Resolution"), GetResolutionNames(), 0, 1);
+		WindowModeRotator = AddSettingsRotator(Display, n"WindowModeRotator", UHOLSettingsScreen::TextOf(n"WindowMode"), UHOLSettingsScreen::OptionsOf(n"WindowMode"), 0, 1);
+		VSyncRotator = AddSettingsRotator(Display, n"VSyncRotator", UHOLSettingsScreen::TextOf(n"VSync"), UHOLSettingsScreen::OptionsOf(n"OffOn"), 0, 1);
+		FrameRateRotator = AddSettingsRotator(Display, n"FrameRateRotator", UHOLSettingsScreen::TextOf(n"FrameRate"), UHOLSettingsScreen::OptionsOf(n"FrameRate"), 0, 1);
+		RenderScaleRotator = AddSettingsRotator(Display, n"RenderScaleRotator", UHOLSettingsScreen::TextOf(n"RenderScale"), UHOLSettingsScreen::OptionsOf(n"RenderScale"), 0, 1);
+		QualityRotator = AddSettingsRotator(Quality, n"QualityRotator", UHOLSettingsScreen::TextOf(n"Quality"), UHOLSettingsScreen::OptionsOf(n"Quality"), 0, 2);
 		GroupRotators.Reset();
 		for (int Group = 0; Group < GroupNames.Num(); Group++)
 		{
-			UHOLRotator Rotator = AddSettingsRotator(Quality, GroupRotatorName(Group), TextOf(GroupNames[Group]), OptionsOf(n"Level"), 0, 2);
+			UHOLRotator Rotator = AddSettingsRotator(Quality, GroupRotatorName(Group), UHOLSettingsScreen::TextOf(GroupNames[Group]), UHOLSettingsScreen::OptionsOf(n"Level"), 0, 2);
 			GroupRotators.Add(Rotator);
 		}
 		AddSettingsHint(Video);
@@ -63,25 +63,25 @@ class UHOLSettingsScreenScript : UHOLSettingsScreen
 		for (int Volume = 0; Volume < VolumeNames.Num(); Volume++)
 		{
 			FName Key = VolumeRotatorName(Volume);
-			UHOLRotator Rotator = AddSettingsRotator(Sound, Key, TextOf(Key), OptionsOf(n"Volume"), 10, 0);
+			UHOLRotator Rotator = AddSettingsRotator(Sound, Key, UHOLSettingsScreen::TextOf(Key), UHOLSettingsScreen::OptionsOf(n"Volume"), 10, 0);
 			VolumeRotators.Add(Rotator);
 		}
-		AddSettingsText(Sound, n"SoundNote", TextOf(n"SoundNote"), 1);
+		AddSettingsText(Sound, n"SoundNote", UHOLSettingsScreen::TextOf(n"SoundNote"), 1);
 
 		// Controls: greyed until the game has enough actions to remap (D253); camera speed and edge scrolling act since J1.
 		UVerticalBox Controls = AddSettingsPage();
-		RemapButton = AddSettingsPageButton(Controls, n"RemapButton", TextOf(n"Remap"));
-		CameraSpeedRotator = AddSettingsRotator(Controls, n"CameraSpeedRotator", TextOf(n"CameraSpeed"), OptionsOf(n"CameraSpeed"), 1, 0);
-		EdgeScrollRotator = AddSettingsRotator(Controls, n"EdgeScrollRotator", TextOf(n"EdgeScroll"), OptionsOf(n"OffOn"), 1, 0);
-		AddSettingsText(Controls, n"ControlsNote", TextOf(n"RemapNote"), 1);
+		RemapButton = AddSettingsPageButton(Controls, n"RemapButton", UHOLSettingsScreen::TextOf(n"Remap"));
+		CameraSpeedRotator = AddSettingsRotator(Controls, n"CameraSpeedRotator", UHOLSettingsScreen::TextOf(n"CameraSpeed"), UHOLSettingsScreen::OptionsOf(n"CameraSpeed"), 1, 0);
+		EdgeScrollRotator = AddSettingsRotator(Controls, n"EdgeScrollRotator", UHOLSettingsScreen::TextOf(n"EdgeScroll"), UHOLSettingsScreen::OptionsOf(n"OffOn"), 1, 0);
+		AddSettingsText(Controls, n"ControlsNote", UHOLSettingsScreen::TextOf(n"RemapNote"), 1);
 		if (RemapButton != nullptr)
 			RemapButton.SetIsEnabled(false);
 
 		UVerticalBox Language = AddSettingsPage();
-		LanguageRotator = AddSettingsRotator(Language, n"LanguageRotator", TextOf(n"LanguageLabel"), OptionsOf(n"Language"), 0, 0);
+		LanguageRotator = AddSettingsRotator(Language, n"LanguageRotator", UHOLSettingsScreen::TextOf(n"LanguageLabel"), UHOLSettingsScreen::OptionsOf(n"Language"), 0, 0);
 
 		UHorizontalBox Buttons = AddSettingsRow(Column);
-		BackButton = AddSettingsButton(Buttons, n"BackButton", TextOf(n"Back"));
+		BackButton = AddSettingsButton(Buttons, n"BackButton", UHOLSettingsScreen::TextOf(n"Back"));
 		if (BackButton != nullptr)
 			BackButton.OnButtonBaseClicked.AddUFunction(this, n"HandleButtonClicked");
 	}
@@ -129,6 +129,12 @@ class UHOLSettingsScreenScript : UHOLSettingsScreen
 	UFUNCTION(BlueprintOverride)
 	void RefreshSettings()
 	{
+		ShowSettings();
+	}
+
+	// The body of RefreshSettings: an override cannot be called from the script, so the changes call this.
+	void ShowSettings()
+	{
 		UHOLGameUserSettings Settings = UHOLGameUserSettings::Get();
 		if (Settings == nullptr)
 		{
@@ -150,13 +156,15 @@ class UHOLSettingsScreenScript : UHOLSettingsScreen
 			QualityRotator.SetSelectedItem(UHOLSettingsScreen::GetQualityIndex());
 		for (int Group = 0; Group < GroupRotators.Num(); Group++)
 		{
-			if (GroupRotators[Group] != nullptr)
-				GroupRotators[Group].SetSelectedItem(UHOLSettingsScreen::GetGroupLevel(Group));
+			UHOLRotator GroupRotator = GroupRotators[Group];
+			if (GroupRotator != nullptr)
+				GroupRotator.SetSelectedItem(UHOLSettingsScreen::GetGroupLevel(Group));
 		}
 		for (int Volume = 0; Volume < VolumeRotators.Num(); Volume++)
 		{
-			if (VolumeRotators[Volume] != nullptr)
-				VolumeRotators[Volume].SetSelectedItem(Math::RoundToInt(Settings.GetVolumeAt(Volume) * 10.0));
+			UHOLRotator VolumeRotator = VolumeRotators[Volume];
+			if (VolumeRotator != nullptr)
+				VolumeRotator.SetSelectedItem(Math::RoundToInt(Settings.GetVolumeAt(Volume) * 10.0));
 		}
 		if (LanguageRotator != nullptr)
 			LanguageRotator.SetSelectedItem(UHOLSettingsScreen::GetLanguageIndex());
@@ -178,7 +186,7 @@ class UHOLSettingsScreenScript : UHOLSettingsScreen
 			Settings.ApplyNonResolutionSettings();
 			Settings.SaveSettings();
 		}
-		RefreshSettings();
+		ShowSettings();
 	}
 
 	UFUNCTION(BlueprintOverride)
@@ -200,7 +208,7 @@ class UHOLSettingsScreenScript : UHOLSettingsScreen
 		if (Name == n"LanguageRotator")
 		{
 			UHOLSettingsScreen::SetLanguageIndex(Value);
-			RefreshSettings();
+			ShowSettings();
 			return;
 		}
 		if (Settings != nullptr)
