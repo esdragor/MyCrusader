@@ -34,6 +34,16 @@ int32 UHOLMarketSubsystem::Received(const UWorld* World, const int32 Sent, const
 	return Sent;
 }
 
+HOLMarket::FBook UHOLMarketSubsystem::NewBook(const UWorld* World, const HOLMarket::FSettings& Settings)
+{
+	if (UHOLMarketSubsystem* Board = Find(World))
+	{
+		return FromBridge(Board->NewBookNow(ToBridge(Settings)));
+	}
+	UE_LOG(LogTemp, Error, TEXT("Market: no script board in this world, the book is not created (Script/Economy/HOLMarketBoardScript.as did not compile?)"));
+	return HOLMarket::FBook();
+}
+
 HOLMarket::FTrade UHOLMarketSubsystem::Apply(const UWorld* World, const HOLMarket::FSettings& Settings, const HOLMarket::FBook& Book, const FHOLResources& Stock, const EHOLResource Resource, const int32 Lots, const bool bBuy, FHOLResources& OutStock)
 {
 	OutStock = Stock;
@@ -75,6 +85,11 @@ FHOLMarketBridgeTrade UHOLMarketSubsystem::TradeOnce_Implementation(const FHOLMa
 	Refused.Reason = TEXT("board");
 	Refused.Book = Book;
 	return Refused;
+}
+
+FHOLMarketBridgeBook UHOLMarketSubsystem::NewBookNow(const FHOLMarketBridgeSettings& Settings)
+{
+	return FreshBook(Settings);
 }
 
 FHOLMarketBridgeBook UHOLMarketSubsystem::RecoverNow(const FHOLMarketBridgeSettings& Settings, const FHOLMarketBridgeBook& Book, const int32 Intervals)
@@ -158,6 +173,12 @@ FHOLMarketBridgeBook UHOLMarketSubsystem::RecoverPrices_Implementation(const FHO
 {
 	UE_LOG(LogTemp, Error, TEXT("Market: RecoverPrices has no script implementation, the book is returned unchanged"));
 	return Book;
+}
+
+FHOLMarketBridgeBook UHOLMarketSubsystem::FreshBook_Implementation(const FHOLMarketBridgeSettings& Settings)
+{
+	UE_LOG(LogTemp, Error, TEXT("Market: FreshBook has no script implementation, the book is empty"));
+	return FHOLMarketBridgeBook();
 }
 
 int32 UHOLMarketSubsystem::TributeReceived_Implementation(const int32 Sent, const int32 TaxPercent)

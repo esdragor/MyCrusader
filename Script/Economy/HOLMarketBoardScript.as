@@ -47,6 +47,18 @@ class UHOLMarketBoardScript : UHOLMarketSubsystem
 		return Out;
 	}
 
+	// The book at rest a match starts from (HOLGameState::ResetMarketBook, once per match): HOLMarket::NewBook of the script.
+	UFUNCTION(BlueprintOverride)
+	FHOLMarketBridgeBook FreshBook(FHOLMarketBridgeSettings Settings)
+	{
+		FHOLMarketSettings Rule;
+		Rule.BasePrices = Settings.BasePrices;
+		FHOLMarketBook After = HOLMarket::NewBook(Rule);
+		FHOLMarketBridgeBook Out;
+		Out.Prices = After.Prices;
+		return Out;
+	}
+
 	UFUNCTION(BlueprintOverride)
 	int TributeReceived(int Sent, int TaxPercent)
 	{

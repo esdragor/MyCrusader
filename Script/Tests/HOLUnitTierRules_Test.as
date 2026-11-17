@@ -113,10 +113,10 @@ void Test_UnitTierAgreesWithTheSiegeRule(FUnitTest& T)
 	T.AssertEquals(HOLSiegeCheck::GetTier(int(EHOLSiegeEngine::Mangonel)), HOLUnitTier::MinTierOf("Mangonel"), "the same tier for the Mangonel");
 	T.AssertEquals(HOLSiegeCheck::GetTier(int(EHOLSiegeEngine::Trebuchet)), HOLUnitTier::MinTierOf("Trebuchet"), "the same tier for the Trebuchet");
 	T.AssertEquals(HOLSiegeCheck::GetTier(int(EHOLSiegeEngine::Cannon)), HOLUnitTier::MinTierOf("Cannon"), "the same tier for the Cannon");
-	T.AssertEquals(HOLSiege::Available, HOLUnitTier::Available, "the same number for 'nothing stops it'");
-	T.AssertEquals(HOLSiege::TierTooLow, HOLUnitTier::TierTooLow, "the same number for the tier");
-	T.AssertEquals(HOLSiege::NoWorkshop, HOLUnitTier::NoBuilding, "the same number for the building");
-	T.AssertEquals(HOLSiege::CannotPay, HOLUnitTier::CannotPay, "the same number for the stock");
+	T.AssertEquals(int(EHOLSiegeBlock::Available), HOLUnitTier::Available, "the same number for 'nothing stops it'");
+	T.AssertEquals(int(EHOLSiegeBlock::TierTooLow), HOLUnitTier::TierTooLow, "the same number for the tier");
+	T.AssertEquals(int(EHOLSiegeBlock::NoWorkshop), HOLUnitTier::NoBuilding, "the same number for the building");
+	T.AssertEquals(int(EHOLSiegeBlock::CannotPay), HOLUnitTier::CannotPay, "the same number for the stock");
 }
 
 // Every tier of the table is between 0 and 3 and a unit open at a tier is open at every higher tier (never closes when the tier rises).

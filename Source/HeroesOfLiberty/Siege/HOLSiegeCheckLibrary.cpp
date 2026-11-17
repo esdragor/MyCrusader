@@ -3,6 +3,8 @@
 #include "Siege/HOLSiegeCheckLibrary.h"
 
 #include "Siege/HOLSiegeRules.h"
+#include "Simulation/HOLCombatRules.h"
+#include "Simulation/HOLUnitTypes.h"
 
 namespace
 {
@@ -17,7 +19,7 @@ namespace
 		return true;
 	}
 
-	/** The script's block number (HOLSiege::Available = 0... CannotPay = 4 in HOLSiegeRules.as), -1 for none of them. */
+	/** The script's block number (EHOLSiegeBlock: Available = 0... CannotPay = 4 of EHOLSiegeBlock), -1 for none of them. */
 	int32 ToNumber(const HOLSiege::EBlock Block)
 	{
 		switch (Block)
@@ -75,4 +77,38 @@ FName UHOLSiegeCheckLibrary::GetHealthStat(const FName TypeName)
 FName UHOLSiegeCheckLibrary::GetDamageStat(const FName TypeName)
 {
 	return HOLSiege::GetDamageStat(TypeName);
+}
+
+int32 UHOLSiegeCheckLibrary::GetEngineCount()
+{
+	return static_cast<int32>(HOLSiege::EEngine::Cannon) + 1;
+}
+
+int32 UHOLSiegeCheckLibrary::HealthWithTechnology(const int32 Health, const int32 HealthPercent)
+{
+	FHOLUnitTypeConstants Type;
+	Type.MaxHealth = Health;
+	return HOLCombat::GetMaxHealth(Type, 1, HealthPercent);
+}
+
+float UHOLSiegeCheckLibrary::AttackWithTechnology(const int32 Attack, const int32 AttackPercent)
+{
+	FHOLUnitTypeConstants Attacker;
+	Attacker.Attack = Attack;
+	FHOLUnitTypeConstants Defender;
+	Defender.MeleeArmor = 0;
+	Defender.RangedArmor = 0;
+	Defender.SiegeArmor = 0;
+	Defender.HeroArmor = 0;
+	return HOLCombat::GetDamage(Attacker, Defender, 1, 0, AttackPercent, 0);
+}
+
+bool UHOLSiegeCheckLibrary::TakesUnitsOn(const int32 Attack)
+{
+	return Attack > 0;
+}
+
+bool UHOLSiegeCheckLibrary::IsInArea(const FVector2D Centre, const FVector2D Other, const float Radius)
+{
+	return HOLCombat::IsInArea(Centre, Other, Radius);
 }

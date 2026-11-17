@@ -6,6 +6,27 @@
 #include "Kismet/BlueprintFunctionLibrary.h"
 #include "HOLSiegeCheckLibrary.generated.h"
 
+/** HOLSiege::EEngine (Siege/HOLSiegeRules.h) as a UENUM, same order: what Script/Siege/HOLSiegeRules.as numbered (MIG-S1c-Siege, ELROND-1117i). */
+UENUM(BlueprintType)
+enum class EHOLSiegeEngine : uint8
+{
+	Ram,
+	Mangonel,
+	Trebuchet,
+	Cannon,
+};
+
+/** HOLSiege::EBlock as a UENUM, same order (the numbers HOLSiegeCheck::Check returns): Available is HOLSiege::EBlock::None. */
+UENUM(BlueprintType)
+enum class EHOLSiegeBlock : uint8
+{
+	Available,
+	NotInPrototype,
+	TierTooLow,
+	NoWorkshop,
+	CannotPay,
+};
+
 /**
  * The simulation's rule of the siege engines (HOLSiege, Siege/HOLSiegeRules.h, C++, the one the server applies) for Angelscript
  * (namespace HOLSiegeCheck there): D836 (2) keeps the rule in C++ and the AI in script reads it here, so that its own copy,
@@ -46,4 +67,24 @@ public:
 	/** HOLSiege::GetDamageStat: the technology statistic that raises this type's damage, NAME_None for any other type. */
 	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Siege")
 	static FName GetDamageStat(FName TypeName);
+
+	/** The number of engines (EHOLSiegeEngine: Ram to Cannon, 4). */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Siege")
+	static int32 GetEngineCount();
+
+	/** HOLCombat::GetMaxHealth at level 1: the health with the percent the player's technologies add (400 + 10 % = 440), rounded once; a negative percent is no loss. */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Siege")
+	static int32 HealthWithTechnology(int32 Health, int32 HealthPercent);
+
+	/** HOLCombat::GetDamage of one hit at level 1 against an unarmoured, bonus-free defender: the attack alone with the technologies' percent (45 + 20 % = 54), 1 at least as in the combat; a negative percent is no loss. */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Siege")
+	static float AttackWithTechnology(int32 Attack, int32 AttackPercent);
+
+	/** HOLCombatProcessor's FSeeker::bCanAttackUnits (S4, SQ1 = B): a unit takes units on by itself only with an attack on units above 0 (the Ram does not). */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Siege")
+	static bool TakesUnitsOn(int32 Attack);
+
+	/** HOLCombat::IsInArea: whether Other lies within Radius cm of Centre (centre to centre, the circle's edge in). */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Siege")
+	static bool IsInArea(FVector2D Centre, FVector2D Other, float Radius);
 };
