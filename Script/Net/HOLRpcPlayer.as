@@ -168,6 +168,12 @@ int ClientChatRefusal(int SenderSlot, int Channel)
 int CheatRefusal(bool bAllowed, int SenderSlot)
 {
 	if (!bAllowed)
+		return 1;
+	if (SenderSlot < 0 || SenderSlot >= HOLRpcSlots)
+		return 2;
+	return 0;
+}
+
 // CHEATS B (CELEBORN-1117q): the cheat RPCs' pure refusals. bCheatsAllowed comes from HOLRpcBridge::CheatsAllowed (the C++ IsCheatRefused: R3.5, cheats off = refused, logs "Cheat refused: ...").
 // 0 = pass to the C++ _Implementation (the board's own rules decide the rest and log their warning), else the reason. Cheats are checked first.
 // Wound hits the sender's own units: 2 no slot (spectator). DamageBuilding: 2 negative amount (would heal).
@@ -176,22 +182,6 @@ int CheatWoundRefusal(bool bCheatsAllowed, int SenderSlot)
 	if (!bCheatsAllowed)
 		return 1;
 	if (SenderSlot < 0 || SenderSlot >= HOLRpcSlots)
-		return 2;
-	return 0;
-}
-
-// Tier: 3 the target is not -2 (everyone), -1 (own slot) or a slot 0..7 (the C++ body ignores a slot outside, silently).
-int CheatTierRefusal(bool bAllowed, int SenderSlot, int TargetSlot)
-{
-	const int Base = CheatRefusal(bAllowed, SenderSlot);
-	if (Base != 0)
-		return Base;
-	if (TargetSlot < -2 || TargetSlot >= HOLRpcSlots)
-int CheatDamageBuildingRefusal(bool bCheatsAllowed, int Amount)
-{
-	if (!bCheatsAllowed)
-		return 1;
-	if (Amount < 0)
 		return 2;
 	return 0;
 }
@@ -207,14 +197,13 @@ int EconomySeatRefusal(int SenderSlot, bool bHasBuilding)
 	return 0;
 }
 
-// SpawnBuilding: 2 slot outside 0..255 (the C++ limit, any slot unchecked otherwise), 3 no type name.
-int CheatSpawnBuildingRefusal(bool bCheatsAllowed, const FString& TypeName, int Slot)
+// Tier: 3 the target is not -2 (everyone), -1 (own slot) or a slot 0..7 (the C++ body ignores a slot outside, silently).
+int CheatTierRefusal(bool bAllowed, int SenderSlot, int TargetSlot)
 {
-	if (!bCheatsAllowed)
-		return 1;
-	if (Slot < 0 || Slot > 255)
-		return 2;
-	if (TypeName.Len() == 0)
+	const int Base = CheatRefusal(bAllowed, SenderSlot);
+	if (Base != 0)
+		return Base;
+	if (TargetSlot < -2 || TargetSlot >= HOLRpcSlots)
 		return 3;
 	return 0;
 }
@@ -226,6 +215,27 @@ int CheatTechnologyRefusal(bool bAllowed, int SenderSlot, FName Technology)
 	if (Base != 0)
 		return Base;
 	if (Technology == n"None")
+		return 3;
+	return 0;
+}
+
+int CheatDamageBuildingRefusal(bool bCheatsAllowed, int Amount)
+{
+	if (!bCheatsAllowed)
+		return 1;
+	if (Amount < 0)
+		return 2;
+	return 0;
+}
+
+// SpawnBuilding: 2 slot outside 0..255 (the C++ limit, any slot unchecked otherwise), 3 no type name.
+int CheatSpawnBuildingRefusal(bool bCheatsAllowed, const FString& TypeName, int Slot)
+{
+	if (!bCheatsAllowed)
+		return 1;
+	if (Slot < 0 || Slot > 255)
+		return 2;
+	if (TypeName.Len() == 0)
 		return 3;
 	return 0;
 }
@@ -254,6 +264,10 @@ int CheatScaleRefusal(bool bAllowed, int SenderSlot, float Scale)
 	if (Base != 0)
 		return Base;
 	if (!(Scale - Scale == 0.0))
+		return 3;
+	return 0;
+}
+
 // Defeat / FallForum / SkipForum: the slot named is one of the 8 seats (2 otherwise).
 int CheatSlotRefusal(bool bCheatsAllowed, int Slot)
 {
@@ -682,6 +696,8 @@ class AHOLRpcPlayer : AHOLScriptRpcPlayerActor
 			return;
 		}
 		HOLRpcBridge::CheatGatherSpeed(this, Scale);
+	}
+
 	// ---- CHEATS B (CELEBORN-1117q, C++ NOT COMPILED): T9 lot L4 cheat RPCs. Guards hol.Rpc.ScriptCheat<Name> (default 0). Each asks the C++ IsCheatRefused through HOLRpcBridge::CheatsAllowed (R3.5), validates with the
 	// HOLRpc::Cheat*Refusal functions, then the bridge calls the C++ _Implementation (the body and its "Cheat: ..." journal stay the single source). SpawnBuilding takes the type as an FString (the route fills it by CallEx).
 	UFUNCTION(Server)
