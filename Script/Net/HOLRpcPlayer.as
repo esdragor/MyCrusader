@@ -15,7 +15,7 @@ const FConsoleVariable CVar_RpcScriptMatch("hol.Rpc.ScriptMatch", 1);
 
 // T4 lot L1 (HALDIR-1117o, C++ NOT COMPILED): the Specialization (start, cancel) and Hero (return, talent, ability, rage, watch unit) RPCs, same guard model (default 0: the C++ RPC stays the only one).
 const FConsoleVariable CVar_RpcScriptSpecialization("hol.Rpc.ScriptSpecialization", 1);
-const FConsoleVariable CVar_RpcScriptHero("hol.Rpc.ScriptHero", 0);
+const FConsoleVariable CVar_RpcScriptHero("hol.Rpc.ScriptHero", 1);
 
 // T5 lot L1 (HALDIR-1117p, C++ NOT COMPILED): the Signals and Chat RPCs (Server and Client). Default 0: the C++ RPC stays the only one. With 1 on the SERVER, the C++ fan-out reaches each viewer
 // through its script actor's Client RPC (the actor is owned and bAlwaysRelevant), and the interface's Server calls go through this actor. The Client bodies do not read the cvar (the server decides).
@@ -23,7 +23,7 @@ const FConsoleVariable CVar_RpcScriptSignal("hol.Rpc.ScriptSignal", 1);
 const FConsoleVariable CVar_RpcScriptChat("hol.Rpc.ScriptChat", 1);
 
 // CHEATS A (ELROND-1117q, C++ NOT COMPILED): L4 group A, the seven cheat RPCs. Same guard model: default 0 = the C++ RPC stays the only one (these script RPCs return and do nothing), 1 = the script RPC acts.
-const FConsoleVariable CVar_RpcScriptCheatResources("hol.Rpc.ScriptCheatResources", 0);
+const FConsoleVariable CVar_RpcScriptCheatResources("hol.Rpc.ScriptCheatResources", 1);
 const FConsoleVariable CVar_RpcScriptCheatFastBuild("hol.Rpc.ScriptCheatFastBuild", 0);
 const FConsoleVariable CVar_RpcScriptCheatPopulation("hol.Rpc.ScriptCheatPopulation", 0);
 const FConsoleVariable CVar_RpcScriptCheatTechnology("hol.Rpc.ScriptCheatTechnology", 0);
@@ -350,7 +350,7 @@ class AHOLRpcPlayer : AHOLScriptRpcPlayerActor
 	UFUNCTION(BlueprintOverride)
 	void Tick(float DeltaSeconds)
 	{
-		// Proof of the C++ -> script routes (Tools\Scenarios\rpc_routes_run.ps1): hol.Rpc.ProofRoute bits: 1 duel challenge, 2 pause, 4 spec cancel, 8 hero return, fired ONCE 4 s after the owner's first tick.
+		// Proof of the C++ -> script routes (Tools\Scenarios\rpc_routes_run.ps1): hol.Rpc.ProofRoute bits: 1 duel challenge, 2 pause, 4 spec cancel, 8 hero return, 16 cheat resources, fired ONCE 4 s after the owner's first tick.
 		if (!HasAuthority() && !bRouteProved && CVar_RpcProofRoute.GetInt() > 0)
 		{
 			APlayerController RouteController = Cast<APlayerController>(GetOwner());
@@ -370,6 +370,8 @@ class AHOLRpcPlayer : AHOLScriptRpcPlayerActor
 						Commands.Add("hol.Spec.Cancel");
 					if ((Routes & 8) != 0)
 						Commands.Add("hol.Hero.Return");
+					if ((Routes & 16) != 0)
+						Commands.Add("hol.Cheat.Resources 100");
 					for (FString Command : Commands)
 					{
 						Log(n"LogHOLMatch", f"RpcRoute: the client runs '{Command}'");
@@ -532,6 +534,7 @@ class AHOLRpcPlayer : AHOLScriptRpcPlayerActor
 			Log(n"LogHOLMatch", f"RpcHero: return refused for sender slot {Slot}");
 			return;
 		}
+		Log(n"LogHOLMatch", f"RpcHero: return received by the server: slot {Slot}");
 		HOLRpcBridge::ReturnHero(this);
 	}
 
@@ -605,6 +608,7 @@ class AHOLRpcPlayer : AHOLScriptRpcPlayerActor
 			Log(n"LogHOLMatch", f"RpcCheat: resources refused ({Refusal}) for sender slot {Slot}");
 			return;
 		}
+		Log(n"LogHOLMatch", f"RpcCheat: resources received by the server: slot {Slot} food {Food}");
 		HOLRpcBridge::CheatResources(this, Food, Wood, Stone, Gold);
 	}
 
