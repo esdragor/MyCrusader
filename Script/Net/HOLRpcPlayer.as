@@ -61,7 +61,7 @@ class AHOLRpcPlayer : AHOLScriptRpcPlayerActor
 		ServerDiplomacyStance(CVar_RpcDiplomacyTarget.GetInt(), CVar_RpcDiplomacyStance.GetInt());
 	}
 
-	UFUNCTION(Server, Reliable)
+	UFUNCTION(Server)
 	void ServerDiplomacyStance(int TargetSlot, int Stance)
 	{
 		const int Slot = HOLRpcBridge::GetSenderSlot(this);
