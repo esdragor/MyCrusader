@@ -11,7 +11,8 @@ void Test_GameMenuBridgeClass(FUnitTest& T)
 
 void Test_GameMenuBridgeAnswers(FUnitTest& T)
 {
-	UHOLGameMenuRulesBridge Bridge = UHOLGameMenuRulesBridge::Get();
+	// Typed as the script class: the C++ statics of the base share the overrides' names (not callable from script), the script's own methods are.
+	UHOLGameMenuRulesScript Bridge = Cast<UHOLGameMenuRulesScript>(UHOLGameMenuRulesBridge::Get());
 	if (Bridge == nullptr)
 	{
 		T.AssertTrue(false, "no bridge");
