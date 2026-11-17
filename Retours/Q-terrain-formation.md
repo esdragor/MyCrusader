@@ -1,4 +1,6 @@
-# Q-terrain-formation : la forêt et un bloc de formation mixte (HALDIR-1117f, 2026-11-17)
+# [RÉPONDU 2026-11-17, D844] Q-terrain-formation : la forêt et un bloc de formation mixte (HALDIR-1117f, 2026-11-17)
+
+Reponse: on enlève le ralentissement en forêt = la forêt (F4) ne ralentit plus personne (ni cavalerie ni siège, isolés ou en bloc) ; le gué F5 (120 % de dégâts reçus) et le marais restent ; la question de la formation mixte disparaît. Texte complet : D844 du GDD.
 
 Contexte : D810 est branché au Mass pour les marcheurs isolés (ordre de déplacement : catégorie pied / cavalerie / siège, forêt F4, gué F5).
 Le bloc de formation (GetTerrainShare du bloc, HOLUnitOrderProcessor, ~l.2597) ne tient compte que du marais : un bloc mélange des unités à pied
