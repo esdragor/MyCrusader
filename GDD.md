@@ -3633,4 +3633,8 @@ La courbe d'XP (Q04) reste à régler en test.
 
 **D839** (Langage de développement, D830, D836, 2026-11-16 21:5x, consigne de l'utilisateur) : le développement futur se fait **directement dans le bon langage** : Angelscript par défaut pour tout code neuf (règles, IA, interface, tests), C++ seulement par exception justifiée (Mass / appelé par pas, réplication, Slate, mesure, liaison à exposer), sans jumeau ; écrit dans `CLAUDE.md` (règle permanente) et `Tools\AutoJourney\brief_commun.md`. Les chantiers de fonctions de `Auto_Journey_File.md` marqués « (C++ : attend la migration D830) » se réécrivent donc en script quand la migration les débloque.
 
-Prochain numéro : **D840**.
+**D840** (Migration, étape 4 : écrans et HUD, `Q-migration-ui`, 2026-11-17 09:3x, réponse de l'utilisateur) : option **B**. Les écrans passent en script **un par un, avec un essai de 3 minutes joué par l'utilisateur à chaque fois** (`play.ps1 <nom>`, réponse OK ou BUG), les écrans simples d'abord (titre, salon, options), le HUD de jeu en dernier, par panneaux. Aucun écran n'est migré sans essai prévu ; la base Slate/UMG (HOLScreen, RootLayout, Style, Button...) reste en C++ (D838/D839).
+
+**D841** (Terrain, `Q-terrain-regles-sans-appelant`, 2026-11-17 09:3x, réponse de l'utilisateur) : option **A**. On **branche D810** : le mouvement et le combat lisent les règles de forêt (F4 : cavalerie 80 %, engins 70 %), de gué (F5 : 120 % de dégâts reçus) et d'arrêt de charge en marais ; les règles et leurs tests restent. Le branchement touche le pas Mass (C++) : une tâche à part, avec build, chantier `TerrainForestFordInProgress.md`.
+
+Prochain numéro : **D842**.
