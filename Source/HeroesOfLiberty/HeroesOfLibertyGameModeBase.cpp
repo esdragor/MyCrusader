@@ -9,6 +9,7 @@
 #include "GameFramework/GameStateBase.h"
 #include "GameFramework/PlayerController.h"
 #include "GenericPlatform/GenericPlatformHttp.h"
+#include "Dev/HOLScriptRpcProbeBridge.h"
 #include "HeroesOfLibertyLog.h"
 #include "HOLVersion.h"
 #include "Kismet/GameplayStatics.h"
@@ -285,6 +286,9 @@ FString AHeroesOfLibertyGameModeBase::InitNewPlayer(APlayerController* NewPlayer
 void AHeroesOfLibertyGameModeBase::PostLogin(APlayerController* NewPlayer)
 {
 	Super::PostLogin(NewPlayer);
+
+	// MIG-P1d-C++: the script's RPC probe (Script/Dev/HOLScriptRpcProbe.as), one per controller, if that script is loaded.
+	HOLScriptRpcProbeBridge::SpawnFor(NewPlayer);
 
 	AHOLPlayerState* PlayerState = NewPlayer ? NewPlayer->GetPlayerState<AHOLPlayerState>() : nullptr;
 	if (!PlayerState)
