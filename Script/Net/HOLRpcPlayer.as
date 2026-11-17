@@ -11,8 +11,10 @@ const FConsoleVariable CVar_RpcDiplomacyStance("hol.Rpc.DiplomacyStance", 1);
 const int HOLRpcSlots = 8; // FHOLMatchConfig::MaxSlots
 const int HOLRpcStanceAlly = 2; // HOLDiplomacy::Enemy 0 / Neutral 1 / Ally 2
 
+namespace HOLRpc
+{
 // Why a stance order is not queued: 0 none (queue it), 1 the sender has no slot (spectator, out of range), 2 the target is out of range, 3 the stance is not Enemy / Neutral / Ally.
-int HOLRpcStanceRefusal(int SenderSlot, int TargetSlot, int Stance)
+int StanceRefusal(int SenderSlot, int TargetSlot, int Stance)
 {
 	if (SenderSlot < 0 || SenderSlot >= HOLRpcSlots)
 		return 1;
@@ -24,7 +26,7 @@ int HOLRpcStanceRefusal(int SenderSlot, int TargetSlot, int Stance)
 }
 
 // The interface's call (HOLGameScreenScript.PanelClick): through the script actor if hol.Rpc.ScriptDiplomacy is 1 and this controller has it, else the C++ RPC as before.
-void HOLRpcRequestStance(AHOLPlayerController Controller, int TargetSlot, int Stance)
+void RequestStance(AHOLPlayerController Controller, int TargetSlot, int Stance)
 {
 	if (Controller == nullptr)
 		return;
@@ -39,6 +41,7 @@ void HOLRpcRequestStance(AHOLPlayerController Controller, int TargetSlot, int St
 	}
 	Controller.RequestStance(TargetSlot, Stance);
 }
+} // namespace HOLRpc
 
 class AHOLRpcPlayer : AHOLScriptRpcPlayerActor
 {
@@ -66,7 +69,7 @@ class AHOLRpcPlayer : AHOLScriptRpcPlayerActor
 	{
 		const int Slot = HOLRpcBridge::GetSenderSlot(this);
 		Log(n"LogHOLMatch", f"RpcDiplomacy: received by the server: sender slot {Slot} stance {Stance} toward slot {TargetSlot}");
-		const int Refusal = HOLRpcStanceRefusal(Slot, TargetSlot, Stance);
+		const int Refusal = HOLRpc::StanceRefusal(Slot, TargetSlot, Stance);
 		if (Refusal != 0)
 		{
 			Log(n"LogHOLMatch", f"RpcDiplomacy: refused ({Refusal}) for sender slot {Slot}");
