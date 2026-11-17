@@ -454,7 +454,7 @@ void Test_VolcanoAltarHoldCount(FUnitTest& T)
 {
 	const FHOLVolcanoTuning Tuning;
 	T.AssertEquals(60.f, Tuning.AltarHoldSeconds, "held ~60 s (D380)");
-	float Held = 0.f;
+	float32 Held = 0.f;
 	T.AssertEquals(1, HOLVolcanoRules::StepAltar(Held, 1, 1.f, Tuning), "one camp: holding");
 	T.AssertEquals(1.f, Held, "... the count goes up by the step");
 	for (int Second = 0; Second < 19; Second++)
@@ -468,7 +468,7 @@ void Test_VolcanoAltarHoldCount(FUnitTest& T)
 	HOLVolcanoRules::StepAltar(Held, 0, 1000.f, Tuning);
 	T.AssertEquals(0.f, Held, "... never below zero");
 
-	float Owned = 0.f;
+	float32 Owned = 0.f;
 	int Holder = -1;
 	for (int Second = 0; Second < 29; Second++)
 		HOLVolcanoRules::StepAltarOwned(Owned, Holder, 1, 0, 1.f, Tuning);
@@ -480,7 +480,7 @@ void Test_VolcanoAltarHoldCount(FUnitTest& T)
 	HOLVolcanoRules::StepAltarOwned(Owned, Holder, 1, 1, 1.f, Tuning);
 	T.AssertTrue(Holder == 1 && Owned == 1.f, "camp 1 alone after camp 0's 30 s: starts again, 1 s, not 31");
 
-	float Count = 0.f;
+	float32 Count = 0.f;
 	for (int Second = 0; Second < 59; Second++)
 		HOLVolcanoRules::StepAltar(Count, 1, 1.f, Tuning);
 	T.AssertTrue(Count < Tuning.AltarHoldSeconds, "59 s: not held yet");
