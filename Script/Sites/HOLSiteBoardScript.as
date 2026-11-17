@@ -1,5 +1,5 @@
 // The server's sacred-site board (MIG-CPP-Site, D836 point 3), the script side of UHOLSiteBoardSubsystem: the C++ part (UHOLSiteSubsystem::OnStepEnded)
-// counts the units of each site in its Mass walk (HOLSite::ResetCounts / AddUnit stay C++) and calls this board ONCE per site and per step with the
+// counts the units of each site in its Mass walk (HOLSite::ResetCounts / AddUnit stay C++: per unit, in the Mass walk) and calls this board ONCE per site and per step with the
 // counts already aggregated, then once per step for the victory count. The rules are HOLSiteRules.as (HOLSite::Step) and HOLSiteVictory.as
 // (HOLSiteVictory::Step), the script is the source. The structs of the bridge are the C++ ones (global FHOLSiteState, FHOLSiteVictoryState); the
 // rules' own are HOLSite::FHOLSiteState and HOLSiteVictory::FHOLSiteVictoryState. Server and solo only. Tested by HeroesOfLiberty.Sites.ServerBoard.
@@ -35,5 +35,11 @@ class UHOLSiteBoardScript : UHOLSiteBoardSubsystem
 		Result.Winner = Out.Winner;
 		Result.LastOwners = Out.LastOwners;
 		return Result;
+	}
+
+	UFUNCTION(BlueprintOverride)
+	int GoldStepRule(int& Carry, int Sites, int RatePerMinute)
+	{
+		return HOLSiteVictory::GoldStepWith(Carry, Sites, RatePerMinute);
 	}
 }

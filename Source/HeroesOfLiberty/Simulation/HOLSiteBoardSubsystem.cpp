@@ -51,6 +51,21 @@ FHOLSiteVictoryState UHOLSiteBoardSubsystem::VictoryStep(UHOLSiteBoardSubsystem*
 	return State;
 }
 
+int32 UHOLSiteBoardSubsystem::GoldStep(UHOLSiteBoardSubsystem* Board, int32& Carry, const int32 Sites, const int32 RatePerMinute)
+{
+	if (Board)
+	{
+		return Board->GoldStepNow(Carry, Sites, RatePerMinute);
+	}
+	ReportNoRule(TEXT("GoldStep without a board"));
+	return 0;
+}
+
+int32 UHOLSiteBoardSubsystem::GoldStepNow(int32& Carry, const int32 Sites, const int32 RatePerMinute)
+{
+	return GoldStepRule(Carry, Sites, RatePerMinute);
+}
+
 FHOLSiteState UHOLSiteBoardSubsystem::StepSiteNow(const FHOLSiteState& State, const TArray<int32>& Takers, const TArray<int32>& Disturbers,
 	const TArray<int32>& TeamBySlot, const int32 HoldSteps, const int32 DecaySteps)
 {
@@ -91,4 +106,10 @@ FHOLSiteVictoryState UHOLSiteBoardSubsystem::VictoryStepRule_Implementation(cons
 {
 	ReportNoRule(TEXT("VictoryStepRule (abstract C++ default)"));
 	return State;
+}
+
+int32 UHOLSiteBoardSubsystem::GoldStepRule_Implementation(int32& Carry, const int32 Sites, const int32 RatePerMinute)
+{
+	ReportNoRule(TEXT("GoldStepRule (abstract C++ default)"));
+	return 0;
 }
