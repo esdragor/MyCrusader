@@ -164,7 +164,8 @@ void Test_Gather_Deposit(FUnitTest& T)
 	T.AssertEquals(7, Load.Amount, "order on berries: the 7 wood kept");
 	T.AssertEquals(1, Load.Resource, "still carries wood");
 	int Bush = 200;
-		int Taken = GatherNL(Load, 20, 0.7, 10, Bush, 0, GatherLost);
+	int GatherLost = 0;
+	int Taken = GatherNL(Load, 20, 0.7, 10, Bush, 0, GatherLost);
 	T.AssertEquals(0, Taken, "nothing whole after 1 s of berries");
 	T.AssertEquals(7, Load.Amount, "the 7 wood still carried");
 	T.AssertEquals(0, GatherLost, "nothing lost yet");
@@ -186,7 +187,8 @@ void Test_Gather_Deposit(FUnitTest& T)
 	Full.ProgressResource = 1;
 	T.AssertTrue(HOLGatherRead::IsFullOf(Full, 1, 10), "full of wood");
 	T.AssertFalse(HOLGatherRead::IsFullOf(Full, 0, 10), "not full of food");
-		Taken = GatherNL(Full, 20, 0.7, 10, Bush, 0, GatherLost);
+	GatherLost = 0;
+	Taken = GatherNL(Full, 20, 0.7, 10, Bush, 0, GatherLost);
 	T.AssertEquals(0, Taken, "full of wood: nothing whole after 1 s of berries");
 	Taken = GatherNL(Full, 20, 0.7, 10, Bush, 0, GatherLost);
 	T.AssertEquals(1, Taken, "then its first food");
