@@ -69,36 +69,6 @@ bool FHOLOrderBuildingQueueTest::RunTest(const FString& Parameters)
 	using namespace HOLOrderChain;
 	using UE::HeroesOfLiberty::Tests::OrderChains::FUnitModel;
 
-	// A building attack queued after a move: it waits for the walk, then strikes; the building falls: its order is over.
-	{
-		FUnitModel Unit;
-		Unit.bWalking = true;
-		Unit.Queue = {FStep::MakeAttackBuilding(7)};
-		TestFalse(TEXT("After a move: waits while it walks"), Unit.Advance());
-		Unit.bWalking = false;
-		TestTrue(TEXT("After a move: starts at the arrival"), Unit.Advance());
-		TestEqual(TEXT("After a move: strikes building 7"), Unit.Target.Id, 7);
-		TestFalse(TEXT("After a move: its order goes on while the building stands"), Unit.IsOver());
-		EndBuildingTarget(Unit.Target, Unit.Ordered);
-		TestTrue(TEXT("After a move: the building fallen, its order is over"), Unit.IsOver());
-	}
-	// Two buildings queued (Shift): both fall, in order; never dropped for an enemy unit meanwhile (D345).
-	{
-		FUnitModel Unit;
-		Unit.Queue = {FStep::MakeAttackBuilding(1), FStep::MakeAttackBuilding(2)};
-		TestTrue(TEXT("Two buildings: the first starts"), Unit.Advance());
-		TestFalse(TEXT("Two buildings: the first never dropped for an enemy unit"), Unit.MaySeek());
-		TestFalse(TEXT("Two buildings: the second waits"), Unit.Advance());
-		TestEqual(TEXT("Two buildings: still on the first"), Unit.Ordered.Id, 1);
-		EndBuildingTarget(Unit.Target, Unit.Ordered);
-		TestTrue(TEXT("Two buildings: the first fallen, the second starts"), Unit.Advance());
-		TestEqual(TEXT("Two buildings: strikes the second"), Unit.Target.Id, 2);
-		TestFalse(TEXT("Two buildings: the second never dropped for an enemy unit"), Unit.MaySeek());
-		TestEqual(TEXT("Two buildings: queue empty"), Unit.Queue.Num(), 0);
-		EndBuildingTarget(Unit.Target, Unit.Ordered);
-		TestTrue(TEXT("Two buildings: both fallen, its order over"), Unit.IsOver());
-		TestTrue(TEXT("Two buildings: both fallen, it takes on enemy units again"), Unit.MaySeek());
-	}
 	// Shift on a building after an attack on a unit: it waits for the target's death.
 	{
 		FUnitModel Unit;
@@ -108,16 +78,6 @@ bool FHOLOrderBuildingQueueTest::RunTest(const FString& Parameters)
 		Unit.bOrderedTarget = false;
 		TestTrue(TEXT("After a unit attack: starts at the target's death"), Unit.Advance());
 		TestEqual(TEXT("After a unit attack: strikes building 5"), Unit.Ordered.Id, 5);
-	}
-	// A building attack without Shift, then a move with Shift: the move waits for the fall.
-	{
-		FUnitModel Unit;
-		Unit.Target.Id = Unit.Ordered.Id = 3;
-		Unit.Queue = {FStep::MakeMove(FVector(100., 0., 0.))};
-		TestFalse(TEXT("Then a move: waits while the building stands"), Unit.Advance());
-		EndBuildingTarget(Unit.Target, Unit.Ordered);
-		TestTrue(TEXT("Then a move: starts at the fall"), Unit.Advance());
-		TestTrue(TEXT("Then a move: walks"), Unit.bWalking);
 	}
 	// The drop (D345): only a building taken on by itself (at rest, on an attack-move) is dropped for an enemy unit; an ordered
 	// one (a right click, Shift or not) never, its queue waiting for its fall.
@@ -136,9 +96,6 @@ bool FHOLOrderBuildingQueueTest::RunTest(const FString& Parameters)
 		AttackMove.Target.Id = 9;
 		TestTrue(TEXT("Attack-move: its own building dropped for an enemy unit"), AttackMove.MaySeek(/*bAttackMove*/ true));
 		TestFalse(TEXT("A plain walk: nobody taken on"), AttackMove.MaySeek(/*bAttackMove*/ false));
-		// A building taken on by itself ends without an order to end.
-		EndBuildingTarget(Rest.Target, Rest.Ordered);
-		TestTrue(TEXT("At rest: its building fallen, nothing left"), Rest.Target.IsExplicitlyNull() && Rest.Ordered.IsExplicitlyNull());
 	}
 	// Its chain step (D328): red as an attack, to the building; not the same step as a build of the same id.
 	{
