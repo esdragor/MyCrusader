@@ -250,6 +250,9 @@ bool UHOLRpcBridgeLibrary::CheatGatherSpeed(AActor* RpcActor, const double Scale
 {
 	AHOLPlayerController* Controller = HOLRpcBridgeL1_Haldir1117o::OwnerController(RpcActor);
 	if (Controller) { Controller->ServerCheatGatherSpeed_Implementation(static_cast<float>(Scale)); }
+	return Controller != nullptr;
+}
+
 // ---- CHEATS B (CELEBORN-1117q, NOT COMPILED), MIG2-S3 T9 lot L4: the cheat RPCs (friend class: the _Implementation of the owner controller, same body, same journal).
 bool UHOLRpcBridgeLibrary::CheatsAllowed(AActor* RpcActor, const FString& What)
 {
