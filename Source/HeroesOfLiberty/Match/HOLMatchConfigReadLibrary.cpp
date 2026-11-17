@@ -2,7 +2,9 @@
 
 #include "Match/HOLMatchConfigReadLibrary.h"
 
+#include "Engine/GameInstance.h"
 #include "Match/HOLMatchConfig.h"
+#include "Match/HOLMatchSubsystem.h"
 #include "Match/HOLPlayerColors.h"
 #include "Misc/FileHelper.h"
 #include "Misc/Paths.h"
@@ -197,4 +199,58 @@ TArray<int32> UHOLMatchConfigReadLibrary::DrawRandomColors(const int32 Seed, con
 bool UHOLMatchConfigReadLibrary::LoadProjectFileText(const FString& RelativePath, FString& OutText)
 {
 	return FFileHelper::LoadFileToString(OutText, *FPaths::Combine(FPaths::ProjectDir(), RelativePath));
+}
+
+int32 UHOLMatchConfigReadLibrary::GetNeutralOwner()
+{
+	return FHOLMatchConfig::NeutralOwner;
+}
+
+TArray<int32> UHOLMatchConfigReadLibrary::GetPaletteDWColors()
+{
+	TArray<int32> Result;
+	for (int32 Index = 0; Index < HOLPlayerColors::NumColors; ++Index)
+	{
+		Result.Add(static_cast<int32>(HOLPlayerColors::GetColor(Index).DWColor()));
+	}
+	return Result;
+}
+
+FString UHOLMatchConfigReadLibrary::GetPaletteColorName(const int32 ColorIndex)
+{
+	return HOLPlayerColors::GetColorName(ColorIndex).ToString();
+}
+
+bool UHOLMatchConfigReadLibrary::PaletteLinearColorsEqual(const int32 IndexA, const int32 IndexB)
+{
+	return HOLPlayerColors::GetLinearColor(IndexA) == HOLPlayerColors::GetLinearColor(IndexB);
+}
+
+bool UHOLMatchConfigReadLibrary::OwnerColorIsPaletteColor(const int32 OwnerPlayer, const TArray<int32>& SlotColors, const int32 PaletteIndex, const float Tolerance)
+{
+	TArray<uint8> Colors;
+	for (const int32 Color : SlotColors)
+	{
+		Colors.Add(static_cast<uint8>(Color));
+	}
+	return HOLPlayerColors::GetOwnerLinearColor(OwnerPlayer, Colors).Equals(HOLPlayerColors::GetLinearColor(PaletteIndex), Tolerance);
+}
+
+bool UHOLMatchConfigReadLibrary::RunSubsystemFile(const FString& Json, bool& bOutNoConfigAtFirst, bool& bOutDefaultWhenNone, bool& bOutLoaded, bool& bOutConfigFromFile)
+{
+	bOutNoConfigAtFirst = bOutDefaultWhenNone = bOutLoaded = bOutConfigFromFile = false;
+	FHOLMatchConfig Written;
+	const FString Path = FPaths::Combine(FPaths::AutomationTransientDir(), TEXT("MatchConfigScript.json"));
+	if (!ReadMatchConfig(Json, Written) || !FFileHelper::SaveStringToFile(Json, *Path))
+	{
+		return false;
+	}
+	// A game instance subsystem must live in a game instance (ClassWithin); Initialize is not needed here.
+	UGameInstance* GameInstance = NewObject<UGameInstance>(GetTransientPackage());
+	UHOLMatchSubsystem* Match = NewObject<UHOLMatchSubsystem>(GameInstance);
+	bOutNoConfigAtFirst = !Match->HasConfig();
+	bOutDefaultWhenNone = Match->GetConfigOrDefault() == FHOLMatchConfig::MakeDefault();
+	bOutLoaded = Match->LoadFromFile(Path);
+	bOutConfigFromFile = Match->HasConfig() && Match->GetConfigOrDefault() == Written;
+	return true;
 }
