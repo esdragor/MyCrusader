@@ -4,23 +4,23 @@
 // This file lives in Script/Net: the plugin skips Script/Dev, Developers, Examples and Editor outside the interactive editor. NEEDS THE C++ LOT (HOLScriptRpcPlayerActor, HOLRpcBridge::).
 // Switch hol.Rpc.ScriptDiplomacy (default 0): 0 = the interface keeps the old C++ RPC (RequestStance); 1 = it goes through this actor. The C++ RPC stays until the 2-client proof.
 // Proof: hol.Rpc.DiplomacyTarget (default -1; >= 0 on a client: it calls ServerDiplomacyStance(Target, hol.Rpc.DiplomacyStance) once) used by Tools\Scenarios\rpc_diplomacy_run.ps1.
-const FConsoleVariable CVar_RpcScriptDiplomacy("hol.Rpc.ScriptDiplomacy", 0);
+const FConsoleVariable CVar_RpcScriptDiplomacy("hol.Rpc.ScriptDiplomacy", 1);
 const FConsoleVariable CVar_RpcDiplomacyTarget("hol.Rpc.DiplomacyTarget", -1);
 const FConsoleVariable CVar_RpcDiplomacyStance("hol.Rpc.DiplomacyStance", 1);
 const FConsoleVariable CVar_RpcProofRoute("hol.Rpc.ProofRoute", 0);
 
 // T3 (SAURON-1117m): the Duel and Match (pause, resume, surrender) lots, same guard model: 0 = the C++ RPC stays the only one (these script RPCs log and do nothing), 1 = the script RPC acts.
 const FConsoleVariable CVar_RpcScriptDuel("hol.Rpc.ScriptDuel", 0);
-const FConsoleVariable CVar_RpcScriptMatch("hol.Rpc.ScriptMatch", 0);
+const FConsoleVariable CVar_RpcScriptMatch("hol.Rpc.ScriptMatch", 1);
 
 // T4 lot L1 (HALDIR-1117o, C++ NOT COMPILED): the Specialization (start, cancel) and Hero (return, talent, ability, rage, watch unit) RPCs, same guard model (default 0: the C++ RPC stays the only one).
-const FConsoleVariable CVar_RpcScriptSpecialization("hol.Rpc.ScriptSpecialization", 0);
+const FConsoleVariable CVar_RpcScriptSpecialization("hol.Rpc.ScriptSpecialization", 1);
 const FConsoleVariable CVar_RpcScriptHero("hol.Rpc.ScriptHero", 0);
 
 // T5 lot L1 (HALDIR-1117p, C++ NOT COMPILED): the Signals and Chat RPCs (Server and Client). Default 0: the C++ RPC stays the only one. With 1 on the SERVER, the C++ fan-out reaches each viewer
 // through its script actor's Client RPC (the actor is owned and bAlwaysRelevant), and the interface's Server calls go through this actor. The Client bodies do not read the cvar (the server decides).
-const FConsoleVariable CVar_RpcScriptSignal("hol.Rpc.ScriptSignal", 0);
-const FConsoleVariable CVar_RpcScriptChat("hol.Rpc.ScriptChat", 0);
+const FConsoleVariable CVar_RpcScriptSignal("hol.Rpc.ScriptSignal", 1);
+const FConsoleVariable CVar_RpcScriptChat("hol.Rpc.ScriptChat", 1);
 
 // CHEATS A (ELROND-1117q, C++ NOT COMPILED): L4 group A, the seven cheat RPCs. Same guard model: default 0 = the C++ RPC stays the only one (these script RPCs return and do nothing), 1 = the script RPC acts.
 const FConsoleVariable CVar_RpcScriptCheatResources("hol.Rpc.ScriptCheatResources", 0);
@@ -39,7 +39,7 @@ const FConsoleVariable CVar_RpcScriptCheatFallForum("hol.Rpc.ScriptCheatFallForu
 const FConsoleVariable CVar_RpcScriptCheatSkipForum("hol.Rpc.ScriptCheatSkipForum", 0);
 const FConsoleVariable CVar_RpcScriptCheatHoldPresence("hol.Rpc.ScriptCheatHoldPresence", 0);
 // T8 lot L3 Economy (HALDIR-1117q, C++ NOT COMPILED): ServerQueueProduction, ServerCancelProduction, ServerTribute, ServerMarketTrade. One guard, default 0: the C++ RPC stays the only one.
-const FConsoleVariable CVar_RpcScriptEconomy("hol.Rpc.ScriptEconomy", 0);
+const FConsoleVariable CVar_RpcScriptEconomy("hol.Rpc.ScriptEconomy", 1);
 
 const int HOLRpcSlots = 8; // FHOLMatchConfig::MaxSlots
 const int HOLRpcStanceAlly = 2; // HOLDiplomacy::Enemy 0 / Neutral 1 / Ally 2
