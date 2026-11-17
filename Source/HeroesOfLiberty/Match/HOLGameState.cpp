@@ -15,6 +15,7 @@
 #include "Map/HOLStartSlot.h"
 #include "Map/HOLVisionSubsystem.h"
 #include "Match/HOLForumPresence.h"
+#include "Match/HOLMarketSubsystem.h"
 #include "Match/HOLMatchStatsSubsystem.h"
 #include "Match/HOLPlayerState.h"
 #include "Match/HOLSpecializationSubsystem.h"
@@ -1535,7 +1536,7 @@ void AHOLGameState::ResetMarketBook()
 	HOLMarket::FSettings Settings;
 	if (HOLMarket::LoadStandardSettings(Settings))
 	{
-		SetMarketBook(HOLMarket::NewBook(Settings));
+		SetMarketBook(UHOLMarketSubsystem::NewBook(GetWorld(), Settings));
 	}
 }
 

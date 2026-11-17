@@ -60,7 +60,6 @@ namespace HOLMarket
 	};
 
 	HEROESOFLIBERTY_API FSettings SettingsFromRow(const FHOLMarketRow& Row);
-	HEROESOFLIBERTY_API FBook NewBook(const FSettings& Settings);
 	/** Sells Lots lots of Resource out of Stock, at the tax FeePercent (the black market's is lower, D69); each lot at the price the one before left. */
 	HEROESOFLIBERTY_API FTrade Sell(const FSettings& Settings, const FBook& Book, int32 Resource, int32 Lots, int32 Stock, int32 FeePercent);
 	/** Buys Lots lots of 100 GOLD of Resource (the interface: "100 gold for X goods"): each lot gives 100 * 100 / (the lot's price plus the tax) goods, rounded down, at the price the one before left, and raises it by a step. Units = the goods, Gold = 100 per lot. */

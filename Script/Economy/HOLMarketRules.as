@@ -107,7 +107,8 @@ namespace HOLMarket
 		FHOLMarketBook Book;
 		for (int Resource = 0; Resource < 4; Resource++)
 		{
-			Book.Prices.Add(Settings.BasePrices[Resource]);
+			// A short array (a bridge struct) counts a missing price as 0.
+			Book.Prices.Add(Resource < Settings.BasePrices.Num() ? Settings.BasePrices[Resource] : 0);
 		}
 		return Book;
 	}
