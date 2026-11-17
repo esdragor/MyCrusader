@@ -46,7 +46,15 @@ void AHOLMenuPlayerController::BeginPlay()
 
 	RootLayout = CreateWidget<UHOLRootLayout>(this, UHOLRootLayout::StaticClass());
 	RootLayout->AddToViewport();
-	RootLayout->PushMenu(UHOLTitleScreen::StaticClass());
+	const TSubclassOf<UHOLTitleScreen> TitleClass = UHOLTitleScreen::FindScriptClass();
+	if (TitleClass)
+	{
+		RootLayout->PushMenu(TitleClass);
+	}
+	else
+	{
+		UE_LOG(LogHOLUI, Error, TEXT("Title screen: no script class (Script/UI/HOLTitleScreen.as)"));
+	}
 
 	// Back from a lobby's match (R4.8): the menu's map is up, so the Multiplayer screen, then the lobby joined again.
 	UHOLManagerClient* Client = GetGameInstance() ? GetGameInstance()->GetSubsystem<UHOLManagerClient>() : nullptr;

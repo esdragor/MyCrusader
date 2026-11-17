@@ -5,11 +5,10 @@
 // Red: hol.Dev.RpcProbeSend 0 on the client, the server's line is absent.
 const FConsoleVariable CVar_RpcProbeSend("hol.Dev.RpcProbeSend", 0);
 
-class AHOLScriptRpcProbe : AActor
+class AHOLScriptRpcProbe : AHOLScriptRpcProbeActor
 {
 	default bReplicates = true;
 	default bAlwaysRelevant = true;
-	default PrimaryActorTick.bCanEverTick = true;
 
 	bool bSeen = false;
 	bool bAsked = false;

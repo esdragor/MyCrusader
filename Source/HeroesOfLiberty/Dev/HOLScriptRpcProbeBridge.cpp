@@ -2,6 +2,8 @@
 
 #include "Dev/HOLScriptRpcProbeBridge.h"
 
+#include "Dev/HOLScriptRpcProbeActor.h"
+
 #include "Engine/World.h"
 #include "GameFramework/Actor.h"
 #include "GameFramework/PlayerController.h"
@@ -12,11 +14,9 @@ UClass* HOLScriptRpcProbeBridge::FindScriptClass()
 {
 	// Angelscript drops the A prefix of the class name (AHOLScriptRpcProbe -> HOLScriptRpcProbe); its hot reload keeps the older
 	// classes, flagged CLASS_NewerVersionExists.
-	static const FName ClassName(TEXT("HOLScriptRpcProbe"));
-	static const FName ClassNameWithPrefix(TEXT("AHOLScriptRpcProbe"));
 	for (TObjectIterator<UClass> It; It; ++It)
 	{
-		if ((It->GetFName() == ClassName || It->GetFName() == ClassNameWithPrefix) && It->IsChildOf(AActor::StaticClass())
+		if (It->IsChildOf(AHOLScriptRpcProbeActor::StaticClass())
 			&& !It->HasAnyClassFlags(CLASS_Abstract | CLASS_NewerVersionExists | CLASS_Deprecated))
 		{
 			return *It;
@@ -35,6 +35,7 @@ AActor* HOLScriptRpcProbeBridge::SpawnFor(APlayerController* Controller)
 	UClass* ScriptClass = FindScriptClass();
 	if (!ScriptClass)
 	{
+		UE_LOG(LogHOLMatch, Log, TEXT("RpcProbe: no script class derived from AHOLScriptRpcProbeActor on this server"));
 		return nullptr;
 	}
 	FActorSpawnParameters Params;
