@@ -10,6 +10,7 @@
 #include "HOLScriptRpcPlayerActor.generated.h"
 
 class APlayerController;
+class AHOLBuilding;
 
 /**
  * MIG2-S3 pilot (D842 Q1 = A, ELROND-1117o): C++ base of the per-player RPC actor written in script (Script/Net/HOLRpcPlayer.as). Same model as the proven
@@ -110,6 +111,20 @@ public:
 	/** Client: AHOLPlayerController::ClientReceiveChat_Implementation (counts it, adds the thread line). */
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Rpc")
 	static bool ReceiveChat(AActor* RpcActor, int32 SenderSlot, int32 Channel, const FString& Text);
+
+	// ---- HALDIR-1117q (NOT COMPILED), MIG2-S3 T8 lot L3: Economy. Same model: the owner controller's _Implementation builds the FHOLProductionCommand and calls UHOLCommandSubsystem::IssueProductionOrder.
+	// Building (AHOLBuilding*, UCLASS) and TypeName (FName) are passed as they are. False: no owner controller.
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Rpc")
+	static bool QueueProduction(AActor* RpcActor, AHOLBuilding* Building, FName TypeName);
+
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Rpc")
+	static bool CancelProduction(AActor* RpcActor, AHOLBuilding* Building, int32 Index);
+
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Rpc")
+	static bool Tribute(AActor* RpcActor, AHOLBuilding* Building, int32 Receiver, int32 Resource, int32 Amount);
+
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Rpc")
+	static bool MarketTrade(AActor* RpcActor, AHOLBuilding* Building, int32 Resource, int32 Lots, bool bBuy);
 };
 
 /** Server entry point the script cannot have by itself (generalises HOLScriptRpcProbeBridge): one actor per script class derived from the base. */

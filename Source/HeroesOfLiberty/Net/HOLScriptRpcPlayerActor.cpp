@@ -225,3 +225,32 @@ bool UHOLRpcBridgeLibrary::ReceiveChat(AActor* RpcActor, const int32 SenderSlot,
 	if (Controller) { Controller->ClientReceiveChat_Implementation(SenderSlot, Channel, Text); }
 	return Controller != nullptr;
 }
+
+// ---- HALDIR-1117q (NOT COMPILED), MIG2-S3 T8 lot L3: Economy (friend class: the _Implementation of the owner controller, same body).
+bool UHOLRpcBridgeLibrary::QueueProduction(AActor* RpcActor, AHOLBuilding* Building, const FName TypeName)
+{
+	AHOLPlayerController* Controller = HOLRpcBridgeL1_Haldir1117o::OwnerController(RpcActor);
+	if (Controller) { Controller->ServerQueueProduction_Implementation(Building, TypeName); }
+	return Controller != nullptr;
+}
+
+bool UHOLRpcBridgeLibrary::CancelProduction(AActor* RpcActor, AHOLBuilding* Building, const int32 Index)
+{
+	AHOLPlayerController* Controller = HOLRpcBridgeL1_Haldir1117o::OwnerController(RpcActor);
+	if (Controller) { Controller->ServerCancelProduction_Implementation(Building, Index); }
+	return Controller != nullptr;
+}
+
+bool UHOLRpcBridgeLibrary::Tribute(AActor* RpcActor, AHOLBuilding* Building, const int32 Receiver, const int32 Resource, const int32 Amount)
+{
+	AHOLPlayerController* Controller = HOLRpcBridgeL1_Haldir1117o::OwnerController(RpcActor);
+	if (Controller) { Controller->ServerTribute_Implementation(Building, Receiver, Resource, Amount); }
+	return Controller != nullptr;
+}
+
+bool UHOLRpcBridgeLibrary::MarketTrade(AActor* RpcActor, AHOLBuilding* Building, const int32 Resource, const int32 Lots, const bool bBuy)
+{
+	AHOLPlayerController* Controller = HOLRpcBridgeL1_Haldir1117o::OwnerController(RpcActor);
+	if (Controller) { Controller->ServerMarketTrade_Implementation(Building, Resource, Lots, bBuy); }
+	return Controller != nullptr;
+}

@@ -22,6 +22,9 @@ const FConsoleVariable CVar_RpcScriptHero("hol.Rpc.ScriptHero", 0);
 const FConsoleVariable CVar_RpcScriptSignal("hol.Rpc.ScriptSignal", 0);
 const FConsoleVariable CVar_RpcScriptChat("hol.Rpc.ScriptChat", 0);
 
+// T8 lot L3 Economy (HALDIR-1117q, C++ NOT COMPILED): ServerQueueProduction, ServerCancelProduction, ServerTribute, ServerMarketTrade. One guard, default 0: the C++ RPC stays the only one.
+const FConsoleVariable CVar_RpcScriptEconomy("hol.Rpc.ScriptEconomy", 0);
+
 const int HOLRpcSlots = 8; // FHOLMatchConfig::MaxSlots
 const int HOLRpcStanceAlly = 2; // HOLDiplomacy::Enemy 0 / Neutral 1 / Ally 2
 
@@ -141,6 +144,62 @@ int ClientChatRefusal(int SenderSlot, int Channel)
 		return 1;
 	if (Channel < 0)
 		return 2;
+	return 0;
+}
+
+// Economy (T8 L3). The production decides the rest (owner, type, queue, stock, Market, lots: UHOLCommandSubsystem::IssueProductionOrder), as for the C++ RPC. These only check what the RPC itself can know.
+// bHasBuilding = the Building pointer is not null (the caller computes it: the rules stay pure). 0 none, 1 the sender has no slot (spectator, out of range), 2 no building.
+int EconomySeatRefusal(int SenderSlot, bool bHasBuilding)
+{
+	if (SenderSlot < 0 || SenderSlot >= HOLRpcSlots)
+		return 1;
+	if (!bHasBuilding)
+		return 2;
+	return 0;
+}
+
+// ServerQueueProduction: seat and building only (the type is checked by the production at its step).
+int QueueProductionRefusal(int SenderSlot, bool bHasBuilding)
+{
+	return EconomySeatRefusal(SenderSlot, bHasBuilding);
+}
+
+// ServerCancelProduction: seat, building, then 3 a negative queue index.
+int CancelProductionRefusal(int SenderSlot, bool bHasBuilding, int Index)
+{
+	const int Seat = EconomySeatRefusal(SenderSlot, bHasBuilding);
+	if (Seat != 0)
+		return Seat;
+	if (Index < 0)
+		return 3;
+	return 0;
+}
+
+// ServerTribute: seat, building, then 3 the receiver out of range, 4 a negative resource, 5 an amount that is not positive.
+int TributeRefusal(int SenderSlot, bool bHasBuilding, int Receiver, int Resource, int Amount)
+{
+	const int Seat = EconomySeatRefusal(SenderSlot, bHasBuilding);
+	if (Seat != 0)
+		return Seat;
+	if (Receiver < 0 || Receiver >= HOLRpcSlots)
+		return 3;
+	if (Resource < 0)
+		return 4;
+	if (Amount <= 0)
+		return 5;
+	return 0;
+}
+
+// ServerMarketTrade: seat, building, then 3 a negative resource, 4 a lot count that is not positive.
+int MarketTradeRefusal(int SenderSlot, bool bHasBuilding, int Resource, int Lots)
+{
+	const int Seat = EconomySeatRefusal(SenderSlot, bHasBuilding);
+	if (Seat != 0)
+		return Seat;
+	if (Resource < 0)
+		return 3;
+	if (Lots <= 0)
+		return 4;
 	return 0;
 }
 
@@ -472,5 +531,71 @@ class AHOLRpcPlayer : AHOLScriptRpcPlayerActor
 			return;
 		}
 		HOLRpcBridge::ReceiveChat(this, SenderSlot, Channel, Text);
+	}
+
+	// ---- T8 lot L3 Economy (HALDIR-1117q, C++ NOT COMPILED). Guard hol.Rpc.ScriptEconomy (default 0). The bridge calls the C++ _Implementation (builds the FHOLProductionCommand, IssueProductionOrder).
+	// Building is passed as the AHOLBuilding object (replicated by net id), the type as an FName: no index needed.
+	UFUNCTION(Server)
+	void ServerQueueProduction(AHOLBuilding Building, FName TypeName)
+	{
+		if (CVar_RpcScriptEconomy.GetInt() == 0)
+			return;
+		const int Slot = HOLRpcBridge::GetSenderSlot(this);
+		const int Refusal = HOLRpc::QueueProductionRefusal(Slot, Building != nullptr);
+		if (Refusal != 0)
+		{
+			Log(n"LogHOLMatch", f"RpcEconomy: queue refused ({Refusal}) for sender slot {Slot}");
+			return;
+		}
+		Log(n"LogHOLMatch", f"RpcEconomy: queue received by the server: slot {Slot} type {TypeName}");
+		HOLRpcBridge::QueueProduction(this, Building, TypeName);
+	}
+
+	UFUNCTION(Server)
+	void ServerCancelProduction(AHOLBuilding Building, int Index)
+	{
+		if (CVar_RpcScriptEconomy.GetInt() == 0)
+			return;
+		const int Slot = HOLRpcBridge::GetSenderSlot(this);
+		const int Refusal = HOLRpc::CancelProductionRefusal(Slot, Building != nullptr, Index);
+		if (Refusal != 0)
+		{
+			Log(n"LogHOLMatch", f"RpcEconomy: cancel refused ({Refusal}) for sender slot {Slot}");
+			return;
+		}
+		Log(n"LogHOLMatch", f"RpcEconomy: cancel received by the server: slot {Slot} index {Index}");
+		HOLRpcBridge::CancelProduction(this, Building, Index);
+	}
+
+	UFUNCTION(Server)
+	void ServerTribute(AHOLBuilding Building, int Receiver, int Resource, int Amount)
+	{
+		if (CVar_RpcScriptEconomy.GetInt() == 0)
+			return;
+		const int Slot = HOLRpcBridge::GetSenderSlot(this);
+		const int Refusal = HOLRpc::TributeRefusal(Slot, Building != nullptr, Receiver, Resource, Amount);
+		if (Refusal != 0)
+		{
+			Log(n"LogHOLMatch", f"RpcEconomy: tribute refused ({Refusal}) for sender slot {Slot}");
+			return;
+		}
+		Log(n"LogHOLMatch", f"RpcEconomy: tribute received by the server: slot {Slot} to {Receiver} resource {Resource} amount {Amount}");
+		HOLRpcBridge::Tribute(this, Building, Receiver, Resource, Amount);
+	}
+
+	UFUNCTION(Server)
+	void ServerMarketTrade(AHOLBuilding Building, int Resource, int Lots, bool bBuy)
+	{
+		if (CVar_RpcScriptEconomy.GetInt() == 0)
+			return;
+		const int Slot = HOLRpcBridge::GetSenderSlot(this);
+		const int Refusal = HOLRpc::MarketTradeRefusal(Slot, Building != nullptr, Resource, Lots);
+		if (Refusal != 0)
+		{
+			Log(n"LogHOLMatch", f"RpcEconomy: trade refused ({Refusal}) for sender slot {Slot}");
+			return;
+		}
+		Log(n"LogHOLMatch", f"RpcEconomy: trade received by the server: slot {Slot} resource {Resource} lots {Lots} buy {bBuy}");
+		HOLRpcBridge::MarketTrade(this, Building, Resource, Lots, bBuy);
 	}
 }
