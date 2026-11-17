@@ -1,7 +1,7 @@
 // Port of HOLConstructionTests.cpp (MIG-C-Construction, ELROND-1117n, D830/D839): same vectors, one by one, against UHOLConstructionReadLibrary
 // (namespace HOLConstructionRead, wrappers of HOLConstruction in Buildings/HOLConstructionRules.h). NOT COMPILED when written: the C++ library is new.
-// Ported: Grid, Placement, Age, Payment, Damage, Builders, Population, States, Probes, BuildSpots, NextSite (11 of 20).
-// Not ported (types to expose): Tables, BuildQueue, WorkQueue, CampSource, CutPaths, SiteKeepOut, IdleWall, Body, FreeFootprint.
+// Ported: Grid, Placement, Age, Payment, Damage, Builders, Population, States, Probes, BuildSpots, NextSite, CutPaths, SiteKeepOut, Body (14 of 20; Body without its UHOLBuildingSettings part).
+// Not ported (types to expose): Tables (building type table rows), BuildQueue, WorkQueue (templates), CampSource (FHOLCampSource), IdleWall (FWallBody, EHOLUnitActivity), FreeFootprint (TFunctionRef).
 // Enums as ints: state 0 Foundation 1 UnderConstruction 2 Finished; attack 0 Melee 1 Ranged 2 Siege 3 Hero; refusal 0 None 1 OutOfMap 2 Building 3 Source 4 EnemyCentre 5 NavMesh.
 
 const float ConTestExponent = 0.63f;
@@ -482,4 +482,161 @@ void Test_Construction_NextSite(FUnitTest& T)
 	TArray<FHOLConstructionBox> None;
 	T.AssertEquals(-1, HOLConstructionRead::FindNextSite(Finished, None, 2000.0), "no site: none");
 	T.AssertEquals(-1, HOLConstructionRead::FindNextSite(Finished, Sites, 0.0), "range 0: only one touching it");
+}
+
+FVector2D ConPoint(double X, double Y)
+{
+	return FVector2D(X * 100.0, Y * 100.0);
+}
+
+TArray<FVector2D> ConWalk2(FVector2D A, FVector2D B)
+{
+	TArray<FVector2D> Out;
+	Out.Add(A);
+	Out.Add(B);
+	return Out;
+}
+
+// J6b.2 (D314): the ways cut by a new footprint (segment distance, walk crossing, a slot pushed out).
+void Test_Construction_CutPaths(FUnitTest& T)
+{
+	FHOLConstructionBox Site = ConHouse(0.0, 0.0);
+	double Margin = 85.0;
+	T.AssertTrue(ConNear(HOLConstructionRead::GetSegmentDistance(Site, ConPoint(-10.0, 0.0), ConPoint(10.0, 0.0)), 0.0), "a segment through it: 0");
+	T.AssertTrue(ConNear(HOLConstructionRead::GetSegmentDistance(Site, ConPoint(-10.0, 1.0), ConPoint(0.0, 1.0)), 0.0), "a segment ending in it: 0");
+	T.AssertTrue(ConNear(HOLConstructionRead::GetSegmentDistance(Site, ConPoint(-10.0, 4.0), ConPoint(10.0, 4.0)), 100.0), "a segment beside a side, 1 m off");
+	T.AssertTrue(ConNear(HOLConstructionRead::GetSegmentDistance(Site, ConPoint(0.0, 7.5), ConPoint(7.5, 0.0)), 150.0 / Math::Sqrt(2.0)), "a diagonal passing its corner: to the corner (1.06 m off)");
+	T.AssertFalse(HOLConstructionRead::DoesWalkCross(Site, Margin, ConWalk2(ConPoint(0.0, 7.5), ConPoint(7.5, 0.0))), "so a walk past the corner, 1.06 m off, is on its way");
+	T.AssertTrue(ConNear(HOLConstructionRead::GetSegmentDistance(Site, ConPoint(-10.0, 0.0), ConPoint(-5.0, 0.0)), 200.0), "a segment ending short of it, in line");
+	T.AssertTrue(ConNear(HOLConstructionRead::GetSegmentDistance(Site, ConPoint(0.0, 5.0), ConPoint(0.0, 5.0)), 200.0), "a point (a segment of no length)");
+	T.AssertTrue(ConNear(HOLConstructionRead::GetSegmentDistance(Site, ConPoint(-10.0, 3.0), ConPoint(10.0, 3.0)), 0.0), "a segment along a side, on it: 0");
+
+	T.AssertTrue(HOLConstructionRead::DoesWalkCross(Site, Margin, ConWalk2(ConPoint(-10.0, 0.0), ConPoint(10.0, 0.0))), "a walk straight through it: cut");
+	T.AssertTrue(HOLConstructionRead::DoesWalkCross(Site, Margin, ConWalk2(ConPoint(-10.0, 3.8), ConPoint(10.0, 3.8))), "a walk 80 cm off its side: cut (a body would brush it)");
+	T.AssertFalse(HOLConstructionRead::DoesWalkCross(Site, Margin, ConWalk2(ConPoint(-10.0, 4.0), ConPoint(10.0, 4.0))), "a walk 1 m off its side: on its way");
+	TArray<FVector2D> Round;
+	Round.Add(ConPoint(-10.0, 0.0));
+	Round.Add(ConPoint(-4.0, 4.0));
+	Round.Add(ConPoint(4.0, 4.0));
+	Round.Add(ConPoint(10.0, 0.0));
+	T.AssertFalse(HOLConstructionRead::DoesWalkCross(Site, Margin, Round), "a walk round it (a detour of the navmesh): on its way");
+	TArray<FVector2D> Second;
+	Second.Add(ConPoint(-10.0, 10.0));
+	Second.Add(ConPoint(-1.0, 5.0));
+	Second.Add(ConPoint(1.0, -5.0));
+	Second.Add(ConPoint(10.0, -10.0));
+	T.AssertTrue(HOLConstructionRead::DoesWalkCross(Site, Margin, Second), "a walk whose second leg crosses it: cut");
+	T.AssertTrue(HOLConstructionRead::DoesWalkCross(Site, Margin, ConWalk2(ConPoint(-10.0, 0.0), ConPoint(0.0, 0.0))), "a walk ending in it (its slot now under the house): cut");
+	T.AssertFalse(HOLConstructionRead::DoesWalkCross(Site, Margin, ConWalk2(ConPoint(-10.0, 0.0), ConPoint(-4.0, 0.0))), "a walk ending short of it: on its way");
+	T.AssertTrue(HOLConstructionRead::DoesWalkCross(Site, Margin + 200.0, ConWalk2(ConPoint(-10.0, 4.5), ConPoint(10.0, 4.5))), "a wider margin (2 m): cut 1.5 m off");
+	TArray<FVector2D> Standing;
+	Standing.Add(ConPoint(3.5, 0.0));
+	T.AssertTrue(HOLConstructionRead::DoesWalkCross(Site, Margin, Standing), "a body standing against it");
+	TArray<FVector2D> NoPoint;
+	T.AssertFalse(HOLConstructionRead::DoesWalkCross(Site, Margin, NoPoint), "no point: nothing");
+
+	double Out = 105.0;
+	T.AssertTrue(ConNearV(HOLConstructionRead::PushOutOfFootprint(Site, Out, ConPoint(1.0, 0.5)), FVector2D(405.0, 202.5)), "a slot east of the middle: out by the east side, at its height");
+	T.AssertTrue(ConNearV(HOLConstructionRead::PushOutOfFootprint(Site, Out, ConPoint(2.0, 2.0)), FVector2D(405.0, 405.0)), "a slot by a corner: out along its diagonal");
+	T.AssertFalse(ConNearV(HOLConstructionRead::PushOutOfFootprint(Site, Out, ConPoint(1.0, 0.5)), HOLConstructionRead::PushOutOfFootprint(Site, Out, ConPoint(1.0, -0.5)), 1.0), "two slots of a group: two places, not one");
+	T.AssertTrue(ConNearV(HOLConstructionRead::PushOutOfFootprint(Site, Out, ConPoint(0.0, 0.0)), FVector2D(405.0, 0.0)), "the middle itself: toward +X");
+	T.AssertTrue(ConNearV(HOLConstructionRead::PushOutOfFootprint(Site, Out, ConPoint(0.0, 3.5)), FVector2D(0.0, 405.0)), "a slot within the margin, outside: pushed to it");
+	T.AssertTrue(ConNearV(HOLConstructionRead::PushOutOfFootprint(Site, Out, ConPoint(0.0, 5.0)), ConPoint(0.0, 5.0)), "a slot farther: as it is");
+}
+
+// D310: a site started under a unit puts it out of the body, beyond the navmesh's margin and the visible wall.
+void Test_Construction_SiteKeepOut(FUnitTest& T)
+{
+	FVector2D Tiles(800.0, 800.0);
+	double BodyInset = 105.0;
+	double VisualInset = 30.0;
+	double Clearance = 25.0;
+	FVector2D BodySize = HOLConstructionRead::GetBodySize(Tiles, BodyInset);
+	FVector2D VisualSize = HOLConstructionRead::GetBodySize(Tiles, VisualInset);
+	FVector2D Half(BodySize.X * 0.5, BodySize.Y * 0.5);
+	FHOLConstructionBox Body = HOLConstructionRead::MakeBox(FVector2D(-Half.X, -Half.Y), Half);
+	FHOLConstructionBox Visual = HOLConstructionRead::MakeBox(FVector2D(-VisualSize.X * 0.5, -VisualSize.Y * 0.5), FVector2D(VisualSize.X * 0.5, VisualSize.Y * 0.5));
+	TArray<double> Radii;
+	Radii.Add(60.0);
+	Radii.Add(52.0);
+	Radii.Add(90.0);
+	TArray<FVector2D> Starts;
+	Starts.Add(FVector2D(0.0, 0.0));
+	Starts.Add(FVector2D(280.0, 50.0));
+	Starts.Add(FVector2D(-100.0, -290.0));
+	Starts.Add(FVector2D(290.0, 290.0));
+	for (double Radius : Radii)
+	{
+		double InsideGap = HOLConstructionRead::GetKeepOutInsideGap(Radius, Clearance, BodyInset - VisualInset);
+		double OutsideGap = Radius + 1.0;
+		for (FVector2D Start : Starts)
+		{
+			FVector2D Local = Start;
+			bool bMoved = HOLConstructionRead::KeepOutOfBody(Half, InsideGap, OutsideGap, Local);
+			string Where = "radius " + Radius + " cm, from (" + Start.X + ", " + Start.Y + ") to (" + Local.X + ", " + Local.Y + ")";
+			T.AssertTrue(bMoved, "put out (" + Where + ")");
+			double FromBody = HOLConstructionRead::GetDistance(Body, Local);
+			T.AssertTrue(FromBody >= Clearance + Radius, "beyond the navmesh's margin: " + FromBody + " >= " + (Clearance + Radius) + " (" + Where + ")");
+			double FromWall = HOLConstructionRead::GetDistance(Visual, Local);
+			T.AssertTrue(FromWall >= Radius, "not in the visible walls: " + FromWall + " >= " + Radius + " (" + Where + ")");
+			FVector2D Again = Local;
+			T.AssertFalse(HOLConstructionRead::KeepOutOfBody(Half, InsideGap, OutsideGap, Again), "left as it is at the next step (" + Where + ")");
+		}
+		FVector2D Brushing(Half.X + 40.0, 0.0);
+		T.AssertTrue(HOLConstructionRead::KeepOutOfBody(Half, InsideGap, OutsideGap, Brushing), "a centre outside, nearer than its radius: moved");
+		T.AssertTrue(ConNear(Brushing.X, Half.X + OutsideGap), "to its radius and 1 cm, no farther");
+		FVector2D Clear(Half.X + Radius + 11.0, 0.0);
+		T.AssertFalse(HOLConstructionRead::KeepOutOfBody(Half, InsideGap, OutsideGap, Clear), "a centre outside, its body clear: as it is");
+	}
+}
+
+// D324: a building's body inset in its tiles, the ways between neighbours (the game's settings part of the C++ test is not ported).
+void Test_Construction_Body(FUnitTest& T)
+{
+	double Inset = 105.0;
+	T.AssertTrue(ConNearV(HOLConstructionRead::GetBodySize(FVector2D(600.0, 600.0), Inset), FVector2D(390.0, 390.0)), "a house's body: 3.9 m");
+	T.AssertTrue(ConNearV(HOLConstructionRead::GetBodySize(FVector2D(1200.0, 1200.0), Inset), FVector2D(990.0, 990.0)), "a main centre's body: 9.9 m");
+	T.AssertTrue(ConNearV(HOLConstructionRead::GetBodySize(FVector2D(900.0, 600.0), Inset), FVector2D(690.0, 390.0)), "each side on its own (3 x 2 tiles)");
+	T.AssertTrue(ConNearV(HOLConstructionRead::GetBodySize(FVector2D(600.0, 600.0), 0.0), FVector2D(600.0, 600.0)), "no inset: the tiles");
+	double MinSide = HOLConstructionRead::GetMinBodySide();
+	T.AssertTrue(ConNearV(HOLConstructionRead::GetBodySize(FVector2D(150.0, 150.0), Inset), FVector2D(MinSide, MinSide)), "a tiny footprint keeps a body of MinBodySide");
+	T.AssertTrue(ConNearV(HOLConstructionRead::GetBodySize(FVector2D(50.0, 50.0), Inset), FVector2D(50.0, 50.0)), "never larger than its tiles");
+	FHOLConstructionBox Tiles = HOLConstructionRead::SnapToGrid(FVector2D(100.0, 100.0), FVector2D(600.0, 600.0), ConTestTile);
+	FHOLConstructionBox Body = HOLConstructionRead::GetBody(Tiles, Inset);
+	T.AssertTrue(ConNearV(Body.Min, FVector2D(Tiles.Min.X + Inset, Tiles.Min.Y + Inset)) && ConNearV(Body.Max, FVector2D(Tiles.Max.X - Inset, Tiles.Max.Y - Inset)), "the body box: on the tiles' middle, inset on every side");
+
+	FHOLConstructionBox West = HOLConstructionRead::SnapToGrid(FVector2D(0.0, 0.0), FVector2D(600.0, 600.0), ConTestTile);
+	FHOLConstructionBox East = HOLConstructionRead::SnapToGrid(FVector2D(600.0, 0.0), FVector2D(600.0, 600.0), ConTestTile);
+	T.AssertTrue(ConNear(HOLConstructionRead::GetGap(West, East), 0.0), "their tiles touch");
+	T.AssertFalse(HOLConstructionRead::Overlaps(West, East), "so they may stand side by side");
+	double Gap = HOLConstructionRead::GetGap(HOLConstructionRead::GetBody(West, Inset), HOLConstructionRead::GetBody(East, Inset));
+	T.AssertTrue(ConNear(Gap, 2.0 * Inset), "their bodies: 2.1 m apart");
+	double Peasant = 60.0;
+	T.AssertTrue(Gap >= 2.0 * Peasant, "one Peasant passes between them");
+	T.AssertTrue(Gap < 4.0 * Peasant, "not two abreast");
+	double Middle = (West.Max.X + East.Min.X) * 0.5;
+	TArray<FVector2D> Through = ConWalk2(FVector2D(Middle, -1000.0), FVector2D(Middle, 1000.0));
+	T.AssertFalse(HOLConstructionRead::DoesWalkCross(HOLConstructionRead::GetBody(West, Inset), 85.0, Through), "a walk through the way: not cut by the west body");
+	T.AssertFalse(HOLConstructionRead::DoesWalkCross(HOLConstructionRead::GetBody(East, Inset), 85.0, Through), "nor by the east one");
+	T.AssertTrue(HOLConstructionRead::DoesWalkCross(West, 85.0, Through), "but by their tiles");
+
+	FHOLConstructionBox North = HOLConstructionRead::SnapToGrid(FVector2D(0.0, 600.0), FVector2D(600.0, 600.0), ConTestTile);
+	FHOLConstructionBox Far = HOLConstructionRead::SnapToGrid(FVector2D(2400.0, 0.0), FVector2D(600.0, 600.0), ConTestTile);
+	FHOLConstructionBox Diagonal = HOLConstructionRead::SnapToGrid(FVector2D(600.0, 600.0), FVector2D(600.0, 600.0), ConTestTile);
+	TArray<FHOLConstructionBox> Bodies;
+	Bodies.Add(HOLConstructionRead::GetBody(West, Inset));
+	Bodies.Add(HOLConstructionRead::GetBody(East, Inset));
+	Bodies.Add(HOLConstructionRead::GetBody(North, Inset));
+	Bodies.Add(HOLConstructionRead::GetBody(Far, Inset));
+	TArray<FHOLConstructionBox> Ways = HOLConstructionRead::FindWays(Bodies, 2.0 * Inset + HOLConstructionRead::GetTouchTolerance());
+	T.AssertEquals(2, Ways.Num(), "two ways: west-east (along Y), west-north (along X); none to the far house");
+	if (Ways.Num() == 2)
+	{
+		T.AssertTrue(ConNearV(Ways[0].Min, FVector2D(Middle - Inset, -300.0 + Inset)) && ConNearV(Ways[0].Max, FVector2D(Middle + Inset, 300.0 - Inset)), "west-east: 2.1 m wide, along their facing sides");
+		T.AssertTrue(ConNear(ConSize(Ways[1]).Y, 2.0 * Inset) && ConNear(ConCentre(Ways[1]).Y, 300.0), "west-north: across Y");
+	}
+	TArray<FHOLConstructionBox> Pair;
+	Pair.Add(HOLConstructionRead::GetBody(West, Inset));
+	Pair.Add(HOLConstructionRead::GetBody(Diagonal, Inset));
+	T.AssertEquals(0, HOLConstructionRead::FindWays(Pair, 2.0 * Inset + 1.0).Num(), "corner to corner: no way");
 }

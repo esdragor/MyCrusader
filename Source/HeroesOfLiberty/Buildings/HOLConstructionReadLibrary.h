@@ -164,6 +164,46 @@ public:
 	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Construction")
 	static bool IsAtSite(const FHOLConstructionBox& Footprint, const FVector2D& Position, double BodyRadius, double Gap);
 
+	/** HOLConstruction::MinBodySide. */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Construction")
+	static double GetMinBodySide();
+
+	/** HOLConstruction::GetBodySize. */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Construction")
+	static FVector2D GetBodySize(const FVector2D& Footprint, double Inset);
+
+	/** HOLConstruction::GetBody. */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Construction")
+	static FHOLConstructionBox GetBody(const FHOLConstructionBox& Footprint, double Inset);
+
+	/** HOLConstruction::FindWays (the ways are returned). */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Construction")
+	static TArray<FHOLConstructionBox> FindWays(const TArray<FHOLConstructionBox>& Bodies, double MaxWidth);
+
+	/** HOLConstruction::TouchTolerance. */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Construction")
+	static double GetTouchTolerance();
+
+	/** HOLConstruction::GetSegmentDistance. */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Construction")
+	static double GetSegmentDistance(const FHOLConstructionBox& Footprint, const FVector2D& A, const FVector2D& B);
+
+	/** HOLConstruction::DoesWalkCross. */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Construction")
+	static bool DoesWalkCross(const FHOLConstructionBox& Footprint, double Margin, const TArray<FVector2D>& Points);
+
+	/** HOLConstruction::PushOutOfFootprint. */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Construction")
+	static FVector2D PushOutOfFootprint(const FHOLConstructionBox& Footprint, double Margin, const FVector2D& Point);
+
+	/** HOLConstruction::GetKeepOutInsideGap. */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Construction")
+	static double GetKeepOutInsideGap(double Radius, double Clearance, double VisualGap);
+
+	/** HOLConstruction::KeepOutOfBody (Local is changed; true when it moved). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Construction")
+	static bool KeepOutOfBody(const FVector2D& HalfExtent, double InsideGap, double OutsideGap, UPARAM(ref) FVector2D& Local);
+
 	/** HOLConstruction::FindNextSite. */
 	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Construction")
 	static int32 FindNextSite(const FHOLConstructionBox& Finished, const TArray<FHOLConstructionBox>& Sites, double Range);

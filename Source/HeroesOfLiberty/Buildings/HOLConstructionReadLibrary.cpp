@@ -215,6 +215,64 @@ bool UHOLConstructionReadLibrary::IsAtSite(const FHOLConstructionBox& Footprint,
 	return HOLConstruction::IsAtSite(ConstructionRead_ToBox(Footprint), Position, BodyRadius, Gap);
 }
 
+double UHOLConstructionReadLibrary::GetMinBodySide()
+{
+	return HOLConstruction::MinBodySide;
+}
+
+FVector2D UHOLConstructionReadLibrary::GetBodySize(const FVector2D& Footprint, const double Inset)
+{
+	return HOLConstruction::GetBodySize(Footprint, Inset);
+}
+
+FHOLConstructionBox UHOLConstructionReadLibrary::GetBody(const FHOLConstructionBox& Footprint, const double Inset)
+{
+	return ConstructionRead_FromBox(HOLConstruction::GetBody(ConstructionRead_ToBox(Footprint), Inset));
+}
+
+TArray<FHOLConstructionBox> UHOLConstructionReadLibrary::FindWays(const TArray<FHOLConstructionBox>& Bodies, const double MaxWidth)
+{
+	const TArray<FBox2D> BodyBoxes = ConstructionRead_ToBoxes(Bodies);
+	TArray<FBox2D> Ways;
+	HOLConstruction::FindWays(BodyBoxes, MaxWidth, Ways);
+	TArray<FHOLConstructionBox> Out;
+	for (const FBox2D& Way : Ways)
+	{
+		Out.Add(ConstructionRead_FromBox(Way));
+	}
+	return Out;
+}
+
+double UHOLConstructionReadLibrary::GetTouchTolerance()
+{
+	return HOLConstruction::TouchTolerance;
+}
+
+double UHOLConstructionReadLibrary::GetSegmentDistance(const FHOLConstructionBox& Footprint, const FVector2D& A, const FVector2D& B)
+{
+	return HOLConstruction::GetSegmentDistance(ConstructionRead_ToBox(Footprint), A, B);
+}
+
+bool UHOLConstructionReadLibrary::DoesWalkCross(const FHOLConstructionBox& Footprint, const double Margin, const TArray<FVector2D>& Points)
+{
+	return HOLConstruction::DoesWalkCross(ConstructionRead_ToBox(Footprint), Margin, Points);
+}
+
+FVector2D UHOLConstructionReadLibrary::PushOutOfFootprint(const FHOLConstructionBox& Footprint, const double Margin, const FVector2D& Point)
+{
+	return HOLConstruction::PushOutOfFootprint(ConstructionRead_ToBox(Footprint), Margin, Point);
+}
+
+double UHOLConstructionReadLibrary::GetKeepOutInsideGap(const double Radius, const double Clearance, const double VisualGap)
+{
+	return HOLConstruction::GetKeepOutInsideGap(Radius, Clearance, VisualGap);
+}
+
+bool UHOLConstructionReadLibrary::KeepOutOfBody(const FVector2D& HalfExtent, const double InsideGap, const double OutsideGap, FVector2D& Local)
+{
+	return HOLConstruction::KeepOutOfBody(HalfExtent, InsideGap, OutsideGap, Local);
+}
+
 int32 UHOLConstructionReadLibrary::FindNextSite(const FHOLConstructionBox& Finished, const TArray<FHOLConstructionBox>& Sites, const double Range)
 {
 	const TArray<FBox2D> Boxes = ConstructionRead_ToBoxes(Sites);
