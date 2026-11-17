@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Buildings/HOLBuildingTypes.h"
 #include "Kismet/BlueprintFunctionLibrary.h"
 #include "Match/HOLResources.h"
 #include "HOLConstructionReadLibrary.generated.h"
@@ -29,10 +30,47 @@ struct HEROESOFLIBERTY_API FHOLConstructionBox
  * D830, D839, D836). Wrappers only: no rule here. Enums are passed as ints: EHOLConstructionState 0 Foundation, 1 UnderConstruction,
  * 2 Finished; EHOLAttackType 0 Melee, 1 Ranged, 2 Siege, 3 Hero; EHOLPlacementRefusal 0 None, 1 OutOfMap, 2 Building, 3 Source,
  * 4 EnemyCentre, 5 NavMesh. A resource source as an obstacle is an FVector (X, Y = ground point, Z = body radius).
- * NOT exposed (TYPES_A_EXPOSER): the queue templates (AddToBuildQueue, AdvanceBuildQueue, AdvanceWorkQueue: templates / TFunctionRef),
- * FindFreeFootprint / FindObstacle / FindFreeFootprint (TFunctionRef), FindCampSource (FHOLCampSource), the keep-out and visible-wall
- * functions (FWallBody, EHOLUnitActivity), FindWays, SendsBuildersToGather.
+ * The queues (AddToBuildQueue, AdvanceBuildQueue, AdvanceWorkQueue) are exposed on queues of ints (sites by number, work items encoded by
+ * MakeWorkBuild / MakeWorkGather / MakeWorkDeposit; the open test is a list of closed sites): the templates themselves stay in C++.
  */
+/** FHOLCampSource for the script (Resource as an int: 0 Food, 1 Wood, 2 Stone, 3 Gold). Lengths in cm. */
+USTRUCT(BlueprintType)
+struct HEROESOFLIBERTY_API FHOLConstructionCampSource
+{
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadWrite, Category = "Construction")
+	FVector2D Centre = FVector2D::ZeroVector;
+
+	UPROPERTY(BlueprintReadWrite, Category = "Construction")
+	double Radius = 0.0;
+
+	UPROPERTY(BlueprintReadWrite, Category = "Construction")
+	int32 Resource = 1;
+
+	UPROPERTY(BlueprintReadWrite, Category = "Construction")
+	bool bStanding = true;
+};
+
+/** HOLConstruction::FWallBody for the script: a building's body in the world (middle, half its size, its yaw's cosine and sine). */
+USTRUCT(BlueprintType)
+struct HEROESOFLIBERTY_API FHOLConstructionWallBody
+{
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadWrite, Category = "Construction")
+	FVector2D Centre = FVector2D::ZeroVector;
+
+	UPROPERTY(BlueprintReadWrite, Category = "Construction")
+	FVector2D HalfExtent = FVector2D::ZeroVector;
+
+	UPROPERTY(BlueprintReadWrite, Category = "Construction")
+	double Cos = 1.0;
+
+	UPROPERTY(BlueprintReadWrite, Category = "Construction")
+	double Sin = 0.0;
+};
+
 UCLASS()
 class HEROESOFLIBERTY_API UHOLConstructionReadLibrary : public UBlueprintFunctionLibrary
 {
@@ -241,4 +279,93 @@ public:
 	/** HOLConstruction::AdvanceWorkQueue on encoded work items; ClosedSites = the sites no longer open. True when an item is left at the head. */
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Construction")
 	static bool AdvanceWorkQueue(UPARAM(ref) TArray<int32>& Queue, bool bHeadDone, const TArray<int32>& ClosedSites);
+
+	// UHOLBuildingSettings and the building type table (Tables, Body: the game's settings).
+
+	/** UHOLBuildingSettings::GetTileSize. */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Construction")
+	static double GetSettingTileSize();
+
+	/** UHOLBuildingSettings::AntiRushRadius. */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Construction")
+	static float GetSettingAntiRushRadius();
+
+	/** UHOLBuildingSettings::BuilderExponent. */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Construction")
+	static float GetSettingBuilderExponent();
+
+	/** UHOLBuildingSettings::GetBodyInset. */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Construction")
+	static double GetSettingBodyInset();
+
+	/** UHOLBuildingSettings::GetBodySize. */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Construction")
+	static FVector2D GetSettingBodySize(const FVector2D& Footprint);
+
+	/** UHOLBuildingSettings::GetVisualInset. */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Construction")
+	static double GetSettingVisualInset();
+
+	/** UHOLBuildingSettings::GetVisualSize. */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Construction")
+	static FVector2D GetSettingVisualSize(const FVector2D& Footprint);
+
+	/** UHOLBuildingSettings::FindType: a copy of the row in Out; false when the type is not in the table. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Construction")
+	static bool FindBuildingType(FName TypeName, UPARAM(ref) FHOLBuildingTypeRow& Out);
+
+	/** FHOLBuildingTypeRow::IsBuildable. */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Construction")
+	static bool IsBuildingTypeBuildable(const FHOLBuildingTypeRow& Row);
+
+	/** FHOLBuildingTypeRow::Category as an int: 0 Economic, 1 Military, 2 Technological. */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Construction")
+	static int32 GetBuildingTypeCategory(const FHOLBuildingTypeRow& Row);
+
+	/** FHOLBuildingTypeRow::Accepts as ints (0 Food, 1 Wood, 2 Stone, 3 Gold). */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Construction")
+	static TArray<int32> GetBuildingTypeAccepts(const FHOLBuildingTypeRow& Row);
+
+	/** UHOLSourceSettings::FindType: a source type's Linked flag and its resource as an int; false when it is not in the table. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Construction")
+	static bool FindSourceTypeInfo(FName SourceName, UPARAM(ref) bool& bLinked, UPARAM(ref) int32& Resource);
+
+	// CampSource, IdleWall, FreeFootprint.
+
+	/** HOLConstruction::FindCampSource (Accepts as ints; OutGap = the gap of the one found). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Construction")
+	static int32 FindCampSource(const FHOLConstructionBox& Camp, const TArray<int32>& Accepts, const TArray<FHOLConstructionCampSource>& Sources, double Range,
+		UPARAM(ref) double& OutGap);
+
+	/** HOLConstruction::StandsClearOfVisibleWall (Activity: 0 Idle, 1 Moving, 2 Gathering, 3 GatherTrip, 4 Building, 5 Attacking, 6 Dying; Phase: 0 None, 1 WaitingPath, 2 Path, 3 FinalLeg, 4 FormUp, 5 Block). */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Construction")
+	static bool StandsClearOfVisibleWall(int32 Activity, int32 Phase, bool bFighting);
+
+	/** HOLConstruction::KeepOutOfVisibleWall (Local is changed; bOutEased is set; true when Local moved). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Construction")
+	static bool KeepOutOfVisibleWall(const FVector2D& HalfExtent, double InsideGap, double OutsideGap, double Radius, double VisualGap, bool bStandsStill,
+		double MaxStep, UPARAM(ref) FVector2D& Local, UPARAM(ref) bool& bOutEased);
+
+	/** HOLConstruction::EaseOutOfVisibleWalls (Position is changed; true when it moved). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Construction")
+	static bool EaseOutOfVisibleWalls(const TArray<FHOLConstructionWallBody>& Bodies, double Radius, double VisualGap, double MaxStep,
+		UPARAM(ref) FVector2D& Position, bool bSquareCorners);
+
+	/** HOLConstruction::SnapOutward. */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Construction")
+	static FHOLConstructionBox SnapOutward(const FHOLConstructionBox& Box, double Grid);
+
+	/** HOLConstruction::FindObstacle on a query of Footprint, Buildings, Sources (X, Y ground point, Z body radius), MapArea (invalid: no limit), AntiRushRadius. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Construction")
+	static bool FindObstacle(const FHOLConstructionBox& Footprint, const TArray<FHOLConstructionBox>& Buildings, const TArray<FVector>& Sources,
+		const FHOLConstructionBox& MapArea, double AntiRushRadius, const FVector2D& Aim, double Grid, UPARAM(ref) FHOLConstructionBox& OutObstacle);
+
+	/**
+	 * HOLConstruction::FindFreeFootprint on the same query. The navmesh's answer (a TFunctionRef in C++) is a list of boxes: a candidate whose middle lies in
+	 * one of OffNavMesh is off the navmesh. OutRing = the ring found (-1 if none).
+	 */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Construction")
+	static bool FindFreeFootprint(const FHOLConstructionBox& Footprint, const TArray<FHOLConstructionBox>& Buildings, const TArray<FVector>& Sources,
+		const FHOLConstructionBox& MapArea, double AntiRushRadius, const FHOLConstructionBox& Obstacle, const FVector2D& Aim, double Grid, int32 MaxRings,
+		const TArray<FHOLConstructionBox>& OffNavMesh, UPARAM(ref) FHOLConstructionBox& OutFootprint, UPARAM(ref) int32& OutRing);
 };

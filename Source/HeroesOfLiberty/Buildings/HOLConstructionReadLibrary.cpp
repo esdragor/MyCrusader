@@ -4,6 +4,8 @@
 
 #include "Buildings/HOLBuildingTypes.h"
 #include "Buildings/HOLConstructionRules.h"
+#include "Resources/HOLSourceTypes.h"
+#include "Simulation/HOLSimulationFragments.h"
 #include "Simulation/HOLUnitTypes.h"
 
 namespace
@@ -346,4 +348,198 @@ bool UHOLConstructionReadLibrary::AdvanceWorkQueue(TArray<int32>& Queue, const b
 		Queue.Add(Item.IsGather() ? Item.SourceIndex * 4 + 1 : (Item.IsDeposit() ? Item.Site * 4 + 2 : Item.Site * 4));
 	}
 	return bLeft;
+}
+
+namespace
+{
+	// A placement query with the arrays it views (unity builds: names unique to this file).
+	struct ConstructionRead_FQueryData
+	{
+		TArray<FBox2D> Buildings;
+		TArray<FHOLPlacementCircle> Sources;
+		FHOLPlacementQuery Query;
+	};
+
+	void ConstructionRead_FillQuery(ConstructionRead_FQueryData& Data, const FHOLConstructionBox& Footprint, const TArray<FHOLConstructionBox>& Buildings,
+		const TArray<FVector>& Sources, const FHOLConstructionBox& MapArea, const double AntiRushRadius)
+	{
+		Data.Buildings = ConstructionRead_ToBoxes(Buildings);
+		for (const FVector& Source : Sources)
+		{
+			Data.Sources.Add(FHOLPlacementCircle{ FVector2D(Source.X, Source.Y), Source.Z });
+		}
+		Data.Query.Footprint = ConstructionRead_ToBox(Footprint);
+		Data.Query.Buildings = Data.Buildings;
+		Data.Query.Sources = Data.Sources;
+		Data.Query.MapArea = ConstructionRead_ToBox(MapArea);
+		Data.Query.AntiRushRadius = AntiRushRadius;
+	}
+
+	TArray<EHOLResource> ConstructionRead_ToResources(const TArray<int32>& Values)
+	{
+		TArray<EHOLResource> Out;
+		for (const int32 Value : Values)
+		{
+			Out.Add(static_cast<EHOLResource>(Value));
+		}
+		return Out;
+	}
+}
+
+double UHOLConstructionReadLibrary::GetSettingTileSize()
+{
+	return UHOLBuildingSettings::GetTileSize();
+}
+
+float UHOLConstructionReadLibrary::GetSettingAntiRushRadius()
+{
+	return GetDefault<UHOLBuildingSettings>()->AntiRushRadius;
+}
+
+float UHOLConstructionReadLibrary::GetSettingBuilderExponent()
+{
+	return GetDefault<UHOLBuildingSettings>()->BuilderExponent;
+}
+
+double UHOLConstructionReadLibrary::GetSettingBodyInset()
+{
+	return UHOLBuildingSettings::GetBodyInset();
+}
+
+FVector2D UHOLConstructionReadLibrary::GetSettingBodySize(const FVector2D& Footprint)
+{
+	return UHOLBuildingSettings::GetBodySize(Footprint);
+}
+
+double UHOLConstructionReadLibrary::GetSettingVisualInset()
+{
+	return UHOLBuildingSettings::GetVisualInset();
+}
+
+FVector2D UHOLConstructionReadLibrary::GetSettingVisualSize(const FVector2D& Footprint)
+{
+	return UHOLBuildingSettings::GetVisualSize(Footprint);
+}
+
+bool UHOLConstructionReadLibrary::FindBuildingType(const FName TypeName, FHOLBuildingTypeRow& Out)
+{
+	if (const FHOLBuildingTypeRow* Row = UHOLBuildingSettings::FindType(TypeName))
+	{
+		Out = *Row;
+		return true;
+	}
+	return false;
+}
+
+bool UHOLConstructionReadLibrary::IsBuildingTypeBuildable(const FHOLBuildingTypeRow& Row)
+{
+	return Row.IsBuildable();
+}
+
+int32 UHOLConstructionReadLibrary::GetBuildingTypeCategory(const FHOLBuildingTypeRow& Row)
+{
+	return static_cast<int32>(Row.Category);
+}
+
+TArray<int32> UHOLConstructionReadLibrary::GetBuildingTypeAccepts(const FHOLBuildingTypeRow& Row)
+{
+	TArray<int32> Out;
+	for (const EHOLResource Resource : Row.Accepts)
+	{
+		Out.Add(static_cast<int32>(Resource));
+	}
+	return Out;
+}
+
+bool UHOLConstructionReadLibrary::FindSourceTypeInfo(const FName SourceName, bool& bLinked, int32& Resource)
+{
+	if (const FHOLSourceTypeRow* Row = UHOLSourceSettings::FindType(SourceName))
+	{
+		bLinked = Row->Linked;
+		Resource = static_cast<int32>(Row->Resource);
+		return true;
+	}
+	return false;
+}
+
+int32 UHOLConstructionReadLibrary::FindCampSource(const FHOLConstructionBox& Camp, const TArray<int32>& Accepts, const TArray<FHOLConstructionCampSource>& Sources,
+	const double Range, double& OutGap)
+{
+	TArray<FHOLCampSource> Converted;
+	for (const FHOLConstructionCampSource& Source : Sources)
+	{
+		Converted.Add(FHOLCampSource{ Source.Centre, Source.Radius, static_cast<EHOLResource>(Source.Resource), Source.bStanding });
+	}
+	const TArray<EHOLResource> Resources = ConstructionRead_ToResources(Accepts);
+	return HOLConstruction::FindCampSource(ConstructionRead_ToBox(Camp), Resources, Converted, Range, &OutGap);
+}
+
+bool UHOLConstructionReadLibrary::StandsClearOfVisibleWall(const int32 Activity, const int32 Phase, const bool bFighting)
+{
+	return HOLConstruction::StandsClearOfVisibleWall(static_cast<EHOLUnitActivity>(Activity), static_cast<EHOLMovePhase>(Phase), bFighting);
+}
+
+bool UHOLConstructionReadLibrary::KeepOutOfVisibleWall(const FVector2D& HalfExtent, const double InsideGap, const double OutsideGap, const double Radius,
+	const double VisualGap, const bool bStandsStill, const double MaxStep, FVector2D& Local, bool& bOutEased)
+{
+	return HOLConstruction::KeepOutOfVisibleWall(HalfExtent, InsideGap, OutsideGap, Radius, VisualGap, bStandsStill, MaxStep, Local, &bOutEased);
+}
+
+bool UHOLConstructionReadLibrary::EaseOutOfVisibleWalls(const TArray<FHOLConstructionWallBody>& Bodies, const double Radius, const double VisualGap,
+	const double MaxStep, FVector2D& Position, const bool bSquareCorners)
+{
+	TArray<HOLConstruction::FWallBody> Converted;
+	for (const FHOLConstructionWallBody& Body : Bodies)
+	{
+		HOLConstruction::FWallBody Wall;
+		Wall.Centre = Body.Centre;
+		Wall.HalfExtent = Body.HalfExtent;
+		Wall.Cos = Body.Cos;
+		Wall.Sin = Body.Sin;
+		Converted.Add(Wall);
+	}
+	return HOLConstruction::EaseOutOfVisibleWalls(Converted, Radius, VisualGap, MaxStep, Position, bSquareCorners);
+}
+
+FHOLConstructionBox UHOLConstructionReadLibrary::SnapOutward(const FHOLConstructionBox& Box, const double Grid)
+{
+	return ConstructionRead_FromBox(HOLConstruction::SnapOutward(ConstructionRead_ToBox(Box), Grid));
+}
+
+bool UHOLConstructionReadLibrary::FindObstacle(const FHOLConstructionBox& Footprint, const TArray<FHOLConstructionBox>& Buildings, const TArray<FVector>& Sources,
+	const FHOLConstructionBox& MapArea, const double AntiRushRadius, const FVector2D& Aim, const double Grid, FHOLConstructionBox& OutObstacle)
+{
+	ConstructionRead_FQueryData Data;
+	ConstructionRead_FillQuery(Data, Footprint, Buildings, Sources, MapArea, AntiRushRadius);
+	FBox2D Obstacle(ForceInit);
+	const bool bFound = HOLConstruction::FindObstacle(Data.Query, Aim, Grid, Obstacle);
+	OutObstacle = ConstructionRead_FromBox(Obstacle);
+	return bFound;
+}
+
+bool UHOLConstructionReadLibrary::FindFreeFootprint(const FHOLConstructionBox& Footprint, const TArray<FHOLConstructionBox>& Buildings, const TArray<FVector>& Sources,
+	const FHOLConstructionBox& MapArea, const double AntiRushRadius, const FHOLConstructionBox& Obstacle, const FVector2D& Aim, const double Grid, const int32 MaxRings,
+	const TArray<FHOLConstructionBox>& OffNavMesh, FHOLConstructionBox& OutFootprint, int32& OutRing)
+{
+	ConstructionRead_FQueryData Data;
+	ConstructionRead_FillQuery(Data, Footprint, Buildings, Sources, MapArea, AntiRushRadius);
+	const TArray<FBox2D> Off = ConstructionRead_ToBoxes(OffNavMesh);
+	const auto IsOnNavMesh = [&Off](const FBox2D& Candidate)
+	{
+		const FVector2D Middle = Candidate.GetCenter();
+		for (const FBox2D& Box : Off)
+		{
+			if (Box.IsInside(Middle))
+			{
+				return false;
+			}
+		}
+		return true;
+	};
+	FBox2D Free(ForceInit);
+	int32 Ring = -1;
+	const bool bFound = HOLConstruction::FindFreeFootprint(Data.Query, ConstructionRead_ToBox(Obstacle), Aim, Grid, MaxRings, IsOnNavMesh, Free, &Ring);
+	OutFootprint = ConstructionRead_FromBox(Free);
+	OutRing = bFound ? Ring : -1;
+	return bFound;
 }
