@@ -11,7 +11,7 @@
 namespace
 {
 	/** The table the text of the roles (and of the overrides) makes, by the real parsers. */
-	HOLFactionRules::FTable MakeTable(const FString& RolesText, const FString& OverridesText, TArray<FString>* OutProblems = nullptr)
+	HOLFactionRules::FTable FactionRead_MakeTable(const FString& RolesText, const FString& OverridesText, TArray<FString>* OutProblems = nullptr)
 	{
 		HOLFactionRules::FTable Table;
 		TArray<FString> Problems;
@@ -31,15 +31,15 @@ namespace
 		~FScopedTable() { HOLFactionRules::SetTableForTests(nullptr); }
 	};
 
-	bool SameOverride(const HOLFactionRules::FOverrideRow& A, const HOLFactionRules::FOverrideRow& B)
+	bool FactionRead_SameOverride(const HOLFactionRules::FOverrideRow& A, const HOLFactionRules::FOverrideRow& B)
 	{
 		return A.Name == B.Name && A.Faction == B.Faction && A.Type == B.Type && A.Field == B.Field && A.Value == B.Value;
 	}
 
 	/** A table of overrides only (the roles are not read by ApplyOverrides), and a default unit type row it is applied to. */
-	int32 ApplyToDefaultRow(const FString& OverridesText, const FString& Faction, const FString& Type, FHOLUnitTypeRow& OutRow, TArray<FString>& OutProblems)
+	int32 FactionRead_ApplyToDefaultRow(const FString& OverridesText, const FString& Faction, const FString& Type, FHOLUnitTypeRow& OutRow, TArray<FString>& OutProblems)
 	{
-		const HOLFactionRules::FTable Table = MakeTable(FString(), OverridesText);
+		const HOLFactionRules::FTable Table = FactionRead_MakeTable(FString(), OverridesText);
 		return Table.ApplyOverrides(FName(*Faction), FName(*Type), FHOLUnitTypeRow::StaticStruct(), &OutRow, &OutProblems);
 	}
 }
@@ -140,41 +140,41 @@ FString UHOLFactionRulesReadLibrary::GetOverrideCell(const FString& OverridesTex
 
 FString UHOLFactionRulesReadLibrary::FindRoleType(const FString& RolesText, const FString& Faction, const FString& Role)
 {
-	return MakeTable(RolesText, FString()).FindRoleType(FName(*Faction), FName(*Role)).ToString();
+	return FactionRead_MakeTable(RolesText, FString()).FindRoleType(FName(*Faction), FName(*Role)).ToString();
 }
 
 bool UHOLFactionRulesReadLibrary::HasFaction(const FString& RolesText, const FString& Faction)
 {
-	return MakeTable(RolesText, FString()).HasFaction(FName(*Faction));
+	return FactionRead_MakeTable(RolesText, FString()).HasFaction(FName(*Faction));
 }
 
 FString UHOLFactionRulesReadLibrary::ResolveKey(const FString& RolesText, const FString& Faction)
 {
-	return MakeTable(RolesText, FString()).ResolveKey(FName(*Faction)).ToString();
+	return FactionRead_MakeTable(RolesText, FString()).ResolveKey(FName(*Faction)).ToString();
 }
 
 bool UHOLFactionRulesReadLibrary::Allows(const FString& RolesText, const FString& ColumnValue, const FString& Faction)
 {
-	return MakeTable(RolesText, FString()).Allows(FName(*ColumnValue), FName(*Faction));
+	return FactionRead_MakeTable(RolesText, FString()).Allows(FName(*ColumnValue), FName(*Faction));
 }
 
 bool UHOLFactionRulesReadLibrary::HasOverride(const FString& RolesText, const FString& OverridesText, const FString& Faction, const FString& Type)
 {
-	return MakeTable(RolesText, OverridesText).HasOverride(FName(*Faction), FName(*Type));
+	return FactionRead_MakeTable(RolesText, OverridesText).HasOverride(FName(*Faction), FName(*Type));
 }
 
 int32 UHOLFactionRulesReadLibrary::ApplyOverridesToUnitRow(const FString& OverridesText, const FString& Faction, const FString& Type)
 {
 	FHOLUnitTypeRow Row;
 	TArray<FString> Problems;
-	return ApplyToDefaultRow(OverridesText, Faction, Type, Row, Problems);
+	return FactionRead_ApplyToDefaultRow(OverridesText, Faction, Type, Row, Problems);
 }
 
 int32 UHOLFactionRulesReadLibrary::CountApplyOverridesProblems(const FString& OverridesText, const FString& Faction, const FString& Type)
 {
 	FHOLUnitTypeRow Row;
 	TArray<FString> Problems;
-	ApplyToDefaultRow(OverridesText, Faction, Type, Row, Problems);
+	FactionRead_ApplyToDefaultRow(OverridesText, Faction, Type, Row, Problems);
 	return Problems.Num();
 }
 
@@ -182,7 +182,7 @@ int32 UHOLFactionRulesReadLibrary::ApplyOverridesToUnitRowReadInt(const FString&
 {
 	FHOLUnitTypeRow Row;
 	TArray<FString> Problems;
-	ApplyToDefaultRow(OverridesText, Faction, Type, Row, Problems);
+	FactionRead_ApplyToDefaultRow(OverridesText, Faction, Type, Row, Problems);
 	const FIntProperty* Property = FindFProperty<FIntProperty>(FHOLUnitTypeRow::StaticStruct(), *IntField);
 	return Property ? Property->GetPropertyValue_InContainer(&Row) : 0;
 }
@@ -214,7 +214,7 @@ bool UHOLFactionRulesReadLibrary::BuiltInHasOverrideRowOf(const FString& Overrid
 	const HOLFactionRules::FTable BuiltIn = HOLFactionRules::GetBuiltInTable();
 	for (const HOLFactionRules::FOverrideRow& Each : BuiltIn.Overrides)
 	{
-		if (SameOverride(Each, Rows[RowIndex]))
+		if (FactionRead_SameOverride(Each, Rows[RowIndex]))
 		{
 			return true;
 		}
@@ -232,7 +232,7 @@ FString UHOLFactionRulesReadLibrary::GetSlotStartType(const FString& RolesText, 
 		Config.Slots[Index].ColorIndex = Index;
 		Config.Slots[Index].Faction = Index == 1 ? EHOLFaction::BlackLegions : EHOLFaction::DawnOrder;
 	}
-	const HOLFactionRules::FTable Table = MakeTable(RolesText, OverridesText);
+	const HOLFactionRules::FTable Table = FactionRead_MakeTable(RolesText, OverridesText);
 	FScopedTable Scoped(Table);
 	if (Role == TEXT("Worker"))
 	{
