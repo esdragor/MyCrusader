@@ -1,4 +1,5 @@
 # Ecran Reglages en script (D840 lot 2) : depuis le titre, vrai clic sur Reglages, les 4 onglets, puis c'est toi qui essaies (waitkey). Les reglages ecrits vont dans Saved\Config du dossier -Root, pas dans ta copie.
+# default-settings : check.ps1 remet les reglages du jeu a leurs valeurs par defaut (Defilement au bord = Oui) au lieu de le couper comme pour les autres tests.
 frames 30
 open /Game/Maps/MainMenu
 waitmap MainMenu
