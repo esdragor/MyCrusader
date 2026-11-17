@@ -205,6 +205,9 @@ if ($Parts -contains "values") {
         # MIG-J-UnitAbility: the necrotic rage numbers agree between the script tables (HOLUnitAbilityTable, HOLMoraleTable) and HOLUnitAbilityRules.h.
         $UnitAbilityAccordOutput = @(python -I (Join-Path $PSScriptRoot "unit_ability_accord_test.py") 2>&1)
         $ValuesChecks["unit_ability_accord_test.py ($($UnitAbilityAccordOutput | Select-Object -Last 1))"] = ($LASTEXITCODE -eq 0)
+        # ELROND-1116p: the rage time calculations (CooldownEnd / EffectEnd / EffectEnded) of HOLUnitAbilityRules.h give the literals of the script test.
+        $UnitAbilityTimesOutput = @(python -I (Join-Path $PSScriptRoot "unit_ability_times_test.py") 2>&1)
+        $ValuesChecks["unit_ability_times_test.py ($($UnitAbilityTimesOutput | Select-Object -Last 1))"] = ($LASTEXITCODE -eq 0)
         # E3-01: Camps.csv against UnitTypes.csv (port of HOLCampTableTests.cpp, D613).
         $CampTableOutput = @(python -I (Join-Path $PSScriptRoot "camp_table_test.py") 2>&1)
         $ValuesChecks["camp_table_test.py ($($CampTableOutput | Select-Object -Last 1))"] = ($LASTEXITCODE -eq 0)
@@ -220,6 +223,9 @@ if ($Parts -contains "values") {
         # D809 / D836: the exploration XP presets A / B / C of HOLExplorationXPRules.cpp (C++ only source) equal the numbers decided.
         $ExplorationPresetsOutput = @(python -I (Join-Path $PSScriptRoot "exploration_xp_presets_test.py") 2>&1)
         $ValuesChecks["exploration_xp_presets_test.py ($($ExplorationPresetsOutput | Select-Object -Last 1))"] = ($LASTEXITCODE -eq 0)
+        # E3-04: the Count part of HOLStartingPeasantsTests.cpp (rule 5, scenarios 0 unless their .json asks; DefaultGame.ini + Tools/Scenarios + the rule's source).
+        $StartingPeasantsOutput = @(python -I (Join-Path $PSScriptRoot "starting_peasants_count_test.py") 2>&1)
+        $ValuesChecks["starting_peasants_count_test.py ($($StartingPeasantsOutput | Select-Object -Last 1))"] = ($LASTEXITCODE -eq 0)
     }
     $ValuesOk = Report "values" $ValuesChecks
     if (-not $ValuesOk) { $ValuesOutput = @($ValuesTestOutput) + @($ValuesCheckOutput) + @($ConsumersTestOutput) + @($ConsumersOutput); $ValuesOutput | Where-Object { $_ -match "^(ERREUR|DERIVE|ORPHELIN|FAIL|ERROR|AVERTISSEMENT|DEAD|STALE)" } | Select-Object -First 20 | ForEach-Object { Write-Host "    $_" } }
