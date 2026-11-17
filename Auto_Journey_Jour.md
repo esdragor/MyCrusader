@@ -156,6 +156,93 @@ Seance de migration du soir (le tableau de l'apres-midi est archive dans Docs\Ar
 | L16-8 | non evalue | - |
 | L16-9 | appliquee | idem L16-2, et sync_worktrees sans -NoBuild a 20:5x (8 builds PASS) |
 
+
+### Lecons appliquees 2026-11-17
+
+Reprise de la seance de migration (2026-11-16 21:03 -> 2026-11-17 01:1x), tout sous Sonnet 5.5, agents de 15 min ; le tableau du soir precedent est juste au-dessus.
+
+| Regle | Etat | Preuve |
+|---|---|---|
+| T2-1 | appliquee | ETAPE0-1116-MIG en lecture seule (+ file a9d000c), plan Docs\Rapports\ETAPE0-1116-MIG.md |
+| T2-2 | appliquee | 8 worktrees lances a 20:11 apres session_gate Launch PASS x8 |
+| L3-12 | non evalue | - |
+| L5-7 | non evalue | - |
+| L4-1 | non evalue | - |
+| L3-8 | non evalue | - |
+| L3-9 | non evalue | - |
+| T2-3 | appliquee | brief_commun.md mis a jour (ccbeff3), enonces courts |
+| L1-1 | non evalue | - |
+| L1-2 | non evalue | - |
+| L1-3 | non evalue | - |
+| L3-2 | non evalue | - |
+| L3-5 | non evalue | - |
+| L1-8 | non evalue | - |
+| L1-9 | non evalue | - |
+| L1-7 | non evalue | - |
+| L5-6 | non evalue | - |
+| T2-5 | appliquee | 6 fusions : build PASS puis quick_check tests,net,values,victory sur le resultat avant chaque avance de main (derniere : tests 1387/1389, 2 rouges D831 connus) |
+| T2-6 | non evalue | - |
+| T2-7 | non evalue | - |
+| L4-12 | non evalue | - |
+| L4-13 | non evalue | - |
+| L3-11 | non evalue | - |
+| L3-7 | non evalue | - |
+| T2-4 | non evalue | - |
+| L4-11 | non evalue | - |
+| L1-13 | non evalue | - |
+| L6-2 | non evalue | - |
+| L6-4 | non evalue | - |
+| L6-6 | non evalue | - |
+| L7-7 | non evalue | - |
+| L8-4 | non evalue | - |
+| L8-8 | non evalue | - |
+| L9-1 | non evalue | - |
+| L9-6 | non evalue | - |
+| L9-8 | non evalue | - |
+| L9-9 | non evalue | - |
+| L9-10 | non evalue | - |
+| L10-2 | non evalue | - |
+| L10-3 | non evalue | - |
+| L11-3 | non evalue | - |
+| L11-4 | non evalue | - |
+| L11-8 | non evalue | - |
+| L11-9 | non evalue | - |
+| L11-10 | non evalue | - |
+| L11-11 | non evalue | - |
+| L11-12 | non evalue | - |
+| L11-13 | non evalue | - |
+| L12-1 | non evalue | - |
+| L12-1b | non evalue | - |
+| L13-1 | non evalue | - |
+| L13-3 | non evalue | - |
+| L13-4 | non evalue | - |
+| L13-5 | non evalue | - |
+| L13-6 | non evalue | - |
+| L13-7 | non evalue | - |
+| L14-2 | non evalue | - |
+| L14-4 | non evalue | - |
+| L14-5 | non evalue | - |
+| L14-6 | non evalue | - |
+| L14-9 | non evalue | - |
+| L14-10 | non evalue | - |
+| L14-11 | non evalue | - |
+| L15-3 | non evalue | - |
+| L15-4 | non evalue | - |
+| L15-6 | non evalue | - |
+| L15-7 | non evalue | - |
+| L15-8 | non evalue | - |
+| L15-9 | appliquee | un test rouge + un correctif par lot, 15 min maximum par agent |
+| L15-10 | appliquee | rapports dans Docs\Rapports\*-1117*.md et *-1116[n-t].md, reponses de 4 a 6 lignes |
+| L16-1 | non evalue | - |
+| L16-2 | appliquee | Get-StaleBinaryProblem verifie avant chaque lot de tests ; sync_worktrees avec build en debut de vague et en cloture (7 builds PASS) |
+| L16-3 | non evalue | - |
+| L16-4 | non evalue | - |
+| L16-5 | non evalue | - |
+| L16-6 | non evalue | - |
+| L16-7 | non evalue | - |
+| L16-8 | non evalue | - |
+| L16-9 | appliquee | Get-StaleBinaryProblem verifie avant chaque lot de tests ; sync_worktrees avec build en debut de vague et en cloture (7 builds PASS) |
+
 ## Résumé de la séance du 2026-11-16 après-midi
 
 - Séance interactive 14:46 -> ~18:00, 27 agents, fusion groupée FUSION-1116a, rien poussé : main 9c9d22b -> 3d3cb3c, tests 1326/1328 (2 rouges connus D831 : NomadFirstForum, NomadReplicated).
