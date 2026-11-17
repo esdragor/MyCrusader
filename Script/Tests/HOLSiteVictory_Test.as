@@ -141,3 +141,25 @@ void Test_SiteGoldByTheMinute(FUnitTest& T)
 	}
 	T.AssertEquals(0, Total, "no site, or no rate: no gold");
 }
+
+// The gold step the server's bridge calls (MIG-J-Site, UHOLSiteBoardSubsystem::GoldStepRule): the carry lives in the caller (C++ GoldCarry by slot),
+// handed in and handed back; a carry already near a whole gold pays it at once and keeps the rest; a step with nothing held and no carry pays nothing.
+void Test_SiteGoldStepWithTheCallersCarry(FUnitTest& T)
+{
+	const int StepsPerMinute = 60 * HOLHero::GetSimulationRateHz();
+	const int Rate = 12;
+	int Carry = StepsPerMinute - 1;
+	int Award = HOLSiteVictory::GoldStepWith(Carry, 1, Rate);
+	T.AssertEquals(1, Award, "a carry one short of a gold, plus the step's share: one gold");
+	T.AssertEquals(Rate - 1, Carry, "the rest is handed back to the caller");
+	Carry = 0;
+	int Total = 0;
+	for (int Step = 0; Step < StepsPerMinute; Step++)
+	{
+		Total += HOLSiteVictory::GoldStepWith(Carry, 1, Rate);
+	}
+	T.AssertEquals(Rate, Total, "a minute of one site: the rate, whatever the caller's carry started at zero");
+	T.AssertEquals(0, Carry, "and nothing is left over after a whole minute");
+	Carry = 0;
+	T.AssertEquals(0, HOLSiteVictory::GoldStepWith(Carry, 0, Rate), "no site, no carry: nothing");
+}
