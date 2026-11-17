@@ -7,10 +7,9 @@
 // A resource is its number: 0 Food, 1 Wood, 2 Stone, 3 Gold. Free functions on local arrays (no script class: "Null pointer access" as argument of AssertEquals).
 
 const double GatherStep = 0.05;
-int GatherLost = 0;
 
 // Gathers N steps of 0.05 s; returns the units taken, adds the load lost to GatherLost, updates the load and what the source holds.
-int GatherN(FHOLGatherLoadScript& Load, int N, double Rate, int Capacity, int& Remaining, int Resource = 1)
+int GatherNL(FHOLGatherLoadScript& Load, int N, double Rate, int Capacity, int& Remaining, int Resource, int& LostTotal)
 {
 	int Taken = 0;
 	int Lost = 0;
@@ -18,8 +17,14 @@ int GatherN(FHOLGatherLoadScript& Load, int N, double Rate, int Capacity, int& R
 	FHOLGatherLoadScript Result = HOLGatherRead::GatherSteps(Load, Resource, Rate, GatherStep, N, Capacity, Remaining, Taken, Lost, After);
 	Load = Result;
 	Remaining = After;
-	GatherLost += Lost;
+	LostTotal += Lost;
 	return Taken;
+}
+
+int GatherNL(FHOLGatherLoadScript& Load, int N, double Rate, int Capacity, int& Remaining, int Resource, int& LostTotal)
+{
+	int Ignored = 0;
+	return GatherNL(Load, N, Rate, Capacity, Remaining, Resource, Ignored);
 }
 
 bool GatherNear(double A, double B, double Tolerance)
@@ -127,7 +132,11 @@ void Test_Gather_Load(FUnitTest& T)
 // The stock rises at the deposit only; another resource keeps the load until its first whole unit (D306), then the old load is lost.
 void Test_Gather_Deposit(FUnitTest& T)
 {
-	TArray<int> Stock = {200, 200, 200, 200};
+	TArray<int> Stock;
+	Stock.Add(200);
+	Stock.Add(200);
+	Stock.Add(200);
+	Stock.Add(200);
 	FHOLGatherLoadScript Load;
 	Load = HOLGatherRead::StartGathering(Load, 1);
 	int Tree = 100;
@@ -155,17 +164,16 @@ void Test_Gather_Deposit(FUnitTest& T)
 	T.AssertEquals(7, Load.Amount, "order on berries: the 7 wood kept");
 	T.AssertEquals(1, Load.Resource, "still carries wood");
 	int Bush = 200;
-	GatherLost = 0;
-	int Taken = GatherN(Load, 20, 0.7, 10, Bush, 0);
+		int Taken = GatherNL(Load, 20, 0.7, 10, Bush, 0, GatherLost);
 	T.AssertEquals(0, Taken, "nothing whole after 1 s of berries");
 	T.AssertEquals(7, Load.Amount, "the 7 wood still carried");
 	T.AssertEquals(0, GatherLost, "nothing lost yet");
-	Taken = GatherN(Load, 20, 0.7, 10, Bush, 0);
+	Taken = GatherNL(Load, 20, 0.7, 10, Bush, 0, GatherLost);
 	T.AssertEquals(1, Taken, "first food after 2 s");
 	T.AssertEquals(7, GatherLost, "the 7 wood lost then");
 	T.AssertEquals(1, Load.Amount, "now carries 1 food");
 	T.AssertEquals(0, Load.Resource, "now carries food");
-	GatherN(Load, 60, 0.7, 10, Bush, 0);
+	GatherNL(Load, 60, 0.7, 10, Bush, 0, GatherLost);
 	Load = HOLGatherRead::Deposit(Load, Stock, Deposited, After);
 	Stock = After;
 	T.AssertTrue(Stock[0] == 203 && Stock[1] == 210 && Stock[2] == 200 && Stock[3] == 200, "food deposited, the lost wood never");
@@ -178,10 +186,9 @@ void Test_Gather_Deposit(FUnitTest& T)
 	Full.ProgressResource = 1;
 	T.AssertTrue(HOLGatherRead::IsFullOf(Full, 1, 10), "full of wood");
 	T.AssertFalse(HOLGatherRead::IsFullOf(Full, 0, 10), "not full of food");
-	GatherLost = 0;
-	Taken = GatherN(Full, 20, 0.7, 10, Bush, 0);
+		Taken = GatherNL(Full, 20, 0.7, 10, Bush, 0, GatherLost);
 	T.AssertEquals(0, Taken, "full of wood: nothing whole after 1 s of berries");
-	Taken = GatherN(Full, 20, 0.7, 10, Bush, 0);
+	Taken = GatherNL(Full, 20, 0.7, 10, Bush, 0, GatherLost);
 	T.AssertEquals(1, Taken, "then its first food");
 	T.AssertEquals(10, GatherLost, "the 10 wood lost");
 
@@ -257,22 +264,52 @@ void Test_Gather_Massif(FUnitTest& T)
 	TArray<int> Tried;
 	int Found = GatherSearchNone(P, R, 0.0, 2, None, Tried);
 	T.AssertEquals(-1, Found, "the whole chain full: none");
-	TArray<int> Expected = {1, 3, 0, 4, 5};
+	TArray<int> Expected;
+	Expected.Add(1);
+	Expected.Add(3);
+	Expected.Add(0);
+	Expected.Add(4);
+	Expected.Add(5);
 	T.AssertTrue(GatherSame(Tried, Expected), "nearest first, a tie to the first index, past the used-up tree 3, tree 2 itself not tried");
 	T.AssertFalse(Tried.Contains(6), "the tree 20 m away never reached");
 	T.AssertFalse(Tried.Contains(7), "nor the berries beside it");
 
 	// The first one with room, nearest first; the used-up tree refused leads on to the chain beyond it.
-	TArray<int> OnlyFive = {5};
+	TArray<int> OnlyFive;
+	OnlyFive.Add(5);
 	Found = GatherSearchNone(P, R, 0.0, 0, OnlyFive, Tried);
 	T.AssertEquals(5, Found, "tree 5, at the far end");
-	TArray<int> Expected2 = {1, 2, 3, 4, 5};
+	TArray<int> Expected2;
+	Expected2.Add(1);
+	Expected2.Add(2);
+	Expected2.Add(3);
+	Expected2.Add(4);
+	Expected2.Add(5);
 	T.AssertTrue(GatherSame(Tried, Expected2), "each tree tried once, in order");
-	TArray<int> AllButThree = {0, 1, 2, 4, 5, 6, 7, 8, 9};
+	TArray<int> AllButThree;
+	AllButThree.Add(0);
+	AllButThree.Add(1);
+	AllButThree.Add(2);
+	AllButThree.Add(4);
+	AllButThree.Add(5);
+	AllButThree.Add(6);
+	AllButThree.Add(7);
+	AllButThree.Add(8);
+	AllButThree.Add(9);
 	Found = GatherSearchNone(P, R, 0.0, 0, AllButThree, Tried);
 	T.AssertEquals(1, Found, "the first one with room stops the search");
 	T.AssertEquals(1, Tried.Num(), "nothing tried beyond it");
-	TArray<int> Everything = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
+	TArray<int> Everything;
+	Everything.Add(0);
+	Everything.Add(1);
+	Everything.Add(2);
+	Everything.Add(3);
+	Everything.Add(4);
+	Everything.Add(5);
+	Everything.Add(6);
+	Everything.Add(7);
+	Everything.Add(8);
+	Everything.Add(9);
 	Found = GatherSearchNone(P, R, 0.0, 6, Everything, Tried);
 	T.AssertEquals(-1, Found, "from the tree 20 m away: nothing");
 	Found = GatherSearchNone(P, R, 0.0, 8, Everything, Tried);
@@ -365,7 +402,12 @@ void Test_Gather_NearbyMassif(FUnitTest& T)
 	TArray<int> Tried;
 	int Found = GatherSearchNone(P, R, Near, 0, None, Tried);
 	T.AssertEquals(-1, Found, "everything full: none");
-	TArray<int> Expected = {1, 2, 7, 3, 4};
+	TArray<int> Expected;
+	Expected.Add(1);
+	Expected.Add(2);
+	Expected.Add(7);
+	Expected.Add(3);
+	Expected.Add(4);
 	T.AssertTrue(GatherSame(Tried, Expected), "its massif, then the groves nearest the tree clicked");
 	T.AssertFalse(Tried.Contains(5), "wood C, 26 m away: never");
 	T.AssertFalse(Tried.Contains(6), "berries 12 m away: never");
@@ -385,7 +427,17 @@ void Test_Gather_NearbyMassif(FUnitTest& T)
 	T.AssertEquals(4, Found, "toward a deposit beyond grove B: B first");
 
 	// Within the range, not beyond; a vein never leads to another (60 m), nor without nearby groves (range 0).
-	TArray<int> Everything = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
+	TArray<int> Everything;
+	Everything.Add(0);
+	Everything.Add(1);
+	Everything.Add(2);
+	Everything.Add(3);
+	Everything.Add(4);
+	Everything.Add(5);
+	Everything.Add(6);
+	Everything.Add(7);
+	Everything.Add(8);
+	Everything.Add(9);
 	Found = GatherSearchNone(P, R, Near, 8, Everything, Tried);
 	T.AssertEquals(-1, Found, "a vein never leads to another");
 	Found = GatherSearchNone(P, R, 1400.0, 0, NotA, Tried);
@@ -397,7 +449,11 @@ void Test_Gather_NearbyMassif(FUnitTest& T)
 	T.AssertFalse(Tried.Contains(6), "27 m: still no berries");
 	// From grove B: wood A nearby, but not D (40 m from B), nor through A.
 	GatherSearchNone(P, R, Near, 3, None, Tried);
-	TArray<int> FromB = {4, 2, 1, 0};
+	TArray<int> FromB;
+	FromB.Add(4);
+	FromB.Add(2);
+	FromB.Add(1);
+	FromB.Add(0);
 	T.AssertTrue(GatherSame(Tried, FromB), "from grove B: its tree, then wood A only");
 
 	// No grove with room: rows without limit in front of the tree (300 idle gatherers, far more than 6 rows hold), each on a point of its own, clear of the

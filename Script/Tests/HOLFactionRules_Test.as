@@ -5,17 +5,17 @@
 // The C++ test is removed by the main session after a red seen then green.
 
 const FString FixtureRolesText =
-	"Name,Faction,Role,Type\n"
-	"Dawn_Worker,Dawn,Worker,Peasant\n"
-	"Dawn_Hero,Dawn,Hero,Hero\n"
-	"Dawn_MainCentre,Dawn,MainCentre,MainCentre\n"
-	"Legions_Worker,Legions,Worker,Spearman\n"
-	"Legions_Hero,Legions,Hero,ManAtArms\n"
+	"Name,Faction,Role,Type\n" +
+	"Dawn_Worker,Dawn,Worker,Peasant\n" +
+	"Dawn_Hero,Dawn,Hero,Hero\n" +
+	"Dawn_MainCentre,Dawn,MainCentre,MainCentre\n" +
+	"Legions_Worker,Legions,Worker,Spearman\n" +
+	"Legions_Hero,Legions,Hero,ManAtArms\n" +
 	"Legions_MainCentre,Legions,MainCentre,MainCentre\n";
 
 const FString FixtureOverridesText =
-	"Name,Faction,Type,Field,Value\n"
-	"Legions_Spearman_Name,Legions,Spearman,DisplayName,Fixture Legion Spearman\n"
+	"Name,Faction,Type,Field,Value\n" +
+	"Legions_Spearman_Name,Legions,Spearman,DisplayName,Fixture Legion Spearman\n" +
 	"Legions_Spearman_Cost,Legions,Spearman,Cost,\"(Food=0,Wood=7,Stone=0,Gold=9)\"\n";
 
 // Section 1 of the C++ test: the real files (Tools/Data) read without a problem; the Dawn's three roles and the Legions'.
@@ -120,8 +120,8 @@ void Test_FactionTablesShape(FUnitTest& T)
 
 	// The C++ test builds the table row by row (X: NoSuchField, Y: MaxHealth 123); here the same two rows go through the CSV parser.
 	FString Bad =
-		"Name,Faction,Type,Field,Value\n"
-		"X,Legions,Spearman,NoSuchField,1\n"
+		"Name,Faction,Type,Field,Value\n" +
+		"X,Legions,Spearman,NoSuchField,1\n" +
 		"Y,Legions,Spearman,MaxHealth,123\n";
 	T.AssertEquals(0, HOLFactionRulesRead::CountOverrideProblems(Bad), "the two override rows read");
 	T.AssertEquals(1, HOLFactionRulesRead::ApplyOverridesToUnitRow(Bad, "Legions", "Spearman"), "one override applies, the unknown field does not");
