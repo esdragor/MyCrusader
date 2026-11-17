@@ -22,13 +22,13 @@ namespace HOLTerrainKind
 	constexpr int32 Marsh = 0;
 	/** A road speeds every walker up (C5, La Forêt profonde, CQ6a = A: 130 %); a marsh under it wins (the slowing zone first). */
 	constexpr int32 Road = 1;
-	/** D810 (Q-forest-ford Q1 = A): a forest the map paints; cavalry and siege walk slower in it (F4). 2 was the removed cover zone (D796), not reused. */
+	/** D810 (Q-forest-ford Q1 = A): a forest the map paints; D844 (2026-11-17): it slows nobody any more (every F4 percent is 100), the zone and its paint stay for later use. 2 was the removed cover zone (D796), not reused. */
 	constexpr int32 Forest = 3;
 	/** D810 (Q-forest-ford Q1 = A): a ford the map paints; a unit standing in it takes more damage (F5, its defence reduced). */
 	constexpr int32 Ford = 4;
 }
 
-/** D810: the walker categories the forest tells apart (F4). On foot are never slowed by a forest. */
+/** D810: the walker categories the forest tells apart (F4). Nobody is slowed by a forest since D844 (the categories stay for the settings). */
 namespace HOLTerrainWalker
 {
 	constexpr int32 OnFoot = 0;
@@ -63,10 +63,10 @@ struct HEROESOFLIBERTY_API FHOLTerrainRules
 	/** A speed (cm/s) scaled by a percent, never below 1 cm/s for a walker that walks. */
 	static int32 GetScaledSpeed(int32 Speed, int32 Percent);
 
-	/** D810 F4 (Q-forest-ford Q2 = A): the speed of a cavalry walker in a forest, in percent of normal. */
-	static constexpr int32 DefaultForestCavalrySpeedPercent = 80;
-	/** D810 F4: the speed of a siege engine in a forest, in percent. */
-	static constexpr int32 DefaultForestSiegeSpeedPercent = 70;
+	/** D810 F4, D844: the speed of a cavalry walker in a forest, in percent of normal (100: the forest slows nobody; was 80). */
+	static constexpr int32 DefaultForestCavalrySpeedPercent = 100;
+	/** D810 F4, D844: the speed of a siege engine in a forest, in percent (100; was 70). */
+	static constexpr int32 DefaultForestSiegeSpeedPercent = 100;
 	/** D810 F5: the damage a unit standing on a ford takes, in percent of the hit. */
 	static constexpr int32 DefaultFordDamageTakenPercent = 120;
 

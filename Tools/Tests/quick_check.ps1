@@ -113,6 +113,8 @@ param(
     [switch] $Full,
     [string] $EngineDir = "",
     [switch] $Visible,
+    # MIG2-S3 (2026-11-17): the net and netsig3 parts set every hol.Rpc.Script* cvar to 1 on the server and the clients (the script RPC actor takes the calls, the C++ RPCs stay as the fallback).
+    [switch] $RpcScript,
     [double] $GameFps = 20,
     [switch] $RealTime,
     [string] $GameExec = "",
@@ -122,6 +124,15 @@ param(
 )
 # C0.5: -Map checked against Tools/Data/Maps.csv before anything starts. $MapKey keeps the table's spelling; the name Map
 # itself is reused by the parts below as a local variable.
+$RpcScriptCommands = @(); if ($RpcScript) { $RpcScriptCommands = @('Diplomacy', 'Economy', 'Hero', 'Match', 'Duel', 'Signal', 'Chat', 'Specialization', 'CheatResources', 'CheatFastBuild', 'CheatTechnology', 'CheatTier', 'CheatPopulation', 'CheatUnitSpeed', 'CheatGatherSpeed', 'CheatWound', 'CheatDamageBuilding', 'CheatSpawnBuilding', 'CheatDefeat', 'CheatFallForum', 'CheatSkipForum', 'CheatHoldPresence') | ForEach-Object { "hol.Rpc.Script$_ 1" } }
+# A client's steps with the cvar commands put just BEFORE its first waitplayers (the waitlog steps before it read lines logged once, early: 22 steps before them would make them miss the line).
+function Add-RpcScriptSteps($Steps) {
+    $Steps = @($Steps)
+    if ($RpcScriptCommands.Count -eq 0) { return $Steps }
+    $At = -1; for ($i = 0; $i -lt $Steps.Count; $i++) { if ($Steps[$i] -like 'waitplayers*') { $At = $i; break } }
+    if ($At -lt 1) { return @($RpcScriptCommands) + $Steps }
+    return @($Steps[0..($At - 1)]) + @($RpcScriptCommands) + @($Steps[$At..($Steps.Count - 1)])
+}
 $MapKeys = @(Import-Csv (Join-Path $PSScriptRoot "..\Data\Maps.csv") | ForEach-Object { $_.Name })
 $MapKey = $MapKeys | Where-Object { $_ -ieq $Map.Trim() } | Select-Object -First 1
 if (-not $MapKey) { Write-Host "quick_check : FAIL (unknown map '$Map'; Tools\Data\Maps.csv has: $($MapKeys -join ', '))"; exit 1 }
@@ -583,7 +594,7 @@ if ($Parts -contains "net") {
         # (slot 1) killed: its defeat (King) ends the match in place of V1.4c's surrender.
         @(if ($Parts -contains "victory") { "waitfile $NetKingAskFlag 900", "hol.Victory.SpawnKing 0", "hol.Victory.SpawnKing 1", "wait 1", "signal $NetKingBornFlag",
             "waitfile $NetKingKillFlag 120", "hol.Victory.KillKing 1" }) |
-        Set-Content -Encoding utf8 $NetServerSequence
+        ForEach-Object -Begin { $RpcScriptCommands } -Process { $_ } | Set-Content -Encoding utf8 $NetServerSequence
     $NetSourceCommand += ",hol.Test.Run $NetServerSequence"
     # -useperfthreads (J7c.4): a dedicated server, the editor's -server too, runs every ParallelFor on one thread by the
     # engine's default (FApp::ShouldUseThreadingForPerformance); the parallel processors of D302 run as in the game.
@@ -3046,7 +3057,7 @@ if ($NetListening) {
         }
         $NetSteps += "mark end", "quit"
         $ClientSequence = Join-Path $TestSaved "quick_net_client$Client.seq"
-        $NetSteps | Set-Content -Encoding utf8 $ClientSequence
+        (Add-RpcScriptSteps $NetSteps) | Set-Content -Encoding utf8 $ClientSequence
         $ClientLog = Get-FreshLog (Join-Path $TestSaved "Logs\quick_net_client$Client.log")
         $ClientDisplay = if ($Visible) { "-windowed -ResX=940 -ResY=530 -WinX=$(3940 + ($Client - 1) * 960) -WinY=1020" } else { "-RenderOffScreen -ResX=960 -ResY=540 -nosound" }
         $ClientUrl = if ($Client -eq 1) { "127.0.0.1:${NetPort} -PlayerName=Bob" } else { "127.0.0.1:${NetPort}?Name=Alice" }
@@ -3138,8 +3149,8 @@ $SequenceChecks["scripts compiled ($(if ($GameScriptErrors.Count) { $GameScriptE
 # Each capture shows the screen it is named after (the screens on top of the layers when it was taken; in a match,
 # the game HUD of J3).
 $Expected = @{ title = "menu=HOLTitleScreenScript modal=none"; stackback = "menu=HOLTitleScreenScript modal=none"; quit = "menu=HOLTitleScreenScript modal=HOLConfirmDialogScreenScript";
-    newgame = "menu=HOLNewGameScreen modal=none"; dropdown = "menu=HOLNewGameScreen modal=none"; video = "menu=HOLSettingsScreen modal=none";
-    sound = "menu=HOLSettingsScreen modal=none"; controls = "menu=HOLSettingsScreen modal=none"; language = "menu=HOLSettingsScreen modal=none";
+    newgame = "menu=HOLNewGameScreen modal=none"; dropdown = "menu=HOLNewGameScreen modal=none"; video = "menu=HOLSettingsScreenScript modal=none";
+    sound = "menu=HOLSettingsScreenScript modal=none"; controls = "menu=HOLSettingsScreenScript modal=none"; language = "menu=HOLSettingsScreenScript modal=none";
     start = "hud=HOLGameScreen"; end = "hud=HOLGameScreen"; own = "hud=HOLGameScreen"; other = "hud=HOLGameScreen";
     queue = "hud=HOLGameScreen"; done = "hud=HOLGameScreen"; berries = "hud=HOLGameScreen"; wood = "hud=HOLGameScreen"; idle = "hud=HOLGameScreen";
     popup = "hud=HOLGameScreen"; green = "hud=HOLGameScreen"; red = "hud=HOLGameScreen"; foundations = "hud=HOLGameScreen";
@@ -8508,7 +8519,7 @@ if ($Parts -contains "netsig3") {
         # A4 (D376, D792): Alice and Bob Neutral (no allied victory once Carol is beaten), Alice and Carol mutual allies, then Carol defeated.
         "waitfile $(& $Sig3Flag 'posted3') 180", "hol.Diplomacy.Force 0 1 neutral", "hol.Diplomacy.Force 1 0 neutral", "hol.Diplomacy.Force 0 2 ally", "hol.Diplomacy.Force 2 0 ally",
         "wait 2", "signal $(& $Sig3Flag 'phase3')", "waitfile $(& $Sig3Flag 'defeated') 60", "hol.Diplomacy.Report") +
-        @($Sig3Done | ForEach-Object { "waitfile $_ 90" }) + @("wait 1", "quit") | Set-Content -Encoding utf8 $Sig3ServerSequence
+        @($Sig3Done | ForEach-Object { "waitfile $_ 90" }) + @("wait 1", "quit") | ForEach-Object -Begin { $RpcScriptCommands } -Process { $_ } | Set-Content -Encoding utf8 $Sig3ServerSequence
     $Sig3Port = Get-AITestPort
     $Sig3ServerArguments = "`"$UProject`" /Game/Maps/Plain -server -Port=$Sig3Port -useperfthreads -unattended -nosplash -Multiprocess -LiveCoding=0 -asdebugport=0 -as-exit-on-error -nosound -saveddirsuffix=Tests_NetSrv -HOLCheats -MatchConfig=`"$Sig3Config`" -abslog=`"$Sig3ServerLog`" -ExecCmds=`"hol.Test.Run $Sig3ServerSequence`""
     $Sig3Server = Start-Process -FilePath (Join-Path $EngineDir "UnrealEditor.exe") -ArgumentList $Sig3ServerArguments -PassThru -WindowStyle Hidden
@@ -8549,7 +8560,7 @@ if ($Parts -contains "netsig3") {
             }
             $Steps += @("waitfile $(& $Sig3Flag 'posted4') 240", "wait 1", "hol.Diplomacy.Report", "hol.Signal.Report", "signal $($Sig3Done[$Client - 1])") +
                 @($Sig3Done | Where-Object { $_ -ne $Sig3Done[$Client - 1] } | ForEach-Object { "waitfile $_ 60" }) + @("mark end", "quit")
-            $Steps | Set-Content -Encoding utf8 $ClientSequence
+            (Add-RpcScriptSteps $Steps) | Set-Content -Encoding utf8 $ClientSequence
             $ClientLog = Get-FreshLog (Join-Path $TestSaved "Logs\quick_${Sig3Part}_client$Client.log")
             $ClientDisplay = if ($Visible) { "-windowed -ResX=940 -ResY=530 -WinX=$(3940 + ($Client - 1) * 960) -WinY=1020" } else { "-RenderOffScreen -ResX=960 -ResY=540 -nosound" }
             $ClientUrl = if ($Client -eq 1) { "127.0.0.1:${Sig3Port} -PlayerName=Bob" } else { "127.0.0.1:${Sig3Port}?Name=$($Sig3Names[$Client])" }

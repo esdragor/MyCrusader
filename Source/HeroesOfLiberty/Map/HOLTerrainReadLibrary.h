@@ -55,11 +55,11 @@ public:
 	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Terrain")
 	static int32 GetDefaultRoadSpeedPercent();
 
-	/** FHOLTerrainRules::DefaultForestCavalrySpeedPercent (80). */
+	/** FHOLTerrainRules::DefaultForestCavalrySpeedPercent (100, D844). */
 	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Terrain")
 	static int32 GetDefaultForestCavalrySpeedPercent();
 
-	/** FHOLTerrainRules::DefaultForestSiegeSpeedPercent (70). */
+	/** FHOLTerrainRules::DefaultForestSiegeSpeedPercent (100, D844). */
 	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Terrain")
 	static int32 GetDefaultForestSiegeSpeedPercent();
 

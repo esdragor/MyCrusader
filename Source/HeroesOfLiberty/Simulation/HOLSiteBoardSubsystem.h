@@ -34,6 +34,9 @@ public:
 	static FHOLSiteVictoryState VictoryStep(UHOLSiteBoardSubsystem* Board, const FHOLSiteVictoryState& State, const TArray<int32>& OwnerBySite,
 		const TArray<int32>& ContestedBySite, const TArray<int32>& TeamBySlot, int32 VictorySteps);
 
+	/** The whole gold for this step to the owner of Sites held sites (0 most steps), Carry the owner's kept fractions (in and out): the board's answer, 0 when Board is null (error logged). The server's call, once per paid slot and step. */
+	static int32 GoldStep(UHOLSiteBoardSubsystem* Board, int32& Carry, int32 Sites, int32 RatePerMinute);
+
 	/** The board's answers (the native events below, i.e. the script rules in the script subclass). */
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Site")
 	FHOLSiteState StepSiteNow(const FHOLSiteState& State, const TArray<int32>& Takers, const TArray<int32>& Disturbers, const TArray<int32>& TeamBySlot,
@@ -41,6 +44,9 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Site")
 	FHOLSiteVictoryState VictoryStepNow(const FHOLSiteVictoryState& State, const TArray<int32>& OwnerBySite, const TArray<int32>& ContestedBySite,
 		const TArray<int32>& TeamBySlot, int32 VictorySteps);
+
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Site")
+	int32 GoldStepNow(int32& Carry, int32 Sites, int32 RatePerMinute);
 
 	virtual bool ShouldCreateSubsystem(UObject* Outer) const override;
 
@@ -60,4 +66,9 @@ protected:
 		const TArray<int32>& TeamBySlot, int32 VictorySteps);
 	virtual FHOLSiteVictoryState VictoryStepRule_Implementation(const FHOLSiteVictoryState& State, const TArray<int32>& OwnerBySite,
 		const TArray<int32>& ContestedBySite, const TArray<int32>& TeamBySlot, int32 VictorySteps);
+
+	/** The gold step (S6, D699; HOLSiteVictory::GoldStepWith of the script). The C++ default is inert (0, error logged): the rule is the script's. */
+	UFUNCTION(BlueprintNativeEvent, Category = "HeroesOfLiberty|Site")
+	int32 GoldStepRule(int32& Carry, int32 Sites, int32 RatePerMinute);
+	virtual int32 GoldStepRule_Implementation(int32& Carry, int32 Sites, int32 RatePerMinute);
 };

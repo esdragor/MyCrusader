@@ -3637,4 +3637,10 @@ La courbe d'XP (Q04) reste à régler en test.
 
 **D841** (Terrain, `Q-terrain-regles-sans-appelant`, 2026-11-17 09:3x, réponse de l'utilisateur) : option **A**. On **branche D810** : le mouvement et le combat lisent les règles de forêt (F4 : cavalerie 80 %, engins 70 %), de gué (F5 : 120 % de dégâts reçus) et d'arrêt de charge en marais ; les règles et leurs tests restent. Le branchement touche le pas Mass (C++) : une tâche à part, avec build, chantier `TerrainForestFordInProgress.md`.
 
-Prochain numéro : **D842**.
+**D842** (Migration, MIG2-S3 : où vivent les RPC du joueur, `Q-mig2-s3`, 2026-11-17 ~15:3x, réponse de l'utilisateur « 1A 2A ») : **Q1 A** : un **acteur script par joueur déclare les RPC** (comme la sonde) ; le pilote est **ServerDiplomacyStance seul**, mesuré avant de migrer le reste ; chaque RPC migrée demande un essai à 2 clients (spectateur, reconnexion : l'acteur doit exister). **Q2 A** : les **18 triviales d'abord** (diplomatie, duel, partie, héros, signaux, chat), les **ordres du joueur après une mesure de latence**, les **triches en remplissage**, les **5 à grosse charge restent en C++** (statistiques de partie, mémoire du brouillard, bulles de dépôt). Plan : `Docs\Rapports\PLAN-MIG2-S3-1117.md`.
+
+**D843** (Écran Multijoueur, `Q-ecran-multijoueur-fond`, 2026-11-17 ~15:3x, réponse de l'utilisateur) : **Q1 A** : « Créer un salon » **reste actif sans gestionnaire** (comportement codé de `CanCreateLobbyAfter`, grisé seulement sur `bad_key`) ; on corrige le `.look` et le `.txt` en « actif ». **Q2 B** : un **voile sombre derrière l'écran Multijoueur seulement** (pas dans `MakeCenteredColumn`, les autres menus ne changent pas) ; à jouer depuis le titre.
+
+**D844** (Terrain, forêt, `Q-terrain-formation`, modifie D810 et D841, 2026-11-17 ~15:3x, réponse de l'utilisateur « on enlève le ralentissement en forêt ») : **la forêt (F4) ne ralentit plus personne** (ni la cavalerie 80 %, ni le siège 70 %, isolés ou en bloc de formation) ; la question du bloc mixte disparaît. Le **gué F5 garde ses 120 % de dégâts reçus** (D810 Q2) et le **marais** (arrêt de charge, vitesse) reste. Le branchement de D841 ne lit donc plus F4 ; le code de F4 est à retirer ou neutraliser dans `HOLTerrainRules.as` / `FHOLTerrainSettings` (tâche à part).
+
+Prochain numéro : **D845**.

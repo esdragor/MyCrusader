@@ -1,6 +1,6 @@
 // The terrain rules of the script (forest F4, ford F5, charge stopped in a marsh; GDD 5.4, 8.1, D33), read through UHOLTerrainReadLibrary
 // (D836, 2026-11-17: no script copy of the rule, one source in C++): settings built from the struct's defaults, HOLTerrain::ForestSpeedPercent /
-// FordDamageTaken / StopsCharge / WalkerSpeedPercentAt asked; the last three tests state the D810 numbers themselves (80, 70, 120, kinds 3 and 4).
+// FordDamageTaken / StopsCharge / WalkerSpeedPercentAt asked; the last three tests state the D810 numbers themselves (forest 100 since D844, ford 120, kinds 3 and 4).
 // D836 (2026-11-16): the speed rule of the marsh and the road is the C++'s alone; its script copy and its tests (Test_TerrainMarshSlows,
 // Test_TerrainNoZoneAndOverlap, Test_TerrainPresetsAndScaledSpeed, Test_TerrainRoadSpeedsUp, Test_TerrainServerAndScriptRulesAgree,
 // Test_TerrainServerAndScriptAgreeOnEveryZone) are removed; the C++ tests HeroesOfLiberty.Terrain.Rules and .WalkSpeed cover it.
@@ -43,10 +43,10 @@ void Test_TerrainUnknownZoneKindNeutral(FUnitTest& T)
 	T.AssertTrue(HOLTerrain::StopsCharge(S, Zones, 300, 0), "a marsh over it still does");
 }
 
-// F4 (GDD 8.1, D33): a cavalry walker and a siege engine go slower in a forest, a unit on foot does not; out of a forest nobody is slowed.
-// The speeds are walked through the rule (ForestSpeedPercent, then the server's scaling, the one the movement step uses: D836), never the
-// settings' numbers retyped.
-void Test_TerrainForestSlowsCavalryAndSiege(FUnitTest& T)
+// F4 (GDD 8.1, D33; D844, 2026-11-17: the forest slows nobody any more): no walker category goes slower in a forest, nor out of one; the
+// setting lines stay (a map or a later rule can set them again). The speeds are walked through the rule (ForestSpeedPercent, then the
+// server's scaling, the one the movement step uses: D836), never the settings' numbers retyped.
+void Test_TerrainForestSlowsNobody(FUnitTest& T)
 {
 	FHOLTerrainSettings S;
 	int Speed = 600;
@@ -54,14 +54,12 @@ void Test_TerrainForestSlowsCavalryAndSiege(FUnitTest& T)
 	int CavalryOutside = HOLTerrain::ServerScaledSpeed(Speed, HOLTerrain::ForestSpeedPercent(S, HOLTerrain::Cavalry, false));
 	int SiegeInForest = HOLTerrain::ServerScaledSpeed(Speed, HOLTerrain::ForestSpeedPercent(S, HOLTerrain::Siege, true));
 	int FootInForest = HOLTerrain::ServerScaledSpeed(Speed, HOLTerrain::ForestSpeedPercent(S, HOLTerrain::OnFoot, true));
-	T.AssertTrue(CavalryInForest < CavalryOutside, "the cavalry goes slower in a forest (" + CavalryInForest + " < " + CavalryOutside + ")");
-	T.AssertTrue(CavalryInForest > 0, "the cavalry is slowed, not stopped");
-	T.AssertTrue(SiegeInForest < Speed, "a siege engine goes slower in a forest (" + SiegeInForest + ")");
+	T.AssertEquals(Speed, CavalryInForest, "the cavalry keeps its speed in a forest (D844)");
+	T.AssertEquals(Speed, SiegeInForest, "a siege engine keeps its speed in a forest (D844)");
 	T.AssertEquals(Speed, FootInForest, "a unit on foot keeps its speed in a forest");
 	T.AssertEquals(Speed, CavalryOutside, "out of a forest the cavalry keeps its speed");
-	T.AssertTrue(CavalryInForest < Speed && CavalryInForest >= Speed / 2, "a moderate slowing (between half and full speed)");
 	S.ForestCavalrySpeedPercent = 50;
-	T.AssertEquals(Speed / 2, HOLTerrain::ServerScaledSpeed(Speed, HOLTerrain::ForestSpeedPercent(S, HOLTerrain::Cavalry, true)), "the one setting line changes the cavalry");
+	T.AssertEquals(Speed / 2, HOLTerrain::ServerScaledSpeed(Speed, HOLTerrain::ForestSpeedPercent(S, HOLTerrain::Cavalry, true)), "the one setting line still changes the cavalry");
 	T.AssertEquals(SiegeInForest, HOLTerrain::ServerScaledSpeed(Speed, HOLTerrain::ForestSpeedPercent(S, HOLTerrain::Siege, true)), "and not the siege");
 }
 
@@ -92,15 +90,15 @@ void Test_TerrainReadsTheCppRule(FUnitTest& T)
 	T.AssertEquals(1, HOLTerrain::Cavalry, "cavalry");
 	T.AssertEquals(2, HOLTerrain::Siege, "siege");
 	FHOLTerrainSettings S;
-	T.AssertEquals(80, S.ForestCavalrySpeedPercent, "forest cavalry 80 (Q-forest-ford Q2 = A)");
-	T.AssertEquals(70, S.ForestSiegeSpeedPercent, "forest siege 70");
+	T.AssertEquals(100, S.ForestCavalrySpeedPercent, "forest cavalry 100 (D844: the forest slows nobody)");
+	T.AssertEquals(100, S.ForestSiegeSpeedPercent, "forest siege 100 (D844)");
 	T.AssertEquals(120, S.FordDamageTakenPercent, "ford 120");
 	T.AssertEquals(60, HOLTerrainRead::GetDefaultMarshSpeedPercent(), "marsh 60");
 	T.AssertEquals(130, HOLTerrainRead::GetDefaultRoadSpeedPercent(), "road 130");
 }
 
-// D810 F4 at a point: a painted forest zone slows cavalry and siege, not a unit on foot; outside the zone (edge counts in) nobody; the
-// marsh and the forest together: the slowest wins; a marsh slows the one on foot too.
+// D810 F4 at a point (D844: the forest slows nobody): a painted forest zone leaves every category at 100, inside, on the edge and outside;
+// the marsh and the forest together: the marsh alone slows; a marsh slows the one on foot too.
 void Test_TerrainWalkerSpeedAtPoint(FUnitTest& T)
 {
 	TArray<FHOLTerrainZone> Zones;
@@ -110,14 +108,14 @@ void Test_TerrainWalkerSpeedAtPoint(FUnitTest& T)
 	Forest.Y = 2000;
 	Forest.Radius = 500;
 	Zones.Add(Forest);
-	T.AssertEquals(80, HOLTerrain::WalkerSpeedPercentAt(Zones, HOLTerrain::Cavalry, 1000, 2000), "cavalry in a forest");
-	T.AssertEquals(70, HOLTerrain::WalkerSpeedPercentAt(Zones, HOLTerrain::Siege, 1000, 2000), "siege in a forest");
+	T.AssertEquals(100, HOLTerrain::WalkerSpeedPercentAt(Zones, HOLTerrain::Cavalry, 1000, 2000), "cavalry in a forest");
+	T.AssertEquals(100, HOLTerrain::WalkerSpeedPercentAt(Zones, HOLTerrain::Siege, 1000, 2000), "siege in a forest");
 	T.AssertEquals(100, HOLTerrain::WalkerSpeedPercentAt(Zones, HOLTerrain::OnFoot, 1000, 2000), "on foot in a forest");
-	T.AssertEquals(80, HOLTerrain::WalkerSpeedPercentAt(Zones, HOLTerrain::Cavalry, 1500, 2000), "the edge counts in");
+	T.AssertEquals(100, HOLTerrain::WalkerSpeedPercentAt(Zones, HOLTerrain::Cavalry, 1500, 2000), "the edge, full speed too");
 	T.AssertEquals(100, HOLTerrain::WalkerSpeedPercentAt(Zones, HOLTerrain::Cavalry, 1501, 2000), "one centimetre outside");
 	T.AssertEquals(100, HOLTerrain::WalkerSpeedPercentAt(TArray<FHOLTerrainZone>(), HOLTerrain::Cavalry, 0, 0), "no zone, full speed");
 	Zones.Add(MarshZone(1000, 2000, 300));
-	T.AssertEquals(60, HOLTerrain::WalkerSpeedPercentAt(Zones, HOLTerrain::Cavalry, 1000, 2000), "marsh and forest: the slowest wins");
+	T.AssertEquals(60, HOLTerrain::WalkerSpeedPercentAt(Zones, HOLTerrain::Cavalry, 1000, 2000), "marsh and forest: the marsh alone slows");
 	T.AssertEquals(60, HOLTerrain::WalkerSpeedPercentAt(Zones, HOLTerrain::OnFoot, 1000, 2000), "a marsh slows the one on foot too");
 }
 

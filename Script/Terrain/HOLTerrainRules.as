@@ -10,10 +10,10 @@ struct FHOLTerrainSettings
 	// Whether a charge (heavy cavalry, D345.3) is stopped in a marsh (GDD 5.4). Read by the charge when it exists.
 	bool bMarshStopsCharge = true;
 
-	// F4 (GDD 8.1, D33): the speed of a cavalry walker in a forest, in percent of its normal speed.
+	// F4 (GDD 8.1, D33; D844: 100, the forest slows nobody): the speed of a cavalry walker in a forest, in percent of its normal speed.
 	int ForestCavalrySpeedPercent = HOLTerrainRead::GetDefaultForestCavalrySpeedPercent();
 
-	// F4: the speed of a siege engine in a forest, in percent. Units on foot keep their speed.
+	// F4 (D844: 100): the speed of a siege engine in a forest, in percent. Units on foot keep their speed.
 	int ForestSiegeSpeedPercent = HOLTerrainRead::GetDefaultForestSiegeSpeedPercent();
 
 	// F5 (GDD 8.1, D33): the damage a unit standing on a ford takes, in percent of the hit (its defence reduced).

@@ -1,4 +1,6 @@
-# [À RÉPONDRE] Q-ecran-multijoueur-fond : fond de l'écran Multijoueur et état de « Créer un salon » sans gestionnaire
+# [RÉPONDU 2026-11-17, D843] Q-ecran-multijoueur-fond : fond de l'écran Multijoueur et état de « Créer un salon » sans gestionnaire
+
+Reponse: Q1 A (Créer un salon reste actif sans gestionnaire : on corrige le .look et le .txt en « actif »), Q2 B (voile sombre derrière l'écran Multijoueur seulement). Texte complet : D843 du GDD.
 
 Contexte : le PNG de ecran_multijoueur montre (1) « Créer un salon » ACTIF et (2) aucun fond (le décor de la partie passe derrière la ligne rouge). Le .look disait « grisé ». Le C++ (HOLManagerErrorText.cpp, CanCreateLobbyAfter, testé par HOLManagerErrorTextTests) ne grise Créer que sur `bad_key` ; gestionnaire injoignable (HTTP 0, code vide) le laisse actif, et le .txt (étape 2) demande de cliquer Créer sur un nom vide, donc actif. L'ancien écran C++ n'avait pas de fond non plus (MakeCenteredColumn seul, comme Titre et Réglages).
 

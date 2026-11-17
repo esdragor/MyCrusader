@@ -27,3 +27,20 @@ function Set-TestEdgeScrollOff([string] $SavedDir) {
     if (-not $Done) { $Out.Add(""); $Out.Add($Section); $Out.Add("bEdgeScroll=False") }
     Set-Content -Encoding ascii $Settings $Out
 }
+
+# Reset-TestHolSettings: removes the whole [/Script/HeroesOfLiberty.HOLGameUserSettings] section of that file, so the game starts from
+# the code's defaults (edge scrolling on, volumes 100 %, camera speed normal). For a scenario that shows the settings screen at its
+# starting state (header line "# default-settings" in the .txt, read by check.ps1, which calls this INSTEAD of Set-TestEdgeScrollOff).
+function Reset-TestHolSettings([string] $SavedDir) {
+    $Settings = Join-Path $SavedDir "Config\WindowsEditor\GameUserSettings.ini"
+    if (-not (Test-Path $Settings)) { return }
+    $Section = "[/Script/HeroesOfLiberty.HOLGameUserSettings]"
+    $Out = New-Object System.Collections.Generic.List[string]
+    $Skip = $false
+    foreach ($Line in @(Get-Content $Settings)) {
+        if ($Line.Trim() -eq $Section) { $Skip = $true; continue }
+        if ($Skip -and $Line.Trim().StartsWith("[")) { $Skip = $false }
+        if (-not $Skip) { $Out.Add($Line) }
+    }
+    Set-Content -Encoding ascii $Settings $Out
+}

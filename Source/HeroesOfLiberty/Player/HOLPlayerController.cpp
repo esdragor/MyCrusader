@@ -24,6 +24,7 @@
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
 #include "HAL/IConsoleManager.h"
+#include "Net/HOLScriptRpcPlayerActor.h"
 #include "HOLCollision.h"
 #include "HeroesOfLibertyLog.h"
 #include "InputAction.h"
@@ -40,7 +41,7 @@
 #include "Match/HOLSignalSubsystem.h"
 #include "Match/HOLChatSubsystem.h"
 #include "Match/HOLSpecializationSubsystem.h"
-#include "Player/HOLGameMenuRules.h"
+#include "Player/HOLGameMenuRulesBridge.h"
 #include "Player/HOLRTSCamera.h"
 #include "Player/HOLSelectionMarkers.h"
 #include "Player/HOLUnitPicking.h"
@@ -55,6 +56,17 @@
 #include "Simulation/HOLUnitSubsystem.h"
 #include "Simulation/HOLUnitTypes.h"
 #include "Simulation/HOLUnitView.h"
+
+// HALDIR-1117o (NOT COMPILED): forward declaration of the script route (defined near RequestSurrender), used by the watch call above it.
+namespace HOLRpcScriptRoute_Haldir1117n
+{
+	bool CallN(AHOLPlayerController* Controller, const TCHAR* CVarName, const TCHAR* FunctionName, TArrayView<const int32> Args);
+	// HALDIR-1117q (NOT COMPILED): the Economy routes (hol.Rpc.ScriptEconomy); true = the script actor took the call, false = the caller sends the C++ RPC.
+	bool RouteQueueProduction(AHOLPlayerController* Controller, AHOLBuilding* Building, FName TypeName);
+	bool RouteCancelProduction(AHOLPlayerController* Controller, AHOLBuilding* Building, int32 Index);
+	bool RouteTribute(AHOLPlayerController* Controller, AHOLBuilding* Building, int32 Receiver, int32 Resource, int32 Amount);
+	bool RouteMarketTrade(AHOLPlayerController* Controller, AHOLBuilding* Building, int32 Resource, int32 Lots, bool bBuy);
+}
 
 namespace UE::HeroesOfLiberty::Player
 {
@@ -3432,7 +3444,11 @@ void AHOLPlayerController::UpdateWatchedUnit()
 	if (UnitId != SentWatchedUnitId)
 	{
 		SentWatchedUnitId = UnitId;
-		ServerWatchUnit(UnitId);
+		const int32 WatchArgs[] = { static_cast<int32>(UnitId) };
+		if (!HOLRpcScriptRoute_Haldir1117n::CallN(this, TEXT("hol.Rpc.ScriptHero"), TEXT("ServerWatchUnit"), WatchArgs))
+		{
+			ServerWatchUnit(UnitId);
+		}
 	}
 }
 
@@ -3935,7 +3951,7 @@ void AHOLPlayerController::ExecuteGridCommand(const FHOLGridCommand& Command)
 			UE_CLOG(HasBuildingGroup(), LogHOLMatch, Display, TEXT("Grid: %s queued at %s (#%u), subgroup %s"), *Command.TypeName.ToString(),
 				*DescribeBuilding(Building), Building->GetUniqueID(), *DescribeSubgroup());
 			LastProductionBuilding.Add(Command.TypeName, Building->GetUniqueID());
-			ServerQueueProduction(Building, Command.TypeName);
+			if (!HOLRpcScriptRoute_Haldir1117n::RouteQueueProduction(this, Building, Command.TypeName)) { ServerQueueProduction(Building, Command.TypeName); }
 		}
 		return;
 	}
@@ -3977,7 +3993,7 @@ void AHOLPlayerController::ExecuteGridCommand(const FHOLGridCommand& Command)
 		}
 		UE_LOG(LogHOLMatch, Display, TEXT("Grid: research %s at %s (#%u)"), *Command.TypeName.ToString(), *DescribeBuilding(Building), Building->GetUniqueID());
 		LastProductionBuilding.Add(Command.TypeName, Building->GetUniqueID());
-		ServerQueueProduction(Building, Command.TypeName);
+		if (!HOLRpcScriptRoute_Haldir1117n::RouteQueueProduction(this, Building, Command.TypeName)) { ServerQueueProduction(Building, Command.TypeName); }
 		return;
 	}
 	case EHOLGridCommand::Trade:
@@ -4176,7 +4192,7 @@ void AHOLPlayerController::RequestProduction(const FName TypeName)
 {
 	if (AHOLBuilding* Building = GetOwnSelection())
 	{
-		ServerQueueProduction(Building, TypeName);
+		if (!HOLRpcScriptRoute_Haldir1117n::RouteQueueProduction(this, Building, TypeName)) { ServerQueueProduction(Building, TypeName); }
 	}
 }
 
@@ -4188,7 +4204,7 @@ void AHOLPlayerController::RequestCancelProduction(const int32 Index)
 	}
 	if (AHOLBuilding* Building = GetOwnSelection())
 	{
-		ServerCancelProduction(Building, Index);
+		if (!HOLRpcScriptRoute_Haldir1117n::RouteCancelProduction(this, Building, Index)) { ServerCancelProduction(Building, Index); }
 	}
 }
 
@@ -4200,7 +4216,7 @@ void AHOLPlayerController::RequestTribute(const int32 Receiver, const int32 Reso
 	}
 	if (AHOLBuilding* Building = GetOwnSelection())
 	{
-		ServerTribute(Building, Receiver, Resource, Amount);
+		if (!HOLRpcScriptRoute_Haldir1117n::RouteTribute(this, Building, Receiver, Resource, Amount)) { ServerTribute(Building, Receiver, Resource, Amount); }
 	}
 }
 
@@ -4215,7 +4231,7 @@ void AHOLPlayerController::RequestPanelTribute(const int32 Receiver, const int32
 	{
 		if (It->GetOwnerPlayer() == HOLPlayerState->GetPlayerIndex() && It->GetTypeName() == HOLBuildingTypeNames::Market && It->IsFinished())
 		{
-			ServerTribute(*It, Receiver, Resource, Amount);
+			if (!HOLRpcScriptRoute_Haldir1117n::RouteTribute(this, *It, Receiver, Resource, Amount)) { ServerTribute(*It, Receiver, Resource, Amount); }
 			return;
 		}
 	}
@@ -4229,7 +4245,7 @@ void AHOLPlayerController::RequestMarketTrade(const int32 Resource, const int32 
 	}
 	if (AHOLBuilding* Building = GetOwnSelection())
 	{
-		ServerMarketTrade(Building, Resource, Lots, bBuy);
+		if (!HOLRpcScriptRoute_Haldir1117n::RouteMarketTrade(this, Building, Resource, Lots, bBuy)) { ServerMarketTrade(Building, Resource, Lots, bBuy); }
 	}
 }
 
@@ -4728,43 +4744,149 @@ bool AHOLPlayerController::IsCheatRefused(const TCHAR* What) const
 	return true;
 }
 
+// CHEATS A (ELROND-1117q, NOT COMPILED): the L4 group A cheat calls go through the script RPC actor (Script/Net/HOLRpcPlayer.as) when hol.Rpc.ScriptCheat<Name> is 1 (default 0: the C++ RPC, nothing changes).
+// Self-contained (the HOLRpcScriptRoute_Haldir1117n helper is defined further down): the cvars are only READ here (declared by the script, a missing one reads as 0). Unique namespace name (unity builds).
+namespace HOLRpcScriptRoute_Elrond1117q
+{
+	// Ints fill the bool / int32 / uint32 parameters in order, Real the double / float one, Name the FName one. false: no actor, no such function: the caller falls back to the C++ RPC.
+	bool CallCheat(AHOLPlayerController* Controller, const TCHAR* CVarName, const TCHAR* FunctionName, const TArrayView<const int32> Ints, const double* Real, const FName* Name)
+	{
+		const IConsoleVariable* CVar = IConsoleManager::Get().FindConsoleVariable(CVarName);
+		if (!Controller || !CVar || CVar->GetInt() == 0)
+		{
+			return false;
+		}
+		AActor* RpcActor = UHOLRpcBridgeLibrary::FindPlayerActor(Controller);
+		UFunction* Function = RpcActor ? RpcActor->FindFunction(FunctionName) : nullptr;
+		if (!Function || !Function->HasAnyFunctionFlags(FUNC_Net))
+		{
+			return false;
+		}
+		TArray<uint8> Params;
+		Params.SetNumZeroed(FMath::Max<int32>(Function->ParmsSize, 1));
+		Function->InitializeStruct(Params.GetData());
+		int32 IntIndex = 0;
+		for (TFieldIterator<FProperty> It(Function); It && It->HasAnyPropertyFlags(CPF_Parm); ++It)
+		{
+			if (It->HasAnyPropertyFlags(CPF_ReturnParm))
+			{
+				continue;
+			}
+			if (const FDoubleProperty* DoubleProperty = CastField<FDoubleProperty>(*It))
+			{
+				if (Real) { DoubleProperty->SetPropertyValue_InContainer(Params.GetData(), *Real); }
+			}
+			else if (const FFloatProperty* FloatProperty = CastField<FFloatProperty>(*It))
+			{
+				if (Real) { FloatProperty->SetPropertyValue_InContainer(Params.GetData(), static_cast<float>(*Real)); }
+			}
+			else if (const FNameProperty* NameProperty = CastField<FNameProperty>(*It))
+			{
+				if (Name) { NameProperty->SetPropertyValue_InContainer(Params.GetData(), *Name); }
+			}
+			else if (Ints.IsValidIndex(IntIndex))
+			{
+				if (const FBoolProperty* BoolProperty = CastField<FBoolProperty>(*It))
+				{
+					BoolProperty->SetPropertyValue_InContainer(Params.GetData(), Ints[IntIndex] != 0);
+				}
+				else if (const FIntProperty* IntProperty = CastField<FIntProperty>(*It))
+				{
+					IntProperty->SetPropertyValue_InContainer(Params.GetData(), Ints[IntIndex]);
+				}
+				++IntIndex;
+			}
+		}
+		RpcActor->ProcessEvent(Function, Params.GetData());
+		Function->DestroyStruct(Params.GetData());
+		return true;
+	}
+}
+
 void AHOLPlayerController::RequestCheatResources(const FHOLResources& Amount)
 {
+	const int32 StockInts[4] = {Amount.Food, Amount.Wood, Amount.Stone, Amount.Gold};
+	if (HOLRpcScriptRoute_Elrond1117q::CallCheat(this, TEXT("hol.Rpc.ScriptCheatResources"), TEXT("ServerCheatResources"), TArrayView<const int32>(StockInts, 4), nullptr, nullptr))
+	{
+		return;
+	}
 	ServerCheatResources(Amount);
 }
 
 void AHOLPlayerController::RequestCheatFastBuild(const bool bOn)
 {
+	const int32 FastBuildInt = bOn ? 1 : 0;
+	if (HOLRpcScriptRoute_Elrond1117q::CallCheat(this, TEXT("hol.Rpc.ScriptCheatFastBuild"), TEXT("ServerCheatFastBuild"), TArrayView<const int32>(&FastBuildInt, 1), nullptr, nullptr))
+	{
+		return;
+	}
 	ServerCheatFastBuild(bOn);
 }
 
 void AHOLPlayerController::RequestCheatTechnology(const FName Technology)
 {
+	if (HOLRpcScriptRoute_Elrond1117q::CallCheat(this, TEXT("hol.Rpc.ScriptCheatTechnology"), TEXT("ServerCheatTechnology"), TArrayView<const int32>(), nullptr, &Technology))
+	{
+		return;
+	}
 	ServerCheatTechnology(Technology);
 }
 
 void AHOLPlayerController::RequestCheatTier(const int32 Tier, const int32 Slot)
 {
+	const int32 TierInts[2] = {Tier, Slot};
+	if (HOLRpcScriptRoute_Elrond1117q::CallCheat(this, TEXT("hol.Rpc.ScriptCheatTier"), TEXT("ServerCheatTier"), TArrayView<const int32>(TierInts, 2), nullptr, nullptr))
+	{
+		return;
+	}
 	ServerCheatTier(Tier, Slot);
 }
 
 void AHOLPlayerController::RequestCheatPopulation(const int32 Places)
 {
+	if (HOLRpcScriptRoute_Elrond1117q::CallCheat(this, TEXT("hol.Rpc.ScriptCheatPopulation"), TEXT("ServerCheatPopulation"), TArrayView<const int32>(&Places, 1), nullptr, nullptr))
+	{
+		return;
+	}
 	ServerCheatPopulation(Places);
 }
 
 void AHOLPlayerController::RequestCheatUnitSpeed(const float Scale)
 {
+	const double UnitSpeedReal = Scale;
+	if (HOLRpcScriptRoute_Elrond1117q::CallCheat(this, TEXT("hol.Rpc.ScriptCheatUnitSpeed"), TEXT("ServerCheatUnitSpeed"), TArrayView<const int32>(), &UnitSpeedReal, nullptr))
+	{
+		return;
+	}
 	ServerCheatUnitSpeed(Scale);
 }
 
 void AHOLPlayerController::RequestCheatGatherSpeed(const float Scale)
 {
+	const double GatherSpeedReal = Scale;
+	if (HOLRpcScriptRoute_Elrond1117q::CallCheat(this, TEXT("hol.Rpc.ScriptCheatGatherSpeed"), TEXT("ServerCheatGatherSpeed"), TArrayView<const int32>(), &GatherSpeedReal, nullptr))
+	{
+		return;
+	}
 	ServerCheatGatherSpeed(Scale);
+}
+
+// CHEATS B (CELEBORN-1117q): forward declaration of the 1117p route helper (defined below the Request functions of the cheats).
+namespace HOLRpcScriptRoute_Haldir1117n
+{
+	bool CallEx(AHOLPlayerController* Controller, const TCHAR* CVarName, const TCHAR* FunctionName, const TArrayView<const int32> Args, const FString* Text, const FVector* Location);
 }
 
 void AHOLPlayerController::RequestCheatWound(const int32 Percent)
 {
+	// CHEATS B (CELEBORN-1117q): through the script actor when hol.Rpc.ScriptCheatWound is 1, else the C++ RPC as before.
+	{
+		const int32 CheatArgs[1] = { Percent };
+		if (HOLRpcScriptRoute_Haldir1117n::CallEx(this, TEXT("hol.Rpc.ScriptCheatWound"), TEXT("ServerCheatWound"), TArrayView<const int32>(CheatArgs, 1), nullptr, nullptr))
+		{
+			return;
+		}
+	}
 	ServerCheatWound(Percent);
 }
 
@@ -4908,6 +5030,15 @@ void AHOLPlayerController::ServerCheatUnitSpeed_Implementation(const float Scale
 
 void AHOLPlayerController::RequestCheatSpawnBuilding(const FName TypeName, const int32 Slot, const FVector& Point)
 {
+	// CHEATS B (CELEBORN-1117q): through the script actor when hol.Rpc.ScriptCheatSpawnBuilding is 1, else the C++ RPC as before.
+	{
+		const FString CheatType = TypeName.ToString();
+		const int32 CheatArgs[1] = { Slot };
+		if (HOLRpcScriptRoute_Haldir1117n::CallEx(this, TEXT("hol.Rpc.ScriptCheatSpawnBuilding"), TEXT("ServerCheatSpawnBuilding"), TArrayView<const int32>(CheatArgs, 1), &CheatType, &Point))
+		{
+			return;
+		}
+	}
 	ServerCheatSpawnBuilding(TypeName, Slot, Point);
 }
 
@@ -4944,6 +5075,14 @@ void AHOLPlayerController::ServerCheatSpawnBuilding_Implementation(const FName T
 
 void AHOLPlayerController::RequestCheatDefeat(const int32 Slot)
 {
+	// CHEATS B (CELEBORN-1117q): through the script actor when hol.Rpc.ScriptCheatDefeat is 1, else the C++ RPC as before.
+	{
+		const int32 CheatArgs[1] = { Slot };
+		if (HOLRpcScriptRoute_Haldir1117n::CallEx(this, TEXT("hol.Rpc.ScriptCheatDefeat"), TEXT("ServerCheatDefeat"), TArrayView<const int32>(CheatArgs, 1), nullptr, nullptr))
+		{
+			return;
+		}
+	}
 	ServerCheatDefeat(Slot);
 }
 
@@ -4985,6 +5124,14 @@ bool AHOLPlayerController::FocusCameraOnForum(const int32 Slot)
 
 void AHOLPlayerController::RequestCheatFallForum(const int32 Slot)
 {
+	// CHEATS B (CELEBORN-1117q): through the script actor when hol.Rpc.ScriptCheatFallForum is 1, else the C++ RPC as before.
+	{
+		const int32 CheatArgs[1] = { Slot };
+		if (HOLRpcScriptRoute_Haldir1117n::CallEx(this, TEXT("hol.Rpc.ScriptCheatFallForum"), TEXT("ServerCheatFallForum"), TArrayView<const int32>(CheatArgs, 1), nullptr, nullptr))
+		{
+			return;
+		}
+	}
 	ServerCheatFallForum(Slot);
 }
 
@@ -5007,6 +5154,14 @@ void AHOLPlayerController::ServerCheatFallForum_Implementation(const int32 Slot)
 
 void AHOLPlayerController::RequestCheatSkipForum(const int32 Slot)
 {
+	// CHEATS B (CELEBORN-1117q): through the script actor when hol.Rpc.ScriptCheatSkipForum is 1, else the C++ RPC as before.
+	{
+		const int32 CheatArgs[1] = { Slot };
+		if (HOLRpcScriptRoute_Haldir1117n::CallEx(this, TEXT("hol.Rpc.ScriptCheatSkipForum"), TEXT("ServerCheatSkipForum"), TArrayView<const int32>(CheatArgs, 1), nullptr, nullptr))
+		{
+			return;
+		}
+	}
 	ServerCheatSkipForum(Slot);
 }
 
@@ -5027,6 +5182,14 @@ void AHOLPlayerController::ServerCheatSkipForum_Implementation(const int32 Slot)
 
 void AHOLPlayerController::RequestCheatHoldPresence(const int32 Slot, const bool bOff, const bool bAttackers, const bool bDefenders, const int32 AttackerSlot)
 {
+	// CHEATS B (CELEBORN-1117q): through the script actor when hol.Rpc.ScriptCheatHoldPresence is 1, else the C++ RPC as before.
+	{
+		const int32 CheatArgs[5] = { Slot, bOff ? 1 : 0, bAttackers ? 1 : 0, bDefenders ? 1 : 0, AttackerSlot };
+		if (HOLRpcScriptRoute_Haldir1117n::CallEx(this, TEXT("hol.Rpc.ScriptCheatHoldPresence"), TEXT("ServerCheatHoldPresence"), TArrayView<const int32>(CheatArgs, 5), nullptr, nullptr))
+		{
+			return;
+		}
+	}
 	ServerCheatHoldPresence(Slot, bOff, bAttackers, bDefenders, AttackerSlot);
 }
 
@@ -5053,8 +5216,137 @@ void AHOLPlayerController::ServerCheatHoldPresence_Implementation(const int32 Sl
 #endif
 }
 
+// MIG2-S3 (HALDIR-1117n, NOT COMPILED): the interface's Duel / Match calls go through the script RPC actor (Script/Net/HOLRpcPlayer.as) when its cvar is 1 (default 0: the C++ RPC, nothing changes).
+// The cvars are declared by the script (FConsoleVariable); they are only READ here (never registered twice), a missing one reads as 0. Unique namespace name (unity builds).
+namespace HOLRpcScriptRoute_Haldir1117n
+{
+	bool IsOn(const TCHAR* CVarName)
+	{
+		const IConsoleVariable* CVar = IConsoleManager::Get().FindConsoleVariable(CVarName);
+		return CVar && CVar->GetInt() != 0;
+	}
+
+	// Calls the script actor's RPC by name (Server from a client, or Client from the server: HALDIR-1117p). Int arguments (bool as 0 / 1) fill the bool / int32 / uint32 parameters in order,
+	// Text the FString parameter and Location the FVector one. false: no actor, no such function (script not loaded): the caller falls back to the C++ RPC.
+	bool CallFull(AHOLPlayerController* Controller, const TCHAR* CVarName, const TCHAR* FunctionName, const TArrayView<const int32> Args, const FString* Text, const FVector* Location, UObject* Object, const FName* Name)
+	{
+		if (!Controller || !IsOn(CVarName))
+		{
+			return false;
+		}
+		AActor* RpcActor = UHOLRpcBridgeLibrary::FindPlayerActor(Controller);
+		UFunction* Function = RpcActor ? RpcActor->FindFunction(FunctionName) : nullptr;
+		if (!Function || !Function->HasAnyFunctionFlags(FUNC_Net))
+		{
+			return false;
+		}
+		TArray<uint8> Params;
+		Params.SetNumZeroed(FMath::Max<int32>(Function->ParmsSize, 1));
+		Function->InitializeStruct(Params.GetData());
+		int32 ArgIndex = 0;
+		for (TFieldIterator<FProperty> It(Function); It && It->HasAnyPropertyFlags(CPF_Parm); ++It)
+		{
+			if (It->HasAnyPropertyFlags(CPF_ReturnParm))
+			{
+				continue;
+			}
+			if (const FStrProperty* StrProperty = CastField<FStrProperty>(*It))
+			{
+				if (Text)
+				{
+					StrProperty->SetPropertyValue_InContainer(Params.GetData(), *Text);
+				}
+			}
+			else if (const FObjectPropertyBase* ObjectProperty = CastField<FObjectPropertyBase>(*It))
+				{
+					if (Object)
+					{
+						ObjectProperty->SetObjectPropertyValue(ObjectProperty->ContainerPtrToValuePtr<void>(Params.GetData()), Object);
+					}
+				}
+			else if (const FNameProperty* NameProperty = CastField<FNameProperty>(*It))
+				{
+					if (Name)
+					{
+						NameProperty->SetPropertyValue_InContainer(Params.GetData(), *Name);
+					}
+				}
+			else if (const FStructProperty* StructProperty = CastField<FStructProperty>(*It))
+			{
+				if (Location && StructProperty->Struct == TBaseStructure<FVector>::Get())
+				{
+					*StructProperty->ContainerPtrToValuePtr<FVector>(Params.GetData()) = *Location;
+				}
+			}
+			else if (Args.IsValidIndex(ArgIndex))
+			{
+				if (const FBoolProperty* BoolProperty = CastField<FBoolProperty>(*It))
+				{
+					BoolProperty->SetPropertyValue_InContainer(Params.GetData(), Args[ArgIndex] != 0);
+				}
+				else if (const FIntProperty* IntProperty = CastField<FIntProperty>(*It))
+				{
+					IntProperty->SetPropertyValue_InContainer(Params.GetData(), Args[ArgIndex]);
+				}
+				else if (const FUInt32Property* UIntProperty = CastField<FUInt32Property>(*It))
+				{
+					UIntProperty->SetPropertyValue_InContainer(Params.GetData(), static_cast<uint32>(Args[ArgIndex]));
+				}
+				++ArgIndex;
+			}
+		}
+		RpcActor->ProcessEvent(Function, Params.GetData());
+		Function->DestroyStruct(Params.GetData());
+		return true;
+	}
+
+	bool CallEx(AHOLPlayerController* Controller, const TCHAR* CVarName, const TCHAR* FunctionName, const TArrayView<const int32> Args, const FString* Text, const FVector* Location)
+	{
+		return CallFull(Controller, CVarName, FunctionName, Args, Text, Location, nullptr, nullptr);
+	}
+
+	// HALDIR-1117q (NOT COMPILED): the Economy routes. The building object and the type name fill the object / name parameters, the ints the rest in order (bool as 0 / 1).
+	bool RouteQueueProduction(AHOLPlayerController* Controller, AHOLBuilding* Building, const FName TypeName)
+	{
+		return CallFull(Controller, TEXT("hol.Rpc.ScriptEconomy"), TEXT("ServerQueueProduction"), TArrayView<const int32>(), nullptr, nullptr, Building, &TypeName);
+	}
+
+	bool RouteCancelProduction(AHOLPlayerController* Controller, AHOLBuilding* Building, const int32 Index)
+	{
+		const int32 Args[1] = { Index };
+		return CallFull(Controller, TEXT("hol.Rpc.ScriptEconomy"), TEXT("ServerCancelProduction"), TArrayView<const int32>(Args, 1), nullptr, nullptr, Building, nullptr);
+	}
+
+	bool RouteTribute(AHOLPlayerController* Controller, AHOLBuilding* Building, const int32 Receiver, const int32 Resource, const int32 Amount)
+	{
+		const int32 Args[3] = { Receiver, Resource, Amount };
+		return CallFull(Controller, TEXT("hol.Rpc.ScriptEconomy"), TEXT("ServerTribute"), TArrayView<const int32>(Args, 3), nullptr, nullptr, Building, nullptr);
+	}
+
+	bool RouteMarketTrade(AHOLPlayerController* Controller, AHOLBuilding* Building, const int32 Resource, const int32 Lots, const bool bBuy)
+	{
+		const int32 Args[3] = { Resource, Lots, bBuy ? 1 : 0 };
+		return CallFull(Controller, TEXT("hol.Rpc.ScriptEconomy"), TEXT("ServerMarketTrade"), TArrayView<const int32>(Args, 3), nullptr, nullptr, Building, nullptr);
+	}
+
+	// The int-only form (the HALDIR-1117n / 1117o routes).
+	bool CallN(AHOLPlayerController* Controller, const TCHAR* CVarName, const TCHAR* FunctionName, const TArrayView<const int32> Args)
+	{
+		return CallEx(Controller, CVarName, FunctionName, Args, nullptr, nullptr);
+	}
+	// The one-int form of the HALDIR-1117n routes (bool as 0 / 1).
+	bool Call(AHOLPlayerController* Controller, const TCHAR* CVarName, const TCHAR* FunctionName, const bool bHasArg, const int32 Arg)
+	{
+		return CallN(Controller, CVarName, FunctionName, bHasArg ? TArrayView<const int32>(&Arg, 1) : TArrayView<const int32>());
+	}
+}
+
 void AHOLPlayerController::RequestSurrender()
 {
+	if (HOLRpcScriptRoute_Haldir1117n::Call(this, TEXT("hol.Rpc.ScriptMatch"), TEXT("ServerSurrender"), false, 0))
+	{
+		return;
+	}
 	ServerSurrender();
 }
 
@@ -5076,7 +5368,10 @@ void AHOLPlayerController::RequestReturnHero()
 	{
 		return;
 	}
-	ServerReturnHero();
+	if (!HOLRpcScriptRoute_Haldir1117n::Call(this, TEXT("hol.Rpc.ScriptHero"), TEXT("ServerReturnHero"), false, 0))
+	{
+		ServerReturnHero();
+	}
 }
 
 void AHOLPlayerController::ServerReturnHero_Implementation()
@@ -5135,7 +5430,10 @@ void AHOLPlayerController::RequestHeroTalent(const int32 Family)
 {
 	if (!IsSpectator())
 	{
-		ServerHeroTalent(Family);
+		if (!HOLRpcScriptRoute_Haldir1117n::Call(this, TEXT("hol.Rpc.ScriptHero"), TEXT("ServerHeroTalent"), true, Family))
+		{
+			ServerHeroTalent(Family);
+		}
 	}
 }
 
@@ -5155,7 +5453,10 @@ void AHOLPlayerController::RequestDuelChallenge(const int32 TargetSlot)
 {
 	if (!IsSpectator())
 	{
-		ServerDuelChallenge(TargetSlot);
+		if (!HOLRpcScriptRoute_Haldir1117n::Call(this, TEXT("hol.Rpc.ScriptDuel"), TEXT("ServerDuelChallenge"), true, TargetSlot))
+		{
+			ServerDuelChallenge(TargetSlot);
+		}
 	}
 }
 
@@ -5163,7 +5464,10 @@ void AHOLPlayerController::RequestDuelAnswer(const bool bAccept)
 {
 	if (!IsSpectator())
 	{
-		ServerDuelAnswer(bAccept);
+		if (!HOLRpcScriptRoute_Haldir1117n::Call(this, TEXT("hol.Rpc.ScriptDuel"), TEXT("ServerDuelAnswer"), true, bAccept ? 1 : 0))
+		{
+			ServerDuelAnswer(bAccept);
+		}
 	}
 }
 
@@ -5172,7 +5476,11 @@ void AHOLPlayerController::RequestSignal(const int32 Kind, const FVector& Locati
 	// A pure spectator places none (it has no seat); the board refuses the rest (a defeated player, the rate).
 	if (!IsSpectator())
 	{
-		ServerPostSignal(Kind, Location);
+		const int32 SignalArgs[1] = { Kind };
+			if (!HOLRpcScriptRoute_Haldir1117n::CallEx(this, TEXT("hol.Rpc.ScriptSignal"), TEXT("ServerPostSignal"), TArrayView<const int32>(SignalArgs, 1), nullptr, &Location))
+			{
+				ServerPostSignal(Kind, Location);
+			}
 	}
 }
 
@@ -5208,7 +5516,12 @@ void AHOLPlayerController::ServerPostSignal_Implementation(const int32 Kind, con
 		const bool bSpectator = UHOLSignalSubsystem::IsSignalSpectator(World, ViewerSlot, Viewer->IsSpectator());
 		if (Board->SeesNow(Book, Sender, ViewerSlot, bSpectator))
 		{
-			Viewer->ClientReceiveSignal(Sender, Kind, Location);
+			// HALDIR-1117p: through the viewer's script actor (Client RPC) when hol.Rpc.ScriptSignal is 1, else the C++ RPC as before.
+				const int32 ReceiveArgs[2] = { Sender, Kind };
+				if (!HOLRpcScriptRoute_Haldir1117n::CallEx(Viewer, TEXT("hol.Rpc.ScriptSignal"), TEXT("ClientReceiveSignal"), TArrayView<const int32>(ReceiveArgs, 2), nullptr, &Location))
+				{
+					Viewer->ClientReceiveSignal(Sender, Kind, Location);
+				}
 		}
 	}
 }
@@ -5257,7 +5570,11 @@ static TAutoConsoleVariable<int32> CVarChatWindowMs(TEXT("hol.Chat.WindowMs"), 0
 void AHOLPlayerController::RequestChat(const int32 Channel, const FString& Text, const int32 TargetSlot)
 {
 	// A pure spectator talks too (with the spectators, D376): the server decides.
-	ServerPostChat(Channel, Text, TargetSlot);
+	const int32 ChatArgs[2] = { Channel, TargetSlot };
+	if (!HOLRpcScriptRoute_Haldir1117n::CallEx(this, TEXT("hol.Rpc.ScriptChat"), TEXT("ServerPostChat"), TArrayView<const int32>(ChatArgs, 2), &Text, nullptr))
+	{
+		ServerPostChat(Channel, Text, TargetSlot);
+	}
 }
 
 void AHOLPlayerController::ServerPostChat_Implementation(const int32 Channel, const FString& Text, const int32 TargetSlot)
@@ -5299,7 +5616,12 @@ void AHOLPlayerController::ServerPostChat_Implementation(const int32 Channel, co
 		const bool bReaches = Viewer == this || Board->ReachesNow(Seats, Channel, Sender, TargetSlot, ViewerSlot);
 		if (bReaches)
 		{
-			Viewer->ClientReceiveChat(Sender, Channel, Text);
+			// HALDIR-1117p: through the viewer's script actor (Client RPC) when hol.Rpc.ScriptChat is 1, else the C++ RPC as before.
+				const int32 ReceiveChatArgs[2] = { Sender, Channel };
+				if (!HOLRpcScriptRoute_Haldir1117n::CallEx(Viewer, TEXT("hol.Rpc.ScriptChat"), TEXT("ClientReceiveChat"), TArrayView<const int32>(ReceiveChatArgs, 2), &Text, nullptr))
+				{
+					Viewer->ClientReceiveChat(Sender, Channel, Text);
+				}
 			++Sent;
 		}
 	}
@@ -5321,7 +5643,11 @@ void AHOLPlayerController::RequestSpecialization(const int32 Tier, const int32 O
 {
 	if (!IsSpectator())
 	{
-		ServerStartSpecialization(Tier, Option);
+		const int32 SpecArgs[] = { Tier, Option };
+		if (!HOLRpcScriptRoute_Haldir1117n::CallN(this, TEXT("hol.Rpc.ScriptSpecialization"), TEXT("ServerStartSpecialization"), SpecArgs))
+		{
+			ServerStartSpecialization(Tier, Option);
+		}
 	}
 }
 
@@ -5329,7 +5655,10 @@ void AHOLPlayerController::RequestCancelSpecialization()
 {
 	if (!IsSpectator())
 	{
-		ServerCancelSpecialization();
+		if (!HOLRpcScriptRoute_Haldir1117n::Call(this, TEXT("hol.Rpc.ScriptSpecialization"), TEXT("ServerCancelSpecialization"), false, 0))
+		{
+			ServerCancelSpecialization();
+		}
 	}
 }
 
@@ -5428,6 +5757,14 @@ void AHOLPlayerController::ServerDuelAnswer_Implementation(const bool bAccept)
 
 void AHOLPlayerController::RequestCheatDamageBuilding(const FVector& Point, const int32 Amount, const uint8 AttackType)
 {
+	// CHEATS B (CELEBORN-1117q): through the script actor when hol.Rpc.ScriptCheatDamageBuilding is 1, else the C++ RPC as before.
+	{
+		const int32 CheatArgs[2] = { Amount, static_cast<int32>(AttackType) };
+		if (HOLRpcScriptRoute_Haldir1117n::CallEx(this, TEXT("hol.Rpc.ScriptCheatDamageBuilding"), TEXT("ServerCheatDamageBuilding"), TArrayView<const int32>(CheatArgs, 2), nullptr, &Point))
+		{
+			return;
+		}
+	}
 	ServerCheatDamageBuilding(Point, Amount, AttackType);
 }
 
@@ -5954,7 +6291,7 @@ void AHOLPlayerController::HandleDeselect()
 	// placement mode first, the selection kept (D313), and closes the chosen age (the user's 1st trial of G.1: an age
 	// chosen without a ghost is closed alone), then the attack-move mode (J7b.3); then it deselects; with nothing
 	// selected, it opens the in-game menu.
-	switch (HOLGameMenuRules::GetEscapeAction(bGameMenuOpen, IsPlacing() || ChosenAge != INDEX_NONE || bAttackMoveArmed || bBannerArmed, HasSelection()))
+	switch (UHOLGameMenuRulesBridge::NativeGetEscapeAction(bGameMenuOpen, IsPlacing() || ChosenAge != INDEX_NONE || bAttackMoveArmed || bBannerArmed, HasSelection()))
 	{
 	case EHOLEscapeAction::CloseMenu:
 		return;
@@ -6340,13 +6677,19 @@ void AHOLPlayerController::UpdateDrag()
 void AHOLPlayerController::RequestPause()
 {
 	UE_LOG(LogHOLMatch, Display, TEXT("Pause: pause asked by this player"));
-	ServerRequestPause();
+	if (!HOLRpcScriptRoute_Haldir1117n::Call(this, TEXT("hol.Rpc.ScriptMatch"), TEXT("ServerRequestPause"), false, 0))
+	{
+		ServerRequestPause();
+	}
 }
 
 void AHOLPlayerController::RequestResume()
 {
 	UE_LOG(LogHOLMatch, Display, TEXT("Pause: resume asked by this player"));
-	ServerRequestResume();
+	if (!HOLRpcScriptRoute_Haldir1117n::Call(this, TEXT("hol.Rpc.ScriptMatch"), TEXT("ServerRequestResume"), false, 0))
+	{
+		ServerRequestResume();
+	}
 }
 
 bool AHOLPlayerController::IsInputFrozen() const

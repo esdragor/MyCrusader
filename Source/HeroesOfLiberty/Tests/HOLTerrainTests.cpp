@@ -74,21 +74,21 @@ bool FHOLTerrainRulesTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("a unit that does not walk stays still"), FHOLTerrainRules::GetScaledSpeed(0, Strength), 0);
 	TestEqual(TEXT("the percent of the speed"), FHOLTerrainRules::GetScaledSpeed(500, Strength), 500 * Strength / 100);
 
-	// D810 (Q-forest-ford Q2 = A): F4 the forest slows cavalry (80) and siege (70), never the walker on foot; F5 a ford weakens the defence (120).
+	// D810 / D844: F4 the forest slows nobody any more (cavalry, siege and on foot all 100, alone or with the others); F5 a ford weakens the defence (120).
 	using FRules = FHOLTerrainRules;
 	FHOLTerrainZone ForestZone = MakeMarsh(9000, 0, 500);
 	ForestZone.Kind = HOLTerrainKind::Forest;
 	FHOLTerrainZone FordZone = MakeMarsh(12000, 0, 500);
 	FordZone.Kind = HOLTerrainKind::Ford;
 	const TArray<FHOLTerrainZone> Painted{ ForestZone, FordZone, MakeMarsh(0, 0, 500), MakeMarsh(9000, 0, 200) };
-	TestEqual(TEXT("cavalry in a forest: 80 %"), FRules::GetWalkerSpeedPercentAt(Strength, Painted, HOLTerrainWalker::Cavalry, 9400, 0), 80);
-	TestEqual(TEXT("siege in a forest: 70 %"), FRules::GetWalkerSpeedPercentAt(Strength, Painted, HOLTerrainWalker::Siege, 9400, 0), 70);
+	TestEqual(TEXT("cavalry in a forest: 100 % (D844)"), FRules::GetWalkerSpeedPercentAt(Strength, Painted, HOLTerrainWalker::Cavalry, 9400, 0), 100);
+	TestEqual(TEXT("siege in a forest: 100 % (D844)"), FRules::GetWalkerSpeedPercentAt(Strength, Painted, HOLTerrainWalker::Siege, 9400, 0), 100);
 	TestEqual(TEXT("on foot in a forest: 100 %"), FRules::GetWalkerSpeedPercentAt(Strength, Painted, HOLTerrainWalker::OnFoot, 9400, 0), 100);
 	TestEqual(TEXT("cavalry one centimetre out of the forest"), FRules::GetWalkerSpeedPercentAt(Strength, Painted, HOLTerrainWalker::Cavalry, 9501, 0), 100);
 	TestEqual(TEXT("a ford slows nobody"), FRules::GetWalkerSpeedPercentAt(Strength, Painted, HOLTerrainWalker::Cavalry, 12000, 0), 100);
-	TestEqual(TEXT("marsh under a forest: the slowest wins"), FRules::GetWalkerSpeedPercentAt(Strength, Painted, HOLTerrainWalker::Cavalry, 9000, 0), FMath::Min(Strength, 80));
+	TestEqual(TEXT("marsh under a forest: the marsh alone slows"), FRules::GetWalkerSpeedPercentAt(Strength, Painted, HOLTerrainWalker::Cavalry, 9000, 0), Strength);
 	TestEqual(TEXT("the marsh alone slows cavalry as before"), FRules::GetWalkerSpeedPercentAt(Strength, Painted, HOLTerrainWalker::Cavalry, 0, 0), Strength);
-	TestEqual(TEXT("the forest scales a real speed"), FRules::GetScaledSpeed(500, FRules::GetWalkerSpeedPercentAt(Strength, Painted, HOLTerrainWalker::Cavalry, 9400, 0)), 400);
+	TestEqual(TEXT("the forest leaves a real speed whole"), FRules::GetScaledSpeed(500, FRules::GetWalkerSpeedPercentAt(Strength, Painted, HOLTerrainWalker::Cavalry, 9400, 0)), 500);
 	TestTrue(TEXT("a unit on the ford is read in the ford"), FRules::IsInZoneOfKind(Painted, HOLTerrainKind::Ford, 12500, 0));
 	TestFalse(TEXT("one centimetre off the ford"), FRules::IsInZoneOfKind(Painted, HOLTerrainKind::Ford, 12501, 0));
 	TestEqual(TEXT("a hit of 100 on a ford: 120"), FRules::GetFordDamageTaken(100, FRules::IsInZoneOfKind(Painted, HOLTerrainKind::Ford, 12000, 0)), 120);
@@ -197,8 +197,8 @@ bool FHOLTerrainWalkSpeedTest::RunTest(const FString& Parameters)
 }
 
 // D810 (Q-forest-ford Q1 = A, Q2 = A) on the real chain, as a match's server: the move orders through the command queue and the order
-// processor's steps. In a painted forest the speed a walker is asked for is the table's for a man on foot, 80 % of it for cavalry and 70 % for
-// siege; outside every zone (a forest not painted there) the table's for all three: the ground off the paint is untouched.
+// processor's steps. D844: a painted forest slows nobody; the speed a walker is asked for is the table's for a man on foot, for cavalry and for
+// siege, in the forest, off the paint and on a map without zones alike.
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLTerrainForestSpeedTest, "HeroesOfLiberty.Terrain.ForestSpeed", UE::HeroesOfLiberty::Tests::Terrain::Flags)
 bool FHOLTerrainForestSpeedTest::RunTest(const FString& Parameters)
 {
@@ -279,9 +279,9 @@ bool FHOLTerrainForestSpeedTest::RunTest(const FString& Parameters)
 		TestTrue(TEXT("a man at arms walks in the forest"), Measure(ManAtArms, InForest, Table, Asked));
 		TestEqual(TEXT("on foot in the forest: the table's speed"), Asked, Table, 0.5f);
 		TestTrue(TEXT("a light cavalryman walks in the forest"), Measure(LightCavalry, InForest, Table, Asked));
-		TestEqual(TEXT("cavalry in the forest: 80 % of the table's speed"), Asked, Table * FHOLTerrainRules::DefaultForestCavalrySpeedPercent / 100.f, 0.5f);
+		TestEqual(TEXT("cavalry in the forest: the table's speed (D844)"), Asked, Table, 0.5f);
 		TestTrue(TEXT("a ram walks in the forest"), Measure(Ram, InForest, Table, Asked));
-		TestEqual(TEXT("siege in the forest: 70 % of the table's speed"), Asked, Table * FHOLTerrainRules::DefaultForestSiegeSpeedPercent / 100.f, 0.5f);
+		TestEqual(TEXT("siege in the forest: the table's speed (D844)"), Asked, Table, 0.5f);
 		TestTrue(TEXT("a light cavalryman walks off the paint"), Measure(LightCavalry, Unpainted, Table, Asked));
 		TestEqual(TEXT("cavalry off the painted forest: the table's speed"), Asked, Table, 0.5f);
 		TestTrue(TEXT("a ram walks off the paint"), Measure(Ram, Unpainted, Table, Asked));

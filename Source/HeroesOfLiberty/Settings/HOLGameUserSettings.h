@@ -31,6 +31,7 @@ class HEROESOFLIBERTY_API UHOLGameUserSettings : public UGameUserSettings
 
 public:
 	/** The engine's settings object, or null if the class is not the one in DefaultEngine.ini. */
+	UFUNCTION(BlueprintPure, Category = "HOL|Settings")
 	static UHOLGameUserSettings* Get();
 
 	/** 0 to 1. */
@@ -45,8 +46,21 @@ public:
 
 	EHOLCameraSpeed GetCameraSpeed() const { return static_cast<EHOLCameraSpeed>(FMath::Clamp<int32>(CameraSpeed, 0, 2)); }
 	void SetCameraSpeed(EHOLCameraSpeed Speed) { CameraSpeed = static_cast<int32>(Speed); }
+	UFUNCTION(BlueprintPure, Category = "HOL|Settings")
 	bool IsEdgeScrollEnabled() const { return bEdgeScroll; }
+	UFUNCTION(BlueprintCallable, Category = "HOL|Settings")
 	void SetEdgeScrollEnabled(bool bEnabled) { bEdgeScroll = bEnabled; }
+
+	/** For the script (the settings screen): a volume by its index in EHOLVolume (0 Master, 1 Music, 2 Effects, 3 Voice), 0 to 1. */
+	UFUNCTION(BlueprintPure, Category = "HOL|Settings")
+	float GetVolumeAt(int32 Volume) const { return GetVolume(static_cast<EHOLVolume>(FMath::Clamp(Volume, 0, 3))); }
+	UFUNCTION(BlueprintCallable, Category = "HOL|Settings")
+	void SetVolumeAt(int32 Volume, float Value) { SetVolume(static_cast<EHOLVolume>(FMath::Clamp(Volume, 0, 3)), Value); }
+	/** The camera speed by its index in EHOLCameraSpeed (0 Slow, 1 Normal, 2 Fast). */
+	UFUNCTION(BlueprintPure, Category = "HOL|Settings")
+	int32 GetCameraSpeedIndex() const { return static_cast<int32>(GetCameraSpeed()); }
+	UFUNCTION(BlueprintCallable, Category = "HOL|Settings")
+	void SetCameraSpeedIndex(int32 Index) { SetCameraSpeed(static_cast<EHOLCameraSpeed>(FMath::Clamp(Index, 0, 2))); }
 
 	/** The name given to the lobby manager (Multiplayer screen, R4.2); empty until the player gives one. */
 	const FString& GetPlayerName() const { return PlayerName; }

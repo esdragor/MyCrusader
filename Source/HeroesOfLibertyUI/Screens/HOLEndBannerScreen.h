@@ -18,7 +18,7 @@ enum class EHOLMatchOrigin : uint8;
  * EndBanner, D830/D835, as UHOLGameMenuScreen); this base keeps what the script cannot reach: the opening (the root
  * layout, the in-game menu giving way), the controller's and manager's calls, the way out of the match, the delegate the
  * HUD listens to and the input of the screens over the match. « Continuer (à regarder) » or Back close it, the player
- * then watching as a spectator. Which banner and when: HOLGameMenuRules::GetEndBanner and ShouldOpenEndBanner, asked by
+ * then watching as a spectator. Which banner and when: UHOLGameMenuRulesBridge::NativeGetEndBanner and ShouldOpenEndBanner, asked by
  * the HUD at each change of AHOLGameState.
  */
 UCLASS(Abstract, Blueprintable)

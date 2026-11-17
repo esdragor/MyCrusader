@@ -1,8 +1,7 @@
-// The in-game menu's rules in script (D356, D357, V1-Q1, M6-Q7 revised, M6-Q10; migration D830/D835, pilot 2 MIG-P2a): the seven the menu's
-// screen reads. TEMPORARY TWIN of Source/HeroesOfLiberty/Player/HOLGameMenuRules.cpp (CanSurrender, CanQuitToMenu, OffersReturnToLobby,
-// QuitsToList, ShowsStatsButton, GetEscapeAction, KeepsMatchMenuInput): the C++ copy stays while HOLPlayerController, HOLGameHUD, HOLGameScreen, HOLEndBanner, HOLStatsScreen,
-// HOLUIOpen and HOLManagerClientRules call it; both copies are held to the same vectors (HOLGameMenuTests.cpp and HOLGameMenuRules_Test.as).
-// The C++ enumerations are no UENUM: the script has its own, value for value, until they are exposed (TYPES_A_EXPOSER of the pilot).
+// The in-game menu's rules in script (D356, D357, V1-Q1, M6-Q7 revised, M6-Q10; migration D830/D835, D836: the script is the single source).
+// The C++ callers (HOLPlayerController, HOLGameHUD, HOLGameScreen, HOLGameMenuScreen) read them through UHOLGameMenuRulesBridge
+// (HOLGameMenuRulesBridge.as); the C++ twin is gone, only the enumerations stay in Source/HeroesOfLiberty/Player/HOLGameMenuRules.h.
+// The C++ enumerations are no UENUM: the script has its own, value for value, the bridge passing ints.
 
 // EHOLEndBanner's values (D357, V1-Q2, M6-Q10).
 enum EHOLGameMenuBanner

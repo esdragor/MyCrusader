@@ -150,6 +150,6 @@ protected:
 	void BP_RefreshMenu(bool bOpening);
 
 private:
-	/** « Abandonner » offered to this player (HOLGameMenuRules::CanSurrender on the facts). */
+	/** « Abandonner » offered to this player (UHOLGameMenuRulesBridge::NativeCanSurrender on the facts). */
 	static bool CanSurrender(APlayerController* PlayerController);
 };
