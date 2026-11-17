@@ -80,7 +80,7 @@ bool FHOLSiteServerBoardTest::RunTest(const FString& Parameters)
 		Counting.Held = 3;
 		const FHOLSiteVictoryState Idle = UHOLSiteBoardSubsystem::VictoryStep(nullptr, Counting, {0, 1}, {0, 0}, VictoryTeams, 2);
 		TestTrue(TEXT("Without a board the victory count is left unchanged"), Idle.Leader == 7 && Idle.Held == 3 && Idle.Winner == INDEX_NONE);
-t	int32 NoCarry = 5;
+		int32 NoCarry = 5;
 		TestTrue(TEXT("Without a board the gold step pays nothing and keeps the carry"), UHOLSiteBoardSubsystem::GoldStep(nullptr, NoCarry, 1, 12) == 0 && NoCarry == 5);
 	}
 	GEngine->DestroyWorldContext(World);
