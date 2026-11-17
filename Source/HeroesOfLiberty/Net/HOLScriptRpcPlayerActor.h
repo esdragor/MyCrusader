@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 #include "Kismet/BlueprintFunctionLibrary.h"
+#include "Simulation/HOLHeroAbilityRules.h" // EHOLHeroAbility (UENUM) for HeroAbility
 
 #include "HOLScriptRpcPlayerActor.generated.h"
 
@@ -68,6 +69,31 @@ public:
 	/** Server: AHOLGameState::DefeatSlot(owner's slot, EHOLDefeatReason::Surrender) (body of ServerSurrender_Implementation); logs "Victory: surrender of slot N refused" when refused. */
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Rpc")
 	static bool Surrender(AActor* RpcActor);
+
+	// ---- HALDIR-1117o (NOT COMPILED), MIG2-S3 T4 lot L1: Specialization and Hero. Each calls the owner controller's _Implementation (same body, same journal line as the C++ RPC). False: no owner controller.
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Rpc")
+	static bool StartSpecialization(AActor* RpcActor, int32 Tier, int32 Option);
+
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Rpc")
+	static bool CancelSpecialization(AActor* RpcActor);
+
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Rpc")
+	static bool ReturnHero(AActor* RpcActor);
+
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Rpc")
+	static bool HeroTalent(AActor* RpcActor, int32 Family);
+
+	/** Ability is an EHOLHeroAbility (UENUM); the _Implementation keeps only CloseRanks and Banner. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Rpc")
+	static bool HeroAbility(AActor* RpcActor, EHOLHeroAbility Ability, FVector_NetQuantize Location);
+
+	/** UnitIds as int32 (uint32 is not BlueprintCallable): cast back to uint32 for the _Implementation. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Rpc")
+	static bool CastRage(AActor* RpcActor, const TArray<int32>& UnitIds);
+
+	/** UnitId as int32 (cast back to uint32); 0 stops watching. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Rpc")
+	static bool WatchUnit(AActor* RpcActor, int32 UnitId);
 };
 
 /** Server entry point the script cannot have by itself (generalises HOLScriptRpcProbeBridge): one actor per script class derived from the base. */

@@ -12,6 +12,10 @@ const FConsoleVariable CVar_RpcDiplomacyStance("hol.Rpc.DiplomacyStance", 1);
 const FConsoleVariable CVar_RpcScriptDuel("hol.Rpc.ScriptDuel", 0);
 const FConsoleVariable CVar_RpcScriptMatch("hol.Rpc.ScriptMatch", 0);
 
+// T4 lot L1 (HALDIR-1117o, C++ NOT COMPILED): the Specialization (start, cancel) and Hero (return, talent, ability, rage, watch unit) RPCs, same guard model (default 0: the C++ RPC stays the only one).
+const FConsoleVariable CVar_RpcScriptSpecialization("hol.Rpc.ScriptSpecialization", 0);
+const FConsoleVariable CVar_RpcScriptHero("hol.Rpc.ScriptHero", 0);
+
 const int HOLRpcSlots = 8; // FHOLMatchConfig::MaxSlots
 const int HOLRpcStanceAlly = 2; // HOLDiplomacy::Enemy 0 / Neutral 1 / Ally 2
 
@@ -64,6 +68,34 @@ int MatchRefusal(int SenderSlot)
 {
 	if (SenderSlot < 0 || SenderSlot >= HOLRpcSlots)
 		return 1;
+	return 0;
+}
+
+// Specialization / Hero (T4 L1): 0 none, 1 the sender has no slot (spectator, out of range). The board (HOLSpecialization::Start: tier, Forum, option) and the hero rules decide the rest,
+// as for the C++ RPC (its _Implementation is what the bridge calls). The ability adds: 2 not a cast ability (only CloseRanks and Banner are cast, never the Aura).
+int SeatRefusal(int SenderSlot)
+{
+	if (SenderSlot < 0 || SenderSlot >= HOLRpcSlots)
+		return 1;
+	return 0;
+}
+
+int HeroAbilityRefusal(int SenderSlot, EHOLHeroAbility Ability)
+{
+	if (SenderSlot < 0 || SenderSlot >= HOLRpcSlots)
+		return 1;
+	if (Ability != EHOLHeroAbility::CloseRanks && Ability != EHOLHeroAbility::Banner)
+		return 2;
+	return 0;
+}
+
+// Rage: 2 no unit named (the C++ RPC's caller sends nothing for an empty list; the server also drops it).
+int RageRefusal(int SenderSlot, int UnitCount)
+{
+	if (SenderSlot < 0 || SenderSlot >= HOLRpcSlots)
+		return 1;
+	if (UnitCount <= 0)
+		return 2;
 	return 0;
 }
 
@@ -204,4 +236,107 @@ class AHOLRpcPlayer : AHOLScriptRpcPlayerActor
 		Log(n"LogHOLMatch", f"RpcMatch: received by the server: slot {Slot} surrenders");
 		HOLRpcBridge::Surrender(this); // logs "Victory: surrender of slot N refused" itself when the game state refuses
 	}
-}
+
+	// ---- T4 lot L1 (HALDIR-1117o, C++ NOT COMPILED). Specialization lot, guard hol.Rpc.ScriptSpecialization (default 0). The bridge calls AHOLPlayerController::ServerStartSpecialization_Implementation
+	// / ServerCancelSpecialization_Implementation (the board's answer and the "Specialization: slot N ..." journal are the C++ ones).
+	UFUNCTION(Server)
+	void ServerStartSpecialization(int Tier, int Option)
+	{
+		if (CVar_RpcScriptSpecialization.GetInt() == 0)
+			return;
+		const int Slot = HOLRpcBridge::GetSenderSlot(this);
+		if (HOLRpc::SeatRefusal(Slot) != 0)
+		{
+			Log(n"LogHOLMatch", f"RpcSpec: start refused for sender slot {Slot}");
+			return;
+		}
+		Log(n"LogHOLMatch", f"RpcSpec: received by the server: slot {Slot} starts tier {Tier} option {Option}");
+		HOLRpcBridge::StartSpecialization(this, Tier, Option);
+	}
+
+	UFUNCTION(Server)
+	void ServerCancelSpecialization()
+	{
+		if (CVar_RpcScriptSpecialization.GetInt() == 0)
+			return;
+		const int Slot = HOLRpcBridge::GetSenderSlot(this);
+		if (HOLRpc::SeatRefusal(Slot) != 0)
+		{
+			Log(n"LogHOLMatch", f"RpcSpec: cancel refused for sender slot {Slot}");
+			return;
+		}
+		Log(n"LogHOLMatch", f"RpcSpec: received by the server: slot {Slot} cancels");
+		HOLRpcBridge::CancelSpecialization(this);
+	}
+
+	// ---- T4 lot L1 Hero lot, guard hol.Rpc.ScriptHero (default 0). Same model: the bridge calls the C++ _Implementation (journals "Hero return order ...", "Hero talent order ...", "Hero ability order ...",
+	// "Rage order ..."). The C++ interface route (cvar 1) covers ReturnHero, HeroTalent and WatchUnit; HeroAbility and CastRage (enum + vector, array) are not routed from C++ yet: call them from script.
+	UFUNCTION(Server)
+	void ServerReturnHero()
+	{
+		if (CVar_RpcScriptHero.GetInt() == 0)
+			return;
+		const int Slot = HOLRpcBridge::GetSenderSlot(this);
+		if (HOLRpc::SeatRefusal(Slot) != 0)
+		{
+			Log(n"LogHOLMatch", f"RpcHero: return refused for sender slot {Slot}");
+			return;
+		}
+		HOLRpcBridge::ReturnHero(this);
+	}
+
+	UFUNCTION(Server)
+	void ServerHeroTalent(int Family)
+	{
+		if (CVar_RpcScriptHero.GetInt() == 0)
+			return;
+		const int Slot = HOLRpcBridge::GetSenderSlot(this);
+		if (HOLRpc::SeatRefusal(Slot) != 0)
+		{
+			Log(n"LogHOLMatch", f"RpcHero: talent refused for sender slot {Slot}");
+			return;
+		}
+		HOLRpcBridge::HeroTalent(this, Family);
+	}
+
+	UFUNCTION(Server)
+	void ServerHeroAbility(EHOLHeroAbility Ability, FVector_NetQuantize Location)
+	{
+		if (CVar_RpcScriptHero.GetInt() == 0)
+			return;
+		const int Slot = HOLRpcBridge::GetSenderSlot(this);
+		const int Refusal = HOLRpc::HeroAbilityRefusal(Slot, Ability);
+		if (Refusal != 0)
+		{
+			Log(n"LogHOLMatch", f"RpcHero: ability refused ({Refusal}) for sender slot {Slot}");
+			return;
+		}
+		HOLRpcBridge::HeroAbility(this, Ability, Location);
+	}
+
+	UFUNCTION(Server)
+	void ServerCastRage(const TArray<uint32>& UnitIds)
+	{
+		if (CVar_RpcScriptHero.GetInt() == 0)
+			return;
+		const int Slot = HOLRpcBridge::GetSenderSlot(this);
+		const int Refusal = HOLRpc::RageRefusal(Slot, UnitIds.Num());
+		if (Refusal != 0)
+		{
+			Log(n"LogHOLMatch", f"RpcHero: rage refused ({Refusal}) for sender slot {Slot}");
+			return;
+		}
+		TArray<int> Ids;
+		for (int i = 0; i < UnitIds.Num(); i++)
+			Ids.Add(int(UnitIds[i]));
+		HOLRpcBridge::CastRage(this, Ids);
+	}
+
+	UFUNCTION(Server)
+	void ServerWatchUnit(uint32 UnitId)
+	{
+		if (CVar_RpcScriptHero.GetInt() == 0)
+			return;
+		// The C++ body only stores the id and sends the load of the player's OWN unit (D288 checked in SendWatchedLoad): no slot refusal here, as in C++.
+		HOLRpcBridge::WatchUnit(this, int(UnitId));
+	}}

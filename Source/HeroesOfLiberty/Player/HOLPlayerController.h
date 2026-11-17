@@ -92,6 +92,9 @@ class HEROESOFLIBERTY_API AHOLPlayerController : public APlayerController
 {
 	GENERATED_BODY()
 
+	// HALDIR-1117o (NOT COMPILED): the script RPC bridge calls the _Implementation of the RPCs it takes over (one body, one journal).
+	friend class UHOLRpcBridgeLibrary;
+
 public:
 	AHOLPlayerController();
 

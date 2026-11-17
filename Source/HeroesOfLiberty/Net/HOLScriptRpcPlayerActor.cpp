@@ -9,6 +9,7 @@
 #include "HeroesOfLibertyLog.h"
 #include "Match/HOLGameState.h"
 #include "Match/HOLPlayerState.h"
+#include "Player/HOLPlayerController.h"
 #include "UObject/UObjectIterator.h"
 
 AActor* UHOLRpcBridgeLibrary::FindPlayerActor(const APlayerController* Controller)
@@ -130,4 +131,68 @@ int32 HOLScriptRpcPlayerBridge::SpawnAllFor(APlayerController* Controller)
 		UE_LOG(LogHOLMatch, Log, TEXT("RpcPlayer: no script class derived from AHOLScriptRpcPlayerActor on this server"));
 	}
 	return Spawned;
+}
+
+// ---- HALDIR-1117o (NOT COMPILED), MIG2-S3 T4 lot L1: Specialization and Hero. The owner controller's _Implementation does the work (friend class): same body, same journal.
+namespace HOLRpcBridgeL1_Haldir1117o
+{
+	AHOLPlayerController* OwnerController(const AActor* RpcActor)
+	{
+		return RpcActor ? Cast<AHOLPlayerController>(RpcActor->GetOwner()) : nullptr;
+	}
+}
+
+bool UHOLRpcBridgeLibrary::StartSpecialization(AActor* RpcActor, const int32 Tier, const int32 Option)
+{
+	AHOLPlayerController* Controller = HOLRpcBridgeL1_Haldir1117o::OwnerController(RpcActor);
+	if (Controller) { Controller->ServerStartSpecialization_Implementation(Tier, Option); }
+	return Controller != nullptr;
+}
+
+bool UHOLRpcBridgeLibrary::CancelSpecialization(AActor* RpcActor)
+{
+	AHOLPlayerController* Controller = HOLRpcBridgeL1_Haldir1117o::OwnerController(RpcActor);
+	if (Controller) { Controller->ServerCancelSpecialization_Implementation(); }
+	return Controller != nullptr;
+}
+
+bool UHOLRpcBridgeLibrary::ReturnHero(AActor* RpcActor)
+{
+	AHOLPlayerController* Controller = HOLRpcBridgeL1_Haldir1117o::OwnerController(RpcActor);
+	if (Controller) { Controller->ServerReturnHero_Implementation(); }
+	return Controller != nullptr;
+}
+
+bool UHOLRpcBridgeLibrary::HeroTalent(AActor* RpcActor, const int32 Family)
+{
+	AHOLPlayerController* Controller = HOLRpcBridgeL1_Haldir1117o::OwnerController(RpcActor);
+	if (Controller) { Controller->ServerHeroTalent_Implementation(Family); }
+	return Controller != nullptr;
+}
+
+bool UHOLRpcBridgeLibrary::HeroAbility(AActor* RpcActor, const EHOLHeroAbility Ability, const FVector_NetQuantize Location)
+{
+	AHOLPlayerController* Controller = HOLRpcBridgeL1_Haldir1117o::OwnerController(RpcActor);
+	if (Controller) { Controller->ServerHeroAbility_Implementation(Ability, Location); }
+	return Controller != nullptr;
+}
+
+bool UHOLRpcBridgeLibrary::CastRage(AActor* RpcActor, const TArray<int32>& UnitIds)
+{
+	AHOLPlayerController* Controller = HOLRpcBridgeL1_Haldir1117o::OwnerController(RpcActor);
+	if (Controller)
+	{
+		TArray<uint32> Ids;
+		Ids.Reserve(UnitIds.Num());
+		for (const int32 Id : UnitIds) { Ids.Add(static_cast<uint32>(Id)); }
+		Controller->ServerCastRage_Implementation(Ids);
+	}
+	return Controller != nullptr;
+}
+
+bool UHOLRpcBridgeLibrary::WatchUnit(AActor* RpcActor, const int32 UnitId)
+{
+	AHOLPlayerController* Controller = HOLRpcBridgeL1_Haldir1117o::OwnerController(RpcActor);
+	if (Controller) { Controller->ServerWatchUnit_Implementation(static_cast<uint32>(UnitId)); }
+	return Controller != nullptr;
 }

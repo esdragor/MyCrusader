@@ -57,6 +57,12 @@
 #include "Simulation/HOLUnitTypes.h"
 #include "Simulation/HOLUnitView.h"
 
+// HALDIR-1117o (NOT COMPILED): forward declaration of the script route (defined near RequestSurrender), used by the watch call above it.
+namespace HOLRpcScriptRoute_Haldir1117n
+{
+	bool CallN(AHOLPlayerController* Controller, const TCHAR* CVarName, const TCHAR* FunctionName, TArrayView<const int32> Args);
+}
+
 namespace UE::HeroesOfLiberty::Player
 {
 	// The match HUD (D281) lives in the UI module, which a dedicated server never loads: found by its path on the
@@ -3433,7 +3439,11 @@ void AHOLPlayerController::UpdateWatchedUnit()
 	if (UnitId != SentWatchedUnitId)
 	{
 		SentWatchedUnitId = UnitId;
-		ServerWatchUnit(UnitId);
+		const int32 WatchArgs[] = { static_cast<int32>(UnitId) };
+		if (!HOLRpcScriptRoute_Haldir1117n::CallN(this, TEXT("hol.Rpc.ScriptHero"), TEXT("ServerWatchUnit"), WatchArgs))
+		{
+			ServerWatchUnit(UnitId);
+		}
 	}
 }
 
@@ -5065,7 +5075,7 @@ namespace HOLRpcScriptRoute_Haldir1117n
 	}
 
 	// Calls the script actor's Server RPC by name with at most one int argument (bool as 0 / 1); false: no actor, no such function (script not loaded): the caller falls back to the C++ RPC.
-	bool Call(AHOLPlayerController* Controller, const TCHAR* CVarName, const TCHAR* FunctionName, const bool bHasArg, const int32 Arg)
+	bool CallN(AHOLPlayerController* Controller, const TCHAR* CVarName, const TCHAR* FunctionName, const TArrayView<const int32> Args)
 	{
 		if (!Controller || !IsOn(CVarName))
 		{
@@ -5080,24 +5090,31 @@ namespace HOLRpcScriptRoute_Haldir1117n
 		TArray<uint8> Params;
 		Params.SetNumZeroed(FMath::Max<int32>(Function->ParmsSize, 1));
 		Function->InitializeStruct(Params.GetData());
-		if (bHasArg)
+		int32 ArgIndex = 0;
+		for (TFieldIterator<FProperty> It(Function); It && It->HasAnyPropertyFlags(CPF_Parm) && ArgIndex < Args.Num(); ++It, ++ArgIndex)
 		{
-			for (TFieldIterator<FProperty> It(Function); It && It->HasAnyPropertyFlags(CPF_Parm); ++It)
+			if (const FBoolProperty* BoolProperty = CastField<FBoolProperty>(*It))
 			{
-				if (const FBoolProperty* BoolProperty = CastField<FBoolProperty>(*It))
-				{
-					BoolProperty->SetPropertyValue_InContainer(Params.GetData(), Arg != 0);
-				}
-				else if (const FIntProperty* IntProperty = CastField<FIntProperty>(*It))
-				{
-					IntProperty->SetPropertyValue_InContainer(Params.GetData(), Arg);
-				}
-				break;
+				BoolProperty->SetPropertyValue_InContainer(Params.GetData(), Args[ArgIndex] != 0);
+			}
+			else if (const FIntProperty* IntProperty = CastField<FIntProperty>(*It))
+			{
+				IntProperty->SetPropertyValue_InContainer(Params.GetData(), Args[ArgIndex]);
+			}
+			else if (const FUInt32Property* UIntProperty = CastField<FUInt32Property>(*It))
+			{
+				UIntProperty->SetPropertyValue_InContainer(Params.GetData(), static_cast<uint32>(Args[ArgIndex]));
 			}
 		}
 		RpcActor->ProcessEvent(Function, Params.GetData());
 		Function->DestroyStruct(Params.GetData());
 		return true;
+	}
+
+	// The one-int form of the HALDIR-1117n routes (bool as 0 / 1).
+	bool Call(AHOLPlayerController* Controller, const TCHAR* CVarName, const TCHAR* FunctionName, const bool bHasArg, const int32 Arg)
+	{
+		return CallN(Controller, CVarName, FunctionName, bHasArg ? TArrayView<const int32>(&Arg, 1) : TArrayView<const int32>());
 	}
 }
 
@@ -5128,7 +5145,10 @@ void AHOLPlayerController::RequestReturnHero()
 	{
 		return;
 	}
-	ServerReturnHero();
+	if (!HOLRpcScriptRoute_Haldir1117n::Call(this, TEXT("hol.Rpc.ScriptHero"), TEXT("ServerReturnHero"), false, 0))
+	{
+		ServerReturnHero();
+	}
 }
 
 void AHOLPlayerController::ServerReturnHero_Implementation()
@@ -5187,7 +5207,10 @@ void AHOLPlayerController::RequestHeroTalent(const int32 Family)
 {
 	if (!IsSpectator())
 	{
-		ServerHeroTalent(Family);
+		if (!HOLRpcScriptRoute_Haldir1117n::Call(this, TEXT("hol.Rpc.ScriptHero"), TEXT("ServerHeroTalent"), true, Family))
+		{
+			ServerHeroTalent(Family);
+		}
 	}
 }
 
@@ -5379,7 +5402,11 @@ void AHOLPlayerController::RequestSpecialization(const int32 Tier, const int32 O
 {
 	if (!IsSpectator())
 	{
-		ServerStartSpecialization(Tier, Option);
+		const int32 SpecArgs[] = { Tier, Option };
+		if (!HOLRpcScriptRoute_Haldir1117n::CallN(this, TEXT("hol.Rpc.ScriptSpecialization"), TEXT("ServerStartSpecialization"), SpecArgs))
+		{
+			ServerStartSpecialization(Tier, Option);
+		}
 	}
 }
 
@@ -5387,7 +5414,10 @@ void AHOLPlayerController::RequestCancelSpecialization()
 {
 	if (!IsSpectator())
 	{
-		ServerCancelSpecialization();
+		if (!HOLRpcScriptRoute_Haldir1117n::Call(this, TEXT("hol.Rpc.ScriptSpecialization"), TEXT("ServerCancelSpecialization"), false, 0))
+		{
+			ServerCancelSpecialization();
+		}
 	}
 }
 
