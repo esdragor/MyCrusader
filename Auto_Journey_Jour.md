@@ -43,6 +43,38 @@ REPRISE 09:07 (« continue migration auto journey ») : séance de migration SAN
 - **Pas fait** : `sync_worktrees.ps1` de fin de séance (tous les worktrees ne sont pas sur main ; Celeborn, Arwen, Haldir, Sauron, Glorfindel ont des commits non fusionnés), `session_gate -Phase Close`, tableau « Lecons appliquees 2026-11-17 ».
 - **Pour reprendre** (« continue migration auto journey ») : 1) sync_worktrees, 2) compiler et tester Réglages puis Multijoueur chacun dans son worktree (un essai de 3 min par l'utilisateur à chaque fois : commandes avec -Root, fiche Retours\E-<nom>.md), 3) D810 : écrire les appelants Mass (HOLUnitOrderProcessor 151/499/2584/3773/3843, HOLCombatProcessor 719), build, quick_check, 4) tests script E3-06/E3-10/E3-11 contre les 3 bibliothèques (rouge d'abord) puis git rm des tests C++, 5) P1d : trouver pourquoi la classe script n'existe pas sur le serveur, 6) lot MIG-C++-FINAL restant (Diplomatie, Market Apply/NewBook, L17-12 reste).
 
+REPRISE 2 (10:2x -> ~12:0x, même session principale, mêmes réglages : sans heure de fin, autonome, fusions locales sans push, agents Sonnet 5.5 de 15 min / 25 appels, builds et fusions par la session principale) : tableau compact (heures « - » = non relevées dans les rapports ; état d'après AngelscriptInProgress.md, EtapeDefini.md et Docs\Rapports\*-1117*.md).
+
+| Agent | worktree / branche | tâche et résultat | C++ | lancé |
+|---|---|---|---|---|
+| CELEBORN-1117e (FINI) | HeroesOfLiberty-Celeborn / hero-j8-close | ECR-2 Réglages : relu à sec, DLL périmée ; build puis rouge (Test_SettingsOptions 11 -> 12) puis vert, preflight, fiche E-ecran-reglages.md | non | 10:3x |
+| CELEBORN-1117f, CELEBORN-1117g (FINI, commits attribués d'après git log) | HeroesOfLiberty-Celeborn / hero-j8-close | Réglages : un build FAIL C4458 « Slot » (variable locale qui masque un membre de widget) corrigé 862da98 (+ include UObjectIterator) ; appels statiques de base qualifiés bbab542 ; écart « Défilement au bord = Non » diagnostiqué | non | - |
+| CELEBORN-1117h (FINI, hero-j8-close 8c10fe6) | HeroesOfLiberty-Celeborn / hero-j8-close | Réglages fin : Tools\Tests\TestSettings.ps1 / check.ps1 forçaient bEdgeScroll=False ; ecran_reglages.txt porte « # default-settings » (check.ps1 remet la section HOLGameUserSettings par défaut) ; preflight PASS, 5 PNG conformes ; E-ecran-reglages.md [À ESSAYER] VU À L'ÉCRAN | non | 11:2x |
+| ARWEN-1117e (FINI, d751-root 80e743b) | HeroesOfLiberty-Arwen / d751-root | ECR-3 Multijoueur : compilé, correctifs (UHOLMultiplayerScreen::ScreenText qualifié, nom de test 18 > 16 car.), tests script 3/3, quick_check tests 1393/1395, preflight PASS ; fiche E-ecran-multijoueur.md LOGIQUE SEULEMENT | non | 10:35 |
+| ARWEN-1117f (FINI, 0 commit de code) | HeroesOfLiberty-Arwen / d751-root | Multijoueur, 2 écarts du PNG non bugués : Créer ACTIF (CanCreateLobbyAfter ne grise que bad_key), pas de fond (comme l'ancien écran) ; .look faux non corrigé (édition refusée par le classifieur) ; Retours\Q-ecran-multijoueur-fond.md | non | 10:40 |
+| ELROND-1117f (FINI, tiers 2c24229) | HeroesOfLiberty-Elrond / tiers | E3-06 : Test_FactionTechnologyFilterGrid + _OpenTo (HOLFactionTechnology_Test.as) ; rouge vu 1391/1394 puis vert 1392/1394 ; HOLFactionTechnologyTests.cpp couvert en entier | non | 10:26 |
+| ELROND-1117g (FINI, lecture seule) | HeroesOfLiberty-Elrond / tiers | P1d : diagnostic par lecture du plugin = Script\Dev sauté hors éditeur interactif (AngelscriptManager.cpp:825-835) ; Docs\Rapports\ELROND-1117g.md | non | - |
+| ELROND-1117h (FINI, lecture seule) | HeroesOfLiberty-Elrond / tiers | MIG2-S3 : plan des 57 RPC du contrôleur (Docs\Rapports\PLAN-MIG2-S3-1117.md), 2 questions Retours\Q-mig2-s3.md | non | - |
+| GALADRIEL-1117e (FINI, galadriel-tab e96dd0b) | HeroesOfLiberty-Galadriel / galadriel-tab | E3-10 (moitié) : Test_RelationIconsChoice en script, rouge vu 1390/1393 puis vert 1391/1393 ; test C++ CONSERVÉ (moitié textures 64 px) | non | 10:3x |
+| GALADRIEL-1117f (FINI, 5730795 rouge + 719b49e) | HeroesOfLiberty-Galadriel / galadriel-tab | Market Apply en script par le pont UHOLMarketSubsystem (Apply/TradeNow/TradeOnce) ; rouge non vu proprement (Apply absent) ; devis Slate et NewBook restent | oui (écrit) | - |
+| GALADRIEL-1117g (FINI) | HeroesOfLiberty-Galadriel / galadriel-tab | Market source unique : HOLMarket::Apply et Buy C++ supprimés (Sell/BuyWithGold gardés pour le devis Slate), test C++ Market.Apply retiré ; registre GALADRIEL-1117g.md | oui (suppression) | - |
+| GLORFINDEL-1117f (FINI, net-playtest f7ec5f8 + cb41fd6) | HeroesOfLiberty-Glorfindel / net-playtest | E3-11 : Test_SignalAltClick en script, rouge vu 10:30 puis vert 10:34 (1391/1393) ; signals_altclick.json mapSize Small, preflight PASS | non | 10:26 |
+| GLORFINDEL-1117g (FINI, 2c06b4f) | HeroesOfLiberty-Glorfindel / net-playtest | L17-12 reste : HOLProductionQueue_Test.as (Queue, AdvanceQueue, Tables) + HOLProductionReadLibrary / HOLProductionTablesLibrary (enveloppes) ; binaire périmé : rouge non vu à ce moment | oui (écrit) | - |
+| GLORFINDEL-1117h (FINI, ef67576) | HeroesOfLiberty-Glorfindel / net-playtest | Rouge vu sur les 3 tests Production (1391/1396), vert 1394/1396 ; 3 tests C++ Production.Queue/Advance/Tables retirés (HOLProductionTests.cpp supprimé, 207 l.) | non | - |
+| HALDIR-1117e (FINI, maps 1ddc2ff rouge + 046d758) | HeroesOfLiberty-Haldir / maps | D841 lot 2 : D810 branché au Mass (forêt cavalerie 80 / siège 70 dans HOLUnitOrderProcessor, gué 120 % dans HOLCombatProcessor::GetDamageTakenPercent, UHOLTerrainSubsystem::GetWalkerSpeedPercentAt / IsOnFord) ; tests Terrain.ForestSpeed et Terrain.FordHit | oui (écrit) | 10:4x |
+| SAURON-1117e (FINI, visual) | HeroesOfLiberty-Sauron / visual | fusion groupée tiers + galadriel-tab + net-playtest (octopus, 0 conflit) et registre des tests C++ retirés (Siege.Tiers, FactionTechnology Grid, Signals.AltClick) ; Docs\Rapports\SAURON-1117e.md | oui (suppression) | 10:39 |
+| SAURON-1117f (FINI, visual) | HeroesOfLiberty-Sauron / visual | Production.UnitTier / PopulationCheckedAtEnd : PARTIEL, HOLUnitTierProduction_Test.as (3 tests, rouge vu 1393/1396, vert 1394/1396) ; PopulationCheckedAtEnd = Mass (D838) reste C++ ; aucun test C++ retiré | non | 11:3x |
+| FUSION + BUILD + quick_check (session principale) | Elrond puis main | tout dans main 07ec0cf : build PASS, tests 1398/1400 (2 Nomad D831), net PASS, values PASS ; RIEN POUSSÉ | oui (build) | - |
+| PROBE P1d (session principale) | Elrond (tiers 438aa39) | rpc_probe_run vert : le serveur reçoit « hello from the client » ; sonde déplacée Script\Dev -> Script\Net | oui | 10:5x |
+
+### Bilan de la reprise du 2026-11-17 10:2x -> 12:0x
+
+- **(1) DANS main (local, RIEN POUSSÉ, main = 07ec0cf, build PASS, tests 1398/1400 : seuls les 2 rouges Nomad D831 ; net PASS, values PASS)** : terrain D810 forêt / gué branché au Mass (HALDIR-1117e, Terrain.ForestSpeed et Terrain.FordHit verts ; rouge NON vu : seul le commit final a été compilé) ; tests script E3-06, E3-10 (moitié) et E3-11 ; Production Queue / Advance / Tables en script (rouge vu 1391/1396) + 3 tests C++ retirés ; Market Apply en script par le pont (rouge non vu proprement : Apply absent) + Apply / Buy C++ et Market.Apply retirés ; tests Siege.Tiers / Technologies / AltClick C++ retirés ; sonde RPC déplacée Script\Dev -> Script\Net.
+- **(2) P1d PROUVÉ** : le plugin saute Script\Dev hors éditeur interactif (AngelscriptManager.cpp:825-835), rpc_probe_run vert (le serveur reçoit « hello from the client »). MIG2-S3 débloquée : plan Docs\Rapports\PLAN-MIG2-S3-1117.md, 2 questions Retours\Q-mig2-s3.md.
+- **(3) PRÊT, EN ATTENTE DE L'UTILISATEUR** : essai Réglages (Retours\E-ecran-reglages.md [À ESSAYER], hero-j8-close 8c10fe6, non fusionné) ; Multijoueur LOGIQUE SEULEMENT (d751-root 80e743b, question Retours\Q-ecran-multijoueur-fond.md).
+- **(4) Pas fait** : sync_worktrees de fin, session_gate -Phase Close, Diplomatie MIG-C++-FINAL part 2 (dans hero-j8-close, attend Réglages), NewBook / devis Slate Market, formation en forêt (bloc mixte) et peinture Forest/Ford dans common.py, HOLProductionPopulationEndTests (reste C++ : Mass).
+- **(5) Anomalies** : un build de worktree dont main est fusionné pendant le build donne un binaire périmé ; 1 build Celeborn FAIL C4458 « Slot » (variable locale qui masque un membre de widget), corrigé ; quick_check est dans Tools\Tests\ ; le classifieur a refusé 2 éditions de .look / .txt faites par des agents (non contournées) ; eol_check -Fix touche des fichiers non suivis.
+
 ## Agents du 2026-11-16
 
 Séance de MIGRATION (D830, D835 : Q2 = A, confirmée à 19:5x) lancée à 19:48, fin 23:00, AUTONOME, fusion groupée acceptée (sans push). Veilleur toutes les 30 min (:13 et :43), alarme de clôture 22:45. Plan : Docs\Rapports\ANALYSE-1116a.md. Exception : nettoyage 0a à 3 agents (dossier Retours\ archivé par BILAN-1116 à 17:5x). sync_worktrees 19:52 sans -NoBuild : aucun build nécessaire, Get-StaleBinaryProblem vide dans les 8 worktrees (19:5x).
@@ -257,7 +289,7 @@ Reprise de la seance de migration (2026-11-16 21:03 -> 2026-11-17 01:1x), tout s
 | L14-2 | non evalue | - |
 | L14-4 | non evalue | - |
 | L14-5 | non evalue | - |
-| L14-6 | non evalue | - |
+| L14-6 | non appliquee (reprise 2) | rouge NON vu : HALDIR-1117e (seul le commit final compile), Market Apply (Apply absent, pas de rouge propre), GLORFINDEL-1117g (binaire perime) ; rouge vu : Production Queue/Advance/Tables 1391/1396, E3-10 1390/1393, E3-11 10:30 |
 | L14-9 | non evalue | - |
 | L14-10 | non evalue | - |
 | L14-11 | non evalue | - |
@@ -267,10 +299,10 @@ Reprise de la seance de migration (2026-11-16 21:03 -> 2026-11-17 01:1x), tout s
 | L15-7 | non evalue | - |
 | L15-8 | non evalue | - |
 | L15-9 | appliquee | un test rouge + un correctif par lot, 15 min maximum par agent |
-| L15-10 | appliquee | rapports dans Docs\Rapports\*-1117*.md et *-1116[n-t].md, reponses de 4 a 6 lignes |
+| L15-10 | appliquee | rapports dans Docs\Rapports\*-1117*.md et *-1116[n-t].md, reponses de 4 a 6 lignes (reprise 2 : rapports *-1117[e-h].md) |
 | L16-1 | non evalue | - |
-| L16-2 | appliquee | Get-StaleBinaryProblem verifie avant chaque lot de tests ; sync_worktrees avec build en debut de vague et en cloture (7 builds PASS) |
-| L16-3 | non evalue | - |
+| L16-2 | appliquee | Get-StaleBinaryProblem verifie avant chaque lot de tests ; sync_worktrees avec build en debut de vague et en cloture (7 builds PASS) ; reprise 2 : un build de worktree dont main est fusionne pendant le build donne un binaire perime (anomalie, a rebuilder) |
+| L16-3 | appliquee | reprise 2 : build PASS puis quick_check tests,net,values sur le resultat avant l'avance de main a 07ec0cf (tests 1398/1400, 2 rouges Nomad D831 connus, net PASS, values PASS) |
 | L16-4 | non evalue | - |
 | L16-5 | non evalue | - |
 | L16-6 | non evalue | - |
