@@ -56,3 +56,12 @@ void Test_MultiplayerLobbyRows(FUnitTest& T)
 	T.AssertEquals(int(EHOLLobbyRowAction::None), int(Starting.Action), "a lobby that starts offers nothing");
 	T.AssertFalse(Starting.bSpectate, "a lobby that starts offers no Observer");
 }
+
+// HeroesOfLiberty.UI.MultiplayerVeil: the Multiplayer screen lays a dark veil (HOLUIStyle::Veil, D843 Q2 B) behind its column so the red line reads over the
+// scene; the base gives its colour (VeilColor) to the script, which asks for the veil in MakeMultiplayerColumn(true). RED until the C++ lot is built.
+void Test_MultiplayerVeil(FUnitTest& T)
+{
+	const FLinearColor Veil = UHOLMultiplayerScreen::VeilColor();
+	T.AssertTrue(Veil.A >= 0.5f, "the veil is dark enough to read the status line over a scene (alpha 0.6)");
+	T.AssertTrue(Veil.R <= 0.05f && Veil.G <= 0.05f && Veil.B <= 0.05f, "the veil is black, not tinted");
+}
