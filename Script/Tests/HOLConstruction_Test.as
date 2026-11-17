@@ -573,7 +573,7 @@ void Test_Construction_SiteKeepOut(FUnitTest& T)
 		{
 			FVector2D Local = Start;
 			bool bMoved = HOLConstructionRead::KeepOutOfBody(Half, InsideGap, OutsideGap, Local);
-			string Where = "radius " + Radius + " cm, from (" + Start.X + ", " + Start.Y + ") to (" + Local.X + ", " + Local.Y + ")";
+			FString Where = "radius " + Radius + " cm, from (" + Start.X + ", " + Start.Y + ") to (" + Local.X + ", " + Local.Y + ")";
 			T.AssertTrue(bMoved, "put out (" + Where + ")");
 			double FromBody = HOLConstructionRead::GetDistance(Body, Local);
 			T.AssertTrue(FromBody >= Clearance + Radius, "beyond the navmesh's margin: " + FromBody + " >= " + (Clearance + Radius) + " (" + Where + ")");

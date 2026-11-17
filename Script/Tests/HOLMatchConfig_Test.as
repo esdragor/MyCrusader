@@ -129,12 +129,16 @@ void Test_MatchConfigManagerReference(FUnitTest& T)
 	// The match.json the lobby manager writes (R3.1, Manager\PROTOCOL.md), from the manager's own reference file.
 	FString Path = "Manager/HOLManager.Tests/Data/match_v2_reference.json";
 	FString Json;
-	if (!T.AssertTrue(HOLMatchConfigRead::LoadProjectFileText(Path, Json), "reference file read (" + Path + ")"))
+	bool bLoaded = HOLMatchConfigRead::LoadProjectFileText(Path, Json);
+	T.AssertTrue(bLoaded, "reference file read (" + Path + ")");
+	if (!bLoaded)
 	{
 		return;
 	}
 	FString Error;
-	if (!T.AssertTrue(HOLMatchConfigRead::CanRead(Json, Error), "reference parsed (" + Error + ")"))
+	bool bCanRead = HOLMatchConfigRead::CanRead(Json, Error);
+	T.AssertTrue(bCanRead, "reference parsed (" + Error + ")");
+	if (!bCanRead)
 	{
 		return;
 	}
