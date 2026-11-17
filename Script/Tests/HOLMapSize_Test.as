@@ -29,6 +29,31 @@ TArray<int> HOLMapSizeInts(int A = -99, int B = -99, int C = -99, int D = -99, i
 	return Result;
 }
 
+// Rows of ints in one flat array (Angelscript refuses TArray<TArray<int>>): Lens holds each row's length.
+void HOLMapSizeAddRow(TArray<int>& Flat, TArray<int>& Lens, const TArray<int>& Row)
+{
+	Lens.Add(Row.Num());
+	for (int Index = 0; Index < Row.Num(); ++Index)
+	{
+		Flat.Add(Row[Index]);
+	}
+}
+
+TArray<int> HOLMapSizeGetRow(const TArray<int>& Flat, const TArray<int>& Lens, int RowIndex)
+{
+	int Start = 0;
+	for (int Index = 0; Index < RowIndex; ++Index)
+	{
+		Start += Lens[Index];
+	}
+	TArray<int> Row;
+	for (int Index = 0; Index < Lens[RowIndex]; ++Index)
+	{
+		Row.Add(Flat[Start + Index]);
+	}
+	return Row;
+}
+
 bool HOLMapSizeAreSame(const TArray<int>& A, const TArray<int>& B)
 {
 	if (A.Num() != B.Num())
@@ -189,7 +214,8 @@ void Test_MapSizeTable(FUnitTest& T)
 // HeroesOfLiberty.MapSize.Allowed
 void Test_MapSizeAllowed(FUnitTest& T)
 {
-	TArray<TArray<int>> Allowed;
+	TArray<int> AllowedFlat;
+	TArray<int> AllowedLens;
 	for (int Players = 1; Players <= 8; ++Players)
 	{
 		TArray<int> Row;
@@ -198,21 +224,22 @@ void Test_MapSizeAllowed(FUnitTest& T)
 		{
 			Row.Add(Size);
 		}
-		Allowed.Add(Row);
+		HOLMapSizeAddRow(AllowedFlat, AllowedLens, Row);
 	}
 	const TArray<int> Default = HOLMapSizeInts(1, 1, 2, 2, 3, 3, 4, 4);
 	for (int Players = 1; Players <= 8; ++Players)
 	{
 		const TArray<int> Got = HOLMapSizeRead::GetAllowedSizes(Players);
-		T.AssertEquals(Allowed[Players - 1].Num(), Got.Num(), "number of sizes allowed for " + Players + " players");
-		for (int Index = 0; Index < Got.Num() && Index < Allowed[Players - 1].Num(); ++Index)
+		const TArray<int> Allowed = HOLMapSizeGetRow(AllowedFlat, AllowedLens, Players - 1);
+		T.AssertEquals(Allowed.Num(), Got.Num(), "number of sizes allowed for " + Players + " players");
+		for (int Index = 0; Index < Got.Num() && Index < Allowed.Num(); ++Index)
 		{
-			T.AssertEquals(Allowed[Players - 1][Index], Got[Index], "size " + Index + " allowed for " + Players + " players");
+			T.AssertEquals(Allowed[Index], Got[Index], "size " + Index + " allowed for " + Players + " players");
 		}
 		T.AssertEquals(Default[Players - 1], HOLMapSizeRead::GetDefaultSize(Players), "default size for " + Players + " players");
 		for (int Size = HOLMapSizeSmall; Size <= HOLMapSizeHuge; ++Size)
 		{
-			T.AssertTrue(Allowed[Players - 1].Contains(Size) == HOLMapSizeRead::IsAllowed(Size, Players), "size " + Size + " allowed for " + Players + " players");
+			T.AssertTrue(Allowed.Contains(Size) == HOLMapSizeRead::IsAllowed(Size, Players), "size " + Size + " allowed for " + Players + " players");
 		}
 	}
 	T.AssertTrue(HOLMapSizeRead::GetAllowedSizes(9).Num() == 0 && HOLMapSizeRead::GetDefaultSize(9) == HOLMapSizeNone, "no size past eight players");
@@ -235,27 +262,29 @@ void Test_MapSizeMapFile(FUnitTest& T)
 // HeroesOfLiberty.MapSize.DrawPlaces
 void Test_MapSizeDrawPlaces(FUnitTest& T)
 {
-	TArray<TArray<int>> CaseTeams;
+	TArray<int> CaseTeamsFlat;
+	TArray<int> CaseTeamsLens;
 	TArray<int> CasePlaces;
 	TArray<FString> CaseNames;
-	CaseNames.Add("1 player on Small");  CaseTeams.Add(HOLMapSizeInts(0));  CasePlaces.Add(2);
-	CaseNames.Add("1 player on Large");  CaseTeams.Add(HOLMapSizeInts(0));  CasePlaces.Add(8);
-	CaseNames.Add("1v1 on Small");  CaseTeams.Add(HOLMapSizeInts(0, 0));  CasePlaces.Add(2);
-	CaseNames.Add("2v2 on Medium");  CaseTeams.Add(HOLMapSizeInts(1, 2, 1, 2));  CasePlaces.Add(4);
-	CaseNames.Add("2v2 on Large, with gaps");  CaseTeams.Add(HOLMapSizeInts(1, 1, 2, 2));  CasePlaces.Add(8);
-	CaseNames.Add("3v3 on Normal");  CaseTeams.Add(HOLMapSizeInts(1, 2, 1, 2, 1, 2));  CasePlaces.Add(6);
-	CaseNames.Add("3v3 on Large");  CaseTeams.Add(HOLMapSizeInts(2, 2, 2, 1, 1, 1));  CasePlaces.Add(8);
-	CaseNames.Add("4v4 on Large");  CaseTeams.Add(HOLMapSizeInts(1, 2, 1, 2, 1, 2, 1, 2));  CasePlaces.Add(8);
-	CaseNames.Add("2v2v2v2 on Huge");  CaseTeams.Add(HOLMapSizeInts(1, 2, 3, 4, 4, 3, 2, 1));  CasePlaces.Add(8);
-	CaseNames.Add("free for all, 4 on Medium");  CaseTeams.Add(HOLMapSizeInts(0, 0, 0, 0));  CasePlaces.Add(4);
-	CaseNames.Add("free for all, 5 on Large");  CaseTeams.Add(HOLMapSizeInts(0, 0, 0, 0, 0));  CasePlaces.Add(8);
-	CaseNames.Add("a team and two alone on Normal");  CaseTeams.Add(HOLMapSizeInts(1, 0, 1, 0));  CasePlaces.Add(6);
+	CaseNames.Add("1 player on Small");  HOLMapSizeAddRow(CaseTeamsFlat, CaseTeamsLens, HOLMapSizeInts(0));  CasePlaces.Add(2);
+	CaseNames.Add("1 player on Large");  HOLMapSizeAddRow(CaseTeamsFlat, CaseTeamsLens, HOLMapSizeInts(0));  CasePlaces.Add(8);
+	CaseNames.Add("1v1 on Small");  HOLMapSizeAddRow(CaseTeamsFlat, CaseTeamsLens, HOLMapSizeInts(0, 0));  CasePlaces.Add(2);
+	CaseNames.Add("2v2 on Medium");  HOLMapSizeAddRow(CaseTeamsFlat, CaseTeamsLens, HOLMapSizeInts(1, 2, 1, 2));  CasePlaces.Add(4);
+	CaseNames.Add("2v2 on Large, with gaps");  HOLMapSizeAddRow(CaseTeamsFlat, CaseTeamsLens, HOLMapSizeInts(1, 1, 2, 2));  CasePlaces.Add(8);
+	CaseNames.Add("3v3 on Normal");  HOLMapSizeAddRow(CaseTeamsFlat, CaseTeamsLens, HOLMapSizeInts(1, 2, 1, 2, 1, 2));  CasePlaces.Add(6);
+	CaseNames.Add("3v3 on Large");  HOLMapSizeAddRow(CaseTeamsFlat, CaseTeamsLens, HOLMapSizeInts(2, 2, 2, 1, 1, 1));  CasePlaces.Add(8);
+	CaseNames.Add("4v4 on Large");  HOLMapSizeAddRow(CaseTeamsFlat, CaseTeamsLens, HOLMapSizeInts(1, 2, 1, 2, 1, 2, 1, 2));  CasePlaces.Add(8);
+	CaseNames.Add("2v2v2v2 on Huge");  HOLMapSizeAddRow(CaseTeamsFlat, CaseTeamsLens, HOLMapSizeInts(1, 2, 3, 4, 4, 3, 2, 1));  CasePlaces.Add(8);
+	CaseNames.Add("free for all, 4 on Medium");  HOLMapSizeAddRow(CaseTeamsFlat, CaseTeamsLens, HOLMapSizeInts(0, 0, 0, 0));  CasePlaces.Add(4);
+	CaseNames.Add("free for all, 5 on Large");  HOLMapSizeAddRow(CaseTeamsFlat, CaseTeamsLens, HOLMapSizeInts(0, 0, 0, 0, 0));  CasePlaces.Add(8);
+	CaseNames.Add("a team and two alone on Normal");  HOLMapSizeAddRow(CaseTeamsFlat, CaseTeamsLens, HOLMapSizeInts(1, 0, 1, 0));  CasePlaces.Add(6);
 
 	for (int Case = 0; Case < CaseNames.Num(); ++Case)
 	{
+		const TArray<int> CaseTeams = HOLMapSizeGetRow(CaseTeamsFlat, CaseTeamsLens, Case);
 		TArray<int> States;
 		TArray<int> Teams;
-		HOLMapSizeMakeSlots(CaseTeams[Case], States, Teams);
+		HOLMapSizeMakeSlots(CaseTeams, States, Teams);
 		for (int Mode = 0; Mode < 2; ++Mode)
 		{
 			const bool bTogether = Mode == 0;
@@ -289,7 +318,7 @@ void Test_MapSizeDrawPlaces(FUnitTest& T)
 			// The draw turns: over the seeds, the first slot gets every place of the map.
 			T.AssertEquals(CasePlaces[Case], FirstPlaces.Num(), Label + ": the first slot's places over the seeds");
 			// Without "Equipes ensemble", two allies end apart sometimes (2v2 on Medium, 4v4...).
-			if (!bTogether && CaseTeams[Case].Num() >= 4 && CaseTeams[Case].Contains(2) && CaseTeams[Case].Num() == CasePlaces[Case])
+			if (!bTogether && CaseTeams.Num() >= 4 && CaseTeams.Contains(2) && CaseTeams.Num() == CasePlaces[Case])
 			{
 				T.AssertTrue(bSplitOnce, Label + ": allies apart sometimes");
 			}
