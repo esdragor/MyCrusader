@@ -50,25 +50,7 @@ namespace UE::HeroesOfLiberty::Tests::Buildings
 	}
 }
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLBuildingTypesTest, "HeroesOfLiberty.Buildings.Types", UE::HeroesOfLiberty::Tests::Buildings::Flags)
-bool FHOLBuildingTypesTest::RunTest(const FString& Parameters)
-{
-	const FHOLBuildingTypeRow* MainCentre = UHOLBuildingSettings::FindType(HOLBuildingTypeNames::MainCentre);
-	if (TestNotNull(TEXT("main centre in the building type table"), MainCentre))
-	{
-		TestFalse(TEXT("named"), MainCentre->DisplayName.IsEmpty());
-		TestEqual(TEXT("16 x 16 m: 4 x 4 tiles of 4 m (D261, D311, D344)"), MainCentre->Footprint, FVector2D(1600.0, 1600.0));
-		TestEqual(TEXT("~10 m high (D261)"), MainCentre->Height, 1000.f);
-		TestTrue(TEXT("health points"), MainCentre->MaxHealth > 0);
-		TestFalse(TEXT("the Forum has its model (VisualInProgress V3a): SM_Forum, composed from the kit"), MainCentre->Mesh.IsNull());
-	}
-	const FHOLBuildingTypeRow* House = UHOLBuildingSettings::FindType(HOLBuildingTypeNames::House);
-	if (TestNotNull(TEXT("house in the building type table"), House))
-	{
-		TestTrue(TEXT("provisional shape: no final mesh yet"), House->Mesh.IsNull());
-	}
-	return true;
-}
+// Buildings.Types moved to Script/Tests/HOLBuilding_Test.as (rouge vu 1496/1499, vert 1497/1499, 2026-11-17).
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLBuildingAppearanceTest, "HeroesOfLiberty.Buildings.Appearance", UE::HeroesOfLiberty::Tests::Buildings::Flags)
 bool FHOLBuildingAppearanceTest::RunTest(const FString& Parameters)

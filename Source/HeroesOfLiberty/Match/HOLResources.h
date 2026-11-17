@@ -6,7 +6,7 @@
 #include "HOLResources.generated.h"
 
 /** One of the four base resources (§ 5.1): what a source gives and what a Peasant carries (J5, D295). */
-UENUM()
+UENUM(BlueprintType)
 enum class EHOLResource : uint8
 {
 	Food,

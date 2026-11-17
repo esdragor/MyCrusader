@@ -1,8 +1,7 @@
 // Port of the pure parts of HOLBuildingTests.cpp (Buildings.Types, the table half of Buildings.Walkable) and of the main centre
-// check of HOLGatherTests.cpp (Gather.Tables), L17 migration (HALDIR-1117r, D830, D838, D839). NOT COMPILED, NOT RUN when written.
-// Same values as the C++ tests; they read the building type table through HOLBuildingType::FindRow (HOLBuildingTypeLibrary.h).
-// The row fields are read directly (EditAnywhere UPROPERTYs of FHOLBuildingTypeRow): if the script refuses one, see TYPES_A_EXPOSER of
-// the report (BlueprintReadOnly on the row's fields). Resources as ints: 0 Food, 1 Wood, 2 Stone, 3 Gold.
+// check of HOLGatherTests.cpp (Gather.Tables), L17 migration (HALDIR-1117r, D830, D838, D839).
+// Same values as the C++ tests; they read the building type table through HOLBuildingType::FindRow (HOLBuildingTypeLibrary.h);
+// the row fields are BlueprintReadOnly since the lot of 2026-11-17 (HOLBuildingTypes.h). Resources as ints: 0 Food, 1 Wood, 2 Stone, 3 Gold.
 // The rest of both C++ files needs a world (spawned AHOLBuilding, source registry, Mass) and stays in C++ (D838); Gather.* has no
 // script library (HOLGather rules, FHOLSourceMassifs, the source type table are not exposed).
 
@@ -23,7 +22,9 @@ bool BuildingTestAccepts(const FHOLBuildingTypeRow& Row, int Resource)
 void Test_Building_TypesMainCentre(FUnitTest& T)
 {
 	FHOLBuildingTypeRow MainCentre;
-	if (!T.AssertTrue(HOLBuildingType::FindRow(n"MainCentre", MainCentre), "main centre in the building type table"))
+	bool bFound = HOLBuildingType::FindRow(n"MainCentre", MainCentre);
+	T.AssertTrue(bFound, "main centre in the building type table");
+	if (!bFound)
 	{
 		return;
 	}
@@ -38,7 +39,9 @@ void Test_Building_TypesMainCentre(FUnitTest& T)
 void Test_Building_TypesHouseProvisional(FUnitTest& T)
 {
 	FHOLBuildingTypeRow House;
-	if (!T.AssertTrue(HOLBuildingType::FindRow(n"House", House), "house in the building type table"))
+	bool bFound = HOLBuildingType::FindRow(n"House", House);
+	T.AssertTrue(bFound, "house in the building type table");
+	if (!bFound)
 	{
 		return;
 	}
@@ -51,8 +54,11 @@ void Test_Building_WalkableTable(FUnitTest& T)
 {
 	FHOLBuildingTypeRow Farm;
 	FHOLBuildingTypeRow Mill;
-	if (!T.AssertTrue(HOLBuildingType::FindRow(n"Farm", Farm), "farm in the building type table")
-		|| !T.AssertTrue(HOLBuildingType::FindRow(n"Mill", Mill), "mill in the building type table"))
+	bool bFoundFarm = HOLBuildingType::FindRow(n"Farm", Farm);
+	bool bFoundMill = HOLBuildingType::FindRow(n"Mill", Mill);
+	T.AssertTrue(bFoundFarm, "farm in the building type table");
+	T.AssertTrue(bFoundMill, "mill in the building type table");
+	if (!bFoundFarm || !bFoundMill)
 	{
 		return;
 	}
@@ -64,7 +70,9 @@ void Test_Building_WalkableTable(FUnitTest& T)
 void Test_Building_MainCentreAcceptsFourResources(FUnitTest& T)
 {
 	FHOLBuildingTypeRow MainCentre;
-	if (!T.AssertTrue(HOLBuildingType::FindRow(n"MainCentre", MainCentre), "main centre in the building type table"))
+	bool bFound = HOLBuildingType::FindRow(n"MainCentre", MainCentre);
+	T.AssertTrue(bFound, "main centre in the building type table");
+	if (!bFound)
 	{
 		return;
 	}
