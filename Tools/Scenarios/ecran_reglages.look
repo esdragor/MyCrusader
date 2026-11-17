@@ -1,0 +1,6 @@
+# <nom de capture> | ce que l'utilisateur doit voir
+ecran_reglages_video | onglet Video : a gauche Resolution, Affichage, Synchronisation verticale, Images par seconde, Echelle de rendu ; a droite Qualite et les 8 groupes (Distance d'affichage ... Terrain) ; Video est l'onglet choisi
+ecran_reglages_son | onglet Son : 4 lignes (Volume general, Musique, Effets, Voix) a 100 % et la note en dessous
+ecran_reglages_commandes | onglet Commandes : bouton Changer les touches grise, Vitesse de la camera (Normale), Defilement au bord de l'ecran (Oui), la note
+ecran_reglages_langue | onglet Langue : une ligne Langue sur Francais
+ecran_reglages_retour | retour sur l'ecran titre : Jouer, Multijoueur, Reglages, Quitter

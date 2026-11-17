@@ -37,7 +37,8 @@ if (-not $EngineDir) {
 . (Join-Path $PSScriptRoot "..\Tests\TestSettings.ps1")
 . (Join-Path $PSScriptRoot "EditorSlot.ps1")
 # Edge scrolling off in the test settings (bEdgeScroll): a cursor at the screen's edge would pan the camera during the check.
-Set-TestEdgeScrollOff (Join-Path $Root "Saved_Tests")
+# A scenario whose .txt carries a "# default-settings" line (the settings screen) starts from the code defaults instead (TestSettings.ps1).
+if ((Get-Content (Join-Path $Root "Tools\Scenarios\$Name.txt") -Raw) -match '(?m)^#\s*default-settings') { Reset-TestHolSettings (Join-Path $Root "Saved_Tests") } else { Set-TestEdgeScrollOff (Join-Path $Root "Saved_Tests") }
 $Log = Join-Path $Root "Saved_Tests\Logs\scenario_$Name.log"
 New-Item -ItemType Directory -Force (Split-Path $Log) | Out-Null
 # The log of THIS pass only (2026-11-03: a log still held by the previous pass's process could not be removed, the loop below
