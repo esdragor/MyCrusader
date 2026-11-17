@@ -278,3 +278,72 @@ int32 UHOLConstructionReadLibrary::FindNextSite(const FHOLConstructionBox& Finis
 	const TArray<FBox2D> Boxes = ConstructionRead_ToBoxes(Sites);
 	return HOLConstruction::FindNextSite(ConstructionRead_ToBox(Finished), Boxes, Range);
 }
+
+double UHOLConstructionReadLibrary::GetSourceGap(const FHOLConstructionBox& Footprint, const FVector2D& Centre, const double Radius)
+{
+	return HOLConstruction::GetSourceGap(ConstructionRead_ToBox(Footprint), Centre, Radius);
+}
+
+bool UHOLConstructionReadLibrary::SendsBuildersToGather(const FName TypeName, const TArray<int32>& Accepts)
+{
+	TArray<EHOLResource> Resources;
+	for (const int32 Resource : Accepts)
+	{
+		Resources.Add(static_cast<EHOLResource>(Resource));
+	}
+	return HOLConstruction::SendsBuildersToGather(TypeName, Resources);
+}
+
+void UHOLConstructionReadLibrary::AddToBuildQueue(TArray<int32>& Queue, const int32 Item, const bool bAppend)
+{
+	HOLConstruction::AddToBuildQueue<int32>(Queue, Item, bAppend);
+}
+
+bool UHOLConstructionReadLibrary::AdvanceBuildQueue(TArray<int32>& Queue, const TArray<int32>& ClosedSites)
+{
+	return HOLConstruction::AdvanceBuildQueue<int32>(Queue, [&ClosedSites](const int32& Site) { return !ClosedSites.Contains(Site); });
+}
+
+int32 UHOLConstructionReadLibrary::MakeWorkBuild(const int32 Site)
+{
+	return Site * 4;
+}
+
+int32 UHOLConstructionReadLibrary::MakeWorkGather(const int32 SourceIndex)
+{
+	return SourceIndex * 4 + 1;
+}
+
+int32 UHOLConstructionReadLibrary::MakeWorkDeposit(const int32 Building)
+{
+	return Building * 4 + 2;
+}
+
+int32 UHOLConstructionReadLibrary::GetWorkItemKind(const int32 Item)
+{
+	// Decoded to a TWorkItem, whose own predicates say what it is.
+	using FItem = HOLConstruction::TWorkItem<int32>;
+	const int32 Number = Item >> 2;
+	const int32 Code = Item & 3;
+	const FItem Decoded = Code == 1 ? FItem::MakeGather(Number) : (Code == 2 ? FItem::MakeDeposit(Number) : FItem::MakeBuild(Number));
+	return Decoded.IsGather() ? 1 : (Decoded.IsDeposit() ? 2 : 0);
+}
+
+bool UHOLConstructionReadLibrary::AdvanceWorkQueue(TArray<int32>& Queue, const bool bHeadDone, const TArray<int32>& ClosedSites)
+{
+	using FItem = HOLConstruction::TWorkItem<int32>;
+	TArray<FItem> Items;
+	for (const int32 Encoded : Queue)
+	{
+		const int32 Number = Encoded >> 2;
+		const int32 Code = Encoded & 3;
+		Items.Add(Code == 1 ? FItem::MakeGather(Number) : (Code == 2 ? FItem::MakeDeposit(Number) : FItem::MakeBuild(Number)));
+	}
+	const bool bLeft = HOLConstruction::AdvanceWorkQueue<int32>(Items, bHeadDone, [&ClosedSites](const int32& Site) { return !ClosedSites.Contains(Site); });
+	Queue.Reset();
+	for (const FItem& Item : Items)
+	{
+		Queue.Add(Item.IsGather() ? Item.SourceIndex * 4 + 1 : (Item.IsDeposit() ? Item.Site * 4 + 2 : Item.Site * 4));
+	}
+	return bLeft;
+}
