@@ -743,3 +743,487 @@ void Test_FMBreakAtMelee(FUnitTest& T)
 	T.AssertTrue(HOLFormationRead::IsMemberStuck(Stuck), "holding 0.5 s: it leaves the block");
 	T.AssertEquals(10, Stuck, "0.5 s at 20 steps a second");
 }
+
+// ---- GALADRIEL-1117q (NOT COMPILED): the 4 remaining ports, same vectors as HOLFormationTests.cpp (AssignByDepth, Group, Block, Settle) ----
+
+double FMDist(const FVector2D& A, const FVector2D& B)
+{
+	double Dx = A.X - B.X;
+	double Dy = A.Y - B.Y;
+	return Math::Sqrt(Dx * Dx + Dy * Dy);
+}
+
+TArray<int> FMRowOfPlace(const TArray<int>& Widths)
+{
+	TArray<int> Rows;
+	for (int Row = 0; Row < Widths.Num(); Row++)
+	{
+		for (int Column = 0; Column < Widths[Row]; Column++)
+		{
+			Rows.Add(Row);
+		}
+	}
+	return Rows;
+}
+
+// HeroesOfLiberty.Formation.AssignByDepth
+void Test_FMAssignByDepth(FUnitTest& T)
+{
+	// The user trial (J7c.2): 50 Archers in rows 9 9 9 9 9 5 facing South, sent North on the spot.
+	double Spacing = 150.0;
+	TArray<int> Widths;
+	Widths.Add(9); Widths.Add(9); Widths.Add(9); Widths.Add(9); Widths.Add(9); Widths.Add(5);
+	TArray<int> RowOfPlace = FMRowOfPlace(Widths);
+	FVector2D South(0.0, -1.0);
+	FVector2D North(0.0, 1.0);
+	TArray<FVector2D> Positions;
+	HOLFormationRead::MakePlaces(Widths, FVector2D(1000.0, 2000.0), South, Spacing, Spacing, Positions);
+	TArray<FVector2D> Places;
+	HOLFormationRead::MakePlaces(Widths, FVector2D(1000.0, 2000.0 + 5.0 * Spacing), North, Spacing, Spacing, Places);
+	TArray<int> PlaceOfUnit;
+	HOLFormationRead::AssignPlaces(Positions, Places, North, PlaceOfUnit);
+	TArray<bool> Given;
+	Given.SetNum(50);
+	int Distinct = 0;
+	for (int Unit = 0; Unit < PlaceOfUnit.Num(); Unit++)
+	{
+		if (PlaceOfUnit[Unit] >= 0 && PlaceOfUnit[Unit] < 50 && !Given[PlaceOfUnit[Unit]])
+		{
+			Given[PlaceOfUnit[Unit]] = true;
+			Distinct++;
+		}
+	}
+	T.AssertEquals(50, Distinct, "half turn: a place of its own for each of 50");
+	double LongestStep = 0.0;
+	bool bLastRowTurnsOnly = true;
+	bool bFrontRowEndsLast = true;
+	int Crossings = 0;
+	for (int Unit = 0; Unit < Positions.Num() && Unit < PlaceOfUnit.Num(); Unit++)
+	{
+		int Mine = PlaceOfUnit[Unit];
+		double Step = FMDist(Positions[Unit], Places[Mine]);
+		double Dy = Math::Abs(Places[Mine].Y - Positions[Unit].Y);
+		if (Dy > LongestStep)
+		{
+			LongestStep = Dy;
+		}
+		if (RowOfPlace[Unit] == 5)
+		{
+			bLastRowTurnsOnly = bLastRowTurnsOnly && RowOfPlace[Mine] == 0 && Step < 1.0;
+		}
+		if (RowOfPlace[Mine] == 5)
+		{
+			bFrontRowEndsLast = bFrontRowEndsLast && RowOfPlace[Unit] == 0 && Step < 1.0;
+		}
+		for (int Other = Unit + 1; Other < Positions.Num(); Other++)
+		{
+			if (RowOfPlace[Mine] == RowOfPlace[PlaceOfUnit[Other]] && FMCross(Positions[Unit], Places[Mine], Positions[Other], Places[PlaceOfUnit[Other]]))
+			{
+				Crossings++;
+			}
+		}
+	}
+	T.AssertTrue(LongestStep <= Spacing + 0.5, "half turn: no unit moves more than one row deep");
+	T.AssertTrue(bLastRowTurnsOnly, "half turn: the old last row turns on the spot in the new front row");
+	T.AssertTrue(bFrontRowEndsLast, "half turn: the new last row is the old front row middle, on the spot");
+	T.AssertEquals(0, Crossings, "half turn: no paths of one row cross");
+
+	// A march straight ahead (same facing): each unit keeps its row and its column.
+	TArray<FVector2D> Ahead;
+	HOLFormationRead::MakePlaces(Widths, FVector2D(1000.0, -3000.0), South, Spacing, Spacing, Ahead);
+	HOLFormationRead::AssignPlaces(Positions, Ahead, South, PlaceOfUnit);
+	bool bKept = PlaceOfUnit.Num() == Positions.Num();
+	for (int Unit = 0; bKept && Unit < PlaceOfUnit.Num(); Unit++)
+	{
+		bKept = PlaceOfUnit[Unit] == Unit;
+	}
+	T.AssertTrue(bKept, "straight ahead: each unit keeps its row and column");
+
+	// A row with a hole: 49 units on 49 places, the last row third place missing, the old last row 5th unit left behind.
+	TArray<FVector2D> Holed = Ahead;
+	Holed.RemoveAt(45 + 2);
+	TArray<FVector2D> Four = Positions;
+	Four.RemoveAt(45 + 4);
+	HOLFormationRead::AssignPlaces(Four, Holed, South, PlaceOfUnit);
+	TArray<bool> HoledGiven;
+	HoledGiven.SetNum(49);
+	int HoledDistinct = 0;
+	for (int Unit = 0; Unit < PlaceOfUnit.Num(); Unit++)
+	{
+		if (PlaceOfUnit[Unit] >= 0 && PlaceOfUnit[Unit] < 49 && !HoledGiven[PlaceOfUnit[Unit]])
+		{
+			HoledGiven[PlaceOfUnit[Unit]] = true;
+			HoledDistinct++;
+		}
+	}
+	T.AssertEquals(49, HoledDistinct, "holed row: a place of its own for each of 49");
+	bool bFrontKept = PlaceOfUnit.Num() == 49;
+	for (int Unit = 0; bFrontKept && Unit < 45; Unit++)
+	{
+		bFrontKept = PlaceOfUnit[Unit] == Unit;
+	}
+	T.AssertTrue(bFrontKept, "holed row: the rows of 9 keep their places");
+	bool bLastInOrder = PlaceOfUnit.Num() == 49 && PlaceOfUnit[45] == 45 && PlaceOfUnit[46] == 46 && PlaceOfUnit[47] == 47 && PlaceOfUnit[48] == 48;
+	T.AssertTrue(bLastInOrder, "holed row: the last row units fill its places in order");
+}
+
+// HeroesOfLiberty.Formation.Group
+void Test_FMGroup(FUnitTest& T)
+{
+	TArray<int> Widths;
+	TArray<int> Counts;
+	Counts.Add(15);
+	HOLFormationRead::MakeGroupRows(Counts, true, Widths);
+	T.AssertEquals("6/6/3", FMWidthsText(Widths), "15 Peasants: 6/6/3");
+	Counts.Empty();
+	Counts.Add(0); Counts.Add(12); Counts.Add(0);
+	HOLFormationRead::MakeGroupRows(Counts, false, Widths);
+	T.AssertEquals("5/5/2", FMWidthsText(Widths), "12 Men-at-arms alone: 5/5/2");
+	Counts.Empty();
+	Counts.Add(12); Counts.Add(12);
+	HOLFormationRead::MakeGroupRows(Counts, false, Widths);
+	T.AssertEquals("7/7/5/5", FMWidthsText(Widths), "12 Spearmen and 12 Men-at-arms: 7/7/5/5");
+
+	// 3 Spearmen and 3 Men-at-arms marching along +X to (5000, 0), mixed up.
+	TArray<FVector2D> Positions;
+	Positions.Add(FVector2D(0.0, 0.0)); Positions.Add(FVector2D(0.0, 200.0)); Positions.Add(FVector2D(200.0, 0.0));
+	Positions.Add(FVector2D(200.0, 200.0)); Positions.Add(FVector2D(-200.0, 0.0)); Positions.Add(FVector2D(-200.0, 200.0));
+	TArray<int> KindOfUnit;
+	KindOfUnit.Add(1); KindOfUnit.Add(0); KindOfUnit.Add(0); KindOfUnit.Add(1); KindOfUnit.Add(1); KindOfUnit.Add(0);
+	TArray<FVector2D> Places;
+	TArray<int> PlaceOfUnit;
+	int Projected = 0;
+	HOLFormationRead::PlaceGroupClamped(Positions, KindOfUnit, false, FVector2D(5000.0, 0.0), FVector2D(1.0, 0.0), 150.0, 180.0, 1.0e12, Projected, Places, PlaceOfUnit);
+	T.AssertEquals(Places.Num(), Projected, "one projection per place");
+	T.AssertEquals(6, Places.Num(), "6 places");
+	bool bOwn = PlaceOfUnit.Num() == 6;
+	TArray<bool> Taken;
+	Taken.SetNum(6);
+	for (int Unit = 0; bOwn && Unit < 6; Unit++)
+	{
+		int Place = PlaceOfUnit[Unit];
+		bOwn = Place >= 0 && Place < Places.Num() && Place < 6 && !Taken[Place];
+		if (bOwn)
+		{
+			Taken[Place] = true;
+			double WantedX = 4820.0;
+			if (KindOfUnit[Unit] == 0)
+			{
+				WantedX = 5000.0;
+			}
+			bOwn = FMNearly(Places[Place].X, WantedX, 0.5);
+		}
+	}
+	T.AssertTrue(bOwn, "each unit a place of its own, Spearmen in front, Men-at-arms 180 cm behind");
+
+	// A place the navmesh does not have is brought back (X clamped to 100).
+	TArray<FVector2D> FivePositions;
+	TArray<int> Peasants;
+	for (int I = 0; I < 5; I++)
+	{
+		FivePositions.Add(Positions[I]);
+		Peasants.Add(4);
+	}
+	HOLFormationRead::PlaceGroupClamped(FivePositions, Peasants, true, FVector2D(0.0, 1000.0), FVector2D(0.0, 1.0), 150.0, 180.0, 100.0, Projected, Places, PlaceOfUnit);
+	bool bClamped = Places.Num() == 5 && PlaceOfUnit.Num() == 5 && !PlaceOfUnit.Contains(-1);
+	for (int I = 0; I < Places.Num(); I++)
+	{
+		bClamped = bClamped && Places[I].X <= 100.0 && FMNearly(Places[I].Y, 1000.0, 0.5);
+	}
+	T.AssertTrue(bClamped, "5 Peasants: one row across the march, the projected places");
+}
+
+// One arrival by kind: returns the crossings within a kind, asserts that each unit keeps a place of its kind.
+int FMRunByKind(FUnitTest& T, const TArray<FVector2D>& Standing, const TArray<int>& Kinds, const TArray<FVector2D>& Places, const FVector2D& Facing, TArray<int>& PlaceOfUnit)
+{
+	HOLFormationRead::AssignPlacesByKind(Standing, Kinds, Places, Facing, PlaceOfUnit);
+	int Crossings = 0;
+	for (int First = 0; First < Standing.Num(); First++)
+	{
+		T.AssertEquals(Kinds[First], Kinds[PlaceOfUnit[First]], f"unit {First} keeps a place of its kind");
+		for (int Second = First + 1; Second < Standing.Num(); Second++)
+		{
+			if (Kinds[First] == Kinds[Second] && FMCross(Standing[First], Places[PlaceOfUnit[First]], Standing[Second], Places[PlaceOfUnit[Second]]))
+			{
+				Crossings++;
+			}
+		}
+	}
+	return Crossings;
+}
+
+TArray<FVector2D> FMLocalSlots(double X0, double Y0, double X1, double Y1, double X2, double Y2, double X3, double Y3, double X4, double Y4, double X5, double Y5)
+{
+	TArray<FVector2D> Result;
+	Result.Add(FVector2D(X0, Y0)); Result.Add(FVector2D(X1, Y1)); Result.Add(FVector2D(X2, Y2));
+	Result.Add(FVector2D(X3, Y3)); Result.Add(FVector2D(X4, Y4)); Result.Add(FVector2D(X5, Y5));
+	return Result;
+}
+
+// HeroesOfLiberty.Formation.Block
+void Test_FMBlock(FUnitTest& T)
+{
+	// The block march (J7a.4): a unit slot is the block point on the path plus its offset (ahead, right) turned with the path.
+	TArray<FVector2D> Straight;
+	Straight.Add(FVector2D(0.0, 0.0)); Straight.Add(FVector2D(1000.0, 0.0));
+	FVector2D Fallback(1.0, 0.0);
+	T.AssertTrue(FMNear(HOLFormationRead::GetSlotOnPath(Straight, 500.0, FVector2D(-180.0, 150.0), Fallback), FVector2D(320.0, 150.0), 0.01), "straight: 180 cm behind, 150 to the right of the point 500 cm along");
+	T.AssertTrue(FMNear(HOLFormationRead::GetPointOnLine(Straight, 3000.0), FVector2D(1000.0, 0.0), 0.01), "past the end: the end");
+	T.AssertTrue(FMNear(HOLFormationRead::GetPointOnLine(Straight, -50.0), FVector2D(0.0, 0.0), 0.01), "before the start: the start");
+	TArray<FVector2D> Corner;
+	Corner.Add(FVector2D(0.0, 0.0)); Corner.Add(FVector2D(1000.0, 0.0)); Corner.Add(FVector2D(1000.0, 1000.0));
+	T.AssertTrue(FMNearly(HOLFormationRead::GetLineLength(Corner), 2000.0, 0.01), "length of an L");
+	double Window = HOLFormationRead::GetConstant(n"BlockTurnWindow");
+	FVector2D AtCorner = HOLFormationRead::GetDirectionOnLine(Corner, 1000.0, Window, Fallback);
+	T.AssertTrue(FMNear(AtCorner, FVector2D(1.0, 1.0).GetSafeNormal(), 0.001), "at the corner: half turned (45 degrees)");
+	T.AssertTrue(FMNear(HOLFormationRead::GetSlotOnPath(Corner, 1500.0, FVector2D(0.0, 150.0), Fallback), FVector2D(850.0, 500.0), 0.01), "after the corner: along +Y, the right-hand side towards -X");
+	// Two units of the block keep their gap on a straight part, wherever the block is.
+	FVector2D A(0.0, -150.0);
+	FVector2D B(-180.0, 150.0);
+	TArray<double> Distances;
+	Distances.Add(100.0); Distances.Add(400.0); Distances.Add(700.0);
+	for (int I = 0; I < Distances.Num(); I++)
+	{
+		double Gap = FMDist(HOLFormationRead::GetSlotOnPath(Straight, Distances[I], A, Fallback), HOLFormationRead::GetSlotOnPath(Straight, Distances[I], B, Fallback));
+		T.AssertTrue(FMNearly(Gap, FMDist(A, B), 0.01), f"gap kept at {Distances[I]} cm");
+	}
+	// Offsets back and forth between the block and the world.
+	FVector2D Forward = FVector2D(3.0, 4.0).GetSafeNormal();
+	FVector2D World = HOLFormationRead::BlockOffsetToWorld(B, Forward);
+	T.AssertTrue(FMNear(HOLFormationRead::WorldToBlockOffset(World, Forward), B, 0.001), "offset to the world and back");
+	TArray<FVector2D> Single;
+	Single.Add(FVector2D(5.0, 5.0));
+	T.AssertTrue(FMNear(HOLFormationRead::GetDirectionOnLine(Single, 0.0, 200.0, Fallback), Fallback, 0.001), "a single point: no direction, the fallback");
+
+	// The arrival (the user 3rd trial): 3 soldiers (kind 0, front row at X = 0) and 3 Peasants (kind 1, at X = -180) marching along +X.
+	TArray<FVector2D> Standing = FMLocalSlots(0.0, -150.0, 0.0, 0.0, 0.0, 150.0, -180.0, -150.0, -180.0, 0.0, -180.0, 150.0);
+	TArray<int> Kinds;
+	Kinds.Add(0); Kinds.Add(0); Kinds.Add(0); Kinds.Add(1); Kinds.Add(1); Kinds.Add(1);
+	TArray<FVector2D> Ahead;
+	for (int I = 0; I < Standing.Num(); I++)
+	{
+		Ahead.Add(FVector2D(Standing[I].X + 100.0, Standing[I].Y));
+	}
+	TArray<int> PlaceOfUnit;
+	T.AssertEquals(0, FMRunByKind(T, Standing, Kinds, Ahead, FVector2D(1.0, 0.0), PlaceOfUnit), "same facing: no crossing");
+	bool bOwnSlot = PlaceOfUnit.Num() == 6;
+	for (int I = 0; bOwnSlot && I < 6; I++)
+	{
+		bOwnSlot = PlaceOfUnit[I] == I;
+	}
+	T.AssertTrue(bOwnSlot, "same facing: each to its own slot place");
+	// A half turn in place (facing -X).
+	TArray<FVector2D> Turned = FMLocalSlots(-180.0, 150.0, -180.0, 0.0, -180.0, -150.0, 0.0, 150.0, 0.0, 0.0, 0.0, -150.0);
+	T.AssertEquals(0, FMRunByKind(T, Standing, Kinds, Turned, FVector2D(-1.0, 0.0), PlaceOfUnit), "half turn: no crossing within a kind");
+	double Longest = 0.0;
+	for (int Unit = 0; Unit < Standing.Num() && Unit < PlaceOfUnit.Num(); Unit++)
+	{
+		double Step = FMDist(Standing[Unit], Turned[PlaceOfUnit[Unit]]);
+		if (Step > Longest)
+		{
+			Longest = Step;
+		}
+	}
+	T.AssertTrue(Longest <= 181.0, "half turn: straight across the block, no wheel round");
+
+	// The blended arrival (the user 4th trial).
+	double Lag = HOLFormationRead::GetConstant(n"BlockLagDistance");
+	double SoftHold = HOLFormationRead::GetConstant(n"BlockSoftHoldDistance");
+	double BlendMargin = HOLFormationRead::GetConstant(n"BlockBlendMargin");
+	T.AssertTrue(FMNearly(HOLFormationRead::GetBlockSoftPace(Lag), 1.0, 1.0e-9), "soft pace: full on the slots");
+	T.AssertTrue(FMNearly(HOLFormationRead::GetBlockSoftPace(0.5 * (Lag + SoftHold)), 0.5, 1.0e-9), "soft pace: half way");
+	T.AssertTrue(FMNearly(HOLFormationRead::GetBlockSoftPace(SoftHold + 50.0), 0.0, 1.0e-9), "soft pace: stopped far behind");
+	T.AssertTrue(FMNearly(HOLFormationRead::GetBlockBlendDistance(400.0, 3500.0), 400.0 + BlendMargin, 1.0e-9), "blend over the block size + margin");
+	T.AssertTrue(FMNearly(HOLFormationRead::GetBlockBlendDistance(400.0, 1000.0), 500.0, 1.0e-9), "blend: half the path at most");
+	T.AssertTrue(FMNearly(HOLFormationRead::GetBlockBlend(800.0, 650.0), 0.0, 1.0e-9), "blend: none before");
+	T.AssertTrue(FMNearly(HOLFormationRead::GetBlockBlend(325.0, 650.0), 0.5, 1.0e-9), "blend: half way");
+	T.AssertTrue(FMNearly(HOLFormationRead::GetBlockBlend(0.0, 650.0), 1.0, 1.0e-9), "blend: all at the end");
+
+	// Stragglers: five close together and one 10 m away; two clusters of three; a tight group; a wide block.
+	double Join = HOLFormationRead::GetConstant(n"BlockJoinDistance");
+	TArray<bool> IsStraggler;
+	TArray<FVector2D> FiveAndOne = FMLocalSlots(0.0, 0.0, 150.0, 0.0, -150.0, 0.0, 0.0, 150.0, 150.0, 150.0, 1000.0, 0.0);
+	T.AssertEquals(1, HOLFormationRead::FindStragglers(FiveAndOne, Join, IsStraggler), "stragglers: five and one 10 m away");
+	T.AssertTrue(IsStraggler.Num() == 6 && IsStraggler[5] && !IsStraggler[0] && !IsStraggler[4], "stragglers: the one 10 m away");
+	TArray<FVector2D> TwoClusters = FMLocalSlots(0.0, 0.0, 150.0, 0.0, 0.0, 150.0, 1500.0, 0.0, 1650.0, 0.0, 1500.0, 150.0);
+	T.AssertEquals(0, HOLFormationRead::FindStragglers(TwoClusters, Join, IsStraggler), "stragglers: two clusters of three, none");
+	bool bAnyMarked = false;
+	for (int I = 0; I < IsStraggler.Num(); I++)
+	{
+		bAnyMarked = bAnyMarked || IsStraggler[I];
+	}
+	T.AssertFalse(bAnyMarked, "stragglers: two clusters of three, nobody marked");
+	// The packets: largest first.
+	TArray<int> PacketOfUnit;
+	TArray<int> PacketSizes;
+	TArray<FVector2D> TwoAt10 = FMLocalSlots(0.0, 0.0, 150.0, 0.0, 0.0, 150.0, 1000.0, 0.0, 1150.0, 0.0, 1000.0, 150.0);
+	T.AssertEquals(2, HOLFormationRead::FindPackets(TwoAt10, Join, PacketOfUnit, PacketSizes), "packets: two of three 10 m apart");
+	T.AssertTrue(PacketSizes.Num() == 2 && PacketSizes[0] == 3 && PacketSizes[1] == 3 && PacketOfUnit.Num() == 6 && PacketOfUnit[0] == 0 && PacketOfUnit[2] == 0 && PacketOfUnit[3] == 1 && PacketOfUnit[5] == 1, "packets: three and three, each its own");
+	T.AssertEquals(2, HOLFormationRead::FindPackets(FiveAndOne, Join, PacketOfUnit, PacketSizes), "packets: five and one 10 m away");
+	T.AssertTrue(PacketSizes.Num() == 2 && PacketSizes[0] == 5 && PacketSizes[1] == 1 && PacketOfUnit[5] == 1 && PacketOfUnit[0] == 0, "packets: five, then the one alone");
+	TArray<FVector2D> Tight;
+	for (int I = 0; I < 5; I++)
+	{
+		Tight.Add(FiveAndOne[I]);
+	}
+	T.AssertEquals(1, HOLFormationRead::FindPackets(Tight, Join, PacketOfUnit, PacketSizes), "packets: a tight group, one");
+	TArray<FVector2D> Chain;
+	for (int I = 0; I < 5; I++)
+	{
+		Chain.Add(FVector2D(400.0 * I, 0.0));
+	}
+	T.AssertEquals(1, HOLFormationRead::FindPackets(Chain, Join, PacketOfUnit, PacketSizes), "packets: a chain linked step by step, one");
+	TArray<FVector2D> SmallFirst;
+	SmallFirst.Add(FVector2D(1000.0, 0.0)); SmallFirst.Add(FVector2D(1150.0, 0.0)); SmallFirst.Add(FVector2D(0.0, 0.0)); SmallFirst.Add(FVector2D(150.0, 0.0)); SmallFirst.Add(FVector2D(0.0, 150.0));
+	HOLFormationRead::FindPackets(SmallFirst, Join, PacketOfUnit, PacketSizes);
+	T.AssertTrue(PacketSizes.Num() == 2 && PacketSizes[0] == 3 && PacketSizes[1] == 2 && PacketOfUnit.Num() == 5 && PacketOfUnit[0] == 1 && PacketOfUnit[1] == 1 && PacketOfUnit[2] == 0 && PacketOfUnit[3] == 0 && PacketOfUnit[4] == 0, "packets: the larger is packet 0");
+	TArray<FVector2D> Apart;
+	Apart.Add(FVector2D(0.0, 0.0)); Apart.Add(FVector2D(1000.0, 0.0)); Apart.Add(FVector2D(2000.0, 0.0));
+	T.AssertEquals(0, HOLFormationRead::FindStragglers(Apart, Join, IsStraggler), "stragglers: everyone apart, none");
+	T.AssertEquals(0, HOLFormationRead::FindStragglers(Tight, Join, IsStraggler), "stragglers: a tight group, none");
+	TArray<FVector2D> WideBlock;
+	for (int Row = 0; Row < 5; Row++)
+	{
+		for (int Column = 0; Column < 10; Column++)
+		{
+			WideBlock.Add(FVector2D(Row * 180.0, Column * 150.0));
+		}
+	}
+	T.AssertEquals(0, HOLFormationRead::FindStragglers(WideBlock, Join, IsStraggler), "stragglers: a block 13.5 m wide, none");
+
+	// A slot kept for each straggler.
+	TArray<FVector2D> Slots = FMLocalSlots(0.0, -150.0, 0.0, 0.0, 0.0, 150.0, -180.0, -150.0, -180.0, 0.0, -180.0, 150.0);
+	TArray<FVector2D> Local = FMLocalSlots(0.0, -150.0, 0.0, 0.0, 0.0, 150.0, -180.0, -150.0, -180.0, 0.0, -1000.0, 300.0);
+	TArray<bool> LastIsStraggler;
+	LastIsStraggler.Add(false); LastIsStraggler.Add(false); LastIsStraggler.Add(false); LastIsStraggler.Add(false); LastIsStraggler.Add(false); LastIsStraggler.Add(true);
+	TArray<int> SlotOfUnit;
+	TArray<bool> Queued;
+	TArray<int> OneKind;
+	TArray<int> TwoKinds;
+	for (int I = 0; I < 6; I++)
+	{
+		OneKind.Add(0);
+		TwoKinds.Add(I < 3 ? 0 : 1);
+	}
+	T.AssertEquals(0, HOLFormationRead::ReserveRearSlots(Slots, Local, OneKind, LastIsStraggler, SlotOfUnit, Queued), "rear slots: one kind, none queued");
+	T.AssertTrue(SlotOfUnit.Num() == 6 && Queued.Num() == 6 && SlotOfUnit[5] == 5 && !Queued[5], "rear slots: the straggler in the last row on its side");
+	TArray<FVector2D> LeftLocal = FMLocalSlots(0.0, -150.0, 0.0, 0.0, 0.0, 150.0, -180.0, 0.0, -180.0, 150.0, -1000.0, -400.0);
+	HOLFormationRead::ReserveRearSlots(Slots, LeftLocal, OneKind, LastIsStraggler, SlotOfUnit, Queued);
+	T.AssertTrue(SlotOfUnit.Num() == 6 && SlotOfUnit[5] == 3 && !Queued[5], "rear slots: from the left, the last row left slot");
+	TArray<bool> UsedSlot;
+	UsedSlot.SetNum(6);
+	int UsedCount = 0;
+	for (int I = 0; I < SlotOfUnit.Num(); I++)
+	{
+		if (SlotOfUnit[I] >= 0 && SlotOfUnit[I] < 6 && !UsedSlot[SlotOfUnit[I]])
+		{
+			UsedSlot[SlotOfUnit[I]] = true;
+			UsedCount++;
+		}
+	}
+	T.AssertEquals(6, UsedCount, "rear slots: one slot each");
+	T.AssertTrue(SlotOfUnit[0] == 0 && SlotOfUnit[1] == 1 && SlotOfUnit[2] == 2, "rear slots: the body keeps its rows (no one of the front row sent back)");
+	// Mixed: kind 0 in front (three), kind 1 behind (three); the straggler is of kind 0.
+	TArray<bool> FirstIsStraggler;
+	FirstIsStraggler.Add(true); FirstIsStraggler.Add(false); FirstIsStraggler.Add(false); FirstIsStraggler.Add(false); FirstIsStraggler.Add(false); FirstIsStraggler.Add(false);
+	TArray<FVector2D> MixedLocal = FMLocalSlots(-1000.0, 0.0, 0.0, 0.0, 0.0, 150.0, -180.0, -150.0, -180.0, 0.0, -180.0, 150.0);
+	T.AssertEquals(1, HOLFormationRead::ReserveRearSlots(Slots, MixedLocal, TwoKinds, FirstIsStraggler, SlotOfUnit, Queued), "rear slots: mixed, its kind in front, queued");
+	T.AssertTrue(SlotOfUnit.Num() == 6 && Queued[0] && SlotOfUnit[0] <= 2 && SlotOfUnit[3] >= 3 && SlotOfUnit[4] >= 3 && SlotOfUnit[5] >= 3, "rear slots: mixed, a slot of its kind kept, the other kind on its own");
+}
+
+// HeroesOfLiberty.Formation.Settle
+void Test_FMSettle(FUnitTest& T)
+{
+	// MV.5 (the user option A): 9 mixed soldiers sent 1 m from a stone vein edge (radius 300 cm, a body of 60 cm).
+	FVector2D Centre(0.0, 400.0);
+	double Clearance = 300.0 + 60.0;
+	TArray<FVector2D> Positions;
+	TArray<int> KindOfUnit;
+	for (int Unit = 0; Unit < 9; Unit++)
+	{
+		Positions.Add(FVector2D(-2000.0 - 200.0 * (Unit / 3), 200.0 * (Unit % 3)));
+		KindOfUnit.Add(Unit % 3);
+	}
+	TArray<FVector2D> Raw;
+	TArray<int> PlaceOfUnit;
+	int Ignored = 0;
+	HOLFormationRead::PlaceGroupClamped(Positions, KindOfUnit, false, FVector2D(0.0, 0.0), FVector2D(1.0, 0.0), 150.0, 180.0, 1.0e12, Ignored, Raw, PlaceOfUnit);
+	TArray<FVector2D> Places;
+	int Projected = 0;
+	HOLFormationRead::PlaceGroupAvoidingDisc(Positions, KindOfUnit, false, FVector2D(0.0, 0.0), FVector2D(1.0, 0.0), 150.0, 180.0, false, Centre, Clearance, Projected, Places, PlaceOfUnit);
+	T.AssertEquals(Places.Num(), Projected, "one projection per place");
+	int Blocked = 0;
+	bool bOutside = Places.Num() == Raw.Num() && Raw.Num() == 9;
+	bool bUnblockedKept = bOutside;
+	bool bNear = bOutside;
+	for (int Place = 0; bOutside && Place < Places.Num(); Place++)
+	{
+		bOutside = bOutside && FMDist(Places[Place], Centre) >= Clearance;
+		if (FMDist(Raw[Place], Centre) >= Clearance)
+		{
+			bUnblockedKept = bUnblockedKept && FMNear(Places[Place], Raw[Place], 1.0e-6);
+			continue;
+		}
+		Blocked++;
+		bNear = bNear && FMDist(Places[Place], Raw[Place]) <= Clearance - FMDist(Raw[Place], Centre) + 2.0 * 150.0;
+	}
+	T.AssertTrue(Blocked >= 2, "the vein takes some places");
+	T.AssertTrue(bOutside, "no place left in the vein");
+	T.AssertTrue(bUnblockedKept, "the places the vein does not take do not move");
+	T.AssertTrue(bNear, "each place moved goes to a near free point");
+	double MinGap = 1.0e30;
+	for (int A = 0; A < Places.Num(); A++)
+	{
+		for (int B = A + 1; B < Places.Num(); B++)
+		{
+			double Gap = FMDist(Places[A], Places[B]);
+			if (Gap < MinGap)
+			{
+				MinGap = Gap;
+			}
+		}
+	}
+	T.AssertTrue(MinGap >= HOLFormationRead::GetConstant(n"SettleMinGapInSpacings") * 150.0 - 1.0e-6, "no pile: places 135 cm apart at least");
+	bool bEachOwn = PlaceOfUnit.Num() == 9 && !PlaceOfUnit.Contains(-1);
+	TArray<bool> Given;
+	Given.SetNum(9);
+	int Distinct = 0;
+	for (int Unit = 0; bEachOwn && Unit < 9; Unit++)
+	{
+		if (PlaceOfUnit[Unit] >= 0 && PlaceOfUnit[Unit] < 9 && !Given[PlaceOfUnit[Unit]])
+		{
+			Given[PlaceOfUnit[Unit]] = true;
+			Distinct++;
+		}
+	}
+	T.AssertTrue(bEachOwn && Distinct == 9, "each unit a place of its own");
+
+	// No free point at all: nothing settled, the places left for the caller fallback.
+	TArray<FVector2D> Walled = Raw;
+	TArray<bool> AllBlocked;
+	for (int I = 0; I < Walled.Num(); I++)
+	{
+		AllBlocked.Add(true);
+	}
+	TArray<bool> Settled;
+	int NumSettled = HOLFormationRead::SettleBlockedPlacesWalled(Walled, AllBlocked, FVector2D(0.0, 0.0), 150.0, Settled);
+	T.AssertEquals(0, NumSettled, "walled in: nothing settled");
+	bool bStay = Walled.Num() == Raw.Num();
+	for (int I = 0; bStay && I < Walled.Num(); I++)
+	{
+		bStay = FMNear(Walled[I], Raw[I], 1.0e-9);
+	}
+	for (int I = 0; I < Settled.Num(); I++)
+	{
+		bStay = bStay && !Settled[I];
+	}
+	T.AssertTrue(bStay, "walled in: the places stay");
+	int Fallbacks = 0;
+	HOLFormationRead::PlaceGroupAvoidingDisc(Positions, KindOfUnit, false, FVector2D(0.0, 0.0), FVector2D(1.0, 0.0), 150.0, 180.0, true, Centre, Clearance, Fallbacks, Places, PlaceOfUnit);
+	bool bFallback = Fallbacks == 9;
+	for (int I = 0; I < Places.Num(); I++)
+	{
+		bFallback = bFallback && FMNear(Places[I], FVector2D(0.0, 0.0), 1.0e-9);
+	}
+	T.AssertTrue(bFallback, "walled in: the fallback gives every place");
+}
