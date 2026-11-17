@@ -1,8 +1,8 @@
 // Lot MIG-C-MapSize (D830, D836, D839): the script port of the tests of HOLMapSizeTests.cpp that read only the pure rule of the map sizes
 // (FHOLMapSizeRules, C++, stays), run against its read library (HOLMapSizeReadLibrary, namespace HOLMapSizeRead). Same vectors as the C++
 // tests (Table, Allowed, MapFile, DrawPlaces, CheckPlaces, FitSlots, and the places part of Config). A size is its number (0 None, 1 Small,
-// 2 Medium, 3 Normal, 4 Large, 5 Huge); the slots are States (0 Closed, 1 Human, 2 AI) and Teams (see the library). The C++ file is removed
-// only after the red then green of this one. Not ported (see Docs\Rapports\ARWEN-1117i.md): the CSV test (reads Tools/Data/MapSizes.csv), the
+// 2 Medium, 3 Normal, 4 Large, 5 Huge); the slots are States (0 Closed, 1 Human, 2 AI) and Teams (see the library). The C++ twins of Allowed, MapFile,
+// DrawPlaces, CheckPlaces and FitSlots are removed (red then green seen, SAURON-1117i); Table and Config stay in C++ (FitsMaxSize, JSON). Not ported (see Docs\Rapports\ARWEN-1117i.md): the CSV test (reads Tools/Data/MapSizes.csv), the
 // FromJson/ToJson round trip of Config, the Lobby tests (HOLManagerClientRules), the AHOLMapBounds checks of Table (the 220-tile limit of
 // D344 is written as a constant below).
 
