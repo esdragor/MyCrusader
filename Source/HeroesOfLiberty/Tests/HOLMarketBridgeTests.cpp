@@ -47,6 +47,13 @@ bool FHOLMarketServerBoardTest::RunTest(const FString& Parameters)
 	{
 		const HOLMarket::FSettings Settings = UE::HeroesOfLiberty::Tests::MarketBridge::StandardSettings();
 
+		// The book at rest, through the board (HOLMarket::NewBook of the script): every price at its base (food 80, wood 80, stone 120, gold 100).
+		const HOLMarket::FBook Rest0 = UHOLMarketSubsystem::NewBook(World, Settings);
+		for (int32 Index = 0; Index < HOLMarket::BookSize; ++Index)
+		{
+			TestEqual(*FString::Printf(TEXT("the fresh book has price %d at its base"), Index), Rest0.Prices[Index], Settings.BasePrices[Index]);
+		}
+
 		// The return to rest, in whole intervals, through the board (bridge structures in, bridge structures out).
 		HOLMarket::FBook Raised;
 		Raised.Prices[0] = 110;
