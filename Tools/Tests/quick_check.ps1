@@ -205,6 +205,9 @@ if ($Parts -contains "values") {
         # MIG-J-UnitAbility: the necrotic rage numbers agree between the script tables (HOLUnitAbilityTable, HOLMoraleTable) and HOLUnitAbilityRules.h.
         $UnitAbilityAccordOutput = @(python -I (Join-Path $PSScriptRoot "unit_ability_accord_test.py") 2>&1)
         $ValuesChecks["unit_ability_accord_test.py ($($UnitAbilityAccordOutput | Select-Object -Last 1))"] = ($LASTEXITCODE -eq 0)
+        # ELROND-1116p: the rage time calculations (CooldownEnd / EffectEnd / EffectEnded) of HOLUnitAbilityRules.h give the literals of the script test.
+        $UnitAbilityTimesOutput = @(python -I (Join-Path $PSScriptRoot "unit_ability_times_test.py") 2>&1)
+        $ValuesChecks["unit_ability_times_test.py ($($UnitAbilityTimesOutput | Select-Object -Last 1))"] = ($LASTEXITCODE -eq 0)
         # E3-01: Camps.csv against UnitTypes.csv (port of HOLCampTableTests.cpp, D613).
         $CampTableOutput = @(python -I (Join-Path $PSScriptRoot "camp_table_test.py") 2>&1)
         $ValuesChecks["camp_table_test.py ($($CampTableOutput | Select-Object -Last 1))"] = ($LASTEXITCODE -eq 0)
