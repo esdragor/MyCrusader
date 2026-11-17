@@ -788,3 +788,523 @@ void Test_Construction_CampGap(FUnitTest& T)
 	T.AssertTrue(ConNear(HOLConstructionRead::GetSourceGap(Camp, FVector2D(600.0, 700.0), 300.0), 200.0), "gap to a vein off a corner (3 m, 4 m; 3 m of body)");
 	T.AssertTrue(ConNear(HOLConstructionRead::GetSourceGap(Camp, FVector2D(350.0, 0.0), 60.0), 0.0), "a body over the footprint: 0");
 }
+
+// ELROND-1117p: Tables, Body (UHOLBuildingSettings part), CampSource (FindCampSource), IdleWall, FreeFootprint, same vectors as the C++ tests (which stay).
+// NOT COMPILED when written. Enums as ints: category 0 Economic 1 Military 2 Technological; resource 0 Food 1 Wood 2 Stone 3 Gold;
+// activity 0 Idle 1 Moving 2 Gathering 3 GatherTrip 4 Building 5 Attacking 6 Dying; phase 0 None 1 WaitingPath 2 Path 3 FinalLeg 4 FormUp 5 Block.
+
+TArray<int32> ConOneInt(int A)
+{
+	TArray<int32> Out;
+	Out.Add(A);
+	return Out;
+}
+
+void ConCheckType(FUnitTest& T, FName Name, int Slot, int Population, TArray<int32> Accepts, int Wood, double Grid, double MainX)
+{
+	FHOLBuildingTypeRow Row;
+	bool bFound = HOLConstructionRead::FindBuildingType(Name, Row);
+	T.AssertTrue(bFound, "a type in the building type table");
+	if (!bFound)
+		return;
+	T.AssertEquals(Row.BuildGridSlot, Slot, "slot in the Peasant's grid (D313, age I, economic row: A, Z, E, R)");
+	T.AssertEquals(Row.PopulationProvided, Population, "population given");
+	T.AssertTrue(ConSameInts(HOLConstructionRead::GetBuildingTypeAccepts(Row), Accepts), "resources accepted");
+	T.AssertTrue(ConResEq(Row.Cost, ConRes(0, Wood, 0, 0)), "its cost, in wood only");
+	T.AssertTrue(Row.BuildTime > 0.0, "a build time");
+	T.AssertTrue(ConNearV(Row.Footprint, FVector2D(2.0 * Grid, 2.0 * Grid)), "2 x 2 tiles");
+	T.AssertTrue(Row.Footprint.X < MainX, "smaller than the main centre");
+}
+
+void Test_Construction_Tables(FUnitTest& T)
+{
+	double Grid = HOLConstructionRead::GetSettingTileSize();
+	T.AssertTrue(ConNear(Grid, 400.0), "4 m tiles (D311, D344)");
+	T.AssertTrue(HOLConstructionRead::GetSettingAntiRushRadius() > 0.0, "anti-rush radius set (D22)");
+	double Ratio = double(HOLConstructionRead::GetWorkPerStep(3, HOLConstructionRead::GetSettingBuilderExponent())) / double(HOLConstructionRead::GetWorkPerBuilder());
+	T.AssertTrue(Math::Abs(Ratio - 2.0) < 0.05, "3 builders ~2x as fast (D312)");
+
+	FHOLBuildingTypeRow MainCentre;
+	bool bMain = HOLConstructionRead::FindBuildingType(n"MainCentre", MainCentre);
+	T.AssertTrue(bMain, "main centre");
+	if (bMain)
+	{
+		T.AssertFalse(HOLConstructionRead::IsBuildingTypeBuildable(MainCentre), "the main centre is not built by Peasants");
+		T.AssertTrue(ConNearV(MainCentre.Footprint, FVector2D(4.0 * Grid, 4.0 * Grid)), "the main centre: 4 x 4 tiles (16 m)");
+	}
+	double MainX = MainCentre.Footprint.X;
+
+	TArray<int32> NoneAccepted;
+	ConCheckType(T, n"House", 0, 10, NoneAccepted, 50, Grid, MainX);
+	ConCheckType(T, n"LumberCamp", 1, 0, ConOneInt(1), 100, Grid, MainX);
+	TArray<int32> Mining;
+	Mining.Add(2);
+	Mining.Add(3);
+	ConCheckType(T, n"MiningCamp", 2, 0, Mining, 100, Grid, MainX);
+	ConCheckType(T, n"Mill", 3, 0, ConOneInt(0), 100, Grid, MainX);
+
+	FHOLBuildingTypeRow Barracks;
+	if (HOLConstructionRead::FindBuildingType(n"Barracks", Barracks))
+	{
+		T.AssertTrue(HOLConstructionRead::IsBuildingTypeBuildable(Barracks), "Barracks: built by Peasants");
+		T.AssertEquals(Barracks.BuildGridSlot, 4, "Barracks: Q of the Peasant's grid (slot 4, military row, D313)");
+		T.AssertTrue(ConNearV(Barracks.Footprint, FVector2D(3.0 * Grid, 3.0 * Grid)), "Barracks: 3 x 3 tiles (12 m)");
+		T.AssertTrue(ConResEq(Barracks.Cost, ConRes(0, 150, 0, 0)), "Barracks: 150 wood");
+		T.AssertTrue(ConNear(Barracks.BuildTime, 20.0), "Barracks: 20 s for one builder");
+		T.AssertEquals(Barracks.MaxHealth, 1500, "Barracks: 1 500 health");
+		T.AssertTrue(ConNear(Barracks.Height, 600.0), "Barracks: 6 m high");
+	}
+	else
+		T.AssertTrue(false, "Barracks in the building type table");
+
+	FHOLBuildingTypeRow Archery;
+	if (HOLConstructionRead::FindBuildingType(n"ArcheryRange", Archery))
+	{
+		T.AssertTrue(HOLConstructionRead::IsBuildingTypeBuildable(Archery), "Archery range: built by Peasants");
+		T.AssertEquals(Archery.BuildGridSlot, 5, "Archery range: S of the Peasant's grid (slot 5, military row)");
+		T.AssertTrue(ConNearV(Archery.Footprint, FVector2D(3.0 * Grid, 3.0 * Grid)), "Archery range: 3 x 3 tiles (12 m)");
+		T.AssertEquals(Archery.Age, 0, "Archery range: age I");
+	}
+	else
+		T.AssertTrue(false, "Archery range in the building type table");
+
+	FHOLBuildingTypeRow Sanctuary;
+	if (HOLConstructionRead::FindBuildingType(n"Sanctuary", Sanctuary))
+	{
+		T.AssertTrue(HOLConstructionRead::IsBuildingTypeBuildable(Sanctuary), "Sanctuary: built by Peasants");
+		T.AssertEquals(Sanctuary.BuildGridSlot, 9, "Sanctuary: X of the Peasant's grid (slot 9, after the Farm)");
+		T.AssertEquals(Sanctuary.Age, 0, "Sanctuary: age I");
+		T.AssertEquals(HOLConstructionRead::GetBuildingTypeCategory(Sanctuary), 2, "Sanctuary: technological");
+		T.AssertTrue(ConNearV(Sanctuary.Footprint, FVector2D(3.0 * Grid, 3.0 * Grid)), "Sanctuary: 3 x 3 tiles (12 m)");
+		T.AssertTrue(ConResEq(Sanctuary.Cost, ConRes(0, 250, 0, 0)), "Sanctuary: 250 wood");
+		T.AssertTrue(ConNear(Sanctuary.BuildTime, 30.0), "Sanctuary: 30 s for one builder");
+		T.AssertEquals(Sanctuary.MaxHealth, 1500, "Sanctuary: 1 500 health");
+		T.AssertEquals(Sanctuary.PopulationProvided, 0, "Sanctuary: no population");
+		T.AssertEquals(Sanctuary.Produces.Num(), 0, "Sanctuary: produces nothing");
+		T.AssertEquals(HOLConstructionRead::GetBuildingTypeAccepts(Sanctuary).Num(), 0, "Sanctuary: takes no resource");
+		T.AssertFalse(Sanctuary.Walkable, "Sanctuary: not walkable");
+	}
+	else
+		T.AssertTrue(false, "Sanctuary in the building type table");
+
+	FHOLBuildingTypeRow Chapel;
+	if (HOLConstructionRead::FindBuildingType(n"Chapel", Chapel))
+	{
+		T.AssertTrue(HOLConstructionRead::IsBuildingTypeBuildable(Chapel), "Chapel: built by Peasants");
+		T.AssertEquals(Chapel.BuildGridSlot, 5, "Chapel: S of the Peasant's grid (slot 5, military row)");
+		T.AssertEquals(Chapel.Age, 1, "Chapel: age II (page II)");
+		T.AssertEquals(HOLConstructionRead::GetBuildingTypeCategory(Chapel), 1, "Chapel: military (it forms the Monk)");
+		T.AssertTrue(ConNearV(Chapel.Footprint, FVector2D(3.0 * Grid, 3.0 * Grid)), "Chapel: 3 x 3 tiles (12 m)");
+		T.AssertTrue(ConResEq(Chapel.Cost, ConRes(0, 200, 0, 0)), "Chapel: 200 wood");
+		T.AssertTrue(ConNear(Chapel.BuildTime, 30.0), "Chapel: 30 s for one builder");
+		T.AssertEquals(Chapel.MaxHealth, 1500, "Chapel: 1 500 health");
+		T.AssertEquals(Chapel.PopulationProvided, 0, "Chapel: no population");
+		T.AssertTrue(Chapel.Produces.Num() == 1 && Chapel.Produces[0] == n"Monk", "Chapel: produces the Monk");
+		T.AssertEquals(HOLConstructionRead::GetBuildingTypeAccepts(Chapel).Num(), 0, "Chapel: takes no resource");
+		T.AssertFalse(Chapel.Walkable, "Chapel: not walkable");
+	}
+	else
+		T.AssertTrue(false, "Chapel in the building type table");
+
+	FHOLBuildingTypeRow Market;
+	if (HOLConstructionRead::FindBuildingType(n"Market", Market))
+	{
+		T.AssertTrue(HOLConstructionRead::IsBuildingTypeBuildable(Market), "Market: built by Peasants");
+		T.AssertEquals(Market.BuildGridSlot, 0, "Market: A of the Peasant's grid (slot 0, economic row)");
+		T.AssertEquals(Market.Age, 1, "Market: age II");
+		T.AssertEquals(HOLConstructionRead::GetBuildingTypeCategory(Market), 0, "Market: economic");
+		T.AssertTrue(ConNearV(Market.Footprint, FVector2D(3.0 * Grid, 3.0 * Grid)), "Market: 3 x 3 tiles");
+		T.AssertTrue(Market.Cost.Food == 0 && Market.Cost.Stone == 0 && Market.Cost.Gold == 0 && Market.Cost.Wood > 0, "Market: costs wood only");
+		T.AssertTrue(Market.BuildTime > 0.0, "Market: a build time");
+		T.AssertEquals(Market.PopulationProvided, 0, "Market: no population");
+		T.AssertEquals(Market.Produces.Num(), 0, "Market: produces nothing");
+		T.AssertEquals(HOLConstructionRead::GetBuildingTypeAccepts(Market).Num(), 0, "Market: takes no resource (it is not a deposit)");
+		T.AssertFalse(Market.Walkable, "Market: not walkable");
+		T.AssertTrue(Market.Source.IsNone(), "Market: no source of its own");
+		T.AssertTrue(Market.SightRadius >= 2000.0, "Market: sees at least as far as a house");
+	}
+	else
+		T.AssertTrue(false, "Market in the building type table");
+
+	// IA1.2 (F4): every building so far blocks the way and has no source of its own.
+	TArray<FName> Blocking;
+	Blocking.Add(n"MainCentre");
+	Blocking.Add(n"House");
+	Blocking.Add(n"LumberCamp");
+	Blocking.Add(n"MiningCamp");
+	Blocking.Add(n"Mill");
+	Blocking.Add(n"Barracks");
+	Blocking.Add(n"ArcheryRange");
+	for (int I = 0; I < Blocking.Num(); ++I)
+	{
+		FHOLBuildingTypeRow Row;
+		bool bFound = HOLConstructionRead::FindBuildingType(Blocking[I], Row);
+		T.AssertTrue(bFound, "a blocking type in the building type table");
+		if (bFound)
+		{
+			T.AssertFalse(Row.Walkable, "a blocking type is not walkable");
+			T.AssertTrue(Row.Source.IsNone(), "a blocking type has no source of its own");
+		}
+	}
+
+	FHOLBuildingTypeRow Farm;
+	if (HOLConstructionRead::FindBuildingType(n"Farm", Farm))
+	{
+		T.AssertTrue(HOLConstructionRead::IsBuildingTypeBuildable(Farm), "Farm: built by Peasants");
+		T.AssertEquals(Farm.BuildGridSlot, 8, "Farm: W of the Peasant's grid (slot 8, IA1.2-Q1)");
+		T.AssertEquals(Farm.Age, 0, "Farm: age I");
+		T.AssertEquals(HOLConstructionRead::GetBuildingTypeCategory(Farm), 0, "Farm: economic");
+		T.AssertTrue(ConNearV(Farm.Footprint, FVector2D(2.0 * Grid, 2.0 * Grid)), "Farm: 2 x 2 tiles (8 m)");
+		T.AssertTrue(ConResEq(Farm.Cost, ConRes(0, 75, 0, 0)), "Farm: 75 wood");
+		T.AssertTrue(ConNear(Farm.BuildTime, 7.5), "Farm: 7.5 s for one builder");
+		T.AssertEquals(Farm.PopulationProvided, 0, "Farm: no population");
+		T.AssertEquals(HOLConstructionRead::GetBuildingTypeAccepts(Farm).Num(), 0, "Farm: takes no resource (no deposit)");
+		T.AssertEquals(Farm.Produces.Num(), 0, "Farm: produces nothing");
+		T.AssertTrue(Farm.Walkable, "Farm: walkable");
+		T.AssertTrue(Farm.Source == n"FarmField", "Farm: its source is a FarmField");
+		bool bLinked = false;
+		int Resource = -1;
+		bool bField = HOLConstructionRead::FindSourceTypeInfo(Farm.Source, bLinked, Resource);
+		T.AssertTrue(bField, "Farm: its source in the source type table");
+		T.AssertTrue(bLinked, "Farm: its source is linked");
+		T.AssertEquals(Resource, 0, "Farm: its source gives food");
+	}
+	else
+		T.AssertTrue(false, "Farm in the building type table");
+}
+
+// Body, the game's settings (UHOLBuildingSettings), the part the C++ Body test keeps.
+void Test_Construction_BodySettings(FUnitTest& T)
+{
+	double Peasant = 60.0;
+	double Setting = HOLConstructionRead::GetSettingBodyInset();
+	T.AssertTrue(2.0 * Setting >= 2.0 * Peasant && 2.0 * Setting < 4.0 * Peasant, "the setting: one Peasant passes, not two");
+	T.AssertTrue(ConNearV(HOLConstructionRead::GetSettingBodySize(FVector2D(600.0, 600.0)), FVector2D(600.0 - 2.0 * Setting, 600.0 - 2.0 * Setting)), "the setting's house body");
+	double Seen = HOLConstructionRead::GetSettingVisualInset();
+	T.AssertTrue(600.0 - 2.0 * Seen >= 0.9 * 600.0 - 0.01, "the visible shape: at least 90 % of a house's tiles");
+	T.AssertTrue(Seen <= Setting, "the visible shape wider than the body");
+	T.AssertTrue(ConNearV(HOLConstructionRead::GetSettingVisualSize(FVector2D(600.0, 600.0)), FVector2D(600.0 - 2.0 * Seen, 600.0 - 2.0 * Seen)), "the setting's house shape");
+}
+
+FHOLConstructionCampSource ConSource(double X, double Y, double Radius, int Resource, bool bStanding = true)
+{
+	FHOLConstructionCampSource Out;
+	Out.Centre = FVector2D(X * 100.0, Y * 100.0);
+	Out.Radius = Radius * 100.0;
+	Out.Resource = Resource;
+	Out.bStanding = bStanding;
+	return Out;
+}
+
+void Test_Construction_CampSource(FUnitTest& T)
+{
+	FHOLConstructionBox Camp = ConHouse(0.0, 0.0);
+	TArray<FHOLConstructionCampSource> Sources;
+	Sources.Add(ConSource(-6.0, 0.0, 1.1, 0));          // berries 1.9 m off: not wood
+	Sources.Add(ConSource(10.0, 0.0, 0.6, 1));          // 6.4 m
+	Sources.Add(ConSource(0.0, 8.0, 0.6, 1, false));    // 4.4 m, used up
+	Sources.Add(ConSource(0.0, -9.0, 0.6, 1));          // 5.4 m: the nearest standing tree
+	Sources.Add(ConSource(16.0, 16.0, 3.0, 3));         // 15.4 m
+	Sources.Add(ConSource(-20.0, 0.0, 3.0, 2));         // 14 m
+	Sources.Add(ConSource(40.0, 0.0, 0.6, 1));          // 36.4 m
+	TArray<int32> Wood = ConOneInt(1);
+	TArray<int32> Mining;
+	Mining.Add(2);
+	Mining.Add(3);
+	TArray<int32> Food = ConOneInt(0);
+	double Gap = -1.0;
+	int Found = HOLConstructionRead::FindCampSource(Camp, Wood, Sources, 2500.0, Gap);
+	T.AssertEquals(Found, 3, "lumber camp: the nearest standing tree, not the berries nearer, nor the stump");
+	T.AssertTrue(ConNear(Gap, 540.0), "its gap");
+	Found = HOLConstructionRead::FindCampSource(Camp, Mining, Sources, 2500.0, Gap);
+	T.AssertEquals(Found, 5, "mining camp: the nearer of stone and gold");
+	T.AssertTrue(ConNear(Gap, 1400.0), "its gap (to the vein's edge)");
+	Found = HOLConstructionRead::FindCampSource(Camp, Food, Sources, 2500.0, Gap);
+	T.AssertEquals(Found, 0, "mill (D346): the berries, not the trees");
+	T.AssertTrue(ConNear(Gap, 190.0), "its gap (to the bush's edge)");
+
+	TArray<FHOLConstructionCampSource> NoBush;
+	NoBush.Add(ConSource(-6.0, 0.0, 1.1, 0, false));
+	NoBush.Add(ConSource(10.0, 0.0, 0.6, 1));
+	Found = HOLConstructionRead::FindCampSource(Camp, Food, NoBush, 2500.0, Gap);
+	T.AssertEquals(Found, -1, "mill with no bush left: none, never a tree");
+	Found = HOLConstructionRead::FindCampSource(Camp, Mining, Sources, 1000.0, Gap);
+	T.AssertEquals(Found, -1, "mining camp within 10 m: none");
+	Found = HOLConstructionRead::FindCampSource(Camp, Wood, Sources, 540.0, Gap);
+	T.AssertEquals(Found, 3, "exactly at the range: still near");
+	TArray<FHOLConstructionCampSource> FarTree;
+	FarTree.Add(ConSource(40.0, 0.0, 0.6, 1));
+	Found = HOLConstructionRead::FindCampSource(Camp, Wood, FarTree, 2500.0, Gap);
+	T.AssertEquals(Found, -1, "only the far tree standing: none within 25 m");
+	TArray<FHOLConstructionCampSource> TwoAsNear;
+	TwoAsNear.Add(ConSource(10.0, 0.0, 0.6, 1));
+	TwoAsNear.Add(ConSource(-10.0, 0.0, 0.6, 1));
+	Found = HOLConstructionRead::FindCampSource(Camp, Wood, TwoAsNear, 2500.0, Gap);
+	T.AssertEquals(Found, 0, "two as near: the first");
+	TArray<int32> Nothing;
+	Found = HOLConstructionRead::FindCampSource(Camp, Nothing, Sources, 2500.0, Gap);
+	T.AssertEquals(Found, -1, "a camp accepting nothing: none");
+	TArray<FHOLConstructionCampSource> NoSource;
+	Found = HOLConstructionRead::FindCampSource(Camp, Wood, NoSource, 2500.0, Gap);
+	T.AssertEquals(Found, -1, "no source: none");
+}
+
+double ConFromSlab(FVector2D P, FVector2D Slab)
+{
+	double AwayX = Math::Abs(P.X) - Slab.X;
+	double AwayY = Math::Abs(P.Y) - Slab.Y;
+	double Most = Math::Max(AwayX, AwayY);
+	if (Most <= 0.0)
+		return Most;
+	double Ax = Math::Max(AwayX, 0.0);
+	double Ay = Math::Max(AwayY, 0.0);
+	return Math::Sqrt(Ax * Ax + Ay * Ay);
+}
+
+void Test_Construction_IdleWall(FUnitTest& T)
+{
+	FVector2D BodySize = HOLConstructionRead::GetBodySize(FVector2D(800.0, 800.0), 115.0);
+	FVector2D Half = FVector2D(BodySize.X * 0.5, BodySize.Y * 0.5);
+	double VisualGap = 115.0 - 30.0;
+	double Radius = 60.0;
+	double InsideGap = HOLConstructionRead::GetKeepOutInsideGap(Radius, 25.0, VisualGap);
+	double OutsideGap = Radius + 1.0;
+	double MaxStep = 10.0;
+	FHOLConstructionBox Body = HOLConstructionRead::MakeBox(FVector2D(-Half.X, -Half.Y), Half);
+	T.AssertTrue(HOLConstructionRead::StandsClearOfVisibleWall(0, 0, false), "idle, no order, not fighting: stands still");
+	T.AssertFalse(HOLConstructionRead::StandsClearOfVisibleWall(1, 2, false), "walking: shoulder");
+	T.AssertFalse(HOLConstructionRead::StandsClearOfVisibleWall(0, 1, false), "idle but given a path: shoulder");
+	T.AssertFalse(HOLConstructionRead::StandsClearOfVisibleWall(4, 0, false), "building: shoulder");
+	T.AssertFalse(HOLConstructionRead::StandsClearOfVisibleWall(2, 0, false), "gathering: shoulder");
+	T.AssertFalse(HOLConstructionRead::StandsClearOfVisibleWall(3, 0, false), "at a deposit: shoulder");
+	T.AssertFalse(HOLConstructionRead::StandsClearOfVisibleWall(5, 0, false), "striking: shoulder");
+	T.AssertFalse(HOLConstructionRead::StandsClearOfVisibleWall(0, 0, true), "idle with a target: shoulder");
+
+	// Its middle on the wall's line: half its body in the wall.
+	FVector2D Start = FVector2D(Half.X + VisualGap, 40.0);
+	FVector2D Walker = Start;
+	bool bEasedWalker = false;
+	bool bWalkerMoved = HOLConstructionRead::KeepOutOfVisibleWall(Half, InsideGap, OutsideGap, Radius, VisualGap, false, MaxStep, Walker, bEasedWalker);
+	T.AssertFalse(bWalkerMoved, "a walker there: as it is");
+	T.AssertTrue(ConNearV(Walker, Start), "a walker there: not moved");
+
+	// Standing still, holding its formation place where it stands: the place goes out with it, it never walks back in.
+	FVector2D Unit = Start;
+	FVector2D Place = Start;
+	FHOLPlaceHoldView Hold;
+	HOLFormationRead::EndWalkToPlace(Hold, Unit, Place, Radius);
+	int Steps = 0;
+	bool bWalkedBack = false;
+	double LongestStep = 0.0;
+	bool bEasedStep = false;
+	for (int Step = 0; Step < 100; ++Step)
+	{
+		FVector2D Before = Unit;
+		if (HOLConstructionRead::KeepOutOfVisibleWall(Half, InsideGap, OutsideGap, Radius, VisualGap, true, MaxStep, Unit, bEasedStep))
+			Steps += 1;
+		HOLConstructionRead::KeepOutOfVisibleWall(Half, InsideGap, OutsideGap, Radius, VisualGap, true, MaxStep, Place, bEasedStep);
+		double Moved = Math::Sqrt((Unit.X - Before.X) * (Unit.X - Before.X) + (Unit.Y - Before.Y) * (Unit.Y - Before.Y));
+		LongestStep = Math::Max(LongestStep, Moved);
+		if (HOLFormationRead::WatchPlace(Hold, Unit, Place, Radius))
+			bWalkedBack = true;
+	}
+	double FromBody = HOLConstructionRead::GetDistance(Body, Unit);
+	T.AssertTrue(FromBody >= VisualGap + Radius, "wholly beyond the visible wall");
+	T.AssertTrue(Steps > 1 && LongestStep <= MaxStep + 0.01, "a step at a time");
+	T.AssertTrue(HOLConstructionRead::GetDistance(Body, Place) >= VisualGap + Radius, "its place out with it");
+	T.AssertFalse(bWalkedBack, "no walk back into the wall");
+	FVector2D Again = Unit;
+	T.AssertFalse(HOLConstructionRead::KeepOutOfVisibleWall(Half, InsideGap, OutsideGap, Radius, VisualGap, true, MaxStep, Again, bEasedStep), "out, it stays");
+
+	// C.2: the easing out of the visible wall is told apart from a body put back.
+	FVector2D Eased = Start;
+	bool bEased = false;
+	bool bMoved = HOLConstructionRead::KeepOutOfVisibleWall(Half, InsideGap, OutsideGap, Radius, VisualGap, true, MaxStep, Eased, bEased);
+	T.AssertTrue(bMoved && bEased, "in the visible wall: eased out");
+	FVector2D Touching = FVector2D(Half.X + Radius * 0.5, 0.0);
+	bool bTouchingEased = true;
+	bMoved = HOLConstructionRead::KeepOutOfVisibleWall(Half, InsideGap, OutsideGap, Radius, VisualGap, true, MaxStep, Touching, bTouchingEased);
+	T.AssertTrue(bMoved && !bTouchingEased, "its body in the building's: put back, not eased");
+	FVector2D Inside = FVector2D(Half.X - 10.0, 0.0);
+	bool bInsideEased = true;
+	bMoved = HOLConstructionRead::KeepOutOfVisibleWall(Half, InsideGap, OutsideGap, Radius, VisualGap, true, MaxStep, Inside, bInsideEased);
+	T.AssertTrue(bMoved && !bInsideEased, "its centre inside: put back, not eased");
+	bool bAgainEased = true;
+	bMoved = HOLConstructionRead::KeepOutOfVisibleWall(Half, InsideGap, OutsideGap, Radius, VisualGap, true, MaxStep, Again, bAgainEased);
+	T.AssertFalse(bMoved || bAgainEased, "out: not moved, not eased");
+
+	// A builder there: as it is (the unit's state says it does not stand still).
+	FVector2D Builder = Start;
+	bool bBuilderStill = HOLConstructionRead::StandsClearOfVisibleWall(4, 0, false);
+	bool bBuilderEased = false;
+	T.AssertFalse(HOLConstructionRead::KeepOutOfVisibleWall(Half, InsideGap, OutsideGap, Radius, VisualGap, bBuilderStill, MaxStep, Builder, bBuilderEased), "a builder there: as it is");
+
+	// C.3: two houses side by side: a unit standing still in the passage stays (D324's shoulder), nothing eased.
+	FHOLConstructionWallBody Left;
+	Left.HalfExtent = Half;
+	FHOLConstructionWallBody Right = Left;
+	Right.Centre = FVector2D(800.0, 0.0);
+	TArray<FHOLConstructionWallBody> Pair;
+	Pair.Add(Left);
+	Pair.Add(Right);
+	TArray<FVector2D> Passage;
+	Passage.Add(FVector2D(400.0, 40.0));
+	Passage.Add(FVector2D(360.0, -100.0));
+	Passage.Add(FVector2D(430.0, Half.Y - 20.0));
+	for (int I = 0; I < Passage.Num(); ++I)
+	{
+		FVector2D InPassage = Passage[I];
+		FVector2D Wedged = InPassage;
+		int EasedSteps = 0;
+		double Farthest = 0.0;
+		for (int Step = 0; Step < 100; ++Step)
+		{
+			if (HOLConstructionRead::EaseOutOfVisibleWalls(Pair, Radius, VisualGap, MaxStep, Wedged, false))
+				EasedSteps += 1;
+			double Away = Math::Sqrt((Wedged.X - InPassage.X) * (Wedged.X - InPassage.X) + (Wedged.Y - InPassage.Y) * (Wedged.Y - InPassage.Y));
+			Farthest = Math::Max(Farthest, Away);
+		}
+		T.AssertTrue(EasedSteps == 0 && Farthest < 0.01, "in the passage: stays, nothing eased");
+	}
+	// Near one of the two only (the far side of the left house): eased out as before, a step at a time.
+	FVector2D Alone = FVector2D(-Half.X - VisualGap, 40.0);
+	int AloneSteps = 0;
+	for (int Step = 0; Step < 100; ++Step)
+	{
+		if (HOLConstructionRead::EaseOutOfVisibleWalls(Pair, Radius, VisualGap, MaxStep, Alone, false))
+			AloneSteps += 1;
+	}
+	T.AssertTrue(AloneSteps > 1 && HOLConstructionRead::GetDistance(Body, Alone) >= VisualGap + Radius, "by one wall: eased out");
+
+	// EtapeDefini R: a corner of the slab: round corners leave the body in it, square corners put it wholly out.
+	FVector2D Slab = FVector2D(Half.X + VisualGap, Half.Y + VisualGap);
+	TArray<FHOLConstructionWallBody> One;
+	One.Add(Left);
+	FVector2D InCorner = FVector2D(Half.X + 60.0, Half.Y + 60.0);
+	FVector2D Round = InCorner;
+	for (int Step = 0; Step < 100; ++Step)
+		HOLConstructionRead::EaseOutOfVisibleWalls(One, Radius, VisualGap, MaxStep, Round, false);
+	T.AssertTrue(ConFromSlab(Round, Slab) < Radius, "round corners: its body left in the slab's corner");
+	FVector2D Square = InCorner;
+	int SquareSteps = 0;
+	double SquareLongest = 0.0;
+	for (int Step = 0; Step < 100; ++Step)
+	{
+		FVector2D Before = Square;
+		if (HOLConstructionRead::EaseOutOfVisibleWalls(One, Radius, VisualGap, MaxStep, Square, true))
+			SquareSteps += 1;
+		double Moved = Math::Sqrt((Square.X - Before.X) * (Square.X - Before.X) + (Square.Y - Before.Y) * (Square.Y - Before.Y));
+		SquareLongest = Math::Max(SquareLongest, Moved);
+	}
+	T.AssertTrue(ConFromSlab(Square, Slab) >= Radius && SquareSteps > 1 && SquareLongest <= MaxStep + 0.01, "square corners: wholly out of the slab's corner, a step at a time");
+	FVector2D SquareAgain = Square;
+	T.AssertFalse(HOLConstructionRead::EaseOutOfVisibleWalls(One, Radius, VisualGap, MaxStep, SquareAgain, true), "square corners: out, it stays");
+}
+
+bool ConOnGridLine(double Value, double Grid)
+{
+	double V = Math::Abs(Value) + 0.01;
+	double Rem = V - Math::Floor(V / Grid) * Grid;
+	return Rem < 0.02;
+}
+
+bool ConOnGrid(FHOLConstructionBox Box, double Grid)
+{
+	return ConOnGridLine(Box.Min.X, Grid) && ConOnGridLine(Box.Min.Y, Grid) && ConOnGridLine(Box.Max.X, Grid) && ConOnGridLine(Box.Max.Y, Grid);
+}
+
+FHOLConstructionBox ConMap()
+{
+	return HOLConstructionRead::MakeBox(FVector2D(-20000.0, -20000.0), FVector2D(20000.0, 20000.0));
+}
+
+void Test_Construction_FreeFootprint(FUnitTest& T)
+{
+	double Tile = ConTestTile;
+	FVector2D Aim = FVector2D(100.0, 50.0);
+	TArray<FVector> NoSources;
+	TArray<FHOLConstructionBox> NoBuildings;
+	TArray<FHOLConstructionBox> Anywhere;
+
+	// The cursor on a house at (0, 0): the obstacle is that house, the ghost touches it (ring 0) on the side nearest the aim.
+	{
+		TArray<FHOLConstructionBox> Houses;
+		Houses.Add(ConHouse(0.0, 0.0));
+		Houses.Add(ConHouse(30.0, 0.0));
+		FHOLConstructionBox Footprint = HOLConstructionRead::SnapToGrid(Aim, FVector2D(600.0, 600.0), Tile);
+		FHOLConstructionBox Obstacle;
+		T.AssertTrue(HOLConstructionRead::FindObstacle(Footprint, Houses, NoSources, ConMap(), 4000.0, Aim, Tile, Obstacle), "on a house: an obstacle found");
+		T.AssertTrue(ConNearV(Obstacle.Min, Houses[0].Min) && ConNearV(Obstacle.Max, Houses[0].Max), "on a house: the house itself, already on the grid");
+		FHOLConstructionBox Free;
+		int Ring = -1;
+		T.AssertTrue(HOLConstructionRead::FindFreeFootprint(Footprint, Houses, NoSources, ConMap(), 4000.0, Obstacle, Aim, Tile, 4, Anywhere, Free, Ring), "beside a house: found");
+		T.AssertEquals(Ring, 0, "beside a house: ring 0 (touching)");
+		T.AssertTrue(ConNearV(ConCentre(Free), FVector2D(600.0, 0.0)), "beside a house: east, nearest the aim");
+		T.AssertFalse(HOLConstructionRead::Overlaps(Free, Houses[0]), "beside a house: touching, not overlapping");
+		T.AssertTrue(ConOnGrid(Free, Tile) && ConNearV(FVector2D(Free.Max.X - Free.Min.X, Free.Max.Y - Free.Min.Y), FVector2D(600.0, 600.0)), "beside a house: on the grid, its size");
+
+		// The cursor between two houses, inside the second: the one containing the aim is the obstacle.
+		TArray<FHOLConstructionBox> Pair;
+		Pair.Add(ConHouse(0.0, 0.0));
+		Pair.Add(ConHouse(0.0, 6.0));
+		T.AssertTrue(HOLConstructionRead::FindObstacle(ConHouse(0.0, 3.0), Pair, NoSources, ConMap(), 4000.0, FVector2D(0.0, 400.0), Tile, Obstacle), "two houses: an obstacle found");
+		T.AssertTrue(ConNearV(Obstacle.Min, Pair[1].Min), "two houses: the one containing the aim");
+	}
+
+	// Ring 0 all taken (a frame of buildings one tile wide around the house): ring 1, east again.
+	{
+		TArray<FHOLConstructionBox> Blocks;
+		Blocks.Add(HOLConstructionRead::MakeBox(FVector2D(-600.0, -600.0), FVector2D(600.0, -300.0)));
+		Blocks.Add(HOLConstructionRead::MakeBox(FVector2D(-600.0, 300.0), FVector2D(600.0, 600.0)));
+		Blocks.Add(HOLConstructionRead::MakeBox(FVector2D(-600.0, -300.0), FVector2D(-300.0, 300.0)));
+		Blocks.Add(HOLConstructionRead::MakeBox(FVector2D(300.0, -300.0), FVector2D(600.0, 300.0)));
+		FHOLConstructionBox Free;
+		int Ring = -1;
+		T.AssertTrue(HOLConstructionRead::FindFreeFootprint(ConHouse(0.0, 0.0), Blocks, NoSources, ConMap(), 4000.0, ConHouse(0.0, 0.0), Aim, Tile, 4, Anywhere, Free, Ring), "ring 0 taken: found");
+		T.AssertEquals(Ring, 1, "ring 0 taken: ring 1");
+		T.AssertTrue(ConNearV(ConCentre(Free), FVector2D(900.0, 0.0)), "ring 0 taken: one tile east of the house");
+
+		// The navmesh refuses that one (every middle at X >= 800): the next of ring 1 nearest the aim (north).
+		TArray<FHOLConstructionBox> East;
+		East.Add(HOLConstructionRead::MakeBox(FVector2D(800.0, -1000000.0), FVector2D(1000000.0, 1000000.0)));
+		T.AssertTrue(HOLConstructionRead::FindFreeFootprint(ConHouse(0.0, 0.0), Blocks, NoSources, ConMap(), 4000.0, ConHouse(0.0, 0.0), Aim, Tile, 4, East, Free, Ring), "off the navmesh: another found");
+		T.AssertTrue(Ring == 1 && ConCentre(Free).X < 800.0, "off the navmesh: still ring 1, not east");
+	}
+
+	// A source's disc: its bounding box grown outward to the grid lines; a footprint on the grid stays as it is.
+	{
+		TArray<FVector> Tree;
+		Tree.Add(FVector(100.0, 100.0, 250.0));
+		FHOLConstructionBox Obstacle;
+		T.AssertTrue(HOLConstructionRead::FindObstacle(ConHouse(0.0, 0.0), NoBuildings, Tree, ConMap(), 4000.0, Aim, Tile, Obstacle), "on a tree: an obstacle found");
+		T.AssertTrue(ConNearV(Obstacle.Min, FVector2D(-300.0, -300.0)) && ConNearV(Obstacle.Max, FVector2D(600.0, 600.0)), "on a tree: its disc as a box on the grid");
+		FHOLConstructionBox OnGrid = HOLConstructionRead::SnapOutward(ConHouse(3.0, 0.0), Tile);
+		T.AssertTrue(ConNearV(OnGrid.Min, ConHouse(3.0, 0.0).Min) && ConNearV(OnGrid.Max, ConHouse(3.0, 0.0).Max), "a footprint on the grid: unchanged");
+		FHOLConstructionBox Free;
+		int Ring = -1;
+		T.AssertTrue(HOLConstructionRead::FindFreeFootprint(ConHouse(0.0, 0.0), NoBuildings, Tree, ConMap(), 4000.0, Obstacle, Aim, Tile, 4, Anywhere, Free, Ring), "beside a tree: found");
+		T.AssertTrue(Ring == 0 && ConOnGrid(Free, Tile), "beside a tree: ring 0, on the grid");
+		FVector2D Disc = FVector2D(Free.Min.X, Free.Min.Y);
+		T.AssertTrue(Free.Min.X >= 100.0 + 250.0 - 0.01 || Free.Max.X <= 100.0 - 250.0 + 0.01 || Free.Min.Y >= 100.0 + 250.0 - 0.01 || Free.Max.Y <= 100.0 - 250.0 + 0.01, "beside a tree: clear of the tree");
+	}
+
+	// Nothing free within 4 rings (a building covering them all, 50 cm into ring 4): none; with 5 rings, ring 5.
+	{
+		TArray<FHOLConstructionBox> Big;
+		Big.Add(HOLConstructionRead::MakeBox(FVector2D(-1550.0, -1550.0), FVector2D(1550.0, 1550.0)));
+		FHOLConstructionBox Free;
+		int Ring = -1;
+		T.AssertFalse(HOLConstructionRead::FindFreeFootprint(ConHouse(0.0, 0.0), Big, NoSources, ConMap(), 4000.0, ConHouse(0.0, 0.0), Aim, Tile, 4, Anywhere, Free, Ring), "all taken within 4 rings: none");
+		bool bFive = HOLConstructionRead::FindFreeFootprint(ConHouse(0.0, 0.0), Big, NoSources, ConMap(), 4000.0, ConHouse(0.0, 0.0), Aim, Tile, 5, Anywhere, Free, Ring);
+		T.AssertTrue(bFive && Ring == 5, "5 rings: ring 5");
+	}
+
+	// A candidate refused by another rule is skipped: the map ends at the house's east side, the ghost goes north.
+	{
+		FHOLConstructionBox Map = HOLConstructionRead::MakeBox(FVector2D(-20000.0, -20000.0), FVector2D(300.0, 20000.0));
+		FHOLConstructionBox Free;
+		int Ring = -1;
+		T.AssertTrue(HOLConstructionRead::FindFreeFootprint(ConHouse(0.0, 0.0), NoBuildings, NoSources, Map, 4000.0, ConHouse(0.0, 0.0), Aim, Tile, 4, Anywhere, Free, Ring), "map edge: found");
+		T.AssertTrue(Ring == 0 && ConNearV(ConCentre(Free), FVector2D(0.0, 600.0)), "map edge: ring 0, north (east is out of the map)");
+	}
+}
