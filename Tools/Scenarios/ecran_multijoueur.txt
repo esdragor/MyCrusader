@@ -1,0 +1,14 @@
+# Ecran Multijoueur en script (D840, lot ECR-3) : la liste du salon, sans gestionnaire de salons (le chemin d'erreur), 3 min
+# Le scenario ouvre l'ecran Multijoueur depuis le menu (comme le bouton Multijoueur du titre), photographie la liste puis te rend la main.
+# A regarder : l'ecran ressemble a celui d'avant (Script\UI\HOLMultiplayerScreen.as remplace le C++ de la mise en page) :
+#  1. titre Multijoueur, ligne Votre nom + champ (ton nom d'utilisateur), zone de liste vide, ligne rouge d'erreur (pas de gestionnaire :
+#     jamais une liste vide muette), boutons Actualiser / Creer un salon (ACTIF, D843 : sans gestionnaire il reste cliquable) / Retour, le tout sur un voile sombre (fond noir translucide) ;
+#  2. efface le nom et clique Creer un salon : la ligne rouge dit « Votre nom : 1 a 16 lettres, chiffres, espaces, - ou _ » ;
+#  3. Actualiser relance la recherche (« Recherche des salons... » un instant), Retour revient au titre.
+# Avec un gestionnaire (liste de salons, Creer, Rejoindre, Observer) : powershell -ExecutionPolicy Bypass -File Tools\Scenarios\ecran_multijoueur.ps1
+hol.UI.Open Multiplayer
+waitlog Multiplayer: error
+frames 2
+capture ecran_multijoueur_liste
+note Ecran Multijoueur (script) : titre, nom, zone de liste, ligne rouge d'erreur (pas de gestionnaire), Actualiser / Creer un salon / Retour.
+waitkey Entree : tu as regarde (nom invalide, Actualiser, Retour) ; la fin du scenario ferme le jeu
