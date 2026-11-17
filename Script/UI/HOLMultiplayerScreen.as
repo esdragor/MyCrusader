@@ -17,7 +17,8 @@ class UHOLMultiplayerScreenScript : UHOLMultiplayerScreen
 	UFUNCTION(BlueprintOverride)
 	void BuildMultiplayer()
 	{
-		UVerticalBox Column = MakeMultiplayerColumn();
+		// D843 Q2 B: a dark veil behind the column (this screen only) so the red status line reads over the scene.
+		UVerticalBox Column = MakeMultiplayerColumn(true);
 		Title = AddMultiplayerText(Column, n"Title", UHOLMultiplayerScreen::ScreenText(n"Title"), true);
 		AddNameRow(Column);
 		AddLobbyListBox(Column, MultiplayerNameWidth + MultiplayerMapWidth + MultiplayerPlayersWidth + MultiplayerStateWidth + MultiplayerActionWidth + MultiplayerSpectateWidth + 40.0f, 240.0f);

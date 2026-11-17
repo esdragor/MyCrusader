@@ -5,6 +5,9 @@
 #include "Components/EditableTextBox.h"
 #include "Components/HorizontalBox.h"
 #include "Components/HorizontalBoxSlot.h"
+#include "Components/Image.h"
+#include "Components/Overlay.h"
+#include "Components/OverlaySlot.h"
 #include "Components/SizeBox.h"
 #include "Components/VerticalBox.h"
 #include "Components/VerticalBoxSlot.h"
@@ -147,9 +150,30 @@ FHOLLobbyRowView UHOLMultiplayerScreen::MakeLobbyRowView(const int32 Index, cons
 	return View;
 }
 
-UVerticalBox* UHOLMultiplayerScreen::MakeMultiplayerColumn()
+UVerticalBox* UHOLMultiplayerScreen::MakeMultiplayerColumn(const bool bVeil)
 {
-	return MakeCenteredColumn();
+	if (!bVeil)
+	{
+		return MakeCenteredColumn();
+	}
+	// As MakeCenteredColumn, with the veil added first: an overlay's children draw in order, so the veil is behind the column.
+	UOverlay* Frame = WidgetTree->ConstructWidget<UOverlay>(UOverlay::StaticClass(), TEXT("Frame"));
+	UImage* Veil = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass(), TEXT("Veil"));
+	Veil->SetColorAndOpacity(VeilColor());
+	UOverlaySlot* VeilSlot = Frame->AddChildToOverlay(Veil);
+	VeilSlot->SetHorizontalAlignment(HAlign_Fill);
+	VeilSlot->SetVerticalAlignment(VAlign_Fill);
+	UVerticalBox* Column = WidgetTree->ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass(), TEXT("Column"));
+	UOverlaySlot* ColumnSlot = Frame->AddChildToOverlay(Column);
+	ColumnSlot->SetHorizontalAlignment(HAlign_Center);
+	ColumnSlot->SetVerticalAlignment(VAlign_Center);
+	WidgetTree->RootWidget = Frame;
+	return Column;
+}
+
+FLinearColor UHOLMultiplayerScreen::VeilColor()
+{
+	return HOLUIStyle::Veil;
 }
 
 UCommonTextBlock* UHOLMultiplayerScreen::AddMultiplayerText(UVerticalBox* Column, const FName Name, const FText& Text, const bool bTitle)

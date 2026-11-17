@@ -1,2 +1,2 @@
 # <nom de capture> | ce que l'utilisateur doit voir
-ecran_multijoueur_liste | l'ecran Multijoueur : titre, ligne « Votre nom » avec son champ, zone de liste vide, une ligne rouge d'erreur (pas de gestionnaire), boutons Actualiser / Creer un salon (grise) / Retour
+ecran_multijoueur_liste | l'ecran Multijoueur : titre, ligne « Votre nom » avec son champ, zone de liste vide, une ligne rouge d'erreur (pas de gestionnaire) lisible sur un voile sombre (fond noir translucide, le decor de la partie reste devine derriere), boutons Actualiser / Creer un salon (ACTIF : sans gestionnaire il reste cliquable, D843) / Retour

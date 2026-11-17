@@ -127,9 +127,16 @@ public:
 	/** Why a lobby was just lost (R4.9, back to the lobby refused): shown over the list once refreshed. */
 	void ShowLobbyLoss(const FHOLManagerError& Error);
 
-	/** UHOLScreen::MakeCenteredColumn for the script. */
+	/**
+	 * UHOLScreen::MakeCenteredColumn for the script. bVeil (D843, Q2 B): a dark veil (VeilColor) fills the screen behind the column, so the status
+	 * line reads over the scene (this screen only; the other menus keep no background).
+	 */
 	UFUNCTION(BlueprintCallable, Category = "HOL|Multiplayer")
-	UVerticalBox* MakeMultiplayerColumn();
+	UVerticalBox* MakeMultiplayerColumn(bool bVeil);
+
+	/** The colour of that veil: HOLUIStyle::Veil (black, 0.6 alpha), what MakeMultiplayerColumn(true) lays; read by the script's test. */
+	UFUNCTION(BlueprintPure, Category = "HOL|Multiplayer")
+	static FLinearColor VeilColor();
 
 	/** A line of the column: the title (title style, 32) or the status/note (note style, no padding), UHOLScreen::AddText for the script. */
 	UFUNCTION(BlueprintCallable, Category = "HOL|Multiplayer")
