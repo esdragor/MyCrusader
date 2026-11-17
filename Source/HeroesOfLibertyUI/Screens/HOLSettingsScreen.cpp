@@ -13,6 +13,7 @@
 #include "Kismet/KismetSystemLibrary.h"
 #include "Settings/HOLGameUserSettings.h"
 #include "Style/HOLUIStyles.h"
+#include "UObject/UObjectIterator.h"
 #include "Widgets/HOLButton.h"
 #include "Widgets/HOLRootLayout.h"
 #include "Widgets/HOLRotator.h"
@@ -319,10 +320,10 @@ UVerticalBox* UHOLSettingsScreen::AddSettingsPairColumn(UHorizontalBox* Pair, co
 		return nullptr;
 	}
 	UVerticalBox* Column = WidgetTree->ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass());
-	UHorizontalBoxSlot* Slot = Pair->AddChildToHorizontalBox(Column);
+	UHorizontalBoxSlot* ColumnSlot = Pair->AddChildToHorizontalBox(Column);
 	if (!bLast)
 	{
-		Slot->SetPadding(FMargin(0.f, 0.f, 24.f, 0.f));
+		ColumnSlot->SetPadding(FMargin(0.f, 0.f, 24.f, 0.f));
 	}
 	return Column;
 }
