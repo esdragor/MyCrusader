@@ -207,4 +207,38 @@ public:
 	/** HOLConstruction::FindNextSite. */
 	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Construction")
 	static int32 FindNextSite(const FHOLConstructionBox& Finished, const TArray<FHOLConstructionBox>& Sites, double Range);
+
+	/** HOLConstruction::GetSourceGap. */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Construction")
+	static double GetSourceGap(const FHOLConstructionBox& Footprint, const FVector2D& Centre, double Radius);
+
+	/** HOLConstruction::SendsBuildersToGather (Accepts: resources as ints, 0 Food, 1 Wood, 2 Stone, 3 Gold). */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Construction")
+	static bool SendsBuildersToGather(FName TypeName, const TArray<int32>& Accepts);
+
+	/** HOLConstruction::AddToBuildQueue on a queue of ints (sites by number, or work items encoded by MakeWorkBuild / MakeWorkGather / MakeWorkDeposit). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Construction")
+	static void AddToBuildQueue(UPARAM(ref) TArray<int32>& Queue, int32 Item, bool bAppend);
+
+	/** HOLConstruction::AdvanceBuildQueue on sites by number; ClosedSites = the sites no longer open (finished, cancelled). True when a site is left at the head. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Construction")
+	static bool AdvanceBuildQueue(UPARAM(ref) TArray<int32>& Queue, const TArray<int32>& ClosedSites);
+
+	/** A work item (HOLConstruction::TWorkItem<int32>) as an int: a site to build (n * 4), a source to gather (n * 4 + 1), a deposit (n * 4 + 2); n >= 0. */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Construction")
+	static int32 MakeWorkBuild(int32 Site);
+
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Construction")
+	static int32 MakeWorkGather(int32 SourceIndex);
+
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Construction")
+	static int32 MakeWorkDeposit(int32 Building);
+
+	/** The kind of an encoded work item, read by TWorkItem::IsBuild / IsGather / IsDeposit: 0 build, 1 gather, 2 deposit. */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Construction")
+	static int32 GetWorkItemKind(int32 Item);
+
+	/** HOLConstruction::AdvanceWorkQueue on encoded work items; ClosedSites = the sites no longer open. True when an item is left at the head. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Construction")
+	static bool AdvanceWorkQueue(UPARAM(ref) TArray<int32>& Queue, bool bHeadDone, const TArray<int32>& ClosedSites);
 };

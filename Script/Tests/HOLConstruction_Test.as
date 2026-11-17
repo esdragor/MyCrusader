@@ -1,7 +1,7 @@
 // Port of HOLConstructionTests.cpp (MIG-C-Construction, ELROND-1117n, D830/D839): same vectors, one by one, against UHOLConstructionReadLibrary
 // (namespace HOLConstructionRead, wrappers of HOLConstruction in Buildings/HOLConstructionRules.h). NOT COMPILED when written: the C++ library is new.
 // Ported: Grid, Placement, Age, Payment, Damage, Builders, Population, States, Probes, BuildSpots, NextSite, CutPaths, SiteKeepOut, Body (14 of 20; Body without its UHOLBuildingSettings part).
-// Not ported (types to expose): Tables (building type table rows), BuildQueue, WorkQueue (templates), CampSource (FHOLCampSource), IdleWall (FWallBody, EHOLUnitActivity), FreeFootprint (TFunctionRef).
+// Not ported (types to expose): Tables (building type table rows), CampSource FindCampSource (FHOLCampSource; its gap and SendsBuildersToGather are in Test_Construction_CampGap), IdleWall (FWallBody, EHOLUnitActivity), FreeFootprint (TFunctionRef). BuildQueue, WorkQueue: ELROND-1117o (int queues).
 // Enums as ints: state 0 Foundation 1 UnderConstruction 2 Finished; attack 0 Melee 1 Ranged 2 Siege 3 Hero; refusal 0 None 1 OutOfMap 2 Building 3 Source 4 EnemyCentre 5 NavMesh.
 
 const float ConTestExponent = 0.63f;
@@ -639,4 +639,152 @@ void Test_Construction_Body(FUnitTest& T)
 	Pair.Add(HOLConstructionRead::GetBody(West, Inset));
 	Pair.Add(HOLConstructionRead::GetBody(Diagonal, Inset));
 	T.AssertEquals(0, HOLConstructionRead::FindWays(Pair, 2.0 * Inset + 1.0).Num(), "corner to corner: no way");
+}
+
+// ---- BuildQueue, WorkQueue, CampSource (gap and which types send builders to gather), ELROND-1117o. NOT COMPILED when written. ----
+// Queues are TArray<int32> (sites by number); a work item is an int made by MakeWorkBuild / MakeWorkGather / MakeWorkDeposit.
+
+TArray<int32> ConInts(int32 A = -1, int32 B = -1, int32 C = -1, int32 D = -1)
+{
+	TArray<int32> Out;
+	if (A >= 0) Out.Add(A);
+	if (B >= 0) Out.Add(B);
+	if (C >= 0) Out.Add(C);
+	if (D >= 0) Out.Add(D);
+	return Out;
+}
+
+bool ConSameInts(TArray<int32> A, TArray<int32> B)
+{
+	if (A.Num() != B.Num())
+		return false;
+	for (int32 I = 0; I < A.Num(); I++)
+	{
+		if (A[I] != B[I])
+			return false;
+	}
+	return true;
+}
+
+void Test_Construction_BuildQueue(FUnitTest& T)
+{
+	// J6a.4 (D311, D312): sites by number; Closed: those finished or cancelled.
+	TArray<int32> Closed;
+	TArray<int32> Queue;
+	HOLConstructionRead::AddToBuildQueue(Queue, 1, false);
+	T.AssertTrue(ConSameInts(Queue, ConInts(1)), "a click: its site alone");
+	HOLConstructionRead::AddToBuildQueue(Queue, 2, true);
+	HOLConstructionRead::AddToBuildQueue(Queue, 3, true);
+	T.AssertTrue(ConSameInts(Queue, ConInts(1, 2, 3)), "Shift: queued in the order placed");
+	HOLConstructionRead::AddToBuildQueue(Queue, 2, true);
+	T.AssertTrue(ConSameInts(Queue, ConInts(1, 2, 3)), "Shift on a site already queued: no second time");
+
+	bool bLeft = HOLConstructionRead::AdvanceBuildQueue(Queue, Closed);
+	T.AssertTrue(bLeft && Queue[0] == 1, "the first one open: built first");
+	Closed.Add(1);
+	bLeft = HOLConstructionRead::AdvanceBuildQueue(Queue, Closed);
+	T.AssertTrue(bLeft && Queue[0] == 2, "finished: the next one of the queue");
+	Closed.Add(2);
+	Closed.Add(3);
+	bLeft = HOLConstructionRead::AdvanceBuildQueue(Queue, Closed);
+	T.AssertFalse(bLeft, "the last finished, the one after cancelled: idle");
+	T.AssertEquals(0, Queue.Num(), "nothing left");
+
+	Queue = ConInts(4, 5, 6);
+	Closed.Add(5);
+	bLeft = HOLConstructionRead::AdvanceBuildQueue(Queue, Closed);
+	T.AssertTrue(bLeft && ConSameInts(Queue, ConInts(4, 5, 6)), "a cancelled site in the middle waits its turn");
+	Closed.Add(4);
+	bLeft = HOLConstructionRead::AdvanceBuildQueue(Queue, Closed);
+	T.AssertTrue(bLeft && ConSameInts(Queue, ConInts(6)), "then skipped with the finished one before it");
+	HOLConstructionRead::AddToBuildQueue(Queue, 7, false);
+	T.AssertTrue(ConSameInts(Queue, ConInts(7)), "a click without Shift replaces the queue");
+}
+
+void Test_Construction_WorkQueue(FUnitTest& T)
+{
+	// The user's trial of J6a.4: Shift + place house 1, Shift + place house 2, Shift + right click on tree 30, Shift + right click on vein 90.
+	TArray<int32> Closed;
+	TArray<int32> Queue;
+	int32 B1 = HOLConstructionRead::MakeWorkBuild(1);
+	int32 B2 = HOLConstructionRead::MakeWorkBuild(2);
+	int32 G30 = HOLConstructionRead::MakeWorkGather(30);
+	int32 G90 = HOLConstructionRead::MakeWorkGather(90);
+	HOLConstructionRead::AddToBuildQueue(Queue, B1, true);
+	HOLConstructionRead::AddToBuildQueue(Queue, B2, true);
+	HOLConstructionRead::AddToBuildQueue(Queue, G30, true);
+	HOLConstructionRead::AddToBuildQueue(Queue, G30, true);
+	HOLConstructionRead::AddToBuildQueue(Queue, G90, true);
+	T.AssertTrue(ConSameInts(Queue, ConInts(B1, B2, G30, G90)), "sites and sources queued in the order given, a source twice once");
+	T.AssertEquals(0, HOLConstructionRead::GetWorkItemKind(Queue[0]), "a site is no gathering");
+	T.AssertEquals(1, HOLConstructionRead::GetWorkItemKind(Queue[2]), "a source is one");
+	T.AssertTrue(HOLConstructionRead::MakeWorkBuild(0) != HOLConstructionRead::MakeWorkGather(0), "site 0 and source 0 differ");
+
+	bool bLeft = HOLConstructionRead::AdvanceWorkQueue(Queue, false, Closed);
+	T.AssertTrue(bLeft && Queue[0] == B1, "house 1 open: built first");
+	Closed.Add(1);
+	bLeft = HOLConstructionRead::AdvanceWorkQueue(Queue, false, Closed);
+	T.AssertTrue(bLeft && Queue[0] == B2, "house 1 finished: house 2");
+	Closed.Add(2);
+	bLeft = HOLConstructionRead::AdvanceWorkQueue(Queue, false, Closed);
+	T.AssertTrue(bLeft && Queue[0] == G30, "house 2 finished: the tree");
+	bLeft = HOLConstructionRead::AdvanceWorkQueue(Queue, false, Closed);
+	T.AssertTrue(bLeft && Queue[0] == G30 && Queue.Num() == 2, "a gathering lasts while its massif gives (head not done)");
+	bLeft = HOLConstructionRead::AdvanceWorkQueue(Queue, true, Closed);
+	T.AssertTrue(bLeft && Queue[0] == G90, "its massif used up: the vein");
+	bLeft = HOLConstructionRead::AdvanceWorkQueue(Queue, true, Closed);
+	T.AssertFalse(bLeft, "the vein used up, nothing after it: idle");
+	T.AssertEquals(0, Queue.Num(), "nothing left");
+
+	// A gathering before a site: the site finished by others meanwhile is skipped once the gathering is over.
+	Queue = ConInts(HOLConstructionRead::MakeWorkGather(31), HOLConstructionRead::MakeWorkBuild(3), HOLConstructionRead::MakeWorkBuild(4));
+	Closed.Add(3);
+	bLeft = HOLConstructionRead::AdvanceWorkQueue(Queue, false, Closed);
+	T.AssertTrue(bLeft && Queue.Num() == 3 && Queue[0] == HOLConstructionRead::MakeWorkGather(31), "a site finished behind a gathering waits its turn");
+	bLeft = HOLConstructionRead::AdvanceWorkQueue(Queue, true, Closed);
+	T.AssertTrue(bLeft && Queue.Num() == 1 && Queue[0] == HOLConstructionRead::MakeWorkBuild(4), "the gathering over: the finished site skipped, house 4");
+	HOLConstructionRead::AddToBuildQueue(Queue, HOLConstructionRead::MakeWorkGather(32), false);
+	T.AssertTrue(ConSameInts(Queue, ConInts(HOLConstructionRead::MakeWorkGather(32))), "a right click without Shift replaces the queue");
+
+	// D485: Shift + right click on the finished mill 5 queues an unload there; a finished building is no open site, yet the deposit waits its turn.
+	Closed.Add(5);
+	int32 D5 = HOLConstructionRead::MakeWorkDeposit(5);
+	Queue = ConInts(HOLConstructionRead::MakeWorkBuild(6));
+	HOLConstructionRead::AddToBuildQueue(Queue, D5, true);
+	HOLConstructionRead::AddToBuildQueue(Queue, D5, true);
+	T.AssertTrue(ConSameInts(Queue, ConInts(HOLConstructionRead::MakeWorkBuild(6), D5)), "a deposit queued after a site, twice once");
+	T.AssertEquals(2, HOLConstructionRead::GetWorkItemKind(Queue[1]), "a deposit is neither a site to build nor a gathering");
+	T.AssertEquals(0, HOLConstructionRead::GetWorkItemKind(Queue[0]), "a site is no deposit");
+	T.AssertTrue(HOLConstructionRead::MakeWorkBuild(5) != D5, "site 5 and deposit 5 differ");
+	Closed.Add(6);
+	bLeft = HOLConstructionRead::AdvanceWorkQueue(Queue, false, Closed);
+	T.AssertTrue(bLeft && Queue.Num() == 1 && Queue[0] == D5, "house 6 finished: the unload at the finished mill, not dropped");
+	bLeft = HOLConstructionRead::AdvanceWorkQueue(Queue, false, Closed);
+	T.AssertTrue(bLeft && Queue[0] == D5, "not unloaded yet: it stays");
+	bLeft = HOLConstructionRead::AdvanceWorkQueue(Queue, true, Closed);
+	T.AssertFalse(bLeft, "unloaded, nothing after it: idle");
+}
+
+// CampSource, the part that needs no FHOLCampSource: which types send their builders to gather, and the gap to a source. FindCampSource stays in C++.
+void Test_Construction_CampGap(FUnitTest& T)
+{
+	TArray<int32> WoodOnly;
+	WoodOnly.Add(1);
+	TArray<int32> Mining;
+	Mining.Add(2);
+	Mining.Add(3);
+	TArray<int32> FoodOnly;
+	FoodOnly.Add(0);
+	TArray<int32> Nothing;
+	TArray<int32> All = ConInts(0, 1, 2, 3);
+	T.AssertTrue(HOLConstructionRead::SendsBuildersToGather(n"LumberCamp", WoodOnly), "a lumber camp sends its builders to gather");
+	T.AssertTrue(HOLConstructionRead::SendsBuildersToGather(n"MiningCamp", Mining), "a mining camp too");
+	T.AssertTrue(HOLConstructionRead::SendsBuildersToGather(n"Mill", FoodOnly), "a mill too (D346, the food camp)");
+	T.AssertFalse(HOLConstructionRead::SendsBuildersToGather(n"House", Nothing), "a house does not (no deposit)");
+	T.AssertFalse(HOLConstructionRead::SendsBuildersToGather(n"MainCentre", All), "a main centre does not (the four resources)");
+
+	FHOLConstructionBox Camp = ConHouse(0.0, 0.0);
+	T.AssertTrue(ConNear(HOLConstructionRead::GetSourceGap(Camp, FVector2D(800.0, 0.0), 60.0), 440.0), "gap to a tree's edge off a side (8 m from the middle, 60 cm of body)");
+	T.AssertTrue(ConNear(HOLConstructionRead::GetSourceGap(Camp, FVector2D(600.0, 700.0), 300.0), 200.0), "gap to a vein off a corner (3 m, 4 m; 3 m of body)");
+	T.AssertTrue(ConNear(HOLConstructionRead::GetSourceGap(Camp, FVector2D(350.0, 0.0), 60.0), 0.0), "a body over the footprint: 0");
 }
