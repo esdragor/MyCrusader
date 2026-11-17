@@ -1,6 +1,4 @@
-// The in-game menu's rules in script (HOLGameMenuRules.as, MIG-P2a): the vectors of Source/HeroesOfLiberty/Tests/HOLGameMenuTests.cpp
-// (Victory.GameMenu.Surrender, .QuitToMenu, .StatsButton, the lobby and list half of Victory.EndBanner.Which), the same as long as the
-// C++ twin lives.
+// The in-game menu's rules in script (HOLGameMenuRules.as, MIG-P2a): the vectors of the removed C++ tests Victory.GameMenu.* (Surrender, QuitToMenu, StatsButton, Escape, Input, the lobby and list half of EndBanner.Which); the script is the single source (D836).
 
 void Test_GameMenuCanSurrender(FUnitTest& T)
 {

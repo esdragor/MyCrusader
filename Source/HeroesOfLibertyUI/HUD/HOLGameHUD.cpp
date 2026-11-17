@@ -15,7 +15,7 @@
 #include "Match/HOLForumMessages.h"
 #include "Match/HOLGameState.h"
 #include "Match/HOLPlayerState.h"
-#include "Player/HOLGameMenuRules.h"
+#include "Player/HOLGameMenuRulesBridge.h"
 #include "Screens/HOLEndBannerScreen.h"
 #include "TimerManager.h"
 #include "Player/HOLPlayerController.h"
@@ -164,12 +164,12 @@ void AHOLGameHUD::RefreshEndBanner()
 	{
 		return;
 	}
-	const EHOLEndBanner Due = HOLGameMenuRules::GetEndBanner(PlayerState->GetPlayerIndex(), GameState->GetDefeatedMask(),
+	const EHOLEndBanner Due = UHOLGameMenuRulesBridge::GetEndBanner(PlayerState->GetPlayerIndex(), GameState->GetDefeatedMask(),
 		GameState->IsMatchOver(), GameState->GetWinnerMask());
 	// The statistics screen opened from the banner (C4) covers it, the banner still there under it.
 	const UHOLRootLayout* Layout = UHOLRootLayout::Get(PlayerController);
 	const bool bShown = EndBanner && (EndBanner->IsActivated() || (Layout && Cast<UHOLStatsScreen>(Layout->GetActiveMenu())));
-	if (!HOLGameMenuRules::ShouldOpenEndBanner(Due, bShown ? EndBanner->GetResult() : EHOLEndBanner::None, ClosedEndBanner))
+	if (!UHOLGameMenuRulesBridge::ShouldOpenEndBanner(Due, bShown ? EndBanner->GetResult() : EHOLEndBanner::None, ClosedEndBanner))
 	{
 		return;
 	}

@@ -40,7 +40,7 @@
 #include "Match/HOLSignalSubsystem.h"
 #include "Match/HOLChatSubsystem.h"
 #include "Match/HOLSpecializationSubsystem.h"
-#include "Player/HOLGameMenuRules.h"
+#include "Player/HOLGameMenuRulesBridge.h"
 #include "Player/HOLRTSCamera.h"
 #include "Player/HOLSelectionMarkers.h"
 #include "Player/HOLUnitPicking.h"
@@ -5954,7 +5954,7 @@ void AHOLPlayerController::HandleDeselect()
 	// placement mode first, the selection kept (D313), and closes the chosen age (the user's 1st trial of G.1: an age
 	// chosen without a ghost is closed alone), then the attack-move mode (J7b.3); then it deselects; with nothing
 	// selected, it opens the in-game menu.
-	switch (HOLGameMenuRules::GetEscapeAction(bGameMenuOpen, IsPlacing() || ChosenAge != INDEX_NONE || bAttackMoveArmed || bBannerArmed, HasSelection()))
+	switch (UHOLGameMenuRulesBridge::GetEscapeAction(bGameMenuOpen, IsPlacing() || ChosenAge != INDEX_NONE || bAttackMoveArmed || bBannerArmed, HasSelection()))
 	{
 	case EHOLEscapeAction::CloseMenu:
 		return;

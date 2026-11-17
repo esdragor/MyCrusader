@@ -14,7 +14,7 @@
 #include "Match/HOLPlayerState.h"
 #include "HUD/HOLGameHUD.h"
 #include "Net/HOLManagerClient.h"
-#include "Player/HOLGameMenuRules.h"
+#include "Player/HOLGameMenuRulesBridge.h"
 #include "Player/HOLPlayerController.h"
 #include "Screens/HOLConfirmDialogScreen.h"
 #include "Screens/HOLEndBannerScreen.h"
@@ -99,7 +99,7 @@ FHOLGameMenuFacts UHOLGameMenuScreen::ReadFacts(APlayerController* PlayerControl
 bool UHOLGameMenuScreen::CanSurrender(APlayerController* PlayerController)
 {
 	const FHOLGameMenuFacts Facts = ReadFacts(PlayerController);
-	return Facts.bKnown && HOLGameMenuRules::CanSurrender(Facts.bDefeated, Facts.bMatchOver);
+	return Facts.bKnown && UHOLGameMenuRulesBridge::CanSurrender(Facts.bDefeated, Facts.bMatchOver);
 }
 
 bool UHOLGameMenuScreen::AskToSurrender(APlayerController* PlayerController)
@@ -182,7 +182,7 @@ void UHOLGameMenuScreen::QuitMatch()
 {
 	// From the manager (a lobby's match or a watched one), the list, as the end banner's quit (R4.8, M6-Q10).
 	UHOLManagerClient* Client = GetGameInstance() ? GetGameInstance()->GetSubsystem<UHOLManagerClient>() : nullptr;
-	if (Client && HOLGameMenuRules::QuitsToList(Client->GetMatchOrigin()))
+	if (Client && UHOLGameMenuRulesBridge::QuitsToList(Client->GetMatchOrigin()))
 	{
 		UE_LOG(LogHOLUI, Display, TEXT("Game menu: quit to list"));
 		Client->ForgetLobby();
@@ -253,7 +253,7 @@ void UHOLGameMenuScreen::SetMatchMenuInput(APlayerController* PlayerController, 
 {
 	// V1.4a: the menu closed over the end banner leaves the banner its Escape.
 	const UHOLRootLayout* Layout = UHOLRootLayout::Get(PlayerController);
-	const bool bOpen = HOLGameMenuRules::KeepsMatchMenuInput(bOpening, Layout && Layout->HasMenuOtherThan(Screen));
+	const bool bOpen = UHOLGameMenuRulesBridge::KeepsMatchMenuInput(bOpening, Layout && Layout->HasMenuOtherThan(Screen));
 	if (AHOLPlayerController* Controller = Cast<AHOLPlayerController>(PlayerController))
 	{
 		Controller->SetGameMenuOpen(bOpen);
