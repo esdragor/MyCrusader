@@ -197,6 +197,62 @@ bool UHOLRpcBridgeLibrary::WatchUnit(AActor* RpcActor, const int32 UnitId)
 	return Controller != nullptr;
 }
 
+// ---- CHEATS B (CELEBORN-1117q, NOT COMPILED), MIG2-S3 T9 lot L4: the cheat RPCs (friend class: the _Implementation of the owner controller, same body, same journal).
+bool UHOLRpcBridgeLibrary::CheatsAllowed(AActor* RpcActor, const FString& What)
+{
+	const AHOLPlayerController* Controller = HOLRpcBridgeL1_Haldir1117o::OwnerController(RpcActor);
+	return Controller && !Controller->IsCheatRefused(*What);
+}
+
+bool UHOLRpcBridgeLibrary::CheatWound(AActor* RpcActor, const int32 Percent)
+{
+	AHOLPlayerController* Controller = HOLRpcBridgeL1_Haldir1117o::OwnerController(RpcActor);
+	if (Controller) { Controller->ServerCheatWound_Implementation(Percent); }
+	return Controller != nullptr;
+}
+
+bool UHOLRpcBridgeLibrary::CheatDamageBuilding(AActor* RpcActor, const double X, const double Y, const double Z, const int32 Amount, const int32 AttackType)
+{
+	AHOLPlayerController* Controller = HOLRpcBridgeL1_Haldir1117o::OwnerController(RpcActor);
+	if (Controller) { Controller->ServerCheatDamageBuilding_Implementation(FVector_NetQuantize(FVector(X, Y, Z)), Amount, static_cast<uint8>(FMath::Clamp(AttackType, 0, 255))); }
+	return Controller != nullptr;
+}
+
+bool UHOLRpcBridgeLibrary::CheatSpawnBuilding(AActor* RpcActor, const FString& TypeName, const int32 Slot, const double X, const double Y, const double Z)
+{
+	AHOLPlayerController* Controller = HOLRpcBridgeL1_Haldir1117o::OwnerController(RpcActor);
+	if (Controller) { Controller->ServerCheatSpawnBuilding_Implementation(FName(*TypeName), Slot, FVector_NetQuantize(FVector(X, Y, Z))); }
+	return Controller != nullptr;
+}
+
+bool UHOLRpcBridgeLibrary::CheatDefeat(AActor* RpcActor, const int32 Slot)
+{
+	AHOLPlayerController* Controller = HOLRpcBridgeL1_Haldir1117o::OwnerController(RpcActor);
+	if (Controller) { Controller->ServerCheatDefeat_Implementation(Slot); }
+	return Controller != nullptr;
+}
+
+bool UHOLRpcBridgeLibrary::CheatFallForum(AActor* RpcActor, const int32 Slot)
+{
+	AHOLPlayerController* Controller = HOLRpcBridgeL1_Haldir1117o::OwnerController(RpcActor);
+	if (Controller) { Controller->ServerCheatFallForum_Implementation(Slot); }
+	return Controller != nullptr;
+}
+
+bool UHOLRpcBridgeLibrary::CheatSkipForum(AActor* RpcActor, const int32 Slot)
+{
+	AHOLPlayerController* Controller = HOLRpcBridgeL1_Haldir1117o::OwnerController(RpcActor);
+	if (Controller) { Controller->ServerCheatSkipForum_Implementation(Slot); }
+	return Controller != nullptr;
+}
+
+bool UHOLRpcBridgeLibrary::CheatHoldPresence(AActor* RpcActor, const int32 Slot, const bool bOff, const bool bAttackers, const bool bDefenders, const int32 AttackerSlot)
+{
+	AHOLPlayerController* Controller = HOLRpcBridgeL1_Haldir1117o::OwnerController(RpcActor);
+	if (Controller) { Controller->ServerCheatHoldPresence_Implementation(Slot, bOff, bAttackers, bDefenders, AttackerSlot); }
+	return Controller != nullptr;
+}
+
 // ---- HALDIR-1117p (NOT COMPILED), MIG2-S3 T5 lot L1: Signals and chat (friend class: the _Implementation of the owner controller, same body, same journal).
 bool UHOLRpcBridgeLibrary::PostSignal(AActor* RpcActor, const int32 Kind, const double X, const double Y, const double Z)
 {
