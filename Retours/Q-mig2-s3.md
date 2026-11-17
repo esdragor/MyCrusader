@@ -1,4 +1,6 @@
-# [À RÉPONDRE] MIG2-S3 : où doivent vivre les RPC du joueur maintenant que le script sait en écrire ?
+# [RÉPONDU 2026-11-17, D842] MIG2-S3 : où doivent vivre les RPC du joueur maintenant que le script sait en écrire ?
+
+Reponse: 1A 2A (Q1 = A : un acteur script par joueur déclare les RPC, pilote = ServerDiplomacyStance seul ; Q2 = A : les 18 triviales d'abord, ordres après mesure de latence, triches en remplissage, les 5 grosses charges restent en C++). Texte complet : D842 du GDD.
 
 **Contexte.** La preuve est faite (2026-11-17) : une RPC « client demande, serveur répond » écrite en script marche sur le serveur dédié. Les 57 RPC du contrôleur
 du joueur (ordres, marché, diplomatie, signaux, chat, triches...) sont aujourd'hui déclarées en C++ : en ajouter une demande une compilation (ou la changer). Détail : `Docs\Rapports\PLAN-MIG2-S3-1117.md`.
