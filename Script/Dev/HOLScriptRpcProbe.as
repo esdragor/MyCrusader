@@ -9,7 +9,6 @@ class AHOLScriptRpcProbe : AActor
 {
 	default bReplicates = true;
 	default bAlwaysRelevant = true;
-	default PrimaryActorTick.bCanEverTick = true;
 
 	bool bSeen = false;
 	bool bAsked = false;
