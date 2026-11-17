@@ -7,6 +7,7 @@
 const FConsoleVariable CVar_RpcScriptDiplomacy("hol.Rpc.ScriptDiplomacy", 0);
 const FConsoleVariable CVar_RpcDiplomacyTarget("hol.Rpc.DiplomacyTarget", -1);
 const FConsoleVariable CVar_RpcDiplomacyStance("hol.Rpc.DiplomacyStance", 1);
+const FConsoleVariable CVar_RpcProofRoute("hol.Rpc.ProofRoute", 0);
 
 // T3 (SAURON-1117m): the Duel and Match (pause, resume, surrender) lots, same guard model: 0 = the C++ RPC stays the only one (these script RPCs log and do nothing), 1 = the script RPC acts.
 const FConsoleVariable CVar_RpcScriptDuel("hol.Rpc.ScriptDuel", 0);
@@ -125,9 +126,40 @@ class AHOLRpcPlayer : AHOLScriptRpcPlayerActor
 	bool bProbed = false;
 
 	// Client, owner only: the proof's trigger (hol.Rpc.DiplomacyTarget >= 0), once.
+	float ProofClock = 0.0;
+	bool bRouteProved = false;
+
 	UFUNCTION(BlueprintOverride)
 	void Tick(float DeltaSeconds)
 	{
+		// Proof of the C++ -> script routes (Tools\Scenarios\rpc_routes_run.ps1): hol.Rpc.ProofRoute bits: 1 duel challenge, 2 pause, 4 spec cancel, 8 hero return, fired ONCE 4 s after the owner's first tick.
+		if (!HasAuthority() && !bRouteProved && CVar_RpcProofRoute.GetInt() > 0)
+		{
+			APlayerController RouteController = Cast<APlayerController>(GetOwner());
+			if (RouteController != nullptr && RouteController.IsLocalController())
+			{
+				ProofClock += DeltaSeconds;
+				if (ProofClock >= 4.0)
+				{
+					bRouteProved = true;
+					const int Routes = CVar_RpcProofRoute.GetInt();
+					TArray<FString> Commands;
+					if ((Routes & 1) != 0)
+						Commands.Add("hol.Duel.Challenge 1");
+					if ((Routes & 2) != 0)
+						Commands.Add("hol.Match.Pause");
+					if ((Routes & 4) != 0)
+						Commands.Add("hol.Spec.Cancel");
+					if ((Routes & 8) != 0)
+						Commands.Add("hol.Hero.Return");
+					for (FString Command : Commands)
+					{
+						Log(n"LogHOLMatch", f"RpcRoute: the client runs '{Command}'");
+						System::ExecuteConsoleCommand(Command, RouteController);
+					}
+				}
+			}
+		}
 		if (HasAuthority() || bProbed || CVar_RpcDiplomacyTarget.GetInt() < 0)
 			return;
 		APlayerController Controller = Cast<APlayerController>(GetOwner());
