@@ -287,7 +287,7 @@ void AHeroesOfLibertyGameModeBase::PostLogin(APlayerController* NewPlayer)
 {
 	Super::PostLogin(NewPlayer);
 
-	// MIG-P1d-C++: the script's RPC probe (Script/Dev/HOLScriptRpcProbe.as), one per controller, if that script is loaded.
+	// MIG-P1d-C++: the script's RPC probe (Script/Net/HOLScriptRpcProbe.as), one per controller, if that script is loaded.
 	HOLScriptRpcProbeBridge::SpawnFor(NewPlayer);
 
 	AHOLPlayerState* PlayerState = NewPlayer ? NewPlayer->GetPlayerState<AHOLPlayerState>() : nullptr;
