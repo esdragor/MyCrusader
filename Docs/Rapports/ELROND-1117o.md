@@ -1,21 +1,30 @@
-# ELROND-1117o : pilote MIG2-S3, ServerDiplomacyStance dans un acteur script par joueur (2026-11-17, tiers, NON COMPILE)
+# ELROND-1117o : MIG-C-Construction, suite (NON COMPILE : C++ ecrit, ni build ni quick_check)
 
-Décision D842 : Q1 = A (acteur script par joueur, dossier `Script\Net\`), Q2 = A (pilote = UNE RPC). Worktree `HeroesOfLiberty-Elrond`, branche tiers, `git merge main` : déjà à jour.
+APPELS_DECLARES: 17 (arret a 25 vus ; seuil 80 juge sur tool_uses)
+HEURE_DEBUT/HEURE_FIN: 18:22 / 18:26 (Get-Date)
+PREMIER_BUILD: sans build (C++ NON COMPILE)   BUILD: NON COMPILE   LAUNCHCHECK_DEBUT: sans build
+TEST_ROUGE: tache 1 : rouge deja vu par ELROND-1117n sur Test_Construction_Grid (vert 1501/1503 au build groupe). Tache 2 : pas de rouge (non compile) ; assertit l'effet : oui, mais RIEN n'est prouve. BUILDS_DEMANDES: 0 (la session principale doit compiler le C++ de liaison).
+COMMITS: 2 sur tiers, merge_main_fait: non (pas de build, DLL non verifiee) ; 2bbb60f, da6e05e
+TESTS: aucun lance. TESTS_TAUTOLOGIQUES: 0 (les valeurs viennent des regles C++ ; les verifs d'encodage MakeWorkBuild(0) != MakeWorkGather(0) testent l'encodage int des wrappers)
+ESSAIS: aucun. QUESTIONS: aucune.
 
-## Commits (anglais, pas de push, pas de fusion)
-- `19045e3` : `Script\Tests\HOLRpcDiplomacy_Test.as` (3 tests, 11 assertions), ROUGE d'abord : `HOLRpcStanceRefusal` n'existe pas encore (échec de compilation script jusqu'au commit suivant et au build).
-- `02252a2` : le vert (non compilé) : C++ minimal + script + scénario réseau.
+## FAIT
+- Tache 1 (2bbb60f) : HOLConstructionTests.cpp 1174 -> 613 lignes. Retires 13 tests : Grid, Placement, Age, Payment, Damage, Builders, Population, States, Probes, BuildSpots, NextSite, CutPaths, SiteKeepOut. Helper TestExponent supprime (House, MakeQuery, IsOnGrid, TestTile restent : Tables, CampSource, FreeFootprint, Body les utilisent). Body GARDE, reduit a sa fin (UHOLBuildingSettings::GetBodyInset/GetBodySize/GetVisualInset/GetVisualSize, non portee, non exposee) ; ses 14 assertions de regles pures sont dans Test_Construction_Body du script. Reste en C++ : Tables, BuildQueue, WorkQueue, CampSource, IdleWall, Body (reduit), FreeFootprint = 7 tests.
+- Tache 2 (da6e05e) : UHOLConstructionReadLibrary etendue (.h/.cpp, namespace anonyme existant inchange, aucun nouveau nom anonyme) : GetSourceGap, SendsBuildersToGather(FName, TArray<int32> ressources 0 Food..3 Gold), AddToBuildQueue(TArray<int32>&, Item, bAppend), AdvanceBuildQueue(TArray<int32>&, ClosedSites), MakeWorkBuild/MakeWorkGather/MakeWorkDeposit (n*4, n*4+1, n*4+2), GetWorkItemKind, AdvanceWorkQueue(TArray<int32>&, bHeadDone, ClosedSites) (decode vers TWorkItem<int32>, appelle HOLConstruction::AdvanceWorkQueue, recode). Script\Tests\HOLConstruction_Test.as : Test_Construction_BuildQueue, Test_Construction_WorkQueue, Test_Construction_CampGap (SendsBuildersToGather x5 + GetSourceGap x3 de CampSource), helpers ConInts/ConSameInts.
+- TESTS_CPP_RETIRES: 13 (Construction.Grid, Placement, Age, Payment, Damage, Builders, Population, States, Probes, BuildSpots, NextSite, CutPaths, SiteKeepOut)
+- TESTS_SCRIPT_AJOUTES: 3 (Test_Construction_BuildQueue, Test_Construction_WorkQueue, Test_Construction_CampGap), NON COMPILES
+- LIGNES_CPP_SUPPRIMEES: 561 (tests) ; LIGNES_MIGREES_PAR_LOT: 0 retire pour la tache 2 (+103 lignes de liaison C++ ajoutees)
 
-## Fichiers
-- C++ (`Source\HeroesOfLiberty\Net\HOLScriptRpcPlayerActor.h/.cpp`, ~100 lignes) : `AHOLScriptRpcPlayerActor` (base abstraite, réplication et toujours pertinent, modèle de la sonde) ; `UHOLRpcBridgeLibrary` (script `HOLRpcBridge::`) : `FindPlayerActor(Controller)`, `GetSenderSlot(RpcActor)` (slot lu du propriétaire, D288), `QueueDiplomacyOrder(RpcActor, Kind, Autre, Valeur)` (enveloppe de `UHOLCommandSubsystem::IssueDiplomacyOrder`, `IssueDiplomacyOrder` n'étant pas visible du script) ; `HOLScriptRpcPlayerBridge::SpawnAllFor` (généralise le pont de la sonde : un acteur par classe script dérivée de la base, au `PostLogin`, 3 lignes dans `HeroesOfLibertyGameModeBase.cpp`). La sonde reste telle quelle.
-- Script (`Script\Net\HOLRpcPlayer.as`) : `AHOLRpcPlayer` déclare `UFUNCTION(Server, Reliable) ServerDiplomacyStance(int, int)` ; règle pure `HOLRpcStanceRefusal(Sender, Cible, Stance)` (0 = empile ; 1 émetteur sans slot ou hors bornes ; 2 cible hors bornes ; 3 stance hors 0..2) ; journal identique au C++ (« Diplomacy order: slot N stance S toward slot T queued »). Côté client : `HOLRpcRequestStance` (global script) appelé par les 2 sites de `HOLGameScreenScript.as` (clic de stance, puce) : cvar `hol.Rpc.ScriptDiplomacy` 0 (défaut) = ancienne RPC C++ `RequestStance` ; 1 = l'acteur script, repli sur le C++ si l'acteur est introuvable. La vision (`ServerDiplomacyVision`) et toutes les autres RPC ne bougent pas.
-- Preuve : cvars `hol.Rpc.DiplomacyTarget` (défaut -1 ; >= 0 sur un client : il appelle la RPC une fois) et `hol.Rpc.DiplomacyStance` ; `Tools\Scenarios\rpc_diplomacy_run.ps1` (serveur + client rouge + client vert).
+## RESTE (pour la session principale)
+1. Build groupe (`Tools\build.ps1 -LiveCoding=0 -Wait` dans HeroesOfLiberty-Elrond), puis `quick_check -Parts tests,Script` (ou le filtre HOLConstruction).
+2. Rouge VU sur Test_Construction_BuildQueue et WorkQueue (fausser un attendu, p. ex. `ConInts(1, 2, 3)` -> `ConInts(1, 3, 2)`), puis vert ; ensuite retirer les C++ `Construction.BuildQueue` et `Construction.WorkQueue` (les lignes SendsBuildersToGather/GetSourceGap de CampSource peuvent etre retirees du C++ CampSource apres le rouge de CampGap, le reste de CampSource reste).
+3. Si le build refuse : points a verifier d'abord (code jamais compile) : appel `HOLConstruction::AddToBuildQueue<int32>` / `AdvanceBuildQueue<int32>` depuis des statiques du meme nom dans la classe (qualifie, devrait passer) ; `UPARAM(ref) TArray<int32>&` ; Angelscript : `TArray<int32>` passe par valeur dans ConSameInts, `n"..."` pour les FName.
+4. Docs : le commentaire d'en-tete de HOLConstructionReadLibrary.h dit encore les files non exposees (a corriger au build : seules les files d'int le sont maintenant).
 
-## Non vérifié (rien n'est compilé ni lancé)
-- `UFUNCTION(Server, Reliable)` en script (la sonde n'avait que `Server`) ; appel d'une fonction globale script depuis la méthode d'une classe déclarée plus bas dans le fichier ; `Cast<AHOLRpcPlayer>` du retour de `FindPlayerActor` ; sur la carte `Plain`, le client peut n'avoir aucun slot : la ligne attendue est alors « refused (1) » au lieu de « Diplomacy order ... queued » (la preuve réseau est la ligne « received by the server »).
-- Retrait de `ServerDiplomacyStance` du contrôleur C++ : PAS fait (seulement après le vert réseau, puis lot C++ de la séance). Lignes C++ supprimées : 0 ; ajoutées ~100 ; script ajoutées ~85 (+ 25 de test).
+## TYPES_A_EXPOSER
+FHOLCampSource (FindCampSource : ou tableaux paralleles centre, rayon, ressource int, debout), FWallBody + EHOLUnitActivity / EHOLMovePhase (IdleWall), FHOLBuildingTypeRow (Tables), FindFreeFootprint / FindObstacle avec TFunctionRef (une liste de boites "hors navmesh" en entree), UHOLBuildingSettings (fin de Body : GetBodyInset, GetBodySize, GetVisualInset, GetVisualSize, ou les lire via une bibliotheque de reglages). Rien force.
 
-## À lancer (session principale)
-1. Build : `Build.bat HeroesOfLibertyEditor Win64 Development -Project=<worktree>\HeroesOfLiberty.uproject` (ou le lanceur habituel du lot C++), puis `quick_check -Parts tests` : le rouge de `HOLRpcDiplomacy_Test` devient vert.
-2. Preuve réseau : `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Elrond\Tools\Scenarios\rpc_diplomacy_run.ps1 -Root C:\Users\baudo\Documents\HeroesOfLiberty-Elrond`
-3. Rouge VU du test : faire fausse une valeur attendue une fois, puis remettre.
+NON VERIFIE: tout le C++ de liaison (aucune compilation), les 3 tests script (jamais parses), le retrait de 13 tests (aucune compilation du fichier de tests : variable `Peasant` du Body reduit, includes laisses tels quels).
+PROCESSUS_DETACHES: aucun processus detache pour C:\Users\baudo\Documents\HeroesOfLiberty-Elrond
+ANOMALIES_PROCESSUS: aucune. Hook : heredoc Bash casse (ecrit par Write puis ajoute par PowerShell) ; Git Bash `date` diverge (utilise Get-Date).
+GIT_STATUS_PRINCIPALE: hors docs voulus : oui (seuls EtapeDefini.md, Auto_Journey_File.md modifies par moi ; Auto_Journey_Jour.md et les rapports sont d'autres sessions)
