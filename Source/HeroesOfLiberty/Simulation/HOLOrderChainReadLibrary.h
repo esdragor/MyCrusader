@@ -117,4 +117,11 @@ public:
 	/** HOLCombat::MaySeek: the unit takes on enemies by itself. */
 	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|OrderChain")
 	static bool MaySeek(bool bWalkingOrder, bool bAttackMove, bool bOrderedTarget, bool bOrderedBuilding, bool bWalkStalled);
+
+	/**
+	 * HOLOrderChain::EndBuildingTarget with building ids (0: none): Target, the building it strikes, is struck no more; Ordered, its order's:
+	 * if it is the same building, the order is over (the queue goes on). Both end at 0 for a building that fell.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|OrderChain")
+	static void EndBuildingTarget(UPARAM(ref) int32& TargetId, UPARAM(ref) int32& OrderedId);
 };

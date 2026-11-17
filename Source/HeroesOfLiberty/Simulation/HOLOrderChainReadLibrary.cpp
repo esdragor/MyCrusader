@@ -7,6 +7,14 @@
 
 namespace
 {
+	/** A building reference for the template of HOLOrderChain::EndBuildingTarget: an id, 0 for none (Reset, ==). */
+	struct FBuildingIdRef
+	{
+		int32 Id = 0;
+		void Reset() { Id = 0; }
+		bool operator==(const FBuildingIdRef& Other) const { return Id == Other.Id; }
+	};
+
 	HOLOrderChain::FStep ToRule(const FHOLOrderChainStep& Step)
 	{
 		HOLOrderChain::FStep Out;
@@ -116,4 +124,15 @@ bool UHOLOrderChainReadLibrary::MaySeek(const bool bWalkingOrder, const bool bAt
 	const bool bWalkStalled)
 {
 	return HOLCombat::MaySeek(bWalkingOrder, bAttackMove, bOrderedTarget, bOrderedBuilding, bWalkStalled);
+}
+
+void UHOLOrderChainReadLibrary::EndBuildingTarget(int32& TargetId, int32& OrderedId)
+{
+	FBuildingIdRef Target;
+	Target.Id = TargetId;
+	FBuildingIdRef Ordered;
+	Ordered.Id = OrderedId;
+	HOLOrderChain::EndBuildingTarget(Target, Ordered);
+	TargetId = Target.Id;
+	OrderedId = Ordered.Id;
 }
