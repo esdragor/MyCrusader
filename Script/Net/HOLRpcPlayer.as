@@ -17,6 +17,11 @@ const FConsoleVariable CVar_RpcScriptMatch("hol.Rpc.ScriptMatch", 0);
 const FConsoleVariable CVar_RpcScriptSpecialization("hol.Rpc.ScriptSpecialization", 0);
 const FConsoleVariable CVar_RpcScriptHero("hol.Rpc.ScriptHero", 0);
 
+// T5 lot L1 (HALDIR-1117p, C++ NOT COMPILED): the Signals and Chat RPCs (Server and Client). Default 0: the C++ RPC stays the only one. With 1 on the SERVER, the C++ fan-out reaches each viewer
+// through its script actor's Client RPC (the actor is owned and bAlwaysRelevant), and the interface's Server calls go through this actor. The Client bodies do not read the cvar (the server decides).
+const FConsoleVariable CVar_RpcScriptSignal("hol.Rpc.ScriptSignal", 0);
+const FConsoleVariable CVar_RpcScriptChat("hol.Rpc.ScriptChat", 0);
+
 const int HOLRpcSlots = 8; // FHOLMatchConfig::MaxSlots
 const int HOLRpcStanceAlly = 2; // HOLDiplomacy::Enemy 0 / Neutral 1 / Ally 2
 
@@ -96,6 +101,45 @@ int RageRefusal(int SenderSlot, int UnitCount)
 	if (SenderSlot < 0 || SenderSlot >= HOLRpcSlots)
 		return 1;
 	if (UnitCount <= 0)
+		return 2;
+	return 0;
+}
+
+// Signals and chat (T5 L1). The board (HOLSignal::Post, HOLChat gate: length, rate, who reaches whom) stays the script board's, called by the C++ _Implementation; these only check what the RPC itself can know.
+// SignalRefusal (Server): 0 none, 1 the sender has no slot (spectator, out of range: a spectator places no signal).
+int SignalRefusal(int SenderSlot)
+{
+	if (SenderSlot < 0 || SenderSlot >= HOLRpcSlots)
+		return 1;
+	return 0;
+}
+
+// ClientReceiveSignal: 0 none, 1 the sender slot is out of range, 2 the kind is negative (the server only sends a posted signal).
+int ClientSignalRefusal(int SenderSlot, int Kind)
+{
+	if (SenderSlot < 0 || SenderSlot >= HOLRpcSlots)
+		return 1;
+	if (Kind < 0)
+		return 2;
+	return 0;
+}
+
+// ServerPostChat: 0 none, 1 negative channel, 2 empty text. A spectator talks too (D376): the sender's slot is NOT checked here (-1 is valid); the length, the rate and who reads it stay the board's.
+int ChatRefusal(int Channel, const FString& Text)
+{
+	if (Channel < 0)
+		return 1;
+	if (Text.Len() == 0)
+		return 2;
+	return 0;
+}
+
+// ClientReceiveChat: 0 none, 1 the sender slot is neither -1 (spectator) nor in range, 2 the channel is negative.
+int ClientChatRefusal(int SenderSlot, int Channel)
+{
+	if (SenderSlot < -1 || SenderSlot >= HOLRpcSlots)
+		return 1;
+	if (Channel < 0)
 		return 2;
 	return 0;
 }
@@ -371,4 +415,62 @@ class AHOLRpcPlayer : AHOLScriptRpcPlayerActor
 			return;
 		// The C++ body only stores the id and sends the load of the player's OWN unit (D288 checked in SendWatchedLoad): no slot refusal here, as in C++.
 		HOLRpcBridge::WatchUnit(this, int(UnitId));
-	}}
+	}
+
+	// ---- T5 lot L1 Signals and chat (HALDIR-1117p, C++ NOT COMPILED). Guards hol.Rpc.ScriptSignal / hol.Rpc.ScriptChat (default 0). The bridge calls the C++ _Implementation (board, fan-out, journal);
+	// its fan-out calls the viewers' Client RPC below when the cvar is 1. The two Client RPCs are called BY THE SERVER on the owning client: this actor is owned and bAlwaysRelevant (PLAN-MIG2-S3 section 6).
+	UFUNCTION(Server)
+	void ServerPostSignal(int Kind, FVector Location)
+	{
+		if (CVar_RpcScriptSignal.GetInt() == 0)
+			return;
+		const int Slot = HOLRpcBridge::GetSenderSlot(this);
+		if (HOLRpc::SignalRefusal(Slot) != 0)
+		{
+			Log(n"LogHOLMatch", f"RpcSignal: post refused for sender slot {Slot}");
+			return;
+		}
+		Log(n"LogHOLMatch", f"RpcSignal: received by the server: slot {Slot} kind {Kind}");
+		HOLRpcBridge::PostSignal(this, Kind, Location.X, Location.Y, Location.Z);
+	}
+
+	UFUNCTION(Client)
+	void ClientReceiveSignal(int Sender, int Kind, FVector Location)
+	{
+		const int Refusal = HOLRpc::ClientSignalRefusal(Sender, Kind);
+		if (Refusal != 0)
+		{
+			Log(n"LogHOLMatch", f"RpcSignal: receive refused ({Refusal}) sender {Sender} kind {Kind}");
+			return;
+		}
+		HOLRpcBridge::ReceiveSignal(this, Sender, Kind, Location.X, Location.Y, Location.Z);
+	}
+
+	UFUNCTION(Server)
+	void ServerPostChat(int Channel, const FString& Text, int TargetSlot)
+	{
+		if (CVar_RpcScriptChat.GetInt() == 0)
+			return;
+		const int Slot = HOLRpcBridge::GetSenderSlot(this);
+		const int Refusal = HOLRpc::ChatRefusal(Channel, Text);
+		if (Refusal != 0)
+		{
+			Log(n"LogHOLMatch", f"RpcChat: post refused ({Refusal}) for sender slot {Slot} channel {Channel}");
+			return;
+		}
+		Log(n"LogHOLMatch", f"RpcChat: received by the server: slot {Slot} channel {Channel}");
+		HOLRpcBridge::PostChat(this, Channel, Text, TargetSlot);
+	}
+
+	UFUNCTION(Client)
+	void ClientReceiveChat(int SenderSlot, int Channel, const FString& Text)
+	{
+		const int Refusal = HOLRpc::ClientChatRefusal(SenderSlot, Channel);
+		if (Refusal != 0)
+		{
+			Log(n"LogHOLMatch", f"RpcChat: receive refused ({Refusal}) sender {SenderSlot} channel {Channel}");
+			return;
+		}
+		HOLRpcBridge::ReceiveChat(this, SenderSlot, Channel, Text);
+	}
+}
