@@ -39,3 +39,42 @@ void Test_FactionTechnologyGrid(FUnitTest& T)
 	T.AssertTrue(BarracksCount > 0, "the Barracks have technologies");
 	T.AssertTrue(ForgeCount > 0, "the Forge has technologies");
 }
+
+// The faction filter (ports the rest of Tests/HOLFactionTechnologyTests.cpp, "HeroesOfLiberty.Match.Factions.TechnologyGrid"), read through the wrappers of
+// UHOLFactionTechnologyReadLibrary over the one source of the rule (HOLFactionRules::IsTechnologyOpenTo, UHOLTechnologySettings::GetBuildingTechnologies).
+// A technology of the Dawn (TemperedHalberds) is not offered to the Legions; Common technologies stay in both grids.
+void Test_FactionTechnologyFilterGrid(FUnitTest& T)
+{
+	TArray<FName> DawnBarracks = HOLFactionTechnologyRead::GetBuildingTechnologies(n"Barracks", n"Dawn");
+	TArray<FName> LegionsBarracks = HOLFactionTechnologyRead::GetBuildingTechnologies(n"Barracks", n"Legions");
+	TArray<FName> AllBarracks = HOLFactionTechnologyRead::GetBuildingTechnologies(n"Barracks", NAME_None);
+	T.AssertTrue(DawnBarracks.Contains(n"TemperedHalberds"), "the Dawn's Barracks research the halberds");
+	T.AssertFalse(LegionsBarracks.Contains(n"TemperedHalberds"), "the Legions' Barracks do not offer the halberds (a technology of the Dawn)");
+	T.AssertTrue(AllBarracks.Contains(n"TemperedHalberds"), "no faction: nothing is filtered");
+	T.AssertTrue(AllBarracks.Num() >= DawnBarracks.Num(), "a faction filter only removes technologies");
+
+	// A technology of every faction stays in the grid of both.
+	TArray<FName> DawnForge = HOLFactionTechnologyRead::GetBuildingTechnologies(n"Forge", n"Dawn");
+	TArray<FName> LegionsForge = HOLFactionTechnologyRead::GetBuildingTechnologies(n"Forge", n"Legions");
+	T.AssertTrue(DawnForge.Num() > 0, "the Forge has technologies");
+	T.AssertEquals(DawnForge.Num(), LegionsForge.Num(), "the Forge's technologies are the same count for both factions (Common)");
+	for (int Index = 0; Index < DawnForge.Num() && Index < LegionsForge.Num(); Index++)
+	{
+		T.AssertTrue(DawnForge[Index] == LegionsForge[Index], "the Forge's technologies are the same, in the same order, for both factions");
+	}
+}
+
+// The server's question (IsTechnologyOpenTo) gives the same answer on the same table as the grid.
+void Test_FactionTechnologyOpenTo(FUnitTest& T)
+{
+	T.AssertTrue(HOLFactionTechnologyRead::IsTechnologyOpenTo(n"TemperedHalberds", n"Dawn"), "the Dawn may research the halberds");
+	T.AssertFalse(HOLFactionTechnologyRead::IsTechnologyOpenTo(n"TemperedHalberds", n"Legions"), "the Legions may not");
+
+	TArray<FName> DawnForge = HOLFactionTechnologyRead::GetBuildingTechnologies(n"Forge", n"Dawn");
+	T.AssertTrue(DawnForge.Num() > 0, "the Forge has technologies");
+	if (DawnForge.Num() > 0)
+	{
+		T.AssertTrue(HOLFactionTechnologyRead::IsTechnologyOpenTo(DawnForge[0], n"Legions"), "a Common technology is open to the Legions");
+	}
+	T.AssertTrue(HOLFactionTechnologyRead::IsTechnologyOpenTo(n"NoSuchTechnology", n"Legions"), "a technology the table does not know is left open");
+}
