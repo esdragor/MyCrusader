@@ -23,16 +23,16 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "HOL|GameMenu")
 	static UHOLGameMenuRulesBridge* Get();
 
-	// The callers' typed face, the old HOLGameMenuRules:: signatures.
-	static EHOLEscapeAction GetEscapeAction(bool bMenuOpen, bool bModeArmed, bool bHasSelection);
-	static bool CanSurrender(bool bDefeated, bool bMatchOver);
-	static bool CanQuitToMenu(bool bDefeated, bool bMatchOver);
-	static EHOLEndBanner GetEndBanner(int32 MySlot, uint8 DefeatedMask, bool bMatchOver, uint8 WinnerMask);
-	static bool OffersReturnToLobby(EHOLEndBanner Banner, EHOLMatchOrigin Origin);
-	static bool QuitsToList(EHOLMatchOrigin Origin);
-	static bool ShouldOpenEndBanner(EHOLEndBanner Due, EHOLEndBanner Shown, EHOLEndBanner Closed);
-	static bool KeepsMatchMenuInput(bool bOpening, bool bOtherScreenOpen);
-	static bool ShowsStatsButton(bool bSpectator, bool bMatchOver);
+	// The callers' typed face, the old HOLGameMenuRules:: signatures. Named Native* so the script overrides (BP_X seen as X) are not shadowed when script calls them.
+	static EHOLEscapeAction NativeGetEscapeAction(bool bMenuOpen, bool bModeArmed, bool bHasSelection);
+	static bool NativeCanSurrender(bool bDefeated, bool bMatchOver);
+	static bool NativeCanQuitToMenu(bool bDefeated, bool bMatchOver);
+	static EHOLEndBanner NativeGetEndBanner(int32 MySlot, uint8 DefeatedMask, bool bMatchOver, uint8 WinnerMask);
+	static bool NativeOffersReturnToLobby(EHOLEndBanner Banner, EHOLMatchOrigin Origin);
+	static bool NativeQuitsToList(EHOLMatchOrigin Origin);
+	static bool NativeShouldOpenEndBanner(EHOLEndBanner Due, EHOLEndBanner Shown, EHOLEndBanner Closed);
+	static bool NativeKeepsMatchMenuInput(bool bOpening, bool bOtherScreenOpen);
+	static bool NativeShowsStatsButton(bool bSpectator, bool bMatchOver);
 
 	// The script overrides (Angelscript drops the BP_ prefix). Values of EHOLEscapeAction, EHOLEndBanner, EHOLMatchOrigin (the script's EHOLGameMenuEscape, EHOLGameMenuBanner, EHOLGameMenuOrigin).
 	UFUNCTION(BlueprintImplementableEvent, Category = "HOL|GameMenu")

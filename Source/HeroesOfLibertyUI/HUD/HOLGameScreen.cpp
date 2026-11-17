@@ -894,7 +894,7 @@ bool UHOLGameScreen::IsMatchOverForMe(bool& bOver) const
 	const AHOLPlayerState* PlayerState = BoundPlayerState.Get();
 	const int32 ViewerSlot = PlayerState ? PlayerState->GetPlayerIndex() : INDEX_NONE;
 	// D202: the match over for me, my Victory / Defeat banner holds the screen; the thread's line is enough.
-	bOver = UHOLGameMenuRulesBridge::GetEndBanner(ViewerSlot, GameState->GetDefeatedMask(), GameState->IsMatchOver(),
+	bOver = UHOLGameMenuRulesBridge::NativeGetEndBanner(ViewerSlot, GameState->GetDefeatedMask(), GameState->IsMatchOver(),
 		GameState->GetWinnerMask()) != EHOLEndBanner::None;
 	return true;
 }
@@ -2850,7 +2850,7 @@ void UHOLGameScreen::RefreshStatsButton()
 {
 	const AHOLPlayerController* PlayerController = Controller.Get();
 	const AHOLGameState* GameState = GetWorld() ? GetWorld()->GetGameState<AHOLGameState>() : nullptr;
-	const bool bShown = PlayerController && UHOLGameMenuRulesBridge::ShowsStatsButton(PlayerController->IsSpectator(),
+	const bool bShown = PlayerController && UHOLGameMenuRulesBridge::NativeShowsStatsButton(PlayerController->IsSpectator(),
 		GameState && GameState->IsMatchOver());
 	UE::HeroesOfLiberty::UI::GameScreen::SetShown(StatsButton, bShown, ESlateVisibility::Visible);
 	// Its box too: collapsed, « Menu » keeps its place alone.

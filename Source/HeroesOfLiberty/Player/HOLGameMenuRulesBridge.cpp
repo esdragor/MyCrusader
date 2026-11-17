@@ -34,55 +34,55 @@ namespace
 	}
 }
 
-EHOLEscapeAction UHOLGameMenuRulesBridge::GetEscapeAction(const bool bMenuOpen, const bool bModeArmed, const bool bHasSelection)
+EHOLEscapeAction UHOLGameMenuRulesBridge::NativeGetEscapeAction(const bool bMenuOpen, const bool bModeArmed, const bool bHasSelection)
 {
 	UHOLGameMenuRulesBridge* Bridge = Script();
 	return Bridge ? static_cast<EHOLEscapeAction>(Bridge->BP_GetEscapeAction(bMenuOpen, bModeArmed, bHasSelection)) : EHOLEscapeAction::OpenMenu;
 }
 
-bool UHOLGameMenuRulesBridge::CanSurrender(const bool bDefeated, const bool bMatchOver)
+bool UHOLGameMenuRulesBridge::NativeCanSurrender(const bool bDefeated, const bool bMatchOver)
 {
 	UHOLGameMenuRulesBridge* Bridge = Script();
 	return Bridge && Bridge->BP_CanSurrender(bDefeated, bMatchOver);
 }
 
-bool UHOLGameMenuRulesBridge::CanQuitToMenu(const bool bDefeated, const bool bMatchOver)
+bool UHOLGameMenuRulesBridge::NativeCanQuitToMenu(const bool bDefeated, const bool bMatchOver)
 {
 	UHOLGameMenuRulesBridge* Bridge = Script();
 	return Bridge && Bridge->BP_CanQuitToMenu(bDefeated, bMatchOver);
 }
 
-EHOLEndBanner UHOLGameMenuRulesBridge::GetEndBanner(const int32 MySlot, const uint8 DefeatedMask, const bool bMatchOver, const uint8 WinnerMask)
+EHOLEndBanner UHOLGameMenuRulesBridge::NativeGetEndBanner(const int32 MySlot, const uint8 DefeatedMask, const bool bMatchOver, const uint8 WinnerMask)
 {
 	UHOLGameMenuRulesBridge* Bridge = Script();
 	return Bridge ? static_cast<EHOLEndBanner>(Bridge->BP_GetEndBanner(MySlot, DefeatedMask, bMatchOver, WinnerMask)) : EHOLEndBanner::None;
 }
 
-bool UHOLGameMenuRulesBridge::OffersReturnToLobby(const EHOLEndBanner Banner, const EHOLMatchOrigin Origin)
+bool UHOLGameMenuRulesBridge::NativeOffersReturnToLobby(const EHOLEndBanner Banner, const EHOLMatchOrigin Origin)
 {
 	UHOLGameMenuRulesBridge* Bridge = Script();
 	return Bridge && Bridge->BP_OffersReturnToLobby(static_cast<int32>(Banner), static_cast<int32>(Origin));
 }
 
-bool UHOLGameMenuRulesBridge::QuitsToList(const EHOLMatchOrigin Origin)
+bool UHOLGameMenuRulesBridge::NativeQuitsToList(const EHOLMatchOrigin Origin)
 {
 	UHOLGameMenuRulesBridge* Bridge = Script();
 	return Bridge && Bridge->BP_QuitsToList(static_cast<int32>(Origin));
 }
 
-bool UHOLGameMenuRulesBridge::ShouldOpenEndBanner(const EHOLEndBanner Due, const EHOLEndBanner Shown, const EHOLEndBanner Closed)
+bool UHOLGameMenuRulesBridge::NativeShouldOpenEndBanner(const EHOLEndBanner Due, const EHOLEndBanner Shown, const EHOLEndBanner Closed)
 {
 	UHOLGameMenuRulesBridge* Bridge = Script();
 	return Bridge && Bridge->BP_ShouldOpenEndBanner(static_cast<int32>(Due), static_cast<int32>(Shown), static_cast<int32>(Closed));
 }
 
-bool UHOLGameMenuRulesBridge::KeepsMatchMenuInput(const bool bOpening, const bool bOtherScreenOpen)
+bool UHOLGameMenuRulesBridge::NativeKeepsMatchMenuInput(const bool bOpening, const bool bOtherScreenOpen)
 {
 	UHOLGameMenuRulesBridge* Bridge = Script();
 	return Bridge && Bridge->BP_KeepsMatchMenuInput(bOpening, bOtherScreenOpen);
 }
 
-bool UHOLGameMenuRulesBridge::ShowsStatsButton(const bool bSpectator, const bool bMatchOver)
+bool UHOLGameMenuRulesBridge::NativeShowsStatsButton(const bool bSpectator, const bool bMatchOver)
 {
 	UHOLGameMenuRulesBridge* Bridge = Script();
 	return Bridge && Bridge->BP_ShowsStatsButton(bSpectator, bMatchOver);

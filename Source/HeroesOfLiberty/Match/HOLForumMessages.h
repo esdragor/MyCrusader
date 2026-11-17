@@ -253,7 +253,7 @@ struct HEROESOFLIBERTY_API FHOLForumThread
 /**
  * V4.3 (D353, D202): the major alert, a banner top centre under the resources' bar: the message of an event touching
  * the viewer or its ally (FHOLForumMessage::bAlert), ShowSeconds then gone, its last FadeSeconds fading. None once the
- * match is over for the viewer (its Victory / Defeat banner due, UHOLGameMenuRulesBridge::GetEndBanner): the thread's line is
+ * match is over for the viewer (its Victory / Defeat banner due, UHOLGameMenuRulesBridge::NativeGetEndBanner): the thread's line is
  * enough. V4.5b: a shown banner stays MinSeconds at least before a new one replaces it; an alert coming sooner waits
  * (at most MaxWaiting, the oldest in excess dropped), then is shown its ShowSeconds; one sound for alerts coming less than
  * SoundGapSeconds apart, played with the banner shown (bSound), not on arrival. Pure: the HUD gives the time.
