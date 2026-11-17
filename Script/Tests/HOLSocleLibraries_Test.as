@@ -1,10 +1,9 @@
 // Socle step 1 of the migration (D830, D836, SOCLE-1116a): the C++ rules that STAY in C++ (Siege, Diplomacy, UnitAbility), read from
 // script through their new libraries (HOLSiegeCheck, HOLDiplomacyRead, HOLUnitAbilityRead), on the SAME vectors as their C++ tests
 // (HOLSiegeTests.cpp Siege.Tiers, HOLDiplomacyRulesTests.cpp Diplomacy.Rules, HOLDamnedWarriorTests.cpp against UnitAbilities.csv).
-// The script copies (HOLSiegeRules.as, HOLDiplomacyRules.as) are not removed yet: next lots (HOLUnitAbilityRules.as is gone, MIG-S1c-UnitAbility).
-// The Siege script copy is removed (MIG-S1c-Siege); HOLDiplomacyRules.as and HOLUnitAbilityRules.as are not yet: next lots.
+// The script copies of Siege (HOLSiegeRules.as, MIG-S1c-Siege, ELROND-1117i) and UnitAbility are gone; HOLDiplomacyRules.as is not yet: next lot.
 
-// HeroesOfLiberty.Siege.Tiers through HOLSiegeCheck (engine and block numbers: EHOLSiegeEngine, HOLSiege::Available... of the script).
+// HeroesOfLiberty.Siege.Tiers through HOLSiegeCheck (engine and block numbers: EHOLSiegeEngine, int(EHOLSiegeBlock::Available)... of the script).
 void Test_SiegeCheckLibraryVectors(FUnitTest& T)
 {
 	const int Ram = int(EHOLSiegeEngine::Ram);
@@ -18,29 +17,29 @@ void Test_SiegeCheckLibraryVectors(FUnitTest& T)
 	T.AssertTrue(HOLSiegeCheck::InPrototype(Ram) && HOLSiegeCheck::InPrototype(Mangonel), "Ram and Mangonel in the prototype (D77)");
 	T.AssertFalse(HOLSiegeCheck::InPrototype(Trebuchet) || HOLSiegeCheck::InPrototype(Cannon), "the other two wait (D77)");
 
-	T.AssertEquals(HOLSiege::Available, HOLSiegeCheck::Check(Ram, 1, true, true), "tier 1, workshop, paid: the Ram");
-	T.AssertEquals(HOLSiege::TierTooLow, HOLSiegeCheck::Check(Ram, 0, true, true), "the Ram needs tier 1");
-	T.AssertEquals(HOLSiege::TierTooLow, HOLSiegeCheck::Check(Mangonel, 1, true, true), "the Mangonel needs tier 2");
-	T.AssertEquals(HOLSiege::Available, HOLSiegeCheck::Check(Mangonel, 2, true, true), "tier 2 opens the Mangonel");
-	T.AssertEquals(HOLSiege::NoWorkshop, HOLSiegeCheck::Check(Ram, 1, false, true), "no finished workshop");
-	T.AssertEquals(HOLSiege::CannotPay, HOLSiegeCheck::Check(Ram, 1, true, false), "cannot pay");
-	T.AssertEquals(HOLSiege::NotInPrototype, HOLSiegeCheck::Check(Trebuchet, 3, true, true), "the Trebuchet is refused even at tier 3");
-	T.AssertEquals(HOLSiege::NotInPrototype, HOLSiegeCheck::Check(Cannon, 0, false, false), "outside the prototype comes first");
-	T.AssertEquals(HOLSiege::TierTooLow, HOLSiegeCheck::Check(Mangonel, 0, false, false), "then the tier");
-	T.AssertEquals(HOLSiege::NoWorkshop, HOLSiegeCheck::Check(Mangonel, 2, false, false), "then the workshop");
-	T.AssertEquals(HOLSiege::CannotPay, HOLSiegeCheck::Check(Mangonel, 2, true, false), "then the cost");
+	T.AssertEquals(int(EHOLSiegeBlock::Available), HOLSiegeCheck::Check(Ram, 1, true, true), "tier 1, workshop, paid: the Ram");
+	T.AssertEquals(int(EHOLSiegeBlock::TierTooLow), HOLSiegeCheck::Check(Ram, 0, true, true), "the Ram needs tier 1");
+	T.AssertEquals(int(EHOLSiegeBlock::TierTooLow), HOLSiegeCheck::Check(Mangonel, 1, true, true), "the Mangonel needs tier 2");
+	T.AssertEquals(int(EHOLSiegeBlock::Available), HOLSiegeCheck::Check(Mangonel, 2, true, true), "tier 2 opens the Mangonel");
+	T.AssertEquals(int(EHOLSiegeBlock::NoWorkshop), HOLSiegeCheck::Check(Ram, 1, false, true), "no finished workshop");
+	T.AssertEquals(int(EHOLSiegeBlock::CannotPay), HOLSiegeCheck::Check(Ram, 1, true, false), "cannot pay");
+	T.AssertEquals(int(EHOLSiegeBlock::NotInPrototype), HOLSiegeCheck::Check(Trebuchet, 3, true, true), "the Trebuchet is refused even at tier 3");
+	T.AssertEquals(int(EHOLSiegeBlock::NotInPrototype), HOLSiegeCheck::Check(Cannon, 0, false, false), "outside the prototype comes first");
+	T.AssertEquals(int(EHOLSiegeBlock::TierTooLow), HOLSiegeCheck::Check(Mangonel, 0, false, false), "then the tier");
+	T.AssertEquals(int(EHOLSiegeBlock::NoWorkshop), HOLSiegeCheck::Check(Mangonel, 2, false, false), "then the workshop");
+	T.AssertEquals(int(EHOLSiegeBlock::CannotPay), HOLSiegeCheck::Check(Mangonel, 2, true, false), "then the cost");
 
 	// MIG-S1c-Siege: the script copy is gone; the library's reason is checked on every engine, tier and pair of booleans against the order of its own parts (prototype, tier, workshop, cost).
-	for (int Index = 0; Index < HOLSiege::EngineCount; Index++)
+	for (int Index = 0; Index < HOLSiegeCheck::GetEngineCount(); Index++)
 	{
-		const EHOLSiegeEngine Engine = HOLSiege::EngineAt(Index);
+		const EHOLSiegeEngine Engine = EHOLSiegeEngine(Index);
 		for (int Tier = 0; Tier <= 3; Tier++)
 		{
 			for (int Mask = 0; Mask < 4; Mask++)
 			{
 				const bool bWorkshop = (Mask & 1) != 0;
 				const bool bPay = (Mask & 2) != 0;
-				const int Expected = !HOLSiegeCheck::InPrototype(int(Engine)) ? HOLSiege::NotInPrototype : (Tier < HOLSiegeCheck::GetTier(int(Engine)) ? HOLSiege::TierTooLow : (!bWorkshop ? HOLSiege::NoWorkshop : (!bPay ? HOLSiege::CannotPay : HOLSiege::Available)));
+				const int Expected = !HOLSiegeCheck::InPrototype(int(Engine)) ? int(EHOLSiegeBlock::NotInPrototype) : (Tier < HOLSiegeCheck::GetTier(int(Engine)) ? int(EHOLSiegeBlock::TierTooLow) : (!bWorkshop ? int(EHOLSiegeBlock::NoWorkshop) : (!bPay ? int(EHOLSiegeBlock::CannotPay) : int(EHOLSiegeBlock::Available))));
 				T.AssertEquals(Expected, HOLSiegeCheck::Check(int(Engine), Tier, bWorkshop, bPay), f"engine {Index} tier {Tier} mask {Mask}: the reason follows the order of its parts");
 			}
 		}
@@ -53,11 +52,11 @@ void Test_SiegeCheckLibraryVectors(FUnitTest& T)
 	T.AssertTrue(HOLSiegeCheck::FindEngine(n"Cannon", Found) && Found == Cannon, "Cannon is the Cannon");
 	T.AssertFalse(HOLSiegeCheck::FindEngine(n"Spearman", Found), "the Spearman is no engine");
 	T.AssertFalse(HOLSiegeCheck::FindEngine(NAME_None, Found), "no name is no engine");
-	T.AssertTrue(HOLSiegeCheck::DescribeBlock(HOLSiege::TierTooLow) == "tier too low", "tier words");
-	T.AssertTrue(HOLSiegeCheck::DescribeBlock(HOLSiege::NotInPrototype) == "not in the prototype", "prototype words");
-	T.AssertTrue(HOLSiegeCheck::DescribeBlock(HOLSiege::NoWorkshop) == "no workshop", "workshop words");
-	T.AssertTrue(HOLSiegeCheck::DescribeBlock(HOLSiege::CannotPay) == "cannot pay", "cost words");
-	T.AssertTrue(HOLSiegeCheck::DescribeBlock(HOLSiege::Available) == "none", "nothing stops it");
+	T.AssertTrue(HOLSiegeCheck::DescribeBlock(int(EHOLSiegeBlock::TierTooLow)) == "tier too low", "tier words");
+	T.AssertTrue(HOLSiegeCheck::DescribeBlock(int(EHOLSiegeBlock::NotInPrototype)) == "not in the prototype", "prototype words");
+	T.AssertTrue(HOLSiegeCheck::DescribeBlock(int(EHOLSiegeBlock::NoWorkshop)) == "no workshop", "workshop words");
+	T.AssertTrue(HOLSiegeCheck::DescribeBlock(int(EHOLSiegeBlock::CannotPay)) == "cannot pay", "cost words");
+	T.AssertTrue(HOLSiegeCheck::DescribeBlock(int(EHOLSiegeBlock::Available)) == "none", "nothing stops it");
 	T.AssertTrue(HOLSiegeCheck::GetHealthStat(n"Ram") == n"RamHealth", "the Ram reads RamHealth");
 	T.AssertTrue(HOLSiegeCheck::GetDamageStat(n"Mangonel") == n"MangonelDamage", "the Mangonel reads MangonelDamage");
 	T.AssertTrue(HOLSiegeCheck::GetHealthStat(n"Spearman") == NAME_None, "a Spearman has none");

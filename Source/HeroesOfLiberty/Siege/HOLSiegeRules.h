@@ -6,8 +6,8 @@
 
 /**
  * Pure rules of the siege engines (SiegeInProgress.md S1b, GDD 6.1, D23, D77, D180): which engine opens at which tier, which are
- * in the prototype, and why an engine cannot be queued now. The C++ copy of Script/Siege/HOLSiegeRules.as (the simulation reads
- * C++, the interface and the AI read the script, D483): the two are tested with the same cases, and this one against the real
+ * in the prototype, and why an engine cannot be queued now. The only source (D836: the script copy, Script/Siege/HOLSiegeRules.as, is
+ * gone; the AI and the script tests read it through HOLSiegeCheck, Siege/HOLSiegeCheckLibrary.h), tested against the real
  * technology table (Tests/HOLSiegeTests.cpp). Integers and booleans only, no world access. The stats of an engine (health, damage,
  * cost) are not here: they belong to the tables (S2).
  */
