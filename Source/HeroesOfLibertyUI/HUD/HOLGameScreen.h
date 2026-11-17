@@ -370,7 +370,7 @@ private:
 	void HandleIdleWorkersClicked();
 	void HandleMenuClicked();
 	void HandleStatsClicked();
-	/** Shows « Statistiques » for a spectator during the match, for everyone after it (HOLGameMenuRules::ShowsStatsButton). */
+	/** Shows « Statistiques » for a spectator during the match, for everyone after it (UHOLGameMenuRulesBridge::ShowsStatsButton). */
 	void RefreshStatsButton();
 	/**
 	 * The control groups' bar (J7a.5), read again four times a second (units die, groups change): a slot per group not

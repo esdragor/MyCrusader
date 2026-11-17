@@ -60,7 +60,7 @@ private:
 	 * slot are known on this machine (a client), then the end banner is checked at once (a state received all at once).
 	 */
 	void WatchVictory();
-	/** Opens, updates or leaves the end banner (HOLGameMenuRules::GetEndBanner, ShouldOpenEndBanner; V1-Q2). */
+	/** Opens, updates or leaves the end banner (UHOLGameMenuRulesBridge::GetEndBanner, ShouldOpenEndBanner; V1-Q2). */
 	void RefreshEndBanner();
 
 	UPROPERTY(Transient)
