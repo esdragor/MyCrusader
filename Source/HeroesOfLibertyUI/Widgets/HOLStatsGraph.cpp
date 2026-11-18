@@ -165,3 +165,26 @@ int32 UHOLStatsGraph::NativePaint(const FPaintArgs& Args, const FGeometry& Allot
 	}
 	return LegendLayer + 1;
 }
+
+void UHOLStatsGraph::SetGraphData(const TArray<FHOLStatsGraphCurve>& InCurves, const TArray<FHOLStatsGraphMark>& InMarks)
+{
+	TArray<FCurve> NewCurves;
+	NewCurves.Reserve(InCurves.Num());
+	for (const FHOLStatsGraphCurve& Source : InCurves)
+	{
+		FCurve& Curve = NewCurves.AddDefaulted_GetRef();
+		Curve.Name = Source.Name;
+		Curve.Color = Source.Color;
+		Curve.Points = Source.Points;
+	}
+	TArray<FMark> NewMarks;
+	NewMarks.Reserve(InMarks.Num());
+	for (const FHOLStatsGraphMark& Source : InMarks)
+	{
+		FMark& Mark = NewMarks.AddDefaulted_GetRef();
+		Mark.TimeSeconds = Source.TimeSeconds;
+		Mark.Color = Source.Color;
+		Mark.Label = Source.Label;
+	}
+	SetData(MoveTemp(NewCurves), MoveTemp(NewMarks));
+}
