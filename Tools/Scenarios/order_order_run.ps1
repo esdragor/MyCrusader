@@ -23,9 +23,11 @@ $rxRecv = [regex]'OrderRecv:? (?:kind=)?(\w+) key[ =](-?\d+)(?: units[ =](\d+))?
 
 function WaitFor($f, $pat, $sec) { $t0 = Get-Date; while (((Get-Date) - $t0).TotalSeconds -lt $sec) { if ((Test-Path $f) -and (Select-String -Path $f -Pattern $pat -Quiet)) { return $true }; Start-Sleep 2 }; return $false }
 function Count-Inversions($seq) { $c = 0; $a = @($seq); for ($i = 0; $i -lt $a.Count; $i++) { for ($j = $i + 1; $j -lt $a.Count; $j++) { if ($a[$i] -gt $a[$j]) { $c++ } } }; return $c }
+# A log still open by the editor cannot be read by ReadLines (sharing violation): open it with FileShare.ReadWrite.
+function Read-LinesShared($file) { $fs = [IO.File]::Open($file, "Open", "Read", "ReadWrite"); $sr = New-Object IO.StreamReader($fs); try { $out = New-Object System.Collections.Generic.List[string]; while ($null -ne ($l = $sr.ReadLine())) { $out.Add($l) }; return , $out } finally { $sr.Dispose(); $fs.Dispose() } }
 function Read-Orders($file, $rx) {
     $list = New-Object System.Collections.ArrayList; $occ = @{}
-    foreach ($line in [IO.File]::ReadLines($file)) {
+    foreach ($line in (Read-LinesShared $file)) {
         $m = $rx.Match($line); if (-not $m.Success) { continue }
         $kind = $m.Groups[1].Value; $key = [int]$m.Groups[2].Value
         if ($key -eq 0) { if (-not $occ.ContainsKey($kind)) { $occ[$kind] = 0 }; $occ[$kind]++; $id = "$kind|#$($occ[$kind])" } else { $id = "$kind|$key" }
