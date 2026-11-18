@@ -37,8 +37,16 @@
 param(
     [string]$Root = (Split-Path (Split-Path $PSScriptRoot -Parent) -Parent),
     [string]$Out = (Join-Path $env:TEMP "rpc_orders_p3p4"),
-    [ValidateSet('P3', 'P4', 'P3P4')][string]$Lot = 'P3P4'
+    [ValidateSet('P3', 'P4', 'P3P4')][string]$Lot = 'P3P4',
+    # D850 (criterion B of D846, simulated locally): one-way packet lag (ms), its variance (ms) and packet loss (%) on the server and on the green client; 0 = no emulation
+    [int]$Lag = 0,
+    [int]$LagVariance = 0,
+    [int]$Loss = 0
 )
+$NetEm = @(); if ($Lag -gt 0) { $NetEm += "NetEmulation.PktLag $Lag" }; if ($LagVariance -gt 0) { $NetEm += "NetEmulation.PktLagVariance $LagVariance" }; if ($Loss -gt 0) { $NetEm += "NetEmulation.PktLoss $Loss" }
+# D850: P4 needs buildings with garrison places (BuildingTypes.csv has none): hol.Garrison.ProofSlots on the server AND on the green client (its hol.Units.Garrison reads the same places)
+$Pre = @($NetEm); if ($Lot -ne 'P3') { $Pre += 'hol.Garrison.ProofSlots 4' }
+$svExec = if ($Pre.Count -gt 0) { " -ExecCmds=`"" + ($Pre -join "," ) + "`"" } else { "" }   # never pass an empty -ExecCmds
 $w = $Root; New-Item -ItemType Directory -Force $Out | Out-Null
 $up = (Get-ChildItem $w -Filter *.uproject).FullName
 $ed = 'C:\UE\UE_5.8_HOL\Engine\Binaries\Win64\UnrealEditor.exe'
@@ -68,19 +76,19 @@ $all = @(
     @{ Lot = 'P3'; Name = 'DropOff'; Recv = 'RpcOrder: drop off received by the server: slot 0 '; Dead = 40
         Eff = { param($s) $a = FirstIdx $s 'Drop-off order of slot 0: \d+ units to MainCentre'; if ($a -ge 0) { return $s[$a] }; return $null } },
     @{ Lot = 'P3'; Name = 'BuildUnits'; Recv = 'RpcOrder: build units received by the server: slot 0 '; Dead = 45
-        Eff = { param($s) $a = -1; for ($i = 0; $i -lt $s.Count; $i++) { if ($s[$i] -match 'Build order of slot 0: \d+ units to House at \((-?\d+), (-?\d+)\)') { $a = $i } }; if ($a -lt 0) { return $null }
+        Eff = { param($s) for ($a = 0; $a -lt $s.Count; $a++) { if ($s[$a] -notmatch 'Build order of slot 0: \d+ units to House at \((-?\d+), (-?\d+)\)') { continue }
             $m = [regex]::Match($s[$a], 'House at \((-?\d+), (-?\d+)\)'); $site = 'House at (' + $m.Groups[1].Value + ', ' + $m.Groups[2].Value + '), '
-            for ($i = $a + 1; $i -lt $s.Count; $i++) { if ($s[$i].Contains('Construction: slot 0 ' + $site) -and $s[$i] -match '[1-9]\d* builders at work') { return ($s[$a].Substring($s[$a].IndexOf('Build order')) + ' THEN ' + $s[$i].Substring($s[$i].IndexOf('Construction'))) } }; return $null } },
+            for ($i = $a + 1; $i -lt $s.Count; $i++) { if ($s[$i].Contains('Construction: slot 0 ' + $site) -and $s[$i] -match '[1-9]\d* builders at work') { return ($s[$a].Substring($s[$a].IndexOf('Build order')) + ' THEN ' + $s[$i].Substring($s[$i].IndexOf('Construction'))) } } }; return $null } },
     @{ Lot = 'P3'; Name = 'PlaceBuilding'; Recv = 'RpcOrder: place building received by the server: slot 0 '; Dead = 30
         Eff = { param($s) $a = FirstIdx $s 'Construction: slot 0 placed House foundation at \(.*\), paid '; if ($a -ge 0) { return $s[$a] }; return $null } },
     @{ Lot = 'P4'; Name = 'CancelBuilding'; Recv = 'RpcOrder: cancel building received by the server: slot 0'; Dead = 30
         Eff = { param($s) $a = FirstIdx $s 'Construction: slot 0 cancelled House at .*, refund'; if ($a -ge 0) { return $s[$a] }; return $null } },
     @{ Lot = 'P4'; Name = 'SetRallyPoint'; Recv = 'RpcOrder: set rally point received by the server: slot 0 '; Dead = 30
         Eff = { param($s) $a = FirstIdx $s 'Rally: slot 0 set the rally point of .* at \(.*\).* on site'; if ($a -ge 0) { return $s[$a] }; return $null } },
-    @{ Lot = 'P4'; Name = 'Garrison'; Recv = 'RpcOrder: garrison received by the server: slot 0 '; Dead = 0; Unprovable = 'NON PROUVABLE : GarrisonSlots = 0'
-        Eff = { param($s) return $null } },
-    @{ Lot = 'P4'; Name = 'UngarrisonAll'; Recv = 'RpcOrder: ungarrison all received by the server: slot 0 '; Dead = 0; Unprovable = 'NON PROUVABLE : GarrisonSlots = 0'
-        Eff = { param($s) return $null } }
+    @{ Lot = 'P4'; Name = 'Garrison'; Recv = 'RpcOrder: garrison received by the server: slot 0 '; Dead = 30
+        Eff = { param($s) $a = FirstIdx $s 'Garrison: slot 0 puts [1-9]\d* of \d+ units in '; if ($a -ge 0) { return $s[$a] }; return $null } },
+    @{ Lot = 'P4'; Name = 'UngarrisonAll'; Recv = 'RpcOrder: ungarrison all received by the server: slot 0'; Dead = 40
+        Eff = { param($s) $a = FirstIdx $s 'Garrison: slot 0 takes [1-9]\d* units out of '; if ($a -ge 0) { return $s[$a] }; return $null } }
 )
 $p3bits = 8388608 + 16777216 + 33554432 + 67108864
 $p4bits = 134217728 + 268435456 + 536870912 + 1073741824
@@ -103,15 +111,15 @@ if (Test-Path $lc) { . $lc; $stale = Get-StaleBinaryProblem $w; if ($stale) { "S
 # no server -ExecCmds at all (no ProofSpawn: the P3 / P4 orders need no spawned unit, the proof's Barracks is placed from the client): the argument is omitted, never passed empty
 $procs = @(); $code = 1
 try {
-    $sv = Start-Process $ed -ArgumentList "`"$up`" /Game/Maps/Plain -server -nullrhi -nosound -Port=$port -unattended -nosplash -Multiprocess -LiveCoding=0 -asdebugport=0 -as-exit-on-error -HOLCheats -MatchConfig=`"$cfg`" -saveddirsuffix=OrdSrv -abslog=`"$sl`"" -PassThru -WindowStyle Hidden
+    $sv = Start-Process $ed -ArgumentList "`"$up`" /Game/Maps/Plain -server -nullrhi -nosound -Port=$port -unattended -nosplash -Multiprocess -LiveCoding=0 -asdebugport=0 -as-exit-on-error -HOLCheats -MatchConfig=`"$cfg`" -saveddirsuffix=OrdSrv -abslog=`"$sl`"$svExec" -PassThru -WindowStyle Hidden
     $procs += $sv
-    $upOk = WaitFor $sl 'Bringing World .* up for play|Angelscript: Error' 90
+    $upOk = WaitFor $sl 'Bringing World .* up for play|Angelscript: Error' 180
     "server up: $upOk $(Get-Date -Format HH:mm:ss)"
     $a = Start-Process $ed -ArgumentList "`"$up`" 127.0.0.1:${port}?Name=Bob -game -nullrhi -nosound -unattended -nosplash -Multiprocess -LiveCoding=0 -asdebugport=0 -saveddirsuffix=OrdCli1 -abslog=`"$c1`"" -PassThru -WindowStyle Hidden
     $procs += $a
     "red client joined, made no call: $(WaitFor $c1 'Welcomed by server' 90) $(Get-Date -Format HH:mm:ss)"
     Start-Sleep 5
-    $b = Start-Process $ed -ArgumentList "`"$up`" 127.0.0.1:${port}?Name=Alice -game -nullrhi -nosound -unattended -nosplash -Multiprocess -LiveCoding=0 -asdebugport=0 -saveddirsuffix=OrdCli2 -abslog=`"$c2`" -ExecCmds=`"hol.Rpc.ProofRoute $bits`"" -PassThru -WindowStyle Hidden
+    $b = Start-Process $ed -ArgumentList "`"$up`" 127.0.0.1:${port}?Name=Alice -game -nullrhi -nosound -unattended -nosplash -Multiprocess -LiveCoding=0 -asdebugport=0 -saveddirsuffix=OrdCli2 -abslog=`"$c2`" -ExecCmds=`"$(((@($Pre) + @('hol.Rpc.ProofRoute ' + $bits)) -join ','))`"" -PassThru -WindowStyle Hidden
     $procs += $b
     $shot = WaitFor $c2 'RpcRoute: ' 90
     $t0 = Get-Date

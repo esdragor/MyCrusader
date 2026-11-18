@@ -10,6 +10,7 @@
 #include "HeroesOfLibertyLog.h"
 #include "Match/HOLMatchConfig.h"
 #include "Resources/HOLSourceSubsystem.h"
+#include "Simulation/HOLGarrisonSubsystem.h"
 #include "Simulation/HOLUnitView.h"
 
 namespace HOLPlayerOrders
@@ -311,8 +312,7 @@ namespace HOLPlayerOrders
 		{
 			return false;
 		}
-		const FHOLBuildingTypeRow* Row = Building.GetType();
-		return Row && Row->GarrisonSlots > 0;
+		return UHOLGarrisonSubsystem::GetSlots(Building) > 0;
 	}
 
 	bool Garrison(UWorld& World, const int32 PlayerIndex, const TConstArrayView<uint32> UnitIds, AHOLBuilding* Building)
