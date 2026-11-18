@@ -2287,8 +2287,8 @@ namespace UE::HeroesOfLiberty::Player
 		}));
 
 	FAutoConsoleCommand UnitsGatherCommand(
-		TEXT("hol.Units.Gather"),
-		TEXT("hol.Units.Gather [Dx Dy] [shift]: asks the server for a gather of the local player's units known here on the standing source nearest the player's start plus (Dx, Dy) (cm)"),
+		TEXT("hol.Units.GatherOrder"),
+		TEXT("hol.Units.GatherOrder [Dx Dy] [shift]: asks the server for a gather of the local player's units known here on the standing source nearest the player's start plus (Dx, Dy) (cm)"),
 		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
 		{
 			const bool bHasOffset = Args.Num() >= 2 && !Args[0].Equals(TEXT("shift"), ESearchCase::IgnoreCase) && !Args[1].Equals(TEXT("shift"), ESearchCase::IgnoreCase);
@@ -2301,13 +2301,13 @@ namespace UE::HeroesOfLiberty::Player
 				const UHOLSourceSubsystem* Sources = Controller->GetWorld()->GetSubsystem<UHOLSourceSubsystem>();
 				if (!Start || !Sources)
 				{
-					UE_LOG(LogHOLMatch, Warning, TEXT("hol.Units.Gather: no start slot or no source subsystem here"));
+					UE_LOG(LogHOLMatch, Warning, TEXT("hol.Units.GatherOrder: no start slot or no source subsystem here"));
 					continue;
 				}
 				const int32 Index = Sources->FindNearestStanding(Start->GetMainCentreLocation() + Offset);
 				if (Index == INDEX_NONE)
 				{
-					UE_LOG(LogHOLMatch, Warning, TEXT("hol.Units.Gather: no standing source"));
+					UE_LOG(LogHOLMatch, Warning, TEXT("hol.Units.GatherOrder: no standing source"));
 					continue;
 				}
 				const FHOLSource& Source = Sources->GetSources()[Index];
