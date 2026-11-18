@@ -3457,9 +3457,13 @@ void AHOLPlayerController::UpdateWatchedUnit()
 	}
 	if (UnitId != SentWatchedUnitId)
 	{
-		SentWatchedUnitId = UnitId;
 		const int32 WatchArgs[] = { static_cast<int32>(UnitId) };
-		if (!HOLRpcScriptRoute_Haldir1117n::CallN(this, nullptr, TEXT("ServerWatchUnit"), WatchArgs))
+		if (HOLRpcScriptRoute_Haldir1117n::CallN(this, nullptr, TEXT("ServerWatchUnit"), WatchArgs))
+		{
+			// Remembered only once the route took it: with no C++ fallback, a failed send must be retried at the next selection change.
+			SentWatchedUnitId = UnitId;
+		}
+		else
 		{
 			HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("WatchUnit"));
 		}
