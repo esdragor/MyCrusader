@@ -120,6 +120,8 @@ FString TalentTipTexts = "";
 	UOverlaySlot VolcanoSlot;
 	UCommonTextBlock VolcanoText;
 	FString VolcanoTexts = "";
+	// H-1: the wait and absence banners (HOLWaitBanner.as).
+	UHOLWaitBannerView WaitBanner;
 	// The AI line's height with its gap (px at 1080p), when it is shown.
 	const float VolcanoAfterAILine = 34.0;
 	float VolcanoTop = 72.0;
@@ -243,6 +245,8 @@ FString TalentTipTexts = "";
 		BuildDuelWindow(Frame);
 		BuildAILevelLine(Frame);
 		BuildVolcanoBanner(Frame);
+		WaitBanner = Cast<UHOLWaitBannerView>(NewObject(this, UHOLWaitBannerView));
+		WaitBanner.Build(this, Frame);
 		BuildMinimap(Frame);
 		BuildTalentWindow(Frame);
 		// Last: over the other blocks.
@@ -1358,6 +1362,8 @@ FString TalentTipTexts = "";
 		RefreshDuel();
 		RefreshAILevel();
 		RefreshVolcano();
+		if (WaitBanner != nullptr)
+			WaitBanner.Refresh();
 		if (Audio != nullptr)
 			Audio.PlayDueRepeats();
 		RefreshDiplomacy();

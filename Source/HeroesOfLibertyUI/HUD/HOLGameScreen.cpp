@@ -564,8 +564,6 @@ void UHOLGameScreen::NativeTick(const FGeometry& MyGeometry, const float InDelta
 	{
 		BindTableState(GetWorld() ? GetWorld()->GetGameState<AHOLGameState>() : nullptr);
 		RefreshPlayersTable();
-		RefreshWaitBanner();
-		RefreshAbsenceBanner();
 		RefreshStatsButton();
 		// V2.3c: a selected main forum on the ground, its ruin's seconds and its rebuilding's percent move with time alone
 		// (the forum's state changes only at its phases): its block is read at the same pace. Standing too (tiers, P4): its
@@ -3339,30 +3337,6 @@ void UHOLGameScreen::BuildLayout()
 	StatsSlot->SetPadding(FMargin(0.f, 0.f, 6.f, 0.f));
 	MenuRow->AddChildToHorizontalBox(MenuBox);
 	MenuPanel->SetContent(MenuRow);
-
-	// R3.10: the wait banner, top centre under the top bar, while the match waits for its named players.
-	WaitPanel = MakePanel(TEXT("WaitPanel"));
-	WaitPanel->SetBrush(FSlateRoundedBoxBrush(HOLUIStyle::HUDPanel.CopyWithNewOpacity(0.8f), 4.f));
-	WaitPanel->SetVisibility(ESlateVisibility::Collapsed);
-	UOverlaySlot* WaitSlot = Frame->AddChildToOverlay(WaitPanel);
-	WaitSlot->SetHorizontalAlignment(HAlign_Center);
-	WaitSlot->SetVerticalAlignment(VAlign_Top);
-	WaitSlot->SetPadding(FMargin(ScreenMargin, ScreenMargin + QueueItemHeight * 2.f, ScreenMargin, ScreenMargin));
-	WaitText = MakeText(TEXT("WaitText"), UHOLTextStyleHUDHeading::StaticClass(), FText::GetEmpty());
-	WaitPanel->SetContent(WaitText);
-
-	// R7.5: the disconnection banner, top centre under the alert's place (both can show during the match), as the wait
-	// banner; lets the clicks through.
-	AbsencePanel = MakePanel(TEXT("AbsencePanel"));
-	AbsencePanel->SetBrush(FSlateRoundedBoxBrush(HOLUIStyle::HUDPanel.CopyWithNewOpacity(0.8f), 4.f));
-	AbsencePanel->SetVisibility(ESlateVisibility::Collapsed);
-	UOverlaySlot* AbsenceSlot = Frame->AddChildToOverlay(AbsencePanel);
-	AbsenceSlot->SetHorizontalAlignment(HAlign_Center);
-	AbsenceSlot->SetVerticalAlignment(VAlign_Top);
-	AbsenceSlot->SetPadding(FMargin(ScreenMargin, ScreenMargin + QueueItemHeight * 2.f + 52.f, ScreenMargin, ScreenMargin));
-	AbsenceText = MakeText(TEXT("AbsenceText"), UHOLTextStyleHUDHeading::StaticClass(), FText::GetEmpty());
-	AbsenceText->SetJustification(ETextJustify::Center);
-	AbsencePanel->SetContent(AbsenceText);
 
 	// V4.3: the major alert's banner, top centre under the top bar (the wait banner's place, before the match), larger than
 	// the thread's lines; a click centres the camera on the touched forum.
