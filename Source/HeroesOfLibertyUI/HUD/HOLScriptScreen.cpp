@@ -279,7 +279,8 @@ void UHOLScriptScreen::GatherPanelBoxes(TArray<FHOLHUDNamedBox>& OutBoxes) const
 		}
 	}
 	// The C++ blocks a panel of the script must not cover (the Diplomacy panel's trial): the players' table, the menu's buttons.
-	const TCHAR* const GameNames[] = { TEXT("PlayersPanel"), TEXT("MenuPanel") };
+	// MenuPanel is the script's since H-3 (UHOLTopBarPanel): its box comes with the script's outermost panels below.
+	const TCHAR* const GameNames[] = { TEXT("PlayersPanel") };
 	for (const TCHAR* GameName : GameNames)
 	{
 		FVector2D Low;

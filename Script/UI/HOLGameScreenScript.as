@@ -119,6 +119,7 @@ FString TalentTipTexts = "";
 	UBorder VolcanoPanel;
 	UOverlaySlot VolcanoSlot;
 	UCommonTextBlock VolcanoText;
+	UHOLTopBarPanel TopBar;
 	FString VolcanoTexts = "";
 	// The AI line's height with its gap (px at 1080p), when it is shown.
 	const float VolcanoAfterAILine = 34.0;
@@ -243,6 +244,8 @@ FString TalentTipTexts = "";
 		BuildDuelWindow(Frame);
 		BuildAILevelLine(Frame);
 		BuildVolcanoBanner(Frame);
+		TopBar = Cast<UHOLTopBarPanel>(NewObject(this, UHOLTopBarPanel));
+		TopBar.Build(this, Frame);
 		BuildMinimap(Frame);
 		BuildTalentWindow(Frame);
 		// Last: over the other blocks.
@@ -594,7 +597,7 @@ FString TalentTipTexts = "";
 		FVector2D MenuLow;
 		FVector2D MenuHigh;
 		const FVector2D Room = GetViewportSlateSize();
-		if (GetGameScreenBox(n"MenuPanel", MenuLow, MenuHigh))
+		if (TopBar != nullptr && GetWidgetBox(TopBar.MenuPanel, MenuLow, MenuHigh))
 		{
 			const float Right = Math::Max(0.0, Room.X - MenuLow.X + 6.0);
 			if (Math::Abs(Right - DipButtonRight) > 0.5 || Math::Abs(MenuLow.Y - DipPanelTop) > 0.5)
@@ -1358,6 +1361,8 @@ FString TalentTipTexts = "";
 		RefreshDuel();
 		RefreshAILevel();
 		RefreshVolcano();
+		if (TopBar != nullptr)
+			TopBar.Refresh();
 		if (Audio != nullptr)
 			Audio.PlayDueRepeats();
 		RefreshDiplomacy();
@@ -2188,6 +2193,8 @@ FString TalentTipTexts = "";
 			return ClickDuelAnswer(false);
 		if (WidgetName == n"PauseResumeButton")
 			return ClickPauseResume();
+		if (TopBar != nullptr && TopBar.ClickName(WidgetName))
+			return true;
 		return false;
 	}
 
