@@ -18,7 +18,7 @@ class UHOLNewGameScreenScript : UHOLNewGameScreen
 	}
 
 	UFUNCTION(BlueprintOverride)
-	void BP_BuildNewGame()
+	void BuildNewGame()
 	{
 		// Widths and lists come from the base (the cpp's constants and name lists), never copied here.
 		const float NameWidth = UHOLNewGameScreen::GetNewGameWidth(n"Name");
