@@ -1,7 +1,7 @@
 // Port of HOLConstructionTests.cpp (MIG-C-Construction, ELROND-1117n, D830/D839): same vectors, one by one, against UHOLConstructionReadLibrary
 // (namespace HOLConstructionRead, wrappers of HOLConstruction in Buildings/HOLConstructionRules.h). NOT COMPILED when written: the C++ library is new.
 // Ported: Grid, Placement, Age, Payment, Damage, Builders, Population, States, Probes, BuildSpots, NextSite, CutPaths, SiteKeepOut, Body (14 of 20; Body without its UHOLBuildingSettings part).
-// Not ported (types to expose): Tables (building type table rows), CampSource FindCampSource (FHOLCampSource; its gap and SendsBuildersToGather are in Test_Construction_CampGap), IdleWall (FWallBody, EHOLUnitActivity), FreeFootprint (TFunctionRef). BuildQueue, WorkQueue: ELROND-1117o (int queues).
+// Tables ported by CELEBORN-1118m (Test_Construction_Tables, the row fields being exposed); not ported (types to expose): CampSource FindCampSource (FHOLCampSource; its gap and SendsBuildersToGather are in Test_Construction_CampGap), IdleWall (FWallBody, EHOLUnitActivity), FreeFootprint (TFunctionRef). BuildQueue, WorkQueue: ELROND-1117o (int queues).
 // Enums as ints: state 0 Foundation 1 UnderConstruction 2 Finished; attack 0 Melee 1 Ranged 2 Siege 3 Hero; refusal 0 None 1 OutOfMap 2 Building 3 Source 4 EnemyCentre 5 NavMesh.
 
 const float ConTestExponent = 0.63f;
@@ -1123,5 +1123,192 @@ void Test_Construction_FreeFootprint(FUnitTest& T)
 		int Ring = -1;
 		T.AssertTrue(HOLConstructionRead::FindFreeFootprint(ConHouse(0.0, 0.0), NoBuildings, NoSources, Map, 4000.0, ConHouse(0.0, 0.0), Aim, Tile, 4, Anywhere, Free, Ring), "map edge: found");
 		T.AssertTrue(Ring == 0 && ConNearV(ConCentre(Free), FVector2D(0.0, 600.0)), "map edge: ring 0, north (east is out of the map)");
+	}
+}
+
+// Tables (CELEBORN-1118m, port of HeroesOfLiberty.Construction.Tables, D314): the values of the building type table (D310, D313) and of the settings,
+// read through HOLConstructionRead::FindBuildingType (the row fields are BlueprintReadOnly since the lot of 2026-11-17). Resources as ints:
+// 0 Food, 1 Wood, 2 Stone, 3 Gold; category 0 Economic, 1 Military, 2 Technological. The 4 m tile is read from the settings (GetSettingTileSize).
+
+// One of the four economic types of the C++ table (House, LumberCamp, MiningCamp, Mill): slot, population, resources accepted, wood-only cost, 2 x 2 tiles.
+void ConCheckEconomicType(FUnitTest& T, FName Name, int Slot, int Population, TArray<int> Accepts, int Wood, double Grid, double CentreWidth)
+{
+	FHOLBuildingTypeRow Row;
+	bool bFound = HOLConstructionRead::FindBuildingType(Name, Row);
+	FString Label = Name.ToString();
+	T.AssertTrue(bFound, Label + " in the building type table");
+	if (!bFound)
+	{
+		return;
+	}
+	T.AssertEquals(Slot, Row.BuildGridSlot, Label + ": slot in the Peasant's grid (D313, age I, economic row: A, Z, E, R)");
+	T.AssertEquals(Population, Row.PopulationProvided, Label + ": population given");
+	T.AssertTrue(ConSameInts(HOLConstructionRead::GetBuildingTypeAccepts(Row), Accepts), Label + ": resources accepted");
+	T.AssertTrue(ConResEq(Row.Cost, ConRes(0, Wood, 0, 0)), Label + ": its cost, in wood only");
+	T.AssertTrue(Row.BuildTime > 0.0f, Label + ": a build time");
+	T.AssertTrue(ConNearV(Row.Footprint, FVector2D(2.0 * Grid, 2.0 * Grid)), Label + ": 2 x 2 tiles (6 m)");
+	T.AssertTrue(Row.Footprint.X < CentreWidth, Label + ": smaller than the main centre");
+}
+
+void Test_Construction_Tables(FUnitTest& T)
+{
+	double Grid = HOLConstructionRead::GetSettingTileSize();
+	T.AssertTrue(ConNear(Grid, 400.0), "4 m tiles (D311, D344)");
+	T.AssertTrue(HOLConstructionRead::GetSettingAntiRushRadius() > 0.0f, "anti-rush radius set (D22)");
+	double Ratio = double(HOLConstructionRead::GetWorkPerStep(3, HOLConstructionRead::GetSettingBuilderExponent())) / double(HOLConstructionRead::GetWorkPerBuilder());
+	T.AssertTrue(Math::Abs(Ratio - 2.0) < 0.05, "3 builders ~2x as fast (D312)");
+
+	FHOLBuildingTypeRow MainCentre;
+	bool bCentre = HOLConstructionRead::FindBuildingType(n"MainCentre", MainCentre);
+	T.AssertTrue(bCentre, "main centre");
+	if (!bCentre)
+	{
+		return;
+	}
+	T.AssertFalse(HOLConstructionRead::IsBuildingTypeBuildable(MainCentre), "the main centre is not built by Peasants");
+	T.AssertTrue(ConNearV(MainCentre.Footprint, FVector2D(4.0 * Grid, 4.0 * Grid)), "the main centre: 4 x 4 tiles (16 m)");
+
+	ConCheckEconomicType(T, n"House", 0, 10, ConInts(), 50, Grid, MainCentre.Footprint.X);
+	ConCheckEconomicType(T, n"LumberCamp", 1, 0, ConInts(1), 100, Grid, MainCentre.Footprint.X);
+	ConCheckEconomicType(T, n"MiningCamp", 2, 0, ConInts(2, 3), 100, Grid, MainCentre.Footprint.X);
+	ConCheckEconomicType(T, n"Mill", 3, 0, ConInts(0), 100, Grid, MainCentre.Footprint.X);
+
+	// J7a.1 (J7-Q2): the Barracks, built like a house; J7a.2: on R of the Peasant's grid (military row).
+	FHOLBuildingTypeRow Barracks;
+	bool bBarracks = HOLConstructionRead::FindBuildingType(n"Barracks", Barracks);
+	T.AssertTrue(bBarracks, "Barracks in the building type table");
+	if (bBarracks)
+	{
+		T.AssertTrue(HOLConstructionRead::IsBuildingTypeBuildable(Barracks), "Barracks: built by Peasants");
+		T.AssertEquals(4, Barracks.BuildGridSlot, "Barracks: Q of the Peasant's grid (slot 4, military row, D313)");
+		T.AssertTrue(ConNearV(Barracks.Footprint, FVector2D(3.0 * Grid, 3.0 * Grid)), "Barracks: 3 x 3 tiles (12 m)");
+		T.AssertTrue(ConResEq(Barracks.Cost, ConRes(0, 150, 0, 0)), "Barracks: 150 wood");
+		T.AssertTrue(ConNear(Barracks.BuildTime, 20.0), "Barracks: 20 s for one builder");
+		T.AssertEquals(1500, Barracks.MaxHealth, "Barracks: 1 500 health");
+		T.AssertTrue(ConNear(Barracks.Height, 600.0), "Barracks: 6 m high");
+	}
+
+	// AR-Q2a: the Archery range, built like the Barracks, on S of the Peasant's grid, no prerequisite.
+	FHOLBuildingTypeRow Archery;
+	bool bArchery = HOLConstructionRead::FindBuildingType(n"ArcheryRange", Archery);
+	T.AssertTrue(bArchery, "Archery range in the building type table");
+	if (bArchery)
+	{
+		T.AssertTrue(HOLConstructionRead::IsBuildingTypeBuildable(Archery), "Archery range: built by Peasants");
+		T.AssertEquals(5, Archery.BuildGridSlot, "Archery range: S of the Peasant's grid (slot 5, military row)");
+		T.AssertTrue(ConNearV(Archery.Footprint, FVector2D(3.0 * Grid, 3.0 * Grid)), "Archery range: 3 x 3 tiles (12 m)");
+		T.AssertEquals(0, Archery.Age, "Archery range: age I");
+	}
+
+	// SC-Q1 = B (D602): the Sanctuary of the Dawn, technological, age I, X of page I, 250 wood, 3 x 3 tiles, 30 s, 1 500 health, no production.
+	FHOLBuildingTypeRow Sanctuary;
+	bool bSanctuary = HOLConstructionRead::FindBuildingType(n"Sanctuary", Sanctuary);
+	T.AssertTrue(bSanctuary, "Sanctuary in the building type table");
+	if (bSanctuary)
+	{
+		T.AssertTrue(HOLConstructionRead::IsBuildingTypeBuildable(Sanctuary), "Sanctuary: built by Peasants");
+		T.AssertEquals(9, Sanctuary.BuildGridSlot, "Sanctuary: X of the Peasant's grid (slot 9, after the Farm)");
+		T.AssertEquals(0, Sanctuary.Age, "Sanctuary: age I");
+		T.AssertEquals(2, HOLConstructionRead::GetBuildingTypeCategory(Sanctuary), "Sanctuary: technological");
+		T.AssertTrue(ConNearV(Sanctuary.Footprint, FVector2D(3.0 * Grid, 3.0 * Grid)), "Sanctuary: 3 x 3 tiles (12 m)");
+		T.AssertTrue(ConResEq(Sanctuary.Cost, ConRes(0, 250, 0, 0)), "Sanctuary: 250 wood");
+		T.AssertTrue(ConNear(Sanctuary.BuildTime, 30.0), "Sanctuary: 30 s for one builder");
+		T.AssertEquals(1500, Sanctuary.MaxHealth, "Sanctuary: 1 500 health");
+		T.AssertEquals(0, Sanctuary.PopulationProvided, "Sanctuary: no population");
+		T.AssertEquals(0, Sanctuary.Produces.Num(), "Sanctuary: produces nothing");
+		T.AssertEquals(0, HOLConstructionRead::GetBuildingTypeAccepts(Sanctuary).Num(), "Sanctuary: takes no resource");
+		T.AssertFalse(Sanctuary.Walkable, "Sanctuary: not walkable");
+	}
+
+	// Q-chapelle-moine = A: the Chapel of the Dawn (age II, page II), military, S of page II, 200 wood, 3 x 3 tiles, 30 s, 1 500 health; it produces the Monk.
+	FHOLBuildingTypeRow Chapel;
+	bool bChapel = HOLConstructionRead::FindBuildingType(n"Chapel", Chapel);
+	T.AssertTrue(bChapel, "Chapel in the building type table");
+	if (bChapel)
+	{
+		T.AssertTrue(HOLConstructionRead::IsBuildingTypeBuildable(Chapel), "Chapel: built by Peasants");
+		T.AssertEquals(5, Chapel.BuildGridSlot, "Chapel: S of the Peasant's grid (slot 5, military row)");
+		T.AssertEquals(1, Chapel.Age, "Chapel: age II (page II)");
+		T.AssertEquals(1, HOLConstructionRead::GetBuildingTypeCategory(Chapel), "Chapel: military (it forms the Monk)");
+		T.AssertTrue(ConNearV(Chapel.Footprint, FVector2D(3.0 * Grid, 3.0 * Grid)), "Chapel: 3 x 3 tiles (12 m)");
+		T.AssertTrue(ConResEq(Chapel.Cost, ConRes(0, 200, 0, 0)), "Chapel: 200 wood");
+		T.AssertTrue(ConNear(Chapel.BuildTime, 30.0), "Chapel: 30 s for one builder");
+		T.AssertEquals(1500, Chapel.MaxHealth, "Chapel: 1 500 health");
+		T.AssertEquals(0, Chapel.PopulationProvided, "Chapel: no population");
+		T.AssertTrue(Chapel.Produces.Num() == 1 && Chapel.Produces[0] == n"Monk", "Chapel: produces the Monk");
+		T.AssertEquals(0, HOLConstructionRead::GetBuildingTypeAccepts(Chapel).Num(), "Chapel: takes no resource");
+		T.AssertFalse(Chapel.Walkable, "Chapel: not walkable");
+	}
+
+	// M3 (GDD 5.5, 11.1, D569): the Market, economic, age II, A of page II; size, cost and health provisional: 3 x 3 tiles, wood only, a build time.
+	FHOLBuildingTypeRow Market;
+	bool bMarket = HOLConstructionRead::FindBuildingType(n"Market", Market);
+	T.AssertTrue(bMarket, "Market in the building type table");
+	if (bMarket)
+	{
+		T.AssertTrue(HOLConstructionRead::IsBuildingTypeBuildable(Market), "Market: built by Peasants");
+		T.AssertEquals(0, Market.BuildGridSlot, "Market: A of the Peasant's grid (slot 0, economic row)");
+		T.AssertEquals(1, Market.Age, "Market: age II");
+		T.AssertEquals(0, HOLConstructionRead::GetBuildingTypeCategory(Market), "Market: economic");
+		T.AssertTrue(ConNearV(Market.Footprint, FVector2D(3.0 * Grid, 3.0 * Grid)), "Market: 3 x 3 tiles");
+		T.AssertTrue(Market.Cost.Food == 0 && Market.Cost.Stone == 0 && Market.Cost.Gold == 0 && Market.Cost.Wood > 0, "Market: costs wood only");
+		T.AssertTrue(Market.BuildTime > 0.0f, "Market: a build time");
+		T.AssertEquals(0, Market.PopulationProvided, "Market: no population");
+		T.AssertEquals(0, Market.Produces.Num(), "Market: produces nothing");
+		T.AssertEquals(0, HOLConstructionRead::GetBuildingTypeAccepts(Market).Num(), "Market: takes no resource (it is not a deposit)");
+		T.AssertFalse(Market.Walkable, "Market: not walkable");
+		T.AssertTrue(Market.Source == n"None", "Market: no source of its own");
+		T.AssertTrue(Market.SightRadius >= 2000.0f, "Market: sees at least as far as a house");
+	}
+
+	// IA1.2 (F4): every building so far blocks the way and has no source of its own.
+	TArray<FName> Blocking;
+	Blocking.Add(n"MainCentre");
+	Blocking.Add(n"House");
+	Blocking.Add(n"LumberCamp");
+	Blocking.Add(n"MiningCamp");
+	Blocking.Add(n"Mill");
+	Blocking.Add(n"Barracks");
+	Blocking.Add(n"ArcheryRange");
+	for (int Index = 0; Index < Blocking.Num(); ++Index)
+	{
+		FHOLBuildingTypeRow Row;
+		FString Label = Blocking[Index].ToString();
+		bool bFoundRow = HOLConstructionRead::FindBuildingType(Blocking[Index], Row);
+		T.AssertTrue(bFoundRow, Label + " in the building type table");
+		if (bFoundRow)
+		{
+			T.AssertFalse(Row.Walkable, Label + ": not walkable");
+			T.AssertTrue(Row.Source == n"None", Label + ": no source of its own");
+		}
+	}
+
+	// IA1.2 (F4): the Farm, 2 x 2 like the Mill, 75 wood, 7.5 s, W of the Peasant's grid (slot 8), walked over, born with its FarmField (a linked food source).
+	FHOLBuildingTypeRow Farm;
+	bool bFarm = HOLConstructionRead::FindBuildingType(n"Farm", Farm);
+	T.AssertTrue(bFarm, "Farm in the building type table");
+	if (bFarm)
+	{
+		T.AssertTrue(HOLConstructionRead::IsBuildingTypeBuildable(Farm), "Farm: built by Peasants");
+		T.AssertEquals(8, Farm.BuildGridSlot, "Farm: W of the Peasant's grid (slot 8, IA1.2-Q1)");
+		T.AssertEquals(0, Farm.Age, "Farm: age I");
+		T.AssertEquals(0, HOLConstructionRead::GetBuildingTypeCategory(Farm), "Farm: economic");
+		T.AssertTrue(ConNearV(Farm.Footprint, FVector2D(2.0 * Grid, 2.0 * Grid)), "Farm: 2 x 2 tiles (8 m)");
+		T.AssertTrue(ConResEq(Farm.Cost, ConRes(0, 75, 0, 0)), "Farm: 75 wood");
+		T.AssertTrue(ConNear(Farm.BuildTime, 7.5), "Farm: 7.5 s for one builder");
+		T.AssertEquals(0, Farm.PopulationProvided, "Farm: no population");
+		T.AssertEquals(0, HOLConstructionRead::GetBuildingTypeAccepts(Farm).Num(), "Farm: takes no resource (no deposit)");
+		T.AssertEquals(0, Farm.Produces.Num(), "Farm: produces nothing");
+		T.AssertTrue(Farm.Walkable, "Farm: walkable");
+		T.AssertTrue(Farm.Source == n"FarmField", "Farm: its source is a FarmField");
+		bool bLinked = false;
+		int FieldResource = -1;
+		bool bField = HOLConstructionRead::FindSourceTypeInfo(Farm.Source, bLinked, FieldResource);
+		T.AssertTrue(bField, "Farm: its source in the source type table");
+		if (bField)
+		{
+			T.AssertTrue(bLinked, "Farm: its source is linked");
+			T.AssertEquals(0, FieldResource, "Farm: its source gives food");
+		}
 	}
 }
