@@ -91,6 +91,9 @@ public:
 	/** The player state the screen shows (the local player's); null for a spectator or before it arrives. */
 	const AHOLPlayerState* GetBoundPlayerState() const;
 
+	/** HUD H-4: the PlayersPanel (table host in the right column), filled by the script's table. */
+	UBorder* GetPlayersPanel() const { return PlayersPanel; }
+
 	/** The population full alert's test binds a player state without a player controller. */
 	friend class FHOLPopulationAlertThreadTest;
 
@@ -463,33 +466,9 @@ private:
 	 * configuration reaching a client).
 	 */
 	void BindTableState(class AHOLGameState* GameState);
-	void RefreshPlayersTable();
 	UPROPERTY(Transient)
 	TObjectPtr<UBorder> PlayersPanel;
-	/** One row per slot at most (MaxSlots): its box, its name, its lives, its forum's phase. */
-	UPROPERTY(Transient)
-	TArray<TObjectPtr<UHorizontalBox>> PlayerRows;
-	UPROPERTY(Transient)
-	TArray<TObjectPtr<UCommonTextBlock>> PlayerNames;
-	/** E4-1: the relation's icon before each name (HOLRelationIcons): an ally's shield, an enemy's swords. */
-	UPROPERTY(Transient)
-	TArray<TObjectPtr<UImage>> PlayerRelations;
-	/** E4-1: the two icons' textures, loaded with the table (HOLRelationIcons::AllyPath, EnemyPath). */
-	UPROPERTY(Transient)
-	TObjectPtr<UTexture2D> AllyIcon;
-	UPROPERTY(Transient)
-	TObjectPtr<UTexture2D> EnemyIcon;
-	/** E4-2: the thin bar across each name, shown on a defeated player's. */
-	UPROPERTY(Transient)
-	TArray<TObjectPtr<UImage>> PlayerStrikes;
-	UPROPERTY(Transient)
-	TArray<TObjectPtr<UCommonTextBlock>> PlayerLives;
-	UPROPERTY(Transient)
-	TArray<TObjectPtr<UCommonTextBlock>> PlayerStates;
 	TWeakObjectPtr<class AHOLGameState> BoundTableState;
-	FDelegateHandle TableForumsHandle;
-	FDelegateHandle TableVictoryHandle;
-	FDelegateHandle TableDiplomacyHandle;
 	float SinceTableRefresh = 1.f;
 
 	/**
@@ -548,12 +527,6 @@ private:
 	FDelegateHandle TableTributeHandle;
 	FDelegateHandle TableSignalHandle;
 	FDelegateHandle TableHeroLevelHandle;
-	/** What the table shows, for Describe ("players [slot 0 you colour 0 lives 2 standing | ...]"). */
-	FString ShownPlayersTable;
-	/** The names of the players table as last logged (M6-Q12). */
-	FString ShownPlayerNames;
-	/** The pastilles (« Connexion perdue » / « IA ») of the table as last logged (T8, read by lobby_match: empty = none). */
-	FString ShownPlayerStates;
 
 	/** What the blocks show, for Describe. */
 	bool bEconomyShown = false;

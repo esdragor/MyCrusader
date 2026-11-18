@@ -119,6 +119,8 @@ FString TalentTipTexts = "";
 	UBorder VolcanoPanel;
 	UOverlaySlot VolcanoSlot;
 	UCommonTextBlock VolcanoText;
+	// HUD H-4: the players' table (HOLPlayerTable.as), drawn into the C++ screen's PlayersPanel.
+	UHOLPlayerTablePanel PlayerTable;
 	FString VolcanoTexts = "";
 	// H-1: the wait and absence banners (HOLWaitBanner.as).
 	UHOLWaitBannerPanel WaitBanner;
@@ -253,6 +255,8 @@ FString TalentTipTexts = "";
 		WaitBanner = Cast<UHOLWaitBannerPanel>(NewObject(this, UHOLWaitBannerPanel));
 		WaitBanner.Build(this, Frame);
 		MessageParts = HOLShortMessage::Build(this, Frame);
+		PlayerTable = Cast<UHOLPlayerTablePanel>(NewObject(this, UHOLPlayerTablePanel));
+		PlayerTable.Build(this, GetPlayersPanel());
 		BuildMinimap(Frame);
 		BuildTalentWindow(Frame);
 		// Last: over the other blocks.
@@ -1370,6 +1374,8 @@ FString TalentTipTexts = "";
 		RefreshVolcano();
 		if (WaitBanner != nullptr)
 			WaitBanner.Refresh();
+		if (PlayerTable != nullptr)
+			PlayerTable.Refresh();
 		if (Audio != nullptr)
 			Audio.PlayDueRepeats();
 		RefreshDiplomacy();
