@@ -1,0 +1,3 @@
+# <nom de capture> | ce que l'utilisateur doit voir
+ecran_titre_menu | ecran titre : "Heroes of Liberty" en grand au centre, 4 boutons dans l'ordre Jouer, Multijoueur, Reglages, Quitter, la version en bas a droite, rien de decale ni de coupe
+ecran_titre_quitter | le titre reste dessous, par-dessus la question "Quitter le jeu ?" avec les boutons Quitter et Non (Non au focus)

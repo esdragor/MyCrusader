@@ -2,7 +2,9 @@
 
 #include "Buildings/HOLProductionSubsystem.h"
 #include "Simulation/HOLUnitTierRules.h"
+#include "Simulation/HOLUnitTierSubsystem.h"
 
+#include "Match/HOLMarketSubsystem.h"
 #include "Match/HOLMatchStatsSubsystem.h"
 
 #include "Buildings/HOLBuilding.h"
@@ -192,7 +194,7 @@ void UHOLProductionSubsystem::RecoverMarketBook()
 	if (++StepsSinceMarketRecover >= IntervalSteps)
 	{
 		StepsSinceMarketRecover = 0;
-		GameState->SetMarketBook(HOLMarket::Recover(MarketSettings, GameState->GetMarketBook(), 1));
+		GameState->SetMarketBook(UHOLMarketSubsystem::Recover(GetWorld(), MarketSettings, GameState->GetMarketBook(), 1));
 	}
 }
 
@@ -217,8 +219,8 @@ void UHOLProductionSubsystem::ApplyMarketTrade(const FHOLProductionCommand& Orde
 		return;
 	}
 	FHOLResources After;
-	const HOLMarket::FTrade Trade = HOLMarket::Apply(MarketSettings, GameState->GetMarketBook(), PlayerState.GetResources(),
-		static_cast<EHOLResource>(Order.Resource), Order.Lots, Order.bBuy, MarketSettings.FeePercent, After);
+	const HOLMarket::FTrade Trade = UHOLMarketSubsystem::Apply(GetWorld(), MarketSettings, GameState->GetMarketBook(), PlayerState.GetResources(),
+		static_cast<EHOLResource>(Order.Resource), Order.Lots, Order.bBuy, After);
 	if (!Trade.bOk)
 	{
 		UE_LOG(LogHOLCommands, Display, TEXT("Market: slot %d cannot %s %d lots of resource %d (%s)"), Order.PlayerIndex,
@@ -250,7 +252,7 @@ void UHOLProductionSubsystem::ApplyTribute(const FHOLProductionCommand& Order, c
 		UE_LOG(LogHOLCommands, Display, TEXT("Tribute: slot %d cannot give %d of resource %d (stock %d)"), Order.PlayerIndex, Order.Amount, Order.Resource, GiverStock[Resource]);
 		return;
 	}
-	const int32 Arrives = HOLTribute::Received(Order.Amount, HOLTribute::DefaultTaxPercent);
+	const int32 Arrives = UHOLMarketSubsystem::Received(GetWorld(), Order.Amount, HOLTribute::DefaultTaxPercent);
 	FHOLResources TakerStock = Taker->GetResources();
 	GiverStock[Resource] -= Order.Amount;
 	TakerStock[Resource] += Arrives;
@@ -445,7 +447,7 @@ void UHOLProductionSubsystem::ApplyOrders()
 					// G1 (Palier3InProgress.md, D711): EVERY unit opens at the tier of its column MinTier (HOLUnitTier, one rule for all); a client that asks for a Man-at-arms at tier 0 is refused here.
 					const int32 UnitMinTier = HOLUnitTier::GetMinTier(Order.TypeName);
 					const AHOLGameState* TierState = GetWorld()->GetGameState<AHOLGameState>();
-					if (HOLUnitTier::Check(UnitMinTier, TierState ? TierState->GetTier(Order.PlayerIndex) : 0, true, true) == HOLUnitTier::EBlock::TierTooLow)
+					if (UHOLUnitTierSubsystem::CheckUnit(GetWorld(), Order.TypeName, TierState ? TierState->GetTier(Order.PlayerIndex) : 0, true, true) == static_cast<int32>(HOLUnitTier::EBlock::TierTooLow))
 					{
 						UE_LOG(LogHOLCommands, Display, TEXT("Production: slot %d cannot queue %s (tier too low: it opens at tier %d)"), Order.PlayerIndex, *Order.TypeName.ToString(), UnitMinTier);
 						continue;

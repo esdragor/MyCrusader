@@ -1,7 +1,7 @@
 // The end banner in script (D357, V1-Q2, M6-Q7 revised, M6-Q10; migration D830/D835, pilot 2 MIG-P2d): which banner is due and when it
 // opens (TEMPORARY TWINS of HOLGameMenuRules::GetEndBanner and ShouldOpenEndBanner, Source/HeroesOfLiberty/Player/HOLGameMenuRules.cpp,
-// held to the vectors of Victory.EndBanner.Which and .Closed), and the banner as a view (title, buttons, labels, clicks), as UHOLEndBanner's
-// SetResult and RefreshWayBack do in C++ (Source/HeroesOfLibertyUI/Screens/HOLEndBanner.cpp). The widget applying it waits for the same
+// held to the vectors of Victory.EndBanner.Which and .Closed), and the banner as a view (title, buttons, labels, clicks), as UHOLEndBannerScreen's
+// SetResult and RefreshWayBack do in C++ (Source/HeroesOfLibertyUI/Screens/HOLEndBannerScreen.cpp). The widget applying it waits for the same
 // bindings as the in-game menu's (AngelscriptInProgress.md, pilot 2). Describe is the stable line of the tests.
 
 // What a click on one of the banner's buttons asks for.

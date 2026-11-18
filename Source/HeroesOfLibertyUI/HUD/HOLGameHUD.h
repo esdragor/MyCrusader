@@ -6,7 +6,7 @@
 
 class AHOLGameState;
 class AHOLPlayerController;
-class UHOLEndBanner;
+class UHOLEndBannerScreen;
 enum class EHOLEndBanner : uint8;
 class UFont;
 class UHOLCheatPanel;
@@ -60,7 +60,7 @@ private:
 	 * slot are known on this machine (a client), then the end banner is checked at once (a state received all at once).
 	 */
 	void WatchVictory();
-	/** Opens, updates or leaves the end banner (HOLGameMenuRules::GetEndBanner, ShouldOpenEndBanner; V1-Q2). */
+	/** Opens, updates or leaves the end banner (UHOLGameMenuRulesBridge::NativeGetEndBanner, ShouldOpenEndBanner; V1-Q2). */
 	void RefreshEndBanner();
 
 	UPROPERTY(Transient)
@@ -77,7 +77,7 @@ private:
 	TObjectPtr<UHOLScenarioPanel> ScenarioPanel;
 
 	UPROPERTY(Transient)
-	TObjectPtr<UHOLEndBanner> EndBanner;
+	TObjectPtr<UHOLEndBannerScreen> EndBanner;
 
 	TWeakObjectPtr<AHOLGameState> WatchedGameState;
 	FTimerHandle WatchVictoryTimer;

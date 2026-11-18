@@ -66,13 +66,13 @@ void Test_ForgeAttackAvailability(FUnitTest& T)
 	HOLAITechnology::ReadAITechnologyTable(Table);
 	const FHOLAITechnology One = ForgeRow(Table, n"MeleeAttackI");
 	const FHOLAITechnology Two = ForgeRow(Table, n"MeleeAttackII");
-	T.AssertEquals(HOLTechnologyRules::Available, HOLTechnologyRules::CheckImplemented(One.bImplemented, 1, 3, One.MinTier, One.MinHeroLevel, true, true, true, false, false), "tier 1, Forge, paid: level I");
-	T.AssertEquals(HOLTechnologyRules::TierTooLow, HOLTechnologyRules::CheckImplemented(One.bImplemented, 0, 0, One.MinTier, One.MinHeroLevel, true, true, true, false, false), "tier 0: closed");
-	T.AssertEquals(HOLTechnologyRules::NoBuilding, HOLTechnologyRules::CheckImplemented(One.bImplemented, 1, 3, One.MinTier, One.MinHeroLevel, true, false, true, false, false), "no finished Forge");
-	T.AssertEquals(HOLTechnologyRules::CannotPay, HOLTechnologyRules::CheckImplemented(One.bImplemented, 1, 3, One.MinTier, One.MinHeroLevel, true, true, false, false, false), "an empty purse");
-	T.AssertEquals(HOLTechnologyRules::TierTooLow, HOLTechnologyRules::CheckImplemented(Two.bImplemented, 1, 3, Two.MinTier, Two.MinHeroLevel, true, true, true, false, false), "level II is closed at tier 1");
-	T.AssertEquals(HOLTechnologyRules::RequiresMissing, HOLTechnologyRules::CheckImplemented(Two.bImplemented, 2, 6, Two.MinTier, Two.MinHeroLevel, false, true, true, false, false), "level II without level I");
-	T.AssertEquals(HOLTechnologyRules::Available, HOLTechnologyRules::CheckImplemented(Two.bImplemented, 2, 6, Two.MinTier, Two.MinHeroLevel, true, true, true, false, false), "tier 2 after level I: level II");
+	T.AssertEquals(HOLTechnologyRules::Available, HOLTechnologyCheck::Check(One.bImplemented, 1, 3, One.MinTier, One.MinHeroLevel, true, true, true, false, false), "tier 1, Forge, paid: level I");
+	T.AssertEquals(HOLTechnologyRules::TierTooLow, HOLTechnologyCheck::Check(One.bImplemented, 0, 0, One.MinTier, One.MinHeroLevel, true, true, true, false, false), "tier 0: closed");
+	T.AssertEquals(HOLTechnologyRules::NoBuilding, HOLTechnologyCheck::Check(One.bImplemented, 1, 3, One.MinTier, One.MinHeroLevel, true, false, true, false, false), "no finished Forge");
+	T.AssertEquals(HOLTechnologyRules::CannotPay, HOLTechnologyCheck::Check(One.bImplemented, 1, 3, One.MinTier, One.MinHeroLevel, true, true, false, false, false), "an empty purse");
+	T.AssertEquals(HOLTechnologyRules::TierTooLow, HOLTechnologyCheck::Check(Two.bImplemented, 1, 3, Two.MinTier, Two.MinHeroLevel, true, true, true, false, false), "level II is closed at tier 1");
+	T.AssertEquals(HOLTechnologyRules::RequiresMissing, HOLTechnologyCheck::Check(Two.bImplemented, 2, 6, Two.MinTier, Two.MinHeroLevel, false, true, true, false, false), "level II without level I");
+	T.AssertEquals(HOLTechnologyRules::Available, HOLTechnologyCheck::Check(Two.bImplemented, 2, 6, Two.MinTier, Two.MinHeroLevel, true, true, true, false, false), "tier 2 after level I: level II");
 }
 
 // The armour lines are coded since F2 (Maille, Barde: the combat chain reads them): they are researchable like the attack lines, with the Forge standing and the purse full.
@@ -89,7 +89,7 @@ void Test_ForgeArmourLinesAreResearchableSinceF2(FUnitTest& T)
 	{
 		const FHOLAITechnology Row = ForgeRow(Table, Names[Index]);
 		T.AssertTrue(Row.Building == n"Forge", Names[Index].ToString() + " is a Forge line");
-		T.AssertEquals(HOLTechnologyRules::Available, HOLTechnologyRules::CheckImplemented(Row.bImplemented, 2, 6, Row.MinTier, Row.MinHeroLevel, true, true, true, false, false),
+		T.AssertEquals(HOLTechnologyRules::Available, HOLTechnologyCheck::Check(Row.bImplemented, 2, 6, Row.MinTier, Row.MinHeroLevel, true, true, true, false, false),
 			Names[Index].ToString() + " is coded (F2): researchable at tier 2 with the Forge and the purse");
 	}
 }

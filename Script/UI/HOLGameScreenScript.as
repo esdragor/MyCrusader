@@ -451,9 +451,9 @@ FString TalentTipTexts = "";
 			DipInfos.Add(MakeText(FName(f"DipInfo_{Slot}"), UHOLTextStyleHUDSmall));
 			DipTheirs.Add(MakeText(FName(f"DipTheir_{Slot}"), UHOLTextStyleHUDSmall));
 			// The three stance buttons (layouts 0 and 2), the chip (1) and the drop-down's head (2): Enemy 0, Neutral 1, Ally 2 as the stances.
-			DipStanceButtons.Add(BindDipButton(MakeDipButton(FName(f"DipEnemy_{Slot}")), Slot, HOLDiplomacy::Enemy));
-			DipStanceButtons.Add(BindDipButton(MakeDipButton(FName(f"DipNeutral_{Slot}")), Slot, HOLDiplomacy::Neutral));
-			DipStanceButtons.Add(BindDipButton(MakeDipButton(FName(f"DipAlly_{Slot}")), Slot, HOLDiplomacy::Ally));
+			DipStanceButtons.Add(BindDipButton(MakeDipButton(FName(f"DipEnemy_{Slot}")), Slot, HOLDiplomacyRead::GetStanceEnemy()));
+			DipStanceButtons.Add(BindDipButton(MakeDipButton(FName(f"DipNeutral_{Slot}")), Slot, HOLDiplomacyRead::GetStanceNeutral()));
+			DipStanceButtons.Add(BindDipButton(MakeDipButton(FName(f"DipAlly_{Slot}")), Slot, HOLDiplomacyRead::GetStanceAlly()));
 			DipChips.Add(BindDipButton(MakeDipButton(FName(f"DipChip_{Slot}")), Slot, DipKindChip));
 			DipMenuButtons.Add(BindDipButton(MakeDipButton(FName(f"DipMenu_{Slot}")), Slot, DipKindMenu));
 			DipVisionButtons.Add(BindDipButton(MakeDipButton(FName(f"DipVision_{Slot}")), Slot, DipKindVision));
@@ -548,9 +548,9 @@ FString TalentTipTexts = "";
 	// Tints over the buttons' dark: a stance's colour on its active button or chip (the brush is nearly black, so the factors are large).
 	FLinearColor DipStanceTint(int Stance) const
 	{
-		if (Stance == HOLDiplomacy::Ally)
+		if (Stance == HOLDiplomacyRead::GetStanceAlly())
 			return FLinearColor(2.6, 8.0, 2.8, 1.0);
-		if (Stance == HOLDiplomacy::Neutral)
+		if (Stance == HOLDiplomacyRead::GetStanceNeutral())
 			return FLinearColor(8.5, 7.1, 1.7, 1.0);
 		return FLinearColor(8.5, 2.1, 1.7, 1.0);
 	}
@@ -558,9 +558,9 @@ FString TalentTipTexts = "";
 	// The text colours of the stances (the tints above are for the buttons' near-black brush): green, yellow, red.
 	FLinearColor DipStanceTextColor(int Stance) const
 	{
-		if (Stance == HOLDiplomacy::Ally)
+		if (Stance == HOLDiplomacyRead::GetStanceAlly())
 			return FLinearColor(0.45, 0.85, 0.5, 1.0);
-		if (Stance == HOLDiplomacy::Neutral)
+		if (Stance == HOLDiplomacyRead::GetStanceNeutral())
 			return FLinearColor(0.95, 0.82, 0.35, 1.0);
 		return FLinearColor(0.95, 0.4, 0.35, 1.0);
 	}
@@ -747,7 +747,7 @@ FString TalentTipTexts = "";
 		// The posture controls: none on the viewer's own line; greyed when locked (the standard modes, an AI, a defeated player).
 		const bool bControls = !Row.bSelf;
 		const bool bStances = bControls && bDipModeNow;
-		for (int Stance = HOLDiplomacy::Enemy; Stance <= HOLDiplomacy::Ally; ++Stance)
+		for (int Stance = HOLDiplomacyRead::GetStanceEnemy(); Stance <= HOLDiplomacyRead::GetStanceAlly(); ++Stance)
 		{
 			const bool bActive = Row.MyStance == Stance;
 			DipSetButton(DipStanceButtons[Slot * 3 + Stance], bStances && (Layout == 0 || (Layout == 2 && DipMenuSlot == Slot)), Row.bStanceEditable,
@@ -764,7 +764,7 @@ FString TalentTipTexts = "";
 		// Vision (checked: [x]), tribute (with the tax, greyed without a Market), private message.
 		const FString Mark = Row.bVisionChecked ? "[x] " : "[ ] ";
 		DipSetButton(DipVisionButtons[Slot], bStances, Row.bVisionEnabled, FText::FromString(Mark + HOLDiplomacyPanelText::Format(HOLDiplomacyPanelText::Vision)),
-			HOLDiplomacyPanelText::PatternText(HOLDiplomacyPanelText::VisionTip), Row.bVisionChecked ? DipStanceTint(HOLDiplomacy::Ally) : FLinearColor(1.0, 1.0, 1.0, 1.0));
+			HOLDiplomacyPanelText::PatternText(HOLDiplomacyPanelText::VisionTip), Row.bVisionChecked ? DipStanceTint(HOLDiplomacyRead::GetStanceAlly()) : FLinearColor(1.0, 1.0, 1.0, 1.0));
 		// The four tributes: one button a resource, each greyed without a Market or toward a player out of the match, the reason in a tooltip (and in the foot).
 		for (int Button = 0; Button < HOLDiplomacyPanel::TributeButtonCount; ++Button)
 		{
@@ -802,11 +802,11 @@ FString TalentTipTexts = "";
 		AHOLPlayerController Controller = Cast<AHOLPlayerController>(GetOwningPlayer());
 		if (Row.Slot != Slot || Row.bSelf || Controller == nullptr)
 			return false;
-		if (Kind >= HOLDiplomacy::Enemy && Kind <= HOLDiplomacy::Ally)
+		if (Kind >= HOLDiplomacyRead::GetStanceEnemy() && Kind <= HOLDiplomacyRead::GetStanceAlly())
 		{
 			if (!Row.bStanceEditable || !DipStanceButtons[Slot * 3 + Kind].IsVisible())
 				return false;
-			Controller.RequestStance(Slot, Kind);
+			HOLRpc::RequestStance(Controller, Slot, Kind);
 			DipMenuSlot = -1;
 			return true;
 		}
@@ -814,7 +814,7 @@ FString TalentTipTexts = "";
 		{
 			if (!Row.bStanceEditable || !DipChips[Slot].IsVisible())
 				return false;
-			Controller.RequestStance(Slot, HOLDiplomacyPanel::NextStance(Row.MyStance));
+			HOLRpc::RequestStance(Controller, Slot, HOLDiplomacyPanel::NextStance(Row.MyStance));
 			return true;
 		}
 		if (Kind == DipKindMenu)
@@ -828,7 +828,7 @@ FString TalentTipTexts = "";
 		{
 			if (!Row.bVisionEnabled || !DipVisionButtons[Slot].IsVisible())
 				return false;
-			Controller.RequestShareVision(Slot, !Row.bVisionChecked);
+			HOLRpc::RequestVision(Controller, Slot, !Row.bVisionChecked);
 			return true;
 		}
 		// A tribute button (E-diplomacy_locked): its kind says its resource; greyed (no Market, out of the match) it does nothing.
@@ -882,11 +882,11 @@ FString TalentTipTexts = "";
 		for (int Slot = 0; Slot < DipMaxRows; ++Slot)
 		{
 			if (WidgetName == FName(f"DipEnemy_{Slot}"))
-				return PanelClick(Slot, HOLDiplomacy::Enemy);
+				return PanelClick(Slot, HOLDiplomacyRead::GetStanceEnemy());
 			if (WidgetName == FName(f"DipNeutral_{Slot}"))
-				return PanelClick(Slot, HOLDiplomacy::Neutral);
+				return PanelClick(Slot, HOLDiplomacyRead::GetStanceNeutral());
 			if (WidgetName == FName(f"DipAlly_{Slot}"))
-				return PanelClick(Slot, HOLDiplomacy::Ally);
+				return PanelClick(Slot, HOLDiplomacyRead::GetStanceAlly());
 			if (WidgetName == FName(f"DipChip_{Slot}"))
 				return PanelClick(Slot, DipKindChip);
 			if (WidgetName == FName(f"DipMenu_{Slot}"))

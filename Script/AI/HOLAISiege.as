@@ -44,7 +44,7 @@ namespace HOLAISiege
 		{
 			return None;
 		}
-		if (Mangonels < Train.MaxMangonels && HOLSiege::Check(EHOLSiegeEngine::Mangonel, Tier, bWorkshopFinished, bCanPayMangonel) == HOLSiege::Available)
+		if (Mangonels < Train.MaxMangonels && HOLSiegeCheck::Check(int(EHOLSiegeEngine::Mangonel), Tier, bWorkshopFinished, bCanPayMangonel) == int(EHOLSiegeBlock::Available))
 		{
 			FHOLAIEngineChoice Choice;
 			Choice.bQueue = true;
@@ -52,7 +52,7 @@ namespace HOLAISiege
 			Choice.Type = n"Mangonel";
 			return Choice;
 		}
-		if (Rams < Train.MaxRams && HOLSiege::Check(EHOLSiegeEngine::Ram, Tier, bWorkshopFinished, bCanPayRam) == HOLSiege::Available)
+		if (Rams < Train.MaxRams && HOLSiegeCheck::Check(int(EHOLSiegeEngine::Ram), Tier, bWorkshopFinished, bCanPayRam) == int(EHOLSiegeBlock::Available))
 		{
 			FHOLAIEngineChoice Choice;
 			Choice.bQueue = true;

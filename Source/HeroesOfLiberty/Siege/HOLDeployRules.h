@@ -5,8 +5,8 @@
 #include "CoreMinimal.h"
 
 /**
- * The deployable siege engine's pure rule (Palier3InProgress.md G5, GDD D712, D715): the C++ twin of Script/Siege/HOLDeployRules.as
- * (the simulation reads C++, the interface and the AI read the script, D483). The Trebuchet is PACKED (it walks, it does not fire),
+ * The deployable siege engine's pure rule (Palier3InProgress.md G5, GDD D712, D715): only in C++, read by the script through HOLDeployRead
+ * (the simulation reads C++, no twin remains). The Trebuchet is PACKED (it walks, it does not fire),
  * DEPLOYED (it fires, it does not walk), or changing from one to the other (DEPLOYING, PACKING: no action, no defence); the order does
  * the work (an attack on a target in range deploys then fires, a walk order packs then walks) and a manual button toggles; a target
  * nearer than the MINIMUM RANGE cannot be aimed. Whole numbers only (milliseconds, centimetres, percent: D468 determinism), no world,

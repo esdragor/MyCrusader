@@ -4,6 +4,8 @@
 // the cost (the stock covers it). A level II also asks for its level I (Requires). The caller (T3/T4) reads the row of the
 // table, the player's tier (AHOLGameState::GetTier, from the hero level, D04) and level, and tells whether the building
 // stands and the stock pays.
+// Since MIG-CPP-Technology (D836 point 2) only the reasons live here: the rule is the C++ one (HOLTechnologyCheck::Check, the
+// function the server applies), which the AI and the tests read; the script copy of the availability is gone.
 namespace HOLTechnologyRules
 {
 	// What stops a technology; Available when nothing does. The first reason in this order is the one given to the player.
@@ -20,54 +22,10 @@ namespace HOLTechnologyRules
 	const int NoBuilding = 5;
 	// The stock does not cover the cost.
 	const int CannotPay = 6;
-	// Already in a production queue of its owner (CheckQueued; the C++ rule refuses it right after the researched one).
+	// Already in a production queue of its owner (the C++ rule refuses it right after the researched one).
 	const int AlreadyQueued = 7;
 
-	// Why a technology cannot be started now, or Available. HeroTier is the tier the hero's level has opened (HOLHeroXP::GetTier
-	// in C++), HeroLevel his level (0 without a hero); MinTier and MinHeroLevel the row's (MinHeroLevel 0: the tier alone).
-	// bRequiresDone: true when the row asks for no other technology or when that one is researched.
-	int Check(int HeroTier, int HeroLevel, int MinTier, int MinHeroLevel, bool bRequiresDone, bool bBuildingFinished, bool bCanPay, bool bResearched)
-	{
-		if (bResearched)
-			return AlreadyResearched;
-		if (HeroTier < MinTier)
-			return TierTooLow;
-		if (HeroLevel < MinHeroLevel)
-			return HeroLevelTooLow;
-		if (!bRequiresDone)
-			return RequiresMissing;
-		if (!bBuildingFinished)
-			return NoBuilding;
-		if (!bCanPay)
-			return CannotPay;
-		return Available;
-	}
-
-	// True when the technology can be started now.
-	bool IsAvailable(int HeroTier, int HeroLevel, int MinTier, int MinHeroLevel, bool bRequiresDone, bool bBuildingFinished, bool bCanPay, bool bResearched)
-	{
-		return Check(HeroTier, HeroLevel, MinTier, MinHeroLevel, bRequiresDone, bBuildingFinished, bCanPay, bResearched) == Available;
-	}
-
-	// The same with the production queue known (the C++ rule's order, HOLTechnology::Check, which the simulation applies): a technology
-	// already in a queue of its owner is refused right after the researched one.
-	int CheckQueued(int HeroTier, int HeroLevel, int MinTier, int MinHeroLevel, bool bRequiresDone, bool bBuildingFinished, bool bCanPay, bool bResearched, bool bQueued)
-	{
-		if (bResearched)
-			return AlreadyResearched;
-		if (bQueued)
-			return AlreadyQueued;
-		return Check(HeroTier, HeroLevel, MinTier, MinHeroLevel, bRequiresDone, bBuildingFinished, bCanPay, bResearched);
-	}
-
 	// No code applies its effect yet (the table's Implemented column is false: T-Q11 = B, D601): refused before every other reason,
-	// as the C++ rule does (HOLTechnology::Check). The AI never starts such a research.
+	// as the C++ rule does (HOLTechnologyCheck::Check). The AI never starts such a research.
 	const int NotImplemented = 8;
-
-	int CheckImplemented(bool bImplemented, int HeroTier, int HeroLevel, int MinTier, int MinHeroLevel, bool bRequiresDone, bool bBuildingFinished, bool bCanPay, bool bResearched, bool bQueued)
-	{
-		if (!bImplemented)
-			return NotImplemented;
-		return CheckQueued(HeroTier, HeroLevel, MinTier, MinHeroLevel, bRequiresDone, bBuildingFinished, bCanPay, bResearched, bQueued);
-	}
 }

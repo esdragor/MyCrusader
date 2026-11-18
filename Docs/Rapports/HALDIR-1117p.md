@@ -1,0 +1,27 @@
+# HALDIR-1117p : MIG2-S3 T5 lot L1 Signaux et chat  -- NON COMPILE (C++ et script jamais compiles, aucun test lance)
+
+APPELS_DECLARES: ~17 (arret a 25 vus ; arret dur 19:05)
+HEURE_DEBUT/HEURE_FIN: 18:48 / ~18:54
+PREMIER_BUILD: sans build (consigne)   BUILD: NON COMPILE   LAUNCHCHECK_DEBUT: non lance (pas de build)
+TEST_ROUGE: aucun (pas d'execution) ; assertit l'effet : non (fonctions pures de validation)
+COMMITS: 1 (cecc99c sur maps, 18:52), merge_main_fait: non (DLL perimee)
+TESTS: aucun lance ; 4 tests script ajoutes dans Script\Tests\HOLRpcSignalChat_Test.as : Test_RpcSignalRefusal, Test_RpcClientSignalRefusal, Test_RpcChatRefusal, Test_RpcClientChatRefusal ; TESTS_TAUTOLOGIQUES: 0 declare (fonctions de bornes, valeurs calculees par le code teste)
+ESSAIS: aucun
+QUESTIONS: aucune (defauts hol.Rpc.ScriptSignal / ScriptChat = 0)
+BUILDS_DEMANDES: 1 (lot C++ : `C:\Users\baudo\Documents\HeroesOfLiberty-Haldir\Tools\build.ps1 -LiveCoding=0 -Wait` par la session principale) ; TESTS_CPP_RETIRES: 0 ; TESTS_SCRIPT_AJOUTES: 4 ; LIGNES_CPP_SUPPRIMEES: 0 ; LIGNES_MIGREES_PAR_LOT: ~0 (liaison) ; TYPES_A_EXPOSER: aucun de neuf
+
+FAIT (4 RPC, tout dans l'etat "ecrit, non compile") :
+- Script\Net\HOLRpcPlayer.as : cvars hol.Rpc.ScriptSignal / hol.Rpc.ScriptChat (defaut 0) ; fonctions pures HOLRpc::SignalRefusal(slot) (1 = pas de siege), ClientSignalRefusal(sender, kind) (1 expediteur hors bornes, 2 kind < 0), ChatRefusal(channel, const FString& text) (1 canal < 0, 2 texte vide ; le slot n'est PAS verifie : un spectateur parle, D376), ClientChatRefusal(sender, channel) (sender -1 valide ; 1 hors bornes, 2 canal < 0) ; RPC script ServerPostSignal(int, FVector), ClientReceiveSignal(int, int, FVector), ServerPostChat(int, const FString&, int), ClientReceiveChat(int, int, const FString&). Les corps Client NE lisent PAS la cvar (la cvar est celle du serveur qui decide d'appeler le Client ; un client en cvar 0 perdrait sinon le message).
+- Pont (Net\HOLScriptRpcPlayerActor.h/.cpp, UHOLRpcBridgeLibrary) : PostSignal(X,Y,Z doubles), ReceiveSignal(X,Y,Z), PostChat(const FString&), ReceiveChat(const FString&) ; chacun appelle le _Implementation du controleur proprietaire (friend deja ajoute par 1117o) : tableau, journal ("Signal: slot..", "Chat: slot .. channel .. answer ..", "Signal: received ..", "Chat: received ..") et rangee de relais sont ceux du C++, une seule source.
+- HOLPlayerController.cpp : CallN devient un enrobage de CallEx(..., const FString* Text, const FVector* Location) (remplit aussi FStrProperty et FStructProperty FVector ; les ints dans l'ordre pour bool/int32/uint32 ; les routes 1117n/1117o inchangees). Routes ajoutees (cvar 1, sinon C++ comme avant) : RequestSignal -> script ServerPostSignal ; RequestChat -> script ServerPostChat ; et DANS les deux _Implementation, le relais vers chaque spectateur/joueur passe par l'acteur script du destinataire (ClientReceiveSignal / ClientReceiveChat, RPC Client appelee PAR LE SERVEUR via ProcessEvent) avec repli sur la RPC C++ du controleur si pas d'acteur / pas de fonction. Aucune RPC C++ supprimee.
+- Incident corrige : mon 1er script d'edition a supprime HOLPlayerController.cpp (alias PowerShell `Rd` = Remove-Item) ; restaure par `git checkout -- <fichier>` (aucun travail non commite perdu, le fichier etait propre), puis edit relance : diff verifie (4 fichiers, +207/-14).
+
+RESTE / A FAIRE PAR LA SESSION PRINCIPALE :
+- `C:\Users\baudo\Documents\HeroesOfLiberty-Haldir\Tools\build.ps1 -LiveCoding=0 -Wait` puis `quick_check -Parts tests`. Rouge a faire : corps de SignalRefusal / ClientSignalRefusal / ChatRefusal / ClientChatRefusal -> `return 0;`, puis restaurer.
+- Essai a 2 clients + 1 spectateur avec hol.Rpc.ScriptSignal=1 / ScriptChat=1 sur le SERVEUR et les clients : lire "RpcSignal: received by the server", "Signal: slot N kind K answer 0", "Signal: received kind ..." sur le client ; idem "RpcChat: ...", "Chat: slot .. sent to N seats", "Chat: received channel ..". Verifier qu'un spectateur recoit bien le chat par le Client script (acteur script cree pour lui par PostLogin ?).
+- ClientReceiveSignal / ClientReceiveChat ne sont routes que si le serveur a cvar = 1 ; sinon C++.
+
+NON VERIFIE : tout le C++ (compilation : FStrProperty / FStructProperty / TBaseStructure<FVector> dans le namespace, TArrayView<const int32>(ptr, n) sur tableaux locaux, acces aux _Implementation privees des 4 RPC par friend, UFUNCTION a const FString& dans la bibliotheque) ; le script (compilation Angelscript : UFUNCTION(Client) avec FVector par valeur et const FString&, FString.Len(), `const FString Hello = "hello"` dans le test) ; qu'un ProcessEvent serveur d'une RPC Client script parte bien au proprietaire (acteur possede, bAlwaysRelevant, hypothese du plan §6, prouvee seulement pour la sonde) ; que la propriete FVector d'une RPC script soit bien le struct TBaseStructure<FVector> (sinon la position arrive a zero : les signaux s'afficheraient en (0,0)) ; l'ordre CPF_Parm des proprietes d'une UFunction script ; l'essai spectateur / reconnexion (une RPC migree devient muette sans erreur si l'acteur n'existe pas : repli C++ en place).
+PROCESSUS_DETACHES: aucun detache pour C:\Users\baudo\Documents\HeroesOfLiberty-Haldir
+ANOMALIES_PROCESSUS: aucune (hors incident de l'alias `Rd` ci-dessus, repare)
+GIT_STATUS_PRINCIPALE: non relance ; modifs voulues : EtapeDefini.md (ligne 26), Auto_Journey_File.md (ligne 118), Docs\Rapports\HALDIR-1117p.md

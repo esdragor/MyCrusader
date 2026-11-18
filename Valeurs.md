@@ -261,9 +261,9 @@ Générée par `Tools/Data/make_value_sheet.py` depuis `Tools/Data/ValueSheet.cs
 
 | Id | Réglage | Valeur | État | Décision | Où | Note |
 |---|---|---|---|---|---|---|
-| `comm.chat.max_length` | Discussion : longueur maximale d'un message (caractères) | 200 | provisoire | D385 | HOLChatRules.h | indicatif : 200 caractères, refusé au-delà (cvar hol.Chat.MaxLength) |
-| `comm.chat.max_per_window` | Discussion : messages par joueur dans la fenêtre | 5 | provisoire | D385 | HOLChatRules.h | indicatif : 5 toutes les 10 s (cvar hol.Chat.MaxPerWindow) |
-| `comm.chat.window_ms` | Discussion : fenêtre de la limite (ms) | 10000 | provisoire | D385 | HOLChatRules.h | indicatif : 5 toutes les 10 s (cvar hol.Chat.WindowMs) |
+| `comm.chat.max_length` | Discussion : longueur maximale d'un message (caractères) | 200 | provisoire | D385 | HOLChatRules.as | indicatif : 200 caractères, refusé au-delà (cvar hol.Chat.MaxLength) |
+| `comm.chat.max_per_window` | Discussion : messages par joueur dans la fenêtre | 5 | provisoire | D385 | HOLChatRules.as | indicatif : 5 toutes les 10 s (cvar hol.Chat.MaxPerWindow) |
+| `comm.chat.window_ms` | Discussion : fenêtre de la limite (ms) | 10000 | provisoire | D385 | HOLChatRules.as | indicatif : 5 toutes les 10 s (cvar hol.Chat.WindowMs) |
 | `comm.signal.lifetime_ms` | Signaux : durée sur la carte (ms) | 5000 | provisoire | D784 | HOLSignalRules.as | Décidé (Q-signals Q1 = A : 5 s) |
 | `comm.signal.max_per_window` | Signaux : nombre par joueur dans la fenêtre | 3 | provisoire | D386 | HOLSignalRules.as | indicatif : 3 toutes les 5 s |
 | `comm.signal.window_ms` | Signaux : fenêtre de la limite (ms) | 5000 | provisoire | D386 | HOLSignalRules.as | indicatif : 3 toutes les 5 s |
@@ -373,7 +373,7 @@ Générée par `Tools/Data/make_value_sheet.py` depuis `Tools/Data/ValueSheet.cs
 | `note.AITalent` | Script/Talents/HOLAITalent.as | Tirage du talent de l'IA, provisoire (TQ1) : règle, pas une valeur |
 | `note.DiplomacyGameState` | Source/HeroesOfLiberty/Match/HOLGameState.h | Commentaire : renvoie à diplomacy.default_stance |
 | `note.DiplomacyMatchConfig` | Source/HeroesOfLiberty/Match/HOLMatchConfig.h | Nom provisoire du mode Diplomatie, pas une valeur |
-| `note.DiplomacyRulesAs` | Script/Diplomacy/HOLDiplomacyRules.as | Posture au lancement : voir diplomacy.default_stance |
+| `note.DiplomacyRulesAs` | Source/HeroesOfLiberty/Match/HOLDiplomacyRules.cpp | Posture au lancement : voir diplomacy.default_stance |
 | `note.ForumMessages` | Source/HeroesOfLiberty/Match/HOLForumMessages.h | Son d'alerte provisoire, présentation |
 | `note.ForumRules` | Source/HeroesOfLiberty/Match/HOLForumRules.cpp | Neutre sans icône (provisoire), présentation |
 | `note.GameScreen` | Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp | Son d'alerte provisoire, présentation |

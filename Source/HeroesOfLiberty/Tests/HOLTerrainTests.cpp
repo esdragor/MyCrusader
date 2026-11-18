@@ -17,6 +17,7 @@
 #include "Match/HOLGameState.h"
 #include "Match/HOLMatchConfig.h"
 #include "Misc/AutomationTest.h"
+#include "Simulation/HOLCombatProcessor.h"
 #include "Simulation/HOLSimulationFragments.h"
 #include "Simulation/HOLSimulationSettings.h"
 #include "Simulation/HOLSimulationSubsystem.h"
@@ -72,6 +73,33 @@ bool FHOLTerrainRulesTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("a walker never reaches 0"), FHOLTerrainRules::GetScaledSpeed(1, 10), 1);
 	TestEqual(TEXT("a unit that does not walk stays still"), FHOLTerrainRules::GetScaledSpeed(0, Strength), 0);
 	TestEqual(TEXT("the percent of the speed"), FHOLTerrainRules::GetScaledSpeed(500, Strength), 500 * Strength / 100);
+
+	// D810 / D844: F4 the forest slows nobody any more (cavalry, siege and on foot all 100, alone or with the others); F5 a ford weakens the defence (120).
+	using FRules = FHOLTerrainRules;
+	FHOLTerrainZone ForestZone = MakeMarsh(9000, 0, 500);
+	ForestZone.Kind = HOLTerrainKind::Forest;
+	FHOLTerrainZone FordZone = MakeMarsh(12000, 0, 500);
+	FordZone.Kind = HOLTerrainKind::Ford;
+	const TArray<FHOLTerrainZone> Painted{ ForestZone, FordZone, MakeMarsh(0, 0, 500), MakeMarsh(9000, 0, 200) };
+	TestEqual(TEXT("cavalry in a forest: 100 % (D844)"), FRules::GetWalkerSpeedPercentAt(Strength, Painted, HOLTerrainWalker::Cavalry, 9400, 0), 100);
+	TestEqual(TEXT("siege in a forest: 100 % (D844)"), FRules::GetWalkerSpeedPercentAt(Strength, Painted, HOLTerrainWalker::Siege, 9400, 0), 100);
+	TestEqual(TEXT("on foot in a forest: 100 %"), FRules::GetWalkerSpeedPercentAt(Strength, Painted, HOLTerrainWalker::OnFoot, 9400, 0), 100);
+	TestEqual(TEXT("cavalry one centimetre out of the forest"), FRules::GetWalkerSpeedPercentAt(Strength, Painted, HOLTerrainWalker::Cavalry, 9501, 0), 100);
+	TestEqual(TEXT("a ford slows nobody"), FRules::GetWalkerSpeedPercentAt(Strength, Painted, HOLTerrainWalker::Cavalry, 12000, 0), 100);
+	TestEqual(TEXT("marsh under a forest: the marsh alone slows"), FRules::GetWalkerSpeedPercentAt(Strength, Painted, HOLTerrainWalker::Cavalry, 9000, 0), Strength);
+	TestEqual(TEXT("the marsh alone slows cavalry as before"), FRules::GetWalkerSpeedPercentAt(Strength, Painted, HOLTerrainWalker::Cavalry, 0, 0), Strength);
+	TestEqual(TEXT("the forest leaves a real speed whole"), FRules::GetScaledSpeed(500, FRules::GetWalkerSpeedPercentAt(Strength, Painted, HOLTerrainWalker::Cavalry, 9400, 0)), 500);
+	TestTrue(TEXT("a unit on the ford is read in the ford"), FRules::IsInZoneOfKind(Painted, HOLTerrainKind::Ford, 12500, 0));
+	TestFalse(TEXT("one centimetre off the ford"), FRules::IsInZoneOfKind(Painted, HOLTerrainKind::Ford, 12501, 0));
+	TestEqual(TEXT("a hit of 100 on a ford: 120"), FRules::GetFordDamageTaken(100, FRules::IsInZoneOfKind(Painted, HOLTerrainKind::Ford, 12000, 0)), 120);
+	TestEqual(TEXT("a hit of 100 off a ford: 100"), FRules::GetFordDamageTaken(100, FRules::IsInZoneOfKind(Painted, HOLTerrainKind::Ford, 0, 0)), 100);
+	TestEqual(TEXT("a ford percent that composes"), FRules::GetFordDamageTakenPercent(true), 120);
+	TestEqual(TEXT("no hit, no damage on a ford"), FRules::GetFordDamageTaken(0, true), 0);
+	TestEqual(TEXT("a negative hit is 0"), FRules::GetFordDamageTaken(-5, true), 0);
+	TestTrue(TEXT("a charge stops in a marsh"), FRules::StopsCharge(true, Painted, 100, 0));
+	TestFalse(TEXT("a charge does not stop out of a marsh"), FRules::StopsCharge(true, Painted, 2000, 0));
+	TestFalse(TEXT("a charge does not stop in a forest or on a ford"), FRules::StopsCharge(true, Painted, 9400, 0) || FRules::StopsCharge(true, Painted, 12000, 0));
+	TestFalse(TEXT("the setting off: the marsh stops nothing"), FRules::StopsCharge(false, Painted, 100, 0));
 	return true;
 }
 
@@ -165,6 +193,226 @@ bool FHOLTerrainWalkSpeedTest::RunTest(const FString& Parameters)
 	}
 	GEngine->DestroyWorldContext(World);
 	World->DestroyWorld(/*bInformEngineOfWorld*/ false);
+	return true;
+}
+
+// D810 (Q-forest-ford Q1 = A, Q2 = A) on the real chain, as a match's server: the move orders through the command queue and the order
+// processor's steps. D844: a painted forest slows nobody; the speed a walker is asked for is the table's for a man on foot, for cavalry and for
+// siege, in the forest, off the paint and on a map without zones alike.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLTerrainForestSpeedTest, "HeroesOfLiberty.Terrain.ForestSpeed", UE::HeroesOfLiberty::Tests::Terrain::Flags)
+bool FHOLTerrainForestSpeedTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::Terrain;
+	UWorld* World = UWorld::CreateWorld(EWorldType::Game, /*bInformEngineOfWorld*/ false);
+	FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);
+	Context.SetCurrentWorld(World);
+	World->InitializeActorsForPlay(FURL());
+	AHOLGameState* State = World->SpawnActor<AHOLGameState>();
+	UHOLUnitSubsystem* Units = World->GetSubsystem<UHOLUnitSubsystem>();
+	UHOLCommandSubsystem* Commands = World->GetSubsystem<UHOLCommandSubsystem>();
+	UHOLTerrainSubsystem* Terrain = World->GetSubsystem<UHOLTerrainSubsystem>();
+	UHOLSimulationSubsystem* Simulation = World->GetSubsystem<UHOLSimulationSubsystem>();
+	UMassEntitySubsystem* EntitySubsystem = World->GetSubsystem<UMassEntitySubsystem>();
+	if (TestTrue(TEXT("test world ready"), State && Units && Commands && Terrain && Simulation && EntitySubsystem))
+	{
+		FHOLMatchConfig Config = FHOLMatchConfig::MakeDefault();
+		for (int32 Index = 0; Index < Config.Slots.Num(); ++Index)
+		{
+			Config.Slots[Index].State = Index == 0 ? EHOLSlotState::Human : (Index == 1 ? EHOLSlotState::AI : EHOLSlotState::Closed);
+		}
+		State->InitVictory(Config);
+		TSharedPtr<FMassEntityManager> EntityManager = EntitySubsystem->GetMutableEntityManager().AsShared();
+		UHOLUnitOrderProcessor* Orders = NewObject<UHOLUnitOrderProcessor>(Simulation);
+		Orders->CallInitialize(Simulation, EntityManager.ToSharedRef());
+		const float StepSeconds = GetDefault<UHOLSimulationSettings>()->GetStepSeconds();
+
+		// The forest: a disc of 50 m at the origin. A walker of Type born at Center, ordered 60 m on: the table's speed and the one it is asked for.
+		FHOLTerrainZone Forest = MakeMarsh(0, 0, 5000);
+		Forest.Kind = HOLTerrainKind::Forest;
+		Terrain->SetZones(TArray<FHOLTerrainZone>{ Forest });
+		const auto Measure = [&](const FName Type, const FVector& Center, float& OutTable, float& OutAsked)
+		{
+			TArray<uint32> Before;
+			Units->GetAllUnitIds(Before);
+			FHOLUnitSpawnRequest Request;
+			Request.TypeName = Type;
+			Request.Count = 1;
+			Request.OwnerPlayer = 0;
+			Request.Center = Center;
+			Units->RequestUnits(Request);
+			Units->ServeBirthRequests();
+			TArray<uint32> After;
+			Units->GetAllUnitIds(After);
+			After.RemoveAll([&Before](const uint32 Id) { return Before.Contains(Id); });
+			OutTable = -1.f;
+			OutAsked = -1.f;
+			if (After.Num() != 1)
+			{
+				return false;
+			}
+			uint32 Id = After[0];
+			const FMassEntityHandle Entity = Units->FindEntity(Id);
+			const FVector At = EntityManager->GetFragmentDataChecked<FTransformFragment>(Entity).GetTransform().GetLocation();
+			OutTable = EntityManager->GetConstSharedFragmentDataChecked<FHOLUnitTypeConstants>(Entity).Speed;
+			Commands->IssueMoveOrder(MakeArrayView(&Id, 1), At + FVector(0., 6000., 0.), 0);
+			for (int32 Step = 0; Step < 10; ++Step)
+			{
+				FMassProcessingContext ProcessingContext(EntityManager, StepSeconds);
+				UE::Mass::Executor::Run(*Orders, ProcessingContext);
+				const FMassMoveTargetFragment& Target = EntityManager->GetFragmentDataChecked<FMassMoveTargetFragment>(Entity);
+				if (Target.GetCurrentAction() == EMassMovementAction::Move && Target.DesiredSpeed.Get() > 0.f)
+				{
+					OutAsked = Target.DesiredSpeed.Get();
+				}
+			}
+			const uint32 Gone[] = { Id };
+			Units->RequestDestroyUnits(Gone);
+			Units->FlushDestructions();
+			return OutAsked > 0.f;
+		};
+		const FName LightCavalry(TEXT("LightCavalry"));
+		const FName Ram(TEXT("Ram"));
+		const FVector InForest(0., 0., 0.);
+		const FVector Unpainted(-30000., 0., 0.);
+		float Table = 0.f;
+		float Asked = 0.f;
+		TestTrue(TEXT("a man at arms walks in the forest"), Measure(ManAtArms, InForest, Table, Asked));
+		TestEqual(TEXT("on foot in the forest: the table's speed"), Asked, Table, 0.5f);
+		TestTrue(TEXT("a light cavalryman walks in the forest"), Measure(LightCavalry, InForest, Table, Asked));
+		TestEqual(TEXT("cavalry in the forest: the table's speed (D844)"), Asked, Table, 0.5f);
+		TestTrue(TEXT("a ram walks in the forest"), Measure(Ram, InForest, Table, Asked));
+		TestEqual(TEXT("siege in the forest: the table's speed (D844)"), Asked, Table, 0.5f);
+		TestTrue(TEXT("a light cavalryman walks off the paint"), Measure(LightCavalry, Unpainted, Table, Asked));
+		TestEqual(TEXT("cavalry off the painted forest: the table's speed"), Asked, Table, 0.5f);
+		TestTrue(TEXT("a ram walks off the paint"), Measure(Ram, Unpainted, Table, Asked));
+		TestEqual(TEXT("siege off the painted forest: the table's speed"), Asked, Table, 0.5f);
+		Terrain->SetZones(TConstArrayView<FHOLTerrainZone>());
+		TestTrue(TEXT("a light cavalryman walks on a map without zones"), Measure(LightCavalry, InForest, Table, Asked));
+		TestEqual(TEXT("a map without zones: the table's speed"), Asked, Table, 0.5f);
+	}
+	GEngine->DestroyWorldContext(World);
+	World->DestroyWorld(/*bInformEngineOfWorld*/ false);
+	return true;
+}
+
+// D810 F5 on the real chain: a hit the combat processor lands on a Spearman standing in a painted ford is 120 % of the same hit off it; with
+// no zone on the map the hit is the one off the ford. The victim is born, struck by a Man-at-arms 1.5 m away; the first hit it takes is read.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLTerrainFordHitTest, "HeroesOfLiberty.Terrain.FordHit", UE::HeroesOfLiberty::Tests::Terrain::Flags)
+bool FHOLTerrainFordHitTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::Terrain;
+	IConsoleVariable* CombatEnabled = IConsoleManager::Get().FindConsoleVariable(TEXT("hol.Combat.Enabled"));
+	if (!TestNotNull(TEXT("hol.Combat.Enabled"), CombatEnabled))
+	{
+		return false;
+	}
+	const int32 FormerEnabled = CombatEnabled->GetInt();
+	CombatEnabled->Set(1, ECVF_SetByCode);
+	UWorld* World = UWorld::CreateWorld(EWorldType::Game, /*bInformEngineOfWorld*/ false);
+	FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);
+	Context.SetCurrentWorld(World);
+	World->InitializeActorsForPlay(FURL());
+	UHOLUnitSubsystem* Units = World->GetSubsystem<UHOLUnitSubsystem>();
+	UHOLSimulationSubsystem* Simulation = World->GetSubsystem<UHOLSimulationSubsystem>();
+	UHOLTerrainSubsystem* Terrain = World->GetSubsystem<UHOLTerrainSubsystem>();
+	UMassEntitySubsystem* EntitySubsystem = World->GetSubsystem<UMassEntitySubsystem>();
+	if (TestTrue(TEXT("test world ready"), Units && Simulation && Terrain && EntitySubsystem))
+	{
+		TSharedPtr<FMassEntityManager> EntityManager = EntitySubsystem->GetMutableEntityManager().AsShared();
+		UHOLCombatProcessor* Combat = NewObject<UHOLCombatProcessor>(Simulation);
+		Combat->CallInitialize(Simulation, EntityManager.ToSharedRef());
+		const float StepSeconds = GetDefault<UHOLSimulationSettings>()->GetStepSeconds();
+		int64 Step = 0;
+		const auto RunStep = [&]
+		{
+			++Step;
+			Simulation->GetOnStepStarted().Broadcast(Step);
+			Units->ServeBirthRequests();
+			FMassProcessingContext ProcessingContext(EntityManager, StepSeconds);
+			UE::Mass::Executor::Run(*Combat, ProcessingContext);
+			Units->FlushDestructions();
+			Simulation->GetOnStepEnded().Broadcast(Step);
+		};
+		// As HeroesOfLiberty.HeroAbility.InMatch: born again until its identifier is a multiple of 4 (one search step of 4).
+		const auto Place = [Units](const FName Type, const int32 Owner, const FVector& Location)
+		{
+			for (int32 Attempt = 0; Attempt < 8; ++Attempt)
+			{
+				TArray<uint32> Before;
+				Units->GetAllUnitIds(Before);
+				FHOLUnitSpawnRequest Request;
+				Request.TypeName = Type;
+				Request.Count = 1;
+				Request.OwnerPlayer = static_cast<uint8>(Owner);
+				Request.Center = Location;
+				Units->RequestUnits(Request);
+				Units->ServeBirthRequests();
+				TArray<uint32> After;
+				Units->GetAllUnitIds(After);
+				uint32 Born = 0;
+				for (const uint32 Id : After)
+				{
+					Born = Before.Contains(Id) ? Born : Id;
+				}
+				if (Born == 0 || Born % 4 == 0)
+				{
+					return Born;
+				}
+				const uint32 Again[] = { Born };
+				Units->RequestDestroyUnits(Again);
+				Units->FlushDestructions();
+			}
+			return 0u;
+		};
+		const auto StateOf = [Units, &EntityManager](const uint32 Id)
+		{
+			const FMassEntityHandle Entity = Id != 0 ? Units->FindEntity(Id) : FMassEntityHandle();
+			return Entity.IsSet() ? EntityManager->GetFragmentDataPtr<FHOLUnitStateFragment>(Entity) : nullptr;
+		};
+		const FName Spearman(TEXT("Spearman"));
+		const auto FirstHit = [&](const FVector& Location)
+		{
+			const uint32 Victim = Place(Spearman, 0, Location);
+			const uint32 Attacker = Place(ManAtArms, 1, Location + FVector(150.0, 0.0, 0.0));
+			FHOLUnitStateFragment* VictimState = StateOf(Victim);
+			float Taken = -1.f;
+			if (VictimState && Attacker != 0)
+			{
+				const float Before = VictimState->CurrentHealth;
+				for (int32 Steps = 0; Steps < FMath::CeilToInt(5.f / StepSeconds); ++Steps)
+				{
+					RunStep();
+					VictimState = StateOf(Victim);
+					if (VictimState && VictimState->CurrentHealth < Before)
+					{
+						Taken = Before - VictimState->CurrentHealth;
+						break;
+					}
+				}
+			}
+			const uint32 Gone[] = { Victim, Attacker };
+			Units->RequestDestroyUnits(Gone);
+			Units->FlushDestructions();
+			return Taken;
+		};
+
+		FHOLTerrainZone Ford = MakeMarsh(0, 0, 3000);
+		Ford.Kind = HOLTerrainKind::Ford;
+		Terrain->SetZones(TArray<FHOLTerrainZone>{ Ford });
+		const float OnFord = FirstHit(FVector(0., 0., 0.));
+		const float OffFord = FirstHit(FVector(-30000., 0., 0.));
+		Terrain->SetZones(TConstArrayView<FHOLTerrainZone>());
+		const float NoZones = FirstHit(FVector(0., 0., 0.));
+		if (TestTrue(TEXT("a hit landed on the ford"), OnFord > 0.f) && TestTrue(TEXT("a hit landed off the ford"), OffFord > 0.f)
+			&& TestTrue(TEXT("a hit landed on a map without zones"), NoZones > 0.f))
+		{
+			TestEqual(TEXT("on the ford: 120 % of the hit off it"), OnFord, OffFord * FHOLTerrainRules::DefaultFordDamageTakenPercent / 100.f, 0.05f);
+			TestEqual(TEXT("a map without zones: the hit is the one off the ford"), NoZones, OffFord, 0.05f);
+		}
+	}
+	GEngine->DestroyWorldContext(World);
+	World->DestroyWorld(/*bInformEngineOfWorld*/ false);
+	CombatEnabled->Set(FormerEnabled, ECVF_SetByCode);
 	return true;
 }
 

@@ -1,4 +1,4 @@
-﻿// Copyright Epic Games, Inc. All Rights Reserved.
+// Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "Simulation/HOLGarrisonSubsystem.h"
 
@@ -14,6 +14,7 @@
 #include "HeroesOfLibertyLog.h"
 #include "MassEntitySubsystem.h"
 #include "Simulation/HOLCombatRules.h"
+#include "Simulation/HOLGarrisonBoard.h"
 #include "Simulation/HOLSimulationFragments.h"
 #include "Simulation/HOLSimulationSubsystem.h"
 #include "Simulation/HOLUnitSubsystem.h"
@@ -142,7 +143,8 @@ int32 UHOLGarrisonSubsystem::ApplyOrders()
 			UnitKinds.Add(HOLGarrison::KindOf(Constants->HasArmorCategory(EHOLArmorCategory::Siege), Constants->HasArmorCategory(EHOLArmorCategory::Hero),
 				Constants->HasArmorCategory(EHOLArmorCategory::Cavalry), HOLCombat::IsRangedAttack(Constants->AttackRange)));
 		}
-		const TArray<int32> In = HOLGarrison::AdmittedBySettings(UnitSlots, UnitKinds, Building->GetOwnerPlayer(), GetSlots(*Building), Inside.Num());
+		// The script board decides (D836 point 4); without it nobody enters (R7).
+		const TArray<int32> In = UHOLGarrisonBoard::AdmittedForOrder(World, UnitSlots, UnitKinds, Building->GetOwnerPlayer(), GetSlots(*Building), Inside.Num());
 		TArray<uint32> Entered;
 		for (const int32 Index : In)
 		{

@@ -13,6 +13,7 @@
 #include "Match/HOLMatchConfig.h"
 #include "Match/HOLVictoryRules.h"
 #include "Simulation/HOLSimulationSettings.h"
+#include "Simulation/HOLSiteBoardSubsystem.h"
 #include "Simulation/HOLSimulationSubsystem.h"
 #include "Simulation/HOLUnitSubsystem.h"
 
@@ -314,6 +315,8 @@ void UHOLSiteSubsystem::OnStepEnded(const int64 StepIndex)
 	});
 
 	const FHOLCampTable Relations = FHOLCampTable::FromWorld(World);
+	// MIG-CPP-Site: the script board (null without a script: the C++ rule), found once a step; its rule is called once per site below, with the counts above.
+	UHOLSiteBoardSubsystem* Board = UHOLSiteBoardSubsystem::Find(World);
 	const int32 HoldSteps = FMath::Max(1, FMath::RoundToInt(SiteHoldSeconds * GetDefault<UHOLSimulationSettings>()->SimulationRateHz));
 	for (int32 Index = 0; Index < Sites.Num(); ++Index)
 	{
@@ -329,7 +332,7 @@ void UHOLSiteSubsystem::OnStepEnded(const int64 StepIndex)
 				OwnerRelativeTeams.Add(Slot == State.Owner || !Relations.AreHostile(State.Owner, Slot) ? 500 : 1000 + Slot);
 			}
 		}
-		State = HOLSite::Step(State, Takers[Index], Disturbers[Index], OwnerRelativeTeams.IsEmpty() ? TeamBySlot : OwnerRelativeTeams, HoldSteps, HOLSite::DefaultDecaySteps);
+		State = UHOLSiteBoardSubsystem::StepSite(Board, State, Takers[Index], Disturbers[Index], OwnerRelativeTeams.IsEmpty() ? TeamBySlot : OwnerRelativeTeams, HoldSteps, HOLSite::DefaultDecaySteps);
 		if (State.Owner != OldOwner)
 		{
 			UE_LOG(LogHOLMatch, Display, TEXT("Site %d: slot %d takes it from slot %d at step %d"), Index, State.Owner, OldOwner, static_cast<int32>(StepIndex));
@@ -384,7 +387,7 @@ void UHOLSiteSubsystem::StepVictory(AHOLGameState& GameState, const TArray<int32
 		ContestedBySite.Add(Contested);
 	}
 	const int32 VictorySteps = FMath::Max(1, FMath::RoundToInt(SiteVictorySeconds * GetDefault<UHOLSimulationSettings>()->SimulationRateHz));
-	Victory = HOLSite::VictoryStep(Victory, OwnerBySite, ContestedBySite, VictoryTeam, VictorySteps);
+	Victory = UHOLSiteBoardSubsystem::VictoryStep(UHOLSiteBoardSubsystem::Find(GetWorld()), Victory, OwnerBySite, ContestedBySite, VictoryTeam, VictorySteps);
 	{
 		// The count every machine reads (replicated, public, D431): the camp in the lead, the whole seconds left, frozen by a contested site, the winner.
 		FHOLSiteCountNet Count;
@@ -431,8 +434,8 @@ void UHOLSiteSubsystem::PayGold(const AHOLGameState& GameState)
 {
 	// S6 (D699): the OWNER alone is paid (its allies get nothing, D703 counts camps for the take, not for the pay), a defeated slot no more.
 	const int32 Slots = FHOLMatchConfig::MaxSlots;
-	const int32 Rate = GetDefault<UHOLSimulationSettings>()->SimulationRateHz;
 	GoldCarry.SetNumZeroed(Slots);
+	UHOLSiteBoardSubsystem* Board = UHOLSiteBoardSubsystem::Find(GetWorld());
 	for (APlayerState* Each : GameState.PlayerArray)
 	{
 		AHOLPlayerState* Player = Cast<AHOLPlayerState>(Each);
@@ -451,7 +454,7 @@ void UHOLSiteSubsystem::PayGold(const AHOLGameState& GameState)
 		{
 			continue;
 		}
-		const int32 Gold = HOLSite::GoldStep(GoldCarry[Slot], Owned, SiteGoldPerMinute, Rate);
+		const int32 Gold = UHOLSiteBoardSubsystem::GoldStep(Board, GoldCarry[Slot], Owned, SiteGoldPerMinute);
 		if (Gold > 0)
 		{
 			FHOLResources Stock = Player->GetResources();

@@ -1,4 +1,4 @@
-﻿// The market's exchange rule, alone (MarketInProgress.md M1, GDD 5.5, D70, D84): books and stocks built from the preset
+// The market's exchange rule, alone (MarketInProgress.md M1, GDD 5.5, D70, D84): books and stocks built from the preset
 // (never numbers typed in the expectations when the preset says them), HOLMarket::Sell / Buy / Recover asked.
 // Resources by index as everywhere in script: 0 food, 1 wood, 2 stone, 3 gold.
 
@@ -370,4 +370,126 @@ void Test_MarketTributeVectors(FUnitTest& T)
 	T.AssertEquals(1, HOLTribute::Received(1, 30), "1 sent: the tax rounds down, the gift is not eaten");
 	T.AssertEquals(0, HOLTribute::Received(100, 250), "a tax over 100 % is bounded");
 	T.AssertEquals(0, HOLTribute::Received(0, 30), "nothing sent: nothing arrives");
+}
+
+// E3-14 (D830, D835): port of HeroesOfLiberty.Market.Table (HOLMarketTableTests.cpp), same assertions, on the real table Tools/Data/Market.csv
+// read through the exposed type FHOLMarketRow. The C++ test imports the file with UDataTable::CreateTableFromCSVString into a transient table
+// (RowStruct = FHOLMarketRow); script sees neither that import nor UDataTable creation, so the CSV is read here (FFileHelper + header columns
+// by name, one int per column): the C++ "import problems" check has no script twin. The numbers are the user's answer MK-Q1 = C (D582), typed on purpose.
+int MarketCsvInt(const FString& Text, bool& bOk)
+{
+	FString Clean = Text.TrimStartAndEnd();
+	bOk = !Clean.IsEmpty();
+	int Value = 0;
+	for (int Index = 0; Index < Clean.Len(); Index++)
+	{
+		int Digit = Clean[Index] - 48;
+		if (Digit < 0 || Digit > 9)
+		{
+			bOk = false;
+			break;
+		}
+		Value = Value * 10 + Digit;
+	}
+	return Value;
+}
+
+// Sets the field the column names; false for a column the type does not have.
+bool MarketRowSetColumn(FHOLMarketRow& Row, const FString& Column, int Value)
+{
+	if (Column == "FoodPrice") { Row.FoodPrice = Value; }
+	else if (Column == "WoodPrice") { Row.WoodPrice = Value; }
+	else if (Column == "StonePrice") { Row.StonePrice = Value; }
+	else if (Column == "GoldPrice") { Row.GoldPrice = Value; }
+	else if (Column == "FeePercent") { Row.FeePercent = Value; }
+	else if (Column == "Step") { Row.Step = Value; }
+	else if (Column == "MinPrice") { Row.MinPrice = Value; }
+	else if (Column == "MaxPrice") { Row.MaxPrice = Value; }
+	else if (Column == "RecoverPoints") { Row.RecoverPoints = Value; }
+	else if (Column == "RecoverEverySeconds") { Row.RecoverEverySeconds = Value; }
+	else { return false; }
+	return true;
+}
+
+void Test_MarketTableRows(FUnitTest& T)
+{
+	FString Path = FPaths::ProjectDir() + "Tools/Data/Market.csv";
+	FString Text;
+	T.AssertTrue(FFileHelper::LoadFileToString(Text, Path), f"{Path} is there");
+
+	TArray<FString> Lines;
+	Text.ParseIntoArray(Lines, "\n");
+	T.AssertTrue(Lines.Num() >= 2, "a header and at least one row");
+
+	TArray<FString> Columns;
+	Lines[0].TrimStartAndEnd().ParseIntoArray(Columns, ",", false);
+	T.AssertEquals(11, Columns.Num(), "Name + the 10 columns of FHOLMarketRow");
+
+	TArray<FString> Names;
+	TArray<FHOLMarketRow> Rows;
+	for (int Line = 1; Line < Lines.Num(); Line++)
+	{
+		TArray<FString> Cells;
+		Lines[Line].TrimStartAndEnd().ParseIntoArray(Cells, ",", false);
+		if (Cells.Num() != Columns.Num())
+		{
+			T.AssertTrue(false, f"Market.csv line {Line}: {Cells.Num()} cells for {Columns.Num()} columns");
+			continue;
+		}
+		FHOLMarketRow Row;
+		for (int Column = 1; Column < Columns.Num(); Column++)
+		{
+			bool bOk = false;
+			int Value = MarketCsvInt(Cells[Column], bOk);
+			T.AssertTrue(bOk, f"Market.csv line {Line}: {Columns[Column]} is a whole number");
+			T.AssertTrue(MarketRowSetColumn(Row, Columns[Column].TrimStartAndEnd(), Value), f"Market.csv: column {Columns[Column]} is a field of FHOLMarketRow");
+		}
+		Names.Add(Cells[0].TrimStartAndEnd());
+		Rows.Add(Row);
+	}
+
+	int Standard = -1;
+	for (int Index = 0; Index < Names.Num(); Index++)
+	{
+		if (Names[Index] == "Standard")
+		{
+			Standard = Index;
+		}
+	}
+	T.AssertTrue(Standard >= 0, "the Standard row is in the table");
+	if (Standard >= 0)
+	{
+		// 1. The numbers of MK-Q1 = C (D582).
+		FHOLMarketRow Row = Rows[Standard];
+		T.AssertEquals(80, Row.FoodPrice, "food base price");
+		T.AssertEquals(80, Row.WoodPrice, "wood base price");
+		T.AssertEquals(120, Row.StonePrice, "stone base price");
+		T.AssertEquals(100, Row.GoldPrice, "gold base price");
+		T.AssertEquals(30, Row.FeePercent, "tax in percent");
+		T.AssertEquals(3, Row.Step, "points a lot");
+		T.AssertEquals(1, Row.RecoverPoints, "points back");
+		T.AssertEquals(10, Row.RecoverEverySeconds, "seconds between two returns");
+		T.AssertEquals(20, Row.MinPrice, "floor");
+		T.AssertEquals(300, Row.MaxPrice, "cap");
+	}
+
+	// 2. Coherence, whatever the numbers become: bounds in order, every base price inside them, a real tax and step.
+	for (int Index = 0; Index < Rows.Num(); Index++)
+	{
+		FHOLMarketRow Each = Rows[Index];
+		FString Name = Names[Index];
+		T.AssertTrue(Each.MinPrice < Each.MaxPrice, f"{Name}: floor below cap");
+		TArray<int> Bases;
+		Bases.Add(Each.FoodPrice);
+		Bases.Add(Each.WoodPrice);
+		Bases.Add(Each.StonePrice);
+		Bases.Add(Each.GoldPrice);
+		for (int Base : Bases)
+		{
+			T.AssertTrue(Base >= Each.MinPrice && Base <= Each.MaxPrice, f"{Name}: base price {Base} within the bounds");
+		}
+		T.AssertTrue(Each.FeePercent >= 0 && Each.FeePercent < 100, f"{Name}: tax between 0 and 99 percent");
+		T.AssertTrue(Each.Step > 0, f"{Name}: the price moves with a lot");
+		T.AssertTrue(Each.RecoverPoints > 0 && Each.RecoverEverySeconds > 0, f"{Name}: the price comes back");
+	}
 }

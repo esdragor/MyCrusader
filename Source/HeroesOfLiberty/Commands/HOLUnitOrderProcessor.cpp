@@ -153,6 +153,19 @@ namespace UE::HeroesOfLiberty::Orders
 		return Terrain ? static_cast<float>(Terrain->GetSpeedPercentAt(Location)) / 100.f : 1.f;
 	}
 
+	/** D810 (F4): the walker category the forest tells apart (cavalry 80 %, siege 70 %, the others on foot: never slowed). */
+	int32 GetWalkerCategory(const FHOLUnitTypeConstants& Constants)
+	{
+		return Constants.HasArmorCategory(EHOLArmorCategory::Siege) ? HOLTerrainWalker::Siege
+			: (Constants.HasArmorCategory(EHOLArmorCategory::Cavalry) ? HOLTerrainWalker::Cavalry : HOLTerrainWalker::OnFoot);
+	}
+
+	/** GetTerrainShare for a walker of these constants: the same, and a painted forest slows cavalry and siege. */
+	float GetTerrainShare(const UHOLTerrainSubsystem* Terrain, const FVector& Location, const FHOLUnitTypeConstants& Constants)
+	{
+		return Terrain ? static_cast<float>(Terrain->GetWalkerSpeedPercentAt(Location, GetWalkerCategory(Constants))) / 100.f : 1.f;
+	}
+
 	/** A walk is a detour for hol.Units.LogDetours when longer than this share of the straight line, plus DetourSlack. */
 	constexpr double DetourRatio = 1.3;
 	constexpr double DetourSlack = 300.;
@@ -496,7 +509,7 @@ namespace UE::HeroesOfLiberty::Orders
 		MoveTarget.EntityDistanceToGoal = FMassMoveTargetFragment::UnsetDistance;
 		MoveTarget.SlackRadius = 0.f;
 		MoveTarget.IntentAtGoal = EMassMovementAction::Stand; // Slow down on approach, stand at the slot.
-		MoveTarget.DesiredSpeed.Set(GetOrderWalkSpeed(Constants, Owner, Order) * GetTerrainShare(World.GetSubsystem<UHOLTerrainSubsystem>(), Location));
+		MoveTarget.DesiredSpeed.Set(GetOrderWalkSpeed(Constants, Owner, Order) * GetTerrainShare(World.GetSubsystem<UHOLTerrainSubsystem>(), Location, Constants));
 		MoveTarget.CreateNewAction(EMassMovementAction::Move, World);
 
 		Order.Phase = EHOLMovePhase::FinalLeg;
@@ -3770,7 +3783,7 @@ void UHOLUnitOrderProcessor::ServePathRequests(FMassEntityManager& EntityManager
 			ShortPath.MoveTargetProgressDistance = FMath::Clamp(GetProgressAt(ShortPath, Transform.GetTransform().GetLocation()), 0.f,
 				FMath::Max(LastDistance - EndReachedDistance * 2.f, 0.f));
 
-			MoveTarget.DesiredSpeed.Set(GetOrderWalkSpeed(Constants, EntityManager.GetFragmentDataChecked<FHOLUnitStateFragment>(Entity).OwnerPlayer, Order) * GetTerrainShare(Terrain, Transform.GetTransform().GetLocation()));
+			MoveTarget.DesiredSpeed.Set(GetOrderWalkSpeed(Constants, EntityManager.GetFragmentDataChecked<FHOLUnitStateFragment>(Entity).OwnerPlayer, Order) * GetTerrainShare(Terrain, Transform.GetTransform().GetLocation(), Constants));
 			// The slot comes after the path: no slowing down at its end.
 			MoveTarget.IntentAtGoal = EMassMovementAction::Move;
 			MoveTarget.SlackRadius = 0.f;
@@ -3840,7 +3853,7 @@ void UHOLUnitOrderProcessor::AdvanceUnits(FMassEntityManager& EntityManager, FMa
 			if (MoveTarget.GetCurrentAction() == EMassMovementAction::Move && MoveTarget.DesiredSpeed.Get() > 0.f)
 			{
 				// C3: and the ground under it (a marsh) takes its share of that speed, step after step as it walks in and out.
-				MoveTarget.DesiredSpeed.Set(GetOrderWalkSpeed(Constants, States[EntityIt].OwnerPlayer, Order) * GetTerrainShare(Terrain, Transform.GetTransform().GetLocation()));
+				MoveTarget.DesiredSpeed.Set(GetOrderWalkSpeed(Constants, States[EntityIt].OwnerPlayer, Order) * GetTerrainShare(Terrain, Transform.GetTransform().GetLocation(), Constants));
 			}
 
 			// Its way crosses a building the navmesh did not show yet when its path was found (S7's first paths, a building

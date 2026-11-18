@@ -11,6 +11,7 @@
 #include "EngineUtils.h"
 #include "HAL/IConsoleManager.h"
 #include "HeroesOfLibertyLog.h"
+#include "Map/HOLTerrainSubsystem.h"
 #include "Map/HOLVisionSubsystem.h"
 #include "Match/HOLGameState.h"
 #include "Match/HOLMatchConfig.h"
@@ -718,7 +719,9 @@ bool UHOLCombatProcessor::IsInAura(const FFighter& Victim) const
 
 int32 UHOLCombatProcessor::GetDamageTakenPercent(const FFighter& Victim) const
 {
-	return HOLHeroAbility::GetDamageTakenPercent(IsInAura(Victim), Victim.Combat->CloseRanksMs > 0);
+	const int32 Percent = HOLHeroAbility::GetDamageTakenPercent(IsInAura(Victim), Victim.Combat->CloseRanksMs > 0);
+	// D810 (F5): a ford weakens the defence (120 %); off a ford, or with no terrain zones, the percent is untouched.
+	return StepTerrain ? Percent * StepTerrain->GetFordDamageTakenPercentAt(Victim.Location) / 100 : Percent;
 }
 
 int32 UHOLCombatProcessor::GetTalentArmorBonus(const FFighter& Victim) const
@@ -780,6 +783,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 	UHOLUnitSubsystem* Units = World ? World->GetSubsystem<UHOLUnitSubsystem>() : nullptr;
 	UHOLCommandSubsystem* Commands = World ? World->GetSubsystem<UHOLCommandSubsystem>() : nullptr;
 	const UHOLSimulationSubsystem* Simulation = World ? World->GetSubsystem<UHOLSimulationSubsystem>() : nullptr;
+	StepTerrain = World ? World->GetSubsystem<UHOLTerrainSubsystem>() : nullptr;
 	if (!Units || !Commands)
 	{
 		return;

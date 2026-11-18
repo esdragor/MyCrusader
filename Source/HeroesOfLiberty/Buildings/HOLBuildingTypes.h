@@ -29,7 +29,7 @@ enum class EHOLConstructionState : uint8
  * What a building is for (D30, the user's trial of J6a.5): F1 selects the player's military buildings, F2 its economic
  * ones, F3 its technological ones. The centre, houses and camps are economic (§ 17), the Barracks military (J7-Q2).
  */
-UENUM()
+UENUM(BlueprintType)
 enum class EHOLBuildingCategory : uint8
 {
 	Economic,
@@ -41,7 +41,7 @@ enum class EHOLBuildingCategory : uint8
  * The provisional shape of a building with no final model (D261, AR-Q2b): made of the engine's basic pieces, its tops at
  * the owner's colour (what the RTS camera sees from above).
  */
-UENUM()
+UENUM(BlueprintType)
 enum class EHOLBuildingShape : uint8
 {
 	/** D261: a block and a central tower (the centres, houses, camps, the Barracks). */
@@ -61,35 +61,35 @@ struct HEROESOFLIBERTY_API FHOLBuildingTypeRow : public FTableRowBase
 	GENERATED_BODY()
 
 	/** Shown to the player (J3 panel) and in the logs. */
-	UPROPERTY(EditAnywhere, Category = "Display")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Display")
 	FText DisplayName;
 
 	/** L0 (LQ-7, D677): the factions that build it: `Common` (every faction, the default) or the keys of those that do (`Dawn`; several joined by ';'). */
-	UPROPERTY(EditAnywhere, Category = "Faction")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Faction")
 	FName Faction = TEXT("Common");
 
 	/** Ground footprint (cm), X by Y: whole tiles (UHOLBuildingSettings::TileSize, D311). */
-	UPROPERTY(EditAnywhere, Category = "Building", meta = (ForceUnits = "cm"))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Building", meta = (ForceUnits = "cm"))
 	FVector2D Footprint = FVector2D(1200.0, 1200.0);
 
 	/** Height of the provisional shape (cm). */
-	UPROPERTY(EditAnywhere, Category = "Building", meta = (ClampMin = "1", ForceUnits = "cm"))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Building", meta = (ClampMin = "1", ForceUnits = "cm"))
 	float Height = 1000.f;
 
 	/** Health points (D312: they grow with the work; D345: damage takes them off, destroyed at 0). */
-	UPROPERTY(EditAnywhere, Category = "Building", meta = (ClampMin = "1"))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Building", meta = (ClampMin = "1"))
 	int32 MaxHealth = 2000;
 
 	/** Armour against ranged attacks (D345: 40 for every building): an arrow loses this much, 1 damage at least. */
-	UPROPERTY(EditAnywhere, Category = "Building", meta = (ClampMin = "0"))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Building", meta = (ClampMin = "0"))
 	int32 RangedArmor = 40;
 
 	/** Final model; empty = the provisional shape of D261 (a block and a tower, the top at the owner's colour). */
-	UPROPERTY(EditAnywhere, Category = "Presentation")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Presentation")
 	TSoftObjectPtr<UStaticMesh> Mesh;
 
 	/** Population places the building gives its owner (D83: the centres give a base, the houses add to it). */
-	UPROPERTY(EditAnywhere, Category = "Production", meta = (ClampMin = "0"))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Production", meta = (ClampMin = "0"))
 	int32 PopulationProvided = 0;
 
 	/**
@@ -100,28 +100,28 @@ struct HEROESOFLIBERTY_API FHOLBuildingTypeRow : public FTableRowBase
 	int32 GarrisonSlots = 0;
 
 	/** Unit types the building produces (rows of the unit type table), in the order of its command grid (D30). */
-	UPROPERTY(EditAnywhere, Category = "Production")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Production")
 	TArray<FName> Produces;
 
 	/** Longest production queue (D283). */
-	UPROPERTY(EditAnywhere, Category = "Production", meta = (ClampMin = "1"))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Production", meta = (ClampMin = "1"))
 	int32 MaxQueue = 5;
 
 	/**
 	 * Resources its owner's gatherers bring to it (J5, D296): the main centre takes the four, the lumber camp wood,
 	 * the mining camp stone and gold (D310). Empty: not a deposit.
 	 */
-	UPROPERTY(EditAnywhere, Category = "Gathering")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gathering")
 	TArray<EHOLResource> Accepts;
 
 	bool AcceptsResource(const EHOLResource Resource) const { return Accepts.Contains(Resource); }
 
 	/** What placing its foundation costs (D311: taken at placement, given back if cancelled or lost unfinished: the share not built, D345). */
-	UPROPERTY(EditAnywhere, Category = "Construction")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Construction")
 	FHOLResources Cost;
 
 	/** Construction time (s) for a single builder (D312); more builders shorten it, less and less (HOLConstruction). */
-	UPROPERTY(EditAnywhere, Category = "Construction", meta = (ClampMin = "0", ForceUnits = "s"))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Construction", meta = (ClampMin = "0", ForceUnits = "s"))
 	float BuildTime = 0.f;
 
 	/**
@@ -131,39 +131,39 @@ struct HEROESOFLIBERTY_API FHOLBuildingTypeRow : public FTableRowBase
 	 * 8 = W (the Farm, IA1.2-Q1: the economic row of age I is full) ... 11 = V. -1: nobody builds it (the main centre comes
 	 * with the map).
 	 */
-	UPROPERTY(EditAnywhere, Category = "Construction", meta = (ClampMin = "-1", ClampMax = "11"))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Construction", meta = (ClampMin = "-1", ClampMax = "11"))
 	int32 BuildGridSlot = INDEX_NONE;
 
 	/** Its age (0 to 3: Fondation, Essor, Puissance, Légende, GDD § 11.1): the tab of the builders' grid it is in (I to IV). */
-	UPROPERTY(EditAnywhere, Category = "Construction", meta = (ClampMin = "0", ClampMax = "3"))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Construction", meta = (ClampMin = "0", ClampMax = "3"))
 	int32 Age = 0;
 
 	bool IsBuildable() const { return BuildGridSlot != INDEX_NONE; }
 
 	/** Its category (D30): the F key that selects it with the others of its kind (F1 military, F2 economic, F3 technological). */
-	UPROPERTY(EditAnywhere, Category = "Display")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Display")
 	EHOLBuildingCategory Category = EHOLBuildingCategory::Economic;
 
 	/** Units walk over it and stop on it, finished or not (IA1.2, the farm, IA1.2-Q3): it never blocks the navmesh. */
-	UPROPERTY(EditAnywhere, Category = "Building")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Building")
 	bool Walkable = false;
 
 	/**
 	 * The source it is born with once finished and loses when destroyed (IA1.2): a row of the source type table, linked
 	 * (the farm's FarmField). None: no source of its own.
 	 */
-	UPROPERTY(EditAnywhere, Category = "Gathering")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gathering")
 	FName Source;
 
 	/** Its provisional shape while Mesh is empty (AR-Q2b): the block and tower of D261 by default. */
-	UPROPERTY(EditAnywhere, Category = "Presentation")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Presentation")
 	EHOLBuildingShape Shape = EHOLBuildingShape::BlockAndTower;
 
 	/**
 	 * F2 (D383, D523): radius (cm) of its sight once finished, a disc around its centre (HOLVisionRules): houses, camps,
 	 * mill and farm 5 tiles, production 8, the main centre 16 (provisional). A site sees half as far, rubble nothing (F3).
 	 */
-	UPROPERTY(EditAnywhere, Category = "Vision", meta = (ClampMin = "0", ForceUnits = "cm"))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Vision", meta = (ClampMin = "0", ForceUnits = "cm"))
 	float SightRadius = 0.f;
 };
 

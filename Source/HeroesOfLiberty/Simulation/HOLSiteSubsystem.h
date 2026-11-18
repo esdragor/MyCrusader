@@ -13,7 +13,7 @@ struct FHOLMatchConfig;
 /**
  * The sacred sites of a match (SacredSitesInProgress.md S5, GDD 14.3, D429 to D431, D697 to D703): where the simulation runs (solo, server),
  * each step it walks the living units once, counts in each site's zone the takers (a holy unit of the slot's faction, or its hero) and the
- * disturbers (every unit but the worker) of each slot, and applies HOLSite::Step (the rule S1/S2 wrote and tested). Beside UHOLRelaySubsystem,
+ * disturbers (every unit but the worker) of each slot, and applies the script's rule through UHOLSiteBoardSubsystem (HOLSite::Step of HOLSiteRules.as). Beside UHOLRelaySubsystem,
  * on its model; the relays are untouched.
  *
  * OFF BY DEFAULT: the match option "Sacred sites" is S7 (not written yet), until then hol.Site.Enabled (0) is the switch; off, a step does

@@ -2,7 +2,7 @@
 
 #include "Siege/HOLDeployRules.h"
 
-// The C++ twin of Script/Siege/HOLDeployRules.as (Palier3InProgress.md G5): same rules, same cases (Tests/HOLDeployRulesTests.cpp).
+// The deployable engine's rule, only in C++ (Palier3InProgress.md G5), read by the script through HOLDeployRead (Siege/HOLDeployReadLibrary.h); its cases are in Script/Tests/HOLDeployRules_Test.as.
 namespace HOLDeploy
 {
 	namespace

@@ -2,42 +2,42 @@
 // SetStance / SetVision built, not from values written by hand. Pure.
 
 // A row of Viewer toward Slot read from the book, as the screen reads the game: the stances of the pair, the vision, the Market.
-FHOLDiplomacyRowView DpRow(FHOLDiplomacyBook& Book, int Viewer, int Slot, bool bHasMarket, bool bDefeated = false)
+FHOLDiplomacyRowView DpRow(FHOLDiplomacyStances& Book, int Viewer, int Slot, bool bHasMarket, bool bDefeated = false)
 {
-	return HOLDiplomacyPanel::MakeRow(!Book.bLocked, Viewer, false, Slot, Book.bAI[Slot], bDefeated, HOLDiplomacy::StanceOf(Book, Viewer, Slot),
-		HOLDiplomacy::StanceOf(Book, Slot, Viewer), HOLDiplomacy::SharesVision(Book, Viewer, Slot), bHasMarket, 30);
+	return HOLDiplomacyPanel::MakeRow(!Book.bLocked, Viewer, false, Slot, Book.bAI[Slot], bDefeated, HOLDiplomacyRead::StanceOf(Book, Viewer, Slot),
+		HOLDiplomacyRead::StanceOf(Book, Slot, Viewer), HOLDiplomacyRead::SharesVision(Book, Viewer, Slot), bHasMarket, 30);
 }
 
-FHOLDiplomacyBook DpHumans(int Slots)
+FHOLDiplomacyStances DpHumans(int Slots)
 {
 	TArray<bool> NoAI;
 	for (int Slot = 0; Slot < Slots; Slot++)
 		NoAI.Add(false);
-	return HOLDiplomacy::NewBook(Slots, NoAI);
+	return HOLDiplomacyRead::NewBook(Slots, NoAI);
 }
 
 // An alliance needs both sides (D369) but no waiting state is shown; a break drops both stances to Enemy at once.
 void Test_DiplomacyPanelPendingAlliance(FUnitTest& T)
 {
-	FHOLDiplomacyBook Book = DpHumans(4);
-	HOLDiplomacy::SetStance(Book, 0, 1, HOLDiplomacy::Ally);
+	FHOLDiplomacyStances Book = DpHumans(4);
+	HOLDiplomacyRead::SetStance(Book, 0, 1, HOLDiplomacyRead::GetStanceAlly());
 	FHOLDiplomacyRowView Offered = DpRow(Book, 0, 1, false);
-	T.AssertEquals(Offered.MyStance, HOLDiplomacy::Ally, "the viewer's stance shown is Ally (no waiting state: nothing else is written)");
-	T.AssertEquals(Offered.Relation, HOLDiplomacy::Enemy, "but the relation is not an alliance yet");
+	T.AssertEquals(Offered.MyStance, HOLDiplomacyRead::GetStanceAlly(), "the viewer's stance shown is Ally (no waiting state: nothing else is written)");
+	T.AssertEquals(Offered.Relation, HOLDiplomacyRead::GetStanceEnemy(), "but the relation is not an alliance yet");
 	T.AssertFalse(Offered.bVisionEnabled, "no vision to share before the alliance");
-	HOLDiplomacy::SetStance(Book, 1, 0, HOLDiplomacy::Neutral);
-	T.AssertEquals(DpRow(Book, 0, 1, false).Relation, HOLDiplomacy::Neutral, "0 Ally, 1 Neutral: the most hostile (D375) is Neutral");
-	HOLDiplomacy::SetStance(Book, 1, 0, HOLDiplomacy::Ally);
+	HOLDiplomacyRead::SetStance(Book, 1, 0, HOLDiplomacyRead::GetStanceNeutral());
+	T.AssertEquals(DpRow(Book, 0, 1, false).Relation, HOLDiplomacyRead::GetStanceNeutral(), "0 Ally, 1 Neutral: the most hostile (D375) is Neutral");
+	HOLDiplomacyRead::SetStance(Book, 1, 0, HOLDiplomacyRead::GetStanceAlly());
 	FHOLDiplomacyRowView Allied = DpRow(Book, 0, 1, false);
-	T.AssertEquals(Allied.Relation, HOLDiplomacy::Ally, "allied");
+	T.AssertEquals(Allied.Relation, HOLDiplomacyRead::GetStanceAlly(), "allied");
 	T.AssertTrue(Allied.bVisionEnabled, "allies may share their vision");
 	T.AssertFalse(Allied.bVisionChecked, "not ticked until asked");
-	HOLDiplomacy::SetVision(Book, 0, 1, true);
+	HOLDiplomacyRead::SetVision(Book, 0, 1, true);
 	T.AssertTrue(DpRow(Book, 0, 1, false).bVisionChecked, "ticked once shared");
-	HOLDiplomacy::SetStance(Book, 1, 0, HOLDiplomacy::Enemy);
+	HOLDiplomacyRead::SetStance(Book, 1, 0, HOLDiplomacyRead::GetStanceEnemy());
 	FHOLDiplomacyRowView Broken = DpRow(Book, 0, 1, false);
-	T.AssertEquals(Broken.MyStance, HOLDiplomacy::Enemy, "the other broke: the viewer's row shows Enemy at once, not Ally (bug of 2026-11-04)");
-	T.AssertEquals(Broken.TheirStance, HOLDiplomacy::Enemy, "and the other's stance is Enemy");
+	T.AssertEquals(Broken.MyStance, HOLDiplomacyRead::GetStanceEnemy(), "the other broke: the viewer's row shows Enemy at once, not Ally (bug of 2026-11-04)");
+	T.AssertEquals(Broken.TheirStance, HOLDiplomacyRead::GetStanceEnemy(), "and the other's stance is Enemy");
 	T.AssertFalse(Broken.bVisionChecked, "the break cut the vision at once (D370, D371)");
 	T.AssertFalse(Broken.bVisionEnabled, "and it cannot be ticked");
 }
@@ -52,14 +52,14 @@ void Test_DiplomacyPanelLockedInStandard(FUnitTest& T)
 		Teams.Add(Slot < 2 ? 1 : 2);
 		NoAI.Add(false);
 	}
-	FHOLDiplomacyBook Book = HOLDiplomacy::NewTeamBook(Teams, NoAI);
+	FHOLDiplomacyStances Book = HOLDiplomacyRead::NewTeamBook(Teams, NoAI);
 	FHOLDiplomacyRowView Mate = DpRow(Book, 0, 1, true);
 	T.AssertFalse(Mate.bStanceEditable, "the postures are locked in the standard modes");
-	T.AssertEquals(Mate.MyStance, HOLDiplomacy::Ally, "a teammate is shown Ally");
+	T.AssertEquals(Mate.MyStance, HOLDiplomacyRead::GetStanceAlly(), "a teammate is shown Ally");
 	T.AssertTrue(Mate.bVisionChecked, "his vision is shared by the team");
 	T.AssertFalse(Mate.bVisionEnabled, "and not a choice");
 	FHOLDiplomacyRowView Foe = DpRow(Book, 0, 2, true);
-	T.AssertEquals(Foe.MyStance, HOLDiplomacy::Enemy, "the other team is shown Enemy");
+	T.AssertEquals(Foe.MyStance, HOLDiplomacyRead::GetStanceEnemy(), "the other team is shown Enemy");
 	T.AssertFalse(Foe.bStanceEditable, "locked as well");
 	T.AssertTrue(Foe.bTributeEnabled, "tributes stay available in the standard modes (D387)");
 	T.AssertTrue(Foe.bMessageEnabled, "and the messages");
@@ -72,18 +72,18 @@ void Test_DiplomacyPanelAIsSelfAndSpectator(FUnitTest& T)
 	Ais.Add(false);
 	Ais.Add(false);
 	Ais.Add(true);
-	FHOLDiplomacyBook Book = HOLDiplomacy::NewBook(3, Ais);
+	FHOLDiplomacyStances Book = HOLDiplomacyRead::NewBook(3, Ais);
 	FHOLDiplomacyRowView Machine = DpRow(Book, 0, 2, true);
 	T.AssertFalse(Machine.bStanceEditable, "no stance toward an AI");
-	T.AssertEquals(Machine.MyStance, HOLDiplomacy::Enemy, "an AI is Enemy");
+	T.AssertEquals(Machine.MyStance, HOLDiplomacyRead::GetStanceEnemy(), "an AI is Enemy");
 	T.AssertFalse(Machine.bMessageEnabled, "no private message to an AI");
 	T.AssertTrue(Machine.bTributeEnabled, "a tribute to an AI is allowed (any player, D372)");
 	FHOLDiplomacyRowView Self = DpRow(Book, 0, 0, true);
 	T.AssertTrue(Self.bSelf, "the viewer's own line");
 	T.AssertFalse(Self.bStanceEditable || Self.bTributeEnabled || Self.bMessageEnabled || Self.bVisionEnabled, "no control on it");
-	FHOLDiplomacyRowView Spectator = HOLDiplomacyPanel::MakeRow(true, -1, false, 1, false, false, HOLDiplomacy::Enemy, HOLDiplomacy::Enemy, false, false, 30);
+	FHOLDiplomacyRowView Spectator = HOLDiplomacyPanel::MakeRow(true, -1, false, 1, false, false, HOLDiplomacyRead::GetStanceEnemy(), HOLDiplomacyRead::GetStanceEnemy(), false, false, 30);
 	T.AssertFalse(Spectator.bStanceEditable || Spectator.bTributeEnabled || Spectator.bMessageEnabled, "a spectator sets nothing");
-	FHOLDiplomacyRowView Beaten = HOLDiplomacyPanel::MakeRow(true, 0, true, 1, false, false, HOLDiplomacy::Enemy, HOLDiplomacy::Enemy, false, true, 30);
+	FHOLDiplomacyRowView Beaten = HOLDiplomacyPanel::MakeRow(true, 0, true, 1, false, false, HOLDiplomacyRead::GetStanceEnemy(), HOLDiplomacyRead::GetStanceEnemy(), false, true, 30);
 	T.AssertFalse(Beaten.bStanceEditable || Beaten.bTributeEnabled || Beaten.bMessageEnabled, "a defeated viewer sets nothing");
 	FHOLDiplomacyRowView Dead = DpRow(Book, 0, 1, true, true);
 	T.AssertFalse(Dead.bStanceEditable || Dead.bTributeEnabled || Dead.bMessageEnabled, "nothing toward a defeated player");
@@ -92,16 +92,16 @@ void Test_DiplomacyPanelAIsSelfAndSpectator(FUnitTest& T)
 // The tribute is greyed without a finished Market (the tax stays shown), enabled with one; the stance cycle follows the GDD's order.
 void Test_DiplomacyPanelTributeAndCycle(FUnitTest& T)
 {
-	FHOLDiplomacyBook Book = DpHumans(3);
+	FHOLDiplomacyStances Book = DpHumans(3);
 	FHOLDiplomacyRowView NoMarket = DpRow(Book, 0, 1, false);
 	T.AssertFalse(NoMarket.bTributeEnabled, "no Market: greyed");
 	T.AssertTrue(NoMarket.bNoMarket, "and the reason is the Market");
 	T.AssertEquals(NoMarket.TaxPercent, 30, "the tax is shown all the same");
 	T.AssertTrue(DpRow(Book, 0, 1, true).bTributeEnabled, "with a Market: enabled");
 	T.AssertTrue(NoMarket.Describe.Contains("tribute no market tax 30"), "the report says it");
-	T.AssertEquals(HOLDiplomacyPanel::NextStance(HOLDiplomacy::Ally), HOLDiplomacy::Neutral, "Allié -> Neutre");
-	T.AssertEquals(HOLDiplomacyPanel::NextStance(HOLDiplomacy::Neutral), HOLDiplomacy::Enemy, "Neutre -> Ennemi");
-	T.AssertEquals(HOLDiplomacyPanel::NextStance(HOLDiplomacy::Enemy), HOLDiplomacy::Ally, "Ennemi -> Allié");
+	T.AssertEquals(HOLDiplomacyPanel::NextStance(HOLDiplomacyRead::GetStanceAlly()), HOLDiplomacyRead::GetStanceNeutral(), "Allié -> Neutre");
+	T.AssertEquals(HOLDiplomacyPanel::NextStance(HOLDiplomacyRead::GetStanceNeutral()), HOLDiplomacyRead::GetStanceEnemy(), "Neutre -> Ennemi");
+	T.AssertEquals(HOLDiplomacyPanel::NextStance(HOLDiplomacyRead::GetStanceEnemy()), HOLDiplomacyRead::GetStanceAlly(), "Ennemi -> Allié");
 }
 
 // E-diplomacy_locked (the user, 2026-11-05): no switch button, FOUR tribute buttons a line, one per resource (gold, food, wood, stone), each one giving its own
@@ -145,35 +145,35 @@ void Test_DiplomacyPanelFourTributeButtons(FUnitTest& T)
 // relation drops the other's stance toward the viewer too; raising it (Ally) never raises the other's.
 void Test_DiplomacyPanelTheirStanceShown(FUnitTest& T)
 {
-	FHOLDiplomacyBook Book = DpHumans(4);
+	FHOLDiplomacyStances Book = DpHumans(4);
 	FHOLDiplomacyRowView Start = DpRow(Book, 0, 1, false);
 	T.AssertTrue(Start.bShowTheirStance, "the other's stance is shown on a human's line in the Diplomacy mode");
-	T.AssertEquals(Start.TheirStance, HOLDiplomacy::Enemy, "at launch everybody is Enemy to everybody (D645)");
+	T.AssertEquals(Start.TheirStance, HOLDiplomacyRead::GetStanceEnemy(), "at launch everybody is Enemy to everybody (D645)");
 	T.AssertEquals("Sa posture : Ennemi", HOLDiplomacyPanelText::TheirStanceText(Start.TheirStance), "the label");
 	// I say Ally: mine changes, his stays (an alliance needs both sides).
-	HOLDiplomacy::SetStance(Book, 0, 1, HOLDiplomacy::Ally);
+	HOLDiplomacyRead::SetStance(Book, 0, 1, HOLDiplomacyRead::GetStanceAlly());
 	FHOLDiplomacyRowView Offered = DpRow(Book, 0, 1, false);
-	T.AssertEquals(Offered.MyStance, HOLDiplomacy::Ally, "my stance is Ally");
-	T.AssertEquals(Offered.TheirStance, HOLDiplomacy::Enemy, "his stance did not follow me up");
+	T.AssertEquals(Offered.MyStance, HOLDiplomacyRead::GetStanceAlly(), "my stance is Ally");
+	T.AssertEquals(Offered.TheirStance, HOLDiplomacyRead::GetStanceEnemy(), "his stance did not follow me up");
 	// He says Neutral, then Ally: the line follows what he said.
-	HOLDiplomacy::SetStance(Book, 1, 0, HOLDiplomacy::Neutral);
+	HOLDiplomacyRead::SetStance(Book, 1, 0, HOLDiplomacyRead::GetStanceNeutral());
 	T.AssertEquals("Sa posture : Neutre", HOLDiplomacyPanelText::TheirStanceText(DpRow(Book, 0, 1, false).TheirStance), "he says Neutral");
-	HOLDiplomacy::SetStance(Book, 1, 0, HOLDiplomacy::Ally);
+	HOLDiplomacyRead::SetStance(Book, 1, 0, HOLDiplomacyRead::GetStanceAlly());
 	T.AssertEquals("Sa posture : Allié", HOLDiplomacyPanelText::TheirStanceText(DpRow(Book, 0, 1, false).TheirStance), "he says Ally");
 	// I go Neutral: his Ally falls to Neutral with mine; he keeps showing what he has become.
-	HOLDiplomacy::SetStance(Book, 0, 1, HOLDiplomacy::Neutral);
-	T.AssertEquals(DpRow(Book, 0, 1, false).TheirStance, HOLDiplomacy::Neutral, "I went Neutral: his stance toward me dropped to Neutral");
+	HOLDiplomacyRead::SetStance(Book, 0, 1, HOLDiplomacyRead::GetStanceNeutral());
+	T.AssertEquals(DpRow(Book, 0, 1, false).TheirStance, HOLDiplomacyRead::GetStanceNeutral(), "I went Neutral: his stance toward me dropped to Neutral");
 	// I go Enemy: his stance drops to Enemy, and it is his line for me as well.
-	HOLDiplomacy::SetStance(Book, 0, 1, HOLDiplomacy::Enemy);
-	T.AssertEquals(DpRow(Book, 0, 1, false).TheirStance, HOLDiplomacy::Enemy, "I went Enemy: he is Enemy to me too (automatic switch)");
-	T.AssertEquals(DpRow(Book, 1, 0, false).TheirStance, HOLDiplomacy::Enemy, "and from his side, I am Enemy");
+	HOLDiplomacyRead::SetStance(Book, 0, 1, HOLDiplomacyRead::GetStanceEnemy());
+	T.AssertEquals(DpRow(Book, 0, 1, false).TheirStance, HOLDiplomacyRead::GetStanceEnemy(), "I went Enemy: he is Enemy to me too (automatic switch)");
+	T.AssertEquals(DpRow(Book, 1, 0, false).TheirStance, HOLDiplomacyRead::GetStanceEnemy(), "and from his side, I am Enemy");
 	// Never shown: on my own line, toward an AI (always Enemy, D367), a defeated player, nor in the locked standard modes.
 	T.AssertFalse(DpRow(Book, 0, 0, false).bShowTheirStance, "not on my own line");
 	T.AssertFalse(DpRow(Book, 0, 1, false, true).bShowTheirStance, "not for a defeated player");
 	TArray<bool> OneAI;
 	OneAI.Add(false);
 	OneAI.Add(true);
-	FHOLDiplomacyBook WithAI = HOLDiplomacy::NewBook(2, OneAI);
+	FHOLDiplomacyStances WithAI = HOLDiplomacyRead::NewBook(2, OneAI);
 	T.AssertFalse(DpRow(WithAI, 0, 1, false).bShowTheirStance, "not for an AI");
 	TArray<int> Teams;
 	TArray<bool> NoAI;
@@ -182,6 +182,6 @@ void Test_DiplomacyPanelTheirStanceShown(FUnitTest& T)
 		Teams.Add(1);
 		NoAI.Add(false);
 	}
-	FHOLDiplomacyBook TeamBook = HOLDiplomacy::NewTeamBook(Teams, NoAI);
+	FHOLDiplomacyStances TeamBook = HOLDiplomacyRead::NewTeamBook(Teams, NoAI);
 	T.AssertFalse(DpRow(TeamBook, 0, 1, true).bShowTheirStance, "not in the standard modes (locked teams)");
 }

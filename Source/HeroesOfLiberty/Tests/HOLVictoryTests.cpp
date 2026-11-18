@@ -19,7 +19,6 @@
 #include "Match/HOLGameState.h"
 #include "Match/HOLMatchConfig.h"
 #include "Match/HOLPlayerState.h"
-#include "Match/HOLVictoryRules.h"
 #include "Misc/AutomationTest.h"
 #include "Components/StaticMeshComponent.h"
 #include "HOLCollision.h"
@@ -65,16 +64,6 @@ namespace UE::HeroesOfLiberty::Tests::Victory
 		return Config;
 	}
 
-	uint8 Mask(std::initializer_list<int32> Slots)
-	{
-		uint8 Result = 0;
-		for (const int32 Slot : Slots)
-		{
-			Result |= 1 << Slot;
-		}
-		return Result;
-	}
-
 	/** V3.2: a unit of Type born for Owner at Location (no walk: the test world runs no movement); its identifier, 0 if none. */
 	uint32 PlaceUnit(UHOLUnitSubsystem& Units, const FName Type, const int32 Owner, const FVector& Location)
 	{
@@ -118,82 +107,6 @@ namespace UE::HeroesOfLiberty::Tests::Victory
 
 	constexpr EHOLSlotState Human = EHOLSlotState::Human;
 	constexpr EHOLSlotState AI = EHOLSlotState::AI;
-}
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLVictoryOneVsOneTest, "HeroesOfLiberty.Victory.Rules.OneVsOne", UE::HeroesOfLiberty::Tests::Victory::Flags)
-bool FHOLVictoryOneVsOneTest::RunTest(const FString& Parameters)
-{
-	using namespace UE::HeroesOfLiberty::Tests::Victory;
-	const FHOLMatchConfig Config = MakeConfig({ { Human, 0 }, { AI, 0 } });
-
-	TestFalse(TEXT("nobody defeated: not over"), HOLVictoryRules::Evaluate(Config, 0).bOver);
-	const FHOLVictoryResult Result = HOLVictoryRules::Evaluate(Config, Mask({ 1 }));
-	TestTrue(TEXT("slot 1 defeated: over"), Result.bOver);
-	TestEqual(TEXT("slot 0 wins"), Result.GetWinners(), TArray<int32>{ 0 });
-	TestEqual(TEXT("the other way round"), HOLVictoryRules::Evaluate(Config, Mask({ 0 })).GetWinners(), TArray<int32>{ 1 });
-	TestTrue(TEXT("two slots of team 0: two camps"), HOLVictoryRules::GetCamp(Config, 0) != HOLVictoryRules::GetCamp(Config, 1));
-	TestEqual(TEXT("a closed slot has no camp"), HOLVictoryRules::GetCamp(Config, 2), static_cast<int32>(INDEX_NONE));
-	return true;
-}
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLVictoryTeamsTest, "HeroesOfLiberty.Victory.Rules.Teams", UE::HeroesOfLiberty::Tests::Victory::Flags)
-bool FHOLVictoryTeamsTest::RunTest(const FString& Parameters)
-{
-	using namespace UE::HeroesOfLiberty::Tests::Victory;
-	// 2v2: slots 0 and 2 in team 1, slots 1 and 3 in team 2.
-	const FHOLMatchConfig Config = MakeConfig({ { Human, 1 }, { AI, 2 }, { AI, 1 }, { Human, 2 } });
-
-	TestFalse(TEXT("one of team 2 down: not over"), HOLVictoryRules::Evaluate(Config, Mask({ 1 })).bOver);
-	TestFalse(TEXT("one down on each side: not over"), HOLVictoryRules::Evaluate(Config, Mask({ 1, 2 })).bOver);
-	const FHOLVictoryResult Result = HOLVictoryRules::Evaluate(Config, Mask({ 1, 2, 3 }));
-	TestTrue(TEXT("team 2 all down: over"), Result.bOver);
-	TestEqual(TEXT("team 1 wins, its fallen slot 2 too (D357)"), Result.GetWinners(), (TArray<int32>{ 0, 2 }));
-	return true;
-}
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLVictoryFreeForAllTest, "HeroesOfLiberty.Victory.Rules.FreeForAll", UE::HeroesOfLiberty::Tests::Victory::Flags)
-bool FHOLVictoryFreeForAllTest::RunTest(const FString& Parameters)
-{
-	using namespace UE::HeroesOfLiberty::Tests::Victory;
-	const FHOLMatchConfig Config = MakeConfig({ { Human, 0 }, { AI, 0 }, { AI, 0 } });
-
-	TestFalse(TEXT("one of three down: not over"), HOLVictoryRules::Evaluate(Config, Mask({ 0 })).bOver);
-	const FHOLVictoryResult Result = HOLVictoryRules::Evaluate(Config, Mask({ 0, 2 }));
-	TestTrue(TEXT("two of three down: over"), Result.bOver);
-	TestEqual(TEXT("the last one standing wins"), Result.GetWinners(), TArray<int32>{ 1 });
-	return true;
-}
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLVictorySingleCampTest, "HeroesOfLiberty.Victory.Rules.SingleCamp", UE::HeroesOfLiberty::Tests::Victory::Flags)
-bool FHOLVictorySingleCampTest::RunTest(const FString& Parameters)
-{
-	using namespace UE::HeroesOfLiberty::Tests::Victory;
-	const FHOLMatchConfig Alone = MakeConfig({ { Human, 0 } });
-	TestFalse(TEXT("a human alone: no victory at the launch"), HOLVictoryRules::Evaluate(Alone, 0).bOver);
-	const FHOLVictoryResult AloneDown = HOLVictoryRules::Evaluate(Alone, Mask({ 0 }));
-	TestTrue(TEXT("a human alone who falls: over"), AloneDown.bOver);
-	TestEqual(TEXT("a human alone who falls: nobody wins"), AloneDown.WinnerMask, static_cast<uint8>(0));
-
-	const FHOLMatchConfig OneTeam = MakeConfig({ { Human, 3 }, { AI, 3 }, { Human, 3 } });
-	TestFalse(TEXT("everyone in one team: no victory at the launch"), HOLVictoryRules::Evaluate(OneTeam, 0).bOver);
-	TestFalse(TEXT("one team, two down: not over"), HOLVictoryRules::Evaluate(OneTeam, Mask({ 0, 1 })).bOver);
-	const FHOLVictoryResult OneTeamDown = HOLVictoryRules::Evaluate(OneTeam, Mask({ 0, 1, 2 }));
-	TestTrue(TEXT("one team, all down: over"), OneTeamDown.bOver);
-	TestEqual(TEXT("one team, all down: nobody wins"), OneTeamDown.WinnerMask, static_cast<uint8>(0));
-
-	TestFalse(TEXT("no occupied slot: never over"), HOLVictoryRules::Evaluate(MakeConfig({}), 0).bOver);
-	return true;
-}
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLVictoryAllDefeatedTest, "HeroesOfLiberty.Victory.Rules.AllDefeated", UE::HeroesOfLiberty::Tests::Victory::Flags)
-bool FHOLVictoryAllDefeatedTest::RunTest(const FString& Parameters)
-{
-	using namespace UE::HeroesOfLiberty::Tests::Victory;
-	const FHOLMatchConfig Config = MakeConfig({ { Human, 1 }, { AI, 2 }, { AI, 0 } });
-	const FHOLVictoryResult Result = HOLVictoryRules::Evaluate(Config, Mask({ 0, 1, 2 }));
-	TestTrue(TEXT("everyone defeated: over"), Result.bOver);
-	TestEqual(TEXT("nobody wins"), Result.WinnerMask, static_cast<uint8>(0));
-	return true;
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLVictoryGameStateTest, "HeroesOfLiberty.Victory.GameState", UE::HeroesOfLiberty::Tests::Victory::Flags)
@@ -386,63 +299,6 @@ bool FHOLVictoryCollapseTest::RunTest(const FString& Parameters)
 	return true;
 }
 
-// V2.1 (D349, D352): the main forum's lives and phases, pure.
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLVictoryForumRulesTest, "HeroesOfLiberty.Victory.Forum.Rules", UE::HeroesOfLiberty::Tests::Victory::Flags)
-bool FHOLVictoryForumRulesTest::RunTest(const FString& Parameters)
-{
-	TestEqual(TEXT("tier 0, no fall: 2 lives (D349)"), HOLForumRules::GetLives(0, 0), 2);
-	TestEqual(TEXT("tier 0, one fall: 1 life"), HOLForumRules::GetLives(0, 1), 1);
-	TestEqual(TEXT("tier 0, two falls: 0 life"), HOLForumRules::GetLives(0, 2), 0);
-	TestEqual(TEXT("never below 0"), HOLForumRules::GetLives(0, 3), 0);
-	TestEqual(TEXT("tier 1, no fall: 3 lives"), HOLForumRules::GetLives(1, 0), 3);
-
-	// The game's values (DefaultGame.ini): 2 lives, ruin ~30 s, rebuilding alone ~120 s.
-	const float StepSeconds = GetDefault<UHOLSimulationSettings>()->GetStepSeconds();
-	const FHOLForumTuning Game = FHOLForumTuning::FromSettings();
-	TestEqual(TEXT("the game's tier: 0"), Game.Tier, 0);
-	TestEqual(TEXT("the game's ruin: 30 s"), Game.RuinSteps * StepSeconds, 30.f, 0.1f);
-	TestEqual(TEXT("the game's rebuilding alone: 120 s"), Game.RebuildSteps * StepSeconds, 120.f, 0.1f);
-	TestEqual(TEXT("the game's builder exponent (D312)"), Game.BuilderExponent, 0.63f, 0.001f);
-	// D312 calibrated so that one Peasant does as much as the rebuilding alone (V2-Q2).
-	const auto Seconds = [&Game, StepSeconds](const int32 Builders) { return HOLForumRules::GetStepsToRebuild(Game, Builders) * StepSeconds; };
-	TestEqual(TEXT("0 Peasant: 120 s"), Seconds(0), 120.f, 0.1f);
-	TestEqual(TEXT("1 Peasant: 60 s"), Seconds(1), 60.f, 0.1f);
-	TestEqual(TEXT("5 Peasants: ~32 s"), Seconds(5), 32.f, 0.5f);
-	TestEqual(TEXT("10 Peasants: ~23 s"), Seconds(10), 23.f, 0.5f);
-	TestEqual(TEXT("40 Peasants: ~11 s"), Seconds(40), 11.f, 0.5f);
-
-	FHOLForumTuning Tuning;
-	Tuning.RuinSteps = 3;
-	Tuning.RebuildSteps = 4;
-	FHOLForumState State;
-	TestFalse(TEXT("standing: not down"), State.IsDown());
-	TestEqual(TEXT("standing: progress 1"), HOLForumRules::GetRebuildProgress(State, Tuning), 1.f);
-	TestFalse(TEXT("standing: nothing to advance"), HOLForumRules::Advance(State, Tuning, 5));
-	TestEqual(TEXT("first fall: 1 life left"), HOLForumRules::Fall(State, Tuning), 1);
-	TestTrue(TEXT("first fall: ruin"), State.Phase == EHOLForumPhase::Ruin);
-	TestEqual(TEXT("a fall in ruin refused (unbreakable)"), HOLForumRules::Fall(State, Tuning), static_cast<int32>(INDEX_NONE));
-	TestEqual(TEXT("still one fall"), static_cast<int32>(State.Falls), 1);
-	TestFalse(TEXT("ruin step 1"), HOLForumRules::Advance(State, Tuning, 40));
-	TestFalse(TEXT("ruin step 2"), HOLForumRules::Advance(State, Tuning, 40));
-	TestEqual(TEXT("the Peasants build nothing in the ruin"), State.RebuildWork, static_cast<int64>(0));
-	TestTrue(TEXT("ruin step 3: rebuilding"), HOLForumRules::Advance(State, Tuning, 0) && State.Phase == EHOLForumPhase::Rebuilding);
-	TestEqual(TEXT("a fall in rebuilding refused (unbreakable)"), HOLForumRules::Fall(State, Tuning), static_cast<int32>(INDEX_NONE));
-	TestFalse(TEXT("rebuilding step 1"), HOLForumRules::Advance(State, Tuning, 0));
-	TestEqual(TEXT("rebuilding: a quarter done"), HOLForumRules::GetRebuildProgress(State, Tuning), 0.25f, 0.001f);
-	// One Peasant doubles the rate: the 3 steps of work left take 2 steps (1.5).
-	TestFalse(TEXT("rebuilding step 2, one Peasant"), HOLForumRules::Advance(State, Tuning, 1));
-	TestTrue(TEXT("rebuilding step 3, one Peasant: standing"), HOLForumRules::Advance(State, Tuning, 1) && State.Phase == EHOLForumPhase::Standing);
-	TestEqual(TEXT("rebuilt: lives kept"), HOLForumRules::GetLives(State, Tuning), 1);
-	TestEqual(TEXT("second fall: no life left, the defeat"), HOLForumRules::Fall(State, Tuning), 0);
-
-	FHOLForumState Skipped;
-	TestFalse(TEXT("skip: nothing when standing"), HOLForumRules::Skip(Skipped));
-	HOLForumRules::Fall(Skipped, Tuning);
-	TestTrue(TEXT("skip: ruin -> rebuilding"), HOLForumRules::Skip(Skipped) && Skipped.Phase == EHOLForumPhase::Rebuilding);
-	TestTrue(TEXT("skip: rebuilding -> standing"), HOLForumRules::Skip(Skipped) && Skipped.Phase == EHOLForumPhase::Standing);
-	return true;
-}
-
 // V2.1 (D349-D352) on the server's chain: slot 0's main forum hit to 0 health by DamageBuilding falls into ruin (a life
 // less, kept in the world, queue refunded, rally kept, unbreakable, inert, population kept), rises again at the pace of the
 // simulation's steps with all its health, and its second fall defeats slot 0 at the end of the step (V1's collapse).
@@ -606,121 +462,6 @@ bool FHOLVictoryForumFallTest::RunTest(const FString& Parameters)
 
 	GEngine->DestroyWorldContext(World);
 	World->DestroyWorld(/*bInformEngineOfWorld*/ false);
-	return true;
-}
-
-// V3.1 (D348, D352, V3-Q3, V3-Q4): holding a forum down, pure, with the presence given to the rule.
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLVictoryForumHoldRulesTest, "HeroesOfLiberty.Victory.Forum.Hold.Rules", UE::HeroesOfLiberty::Tests::Victory::Flags)
-bool FHOLVictoryForumHoldRulesTest::RunTest(const FString& Parameters)
-{
-	// The game's values (DefaultGame.ini): 60 s held, 2 s given back a second, a zone of 12 m from the edge.
-	const float StepSeconds = GetDefault<UHOLSimulationSettings>()->GetStepSeconds();
-	const FHOLForumTuning Game = FHOLForumTuning::FromSettings();
-	TestEqual(TEXT("the game's hold: 60 s"), Game.HoldSteps * StepSeconds, 60.f, 0.1f);
-	TestEqual(TEXT("the game's decay: 2 s a second"), Game.HoldDecaySteps, 2);
-	TestEqual(TEXT("the game's zone: 12 m"), Game.HoldRadius, 1200.f, 0.1f);
-
-	FHOLForumTuning Tuning;
-	Tuning.Tier = 1;
-	Tuning.RuinSteps = 3;
-	Tuning.RebuildSteps = 4;
-	Tuning.HoldSteps = 10;
-	Tuning.HoldDecaySteps = 2;
-	const FHOLForumPresence Nobody;
-	const FHOLForumPresence Held = FHOLForumPresence::Attackers(1);
-	FHOLForumPresence Contested = Held;
-	Contested.bDefenders = true;
-	FHOLForumPresence DefendersOnly;
-	DefendersOnly.bDefenders = true;
-
-	FHOLForumState State;
-	TestFalse(TEXT("standing: nothing razed"), HOLForumRules::Step(State, Tuning, 0, Held).bRazed);
-	TestEqual(TEXT("standing: no hold"), State.HoldSteps, 0);
-	TestTrue(TEXT("standing: hold none"), State.Hold == EHOLForumHold::None);
-	TestEqual(TEXT("standing: nothing to raze"), HOLForumRules::Raze(State, Tuning), static_cast<int32>(INDEX_NONE));
-	TestEqual(TEXT("first fall: 2 lives (tier 1)"), HOLForumRules::Fall(State, Tuning), 2);
-
-	// The count runs from the fall, the ruin included (D352); the ruin counts down as ever.
-	HOLForumRules::Step(State, Tuning, 0, Held);
-	TestEqual(TEXT("held in ruin: 1 step"), State.HoldSteps, 1);
-	TestTrue(TEXT("held in ruin: holding"), State.Hold == EHOLForumHold::Holding);
-	TestEqual(TEXT("held by slot 1"), static_cast<int32>(State.HolderSlot), 1);
-	TestEqual(TEXT("the ruin counts down while held"), State.RuinStepsLeft, 2);
-	HOLForumRules::Step(State, Tuning, 0, Held);
-	TestTrue(TEXT("ruin over while held: rebuilding"), HOLForumRules::Step(State, Tuning, 0, Held).bPhaseChanged && State.Phase == EHOLForumPhase::Rebuilding);
-	TestEqual(TEXT("3 steps held"), State.HoldSteps, 3);
-
-	// The rebuilding frozen while attackers stand there (D348), contested or not.
-	HOLForumRules::Step(State, Tuning, 5, Held);
-	TestEqual(TEXT("held: 4 steps"), State.HoldSteps, 4);
-	TestEqual(TEXT("held: the rebuilding frozen, Peasants or not"), State.RebuildWork, static_cast<int64>(0));
-	HOLForumRules::Step(State, Tuning, 5, Contested);
-	HOLForumRules::Step(State, Tuning, 5, Contested);
-	TestEqual(TEXT("contested: the count frozen"), State.HoldSteps, 4);
-	TestTrue(TEXT("contested"), State.IsContested() && State.Hold == EHOLForumHold::Contested);
-	TestEqual(TEXT("contested: the holder kept"), static_cast<int32>(State.HolderSlot), 1);
-	TestEqual(TEXT("contested: the rebuilding frozen"), State.RebuildWork, static_cast<int64>(0));
-
-	// No attacker: the count recedes 2 steps a step, never below 0 (V3-Q3); the rebuilding goes on.
-	HOLForumRules::Step(State, Tuning, 0, Nobody);
-	TestEqual(TEXT("nobody: 2 steps given back"), State.HoldSteps, 2);
-	TestTrue(TEXT("nobody: receding"), State.Hold == EHOLForumHold::Receding);
-	TestEqual(TEXT("receding: the holder's colour kept"), static_cast<int32>(State.HolderSlot), 1);
-	TestTrue(TEXT("nobody: the rebuilding goes on"), State.RebuildWork > 0);
-	HOLForumRules::Step(State, Tuning, 0, DefendersOnly);
-	TestEqual(TEXT("defenders alone: back to 0"), State.HoldSteps, 0);
-	TestTrue(TEXT("back to 0: hold none, no holder"), State.Hold == EHOLForumHold::None && State.HolderSlot == INDEX_NONE);
-	HOLForumRules::Step(State, Tuning, 0, Nobody);
-	TestEqual(TEXT("never below 0"), State.HoldSteps, 0);
-	TestTrue(TEXT("still rebuilding"), State.Phase == EHOLForumPhase::Rebuilding);
-	const int64 WorkBefore = State.RebuildWork;
-
-	// Held 10 steps without contest: the foundations razed at the 10th, a new complete fall (V3-Q4).
-	for (int32 Index = 0; Index < 9; ++Index)
-	{
-		if (HOLForumRules::Step(State, Tuning, 3, Held).bRazed)
-		{
-			AddError(FString::Printf(TEXT("razed too early, step %d"), Index + 1));
-		}
-	}
-	TestEqual(TEXT("9 steps held"), State.HoldSteps, 9);
-	TestEqual(TEXT("held: the rebuilding kept where it was"), State.RebuildWork, WorkBefore);
-	const HOLForumRules::FStepResult Razed = HOLForumRules::Step(State, Tuning, 3, Held);
-	TestTrue(TEXT("10th step: razed"), Razed.bRazed && Razed.bPhaseChanged);
-	TestEqual(TEXT("razed: a life less"), Razed.Lives, 1);
-	TestEqual(TEXT("razed: a fall more"), static_cast<int32>(State.Falls), 2);
-	TestTrue(TEXT("razed: in ruin again"), State.Phase == EHOLForumPhase::Ruin);
-	TestEqual(TEXT("razed: the whole ruin again"), State.RuinStepsLeft, 3);
-	TestEqual(TEXT("razed: the rebuilding from nothing"), State.RebuildWork, static_cast<int64>(0));
-	TestEqual(TEXT("razed: the count at 0"), State.HoldSteps, 0);
-	TestTrue(TEXT("razed: hold none"), State.Hold == EHOLForumHold::None && State.HolderSlot == INDEX_NONE);
-
-	// The last life: razed again, the defeat (0 lives).
-	for (int32 Index = 0; Index < 9; ++Index)
-	{
-		HOLForumRules::Step(State, Tuning, 0, Held);
-	}
-	const HOLForumRules::FStepResult Last = HOLForumRules::Step(State, Tuning, 0, Held);
-	TestTrue(TEXT("razed on the last life"), Last.bRazed);
-	TestEqual(TEXT("razed on the last life: 0 lives, the defeat"), Last.Lives, 0);
-
-	// What the HUD shows (V3.3): whole seconds held, the ring's fill.
-	FHOLForumTuning Shown = Tuning;
-	Shown.HoldSteps = 50;
-	FHOLForumState Half;
-	HOLForumRules::Fall(Half, Shown);
-	Half.HoldSteps = 25;
-	TestEqual(TEXT("25 steps of 0.1 s: 2 s"), HOLForumRules::GetHoldSeconds(Half, Shown), 2);
-	TestEqual(TEXT("25 of 50: half the ring"), HOLForumRules::GetHoldProgress(Half, Shown), 0.5f, 0.001f);
-
-	// Standing again: the count at 0.
-	FHOLForumState Rebuilt;
-	HOLForumRules::Fall(Rebuilt, Tuning);
-	HOLForumRules::Step(Rebuilt, Tuning, 0, Held);
-	HOLForumRules::Skip(Rebuilt);
-	HOLForumRules::Skip(Rebuilt);
-	TestTrue(TEXT("rebuilt: standing, the count at 0"), Rebuilt.Phase == EHOLForumPhase::Standing && Rebuilt.HoldSteps == 0
-		&& Rebuilt.Hold == EHOLForumHold::None);
 	return true;
 }
 

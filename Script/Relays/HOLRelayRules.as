@@ -40,6 +40,13 @@ namespace HOLRelay
 	// allies). A slot with no units does not count; a slot out of the arrays is ignored.
 	FHOLRelayState Step(const FHOLRelayState& State, const TArray<int>& UnitsBySlot, const TArray<int>& TeamBySlot)
 	{
+		return StepWith(State, UnitsBySlot, TeamBySlot, HoldSteps(), DecaySteps);
+	}
+
+	// The same step with the capture time and the recession the server holds (the bridge, UHOLRelayBoard: the server's hold time is the cvar hol.Relay.HoldSeconds
+	// at the simulation rate, so it passes its steps; Step above is this with the constants of this file).
+	FHOLRelayState StepWith(const FHOLRelayState& State, const TArray<int>& UnitsBySlot, const TArray<int>& TeamBySlot, int HoldCount, int DecayCount)
+	{
 		FHOLRelayState Next = State;
 		const int Slots = Math::Min(UnitsBySlot.Num(), TeamBySlot.Num());
 		const int OwnerTeam = (State.Owner >= 0 && State.Owner < TeamBySlot.Num()) ? TeamBySlot[State.Owner] : -1;
@@ -73,7 +80,7 @@ namespace HOLRelay
 		if (AdverseTeams == 0)
 		{
 			// Nobody adverse: the count recedes.
-			Next.Held = Math::Max(0, State.Held - DecaySteps);
+			Next.Held = Math::Max(0, State.Held - DecayCount);
 			if (Next.Held == 0)
 				Next.Taker = None;
 			return Next;
@@ -86,7 +93,7 @@ namespace HOLRelay
 		// One adverse side alone: the count goes up, its slot with the most units shown as the taker.
 		Next.Taker = Taker;
 		Next.Held = State.Held + 1;
-		if (Next.Held >= HoldSteps())
+		if (Next.Held >= HoldCount)
 		{
 			Next.Owner = Taker;
 			Next.Taker = None;
@@ -116,7 +123,13 @@ namespace HOLRelay
 	// The whole XP to give the owner of Relays relays and Centres secondary centres for this step (0 most steps).
 	int TerritoryXP(FHOLTerritoryCarry& Memory, int Relays, int Centres)
 	{
-		const int StepsPerMinute = 60 * StepsPerSecond;
+		return TerritoryXPAt(Memory, Relays, Centres, StepsPerSecond);
+	}
+
+	// The same at the simulation rate the server holds (the bridge, UHOLRelayBoard; at least 1 step a second, as the C++ rule).
+	int TerritoryXPAt(FHOLTerritoryCarry& Memory, int Relays, int Centres, int Rate)
+	{
+		const int StepsPerMinute = 60 * Math::Max(1, Rate);
 		Memory.Carry += Math::Max(0, Relays) * RelayXPPerMinute + Math::Max(0, Centres) * CentreXPPerMinute;
 		const int Award = Math::IntegerDivisionTrunc(Memory.Carry, StepsPerMinute);
 		Memory.Carry -= Award * StepsPerMinute;

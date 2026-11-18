@@ -107,7 +107,8 @@ namespace HOLMarket
 		FHOLMarketBook Book;
 		for (int Resource = 0; Resource < 4; Resource++)
 		{
-			Book.Prices.Add(Settings.BasePrices[Resource]);
+			// A short array (a bridge struct) counts a missing price as 0.
+			Book.Prices.Add(Resource < Settings.BasePrices.Num() ? Settings.BasePrices[Resource] : 0);
 		}
 		return Book;
 	}
@@ -235,6 +236,18 @@ namespace HOLMarket
 		Trade.Gold = Lots * Lot;
 		Trade.bOk = true;
 		return Trade;
+	}
+
+	// One trade on a stock, the order's end of the chain (MIG-C++-FINAL): a sale is Sell, a purchase is BuyWithGold. Stock is
+	// what is given up: the goods of Resource for a sale, the gold for a purchase. The caller moves the stock by the trade.
+	FHOLMarketTrade Apply(const FHOLMarketSettings& Settings, const FHOLMarketBook& Book, int Resource, int Lots, bool bBuy,
+		int Stock, int FeePercent)
+	{
+		if (bBuy)
+		{
+			return BuyWithGold(Settings, Book, Resource, Lots, Stock, FeePercent);
+		}
+		return Sell(Settings, Book, Resource, Lots, Stock, FeePercent);
 	}
 
 	// The way back to rest: after Intervals intervals (RecoverEverySeconds seconds each) every price has moved

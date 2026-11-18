@@ -11,9 +11,9 @@ struct FHOLAIRageData
 	// The warrior casts only above this share of its full health (the rage costs 3 health points per blow).
 	int MinHealthPercent = 60;
 
-	// UnitAbilities.csv, NecroticRage: MinHp (the server refuses under it) and CooldownMs / 1000.
-	int MinHealth = 30;
-	float RecastEvery = 40.f;
+	// The rage's MinHp (the server refuses under it) and CooldownMs / 1000, read from the C++ rule by DefaultData (HOLUnitAbilityRead, D836 (2): no copy here).
+	int MinHealth = 0;
+	float RecastEvery = 0.f;
 
 	// The warrior's full health (HOLAIOrder::ReadAIUnitFigures); 0 = unknown, the rule never casts.
 	int MaxHealth = 0;
@@ -34,11 +34,13 @@ namespace HOLAIRage
 	FHOLAIRageData DefaultData()
 	{
 		FHOLAIRageData Data;
+		Data.MinHealth = HOLUnitAbilityRead::GetRageMinHp();
+		Data.RecastEvery = float(HOLUnitAbilityRead::GetRageCooldownMs()) / 1000.f;
 		Data.MeleeTypes.Add(n"Spearman");
 		Data.MeleeTypes.Add(n"ManAtArms");
 		Data.MeleeTypes.Add(n"Halberdier");
 		Data.MeleeTypes.Add(n"LightCavalry");
-		Data.MeleeTypes.Add(n"DamnedWarrior");
+		Data.MeleeTypes.Add(HOLUnitAbilityRead::GetRageUnitType());
 		return Data;
 	}
 
@@ -99,7 +101,7 @@ namespace HOLAIRage
 		for (int Index = 0; Index < Summary.Army.Num(); Index++)
 		{
 			const FHOLAIUnit& Warrior = Summary.Army[Index];
-			if (Warrior.Type != n"DamnedWarrior" || Warrior.Health < Data.MinHealth)
+			if (Warrior.Type != HOLUnitAbilityRead::GetRageUnitType() || Warrior.Health < Data.MinHealth)
 			{
 				continue;
 			}

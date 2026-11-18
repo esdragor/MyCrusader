@@ -42,4 +42,22 @@ namespace HOLUnitAbility
 	{
 		return FMath::Max(1, IntervalMs * 100 / (100 + RageRatePercent));
 	}
+
+	/** When the cool-down of a rage cast at StartMs ends, in simulation milliseconds (counted from the start of the effect). */
+	inline int32 GetRageCooldownEndMs(const int32 StartMs)
+	{
+		return StartMs + RageCooldownMs;
+	}
+
+	/** When the effect of a rage cast at StartMs ends by time. */
+	inline int32 GetRageEffectEndMs(const int32 StartMs)
+	{
+		return StartMs + RageDurationMs;
+	}
+
+	/** Is the rage cast at StartMs over at NowMs: by time, or because the unit is at (or under) the stop floor. */
+	inline bool IsRageEffectEnded(const int32 StartMs, const int32 NowMs, const float Health)
+	{
+		return NowMs >= GetRageEffectEndMs(StartMs) || Health <= static_cast<float>(RageStopHp);
+	}
 }

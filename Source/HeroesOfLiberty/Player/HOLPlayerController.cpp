@@ -7,6 +7,7 @@
 #include "Buildings/HOLBuildingTypes.h"
 #include "Buildings/HOLConstructionSubsystem.h"
 #include "Buildings/HOLProductionSubsystem.h"
+#include "Match/HOLMarketSubsystem.h"
 #include "Simulation/HOLUnitTypes.h"
 #include "Commands/HOLCommandSubsystem.h"
 #include "Commands/HOLPlayerOrders.h"
@@ -23,6 +24,7 @@
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
 #include "HAL/IConsoleManager.h"
+#include "Net/HOLScriptRpcPlayerActor.h"
 #include "HOLCollision.h"
 #include "HeroesOfLibertyLog.h"
 #include "InputAction.h"
@@ -37,9 +39,9 @@
 #include "Map/HOLStartSlot.h"
 #include "Match/HOLPlayerState.h"
 #include "Match/HOLSignalSubsystem.h"
-#include "Match/HOLChatRules.h"
+#include "Match/HOLChatSubsystem.h"
 #include "Match/HOLSpecializationSubsystem.h"
-#include "Player/HOLGameMenuRules.h"
+#include "Player/HOLGameMenuRulesBridge.h"
 #include "Player/HOLRTSCamera.h"
 #include "Player/HOLSelectionMarkers.h"
 #include "Player/HOLUnitPicking.h"
@@ -54,6 +56,35 @@
 #include "Simulation/HOLUnitSubsystem.h"
 #include "Simulation/HOLUnitTypes.h"
 #include "Simulation/HOLUnitView.h"
+
+// HALDIR-1117o (NOT COMPILED): forward declaration of the script route (defined near RequestSurrender), used by the watch call above it.
+namespace HOLRpcScriptRoute_Haldir1117n
+{
+	bool CallN(AHOLPlayerController* Controller, const TCHAR* CVarName, const TCHAR* FunctionName, TArrayView<const int32> Args);
+	// HALDIR-1117q (NOT COMPILED): the Economy routes (hol.Rpc.ScriptEconomy); true = the script actor took the call, false = nothing was sent (D845: no C++ RPC any more; the caller logs it with LogNotSent).
+	bool RouteQueueProduction(AHOLPlayerController* Controller, AHOLBuilding* Building, FName TypeName);
+	bool RouteCancelProduction(AHOLPlayerController* Controller, AHOLBuilding* Building, int32 Index);
+	bool RouteTribute(AHOLPlayerController* Controller, AHOLBuilding* Building, int32 Receiver, int32 Resource, int32 Amount);
+	bool RouteMarketTrade(AHOLPlayerController* Controller, AHOLBuilding* Building, int32 Resource, int32 Lots, bool bBuy);
+	// D845: no C++ RPC fallback any more; a call the script actor did not take is only logged (defined next to IsOn).
+	void LogNotSent(const TCHAR* Name);
+	bool RouteMove(AHOLPlayerController* Controller, TConstArrayView<uint32> UnitIds, const FVector& Target, bool bQueue);
+	bool RouteAttackUnit(AHOLPlayerController* Controller, TConstArrayView<uint32> UnitIds, uint32 TargetUnitId, bool bQueue);
+	bool RouteHealUnit(AHOLPlayerController* Controller, TConstArrayView<uint32> UnitIds, uint32 TargetUnitId, bool bQueue);
+	bool RouteAttackBuilding(AHOLPlayerController* Controller, TConstArrayView<uint32> UnitIds, AHOLBuilding* Building, bool bQueue);
+	bool RouteAttackMove(AHOLPlayerController* Controller, TConstArrayView<uint32> UnitIds, const FVector& Target, bool bQueue);
+	bool RouteStop(AHOLPlayerController* Controller, TConstArrayView<uint32> UnitIds, bool bHold);
+	bool RouteToggleDeploy(AHOLPlayerController* Controller, TConstArrayView<uint32> UnitIds);
+	bool RouteMoveInLine(AHOLPlayerController* Controller, TConstArrayView<uint32> UnitIds, const FVector& Start, const FVector& End, bool bWidth, bool bQueue);
+	bool RouteGather(AHOLPlayerController* Controller, TConstArrayView<uint32> UnitIds, int32 SourceIndex, bool bQueue);
+	bool RoutePlaceBuilding(AHOLPlayerController* Controller, FName TypeName, const FVector& Point, TConstArrayView<uint32> UnitIds, bool bQueue);
+	bool RouteBuildUnits(AHOLPlayerController* Controller, TConstArrayView<uint32> UnitIds, AHOLBuilding* Building, bool bQueue);
+	bool RouteDropOff(AHOLPlayerController* Controller, TConstArrayView<uint32> UnitIds, AHOLBuilding* Building, const FVector& Point, bool bQueue);
+	bool RouteGarrison(AHOLPlayerController* Controller, TConstArrayView<uint32> UnitIds, AHOLBuilding* Building);
+	bool RouteUngarrisonAll(AHOLPlayerController* Controller, AHOLBuilding* Building);
+	bool RouteCancelBuilding(AHOLPlayerController* Controller, AHOLBuilding* Building);
+	bool RouteSetRally(AHOLPlayerController* Controller, AHOLBuilding* Building, const FVector& Point, int32 SourceIndex, AHOLBuilding* Site, bool bQueue);
+}
 
 namespace UE::HeroesOfLiberty::Player
 {
@@ -1603,6 +1634,18 @@ namespace UE::HeroesOfLiberty::Player
 			}
 		}));
 
+	/** Lot E (D847), until the interface's button: the local players send the necrotic rage of their selected units (the server keeps the own Damned Warriors). Proof of the CastRage route over the network. */
+	FAutoConsoleCommand HeroRageCommand(
+		TEXT("hol.Hero.Rage"),
+		TEXT("hol.Hero.Rage: the local player casts the necrotic rage of its selected units (the server keeps its own Damned Warriors)"),
+		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>&)
+		{
+			for (AHOLPlayerController* Controller : GetLocalControllers())
+			{
+				Controller->RequestCastRage(Controller->GetOwnSelectedUnits());
+			}
+		}));
+
 	/** D4, until the interface's buttons: the local players challenge a hero to a duel, or answer the challenge waiting for them (the server checks it). */
 	FAutoConsoleCommand DuelChallengeCommand(
 		TEXT("hol.Duel.Challenge"),
@@ -1690,14 +1733,14 @@ namespace UE::HeroesOfLiberty::Player
 		TEXT("hol.Chat.Say <all|allies|private> [<TargetSlot> for private] <text...>: the local player sends that chat message"),
 		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
 		{
-			const int32 Channel = Args.Num() > 0 ? HOLChat::ParseChannel(Args[0]) : INDEX_NONE;
-			const int32 First = Channel == HOLChat::Private ? 2 : 1;
+			const int32 Channel = Args.Num() > 0 ? UHOLChatSubsystem::ParseChannel(Args[0]) : INDEX_NONE;
+			const int32 First = Channel == UHOLChatSubsystem::ChannelPrivate ? 2 : 1;
 			if (Channel == INDEX_NONE || Args.Num() <= First)
 			{
 				UE_LOG(LogHOLMatch, Warning, TEXT("Usage: hol.Chat.Say <all|allies|private> [<TargetSlot>] <text>"));
 				return;
 			}
-			const int32 Target = Channel == HOLChat::Private ? FCString::Atoi(*Args[1]) : INDEX_NONE;
+			const int32 Target = Channel == UHOLChatSubsystem::ChannelPrivate ? FCString::Atoi(*Args[1]) : INDEX_NONE;
 			TArray<FString> Words;
 			for (int32 Index = First; Index < Args.Num(); ++Index)
 			{
@@ -2122,6 +2165,261 @@ namespace UE::HeroesOfLiberty::Player
 				Units->RequestUnits(Request);
 				UE_LOG(LogHOLMatch, Display, TEXT("SpawnHere: %d %s of slot %d around (%.0f, %.0f)"), Request.Count,
 					*Request.TypeName.ToString(), Request.OwnerPlayer, Focus.X, Focus.Y);
+			}
+		}));
+#endif
+
+#if !UE_BUILD_SHIPPING
+	/**
+	 * D848 network proofs of the 16 orders of the script route, without a screen (a click needs a projection, none under -nullrhi):
+	 * hol.Units.* and hol.Prod.RallySite. Like hol.Units.Order they take the player's own units known here, without a selection,
+	 * log "Order: N units ..." (what the scenario reads as the send) and call the Request<X> of the controller. None of them
+	 * exists in a Shipping build, as the hol.Cheat.* commands.
+	 */
+	TArray<uint32> OwnUnitIdsForProof(const AHOLPlayerController& Controller)
+	{
+		const AHOLPlayerState* PlayerState = Controller.GetHOLPlayerState();
+		TArray<FHOLUnitView> Views;
+		HOLUnitView::Gather(*Controller.GetWorld(), Views);
+		TArray<uint32> UnitIds;
+		for (const FHOLUnitView& View : Views)
+		{
+			if (PlayerState && View.OwnerPlayer == PlayerState->GetPlayerIndex())
+			{
+				UnitIds.Add(View.UnitId);
+			}
+		}
+		UnitIds.Sort();
+		return UnitIds;
+	}
+
+	bool HasProofFlag(const TArray<FString>& Args, const int32 From, const TCHAR* Flag)
+	{
+		for (int32 Index = From; Index < Args.Num(); ++Index)
+		{
+			if (Args[Index].Equals(Flag, ESearchCase::IgnoreCase))
+			{
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/** The first own building (the registry's order) the predicate takes, foundations included (FindOwnBuilding's rule), or null. */
+	AHOLBuilding* FindOwnBuildingWhere(const AHOLPlayerController& Controller, const TFunctionRef<bool(const AHOLBuilding&)> Predicate)
+	{
+		const AHOLPlayerState* PlayerState = Controller.GetHOLPlayerState();
+		for (FHOLBuildingIterator It(Controller.GetWorld()); PlayerState && It; ++It)
+		{
+			if (It->GetOwnerPlayer() == PlayerState->GetPlayerIndex() && Predicate(**It))
+			{
+				return *It;
+			}
+		}
+		return nullptr;
+	}
+
+	FAutoConsoleCommand UnitsAttackMoveCommand(
+		TEXT("hol.Units.AttackMove"),
+		TEXT("hol.Units.AttackMove <X> <Y> [shift]: asks the server for an attack-move of the local player's units known here to a ground point (cm), without a selection"),
+		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
+		{
+			if (Args.Num() < 2)
+			{
+				UE_LOG(LogHOLMatch, Warning, TEXT("Usage: hol.Units.AttackMove <X> <Y> [shift]"));
+				return;
+			}
+			const FVector Target(FCString::Atod(*Args[0]), FCString::Atod(*Args[1]), 0.);
+			const bool bShift = HasProofFlag(Args, 2, TEXT("shift"));
+			for (AHOLPlayerController* Controller : GetLocalControllers())
+			{
+				const TArray<uint32> UnitIds = OwnUnitIdsForProof(*Controller);
+				UE_LOG(LogHOLMatch, Display, TEXT("Order: %d units attack-move to (%.0f, %.0f)%s"), UnitIds.Num(), Target.X, Target.Y, bShift ? TEXT(", queued") : TEXT(""));
+				Controller->RequestAttackMove(UnitIds, Target, bShift);
+			}
+		}));
+
+	FAutoConsoleCommand UnitsOrderLineCommand(
+		TEXT("hol.Units.OrderLine"),
+		TEXT("hol.Units.OrderLine <X1> <Y1> <X2> <Y2> [ctrl] [shift]: asks the server to line the local player's units known here up from (X1, Y1) along the arrow to (X2, Y2) (cm); ctrl: its width, shift: queued"),
+		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
+		{
+			if (Args.Num() < 4)
+			{
+				UE_LOG(LogHOLMatch, Warning, TEXT("Usage: hol.Units.OrderLine <X1> <Y1> <X2> <Y2> [ctrl] [shift]"));
+				return;
+			}
+			const FVector Start(FCString::Atod(*Args[0]), FCString::Atod(*Args[1]), 0.);
+			const FVector End(FCString::Atod(*Args[2]), FCString::Atod(*Args[3]), 0.);
+			const bool bWidth = HasProofFlag(Args, 4, TEXT("ctrl"));
+			const bool bShift = HasProofFlag(Args, 4, TEXT("shift"));
+			for (AHOLPlayerController* Controller : GetLocalControllers())
+			{
+				const TArray<uint32> UnitIds = OwnUnitIdsForProof(*Controller);
+				UE_LOG(LogHOLMatch, Display, TEXT("Order: %d units in line from (%.0f, %.0f) to (%.0f, %.0f)%s%s"), UnitIds.Num(), Start.X, Start.Y,
+					End.X, End.Y, bWidth ? TEXT(", its width") : TEXT(""), bShift ? TEXT(", queued") : TEXT(""));
+				Controller->RequestMoveUnitsInLine(UnitIds, Start, End, bWidth, bShift);
+			}
+		}));
+
+	FAutoConsoleCommand UnitsAttackBuildingCommand(
+		TEXT("hol.Units.AttackBuilding"),
+		TEXT("hol.Units.AttackBuilding [shift]: asks the server for an attack of the local player's units known here on the main centre of the first other player known here"),
+		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
+		{
+			const bool bShift = HasProofFlag(Args, 0, TEXT("shift"));
+			for (AHOLPlayerController* Controller : GetLocalControllers())
+			{
+				AHOLBuilding* Enemy = const_cast<AHOLBuilding*>(FindMainCentre(*Controller, true));
+				if (!Enemy)
+				{
+					UE_LOG(LogHOLMatch, Warning, TEXT("hol.Units.AttackBuilding: no enemy main centre known here"));
+					continue;
+				}
+				const TArray<uint32> UnitIds = OwnUnitIdsForProof(*Controller);
+				UE_LOG(LogHOLMatch, Display, TEXT("Order: %d units attack %s%s"), UnitIds.Num(), *Controller->DescribeBuilding(Enemy), bShift ? TEXT(", queued") : TEXT(""));
+				Controller->RequestAttackBuilding(UnitIds, Enemy, bShift);
+			}
+		}));
+
+	FAutoConsoleCommand UnitsGatherCommand(
+		TEXT("hol.Units.GatherOrder"),
+		TEXT("hol.Units.GatherOrder [Dx Dy] [shift]: asks the server for a gather of the local player's units known here on the standing source nearest the player's start plus (Dx, Dy) (cm)"),
+		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
+		{
+			const bool bHasOffset = Args.Num() >= 2 && !Args[0].Equals(TEXT("shift"), ESearchCase::IgnoreCase) && !Args[1].Equals(TEXT("shift"), ESearchCase::IgnoreCase);
+			const FVector Offset(bHasOffset ? FCString::Atod(*Args[0]) : 0., bHasOffset ? FCString::Atod(*Args[1]) : 0., 0.);
+			const bool bShift = HasProofFlag(Args, 0, TEXT("shift"));
+			for (AHOLPlayerController* Controller : GetLocalControllers())
+			{
+				const AHOLPlayerState* PlayerState = Controller->GetHOLPlayerState();
+				const AHOLStartSlot* Start = PlayerState ? AHOLStartSlot::FindForSlot(Controller->GetWorld(), PlayerState->GetPlayerIndex()) : nullptr;
+				const UHOLSourceSubsystem* Sources = Controller->GetWorld()->GetSubsystem<UHOLSourceSubsystem>();
+				if (!Start || !Sources)
+				{
+					UE_LOG(LogHOLMatch, Warning, TEXT("hol.Units.GatherOrder: no start slot or no source subsystem here"));
+					continue;
+				}
+				const int32 Index = Sources->FindNearestStanding(Start->GetMainCentreLocation() + Offset);
+				if (Index == INDEX_NONE)
+				{
+					UE_LOG(LogHOLMatch, Warning, TEXT("hol.Units.GatherOrder: no standing source"));
+					continue;
+				}
+				const FHOLSource& Source = Sources->GetSources()[Index];
+				const TArray<uint32> UnitIds = OwnUnitIdsForProof(*Controller);
+				UE_LOG(LogHOLMatch, Display, TEXT("Order: %d units gather source %d (%s) at (%.0f, %.0f)%s"), UnitIds.Num(), Index,
+					*Sources->GetTypeNames()[Source.TypeIndex].ToString(), Source.Location.X, Source.Location.Y, bShift ? TEXT(", queued") : TEXT(""));
+				Controller->RequestGatherUnits(UnitIds, Index, bShift);
+			}
+		}));
+
+	FAutoConsoleCommand UnitsDropOffCommand(
+		TEXT("hol.Units.DropOff"),
+		TEXT("hol.Units.DropOff [shift]: asks the server for a drop-off of the local player's units known here at the player's own main centre (those that carry unload, the others walk there)"),
+		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
+		{
+			const bool bShift = HasProofFlag(Args, 0, TEXT("shift"));
+			for (AHOLPlayerController* Controller : GetLocalControllers())
+			{
+				AHOLBuilding* Centre = const_cast<AHOLBuilding*>(FindMainCentre(*Controller, false));
+				if (!Centre)
+				{
+					UE_LOG(LogHOLMatch, Warning, TEXT("hol.Units.DropOff: no own main centre known here"));
+					continue;
+				}
+				const TArray<uint32> UnitIds = OwnUnitIdsForProof(*Controller);
+				UE_LOG(LogHOLMatch, Display, TEXT("Order: %d units drop off at %s%s"), UnitIds.Num(), *Controller->DescribeBuilding(Centre), bShift ? TEXT(", queued") : TEXT(""));
+				Controller->RequestDropOffUnits(UnitIds, Centre, Centre->GetActorLocation(), bShift);
+			}
+		}));
+
+	FAutoConsoleCommand UnitsBuildCommand(
+		TEXT("hol.Units.Build"),
+		TEXT("hol.Units.Build [shift]: asks the server to send the local player's units known here to help build the first own building not finished (a site)"),
+		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
+		{
+			const bool bShift = HasProofFlag(Args, 0, TEXT("shift"));
+			for (AHOLPlayerController* Controller : GetLocalControllers())
+			{
+				AHOLBuilding* Site = FindOwnBuildingWhere(*Controller, [](const AHOLBuilding& Building) { return Building.NeedsBuilders(); });
+				if (!Site)
+				{
+					UE_LOG(LogHOLMatch, Warning, TEXT("hol.Units.Build: no own building waiting for builders known here"));
+					continue;
+				}
+				const TArray<uint32> UnitIds = OwnUnitIdsForProof(*Controller);
+				UE_LOG(LogHOLMatch, Display, TEXT("Order: %d units build %s%s"), UnitIds.Num(), *Controller->DescribeBuilding(Site), bShift ? TEXT(", queued") : TEXT(""));
+				Controller->RequestBuildUnits(UnitIds, Site, bShift);
+			}
+		}));
+
+	FAutoConsoleCommand UnitsGarrisonCommand(
+		TEXT("hol.Units.Garrison"),
+		TEXT("hol.Units.Garrison [BuildingType]: asks the server to put the local player's units known here into the first own finished building with places (of that type, if given)"),
+		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
+		{
+			const FName TypeName(Args.IsEmpty() ? TEXT("") : *Args[0]);
+			for (AHOLPlayerController* Controller : GetLocalControllers())
+			{
+				const int32 PlayerIndex = Controller->GetHOLPlayerState() ? Controller->GetHOLPlayerState()->GetPlayerIndex() : INDEX_NONE;
+				AHOLBuilding* Garrison = FindOwnBuildingWhere(*Controller, [PlayerIndex, TypeName](const AHOLBuilding& Building)
+				{
+					return (TypeName.IsNone() || Building.GetTypeName() == TypeName) && HOLPlayerOrders::TakesGarrisonOrder(Building, PlayerIndex);
+				});
+				if (!Garrison)
+				{
+					UE_LOG(LogHOLMatch, Warning, TEXT("hol.Units.Garrison: no own finished building with places known here"));
+					continue;
+				}
+				const TArray<uint32> UnitIds = OwnUnitIdsForProof(*Controller);
+				UE_LOG(LogHOLMatch, Display, TEXT("Order: %d units garrison %s"), UnitIds.Num(), *Controller->DescribeBuilding(Garrison));
+				Controller->RequestGarrisonUnits(UnitIds, Garrison);
+			}
+		}));
+
+	FAutoConsoleCommand UnitsUngarrisonAllCommand(
+		TEXT("hol.Units.UngarrisonAll"),
+		TEXT("hol.Units.UngarrisonAll [BuildingType]: asks the server to take every occupant out of the first own finished building with places (of that type, if given)"),
+		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
+		{
+			const FName TypeName(Args.IsEmpty() ? TEXT("") : *Args[0]);
+			for (AHOLPlayerController* Controller : GetLocalControllers())
+			{
+				const int32 PlayerIndex = Controller->GetHOLPlayerState() ? Controller->GetHOLPlayerState()->GetPlayerIndex() : INDEX_NONE;
+				AHOLBuilding* Garrison = FindOwnBuildingWhere(*Controller, [PlayerIndex, TypeName](const AHOLBuilding& Building)
+				{
+					return (TypeName.IsNone() || Building.GetTypeName() == TypeName) && HOLPlayerOrders::TakesGarrisonOrder(Building, PlayerIndex);
+				});
+				if (!Garrison)
+				{
+					UE_LOG(LogHOLMatch, Warning, TEXT("hol.Units.UngarrisonAll: no own finished building with places known here"));
+					continue;
+				}
+				UE_LOG(LogHOLMatch, Display, TEXT("Order: ungarrison all of %s"), *Controller->DescribeBuilding(Garrison));
+				Controller->RequestUngarrisonAll(Garrison);
+			}
+		}));
+
+	FAutoConsoleCommand ProductionRallySiteCommand(
+		TEXT("hol.Prod.RallySite"),
+		TEXT("hol.Prod.RallySite [shift]: asks the server to put the rally point of the player's own main centre on the first own building not finished (a site): its units go and build it"),
+		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
+		{
+			const bool bShift = HasProofFlag(Args, 0, TEXT("shift"));
+			for (AHOLPlayerController* Controller : GetLocalControllers())
+			{
+				AHOLBuilding* Producer = FindOwnBuilding(*Controller, HOLBuildingTypeNames::MainCentre);
+				AHOLBuilding* Site = FindOwnBuildingWhere(*Controller, [](const AHOLBuilding& Building) { return Building.NeedsBuilders(); });
+				if (!Producer || !Site)
+				{
+					UE_LOG(LogHOLMatch, Warning, TEXT("hol.Prod.RallySite: %s"), !Producer ? TEXT("no own main centre known here") : TEXT("no own site (building not finished) known here"));
+					continue;
+				}
+				const FVector Point = Site->GetActorLocation();
+				UE_LOG(LogHOLMatch, Display, TEXT("Order: rally point of %s at (%.0f, %.0f) on site %s%s"), *Controller->DescribeBuilding(Producer), Point.X, Point.Y,
+					*Controller->DescribeBuilding(Site), bShift ? TEXT(", a step added") : TEXT(""));
+				Controller->RequestSetRallyPointOf(Producer, Point, INDEX_NONE, Site, bShift);
 			}
 		}));
 #endif
@@ -2961,7 +3259,7 @@ void AHOLPlayerController::OrderAt(const FVector2D& ViewportFraction, const bool
 			// Finished or not: one that will produce takes its rally point from its ghost on (the user's request of 2026-10-19).
 			if (Type && !Type->Produces.IsEmpty())
 			{
-				ServerSetRallyPoint(Member, Point, RallySource, RallySite, bShift);
+				RequestSetRallyPointOf(Member, Point, RallySource, RallySite, bShift);
 				++Rallied;
 			}
 		}
@@ -3430,12 +3728,20 @@ void AHOLPlayerController::UpdateWatchedUnit()
 	}
 	if (UnitId != SentWatchedUnitId)
 	{
-		SentWatchedUnitId = UnitId;
-		ServerWatchUnit(UnitId);
+		const int32 WatchArgs[] = { static_cast<int32>(UnitId) };
+		if (HOLRpcScriptRoute_Haldir1117n::CallN(this, nullptr, TEXT("ServerWatchUnit"), WatchArgs))
+		{
+			// Remembered only once the route took it: with no C++ fallback, a failed send must be retried at the next selection change.
+			SentWatchedUnitId = UnitId;
+		}
+		else
+		{
+			HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("WatchUnit"));
+		}
 	}
 }
 
-void AHOLPlayerController::ServerWatchUnit_Implementation(const uint32 UnitId)
+void AHOLPlayerController::DoWatchUnit(const uint32 UnitId)
 {
 	WatchedUnitId = UnitId;
 	SendWatchedLoad();
@@ -3934,7 +4240,7 @@ void AHOLPlayerController::ExecuteGridCommand(const FHOLGridCommand& Command)
 			UE_CLOG(HasBuildingGroup(), LogHOLMatch, Display, TEXT("Grid: %s queued at %s (#%u), subgroup %s"), *Command.TypeName.ToString(),
 				*DescribeBuilding(Building), Building->GetUniqueID(), *DescribeSubgroup());
 			LastProductionBuilding.Add(Command.TypeName, Building->GetUniqueID());
-			ServerQueueProduction(Building, Command.TypeName);
+			if (!HOLRpcScriptRoute_Haldir1117n::RouteQueueProduction(this, Building, Command.TypeName)) { HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("QueueProduction")); }
 		}
 		return;
 	}
@@ -3976,7 +4282,7 @@ void AHOLPlayerController::ExecuteGridCommand(const FHOLGridCommand& Command)
 		}
 		UE_LOG(LogHOLMatch, Display, TEXT("Grid: research %s at %s (#%u)"), *Command.TypeName.ToString(), *DescribeBuilding(Building), Building->GetUniqueID());
 		LastProductionBuilding.Add(Command.TypeName, Building->GetUniqueID());
-		ServerQueueProduction(Building, Command.TypeName);
+		if (!HOLRpcScriptRoute_Haldir1117n::RouteQueueProduction(this, Building, Command.TypeName)) { HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("QueueProduction")); }
 		return;
 	}
 	case EHOLGridCommand::Trade:
@@ -4006,8 +4312,8 @@ void AHOLPlayerController::ExecuteGridCommand(const FHOLGridCommand& Command)
 		}
 		const int32 Lots = IsInputKeyDown(EKeys::LeftShift) || IsInputKeyDown(EKeys::RightShift) ? 5 : 1;
 		FHOLResources Unused;
-		const HOLMarket::FTrade Quote = HOLMarket::Apply(Settings, HOLGameState->GetMarketBook(), HOLPlayerState->GetResources(), Command.Resource, Lots,
-			Command.bBuy, Settings.FeePercent, Unused);
+		const HOLMarket::FTrade Quote = UHOLMarketSubsystem::Apply(GetWorld(), Settings, HOLGameState->GetMarketBook(), HOLPlayerState->GetResources(), Command.Resource, Lots,
+			Command.bBuy, Unused);
 		if (!Quote.bOk)
 		{
 			FHOLCommandFeedback Feedback;
@@ -4175,7 +4481,7 @@ void AHOLPlayerController::RequestProduction(const FName TypeName)
 {
 	if (AHOLBuilding* Building = GetOwnSelection())
 	{
-		ServerQueueProduction(Building, TypeName);
+		if (!HOLRpcScriptRoute_Haldir1117n::RouteQueueProduction(this, Building, TypeName)) { HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("QueueProduction")); }
 	}
 }
 
@@ -4187,7 +4493,7 @@ void AHOLPlayerController::RequestCancelProduction(const int32 Index)
 	}
 	if (AHOLBuilding* Building = GetOwnSelection())
 	{
-		ServerCancelProduction(Building, Index);
+		if (!HOLRpcScriptRoute_Haldir1117n::RouteCancelProduction(this, Building, Index)) { HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("CancelProduction")); }
 	}
 }
 
@@ -4199,7 +4505,7 @@ void AHOLPlayerController::RequestTribute(const int32 Receiver, const int32 Reso
 	}
 	if (AHOLBuilding* Building = GetOwnSelection())
 	{
-		ServerTribute(Building, Receiver, Resource, Amount);
+		if (!HOLRpcScriptRoute_Haldir1117n::RouteTribute(this, Building, Receiver, Resource, Amount)) { HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("Tribute")); }
 	}
 }
 
@@ -4214,7 +4520,7 @@ void AHOLPlayerController::RequestPanelTribute(const int32 Receiver, const int32
 	{
 		if (It->GetOwnerPlayer() == HOLPlayerState->GetPlayerIndex() && It->GetTypeName() == HOLBuildingTypeNames::Market && It->IsFinished())
 		{
-			ServerTribute(*It, Receiver, Resource, Amount);
+			if (!HOLRpcScriptRoute_Haldir1117n::RouteTribute(this, *It, Receiver, Resource, Amount)) { HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("Tribute")); }
 			return;
 		}
 	}
@@ -4228,7 +4534,7 @@ void AHOLPlayerController::RequestMarketTrade(const int32 Resource, const int32 
 	}
 	if (AHOLBuilding* Building = GetOwnSelection())
 	{
-		ServerMarketTrade(Building, Resource, Lots, bBuy);
+		if (!HOLRpcScriptRoute_Haldir1117n::RouteMarketTrade(this, Building, Resource, Lots, bBuy)) { HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("MarketTrade")); }
 	}
 }
 
@@ -4236,7 +4542,7 @@ void AHOLPlayerController::RequestMoveUnits(const TConstArrayView<uint32> UnitId
 {
 	if (UnitIds.Num() > 0)
 	{
-		ServerMoveUnits(TArray<uint32>(UnitIds), Target, bQueue);
+		if (!HOLRpcScriptRoute_Haldir1117n::RouteMove(this, UnitIds, Target, bQueue)) { HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("Move")); }
 	}
 }
 
@@ -4244,7 +4550,7 @@ void AHOLPlayerController::RequestAttackUnit(const TConstArrayView<uint32> UnitI
 {
 	if (UnitIds.Num() > 0 && TargetUnitId != 0)
 	{
-		ServerAttackUnit(TArray<uint32>(UnitIds), TargetUnitId, bQueue);
+		if (!HOLRpcScriptRoute_Haldir1117n::RouteAttackUnit(this, UnitIds, TargetUnitId, bQueue)) { HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("AttackUnit")); }
 	}
 }
 
@@ -4252,11 +4558,11 @@ void AHOLPlayerController::RequestHealUnit(const TConstArrayView<uint32> UnitIds
 {
 	if (UnitIds.Num() > 0 && TargetUnitId != 0)
 	{
-		ServerHealUnit(TArray<uint32>(UnitIds), TargetUnitId, bQueue);
+		if (!HOLRpcScriptRoute_Haldir1117n::RouteHealUnit(this, UnitIds, TargetUnitId, bQueue)) { HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("HealUnit")); }
 	}
 }
 
-void AHOLPlayerController::ServerHealUnit_Implementation(const TArray<uint32>& UnitIds, const uint32 TargetUnitId, const bool bQueue)
+void AHOLPlayerController::DoHealUnit(const TArray<uint32>& UnitIds, const uint32 TargetUnitId, const bool bQueue)
 {
 	// The units walk to the ally as a move order would (D288: the player's own units alone); the ones that heal also take it as the unit
 	// to heal first (HOLHealProcessor); an enemy or an unknown unit is no order at all.
@@ -4302,7 +4608,7 @@ void AHOLPlayerController::RequestAttackMove(const TConstArrayView<uint32> UnitI
 {
 	if (UnitIds.Num() > 0)
 	{
-		ServerAttackMove(TArray<uint32>(UnitIds), Target, bQueue);
+		if (!HOLRpcScriptRoute_Haldir1117n::RouteAttackMove(this, UnitIds, Target, bQueue)) { HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("AttackMove")); }
 	}
 }
 
@@ -4310,7 +4616,7 @@ void AHOLPlayerController::RequestStopUnits(const TConstArrayView<uint32> UnitId
 {
 	if (UnitIds.Num() > 0)
 	{
-		ServerStopUnits(TArray<uint32>(UnitIds), bHold);
+		if (!HOLRpcScriptRoute_Haldir1117n::RouteStop(this, UnitIds, bHold)) { HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("Stop")); }
 	}
 }
 
@@ -4318,7 +4624,16 @@ void AHOLPlayerController::RequestToggleDeploy(const TConstArrayView<uint32> Uni
 {
 	if (UnitIds.Num() > 0)
 	{
-		ServerToggleDeploy(TArray<uint32>(UnitIds));
+		if (!HOLRpcScriptRoute_Haldir1117n::RouteToggleDeploy(this, UnitIds)) { HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("ToggleDeploy")); }
+	}
+}
+
+// D846: the right-button drag was a direct RPC call in OrderLineAt; it is a Request now (the route, the cvar and the measure need one). Same behaviour: no unit, no order.
+void AHOLPlayerController::RequestMoveUnitsInLine(const TConstArrayView<uint32> UnitIds, const FVector& Start, const FVector& End, const bool bWidth, const bool bQueue)
+{
+	if (UnitIds.Num() > 0)
+	{
+		if (!HOLRpcScriptRoute_Haldir1117n::RouteMoveInLine(this, UnitIds, Start, End, bWidth, bQueue)) { HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("MoveInLine")); }
 	}
 }
 
@@ -4409,7 +4724,7 @@ void AHOLPlayerController::RequestGatherUnits(const TConstArrayView<uint32> Unit
 {
 	if (UnitIds.Num() > 0 && SourceIndex != INDEX_NONE)
 	{
-		ServerGatherUnits(TArray<uint32>(UnitIds), SourceIndex, bQueue);
+		if (!HOLRpcScriptRoute_Haldir1117n::RouteGather(this, UnitIds, SourceIndex, bQueue)) { HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("Gather")); }
 	}
 }
 
@@ -4417,10 +4732,18 @@ void AHOLPlayerController::RequestRallyPoint(const FVector& Point, const int32 S
 {
 	if (AHOLBuilding* Building = GetOwnSelection())
 	{
-		ServerSetRallyPoint(Building, Point, SourceIndex, Site, bQueue);
+		RequestSetRallyPointOf(Building, Point, SourceIndex, Site, bQueue);
 	}
 }
 
+// D846: the rally point of ONE building (the group's salve sends one RPC per producing building, as before); the same Request for the selected one and each of the group.
+void AHOLPlayerController::RequestSetRallyPointOf(AHOLBuilding* Building, const FVector& Point, const int32 SourceIndex, AHOLBuilding* Site, const bool bQueue)
+{
+	if (Building)
+	{
+		if (!HOLRpcScriptRoute_Haldir1117n::RouteSetRally(this, Building, Point, SourceIndex, Site, bQueue)) { HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("SetRally")); }
+	}
+}
 void AHOLPlayerController::BeginPlacement(const FName TypeName)
 {
 	if (IsSpectator())
@@ -4595,7 +4918,7 @@ void AHOLPlayerController::RequestPlaceBuilding(const FName TypeName, const FVec
 			// The brief mark of an order (J4.6) on the foundation they go to (D313).
 			OnOrderGiven.Broadcast(Point);
 		}
-		ServerPlaceBuilding(TypeName, Point, Builders, bQueue);
+		if (!HOLRpcScriptRoute_Haldir1117n::RoutePlaceBuilding(this, TypeName, Point, Builders, bQueue)) { HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("PlaceBuilding")); }
 	}
 }
 
@@ -4603,11 +4926,11 @@ void AHOLPlayerController::RequestBuildUnits(const TConstArrayView<uint32> UnitI
 {
 	if (UnitIds.Num() > 0 && Building)
 	{
-		ServerBuildUnits(TArray<uint32>(UnitIds), Building, bQueue);
+		if (!HOLRpcScriptRoute_Haldir1117n::RouteBuildUnits(this, UnitIds, Building, bQueue)) { HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("BuildUnits")); }
 	}
 }
 
-void AHOLPlayerController::ServerBuildUnits_Implementation(const TArray<uint32>& UnitIds, AHOLBuilding* Building, const bool bQueue)
+void AHOLPlayerController::DoBuildUnits(const TArray<uint32>& UnitIds, AHOLBuilding* Building, const bool bQueue)
 {
 	// The order names the player: only its own units, on its own site (D288; checked again by the builders' step); the
 	// rule of every slot's orders (IA0.2): the cap, the soldiers walking to the site.
@@ -4621,12 +4944,11 @@ void AHOLPlayerController::RequestDropOffUnits(const TConstArrayView<uint32> Uni
 {
 	if (UnitIds.Num() > 0 && Building)
 	{
-		ServerDropOffUnits(TArray<uint32>(UnitIds), Building, Point, bQueue);
+		if (!HOLRpcScriptRoute_Haldir1117n::RouteDropOff(this, UnitIds, Building, Point, bQueue)) { HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("DropOff")); }
 	}
 }
 
-void AHOLPlayerController::ServerDropOffUnits_Implementation(const TArray<uint32>& UnitIds, AHOLBuilding* Building, const FVector_NetQuantize Point,
-	const bool bQueue)
+void AHOLPlayerController::DoDropOffUnits(const TArray<uint32>& UnitIds, AHOLBuilding* Building, const FVector_NetQuantize Point, const bool bQueue)
 {
 	// The order names the player: only its own units, at its own building (D288, D485; checked again by the gatherers' step).
 	if (const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState())
@@ -4639,7 +4961,7 @@ void AHOLPlayerController::RequestGarrisonUnits(const TConstArrayView<uint32> Un
 {
 	if (!IsSpectator() && UnitIds.Num() > 0 && Building)
 	{
-		ServerGarrisonUnits(TArray<uint32>(UnitIds), Building);
+		if (!HOLRpcScriptRoute_Haldir1117n::RouteGarrison(this, UnitIds, Building)) { HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("Garrison")); }
 	}
 }
 
@@ -4648,11 +4970,11 @@ void AHOLPlayerController::RequestUngarrisonAll(AHOLBuilding* Building)
 	if (!IsSpectator() && Building)
 	{
 		UE_LOG(LogHOLMatch, Display, TEXT("Exit all request: %s"), *DescribeBuilding(Building));
-		ServerUngarrisonAll(Building);
+		if (!HOLRpcScriptRoute_Haldir1117n::RouteUngarrisonAll(this, Building)) { HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("UngarrisonAll")); }
 	}
 }
 
-void AHOLPlayerController::ServerGarrisonUnits_Implementation(const TArray<uint32>& UnitIds, AHOLBuilding* Building)
+void AHOLPlayerController::DoGarrisonUnits(const TArray<uint32>& UnitIds, AHOLBuilding* Building)
 {
 	// The order names the player: its own units, its own building (D374); the garrison checks the kinds and the places at the step.
 	if (const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState())
@@ -4661,7 +4983,7 @@ void AHOLPlayerController::ServerGarrisonUnits_Implementation(const TArray<uint3
 	}
 }
 
-void AHOLPlayerController::ServerUngarrisonAll_Implementation(AHOLBuilding* Building)
+void AHOLPlayerController::DoUngarrisonAll(AHOLBuilding* Building)
 {
 	if (const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState())
 	{
@@ -4678,12 +5000,11 @@ void AHOLPlayerController::RequestCancelBuilding(AHOLBuilding* Building)
 	if (Building)
 	{
 		UE_LOG(LogHOLMatch, Display, TEXT("Cancel request: %s"), *DescribeBuilding(Building));
-		ServerCancelBuilding(Building);
+		if (!HOLRpcScriptRoute_Haldir1117n::RouteCancelBuilding(this, Building)) { HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("CancelBuilding")); }
 	}
 }
 
-void AHOLPlayerController::ServerPlaceBuilding_Implementation(const FName TypeName, const FVector_NetQuantize Point, const TArray<uint32>& UnitIds,
-	const bool bQueue)
+void AHOLPlayerController::DoPlaceBuilding(const FName TypeName, const FVector_NetQuantize Point, const TArray<uint32>& UnitIds, const bool bQueue)
 {
 	// The order names the player: it pays and owns the foundation (D288); the server checks everything again.
 	if (const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState())
@@ -4692,7 +5013,7 @@ void AHOLPlayerController::ServerPlaceBuilding_Implementation(const FName TypeNa
 	}
 }
 
-void AHOLPlayerController::ServerCancelBuilding_Implementation(AHOLBuilding* Building)
+void AHOLPlayerController::DoCancelBuilding(AHOLBuilding* Building)
 {
 	const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
 	UHOLCommandSubsystem* Commands = GetWorld()->GetSubsystem<UHOLCommandSubsystem>();
@@ -4727,47 +5048,145 @@ bool AHOLPlayerController::IsCheatRefused(const TCHAR* What) const
 	return true;
 }
 
+// CHEATS A (ELROND-1117q, NOT COMPILED): the L4 group A cheat calls go through the script RPC actor (Script/Net/HOLRpcPlayer.as) only (D845: no cvar, no C++ RPC; the bodies are DoCheat<Name>, called by the bridge).
+// Self-contained (the HOLRpcScriptRoute_Haldir1117n helper is defined further down); a non-null cvar name is only READ here (declared by the script, a missing one reads as 0), the cheats pass null. Unique namespace name (unity builds).
+namespace HOLRpcScriptRoute_Elrond1117q
+{
+	// Ints fill the bool / int32 / uint32 parameters in order, Real the double / float one, Name the FName one. false: no actor, no such function: the caller logs it (LogNotSent), nothing else is sent (D845).
+	bool CallCheat(AHOLPlayerController* Controller, const TCHAR* CVarName, const TCHAR* FunctionName, const TArrayView<const int32> Ints, const double* Real, const FName* Name)
+	{
+		// D845: a null cvar name = no guard (the RPC has no C++ twin any more); the other cheats keep theirs.
+		const IConsoleVariable* CVar = CVarName ? IConsoleManager::Get().FindConsoleVariable(CVarName) : nullptr;
+		if (!Controller || (CVarName && (!CVar || CVar->GetInt() == 0)))
+		{
+			return false;
+		}
+		AActor* RpcActor = UHOLRpcBridgeLibrary::FindPlayerActor(Controller);
+		UFunction* Function = RpcActor ? RpcActor->FindFunction(FunctionName) : nullptr;
+		if (!Function || !Function->HasAnyFunctionFlags(FUNC_Net))
+		{
+			return false;
+		}
+		TArray<uint8> Params;
+		Params.SetNumZeroed(FMath::Max<int32>(Function->ParmsSize, 1));
+		Function->InitializeStruct(Params.GetData());
+		int32 IntIndex = 0;
+		for (TFieldIterator<FProperty> It(Function); It && It->HasAnyPropertyFlags(CPF_Parm); ++It)
+		{
+			if (It->HasAnyPropertyFlags(CPF_ReturnParm))
+			{
+				continue;
+			}
+			if (const FDoubleProperty* DoubleProperty = CastField<FDoubleProperty>(*It))
+			{
+				if (Real) { DoubleProperty->SetPropertyValue_InContainer(Params.GetData(), *Real); }
+			}
+			else if (const FFloatProperty* FloatProperty = CastField<FFloatProperty>(*It))
+			{
+				if (Real) { FloatProperty->SetPropertyValue_InContainer(Params.GetData(), static_cast<float>(*Real)); }
+			}
+			else if (const FNameProperty* NameProperty = CastField<FNameProperty>(*It))
+			{
+				if (Name) { NameProperty->SetPropertyValue_InContainer(Params.GetData(), *Name); }
+			}
+			else if (Ints.IsValidIndex(IntIndex))
+			{
+				if (const FBoolProperty* BoolProperty = CastField<FBoolProperty>(*It))
+				{
+					BoolProperty->SetPropertyValue_InContainer(Params.GetData(), Ints[IntIndex] != 0);
+				}
+				else if (const FIntProperty* IntProperty = CastField<FIntProperty>(*It))
+				{
+					IntProperty->SetPropertyValue_InContainer(Params.GetData(), Ints[IntIndex]);
+				}
+				++IntIndex;
+			}
+		}
+		RpcActor->ProcessEvent(Function, Params.GetData());
+		Function->DestroyStruct(Params.GetData());
+		return true;
+	}
+}
+
 void AHOLPlayerController::RequestCheatResources(const FHOLResources& Amount)
 {
-	ServerCheatResources(Amount);
+	const int32 StockInts[4] = {Amount.Food, Amount.Wood, Amount.Stone, Amount.Gold};
+	if (!HOLRpcScriptRoute_Elrond1117q::CallCheat(this, nullptr, TEXT("ServerCheatResources"), TArrayView<const int32>(StockInts, 4), nullptr, nullptr))
+	{
+		HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("CheatResources"));
+	}
 }
 
 void AHOLPlayerController::RequestCheatFastBuild(const bool bOn)
 {
-	ServerCheatFastBuild(bOn);
+	const int32 FastBuildInt = bOn ? 1 : 0;
+	if (!HOLRpcScriptRoute_Elrond1117q::CallCheat(this, nullptr, TEXT("ServerCheatFastBuild"), TArrayView<const int32>(&FastBuildInt, 1), nullptr, nullptr))
+	{
+		HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("CheatFastBuild"));
+	}
 }
 
 void AHOLPlayerController::RequestCheatTechnology(const FName Technology)
 {
-	ServerCheatTechnology(Technology);
+	if (!HOLRpcScriptRoute_Elrond1117q::CallCheat(this, nullptr, TEXT("ServerCheatTechnology"), TArrayView<const int32>(), nullptr, &Technology))
+	{
+		HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("CheatTechnology"));
+	}
 }
 
 void AHOLPlayerController::RequestCheatTier(const int32 Tier, const int32 Slot)
 {
-	ServerCheatTier(Tier, Slot);
+	const int32 TierInts[2] = {Tier, Slot};
+	if (!HOLRpcScriptRoute_Elrond1117q::CallCheat(this, nullptr, TEXT("ServerCheatTier"), TArrayView<const int32>(TierInts, 2), nullptr, nullptr))
+	{
+		HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("CheatTier"));
+	}
 }
 
 void AHOLPlayerController::RequestCheatPopulation(const int32 Places)
 {
-	ServerCheatPopulation(Places);
+	if (!HOLRpcScriptRoute_Elrond1117q::CallCheat(this, nullptr, TEXT("ServerCheatPopulation"), TArrayView<const int32>(&Places, 1), nullptr, nullptr))
+	{
+		HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("CheatPopulation"));
+	}
 }
 
 void AHOLPlayerController::RequestCheatUnitSpeed(const float Scale)
 {
-	ServerCheatUnitSpeed(Scale);
+	const double UnitSpeedReal = Scale;
+	if (!HOLRpcScriptRoute_Elrond1117q::CallCheat(this, nullptr, TEXT("ServerCheatUnitSpeed"), TArrayView<const int32>(), &UnitSpeedReal, nullptr))
+	{
+		HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("CheatUnitSpeed"));
+	}
 }
 
 void AHOLPlayerController::RequestCheatGatherSpeed(const float Scale)
 {
-	ServerCheatGatherSpeed(Scale);
+	const double GatherSpeedReal = Scale;
+	if (!HOLRpcScriptRoute_Elrond1117q::CallCheat(this, nullptr, TEXT("ServerCheatGatherSpeed"), TArrayView<const int32>(), &GatherSpeedReal, nullptr))
+	{
+		HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("CheatGatherSpeed"));
+	}
+}
+
+// CHEATS B (CELEBORN-1117q): forward declaration of the 1117p route helper (defined below the Request functions of the cheats).
+namespace HOLRpcScriptRoute_Haldir1117n
+{
+	bool CallEx(AHOLPlayerController* Controller, const TCHAR* CVarName, const TCHAR* FunctionName, const TArrayView<const int32> Args, const FString* Text, const FVector* Location);
 }
 
 void AHOLPlayerController::RequestCheatWound(const int32 Percent)
 {
-	ServerCheatWound(Percent);
+	{
+		const int32 CheatArgs[1] = { Percent };
+		if (!HOLRpcScriptRoute_Haldir1117n::CallEx(this, nullptr, TEXT("ServerCheatWound"), TArrayView<const int32>(CheatArgs, 1), nullptr, nullptr))
+		{
+			HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("CheatWound"));
+		}
+	}
 }
 
-void AHOLPlayerController::ServerCheatWound_Implementation(const int32 Percent)
+void AHOLPlayerController::DoCheatWound(const int32 Percent)
 {
 #if !UE_BUILD_SHIPPING
 	if (IsCheatRefused(TEXT("wound")))
@@ -4784,7 +5203,7 @@ void AHOLPlayerController::ServerCheatWound_Implementation(const int32 Percent)
 #endif
 }
 
-void AHOLPlayerController::ServerCheatResources_Implementation(const FHOLResources Amount)
+void AHOLPlayerController::DoCheatResources(const FHOLResources Amount)
 {
 #if !UE_BUILD_SHIPPING
 	if (IsCheatRefused(TEXT("resources")))
@@ -4804,7 +5223,7 @@ void AHOLPlayerController::ServerCheatResources_Implementation(const FHOLResourc
 #endif
 }
 
-void AHOLPlayerController::ServerCheatFastBuild_Implementation(const bool bOn)
+void AHOLPlayerController::DoCheatFastBuild(const bool bOn)
 {
 #if !UE_BUILD_SHIPPING
 	if (IsCheatRefused(TEXT("fast build")))
@@ -4827,7 +5246,7 @@ void AHOLPlayerController::ServerCheatFastBuild_Implementation(const bool bOn)
 #endif
 }
 
-void AHOLPlayerController::ServerCheatTechnology_Implementation(const FName Technology)
+void AHOLPlayerController::DoCheatTechnology(const FName Technology)
 {
 #if !UE_BUILD_SHIPPING
 	if (IsCheatRefused(TEXT("technology")))
@@ -4846,7 +5265,7 @@ void AHOLPlayerController::ServerCheatTechnology_Implementation(const FName Tech
 #endif
 }
 
-void AHOLPlayerController::ServerCheatTier_Implementation(const int32 Tier, const int32 Slot)
+void AHOLPlayerController::DoCheatTier(const int32 Tier, const int32 Slot)
 {
 #if !UE_BUILD_SHIPPING
 	if (IsCheatRefused(TEXT("tier")))
@@ -4870,7 +5289,7 @@ void AHOLPlayerController::ServerCheatTier_Implementation(const int32 Tier, cons
 #endif
 }
 
-void AHOLPlayerController::ServerCheatPopulation_Implementation(const int32 Places)
+void AHOLPlayerController::DoCheatPopulation(const int32 Places)
 {
 #if !UE_BUILD_SHIPPING
 	if (IsCheatRefused(TEXT("population")))
@@ -4887,7 +5306,7 @@ void AHOLPlayerController::ServerCheatPopulation_Implementation(const int32 Plac
 #endif
 }
 
-void AHOLPlayerController::ServerCheatUnitSpeed_Implementation(const float Scale)
+void AHOLPlayerController::DoCheatUnitSpeed(const float Scale)
 {
 #if !UE_BUILD_SHIPPING
 	if (IsCheatRefused(TEXT("unit speed")))
@@ -4907,10 +5326,17 @@ void AHOLPlayerController::ServerCheatUnitSpeed_Implementation(const float Scale
 
 void AHOLPlayerController::RequestCheatSpawnBuilding(const FName TypeName, const int32 Slot, const FVector& Point)
 {
-	ServerCheatSpawnBuilding(TypeName, Slot, Point);
+	{
+		const FString CheatType = TypeName.ToString();
+		const int32 CheatArgs[1] = { Slot };
+		if (!HOLRpcScriptRoute_Haldir1117n::CallEx(this, nullptr, TEXT("ServerCheatSpawnBuilding"), TArrayView<const int32>(CheatArgs, 1), &CheatType, &Point))
+		{
+			HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("CheatSpawnBuilding"));
+		}
+	}
 }
 
-void AHOLPlayerController::ServerCheatSpawnBuilding_Implementation(const FName TypeName, const int32 Slot, const FVector_NetQuantize Point)
+void AHOLPlayerController::DoCheatSpawnBuilding(const FName TypeName, const int32 Slot, const FVector_NetQuantize Point)
 {
 #if !UE_BUILD_SHIPPING
 	if (IsCheatRefused(TEXT("spawn building")))
@@ -4943,10 +5369,16 @@ void AHOLPlayerController::ServerCheatSpawnBuilding_Implementation(const FName T
 
 void AHOLPlayerController::RequestCheatDefeat(const int32 Slot)
 {
-	ServerCheatDefeat(Slot);
+	{
+		const int32 CheatArgs[1] = { Slot };
+		if (!HOLRpcScriptRoute_Haldir1117n::CallEx(this, nullptr, TEXT("ServerCheatDefeat"), TArrayView<const int32>(CheatArgs, 1), nullptr, nullptr))
+		{
+			HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("CheatDefeat"));
+		}
+	}
 }
 
-void AHOLPlayerController::ServerCheatDefeat_Implementation(const int32 Slot)
+void AHOLPlayerController::DoCheatDefeat(const int32 Slot)
 {
 #if !UE_BUILD_SHIPPING
 	if (IsCheatRefused(TEXT("defeat")))
@@ -4984,10 +5416,16 @@ bool AHOLPlayerController::FocusCameraOnForum(const int32 Slot)
 
 void AHOLPlayerController::RequestCheatFallForum(const int32 Slot)
 {
-	ServerCheatFallForum(Slot);
+	{
+		const int32 CheatArgs[1] = { Slot };
+		if (!HOLRpcScriptRoute_Haldir1117n::CallEx(this, nullptr, TEXT("ServerCheatFallForum"), TArrayView<const int32>(CheatArgs, 1), nullptr, nullptr))
+		{
+			HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("CheatFallForum"));
+		}
+	}
 }
 
-void AHOLPlayerController::ServerCheatFallForum_Implementation(const int32 Slot)
+void AHOLPlayerController::DoCheatFallForum(const int32 Slot)
 {
 #if !UE_BUILD_SHIPPING
 	if (IsCheatRefused(TEXT("fall forum")))
@@ -5006,10 +5444,16 @@ void AHOLPlayerController::ServerCheatFallForum_Implementation(const int32 Slot)
 
 void AHOLPlayerController::RequestCheatSkipForum(const int32 Slot)
 {
-	ServerCheatSkipForum(Slot);
+	{
+		const int32 CheatArgs[1] = { Slot };
+		if (!HOLRpcScriptRoute_Haldir1117n::CallEx(this, nullptr, TEXT("ServerCheatSkipForum"), TArrayView<const int32>(CheatArgs, 1), nullptr, nullptr))
+		{
+			HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("CheatSkipForum"));
+		}
+	}
 }
 
-void AHOLPlayerController::ServerCheatSkipForum_Implementation(const int32 Slot)
+void AHOLPlayerController::DoCheatSkipForum(const int32 Slot)
 {
 #if !UE_BUILD_SHIPPING
 	if (IsCheatRefused(TEXT("skip forum")))
@@ -5026,10 +5470,16 @@ void AHOLPlayerController::ServerCheatSkipForum_Implementation(const int32 Slot)
 
 void AHOLPlayerController::RequestCheatHoldPresence(const int32 Slot, const bool bOff, const bool bAttackers, const bool bDefenders, const int32 AttackerSlot)
 {
-	ServerCheatHoldPresence(Slot, bOff, bAttackers, bDefenders, AttackerSlot);
+	{
+		const int32 CheatArgs[5] = { Slot, bOff ? 1 : 0, bAttackers ? 1 : 0, bDefenders ? 1 : 0, AttackerSlot };
+		if (!HOLRpcScriptRoute_Haldir1117n::CallEx(this, nullptr, TEXT("ServerCheatHoldPresence"), TArrayView<const int32>(CheatArgs, 5), nullptr, nullptr))
+		{
+			HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("CheatHoldPresence"));
+		}
+	}
 }
 
-void AHOLPlayerController::ServerCheatHoldPresence_Implementation(const int32 Slot, const bool bOff, const bool bAttackers, const bool bDefenders,
+void AHOLPlayerController::DoCheatHoldPresence(const int32 Slot, const bool bOff, const bool bAttackers, const bool bDefenders,
 	const int32 AttackerSlot)
 {
 #if !UE_BUILD_SHIPPING
@@ -5052,20 +5502,303 @@ void AHOLPlayerController::ServerCheatHoldPresence_Implementation(const int32 Sl
 #endif
 }
 
-void AHOLPlayerController::RequestSurrender()
+// MIG2-S3 (HALDIR-1117n, NOT COMPILED): the interface's Duel / Match calls go through the script RPC actor (Script/Net/HOLRpcPlayer.as) (D845: no C++ RPC any more; a call it did not take is journalled by LogNotSent).
+// The cvars are declared by the script (FConsoleVariable); they are only READ here (never registered twice), a missing one reads as 0. Unique namespace name (unity builds).
+namespace HOLRpcScriptRoute_Haldir1117n
 {
-	ServerSurrender();
+	bool IsOn(const TCHAR* CVarName)
+	{
+		const IConsoleVariable* CVar = IConsoleManager::Get().FindConsoleVariable(CVarName);
+		return CVar && CVar->GetInt() != 0;
+	}
+
+	// D845: the script RPC actor is the only path of the RPCs taken over; a call it did not take is journalled, never sent another way.
+	void LogNotSent(const TCHAR* Name)
+	{
+		UE_LOG(LogHOLMatch, Error, TEXT("RpcRoute: %s not sent: no script RPC actor / function"), Name);
+	}
+
+	// Calls the script actor's RPC by name (Server from a client, or Client from the server: HALDIR-1117p). Int arguments (bool as 0 / 1) fill the bool / int32 / uint32 parameters in order,
+	// Text the FString parameter and Location the FVector one. false: no actor, no such function (script not loaded): the caller logs it (LogNotSent), nothing else is sent (D845).
+	// D846: Location2 / Object2 are the SECOND vector / object parameter of the function (MoveInLine: Start, End; SetRallyPoint: Building, Site); the ids go by Array. All additive (default nullptr).
+	bool CallFull(AHOLPlayerController* Controller, const TCHAR* CVarName, const TCHAR* FunctionName, const TArrayView<const int32> Args, const FString* Text, const FVector* Location, UObject* Object, const FName* Name, const TArray<int32>* Array = nullptr, const FVector* Location2 = nullptr, UObject* Object2 = nullptr)
+	{
+		int32 ObjectSeen = 0;
+		int32 StructSeen = 0;
+		if (!Controller || (CVarName && !IsOn(CVarName)))
+		{
+			return false;
+		}
+		AActor* RpcActor = UHOLRpcBridgeLibrary::FindPlayerActor(Controller);
+		UFunction* Function = RpcActor ? RpcActor->FindFunction(FunctionName) : nullptr;
+		if (!Function || !Function->HasAnyFunctionFlags(FUNC_Net))
+		{
+			return false;
+		}
+		TArray<uint8> Params;
+		Params.SetNumZeroed(FMath::Max<int32>(Function->ParmsSize, 1));
+		Function->InitializeStruct(Params.GetData());
+		int32 ArgIndex = 0;
+		for (TFieldIterator<FProperty> It(Function); It && It->HasAnyPropertyFlags(CPF_Parm); ++It)
+		{
+			if (It->HasAnyPropertyFlags(CPF_ReturnParm))
+			{
+				continue;
+			}
+			if (const FStrProperty* StrProperty = CastField<FStrProperty>(*It))
+			{
+				if (Text)
+				{
+					StrProperty->SetPropertyValue_InContainer(Params.GetData(), *Text);
+				}
+			}
+			else if (const FObjectPropertyBase* ObjectProperty = CastField<FObjectPropertyBase>(*It))
+				{
+					if (Object || Object2)
+					{
+						ObjectProperty->SetObjectPropertyValue(ObjectProperty->ContainerPtrToValuePtr<void>(Params.GetData()), ObjectSeen++ == 0 ? Object : Object2);
+					}
+				}
+			else if (const FNameProperty* NameProperty = CastField<FNameProperty>(*It))
+				{
+					if (Name)
+					{
+						NameProperty->SetPropertyValue_InContainer(Params.GetData(), *Name);
+					}
+				}
+			else if (const FStructProperty* StructProperty = CastField<FStructProperty>(*It))
+			{
+				// FVector, or FVector_NetQuantize (same layout, a child of FVector; the name test covers a struct whose super is not set).
+				if (Location && (StructProperty->Struct->IsChildOf(TBaseStructure<FVector>::Get()) || StructProperty->Struct->GetFName() == FName(TEXT("Vector_NetQuantize"))))
+				{
+					*StructProperty->ContainerPtrToValuePtr<FVector>(Params.GetData()) = (StructSeen++ == 0 || !Location2) ? *Location : *Location2;
+				}
+			}
+			else if (const FArrayProperty* ArrayProperty = CastField<FArrayProperty>(*It))
+			{
+				// An array of uint32 / int32 (the unit ids of ServerCastRage).
+				const FNumericProperty* Inner = CastField<FNumericProperty>(ArrayProperty->Inner);
+				if (Array && Inner)
+				{
+					FScriptArrayHelper Helper(ArrayProperty, ArrayProperty->ContainerPtrToValuePtr<void>(Params.GetData()));
+					Helper.Resize(Array->Num());
+					for (int32 Index = 0; Index < Array->Num(); ++Index)
+					{
+						Inner->SetIntPropertyValue(Helper.GetRawPtr(Index), static_cast<int64>(static_cast<uint32>((*Array)[Index])));
+					}
+				}
+			}
+			else if (Args.IsValidIndex(ArgIndex))
+			{
+				if (const FBoolProperty* BoolProperty = CastField<FBoolProperty>(*It))
+				{
+					BoolProperty->SetPropertyValue_InContainer(Params.GetData(), Args[ArgIndex] != 0);
+				}
+				else if (const FIntProperty* IntProperty = CastField<FIntProperty>(*It))
+				{
+					IntProperty->SetPropertyValue_InContainer(Params.GetData(), Args[ArgIndex]);
+				}
+				else if (const FUInt32Property* UIntProperty = CastField<FUInt32Property>(*It))
+				{
+					UIntProperty->SetPropertyValue_InContainer(Params.GetData(), static_cast<uint32>(Args[ArgIndex]));
+				}
+				else if (const FByteProperty* ByteProperty = CastField<FByteProperty>(*It))
+				{
+					// An enum parameter (TEnumAsByte / uint8 enum), or a byte.
+					ByteProperty->SetPropertyValue_InContainer(Params.GetData(), static_cast<uint8>(Args[ArgIndex]));
+				}
+				else if (const FEnumProperty* EnumProperty = CastField<FEnumProperty>(*It))
+				{
+					// An enum class parameter (UENUM): the underlying integer.
+					EnumProperty->GetUnderlyingProperty()->SetIntPropertyValue(EnumProperty->ContainerPtrToValuePtr<void>(Params.GetData()), static_cast<int64>(Args[ArgIndex]));
+				}
+				++ArgIndex;
+			}
+		}
+		RpcActor->ProcessEvent(Function, Params.GetData());
+		Function->DestroyStruct(Params.GetData());
+		return true;
+	}
+
+	bool CallEx(AHOLPlayerController* Controller, const TCHAR* CVarName, const TCHAR* FunctionName, const TArrayView<const int32> Args, const FString* Text, const FVector* Location)
+	{
+		return CallFull(Controller, CVarName, FunctionName, Args, Text, Location, nullptr, nullptr);
+	}
+
+	// HALDIR-1117q (NOT COMPILED): the Economy routes. The building object and the type name fill the object / name parameters, the ints the rest in order (bool as 0 / 1).
+	bool RouteQueueProduction(AHOLPlayerController* Controller, AHOLBuilding* Building, const FName TypeName)
+	{
+		return CallFull(Controller, nullptr, TEXT("ServerQueueProduction"), TArrayView<const int32>(), nullptr, nullptr, Building, &TypeName);
+	}
+
+	bool RouteCancelProduction(AHOLPlayerController* Controller, AHOLBuilding* Building, const int32 Index)
+	{
+		const int32 Args[1] = { Index };
+		return CallFull(Controller, nullptr, TEXT("ServerCancelProduction"), TArrayView<const int32>(Args, 1), nullptr, nullptr, Building, nullptr);
+	}
+
+	bool RouteTribute(AHOLPlayerController* Controller, AHOLBuilding* Building, const int32 Receiver, const int32 Resource, const int32 Amount)
+	{
+		const int32 Args[3] = { Receiver, Resource, Amount };
+		return CallFull(Controller, nullptr, TEXT("ServerTribute"), TArrayView<const int32>(Args, 3), nullptr, nullptr, Building, nullptr);
+	}
+
+	bool RouteMarketTrade(AHOLPlayerController* Controller, AHOLBuilding* Building, const int32 Resource, const int32 Lots, const bool bBuy)
+	{
+		const int32 Args[3] = { Resource, Lots, bBuy ? 1 : 0 };
+		return CallFull(Controller, nullptr, TEXT("ServerMarketTrade"), TArrayView<const int32>(Args, 3), nullptr, nullptr, Building, nullptr);
+	}
+
+	// Lot E (D845): the hero routes. The ability (an enum) is the one int, the point the vector; the rage's unit ids are the array.
+	bool RouteHeroAbility(AHOLPlayerController* Controller, const int32 Ability, const FVector& Location)
+	{
+		const int32 Args[1] = { Ability };
+		return CallFull(Controller, nullptr, TEXT("ServerHeroAbility"), TArrayView<const int32>(Args, 1), nullptr, &Location, nullptr, nullptr);
+	}
+
+	bool RouteCastRage(AHOLPlayerController* Controller, const TArray<int32>& UnitIds)
+	{
+		return CallFull(Controller, nullptr, TEXT("ServerCastRage"), TArrayView<const int32>(), nullptr, nullptr, nullptr, nullptr, &UnitIds);
+	}
+
+	// D846: the 16 order routes. The ids go as the Array parameter (uint32 -> int32 -> uint32 again in CallFull), the bool / int / uint32 / enum in Args in declaration order,
+	// the objects and the points in declaration order (second one by Object2 / Location2). The cvar is read by CallFull: false = nothing sent (the caller logs it with LogNotSent).
+	TArray<int32> ToIds(const TConstArrayView<uint32> UnitIds)
+	{
+		TArray<int32> Ids;
+		Ids.Reserve(UnitIds.Num());
+		for (const uint32 UnitId : UnitIds)
+		{
+			Ids.Add(static_cast<int32>(UnitId));
+		}
+		return Ids;
+	}
+
+	bool RouteMove(AHOLPlayerController* Controller, const TConstArrayView<uint32> UnitIds, const FVector& Target, const bool bQueue)
+	{
+		const TArray<int32> Ids = ToIds(UnitIds);
+		const int32 Args[1] = { bQueue ? 1 : 0 };
+		return CallFull(Controller, nullptr, TEXT("ServerMoveUnits"), TArrayView<const int32>(Args, 1), nullptr, &Target, nullptr, nullptr, &Ids);
+	}
+
+	bool RouteAttackUnit(AHOLPlayerController* Controller, const TConstArrayView<uint32> UnitIds, const uint32 TargetUnitId, const bool bQueue)
+	{
+		const TArray<int32> Ids = ToIds(UnitIds);
+		const int32 Args[2] = { static_cast<int32>(TargetUnitId), bQueue ? 1 : 0 };
+		return CallFull(Controller, nullptr, TEXT("ServerAttackUnit"), TArrayView<const int32>(Args, 2), nullptr, nullptr, nullptr, nullptr, &Ids);
+	}
+
+	bool RouteHealUnit(AHOLPlayerController* Controller, const TConstArrayView<uint32> UnitIds, const uint32 TargetUnitId, const bool bQueue)
+	{
+		const TArray<int32> Ids = ToIds(UnitIds);
+		const int32 Args[2] = { static_cast<int32>(TargetUnitId), bQueue ? 1 : 0 };
+		return CallFull(Controller, nullptr, TEXT("ServerHealUnit"), TArrayView<const int32>(Args, 2), nullptr, nullptr, nullptr, nullptr, &Ids);
+	}
+
+	bool RouteAttackBuilding(AHOLPlayerController* Controller, const TConstArrayView<uint32> UnitIds, AHOLBuilding* Building, const bool bQueue)
+	{
+		const TArray<int32> Ids = ToIds(UnitIds);
+		const int32 Args[1] = { bQueue ? 1 : 0 };
+		return CallFull(Controller, nullptr, TEXT("ServerAttackBuilding"), TArrayView<const int32>(Args, 1), nullptr, nullptr, Building, nullptr, &Ids);
+	}
+
+	bool RouteAttackMove(AHOLPlayerController* Controller, const TConstArrayView<uint32> UnitIds, const FVector& Target, const bool bQueue)
+	{
+		const TArray<int32> Ids = ToIds(UnitIds);
+		const int32 Args[1] = { bQueue ? 1 : 0 };
+		return CallFull(Controller, nullptr, TEXT("ServerAttackMove"), TArrayView<const int32>(Args, 1), nullptr, &Target, nullptr, nullptr, &Ids);
+	}
+
+	bool RouteStop(AHOLPlayerController* Controller, const TConstArrayView<uint32> UnitIds, const bool bHold)
+	{
+		const TArray<int32> Ids = ToIds(UnitIds);
+		const int32 Args[1] = { bHold ? 1 : 0 };
+		return CallFull(Controller, nullptr, TEXT("ServerStopUnits"), TArrayView<const int32>(Args, 1), nullptr, nullptr, nullptr, nullptr, &Ids);
+	}
+
+	bool RouteToggleDeploy(AHOLPlayerController* Controller, const TConstArrayView<uint32> UnitIds)
+	{
+		const TArray<int32> Ids = ToIds(UnitIds);
+		return CallFull(Controller, nullptr, TEXT("ServerToggleDeploy"), TArrayView<const int32>(), nullptr, nullptr, nullptr, nullptr, &Ids);
+	}
+
+	// Two points: Start by Location, End by Location2 (a single Location would write Start into both, silently).
+	bool RouteMoveInLine(AHOLPlayerController* Controller, const TConstArrayView<uint32> UnitIds, const FVector& Start, const FVector& End, const bool bWidth, const bool bQueue)
+	{
+		const TArray<int32> Ids = ToIds(UnitIds);
+		const int32 Args[2] = { bWidth ? 1 : 0, bQueue ? 1 : 0 };
+		return CallFull(Controller, nullptr, TEXT("ServerMoveUnitsInLine"), TArrayView<const int32>(Args, 2), nullptr, &Start, nullptr, nullptr, &Ids, &End);
+	}
+
+	bool RouteGather(AHOLPlayerController* Controller, const TConstArrayView<uint32> UnitIds, const int32 SourceIndex, const bool bQueue)
+	{
+		const TArray<int32> Ids = ToIds(UnitIds);
+		const int32 Args[2] = { SourceIndex, bQueue ? 1 : 0 };
+		return CallFull(Controller, nullptr, TEXT("ServerGatherUnits"), TArrayView<const int32>(Args, 2), nullptr, nullptr, nullptr, nullptr, &Ids);
+	}
+
+	bool RoutePlaceBuilding(AHOLPlayerController* Controller, const FName TypeName, const FVector& Point, const TConstArrayView<uint32> UnitIds, const bool bQueue)
+	{
+		const TArray<int32> Ids = ToIds(UnitIds);
+		const int32 Args[1] = { bQueue ? 1 : 0 };
+		return CallFull(Controller, nullptr, TEXT("ServerPlaceBuilding"), TArrayView<const int32>(Args, 1), nullptr, &Point, nullptr, &TypeName, &Ids);
+	}
+
+	bool RouteBuildUnits(AHOLPlayerController* Controller, const TConstArrayView<uint32> UnitIds, AHOLBuilding* Building, const bool bQueue)
+	{
+		const TArray<int32> Ids = ToIds(UnitIds);
+		const int32 Args[1] = { bQueue ? 1 : 0 };
+		return CallFull(Controller, nullptr, TEXT("ServerBuildUnits"), TArrayView<const int32>(Args, 1), nullptr, nullptr, Building, nullptr, &Ids);
+	}
+
+	bool RouteDropOff(AHOLPlayerController* Controller, const TConstArrayView<uint32> UnitIds, AHOLBuilding* Building, const FVector& Point, const bool bQueue)
+	{
+		const TArray<int32> Ids = ToIds(UnitIds);
+		const int32 Args[1] = { bQueue ? 1 : 0 };
+		return CallFull(Controller, nullptr, TEXT("ServerDropOffUnits"), TArrayView<const int32>(Args, 1), nullptr, &Point, Building, nullptr, &Ids);
+	}
+
+	bool RouteGarrison(AHOLPlayerController* Controller, const TConstArrayView<uint32> UnitIds, AHOLBuilding* Building)
+	{
+		const TArray<int32> Ids = ToIds(UnitIds);
+		return CallFull(Controller, nullptr, TEXT("ServerGarrisonUnits"), TArrayView<const int32>(), nullptr, nullptr, Building, nullptr, &Ids);
+	}
+
+	bool RouteUngarrisonAll(AHOLPlayerController* Controller, AHOLBuilding* Building)
+	{
+		return CallFull(Controller, nullptr, TEXT("ServerUngarrisonAll"), TArrayView<const int32>(), nullptr, nullptr, Building, nullptr);
+	}
+
+	bool RouteCancelBuilding(AHOLPlayerController* Controller, AHOLBuilding* Building)
+	{
+		return CallFull(Controller, nullptr, TEXT("ServerCancelBuilding"), TArrayView<const int32>(), nullptr, nullptr, Building, nullptr);
+	}
+
+	// Two buildings: Building by Object, Site by Object2 (a single Object would put the building in both, silently); the source index and bQueue are the ints.
+	bool RouteSetRally(AHOLPlayerController* Controller, AHOLBuilding* Building, const FVector& Point, const int32 SourceIndex, AHOLBuilding* Site, const bool bQueue)
+	{
+		const int32 Args[2] = { SourceIndex, bQueue ? 1 : 0 };
+		return CallFull(Controller, nullptr, TEXT("ServerSetRallyPoint"), TArrayView<const int32>(Args, 2), nullptr, &Point, Building, nullptr, nullptr, nullptr, Site);
+	}
+
+	// The int-only form (the HALDIR-1117n / 1117o routes).
+	bool CallN(AHOLPlayerController* Controller, const TCHAR* CVarName, const TCHAR* FunctionName, const TArrayView<const int32> Args)
+	{
+		return CallEx(Controller, CVarName, FunctionName, Args, nullptr, nullptr);
+	}
+	// The one-int form of the HALDIR-1117n routes (bool as 0 / 1).
+	bool Call(AHOLPlayerController* Controller, const TCHAR* CVarName, const TCHAR* FunctionName, const bool bHasArg, const int32 Arg)
+	{
+		return CallN(Controller, CVarName, FunctionName, bHasArg ? TArrayView<const int32>(&Arg, 1) : TArrayView<const int32>());
+	}
 }
 
-void AHOLPlayerController::ServerSurrender_Implementation()
+void AHOLPlayerController::RequestSurrender()
 {
-	// The player's own slot only (D356); DefeatSlot refuses a slot already defeated and a match over.
-	const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
-	AHOLGameState* HOLGameState = GetWorld()->GetGameState<AHOLGameState>();
-	const int32 Slot = HOLPlayerState ? HOLPlayerState->GetPlayerIndex() : INDEX_NONE;
-	if (!HOLGameState || Slot == INDEX_NONE || !HOLGameState->DefeatSlot(Slot, EHOLDefeatReason::Surrender))
+	// D845: the RPC is in the script RPC actor (the body is UHOLRpcBridgeLibrary::Surrender: the player's own slot only, D356; DefeatSlot refuses a slot already defeated and a match over).
+	if (!HOLRpcScriptRoute_Haldir1117n::Call(this, nullptr, TEXT("ServerSurrender"), false, 0))
 	{
-		UE_LOG(LogHOLMatch, Display, TEXT("Victory: surrender of slot %d refused"), Slot);
+		HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("Surrender"));
 	}
 }
 
@@ -5075,10 +5808,13 @@ void AHOLPlayerController::RequestReturnHero()
 	{
 		return;
 	}
-	ServerReturnHero();
+	if (!HOLRpcScriptRoute_Haldir1117n::Call(this, nullptr, TEXT("ServerReturnHero"), false, 0))
+	{
+		HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("ReturnHero"));
+	}
 }
 
-void AHOLPlayerController::ServerReturnHero_Implementation()
+void AHOLPlayerController::DoReturnHero()
 {
 	// The player's own slot only (D288): the queue refuses a defeated slot (D358), the step checks the rest.
 	const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
@@ -5096,18 +5832,30 @@ void AHOLPlayerController::RequestHeroAbility(const EHOLHeroAbility Ability, con
 	{
 		return;
 	}
-	ServerHeroAbility(Ability, Location);
+	if (!HOLRpcScriptRoute_Haldir1117n::RouteHeroAbility(this, static_cast<int32>(Ability), Location))
+	{
+		HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("HeroAbility"));
+	}
 }
 
 void AHOLPlayerController::RequestCastRage(const TConstArrayView<uint32> UnitIds)
 {
 	if (UnitIds.Num() > 0)
 	{
-		ServerCastRage(TArray<uint32>(UnitIds));
+		TArray<int32> Ids;
+		Ids.Reserve(UnitIds.Num());
+		for (const uint32 UnitId : UnitIds)
+		{
+			Ids.Add(static_cast<int32>(UnitId));
+		}
+		if (!HOLRpcScriptRoute_Haldir1117n::RouteCastRage(this, Ids))
+		{
+			HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("CastRage"));
+		}
 	}
 }
 
-void AHOLPlayerController::ServerCastRage_Implementation(const TArray<uint32>& UnitIds)
+void AHOLPlayerController::DoCastRage(const TArray<uint32>& UnitIds)
 {
 	const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
 	UHOLCommandSubsystem* Commands = GetWorld() ? GetWorld()->GetSubsystem<UHOLCommandSubsystem>() : nullptr;
@@ -5117,7 +5865,7 @@ void AHOLPlayerController::ServerCastRage_Implementation(const TArray<uint32>& U
 		Commands->IssueRageOrder(HOLPlayerState->GetPlayerIndex(), UnitIds);
 	}
 }
-void AHOLPlayerController::ServerHeroAbility_Implementation(const EHOLHeroAbility Ability, const FVector_NetQuantize Location)
+void AHOLPlayerController::DoHeroAbility(const EHOLHeroAbility Ability, const FVector_NetQuantize Location)
 {
 	// The player's own slot only (D288), an ability that is cast (not the aura, not a value out of the enum).
 	const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
@@ -5134,11 +5882,14 @@ void AHOLPlayerController::RequestHeroTalent(const int32 Family)
 {
 	if (!IsSpectator())
 	{
-		ServerHeroTalent(Family);
+		if (!HOLRpcScriptRoute_Haldir1117n::Call(this, nullptr, TEXT("ServerHeroTalent"), true, Family))
+		{
+			HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("HeroTalent"));
+		}
 	}
 }
 
-void AHOLPlayerController::ServerHeroTalent_Implementation(const int32 Family)
+void AHOLPlayerController::DoHeroTalent(const int32 Family)
 {
 	// The player's own slot only (D288); the family is checked by the rules at the step's end.
 	const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
@@ -5154,7 +5905,10 @@ void AHOLPlayerController::RequestDuelChallenge(const int32 TargetSlot)
 {
 	if (!IsSpectator())
 	{
-		ServerDuelChallenge(TargetSlot);
+		if (!HOLRpcScriptRoute_Haldir1117n::Call(this, nullptr, TEXT("ServerDuelChallenge"), true, TargetSlot))
+		{
+			HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("DuelChallenge"));
+		}
 	}
 }
 
@@ -5162,7 +5916,10 @@ void AHOLPlayerController::RequestDuelAnswer(const bool bAccept)
 {
 	if (!IsSpectator())
 	{
-		ServerDuelAnswer(bAccept);
+		if (!HOLRpcScriptRoute_Haldir1117n::Call(this, nullptr, TEXT("ServerDuelAnswer"), true, bAccept ? 1 : 0))
+		{
+			HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("DuelAnswer"));
+		}
 	}
 }
 
@@ -5171,11 +5928,15 @@ void AHOLPlayerController::RequestSignal(const int32 Kind, const FVector& Locati
 	// A pure spectator places none (it has no seat); the board refuses the rest (a defeated player, the rate).
 	if (!IsSpectator())
 	{
-		ServerPostSignal(Kind, Location);
+		const int32 SignalArgs[1] = { Kind };
+			if (!HOLRpcScriptRoute_Haldir1117n::CallEx(this, nullptr, TEXT("ServerPostSignal"), TArrayView<const int32>(SignalArgs, 1), nullptr, &Location))
+			{
+				HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("PostSignal"));
+			}
 	}
 }
 
-void AHOLPlayerController::ServerPostSignal_Implementation(const int32 Kind, const FVector Location)
+void AHOLPlayerController::DoPostSignal(const int32 Kind, const FVector Location)
 {
 	// The player's own slot only (D288); the script's board decides (HOLSignal::Post), then each seat that sees it receives it.
 	UWorld* World = GetWorld();
@@ -5207,14 +5968,14 @@ void AHOLPlayerController::ServerPostSignal_Implementation(const int32 Kind, con
 		const bool bSpectator = UHOLSignalSubsystem::IsSignalSpectator(World, ViewerSlot, Viewer->IsSpectator());
 		if (Board->SeesNow(Book, Sender, ViewerSlot, bSpectator))
 		{
-			Viewer->ClientReceiveSignal(Sender, Kind, Location);
+			// D845: through the viewer's script actor (Client RPC ClientReceiveSignal, whose bridge calls ReceiveSignal on that machine).
+			const int32 ReceiveArgs[2] = { Sender, Kind };
+			if (!HOLRpcScriptRoute_Haldir1117n::CallEx(Viewer, nullptr, TEXT("ClientReceiveSignal"), TArrayView<const int32>(ReceiveArgs, 2), nullptr, &Location))
+			{
+				HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("ReceiveSignal"));
+			}
 		}
 	}
-}
-
-void AHOLPlayerController::ClientReceiveSignal_Implementation(const int32 Sender, const int32 Kind, const FVector Location)
-{
-	ReceiveSignal(Sender, Kind, Location);
 }
 
 void AHOLPlayerController::ReceiveSignal(const int32 Sender, const int32 Kind, const FVector& Location)
@@ -5244,23 +6005,28 @@ TArray<FHOLReceivedSignal> AHOLPlayerController::GetActiveSignals() const
 	HOLSignalInput::Expire(Active, GetWorld() ? GetWorld()->GetTimeSeconds() : 0.0);
 	return Active;
 }
-// A4: the chat's gate, values of the registry (Tools/Data/ValueSheet.csv, HOLChat::MaxTextLength, MaxPerWindow, WindowMs).
-static TAutoConsoleVariable<int32> CVarChatMaxLength(TEXT("hol.Chat.MaxLength"), HOLChat::MaxTextLength,
+// A4: the chat's gate; 0 = the registry's value, the script's default (Tools/Data/ValueSheet.csv; Script/Chat/HOLChatRules.as,
+// HOLChat::MaxTextLength, MaxPerWindow, WindowMs; MIG-P1b: changed there without a build).
+static TAutoConsoleVariable<int32> CVarChatMaxLength(TEXT("hol.Chat.MaxLength"), 0,
 	TEXT("A4: a chat message's maximum length in characters; longer, the server refuses it (registry comm.chat.*)."));
-static TAutoConsoleVariable<int32> CVarChatMaxPerWindow(TEXT("hol.Chat.MaxPerWindow"), HOLChat::MaxPerWindow,
+static TAutoConsoleVariable<int32> CVarChatMaxPerWindow(TEXT("hol.Chat.MaxPerWindow"), 0,
 	TEXT("A4: the chat messages a player may send within hol.Chat.WindowMs; more, the server refuses them (registry comm.chat.*)."));
-static TAutoConsoleVariable<int32> CVarChatWindowMs(TEXT("hol.Chat.WindowMs"), HOLChat::WindowMs,
+static TAutoConsoleVariable<int32> CVarChatWindowMs(TEXT("hol.Chat.WindowMs"), 0,
 	TEXT("A4: the window of the chat's rate, in ms (registry comm.chat.*)."));
 
 void AHOLPlayerController::RequestChat(const int32 Channel, const FString& Text, const int32 TargetSlot)
 {
 	// A pure spectator talks too (with the spectators, D376): the server decides.
-	ServerPostChat(Channel, Text, TargetSlot);
+	const int32 ChatArgs[2] = { Channel, TargetSlot };
+	if (!HOLRpcScriptRoute_Haldir1117n::CallEx(this, nullptr, TEXT("ServerPostChat"), TArrayView<const int32>(ChatArgs, 2), &Text, nullptr))
+	{
+		HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("PostChat"));
+	}
 }
 
-void AHOLPlayerController::ServerPostChat_Implementation(const int32 Channel, const FString& Text, const int32 TargetSlot)
+void AHOLPlayerController::DoPostChat(const int32 Channel, const FString& Text, const int32 TargetSlot)
 {
-	// The player's own slot only (D288); the server alone decides who reads it (HOLChat, mirror of Script/Chat/HOLChatRules.as).
+	// The player's own slot only (D288); the server alone decides who reads it (the script board, Script/Chat/HOLChatBoardScript.as).
 	UWorld* World = GetWorld();
 	if (!World)
 	{
@@ -5268,12 +6034,18 @@ void AHOLPlayerController::ServerPostChat_Implementation(const int32 Channel, co
 	}
 	const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
 	const int32 Sender = HOLPlayerState && !IsSpectator() ? HOLPlayerState->GetPlayerIndex() : INDEX_NONE;
-	const HOLChat::FSeats Seats = HOLChat::ReadSeats(World);
+	UHOLChatSubsystem* Board = UHOLChatSubsystem::Find(World);
+	const FHOLChatSeats Seats = UHOLChatSubsystem::ReadSeats(World);
 	const int32 NowMs = static_cast<int32>(World->GetTimeSeconds() * 1000.0);
-	const int32 Answer = HOLChat::CheckPost(Seats, Channel, Sender, TargetSlot, Text, ChatPostTimesMs, NowMs,
-		CVarChatMaxLength.GetValueOnGameThread(), CVarChatMaxPerWindow.GetValueOnGameThread(), CVarChatWindowMs.GetValueOnGameThread());
+	const FHOLChatGateAnswer Gate = Board ? Board->CheckPostNow(Seats, Channel, Sender, TargetSlot, Text, ChatPostTimesMs, NowMs,
+		CVarChatMaxLength.GetValueOnGameThread(), CVarChatMaxPerWindow.GetValueOnGameThread(), CVarChatWindowMs.GetValueOnGameThread()) : FHOLChatGateAnswer();
+	if (Board)
+	{
+		ChatPostTimesMs = Gate.RecentMs;
+	}
+	const int32 Answer = Gate.Answer;
 	UE_LOG(LogHOLMatch, Display, TEXT("Chat: slot %d channel %d answer %d"), Sender, Channel, Answer);
-	if (Answer != HOLChat::Ok)
+	if (!Board || Answer != UHOLChatSubsystem::AnswerOk)
 	{
 		return;
 	}
@@ -5287,19 +6059,23 @@ void AHOLPlayerController::ServerPostChat_Implementation(const int32 Channel, co
 		}
 		const AHOLPlayerState* ViewerState = Viewer->GetHOLPlayerState();
 		const int32 ViewerSlot = ViewerState && !Viewer->IsSpectator() ? ViewerState->GetPlayerIndex() : INDEX_NONE;
-		// Two pure spectators (no seat): the spectators' talk, never a private message of one of them.
-		const bool bReaches = Viewer == this
-			|| (Sender == INDEX_NONE && ViewerSlot == INDEX_NONE ? Channel != HOLChat::Private : HOLChat::Reaches(Seats, Channel, Sender, TargetSlot, ViewerSlot));
+		// Two pure spectators (no seat) share INDEX_NONE: the script rule gives them the spectators' talk, never a private message (D806).
+		const bool bReaches = Viewer == this || Board->ReachesNow(Seats, Channel, Sender, TargetSlot, ViewerSlot);
 		if (bReaches)
 		{
-			Viewer->ClientReceiveChat(Sender, Channel, Text);
+			// D845: through the viewer's script actor (Client RPC ClientReceiveChat, whose bridge calls ReceiveChat on that machine).
+			const int32 ReceiveChatArgs[2] = { Sender, Channel };
+			if (!HOLRpcScriptRoute_Haldir1117n::CallEx(Viewer, nullptr, TEXT("ClientReceiveChat"), TArrayView<const int32>(ReceiveChatArgs, 2), &Text, nullptr))
+			{
+				HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("ReceiveChat"));
+			}
 			++Sent;
 		}
 	}
 	UE_LOG(LogHOLMatch, Display, TEXT("Chat: slot %d channel %d sent to %d seats"), Sender, Channel, Sent);
 }
 
-void AHOLPlayerController::ClientReceiveChat_Implementation(const int32 SenderSlot, const int32 Channel, const FString& Text)
+void AHOLPlayerController::ReceiveChat(const int32 SenderSlot, const int32 Channel, const FString& Text)
 {
 	++NumReceivedChats;
 	UE_LOG(LogHOLMatch, Display, TEXT("Chat: received channel %d from slot %d: %s"), Channel, SenderSlot, *Text);
@@ -5314,7 +6090,11 @@ void AHOLPlayerController::RequestSpecialization(const int32 Tier, const int32 O
 {
 	if (!IsSpectator())
 	{
-		ServerStartSpecialization(Tier, Option);
+		const int32 SpecArgs[] = { Tier, Option };
+		if (!HOLRpcScriptRoute_Haldir1117n::CallN(this, nullptr, TEXT("ServerStartSpecialization"), SpecArgs))
+		{
+			HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("StartSpecialization"));
+		}
 	}
 }
 
@@ -5322,11 +6102,14 @@ void AHOLPlayerController::RequestCancelSpecialization()
 {
 	if (!IsSpectator())
 	{
-		ServerCancelSpecialization();
+		if (!HOLRpcScriptRoute_Haldir1117n::Call(this, nullptr, TEXT("ServerCancelSpecialization"), false, 0))
+		{
+			HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("CancelSpecialization"));
+		}
 	}
 }
 
-void AHOLPlayerController::ServerStartSpecialization_Implementation(const int32 Tier, const int32 Option)
+void AHOLPlayerController::DoStartSpecialization(const int32 Tier, const int32 Option)
 {
 	// The player's own seat only (D288); the script's board decides (HOLSpecialization::Start with the seat's tier and its Forum).
 	UWorld* World = GetWorld();
@@ -5343,7 +6126,7 @@ void AHOLPlayerController::ServerStartSpecialization_Implementation(const int32 
 	Board->RefreshView(*HOLPlayerState);
 }
 
-void AHOLPlayerController::ServerCancelSpecialization_Implementation()
+void AHOLPlayerController::DoCancelSpecialization()
 {
 	UWorld* World = GetWorld();
 	AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
@@ -5361,7 +6144,11 @@ void AHOLPlayerController::RequestStance(const int32 TargetSlot, const int32 Sta
 {
 	if (!IsSpectator())
 	{
-		ServerDiplomacyStance(TargetSlot, Stance);
+		const int32 StanceArgs[2] = {TargetSlot, Stance};
+		if (!HOLRpcScriptRoute_Haldir1117n::CallN(this, nullptr, TEXT("ServerDiplomacyStance"), StanceArgs))
+		{
+			HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("DiplomacyStance"));
+		}
 	}
 }
 
@@ -5369,62 +6156,27 @@ void AHOLPlayerController::RequestShareVision(const int32 TargetSlot, const bool
 {
 	if (!IsSpectator())
 	{
-		ServerDiplomacyVision(TargetSlot, bShare);
-	}
-}
-
-void AHOLPlayerController::ServerDiplomacyStance_Implementation(const int32 TargetSlot, const int32 Stance)
-{
-	// The player's own slot only (D288); the target, the stance and the mode are checked by HOLDiplomacy::SetStance at the next step.
-	const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
-	UHOLCommandSubsystem* Commands = GetWorld()->GetSubsystem<UHOLCommandSubsystem>();
-	if (HOLPlayerState && Commands)
-	{
-		UE_LOG(LogHOLMatch, Display, TEXT("Diplomacy order: slot %d stance %d toward slot %d queued"), HOLPlayerState->GetPlayerIndex(), Stance, TargetSlot);
-		Commands->IssueDiplomacyOrder(HOLPlayerState->GetPlayerIndex(), EHOLDiplomacyOrderKind::Stance, TargetSlot, Stance);
-	}
-}
-
-void AHOLPlayerController::ServerDiplomacyVision_Implementation(const int32 TargetSlot, const bool bShare)
-{
-	const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
-	UHOLCommandSubsystem* Commands = GetWorld()->GetSubsystem<UHOLCommandSubsystem>();
-	if (HOLPlayerState && Commands)
-	{
-		UE_LOG(LogHOLMatch, Display, TEXT("Diplomacy order: slot %d vision %d toward slot %d queued"), HOLPlayerState->GetPlayerIndex(), bShare ? 1 : 0, TargetSlot);
-		Commands->IssueDiplomacyOrder(HOLPlayerState->GetPlayerIndex(), EHOLDiplomacyOrderKind::Vision, TargetSlot, bShare ? 1 : 0);
-	}
-}
-
-void AHOLPlayerController::ServerDuelChallenge_Implementation(const int32 TargetSlot)
-{
-	// The player's own slot only (D288); the target and the conditions are checked by the rules at the step's end.
-	const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
-	UHOLCommandSubsystem* Commands = GetWorld()->GetSubsystem<UHOLCommandSubsystem>();
-	if (HOLPlayerState && Commands)
-	{
-		UE_LOG(LogHOLMatch, Display, TEXT("Duel order: slot %d challenge at slot %d queued"), HOLPlayerState->GetPlayerIndex(), TargetSlot);
-		Commands->IssueDuelOrder(HOLPlayerState->GetPlayerIndex(), EHOLDuelOrderKind::Challenge, TargetSlot);
-	}
-}
-
-void AHOLPlayerController::ServerDuelAnswer_Implementation(const bool bAccept)
-{
-	const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
-	UHOLCommandSubsystem* Commands = GetWorld()->GetSubsystem<UHOLCommandSubsystem>();
-	if (HOLPlayerState && Commands)
-	{
-		UE_LOG(LogHOLMatch, Display, TEXT("Duel order: slot %d %s queued"), HOLPlayerState->GetPlayerIndex(), bAccept ? TEXT("accept") : TEXT("refuse"));
-		Commands->IssueDuelOrder(HOLPlayerState->GetPlayerIndex(), bAccept ? EHOLDuelOrderKind::Accept : EHOLDuelOrderKind::Refuse, INDEX_NONE);
+		// D845: the RPC is in the script RPC actor (ServerDiplomacyVision: the journal "Diplomacy order: ... vision ..." and the queue are in the script and its bridge).
+		const int32 VisionArgs[2] = { TargetSlot, bShare ? 1 : 0 };
+		if (!HOLRpcScriptRoute_Haldir1117n::CallN(this, nullptr, TEXT("ServerDiplomacyVision"), VisionArgs))
+		{
+			HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("DiplomacyVision"));
+		}
 	}
 }
 
 void AHOLPlayerController::RequestCheatDamageBuilding(const FVector& Point, const int32 Amount, const uint8 AttackType)
 {
-	ServerCheatDamageBuilding(Point, Amount, AttackType);
+	{
+		const int32 CheatArgs[2] = { Amount, static_cast<int32>(AttackType) };
+		if (!HOLRpcScriptRoute_Haldir1117n::CallEx(this, nullptr, TEXT("ServerCheatDamageBuilding"), TArrayView<const int32>(CheatArgs, 2), nullptr, &Point))
+		{
+			HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("CheatDamageBuilding"));
+		}
+	}
 }
 
-void AHOLPlayerController::ServerCheatDamageBuilding_Implementation(const FVector_NetQuantize Point, const int32 Amount, const uint8 AttackType)
+void AHOLPlayerController::DoCheatDamageBuilding(const FVector_NetQuantize Point, const int32 Amount, const uint8 AttackType)
 {
 #if !UE_BUILD_SHIPPING
 	if (IsCheatRefused(TEXT("damage building")))
@@ -5455,7 +6207,7 @@ void AHOLPlayerController::ServerCheatDamageBuilding_Implementation(const FVecto
 #endif
 }
 
-void AHOLPlayerController::ServerCheatGatherSpeed_Implementation(const float Scale)
+void AHOLPlayerController::DoCheatGatherSpeed(const float Scale)
 {
 #if !UE_BUILD_SHIPPING
 	if (IsCheatRefused(TEXT("gather speed")))
@@ -5473,7 +6225,7 @@ void AHOLPlayerController::ServerCheatGatherSpeed_Implementation(const float Sca
 #endif
 }
 
-void AHOLPlayerController::ServerMoveUnits_Implementation(const TArray<uint32>& UnitIds, const FVector_NetQuantize Target, const bool bQueue)
+void AHOLPlayerController::DoMoveUnits(const TArray<uint32>& UnitIds, const FVector_NetQuantize Target, const bool bQueue)
 {
 	// The order names the player: the simulation moves only its own units (D288), a client could send any identifier; the
 	// rule of every slot's orders (IA0.2, HOLPlayerOrders): its slot, the cap, the chains.
@@ -5483,9 +6235,9 @@ void AHOLPlayerController::ServerMoveUnits_Implementation(const TArray<uint32>& 
 	}
 }
 
-void AHOLPlayerController::ServerAttackUnit_Implementation(const TArray<uint32>& UnitIds, const uint32 TargetUnitId, const bool bQueue)
+void AHOLPlayerController::DoAttackUnit(const TArray<uint32>& UnitIds, const uint32 TargetUnitId, const bool bQueue)
 {
-	// As ServerMoveUnits (D288): the player's own units alone; the order processor checks the target (an enemy unit alive).
+	// As the Move order (D288): the player's own units alone; the order processor checks the target (an enemy unit alive).
 	if (const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState())
 	{
 		HOLPlayerOrders::Attack(*GetWorld(), HOLPlayerState->GetPlayerIndex(), UnitIds, TargetUnitId, bQueue);
@@ -5496,20 +6248,20 @@ void AHOLPlayerController::RequestAttackBuilding(const TConstArrayView<uint32> U
 {
 	if (UnitIds.Num() > 0 && Building)
 	{
-		ServerAttackBuilding(TArray<uint32>(UnitIds), Building, bQueue);
+		if (!HOLRpcScriptRoute_Haldir1117n::RouteAttackBuilding(this, UnitIds, Building, bQueue)) { HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("AttackBuilding")); }
 	}
 }
 
-void AHOLPlayerController::ServerAttackBuilding_Implementation(const TArray<uint32>& UnitIds, AHOLBuilding* Building, const bool bQueue)
+void AHOLPlayerController::DoAttackBuilding(const TArray<uint32>& UnitIds, AHOLBuilding* Building, const bool bQueue)
 {
-	// As ServerAttackUnit (D288): the player's own units alone; the order processor checks the building (an enemy's, standing).
+	// As the AttackUnit order (D288): the player's own units alone; the order processor checks the building (an enemy's, standing).
 	if (const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState())
 	{
 		HOLPlayerOrders::AttackBuilding(*GetWorld(), HOLPlayerState->GetPlayerIndex(), UnitIds, Building, bQueue);
 	}
 }
 
-void AHOLPlayerController::ServerAttackMove_Implementation(const TArray<uint32>& UnitIds, const FVector_NetQuantize Target, const bool bQueue)
+void AHOLPlayerController::DoAttackMove(const TArray<uint32>& UnitIds, const FVector_NetQuantize Target, const bool bQueue)
 {
 	if (const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState())
 	{
@@ -5517,7 +6269,7 @@ void AHOLPlayerController::ServerAttackMove_Implementation(const TArray<uint32>&
 	}
 }
 
-void AHOLPlayerController::ServerStopUnits_Implementation(const TArray<uint32>& UnitIds, const bool bHold)
+void AHOLPlayerController::DoStopUnits(const TArray<uint32>& UnitIds, const bool bHold)
 {
 	if (const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState())
 	{
@@ -5525,7 +6277,7 @@ void AHOLPlayerController::ServerStopUnits_Implementation(const TArray<uint32>& 
 	}
 }
 
-void AHOLPlayerController::ServerToggleDeploy_Implementation(const TArray<uint32>& UnitIds)
+void AHOLPlayerController::DoToggleDeploy(const TArray<uint32>& UnitIds)
 {
 	if (const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState())
 	{
@@ -5533,10 +6285,9 @@ void AHOLPlayerController::ServerToggleDeploy_Implementation(const TArray<uint32
 	}
 }
 
-void AHOLPlayerController::ServerMoveUnitsInLine_Implementation(const TArray<uint32>& UnitIds, const FVector_NetQuantize Start,
-	const FVector_NetQuantize End, const bool bWidth, const bool bQueue)
+void AHOLPlayerController::DoMoveUnitsInLine(const TArray<uint32>& UnitIds, const FVector_NetQuantize Start, const FVector_NetQuantize End, const bool bWidth, const bool bQueue)
 {
-	// As ServerMoveUnits (D288): the simulation moves only the player's own units. The drag is an arrow (the user's 2nd
+	// As the Move order (D288): the simulation moves only the player's own units. The drag is an arrow (the user's 2nd
 	// trial of J7a.4): its base (Start, where the button was pressed) is the target, the middle of the front row; the
 	// group faces Start -> End, and with Ctrl its length is the front's width.
 	if (const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState())
@@ -5545,7 +6296,7 @@ void AHOLPlayerController::ServerMoveUnitsInLine_Implementation(const TArray<uin
 	}
 }
 
-void AHOLPlayerController::ServerGatherUnits_Implementation(const TArray<uint32>& UnitIds, const int32 SourceIndex, const bool bQueue)
+void AHOLPlayerController::DoGatherUnits(const TArray<uint32>& UnitIds, const int32 SourceIndex, const bool bQueue)
 {
 	// The order names the player: the gathering sends only its own units (D288), a client could send any identifier; its
 	// soldiers walk to the source (HOLPlayerOrders::SendNonWorkersTo).
@@ -5555,8 +6306,7 @@ void AHOLPlayerController::ServerGatherUnits_Implementation(const TArray<uint32>
 	}
 }
 
-void AHOLPlayerController::ServerSetRallyPoint_Implementation(AHOLBuilding* Building, const FVector_NetQuantize Point, const int32 SourceIndex,
-	AHOLBuilding* Site, const bool bQueue)
+void AHOLPlayerController::DoSetRallyPoint(AHOLBuilding* Building, const FVector_NetQuantize Point, const int32 SourceIndex, AHOLBuilding* Site, const bool bQueue)
 {
 	const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
 	UHOLCommandSubsystem* Commands = GetWorld()->GetSubsystem<UHOLCommandSubsystem>();
@@ -5578,7 +6328,7 @@ void AHOLPlayerController::ServerSetRallyPoint_Implementation(AHOLBuilding* Buil
 	}
 }
 
-void AHOLPlayerController::ServerQueueProduction_Implementation(AHOLBuilding* Building, const FName TypeName)
+void AHOLPlayerController::DoQueueProduction(AHOLBuilding* Building, const FName TypeName)
 {
 	const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
 	UHOLCommandSubsystem* Commands = GetWorld()->GetSubsystem<UHOLCommandSubsystem>();
@@ -5593,7 +6343,7 @@ void AHOLPlayerController::ServerQueueProduction_Implementation(AHOLBuilding* Bu
 	}
 }
 
-void AHOLPlayerController::ServerCancelProduction_Implementation(AHOLBuilding* Building, const int32 Index)
+void AHOLPlayerController::DoCancelProduction(AHOLBuilding* Building, const int32 Index)
 {
 	const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
 	UHOLCommandSubsystem* Commands = GetWorld()->GetSubsystem<UHOLCommandSubsystem>();
@@ -5608,7 +6358,7 @@ void AHOLPlayerController::ServerCancelProduction_Implementation(AHOLBuilding* B
 	}
 }
 
-void AHOLPlayerController::ServerTribute_Implementation(AHOLBuilding* Building, const int32 Receiver, const int32 Resource, const int32 Amount)
+void AHOLPlayerController::DoTribute(AHOLBuilding* Building, const int32 Receiver, const int32 Resource, const int32 Amount)
 {
 	const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
 	UHOLCommandSubsystem* Commands = GetWorld()->GetSubsystem<UHOLCommandSubsystem>();
@@ -5625,7 +6375,7 @@ void AHOLPlayerController::ServerTribute_Implementation(AHOLBuilding* Building, 
 	}
 }
 
-void AHOLPlayerController::ServerMarketTrade_Implementation(AHOLBuilding* Building, const int32 Resource, const int32 Lots, const bool bBuy)
+void AHOLPlayerController::DoMarketTrade(AHOLBuilding* Building, const int32 Resource, const int32 Lots, const bool bBuy)
 {
 	const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
 	UHOLCommandSubsystem* Commands = GetWorld()->GetSubsystem<UHOLCommandSubsystem>();
@@ -5936,7 +6686,7 @@ void AHOLPlayerController::OrderLineAt(const FVector2D& Start, const FVector2D& 
 		GroundEnd.X, GroundEnd.Y, bWithWidth ? TEXT(", its width") : TEXT(""), bShift ? TEXT(", queued") : TEXT(""));
 	if (Own.Num() <= UE::HeroesOfLiberty::Player::MaxOrderedUnits)
 	{
-		ServerMoveUnitsInLine(Own, GroundStart, GroundEnd, bWithWidth, bShift);
+		RequestMoveUnitsInLine(Own, GroundStart, GroundEnd, bWithWidth, bShift);
 	}
 	OnOrderGiven.Broadcast(Middle);
 }
@@ -5947,7 +6697,7 @@ void AHOLPlayerController::HandleDeselect()
 	// placement mode first, the selection kept (D313), and closes the chosen age (the user's 1st trial of G.1: an age
 	// chosen without a ghost is closed alone), then the attack-move mode (J7b.3); then it deselects; with nothing
 	// selected, it opens the in-game menu.
-	switch (HOLGameMenuRules::GetEscapeAction(bGameMenuOpen, IsPlacing() || ChosenAge != INDEX_NONE || bAttackMoveArmed || bBannerArmed, HasSelection()))
+	switch (UHOLGameMenuRulesBridge::NativeGetEscapeAction(bGameMenuOpen, IsPlacing() || ChosenAge != INDEX_NONE || bAttackMoveArmed || bBannerArmed, HasSelection()))
 	{
 	case EHOLEscapeAction::CloseMenu:
 		return;
@@ -6333,37 +7083,25 @@ void AHOLPlayerController::UpdateDrag()
 void AHOLPlayerController::RequestPause()
 {
 	UE_LOG(LogHOLMatch, Display, TEXT("Pause: pause asked by this player"));
-	ServerRequestPause();
+	if (!HOLRpcScriptRoute_Haldir1117n::Call(this, nullptr, TEXT("ServerRequestPause"), false, 0))
+	{
+		HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("RequestPause"));
+	}
 }
 
 void AHOLPlayerController::RequestResume()
 {
 	UE_LOG(LogHOLMatch, Display, TEXT("Pause: resume asked by this player"));
-	ServerRequestResume();
+	if (!HOLRpcScriptRoute_Haldir1117n::Call(this, nullptr, TEXT("ServerRequestResume"), false, 0))
+	{
+		HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("RequestResume"));
+	}
 }
 
 bool AHOLPlayerController::IsInputFrozen() const
 {
 	const AHOLGameState* HOLGameState = GetWorld() ? GetWorld()->GetGameState<AHOLGameState>() : nullptr;
 	return HOLGameState && HOLGameState->IsMatchPaused();
-}
-
-void AHOLPlayerController::ServerRequestPause_Implementation()
-{
-	AHOLGameState* HOLGameState = GetWorld()->GetGameState<AHOLGameState>();
-	if (const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState(); HOLGameState && HOLPlayerState)
-	{
-		HOLGameState->RequestPause(*HOLPlayerState, HOLGameState->GetServerWorldTimeSeconds());
-	}
-}
-
-void AHOLPlayerController::ServerRequestResume_Implementation()
-{
-	AHOLGameState* HOLGameState = GetWorld()->GetGameState<AHOLGameState>();
-	if (const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState(); HOLGameState && HOLPlayerState)
-	{
-		HOLGameState->RequestResume(*HOLPlayerState, HOLGameState->GetServerWorldTimeSeconds());
-	}
 }
 
 void AHOLPlayerController::ServerRequestMatchStats_Implementation(const int32 FromSample, const int32 FromEvent)

@@ -92,6 +92,9 @@ class HEROESOFLIBERTY_API AHOLPlayerController : public APlayerController
 {
 	GENERATED_BODY()
 
+	// HALDIR-1117o (NOT COMPILED): the script RPC bridge calls the _Implementation of the RPCs it takes over (one body, one journal).
+	friend class UHOLRpcBridgeLibrary;
+
 public:
 	AHOLPlayerController();
 
@@ -401,6 +404,8 @@ public:
 	 * (Shift, the user's 1st trial of J7a.4): after their current move.
 	 */
 	void RequestMoveUnits(TConstArrayView<uint32> UnitIds, const FVector& Target, bool bQueue = false);
+	/** D846: a right-button drag (the two ends of the front line): a Request like the others (it was a direct RPC call), so the route, the cvar and the measure reach it. */
+	void RequestMoveUnitsInLine(TConstArrayView<uint32> UnitIds, const FVector& Start, const FVector& End, bool bWidth, bool bQueue = false);
 	/** Asks the server to have units attack an enemy unit (J7b.3, a right click on it); it checks the units and the target. */
 	void RequestAttackUnit(TConstArrayView<uint32> UnitIds, uint32 TargetUnitId, bool bQueue = false);
 	/**
@@ -459,6 +464,8 @@ public:
 	 * user's trial of J6a.4), or to clear it (on the building).
 	 */
 	void RequestRallyPoint(const FVector& Point, int32 SourceIndex = INDEX_NONE, AHOLBuilding* Site = nullptr, bool bQueue = false);
+	/** D846: the rally point of ONE given building (the group's salve calls it for each producing building: one RPC each, as before); RequestRallyPoint is it for the selected one. */
+	void RequestSetRallyPointOf(AHOLBuilding* Building, const FVector& Point, int32 SourceIndex = INDEX_NONE, AHOLBuilding* Site = nullptr, bool bQueue = false);
 
 	/**
 	 * Development cheats for the trials (hol.Cheat.*; never in a Shipping build: no command registers them and the
@@ -518,7 +525,7 @@ public:
 	 */
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Hero")
 	void RequestHeroAbility(EHOLHeroAbility Ability, FVector Location);
-	/** L4: the grid's button of the necrotic rage: the units named, the server keeps the player's own Damned Warriors (ServerCastRage). */
+	/** L4: the grid's button of the necrotic rage: the units named, the server keeps the player's own Damned Warriors (the script RPC actor's ServerCastRage). */
 	void RequestCastRage(TConstArrayView<uint32> UnitIds);
 
 	/**
@@ -560,11 +567,14 @@ public:
 	/** SG3: the received signals still alive (hol.Signal.IconSeconds), for the minimap's icons (HOLGameScreenScript). */
 	UFUNCTION(BlueprintCallable, Category = "Signals")
 	TArray<FHOLReceivedSignal> GetActiveSignals() const;
-	/** SG3: what ClientReceiveSignal does on this machine (keeps the signal for the minimap and the ground mark, D825; its thread line). */
+	/** SG3: what the script RPC actor's ClientReceiveSignal does on this machine, through its bridge (keeps the signal for the minimap and the ground mark, D825; its thread line). */
 	void ReceiveSignal(int32 Sender, int32 Kind, const FVector& Location);
 
+	/** A4: a chat message this seat reads (the script RPC actor's ClientReceiveChat, through its bridge): its line in the thread (AHOLGameState::NoteChatReceived). */
+	void ReceiveChat(int32 SenderSlot, int32 Channel, const FString& Text);
+
 private:
-	/** SG3: the received signals (ClientReceiveSignal), faded by HOLSignalInput::Expire. */
+	/** SG3: the received signals (ReceiveSignal), faded by HOLSignalInput::Expire. */
 	TArray<FHOLReceivedSignal> ReceivedSignals;
 	/** SG3: an Alt + click pressed (resolved at the release: brief = neutral, a drag = the wheel's kind). */
 	bool bSignalPressed = false;
@@ -641,10 +651,7 @@ public:
 	 * P5 (D513): the Pause button of the Escape menu (and hol.Match.Pause / hol.Match.Resume): the server's game state
 	 * decides (AHOLGameState::RequestPause, RequestResume), every machine sees the result by replication.
 	 */
-	UFUNCTION(Server, Reliable)
-	void ServerRequestPause();
-	UFUNCTION(Server, Reliable)
-	void ServerRequestResume();
+	// D845: the pause and resume RPCs are in the script RPC actor (HOLRpc::RequestPause / RequestResume, one body in UHOLRpcBridgeLibrary); no C++ RPC here.
 
 	/** P5: the Escape menu's « Pause » and the pause screen's « Reprendre » (the server decides). Logs "Pause: asked by this player". */
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Match")
@@ -735,176 +742,98 @@ private:
 	/** The ghost under the cursor, its colour checked again (placement mode, every frame). */
 	void UpdatePlacementGhost();
 
-	UFUNCTION(Server, Reliable)
-	void ServerQueueProduction(AHOLBuilding* Building, FName TypeName);
+	// D845: the economy RPCs are in the script RPC actor (Script/Net/HOLRpcPlayer.as); these are the bodies its bridge (friend UHOLRpcBridgeLibrary) calls on the server, no C++ RPC.
+	void DoQueueProduction(AHOLBuilding* Building, FName TypeName);
 
-	UFUNCTION(Server, Reliable)
-	void ServerCancelProduction(AHOLBuilding* Building, int32 Index);
+	void DoCancelProduction(AHOLBuilding* Building, int32 Index);
 
 	/** M4c: an exchange at a Market (UHOLProductionSubsystem::ApplyMarketTrade checks the owner, the Market, the lots and the stock). */
-	UFUNCTION(Server, Reliable)
-	void ServerMarketTrade(AHOLBuilding* Building, int32 Resource, int32 Lots, bool bBuy);
+	void DoMarketTrade(AHOLBuilding* Building, int32 Resource, int32 Lots, bool bBuy);
 
 	/** D372: a tribute from a Market (UHOLProductionSubsystem::ApplyTribute checks the owner, the Market, the receiver, the resource and the stock). */
-	UFUNCTION(Server, Reliable)
-	void ServerTribute(AHOLBuilding* Building, int32 Receiver, int32 Resource, int32 Amount);
+	void DoTribute(AHOLBuilding* Building, int32 Receiver, int32 Resource, int32 Amount);
 
-	/** The units' identifiers (D223) and the ground point: ~4 bytes a unit, a player's selection at most (D288). */
-	UFUNCTION(Server, Reliable)
-	void ServerMoveUnits(const TArray<uint32>& UnitIds, FVector_NetQuantize Target, bool bQueue);
-
-	/** The combat orders (J7b.3): attack a unit, attack-move, stop or hold (EHOLOrderKind as a byte); the server checks them. */
-	UFUNCTION(Server, Reliable)
-	void ServerAttackUnit(const TArray<uint32>& UnitIds, uint32 TargetUnitId, bool bQueue);
-	UFUNCTION(Server, Reliable)
-	void ServerHealUnit(const TArray<uint32>& UnitIds, uint32 TargetUnitId, bool bQueue);
-	UFUNCTION(Server, Reliable)
-	void ServerAttackBuilding(const TArray<uint32>& UnitIds, AHOLBuilding* Building, bool bQueue);
-	UFUNCTION(Server, Reliable)
-	void ServerAttackMove(const TArray<uint32>& UnitIds, FVector_NetQuantize Target, bool bQueue);
-	UFUNCTION(Server, Reliable)
-	void ServerStopUnits(const TArray<uint32>& UnitIds, bool bHold);
-	UFUNCTION(Server, Reliable)
-	void ServerToggleDeploy(const TArray<uint32>& UnitIds);
-
-	/**
-	 * A right-button drag (J7a.4): the units and the two ends of the front line on the ground (~4 bytes a unit and two
-	 * points); the server makes the formation from them (facing; width with bWidth, Ctrl), as for ServerMoveUnits.
-	 */
-	UFUNCTION(Server, Reliable)
-	void ServerMoveUnitsInLine(const TArray<uint32>& UnitIds, FVector_NetQuantize Start, FVector_NetQuantize End, bool bWidth, bool bQueue);
-
-	/** The units' identifiers and the source's index (J5, D298); Shift (the user's trial of J6a.4). */
-	UFUNCTION(Server, Reliable)
-	void ServerGatherUnits(const TArray<uint32>& UnitIds, int32 SourceIndex, bool bQueue);
-
-	/** A type and a ground point (J6a.3, D311): ~16 bytes a foundation; the units sent to build it (J6a.4), Shift. */
-	UFUNCTION(Server, Reliable)
-	void ServerPlaceBuilding(FName TypeName, FVector_NetQuantize Point, const TArray<uint32>& UnitIds, bool bQueue);
-
-	/** The units' identifiers and the site they build (J6a.4, D312). */
-	UFUNCTION(Server, Reliable)
-	void ServerBuildUnits(const TArray<uint32>& UnitIds, AHOLBuilding* Building, bool bQueue);
-
-	/** The units' identifiers, the building they unload at and the ground point clicked (D485). */
-	UFUNCTION(Server, Reliable)
-	void ServerDropOffUnits(const TArray<uint32>& UnitIds, AHOLBuilding* Building, FVector_NetQuantize Point, bool bQueue);
-
-	/** F7 lot 4b: the units' identifiers and the building they enter. */
-	UFUNCTION(Server, Reliable)
-	void ServerGarrisonUnits(const TArray<uint32>& UnitIds, AHOLBuilding* Building);
-
-	/** F7 lot 4a: the building whose occupants all come out. */
-	UFUNCTION(Server, Reliable)
-	void ServerUngarrisonAll(AHOLBuilding* Building);
-
-	UFUNCTION(Server, Reliable)
-	void ServerCancelBuilding(AHOLBuilding* Building);
-
-	/**
-	 * The building, the ground point, the source there and the site there (the user's trial of J6a.4), both checked; bQueue
-	 * (Shift, EtapeDefini N.1): a step added at the end of the rally point.
-	 */
-	UFUNCTION(Server, Reliable)
-	void ServerSetRallyPoint(AHOLBuilding* Building, FVector_NetQuantize Point, int32 SourceIndex, AHOLBuilding* Site, bool bQueue);
-
-	/** The player's own unit selected alone (D303), or 0: the server sends its load at every change. */
-	UFUNCTION(Server, Reliable)
-	void ServerWatchUnit(uint32 UnitId);
+	/** D846: the bodies of the 16 order RPCs (the script RPC actor's bridge calls them); no C++ RPC. */
+	void DoMoveUnits(const TArray<uint32>& UnitIds, FVector_NetQuantize Target, bool bQueue);
+	void DoAttackUnit(const TArray<uint32>& UnitIds, uint32 TargetUnitId, bool bQueue);
+	void DoHealUnit(const TArray<uint32>& UnitIds, uint32 TargetUnitId, bool bQueue);
+	void DoAttackBuilding(const TArray<uint32>& UnitIds, AHOLBuilding* Building, bool bQueue);
+	void DoAttackMove(const TArray<uint32>& UnitIds, FVector_NetQuantize Target, bool bQueue);
+	void DoStopUnits(const TArray<uint32>& UnitIds, bool bHold);
+	void DoToggleDeploy(const TArray<uint32>& UnitIds);
+	void DoMoveUnitsInLine(const TArray<uint32>& UnitIds, FVector_NetQuantize Start, FVector_NetQuantize End, bool bWidth, bool bQueue);
+	void DoGatherUnits(const TArray<uint32>& UnitIds, int32 SourceIndex, bool bQueue);
+	void DoPlaceBuilding(FName TypeName, FVector_NetQuantize Point, const TArray<uint32>& UnitIds, bool bQueue);
+	void DoBuildUnits(const TArray<uint32>& UnitIds, AHOLBuilding* Building, bool bQueue);
+	void DoDropOffUnits(const TArray<uint32>& UnitIds, AHOLBuilding* Building, FVector_NetQuantize Point, bool bQueue);
+	void DoGarrisonUnits(const TArray<uint32>& UnitIds, AHOLBuilding* Building);
+	void DoUngarrisonAll(AHOLBuilding* Building);
+	void DoCancelBuilding(AHOLBuilding* Building);
+	void DoSetRallyPoint(AHOLBuilding* Building, FVector_NetQuantize Point, int32 SourceIndex, AHOLBuilding* Site, bool bQueue);
+	/** D845: the RPC is in the script RPC actor; this is the body its bridge calls on the server. */
+	void DoWatchUnit(uint32 UnitId);
 
 	/** R3.5 (R-Q7): true, and logged, when this server refuses a client's cheat (FHOLCheatRules); every cheat RPC asks it. */
 	bool IsCheatRefused(const TCHAR* What) const;
 
-	UFUNCTION(Server, Reliable)
-	void ServerCheatResources(FHOLResources Amount);
+	/** D845: the RPC is in the script RPC actor; this is the body its bridge (friend UHOLRpcBridgeLibrary) calls on the server. */
+	void DoCheatResources(FHOLResources Amount);
 
-	UFUNCTION(Server, Reliable)
-	void ServerCheatFastBuild(bool bOn);
+	void DoCheatFastBuild(bool bOn);
 
-	UFUNCTION(Server, Reliable)
-	void ServerCheatPopulation(int32 Places);
+	void DoCheatPopulation(int32 Places);
 
-	UFUNCTION(Server, Reliable)
-	void ServerCheatTechnology(FName Technology);
+	void DoCheatTechnology(FName Technology);
 
-	UFUNCTION(Server, Reliable)
-	void ServerCheatTier(int32 Tier, int32 Slot);
+	void DoCheatTier(int32 Tier, int32 Slot);
 
-	UFUNCTION(Server, Reliable)
-	void ServerCheatUnitSpeed(float Scale);
+	void DoCheatUnitSpeed(float Scale);
 
-	UFUNCTION(Server, Reliable)
-	void ServerCheatGatherSpeed(float Scale);
+	void DoCheatGatherSpeed(float Scale);
 
-	UFUNCTION(Server, Reliable)
-	void ServerCheatWound(int32 Percent);
+	void DoCheatWound(int32 Percent);
 
-	UFUNCTION(Server, Reliable)
-	void ServerCheatDamageBuilding(FVector_NetQuantize Point, int32 Amount, uint8 AttackType);
+	void DoCheatDamageBuilding(FVector_NetQuantize Point, int32 Amount, uint8 AttackType);
 
-	UFUNCTION(Server, Reliable)
-	void ServerCheatSpawnBuilding(FName TypeName, int32 Slot, FVector_NetQuantize Point);
+	void DoCheatSpawnBuilding(FName TypeName, int32 Slot, FVector_NetQuantize Point);
 
-	UFUNCTION(Server, Reliable)
-	void ServerCheatDefeat(int32 Slot);
+	void DoCheatDefeat(int32 Slot);
 
-	UFUNCTION(Server, Reliable)
-	void ServerCheatFallForum(int32 Slot);
+	void DoCheatFallForum(int32 Slot);
 
-	UFUNCTION(Server, Reliable)
-	void ServerCheatSkipForum(int32 Slot);
+	void DoCheatSkipForum(int32 Slot);
 
-	UFUNCTION(Server, Reliable)
-	void ServerCheatHoldPresence(int32 Slot, bool bOff, bool bAttackers, bool bDefenders, int32 AttackerSlot);
+	void DoCheatHoldPresence(int32 Slot, bool bOff, bool bAttackers, bool bDefenders, int32 AttackerSlot);
 
-	UFUNCTION(Server, Reliable)
-	void ServerSurrender();
+	// D845: the surrender RPC is in the script RPC actor; the one body is UHOLRpcBridgeLibrary::Surrender (DefeatSlot), no C++ RPC here.
 
-	/** J8a.4: the player's own slot's hero return, queued (UHOLCommandSubsystem::IssueHeroReturnOrder); no argument to trust. */
-	UFUNCTION(Server, Reliable)
-	void ServerReturnHero();
+	/** J8a.4: the player's own slot's hero return, queued (UHOLCommandSubsystem::IssueHeroReturnOrder); no argument to trust. D845: the RPC is in the script RPC actor; this is the body its bridge calls on the server. */
+	void DoReturnHero();
 
 	/** J8c.3: the player's own slot's hero ability, queued (UHOLCommandSubsystem::IssueHeroAbilityOrder); the server checks the rest. */
-	UFUNCTION(Server, Reliable)
-	void ServerHeroAbility(EHOLHeroAbility Ability, FVector_NetQuantize Location);
+	/** D845: the RPC is in the script RPC actor; this is the body its bridge calls on the server. */
+	void DoHeroAbility(EHOLHeroAbility Ability, FVector_NetQuantize Location);
 
 	/** L4: the player's necrotic rage order (UHOLCommandSubsystem::IssueRageOrder); the simulation checks the owner, the type, the health and the cool-down. */
-	UFUNCTION(Server, Reliable)
-	void ServerCastRage(const TArray<uint32>& UnitIds);
+	/** D845: the RPC is in the script RPC actor; this is the body its bridge calls on the server. */
+	void DoCastRage(const TArray<uint32>& UnitIds);
 
-	/** T3: the player's own slot's talent pick, queued (UHOLCommandSubsystem::IssueHeroTalentOrder); the server checks the rest. */
-	UFUNCTION(Server, Reliable)
-	void ServerHeroTalent(int32 Family);
+	/** T3: the player's own slot's talent pick, queued (UHOLCommandSubsystem::IssueHeroTalentOrder); the server checks the rest. D845: the RPC is in the script RPC actor; this is the body its bridge calls on the server. */
+	void DoHeroTalent(int32 Family);
 
-	/** D4: the player's own slot's challenge / answer, queued (UHOLCommandSubsystem::IssueDuelOrder); the server checks the rest. */
-	UFUNCTION(Server, Reliable)
-	void ServerDuelChallenge(int32 TargetSlot);
-	UFUNCTION(Server, Reliable)
-	void ServerDuelAnswer(bool bAccept);
+	// D845: the duel challenge / answer RPCs are in the script RPC actor; the one body is UHOLRpcBridgeLibrary::QueueDuelOrder (UHOLCommandSubsystem::IssueDuelOrder), no C++ RPC here.
 
-	/** D5: the player's own slot's stance / shared vision, queued (UHOLCommandSubsystem::IssueDiplomacyOrder); the game state checks the rest. */
-	UFUNCTION(Server, Reliable)
-	void ServerDiplomacyStance(int32 TargetSlot, int32 Stance);
-	UFUNCTION(Server, Reliable)
-	void ServerDiplomacyVision(int32 TargetSlot, bool bShare);
+	/** D5: the player's own slot's shared vision, queued (UHOLCommandSubsystem::IssueDiplomacyOrder); the game state checks the rest. D845: the stance and the vision RPCs are in the script RPC actor (UHOLRpcBridgeLibrary::QueueDiplomacyOrder), no C++ RPC here. */
 
 	/** SG2 (D386): the server's board takes the signal (HOLSignal::Post) and sends it to the seats that see it (HOLSignal::Sees). */
-	UFUNCTION(Server, Reliable)
-	void ServerPostSignal(int32 Kind, FVector Location);
-
-	/** SG2: a signal this seat sees (its own, a mutual ally's, or any as a spectator); SG3 draws it. */
-	UFUNCTION(Client, Reliable)
-	void ClientReceiveSignal(int32 Sender, int32 Kind, FVector Location);
+	/** D845: the RPC is in the script RPC actor; this is the body its bridge calls on the server (the relay to the seats stays the Client RPC below). */
+	void DoPostSignal(int32 Kind, FVector Location);
 
 	/** SG2: the signals this seat received so far (a test reads it; SG3 draws them). */
 	int32 NumReceivedSignals = 0;
 	/** A4 (D385, D376, D792): the server's gate (HOLChat::CheckPost: length, rate), then each seat the message reaches (HOLChat::Reaches). */
-	UFUNCTION(Server, Reliable)
-	void ServerPostChat(int32 Channel, const FString& Text, int32 TargetSlot);
-
-	/** A4: a chat message this seat reads: its line in the thread (AHOLGameState::NoteChatReceived). */
-	UFUNCTION(Client, Reliable)
-	void ClientReceiveChat(int32 SenderSlot, int32 Channel, const FString& Text);
+	/** D845: the RPC is in the script RPC actor; this is the body its bridge calls on the server (the relay to the seats stays the Client RPC below). */
+	void DoPostChat(int32 Channel, const FString& Text, int32 TargetSlot);
 
 	/** A4: the chat messages this seat received so far. */
 	int32 NumReceivedChats = 0;
@@ -912,12 +841,10 @@ private:
 	TArray<int32> ChatPostTimesMs;
 
 	/** SP2 (D07, D684): the server's board starts the unlock of Option at Tier for this player's seat (HOLSpecialization::Start). */
-	UFUNCTION(Server, Reliable)
-	void ServerStartSpecialization(int32 Tier, int32 Option);
+	void DoStartSpecialization(int32 Tier, int32 Option);
 
-	/** SP2: the server's board cancels this player's running unlock (HOLSpecialization::Cancel). */
-	UFUNCTION(Server, Reliable)
-	void ServerCancelSpecialization();
+	/** SP2: the server's board cancels this player's running unlock (HOLSpecialization::Cancel). D845: bodies of the script RPC actor's RPCs, called by its bridge. */
+	void DoCancelSpecialization();
 
 	UPROPERTY(Transient)
 	TObjectPtr<AHOLRTSCamera> RTSCamera;

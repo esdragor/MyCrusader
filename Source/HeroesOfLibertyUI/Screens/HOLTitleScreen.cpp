@@ -8,11 +8,12 @@
 #include "HeroesOfLibertyUILog.h"
 #include "HOLVersion.h"
 #include "Kismet/KismetSystemLibrary.h"
-#include "Screens/HOLConfirmDialog.h"
+#include "Screens/HOLConfirmDialogScreen.h"
 #include "Screens/HOLMultiplayerScreen.h"
 #include "Screens/HOLNewGameScreen.h"
 #include "Screens/HOLSettingsScreen.h"
 #include "Style/HOLUIStyles.h"
+#include "UObject/UObjectIterator.h"
 #include "Widgets/HOLButton.h"
 #include "Widgets/HOLRootLayout.h"
 
@@ -23,18 +24,61 @@ UHOLTitleScreen::UHOLTitleScreen()
 	bIsBackHandler = false;
 }
 
-void UHOLTitleScreen::BuildLayout()
+TSubclassOf<UHOLTitleScreen> UHOLTitleScreen::FindScriptClass()
 {
-	UVerticalBox* Column = MakeCenteredColumn();
-	// The game's name is not translated.
-	Title = AddText(Column, TEXT("Title"), INVTEXT("Heroes of Liberty"), UHOLTextStyleTitle::StaticClass(), 48.f);
-	// Hit-testable, so that a click on the title reaches the screen (the faction cheat, NativeOnMouseButtonDown).
-	Title->SetVisibility(ESlateVisibility::Visible);
-	PlayButton = AddButton(Column, TEXT("PlayButton"), LOCTEXT("Play", "Jouer"));
-	MultiplayerButton = AddButton(Column, TEXT("MultiplayerButton"), LOCTEXT("Multiplayer", "Multijoueur"));
-	SettingsButton = AddButton(Column, TEXT("SettingsButton"), LOCTEXT("Settings", "Réglages"));
-	QuitButton = AddButton(Column, TEXT("QuitButton"), LOCTEXT("Quit", "Quitter"));
+	// Angelscript's hot reload keeps the older classes, flagged CLASS_NewerVersionExists.
+	for (TObjectIterator<UClass> It; It; ++It)
+	{
+		if (It->IsChildOf(StaticClass()) && !It->HasAnyClassFlags(CLASS_Abstract | CLASS_NewerVersionExists | CLASS_Deprecated))
+		{
+			return *It;
+		}
+	}
+	return nullptr;
+}
 
+FText UHOLTitleScreen::ButtonLabel(const FName ButtonName)
+{
+	if (ButtonName == TEXT("PlayButton"))
+	{
+		return LOCTEXT("Play", "Jouer");
+	}
+	if (ButtonName == TEXT("MultiplayerButton"))
+	{
+		return LOCTEXT("Multiplayer", "Multijoueur");
+	}
+	if (ButtonName == TEXT("SettingsButton"))
+	{
+		return LOCTEXT("Settings", "Réglages");
+	}
+	if (ButtonName == TEXT("QuitButton"))
+	{
+		return LOCTEXT("Quit", "Quitter");
+	}
+	return FText::GetEmpty();
+}
+
+UVerticalBox* UHOLTitleScreen::MakeTitleColumn()
+{
+	return MakeCenteredColumn();
+}
+
+UCommonTextBlock* UHOLTitleScreen::AddTitleText(UVerticalBox* Column, const FName Name, const FText& Text, const bool bTitle)
+{
+	if (!Column)
+	{
+		return nullptr;
+	}
+	return bTitle ? AddText(Column, Name, Text, UHOLTextStyleTitle::StaticClass(), 48.f) : AddText(Column, Name, Text, UHOLTextStyleHeading::StaticClass(), 8.f);
+}
+
+UHOLButton* UHOLTitleScreen::AddTitleButton(UVerticalBox* Column, const FName Name, const FText& Label)
+{
+	return Column ? AddButton(Column, Name, Label) : nullptr;
+}
+
+UCommonTextBlock* UHOLTitleScreen::AddVersionText()
+{
 	// The version (R1.7), small in the bottom right corner, not translated.
 	if (UOverlay* Frame = Cast<UOverlay>(WidgetTree->RootWidget))
 	{
@@ -45,28 +89,14 @@ void UHOLTitleScreen::BuildLayout()
 		VersionSlot->SetHorizontalAlignment(HAlign_Right);
 		VersionSlot->SetVerticalAlignment(VAlign_Bottom);
 		VersionSlot->SetPadding(FMargin(0.f, 0.f, 16.f, 12.f));
+		return Version;
 	}
+	return nullptr;
 }
 
-void UHOLTitleScreen::NativeOnInitialized()
+void UHOLTitleScreen::BuildLayout()
 {
-	Super::NativeOnInitialized();
-	if (PlayButton)
-	{
-		PlayButton->OnClicked().AddUObject(this, &UHOLTitleScreen::HandlePlay);
-	}
-	if (MultiplayerButton)
-	{
-		MultiplayerButton->OnClicked().AddUObject(this, &UHOLTitleScreen::HandleMultiplayer);
-	}
-	if (SettingsButton)
-	{
-		SettingsButton->OnClicked().AddUObject(this, &UHOLTitleScreen::HandleSettings);
-	}
-	if (QuitButton)
-	{
-		QuitButton->OnClicked().AddUObject(this, &UHOLTitleScreen::HandleQuit);
-	}
+	BP_BuildTitle();
 }
 
 FReply UHOLTitleScreen::NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent)
@@ -106,36 +136,30 @@ UWidget* UHOLTitleScreen::NativeGetDesiredFocusTarget() const
 	return PlayButton && PlayButton->GetIsEnabled() ? PlayButton : QuitButton;
 }
 
-void UHOLTitleScreen::HandlePlay()
+void UHOLTitleScreen::OpenNewGame()
 {
 	UHOLNewGameScreen::Open(GetOwningPlayer());
 }
 
-void UHOLTitleScreen::HandleMultiplayer()
+void UHOLTitleScreen::OpenMultiplayer()
 {
 	UHOLMultiplayerScreen::Open(GetOwningPlayer());
 }
 
-void UHOLTitleScreen::HandleSettings()
+void UHOLTitleScreen::OpenSettings()
 {
 	UHOLSettingsScreen::Open(GetOwningPlayer());
 }
 
-void UHOLTitleScreen::HandleQuit()
+void UHOLTitleScreen::AskQuit()
 {
 	AskToQuit(GetOwningPlayer());
 }
 
 void UHOLTitleScreen::AskToQuit(APlayerController* PlayerController)
 {
-	UHOLRootLayout* Layout = UHOLRootLayout::Get(PlayerController);
-	UHOLConfirmDialog* Dialog = Layout ? Cast<UHOLConfirmDialog>(Layout->PushModal(UHOLConfirmDialog::StaticClass())) : nullptr;
-	if (!Dialog)
-	{
-		return;
-	}
 	const TWeakObjectPtr<APlayerController> WeakController(PlayerController);
-	Dialog->SetUp(LOCTEXT("QuitQuestion", "Quitter le jeu ?"), LOCTEXT("QuitConfirm", "Quitter"), [WeakController]()
+	UHOLConfirmDialogScreen::Ask(PlayerController, LOCTEXT("QuitQuestion", "Quitter le jeu ?"), LOCTEXT("QuitConfirm", "Quitter"), [WeakController]()
 	{
 		UE_LOG(LogHOLUI, Display, TEXT("Title screen: Quit"));
 		UKismetSystemLibrary::QuitGame(WeakController.Get(), WeakController.Get(), EQuitPreference::Quit, false);

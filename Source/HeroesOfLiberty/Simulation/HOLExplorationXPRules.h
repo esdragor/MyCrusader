@@ -5,8 +5,8 @@
 #include "CoreMinimal.h"
 
 /**
- * B2 (ExplorationXPInProgress.md, GDD 9.4, D05, D06): the hero's exploration XP, the C++ twin of Script/Heroes/HOLExplorationXPRules.as
- * (same numbers, same rules) for the server's fog (UHOLVisionSubsystem) to call. The fog grid (4 m cells) is cut into square tranches; the
+ * B2 (ExplorationXPInProgress.md, GDD 9.4, D05, D06): the hero's exploration XP, only in C++ (no script twin; D836)
+ * for the server's fog (UHOLVisionSubsystem) to call. The fog grid (4 m cells) is cut into square tranches; the
  * first explored cell of a tranche pays once, a place pays once when its cell is explored, what is explored at the start pays nothing, ever.
  * The value returned is the final XP of the Exploration source: it is NOT passed again through HOLHeroXP::GetWeightPercent (the other
  * Exploration carriers, relays and neutral camps, add their XP as it is too; only Development goes through HOLHeroXP::GetXP).

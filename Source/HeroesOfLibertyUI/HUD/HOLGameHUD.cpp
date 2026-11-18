@@ -15,11 +15,11 @@
 #include "Match/HOLForumMessages.h"
 #include "Match/HOLGameState.h"
 #include "Match/HOLPlayerState.h"
-#include "Player/HOLGameMenuRules.h"
-#include "Screens/HOLEndBanner.h"
+#include "Player/HOLGameMenuRulesBridge.h"
+#include "Screens/HOLEndBannerScreen.h"
 #include "TimerManager.h"
 #include "Player/HOLPlayerController.h"
-#include "Screens/HOLGameMenu.h"
+#include "Screens/HOLGameMenuScreen.h"
 #include "Screens/HOLStatsScreen.h"
 #include "Widgets/HOLRootLayout.h"
 #include "Style/HOLUIStyles.h"
@@ -118,7 +118,7 @@ void AHOLGameHUD::BeginPlay()
 		const TWeakObjectPtr<AHOLPlayerController> WeakController(HOLController);
 		HOLController->OnGameMenuRequested.AddWeakLambda(this, [WeakController]()
 		{
-			UHOLGameMenu::Open(WeakController.Get());
+			UHOLGameMenuScreen::Open(WeakController.Get());
 		});
 	}
 	// D357, V1-Q2: the end banner, at each defeat or the match's end.
@@ -164,12 +164,12 @@ void AHOLGameHUD::RefreshEndBanner()
 	{
 		return;
 	}
-	const EHOLEndBanner Due = HOLGameMenuRules::GetEndBanner(PlayerState->GetPlayerIndex(), GameState->GetDefeatedMask(),
+	const EHOLEndBanner Due = UHOLGameMenuRulesBridge::NativeGetEndBanner(PlayerState->GetPlayerIndex(), GameState->GetDefeatedMask(),
 		GameState->IsMatchOver(), GameState->GetWinnerMask());
 	// The statistics screen opened from the banner (C4) covers it, the banner still there under it.
 	const UHOLRootLayout* Layout = UHOLRootLayout::Get(PlayerController);
 	const bool bShown = EndBanner && (EndBanner->IsActivated() || (Layout && Cast<UHOLStatsScreen>(Layout->GetActiveMenu())));
-	if (!HOLGameMenuRules::ShouldOpenEndBanner(Due, bShown ? EndBanner->GetResult() : EHOLEndBanner::None, ClosedEndBanner))
+	if (!UHOLGameMenuRulesBridge::NativeShouldOpenEndBanner(Due, bShown ? EndBanner->GetResult() : EHOLEndBanner::None, ClosedEndBanner))
 	{
 		return;
 	}
@@ -178,7 +178,7 @@ void AHOLGameHUD::RefreshEndBanner()
 		EndBanner->SetResult(Due);
 		return;
 	}
-	EndBanner = UHOLEndBanner::Open(PlayerController, Due);
+	EndBanner = UHOLEndBannerScreen::Open(PlayerController, Due);
 	if (EndBanner && Due == EHOLEndBanner::MatchOver)
 	{
 		// M6-Q10: the spectator's banner names the winners (the lobby's names, an AI's « IA Difficile 3 », else Joueur N).

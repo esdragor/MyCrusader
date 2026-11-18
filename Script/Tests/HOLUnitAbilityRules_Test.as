@@ -1,5 +1,5 @@
 // The unit abilities (L4 step 4, Tools/Data/UnitAbilities.csv -> HOLUnitAbilityTable.as made by Tools/Data/make_unit_abilities.py; rules in
-// HOLUnitAbilityRules.as). The numbers are read from the table, never copied: only the relations and the effects on the real rules are asserted.
+// C++ HOLUnitAbilityRules.h, read through HOLUnitAbilityRead). The numbers are read from the table, never copied: only the relations and the effects on the real rules are asserted.
 
 // The effect named by a row of the table is a real row of the morale table, a temporary one of the ability's time, that helps the unit.
 void Test_UnitAbilityEffectIsAMoraleEffect(FUnitTest& T)
@@ -28,43 +28,36 @@ void Test_UnitAbilityEffectIsAMoraleEffect(FUnitTest& T)
 	}
 }
 
-// Casting: refused when dead, under the refusal floor or in cooldown; allowed otherwise; the cooldown counts from the start of the effect.
+// Casting, through the library (the rule is C++, HOLUnitAbility::CanCastRage, D836 (2)): refused when dead, under the refusal floor or while the cool-down lasts.
 void Test_UnitAbilityCanCast(FUnitTest& T)
 {
-	const HOLUnitAbilityTable::FHOLUnitAbilityRow Rage = HOLUnitAbilityTable::Row(HOLUnitAbilityTable::NecroticRage);
-	T.AssertTrue(HOLUnitAbilityRules::CanCast(Rage, true, Rage.MinHp, 0, 0), "at the refusal floor, never cast: allowed");
-	T.AssertFalse(HOLUnitAbilityRules::CanCast(Rage, true, Rage.MinHp - 1, 0, 0), "under the floor: refused");
-	T.AssertFalse(HOLUnitAbilityRules::CanCast(Rage, false, Rage.MinHp + 50, 0, 0), "dead: refused");
-	const int Start = 5000;
-	const int CooldownEnd = HOLUnitAbilityRules::CooldownEnd(Rage, Start);
-	T.AssertEquals(Start + Rage.CooldownMs, CooldownEnd, "the cooldown counts from the start of the effect");
-	T.AssertFalse(HOLUnitAbilityRules::CanCast(Rage, true, Rage.MinHp + 50, CooldownEnd - 1, CooldownEnd), "one step before the end of the cooldown: refused");
-	T.AssertTrue(HOLUnitAbilityRules::CanCast(Rage, true, Rage.MinHp + 50, CooldownEnd, CooldownEnd), "at the end of the cooldown: allowed");
-	T.AssertFalse(HOLUnitAbilityRules::CanCast(HOLUnitAbilityTable::Row(HOLUnitAbilityTable::Count), true, 500, 0, 0), "an id out of the table: refused");
+	const float MinHp = float(HOLUnitAbilityRead::GetRageMinHp());
+	T.AssertTrue(HOLUnitAbilityRead::CanCastRage(true, MinHp, 0), "at the refusal floor, never cast: allowed");
+	T.AssertFalse(HOLUnitAbilityRead::CanCastRage(true, MinHp - 1.f, 0), "under the floor: refused");
+	T.AssertFalse(HOLUnitAbilityRead::CanCastRage(false, MinHp + 50.f, 0), "dead: refused");
+	T.AssertFalse(HOLUnitAbilityRead::CanCastRage(true, MinHp + 50.f, 1), "one ms of cool-down left: refused");
+	T.AssertTrue(HOLUnitAbilityRead::CanCastRage(true, MinHp + 50.f, 0), "cool-down over: allowed");
 }
 
-// The price of the blows: HpCostPerHit each, never under the stop floor (the rage never kills), and the effect ends by time or at the floor.
+// The price of the blows (HOLUnitAbility::GetRageHitCost): HpCostPerHit each, never under the stop floor (the rage never kills).
 void Test_UnitAbilityHitCostNeverKills(FUnitTest& T)
 {
-	const HOLUnitAbilityTable::FHOLUnitAbilityRow Rage = HOLUnitAbilityTable::Row(HOLUnitAbilityTable::NecroticRage);
-	int Health = Rage.MinHp;
+	const float Stop = float(HOLUnitAbilityRead::GetRageStopHp());
+	const float Cost = float(HOLUnitAbilityRead::GetRageHpCostPerHit());
+	float Health = float(HOLUnitAbilityRead::GetRageMinHp());
 	int Blows = 0;
-	while (!HOLUnitAbilityRules::EffectEnded(Rage, 0, 0, Health) && Blows < 100)
+	while (Health > Stop && Blows < 100)
 	{
-		const int Paid = HOLUnitAbilityRules::HitCost(Rage, Health);
-		T.AssertTrue(Paid > 0 && Paid <= Rage.HpCostPerHit, "a blow costs hit points, at most the cost per hit");
+		const float Paid = HOLUnitAbilityRead::GetRageHitCost(Health);
+		T.AssertTrue(Paid > 0.f && Paid <= Cost, "a blow costs hit points, at most the cost per hit");
 		Health -= Paid;
-		T.AssertTrue(Health >= Rage.StopHp, "the rage never takes the unit under the stop floor");
+		T.AssertTrue(Health >= Stop, "the rage never takes the unit under the stop floor");
 		Blows++;
 	}
-	T.AssertEquals(Rage.StopHp, Health, "paying blow after blow ends exactly at the stop floor");
-	T.AssertTrue(HOLUnitAbilityRules::EffectEnded(Rage, 0, 0, Health), "and the effect is over there");
-	T.AssertEquals(0, HOLUnitAbilityRules::HitCost(Rage, Rage.StopHp), "no hit points left to pay at the floor");
-	T.AssertEquals(0, HOLUnitAbilityRules::HitCost(Rage, 1), "under the floor: nothing to pay");
-	T.AssertFalse(HOLUnitAbilityRules::EffectEnded(Rage, 1000, 1000 + Rage.DurationMs - 1, Rage.MinHp), "one step before the time is over: still raging");
-	T.AssertTrue(HOLUnitAbilityRules::EffectEnded(Rage, 1000, 1000 + Rage.DurationMs, Rage.MinHp), "the time is over: ended");
+	T.AssertEquals(int(Stop), int(Health), "paying blow after blow ends exactly at the stop floor");
+	T.AssertEquals(0, int(HOLUnitAbilityRead::GetRageHitCost(Stop)), "no hit points left to pay at the floor");
+	T.AssertEquals(0, int(HOLUnitAbilityRead::GetRageHitCost(1.f)), "under the floor: nothing to pay");
 }
-
 // On the real morale chain: the rage lays the effect of its row; damage dealt and cadence go up, nothing on the damage taken.
 void Test_UnitAbilityRageActsOnTheRealMoraleChain(FUnitTest& T)
 {

@@ -3,8 +3,8 @@
 // (HOLSiege::Check, SiegeInProgress.md S1) is one case of it and gives the same reason numbers, so the two can be put together without a
 // number changed. NOT here (the C++ lot of G1): the CSV column MinTier of UnitTypes.csv (the table below is its mirror, to be read from the
 // column once it exists and compared with it by a test), the C++ twin and its agreement test, the call sites (production, command grid,
-// AI), and the building a unit comes out of (the caller says whether it is finished). A type outside the table (the hero, the King, the
-// test dummies) is refused with NotListed: the caller does not ask this rule about them.
+// AI), and the building a unit comes out of (the caller says whether it is finished). Every row of the table is listed, the hero, the King
+// and the test dummies at tier 0 as the column says (D836 point 6); only a type outside the table is refused with NotListed.
 namespace HOLUnitTier
 {
 	// What stops a unit; Available when nothing does. The first reason in this order is the one given to the player. The numbers are
@@ -25,6 +25,9 @@ namespace HOLUnitTier
 	{
 		if (UnitType == "Peasant" || UnitType == "Spearman" || UnitType == "Archer" || UnitType == "Zombie")
 			return 0;
+		// D836 point 6: the hero, the King and the two test dummies are of tier 0, as the column MinTier (the one truth) gives them.
+		if (UnitType == "Hero" || UnitType == "King" || UnitType == "LightInfantry" || UnitType == "LightInfantryNanite")
+			return 0;
 		if (UnitType == "ManAtArms" || UnitType == "Crossbowman" || UnitType == "LightCavalry" || UnitType == "Monk" || UnitType == "Ram" || UnitType == "DamnedWarrior")
 			return 1;
 		if (UnitType == "Mangonel")
@@ -34,12 +37,20 @@ namespace HOLUnitTier
 		return UnknownTier;
 	}
 
+	// True when Tools\Data\UnitTypes.csv holds a row for the type. The Trebuchet and the Cannon have none yet (G7, G8): the C++ rule, which reads the column,
+	// answers NotListed for them on every tier and the production leaves them to HOLSiege::Check; Check below answers the same (MIG-CPP-UnitTier,
+	// ELROND-1116q). Their GDD tier stays in MinTierOf (the AI reads it). Delete this function and its use in Check when their rows exist.
+	bool HasRowInUnitTypes(const FString& UnitType)
+	{
+		return UnitType != "Trebuchet" && UnitType != "Cannon";
+	}
+
 	// Why a unit cannot be queued now, or Available. Tier: the player's tier (the hero's level or a forced one); bBuildingFinished: the
 	// player owns a finished building that produces it; bCanPay: the stock covers the cost.
 	int Check(const FString& UnitType, int Tier, bool bBuildingFinished, bool bCanPay)
 	{
 		const int MinTier = MinTierOf(UnitType);
-		if (MinTier == UnknownTier)
+		if (MinTier == UnknownTier || !HasRowInUnitTypes(UnitType))
 			return NotListed;
 		if (Tier < MinTier)
 			return TierTooLow;

@@ -1,0 +1,9 @@
+# GALADRIEL-1116p : lot E3-08 (port de HOLHUDLayoutTests.cpp en script)
+
+- FAIT : Script\UI\HOLHUDLayout_Test.as (neuf, 2 tests), commit c484e65 sur galadriel-tab (worktree HeroesOfLiberty-Galadriel, base main 8031fd9). Branche prete, merge main non fait (inutile : base = main). IN_USE.txt mis a jour (ignore par git).
+- Registre test C++ -> test script : HeroesOfLiberty.UI.Layout.Overlap -> Test_HUDLayoutOverlap (7 assertions, memes vecteurs, FBox2D -> 4 FVector2D, tolerance 1.0) ; HeroesOfLiberty.UI.Layout.CheatsLowWindow -> Test_HUDLayoutCheatsLowWindow (13 assertions, les deux bool& -> FHOLHUDFoldState chaine d'un appel au suivant, un etat pour le bloc 600 px et un pour le bloc 1080 px).
+- Fonction C++ non exposee : aucune (Overlaps, IsLowWindow, CheatsStartOpen, ShouldFoldCheats tous exposes ; GetLowWindowHeight non utilise par le test).
+- TEST_ROUGE : vu a 22:3x : une valeur faussee par test (touching edges -> AssertTrue ; 600 px is low -> AssertFalse) ; quick_check -Parts tests : 1346/1350, echecs Angelscript.UnitTests.UI.HOLHUDLayout_Test.Test_HUDLayoutOverlap et .Test_HUDLayoutCheatsLowWindow en plus des 2 D831 (N-2). Remis, vert : 1348/1350, seuls rouges NomadFirstForum et NomadReplicated (D831). Deux executions de quick_check (une rouge, une verte) car le rouge VU l'exige.
+- TESTS_TAUTOLOGIQUES: 0. BUILDS_DEMANDES: 0. TESTS_CPP_RETIRES: 0 (git rm en E3-FIN). TESTS_SCRIPT_AJOUTES: 2 (Test_HUDLayoutOverlap, Test_HUDLayoutCheatsLowWindow). LIGNES_CPP_SUPPRIMEES: 0. LIGNES_MIGREES_PAR_LOT: 56 (portees, non supprimees). TYPES_A_EXPOSER: aucun. EDITS_REFUSES: 2 (edit_line -Match sur lignes deja fusionnees, corrige par -Append).
+- Suivis mis a jour : ligne E3-08 de Auto_Journey_File.md, EtapeDefini.md (1 ligne), AngelscriptInProgress.md (1 ligne). Placeholders.txt : aucun provisoire touche.
+- NON VERIFIE : rien hors quick_check tests ; les vecteurs de la ligne ajoute ne passent pas par le jeu reel.

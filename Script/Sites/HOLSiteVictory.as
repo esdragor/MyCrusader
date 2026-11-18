@@ -66,6 +66,12 @@ namespace HOLSiteVictory
 	// the site's zone; TeamBySlot: the team of each slot.
 	FHOLSiteVictoryState Step(const FHOLSiteVictoryState& State, const TArray<int>& OwnerBySite, const TArray<int>& ContestedBySite, const TArray<int>& TeamBySlot)
 	{
+		return Step(State, OwnerBySite, ContestedBySite, TeamBySlot, VictorySteps());
+	}
+
+	// The same with the steps to hold GIVEN by the caller (the server's bridge, HOLSiteBoardScript.as: the C++ setting).
+	FHOLSiteVictoryState Step(const FHOLSiteVictoryState& State, const TArray<int>& OwnerBySite, const TArray<int>& ContestedBySite, const TArray<int>& TeamBySlot, int InVictorySteps)
+	{
 		if (State.Winner >= 0)
 			return State;
 		FHOLSiteVictoryState Next = State;
@@ -88,7 +94,7 @@ namespace HOLSiteVictory
 				return Next;
 		}
 		Next.Held = Next.Held + 1;
-		if (Next.Held >= VictorySteps())
+		if (Next.Held >= InVictorySteps)
 			Next.Winner = Next.Leader;
 		return Next;
 	}
@@ -106,6 +112,16 @@ namespace HOLSiteVictory
 		Memory.Carry += Math::Max(0, Sites) * Math::Max(0, RatePerMinute);
 		const int Award = Math::IntegerDivisionTrunc(Memory.Carry, StepsPerMinute);
 		Memory.Carry -= Award * StepsPerMinute;
+		return Award;
+	}
+
+	// The same step with the carry kept by the caller (the server's C++ GoldCarry by slot, handed in and back through the bridge).
+	int GoldStepWith(int& Carry, int Sites, int RatePerMinute)
+	{
+		FHOLGoldCarry Memory;
+		Memory.Carry = Carry;
+		const int Award = GoldStep(Memory, Sites, RatePerMinute);
+		Carry = Memory.Carry;
 		return Award;
 	}
 }

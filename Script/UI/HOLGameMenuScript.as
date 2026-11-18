@@ -14,7 +14,7 @@ enum EHOLGameMenuAction
 	Pause,
 	// « Abandonner »: the confirmation over the menu (UHOLGameMenu::AskToSurrender).
 	Surrender,
-	// « Quitter vers le menu »: the MainMenu map (UHOLEndBanner::LeaveMatch).
+	// « Quitter vers le menu »: the MainMenu map (UHOLEndBannerScreen::LeaveMatch).
 	QuitToMenu,
 	// « Quitter vers la liste »: the lobby forgotten, the Multiplayer screen's list after the match.
 	QuitToList,

@@ -113,6 +113,8 @@ param(
     [switch] $Full,
     [string] $EngineDir = "",
     [switch] $Visible,
+    # MIG2-S3 (2026-11-17), lot E (2026-11-18): no hol.Rpc.Script* cvar is left (Hero, Match, Signal, Chat went with lot E): every route (lots A-E, Surrender, vision, signal, chat, hero ability, rage, watch) has no C++ RPC and the script RPC actor is its only entry; the net and netsig3 parts add no cvar command any more.
+    [switch] $RpcScript,
     [double] $GameFps = 20,
     [switch] $RealTime,
     [string] $GameExec = "",
@@ -122,6 +124,16 @@ param(
 )
 # C0.5: -Map checked against Tools/Data/Maps.csv before anything starts. $MapKey keeps the table's spelling; the name Map
 # itself is reused by the parts below as a local variable.
+$RpcScriptCommands = @()
+# D845 gate "script actor loaded": the net and netsig3 server sequences start with a waitlog on "RpcPlayer: the C++ bridge spawned" (the journal line of SpawnAllFor), before any waitplayers: without the script RPC actor no RPC has an entry any more.
+# A client's steps with the cvar commands put just BEFORE its first waitplayers (the waitlog steps before it read lines logged once, early: 22 steps before them would make them miss the line).
+function Add-RpcScriptSteps($Steps) {
+    $Steps = @($Steps)
+    if ($RpcScriptCommands.Count -eq 0) { return $Steps }
+    $At = -1; for ($i = 0; $i -lt $Steps.Count; $i++) { if ($Steps[$i] -like 'waitplayers*') { $At = $i; break } }
+    if ($At -lt 1) { return @($RpcScriptCommands) + $Steps }
+    return @($Steps[0..($At - 1)]) + @($RpcScriptCommands) + @($Steps[$At..($Steps.Count - 1)])
+}
 $MapKeys = @(Import-Csv (Join-Path $PSScriptRoot "..\Data\Maps.csv") | ForEach-Object { $_.Name })
 $MapKey = $MapKeys | Where-Object { $_ -ieq $Map.Trim() } | Select-Object -First 1
 if (-not $MapKey) { Write-Host "quick_check : FAIL (unknown map '$Map'; Tools\Data\Maps.csv has: $($MapKeys -join ', '))"; exit 1 }
@@ -146,7 +158,7 @@ if ($PlaceholdersAlone -and -not $Parts.Count) { Write-Host "quick_check : PASS"
 $KnownReds = @(Get-KnownReds (Join-Path $PSScriptRoot "known_reds.txt"))
 $FailedParts = @()
 $SubCases = @{}
-function Report([string] $Part, [System.Collections.Specialized.OrderedDictionary] $Checks) {
+function Report([string] $Part, [System.Collections.Specialized.OrderedDictionary] $Checks, [string[]] $FailedTests = @()) {
     # A part played by cases: only the reports of the cases asked ("build cut" for build:cut), the others not played
     # (their checks still read their empty sections: [regex]::Match on "$X", never on null). A case's own further reports
     # too ("build hero return" for build:hero).
@@ -157,6 +169,12 @@ function Report([string] $Part, [System.Collections.Specialized.OrderedDictionar
     $Failed = @($Checks.Keys | Where-Object { -not $Checks[$_] })
     # L8-5: a known red (Tools/Tests/known_reds.txt) is told apart from a regression; a known red that passes is told to leave the list.
     $KnownRed = Find-KnownRed $Part $KnownReds
+    # The "tests" part (SAURON-1116n): known red when its one failed check is "all green" and EVERY failed test is listed
+    # (Find-KnownTestRed); the part is then added to the list so that Get-RedSummary counts it known too.
+    if (-not $KnownRed -and $Failed.Count -eq 1 -and @($FailedTests).Count) {
+        $KnownRed = Find-KnownTestRed $FailedTests $KnownReds
+        if ($KnownRed) { $script:KnownReds = @($KnownReds) + [pscustomobject]@{ Test = $Part; Since = $KnownRed.Since; Cause = $KnownRed.Cause } }
+    }
     $RedTag = ""
     if ($Failed.Count -gt 0) {
         $script:FailedParts += $Part
@@ -196,13 +214,36 @@ if ($Parts -contains "values") {
         # S7: FHOLMapInfo::NumSites (greys the box "Sites sacres") = the sites each map's file lays (Tools/Editor/maps, common.py SITE_COUNTS).
         $SiteCountOutput = @(python -I (Join-Path $PSScriptRoot "site_count_accord_test.py") 2>&1)
         $ValuesChecks["site_count_accord_test.py ($($SiteCountOutput | Select-Object -Last 1))"] = ($LASTEXITCODE -eq 0)
-        # B2: the exploration XP numbers (defaults and presets A/B/C) agree between Script/Heroes/HOLExplorationXPRules.as and its C++ twin.
-        $ExplorationXPOutput = @(python -I (Join-Path $PSScriptRoot "exploration_xp_accord_test.py") 2>&1)
-        $ValuesChecks["exploration_xp_accord_test.py ($($ExplorationXPOutput | Select-Object -Last 1))"] = ($LASTEXITCODE -eq 0)
         # MIG-J-UnitAbility: the necrotic rage numbers agree between the script tables (HOLUnitAbilityTable, HOLMoraleTable) and HOLUnitAbilityRules.h.
         $UnitAbilityAccordOutput = @(python -I (Join-Path $PSScriptRoot "unit_ability_accord_test.py") 2>&1)
         $ValuesChecks["unit_ability_accord_test.py ($($UnitAbilityAccordOutput | Select-Object -Last 1))"] = ($LASTEXITCODE -eq 0)
+        # ELROND-1116p: the rage time calculations (CooldownEnd / EffectEnd / EffectEnded) of HOLUnitAbilityRules.h give the literals of the script test.
+        $UnitAbilityTimesOutput = @(python -I (Join-Path $PSScriptRoot "unit_ability_times_test.py") 2>&1)
+        $ValuesChecks["unit_ability_times_test.py ($($UnitAbilityTimesOutput | Select-Object -Last 1))"] = ($LASTEXITCODE -eq 0)
+        # E3-01: Camps.csv against UnitTypes.csv (port of HOLCampTableTests.cpp, D613).
+        $CampTableOutput = @(python -I (Join-Path $PSScriptRoot "camp_table_test.py") 2>&1)
+        $ValuesChecks["camp_table_test.py ($($CampTableOutput | Select-Object -Last 1))"] = ($LASTEXITCODE -eq 0)
+        # E3-05: Talents.csv grid (port of HOLTalentTableTests.cpp: 8 rows, 3 families, 7 cells).
+        $TalentTableOutput = @(python -I (Join-Path $PSScriptRoot "talent_table_test.py") 2>&1)
+        $ValuesChecks["talent_table_test.py ($($TalentTableOutput | Select-Object -Last 1))"] = ($LASTEXITCODE -eq 0)
+        # E3-13: Tools/Data/Maps.csv says what the code table (HOLMapRules.cpp) says (ported from the Map.Csv test of HOLMapRulesTests.cpp).
+        $MapTableOutput = @(python -I (Join-Path $PSScriptRoot "map_table_test.py") 2>&1)
+        $ValuesChecks["map_table_test.py ($($MapTableOutput | Select-Object -Last 1))"] = ($LASTEXITCODE -eq 0)
+        # L17-03: Technologies.csv against the grid 11.1 and BuildingTypes.csv (port of the Table and Playable tests of HOLTechnologyTableTests.cpp).
+        $TechnologyTableOutput = @(python -I (Join-Path $PSScriptRoot "technology_table_test.py") 2>&1)
+        $ValuesChecks["technology_table_test.py ($($TechnologyTableOutput | Select-Object -Last 1))"] = ($LASTEXITCODE -eq 0)
+        # D809 / D836: the exploration XP presets A / B / C of HOLExplorationXPRules.cpp (C++ only source) equal the numbers decided.
+        $ExplorationPresetsOutput = @(python -I (Join-Path $PSScriptRoot "exploration_xp_presets_test.py") 2>&1)
+        $ValuesChecks["exploration_xp_presets_test.py ($($ExplorationPresetsOutput | Select-Object -Last 1))"] = ($LASTEXITCODE -eq 0)
+        # E3-04: the Count part of HOLStartingPeasantsTests.cpp (rule 5, scenarios 0 unless their .json asks; DefaultGame.ini + Tools/Scenarios + the rule's source).
+        $StartingPeasantsOutput = @(python -I (Join-Path $PSScriptRoot "starting_peasants_count_test.py") 2>&1)
+        $ValuesChecks["starting_peasants_count_test.py ($($StartingPeasantsOutput | Select-Object -Last 1))"] = ($LASTEXITCODE -eq 0)
     }
+    # ELROND-1118c (D845, lot A): no UFUNCTION(Server) left in the C++ controller for the RPCs retired to the script actor.
+    . (Join-Path $PSScriptRoot "no_cpp_rpc_gate.ps1")
+    $NoCppRpcLeft = @(Get-NoCppRpcLeft (Join-Path $PSScriptRoot "..\..\Source\HeroesOfLiberty\Player\HOLPlayerController.h"))
+    $ValuesChecks["no-cpp-rpc: no UFUNCTION(Server) left for the retired RPCs"] = ($NoCppRpcLeft.Count -eq 0)
+    if ($NoCppRpcLeft.Count -gt 0) { Write-Host "    no-cpp-rpc left: $($NoCppRpcLeft -join ', ')" }
     $ValuesOk = Report "values" $ValuesChecks
     if (-not $ValuesOk) { $ValuesOutput = @($ValuesTestOutput) + @($ValuesCheckOutput) + @($ConsumersTestOutput) + @($ConsumersOutput); $ValuesOutput | Where-Object { $_ -match "^(ERREUR|DERIVE|ORPHELIN|FAIL|ERROR|AVERTISSEMENT|DEAD|STALE)" } | Select-Object -First 20 | ForEach-Object { Write-Host "    $_" } }
     if (-not $Parts.Count) { Write-Host "quick_check : $(if ($ValuesOk) { 'PASS' } else { 'FAIL' })"; if (-not $ValuesOk) { Write-Host (Get-RedSummary $FailedParts $KnownReds); exit 1 }; exit 0 }
@@ -449,8 +490,8 @@ if ($Parts -contains "net") {
     # paused and its simulation must step on (two reports 1 s apart).
     # "hero" alone (J8a.6): the clients' cheats allowed at once (Bob's gold), the heroes made once both clients are done
     # with their start (their "done" signals).
-    $(if ($NetHeroOnly) { @("hol.Cheat.Refuse 0", "waitfile $(Join-Path $TestSaved "quick_net_done1.flag") 300", "waitfile $(Join-Path $TestSaved "quick_net_done2.flag") 300") }
-    else { @("waitfile $NetNomadAskFlag 300", "mark net nomad", "hol.Nomad.SetSeat 1 1", "signal $NetNomadSetFlag", "waitfile $NetNomadSeenFlag 60", "hol.Nomad.ForumDone 1", "signal $NetNomadForumFlag", "waitfile $NetNomadForumSeenFlag 60", "hol.Nomad.SetSeat 1 0",
+    $(if ($NetHeroOnly) { @("waitlog RpcPlayer: the C++ bridge spawned", "hol.Cheat.Refuse 0", "waitfile $(Join-Path $TestSaved "quick_net_done1.flag") 300", "waitfile $(Join-Path $TestSaved "quick_net_done2.flag") 300") }
+    else { @("waitlog RpcPlayer: the C++ bridge spawned", "waitfile $NetNomadAskFlag 300", "mark net nomad", "hol.Nomad.SetSeat 1 1", "signal $NetNomadSetFlag", "waitfile $NetNomadSeenFlag 60", "hol.Nomad.ForumDone 1", "signal $NetNomadForumFlag", "waitfile $NetNomadForumSeenFlag 60", "hol.Nomad.SetSeat 1 0",
         "waitfile $NetCheatTriedFlag 300", "hol.Match.PauseReport", "wait 1", "hol.Match.PauseReport", "hol.Cheat.Refuse 0", "signal $NetCheatBackFlag",
         "waitfile $NetPauseCheckFlag 120", "hol.Match.PauseReport", "wait 1", "hol.Match.PauseReport", "signal $NetPauseCheckedFlag",
         "waitfile $NetResumedFlag 60", "hol.Match.PauseReport", "wait 1", "hol.Match.PauseReport",
@@ -559,7 +600,7 @@ if ($Parts -contains "net") {
         # (slot 1) killed: its defeat (King) ends the match in place of V1.4c's surrender.
         @(if ($Parts -contains "victory") { "waitfile $NetKingAskFlag 900", "hol.Victory.SpawnKing 0", "hol.Victory.SpawnKing 1", "wait 1", "signal $NetKingBornFlag",
             "waitfile $NetKingKillFlag 120", "hol.Victory.KillKing 1" }) |
-        Set-Content -Encoding utf8 $NetServerSequence
+        ForEach-Object -Begin { $RpcScriptCommands } -Process { $_ } | Set-Content -Encoding utf8 $NetServerSequence
     $NetSourceCommand += ",hol.Test.Run $NetServerSequence"
     # -useperfthreads (J7c.4): a dedicated server, the editor's -server too, runs every ParallelFor on one thread by the
     # engine's default (FApp::ShouldUseThreadingForPerformance); the parallel processors of D302 run as in the game.
@@ -3022,7 +3063,7 @@ if ($NetListening) {
         }
         $NetSteps += "mark end", "quit"
         $ClientSequence = Join-Path $TestSaved "quick_net_client$Client.seq"
-        $NetSteps | Set-Content -Encoding utf8 $ClientSequence
+        (Add-RpcScriptSteps $NetSteps) | Set-Content -Encoding utf8 $ClientSequence
         $ClientLog = Get-FreshLog (Join-Path $TestSaved "Logs\quick_net_client$Client.log")
         $ClientDisplay = if ($Visible) { "-windowed -ResX=940 -ResY=530 -WinX=$(3940 + ($Client - 1) * 960) -WinY=1020" } else { "-RenderOffScreen -ResX=960 -ResY=540 -nosound" }
         $ClientUrl = if ($Client -eq 1) { "127.0.0.1:${NetPort} -PlayerName=Bob" } else { "127.0.0.1:${NetPort}?Name=Alice" }
@@ -3113,9 +3154,9 @@ $GameScriptErrors = @(Get-ScriptErrors $GameLog)
 $SequenceChecks["scripts compiled ($(if ($GameScriptErrors.Count) { $GameScriptErrors -join ' ' } else { 'no error' }))"] = $GameScriptErrors.Count -eq 0
 # Each capture shows the screen it is named after (the screens on top of the layers when it was taken; in a match,
 # the game HUD of J3).
-$Expected = @{ title = "menu=HOLTitleScreen modal=none"; stackback = "menu=HOLTitleScreen modal=none"; quit = "menu=HOLTitleScreen modal=HOLConfirmDialog";
-    newgame = "menu=HOLNewGameScreen modal=none"; dropdown = "menu=HOLNewGameScreen modal=none"; video = "menu=HOLSettingsScreen modal=none";
-    sound = "menu=HOLSettingsScreen modal=none"; controls = "menu=HOLSettingsScreen modal=none"; language = "menu=HOLSettingsScreen modal=none";
+$Expected = @{ title = "menu=HOLTitleScreenScript modal=none"; stackback = "menu=HOLTitleScreenScript modal=none"; quit = "menu=HOLTitleScreenScript modal=HOLConfirmDialogScreenScript";
+    newgame = "menu=HOLNewGameScreen modal=none"; dropdown = "menu=HOLNewGameScreen modal=none"; video = "menu=HOLSettingsScreenScript modal=none";
+    sound = "menu=HOLSettingsScreenScript modal=none"; controls = "menu=HOLSettingsScreenScript modal=none"; language = "menu=HOLSettingsScreenScript modal=none";
     start = "hud=HOLGameScreen"; end = "hud=HOLGameScreen"; own = "hud=HOLGameScreen"; other = "hud=HOLGameScreen";
     queue = "hud=HOLGameScreen"; done = "hud=HOLGameScreen"; berries = "hud=HOLGameScreen"; wood = "hud=HOLGameScreen"; idle = "hud=HOLGameScreen";
     popup = "hud=HOLGameScreen"; green = "hud=HOLGameScreen"; red = "hud=HOLGameScreen"; foundations = "hud=HOLGameScreen";
@@ -6290,6 +6331,8 @@ if ($Parts -contains "net") {
     }
     $Checks = [ordered]@{}
     $Checks["server listening"] = $NetListening
+    # Lot E: no C++ fallback left, so a route that cannot reach the script actor logs "RpcRoute: <X> not sent" (LogNotSent): none must appear in the server and client journals.
+    $Checks["no RPC route reported as not sent (server journal)"] = (Test-Path $NetServerLog) -and -not [bool](Select-String -Path $NetServerLog -Pattern "RpcRoute: .* not sent" -Quiet)
     $HeldSlots = @()
     $NetHeld = @{}
     $NetSelectedTrees = @{}
@@ -6304,6 +6347,7 @@ if ($Parts -contains "net") {
         $N = $NetClient.Client
         $ClientLines = if (Test-Path $NetClient.Log) { Get-Content $NetClient.Log } else { @() }
         $Checks["client $N : sequence done"] = (-not $ClientTimedOut) -and [bool]($ClientLines | Select-String -Pattern "Test mark: end" -Quiet)
+        $Checks["client $N : no RPC route reported as not sent"] = -not [bool]($ClientLines | Select-String -Pattern "RpcRoute: .* not sent" -Quiet)
         $Held = $ClientLines | Select-String -Pattern "Camera above the start of slot (\d+) \(" | Select-Object -First 1 | ForEach-Object { [int]$_.Matches[0].Groups[1].Value }
         $Checks["client $N : holds a slot ($Held)"] = $null -ne $Held
         if ($null -eq $Held) { continue }
@@ -7482,7 +7526,7 @@ if ($TestsProcess) {
     $Checks["scripts compiled ($(if ($ScriptErrors.Count) { $ScriptErrors -join ' ' } else { 'no error' }))"] = $ScriptErrors.Count -eq 0
     $ScriptTests = @($Results | Where-Object { $_.Groups[2].Value -like "Angelscript.UnitTests.*" }).Count
     $Checks["script tests ran ($ScriptTests)"] = $ScriptTests -gt 0
-    $AllOk = (Report "tests $($Results.Count - $Failures.Count)/$($Results.Count)" $Checks) -and $AllOk
+    $AllOk = (Report "tests $($Results.Count - $Failures.Count)/$($Results.Count)" $Checks $Failures) -and $AllOk
 }
 
 # The "lobby" part (M6 R5.4): lobby_match.ps1 on its own, once the rest is done (its three games and the test manager
@@ -8472,19 +8516,19 @@ if ($Parts -contains "netsig3") {
     Write-AIMatchConfig $Sig3Config @("Human", "Human", "Human", "Closed", "Closed", "Closed", "Closed", "Closed") @("Alice", "Bob", "Carol")
     (Get-Content $Sig3Config -Raw) -replace '"version": 2,', '"version": 2, "mode": "Diplomacy",' | Set-Content -Encoding ascii $Sig3Config
     $Sig3Names = @{ 1 = "Bob"; 2 = "Alice"; 3 = "Carol" }
-    # A chat text one character longer than hol.Chat.MaxLength's default (HOLChat::MaxTextLength = 200): the server refuses it.
+    # A chat text one character longer than hol.Chat.MaxLength's default (HOLChat::MaxTextLength = 200, Script/Chat/HOLChatRules.as): the server refuses it.
     $Sig3LongText = "x" * 201
     # The clients launched: the harness's third client, Carol (her own saved directory Saved_Tests_Net3).
     $Sig3Launched = @(1, 2, 3)
     $Sig3Flag = { param($Name) Join-Path $TestSaved "quick_${Sig3Part}_$Name.flag" }
     $Sig3Done = @(1, 2, 3 | ForEach-Object { & $Sig3Flag "done$_" })
-    @("waitplayers $($Sig3Launched.Count)", "mark $Sig3Part", "wait 2",
+    @("waitlog RpcPlayer: the C++ bridge spawned", "waitplayers $($Sig3Launched.Count)", "mark $Sig3Part", "wait 2",
         "hol.Diplomacy.Force 1 0 ally", "hol.Diplomacy.Force 0 1 ally", "hol.Diplomacy.Force 1 2 neutral", "hol.Diplomacy.Force 2 1 neutral", "wait 2", "hol.Diplomacy.Report", "signal $(& $Sig3Flag 'phase1')",
         "waitfile $(& $Sig3Flag 'posted1') 90", "hol.Diplomacy.Force 1 2 enemy", "hol.Diplomacy.Force 2 1 enemy", "wait 2", "hol.Diplomacy.Report", "signal $(& $Sig3Flag 'phase2')",
         # A4 (D376, D792): Alice and Bob Neutral (no allied victory once Carol is beaten), Alice and Carol mutual allies, then Carol defeated.
         "waitfile $(& $Sig3Flag 'posted3') 180", "hol.Diplomacy.Force 0 1 neutral", "hol.Diplomacy.Force 1 0 neutral", "hol.Diplomacy.Force 0 2 ally", "hol.Diplomacy.Force 2 0 ally",
         "wait 2", "signal $(& $Sig3Flag 'phase3')", "waitfile $(& $Sig3Flag 'defeated') 60", "hol.Diplomacy.Report") +
-        @($Sig3Done | ForEach-Object { "waitfile $_ 90" }) + @("wait 1", "quit") | Set-Content -Encoding utf8 $Sig3ServerSequence
+        @($Sig3Done | ForEach-Object { "waitfile $_ 90" }) + @("wait 1", "quit") | ForEach-Object -Begin { $RpcScriptCommands } -Process { $_ } | Set-Content -Encoding utf8 $Sig3ServerSequence
     $Sig3Port = Get-AITestPort
     $Sig3ServerArguments = "`"$UProject`" /Game/Maps/Plain -server -Port=$Sig3Port -useperfthreads -unattended -nosplash -Multiprocess -LiveCoding=0 -asdebugport=0 -as-exit-on-error -nosound -saveddirsuffix=Tests_NetSrv -HOLCheats -MatchConfig=`"$Sig3Config`" -abslog=`"$Sig3ServerLog`" -ExecCmds=`"hol.Test.Run $Sig3ServerSequence`""
     $Sig3Server = Start-Process -FilePath (Join-Path $EngineDir "UnrealEditor.exe") -ArgumentList $Sig3ServerArguments -PassThru -WindowStyle Hidden
@@ -8525,7 +8569,7 @@ if ($Parts -contains "netsig3") {
             }
             $Steps += @("waitfile $(& $Sig3Flag 'posted4') 240", "wait 1", "hol.Diplomacy.Report", "hol.Signal.Report", "signal $($Sig3Done[$Client - 1])") +
                 @($Sig3Done | Where-Object { $_ -ne $Sig3Done[$Client - 1] } | ForEach-Object { "waitfile $_ 60" }) + @("mark end", "quit")
-            $Steps | Set-Content -Encoding utf8 $ClientSequence
+            (Add-RpcScriptSteps $Steps) | Set-Content -Encoding utf8 $ClientSequence
             $ClientLog = Get-FreshLog (Join-Path $TestSaved "Logs\quick_${Sig3Part}_client$Client.log")
             $ClientDisplay = if ($Visible) { "-windowed -ResX=940 -ResY=530 -WinX=$(3940 + ($Client - 1) * 960) -WinY=1020" } else { "-RenderOffScreen -ResX=960 -ResY=540 -nosound" }
             $ClientUrl = if ($Client -eq 1) { "127.0.0.1:${Sig3Port} -PlayerName=Bob" } else { "127.0.0.1:${Sig3Port}?Name=$($Sig3Names[$Client])" }

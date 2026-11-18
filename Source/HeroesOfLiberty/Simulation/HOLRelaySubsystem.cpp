@@ -12,6 +12,7 @@
 #include "Match/HOLVictoryRules.h"
 #include "Simulation/HOLHeroSubsystem.h"
 #include "Simulation/HOLHeroXPRules.h"
+#include "Simulation/HOLRelayBoard.h"
 #include "Simulation/HOLSimulationSettings.h"
 #include "Simulation/HOLSimulationSubsystem.h"
 #include "Simulation/HOLUnitSubsystem.h"
@@ -239,7 +240,8 @@ void UHOLRelaySubsystem::OnStepEnded(const int64 StepIndex)
 				OwnerRelativeTeams.Add(Slot == State.Owner || !Relations.AreHostile(State.Owner, Slot) ? 500 : 1000 + Slot);
 			}
 		}
-		State = HOLRelay::Step(State, Counts[Index], OwnerRelativeTeams.IsEmpty() ? TeamBySlot : OwnerRelativeTeams, HoldSteps, HOLRelay::DefaultDecaySteps);
+		// Bascule Relay: the script board's rule (the C++ rule without the script board), once per relay and per step.
+		State = UHOLRelayBoard::StepForRelay(World, State, Counts[Index], OwnerRelativeTeams.IsEmpty() ? TeamBySlot : OwnerRelativeTeams, HoldSteps, HOLRelay::DefaultDecaySteps);
 		if (State.Owner != OldOwner)
 		{
 			UE_LOG(LogHOLMatch, Display, TEXT("Relay %d: slot %d takes it from slot %d at step %d"), Index, State.Owner, OldOwner, static_cast<int32>(StepIndex));
@@ -257,7 +259,7 @@ void UHOLRelaySubsystem::OnStepEnded(const int64 StepIndex)
 		{
 			continue;
 		}
-		const int32 XP = HOLRelay::TerritoryXP(Carries[Slot], Owned, 0, Rate);
+		const int32 XP = UHOLRelayBoard::TerritoryXPFor(World, Carries[Slot], Owned, 0, Rate);
 		if (XP > 0 && Heroes)
 		{
 			Heroes->AddXP(Slot, XP, EHOLXPSource::Exploration);

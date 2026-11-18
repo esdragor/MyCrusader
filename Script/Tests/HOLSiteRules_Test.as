@@ -311,159 +311,6 @@ void Test_SiteTakerOfAnotherCampStartsFromZero(FUnitTest& T)
 	T.AssertEquals(3, State.Taker, "and is shown as the taker");
 }
 
-// The units of one presence digit for a slot: 0 nobody, 1 one holy unit, 2 a soldier and a worker, 3 two holy units and a soldier.
-void SiteAddPresence(TArray<int>& UnitSlots, TArray<int>& CanTake, TArray<int>& IsPeasant, int Slot, int Digit)
-{
-	int Holy = 0;
-	int Soldiers = 0;
-	int Workers = 0;
-	if (Digit == 1)
-		Holy = 1;
-	else if (Digit == 2)
-	{
-		Soldiers = 1;
-		Workers = 1;
-	}
-	else if (Digit == 3)
-	{
-		Holy = 2;
-		Soldiers = 1;
-	}
-	for (int N = 0; N < Holy; N++)
-	{
-		UnitSlots.Add(Slot);
-		CanTake.Add(1);
-		IsPeasant.Add(0);
-	}
-	for (int N = 0; N < Soldiers; N++)
-	{
-		UnitSlots.Add(Slot);
-		CanTake.Add(0);
-		IsPeasant.Add(0);
-	}
-	for (int N = 0; N < Workers; N++)
-	{
-		UnitSlots.Add(Slot);
-		CanTake.Add(0);
-		IsPeasant.Add(1);
-	}
-}
-
-TArray<int> SiteArrangement(int Index)
-{
-	if (Index == 1)
-		return SiteTeams(0, 0, 1, 1);
-	if (Index == 2)
-		return SiteTeams(0, 1, 0, 1);
-	// MIG-J-Site: the teams as HOLSiteSubsystem.cpp builds them under Diplomacy (the owner's camp 500, every other slot 1000 + slot).
-	if (Index == 3)
-		return SiteTeams(500, 1001, 500, 1003);
-	// MIG-J-Site: fewer teams than slots (slot 3 out of the teams: its units count for nothing on both sides).
-	if (Index == 4)
-	{
-		TArray<int> Three;
-		Three.Add(0);
-		Three.Add(1);
-		Three.Add(0);
-		return Three;
-	}
-	return SiteTeams();
-}
-
-// The simulation's copy of the rules (C++, HOLSite::Step and HOLSite::AddUnit) gives the same site and the same counts as the script's on every
-// case: each owner, count and taker of the count, each presence of the four slots (nobody, a holy unit, a soldier and a worker, two holy units
-// and a soldier), five arrangements of the teams (MIG-J-Site: the subsystem's Diplomacy teams and a team list shorter than the slots added, the
-// owners 1 and 3 added, units of slots out of the arrays added). The units go through the AddUnit of each side, never counts typed by hand.
-void Test_SiteScriptAndSimulationRulesAgree(FUnitTest& T)
-{
-	TArray<int> Owners;
-	Owners.Add(-1);
-	Owners.Add(0);
-	Owners.Add(1);
-	Owners.Add(2);
-	Owners.Add(3);
-	TArray<int> Helds;
-	Helds.Add(0);
-	Helds.Add(1);
-	Helds.Add(100);
-	Helds.Add(HOLSite::HoldSteps() - 1);
-	TArray<int> Takers;
-	Takers.Add(1);
-	Takers.Add(3);
-	int Cases = 0;
-	int Differences = 0;
-	int CountDifferences = 0;
-	int Risen = 0;
-	for (int O = 0; O < Owners.Num(); O++)
-	{
-		for (int H = 0; H < Helds.Num(); H++)
-		{
-			for (int K = 0; K < (Helds[H] > 0 ? 2 : 1); K++)
-			{
-				for (int A = 0; A < 5; A++)
-				{
-					for (int Presence = 0; Presence < 256; Presence++)
-					{
-						TArray<int> UnitSlots;
-						TArray<int> CanTake;
-						TArray<int> IsPeasant;
-						int Rest = Presence;
-						for (int Slot = 0; Slot < 4; Slot++)
-						{
-							SiteAddPresence(UnitSlots, CanTake, IsPeasant, Slot, Rest % 4);
-							Rest = Rest / 4;
-						}
-						if (Presence % 17 == 0)
-						{
-							// Units of slots out of the arrays (a neutral owner's, a bad slot): ignored by both sides.
-							UnitSlots.Add(9);
-							CanTake.Add(1);
-							IsPeasant.Add(0);
-							UnitSlots.Add(-1);
-							CanTake.Add(1);
-							IsPeasant.Add(0);
-						}
-						FSiteZone Zone = EmptyZone();
-						for (int Unit = 0; Unit < UnitSlots.Num(); Unit++)
-							HOLSite::AddUnit(Zone.Takers, Zone.Disturbers, UnitSlots[Unit], CanTake[Unit] != 0, IsPeasant[Unit] != 0);
-						HOLSite::FHOLSiteState State;
-						State.Owner = Owners[O];
-						State.Taker = Helds[H] > 0 ? Takers[K] : -1;
-						State.Held = Helds[H];
-						const HOLSite::FHOLSiteState Script = HOLSite::Step(State, Zone.Takers, Zone.Disturbers, SiteArrangement(A));
-						int OwnerOut = -9;
-						int TakerOut = -9;
-						int HeldOut = -9;
-						HOLSiteRules::StepSite(State.Owner, State.Taker, State.Held, UnitSlots, CanTake, IsPeasant, SiteArrangement(A), HOLSite::HoldSteps(), HOLSite::DecaySteps, OwnerOut, TakerOut, HeldOut);
-						TArray<int> SimTakers;
-						TArray<int> SimDisturbers;
-						HOLSiteRules::CountSiteUnits(4, UnitSlots, CanTake, IsPeasant, SimTakers, SimDisturbers);
-						Cases++;
-						if (Script.Owner != OwnerOut || Script.Taker != TakerOut || Script.Held != HeldOut)
-							Differences++;
-						if (SimTakers.Num() != 4 || SimDisturbers.Num() != 4)
-							CountDifferences++;
-						else
-						{
-							for (int Slot = 0; Slot < 4; Slot++)
-							{
-								if (SimTakers[Slot] != Zone.Takers[Slot] || SimDisturbers[Slot] != Zone.Disturbers[Slot])
-									CountDifferences++;
-							}
-						}
-						if (Script.Held > State.Held)
-							Risen++;
-					}
-				}
-			}
-		}
-	}
-	T.AssertEquals(5 * 7 * 5 * 256, Cases, "every case compared");
-	T.AssertEquals(0, CountDifferences, "AddUnit makes the same counts on both sides");
-	T.AssertEquals(0, Differences, "the script and the simulation agree on every case");
-	T.AssertTrue(Risen > 0, "the cases do raise the count (the comparison is not made of frozen sites only)");
-}
-
 // The provisional values of the simulation (C++) are the script's.
 void Test_SiteConstantsAgreeWithTheSimulation(FUnitTest& T)
 {
@@ -482,146 +329,8 @@ TArray<int> SiteInts(int A = -100, int B = -100)
 	return List;
 }
 
-// The owners of the sites the victory cases walk through: none, one, two of one slot, two of two slots (one camp or two by the teams), an unowned site, a
-// slot out of the teams, and the last two sites (slots 2 and 3).
-TArray<int> VictoryOwnerSet(int Index)
-{
-	if (Index == 1)
-		return SiteInts(0);
-	if (Index == 2)
-		return SiteInts(0, 1);
-	if (Index == 3)
-		return SiteInts(0, 0);
-	if (Index == 4)
-		return SiteInts(1, 0);
-	if (Index == 5)
-		return SiteInts(-1, 0);
-	if (Index == 6)
-		return SiteInts(9);
-	if (Index == 7)
-		return SiteInts(2, 3);
-	if (Index == 8)
-		return SiteInts(2, 2);
-	return TArray<int>();
-}
-
-TArray<int> VictoryContestSet(int Index)
-{
-	if (Index == 1)
-		return SiteInts(0, 0);
-	if (Index == 2)
-		return SiteInts(0, 1);
-	if (Index == 3)
-		return SiteInts(1);
-	return TArray<int>();
-}
-
-// The teams of the slots: four teams, two pairs, and two with a slot of team -1 (the first, the second): no camp has team -1.
-TArray<int> VictoryTeamSet(int Index)
-{
-	if (Index == 1)
-		return SiteTeams(0, 0, 1, 1);
-	if (Index == 2)
-		return SiteTeams(-1, -1, 1, 1);
-	if (Index == 3)
-		return SiteTeams(0, -1, 1, 1);
-	return SiteTeams();
-}
-
-bool SameInts(const TArray<int>& A, const TArray<int>& B)
-{
-	if (A.Num() != B.Num())
-		return false;
-	for (int Index = 0; Index < A.Num(); Index++)
-	{
-		if (A[Index] != B[Index])
-			return false;
-	}
-	return true;
-}
-
-// The simulation's victory count (C++, HOLSite::VictoryStep) gives the same state as the script's (HOLSiteVictory::Step) on every case: leader, steps
-// held (from nothing to one short of the full count), winner, owners at the last step (none, the same, others), owners of the sites, contested sites,
-// teams (with a team -1: the script has no camp then, and so has the simulation). The state out is compared whole, the owners it keeps included.
-void Test_SiteVictoryScriptAndSimulationAgree(FUnitTest& T)
-{
-	const int Steps = HOLSiteVictory::VictorySteps();
-	TArray<int> Leaders;
-	Leaders.Add(-1);
-	Leaders.Add(0);
-	Leaders.Add(1);
-	TArray<int> Helds;
-	Helds.Add(0);
-	Helds.Add(5);
-	Helds.Add(Steps - 2);
-	Helds.Add(Steps - 1);
-	TArray<int> Winners;
-	Winners.Add(-1);
-	Winners.Add(0);
-	int Cases = 0;
-	int Differences = 0;
-	int Counting = 0;
-	int Won = 0;
-	for (int L = 0; L < Leaders.Num(); L++)
-	{
-		for (int H = 0; H < Helds.Num(); H++)
-		{
-			for (int W = 0; W < Winners.Num(); W++)
-			{
-				for (int Last = 0; Last < 3; Last++)
-				{
-					for (int Owner = 0; Owner < 9; Owner++)
-					{
-						for (int Contest = 0; Contest < 4; Contest++)
-						{
-							for (int Team = 0; Team < 4; Team++)
-							{
-								HOLSiteVictory::FHOLSiteVictoryState State;
-								State.Leader = Leaders[L];
-								State.Held = Helds[H];
-								State.Winner = Winners[W];
-								State.LastOwners = Last == 0 ? TArray<int>() : (Last == 1 ? VictoryOwnerSet(Owner) : SiteInts(3, 3));
-								const HOLSiteVictory::FHOLSiteVictoryState Script = HOLSiteVictory::Step(State, VictoryOwnerSet(Owner), VictoryContestSet(Contest), VictoryTeamSet(Team));
-								int LeaderOut = -9;
-								int HeldOut = -9;
-								int WinnerOut = -9;
-								TArray<int> LastOut;
-								HOLSiteRules::VictoryStepSite(State.Leader, State.Held, State.Winner, State.LastOwners, VictoryOwnerSet(Owner), VictoryContestSet(Contest), VictoryTeamSet(Team), Steps, LeaderOut, HeldOut, WinnerOut, LastOut);
-								Cases++;
-								if (Script.Leader != LeaderOut || Script.Held != HeldOut || Script.Winner != WinnerOut || !SameInts(Script.LastOwners, LastOut))
-									Differences++;
-								if (Script.Held > State.Held)
-									Counting++;
-								if (Script.Winner >= 0 && State.Winner < 0)
-									Won++;
-							}
-						}
-					}
-				}
-			}
-		}
-	}
-	T.AssertEquals(3 * 4 * 2 * 3 * 9 * 4 * 4, Cases, "every case compared");
-	T.AssertEquals(0, Differences, "the script and the simulation agree on every case");
-	T.AssertTrue(Counting > 0, "the cases do raise the count");
-	T.AssertTrue(Won > 0, "the cases do end the count with a winner");
-}
-
-// One step of the victory count on both sides (the script's HOLSiteVictory::Step, the simulation's through HOLSiteRules::VictoryStepSite, the
-// same steps to hold): the script's state goes on, 1 is returned when the simulation's differs.
-int SiteVictoryBothSides(HOLSiteVictory::FHOLSiteVictoryState& State, const TArray<int>& Owners, const TArray<int>& Contested, const TArray<int>& Teams)
-{
-	int LeaderOut = -9;
-	int HeldOut = -9;
-	int WinnerOut = -9;
-	TArray<int> LastOut;
-	HOLSiteRules::VictoryStepSite(State.Leader, State.Held, State.Winner, State.LastOwners, Owners, Contested, Teams, HOLSiteVictory::VictorySteps(), LeaderOut, HeldOut, WinnerOut, LastOut);
-	State = HOLSiteVictory::Step(State, Owners, Contested, Teams);
-	return (State.Leader != LeaderOut || State.Held != HeldOut || State.Winner != WinnerOut || !SameInts(State.LastOwners, LastOut)) ? 1 : 0;
-}
-
 // MIG-J-Site: the C++ test HeroesOfLiberty.Sites.VictoryRule (HOLSiteSubsystemTests.cpp, the pure part) on the same vectors, walked through the
-// script's victory count and the simulation's at each step (the C++ test held 5 steps; here the script's own count, VictorySteps). Teams 7, 7, 9,
+// script's victory count at each step (the C++ test held 5 steps; here the script's own count, VictorySteps; the C++ rule is gone, MIG-J-Site, the script is the only source). Teams 7, 7, 9,
 // 10: the camp holding every site counts; a contested site freezes; a site changing hands inside the camp restarts; a site nobody owns zeroes;
 // two camps owning a site each: nobody leads; the lone camp that held every site long enough wins, and the winner stays.
 void Test_SiteVictoryRuleVectors(FUnitTest& T)
@@ -629,27 +338,25 @@ void Test_SiteVictoryRuleVectors(FUnitTest& T)
 	const TArray<int> Teams = SiteTeams(7, 7, 9, 10);
 	const TArray<int> Quiet = SiteInts(0, 0);
 	HOLSiteVictory::FHOLSiteVictoryState State;
-	int Differences = 0;
 	for (int Index = 0; Index < 4; Index++)
-		Differences += SiteVictoryBothSides(State, SiteInts(0, 1), Quiet, Teams);
+		State = HOLSiteVictory::Step(State, SiteInts(0, 1), Quiet, Teams);
 	T.AssertEquals(7, State.Leader, "two teammates holding both sites: the camp leads");
 	T.AssertEquals(4, State.Held, "four steps counted");
 	T.AssertEquals(-1, State.Winner, "no winner yet");
-	Differences += SiteVictoryBothSides(State, SiteInts(0, 1), SiteInts(0, 1), Teams);
+	State = HOLSiteVictory::Step(State, SiteInts(0, 1), SiteInts(0, 1), Teams);
 	T.AssertEquals(4, State.Held, "a contested site freezes the count");
-	Differences += SiteVictoryBothSides(State, SiteInts(1, 1), Quiet, Teams);
+	State = HOLSiteVictory::Step(State, SiteInts(1, 1), Quiet, Teams);
 	T.AssertEquals(1, State.Held, "a site changing hands inside the camp restarts the count (this step is the first)");
-	Differences += SiteVictoryBothSides(State, SiteInts(1, -1), Quiet, Teams);
+	State = HOLSiteVictory::Step(State, SiteInts(1, -1), Quiet, Teams);
 	T.AssertEquals(-1, State.Leader, "a site nobody owns: no leader");
 	T.AssertEquals(0, State.Held, "a site nobody owns: the count is zero");
-	Differences += SiteVictoryBothSides(State, SiteInts(0, 2), Quiet, Teams);
+	State = HOLSiteVictory::Step(State, SiteInts(0, 2), Quiet, Teams);
 	T.AssertEquals(-1, State.Leader, "two adverse camps owning a site each: nobody leads");
 	for (int Index = 0; Index < HOLSiteVictory::VictorySteps() - 1; Index++)
-		Differences += SiteVictoryBothSides(State, SiteInts(2, 2), Quiet, Teams);
+		State = HOLSiteVictory::Step(State, SiteInts(2, 2), Quiet, Teams);
 	T.AssertEquals(-1, State.Winner, "one step short of the count: no winner");
-	Differences += SiteVictoryBothSides(State, SiteInts(2, 2), Quiet, Teams);
+	State = HOLSiteVictory::Step(State, SiteInts(2, 2), Quiet, Teams);
 	T.AssertEquals(9, State.Winner, "the lone camp that held every site for the steps asked wins");
-	Differences += SiteVictoryBothSides(State, SiteInts(0, 1), Quiet, Teams);
+	State = HOLSiteVictory::Step(State, SiteInts(0, 1), Quiet, Teams);
 	T.AssertEquals(9, State.Winner, "the winner once set stays");
-	T.AssertEquals(0, Differences, "the script and the simulation agree at every step of the C++ test's vectors");
 }

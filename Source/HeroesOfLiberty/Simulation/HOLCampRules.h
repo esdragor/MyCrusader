@@ -1,15 +1,15 @@
-﻿// Copyright Epic Games, Inc. All Rights Reserved.
+// Copyright Epic Games, Inc. All Rights Reserved.
 
 #pragma once
 
 #include "CoreMinimal.h"
 
 /**
- * The neutral camps' rules (NeutralsInProgress.md N3, GDD 8.4, D32, D401), the C++ twin of Script/Neutrals/HOLCampRules.as (N1, the
- * same states, the same order of tests, the same numbers): pure functions of the settings and of what the camp sees, so that the
- * simulation (UHOLCampSubsystem) calls them and the tests run them alone. The two design choices left to the user (NQ1: aggro on
- * sight or only when attacked; NQ2: who takes the XP of a cleared camp) are settings, both coded; the console variables
- * hol.Camp.Aggro and hol.Camp.Credit pick the branch.
+ * The neutral camps' vocabulary (NeutralsInProgress.md N3, GDD 8.4, D32, D401): the settings, what a camp sees and the answers, as C++
+ * types for UHOLCampSubsystem (the units and the world). The RULE itself (Step, Rewards) lives in Script/Neutrals/HOLCampRules.as alone
+ * (D836 point 3; the C++ copy was removed): the server asks it through UHOLCampBoard. The two design choices left to the user (NQ1:
+ * aggro on sight or only when attacked; NQ2: who takes the XP of a cleared camp) are settings; the console variables hol.Camp.Aggro
+ * and hol.Camp.Credit pick the branch.
  */
 namespace HOLCampRules
 {
@@ -89,12 +89,15 @@ namespace HOLCampRules
 		int32 XP = 0;
 	};
 
-	/** One thought of a camp. Members are the living ones; bAttacked: one of them was hit by an adversary since the last thought. */
-	HEROESOFLIBERTY_API FStep Step(EState& InOutState, const FSettings& Settings, const FVector2D& Post, const TArray<FMember>& Members,
-		const TArray<FIntruder>& Intruders, bool bAttacked);
-
-	/** The XP of a cleared camp by owner (ascending), from the hits it took; the shares add up to RewardXP. Nothing without a hit. */
-	HEROESOFLIBERTY_API TArray<FShare> Rewards(const FSettings& Settings, const TArray<FHit>& Hits);
-
-	HEROESOFLIBERTY_API const TCHAR* GetStateName(EState State);
+	/** The name of a state, for the journal. */
+	inline const TCHAR* GetStateName(const EState State)
+	{
+		switch (State)
+		{
+		case EState::Guarding: return TEXT("guarding");
+		case EState::Fighting: return TEXT("fighting");
+		case EState::Returning: return TEXT("returning");
+		default: return TEXT("cleared");
+		}
+	}
 }

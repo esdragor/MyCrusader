@@ -1,0 +1,19 @@
+
+## 2026-11-18 - Preuves reseau P1 / P2 preparees (non lancees, sans C++)
+Fichiers (worktree HeroesOfLiberty-Elrond, branche tiers, 1 commit) : Script\Net\HOLRpcPlayer.as (hook Tick + logs), Tools\Scenarios\rpc_cheats_run.ps1 (neuf).
+Aucune RPC C++ retiree, repli de Request<X> et cvars hol.Rpc.Script* intacts (retrait suspendu, Q-t6-*).
+P1, bits ajoutes a hol.Rpc.ProofRoute : 32 HeroTalent (appel script direct de Controller.RequestHeroTalent(0), UFUNCTION BlueprintCallable : meme route que l'interface), 64 DuelAnswer (hol.Duel.Accept), 128 DiplomacyStance (hol.Diplomacy.Stance 1 ally, client Alice slot 0 vers Bob slot 1), 256 CancelProduction (hol.Prod.Queue Peasant puis hol.Prod.Cancel 0 : la file selectionne le centre principal).
+Exige du C++ : WatchUnit (aucune commande console ni UFUNCTION : part seulement d'un changement de selection d'un ouvrier propre, HOLPlayerController.cpp l.3448) ; HeroAbility et CastRage (pas de route C++ du tout, PLAN-1118a).
+P2 : nouvelle cvar script hol.Rpc.ProofCheats (13 bits, table en tete de rpc_cheats_run.ps1) : FastBuild 1, Population 2, Technology 4, Tier 8, UnitSpeed 16, GatherSpeed 32, Wound 64, DamageBuilding 128 (hol.Cheat.DamageNear 1 0 0), SpawnBuilding 256 (Barracks 0 3000 0), Defeat 512, FallForum 1024, SkipForum 2048, HoldPresence 4096 (hol.Victory.* sur le siege 7 ferme, pour ne pas finir la partie).
+Constat : seul ServerCheatResources journalisait « received ». Ajout dans HOLRpcPlayer.as de « RpcCheat: <nom> received by the server » (12 triches) et « RpcHero: talent received » juste avant l'appel au pont (apres les refus), journaux seuls.
+Scenario : serveur -HOLCheats + 13 cvars a 1 (+ ScriptHero/Duel/Diplomacy/Economy), client rouge Bob cvars a 0 (controle : 0 ligne script sur le serveur avant l'arrivee du vert), client vert Alice cvars a 1 ; tableau nom -> recu oui/non.
+Commande de lancement (session principale, sans build : seulement script, mais binaire a jour) :
+  powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Elrond\Tools\Scenarios\rpc_cheats_run.ps1 -Root C:\Users\baudo\Documents\HeroesOfLiberty-Elrond
+  P1 seule : ... -Cheats 0 -Routes 480
+Suspects de compilation script : (1) Cast<AHOLPlayerController>(RouteController) dans le Tick d'une classe de Script\Net ; (2) const int Cheats declaree dans un bloc if apres des if sans accolades ; (3) Log(n"LogHOLMatch", f"...") sans accolade dans l'f-string (RequestHeroTalent 0) ; (4) variable Sender du log de Tier (existe dans le corps) ; (5) {TypeName} FString dans f-string.
+Risques de contenu : type Barracks non verifie contre Buildings.csv ; siege 7 ferme peut etre refuse par CheatSlotRefusal (ligne « refused », la route reste prouvee) ; hol.Duel.Accept sans defi en attente : non verifie que la RPC part ; hol.Prod.Queue peut etre refuse faute de ressources (alors cancel refuse).
+NON VERIFIE : aucun lancement, aucune compilation du script.
+## Suite 2026-11-18 08:3x (session principale) : preuves lancées
+- `rpc_cheats_run.ps1 -Root Elrond` : 13 triches reçues (FastBuild... HoldPresence), témoin rouge 0 ligne serveur. P1 (`-Cheats 0 -Routes 480`) : HeroTalent, DuelAnswer, CancelProduction reçus ; DiplomacyStance d'abord « non » : la commande console `hol.Diplomacy.Stance` appelle `AHOLPlayerController::RequestStance` du C++ (RPC C++ directe, HOLPlayerController.cpp:5696), seul l'appel script `HOLRpc::RequestStance` (l'interface) prend la route script. Hook corrigé (c54373f) : reçu oui (« sender slot 0 stance 2 toward slot 1 »).
+- Conséquence pour le retrait (T6) : tout appelant C++ de `RequestStance` (commande console) devra passer par la route script ou être retiré ; à vérifier pour les autres `Request<X>` (commandes console hol.*).
+- Reste non prouvé : WatchUnit, HeroAbility, CastRage (C++), Surrender (P3), ClientReceiveSignal/Chat (P4).

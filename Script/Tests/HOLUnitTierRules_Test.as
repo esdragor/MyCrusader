@@ -66,18 +66,20 @@ void Test_UnitTierOpensSoldiers(FUnitTest& T)
 	T.AssertEquals(HOLUnitTier::Available, HOLUnitTier::Check("Mangonel", 2, true, true), "the Mangonel opens at tier 2");
 	T.AssertEquals(HOLUnitTier::TierTooLow, HOLUnitTier::Check("Arquebusier", 2, true, true), "the Arquebusier stays closed at tier 2");
 	T.AssertEquals(HOLUnitTier::Available, HOLUnitTier::Check("Arquebusier", 3, true, true), "the Arquebusier opens at tier 3");
-	T.AssertTrue(HOLUnitTier::IsAvailable("Trebuchet", 3, true, true), "available at tier 3");
-	T.AssertFalse(HOLUnitTier::IsAvailable("Trebuchet", 2, true, true), "not at tier 2");
+	T.AssertTrue(HOLUnitTier::IsAvailable("Arquebusier", 3, true, true), "available at tier 3");
+	T.AssertFalse(HOLUnitTier::IsAvailable("Arquebusier", 2, true, true), "not at tier 2");
+	// The Trebuchet and the Cannon have no row in UnitTypes.csv: Check says NotListed (Test_UnitTierSiegeEnginesLikeCpp), their tier is HOLSiege's.
+	T.AssertFalse(HOLUnitTier::IsAvailable("Trebuchet", 3, true, true), "the Trebuchet has no unit row, the siege rule decides");
 }
 
 // The reasons come in one order, the first is the one given to the player: tier, then building, then the stock; a type outside the table first.
 void Test_UnitTierReasonOrder(FUnitTest& T)
 {
 	T.AssertEquals(HOLUnitTier::NotListed, HOLUnitTier::Check("Dragon", 3, true, true), "a type outside the table is refused first");
-	T.AssertEquals(HOLUnitTier::TierTooLow, HOLUnitTier::Check("Cannon", 0, false, false), "tier before building and stock");
-	T.AssertEquals(HOLUnitTier::NoBuilding, HOLUnitTier::Check("Cannon", 3, false, false), "building before stock");
-	T.AssertEquals(HOLUnitTier::CannotPay, HOLUnitTier::Check("Cannon", 3, true, false), "the stock last");
-	T.AssertEquals(HOLUnitTier::Available, HOLUnitTier::Check("Cannon", 3, true, true), "nothing stops it");
+	T.AssertEquals(HOLUnitTier::TierTooLow, HOLUnitTier::Check("Arquebusier", 0, false, false), "tier before building and stock");
+	T.AssertEquals(HOLUnitTier::NoBuilding, HOLUnitTier::Check("Arquebusier", 3, false, false), "building before stock");
+	T.AssertEquals(HOLUnitTier::CannotPay, HOLUnitTier::Check("Arquebusier", 3, true, false), "the stock last");
+	T.AssertEquals(HOLUnitTier::Available, HOLUnitTier::Check("Arquebusier", 3, true, true), "nothing stops it");
 	T.AssertEquals(HOLUnitTier::NoBuilding, HOLUnitTier::Check("Peasant", 0, false, true), "a tier 0 unit still wants its building");
 }
 
@@ -93,9 +95,9 @@ void Test_UnitTierAgreesWithTheSiegeRule(FUnitTest& T)
 		{
 			for (int Pay = 0; Pay < 2; Pay++)
 			{
-				const int RamSiege = HOLSiege::Check(EHOLSiegeEngine::Ram, Tier, Building == 1, Pay == 1);
+				const int RamSiege = HOLSiegeCheck::Check(int(EHOLSiegeEngine::Ram), Tier, Building == 1, Pay == 1);
 				const int RamUnit = HOLUnitTier::Check("Ram", Tier, Building == 1, Pay == 1);
-				const int MangonelSiege = HOLSiege::Check(EHOLSiegeEngine::Mangonel, Tier, Building == 1, Pay == 1);
+				const int MangonelSiege = HOLSiegeCheck::Check(int(EHOLSiegeEngine::Mangonel), Tier, Building == 1, Pay == 1);
 				const int MangonelUnit = HOLUnitTier::Check("Mangonel", Tier, Building == 1, Pay == 1);
 				Cases += 2;
 				if (RamSiege != RamUnit)
@@ -107,14 +109,14 @@ void Test_UnitTierAgreesWithTheSiegeRule(FUnitTest& T)
 	}
 	T.AssertEquals(32, Cases, "every case compared");
 	T.AssertEquals(0, Differences, "the unit rule and the siege rule give the same reason on every case");
-	T.AssertEquals(HOLSiege::TierOf(EHOLSiegeEngine::Ram), HOLUnitTier::MinTierOf("Ram"), "the same tier for the Ram");
-	T.AssertEquals(HOLSiege::TierOf(EHOLSiegeEngine::Mangonel), HOLUnitTier::MinTierOf("Mangonel"), "the same tier for the Mangonel");
-	T.AssertEquals(HOLSiege::TierOf(EHOLSiegeEngine::Trebuchet), HOLUnitTier::MinTierOf("Trebuchet"), "the same tier for the Trebuchet");
-	T.AssertEquals(HOLSiege::TierOf(EHOLSiegeEngine::Cannon), HOLUnitTier::MinTierOf("Cannon"), "the same tier for the Cannon");
-	T.AssertEquals(HOLSiege::Available, HOLUnitTier::Available, "the same number for 'nothing stops it'");
-	T.AssertEquals(HOLSiege::TierTooLow, HOLUnitTier::TierTooLow, "the same number for the tier");
-	T.AssertEquals(HOLSiege::NoWorkshop, HOLUnitTier::NoBuilding, "the same number for the building");
-	T.AssertEquals(HOLSiege::CannotPay, HOLUnitTier::CannotPay, "the same number for the stock");
+	T.AssertEquals(HOLSiegeCheck::GetTier(int(EHOLSiegeEngine::Ram)), HOLUnitTier::MinTierOf("Ram"), "the same tier for the Ram");
+	T.AssertEquals(HOLSiegeCheck::GetTier(int(EHOLSiegeEngine::Mangonel)), HOLUnitTier::MinTierOf("Mangonel"), "the same tier for the Mangonel");
+	T.AssertEquals(HOLSiegeCheck::GetTier(int(EHOLSiegeEngine::Trebuchet)), HOLUnitTier::MinTierOf("Trebuchet"), "the same tier for the Trebuchet");
+	T.AssertEquals(HOLSiegeCheck::GetTier(int(EHOLSiegeEngine::Cannon)), HOLUnitTier::MinTierOf("Cannon"), "the same tier for the Cannon");
+	T.AssertEquals(int(EHOLSiegeBlock::Available), HOLUnitTier::Available, "the same number for 'nothing stops it'");
+	T.AssertEquals(int(EHOLSiegeBlock::TierTooLow), HOLUnitTier::TierTooLow, "the same number for the tier");
+	T.AssertEquals(int(EHOLSiegeBlock::NoWorkshop), HOLUnitTier::NoBuilding, "the same number for the building");
+	T.AssertEquals(int(EHOLSiegeBlock::CannotPay), HOLUnitTier::CannotPay, "the same number for the stock");
 }
 
 // Every tier of the table is between 0 and 3 and a unit open at a tier is open at every higher tier (never closes when the tier rises).
@@ -184,9 +186,8 @@ void Test_UnitTierScriptAndSimulationRulesAgree(FUnitTest& T)
 
 // Every row of the unit type table (Tools\Data\UnitTypes.csv, the 16 rows), not only the units the rule lists (MIG-J-UnitTier, D830/D835):
 // the C++ twin reads the column MinTier of each row, the script its own table. A row the script lists gives the very same reason on every
-// tier 0 to 3, building and stock. A row the script leaves out on purpose (the hero, the King and the two test dummies: NotListed, "the
-// caller does not ask this rule about them") is never refused for its tier by the C++ either, which is the one reason its callers read
-// (HOLProductionSubsystem.cpp, HOLGameScreen.cpp: == TierTooLow). A type outside the table is NotListed on both sides.
+// tier 0 to 3, building and stock. Since D836 point 6 the script lists every row: the hero, the King and the two test dummies are of tier 0
+// as the column MinTier says (they were NotListed before). A type outside the table is NotListed on both sides.
 void Test_UnitTierAgreesOnEveryRowOfTheTable(FUnitTest& T)
 {
 	TArray<FString> Rows;
@@ -241,10 +242,43 @@ void Test_UnitTierAgreesOnEveryRowOfTheTable(FUnitTest& T)
 	}
 	T.AssertEquals(16, RowsFound, "the 16 rows of the unit type table exist in the C++ column");
 	T.AssertEquals(16 * 4 * 2 * 2, Cases, "every row on every tier 0 to 3, building and stock");
-	T.AssertEquals(12, Listed, "the script lists the twelve produced units of the table (the Zombie and the Damned Warrior included)");
-	T.AssertEquals(4, LeftOut, "only the hero, the King and the two test dummies are left out of the script's rule");
+	T.AssertEquals(16, Listed, "the script lists every row of the table (D836 point 6: the hero, the King and the two test dummies at tier 0, as the column)");
+	T.AssertEquals(0, LeftOut, "no row of the table is left out of the script's rule (D836 point 6)");
+	T.AssertEquals(0, HOLUnitTier::MinTierOf("Hero"), "the hero is of tier 0, as its column MinTier (D836 point 6)");
+	T.AssertEquals(0, HOLUnitTier::MinTierOf("King"), "the King is of tier 0, as its column MinTier");
+	T.AssertEquals(0, HOLUnitTier::MinTierOf("LightInfantry"), "the LightInfantry dummy is of tier 0, as its column MinTier");
+	T.AssertEquals(0, HOLUnitTier::MinTierOf("LightInfantryNanite"), "the LightInfantryNanite dummy is of tier 0, as its column MinTier");
+	T.AssertEquals(HOLUnitTierRules::CheckUnit(n"Hero", 0, true, true), HOLUnitTier::Check("Hero", 0, true, true), "the hero at tier 0: the script gives the C++ reason, not NotListed");
 	T.AssertEquals(0, Differences, "on every row the script lists, the script and the C++ give the same reason");
 	T.AssertEquals(0, LeftOutRefusedForTier, "a row the script leaves out is never refused for its tier by the C++");
 	T.AssertEquals(HOLUnitTier::NotListed, HOLUnitTierRules::CheckUnit(n"Dragon", 3, true, true), "a type outside the table: NotListed in C++");
 	T.AssertEquals(HOLUnitTier::NotListed, HOLUnitTier::Check("Dragon", 3, true, true), "and in the script");
+}
+
+// MIG-CPP-UnitTier (ELROND-1116q): the Trebuchet and the Cannon have NO row in Tools\Data\UnitTypes.csv (the 16 rows hold no siege engine of G7 / G8),
+// so the C++ rule, which reads the column, answers NotListed on every tier; the production never refused them for the unit tier (only TierTooLow
+// refuses there) and left them to HOLSiege::Check. The script rule answers the same, so that the bridge changes nothing in the game. Their GDD tier (3)
+// stays in MinTierOf (the AI and the siege agreement read it); only Check follows the column.
+void Test_UnitTierSiegeEnginesLikeCpp(FUnitTest& T)
+{
+	TArray<FString> Engines;
+	Engines.Add("Trebuchet");
+	Engines.Add("Cannon");
+	int Cases = 0;
+	int Differences = 0;
+	for (int Engine = 0; Engine < Engines.Num(); Engine++)
+	{
+		T.AssertEquals(-1, HOLUnitTierRules::GetUnitMinTier(FName(Engines[Engine])), Engines[Engine] + " has no row in the column MinTier (C++)");
+		for (int Tier = 0; Tier <= 3; Tier++)
+		{
+			const int Script = HOLUnitTier::Check(Engines[Engine], Tier, true, true);
+			const int Sim = HOLUnitTierRules::CheckUnit(FName(Engines[Engine]), Tier, true, true);
+			Cases++;
+			if (Script != Sim)
+				Differences++;
+			T.AssertEquals(HOLUnitTier::NotListed, Sim, Engines[Engine] + " at tier " + Tier + ": the C++ rule says not listed");
+		}
+	}
+	T.AssertEquals(8, Cases, "the two engines on tiers 0 to 3");
+	T.AssertEquals(0, Differences, "the script rule answers the C++ rule's NotListed on the 8 cases");
 }

@@ -13,8 +13,8 @@ Settings (the user's answer to CQ2b picks one; the default is the recommendation
                      halved), "keep_near" (the nearest veins of each base stay at home, the rest goes to the middle).
   HOL_MARSH_WIDTH    cm of marsh round the cluster (default 3000).
 The marsh is a list of round zones (marsh_zones, handed to the level by zones(): an AHOLTerrainLayout the server reads for the walkers'
-speed, and a flat dark disc drawn on the ground over each, common.spawn_zones). The rule is in Script/Terrain/HOLTerrainRules.as (script)
-and Map/HOLTerrainRules.cpp (server), checked against each other.
+speed, and a flat dark disc drawn on the ground over each, common.spawn_zones). The speed rule is the server's alone (Map/HOLTerrainRules.cpp, FHOLTerrainRules, D836);
+the script copy is removed.
 """
 import math
 import os

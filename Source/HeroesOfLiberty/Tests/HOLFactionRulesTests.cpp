@@ -23,8 +23,6 @@
 #include "Net/HOLUnitReceptionSubsystem.h"
 #include "Presentation/HOLCorpse.h"
 #include "Net/HOLUnitReplicationRules.h"
-#include "Misc/FileHelper.h"
-#include "Misc/Paths.h"
 #include "Resources/HOLSourceSubsystem.h"
 #include "Simulation/HOLSimulationSubsystem.h"
 #include "Simulation/HOLUnitSubsystem.h"
@@ -62,12 +60,6 @@ Legions_Spearman_Name,Legions,Spearman,DisplayName,Fixture Legion Spearman
 Legions_Spearman_Cost,Legions,Spearman,Cost,"(Food=0,Wood=7,Stone=0,Gold=9)"
 Legions_Spearman_Health,Legions,Spearman,MaxHealth,777
 )csv");
-
-	bool LoadData(FAutomationTestBase& Test, const TCHAR* File, FString& OutText)
-	{
-		const FString Path = FPaths::Combine(FPaths::ProjectDir(), TEXT("Tools"), TEXT("Data"), File);
-		return Test.TestTrue(FString::Printf(TEXT("%s is there"), *Path), FFileHelper::LoadFileToString(OutText, *Path));
-	}
 
 	/** The fixture tables, read by the real parsers, handed to the rules for the life of the object. */
 	struct FFixtureTable
@@ -186,103 +178,6 @@ Legions_Spearman_Health,Legions,Spearman,MaxHealth,777
 			return Count;
 		}
 	};
-}
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLFactionTablesTest, "HeroesOfLiberty.Match.Factions.Tables", UE::HeroesOfLiberty::Tests::Factions::Flags)
-bool FHOLFactionTablesTest::RunTest(const FString& Parameters)
-{
-	using namespace UE::HeroesOfLiberty::Tests::Factions;
-
-	// 1. The real files read without a problem; they hold the Dawn's three roles and the Legions' (provisional until L1 and L8a).
-	FString RolesText;
-	FString OverridesText;
-	if (!LoadData(*this, TEXT("Factions.csv"), RolesText) || !LoadData(*this, TEXT("FactionOverrides.csv"), OverridesText))
-	{
-		return false;
-	}
-	HOLFactionRules::FTable Real;
-	TArray<FString> Problems;
-	HOLFactionRules::ParseRoles(RolesText, Real.Roles, Problems);
-	HOLFactionRules::ParseOverrides(OverridesText, Real.Overrides, Problems);
-	for (const FString& Problem : Problems)
-	{
-		AddError(Problem);
-	}
-	TestEqual(TEXT("Dawn Worker"), Real.FindRoleType(Dawn, HOLFactionRules::Roles::Worker), Peasant);
-	TestEqual(TEXT("Dawn Hero"), Real.FindRoleType(Dawn, HOLFactionRules::Roles::Hero), FName(TEXT("Hero")));
-	TestEqual(TEXT("Dawn MainCentre"), Real.FindRoleType(Dawn, HOLFactionRules::Roles::MainCentre), FName(TEXT("MainCentre")));
-	TestTrue(TEXT("the Legions have rows of their own"), Real.HasFaction(Legions));
-	// L1: the Legions' Worker is the Zombie; their Hero stays the Dawn's until L8a (Damned Lord).
-	TestEqual(TEXT("Legions Worker: the Zombie (L1)"), Real.FindRoleType(Legions, HOLFactionRules::Roles::Worker), FName(TEXT("Zombie")));
-	TestEqual(TEXT("Legions Hero, provisional until L8a"), Real.FindRoleType(Legions, HOLFactionRules::Roles::Hero), FName(TEXT("Hero")));
-
-	// 2. The figures built in (a packaged game) are the files'.
-	const HOLFactionRules::FTable BuiltIn = HOLFactionRules::GetBuiltInTable();
-	TestEqual(TEXT("built-in roles: the same number of rows"), BuiltIn.Roles.Num(), Real.Roles.Num());
-	for (const HOLFactionRules::FRoleRow& Row : Real.Roles)
-	{
-		TestEqual(*FString::Printf(TEXT("built-in %s"), *Row.Name.ToString()), BuiltIn.FindRoleType(Row.Faction, Row.Role), Row.Type);
-	}
-	TestEqual(TEXT("built-in overrides: the files'"), BuiltIn.Overrides.Num(), Real.Overrides.Num());
-	for (const HOLFactionRules::FOverrideRow& Row : Real.Overrides)
-	{
-		const bool bSame = BuiltIn.Overrides.ContainsByPredicate([&Row](const HOLFactionRules::FOverrideRow& Each)
-			{ return Each.Name == Row.Name && Each.Faction == Row.Faction && Each.Type == Row.Type && Each.Field == Row.Field && Each.Value == Row.Value; });
-		TestTrue(*FString::Printf(TEXT("built-in override %s is the file's (run Tools/Data/make_builtin_overrides.py)"), *Row.Name.ToString()), bSame);
-	}
-
-	// 3. The fixture, by the same parsers: the Legions differ from the Dawn, a faction with no rows reads as the Dawn.
-	{
-		FFixtureTable Fixture;
-		for (const FString& Problem : Fixture.Problems)
-		{
-			AddError(Problem);
-		}
-		const HOLFactionRules::FTable& Table = HOLFactionRules::GetTable();
-		TestEqual(TEXT("fixture: Dawn Worker"), Table.FindRoleType(Dawn, HOLFactionRules::Roles::Worker), Peasant);
-		TestEqual(TEXT("fixture: Legions Worker"), Table.FindRoleType(Legions, HOLFactionRules::Roles::Worker), Spearman);
-		const FName Templars(TEXT("Templars"));
-		TestEqual(TEXT("a faction with no rows reads as the Dawn"), Table.ResolveKey(Templars), Dawn);
-		TestEqual(TEXT("... for its Worker too"), Table.FindRoleType(Templars, HOLFactionRules::Roles::Worker), Peasant);
-		TestTrue(TEXT("Common is for everyone"), Table.Allows(HOLFactionRules::Common, Legions));
-		TestFalse(TEXT("a Dawn-only type is not the Legions'"), Table.Allows(Dawn, Legions));
-		TestTrue(TEXT("a Dawn-only type is the Dawn's"), Table.Allows(Dawn, Dawn));
-		TestTrue(TEXT("a list names several"), Table.Allows(FName(TEXT("Legions;Dawn")), Legions));
-		TestTrue(TEXT("a faction with no rows reads as the Dawn: it has the Dawn-only type"), Table.Allows(Dawn, Templars));
-		TestTrue(TEXT("the Legions override the Spearman"), Table.HasOverride(Legions, Spearman));
-		TestFalse(TEXT("the Dawn does not"), Table.HasOverride(Dawn, Spearman));
-
-		// The same through the roles of a match: a Legions slot starts with the Legions' Worker.
-		const FHOLMatchConfig Config = MakeConfig();
-		TestEqual(TEXT("slot 0 (Dawn) starts with Peasants"), FHOLStartRules::GetWorkerTypeName(Config, 0), Peasant);
-		TestEqual(TEXT("slot 1 (Legions) starts with the Legions' Worker"), FHOLStartRules::GetWorkerTypeName(Config, 1), Spearman);
-		TestEqual(TEXT("slot 1 (Legions) starts with the Legions' Hero"), FHOLStartRules::GetHeroTypeName(Config, 1), FName(TEXT("ManAtArms")));
-		TestEqual(TEXT("slot 0 (Dawn) starts with its Hero"), FHOLStartRules::GetHeroTypeName(Config, 0), FHOLStartRules::HeroTypeName);
-		TestEqual(TEXT("slot 5 (closed, Dawn by default) reads as the Dawn"), FHOLStartRules::GetWorkerTypeName(Config, 5), Peasant);
-	}
-
-	// 4. The shape: a bad header, a repeated role and an unknown role are problems, not silently dropped; so is a field that does not exist.
-	{
-		TArray<HOLFactionRules::FRoleRow> Rows;
-		TArray<FString> Wrong;
-		HOLFactionRules::ParseRoles(TEXT("Name,Faction,Kind,Type\nA,Dawn,Worker,Peasant\n"), Rows, Wrong);
-		TestFalse(TEXT("a wrong header is a problem"), Wrong.IsEmpty());
-		Wrong.Reset();
-		HOLFactionRules::ParseRoles(TEXT("Name,Faction,Role,Type\nA,Dawn,Worker,Peasant\nB,Dawn,Worker,Zombie\nC,Dawn,Cook,Peasant\n"), Rows, Wrong);
-		TestEqual(TEXT("a repeated role and an unknown role: two problems"), Wrong.Num(), 2);
-		TestEqual(TEXT("... and the good row is kept"), Rows.Num(), 1);
-
-		FFixtureTable Fixture;
-		FHOLUnitTypeRow Row;
-		TArray<FString> FieldProblems;
-		HOLFactionRules::FTable Bad;
-		Bad.Overrides.Add({ FName(TEXT("X")), Legions, Spearman, FName(TEXT("NoSuchField")), TEXT("1") });
-		Bad.Overrides.Add({ FName(TEXT("Y")), Legions, Spearman, FName(TEXT("MaxHealth")), TEXT("123") });
-		TestEqual(TEXT("one override applies, the unknown field does not"), Bad.ApplyOverrides(Legions, Spearman, FHOLUnitTypeRow::StaticStruct(), &Row, &FieldProblems), 1);
-		TestEqual(TEXT("... and is named"), FieldProblems.Num(), 1);
-		TestEqual(TEXT("the field is written"), Row.MaxHealth, 123);
-	}
-	return true;
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLFactionRealChainTest, "HeroesOfLiberty.Match.Factions.RealChain", UE::HeroesOfLiberty::Tests::Factions::Flags)
