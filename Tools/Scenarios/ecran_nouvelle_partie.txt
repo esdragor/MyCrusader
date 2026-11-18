@@ -1,0 +1,49 @@
+# Ecran Nouvelle partie (NG-7, D851) : depuis le titre, vrai clic sur Jouer, une taille, une place en IA (le niveau apparait), une couleur deja prise (elle saute a la suivante), la liste des tailles ; puis c'est toi qui manipules la grille (waitkey).
+# Meme scenario avant (ecran C++) / apres (ecran script) : seuls des noms de widgets (PlayButton, SizeDropdown, SlotState1, SlotColor1, SlotState2, BackButton), donc l'essai compare les deux.
+# Pas de partie lancee : le .json ne sert qu'a play.ps1 (joueur nomme, pre-vol), le scenario reste sur le menu.
+# Defauts (HOLMatchConfig.cpp:24,35) : place 0 Humain couleur 0, places 1.. Fermees, couleur = numero de la place. Choose refuse une valeur grisee (HOLDropdown.cpp:177) : la couleur d'une place OUVERTE ne peut pas prendre celle d'une autre place ouverte ; on donne donc a la place 1 la couleur de la place 2 FERMEE (libre), puis on ouvre la place 2 : HOLNewGameScreen.cpp:1222 la fait sauter a la couleur libre suivante (FindFreeColor, :1337).
+frames 30
+open /Game/Maps/MainMenu
+waitmap MainMenu
+waitui
+frames 20
+hol.Mouse.Click PlayButton
+waitlog Mouse click PlayButton
+waitui
+frames 20
+capture ecran_np_ouverture
+note 1. La grille de 8 places : colonnes alignees (etat, niveau, faction, pastille et couleur, equipe), rien de coupe ; en haut Carte, Taille, Brouillard, Equipes ensemble ; en bas les options et Retour / Lancer.
+# Une taille (Moyenne = index 2 : 0 est "-", 1 Petite, 2 Moyenne, 3 Normale, 4 Grande, 5 Immense) puis la place 2 (SlotState1) en IA (index 2 : 0 Ferme, 1 Humain, 2 IA).
+hol.UI.Choose SizeDropdown 2
+frames 10
+hol.UI.Choose SlotState1 2
+waitlog Dropdown SlotState1: value 2 chosen
+frames 10
+hol.UI.Text SizeDropdown SlotState1 SlotColor1
+hol.UI.Shown SlotLevel1
+capture ecran_np_ia_niveau
+note 2. Place 2 (SlotState1) en IA : la liste du niveau (Normal par defaut) apparait sur sa ligne ; Taille = Moyenne.
+# Couleur deja prise : la place 3 (SlotState2) est fermee et garde la couleur d'index 2 ; la place 2 (SlotColor1) la prend (libre tant que la place 3 est fermee), puis on ouvre la place 3.
+hol.UI.Choose SlotColor1 2
+waitlog Dropdown SlotColor1: value 2 chosen
+frames 10
+hol.UI.Choose SlotState2 2
+waitlog Dropdown SlotState2: value 2 chosen
+frames 10
+hol.UI.Text SlotColor1 SlotColor2
+capture ecran_np_couleur
+note 3. Places 2 et 3 (SlotColor1, SlotColor2) : meme couleur au depart, mais la place 3 est passee a la couleur LIBRE suivante a l'ouverture (deux pastilles differentes, jamais deux places de la meme couleur).
+# La liste des tailles : avec 3 joueurs, Petite (2 places) est grisee. Choose sur la valeur deja choisie referme la liste.
+hol.Mouse.Click SizeDropdown
+frames 10
+capture ecran_np_taille_liste
+hol.UI.Choose SizeDropdown 2
+frames 10
+note 4. Liste Taille ouverte avec 3 joueurs : "Petite" (2 places) est grisee, les tailles qui tiennent 3 joueurs restent choisissables.
+note 5. A toi la grille : change les couleurs et les etats des places, une taille, la faction ; fleches / LB-RB / Echap : la navigation entre colonnes marche ; Lancer ouvre la carte (reviens ensuite au titre) ; Retour ramene au titre.
+waitkey Entree : j'ai manipule la grille (Retour ramene au titre)
+hol.Mouse.Click BackButton
+waitlog Mouse click BackButton
+waitui
+frames 20
+capture ecran_np_retour

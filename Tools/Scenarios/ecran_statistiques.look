@@ -1,0 +1,9 @@
+# <nom de capture> | ce que l'utilisateur doit voir
+ecran_stats_bandeau | la partie sur la base de l'IA en decombres, le bandeau Victoire au centre avec ses boutons dont Statistiques
+ecran_stats_resume | ecran Statistiques, onglet Resume : les 4 onglets Resume, Militaire, Economie, Chronologie en haut, un tableau a une ligne par joueur (toi et l'IA, nom dans sa couleur) avec colonnes de chiffres alignees, bouton Retour en bas
+ecran_stats_militaire | onglet Militaire : tableau a une ligne par joueur avec le score militaire et ses colonnes, onglet Militaire mis en avant
+ecran_stats_economie | onglet Economie : tableau a une ligne par joueur avec le score economique et ses colonnes, onglet Economie mis en avant
+ecran_stats_chronologie | onglet Chronologie : la rangee de 6 boutons de serie (Peons, Armee, Population, Batiments, Ressources recoltees, Stock) et le graphe avec axes et legende, une courbe par joueur
+ecran_stats_serie_armee | onglet Chronologie, serie Armee choisie : le graphe des soldats de chaque joueur dans le temps (la courbe de l'IA tombe a la fin), legende et axes
+ecran_stats_serie_stock | onglet Chronologie, serie Stock choisie : le graphe du stock de ressources de chaque joueur, legende et axes
+ecran_stats_retour | l'ecran Statistiques est ferme : retour sur la partie, le bandeau Victoire (ou la carte) visible, plus de tableau ni de graphe

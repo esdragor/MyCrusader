@@ -1,0 +1,65 @@
+# Ecran Statistiques (ST-3, D851) : partie courte de victory_win.txt (Plain, toi contre une IA sans cerveau, l'IA abandonne par triche) jusqu'au bandeau Victoire, puis l'ecran Statistiques : onglets Resume / Militaire / Economie / Chronologie, deux series du graphe, Retour.
+# Meme scenario avant (ecran C++) / apres (ecran script) : seuls des noms de widgets (SummaryTab, MilitaryTab, EconomyTab, TimelineTab, SeriesMilitary, SeriesStock, BackButton), donc l'essai compare les deux.
+# hol.Stats.SampleSeconds 2 (HOLMatchStatsSubsystem.cpp:20) : un point toutes les 2 s, pour que la Chronologie ait des courbes sur une partie de ~40 s.
+# Pas de hol.UI.Click : le clic de bouton Common UI passe par hol.Mouse.Click (sites_option.txt), le meme que reglages. hol.UI.Open Stats = meme chemin que le bouton Statistiques du bandeau (HOLUIOpen.cpp:91-93, refuse hors partie).
+# Pas de waitkey avant la victoire : la partie est jouee par le scenario ; le waitkey de la fin laisse l'utilisateur regarder et cliquer.
+hol.Stats.SampleSeconds 2
+hol.Cheat.Resources 5000
+hol.Cheat.Population 165
+hol.Camera.FocusNear -2000 -400
+frames 2
+hol.Units.SpawnHere 5 Peasant 0 150
+hol.Camera.FocusNear -2100 500
+frames 2
+hol.Units.SpawnHere 6 Spearman 0 250
+waitunits 11
+hol.Cheat.SpawnBuilding Barracks 1 -1800 -1400 enemy
+waitlog Cheat: spawned Barracks of slot 1
+hol.Cheat.SpawnBuilding House 1 -1400 1200 enemy
+waitlog Cheat: spawned House of slot 1
+hol.Camera.FocusNear -1000 2400 enemy
+frames 2
+hol.Units.SpawnHere 8 Spearman 1 300
+waitunits 19
+hol.Camera.FocusNear -1700 0 enemy
+hol.Camera.Zoom -1
+# Du temps pour des echantillons (un toutes les 2 s).
+wait 12
+hol.Victory.Defeat 1
+waitlog Victory: slot 1 collapsed
+waitlog End banner: Victory
+frames 30
+capture ecran_stats_bandeau
+hol.UI.Open Stats
+waitui
+frames 20
+capture ecran_stats_resume
+note 1. Resume : une ligne par joueur (toi et l'IA), le nom dans sa couleur, des colonnes de chiffres alignees ; onglets Resume, Militaire, Economie, Chronologie en haut, Retour en bas.
+hol.Mouse.Click MilitaryTab
+waitlog Mouse click MilitaryTab
+frames 10
+capture ecran_stats_militaire
+hol.Mouse.Click EconomyTab
+waitlog Mouse click EconomyTab
+frames 10
+capture ecran_stats_economie
+note 2. Militaire et Economie : une ligne par joueur, scores militaire / economique et total ; l'onglet choisi est mis en avant.
+hol.Mouse.Click TimelineTab
+waitlog Mouse click TimelineTab
+frames 20
+capture ecran_stats_chronologie
+hol.Mouse.Click SeriesMilitary
+waitlog Mouse click SeriesMilitary
+frames 20
+capture ecran_stats_serie_armee
+hol.Mouse.Click SeriesStock
+waitlog Mouse click SeriesStock
+frames 20
+capture ecran_stats_serie_stock
+note 3. Chronologie : 6 boutons de serie (Peons, Armee, Population, Batiments, Ressources recoltees, Stock) ; le graphe (axes, legende, reperes) change avec la serie choisie, une courbe par joueur.
+note 4. A toi : clique les 4 onglets et les 6 series, puis Retour (Echap) : l'ecran se ferme sans perdre la partie (bandeau Victoire encore la, ou Continuer pour regarder).
+waitkey Entree : j'ai essaye onglets et series (Retour ferme l'ecran)
+hol.Mouse.Click BackButton
+waitlog Mouse click BackButton
+frames 20
+capture ecran_stats_retour
