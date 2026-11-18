@@ -4753,8 +4753,9 @@ namespace HOLRpcScriptRoute_Elrond1117q
 	// Ints fill the bool / int32 / uint32 parameters in order, Real the double / float one, Name the FName one. false: no actor, no such function: the caller falls back to the C++ RPC.
 	bool CallCheat(AHOLPlayerController* Controller, const TCHAR* CVarName, const TCHAR* FunctionName, const TArrayView<const int32> Ints, const double* Real, const FName* Name)
 	{
-		const IConsoleVariable* CVar = IConsoleManager::Get().FindConsoleVariable(CVarName);
-		if (!Controller || !CVar || CVar->GetInt() == 0)
+		// D845: a null cvar name = no guard (the RPC has no C++ twin any more); the other cheats keep theirs.
+		const IConsoleVariable* CVar = CVarName ? IConsoleManager::Get().FindConsoleVariable(CVarName) : nullptr;
+		if (!Controller || (CVarName && (!CVar || CVar->GetInt() == 0)))
 		{
 			return false;
 		}
@@ -4808,11 +4809,10 @@ namespace HOLRpcScriptRoute_Elrond1117q
 void AHOLPlayerController::RequestCheatResources(const FHOLResources& Amount)
 {
 	const int32 StockInts[4] = {Amount.Food, Amount.Wood, Amount.Stone, Amount.Gold};
-	if (HOLRpcScriptRoute_Elrond1117q::CallCheat(this, TEXT("hol.Rpc.ScriptCheatResources"), TEXT("ServerCheatResources"), TArrayView<const int32>(StockInts, 4), nullptr, nullptr))
+	if (!HOLRpcScriptRoute_Elrond1117q::CallCheat(this, nullptr, TEXT("ServerCheatResources"), TArrayView<const int32>(StockInts, 4), nullptr, nullptr))
 	{
-		return;
+		HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("CheatResources"));
 	}
-	ServerCheatResources(Amount);
 }
 
 void AHOLPlayerController::RequestCheatFastBuild(const bool bOn)
@@ -4909,7 +4909,7 @@ void AHOLPlayerController::ServerCheatWound_Implementation(const int32 Percent)
 #endif
 }
 
-void AHOLPlayerController::ServerCheatResources_Implementation(const FHOLResources Amount)
+void AHOLPlayerController::DoCheatResources(const FHOLResources Amount)
 {
 #if !UE_BUILD_SHIPPING
 	if (IsCheatRefused(TEXT("resources")))
@@ -5485,14 +5485,14 @@ void AHOLPlayerController::RequestSignal(const int32 Kind, const FVector& Locati
 	if (!IsSpectator())
 	{
 		const int32 SignalArgs[1] = { Kind };
-			if (!HOLRpcScriptRoute_Haldir1117n::CallEx(this, TEXT("hol.Rpc.ScriptSignal"), TEXT("ServerPostSignal"), TArrayView<const int32>(SignalArgs, 1), nullptr, &Location))
+			if (!HOLRpcScriptRoute_Haldir1117n::CallEx(this, nullptr, TEXT("ServerPostSignal"), TArrayView<const int32>(SignalArgs, 1), nullptr, &Location))
 			{
-				ServerPostSignal(Kind, Location);
+				HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("PostSignal"));
 			}
 	}
 }
 
-void AHOLPlayerController::ServerPostSignal_Implementation(const int32 Kind, const FVector Location)
+void AHOLPlayerController::DoPostSignal(const int32 Kind, const FVector Location)
 {
 	// The player's own slot only (D288); the script's board decides (HOLSignal::Post), then each seat that sees it receives it.
 	UWorld* World = GetWorld();
@@ -5579,13 +5579,13 @@ void AHOLPlayerController::RequestChat(const int32 Channel, const FString& Text,
 {
 	// A pure spectator talks too (with the spectators, D376): the server decides.
 	const int32 ChatArgs[2] = { Channel, TargetSlot };
-	if (!HOLRpcScriptRoute_Haldir1117n::CallEx(this, TEXT("hol.Rpc.ScriptChat"), TEXT("ServerPostChat"), TArrayView<const int32>(ChatArgs, 2), &Text, nullptr))
+	if (!HOLRpcScriptRoute_Haldir1117n::CallEx(this, nullptr, TEXT("ServerPostChat"), TArrayView<const int32>(ChatArgs, 2), &Text, nullptr))
 	{
-		ServerPostChat(Channel, Text, TargetSlot);
+		HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("PostChat"));
 	}
 }
 
-void AHOLPlayerController::ServerPostChat_Implementation(const int32 Channel, const FString& Text, const int32 TargetSlot)
+void AHOLPlayerController::DoPostChat(const int32 Channel, const FString& Text, const int32 TargetSlot)
 {
 	// The player's own slot only (D288); the server alone decides who reads it (the script board, Script/Chat/HOLChatBoardScript.as).
 	UWorld* World = GetWorld();

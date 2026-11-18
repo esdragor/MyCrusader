@@ -812,8 +812,8 @@ private:
 	/** R3.5 (R-Q7): true, and logged, when this server refuses a client's cheat (FHOLCheatRules); every cheat RPC asks it. */
 	bool IsCheatRefused(const TCHAR* What) const;
 
-	UFUNCTION(Server, Reliable)
-	void ServerCheatResources(FHOLResources Amount);
+	/** D845: the RPC is in the script RPC actor; this is the body its bridge (friend UHOLRpcBridgeLibrary) calls on the server. */
+	void DoCheatResources(FHOLResources Amount);
 
 	UFUNCTION(Server, Reliable)
 	void ServerCheatFastBuild(bool bOn);
@@ -881,8 +881,8 @@ private:
 	void ServerDiplomacyVision(int32 TargetSlot, bool bShare);
 
 	/** SG2 (D386): the server's board takes the signal (HOLSignal::Post) and sends it to the seats that see it (HOLSignal::Sees). */
-	UFUNCTION(Server, Reliable)
-	void ServerPostSignal(int32 Kind, FVector Location);
+	/** D845: the RPC is in the script RPC actor; this is the body its bridge calls on the server (the relay to the seats stays the Client RPC below). */
+	void DoPostSignal(int32 Kind, FVector Location);
 
 	/** SG2: a signal this seat sees (its own, a mutual ally's, or any as a spectator); SG3 draws it. */
 	UFUNCTION(Client, Reliable)
@@ -891,8 +891,8 @@ private:
 	/** SG2: the signals this seat received so far (a test reads it; SG3 draws them). */
 	int32 NumReceivedSignals = 0;
 	/** A4 (D385, D376, D792): the server's gate (HOLChat::CheckPost: length, rate), then each seat the message reaches (HOLChat::Reaches). */
-	UFUNCTION(Server, Reliable)
-	void ServerPostChat(int32 Channel, const FString& Text, int32 TargetSlot);
+	/** D845: the RPC is in the script RPC actor; this is the body its bridge calls on the server (the relay to the seats stays the Client RPC below). */
+	void DoPostChat(int32 Channel, const FString& Text, int32 TargetSlot);
 
 	/** A4: a chat message this seat reads: its line in the thread (AHOLGameState::NoteChatReceived). */
 	UFUNCTION(Client, Reliable)

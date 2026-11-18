@@ -207,7 +207,7 @@ bool UHOLRpcBridgeLibrary::CheatRefused(AActor* RpcActor, const FString& What)
 bool UHOLRpcBridgeLibrary::CheatResources(AActor* RpcActor, const int32 Food, const int32 Wood, const int32 Stone, const int32 Gold)
 {
 	AHOLPlayerController* Controller = HOLRpcBridgeL1_Haldir1117o::OwnerController(RpcActor);
-	if (Controller) { Controller->ServerCheatResources_Implementation(FHOLResources(Food, Wood, Stone, Gold)); }
+	if (Controller) { Controller->DoCheatResources(FHOLResources(Food, Wood, Stone, Gold)); }
 	return Controller != nullptr;
 }
 
@@ -313,7 +313,7 @@ bool UHOLRpcBridgeLibrary::CheatHoldPresence(AActor* RpcActor, const int32 Slot,
 bool UHOLRpcBridgeLibrary::PostSignal(AActor* RpcActor, const int32 Kind, const double X, const double Y, const double Z)
 {
 	AHOLPlayerController* Controller = HOLRpcBridgeL1_Haldir1117o::OwnerController(RpcActor);
-	if (Controller) { Controller->ServerPostSignal_Implementation(Kind, FVector(X, Y, Z)); }
+	if (Controller) { Controller->DoPostSignal(Kind, FVector(X, Y, Z)); }
 	return Controller != nullptr;
 }
 
@@ -327,7 +327,7 @@ bool UHOLRpcBridgeLibrary::ReceiveSignal(AActor* RpcActor, const int32 Sender, c
 bool UHOLRpcBridgeLibrary::PostChat(AActor* RpcActor, const int32 Channel, const FString& Text, const int32 TargetSlot)
 {
 	AHOLPlayerController* Controller = HOLRpcBridgeL1_Haldir1117o::OwnerController(RpcActor);
-	if (Controller) { Controller->ServerPostChat_Implementation(Channel, Text, TargetSlot); }
+	if (Controller) { Controller->DoPostChat(Channel, Text, TargetSlot); }
 	return Controller != nullptr;
 }
 
