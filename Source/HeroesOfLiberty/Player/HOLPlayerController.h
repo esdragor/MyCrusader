@@ -404,6 +404,8 @@ public:
 	 * (Shift, the user's 1st trial of J7a.4): after their current move.
 	 */
 	void RequestMoveUnits(TConstArrayView<uint32> UnitIds, const FVector& Target, bool bQueue = false);
+	/** D846: a right-button drag (the two ends of the front line): a Request like the others (it was a direct RPC call), so the route, the cvar and the measure reach it. */
+	void RequestMoveUnitsInLine(TConstArrayView<uint32> UnitIds, const FVector& Start, const FVector& End, bool bWidth, bool bQueue = false);
 	/** Asks the server to have units attack an enemy unit (J7b.3, a right click on it); it checks the units and the target. */
 	void RequestAttackUnit(TConstArrayView<uint32> UnitIds, uint32 TargetUnitId, bool bQueue = false);
 	/**
@@ -462,6 +464,8 @@ public:
 	 * user's trial of J6a.4), or to clear it (on the building).
 	 */
 	void RequestRallyPoint(const FVector& Point, int32 SourceIndex = INDEX_NONE, AHOLBuilding* Site = nullptr, bool bQueue = false);
+	/** D846: the rally point of ONE given building (the group's salve calls it for each producing building: one RPC each, as before); RequestRallyPoint is it for the selected one. */
+	void RequestSetRallyPointOf(AHOLBuilding* Building, const FVector& Point, int32 SourceIndex = INDEX_NONE, AHOLBuilding* Site = nullptr, bool bQueue = false);
 
 	/**
 	 * Development cheats for the trials (hol.Cheat.*; never in a Shipping build: no command registers them and the
@@ -749,6 +753,23 @@ private:
 	/** D372: a tribute from a Market (UHOLProductionSubsystem::ApplyTribute checks the owner, the Market, the receiver, the resource and the stock). */
 	void DoTribute(AHOLBuilding* Building, int32 Receiver, int32 Resource, int32 Amount);
 
+	/** D846: the bodies of the 16 order RPCs of the player (the UFUNCTION(Server) above stay: their _Implementation forwards here; the script RPC actor's bridge, friend UHOLRpcBridgeLibrary, calls them too). */
+	void DoMoveUnits(const TArray<uint32>& UnitIds, FVector_NetQuantize Target, bool bQueue);
+	void DoAttackUnit(const TArray<uint32>& UnitIds, uint32 TargetUnitId, bool bQueue);
+	void DoHealUnit(const TArray<uint32>& UnitIds, uint32 TargetUnitId, bool bQueue);
+	void DoAttackBuilding(const TArray<uint32>& UnitIds, AHOLBuilding* Building, bool bQueue);
+	void DoAttackMove(const TArray<uint32>& UnitIds, FVector_NetQuantize Target, bool bQueue);
+	void DoStopUnits(const TArray<uint32>& UnitIds, bool bHold);
+	void DoToggleDeploy(const TArray<uint32>& UnitIds);
+	void DoMoveUnitsInLine(const TArray<uint32>& UnitIds, FVector_NetQuantize Start, FVector_NetQuantize End, bool bWidth, bool bQueue);
+	void DoGatherUnits(const TArray<uint32>& UnitIds, int32 SourceIndex, bool bQueue);
+	void DoPlaceBuilding(FName TypeName, FVector_NetQuantize Point, const TArray<uint32>& UnitIds, bool bQueue);
+	void DoBuildUnits(const TArray<uint32>& UnitIds, AHOLBuilding* Building, bool bQueue);
+	void DoDropOffUnits(const TArray<uint32>& UnitIds, AHOLBuilding* Building, FVector_NetQuantize Point, bool bQueue);
+	void DoGarrisonUnits(const TArray<uint32>& UnitIds, AHOLBuilding* Building);
+	void DoUngarrisonAll(AHOLBuilding* Building);
+	void DoCancelBuilding(AHOLBuilding* Building);
+	void DoSetRallyPoint(AHOLBuilding* Building, FVector_NetQuantize Point, int32 SourceIndex, AHOLBuilding* Site, bool bQueue);
 	/** The units' identifiers (D223) and the ground point: ~4 bytes a unit, a player's selection at most (D288). */
 	UFUNCTION(Server, Reliable)
 	void ServerMoveUnits(const TArray<uint32>& UnitIds, FVector_NetQuantize Target, bool bQueue);

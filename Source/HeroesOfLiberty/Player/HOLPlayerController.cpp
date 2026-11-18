@@ -68,6 +68,26 @@ namespace HOLRpcScriptRoute_Haldir1117n
 	bool RouteMarketTrade(AHOLPlayerController* Controller, AHOLBuilding* Building, int32 Resource, int32 Lots, bool bBuy);
 	// D845: no C++ RPC fallback any more; a call the script actor did not take is only logged (defined next to IsOn).
 	void LogNotSent(const TCHAR* Name);
+	// D846 (the 16 order RPCs of the player): hol.Rpc.OrderScript (default 0 = the C++ RPC) switches them all to the script RPC actor; hol.Rpc.OrderTrace logs the send / receive times (latency measure).
+	bool OrderScriptOn();
+	void OrderSend(const TCHAR* Kind, double Key, int32 Units);
+	void OrderRecv(const TCHAR* Kind, double Key, int32 Units);
+	bool RouteMove(AHOLPlayerController* Controller, TConstArrayView<uint32> UnitIds, const FVector& Target, bool bQueue);
+	bool RouteAttackUnit(AHOLPlayerController* Controller, TConstArrayView<uint32> UnitIds, uint32 TargetUnitId, bool bQueue);
+	bool RouteHealUnit(AHOLPlayerController* Controller, TConstArrayView<uint32> UnitIds, uint32 TargetUnitId, bool bQueue);
+	bool RouteAttackBuilding(AHOLPlayerController* Controller, TConstArrayView<uint32> UnitIds, AHOLBuilding* Building, bool bQueue);
+	bool RouteAttackMove(AHOLPlayerController* Controller, TConstArrayView<uint32> UnitIds, const FVector& Target, bool bQueue);
+	bool RouteStop(AHOLPlayerController* Controller, TConstArrayView<uint32> UnitIds, bool bHold);
+	bool RouteToggleDeploy(AHOLPlayerController* Controller, TConstArrayView<uint32> UnitIds);
+	bool RouteMoveInLine(AHOLPlayerController* Controller, TConstArrayView<uint32> UnitIds, const FVector& Start, const FVector& End, bool bWidth, bool bQueue);
+	bool RouteGather(AHOLPlayerController* Controller, TConstArrayView<uint32> UnitIds, int32 SourceIndex, bool bQueue);
+	bool RoutePlaceBuilding(AHOLPlayerController* Controller, FName TypeName, const FVector& Point, TConstArrayView<uint32> UnitIds, bool bQueue);
+	bool RouteBuildUnits(AHOLPlayerController* Controller, TConstArrayView<uint32> UnitIds, AHOLBuilding* Building, bool bQueue);
+	bool RouteDropOff(AHOLPlayerController* Controller, TConstArrayView<uint32> UnitIds, AHOLBuilding* Building, const FVector& Point, bool bQueue);
+	bool RouteGarrison(AHOLPlayerController* Controller, TConstArrayView<uint32> UnitIds, AHOLBuilding* Building);
+	bool RouteUngarrisonAll(AHOLPlayerController* Controller, AHOLBuilding* Building);
+	bool RouteCancelBuilding(AHOLPlayerController* Controller, AHOLBuilding* Building);
+	bool RouteSetRally(AHOLPlayerController* Controller, AHOLBuilding* Building, const FVector& Point, int32 SourceIndex, AHOLBuilding* Site, bool bQueue);
 }
 
 namespace UE::HeroesOfLiberty::Player
@@ -2988,7 +3008,7 @@ void AHOLPlayerController::OrderAt(const FVector2D& ViewportFraction, const bool
 			// Finished or not: one that will produce takes its rally point from its ghost on (the user's request of 2026-10-19).
 			if (Type && !Type->Produces.IsEmpty())
 			{
-				ServerSetRallyPoint(Member, Point, RallySource, RallySite, bShift);
+				RequestSetRallyPointOf(Member, Point, RallySource, RallySite, bShift);
 				++Rallied;
 			}
 		}
@@ -4271,7 +4291,16 @@ void AHOLPlayerController::RequestMoveUnits(const TConstArrayView<uint32> UnitId
 {
 	if (UnitIds.Num() > 0)
 	{
-		ServerMoveUnits(TArray<uint32>(UnitIds), Target, bQueue);
+		HOLRpcScriptRoute_Haldir1117n::OrderSend(TEXT("Move"), Target.X, UnitIds.Num());
+		if (HOLRpcScriptRoute_Haldir1117n::OrderScriptOn())
+		{
+			// D846: the script RPC actor takes it; a call it did not take is only logged (no C++ fallback: the script is what is measured).
+			if (!HOLRpcScriptRoute_Haldir1117n::RouteMove(this, UnitIds, Target, bQueue)) { HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("Move")); }
+		}
+		else
+		{
+			ServerMoveUnits(TArray<uint32>(UnitIds), Target, bQueue);
+		}
 	}
 }
 
@@ -4279,7 +4308,16 @@ void AHOLPlayerController::RequestAttackUnit(const TConstArrayView<uint32> UnitI
 {
 	if (UnitIds.Num() > 0 && TargetUnitId != 0)
 	{
-		ServerAttackUnit(TArray<uint32>(UnitIds), TargetUnitId, bQueue);
+		HOLRpcScriptRoute_Haldir1117n::OrderSend(TEXT("AttackUnit"), static_cast<double>(TargetUnitId), UnitIds.Num());
+		if (HOLRpcScriptRoute_Haldir1117n::OrderScriptOn())
+		{
+			// D846: the script RPC actor takes it; a call it did not take is only logged (no C++ fallback: the script is what is measured).
+			if (!HOLRpcScriptRoute_Haldir1117n::RouteAttackUnit(this, UnitIds, TargetUnitId, bQueue)) { HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("AttackUnit")); }
+		}
+		else
+		{
+			ServerAttackUnit(TArray<uint32>(UnitIds), TargetUnitId, bQueue);
+		}
 	}
 }
 
@@ -4287,12 +4325,28 @@ void AHOLPlayerController::RequestHealUnit(const TConstArrayView<uint32> UnitIds
 {
 	if (UnitIds.Num() > 0 && TargetUnitId != 0)
 	{
-		ServerHealUnit(TArray<uint32>(UnitIds), TargetUnitId, bQueue);
+		HOLRpcScriptRoute_Haldir1117n::OrderSend(TEXT("HealUnit"), static_cast<double>(TargetUnitId), UnitIds.Num());
+		if (HOLRpcScriptRoute_Haldir1117n::OrderScriptOn())
+		{
+			// D846: the script RPC actor takes it; a call it did not take is only logged (no C++ fallback: the script is what is measured).
+			if (!HOLRpcScriptRoute_Haldir1117n::RouteHealUnit(this, UnitIds, TargetUnitId, bQueue)) { HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("HealUnit")); }
+		}
+		else
+		{
+			ServerHealUnit(TArray<uint32>(UnitIds), TargetUnitId, bQueue);
+		}
 	}
 }
 
+// D846: the RPC (UFUNCTION(Server), kept) forwards to DoHealUnit, the body both the C++ RPC and the script RPC actor's bridge (friend UHOLRpcBridgeLibrary) call.
 void AHOLPlayerController::ServerHealUnit_Implementation(const TArray<uint32>& UnitIds, const uint32 TargetUnitId, const bool bQueue)
 {
+	DoHealUnit(UnitIds, TargetUnitId, bQueue);
+}
+
+void AHOLPlayerController::DoHealUnit(const TArray<uint32>& UnitIds, const uint32 TargetUnitId, const bool bQueue)
+{
+	HOLRpcScriptRoute_Haldir1117n::OrderRecv(TEXT("HealUnit"), static_cast<double>(TargetUnitId), UnitIds.Num());
 	// The units walk to the ally as a move order would (D288: the player's own units alone); the ones that heal also take it as the unit
 	// to heal first (HOLHealProcessor); an enemy or an unknown unit is no order at all.
 	const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
@@ -4337,7 +4391,16 @@ void AHOLPlayerController::RequestAttackMove(const TConstArrayView<uint32> UnitI
 {
 	if (UnitIds.Num() > 0)
 	{
-		ServerAttackMove(TArray<uint32>(UnitIds), Target, bQueue);
+		HOLRpcScriptRoute_Haldir1117n::OrderSend(TEXT("AttackMove"), Target.X, UnitIds.Num());
+		if (HOLRpcScriptRoute_Haldir1117n::OrderScriptOn())
+		{
+			// D846: the script RPC actor takes it; a call it did not take is only logged (no C++ fallback: the script is what is measured).
+			if (!HOLRpcScriptRoute_Haldir1117n::RouteAttackMove(this, UnitIds, Target, bQueue)) { HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("AttackMove")); }
+		}
+		else
+		{
+			ServerAttackMove(TArray<uint32>(UnitIds), Target, bQueue);
+		}
 	}
 }
 
@@ -4345,7 +4408,16 @@ void AHOLPlayerController::RequestStopUnits(const TConstArrayView<uint32> UnitId
 {
 	if (UnitIds.Num() > 0)
 	{
-		ServerStopUnits(TArray<uint32>(UnitIds), bHold);
+		HOLRpcScriptRoute_Haldir1117n::OrderSend(TEXT("Stop"), 0.0, UnitIds.Num());
+		if (HOLRpcScriptRoute_Haldir1117n::OrderScriptOn())
+		{
+			// D846: the script RPC actor takes it; a call it did not take is only logged (no C++ fallback: the script is what is measured).
+			if (!HOLRpcScriptRoute_Haldir1117n::RouteStop(this, UnitIds, bHold)) { HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("Stop")); }
+		}
+		else
+		{
+			ServerStopUnits(TArray<uint32>(UnitIds), bHold);
+		}
 	}
 }
 
@@ -4353,7 +4425,34 @@ void AHOLPlayerController::RequestToggleDeploy(const TConstArrayView<uint32> Uni
 {
 	if (UnitIds.Num() > 0)
 	{
-		ServerToggleDeploy(TArray<uint32>(UnitIds));
+		HOLRpcScriptRoute_Haldir1117n::OrderSend(TEXT("ToggleDeploy"), 0.0, UnitIds.Num());
+		if (HOLRpcScriptRoute_Haldir1117n::OrderScriptOn())
+		{
+			// D846: the script RPC actor takes it; a call it did not take is only logged (no C++ fallback: the script is what is measured).
+			if (!HOLRpcScriptRoute_Haldir1117n::RouteToggleDeploy(this, UnitIds)) { HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("ToggleDeploy")); }
+		}
+		else
+		{
+			ServerToggleDeploy(TArray<uint32>(UnitIds));
+		}
+	}
+}
+
+// D846: the right-button drag was a direct RPC call in OrderLineAt; it is a Request now (the route, the cvar and the measure need one). Same behaviour: no unit, no order.
+void AHOLPlayerController::RequestMoveUnitsInLine(const TConstArrayView<uint32> UnitIds, const FVector& Start, const FVector& End, const bool bWidth, const bool bQueue)
+{
+	if (UnitIds.Num() > 0)
+	{
+		HOLRpcScriptRoute_Haldir1117n::OrderSend(TEXT("MoveInLine"), Start.X, UnitIds.Num());
+		if (HOLRpcScriptRoute_Haldir1117n::OrderScriptOn())
+		{
+			// D846: the script RPC actor takes it; a call it did not take is only logged (no C++ fallback: the script is what is measured).
+			if (!HOLRpcScriptRoute_Haldir1117n::RouteMoveInLine(this, UnitIds, Start, End, bWidth, bQueue)) { HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("MoveInLine")); }
+		}
+		else
+		{
+			ServerMoveUnitsInLine(TArray<uint32>(UnitIds), Start, End, bWidth, bQueue);
+		}
 	}
 }
 
@@ -4444,7 +4543,16 @@ void AHOLPlayerController::RequestGatherUnits(const TConstArrayView<uint32> Unit
 {
 	if (UnitIds.Num() > 0 && SourceIndex != INDEX_NONE)
 	{
-		ServerGatherUnits(TArray<uint32>(UnitIds), SourceIndex, bQueue);
+		HOLRpcScriptRoute_Haldir1117n::OrderSend(TEXT("Gather"), static_cast<double>(SourceIndex), UnitIds.Num());
+		if (HOLRpcScriptRoute_Haldir1117n::OrderScriptOn())
+		{
+			// D846: the script RPC actor takes it; a call it did not take is only logged (no C++ fallback: the script is what is measured).
+			if (!HOLRpcScriptRoute_Haldir1117n::RouteGather(this, UnitIds, SourceIndex, bQueue)) { HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("Gather")); }
+		}
+		else
+		{
+			ServerGatherUnits(TArray<uint32>(UnitIds), SourceIndex, bQueue);
+		}
 	}
 }
 
@@ -4452,10 +4560,27 @@ void AHOLPlayerController::RequestRallyPoint(const FVector& Point, const int32 S
 {
 	if (AHOLBuilding* Building = GetOwnSelection())
 	{
-		ServerSetRallyPoint(Building, Point, SourceIndex, Site, bQueue);
+		RequestSetRallyPointOf(Building, Point, SourceIndex, Site, bQueue);
 	}
 }
 
+// D846: the rally point of ONE building (the group's salve sends one RPC per producing building, as before); the same Request for the selected one and each of the group.
+void AHOLPlayerController::RequestSetRallyPointOf(AHOLBuilding* Building, const FVector& Point, const int32 SourceIndex, AHOLBuilding* Site, const bool bQueue)
+{
+	if (Building)
+	{
+		HOLRpcScriptRoute_Haldir1117n::OrderSend(TEXT("SetRally"), Point.X, 0);
+		if (HOLRpcScriptRoute_Haldir1117n::OrderScriptOn())
+		{
+			// D846: the script RPC actor takes it; a call it did not take is only logged (no C++ fallback: the script is what is measured).
+			if (!HOLRpcScriptRoute_Haldir1117n::RouteSetRally(this, Building, Point, SourceIndex, Site, bQueue)) { HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("SetRally")); }
+		}
+		else
+		{
+			ServerSetRallyPoint(Building, Point, SourceIndex, Site, bQueue);
+		}
+	}
+}
 void AHOLPlayerController::BeginPlacement(const FName TypeName)
 {
 	if (IsSpectator())
@@ -4630,7 +4755,16 @@ void AHOLPlayerController::RequestPlaceBuilding(const FName TypeName, const FVec
 			// The brief mark of an order (J4.6) on the foundation they go to (D313).
 			OnOrderGiven.Broadcast(Point);
 		}
-		ServerPlaceBuilding(TypeName, Point, Builders, bQueue);
+		HOLRpcScriptRoute_Haldir1117n::OrderSend(TEXT("PlaceBuilding"), Point.X, Builders.Num());
+		if (HOLRpcScriptRoute_Haldir1117n::OrderScriptOn())
+		{
+			// D846: the script RPC actor takes it; a call it did not take is only logged (no C++ fallback: the script is what is measured).
+			if (!HOLRpcScriptRoute_Haldir1117n::RoutePlaceBuilding(this, TypeName, Point, Builders, bQueue)) { HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("PlaceBuilding")); }
+		}
+		else
+		{
+			ServerPlaceBuilding(TypeName, Point, Builders, bQueue);
+		}
 	}
 }
 
@@ -4638,12 +4772,28 @@ void AHOLPlayerController::RequestBuildUnits(const TConstArrayView<uint32> UnitI
 {
 	if (UnitIds.Num() > 0 && Building)
 	{
-		ServerBuildUnits(TArray<uint32>(UnitIds), Building, bQueue);
+		HOLRpcScriptRoute_Haldir1117n::OrderSend(TEXT("BuildUnits"), Building->GetActorLocation().X, UnitIds.Num());
+		if (HOLRpcScriptRoute_Haldir1117n::OrderScriptOn())
+		{
+			// D846: the script RPC actor takes it; a call it did not take is only logged (no C++ fallback: the script is what is measured).
+			if (!HOLRpcScriptRoute_Haldir1117n::RouteBuildUnits(this, UnitIds, Building, bQueue)) { HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("BuildUnits")); }
+		}
+		else
+		{
+			ServerBuildUnits(TArray<uint32>(UnitIds), Building, bQueue);
+		}
 	}
 }
 
+// D846: the RPC (UFUNCTION(Server), kept) forwards to DoBuildUnits, the body both the C++ RPC and the script RPC actor's bridge (friend UHOLRpcBridgeLibrary) call.
 void AHOLPlayerController::ServerBuildUnits_Implementation(const TArray<uint32>& UnitIds, AHOLBuilding* Building, const bool bQueue)
 {
+	DoBuildUnits(UnitIds, Building, bQueue);
+}
+
+void AHOLPlayerController::DoBuildUnits(const TArray<uint32>& UnitIds, AHOLBuilding* Building, const bool bQueue)
+{
+	HOLRpcScriptRoute_Haldir1117n::OrderRecv(TEXT("BuildUnits"), Building ? Building->GetActorLocation().X : 0.0, UnitIds.Num());
 	// The order names the player: only its own units, on its own site (D288; checked again by the builders' step); the
 	// rule of every slot's orders (IA0.2): the cap, the soldiers walking to the site.
 	if (const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState())
@@ -4656,13 +4806,28 @@ void AHOLPlayerController::RequestDropOffUnits(const TConstArrayView<uint32> Uni
 {
 	if (UnitIds.Num() > 0 && Building)
 	{
-		ServerDropOffUnits(TArray<uint32>(UnitIds), Building, Point, bQueue);
+		HOLRpcScriptRoute_Haldir1117n::OrderSend(TEXT("DropOff"), Point.X, UnitIds.Num());
+		if (HOLRpcScriptRoute_Haldir1117n::OrderScriptOn())
+		{
+			// D846: the script RPC actor takes it; a call it did not take is only logged (no C++ fallback: the script is what is measured).
+			if (!HOLRpcScriptRoute_Haldir1117n::RouteDropOff(this, UnitIds, Building, Point, bQueue)) { HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("DropOff")); }
+		}
+		else
+		{
+			ServerDropOffUnits(TArray<uint32>(UnitIds), Building, Point, bQueue);
+		}
 	}
 }
 
-void AHOLPlayerController::ServerDropOffUnits_Implementation(const TArray<uint32>& UnitIds, AHOLBuilding* Building, const FVector_NetQuantize Point,
-	const bool bQueue)
+// D846: the RPC (UFUNCTION(Server), kept) forwards to DoDropOffUnits, the body both the C++ RPC and the script RPC actor's bridge (friend UHOLRpcBridgeLibrary) call.
+void AHOLPlayerController::ServerDropOffUnits_Implementation(const TArray<uint32>& UnitIds, AHOLBuilding* Building, const FVector_NetQuantize Point, const bool bQueue)
 {
+	DoDropOffUnits(UnitIds, Building, Point, bQueue);
+}
+
+void AHOLPlayerController::DoDropOffUnits(const TArray<uint32>& UnitIds, AHOLBuilding* Building, const FVector_NetQuantize Point, const bool bQueue)
+{
+	HOLRpcScriptRoute_Haldir1117n::OrderRecv(TEXT("DropOff"), Point.X, UnitIds.Num());
 	// The order names the player: only its own units, at its own building (D288, D485; checked again by the gatherers' step).
 	if (const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState())
 	{
@@ -4674,7 +4839,16 @@ void AHOLPlayerController::RequestGarrisonUnits(const TConstArrayView<uint32> Un
 {
 	if (!IsSpectator() && UnitIds.Num() > 0 && Building)
 	{
-		ServerGarrisonUnits(TArray<uint32>(UnitIds), Building);
+		HOLRpcScriptRoute_Haldir1117n::OrderSend(TEXT("Garrison"), Building->GetActorLocation().X, UnitIds.Num());
+		if (HOLRpcScriptRoute_Haldir1117n::OrderScriptOn())
+		{
+			// D846: the script RPC actor takes it; a call it did not take is only logged (no C++ fallback: the script is what is measured).
+			if (!HOLRpcScriptRoute_Haldir1117n::RouteGarrison(this, UnitIds, Building)) { HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("Garrison")); }
+		}
+		else
+		{
+			ServerGarrisonUnits(TArray<uint32>(UnitIds), Building);
+		}
 	}
 }
 
@@ -4683,12 +4857,28 @@ void AHOLPlayerController::RequestUngarrisonAll(AHOLBuilding* Building)
 	if (!IsSpectator() && Building)
 	{
 		UE_LOG(LogHOLMatch, Display, TEXT("Exit all request: %s"), *DescribeBuilding(Building));
-		ServerUngarrisonAll(Building);
+		HOLRpcScriptRoute_Haldir1117n::OrderSend(TEXT("UngarrisonAll"), Building->GetActorLocation().X, 0);
+		if (HOLRpcScriptRoute_Haldir1117n::OrderScriptOn())
+		{
+			// D846: the script RPC actor takes it; a call it did not take is only logged (no C++ fallback: the script is what is measured).
+			if (!HOLRpcScriptRoute_Haldir1117n::RouteUngarrisonAll(this, Building)) { HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("UngarrisonAll")); }
+		}
+		else
+		{
+			ServerUngarrisonAll(Building);
+		}
 	}
 }
 
+// D846: the RPC (UFUNCTION(Server), kept) forwards to DoGarrisonUnits, the body both the C++ RPC and the script RPC actor's bridge (friend UHOLRpcBridgeLibrary) call.
 void AHOLPlayerController::ServerGarrisonUnits_Implementation(const TArray<uint32>& UnitIds, AHOLBuilding* Building)
 {
+	DoGarrisonUnits(UnitIds, Building);
+}
+
+void AHOLPlayerController::DoGarrisonUnits(const TArray<uint32>& UnitIds, AHOLBuilding* Building)
+{
+	HOLRpcScriptRoute_Haldir1117n::OrderRecv(TEXT("Garrison"), Building ? Building->GetActorLocation().X : 0.0, UnitIds.Num());
 	// The order names the player: its own units, its own building (D374); the garrison checks the kinds and the places at the step.
 	if (const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState())
 	{
@@ -4696,8 +4886,15 @@ void AHOLPlayerController::ServerGarrisonUnits_Implementation(const TArray<uint3
 	}
 }
 
+// D846: the RPC (UFUNCTION(Server), kept) forwards to DoUngarrisonAll, the body both the C++ RPC and the script RPC actor's bridge (friend UHOLRpcBridgeLibrary) call.
 void AHOLPlayerController::ServerUngarrisonAll_Implementation(AHOLBuilding* Building)
 {
+	DoUngarrisonAll(Building);
+}
+
+void AHOLPlayerController::DoUngarrisonAll(AHOLBuilding* Building)
+{
+	HOLRpcScriptRoute_Haldir1117n::OrderRecv(TEXT("UngarrisonAll"), Building ? Building->GetActorLocation().X : 0.0, 0);
 	if (const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState())
 	{
 		HOLPlayerOrders::UngarrisonAll(*GetWorld(), HOLPlayerState->GetPlayerIndex(), Building);
@@ -4713,13 +4910,28 @@ void AHOLPlayerController::RequestCancelBuilding(AHOLBuilding* Building)
 	if (Building)
 	{
 		UE_LOG(LogHOLMatch, Display, TEXT("Cancel request: %s"), *DescribeBuilding(Building));
-		ServerCancelBuilding(Building);
+		HOLRpcScriptRoute_Haldir1117n::OrderSend(TEXT("CancelBuilding"), Building->GetActorLocation().X, 0);
+		if (HOLRpcScriptRoute_Haldir1117n::OrderScriptOn())
+		{
+			// D846: the script RPC actor takes it; a call it did not take is only logged (no C++ fallback: the script is what is measured).
+			if (!HOLRpcScriptRoute_Haldir1117n::RouteCancelBuilding(this, Building)) { HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("CancelBuilding")); }
+		}
+		else
+		{
+			ServerCancelBuilding(Building);
+		}
 	}
 }
 
-void AHOLPlayerController::ServerPlaceBuilding_Implementation(const FName TypeName, const FVector_NetQuantize Point, const TArray<uint32>& UnitIds,
-	const bool bQueue)
+// D846: the RPC (UFUNCTION(Server), kept) forwards to DoPlaceBuilding, the body both the C++ RPC and the script RPC actor's bridge (friend UHOLRpcBridgeLibrary) call.
+void AHOLPlayerController::ServerPlaceBuilding_Implementation(const FName TypeName, const FVector_NetQuantize Point, const TArray<uint32>& UnitIds, const bool bQueue)
 {
+	DoPlaceBuilding(TypeName, Point, UnitIds, bQueue);
+}
+
+void AHOLPlayerController::DoPlaceBuilding(const FName TypeName, const FVector_NetQuantize Point, const TArray<uint32>& UnitIds, const bool bQueue)
+{
+	HOLRpcScriptRoute_Haldir1117n::OrderRecv(TEXT("PlaceBuilding"), Point.X, UnitIds.Num());
 	// The order names the player: it pays and owns the foundation (D288); the server checks everything again.
 	if (const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState())
 	{
@@ -4727,8 +4939,15 @@ void AHOLPlayerController::ServerPlaceBuilding_Implementation(const FName TypeNa
 	}
 }
 
+// D846: the RPC (UFUNCTION(Server), kept) forwards to DoCancelBuilding, the body both the C++ RPC and the script RPC actor's bridge (friend UHOLRpcBridgeLibrary) call.
 void AHOLPlayerController::ServerCancelBuilding_Implementation(AHOLBuilding* Building)
 {
+	DoCancelBuilding(Building);
+}
+
+void AHOLPlayerController::DoCancelBuilding(AHOLBuilding* Building)
+{
+	HOLRpcScriptRoute_Haldir1117n::OrderRecv(TEXT("CancelBuilding"), Building ? Building->GetActorLocation().X : 0.0, 0);
 	const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
 	UHOLCommandSubsystem* Commands = GetWorld()->GetSubsystem<UHOLCommandSubsystem>();
 	if (Building && HOLPlayerState && Commands)
@@ -5232,10 +5451,39 @@ namespace HOLRpcScriptRoute_Haldir1117n
 		UE_LOG(LogHOLMatch, Error, TEXT("RpcRoute: %s not sent: no script RPC actor / function"), Name);
 	}
 
+	// D846: ONE cvar for the 16 order RPCs, read here, declared by the script like the others (absent = 0 = the C++ RPC stays).
+	const TCHAR* const OrderScriptCVarName = TEXT("hol.Rpc.OrderScript");
+
+	bool OrderScriptOn()
+	{
+		return IsOn(OrderScriptCVarName);
+	}
+
+	// D846 (measure, C++: it is the clock of both processes): the send time on the client (before the switch, the same in both modes) and the receive time on the server (first line of Do<X>, the common point of both modes).
+	// The key is the target point's X (one per order, 1000 + n), so the two lines pair without any field added to the RPC. Behind hol.Rpc.OrderTrace (0 = no line).
+	void OrderSend(const TCHAR* Kind, const double Key, const int32 Units)
+	{
+		if (IsOn(TEXT("hol.Rpc.OrderTrace")))
+		{
+			UE_LOG(LogHOLMatch, Display, TEXT("OrderSend kind=%s key=%.0f units=%d mode=%d t=%.6f"), Kind, Key, Units, OrderScriptOn() ? 1 : 0, FPlatformTime::Seconds());
+		}
+	}
+
+	void OrderRecv(const TCHAR* Kind, const double Key, const int32 Units)
+	{
+		if (IsOn(TEXT("hol.Rpc.OrderTrace")))
+		{
+			UE_LOG(LogHOLMatch, Display, TEXT("OrderRecv kind=%s key=%.0f units=%d t=%.6f"), Kind, Key, Units, FPlatformTime::Seconds());
+		}
+	}
+
 	// Calls the script actor's RPC by name (Server from a client, or Client from the server: HALDIR-1117p). Int arguments (bool as 0 / 1) fill the bool / int32 / uint32 parameters in order,
 	// Text the FString parameter and Location the FVector one. false: no actor, no such function (script not loaded): the caller logs it (LogNotSent), nothing else is sent (D845).
-	bool CallFull(AHOLPlayerController* Controller, const TCHAR* CVarName, const TCHAR* FunctionName, const TArrayView<const int32> Args, const FString* Text, const FVector* Location, UObject* Object, const FName* Name, const TArray<int32>* Array = nullptr)
+	// D846: Location2 / Object2 are the SECOND vector / object parameter of the function (MoveInLine: Start, End; SetRallyPoint: Building, Site); the ids go by Array. All additive (default nullptr).
+	bool CallFull(AHOLPlayerController* Controller, const TCHAR* CVarName, const TCHAR* FunctionName, const TArrayView<const int32> Args, const FString* Text, const FVector* Location, UObject* Object, const FName* Name, const TArray<int32>* Array = nullptr, const FVector* Location2 = nullptr, UObject* Object2 = nullptr)
 	{
+		int32 ObjectSeen = 0;
+		int32 StructSeen = 0;
 		if (!Controller || (CVarName && !IsOn(CVarName)))
 		{
 			return false;
@@ -5265,9 +5513,9 @@ namespace HOLRpcScriptRoute_Haldir1117n
 			}
 			else if (const FObjectPropertyBase* ObjectProperty = CastField<FObjectPropertyBase>(*It))
 				{
-					if (Object)
+					if (Object || Object2)
 					{
-						ObjectProperty->SetObjectPropertyValue(ObjectProperty->ContainerPtrToValuePtr<void>(Params.GetData()), Object);
+						ObjectProperty->SetObjectPropertyValue(ObjectProperty->ContainerPtrToValuePtr<void>(Params.GetData()), ObjectSeen++ == 0 ? Object : Object2);
 					}
 				}
 			else if (const FNameProperty* NameProperty = CastField<FNameProperty>(*It))
@@ -5282,7 +5530,7 @@ namespace HOLRpcScriptRoute_Haldir1117n
 				// FVector, or FVector_NetQuantize (same layout, a child of FVector; the name test covers a struct whose super is not set).
 				if (Location && (StructProperty->Struct->IsChildOf(TBaseStructure<FVector>::Get()) || StructProperty->Struct->GetFName() == FName(TEXT("Vector_NetQuantize"))))
 				{
-					*StructProperty->ContainerPtrToValuePtr<FVector>(Params.GetData()) = *Location;
+					*StructProperty->ContainerPtrToValuePtr<FVector>(Params.GetData()) = (StructSeen++ == 0 || !Location2) ? *Location : *Location2;
 				}
 			}
 			else if (const FArrayProperty* ArrayProperty = CastField<FArrayProperty>(*It))
@@ -5370,6 +5618,126 @@ namespace HOLRpcScriptRoute_Haldir1117n
 	bool RouteCastRage(AHOLPlayerController* Controller, const TArray<int32>& UnitIds)
 	{
 		return CallFull(Controller, nullptr, TEXT("ServerCastRage"), TArrayView<const int32>(), nullptr, nullptr, nullptr, nullptr, &UnitIds);
+	}
+
+	// D846: the 16 order routes. The ids go as the Array parameter (uint32 -> int32 -> uint32 again in CallFull), the bool / int / uint32 / enum in Args in declaration order,
+	// the objects and the points in declaration order (second one by Object2 / Location2). The cvar is read by CallFull: false = nothing sent (the caller logs it with LogNotSent).
+	TArray<int32> ToIds(const TConstArrayView<uint32> UnitIds)
+	{
+		TArray<int32> Ids;
+		Ids.Reserve(UnitIds.Num());
+		for (const uint32 UnitId : UnitIds)
+		{
+			Ids.Add(static_cast<int32>(UnitId));
+		}
+		return Ids;
+	}
+
+	bool RouteMove(AHOLPlayerController* Controller, const TConstArrayView<uint32> UnitIds, const FVector& Target, const bool bQueue)
+	{
+		const TArray<int32> Ids = ToIds(UnitIds);
+		const int32 Args[1] = { bQueue ? 1 : 0 };
+		return CallFull(Controller, OrderScriptCVarName, TEXT("ServerMoveUnits"), TArrayView<const int32>(Args, 1), nullptr, &Target, nullptr, nullptr, &Ids);
+	}
+
+	bool RouteAttackUnit(AHOLPlayerController* Controller, const TConstArrayView<uint32> UnitIds, const uint32 TargetUnitId, const bool bQueue)
+	{
+		const TArray<int32> Ids = ToIds(UnitIds);
+		const int32 Args[2] = { static_cast<int32>(TargetUnitId), bQueue ? 1 : 0 };
+		return CallFull(Controller, OrderScriptCVarName, TEXT("ServerAttackUnit"), TArrayView<const int32>(Args, 2), nullptr, nullptr, nullptr, nullptr, &Ids);
+	}
+
+	bool RouteHealUnit(AHOLPlayerController* Controller, const TConstArrayView<uint32> UnitIds, const uint32 TargetUnitId, const bool bQueue)
+	{
+		const TArray<int32> Ids = ToIds(UnitIds);
+		const int32 Args[2] = { static_cast<int32>(TargetUnitId), bQueue ? 1 : 0 };
+		return CallFull(Controller, OrderScriptCVarName, TEXT("ServerHealUnit"), TArrayView<const int32>(Args, 2), nullptr, nullptr, nullptr, nullptr, &Ids);
+	}
+
+	bool RouteAttackBuilding(AHOLPlayerController* Controller, const TConstArrayView<uint32> UnitIds, AHOLBuilding* Building, const bool bQueue)
+	{
+		const TArray<int32> Ids = ToIds(UnitIds);
+		const int32 Args[1] = { bQueue ? 1 : 0 };
+		return CallFull(Controller, OrderScriptCVarName, TEXT("ServerAttackBuilding"), TArrayView<const int32>(Args, 1), nullptr, nullptr, Building, nullptr, &Ids);
+	}
+
+	bool RouteAttackMove(AHOLPlayerController* Controller, const TConstArrayView<uint32> UnitIds, const FVector& Target, const bool bQueue)
+	{
+		const TArray<int32> Ids = ToIds(UnitIds);
+		const int32 Args[1] = { bQueue ? 1 : 0 };
+		return CallFull(Controller, OrderScriptCVarName, TEXT("ServerAttackMove"), TArrayView<const int32>(Args, 1), nullptr, &Target, nullptr, nullptr, &Ids);
+	}
+
+	bool RouteStop(AHOLPlayerController* Controller, const TConstArrayView<uint32> UnitIds, const bool bHold)
+	{
+		const TArray<int32> Ids = ToIds(UnitIds);
+		const int32 Args[1] = { bHold ? 1 : 0 };
+		return CallFull(Controller, OrderScriptCVarName, TEXT("ServerStopUnits"), TArrayView<const int32>(Args, 1), nullptr, nullptr, nullptr, nullptr, &Ids);
+	}
+
+	bool RouteToggleDeploy(AHOLPlayerController* Controller, const TConstArrayView<uint32> UnitIds)
+	{
+		const TArray<int32> Ids = ToIds(UnitIds);
+		return CallFull(Controller, OrderScriptCVarName, TEXT("ServerToggleDeploy"), TArrayView<const int32>(), nullptr, nullptr, nullptr, nullptr, &Ids);
+	}
+
+	// Two points: Start by Location, End by Location2 (a single Location would write Start into both, silently).
+	bool RouteMoveInLine(AHOLPlayerController* Controller, const TConstArrayView<uint32> UnitIds, const FVector& Start, const FVector& End, const bool bWidth, const bool bQueue)
+	{
+		const TArray<int32> Ids = ToIds(UnitIds);
+		const int32 Args[2] = { bWidth ? 1 : 0, bQueue ? 1 : 0 };
+		return CallFull(Controller, OrderScriptCVarName, TEXT("ServerMoveUnitsInLine"), TArrayView<const int32>(Args, 2), nullptr, &Start, nullptr, nullptr, &Ids, &End);
+	}
+
+	bool RouteGather(AHOLPlayerController* Controller, const TConstArrayView<uint32> UnitIds, const int32 SourceIndex, const bool bQueue)
+	{
+		const TArray<int32> Ids = ToIds(UnitIds);
+		const int32 Args[2] = { SourceIndex, bQueue ? 1 : 0 };
+		return CallFull(Controller, OrderScriptCVarName, TEXT("ServerGatherUnits"), TArrayView<const int32>(Args, 2), nullptr, nullptr, nullptr, nullptr, &Ids);
+	}
+
+	bool RoutePlaceBuilding(AHOLPlayerController* Controller, const FName TypeName, const FVector& Point, const TConstArrayView<uint32> UnitIds, const bool bQueue)
+	{
+		const TArray<int32> Ids = ToIds(UnitIds);
+		const int32 Args[1] = { bQueue ? 1 : 0 };
+		return CallFull(Controller, OrderScriptCVarName, TEXT("ServerPlaceBuilding"), TArrayView<const int32>(Args, 1), nullptr, &Point, nullptr, &TypeName, &Ids);
+	}
+
+	bool RouteBuildUnits(AHOLPlayerController* Controller, const TConstArrayView<uint32> UnitIds, AHOLBuilding* Building, const bool bQueue)
+	{
+		const TArray<int32> Ids = ToIds(UnitIds);
+		const int32 Args[1] = { bQueue ? 1 : 0 };
+		return CallFull(Controller, OrderScriptCVarName, TEXT("ServerBuildUnits"), TArrayView<const int32>(Args, 1), nullptr, nullptr, Building, nullptr, &Ids);
+	}
+
+	bool RouteDropOff(AHOLPlayerController* Controller, const TConstArrayView<uint32> UnitIds, AHOLBuilding* Building, const FVector& Point, const bool bQueue)
+	{
+		const TArray<int32> Ids = ToIds(UnitIds);
+		const int32 Args[1] = { bQueue ? 1 : 0 };
+		return CallFull(Controller, OrderScriptCVarName, TEXT("ServerDropOffUnits"), TArrayView<const int32>(Args, 1), nullptr, &Point, Building, nullptr, &Ids);
+	}
+
+	bool RouteGarrison(AHOLPlayerController* Controller, const TConstArrayView<uint32> UnitIds, AHOLBuilding* Building)
+	{
+		const TArray<int32> Ids = ToIds(UnitIds);
+		return CallFull(Controller, OrderScriptCVarName, TEXT("ServerGarrisonUnits"), TArrayView<const int32>(), nullptr, nullptr, Building, nullptr, &Ids);
+	}
+
+	bool RouteUngarrisonAll(AHOLPlayerController* Controller, AHOLBuilding* Building)
+	{
+		return CallFull(Controller, OrderScriptCVarName, TEXT("ServerUngarrisonAll"), TArrayView<const int32>(), nullptr, nullptr, Building, nullptr);
+	}
+
+	bool RouteCancelBuilding(AHOLPlayerController* Controller, AHOLBuilding* Building)
+	{
+		return CallFull(Controller, OrderScriptCVarName, TEXT("ServerCancelBuilding"), TArrayView<const int32>(), nullptr, nullptr, Building, nullptr);
+	}
+
+	// Two buildings: Building by Object, Site by Object2 (a single Object would put the building in both, silently); the source index and bQueue are the ints.
+	bool RouteSetRally(AHOLPlayerController* Controller, AHOLBuilding* Building, const FVector& Point, const int32 SourceIndex, AHOLBuilding* Site, const bool bQueue)
+	{
+		const int32 Args[2] = { SourceIndex, bQueue ? 1 : 0 };
+		return CallFull(Controller, OrderScriptCVarName, TEXT("ServerSetRallyPoint"), TArrayView<const int32>(Args, 2), nullptr, &Point, Building, nullptr, nullptr, nullptr, Site);
 	}
 
 	// The int-only form (the HALDIR-1117n / 1117o routes).
@@ -5816,8 +6184,15 @@ void AHOLPlayerController::DoCheatGatherSpeed(const float Scale)
 #endif
 }
 
+// D846: the RPC (UFUNCTION(Server), kept) forwards to DoMoveUnits, the body both the C++ RPC and the script RPC actor's bridge (friend UHOLRpcBridgeLibrary) call.
 void AHOLPlayerController::ServerMoveUnits_Implementation(const TArray<uint32>& UnitIds, const FVector_NetQuantize Target, const bool bQueue)
 {
+	DoMoveUnits(UnitIds, Target, bQueue);
+}
+
+void AHOLPlayerController::DoMoveUnits(const TArray<uint32>& UnitIds, const FVector_NetQuantize Target, const bool bQueue)
+{
+	HOLRpcScriptRoute_Haldir1117n::OrderRecv(TEXT("Move"), Target.X, UnitIds.Num());
 	// The order names the player: the simulation moves only its own units (D288), a client could send any identifier; the
 	// rule of every slot's orders (IA0.2, HOLPlayerOrders): its slot, the cap, the chains.
 	if (const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState())
@@ -5826,8 +6201,15 @@ void AHOLPlayerController::ServerMoveUnits_Implementation(const TArray<uint32>& 
 	}
 }
 
+// D846: the RPC (UFUNCTION(Server), kept) forwards to DoAttackUnit, the body both the C++ RPC and the script RPC actor's bridge (friend UHOLRpcBridgeLibrary) call.
 void AHOLPlayerController::ServerAttackUnit_Implementation(const TArray<uint32>& UnitIds, const uint32 TargetUnitId, const bool bQueue)
 {
+	DoAttackUnit(UnitIds, TargetUnitId, bQueue);
+}
+
+void AHOLPlayerController::DoAttackUnit(const TArray<uint32>& UnitIds, const uint32 TargetUnitId, const bool bQueue)
+{
+	HOLRpcScriptRoute_Haldir1117n::OrderRecv(TEXT("AttackUnit"), static_cast<double>(TargetUnitId), UnitIds.Num());
 	// As ServerMoveUnits (D288): the player's own units alone; the order processor checks the target (an enemy unit alive).
 	if (const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState())
 	{
@@ -5839,12 +6221,28 @@ void AHOLPlayerController::RequestAttackBuilding(const TConstArrayView<uint32> U
 {
 	if (UnitIds.Num() > 0 && Building)
 	{
-		ServerAttackBuilding(TArray<uint32>(UnitIds), Building, bQueue);
+		HOLRpcScriptRoute_Haldir1117n::OrderSend(TEXT("AttackBuilding"), Building->GetActorLocation().X, UnitIds.Num());
+		if (HOLRpcScriptRoute_Haldir1117n::OrderScriptOn())
+		{
+			// D846: the script RPC actor takes it; a call it did not take is only logged (no C++ fallback: the script is what is measured).
+			if (!HOLRpcScriptRoute_Haldir1117n::RouteAttackBuilding(this, UnitIds, Building, bQueue)) { HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("AttackBuilding")); }
+		}
+		else
+		{
+			ServerAttackBuilding(TArray<uint32>(UnitIds), Building, bQueue);
+		}
 	}
 }
 
+// D846: the RPC (UFUNCTION(Server), kept) forwards to DoAttackBuilding, the body both the C++ RPC and the script RPC actor's bridge (friend UHOLRpcBridgeLibrary) call.
 void AHOLPlayerController::ServerAttackBuilding_Implementation(const TArray<uint32>& UnitIds, AHOLBuilding* Building, const bool bQueue)
 {
+	DoAttackBuilding(UnitIds, Building, bQueue);
+}
+
+void AHOLPlayerController::DoAttackBuilding(const TArray<uint32>& UnitIds, AHOLBuilding* Building, const bool bQueue)
+{
+	HOLRpcScriptRoute_Haldir1117n::OrderRecv(TEXT("AttackBuilding"), Building ? Building->GetActorLocation().X : 0.0, UnitIds.Num());
 	// As ServerAttackUnit (D288): the player's own units alone; the order processor checks the building (an enemy's, standing).
 	if (const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState())
 	{
@@ -5852,33 +6250,60 @@ void AHOLPlayerController::ServerAttackBuilding_Implementation(const TArray<uint
 	}
 }
 
+// D846: the RPC (UFUNCTION(Server), kept) forwards to DoAttackMove, the body both the C++ RPC and the script RPC actor's bridge (friend UHOLRpcBridgeLibrary) call.
 void AHOLPlayerController::ServerAttackMove_Implementation(const TArray<uint32>& UnitIds, const FVector_NetQuantize Target, const bool bQueue)
 {
+	DoAttackMove(UnitIds, Target, bQueue);
+}
+
+void AHOLPlayerController::DoAttackMove(const TArray<uint32>& UnitIds, const FVector_NetQuantize Target, const bool bQueue)
+{
+	HOLRpcScriptRoute_Haldir1117n::OrderRecv(TEXT("AttackMove"), Target.X, UnitIds.Num());
 	if (const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState())
 	{
 		HOLPlayerOrders::AttackMove(*GetWorld(), HOLPlayerState->GetPlayerIndex(), UnitIds, Target, bQueue);
 	}
 }
 
+// D846: the RPC (UFUNCTION(Server), kept) forwards to DoStopUnits, the body both the C++ RPC and the script RPC actor's bridge (friend UHOLRpcBridgeLibrary) call.
 void AHOLPlayerController::ServerStopUnits_Implementation(const TArray<uint32>& UnitIds, const bool bHold)
 {
+	DoStopUnits(UnitIds, bHold);
+}
+
+void AHOLPlayerController::DoStopUnits(const TArray<uint32>& UnitIds, const bool bHold)
+{
+	HOLRpcScriptRoute_Haldir1117n::OrderRecv(TEXT("Stop"), 0.0, UnitIds.Num());
 	if (const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState())
 	{
 		HOLPlayerOrders::Stop(*GetWorld(), HOLPlayerState->GetPlayerIndex(), UnitIds, bHold);
 	}
 }
 
+// D846: the RPC (UFUNCTION(Server), kept) forwards to DoToggleDeploy, the body both the C++ RPC and the script RPC actor's bridge (friend UHOLRpcBridgeLibrary) call.
 void AHOLPlayerController::ServerToggleDeploy_Implementation(const TArray<uint32>& UnitIds)
 {
+	DoToggleDeploy(UnitIds);
+}
+
+void AHOLPlayerController::DoToggleDeploy(const TArray<uint32>& UnitIds)
+{
+	HOLRpcScriptRoute_Haldir1117n::OrderRecv(TEXT("ToggleDeploy"), 0.0, UnitIds.Num());
 	if (const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState())
 	{
 		HOLPlayerOrders::ToggleDeploy(*GetWorld(), HOLPlayerState->GetPlayerIndex(), UnitIds);
 	}
 }
 
-void AHOLPlayerController::ServerMoveUnitsInLine_Implementation(const TArray<uint32>& UnitIds, const FVector_NetQuantize Start,
-	const FVector_NetQuantize End, const bool bWidth, const bool bQueue)
+// D846: the RPC (UFUNCTION(Server), kept) forwards to DoMoveUnitsInLine, the body both the C++ RPC and the script RPC actor's bridge (friend UHOLRpcBridgeLibrary) call.
+void AHOLPlayerController::ServerMoveUnitsInLine_Implementation(const TArray<uint32>& UnitIds, const FVector_NetQuantize Start, const FVector_NetQuantize End, const bool bWidth, const bool bQueue)
 {
+	DoMoveUnitsInLine(UnitIds, Start, End, bWidth, bQueue);
+}
+
+void AHOLPlayerController::DoMoveUnitsInLine(const TArray<uint32>& UnitIds, const FVector_NetQuantize Start, const FVector_NetQuantize End, const bool bWidth, const bool bQueue)
+{
+	HOLRpcScriptRoute_Haldir1117n::OrderRecv(TEXT("MoveInLine"), Start.X, UnitIds.Num());
 	// As ServerMoveUnits (D288): the simulation moves only the player's own units. The drag is an arrow (the user's 2nd
 	// trial of J7a.4): its base (Start, where the button was pressed) is the target, the middle of the front row; the
 	// group faces Start -> End, and with Ctrl its length is the front's width.
@@ -5888,8 +6313,15 @@ void AHOLPlayerController::ServerMoveUnitsInLine_Implementation(const TArray<uin
 	}
 }
 
+// D846: the RPC (UFUNCTION(Server), kept) forwards to DoGatherUnits, the body both the C++ RPC and the script RPC actor's bridge (friend UHOLRpcBridgeLibrary) call.
 void AHOLPlayerController::ServerGatherUnits_Implementation(const TArray<uint32>& UnitIds, const int32 SourceIndex, const bool bQueue)
 {
+	DoGatherUnits(UnitIds, SourceIndex, bQueue);
+}
+
+void AHOLPlayerController::DoGatherUnits(const TArray<uint32>& UnitIds, const int32 SourceIndex, const bool bQueue)
+{
+	HOLRpcScriptRoute_Haldir1117n::OrderRecv(TEXT("Gather"), static_cast<double>(SourceIndex), UnitIds.Num());
 	// The order names the player: the gathering sends only its own units (D288), a client could send any identifier; its
 	// soldiers walk to the source (HOLPlayerOrders::SendNonWorkersTo).
 	if (const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState())
@@ -5898,9 +6330,15 @@ void AHOLPlayerController::ServerGatherUnits_Implementation(const TArray<uint32>
 	}
 }
 
-void AHOLPlayerController::ServerSetRallyPoint_Implementation(AHOLBuilding* Building, const FVector_NetQuantize Point, const int32 SourceIndex,
-	AHOLBuilding* Site, const bool bQueue)
+// D846: the RPC (UFUNCTION(Server), kept) forwards to DoSetRallyPoint, the body both the C++ RPC and the script RPC actor's bridge (friend UHOLRpcBridgeLibrary) call.
+void AHOLPlayerController::ServerSetRallyPoint_Implementation(AHOLBuilding* Building, const FVector_NetQuantize Point, const int32 SourceIndex, AHOLBuilding* Site, const bool bQueue)
 {
+	DoSetRallyPoint(Building, Point, SourceIndex, Site, bQueue);
+}
+
+void AHOLPlayerController::DoSetRallyPoint(AHOLBuilding* Building, const FVector_NetQuantize Point, const int32 SourceIndex, AHOLBuilding* Site, const bool bQueue)
+{
+	HOLRpcScriptRoute_Haldir1117n::OrderRecv(TEXT("SetRally"), Point.X, 0);
 	const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
 	UHOLCommandSubsystem* Commands = GetWorld()->GetSubsystem<UHOLCommandSubsystem>();
 	if (Building && HOLPlayerState && Commands)
@@ -6279,7 +6717,7 @@ void AHOLPlayerController::OrderLineAt(const FVector2D& Start, const FVector2D& 
 		GroundEnd.X, GroundEnd.Y, bWithWidth ? TEXT(", its width") : TEXT(""), bShift ? TEXT(", queued") : TEXT(""));
 	if (Own.Num() <= UE::HeroesOfLiberty::Player::MaxOrderedUnits)
 	{
-		ServerMoveUnitsInLine(Own, GroundStart, GroundEnd, bWithWidth, bShift);
+		RequestMoveUnitsInLine(Own, GroundStart, GroundEnd, bWithWidth, bShift);
 	}
 	OnOrderGiven.Broadcast(Middle);
 }
