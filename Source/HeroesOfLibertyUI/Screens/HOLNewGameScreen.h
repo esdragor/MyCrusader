@@ -172,7 +172,7 @@ public:
 
 	/** HOLForumMessages::GetAIName: "IA Difficile 3" (Slot 0-based, Level = EHOLAIDifficulty 0 Easy, 1 Normal, 2 Hard, 3 Evolving; clamped). */
 	UFUNCTION(BlueprintPure, Category = "HOL|NewGame")
-	static FText GetNewGameAIName(int32 Slot, int32 Level);
+	static FText GetNewGameAIName(int32 SlotIndex, int32 Level);
 	/** "Crown Name" (the leader's crown). */
 	UFUNCTION(BlueprintPure, Category = "HOL|NewGame")
 	static FText GetNewGameLeaderName(const FString& Name);

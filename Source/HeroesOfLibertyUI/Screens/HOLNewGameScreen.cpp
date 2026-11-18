@@ -1676,9 +1676,9 @@ FText UHOLNewGameScreen::GetNewGamePlayerName(const int32 SlotIndex)
 	return FText::Format(LOCTEXT("PlayerN", "Joueur {0}"), SlotIndex + 1);
 }
 
-FText UHOLNewGameScreen::GetNewGameAIName(const int32 Slot, const int32 Level)
+FText UHOLNewGameScreen::GetNewGameAIName(const int32 SlotIndex, const int32 Level)
 {
-	return HOLForumMessages::GetAIName(Slot, static_cast<EHOLAIDifficulty>(FMath::Clamp(Level, 0, 3)));
+	return HOLForumMessages::GetAIName(SlotIndex, static_cast<EHOLAIDifficulty>(FMath::Clamp(Level, 0, 3)));
 }
 
 FText UHOLNewGameScreen::GetNewGameLeaderName(const FString& Name)
