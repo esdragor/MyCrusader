@@ -8,6 +8,7 @@ const FConsoleVariable CVar_RpcScriptDiplomacy("hol.Rpc.ScriptDiplomacy", 1);
 const FConsoleVariable CVar_RpcDiplomacyTarget("hol.Rpc.DiplomacyTarget", -1);
 const FConsoleVariable CVar_RpcDiplomacyStance("hol.Rpc.DiplomacyStance", 1);
 const FConsoleVariable CVar_RpcProofRoute("hol.Rpc.ProofRoute", 0);
+const FConsoleVariable CVar_RpcProofCheats("hol.Rpc.ProofCheats", 0); // ELROND-1118b: bits 1 FastBuild, 2 Population, 4 Technology, 8 Tier, 16 UnitSpeed, 32 GatherSpeed, 64 Wound, 128 DamageBuilding, 256 SpawnBuilding, 512 Defeat, 1024 FallForum, 2048 SkipForum, 4096 HoldPresence (Tools\Scenarios\rpc_cheats_run.ps1)
 
 // T3 (SAURON-1117m): the Duel and Match (pause, resume, surrender) lots, same guard model: 0 = the C++ RPC stays the only one (these script RPCs log and do nothing), 1 = the script RPC acts.
 const FConsoleVariable CVar_RpcScriptDuel("hol.Rpc.ScriptDuel", 1);
@@ -351,7 +352,7 @@ class AHOLRpcPlayer : AHOLScriptRpcPlayerActor
 	void Tick(float DeltaSeconds)
 	{
 		// Proof of the C++ -> script routes (Tools\Scenarios\rpc_routes_run.ps1): hol.Rpc.ProofRoute bits: 1 duel challenge, 2 pause, 4 spec cancel, 8 hero return, 16 cheat resources, fired ONCE 4 s after the owner's first tick.
-		if (!HasAuthority() && !bRouteProved && CVar_RpcProofRoute.GetInt() > 0)
+		if (!HasAuthority() && !bRouteProved && (CVar_RpcProofRoute.GetInt() > 0 || CVar_RpcProofCheats.GetInt() > 0))
 		{
 			APlayerController RouteController = Cast<APlayerController>(GetOwner());
 			if (RouteController != nullptr && RouteController.IsLocalController())
@@ -372,7 +373,50 @@ class AHOLRpcPlayer : AHOLScriptRpcPlayerActor
 						Commands.Add("hol.Hero.Return");
 					if ((Routes & 16) != 0)
 						Commands.Add("hol.Cheat.Resources 100");
-					for (FString Command : Commands)
+					// ELROND-1118b: P1 bits 32 hero talent (the C++ interface call RequestHeroTalent), 64 duel answer, 128 stance toward slot 1, 256 queue then cancel production (selects the main centre); P2: hol.Rpc.ProofCheats.
+AHOLPlayerController RouteTalent = Cast<AHOLPlayerController>(RouteController);
+if ((Routes & 32) != 0 && RouteTalent != nullptr)
+{
+	Log(n"LogHOLMatch", f"RpcRoute: the client runs 'RequestHeroTalent 0'");
+	RouteTalent.RequestHeroTalent(0);
+}
+if ((Routes & 64) != 0)
+	Commands.Add("hol.Duel.Accept");
+if ((Routes & 128) != 0)
+	Commands.Add("hol.Diplomacy.Stance 1 ally");
+if ((Routes & 256) != 0)
+{
+	Commands.Add("hol.Prod.Queue Peasant");
+	Commands.Add("hol.Prod.Cancel 0");
+}
+const int Cheats = CVar_RpcProofCheats.GetInt();
+if ((Cheats & 1) != 0)
+	Commands.Add("hol.Cheat.FastBuild 1");
+if ((Cheats & 2) != 0)
+	Commands.Add("hol.Cheat.Population 5");
+if ((Cheats & 4) != 0)
+	Commands.Add("hol.Cheat.Technology MeleeAttackI");
+if ((Cheats & 8) != 0)
+	Commands.Add("hol.Cheat.Tier 1");
+if ((Cheats & 16) != 0)
+	Commands.Add("hol.Cheat.UnitSpeed 1");
+if ((Cheats & 32) != 0)
+	Commands.Add("hol.Cheat.GatherSpeed 1");
+if ((Cheats & 64) != 0)
+	Commands.Add("hol.Cheat.Wound 50");
+if ((Cheats & 128) != 0)
+	Commands.Add("hol.Cheat.DamageNear 1 0 0");
+if ((Cheats & 256) != 0)
+	Commands.Add("hol.Cheat.SpawnBuilding Barracks 0 3000 0");
+if ((Cheats & 512) != 0)
+	Commands.Add("hol.Victory.Defeat 7");
+if ((Cheats & 1024) != 0)
+	Commands.Add("hol.Victory.FallForum 7");
+if ((Cheats & 2048) != 0)
+	Commands.Add("hol.Victory.SkipRuin 7");
+if ((Cheats & 4096) != 0)
+	Commands.Add("hol.Victory.HoldPresence 7 off");
+for (FString Command : Commands)
 					{
 						Log(n"LogHOLMatch", f"RpcRoute: the client runs '{Command}'");
 						System::ExecuteConsoleCommand(Command, RouteController);
@@ -549,6 +593,7 @@ class AHOLRpcPlayer : AHOLScriptRpcPlayerActor
 			Log(n"LogHOLMatch", f"RpcHero: talent refused for sender slot {Slot}");
 			return;
 		}
+		Log(n"LogHOLMatch", f"RpcHero: talent received by the server: slot {Slot} family {Family}");
 		HOLRpcBridge::HeroTalent(this, Family);
 	}
 
@@ -624,6 +669,7 @@ class AHOLRpcPlayer : AHOLScriptRpcPlayerActor
 			Log(n"LogHOLMatch", f"RpcCheat: fast build refused ({Refusal}) for sender slot {Slot}");
 			return;
 		}
+		Log(n"LogHOLMatch", f"RpcCheat: fast build received by the server: slot {Slot}");
 		HOLRpcBridge::CheatFastBuild(this, bOn);
 	}
 
@@ -639,6 +685,7 @@ class AHOLRpcPlayer : AHOLScriptRpcPlayerActor
 			Log(n"LogHOLMatch", f"RpcCheat: population refused ({Refusal}) for sender slot {Slot}");
 			return;
 		}
+		Log(n"LogHOLMatch", f"RpcCheat: population received by the server: slot {Slot}");
 		HOLRpcBridge::CheatPopulation(this, Places);
 	}
 
@@ -654,6 +701,7 @@ class AHOLRpcPlayer : AHOLScriptRpcPlayerActor
 			Log(n"LogHOLMatch", f"RpcCheat: technology refused ({Refusal}) for sender slot {Slot}");
 			return;
 		}
+		Log(n"LogHOLMatch", f"RpcCheat: technology received by the server: slot {Slot}");
 		HOLRpcBridge::CheatTechnology(this, Technology);
 	}
 
@@ -669,6 +717,7 @@ class AHOLRpcPlayer : AHOLScriptRpcPlayerActor
 			Log(n"LogHOLMatch", f"RpcCheat: tier refused ({Refusal}) for sender slot {Sender}");
 			return;
 		}
+		Log(n"LogHOLMatch", f"RpcCheat: tier received by the server: sender slot {Sender}");
 		HOLRpcBridge::CheatTier(this, Tier, Slot);
 	}
 
@@ -684,6 +733,7 @@ class AHOLRpcPlayer : AHOLScriptRpcPlayerActor
 			Log(n"LogHOLMatch", f"RpcCheat: unit speed refused ({Refusal}) for sender slot {Slot}");
 			return;
 		}
+		Log(n"LogHOLMatch", f"RpcCheat: unit speed received by the server: slot {Slot}");
 		HOLRpcBridge::CheatUnitSpeed(this, Scale);
 	}
 
@@ -699,6 +749,7 @@ class AHOLRpcPlayer : AHOLScriptRpcPlayerActor
 			Log(n"LogHOLMatch", f"RpcCheat: gather speed refused ({Refusal}) for sender slot {Slot}");
 			return;
 		}
+		Log(n"LogHOLMatch", f"RpcCheat: gather speed received by the server: slot {Slot}");
 		HOLRpcBridge::CheatGatherSpeed(this, Scale);
 	}
 
@@ -716,6 +767,7 @@ class AHOLRpcPlayer : AHOLScriptRpcPlayerActor
 			Log(n"LogHOLMatch", f"RpcCheat: wound refused ({Refusal}) for sender slot {Slot}");
 			return;
 		}
+		Log(n"LogHOLMatch", f"RpcCheat: wound received by the server: slot {Slot}");
 		HOLRpcBridge::CheatWound(this, Percent);
 	}
 
@@ -730,6 +782,7 @@ class AHOLRpcPlayer : AHOLScriptRpcPlayerActor
 			Log(n"LogHOLMatch", f"RpcCheat: damage building refused ({Refusal})");
 			return;
 		}
+		Log(n"LogHOLMatch", f"RpcCheat: damage building received by the server: amount {Amount}");
 		HOLRpcBridge::CheatDamageBuilding(this, Point.X, Point.Y, Point.Z, Amount, AttackType);
 	}
 
@@ -744,6 +797,7 @@ class AHOLRpcPlayer : AHOLScriptRpcPlayerActor
 			Log(n"LogHOLMatch", f"RpcCheat: spawn building refused ({Refusal}) type {TypeName} slot {Slot}");
 			return;
 		}
+		Log(n"LogHOLMatch", f"RpcCheat: spawn building received by the server: type {TypeName} slot {Slot}");
 		HOLRpcBridge::CheatSpawnBuilding(this, TypeName, Slot, Point.X, Point.Y, Point.Z);
 	}
 
@@ -758,6 +812,7 @@ class AHOLRpcPlayer : AHOLScriptRpcPlayerActor
 			Log(n"LogHOLMatch", f"RpcCheat: defeat refused ({Refusal}) slot {Slot}");
 			return;
 		}
+		Log(n"LogHOLMatch", f"RpcCheat: defeat received by the server: slot {Slot}");
 		HOLRpcBridge::CheatDefeat(this, Slot);
 	}
 
@@ -772,6 +827,7 @@ class AHOLRpcPlayer : AHOLScriptRpcPlayerActor
 			Log(n"LogHOLMatch", f"RpcCheat: fall forum refused ({Refusal}) slot {Slot}");
 			return;
 		}
+		Log(n"LogHOLMatch", f"RpcCheat: fall forum received by the server: slot {Slot}");
 		HOLRpcBridge::CheatFallForum(this, Slot);
 	}
 
@@ -786,6 +842,7 @@ class AHOLRpcPlayer : AHOLScriptRpcPlayerActor
 			Log(n"LogHOLMatch", f"RpcCheat: skip forum refused ({Refusal}) slot {Slot}");
 			return;
 		}
+		Log(n"LogHOLMatch", f"RpcCheat: skip forum received by the server: slot {Slot}");
 		HOLRpcBridge::CheatSkipForum(this, Slot);
 	}
 
@@ -801,6 +858,7 @@ class AHOLRpcPlayer : AHOLScriptRpcPlayerActor
 			Log(n"LogHOLMatch", f"RpcCheat: hold presence refused ({Refusal}) slot {Slot}");
 			return;
 		}
+		Log(n"LogHOLMatch", f"RpcCheat: hold presence received by the server: slot {Slot}");
 		HOLRpcBridge::CheatHoldPresence(this, Slot, bOff, bAttackers, bDefenders, AttackerSlot);
 	}
 
