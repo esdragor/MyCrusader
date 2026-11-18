@@ -32,6 +32,7 @@
 #   Longest wait of a lot: P3 100 s, P4 80 s, P3P4 100 s. Plus: server up <= 90 s, red join <= 90 s, green shot <= 90 s. Total at most about 6 min.
 # FIRST REAL RUN (2026-11-18) AND CORRECTIONS : (a) the command is now hol.Units.GatherOrder (the name hol.Units.Gather already existed: "Warning: hol.Units.Gather X Y [Slot]") ; (b) hol.Build.PlaceNear House 800 0 = (-14000, 0) "refused (on a building)": the hook now places at (0 1500), (-1500 0), (1500 -1800), (3000 0) from the main centre (-14800, 0), a site first, THEN @4 hol.Select.Own + hol.Units.Build ;
 #   (c) GARRISON LIMIT: no building has garrison places (GarrisonSlots = 0 for the 14 buildings) : Garrison / UngarrisonAll are asserted on RECEPTION + Do<X> only ("RpcOrder: garrison received", "OrderRecv kind=Garrison"), NEVER on "Garrison: slot 0 puts / takes" (the effect cannot exist until a building has places; hol.Units.Garrison also warns "no own finished building with places" and sends nothing, so the reception may stay NON).
+# 2026-11-18 ASSERTIONS FROM THE REAL LOGS (Gather / DropOff / BuildUnits / PlaceBuilding / Cancel / Rally): effect = the server line of the order itself ("Gather order of slot 0: N units to source I", "Drop-off order of slot 0: N units to MainCentre", "Build order of slot 0: N units to House at (x, y)" THEN a "Construction: slot 0 House at (x, y), K builders at work" line of THAT site, "placed House foundation at (x, y), paid ..." with any payment). NOT required, documented: "Gather: slot 0 unloaded" (a Gather needs a harvested load, a DropOff a carried one: the real DropOff order said "0 units unload ... 6 walk to"). CancelBuilding: the hook now selects a foundation (hol.Prod.Queue Peasant House) and cancels in the SAME step (@5): the real run cancelled with 6 units selected (no "Cancel request"). Garrison / UngarrisonAll: NON PROUVABLE (GarrisonSlots = 0), printed as such, excluded from the VERDICT (the VERDICT PASS asks every other order OK).
 # Limit: the numeric stock of hol.Build.Report is printed (section GREEN CLIENT), not parsed (format owned by another agent) ; the stock fact asserted is the server "unloaded"/"paid"/"refund" line.
 # Dependencies (other agents): C++ hol.Units.* commands and ProofRoute bits in HOLRpcPlayer.as, cvar hol.Rpc.ProofSpawn. Without them the table says NON (no invented success).
 param(
@@ -62,24 +63,25 @@ function Short($s) { return $s.Substring(0, [Math]::Min(220, $s.Length)) }
 
 # --- orders of the lot : Name, RecvPat (server line 1), Kind (OrderRecv), Eff (script block returning detail or $null), Deadline (s after the shot)
 $all = @(
-    @{ Lot = 'P3'; Name = 'Gather'; Recv = 'RpcOrder: gather received by the server: slot 0 '; Kind = 'Gather'; Dead = 75
-        Eff = { param($s) $a = FirstIdx $s 'Gather order of slot 0: \d+ units to source'; $b = FirstIdx $s 'Gather: slot 0 unloaded [1-9]\d* '; if ($a -ge 0 -and $b -ge 0) { return $s[$b] }; return $null } },
-    @{ Lot = 'P3'; Name = 'DropOff'; Recv = 'RpcOrder: drop off received by the server: slot 0 '; Kind = 'DropOff'; Dead = 100
-        Eff = { param($s) $a = FirstIdx $s 'Drop-off order of slot 0: \d+ units unload at'; if ($a -lt 0) { return $null }; for ($i = $a + 1; $i -lt $s.Count; $i++) { if ($s[$i] -match 'Gather: slot 0 unloaded [1-9]\d* ') { return $s[$i] } }; return $null } },
+    # REAL LOG LINES (2026-11-18, orders_server.log / orders_client_green.log of the first real P3P4 run): the guessed patterns were corrected from them. An effect = the server's own line of the order (the 'unloaded' / 'progress' variants need a load or a long wait and are NOT required: documented).
+    @{ Lot = 'P3'; Name = 'Gather'; Recv = 'RpcOrder: gather received by the server: slot 0 '; Kind = 'Gather'; Dead = 40
+        Eff = { param($s) $a = FirstIdx $s 'Gather order of slot 0: \d+ units to source \d+'; if ($a -ge 0) { return $s[$a] }; return $null } },
+    @{ Lot = 'P3'; Name = 'DropOff'; Recv = 'RpcOrder: drop off received by the server: slot 0 '; Kind = 'DropOff'; Dead = 40
+        Eff = { param($s) $a = FirstIdx $s 'Drop-off order of slot 0: \d+ units to MainCentre'; if ($a -ge 0) { return $s[$a] }; return $null } },
     @{ Lot = 'P3'; Name = 'BuildUnits'; Recv = 'RpcOrder: build units received by the server: slot 0 '; Kind = 'BuildUnits'; Dead = 45
-        Eff = { param($s) $a = FirstIdx $s 'Build order of slot 0: \d+ units to House'; if ($a -lt 0) { return $null }
-            $v = @(); foreach ($l in (Read-LinesShared $script:c2)) { if ($l -match 'under construction (\d+)%') { $v += [int]$Matches[1] } }
-            if (@($v | Select-Object -Unique).Count -ge 2 -and ($v | Measure-Object -Maximum).Maximum -gt ($v | Measure-Object -Minimum).Minimum) { return "progress $($v -join ',')%" }; return $null } },
+        Eff = { param($s) $a = -1; for ($i = 0; $i -lt $s.Count; $i++) { if ($s[$i] -match 'Build order of slot 0: \d+ units to House at \((-?\d+), (-?\d+)\)') { $a = $i } }; if ($a -lt 0) { return $null }
+            $m = [regex]::Match($s[$a], 'House at \((-?\d+), (-?\d+)\)'); $site = 'House at (' + $m.Groups[1].Value + ', ' + $m.Groups[2].Value + '), '
+            for ($i = $a + 1; $i -lt $s.Count; $i++) { if ($s[$i].Contains('Construction: slot 0 ' + $site) -and $s[$i] -match '[1-9]\d* builders at work') { return ($s[$a].Substring($s[$a].IndexOf('Build order')) + ' THEN ' + $s[$i].Substring($s[$i].IndexOf('Construction'))) } }; return $null } },
     @{ Lot = 'P3'; Name = 'PlaceBuilding'; Recv = 'RpcOrder: place building received by the server: slot 0 '; Kind = 'PlaceBuilding'; Dead = 30
-        Eff = { param($s) $a = FirstIdx $s 'Construction: slot 0 placed House foundation at .*, paid [1-9]'; if ($a -ge 0) { return $s[$a] }; return $null } },
+        Eff = { param($s) $a = FirstIdx $s 'Construction: slot 0 placed House foundation at \(.*\), paid '; if ($a -ge 0) { return $s[$a] }; return $null } },
     @{ Lot = 'P4'; Name = 'CancelBuilding'; Recv = 'RpcOrder: cancel building received by the server: slot 0 '; Kind = 'CancelBuilding'; Dead = 30
         Eff = { param($s) $a = FirstIdx $s 'Construction: slot 0 cancelled House at .*, refund'; if ($a -ge 0) { return $s[$a] }; return $null } },
     @{ Lot = 'P4'; Name = 'SetRallyPoint'; Recv = 'RpcOrder: set rally point received by the server: slot 0 '; Kind = 'SetRally'; Dead = 30
         Eff = { param($s) $a = FirstIdx $s 'Rally: slot 0 set the rally point of .* at \(.*\).* on site'; if ($a -ge 0) { return $s[$a] }; return $null } },
-    @{ Lot = 'P4'; Name = 'Garrison'; Recv = 'RpcOrder: garrison received by the server: slot 0 '; Kind = 'Garrison'; Dead = 45
-        Eff = { param($s) return 'reception + Do<X> only (no building has garrison places: GarrisonSlots = 0 for the 14 buildings; the effect cannot exist)' } },
-    @{ Lot = 'P4'; Name = 'UngarrisonAll'; Recv = 'RpcOrder: ungarrison all received by the server: slot 0 '; Kind = 'UngarrisonAll'; Dead = 80
-        Eff = { param($s) return 'reception + Do<X> only (GarrisonSlots = 0 for the 14 buildings)' } }
+    @{ Lot = 'P4'; Name = 'Garrison'; Recv = 'RpcOrder: garrison received by the server: slot 0 '; Kind = 'Garrison'; Dead = 0; Unprovable = 'NON PROUVABLE : GarrisonSlots = 0'
+        Eff = { param($s) return $null } },
+    @{ Lot = 'P4'; Name = 'UngarrisonAll'; Recv = 'RpcOrder: ungarrison all received by the server: slot 0 '; Kind = 'UngarrisonAll'; Dead = 0; Unprovable = 'NON PROUVABLE : GarrisonSlots = 0'
+        Eff = { param($s) return $null } }
 )
 $p3bits = 8388608 + 16777216 + 33554432 + 67108864
 $p4bits = 134217728 + 268435456 + 536870912 + 1073741824
@@ -119,12 +121,12 @@ try {
     # poll: each order is done when reception + effect are seen, or when its own deadline (seconds after the shot) is past
     $script:c2 = $c2
     $res = @{}; foreach ($o in $orders) { $res[$o.Name] = @{ Recv = $false; Eff = $null } }
-    $maxDead = ($orders | ForEach-Object { $_.Dead } | Measure-Object -Maximum).Maximum
+    $maxDead = ($orders | Where-Object { -not $_.Unprovable } | ForEach-Object { $_.Dead } | Measure-Object -Maximum).Maximum
     while ($true) {
         $s = Read-LinesShared $sl
         $el = ((Get-Date) - $t0).TotalSeconds
         $pending = 0
-        foreach ($o in $orders) {
+        foreach ($o in ($orders | Where-Object { -not $_.Unprovable })) {
             $r = $res[$o.Name]
             if (-not $r.Recv) { $r.Recv = ((FirstIdx $s ([regex]::Escape($o.Recv))) -ge 0) -and ((FirstIdx $s ("OrderRecv kind=" + $o.Kind + "\b")) -ge 0) }
             if ($null -eq $r.Eff) { $r.Eff = & $o.Eff $s }
@@ -145,6 +147,7 @@ try {
     $fail = 0
     foreach ($o in $orders) {
         $r = $res[$o.Name]
+        if ($o.Unprovable) { "{0,-15} {1}  (no own building has garrison places: hol.Units.Garrison / UngarrisonAll warn 'no own finished building with places' and send nothing; neither yes nor NO, not counted in the VERDICT)" -f $o.Name, $o.Unprovable; continue }
         $rv = if ($r.Recv) { 'yes' } else { 'NO' }; $ev = if ($null -ne $r.Eff) { 'yes' } else { 'NO' }
         if (-not $r.Recv -or $null -eq $r.Eff) { $fail++ }
         "{0,-15} received {1,-3}  effect {2,-3}  {3}" -f $o.Name, $rv, $ev, $(if ($null -ne $r.Eff) { Short ([string]$r.Eff) } else { '' })

@@ -681,8 +681,9 @@ if ((Routes & 134217728) != 0)
 	Commands.Add("hol.Cheat.Resources 100");
 	Commands.Add("hol.Select.Own");
 	Commands.Add("hol.Build.PlaceNear House 1500 -1800");
-	Commands.Add("@3 hol.Prod.Queue Peasant House");
-	Commands.Add("@4 hol.Build.CancelSelected");
+	// Real run 2026-11-18: no "Cancel request" line. hol.Prod.Queue Peasant House DID select a foundation ("Selection: House of slot 0 (own), foundation") but the "@4 hol.Select.Own" of the BuildUnits / Garrison bits ran before the cancel and replaced it by 6 units. The select and the cancel now run in the SAME step (@5), after the other bits' "@3" (rally site) and "@4" (Select.Own, Units.Build) steps.
+	Commands.Add("@5 hol.Prod.Queue Peasant House");
+	Commands.Add("@5 hol.Build.CancelSelected");
 }
 if ((Routes & 268435456) != 0)
 {
@@ -1365,7 +1366,11 @@ for (FString Command : Commands)
 	void ServerMoveUnitsInLine(TArray<uint32> UnitIds, FVector_NetQuantize Start, FVector_NetQuantize End, bool bWidth, bool bQueue)
 	{
 		const int Slot = HOLRpcBridge::GetSenderSlot(this);
-		Log(n"LogHOLMatch", f"RpcOrder: move in line received by the server: slot {Slot} units {UnitIds.Num()} width {bWidth} queue {bQueue}");
+		const int StartX = int(Start.X);
+		const int StartY = int(Start.Y);
+		const int EndX = int(End.X);
+		const int EndY = int(End.Y);
+		Log(n"LogHOLMatch", f"RpcOrder: move in line received by the server: slot {Slot} units {UnitIds.Num()} width {bWidth} queue {bQueue} start ({StartX}, {StartY}) end ({EndX}, {EndY})");
 		const int Refusal = HOLRpc::LineOrderRefusal(Slot, UnitIds.Num(), Start.X, Start.Y, Start.Z, End.X, End.Y, End.Z);
 		if (Refusal != 0)
 		{

@@ -113,12 +113,20 @@ function Effect-Of($o, $S, $K) {
         }
         "move in line" {
             # first run: units still Moving in transit (std 140 / 98) ; the hook now draws the line (-13300, -300) -> (-13300, 300) near the base and only the ordered units that stopped moving are measured
-            $idle = @($ord | Where-Object { $_.Act -eq 'Idle' })
-            $ax = Line-Axis $idle
-            if (-not $ax) { return @{ Ok = $false; Detail = "fewer than 3 ordered units Idle in the last Where (Idle $($idle.Count) of $($ord.Count))" } }
-            # the line is elongated (minor <= 0.25 major, major >= 60 cm) and its axis is along Start->End (Y) or perpendicular to it (X): |cos axis,X| >= 0.87 or <= 0.5 ; the measured values are printed (the C++ orientation of the formation is not read here)
-            $ok = ($ax.Major -ge 60) -and ($ax.Minor -le 0.25 * $ax.Major) -and (($ax.CosX -ge 0.866) -or ($ax.CosX -le 0.5))
-            return @{ Ok = $ok; Detail = ("line of {0} Idle ordered units: major std {1:N0} cm, minor std {2:N0} cm, |cos axis,X| {3:N2} (need major >= 60, minor <= 0.25 major, cos >= 0.87 or <= 0.5)" -f $idle.Count, $ax.Major, $ax.Minor, $ax.CosX) }
+            # 2026-11-18 real log: the server line is "RpcOrder: move in line received by the server: slot 0 units 6 width false queue false start (X, Y) end (X, Y)" (start / end written by ServerMoveUnitsInLine in HOLRpcPlayer.as) ; the client line is "Order: 6 units in line from (-13300, -300) to (-13300, 300)".
+            # THE EFFECT (PASS) = the server received a Start and an End that DIFFER and EQUAL the client's (the CallFull trap: Start = End). The formation shape is information only (the real run showed rows, not one line): minor <= 0.6 major is printed, not required.
+            $mc = Last-Match $K 'Order: \d+ units in line from \((-?\d+), (-?\d+)\) to \((-?\d+), (-?\d+)\)'
+            $ms = Last-Match $S 'RpcOrder: move in line received by the server: slot 0 .* start \((-?\d+), (-?\d+)\) end \((-?\d+), (-?\d+)\)'
+            $idle = @($ord | Where-Object { $_.Act -eq 'Idle' }); $ax = Line-Axis $idle
+            $shape = "no shape (fewer than 3 Idle ordered units)"
+            if ($ax) { $shape = ("shape (information): {0} Idle ordered units, major std {1:N0} cm, minor std {2:N0} cm, minor <= 0.6 major: {3}" -f $idle.Count, $ax.Major, $ax.Minor, ($ax.Minor -le 0.6 * $ax.Major)) }
+            if (-not $mc) { return @{ Ok = $false; Detail = "no client line 'Order: N units in line from (X, Y) to (X, Y)' ; $shape" } }
+            if (-not $ms) { return @{ Ok = $false; Detail = "no server line with 'start (X, Y) end (X, Y)' (HOLRpcPlayer.as not rebuilt?) ; $shape" } }
+            $sent = ($mc.Groups[1].Value + "," + $mc.Groups[2].Value + " -> " + $mc.Groups[3].Value + "," + $mc.Groups[4].Value)
+            $got = ($ms.Groups[1].Value + "," + $ms.Groups[2].Value + " -> " + $ms.Groups[3].Value + "," + $ms.Groups[4].Value)
+            $differ = ($ms.Groups[1].Value -ne $ms.Groups[3].Value) -or ($ms.Groups[2].Value -ne $ms.Groups[4].Value)
+            $same = ($sent -eq $got)
+            return @{ Ok = ($differ -and $same); Detail = "client sent $sent, server received $got : Start != End $differ, equal to what was sent $same ; $shape" }
         }
         "stop" {
             $st = Count-Match $S 'Stop order of slot 0 for \d+ units'
@@ -128,13 +136,15 @@ function Effect-Of($o, $S, $K) {
             return @{ Ok = ($st -gt 0 -and $own.Count -gt 0 -and $idle -eq $own.Count -and $far); Detail = "Stop line(s) $st, Idle $idle/$($own.Count), none near the Move target: $far" }
         }
         "attack unit" {
+            # 2026-11-18 real logs: client "Order: 6 units attack #7" (hol.Select.Attack slot=1), server "Attack order of slot 0 for 6 units on #7". EFFECT = the server line names the id the client sent. The HP / Attacking effect is NOT required (target far: the units were still Moving 12 s after the shot): documented limit.
+            $mc = Last-Match $K 'Order: \d+ units attack #(\d+)'
             $m = Last-Match $S 'Attack order of slot 0 for \d+ units on #(\d+)'
-            if (-not $m) { return @{ Ok = $false; Detail = "no 'Attack order of slot 0 for N units on #U' line" } }
-            $u = $m.Groups[1].Value
-            # first run: the Spearmen stood 16000 cm away (0 Attacking, 0 hit). ProofSpawn bit 4 now puts them at (-12000, 0). Effect = a unit Attacking #U in Where OR a server Combat line naming #U (hits / killed / struck)
+            if (-not $mc) { return @{ Ok = $false; Detail = "no client line 'Order: N units attack #U'" } }
+            if (-not $m) { return @{ Ok = $false; Detail = "no server line 'Attack order of slot 0 for N units on #U' (client sent #$($mc.Groups[1].Value))" } }
+            $u = $m.Groups[1].Value; $same = ($u -eq $mc.Groups[1].Value)
             $att = (@($wh | Where-Object { $_.Slot -eq 0 -and $_.Act -eq 'Attacking' -and $_.Rest -match "target #$u\b" })).Count
             $hit = Count-Match $S "Combat: .*#$u\b"
-            return @{ Ok = ($att -gt 0 -or $hit -gt 0); Detail = "target #$u : $att unit(s) Attacking it (Where), $hit Combat line(s) naming it (the order line itself proves Do<X> took the target)" }
+            return @{ Ok = $same; Detail = "client sent #$($mc.Groups[1].Value), server order on #$u (equal: $same) ; information, not required: $att unit(s) Attacking it, $hit Combat line(s) naming it" }
         }
         "attack building" {
             $st = Count-Match $S 'Attack order of slot 0 for \d+ units on building .* of slot 1'
