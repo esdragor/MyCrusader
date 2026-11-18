@@ -815,44 +815,31 @@ private:
 	/** D845: the RPC is in the script RPC actor; this is the body its bridge (friend UHOLRpcBridgeLibrary) calls on the server. */
 	void DoCheatResources(FHOLResources Amount);
 
-	UFUNCTION(Server, Reliable)
-	void ServerCheatFastBuild(bool bOn);
+	void DoCheatFastBuild(bool bOn);
 
-	UFUNCTION(Server, Reliable)
-	void ServerCheatPopulation(int32 Places);
+	void DoCheatPopulation(int32 Places);
 
-	UFUNCTION(Server, Reliable)
-	void ServerCheatTechnology(FName Technology);
+	void DoCheatTechnology(FName Technology);
 
-	UFUNCTION(Server, Reliable)
-	void ServerCheatTier(int32 Tier, int32 Slot);
+	void DoCheatTier(int32 Tier, int32 Slot);
 
-	UFUNCTION(Server, Reliable)
-	void ServerCheatUnitSpeed(float Scale);
+	void DoCheatUnitSpeed(float Scale);
 
-	UFUNCTION(Server, Reliable)
-	void ServerCheatGatherSpeed(float Scale);
+	void DoCheatGatherSpeed(float Scale);
 
-	UFUNCTION(Server, Reliable)
-	void ServerCheatWound(int32 Percent);
+	void DoCheatWound(int32 Percent);
 
-	UFUNCTION(Server, Reliable)
-	void ServerCheatDamageBuilding(FVector_NetQuantize Point, int32 Amount, uint8 AttackType);
+	void DoCheatDamageBuilding(FVector_NetQuantize Point, int32 Amount, uint8 AttackType);
 
-	UFUNCTION(Server, Reliable)
-	void ServerCheatSpawnBuilding(FName TypeName, int32 Slot, FVector_NetQuantize Point);
+	void DoCheatSpawnBuilding(FName TypeName, int32 Slot, FVector_NetQuantize Point);
 
-	UFUNCTION(Server, Reliable)
-	void ServerCheatDefeat(int32 Slot);
+	void DoCheatDefeat(int32 Slot);
 
-	UFUNCTION(Server, Reliable)
-	void ServerCheatFallForum(int32 Slot);
+	void DoCheatFallForum(int32 Slot);
 
-	UFUNCTION(Server, Reliable)
-	void ServerCheatSkipForum(int32 Slot);
+	void DoCheatSkipForum(int32 Slot);
 
-	UFUNCTION(Server, Reliable)
-	void ServerCheatHoldPresence(int32 Slot, bool bOff, bool bAttackers, bool bDefenders, int32 AttackerSlot);
+	void DoCheatHoldPresence(int32 Slot, bool bOff, bool bAttackers, bool bDefenders, int32 AttackerSlot);
 
 	UFUNCTION(Server, Reliable)
 	void ServerSurrender();
@@ -868,15 +855,12 @@ private:
 	UFUNCTION(Server, Reliable)
 	void ServerCastRage(const TArray<uint32>& UnitIds);
 
-	/** T3: the player's own slot's talent pick, queued (UHOLCommandSubsystem::IssueHeroTalentOrder); the server checks the rest. */
-	UFUNCTION(Server, Reliable)
-	void ServerHeroTalent(int32 Family);
+	/** T3: the player's own slot's talent pick, queued (UHOLCommandSubsystem::IssueHeroTalentOrder); the server checks the rest. D845: the RPC is in the script RPC actor; this is the body its bridge calls on the server. */
+	void DoHeroTalent(int32 Family);
 
 	// D845: the duel challenge / answer RPCs are in the script RPC actor; the one body is UHOLRpcBridgeLibrary::QueueDuelOrder (UHOLCommandSubsystem::IssueDuelOrder), no C++ RPC here.
 
-	/** D5: the player's own slot's stance / shared vision, queued (UHOLCommandSubsystem::IssueDiplomacyOrder); the game state checks the rest. */
-	UFUNCTION(Server, Reliable)
-	void ServerDiplomacyStance(int32 TargetSlot, int32 Stance);
+	/** D5: the player's own slot's shared vision, queued (UHOLCommandSubsystem::IssueDiplomacyOrder); the game state checks the rest. D845: the stance RPC is in the script RPC actor (UHOLRpcBridgeLibrary::QueueDiplomacyOrder), no C++ RPC here. */
 	UFUNCTION(Server, Reliable)
 	void ServerDiplomacyVision(int32 TargetSlot, bool bShare);
 

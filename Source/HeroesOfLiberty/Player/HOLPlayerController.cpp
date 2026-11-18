@@ -61,7 +61,7 @@
 namespace HOLRpcScriptRoute_Haldir1117n
 {
 	bool CallN(AHOLPlayerController* Controller, const TCHAR* CVarName, const TCHAR* FunctionName, TArrayView<const int32> Args);
-	// HALDIR-1117q (NOT COMPILED): the Economy routes (hol.Rpc.ScriptEconomy); true = the script actor took the call, false = the caller sends the C++ RPC.
+	// HALDIR-1117q (NOT COMPILED): the Economy routes (hol.Rpc.ScriptEconomy); true = the script actor took the call, false = nothing was sent (D845: no C++ RPC any more; the caller logs it with LogNotSent).
 	bool RouteQueueProduction(AHOLPlayerController* Controller, AHOLBuilding* Building, FName TypeName);
 	bool RouteCancelProduction(AHOLPlayerController* Controller, AHOLBuilding* Building, int32 Index);
 	bool RouteTribute(AHOLPlayerController* Controller, AHOLBuilding* Building, int32 Receiver, int32 Resource, int32 Amount);
@@ -4746,11 +4746,11 @@ bool AHOLPlayerController::IsCheatRefused(const TCHAR* What) const
 	return true;
 }
 
-// CHEATS A (ELROND-1117q, NOT COMPILED): the L4 group A cheat calls go through the script RPC actor (Script/Net/HOLRpcPlayer.as) when hol.Rpc.ScriptCheat<Name> is 1 (default 0: the C++ RPC, nothing changes).
-// Self-contained (the HOLRpcScriptRoute_Haldir1117n helper is defined further down): the cvars are only READ here (declared by the script, a missing one reads as 0). Unique namespace name (unity builds).
+// CHEATS A (ELROND-1117q, NOT COMPILED): the L4 group A cheat calls go through the script RPC actor (Script/Net/HOLRpcPlayer.as) only (D845: no cvar, no C++ RPC; the bodies are DoCheat<Name>, called by the bridge).
+// Self-contained (the HOLRpcScriptRoute_Haldir1117n helper is defined further down); a non-null cvar name is only READ here (declared by the script, a missing one reads as 0), the cheats pass null. Unique namespace name (unity builds).
 namespace HOLRpcScriptRoute_Elrond1117q
 {
-	// Ints fill the bool / int32 / uint32 parameters in order, Real the double / float one, Name the FName one. false: no actor, no such function: the caller falls back to the C++ RPC.
+	// Ints fill the bool / int32 / uint32 parameters in order, Real the double / float one, Name the FName one. false: no actor, no such function: the caller logs it (LogNotSent), nothing else is sent (D845).
 	bool CallCheat(AHOLPlayerController* Controller, const TCHAR* CVarName, const TCHAR* FunctionName, const TArrayView<const int32> Ints, const double* Real, const FName* Name)
 	{
 		// D845: a null cvar name = no guard (the RPC has no C++ twin any more); the other cheats keep theirs.
@@ -4818,59 +4818,53 @@ void AHOLPlayerController::RequestCheatResources(const FHOLResources& Amount)
 void AHOLPlayerController::RequestCheatFastBuild(const bool bOn)
 {
 	const int32 FastBuildInt = bOn ? 1 : 0;
-	if (HOLRpcScriptRoute_Elrond1117q::CallCheat(this, TEXT("hol.Rpc.ScriptCheatFastBuild"), TEXT("ServerCheatFastBuild"), TArrayView<const int32>(&FastBuildInt, 1), nullptr, nullptr))
+	if (!HOLRpcScriptRoute_Elrond1117q::CallCheat(this, nullptr, TEXT("ServerCheatFastBuild"), TArrayView<const int32>(&FastBuildInt, 1), nullptr, nullptr))
 	{
-		return;
+		HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("CheatFastBuild"));
 	}
-	ServerCheatFastBuild(bOn);
 }
 
 void AHOLPlayerController::RequestCheatTechnology(const FName Technology)
 {
-	if (HOLRpcScriptRoute_Elrond1117q::CallCheat(this, TEXT("hol.Rpc.ScriptCheatTechnology"), TEXT("ServerCheatTechnology"), TArrayView<const int32>(), nullptr, &Technology))
+	if (!HOLRpcScriptRoute_Elrond1117q::CallCheat(this, nullptr, TEXT("ServerCheatTechnology"), TArrayView<const int32>(), nullptr, &Technology))
 	{
-		return;
+		HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("CheatTechnology"));
 	}
-	ServerCheatTechnology(Technology);
 }
 
 void AHOLPlayerController::RequestCheatTier(const int32 Tier, const int32 Slot)
 {
 	const int32 TierInts[2] = {Tier, Slot};
-	if (HOLRpcScriptRoute_Elrond1117q::CallCheat(this, TEXT("hol.Rpc.ScriptCheatTier"), TEXT("ServerCheatTier"), TArrayView<const int32>(TierInts, 2), nullptr, nullptr))
+	if (!HOLRpcScriptRoute_Elrond1117q::CallCheat(this, nullptr, TEXT("ServerCheatTier"), TArrayView<const int32>(TierInts, 2), nullptr, nullptr))
 	{
-		return;
+		HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("CheatTier"));
 	}
-	ServerCheatTier(Tier, Slot);
 }
 
 void AHOLPlayerController::RequestCheatPopulation(const int32 Places)
 {
-	if (HOLRpcScriptRoute_Elrond1117q::CallCheat(this, TEXT("hol.Rpc.ScriptCheatPopulation"), TEXT("ServerCheatPopulation"), TArrayView<const int32>(&Places, 1), nullptr, nullptr))
+	if (!HOLRpcScriptRoute_Elrond1117q::CallCheat(this, nullptr, TEXT("ServerCheatPopulation"), TArrayView<const int32>(&Places, 1), nullptr, nullptr))
 	{
-		return;
+		HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("CheatPopulation"));
 	}
-	ServerCheatPopulation(Places);
 }
 
 void AHOLPlayerController::RequestCheatUnitSpeed(const float Scale)
 {
 	const double UnitSpeedReal = Scale;
-	if (HOLRpcScriptRoute_Elrond1117q::CallCheat(this, TEXT("hol.Rpc.ScriptCheatUnitSpeed"), TEXT("ServerCheatUnitSpeed"), TArrayView<const int32>(), &UnitSpeedReal, nullptr))
+	if (!HOLRpcScriptRoute_Elrond1117q::CallCheat(this, nullptr, TEXT("ServerCheatUnitSpeed"), TArrayView<const int32>(), &UnitSpeedReal, nullptr))
 	{
-		return;
+		HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("CheatUnitSpeed"));
 	}
-	ServerCheatUnitSpeed(Scale);
 }
 
 void AHOLPlayerController::RequestCheatGatherSpeed(const float Scale)
 {
 	const double GatherSpeedReal = Scale;
-	if (HOLRpcScriptRoute_Elrond1117q::CallCheat(this, TEXT("hol.Rpc.ScriptCheatGatherSpeed"), TEXT("ServerCheatGatherSpeed"), TArrayView<const int32>(), &GatherSpeedReal, nullptr))
+	if (!HOLRpcScriptRoute_Elrond1117q::CallCheat(this, nullptr, TEXT("ServerCheatGatherSpeed"), TArrayView<const int32>(), &GatherSpeedReal, nullptr))
 	{
-		return;
+		HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("CheatGatherSpeed"));
 	}
-	ServerCheatGatherSpeed(Scale);
 }
 
 // CHEATS B (CELEBORN-1117q): forward declaration of the 1117p route helper (defined below the Request functions of the cheats).
@@ -4881,18 +4875,16 @@ namespace HOLRpcScriptRoute_Haldir1117n
 
 void AHOLPlayerController::RequestCheatWound(const int32 Percent)
 {
-	// CHEATS B (CELEBORN-1117q): through the script actor when hol.Rpc.ScriptCheatWound is 1, else the C++ RPC as before.
 	{
 		const int32 CheatArgs[1] = { Percent };
-		if (HOLRpcScriptRoute_Haldir1117n::CallEx(this, TEXT("hol.Rpc.ScriptCheatWound"), TEXT("ServerCheatWound"), TArrayView<const int32>(CheatArgs, 1), nullptr, nullptr))
+		if (!HOLRpcScriptRoute_Haldir1117n::CallEx(this, nullptr, TEXT("ServerCheatWound"), TArrayView<const int32>(CheatArgs, 1), nullptr, nullptr))
 		{
-			return;
+			HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("CheatWound"));
 		}
 	}
-	ServerCheatWound(Percent);
 }
 
-void AHOLPlayerController::ServerCheatWound_Implementation(const int32 Percent)
+void AHOLPlayerController::DoCheatWound(const int32 Percent)
 {
 #if !UE_BUILD_SHIPPING
 	if (IsCheatRefused(TEXT("wound")))
@@ -4929,7 +4921,7 @@ void AHOLPlayerController::DoCheatResources(const FHOLResources Amount)
 #endif
 }
 
-void AHOLPlayerController::ServerCheatFastBuild_Implementation(const bool bOn)
+void AHOLPlayerController::DoCheatFastBuild(const bool bOn)
 {
 #if !UE_BUILD_SHIPPING
 	if (IsCheatRefused(TEXT("fast build")))
@@ -4952,7 +4944,7 @@ void AHOLPlayerController::ServerCheatFastBuild_Implementation(const bool bOn)
 #endif
 }
 
-void AHOLPlayerController::ServerCheatTechnology_Implementation(const FName Technology)
+void AHOLPlayerController::DoCheatTechnology(const FName Technology)
 {
 #if !UE_BUILD_SHIPPING
 	if (IsCheatRefused(TEXT("technology")))
@@ -4971,7 +4963,7 @@ void AHOLPlayerController::ServerCheatTechnology_Implementation(const FName Tech
 #endif
 }
 
-void AHOLPlayerController::ServerCheatTier_Implementation(const int32 Tier, const int32 Slot)
+void AHOLPlayerController::DoCheatTier(const int32 Tier, const int32 Slot)
 {
 #if !UE_BUILD_SHIPPING
 	if (IsCheatRefused(TEXT("tier")))
@@ -4995,7 +4987,7 @@ void AHOLPlayerController::ServerCheatTier_Implementation(const int32 Tier, cons
 #endif
 }
 
-void AHOLPlayerController::ServerCheatPopulation_Implementation(const int32 Places)
+void AHOLPlayerController::DoCheatPopulation(const int32 Places)
 {
 #if !UE_BUILD_SHIPPING
 	if (IsCheatRefused(TEXT("population")))
@@ -5012,7 +5004,7 @@ void AHOLPlayerController::ServerCheatPopulation_Implementation(const int32 Plac
 #endif
 }
 
-void AHOLPlayerController::ServerCheatUnitSpeed_Implementation(const float Scale)
+void AHOLPlayerController::DoCheatUnitSpeed(const float Scale)
 {
 #if !UE_BUILD_SHIPPING
 	if (IsCheatRefused(TEXT("unit speed")))
@@ -5032,19 +5024,17 @@ void AHOLPlayerController::ServerCheatUnitSpeed_Implementation(const float Scale
 
 void AHOLPlayerController::RequestCheatSpawnBuilding(const FName TypeName, const int32 Slot, const FVector& Point)
 {
-	// CHEATS B (CELEBORN-1117q): through the script actor when hol.Rpc.ScriptCheatSpawnBuilding is 1, else the C++ RPC as before.
 	{
 		const FString CheatType = TypeName.ToString();
 		const int32 CheatArgs[1] = { Slot };
-		if (HOLRpcScriptRoute_Haldir1117n::CallEx(this, TEXT("hol.Rpc.ScriptCheatSpawnBuilding"), TEXT("ServerCheatSpawnBuilding"), TArrayView<const int32>(CheatArgs, 1), &CheatType, &Point))
+		if (!HOLRpcScriptRoute_Haldir1117n::CallEx(this, nullptr, TEXT("ServerCheatSpawnBuilding"), TArrayView<const int32>(CheatArgs, 1), &CheatType, &Point))
 		{
-			return;
+			HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("CheatSpawnBuilding"));
 		}
 	}
-	ServerCheatSpawnBuilding(TypeName, Slot, Point);
 }
 
-void AHOLPlayerController::ServerCheatSpawnBuilding_Implementation(const FName TypeName, const int32 Slot, const FVector_NetQuantize Point)
+void AHOLPlayerController::DoCheatSpawnBuilding(const FName TypeName, const int32 Slot, const FVector_NetQuantize Point)
 {
 #if !UE_BUILD_SHIPPING
 	if (IsCheatRefused(TEXT("spawn building")))
@@ -5077,18 +5067,16 @@ void AHOLPlayerController::ServerCheatSpawnBuilding_Implementation(const FName T
 
 void AHOLPlayerController::RequestCheatDefeat(const int32 Slot)
 {
-	// CHEATS B (CELEBORN-1117q): through the script actor when hol.Rpc.ScriptCheatDefeat is 1, else the C++ RPC as before.
 	{
 		const int32 CheatArgs[1] = { Slot };
-		if (HOLRpcScriptRoute_Haldir1117n::CallEx(this, TEXT("hol.Rpc.ScriptCheatDefeat"), TEXT("ServerCheatDefeat"), TArrayView<const int32>(CheatArgs, 1), nullptr, nullptr))
+		if (!HOLRpcScriptRoute_Haldir1117n::CallEx(this, nullptr, TEXT("ServerCheatDefeat"), TArrayView<const int32>(CheatArgs, 1), nullptr, nullptr))
 		{
-			return;
+			HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("CheatDefeat"));
 		}
 	}
-	ServerCheatDefeat(Slot);
 }
 
-void AHOLPlayerController::ServerCheatDefeat_Implementation(const int32 Slot)
+void AHOLPlayerController::DoCheatDefeat(const int32 Slot)
 {
 #if !UE_BUILD_SHIPPING
 	if (IsCheatRefused(TEXT("defeat")))
@@ -5126,18 +5114,16 @@ bool AHOLPlayerController::FocusCameraOnForum(const int32 Slot)
 
 void AHOLPlayerController::RequestCheatFallForum(const int32 Slot)
 {
-	// CHEATS B (CELEBORN-1117q): through the script actor when hol.Rpc.ScriptCheatFallForum is 1, else the C++ RPC as before.
 	{
 		const int32 CheatArgs[1] = { Slot };
-		if (HOLRpcScriptRoute_Haldir1117n::CallEx(this, TEXT("hol.Rpc.ScriptCheatFallForum"), TEXT("ServerCheatFallForum"), TArrayView<const int32>(CheatArgs, 1), nullptr, nullptr))
+		if (!HOLRpcScriptRoute_Haldir1117n::CallEx(this, nullptr, TEXT("ServerCheatFallForum"), TArrayView<const int32>(CheatArgs, 1), nullptr, nullptr))
 		{
-			return;
+			HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("CheatFallForum"));
 		}
 	}
-	ServerCheatFallForum(Slot);
 }
 
-void AHOLPlayerController::ServerCheatFallForum_Implementation(const int32 Slot)
+void AHOLPlayerController::DoCheatFallForum(const int32 Slot)
 {
 #if !UE_BUILD_SHIPPING
 	if (IsCheatRefused(TEXT("fall forum")))
@@ -5156,18 +5142,16 @@ void AHOLPlayerController::ServerCheatFallForum_Implementation(const int32 Slot)
 
 void AHOLPlayerController::RequestCheatSkipForum(const int32 Slot)
 {
-	// CHEATS B (CELEBORN-1117q): through the script actor when hol.Rpc.ScriptCheatSkipForum is 1, else the C++ RPC as before.
 	{
 		const int32 CheatArgs[1] = { Slot };
-		if (HOLRpcScriptRoute_Haldir1117n::CallEx(this, TEXT("hol.Rpc.ScriptCheatSkipForum"), TEXT("ServerCheatSkipForum"), TArrayView<const int32>(CheatArgs, 1), nullptr, nullptr))
+		if (!HOLRpcScriptRoute_Haldir1117n::CallEx(this, nullptr, TEXT("ServerCheatSkipForum"), TArrayView<const int32>(CheatArgs, 1), nullptr, nullptr))
 		{
-			return;
+			HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("CheatSkipForum"));
 		}
 	}
-	ServerCheatSkipForum(Slot);
 }
 
-void AHOLPlayerController::ServerCheatSkipForum_Implementation(const int32 Slot)
+void AHOLPlayerController::DoCheatSkipForum(const int32 Slot)
 {
 #if !UE_BUILD_SHIPPING
 	if (IsCheatRefused(TEXT("skip forum")))
@@ -5184,18 +5168,16 @@ void AHOLPlayerController::ServerCheatSkipForum_Implementation(const int32 Slot)
 
 void AHOLPlayerController::RequestCheatHoldPresence(const int32 Slot, const bool bOff, const bool bAttackers, const bool bDefenders, const int32 AttackerSlot)
 {
-	// CHEATS B (CELEBORN-1117q): through the script actor when hol.Rpc.ScriptCheatHoldPresence is 1, else the C++ RPC as before.
 	{
 		const int32 CheatArgs[5] = { Slot, bOff ? 1 : 0, bAttackers ? 1 : 0, bDefenders ? 1 : 0, AttackerSlot };
-		if (HOLRpcScriptRoute_Haldir1117n::CallEx(this, TEXT("hol.Rpc.ScriptCheatHoldPresence"), TEXT("ServerCheatHoldPresence"), TArrayView<const int32>(CheatArgs, 5), nullptr, nullptr))
+		if (!HOLRpcScriptRoute_Haldir1117n::CallEx(this, nullptr, TEXT("ServerCheatHoldPresence"), TArrayView<const int32>(CheatArgs, 5), nullptr, nullptr))
 		{
-			return;
+			HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("CheatHoldPresence"));
 		}
 	}
-	ServerCheatHoldPresence(Slot, bOff, bAttackers, bDefenders, AttackerSlot);
 }
 
-void AHOLPlayerController::ServerCheatHoldPresence_Implementation(const int32 Slot, const bool bOff, const bool bAttackers, const bool bDefenders,
+void AHOLPlayerController::DoCheatHoldPresence(const int32 Slot, const bool bOff, const bool bAttackers, const bool bDefenders,
 	const int32 AttackerSlot)
 {
 #if !UE_BUILD_SHIPPING
@@ -5218,7 +5200,7 @@ void AHOLPlayerController::ServerCheatHoldPresence_Implementation(const int32 Sl
 #endif
 }
 
-// MIG2-S3 (HALDIR-1117n, NOT COMPILED): the interface's Duel / Match calls go through the script RPC actor (Script/Net/HOLRpcPlayer.as) when its cvar is 1 (default 0: the C++ RPC, nothing changes).
+// MIG2-S3 (HALDIR-1117n, NOT COMPILED): the interface's Duel / Match calls go through the script RPC actor (Script/Net/HOLRpcPlayer.as) (D845: no C++ RPC any more; a call it did not take is journalled by LogNotSent).
 // The cvars are declared by the script (FConsoleVariable); they are only READ here (never registered twice), a missing one reads as 0. Unique namespace name (unity builds).
 namespace HOLRpcScriptRoute_Haldir1117n
 {
@@ -5235,7 +5217,7 @@ namespace HOLRpcScriptRoute_Haldir1117n
 	}
 
 	// Calls the script actor's RPC by name (Server from a client, or Client from the server: HALDIR-1117p). Int arguments (bool as 0 / 1) fill the bool / int32 / uint32 parameters in order,
-	// Text the FString parameter and Location the FVector one. false: no actor, no such function (script not loaded): the caller falls back to the C++ RPC.
+	// Text the FString parameter and Location the FVector one. false: no actor, no such function (script not loaded): the caller logs it (LogNotSent), nothing else is sent (D845).
 	bool CallFull(AHOLPlayerController* Controller, const TCHAR* CVarName, const TCHAR* FunctionName, const TArrayView<const int32> Args, const FString* Text, const FVector* Location, UObject* Object, const FName* Name)
 	{
 		if (!Controller || (CVarName && !IsOn(CVarName)))
@@ -5438,14 +5420,14 @@ void AHOLPlayerController::RequestHeroTalent(const int32 Family)
 {
 	if (!IsSpectator())
 	{
-		if (!HOLRpcScriptRoute_Haldir1117n::Call(this, TEXT("hol.Rpc.ScriptHero"), TEXT("ServerHeroTalent"), true, Family))
+		if (!HOLRpcScriptRoute_Haldir1117n::Call(this, nullptr, TEXT("ServerHeroTalent"), true, Family))
 		{
-			ServerHeroTalent(Family);
+			HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("HeroTalent"));
 		}
 	}
 }
 
-void AHOLPlayerController::ServerHeroTalent_Implementation(const int32 Family)
+void AHOLPlayerController::DoHeroTalent(const int32 Family)
 {
 	// The player's own slot only (D288); the family is checked by the rules at the step's end.
 	const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
@@ -5705,7 +5687,11 @@ void AHOLPlayerController::RequestStance(const int32 TargetSlot, const int32 Sta
 {
 	if (!IsSpectator())
 	{
-		ServerDiplomacyStance(TargetSlot, Stance);
+		const int32 StanceArgs[2] = {TargetSlot, Stance};
+		if (!HOLRpcScriptRoute_Haldir1117n::CallN(this, nullptr, TEXT("ServerDiplomacyStance"), StanceArgs))
+		{
+			HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("DiplomacyStance"));
+		}
 	}
 }
 
@@ -5714,18 +5700,6 @@ void AHOLPlayerController::RequestShareVision(const int32 TargetSlot, const bool
 	if (!IsSpectator())
 	{
 		ServerDiplomacyVision(TargetSlot, bShare);
-	}
-}
-
-void AHOLPlayerController::ServerDiplomacyStance_Implementation(const int32 TargetSlot, const int32 Stance)
-{
-	// The player's own slot only (D288); the target, the stance and the mode are checked by HOLDiplomacy::SetStance at the next step.
-	const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
-	UHOLCommandSubsystem* Commands = GetWorld()->GetSubsystem<UHOLCommandSubsystem>();
-	if (HOLPlayerState && Commands)
-	{
-		UE_LOG(LogHOLMatch, Display, TEXT("Diplomacy order: slot %d stance %d toward slot %d queued"), HOLPlayerState->GetPlayerIndex(), Stance, TargetSlot);
-		Commands->IssueDiplomacyOrder(HOLPlayerState->GetPlayerIndex(), EHOLDiplomacyOrderKind::Stance, TargetSlot, Stance);
 	}
 }
 
@@ -5742,18 +5716,16 @@ void AHOLPlayerController::ServerDiplomacyVision_Implementation(const int32 Targ
 
 void AHOLPlayerController::RequestCheatDamageBuilding(const FVector& Point, const int32 Amount, const uint8 AttackType)
 {
-	// CHEATS B (CELEBORN-1117q): through the script actor when hol.Rpc.ScriptCheatDamageBuilding is 1, else the C++ RPC as before.
 	{
 		const int32 CheatArgs[2] = { Amount, static_cast<int32>(AttackType) };
-		if (HOLRpcScriptRoute_Haldir1117n::CallEx(this, TEXT("hol.Rpc.ScriptCheatDamageBuilding"), TEXT("ServerCheatDamageBuilding"), TArrayView<const int32>(CheatArgs, 2), nullptr, &Point))
+		if (!HOLRpcScriptRoute_Haldir1117n::CallEx(this, nullptr, TEXT("ServerCheatDamageBuilding"), TArrayView<const int32>(CheatArgs, 2), nullptr, &Point))
 		{
-			return;
+			HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("CheatDamageBuilding"));
 		}
 	}
-	ServerCheatDamageBuilding(Point, Amount, AttackType);
 }
 
-void AHOLPlayerController::ServerCheatDamageBuilding_Implementation(const FVector_NetQuantize Point, const int32 Amount, const uint8 AttackType)
+void AHOLPlayerController::DoCheatDamageBuilding(const FVector_NetQuantize Point, const int32 Amount, const uint8 AttackType)
 {
 #if !UE_BUILD_SHIPPING
 	if (IsCheatRefused(TEXT("damage building")))
@@ -5784,7 +5756,7 @@ void AHOLPlayerController::ServerCheatDamageBuilding_Implementation(const FVecto
 #endif
 }
 
-void AHOLPlayerController::ServerCheatGatherSpeed_Implementation(const float Scale)
+void AHOLPlayerController::DoCheatGatherSpeed(const float Scale)
 {
 #if !UE_BUILD_SHIPPING
 	if (IsCheatRefused(TEXT("gather speed")))
@@ -6664,7 +6636,7 @@ void AHOLPlayerController::RequestPause()
 	UE_LOG(LogHOLMatch, Display, TEXT("Pause: pause asked by this player"));
 	if (!HOLRpcScriptRoute_Haldir1117n::Call(this, nullptr, TEXT("ServerRequestPause"), false, 0))
 	{
-		HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("ServerRequestPause"));
+		HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("RequestPause"));
 	}
 }
 
@@ -6673,7 +6645,7 @@ void AHOLPlayerController::RequestResume()
 	UE_LOG(LogHOLMatch, Display, TEXT("Pause: resume asked by this player"));
 	if (!HOLRpcScriptRoute_Haldir1117n::Call(this, nullptr, TEXT("ServerRequestResume"), false, 0))
 	{
-		HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("ServerRequestResume"));
+		HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("RequestResume"));
 	}
 }
 
