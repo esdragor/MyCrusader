@@ -133,7 +133,7 @@ int32 HOLScriptRpcPlayerBridge::SpawnAllFor(APlayerController* Controller)
 	return Spawned;
 }
 
-// ---- HALDIR-1117o (NOT COMPILED), MIG2-S3 T4 lot L1: Specialization and Hero. The owner controller's Do<X> does the work (friend class): same body, same journal (DoHeroTalent called by the bridge, D845; HeroAbility, CastRage, WatchUnit keep their _Implementation).
+// ---- HALDIR-1117o (NOT COMPILED), MIG2-S3 T4 lot L1: Specialization and Hero. The owner controller's Do<X> does the work (friend class): same body, same journal (DoHeroTalent, DoHeroAbility, DoCastRage, DoWatchUnit called by the bridge, D845, lot E).
 namespace HOLRpcBridgeL1_Haldir1117o
 {
 	AHOLPlayerController* OwnerController(const AActor* RpcActor)
@@ -173,7 +173,7 @@ bool UHOLRpcBridgeLibrary::HeroTalent(AActor* RpcActor, const int32 Family)
 bool UHOLRpcBridgeLibrary::HeroAbility(AActor* RpcActor, const EHOLHeroAbility Ability, const double X, const double Y, const double Z)
 {
 	AHOLPlayerController* Controller = HOLRpcBridgeL1_Haldir1117o::OwnerController(RpcActor);
-	if (Controller) { Controller->ServerHeroAbility_Implementation(Ability, FVector_NetQuantize(X, Y, Z)); }
+	if (Controller) { Controller->DoHeroAbility(Ability, FVector_NetQuantize(X, Y, Z)); }
 	return Controller != nullptr;
 }
 
@@ -185,7 +185,7 @@ bool UHOLRpcBridgeLibrary::CastRage(AActor* RpcActor, const TArray<int32>& UnitI
 		TArray<uint32> Ids;
 		Ids.Reserve(UnitIds.Num());
 		for (const int32 Id : UnitIds) { Ids.Add(static_cast<uint32>(Id)); }
-		Controller->ServerCastRage_Implementation(Ids);
+		Controller->DoCastRage(Ids);
 	}
 	return Controller != nullptr;
 }
@@ -193,7 +193,7 @@ bool UHOLRpcBridgeLibrary::CastRage(AActor* RpcActor, const TArray<int32>& UnitI
 bool UHOLRpcBridgeLibrary::WatchUnit(AActor* RpcActor, const int32 UnitId)
 {
 	AHOLPlayerController* Controller = HOLRpcBridgeL1_Haldir1117o::OwnerController(RpcActor);
-	if (Controller) { Controller->ServerWatchUnit_Implementation(static_cast<uint32>(UnitId)); }
+	if (Controller) { Controller->DoWatchUnit(static_cast<uint32>(UnitId)); }
 	return Controller != nullptr;
 }
 
@@ -309,7 +309,7 @@ bool UHOLRpcBridgeLibrary::CheatHoldPresence(AActor* RpcActor, const int32 Slot,
 	return Controller != nullptr;
 }
 
-// ---- HALDIR-1117p (NOT COMPILED), MIG2-S3 T5 lot L1: Signals and chat (friend class: the _Implementation of the owner controller, same body, same journal).
+// ---- HALDIR-1117p (NOT COMPILED), MIG2-S3 T5 lot L1: Signals and chat (friend class: the owner controller's PostSignal / PostChat / ReceiveSignal / ReceiveChat, same body, same journal).
 bool UHOLRpcBridgeLibrary::PostSignal(AActor* RpcActor, const int32 Kind, const double X, const double Y, const double Z)
 {
 	AHOLPlayerController* Controller = HOLRpcBridgeL1_Haldir1117o::OwnerController(RpcActor);
@@ -320,7 +320,7 @@ bool UHOLRpcBridgeLibrary::PostSignal(AActor* RpcActor, const int32 Kind, const 
 bool UHOLRpcBridgeLibrary::ReceiveSignal(AActor* RpcActor, const int32 Sender, const int32 Kind, const double X, const double Y, const double Z)
 {
 	AHOLPlayerController* Controller = HOLRpcBridgeL1_Haldir1117o::OwnerController(RpcActor);
-	if (Controller) { Controller->ClientReceiveSignal_Implementation(Sender, Kind, FVector(X, Y, Z)); }
+	if (Controller) { Controller->ReceiveSignal(Sender, Kind, FVector(X, Y, Z)); }
 	return Controller != nullptr;
 }
 
@@ -334,7 +334,7 @@ bool UHOLRpcBridgeLibrary::PostChat(AActor* RpcActor, const int32 Channel, const
 bool UHOLRpcBridgeLibrary::ReceiveChat(AActor* RpcActor, const int32 SenderSlot, const int32 Channel, const FString& Text)
 {
 	AHOLPlayerController* Controller = HOLRpcBridgeL1_Haldir1117o::OwnerController(RpcActor);
-	if (Controller) { Controller->ClientReceiveChat_Implementation(SenderSlot, Channel, Text); }
+	if (Controller) { Controller->ReceiveChat(SenderSlot, Channel, Text); }
 	return Controller != nullptr;
 }
 

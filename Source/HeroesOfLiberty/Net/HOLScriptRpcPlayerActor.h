@@ -67,11 +67,11 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Rpc")
 	static bool RequestResume(AActor* RpcActor);
 
-	/** Server: AHOLGameState::DefeatSlot(owner's slot, EHOLDefeatReason::Surrender) (body of ServerSurrender_Implementation); logs "Victory: surrender of slot N refused" when refused. */
+	/** Server: AHOLGameState::DefeatSlot(owner's slot, EHOLDefeatReason::Surrender) (the only source of the surrender since lot E: the controller has no ServerSurrender any more); logs "Victory: surrender of slot N refused" when refused. */
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Rpc")
 	static bool Surrender(AActor* RpcActor);
 
-	// ---- HALDIR-1117o (NOT COMPILED), MIG2-S3 T4 lot L1: Specialization and Hero. Each calls the owner controller's Do<X> (DoHeroTalent, called by the bridge, D845) or _Implementation (HeroAbility, CastRage, WatchUnit: still C++ RPCs), same body, same journal line. False: no owner controller.
+	// ---- HALDIR-1117o (NOT COMPILED), MIG2-S3 T4 lot L1: Specialization and Hero. Each calls the owner controller's Do<X> (DoHeroTalent, DoHeroAbility, DoCastRage, DoWatchUnit, called by the bridge, D845, lot E), same body, same journal line. False: no owner controller.
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Rpc")
 	static bool StartSpecialization(AActor* RpcActor, int32 Tier, int32 Option);
 
@@ -84,11 +84,11 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Rpc")
 	static bool HeroTalent(AActor* RpcActor, int32 Family);
 
-	/** Ability is an EHOLHeroAbility (UENUM); the _Implementation keeps only CloseRanks and Banner. */
+	/** Ability is an EHOLHeroAbility (UENUM); DoHeroAbility keeps only CloseRanks and Banner. */
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Rpc")
 	static bool HeroAbility(AActor* RpcActor, EHOLHeroAbility Ability, double X, double Y, double Z);
 
-	/** UnitIds as int32 (uint32 is not BlueprintCallable): cast back to uint32 for the _Implementation. */
+	/** UnitIds as int32 (uint32 is not BlueprintCallable): cast back to uint32 for DoCastRage. */
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Rpc")
 	static bool CastRage(AActor* RpcActor, const TArray<int32>& UnitIds);
 
@@ -149,19 +149,19 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Rpc")
 	static bool CheatHoldPresence(AActor* RpcActor, int32 Slot, bool bOff, bool bAttackers, bool bDefenders, int32 AttackerSlot);
 
-	// ---- HALDIR-1117p (NOT COMPILED), MIG2-S3 T5 lot L1: Signals and chat. Same model: the owner controller's _Implementation does the work (board, fan-out, journal). The fan-out
-	// reaches each viewer by its script Client RPC when hol.Rpc.ScriptSignal / ScriptChat is 1 (HOLPlayerController.cpp, HOLRpcScriptRoute_Haldir1117n::CallEx). False: no owner controller.
+	// ---- HALDIR-1117p (NOT COMPILED), MIG2-S3 T5 lot L1: Signals and chat. Same model: the owner controller does the work (board, fan-out, journal). The fan-out
+	// reaches each viewer by its script Client RPC (ReceiveSignal / ReceiveChat of the script, no C++ fallback since lot E; HOLPlayerController.cpp, HOLRpcScriptRoute_Haldir1117n::CallEx). False: no owner controller.
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Rpc")
 	static bool PostSignal(AActor* RpcActor, int32 Kind, double X, double Y, double Z);
 
-	/** Client: AHOLPlayerController::ClientReceiveSignal_Implementation (keeps the signal for the minimap, the ground mark, the thread line). */
+	/** Client: AHOLPlayerController::ReceiveSignal (keeps the signal for the minimap, the ground mark, the thread line). */
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Rpc")
 	static bool ReceiveSignal(AActor* RpcActor, int32 Sender, int32 Kind, double X, double Y, double Z);
 
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Rpc")
 	static bool PostChat(AActor* RpcActor, int32 Channel, const FString& Text, int32 TargetSlot);
 
-	/** Client: AHOLPlayerController::ClientReceiveChat_Implementation (counts it, adds the thread line). */
+	/** Client: AHOLPlayerController::ReceiveChat (counts it, adds the thread line). */
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Rpc")
 	static bool ReceiveChat(AActor* RpcActor, int32 SenderSlot, int32 Channel, const FString& Text);
 

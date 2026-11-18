@@ -229,7 +229,7 @@ public:
 	void ConsumeHeroReturnOrders(TArray<int32>& OutPlayerIndices);
 
 	/**
-	 * J8c.3: PlayerIndex's player casts its hero's Ability (ServerHeroAbility, hol.Hero.Cast; Location: the banner's point),
+	 * J8c.3: PlayerIndex's player casts its hero's Ability (AHOLPlayerController::DoHeroAbility, hol.Hero.Cast; Location: the banner's point),
 	 * applied at the end of the next step by the hero subsystem, which checks it (HOLHeroAbility::CanCast). Refused here as
 	 * the return orders (no player's slot, a defeated one, the match waiting or paused).
 	 */
@@ -237,7 +237,7 @@ public:
 	/** Takes the hero ability orders waiting (UHOLHeroSubsystem, at the end of each step), in the order given. */
 	void ConsumeHeroAbilityOrders(TArray<FHOLHeroAbilityOrder>& OutOrders);
 
-	/** L4: PlayerIndex's player orders the necrotic rage of UnitIds (ServerCastRage, the grid's button); taken by the combat processor at its next step. */
+	/** L4: PlayerIndex's player orders the necrotic rage of UnitIds (AHOLPlayerController::DoCastRage, the grid's button); taken by the combat processor at its next step. */
 	void IssueRageOrder(int32 PlayerIndex, const TArray<uint32>& UnitIds);
 	void ConsumeRageOrders(TArray<FHOLRageOrder>& OutOrders);
 
@@ -270,7 +270,7 @@ public:
 
 	/**
 	 * D5 (DiplomacyInProgress.md, D369, D370): PlayerIndex's player says Value toward OtherSlot (QueueDiplomacyOrder of the bridge, D845,
-	 * hol.Diplomacy.Stance) or opens / closes its vision to it (ServerDiplomacyVision, hol.Diplomacy.Vision), applied at the start of the
+	 * hol.Diplomacy.Stance) or opens / closes its vision to it (script ServerDiplomacyVision, hol.Diplomacy.Vision), applied at the start of the
 	 * next step by the game state (HOLDiplomacy::SetStance / SetVision decide). Refused here as the duel orders (no player's slot, a
 	 * defeated one, the match waiting or paused).
 	 */
