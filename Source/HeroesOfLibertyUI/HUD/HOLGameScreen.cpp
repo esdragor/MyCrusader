@@ -564,8 +564,6 @@ void UHOLGameScreen::NativeTick(const FGeometry& MyGeometry, const float InDelta
 	{
 		BindTableState(GetWorld() ? GetWorld()->GetGameState<AHOLGameState>() : nullptr);
 		RefreshPlayersTable();
-		RefreshWaitBanner();
-		RefreshAbsenceBanner();
 		RefreshStatsButton();
 		// V2.3c: a selected main forum on the ground, its ruin's seconds and its rebuilding's percent move with time alone
 		// (the forum's state changes only at its phases): its block is read at the same pace. Standing too (tiers, P4): its
@@ -1138,75 +1136,6 @@ void UHOLGameScreen::RefreshPlayersTable()
 		SetShown(PlayerRelations[Index]->GetParent(), Row->Relation != EHOLPlayerRelation::None, ESlateVisibility::HitTestInvisible);
 		PlayerLives[Index]->SetText(Row->Lives);
 		PlayerStates[Index]->SetText(Row->State);
-	}
-}
-
-void UHOLGameScreen::RefreshWaitBanner()
-{
-	using namespace UE::HeroesOfLiberty::UI::GameScreen;
-
-	const AHOLGameState* GameState = BoundTableState.Get();
-	const bool bWaiting = GameState && GameState->IsWaitingForPlayers() && !GameState->GetMissingPlayers().IsEmpty();
-	if (!bWaiting)
-	{
-		if (!ShownWaitPlayers.IsEmpty())
-		{
-			ShownWaitPlayers.Reset();
-			SetShown(WaitPanel, false);
-			UE_LOG(LogHOLUI, Display, TEXT("Wait banner: hidden"));
-		}
-		return;
-	}
-	const FString Players = FString::Join(GameState->GetMissingPlayers(), TEXT(", "));
-	const int32 Left = FMath::Max(0, FMath::CeilToInt(GameState->GetWaitEndSeconds() - GameState->GetServerWorldTimeSeconds()));
-	FFormatNamedArguments Arguments;
-	Arguments.Add(TEXT("Players"), FText::AsCultureInvariant(Players));
-	Arguments.Add(TEXT("Time"), FText::AsCultureInvariant(FString::Printf(TEXT("%d:%02d"), Left / 60, Left % 60)));
-	const FText Text = FText::Format(LOCTEXT("WaitingFor", "En attente de {Players} ({Time})"), Arguments);
-	if (WaitText)
-	{
-		WaitText->SetText(Text);
-	}
-	if (Players != ShownWaitPlayers)
-	{
-		ShownWaitPlayers = Players;
-		SetShown(WaitPanel, true, ESlateVisibility::HitTestInvisible);
-		UE_LOG(LogHOLUI, Display, TEXT("Wait banner: shown, %s"), *Text.ToString());
-	}
-}
-
-void UHOLGameScreen::RefreshAbsenceBanner()
-{
-	using namespace UE::HeroesOfLiberty::UI::GameScreen;
-
-	const AHOLGameState* GameState = BoundTableState.Get();
-	const TArray<FText> Lines = GameState ? GameState->GetAbsenceBannerLines(GameState->GetServerWorldTimeSeconds()) : TArray<FText>();
-	if (Lines.IsEmpty())
-	{
-		if (!ShownAbsence.IsEmpty())
-		{
-			ShownAbsence.Reset();
-			SetShown(AbsencePanel, false);
-			UE_LOG(LogHOLUI, Display, TEXT("Absence banner: hidden"));
-		}
-		return;
-	}
-	const FText Text = FText::Join(FText::AsCultureInvariant(TEXT("\n")), Lines);
-	if (AbsenceText)
-	{
-		AbsenceText->SetText(Text);
-	}
-	// Logged when who is gone or back changes, not at each second of the countdown.
-	FString Shown = FString::FromInt(Lines.Num());
-	for (const FHOLAbsentNotice& Notice : GameState->GetAbsentNotices())
-	{
-		Shown += FString::Printf(TEXT(";%s%s"), *Notice.Name, Notice.BackAt > 0. ? TEXT("+") : TEXT("-"));
-	}
-	if (Shown != ShownAbsence)
-	{
-		ShownAbsence = Shown;
-		SetShown(AbsencePanel, true, ESlateVisibility::HitTestInvisible);
-		UE_LOG(LogHOLUI, Display, TEXT("Absence banner: shown, %s"), *Text.ToString().Replace(TEXT("\n"), TEXT(" | ")));
 	}
 }
 
@@ -3339,30 +3268,6 @@ void UHOLGameScreen::BuildLayout()
 	StatsSlot->SetPadding(FMargin(0.f, 0.f, 6.f, 0.f));
 	MenuRow->AddChildToHorizontalBox(MenuBox);
 	MenuPanel->SetContent(MenuRow);
-
-	// R3.10: the wait banner, top centre under the top bar, while the match waits for its named players.
-	WaitPanel = MakePanel(TEXT("WaitPanel"));
-	WaitPanel->SetBrush(FSlateRoundedBoxBrush(HOLUIStyle::HUDPanel.CopyWithNewOpacity(0.8f), 4.f));
-	WaitPanel->SetVisibility(ESlateVisibility::Collapsed);
-	UOverlaySlot* WaitSlot = Frame->AddChildToOverlay(WaitPanel);
-	WaitSlot->SetHorizontalAlignment(HAlign_Center);
-	WaitSlot->SetVerticalAlignment(VAlign_Top);
-	WaitSlot->SetPadding(FMargin(ScreenMargin, ScreenMargin + QueueItemHeight * 2.f, ScreenMargin, ScreenMargin));
-	WaitText = MakeText(TEXT("WaitText"), UHOLTextStyleHUDHeading::StaticClass(), FText::GetEmpty());
-	WaitPanel->SetContent(WaitText);
-
-	// R7.5: the disconnection banner, top centre under the alert's place (both can show during the match), as the wait
-	// banner; lets the clicks through.
-	AbsencePanel = MakePanel(TEXT("AbsencePanel"));
-	AbsencePanel->SetBrush(FSlateRoundedBoxBrush(HOLUIStyle::HUDPanel.CopyWithNewOpacity(0.8f), 4.f));
-	AbsencePanel->SetVisibility(ESlateVisibility::Collapsed);
-	UOverlaySlot* AbsenceSlot = Frame->AddChildToOverlay(AbsencePanel);
-	AbsenceSlot->SetHorizontalAlignment(HAlign_Center);
-	AbsenceSlot->SetVerticalAlignment(VAlign_Top);
-	AbsenceSlot->SetPadding(FMargin(ScreenMargin, ScreenMargin + QueueItemHeight * 2.f + 52.f, ScreenMargin, ScreenMargin));
-	AbsenceText = MakeText(TEXT("AbsenceText"), UHOLTextStyleHUDHeading::StaticClass(), FText::GetEmpty());
-	AbsenceText->SetJustification(ETextJustify::Center);
-	AbsencePanel->SetContent(AbsenceText);
 
 	// V4.3: the major alert's banner, top centre under the top bar (the wait banner's place, before the match), larger than
 	// the thread's lines; a click centres the camera on the touched forum.
