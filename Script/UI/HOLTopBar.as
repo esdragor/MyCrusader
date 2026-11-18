@@ -255,7 +255,7 @@ class UHOLTopBarPanel : UObject
 	UCommonTextBlock AddResource(UHorizontalBox Resources, FString Name, int Resource, FText Label, bool bHasGatherers)
 	{
 		if (bHasGatherers)
-			AddToRow(Resources, MakeSquare(FName(Name + "Marker"), Screen.GetResourceColor(Resource), HOLTopBar::MarkerSize()), 6.0);
+			AddToRow(Resources, MakeSquare(FName(Name + "Marker"), UHOLScriptScreen::GetResourceColor(Resource), HOLTopBar::MarkerSize()), 6.0);
 		UCommonTextBlock LabelText = Screen.MakeText(FName(Name + "Label"), UHOLTextStyleHUDLabel);
 		LabelText.SetText(Label);
 		AddToRow(Resources, LabelText, 6.0);
