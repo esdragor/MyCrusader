@@ -5,6 +5,39 @@
 #include "Brushes/SlateColorBrush.h"
 #include "HOLStatsGraph.generated.h"
 
+/** A curve as the script passes it (ST-1): UHOLStatsGraph::FCurve by value. */
+USTRUCT(BlueprintType)
+struct HEROESOFLIBERTYUI_API FHOLStatsGraphCurve
+{
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadWrite, Category = "HOL|Stats")
+	FText Name;
+
+	UPROPERTY(BlueprintReadWrite, Category = "HOL|Stats")
+	FLinearColor Color = FLinearColor::White;
+
+	/** X the match time in seconds, Y the value, in time order (UHOLMatchStatsReadLibrary::MakeCurve). */
+	UPROPERTY(BlueprintReadWrite, Category = "HOL|Stats")
+	TArray<FVector2D> Points;
+};
+
+/** A dated vertical mark as the script passes it (ST-1): UHOLStatsGraph::FMark by value. */
+USTRUCT(BlueprintType)
+struct HEROESOFLIBERTYUI_API FHOLStatsGraphMark
+{
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadWrite, Category = "HOL|Stats")
+	int32 TimeSeconds = 0;
+
+	UPROPERTY(BlueprintReadWrite, Category = "HOL|Stats")
+	FLinearColor Color = FLinearColor::White;
+
+	UPROPERTY(BlueprintReadWrite, Category = "HOL|Stats")
+	FText Label;
+};
+
 /**
  * The curves of the statistics screen's « Chronologie » (C5), as Age of Empires II's timeline: one curve a player in its
  * colour over the match time, the time axis in minutes:seconds under it, the values' round graduations on its left, the
@@ -34,6 +67,14 @@ public:
 
 	/** The curves and marks to draw; the axes follow them. */
 	void SetData(TArray<FCurve> InCurves, TArray<FMark> InMarks);
+
+	/** SetData for the script: the curves and marks as flat structs (the painting stays in NativePaint). */
+	UFUNCTION(BlueprintCallable, Category = "HOL|Stats")
+	void SetGraphData(const TArray<FHOLStatsGraphCurve>& InCurves, const TArray<FHOLStatsGraphMark>& InMarks);
+
+	/** DescribeAxes for the script and its logs. */
+	UFUNCTION(BlueprintPure, Category = "HOL|Stats")
+	FString GetAxesDescription() const { return DescribeAxes(); }
 
 	/** "time 0..60 step 10, values 0..8 step 2": the axes as drawn, for the logs. */
 	FString DescribeAxes() const;
