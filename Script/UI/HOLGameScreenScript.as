@@ -119,6 +119,8 @@ FString TalentTipTexts = "";
 	UBorder VolcanoPanel;
 	UOverlaySlot VolcanoSlot;
 	UCommonTextBlock VolcanoText;
+	// HUD H-4: the players' table (HOLPlayerTable.as), drawn into the C++ screen's PlayersPanel.
+	UHOLPlayerTablePanel PlayerTable;
 	FString VolcanoTexts = "";
 	// The AI line's height with its gap (px at 1080p), when it is shown.
 	const float VolcanoAfterAILine = 34.0;
@@ -243,6 +245,8 @@ FString TalentTipTexts = "";
 		BuildDuelWindow(Frame);
 		BuildAILevelLine(Frame);
 		BuildVolcanoBanner(Frame);
+		PlayerTable = Cast<UHOLPlayerTablePanel>(NewObject(this, UHOLPlayerTablePanel));
+		PlayerTable.Build(this, GetPlayersPanel());
 		BuildMinimap(Frame);
 		BuildTalentWindow(Frame);
 		// Last: over the other blocks.
@@ -1358,6 +1362,8 @@ FString TalentTipTexts = "";
 		RefreshDuel();
 		RefreshAILevel();
 		RefreshVolcano();
+		if (PlayerTable != nullptr)
+			PlayerTable.Refresh();
 		if (Audio != nullptr)
 			Audio.PlayDueRepeats();
 		RefreshDiplomacy();
