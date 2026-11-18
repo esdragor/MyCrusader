@@ -43,7 +43,7 @@ public:
 	static int32 GetLastCandidateCount() { return LastCandidateCount; }
 
 	/**
-	 * The player's order (a right click on an ally with Monks selected, ServerHealUnit): Healer heals TargetId first, whatever is nearer,
+	 * The player's order (a right click on an ally with Monks selected, RequestHealUnit): Healer heals TargetId first, whatever is nearer,
 	 * while it is healable and within its HealRange, for OrderSteps steps at most or until it is healed; one order per healer, a new one
 	 * replaces it. Server and solo only (the simulation runs there).
 	 */
