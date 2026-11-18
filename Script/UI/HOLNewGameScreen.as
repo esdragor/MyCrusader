@@ -16,6 +16,8 @@
 class UHOLNewGameScreenScript : UHOLNewGameScreen
 {
 	default bScriptOwnsGestures = true;
+	// NG-5: the lobby display is this class's (the base then calls ShowLobby() below instead of its own ShowLobbyWidgets()).
+	default bScriptOwnsLobbyDisplay = true;
 
 	// The cpp's FHOLMatchConfig::MaxSlots (one line per slot).
 	const int SlotCount = 8;
@@ -252,16 +254,29 @@ class UHOLNewGameScreenScript : UHOLNewGameScreen
 		}
 	}
 
-	// ---- The gestures, solo (HandleMapChosen ... HandleTeamChosen of HOLNewGameScreen.cpp 971-1049, 1097, 1220, 1289, 1327) ----
-	// In a lobby (IsLobby()) none of them does anything yet: the lobby is the next lot (SendSettings, SendSlotAIChoice, SendMyChoice, SendSlotOpen).
+	// ---- The gestures (HandleMapChosen ... HandleTeamChosen of HOLNewGameScreen.cpp, solo and lobby branches) ----
+	// Solo: the configuration is written and the widgets refreshed. Lobby (IsLobby()): the same local write, and the choice is SENT to the manager
+	// (SendSettings, SendSlotAIChoice, SendSlotOpen, SendMyChoice; they do nothing without a client); the next read of the lobby puts back the manager's value.
 
-	// HandleMapChosen: the map; a configuration with no size takes the smallest size that holds its players (places drawn); Refresh.
+	// A list of on / off (index 1 is "Oui" / "On"); a missing list is off.
+	bool ListIsOn(UHOLDropdown List)
+	{
+		return List != nullptr && List.GetSelectedIndex() == 1;
+	}
+
+	// HandleMapChosen: the map; solo: a configuration with no size takes the smallest size that holds its players (places drawn); Refresh; lobby: SendSettings
+	// (after Refresh, as the cpp: the lobby never draws a default size).
 	UFUNCTION()
 	void OnMapChosen(UHOLDropdown Dropdown, int Index)
 	{
-		if (IsLobby())
-			return;
+		const bool bInLobby = IsLobby();
 		SetConfigMapIndex(Index);
+		if (bInLobby)
+		{
+			Refresh();
+			SendSettings();
+			return;
+		}
 		if (ReadConfig() && HOLNewGameRules::MapChoiceNeedsDefaultSize(false, CfgMapSize))
 		{
 			const int DefaultSize = HOLNewGameRules::DefaultSize(PlacesBySize(), HOLNewGameRules::NumOccupied(CfgStates));
@@ -270,31 +285,43 @@ class UHOLNewGameScreenScript : UHOLNewGameScreen
 		Refresh();
 	}
 
-	// HandleSizeChosen (solo branch): ChooseSize (false and nothing changed when the players do not fit, the list greys those sizes already); Refresh.
+	// HandleSizeChosen: solo: ChooseSize (false and nothing changed when the players do not fit, the list greys those sizes already); lobby: the size of the
+	// table as it is (a number that is no size is not taken), sent (the manager closes the slots past it); Refresh.
 	UFUNCTION()
 	void OnSizeChosen(UHOLDropdown Dropdown, int Index)
 	{
 		if (IsLobby())
+		{
+			const TArray<int> Places = PlacesBySize();
+			if (Index >= 1 && Index < Places.Num())
+			{
+				SetConfigMapSize(Index);
+				SendSettings();
+			}
+			Refresh();
 			return;
+		}
 		ChooseNewGameSize(Index);
 		Refresh();
 	}
 
-	// HandleTeamsTogetherChosen: the list's 1 is "Oui"; Refresh.
+	// HandleTeamsTogetherChosen: the list's 1 is "Oui"; lobby: SendSettings; Refresh.
 	UFUNCTION()
 	void OnTeamsTogetherChosen(UHOLDropdown Dropdown, int Index)
 	{
-		if (IsLobby() || !ReadConfig())
+		if (!ReadConfig())
 			return;
 		SetConfigGlobals(Index == 1, CfgFogMode, CfgMode);
+		if (IsLobby())
+			SendSettings();
 		Refresh();
 	}
 
-	// HandleFogChosen: the list is ordered Normal, Explored, Disabled, so FogMode = 2 - Index (clamped 0..2); Refresh.
+	// HandleFogChosen: the list is ordered Normal, Explored, Disabled, so FogMode = 2 - Index (clamped 0..2); lobby: SendSettings; Refresh.
 	UFUNCTION()
 	void OnFogChosen(UHOLDropdown Dropdown, int Index)
 	{
-		if (IsLobby() || !ReadConfig())
+		if (!ReadConfig())
 			return;
 		int Fog = 2 - Index;
 		if (Fog < 0)
@@ -302,37 +329,62 @@ class UHOLNewGameScreenScript : UHOLNewGameScreen
 		if (Fog > 2)
 			Fog = 2;
 		SetConfigGlobals(bCfgTeamsTogether, Fog, CfgMode);
+		if (IsLobby())
+			SendSettings();
 		Refresh();
 	}
 
-	// HandleModeChosen: 1 is Diplomacy, any other value Standard; Refresh.
+	// HandleModeChosen: 1 is Diplomacy, any other value Standard; lobby: SendSettings; Refresh.
 	UFUNCTION()
 	void OnModeChosen(UHOLDropdown Dropdown, int Index)
 	{
-		if (IsLobby() || !ReadConfig())
+		if (!ReadConfig())
 			return;
 		const int NewMode = Index == 1 ? 1 : 0;
 		SetConfigGlobals(bCfgTeamsTogether, CfgFogMode, NewMode);
+		if (IsLobby())
+			SendSettings();
 		Refresh();
 	}
 
-	// HandleOptionChosen (solo branch): only the sacred sites are taken (Nomad, Regicide, Catastrophe stay greyed and unchanged); no Refresh, as in the cpp.
+	// HandleOptionChosen: solo: only the sacred sites are taken (Nomad, Regicide, Catastrophe stay greyed and unchanged), no Refresh, as in the cpp; lobby: the
+	// four options as the lists show them (the sacred sites first, as the cpp), sent.
 	UFUNCTION()
 	void OnOptionChosen(UHOLDropdown Dropdown, int Index)
 	{
-		if (IsLobby() || !ReadConfig())
+		const bool bSacredSites = ListIsOn(SacredSitesList);
+		if (IsLobby())
+		{
+			SetConfigOptions(ListIsOn(NomadList), ListIsOn(RegicideList), ListIsOn(CatastropheList), bSacredSites);
+			SendSettings();
 			return;
-		const bool bSacredSites = SacredSitesList != nullptr && SacredSitesList.GetSelectedIndex() == 1;
+		}
+		if (!ReadConfig())
+			return;
 		SetConfigOptions(bCfgNomad, bCfgRegicide, bCfgCatastrophe, bSacredSites);
 	}
 
-	// HandleStateChosen (solo branch): a slot past the places of the size stays closed; else the slot takes the state, and a colour another slot holds
-	// gives way to the first free one (HOLNewGameRules::ApplyStateChosen); Refresh.
+	// HandleStateChosen: lobby (the leader's list: Open, Closed, Not ready, Ready, AI): HOLNewGameRules::LobbyStateAction says what is sent (1 the AI, 2 the slot
+	// open, 3 the slot closed, 0 nothing), no Refresh (the next read puts back the manager's value). Solo: a slot past the places of the size stays closed; else the slot
+	// takes the state, and a colour another slot holds gives way to the first free one (HOLNewGameRules::ApplyStateChosen); Refresh.
 	UFUNCTION()
 	void OnSlotStateChosen(UHOLDropdown Dropdown, int Index)
 	{
 		const int SlotIndex = SlotOfList(SlotStateLists, Dropdown);
-		if (IsLobby() || SlotIndex < 0 || !ReadConfig())
+		if (SlotIndex < 0)
+			return;
+		if (IsLobby())
+		{
+			const int Action = HOLNewGameRules::LobbyStateAction(Index, HasClient());
+			if (Action == 1)
+				SendSlotAIChoice(SlotIndex, -1, -1, "");
+			else if (Action == 2)
+				SendSlotOpen(SlotIndex, true);
+			else if (Action == 3)
+				SendSlotOpen(SlotIndex, false);
+			return;
+		}
+		if (!ReadConfig())
 			return;
 		const int NumPlaces = HOLNewGameRules::NumPlacesOfConfig(PlacesBySize(), CfgMapSize);
 		if (HOLNewGameRules::ApplyStateChosen(CfgStates, CfgColors, SlotIndex, Index, NumPlaces))
@@ -340,36 +392,181 @@ class UHOLNewGameScreenScript : UHOLNewGameScreen
 		Refresh();
 	}
 
-	// HandleFactionChosen (solo): a faction the list does not offer (greyed, the Templars without the cheat) is never taken; else the slot's faction; Refresh.
+	// HandleFactionChosen: a faction the list does not offer (greyed, the Templars without the cheat) is never taken; in a lobby only my line and the leader's AIs
+	// are changed; else the slot's faction, Refresh, and (lobby) the faction is sent: the leader's AI by SendSlotAIChoice, my line by SendMyChoice.
 	UFUNCTION()
 	void OnSlotFactionChosen(UHOLDropdown Dropdown, int Index)
 	{
 		const int SlotIndex = SlotOfList(SlotFactionLists, Dropdown);
-		if (IsLobby() || SlotIndex < 0)
+		if (SlotIndex < 0)
 			return;
-		if (HOLNewGameRules::IsFactionChoosable(Index, HOLFactionChoiceRead::IsCheatOn()))
-			SetConfigSlot(SlotIndex, -1, Index, -1, -1);
+		if (!HOLNewGameRules::IsFactionChoosable(Index, HOLFactionChoiceRead::IsCheatOn()))
+		{
+			Refresh();
+			return;
+		}
+		const bool bInLobby = IsLobby();
+		if (bInLobby)
+		{
+			const FHOLNewGameLobbyView View = GetLobbyView();
+			if (!HOLNewGameRules::LobbyLineEditable(SlotIndex, View.YourSlot, CanEditLobbyAISlot(SlotIndex)))
+			{
+				Refresh();
+				return;
+			}
+		}
+		SetConfigSlot(SlotIndex, -1, Index, -1, -1);
 		Refresh();
+		if (!bInLobby)
+			return;
+		const FString Name = UHOLNewGameScreen::GetNewGameFactionName(Index);
+		if (IsLobbyAI(SlotIndex))
+			SendSlotAIChoice(SlotIndex, -1, -1, Name);
+		else
+			SendMyChoice(-1, -1, -1, -1, Name);
 	}
 
-	// HandleColorChosen (solo): the colour (a taken one is greyed in the list; "Aleatoire" is 8); Refresh.
+	// HandleColorChosen: the colour (a taken one is greyed in the list; "Aleatoire" is 8); Refresh; lobby: sent (an AI's by SendSlotAIChoice, mine by SendMyChoice).
 	UFUNCTION()
 	void OnSlotColorChosen(UHOLDropdown Dropdown, int Index)
 	{
 		const int SlotIndex = SlotOfList(SlotColorLists, Dropdown);
-		if (IsLobby() || SlotIndex < 0)
+		if (SlotIndex < 0)
 			return;
 		SetConfigSlot(SlotIndex, -1, -1, Index, -1);
 		Refresh();
+		if (!IsLobby())
+			return;
+		if (IsLobbyAI(SlotIndex))
+			SendSlotAIChoice(SlotIndex, Index, -1, "");
+		else
+			SendMyChoice(Index, -1, -1, -1, "");
 	}
 
-	// HandleTeamChosen (solo): the team; nothing else (no Refresh, as in the cpp).
+	// HandleTeamChosen: the team; no Refresh, as in the cpp; lobby: sent (an AI's by SendSlotAIChoice, mine by SendMyChoice).
 	UFUNCTION()
 	void OnSlotTeamChosen(UHOLDropdown Dropdown, int Index)
 	{
 		const int SlotIndex = SlotOfList(SlotTeamLists, Dropdown);
-		if (IsLobby() || SlotIndex < 0)
+		if (SlotIndex < 0)
 			return;
 		SetConfigSlot(SlotIndex, -1, -1, -1, Index);
+		if (!IsLobby())
+			return;
+		if (IsLobbyAI(SlotIndex))
+			SendSlotAIChoice(SlotIndex, -1, Index, "");
+		else
+			SendMyChoice(-1, Index, -1, -1, "");
+	}
+
+	// ---- The lobby display (ShowLobbyWidgets of HOLNewGameScreen.cpp, moved to the script) ----
+	// Called by the base's ShowLobby after the lobby is read, the configuration copied and Refresh() done (bScriptOwnsLobbyDisplay). The base keeps the Starting
+	// state, JoinMatch, the journal and the Ready / Spectator wiring (ToggleReady / ToggleSpectator): this only shows.
+
+	// One line of the lobby: the name, the state list (or "Vous" for the slot 0), the faction / colour / team lists greyed but for my line and the leader's AIs.
+	void ShowLobbyLine(const FHOLNewGameLobbyView& View, int SlotIndex, const TArray<FText>& LobbyStates)
+	{
+		const bool bRowExists = SlotIndex < View.Slots.Num();
+		int RowState = 0;
+		bool bRowReady = false;
+		if (bRowExists)
+		{
+			RowState = View.Slots[SlotIndex].State;
+			bRowReady = View.Slots[SlotIndex].bReady;
+		}
+		const bool bAI = bRowExists && RowState == 3;
+		if (SlotIndex < LobbySlotNames.Num() && LobbySlotNames[SlotIndex] != nullptr)
+			LobbySlotNames[SlotIndex].SetText(GetNewGameLobbyLineName(SlotIndex));
+		// Open, closed, not ready, ready, AI (the lobby's state list).
+		const int State = HOLNewGameRules::LobbyListIndex(bRowExists, RowState, bRowReady);
+		FText AIName;
+		if (bAI)
+			AIName = GetNewGameLobbyAIName(SlotIndex);
+		UHOLDropdown StateList = nullptr;
+		if (SlotIndex < SlotStateLists.Num())
+			StateList = SlotStateLists[SlotIndex];
+		if (StateList != nullptr)
+		{
+			// The leader opens and closes the slots no player holds, or puts an AI there: Open, Closed and AI (the others are the manager's).
+			StateList.SetSelectedIndex(State);
+			StateList.SetIsEnabled(CanToggleLobbySlot(SlotIndex));
+			StateList.SetOptionEnabled(2, false);
+			StateList.SetOptionEnabled(3, false);
+			if (bAI)
+				StateList.SetShownText(AIName);
+		}
+		else if (SlotIndex == 0 && LobbyYouText != nullptr)
+		{
+			LobbyYouText.SetText(bAI ? AIName : LobbyStates[State]);
+		}
+		// Only my line is mine, and an AI's is the leader's; the faction too.
+		const bool bEditable = HOLNewGameRules::LobbyLineEditable(SlotIndex, View.YourSlot, CanEditLobbyAISlot(SlotIndex));
+		if (SlotIndex < SlotFactionLists.Num() && SlotFactionLists[SlotIndex] != nullptr)
+			SlotFactionLists[SlotIndex].SetIsEnabled(bEditable);
+		if (SlotIndex < SlotColorLists.Num() && SlotColorLists[SlotIndex] != nullptr)
+			SlotColorLists[SlotIndex].SetIsEnabled(bEditable);
+		if (SlotIndex < SlotTeamLists.Num() && SlotTeamLists[SlotIndex] != nullptr)
+			SlotTeamLists[SlotIndex].SetIsEnabled(bEditable);
+	}
+
+	UFUNCTION(BlueprintOverride)
+	void ShowLobby()
+	{
+		const FHOLNewGameLobbyView View = GetLobbyView();
+		const TArray<FText> LobbyStates = UHOLNewGameScreen::GetNewGameOptions(n"LobbyState");
+		if (LobbyHeading != nullptr)
+			LobbyHeading.SetText(FText::FromString(View.Name));
+		for (int SlotIndex = 0; SlotIndex < SlotCount; SlotIndex++)
+			ShowLobbyLine(View, SlotIndex, LobbyStates);
+
+		// The map, its size, "Equipes ensemble", the fog, the mode and the options are the leader's (the sacred sites are not in the cpp's list: not added).
+		const bool bLeader = IsLobbyYouLeader();
+		TArray<UHOLDropdown> Settings;
+		Settings.Add(MapList);
+		Settings.Add(SizeList);
+		Settings.Add(TeamsTogetherList);
+		Settings.Add(FogList);
+		Settings.Add(ModeList);
+		Settings.Add(NomadList);
+		Settings.Add(RegicideList);
+		Settings.Add(CatastropheList);
+		for (int Setting = 0; Setting < Settings.Num(); Setting++)
+		{
+			if (Settings[Setting] != nullptr)
+				Settings[Setting].SetIsEnabled(bLeader);
+		}
+
+		// Ready: "Plus pret" when ready; changeable with a slot while the lobby has not started; no Ready for a spectator.
+		const bool bLobbyOpen = View.State == 0;
+		const bool bSpectator = IsLobbyYouSpectator();
+		TArray<bool> ReadyRows;
+		for (int Row = 0; Row < View.Slots.Num(); Row++)
+			ReadyRows.Add(View.Slots[Row].bReady);
+		const bool bReady = HOLNewGameRules::IsYouReady(ReadyRows, View.YourSlot);
+		if (LobbyReadyButton != nullptr)
+		{
+			SetNewGameButtonLabel(n"ReadyButton", UHOLNewGameScreen::GetNewGameText(HOLNewGameRules::ReadyButtonShowsUndo(bReady) ? n"NotReadyAction" : n"ReadyAction"));
+			LobbyReadyButton.SetIsEnabled(HOLNewGameRules::ReadyButtonEnabled(View.YourSlot, bLobbyOpen));
+			LobbyReadyButton.SetVisibility(HOLNewGameRules::ReadyButtonVisible(bSpectator) ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
+		}
+		// Spectator (SP1, D642): a spectator's button takes a slot back (only if one is open), a player's leaves his.
+		if (LobbySpectateButton != nullptr)
+		{
+			SetNewGameButtonLabel(n"SpectateButton", UHOLNewGameScreen::GetNewGameText(HOLNewGameRules::SpectateButtonShowsPlay(bSpectator) ? n"BecomePlayer" : n"BecomeSpectator"));
+			LobbySpectateButton.SetIsEnabled(HOLNewGameRules::SpectateButtonEnabled(bLobbyOpen, bSpectator, LobbyHasOpenSlot()));
+		}
+		// The spectators ("Spectateurs : A, couronne B"), hidden when there is none.
+		if (LobbySpectators != nullptr)
+		{
+			const TArray<FString> Spectators = View.Spectators;
+			LobbySpectators.SetText(UHOLNewGameScreen::GetNewGameSpectatorsText(Spectators, View.Leader));
+			LobbySpectators.SetVisibility(Spectators.Num() == 0 ? ESlateVisibility::Collapsed : ESlateVisibility::HitTestInvisible);
+		}
+		// Launch: the leader's only, active when all are ready (the manager still decides).
+		if (LobbyLaunchButton != nullptr)
+		{
+			LobbyLaunchButton.SetVisibility(bLeader ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
+			LobbyLaunchButton.SetIsEnabled(CanStartLobby() && bLobbyOpen);
+		}
 	}
 }

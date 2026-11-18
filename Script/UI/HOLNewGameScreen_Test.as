@@ -78,3 +78,84 @@ void Test_NewGameSlotCount(FUnitTest& T)
 	T.AssertTrue(NGS_Find(Screen, n"SlotYou0") != nullptr, "the slot 0 is the player's (Vous)");
 	HOLScreenTest::EndScreenTest();
 }
+
+// ---- Effect tests of the SOLO gestures (NG-5): a value is chosen in a list through UHOLDropdown::Choose (it broadcasts OnChosen as a click does) and the
+// effect is read on ANOTHER widget or on the configuration. The LOBBY is not tested here: it needs a manager and a read FHOLLobby (no network in a script
+// test, no FHOLLobby built from script): it is looked at with two instances. ----
+
+UHOLDropdown NGS_FindList(UHOLNewGameScreen Screen, FName Name)
+{
+	return Cast<UHOLDropdown>(NGS_Find(Screen, Name));
+}
+
+// A slot put on "closed" greys its faction and colour lists; put on "AI" they are active again and the state list holds the AI.
+void Test_NewGameSoloStateGivesTheLineItsFields(FUnitTest& T)
+{
+	UHOLNewGameScreen Screen = NGS_CreateScreen(T);
+	if (Screen == nullptr)
+		return;
+	UHOLDropdown State = NGS_FindList(Screen, n"SlotState1");
+	T.AssertTrue(State != nullptr, "the slot 1 has its state list");
+	if (State != nullptr)
+	{
+		State.Choose(0);
+		T.AssertTrue(!HOLScreenTest::IsWidgetEnabled(NGS_Find(Screen, n"SlotFaction1")), "a closed slot's faction list is greyed");
+		T.AssertTrue(!HOLScreenTest::IsWidgetEnabled(NGS_Find(Screen, n"SlotColor1")), "a closed slot's colour list is greyed");
+		State.Choose(2);
+		T.AssertEquals(HOLScreenTest::GetDropdownIndex(State), 2, "the slot 1 state list shows the AI");
+		T.AssertTrue(HOLScreenTest::IsWidgetEnabled(NGS_Find(Screen, n"SlotFaction1")), "a slot put on AI has its faction list active");
+		T.AssertTrue(HOLScreenTest::IsWidgetEnabled(NGS_Find(Screen, n"SlotColor1")), "a slot put on AI has its colour list active");
+	}
+	HOLScreenTest::EndScreenTest();
+}
+
+// A slot that takes a seat on a colour another slot holds gives way to a free colour (HOLNewGameRules::ApplyStateChosen).
+void Test_NewGameSoloTakenColourGivesWay(FUnitTest& T)
+{
+	UHOLNewGameScreen Screen = NGS_CreateScreen(T);
+	if (Screen == nullptr)
+		return;
+	UHOLDropdown State = NGS_FindList(Screen, n"SlotState1");
+	T.AssertTrue(State != nullptr, "the slot 1 has its state list");
+	if (State != nullptr)
+	{
+		State.Choose(0);
+		const int HeldColour = HOLScreenTest::GetDropdownIndex(NGS_Find(Screen, n"SlotColor0"));
+		T.AssertTrue(HeldColour >= 0 && HeldColour < 8, "the slot 0 holds a real colour");
+		// The closed slot 1 is put on the colour of the slot 0, then takes a seat: the colour must move.
+		Screen.SetConfigSlot(1, -1, -1, HeldColour, -1);
+		Screen.Refresh();
+		State.Choose(1);
+		const int NewColour = HOLScreenTest::GetDropdownIndex(NGS_Find(Screen, n"SlotColor1"));
+		T.AssertTrue(NewColour >= 0 && NewColour < 8, "the slot 1 holds a real colour");
+		T.AssertTrue(NewColour != HeldColour, "a colour another slot holds gives way to a free one");
+	}
+	HOLScreenTest::EndScreenTest();
+}
+
+// The fog and "Equipes ensemble" lists write the configuration (read back as its JSON): the fog list is ordered Normal, Explored, Disabled.
+void Test_NewGameSoloGlobalsGesture(FUnitTest& T)
+{
+	UHOLNewGameScreen Screen = NGS_CreateScreen(T);
+	if (Screen == nullptr)
+		return;
+	UHOLDropdown Fog = NGS_FindList(Screen, n"FogDropdown");
+	UHOLDropdown Together = NGS_FindList(Screen, n"TeamsTogetherDropdown");
+	T.AssertTrue(Fog != nullptr && Together != nullptr, "the fog and teams together lists exist");
+	if (Fog != nullptr && Together != nullptr)
+	{
+		Fog.Choose(2);
+		Together.Choose(0);
+		const FString Json = Screen.GetConfigJson();
+		int FogMode = 2;
+		bool bTeamsTogether = true;
+		FString Biome;
+		int Peasants = 0;
+		TArray<int> Difficulties;
+		TArray<int> AIBrains;
+		T.AssertTrue(HOLNewGameRead::DescribeGlobals(Json, FogMode, bTeamsTogether, Biome, Peasants, Difficulties, AIBrains), "the configuration is readable");
+		T.AssertEquals(FogMode, 0, "the last fog entry (Disabled) is fog mode 0");
+		T.AssertTrue(!bTeamsTogether, "\"Equipes ensemble\" on its first entry is off");
+	}
+	HOLScreenTest::EndScreenTest();
+}
