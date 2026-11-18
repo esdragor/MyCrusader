@@ -1,5 +1,5 @@
 // L2 proof spawn (D848, ELROND-1118g): the SERVER places the units and the building the L2 order proofs need (a monk to heal, a deployable engine, soldiers of the other slot, a building with garrison places).
-// A world subsystem (UScriptWorldSubsystem, ticked on every machine, like UHOLRpcOrderPilot): it does nothing unless the cvar hol.Rpc.ProofSpawn is not 0 (0 = inert, the default) AND the cheats are allowed on this
+// A world subsystem (UScriptWorldSubsystem, ticked on every machine): it does nothing unless the cvar hol.Rpc.ProofSpawn is not 0 (0 = inert, the default) AND the cheats are allowed on this
 // server (the same gate as the cheat RPCs: HOLRpcBridge::CheatsAllowed, the C++ IsCheatRefused = FHOLCheatRules::AreCheatsAllowed, i.e. -HOLCheats on the dedicated server's command line; refused = the C++ line "Cheat refused: proof spawn").
 // Set it on the SERVER only (-ExecCmds="hol.Rpc.ProofSpawn <bits>"). Bits: 1 a Monk of slot 0, 2 a Mangonel (the deployable engine of the table) of slot 0, 4 three Spearman of slot 1 (a target for the attack orders),
 // 8 a Barracks of slot 0 (hol.Cheat.SpawnBuilding). Fired ONCE, 5 s after the first RPC actor with authority exists (the server then has a seated player). This file lives in Script/Net (never Dev, Developers, Examples, Editor).

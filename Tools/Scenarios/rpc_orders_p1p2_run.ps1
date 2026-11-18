@@ -1,19 +1,19 @@
 # L2 orders proofs P1 (movement: Move, AttackMove, MoveInLine, Stop) and P2 (combat: AttackUnit, AttackBuilding, HealUnit, ToggleDeploy)
-# D848: network proof WITH EFFECT of the L2 orders on the SCRIPT route (hol.Rpc.OrderScript 1). Source of the contract: Docs\Rapports\CARTE-L2-PREUVES-1118.md (main copy).
+# D848: network proof WITH EFFECT of the L2 orders on the SCRIPT route. Source of the contract: Docs\Rapports\CARTE-L2-PREUVES-1118.md (main copy).
 # Model: rpc_routes_seats_run.ps1. Dedicated server Plain, -HOLCheats, MatchConfig with 2 Human seats (Alice slot 0 green, Bob slot 1 red, startingPeasants 5).
 # RED client (Bob) joins and makes NO call -> 0 line "RpcOrder: ... slot 1" on the server. GREEN client (Alice) runs the orders of the bit.
 # Usage: powershell -ExecutionPolicy Bypass -File Tools\Scenarios\rpc_orders_p1p2_run.ps1 -Root <worktree> [-Lot P1|P2|P1P2] [-Only "move,stop"] [-Combined]
 #   Default: ONE run per order (clean effect, the orders do not overwrite each other). -Combined: ONE run with the bits of the lot summed (faster; effects judged on the journal lines only, positions are mixed).
 # Exact launch lines (hidden, no window):
-#   SERVER : UnrealEditor.exe <uproject> /Game/Maps/Plain -server -nullrhi -nosound -Port=<p> -unattended -nosplash -Multiprocess -LiveCoding=0 -asdebugport=0 -as-exit-on-error -HOLCheats -MatchConfig=<json> -saveddirsuffix=OrdSrv -abslog=<log> -ExecCmds="hol.Rpc.OrderTrace 1[,hol.Rpc.ProofSpawn 1]"
+#   SERVER : UnrealEditor.exe <uproject> /Game/Maps/Plain -server -nullrhi -nosound -Port=<p> -unattended -nosplash -Multiprocess -LiveCoding=0 -asdebugport=0 -as-exit-on-error -HOLCheats -MatchConfig=<json> -saveddirsuffix=OrdSrv -abslog=<log> [-ExecCmds="hol.Rpc.ProofSpawn <bits>" ; the argument is OMITTED when no cvar is needed]
 #   RED    : UnrealEditor.exe <uproject> 127.0.0.1:<p>?Name=Bob -game -nullrhi -nosound ... (no -ExecCmds)
-#   GREEN  : UnrealEditor.exe <uproject> 127.0.0.1:<p>?Name=Alice -game -nullrhi -nosound ... -ExecCmds="hol.Rpc.OrderScript 1,hol.Rpc.OrderTrace 1,hol.Rpc.ProofRoute <bits>"
+#   GREEN  : UnrealEditor.exe <uproject> 127.0.0.1:<p>?Name=Alice -game -nullrhi -nosound ... -ExecCmds="hol.Rpc.ProofRoute <bits>"
 #   ProofSpawn 1 (server cvar, script, written by another agent) only for the orders that need a monk / a deployable unit / a close enemy soldier (attack unit, heal unit, toggle deploy).
 # Bits of hol.Rpc.ProofRoute (card section 0, hook in Script\Net\HOLRpcPlayer.as, written by another agent): move 32768, attack move 65536, move in line 131072, stop 262144, attack unit 524288, attack building 1048576, heal unit 2097152, toggle deploy 4194304 (P1 = 491520, P2 = 7864320, P1P2 = 8355840).
 # The hook must also run the delayed report "@12 hol.Units.Where 0" on the GREEN client (card, lacuna of the hook) : the positions / activities / hp are read on the green client journal (replicated units), the simulation lines on the server journal.
 # JOURNAL LINES READ (contract with C++ and script; the server journal is read with a shared read, the processes stay open):
 #   per order, reception (script, server)  : "RpcOrder: <name> received by the server: slot 0 ..."  (refusal: "RpcOrder: <name> refused (<code>) for sender slot 0")
-#   per order, Do<X> reached (C++, server)  : "OrderRecv kind=<Kind> ..."  (hol.Rpc.OrderTrace 1 on the server) ; Kinds: Move, AttackMove, MoveInLine, Stop, AttackUnit, AttackBuilding, HealUnit, ToggleDeploy
+#   (lot R: the 16 C++ order RPCs and their server trace line are gone; the verdict of an order depends on the reception line above + the EFFECT below only)
 #   EFFECT move         : server "Move order: N units to (X, Y)" + green last "Units where: ..." : every slot 0 unit within -Tol cm of (X, Y)
 #   EFFECT attack move  : server or green "attack-move to (X, Y)" (the commands hol.Units.AttackMove logs it, K C.4512) + Where : every slot 0 unit within -Tol cm of (X, Y)
 #   EFFECT move in line : Where (hook command hol.Units.OrderLine 1500 0 1500 600 : Start -> End along +Y) : >= 3 units on ONE line (minor/major std <= 0.15, major std >= 50 cm) perpendicular to Start->End (axis within 30 degrees of X) ; Start = End (silent bug) gives a clump and fails
@@ -23,7 +23,7 @@
 #   EFFECT heal unit    : server "Heal: step N #m (slot 0) stops in reach of #U" (a monk of slot 0 reached the wounded unit ; the walk line alone is not enough)
 #   EFFECT toggle deploy: server "Deploy: #U phase 0 -> 1" (deployment phase changed)
 #   RED (c)             : 0 server lines matching "RpcOrder: .*slot 1\b" and no "RpcRoute: .* not sent" on the server nor the green client.
-# Output: table "order -> received yes/NO ; Do<X> yes/NO ; effect yes/NO", then VERDICT PASS/FAIL, exit code 0/1.
+# Output: table "order -> received yes/NO ; effect yes/NO", then VERDICT PASS/FAIL, exit code 0/1.
 param(
     [string]$Root = (Split-Path (Split-Path $PSScriptRoot -Parent) -Parent),
     [string]$Out = (Join-Path $env:TEMP "rpc_orders_p1p2"),
@@ -71,16 +71,16 @@ function Line-Axis($units) {
     return [pscustomobject]@{ Major = [Math]::Sqrt($l1); Minor = [Math]::Sqrt($l2); CosX = [Math]::Abs([Math]::Cos($ang)) }
 }
 
-# name = journal name of the RpcOrder line ; Kind = OrderRecv kind ; Bit = hol.Rpc.ProofRoute bit ; Lot ; Spawn = needs hol.Rpc.ProofSpawn 1 on the server
+# name = journal name of the RpcOrder line ; Bit = hol.Rpc.ProofRoute bit ; Lot ; Spawn = needs hol.Rpc.ProofSpawn 1 on the server
 $orders = @(
-    @{ Name = "move"; Kind = "Move"; Bit = 32768; Lot = "P1"; Spawn = 0 },
-    @{ Name = "attack move"; Kind = "AttackMove"; Bit = 65536; Lot = "P1"; Spawn = 0 },
-    @{ Name = "move in line"; Kind = "MoveInLine"; Bit = 131072; Lot = "P1"; Spawn = 0 },
-    @{ Name = "stop"; Kind = "Stop"; Bit = 262144; Lot = "P1"; Spawn = 0 },
-    @{ Name = "attack unit"; Kind = "AttackUnit"; Bit = 524288; Lot = "P2"; Spawn = 4 },
-    @{ Name = "attack building"; Kind = "AttackBuilding"; Bit = 1048576; Lot = "P2"; Spawn = 0 },
-    @{ Name = "heal unit"; Kind = "HealUnit"; Bit = 2097152; Lot = "P2"; Spawn = 1 },
-    @{ Name = "toggle deploy"; Kind = "ToggleDeploy"; Bit = 4194304; Lot = "P2"; Spawn = 2 }
+    @{ Name = "move"; Bit = 32768; Lot = "P1"; Spawn = 0 },
+    @{ Name = "attack move"; Bit = 65536; Lot = "P1"; Spawn = 0 },
+    @{ Name = "move in line"; Bit = 131072; Lot = "P1"; Spawn = 0 },
+    @{ Name = "stop"; Bit = 262144; Lot = "P1"; Spawn = 0 },
+    @{ Name = "attack unit"; Bit = 524288; Lot = "P2"; Spawn = 4 },
+    @{ Name = "attack building"; Bit = 1048576; Lot = "P2"; Spawn = 0 },
+    @{ Name = "heal unit"; Bit = 2097152; Lot = "P2"; Spawn = 1 },
+    @{ Name = "toggle deploy"; Bit = 4194304; Lot = "P2"; Spawn = 2 }
 )
 $sel = @($orders | Where-Object { $Lot -eq "P1P2" -or $_.Lot -eq $Lot })
 if ($Only) { $names = @($Only -split ',' | ForEach-Object { $_.Trim() }); $sel = @($sel | Where-Object { $names -contains $_.Name }) }
@@ -98,7 +98,7 @@ function Effect-Of($o, $S, $K) {
     $ord = Ordered-Units $wh $S
     switch ($o.Name) {
         "move" {
-            # first real run: the server prints NO "Move order" line (only "OrderRecv kind=Move key=<x> units=N") ; the target is the client line "Order: N units to (X, Y)" (K) written by hol.Units.OrderNear
+            # first real run: the server prints NO "Move order" line ; the target is the client line "Order: N units to (X, Y)" (K) written by hol.Units.OrderNear
             $m = Last-Match $K 'Order: (\d+) units to \((-?\d+), (-?\d+)\)'
             if (-not $m) { return @{ Ok = $false; Detail = "no client line 'Order: N units to (X, Y)'" } }
             $x = [double]$m.Groups[2].Value; $y = [double]$m.Groups[3].Value
@@ -175,15 +175,17 @@ function Run-One($tag, $group) {
     Set-Content -Encoding ascii $cfg $cfgJson
     $sl = "$Out\orders_${tag}_server.log"; $c1 = "$Out\orders_${tag}_client_red.log"; $c2 = "$Out\orders_${tag}_client_green.log"
     Remove-Item $sl, $c1, $c2 -ErrorAction SilentlyContinue
-    $svCmds = "hol.Rpc.OrderTrace 1"; if (($spawnBits -band 2) -ne 0) { $svCmds += ",hol.Siege.Deployable 1" }; if ($spawn) { $svCmds += ",hol.Rpc.ProofSpawn $spawnBits" }
+    $svParts = @(); if (($spawnBits -band 2) -ne 0) { $svParts += "hol.Siege.Deployable 1" }; if ($spawn) { $svParts += "hol.Rpc.ProofSpawn $spawnBits" }
+    $svCmds = $svParts -join ","
+    $svExec = if ($svCmds) { " -ExecCmds=`"$svCmds`"" } else { "" }   # never pass an empty -ExecCmds
     "[$tag] bits $bits, server ExecCmds '$svCmds' $(Get-Date -Format HH:mm:ss)"
-    $sv = Start-Process $ed -ArgumentList "`"$up`" /Game/Maps/Plain -server -nullrhi -nosound -Port=$Port -unattended -nosplash -Multiprocess -LiveCoding=0 -asdebugport=0 -as-exit-on-error -HOLCheats -MatchConfig=`"$cfg`" -saveddirsuffix=OrdSrv -abslog=`"$sl`" -ExecCmds=`"$svCmds`"" -PassThru -WindowStyle Hidden
+    $sv = Start-Process $ed -ArgumentList "`"$up`" /Game/Maps/Plain -server -nullrhi -nosound -Port=$Port -unattended -nosplash -Multiprocess -LiveCoding=0 -asdebugport=0 -as-exit-on-error -HOLCheats -MatchConfig=`"$cfg`" -saveddirsuffix=OrdSrv -abslog=`"$sl`"$svExec" -PassThru -WindowStyle Hidden
     $up1 = WaitFor $sl 'Bringing World .* up for play|Angelscript: Error' 90
     "[$tag] server up: $up1 $(Get-Date -Format HH:mm:ss)"
     $a = Start-Process $ed -ArgumentList "`"$up`" 127.0.0.1:${Port}?Name=Bob -game -nullrhi -nosound -unattended -nosplash -Multiprocess -LiveCoding=0 -asdebugport=0 -saveddirsuffix=OrdCli1 -abslog=`"$c1`"" -PassThru -WindowStyle Hidden
     "[$tag] red client joined, no call: $(WaitFor $c1 'Welcomed by server' 90)"
     Start-Sleep 5
-    $b = Start-Process $ed -ArgumentList "`"$up`" 127.0.0.1:${Port}?Name=Alice -game -nullrhi -nosound -unattended -nosplash -Multiprocess -LiveCoding=0 -asdebugport=0 -saveddirsuffix=OrdCli2 -abslog=`"$c2`" -ExecCmds=`"hol.Rpc.OrderScript 1,hol.Rpc.OrderTrace 1,hol.Rpc.ProofRoute $bits`"" -PassThru -WindowStyle Hidden
+    $b = Start-Process $ed -ArgumentList "`"$up`" 127.0.0.1:${Port}?Name=Alice -game -nullrhi -nosound -unattended -nosplash -Multiprocess -LiveCoding=0 -asdebugport=0 -saveddirsuffix=OrdCli2 -abslog=`"$c2`" -ExecCmds=`"hol.Rpc.ProofRoute $bits`"" -PassThru -WindowStyle Hidden
     foreach ($o in $group) { "[$tag] server has the reception line of '$($o.Name)': $(WaitFor $sl ('RpcOrder: ' + [regex]::Escape($o.Name) + ' (received|refused)') 75)" }
     Start-Sleep $SettleSec
     $S = Read-LinesShared $sl; $K = Read-LinesShared $c2
@@ -192,9 +194,8 @@ function Run-One($tag, $group) {
         $nm = [regex]::Escape($o.Name)
         $recv = (Count-Match $S "RpcOrder: $nm received by the server: slot 0") -gt 0
         $refused = Count-Match $S "RpcOrder: $nm refused"
-        $do = (Count-Match $S "OrderRecv kind=$($o.Kind)\b") -gt 0
         $eff = Effect-Of $o $S $K
-        $res += [pscustomobject]@{ Order = $o.Name; Recv = $recv; Do = $do; Effect = $eff.Ok; Detail = $eff.Detail; Refused = $refused }
+        $res += [pscustomobject]@{ Order = $o.Name; Recv = $recv; Effect = $eff.Ok; Detail = $eff.Detail; Refused = $refused }
     }
     $red = Count-Match $S 'RpcOrder: .*slot 1\b'
     $notsent = (Count-Match $S 'RpcRoute: .* not sent') + (Count-Match $K 'RpcRoute: .* not sent')
@@ -208,15 +209,15 @@ function Run-One($tag, $group) {
 $runs = @()
 if ($Combined) { $runs += Run-One "combined" $sel } else { $i = 0; foreach ($o in $sel) { $i++; $runs += Run-One ("o$i") @($o) } }
 
-"===== TABLE : order -> received yes/NO ; Do<X> (OrderRecv) yes/NO ; effect yes/NO"
+"===== TABLE : order -> received yes/NO ; effect yes/NO"
 $runs = @($runs | Where-Object { $_.Tag })   # run-one outputs only (stray pipeline output made empty entries that failed the verdict)
 $fail = $false
 foreach ($r in $runs) {
     foreach ($x in $r.Results) {
-        $line = "{0,-16} -> received {1,-3} ; Do {2,-3} ; effect {3,-3} | {4}" -f $x.Order, $(if ($x.Recv) { "oui" } else { "NON" }), $(if ($x.Do) { "oui" } else { "NON" }), $(if ($x.Effect) { "oui" } else { "NON" }), $x.Detail
+        $line = "{0,-16} -> received {1,-3} ; effect {2,-3} | {3}" -f $x.Order, $(if ($x.Recv) { "oui" } else { "NON" }), $(if ($x.Effect) { "oui" } else { "NON" }), $x.Detail
         if ($x.Refused -gt 0) { $line += " | REFUSED lines: $($x.Refused)" }
         $line
-        if (-not ($x.Recv -and $x.Do -and $x.Effect)) { $fail = $true }
+        if (-not ($x.Recv -and $x.Effect)) { $fail = $true }
     }
     $redOk = ($r.RedLines -eq 0); $nsOk = ($r.NotSent -eq 0)
     "[$($r.Tag)] RED: server 'RpcOrder: ... slot 1' lines = $($r.RedLines) (expected 0) ; 'RpcRoute: .* not sent' = $($r.NotSent) (expected 0) ; 'Angelscript: Error' on server = $($r.AsErrors) ; server up = $($r.ServerUp)"
