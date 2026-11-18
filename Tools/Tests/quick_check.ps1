@@ -3164,8 +3164,8 @@ $Expected = @{ title = "menu=HOLTitleScreenScript modal=none"; stackback = "menu
     greyed = "hud=HOLGameScreen"; fr = "hud=HOLGameScreen"; en = "hud=HOLGameScreen"; ja = "hud=HOLGameScreen"; ghost = "hud=HOLGameScreen";
     block = "hud=HOLGameScreen"; popfull = "hud=HOLGameScreen"; f1 = "hud=HOLGameScreen"; f2 = "hud=HOLGameScreen"; next = "hud=HOLGameScreen";
     stone = "hud=HOLGameScreen"; play = "hud=HOLGameScreen"; melee = "hud=HOLGameScreen";
-    summary = "hud=HOLGameScreen menu=HOLStatsScreen"; military = "hud=HOLGameScreen menu=HOLStatsScreen"; economy = "hud=HOLGameScreen menu=HOLStatsScreen";
-    workers = "hud=HOLGameScreen menu=HOLStatsScreen"; army = "hud=HOLGameScreen menu=HOLStatsScreen" }
+    summary = "hud=HOLGameScreen menu=HOLStatsScreenScript"; military = "hud=HOLGameScreen menu=HOLStatsScreenScript"; economy = "hud=HOLGameScreen menu=HOLStatsScreenScript";
+    workers = "hud=HOLGameScreen menu=HOLStatsScreenScript"; army = "hud=HOLGameScreen menu=HOLStatsScreenScript" }
 $WrongScreens = @($Log | Select-String -Pattern "Test capture: (\S+) \((.*)\)" | ForEach-Object {
     $Capture = $_.Matches[0].Groups[1].Value; $Shown = $_.Matches[0].Groups[2].Value
     $Want = $Expected[($Capture -split "_")[-1]]
