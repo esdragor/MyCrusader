@@ -1,7 +1,7 @@
 // The wait and absence banners of the game HUD (R3.10, R7.5; H-1 of the HUD plan), in script: "En attente de Bob (1:52)" while the match waits for its
 // named players, and "Bob : connexion perdue - 2:41" / "Bob : de retour" while a player is gone or just back. Top centre under the top bar, the absence
 // banner 52 px under the wait one; both let the clicks through. The rules are pure (namespace HOLWaitBanner: when each is shown, which text, which journal
-// line); UHOLWaitBannerView builds the two panels and reads the game state through HOLWaitBannerRead (C++ binding, UHOLWaitBannerReadLibrary) at each
+// line); UHOLWaitBannerPanel builds the two panels and reads the game state through HOLWaitBannerRead (C++ binding, UHOLWaitBannerReadLibrary) at each
 // Refresh (4 per second). The journal lines are the C++ screen's, word for word (quick_check net and lobby_match read them):
 //   "Wait banner: shown, <text>"  "Wait banner: hidden"  "Absence banner: shown, <line> | <line>"  "Absence banner: hidden"
 
@@ -118,7 +118,7 @@ namespace HOLWaitBanner
 
 // The two panels. Built once in the script screen's OnInitialized (Build), refreshed in its Refresh (Refresh). The widget names are the C++ screen's
 // (WaitPanel, WaitText, AbsencePanel, AbsenceText).
-class UHOLWaitBannerView : UObject
+class UHOLWaitBannerPanel : UObject
 {
 	// The C++ screen's places: 16 px margin, under the top bar and the queue's two rows (36 px each); the absence banner 52 px lower.
 	const float Margin = 16.0;
