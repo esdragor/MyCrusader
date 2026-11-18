@@ -435,6 +435,49 @@ int RallyPointRefusal(int SenderSlot, bool bHasBuilding, float X, float Y, float
 		return 3;
 	return 0;
 }
+// D848: the delay of a proof step written "@<seconds> <command>" (ProofRoute): the token "@12" is read from this table (no string parsing needed); -1 = not a delay token (an ordinary command).
+float ProofStepDelay(const FString& Token)
+{
+	if (Token == "@2") return 2.0;
+	if (Token == "@3") return 3.0;
+	if (Token == "@4") return 4.0;
+	if (Token == "@6") return 6.0;
+	if (Token == "@8") return 8.0;
+	if (Token == "@12") return 12.0;
+	if (Token == "@15") return 15.0;
+	if (Token == "@20") return 20.0;
+	if (Token == "@25") return 25.0;
+	if (Token == "@30") return 30.0;
+	if (Token == "@40") return 40.0;
+	if (Token == "@60") return 60.0;
+	return -1.0;
+}
+
+// The command of a step "@12 hol.Units.Where 0" without its delay token ("hol.Units.Where 0"); the text itself when it is not a delayed step.
+FString ProofStepCommand(const FString& Step)
+{
+	TArray<FString> Parts;
+	Step.ParseIntoArray(Parts, " ");
+	if (Parts.Num() < 2 || ProofStepDelay(Parts[0]) < 0.0)
+		return Step;
+	FString Result = Parts[1];
+	for (int Index = 2; Index < Parts.Num(); Index++)
+		Result = Result + " " + Parts[Index];
+	return Result;
+}
+
+// The delay of a step (0 for an immediate one).
+float ProofStepSeconds(const FString& Step)
+{
+	TArray<FString> Parts;
+	Step.ParseIntoArray(Parts, " ");
+	if (Parts.Num() < 2)
+		return 0.0;
+	const float Seconds = ProofStepDelay(Parts[0]);
+	if (Seconds < 0.0)
+		return 0.0;
+	return Seconds;
+}
 } // namespace HOLRpc
 
 class AHOLRpcPlayer : AHOLScriptRpcPlayerActor
@@ -448,9 +491,33 @@ class AHOLRpcPlayer : AHOLScriptRpcPlayerActor
 	float ProofClock = 0.0;
 	bool bRouteProved = false;
 
+	// D848: the delayed steps of the proof ("@<seconds> <command>", seconds after the shot): the commands, their due time on DeferredClock, and whether each one was run.
+	TArray<FString> DeferredCommands;
+	TArray<float> DeferredTimes;
+	TArray<bool> DeferredDone;
+	float DeferredClock = 0.0;
+
 	UFUNCTION(BlueprintOverride)
 	void Tick(float DeltaSeconds)
 	{
+		if (bRouteProved && DeferredCommands.Num() > 0 && !HasAuthority())
+		{
+			APlayerController DeferredController = Cast<APlayerController>(GetOwner());
+			if (DeferredController != nullptr && DeferredController.IsLocalController())
+			{
+				DeferredClock += DeltaSeconds;
+				for (int Slot = 0; Slot < DeferredCommands.Num(); Slot++)
+				{
+					if (!DeferredDone[Slot] && DeferredClock >= DeferredTimes[Slot])
+					{
+						DeferredDone[Slot] = true;
+						const FString DueCommand = DeferredCommands[Slot];
+						Log(n"LogHOLMatch", f"RpcRoute: the client runs '{DueCommand}' (delayed {DeferredTimes[Slot]} s)");
+						System::ExecuteConsoleCommand(DueCommand, DeferredController);
+					}
+				}
+			}
+		}
 		// Proof of the C++ -> script routes (Tools\Scenarios\rpc_routes_run.ps1): hol.Rpc.ProofRoute bits: 1 duel challenge, 2 pause, 4 spec cancel, 8 hero return, 16 cheat resources, 32 to 512 below, 1024 vision, 2048 hero ability, 4096 rage, 8192 watch unit (both select an idle worker by hol.Select.NextIdle: no screen projection needed), 16384 surrender (last), fired ONCE 4 s after the owner's first tick.
 		if (!HasAuthority() && !bRouteProved && (CVar_RpcProofRoute.GetInt() > 0 || CVar_RpcProofCheats.GetInt() > 0))
 		{
@@ -537,14 +604,135 @@ if ((Cheats & 2048) != 0)
 	Commands.Add("hol.Victory.SkipRuin 7");
 if ((Cheats & 4096) != 0)
 	Commands.Add("hol.Victory.HoldPresence 7 off");
-// Lot E P3: 16384 the surrender of the owner (hol.Victory.Surrender -> C++ RequestSurrender -> script ServerSurrender); LAST, the player is defeated after it.
+// D848, the 16 L2 orders (CARTE-L2-PREUVES-1118.md), one bit each (bit 1073741824 is the last that fits the cvar's 31 bits). A step "@<seconds> <command>" runs that many seconds after the shot (the Tick above); the end reports are "@12 hol.Units.Where 0" and "@12 hol.Build.Report".
+// P1 moves: 32768 Move, 65536 AttackMove, 131072 MoveInLine, 262144 Stop. The hol.Units.* commands need no selection (all the local player's units known here).
+if ((Routes & 32768) != 0)
+	Commands.Add("hol.Units.OrderNear 1500 0");
+if ((Routes & 65536) != 0)
+	Commands.Add("hol.Units.AttackMove 1500 0");
+if ((Routes & 131072) != 0)
+	Commands.Add("hol.Units.OrderLine 1500 0 1500 600");
+if ((Routes & 262144) != 0)
+{
+	Commands.Add("hol.Select.Own");
+	Commands.Add("hol.Units.OrderNear 3000 0");
+	Commands.Add("hol.Select.Stop");
+}
+// P2 combat: 524288 AttackUnit (the first unit of slot 1: ProofSpawn bit 4), 1048576 AttackBuilding, 2097152 HealUnit (ProofSpawn bit 1: the Monk), 4194304 ToggleDeploy (ProofSpawn bit 2 with hol.Siege.Deployable 1; cell 6 = HOLCommandGrid DeployCell).
+if ((Routes & 524288) != 0)
+{
+	Commands.Add("hol.Select.Own");
+	Commands.Add("hol.Select.Attack slot=1");
+}
+if ((Routes & 1048576) != 0)
+	Commands.Add("hol.Units.AttackBuilding");
+if ((Routes & 2097152) != 0)
+{
+	Commands.Add("hol.Cheat.Wound 50");
+	Commands.Add("hol.Select.Own");
+	Commands.Add("hol.Select.Heal slot=0");
+}
+if ((Routes & 4194304) != 0)
+{
+	Commands.Add("hol.Select.Type Mangonel");
+	Commands.Add("hol.Select.OrderCell 6");
+}
+// P3 resources: 8388608 Gather, 16777216 DropOff (gather, then the drop-off at +25 s), 33554432 BuildUnits (a site first, then the units sent on it), 67108864 PlaceBuilding.
+if ((Routes & 8388608) != 0)
+{
+	Commands.Add("hol.Cheat.GatherSpeed 5");
+	Commands.Add("hol.Units.Gather");
+	Commands.Add("@30 hol.Units.Where 0");
+	Commands.Add("@30 hol.Build.Report");
+	Commands.Add("@60 hol.Build.Report");
+}
+if ((Routes & 16777216) != 0)
+{
+	Commands.Add("hol.Cheat.GatherSpeed 5");
+	Commands.Add("hol.Units.Gather");
+	Commands.Add("@25 hol.Units.DropOff");
+	Commands.Add("@40 hol.Units.Where 0");
+	Commands.Add("@40 hol.Build.Report");
+}
+if ((Routes & 33554432) != 0)
+{
+	Commands.Add("hol.Cheat.Resources 100");
+	Commands.Add("hol.Build.PlaceNear House 800 0");
+	Commands.Add("hol.Select.Own");
+	Commands.Add("hol.Units.Build");
+}
+if ((Routes & 67108864) != 0)
+{
+	Commands.Add("hol.Cheat.Resources 100");
+	Commands.Add("hol.Select.Own");
+	Commands.Add("hol.Build.PlaceNear House 800 0");
+}
+// P4 buildings: 134217728 CancelBuilding (a site, selected by hol.Prod.Queue Peasant House: to be confirmed), 268435456 SetRallyPoint (the point, then the site), 536870912 Garrison (a Barracks from the client, then the garrison), 1073741824 UngarrisonAll (Garrison, then out at +25 s).
+if ((Routes & 134217728) != 0)
+{
+	Commands.Add("hol.Cheat.Resources 100");
+	Commands.Add("hol.Select.Own");
+	Commands.Add("hol.Build.PlaceNear House 800 0");
+	Commands.Add("@3 hol.Prod.Queue Peasant House");
+	Commands.Add("@4 hol.Build.CancelSelected");
+}
+if ((Routes & 268435456) != 0)
+{
+	Commands.Add("hol.Prod.Rally 800 0");
+	Commands.Add("hol.Cheat.Resources 100");
+	Commands.Add("hol.Select.Own");
+	Commands.Add("hol.Build.PlaceNear House 800 0");
+	Commands.Add("@3 hol.Prod.RallySite");
+}
+if ((Routes & (536870912 + 1073741824)) != 0)
+{
+	Commands.Add("hol.Cheat.SpawnBuilding Barracks 0 600 0");
+	Commands.Add("@4 hol.Select.Own");
+	Commands.Add("@4 hol.Units.Garrison");
+	Commands.Add("@15 hol.Units.Where 0");
+	Commands.Add("@15 hol.Build.Report");
+}
+if ((Routes & 1073741824) != 0)
+{
+	Commands.Add("@25 hol.Units.UngarrisonAll");
+	Commands.Add("@30 hol.Units.Where 0");
+}
+// The end reports of the single-step bits (the effect is read on this client: the units are replicated here): the positions, the stock, the buildings and their progress.
+if ((Routes & (32768 + 65536 + 131072 + 262144 + 524288 + 1048576 + 2097152 + 4194304)) != 0)
+	Commands.Add("@12 hol.Units.Where 0");
+if ((Routes & (33554432 + 67108864 + 134217728 + 268435456)) != 0)
+	Commands.Add("@12 hol.Build.Report");
+// Lot E P3: 16384 the surrender of the owner (hol.Victory.Surrender -> C++ RequestSurrender -> script ServerSurrender); LAST, the player is defeated after it: with delayed steps it is itself delayed past the last one (@60).
+float LastDelay = 0.0;
+for (FString Step : Commands)
+{
+	const float StepDelay = HOLRpc::ProofStepSeconds(Step);
+	if (StepDelay > LastDelay)
+		LastDelay = StepDelay;
+}
 if ((Routes & 16384) != 0)
-	Commands.Add("hol.Victory.Surrender");
+{
+	if (LastDelay > 0.0)
+		Commands.Add("@60 hol.Victory.Surrender");
+	else
+		Commands.Add("hol.Victory.Surrender");
+}
 for (FString Command : Commands)
-					{
-						Log(n"LogHOLMatch", f"RpcRoute: the client runs '{Command}'");
-						System::ExecuteConsoleCommand(Command, RouteController);
-					}
+{
+	const float Delay = HOLRpc::ProofStepSeconds(Command);
+	if (Delay > 0.0)
+	{
+		DeferredCommands.Add(HOLRpc::ProofStepCommand(Command));
+		DeferredTimes.Add(Delay);
+		DeferredDone.Add(false);
+		Log(n"LogHOLMatch", f"RpcRoute: the client will run '{Command}' after {Delay} s");
+	}
+	else
+	{
+		Log(n"LogHOLMatch", f"RpcRoute: the client runs '{Command}'");
+		System::ExecuteConsoleCommand(Command, RouteController);
+	}
+}
 				}
 			}
 		}

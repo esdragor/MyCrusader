@@ -9,7 +9,7 @@
 // in the C++ line "Order: <n> units to (X, Y)" the same command writes (no script access to the unit list).
 // hol.Rpc.OrderOrder <pairs> <mode>: same wait, hol.Rpc.OrderScript <mode>, "OrderOrder: start pairs <p> mode <m>", then <p> series of 6 orders, ONE per tick: Move, Move (key + 1), Stop, Move,
 // PlaceBuilding, BuildUnits; "OrderOrder: done sent <6p>". NO client console command sends a QUEUED (Shift) move without the screen (hol.Units.Move is server or solo, hol.Select.Order projects
-// on the viewport): the second Move of the first pair is therefore a plain hol.Units.Order with the next key, not a queued one.
+// on the viewport): the 6th step BuildUnits is hol.Units.Build (D848; it was hol.Prod.Queue Peasant, a production order, not an L2 order): the second Move of the first pair is therefore a plain hol.Units.Order with the next key, not a queued one.
 
 const FConsoleVariable CVar_RpcOrderLatency("hol.Rpc.OrderLatency", 0);
 
@@ -156,7 +156,11 @@ class UHOLRpcOrderPilot : UScriptWorldSubsystem
 			System::ExecuteConsoleCommand(f"hol.Build.PlaceNear House {Dx} {Dy}", Controller);
 		}
 		else
-			System::ExecuteConsoleCommand("hol.Prod.Queue Peasant", Controller);
+		{
+			// BuildUnits (D848): the units go and help build the site step 4 just placed (hol.Units.Build, ServerBuildUnits). The former "hol.Prod.Queue Peasant" was ServerQueueProduction, NOT an L2 order.
+			System::ExecuteConsoleCommand("hol.Select.Own", Controller);
+			System::ExecuteConsoleCommand("hol.Units.Build", Controller);
+		}
 
 		Sent += 1;
 		Step += 1;
