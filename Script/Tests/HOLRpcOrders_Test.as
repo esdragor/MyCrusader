@@ -100,7 +100,7 @@ void Test_RpcOrderPlaceBuildingRefusal(FUnitTest& T)
 	const float Infinite = Huge * Huge;
 	T.AssertEquals(0, HOLRpc::PlaceBuildingRefusal(0, 2, 500.0, -300.0, 10.0, true), "builders, a finite point and a type name: passed on");
 	T.AssertEquals(1, HOLRpc::PlaceBuildingRefusal(-1, 2, 500.0, -300.0, 10.0, true), "a spectator is refused");
-	T.AssertEquals(2, HOLRpc::PlaceBuildingRefusal(0, 0, 500.0, -300.0, 10.0, true), "no builder named is refused");
+	T.AssertEquals(0, HOLRpc::PlaceBuildingRefusal(0, 0, 500.0, -300.0, 10.0, true), "no builder named is passed on: the foundation is laid without them (as the C++ route)");
 	T.AssertEquals(3, HOLRpc::PlaceBuildingRefusal(0, 2, Infinite, -300.0, 10.0, true), "an infinite X is refused");
 	T.AssertEquals(4, HOLRpc::PlaceBuildingRefusal(0, 2, 500.0, -300.0, 10.0, false), "no type name is refused");
 	T.AssertEquals(3, HOLRpc::PlaceBuildingRefusal(0, 2, Infinite, -300.0, 10.0, false), "the point is checked before the type name");

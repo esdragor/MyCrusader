@@ -412,10 +412,10 @@ int DropOffRefusal(int SenderSlot, int UnitCount, bool bHasBuilding, float X, fl
 	return 0;
 }
 
-// PlaceBuilding: as PointOrderRefusal (builders, finite point), and 4 when the type name is empty.
+// PlaceBuilding: seat (1), finite point (3), and 4 when the type name is empty. NO builder is required: RequestPlaceBuilding sends the order even with an empty selection and HOLPlayerOrders::Place lays the foundation without them (the C++ route did, so must this one: UnitCount is kept in the signature and ignored).
 int PlaceBuildingRefusal(int SenderSlot, int UnitCount, float X, float Y, float Z, bool bHasTypeName)
 {
-	const int Base = PointOrderRefusal(SenderSlot, UnitCount, X, Y, Z);
+	const int Base = PointOrderRefusal(SenderSlot, 1, X, Y, Z);
 	if (Base != 0)
 		return Base;
 	if (!bHasTypeName)
