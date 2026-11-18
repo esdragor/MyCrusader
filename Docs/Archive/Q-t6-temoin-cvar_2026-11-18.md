@@ -7,3 +7,5 @@ Q1 : sort des cvars des RPC retirées ?
 - B : gardées comme interrupteur de secours (défaut 1), retirées plus tard.
 - Autre.
 Recommandation : A (une règle, un chemin, D839).
+
+Reponse: A (2026-11-18, utilisateur, interface de choix) -> D845. Cvars supprimees avec la RPC retiree ; temoin rouge = client sans appel.
