@@ -44,7 +44,9 @@ param(
     [int]$Loss = 0
 )
 $NetEm = @(); if ($Lag -gt 0) { $NetEm += "NetEmulation.PktLag $Lag" }; if ($LagVariance -gt 0) { $NetEm += "NetEmulation.PktLagVariance $LagVariance" }; if ($Loss -gt 0) { $NetEm += "NetEmulation.PktLoss $Loss" }
-$svExec = if ($NetEm.Count -gt 0) { " -ExecCmds=`"" + ($NetEm -join "," ) + "`"" } else { "" }   # never pass an empty -ExecCmds
+# D850: P4 needs buildings with garrison places (BuildingTypes.csv has none): hol.Garrison.ProofSlots on the server AND on the green client (its hol.Units.Garrison reads the same places)
+$Pre = @($NetEm); if ($Lot -ne 'P3') { $Pre += 'hol.Garrison.ProofSlots 4' }
+$svExec = if ($Pre.Count -gt 0) { " -ExecCmds=`"" + ($Pre -join "," ) + "`"" } else { "" }   # never pass an empty -ExecCmds
 $w = $Root; New-Item -ItemType Directory -Force $Out | Out-Null
 $up = (Get-ChildItem $w -Filter *.uproject).FullName
 $ed = 'C:\UE\UE_5.8_HOL\Engine\Binaries\Win64\UnrealEditor.exe'
@@ -83,10 +85,10 @@ $all = @(
         Eff = { param($s) $a = FirstIdx $s 'Construction: slot 0 cancelled House at .*, refund'; if ($a -ge 0) { return $s[$a] }; return $null } },
     @{ Lot = 'P4'; Name = 'SetRallyPoint'; Recv = 'RpcOrder: set rally point received by the server: slot 0 '; Dead = 30
         Eff = { param($s) $a = FirstIdx $s 'Rally: slot 0 set the rally point of .* at \(.*\).* on site'; if ($a -ge 0) { return $s[$a] }; return $null } },
-    @{ Lot = 'P4'; Name = 'Garrison'; Recv = 'RpcOrder: garrison received by the server: slot 0 '; Dead = 0; Unprovable = 'NON PROUVABLE : GarrisonSlots = 0'
-        Eff = { param($s) return $null } },
-    @{ Lot = 'P4'; Name = 'UngarrisonAll'; Recv = 'RpcOrder: ungarrison all received by the server: slot 0 '; Dead = 0; Unprovable = 'NON PROUVABLE : GarrisonSlots = 0'
-        Eff = { param($s) return $null } }
+    @{ Lot = 'P4'; Name = 'Garrison'; Recv = 'RpcOrder: garrison received by the server: slot 0 '; Dead = 30
+        Eff = { param($s) $a = FirstIdx $s 'Garrison: slot 0 puts [1-9]\d* of \d+ units in '; if ($a -ge 0) { return $s[$a] }; return $null } },
+    @{ Lot = 'P4'; Name = 'UngarrisonAll'; Recv = 'RpcOrder: ungarrison all received by the server: slot 0 '; Dead = 40
+        Eff = { param($s) $a = FirstIdx $s 'Garrison: slot 0 takes [1-9]\d* units out of '; if ($a -ge 0) { return $s[$a] }; return $null } }
 )
 $p3bits = 8388608 + 16777216 + 33554432 + 67108864
 $p4bits = 134217728 + 268435456 + 536870912 + 1073741824
@@ -117,7 +119,7 @@ try {
     $procs += $a
     "red client joined, made no call: $(WaitFor $c1 'Welcomed by server' 90) $(Get-Date -Format HH:mm:ss)"
     Start-Sleep 5
-    $b = Start-Process $ed -ArgumentList "`"$up`" 127.0.0.1:${port}?Name=Alice -game -nullrhi -nosound -unattended -nosplash -Multiprocess -LiveCoding=0 -asdebugport=0 -saveddirsuffix=OrdCli2 -abslog=`"$c2`" -ExecCmds=`"$(((@($NetEm) + @('hol.Rpc.ProofRoute ' + $bits)) -join ','))`"" -PassThru -WindowStyle Hidden
+    $b = Start-Process $ed -ArgumentList "`"$up`" 127.0.0.1:${port}?Name=Alice -game -nullrhi -nosound -unattended -nosplash -Multiprocess -LiveCoding=0 -asdebugport=0 -saveddirsuffix=OrdCli2 -abslog=`"$c2`" -ExecCmds=`"$(((@($Pre) + @('hol.Rpc.ProofRoute ' + $bits)) -join ','))`"" -PassThru -WindowStyle Hidden
     $procs += $b
     $shot = WaitFor $c2 'RpcRoute: ' 90
     $t0 = Get-Date

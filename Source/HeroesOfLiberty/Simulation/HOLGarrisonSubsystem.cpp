@@ -52,10 +52,20 @@ void UHOLGarrisonSubsystem::OnStepStarted(const int64 StepIndex)
 	ApplyOrders();
 }
 
+// D850 (proof of the Garrison / UngarrisonAll order RPCs, no game data changes): BuildingTypes.csv has GarrisonSlots 0 for every building, so no order could ever
+// be proved with an effect. This cvar gives every building that HAS a row at least that many places; 0 (default) = the table alone. Set on the server AND on the
+// client (the client's hol.Units.Garrison reads the same places) by Tools/Scenarios/rpc_orders_p3p4_run.ps1 only.
+static TAutoConsoleVariable<int32> CVarHOLGarrisonProofSlots(TEXT("hol.Garrison.ProofSlots"), 0,
+	TEXT("Proof scenarios only (D850): every building with a type row has at least this many garrison places; 0 = the places of BuildingTypes.csv."));
+
 int32 UHOLGarrisonSubsystem::GetSlots(const AHOLBuilding& Building)
 {
 	FHOLBuildingTypeRow Row;
-	return UHOLBuildingTypeLibrary::FindRow(Building.GetTypeName(), Row) ? FMath::Max(0, Row.GarrisonSlots) : 0;
+	if (!UHOLBuildingTypeLibrary::FindRow(Building.GetTypeName(), Row))
+	{
+		return 0;
+	}
+	return FMath::Max(FMath::Max(0, Row.GarrisonSlots), FMath::Max(0, CVarHOLGarrisonProofSlots.GetValueOnAnyThread()));
 }
 
 int32 UHOLGarrisonSubsystem::EjectAll(AHOLBuilding& Building)
