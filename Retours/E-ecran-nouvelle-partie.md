@@ -1,11 +1,12 @@
-# [EN PRÉPARATION] E-ecran-nouvelle-partie : l'écran Nouvelle partie (écrit en script) s'ouvre depuis le titre avec sa grille de 8 places, ses listes qui se grisent et ses boutons Lancer / Retour, identiques à l'écran C++ d'avant
+# [À ESSAYER] E-ecran-nouvelle-partie : l'écran Nouvelle partie (écrit en script) s'ouvre depuis le titre avec sa grille de 8 places, ses listes qui se grisent et ses boutons Lancer / Retour, identiques à l'écran C++ d'avant
 
 STATUT : VU À L'ÉCRAN
 GESTE: interne   (le scénario manipule la grille par commandes ; l'utilisateur fera les vrais clics au waitkey)
 SON: sans objet
 branches: d751-root
 
-Pré-vol (2026-11-18 22:00, session principale, worktree C:\Users\baudo\Documents\HeroesOfLiberty-Sauron) : `preflight.ps1 ecran_nouvelle_partie` PASS (5 PNG). À rejouer sur le worktree d'essai (Arwen) avant de passer en [À ESSAYER]. Le mode salon réseau reste à vérifier.
+Pré-vol (2026-11-18 22:34, session principale, worktree d'essai C:\Users\baudo\Documents\HeroesOfLiberty-Arwen, d751-root 675da2a, main ac48996) : `preflight.ps1 ecran_nouvelle_partie -Root C:\Users\baudo\Documents\HeroesOfLiberty-Arwen` PASS (25 s, 5 PNG ; journal : menu=HOLNewGameScreenScript). Premier pré-vol de l'écran script : 22:00 dans le worktree Sauron (celui des captures de la recette).
+Sur ce même worktree, écran script à l'écran (2026-11-18 22:26-22:34) : `quick_check -Parts lobby` PASS (salon réseau à deux joueurs, Alice et Bob, partie normale et choix de faction ; classe HOLNewGameScreenScript chez Alice), tests 1543/1543, menu fr / en / ja / ailaunch PASS, smoke PASS.
 Recette indépendante (agent RECETTE-1118c, 2026-11-18, par lecture des PNG seulement, rien lancé ; rapport C:\Users\baudo\Documents\MyCrusader\Docs\Rapports\RECETTE-1118c.md) : 5 captures APRÈS (script, 22:00) comparées une à une aux 5 captures AVANT (écran C++, 20:44), même scénario, même résolution 1066 x 600. Les 5 paires sont IDENTIQUES octet pour octet (mêmes empreintes SHA-256), donc zéro pixel d'écart. Les deux réserves de la recette 1118b (cadre de la liste Taille, étiquette « dev » et largeur des boutons du titre) étaient dues à la résolution différente (1280 x 720) et sont levées.
 PNG OUVERTS et vus (APRÈS, chacun comparé à son AVANT) :
 - ecran_np_ouverture : « Nouvelle partie » ; Carte Plaine, Taille Petite (2 joueurs), Brouillard Sans brouillard, Équipes ensemble Oui ; grille de 8 places : Vous (Ordre de l'Aube, Bleu, équipe 1), IA Normal 2 avec liste Normal grisée (Rouge, équipe 2), 6 places Fermé grisées ; Mode Standard, Nomade / Régicide / Catastrophe grisés, Sites sacrés Non ; Retour, Lancer (focus doré) ; identique à l'écran C++
@@ -14,7 +15,7 @@ PNG OUVERTS et vus (APRÈS, chacun comparé à son AVANT) :
 - ecran_np_taille_liste : liste Taille ouverte sous le champ, « — », Petite (2 joueurs) grisée, Moyenne (4 joueurs) cernée de clair, Normale, Grande, Immense en clair, cadre de liste doré ; identique à l'écran C++
 - ecran_np_retour : écran titre « Heroes of Liberty » avec Jouer (focus doré), Multijoueur, Réglages, Quitter, étiquette « dev » ; identique à l'écran C++
 Les notes jaunes du scénario masquent en partie la ligne du haut sur les captures 3 et 4 (même chose avant et après, donc pas une régression).
-NON VÉRIFIÉ : le mode salon à deux instances (réseau, places des autres joueurs) ; le clavier / la manette (flèches, LB-RB, Échap, navigation entre colonnes) ; les autres tailles, cartes, factions et options (Brouillard, Équipes ensemble, Mode, Sites sacrés changés) ; Lancer jusqu'à la carte (les captures s'arrêtent avant) ; un PNG ne prouve pas quelle implémentation l'a dessiné (le script est établi par le pré-vol, non relu par la recette) ; les lignes de journal de l'écran n'ont pas été relues.
+NON VÉRIFIÉ : le mode salon À L'ŒIL (le test automatique du salon passe, mais aucune capture du salon n'a été comparée à l'écran C++ : lignes des autres joueurs grisées, Prêt, Spectateurs, options du chef) ; le clavier / la manette (flèches, LB-RB, Échap, navigation entre colonnes) ; les autres tailles, cartes, factions et options (Brouillard, Équipes ensemble, Mode, Sites sacrés changés) ; Lancer jusqu'à la carte (les captures s'arrêtent avant) ; un PNG ne prouve pas quelle implémentation l'a dessiné (le script est établi par le pré-vol, non relu par la recette) ; les lignes de journal de l'écran n'ont pas été relues.
 
 Geste (3 min) :
 1. Lance la commande ci-dessous ; le scénario ouvre Nouvelle partie depuis le titre, change une taille, passe des places en IA, ouvre la liste Taille, puis revient au titre.
