@@ -149,7 +149,7 @@ public:
 	FString DescribeSelectionName() const;
 
 	/** The top bar (resources, population, idle workers): the cheats' panel stays under it (UHOLCheatPanel). */
-	UBorder* GetTopBar() const { return TopBar; }
+	UBorder* GetTopBar() const;
 
 	/** Items of the queue built by BuildLayout, the longest queue shown (D283: 5); one line, under the grid's width. */
 	static constexpr int32 NumQueueItems = 5;
@@ -163,52 +163,9 @@ protected:
 	/** Builds the layout in code; only called when no Blueprint gave one. */
 	void BuildLayout();
 
-	UPROPERTY(meta = (BindWidgetOptional))
-	TObjectPtr<UBorder> TopBar;
-
 	/** J8a.5: the part of the screen written in script (UHOLScriptScreen::FindScriptClass), over the frame; null: none. */
 	UPROPERTY(Transient)
 	TObjectPtr<UHOLScriptScreen> ScriptScreen;
-
-	UPROPERTY(meta = (BindWidgetOptional))
-	TObjectPtr<UCommonTextBlock> FoodAmount;
-
-	UPROPERTY(meta = (BindWidgetOptional))
-	TObjectPtr<UCommonTextBlock> WoodAmount;
-
-	UPROPERTY(meta = (BindWidgetOptional))
-	TObjectPtr<UCommonTextBlock> StoneAmount;
-
-	UPROPERTY(meta = (BindWidgetOptional))
-	TObjectPtr<UCommonTextBlock> GoldAmount;
-
-	/** How many of the player's units gather each resource (J5b, D298): « (3) » after its amount. */
-	UPROPERTY(meta = (BindWidgetOptional))
-	TObjectPtr<UCommonTextBlock> FoodGatherers;
-
-	UPROPERTY(meta = (BindWidgetOptional))
-	TObjectPtr<UCommonTextBlock> WoodGatherers;
-
-	UPROPERTY(meta = (BindWidgetOptional))
-	TObjectPtr<UCommonTextBlock> StoneGatherers;
-
-	UPROPERTY(meta = (BindWidgetOptional))
-	TObjectPtr<UCommonTextBlock> GoldGatherers;
-
-	UPROPERTY(meta = (BindWidgetOptional))
-	TObjectPtr<UCommonTextBlock> PopulationAmount;
-
-	/** The idle workers' counter (J5b, D298, D30): a click selects the next one, as ".". Greyed when there is none. */
-	UPROPERTY(meta = (BindWidgetOptional))
-	TObjectPtr<UHOLQueueItem> IdleWorkers;
-
-	/** Top right: opens the in-game menu (D356). */
-	UPROPERTY(Transient)
-	TObjectPtr<UHOLQueueItem> MenuButton;
-
-	/** Left of « Menu »: the statistics screen over the match, a spectator's alone during the match (M6-Q10, C6). */
-	UPROPERTY(Transient)
-	TObjectPtr<UHOLQueueItem> StatsButton;
 
 	/** The control groups' bar (J7a.5, D30), bottom left: one slot per group not empty, 1 to 9 then 0. */
 	UPROPERTY(meta = (BindWidgetOptional))
@@ -350,13 +307,8 @@ private:
 	void HideUnitStats();
 	/** The line under the name: Shown is what Describe writes of it (empty: hidden); written only when it changed. */
 	void SetDetailLine(const FString& Shown, const FText& Text);
-	/** The idle workers' counter, written when their number changed. */
+	/** The idle workers' number Describe writes (the counter button is the script's, H-3). */
 	void RefreshIdleWorkers();
-	void HandleIdleWorkersClicked();
-	void HandleMenuClicked();
-	void HandleStatsClicked();
-	/** Shows « Statistiques » for a spectator during the match, for everyone after it (UHOLGameMenuRulesBridge::NativeShowsStatsButton). */
-	void RefreshStatsButton();
 	/**
 	 * The control groups' bar (J7a.5), read again four times a second (units die, groups change): a slot per group not
 	 * empty, its digit and number, its types in the tooltip; the group just selected lit briefly. Logs « HUD groups: ... »
@@ -534,8 +486,6 @@ private:
 	int32 ShownPopulationUsed = 0;
 	int32 ShownPopulationCap = 0;
 	FHOLResources ShownGatherers;
-	/** Each resource's income a minute in its tooltip (Retours/Q-sites-gold-line.md, answer "other"); -1 until first shown. */
-	FHOLResources ShownIncome = FHOLResources(-1, -1, -1, -1);
 	/** The income tooltip drawn in the viewport by HoverIncome (scenarios), until the next call. */
 	TSharedPtr<SWidget> IncomeTipOverlay;
 	int32 ShownIdleWorkers = INDEX_NONE;

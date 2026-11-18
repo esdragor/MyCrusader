@@ -1,0 +1,7 @@
+# <nom de capture> | ce que l'utilisateur doit voir
+hud_haut_depart | Capture 1920x1080, camera au-dessus de ton forum : la barre du haut avec les QUATRE montants de ressources (nourriture, bois, pierre, or) a gauche, la population (le texte "x / 10") et le COMPTEUR D'OUVRIERS INACTIFS "(N)" avec N >= 3, puis le bouton "Menu" ; aucun bouton "Statistiques" ; aucune infobulle ; journal "HUD report" avec les memes montants.
+hud_haut_triche | Capture 1920x1080 : la meme barre, le montant du BOIS a monte de 1000 et celui de l'OR de 250 par rapport a hud_haut_depart (nourriture, pierre, population, inactifs inchanges) ; rien d'autre ne bouge.
+hud_haut_inactifs | Capture 1920x1080 : apres le clic sur le compteur d'inactifs, journal "Next idle worker: #" ; un Paysan est selectionne (anneau de selection, son bloc dans le panneau du bas) et la camera est centree sur lui ; la barre du haut a les memes montants que sur hud_haut_triche.
+hud_haut_survol | Capture 1920x1080 : le curseur est sur le montant du BOIS et l'INFOBULLE de revenu "+0 bois/min" est affichee sous lui ; les autres montants de la barre sont lisibles et sans infobulle.
+hud_haut_menu | Capture 1920x1080 : le MENU DE PARTIE est ouvert (boutons Reprendre, Pause, Abandonner, Retour...) par-dessus le jeu apres le clic sur "Menu" ; journal "Game menu: opened".
+hud_haut_menu_ferme | Capture 1920x1080 : le menu de partie est ferme (Echap), la barre du haut et le jeu sont comme sur hud_haut_inactifs, sans menu ni infobulle.
