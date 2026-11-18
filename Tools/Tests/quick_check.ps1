@@ -113,7 +113,7 @@ param(
     [switch] $Full,
     [string] $EngineDir = "",
     [switch] $Visible,
-    # MIG2-S3 (2026-11-17): the net and netsig3 parts set the hol.Rpc.Script* cvars still read (Hero, Match, Signal, Chat) to 1 on the server and the clients; the other routes (Diplomacy stance, the 13 cheats, lots A-D) have no C++ RPC and no cvar left: the script RPC actor is their only entry.
+    # MIG2-S3 (2026-11-17), lot E (2026-11-18): no hol.Rpc.Script* cvar is left (Hero, Match, Signal, Chat went with lot E): every route (lots A-E, Surrender, vision, signal, chat, hero ability, rage, watch) has no C++ RPC and the script RPC actor is its only entry; the net and netsig3 parts add no cvar command any more.
     [switch] $RpcScript,
     [double] $GameFps = 20,
     [switch] $RealTime,
@@ -124,7 +124,7 @@ param(
 )
 # C0.5: -Map checked against Tools/Data/Maps.csv before anything starts. $MapKey keeps the table's spelling; the name Map
 # itself is reused by the parts below as a local variable.
-$RpcScriptCommands = @(); if ($RpcScript) { $RpcScriptCommands = @('Hero', 'Match', 'Signal', 'Chat') | ForEach-Object { "hol.Rpc.Script$_ 1" } }
+$RpcScriptCommands = @()
 # D845 gate "script actor loaded": the net and netsig3 server sequences start with a waitlog on "RpcPlayer: the C++ bridge spawned" (the journal line of SpawnAllFor), before any waitplayers: without the script RPC actor no RPC has an entry any more.
 # A client's steps with the cvar commands put just BEFORE its first waitplayers (the waitlog steps before it read lines logged once, early: 22 steps before them would make them miss the line).
 function Add-RpcScriptSteps($Steps) {
@@ -6331,6 +6331,8 @@ if ($Parts -contains "net") {
     }
     $Checks = [ordered]@{}
     $Checks["server listening"] = $NetListening
+    # Lot E: no C++ fallback left, so a route that cannot reach the script actor logs "RpcRoute: <X> not sent" (LogNotSent): none must appear in the server and client journals.
+    $Checks["no RPC route reported as not sent (server journal)"] = (Test-Path $NetServerLog) -and -not [bool](Select-String -Path $NetServerLog -Pattern "RpcRoute: .* not sent" -Quiet)
     $HeldSlots = @()
     $NetHeld = @{}
     $NetSelectedTrees = @{}
@@ -6345,6 +6347,7 @@ if ($Parts -contains "net") {
         $N = $NetClient.Client
         $ClientLines = if (Test-Path $NetClient.Log) { Get-Content $NetClient.Log } else { @() }
         $Checks["client $N : sequence done"] = (-not $ClientTimedOut) -and [bool]($ClientLines | Select-String -Pattern "Test mark: end" -Quiet)
+        $Checks["client $N : no RPC route reported as not sent"] = -not [bool]($ClientLines | Select-String -Pattern "RpcRoute: .* not sent" -Quiet)
         $Held = $ClientLines | Select-String -Pattern "Camera above the start of slot (\d+) \(" | Select-Object -First 1 | ForEach-Object { [int]$_.Matches[0].Groups[1].Value }
         $Checks["client $N : holds a slot ($Held)"] = $null -ne $Held
         if ($null -eq $Held) { continue }

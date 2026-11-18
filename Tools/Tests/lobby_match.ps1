@@ -706,10 +706,11 @@ try {
         elseif (-not $ServerLog) { $Failure = "no server log of the match" }
         elseif (-not (Select-String -Path $ServerLog.FullName -Pattern "LogHOLMatch: Alice holds slot 0" -Quiet)) { $Failure = "the server has no 'Alice holds slot 0'" }
         elseif (-not (Select-String -Path $ServerLog.FullName -Pattern "LogHOLMatch: Bob holds slot 1" -Quiet)) { $Failure = "the server has no 'Bob holds slot 1'" }
-        # The surrender over the network (V1.4c, out of the "net" part since V5.5a): Bob's hol.Victory.Surrender is his
-        # controller's ServerSurrender, accepted by the dedicated server for his own slot, the match then over for Alice.
+        # The surrender over the network (V1.4c, out of the "net" part since V5.5a): Bob's hol.Victory.Surrender goes
+        # through the script RPC actor (HOLRpcPlayer ServerSurrender, no C++ RPC since lot E), accepted by the dedicated server for his own slot, the match then over for Alice.
         elseif (Select-String -Path $ServerLog.FullName -Pattern "Victory: surrender of slot -?\d+ refused" -Quiet) { $Failure = "the server refused a surrender" }
-        elseif (-not (Select-String -Path $ServerLog.FullName -SimpleMatch "Victory: slot 1 defeated (Surrender)" -Quiet)) { $Failure = "the server has no 'Victory: slot 1 defeated (Surrender)' (Bob's ServerSurrender)" }
+        elseif (-not (Select-String -Path $ServerLog.FullName -SimpleMatch "Victory: slot 1 defeated (Surrender)" -Quiet)) { $Failure = "the server has no 'Victory: slot 1 defeated (Surrender)' (Bob's surrender)" }
+        elseif (-not (Select-String -Path $ServerLog.FullName -SimpleMatch "RpcMatch: received by the server: slot 1 surrenders" -Quiet)) { $Failure = "the server has no 'RpcMatch: received by the server: slot 1 surrenders' (Bob's surrender must come through the script RPC actor)" }
         elseif (-not (Select-String -Path $ServerLog.FullName -SimpleMatch "Victory: match over, winners 0" -Quiet)) { $Failure = "the server has no 'Victory: match over, winners 0' after Bob's surrender" }
         elseif (-not $After) { $Failure = "the manager's lobby not read after the match" }
         elseif ($Failure = Test-Stats $ServerLog.FullName) { }

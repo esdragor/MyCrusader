@@ -1,13 +1,13 @@
 # P2 / P1 proof of the script RPC routes (no C++ fallback left) for the 13 cheats and the Hero / Duel / Diplomacy / Economy routes not yet proved (ELROND-1118b, PLAN-1118a sections 2 and 3). NOT RUN when written (machine saturated).
 # Model: rpc_routes_seats_run.ps1. Dedicated server with -HOLCheats, Plain, 2 Human seats (Alice slot 0 = GREEN client, Bob slot 1 = RED client).
 # SERVER and GREEN client: no hol.Rpc.Script* cvar is set (D845 lots A-C and lot D: the 13 cheats, the hero talent and the diplomacy stance have no C++ RPC and no cvar left; the server gets no -ExecCmds, the green client only the proof hooks).
-# The Resources, Signal and Chat cheats/RPCs have no C++ Server RPC either. ScriptSignal / ScriptChat / ScriptHero / ScriptMatch stay (live readers), they are not set here.
+# The Resources, Signal and Chat cheats/RPCs have no C++ Server RPC either. No hol.Rpc.Script* cvar is left since lot E (nothing to set here).
 # RED client (D845, witness "client with no call"): it joins and executes NO ProofRoute / ProofCheats (no cvar, no command), so the server must write NO "RpcCheat: / RpcHero: / RpcDuel: / RpcDiplomacy: / RpcEconomy: / RpcMatch: / RpcSpec: " line before the green client joins (the red check).
 # The green client fires, 4 s after its first owner tick, the hook of Script\Net\HOLRpcPlayer.as: hol.Rpc.ProofCheats (13 bits, the table below) and hol.Rpc.ProofRoute (P1 bits 32 talent, 64 duel answer, 128 stance, 256 cancel production).
 # The server must write "RpcCheat: <name> received" for each cheat (log lines added in the script bodies by ELROND-1118b). The table prints name -> received yes/no.
 # Known limits (said in the report): Defeat / FallForum / SkipForum / HoldPresence target slot 7 (a Closed slot, so the match does not end); if the rules refuse a closed slot the table says "refused", which still proves the route.
 # DamageBuilding (hol.Cheat.DamageNear) and SpawnBuilding (type Barracks, NOT checked against Buildings.csv) need the client to see its own main centre (replicated): on Plain with a seat they should exist.
-# WatchUnit has NO console command and no script hook (it fires on a selection change of an own gatherer, C++ only): not proved here, "requires C++" (or a selection command).
+# WatchUnit (lot E): no C++ RPC any more; it fires on a selection change of an own gatherer (hol.Select.ClickUnit), proved by the script journal "RpcHero: watch received by the server" in rpc_routes_seats_run.ps1, not here.
 # Usage: powershell -ExecutionPolicy Bypass -File Tools\Scenarios\rpc_cheats_run.ps1 -Root <worktree> [-Cheats 8191] [-Routes 0]     (P1: -Cheats 0 -Routes 480)
 param([string]$Root = (Split-Path (Split-Path $PSScriptRoot -Parent) -Parent), [string]$Out = (Join-Path $env:TEMP "rpc_cheats"), [int]$Cheats = 8191, [int]$Routes = 0)
 $w = $Root; New-Item -ItemType Directory -Force $Out | Out-Null
@@ -61,7 +61,7 @@ foreach ($p in $a, $b, $sv) { if ($p -and -not $p.HasExited) { Stop-Process -Id 
 "=====TABLE (server received a script line for the green client)"
 foreach ($row in $cheatTable) { if (($Cheats -band $row.Bit) -ne 0) { $got = (Select-String -Path $sl -Pattern $row.Pat | Measure-Object).Count -gt 0; $ref = (Select-String -Path $sl -Pattern ('RpcCheat: ' + ($row.Pat -replace '^RpcCheat: ', '' -replace ' received$', '') + ' refused') | Measure-Object).Count -gt 0; "{0,-18} -> received {1}{2}" -f $row.Name, $(if ($got) { 'oui' } else { 'non' }), $(if ($ref) { ' (refused line seen)' } else { '' }) } }
 foreach ($row in $routeTable) { if (($Routes -band $row.Bit) -ne 0) { $got = (Select-String -Path $sl -Pattern $row.Pat | Measure-Object).Count -gt 0; "{0,-18} -> received {1}" -f $row.Name, $(if ($got) { 'oui' } else { 'non' }) } }
-"WatchUnit          -> not proved (no console command, no script hook: requires C++ or a selection command)"
+"WatchUnit          -> not proved here (see rpc_routes_seats_run.ps1: hol.Select.ClickUnit, journal RpcHero: watch received)"
 "RED CHECK again: script lines before the green client = $redCount (expected 0)"
 "=====SERVER (script lines)"; Select-String -Path $sl -Pattern "$pat|RpcPlayer|Angelscript: Error" | ForEach-Object { $_.Line.Substring(0, [Math]::Min(220, $_.Line.Length)) } | Select-Object -First 50
 "=====RED CLIENT"; if (Test-Path $c1) { Select-String -Path $c1 -Pattern 'Welcomed by server|RpcRoute|NetworkFailure|Angelscript: Error' | ForEach-Object { $_.Line.Substring(0, [Math]::Min(200, $_.Line.Length)) } | Select-Object -First 20 }
