@@ -9,7 +9,7 @@ const FConsoleVariable CVar_RpcProofRoute("hol.Rpc.ProofRoute", 0);
 const FConsoleVariable CVar_RpcProofCheats("hol.Rpc.ProofCheats", 0); // ELROND-1118b: bits 1 FastBuild, 2 Population, 4 Technology, 8 Tier, 16 UnitSpeed, 32 GatherSpeed, 64 Wound, 128 DamageBuilding, 256 SpawnBuilding, 512 Defeat, 1024 FallForum, 2048 SkipForum, 4096 HoldPresence (Tools\Scenarios\rpc_cheats_run.ps1)
 
 // L2 orders (D846): ONE cvar for the 16 order RPCs (this actor's first 8: Move, AttackUnit, HealUnit, AttackBuilding, AttackMove, Stop, ToggleDeploy, MoveInLine). 0 = the C++ RPC of the controller (default), 1 = the C++ routes the order here (read by its name in C++).
-const FConsoleVariable CVar_RpcOrderScript("hol.Rpc.OrderScript", 0);
+const FConsoleVariable CVar_RpcOrderScript("hol.Rpc.OrderScript", 1); // R0 (D848): the script route is the default; the C++ RPCs are still there as the 0 setting until the retirement
 // The C++ controller reads hol.Rpc.OrderTrace by name (OrderSend / OrderRecv lines, Tools\Scenarios\order_latency_run.ps1); declared here so that -ExecCmds finds it on every process (it was declared nowhere: the measurement saw 0 lines).
 const FConsoleVariable CVar_RpcOrderTrace("hol.Rpc.OrderTrace", 0);
 
