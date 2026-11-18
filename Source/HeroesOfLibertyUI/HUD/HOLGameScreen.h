@@ -82,6 +82,12 @@ public:
 	/** D202: a minor alert's line in the thread of messages (the script's, HOLAlertRules.as), on this machine only, muted (D449). */
 	void AddThreadLine(const FText& Line);
 
+	/** True when a building of the shown player holds a finished unit for lack of room (D829); the script's panel reads it (UHOLScriptScreen::IsProductionHeldForRoom). */
+	bool IsProductionHeldForRoom() const;
+
+	/** The key Describe prints for the short message (the script draws it and says when it ends). */
+	void SetMessageKeyMirror(const FString& Key) { MessageKey = Key; }
+
 	/** The player state the screen shows (the local player's); null for a spectator or before it arrives. */
 	const AHOLPlayerState* GetBoundPlayerState() const;
 

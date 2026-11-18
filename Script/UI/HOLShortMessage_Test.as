@@ -73,3 +73,18 @@ void Test_ShortMessagePlaceIsAboveTheQueueOrGrid(FUnitTest& T)
 	T.AssertTrue(Math::Abs(HOLShortMessage::BottomPadding(1080.0, 1080.0) - 6.0) < 0.001, "anchor at the bottom: the gap alone");
 	T.AssertTrue(HOLShortMessage::BottomPadding(1080.0, 1200.0) >= 0.0, "anchor under the window: not negative");
 }
+
+// Fidelity (D839): the C++ UpdateMessage returned at once for an empty key, so a message WITHOUT key never aged nor ended; the script does the same.
+// Red: remove the "State.Key.IsEmpty()" line of Advance (the keyless message then ends after 3 s and the second check fails).
+void Test_ShortMessageWithoutKeyNeverEnds(FUnitTest& T)
+{
+	FHOLShortMessageState State;
+	HOLShortMessage::Show(State, "");
+	T.AssertTrue(HOLShortMessage::Advance(State, 10.0), "no key: still there after 10 s (the C++ never ended it)");
+	T.AssertTrue(HOLShortMessage::Advance(State, 100.0), "and after 110 s");
+	const FString Shown = HOLShortMessage::ShownKey(State);
+	T.AssertEquals(Shown, "", "no key to show in Describe");
+	HOLShortMessage::Show(State, "NotEnoughWood");
+	T.AssertTrue(HOLShortMessage::Advance(State, 2.9), "a keyed message afterwards lasts its 3 s");
+	T.AssertFalse(HOLShortMessage::Advance(State, 0.2), "then ends");
+}

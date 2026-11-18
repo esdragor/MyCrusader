@@ -5,7 +5,7 @@
 // Pure rules in the namespace (no world, tested by HOLShortMessage_Test.as); the view functions below take the screen and the parts built by Build.
 // Hook to put in UHOLGameScreenScript: Docs/Rapports/GLORFINDEL-1118t.md (recipe a).
 
-// What is on the screen: Active from Show until Seconds have gone by (the C++ had no flag: an empty key never ended; here it ends too).
+// What is on the screen: Active from Show until Seconds have gone by. As the C++ UpdateMessage (empty key: no clock), a message with an EMPTY key never ends (D839 fidelity, a question for the user).
 struct FHOLShortMessageState
 {
 	bool bActive = false;
@@ -26,7 +26,7 @@ struct FHOLShortMessageParts
 {
 	UBorder Panel;
 	UCommonTextBlock Text;
-	UOverlaySlot Slot;
+	UOverlaySlot PanelSlot;
 }
 
 namespace HOLShortMessage
@@ -38,6 +38,8 @@ namespace HOLShortMessage
 	const float BottomGap = 6.0;
 	// The key of the population full message (GetFeedbackKey, EHOLCommandFeedback::PopulationFull).
 	const FString PopulationKey = "PopulationFull";
+	// The C++ wrapped the text at GridWidth - 24 (332 - 24).
+	const float WrapWidth = 308.0;
 
 	// A new message always replaces the one on the screen and starts its clock again (the C++ ShowMessage overwrote MessageKey and set MessageAge 0): the latest wins.
 	void Show(FHOLShortMessageState& State, FString Key)
@@ -60,6 +62,9 @@ namespace HOLShortMessage
 	{
 		if (!State.bActive)
 			return false;
+		// The C++ UpdateMessage returned at once for an empty key: no clock, no fade, no end. Same here (even if it looks like a flaw).
+		if (State.Key.IsEmpty())
+			return true;
 		State.Age += DeltaSeconds;
 		if (State.Age >= Seconds)
 		{
@@ -126,10 +131,11 @@ namespace HOLShortMessage
 		FHOLShortMessageParts Parts;
 		Parts.Panel = Screen.MakePanel(n"MessagePanel");
 		Parts.Panel.SetVisibility(ESlateVisibility::Collapsed);
-		Parts.Slot = Frame.AddChildToOverlay(Parts.Panel);
-		Parts.Slot.SetHorizontalAlignment(EHorizontalAlignment::HAlign_Left);
-		Parts.Slot.SetVerticalAlignment(EVerticalAlignment::VAlign_Bottom);
+		Parts.PanelSlot = Frame.AddChildToOverlay(Parts.Panel);
+		Parts.PanelSlot.SetHorizontalAlignment(EHorizontalAlignment::HAlign_Left);
+		Parts.PanelSlot.SetVerticalAlignment(EVerticalAlignment::VAlign_Bottom);
 		Parts.Text = Screen.MakeText(n"MessageText", UHOLTextStyleHUDAlert);
+		Screen.SetTextWrapWidth(Parts.Text, WrapWidth);
 		Parts.Panel.SetContent(Parts.Text);
 		return Parts;
 	}
@@ -151,7 +157,9 @@ namespace HOLShortMessage
 			return false;
 		if (Advance(State, DeltaSeconds))
 		{
-			Parts.Panel.SetRenderOpacity(Opacity(State.Age));
+			// No key: the C++ left the opacity as ShowMessage set it (1).
+			if (!State.Key.IsEmpty())
+				Parts.Panel.SetRenderOpacity(Opacity(State.Age));
 			return false;
 		}
 		Parts.Panel.SetVisibility(ESlateVisibility::Collapsed);
@@ -164,9 +172,9 @@ namespace HOLShortMessage
 		FVector2D Low;
 		const FVector2D View = Screen.GetViewportSlateSize();
 		if (FindAnchor(Screen, Low))
-			Parts.Slot.SetPadding(FMargin(Low.X, 0.0, 0.0, BottomPadding(View.Y, Low.Y)));
+			Parts.PanelSlot.SetPadding(FMargin(Low.X, 0.0, 0.0, BottomPadding(View.Y, Low.Y)));
 		else
-			Parts.Slot.SetPadding(FMargin(16.0, 0.0, 0.0, BottomPadding(View.Y, View.Y)));
+			Parts.PanelSlot.SetPadding(FMargin(16.0, 0.0, 0.0, BottomPadding(View.Y, View.Y)));
 	}
 
 	// The held production (bHeldNow: IsProductionHeldForRoom, the C++ read): the message, then the thread line, then the journal line, once (as CheckPopulationBlocked).

@@ -2784,7 +2784,7 @@ void UHOLGameScreen::UpdateMessage(const float DeltaSeconds)
 	}
 }
 
-void UHOLGameScreen::CheckPopulationBlocked()
+bool UHOLGameScreen::IsProductionHeldForRoom() const
 {
 	using namespace UE::HeroesOfLiberty::UI::GameScreen;
 
@@ -2809,6 +2809,14 @@ void UHOLGameScreen::CheckPopulationBlocked()
 			bBlocked = HOLCommandGrid::IsPopulationBlocked(PlayerState->GetPopulationUsed(), PlayerState->GetPopulationCap(), UnitType ? UnitType->Population : 1);
 		}
 	}
+	return bBlocked;
+}
+
+void UHOLGameScreen::CheckPopulationBlocked()
+{
+	using namespace UE::HeroesOfLiberty::UI::GameScreen;
+
+	const bool bBlocked = IsProductionHeldForRoom();
 	if (bBlocked && !bPopulationBlocked)
 	{
 		// The production stops (D313): the player's first wall.
