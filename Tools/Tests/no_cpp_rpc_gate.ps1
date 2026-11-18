@@ -10,8 +10,10 @@ $NoCppRpcLotC = @('ServerPostSignal', 'ServerPostChat', 'ServerCheatResources')
 $NoCppRpcLotD = @('ServerHeroTalent', 'ServerDiplomacyStance', 'ServerCheatFastBuild', 'ServerCheatPopulation', 'ServerCheatTechnology', 'ServerCheatTier', 'ServerCheatUnitSpeed', 'ServerCheatGatherSpeed', 'ServerCheatWound', 'ServerCheatDamageBuilding', 'ServerCheatSpawnBuilding', 'ServerCheatDefeat', 'ServerCheatFallForum', 'ServerCheatSkipForum', 'ServerCheatHoldPresence')
 # Lot E (lot E, 2026-11-18): WatchUnit, HeroAbility, CastRage, Surrender, DiplomacyVision (Server RPCs) and ClientReceiveSignal, ClientReceiveChat (Client RPCs) (RED until the C++ lot E is committed).
 $NoCppRpcLotE = @('ServerWatchUnit', 'ServerHeroAbility', 'ServerCastRage', 'ServerSurrender', 'ServerDiplomacyVision', 'ClientReceiveSignal', 'ClientReceiveChat')
+# Lot L2 (lot R, 2026-11-18, D848): the 16 player order RPCs of the unit selection (the script RPC actor is their only entry; the C++ keeps only the Do<X> bodies called by the bridge) (RED until the C++ lot R is committed).
+$NoCppRpcLotL2 = @('ServerMoveUnits', 'ServerAttackUnit', 'ServerHealUnit', 'ServerAttackBuilding', 'ServerAttackMove', 'ServerStopUnits', 'ServerToggleDeploy', 'ServerMoveUnitsInLine', 'ServerGatherUnits', 'ServerPlaceBuilding', 'ServerBuildUnits', 'ServerDropOffUnits', 'ServerGarrisonUnits', 'ServerUngarrisonAll', 'ServerCancelBuilding', 'ServerSetRallyPoint')
 
-function Get-NoCppRpcLeft([string] $HeaderPath, [string[]] $Names = ($NoCppRpcLotA + $NoCppRpcLotB + $NoCppRpcLotC + $NoCppRpcLotD + $NoCppRpcLotE)) {
+function Get-NoCppRpcLeft([string] $HeaderPath, [string[]] $Names = ($NoCppRpcLotA + $NoCppRpcLotB + $NoCppRpcLotC + $NoCppRpcLotD + $NoCppRpcLotE + $NoCppRpcLotL2)) {
     if (-not (Test-Path $HeaderPath)) { return @('header missing') }
     $Text = [IO.File]::ReadAllText($HeaderPath)
     $Alt = ($Names | ForEach-Object { [regex]::Escape($_) }) -join '|'
