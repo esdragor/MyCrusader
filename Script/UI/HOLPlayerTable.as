@@ -384,7 +384,7 @@ class UHOLPlayerTablePanel : UObject
 			FSlateBrush Dot;
 			Dot.DrawAs = ESlateBrushDrawType::RoundedBox;
 			Dot.TintColor = FSlateColor(FLinearColor(0.62, 0.62, 0.62, 1.0));
-			Dot.ImageSize = FVector2D(10.0, 10.0);
+			Dot.ImageSize = FVector2f(10.0, 10.0);
 			Dot.OutlineSettings.RoundingType = ESlateBrushRoundingType::FixedRadius;
 			Dot.OutlineSettings.CornerRadii = FVector4(5.0, 5.0, 5.0, 5.0);
 			Relations[Index].SetBrush(Dot);
