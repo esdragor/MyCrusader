@@ -1,0 +1,64 @@
+# H-3 (etape 4 de la migration) : la barre du haut (ressources, population, ouvriers inactifs) et les boutons Menu / Statistiques du HUD sont dessines par le script (HOLTopBar.as). Plain, toi contre une IA figee ; scenario de preuve double : les memes captures prises sur un binaire de main (C++) et sur celui-ci doivent etre identiques au pixel, et ce sont aussi les 5 etapes de ton essai. 3 minutes au plus.
+# Etat fixe : IA figee, combat coupe, 3 Paysans poses a cote du forum (immobiles : aucun revenu, les montants ne bougent que par les commandes du scenario), langue fr, curseur au meme endroit, camera au-dessus de ton forum.
+waitlog Camera above the start of slot 0
+r.SetRes 1920x1080w
+hol.UI.Language fr
+hol.AI.ThinkSteps 100000
+hol.Combat.Enabled 0
+hol.Cheat.Resources 500
+hol.Camera.FocusNear 1500 0
+frames 2
+hol.Units.SpawnHere 3 Peasant 0 250
+waitunits 3
+hol.Camera.FocusSlot own
+waitlog Camera above the start of slot 0
+hol.Camera.Zoom -10
+waitlog Camera height 7000 cm
+hol.Camera.Zoom 11
+waitlog Camera height 1500 cm
+hol.Camera.Zoom -3
+waitlog Camera height 3000 cm
+hol.Mouse.Hover 960 600 5
+waitlog Mouse hover 960,600
+frames 30
+hol.HUD.Report
+waitkey Entree : etape 1, la barre du haut au depart
+capture hud_haut_depart
+hol.Cheat.Wood 1000
+hol.Cheat.Gold 250
+frames 30
+hol.HUD.Report
+waitkey Entree : etape 2, bois +1000 et or +250 par triche
+capture hud_haut_triche
+hol.HUD.Click IdleWorkers
+waitlog Next idle worker
+frames 30
+hol.HUD.Report
+waitkey Entree : etape 3, clic sur le compteur d'inactifs
+capture hud_haut_inactifs
+hol.Camera.FocusSlot own
+waitlog Camera above the start of slot 0
+hol.Mouse.Hover WoodAmount 30
+waitlog Mouse hover WoodAmount
+waitlog  bois/min"
+frames 5
+waitkey Entree : etape 4, survol du montant de bois (infobulle de revenu)
+capture hud_haut_survol
+hol.Mouse.Hover 960 600 5
+waitlog Mouse hover 960,600
+frames 10
+hol.HUD.Click MenuButton
+waitlog Game menu: opened
+frames 20
+waitkey Entree : etape 5, le menu de partie est ouvert (Entree le referme)
+capture hud_haut_menu
+hol.UI.Key Escape 0 0.1
+frames 30
+hol.HUD.Report
+capture hud_haut_menu_ferme
+note Etape 1 : barre du haut a gauche = quatre ressources (nourriture, bois, pierre, or) avec leur montant, puis la population (par ex. 8 / 10) ; a droite le compteur d'ouvriers inactifs "(N)", le bouton Menu ; pas de bouton Statistiques pendant une partie de joueur.
+note Etape 2 : le montant du bois a monte de 1000 et celui de l'or de 250 (valeurs rondes : depart + triche). Les autres montants et la population ne bougent pas.
+note Etape 3 : un clic sur le compteur d'inactifs selectionne un ouvrier inactif et y amene la camera.
+note Etape 4 : en survolant le bois, l'infobulle "+0 bois/min" apparait sous le montant (aucun ouvrier ne recolte).
+note Etape 5 : le bouton Menu ouvre le menu de partie (Reprendre, Pause, Abandonner...) ; Echap le referme et la barre du haut est comme avant.
+quit
