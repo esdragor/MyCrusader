@@ -2,7 +2,7 @@
 // the order queue (UHOLCommandSubsystem, which stays C++: Mass reads it) to the script. Every test sends an order through the library and reads it back
 // through the same queue the simulation takes (Consume*), on a detached subsystem (no world: no navmesh projection, no map clamp, no defeated-slot refusal).
 // NOT COMPILED at the time of writing: if a Test_CommandLibrary* fails to compile, the cause is in the .cpp (a name of UHOLCommandSubsystem or of the
-// order structs) or in a script name used here (FHOLScriptOrderRead fields, UHOLCommandScriptLibrary:: statics).
+// order structs) or in a script name used here (FHOLScriptOrderRead fields, HOLCommandScript:: statics).
 // Not testable without a world: orders that name a building (garrison, drop-off, attack building, rally site, site help) cannot get an AHOLBuilding here; they
 // are tested only for the refusals that come before it (a null building queues nothing). Their full read-back waits for a world-bound test (lot P1/P2).
 
@@ -14,14 +14,21 @@ TArray<int> CLUnits(int A, int B)
 	return Ids;
 }
 
+TArray<int> CLUnits(int A)
+{
+	TArray<int> Ids;
+	Ids.Add(A);
+	return Ids;
+}
+
 void Test_CommandLibraryMoveRoundTrip(FUnitTest& T)
 {
-	UHOLCommandSubsystem Commands = UHOLCommandScriptLibrary::MakeDetachedForTest();
+	UHOLCommandSubsystem Commands = HOLCommandScript::MakeDetachedForTest();
 	T.AssertTrue(Commands != nullptr, "a detached subsystem is made");
-	UHOLCommandScriptLibrary::IssueMove(Commands, CLUnits(7, 9), FVector(1200.0, -340.0, 5.0), 2);
-	int Pending = UHOLCommandScriptLibrary::GetNumPendingMoveOrders(Commands);
+	HOLCommandScript::IssueMove(Commands, CLUnits(7, 9), FVector(1200.0, -340.0, 5.0), 2);
+	int Pending = HOLCommandScript::GetNumPendingMoveOrders(Commands);
 	T.AssertEquals(1, Pending, "one move queued");
-	TArray<FHOLScriptOrderRead> Orders = UHOLCommandScriptLibrary::ConsumeMoves(Commands);
+	TArray<FHOLScriptOrderRead> Orders = HOLCommandScript::ConsumeMoves(Commands);
 	T.AssertEquals(1, Orders.Num(), "one move read back");
 	T.AssertTrue(Orders[0].Kind == n"Move", "its kind is Move");
 	T.AssertEquals(2, Orders[0].PlayerIndex, "the player who gave it");
@@ -31,31 +38,31 @@ void Test_CommandLibraryMoveRoundTrip(FUnitTest& T)
 	T.AssertEquals(1200, int(Orders[0].Target.X), "target X as given (no navmesh)");
 	T.AssertEquals(-340, int(Orders[0].Target.Y), "target Y as given");
 	T.AssertFalse(Orders[0].bQueue, "not queued with Shift");
-	int After = UHOLCommandScriptLibrary::GetNumPendingMoveOrders(Commands);
+	int After = HOLCommandScript::GetNumPendingMoveOrders(Commands);
 	T.AssertEquals(0, After, "Consume empties the queue");
 }
 
 void Test_CommandLibraryMoveShiftAndTask(FUnitTest& T)
 {
-	UHOLCommandSubsystem Commands = UHOLCommandScriptLibrary::MakeDetachedForTest();
-	UHOLCommandScriptLibrary::IssueMove(Commands, CLUnits(1, 2), FVector(10.0, 20.0, 0.0), 0, true, true);
-	TArray<FHOLScriptOrderRead> Orders = UHOLCommandScriptLibrary::ConsumeMoves(Commands);
+	UHOLCommandSubsystem Commands = HOLCommandScript::MakeDetachedForTest();
+	HOLCommandScript::IssueMove(Commands, CLUnits(1, 2), FVector(10.0, 20.0, 0.0), 0, true, true);
+	TArray<FHOLScriptOrderRead> Orders = HOLCommandScript::ConsumeMoves(Commands);
 	T.AssertEquals(1, Orders.Num(), "one move");
 	T.AssertTrue(Orders[0].bQueue, "Shift kept");
 	T.AssertTrue(Orders[0].bFromTask, "a task's walk kept");
-	UHOLCommandScriptLibrary::IssueMove(Commands, TArray<int>(), FVector(10.0, 20.0, 0.0), 0);
-	TArray<FHOLScriptOrderRead> None = UHOLCommandScriptLibrary::ConsumeMoves(Commands);
+	HOLCommandScript::IssueMove(Commands, TArray<int>(), FVector(10.0, 20.0, 0.0), 0);
+	TArray<FHOLScriptOrderRead> None = HOLCommandScript::ConsumeMoves(Commands);
 	T.AssertEquals(0, None.Num(), "no unit, no order");
 }
 
 void Test_CommandLibraryCombatKinds(FUnitTest& T)
 {
-	UHOLCommandSubsystem Commands = UHOLCommandScriptLibrary::MakeDetachedForTest();
-	UHOLCommandScriptLibrary::IssueAttack(Commands, CLUnits(3, 4), 55, -1);
-	UHOLCommandScriptLibrary::IssueStop(Commands, CLUnits(3, 4), -1);
-	UHOLCommandScriptLibrary::IssueHold(Commands, CLUnits(5, 6), -1);
-	UHOLCommandScriptLibrary::IssueAttackMove(Commands, CLUnits(5, 6), FVector(500.0, 600.0, 0.0), -1);
-	TArray<FHOLScriptOrderRead> Orders = UHOLCommandScriptLibrary::ConsumeMoves(Commands);
+	UHOLCommandSubsystem Commands = HOLCommandScript::MakeDetachedForTest();
+	HOLCommandScript::IssueAttack(Commands, CLUnits(3, 4), 55, -1);
+	HOLCommandScript::IssueStop(Commands, CLUnits(3, 4), -1);
+	HOLCommandScript::IssueHold(Commands, CLUnits(5, 6), -1);
+	HOLCommandScript::IssueAttackMove(Commands, CLUnits(5, 6), FVector(500.0, 600.0, 0.0), -1);
+	TArray<FHOLScriptOrderRead> Orders = HOLCommandScript::ConsumeMoves(Commands);
 	T.AssertEquals(4, Orders.Num(), "four orders in the move queue, in the order given");
 	T.AssertTrue(Orders[0].Kind == n"Attack", "first: Attack");
 	T.AssertEquals(55, Orders[0].TargetUnitId, "the target unit");
@@ -68,29 +75,29 @@ void Test_CommandLibraryCombatKinds(FUnitTest& T)
 
 void Test_CommandLibraryGather(FUnitTest& T)
 {
-	UHOLCommandSubsystem Commands = UHOLCommandScriptLibrary::MakeDetachedForTest();
-	UHOLCommandScriptLibrary::IssueGather(Commands, CLUnits(11, 12), 4, 1);
-	TArray<FHOLScriptOrderRead> Gathers = UHOLCommandScriptLibrary::ConsumeGathers(Commands);
+	UHOLCommandSubsystem Commands = HOLCommandScript::MakeDetachedForTest();
+	HOLCommandScript::IssueGather(Commands, CLUnits(11, 12), 4, 1);
+	TArray<FHOLScriptOrderRead> Gathers = HOLCommandScript::ConsumeGathers(Commands);
 	T.AssertEquals(1, Gathers.Num(), "one gather order");
 	T.AssertEquals(4, Gathers[0].SourceIndex, "the source");
 	T.AssertEquals(1, Gathers[0].PlayerIndex, "the player");
 	T.AssertEquals(2, Gathers[0].UnitIds.Num(), "two gatherers");
 	// With Shift: a build order naming the source, at the end of each unit's queue.
-	UHOLCommandScriptLibrary::IssueGather(Commands, CLUnits(11), 6, 1, true);
-	TArray<FHOLScriptOrderRead> Builds = UHOLCommandScriptLibrary::ConsumeBuilds(Commands);
+	HOLCommandScript::IssueGather(Commands, CLUnits(11), 6, 1, true);
+	TArray<FHOLScriptOrderRead> Builds = HOLCommandScript::ConsumeBuilds(Commands);
 	T.AssertEquals(1, Builds.Num(), "Shift: through the build queue");
 	T.AssertEquals(6, Builds[0].SourceIndex, "the source named there");
-	UHOLCommandScriptLibrary::IssueGather(Commands, CLUnits(11), -1, 1);
-	TArray<FHOLScriptOrderRead> NoSource = UHOLCommandScriptLibrary::ConsumeGathers(Commands);
+	HOLCommandScript::IssueGather(Commands, CLUnits(11), -1, 1);
+	TArray<FHOLScriptOrderRead> NoSource = HOLCommandScript::ConsumeGathers(Commands);
 	T.AssertEquals(0, NoSource.Num(), "no source (-1), no order");
 }
 
 void Test_CommandLibraryBuildNeedsASiteOrASource(FUnitTest& T)
 {
-	UHOLCommandSubsystem Commands = UHOLCommandScriptLibrary::MakeDetachedForTest();
-	UHOLCommandScriptLibrary::IssueBuild(Commands, CLUnits(1, 2), nullptr, 3, 0, true);
-	UHOLCommandScriptLibrary::IssueBuild(Commands, CLUnits(1, 2), nullptr, -1, 0);
-	TArray<FHOLScriptOrderRead> Builds = UHOLCommandScriptLibrary::ConsumeBuilds(Commands);
+	UHOLCommandSubsystem Commands = HOLCommandScript::MakeDetachedForTest();
+	HOLCommandScript::IssueBuild(Commands, CLUnits(1, 2), nullptr, 3, 0, true);
+	HOLCommandScript::IssueBuild(Commands, CLUnits(1, 2), nullptr, -1, 0);
+	TArray<FHOLScriptOrderRead> Builds = HOLCommandScript::ConsumeBuilds(Commands);
 	T.AssertEquals(1, Builds.Num(), "only the order with a source is kept (no site, no source: refused)");
 	T.AssertEquals(3, Builds[0].SourceIndex, "its source");
 	T.AssertTrue(Builds[0].bQueue, "its Shift");
@@ -99,11 +106,11 @@ void Test_CommandLibraryBuildNeedsASiteOrASource(FUnitTest& T)
 
 void Test_CommandLibraryProductionAndRally(FUnitTest& T)
 {
-	UHOLCommandSubsystem Commands = UHOLCommandScriptLibrary::MakeDetachedForTest();
-	UHOLCommandScriptLibrary::IssueProductionQueue(Commands, 1, nullptr, n"Spearman", true);
-	UHOLCommandScriptLibrary::IssueProductionCancel(Commands, 1, nullptr, 2);
-	UHOLCommandScriptLibrary::IssueRally(Commands, 1, nullptr, FVector(800.0, 900.0, 0.0), 5, nullptr);
-	TArray<FHOLScriptOrderRead> Orders = UHOLCommandScriptLibrary::ConsumeProductions(Commands);
+	UHOLCommandSubsystem Commands = HOLCommandScript::MakeDetachedForTest();
+	HOLCommandScript::IssueProductionQueue(Commands, 1, nullptr, n"Spearman", true);
+	HOLCommandScript::IssueProductionCancel(Commands, 1, nullptr, 2);
+	HOLCommandScript::IssueRally(Commands, 1, nullptr, FVector(800.0, 900.0, 0.0), 5, nullptr);
+	TArray<FHOLScriptOrderRead> Orders = HOLCommandScript::ConsumeProductions(Commands);
 	T.AssertEquals(3, Orders.Num(), "three production orders, in the order given");
 	T.AssertTrue(Orders[0].Kind == n"Queue", "Queue");
 	T.AssertTrue(Orders[0].TypeName == n"Spearman", "its type");
@@ -117,10 +124,10 @@ void Test_CommandLibraryProductionAndRally(FUnitTest& T)
 
 void Test_CommandLibraryConstruction(FUnitTest& T)
 {
-	UHOLCommandSubsystem Commands = UHOLCommandScriptLibrary::MakeDetachedForTest();
-	UHOLCommandScriptLibrary::IssuePlace(Commands, 3, n"House", FVector(2000.0, 3000.0, 0.0), CLUnits(20, 21), true);
-	UHOLCommandScriptLibrary::IssueConstructionCancel(Commands, 3, nullptr);
-	TArray<FHOLScriptOrderRead> Orders = UHOLCommandScriptLibrary::ConsumeConstructions(Commands);
+	UHOLCommandSubsystem Commands = HOLCommandScript::MakeDetachedForTest();
+	HOLCommandScript::IssuePlace(Commands, 3, n"House", FVector(2000.0, 3000.0, 0.0), CLUnits(20, 21), true);
+	HOLCommandScript::IssueConstructionCancel(Commands, 3, nullptr);
+	TArray<FHOLScriptOrderRead> Orders = HOLCommandScript::ConsumeConstructions(Commands);
 	T.AssertEquals(2, Orders.Num(), "two construction orders");
 	T.AssertTrue(Orders[0].Kind == n"Place", "Place");
 	T.AssertTrue(Orders[0].TypeName == n"House", "its type");
@@ -132,25 +139,25 @@ void Test_CommandLibraryConstruction(FUnitTest& T)
 
 void Test_CommandLibraryRageAndGarrisonRefusals(FUnitTest& T)
 {
-	UHOLCommandSubsystem Commands = UHOLCommandScriptLibrary::MakeDetachedForTest();
-	UHOLCommandScriptLibrary::IssueRage(Commands, 2, CLUnits(30, 31));
-	UHOLCommandScriptLibrary::IssueRage(Commands, 99, CLUnits(30, 31));
-	TArray<FHOLScriptOrderRead> Rages = UHOLCommandScriptLibrary::ConsumeRages(Commands);
+	UHOLCommandSubsystem Commands = HOLCommandScript::MakeDetachedForTest();
+	HOLCommandScript::IssueRage(Commands, 2, CLUnits(30, 31));
+	HOLCommandScript::IssueRage(Commands, 99, CLUnits(30, 31));
+	TArray<FHOLScriptOrderRead> Rages = HOLCommandScript::ConsumeRages(Commands);
 	T.AssertEquals(1, Rages.Num(), "a slot out of range is refused");
 	T.AssertEquals(2, Rages[0].PlayerIndex, "the slot kept");
 	T.AssertEquals(31, Rages[0].UnitIds[1], "its units");
-	UHOLCommandScriptLibrary::IssueGarrison(Commands, 2, CLUnits(30), nullptr);
-	UHOLCommandScriptLibrary::IssueUngarrisonAll(Commands, 2, nullptr);
-	TArray<FHOLScriptOrderRead> Garrisons = UHOLCommandScriptLibrary::ConsumeGarrisons(Commands);
+	HOLCommandScript::IssueGarrison(Commands, 2, CLUnits(30), nullptr);
+	HOLCommandScript::IssueUngarrisonAll(Commands, 2, nullptr);
+	TArray<FHOLScriptOrderRead> Garrisons = HOLCommandScript::ConsumeGarrisons(Commands);
 	T.AssertEquals(0, Garrisons.Num(), "no building, no garrison order");
 }
 
 void Test_CommandLibraryNoSubsystem(FUnitTest& T)
 {
 	UHOLCommandSubsystem None = nullptr;
-	UHOLCommandScriptLibrary::IssueMove(None, CLUnits(1, 2), FVector(0.0, 0.0, 0.0), 0);
-	int Pending = UHOLCommandScriptLibrary::GetNumPendingMoveOrders(None);
+	HOLCommandScript::IssueMove(None, CLUnits(1, 2), FVector(0.0, 0.0, 0.0), 0);
+	int Pending = HOLCommandScript::GetNumPendingMoveOrders(None);
 	T.AssertEquals(0, Pending, "a null subsystem is a no-op");
-	TArray<FHOLScriptOrderRead> Orders = UHOLCommandScriptLibrary::ConsumeMoves(None);
+	TArray<FHOLScriptOrderRead> Orders = HOLCommandScript::ConsumeMoves(None);
 	T.AssertEquals(0, Orders.Num(), "and reads nothing");
 }
