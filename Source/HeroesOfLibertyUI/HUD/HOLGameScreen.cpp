@@ -652,8 +652,6 @@ void UHOLGameScreen::NativeTick(const FGeometry& MyGeometry, const float InDelta
 	RefreshIdleWorkers();
 	RefreshControlGroups(FrameSeconds);
 	UpdateHead();
-	CheckPopulationBlocked();
-	UpdateMessage(FrameSeconds);
 }
 
 void UHOLGameScreen::BindPlayerState(AHOLPlayerState* PlayerState)
@@ -2746,22 +2744,17 @@ void UHOLGameScreen::HandleCommandFeedback(const FHOLCommandFeedback& Feedback)
 
 void UHOLGameScreen::ShowMessage(const FString& Key, const FText& Text)
 {
-	using namespace UE::HeroesOfLiberty::UI::GameScreen;
-
+	// H-2: the script's MessagePanel draws the message, fades it and writes the "HUD message: ..." line (HOLShortMessage.as); MessageKey is Describe's mirror.
 	MessageKey = Key;
-	MessageAge = 0.f;
-	if (MessageText)
+	if (ScriptScreen)
 	{
-		MessageText->SetText(Text);
+		ScriptScreen->ShortMessage(Key, Text);
 	}
-	if (MessagePanel)
+	else
 	{
-		MessagePanel->SetRenderOpacity(1.f);
+		UE_LOG(LogHOLUI, Display, TEXT("HUD message: %s \"%s\""), *Key, *Text.ToString());
 	}
-	SetShown(MessagePanel, true);
-	UE_LOG(LogHOLUI, Display, TEXT("HUD message: %s \"%s\""), *Key, *Text.ToString());
 }
-
 void UHOLGameScreen::UpdateMessage(const float DeltaSeconds)
 {
 	using namespace UE::HeroesOfLiberty::UI::GameScreen;
@@ -3652,20 +3645,6 @@ void UHOLGameScreen::BuildLayout()
 	AddToBar(CommandBox, BarGap);
 	UVerticalBox* CommandColumn = MakeVerticalBox(TEXT("CommandColumn"));
 	CommandBox->SetContent(CommandColumn);
-
-	// The short message (D313), above the queue and the grid, wrapped within the grid's width; it lets the clicks through.
-	MessagePanel = MakePanel(TEXT("MessagePanel"));
-	UVerticalBoxSlot* MessageSlot = CommandColumn->AddChildToVerticalBox(MessagePanel);
-	MessageSlot->SetHorizontalAlignment(HAlign_Left);
-	MessageSlot->SetPadding(FMargin(0.f, 0.f, 0.f, 6.f));
-	USizeBox* MessageBox = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass(), TEXT("MessageBox"));
-	MessageBox->SetMaxDesiredWidth(GridWidth);
-	MessagePanel->SetContent(MessageBox);
-	MessageText = MakeText(TEXT("MessageText"), UHOLTextStyleHUDAlert::StaticClass(), FText::GetEmpty());
-	// Wrapped at a fixed width: a short message keeps its own width, a long one goes on two lines.
-	MessageText->SetWrapTextAt(GridWidth - 24.f);
-	MessageBox->SetContent(MessageText);
-	MessagePanel->SetVisibility(ESlateVisibility::Collapsed);
 
 	// Production queue, as wide as the grid: its items, the head's progress (or the population note), the hint.
 	QueuePanel = MakePanel(TEXT("QueuePanel"));
