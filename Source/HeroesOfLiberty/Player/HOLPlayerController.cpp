@@ -5376,13 +5376,13 @@ void AHOLPlayerController::RequestReturnHero()
 	{
 		return;
 	}
-	if (!HOLRpcScriptRoute_Haldir1117n::Call(this, TEXT("hol.Rpc.ScriptHero"), TEXT("ServerReturnHero"), false, 0))
+	if (!HOLRpcScriptRoute_Haldir1117n::Call(this, nullptr, TEXT("ServerReturnHero"), false, 0))
 	{
-		ServerReturnHero();
+		HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("ReturnHero"));
 	}
 }
 
-void AHOLPlayerController::ServerReturnHero_Implementation()
+void AHOLPlayerController::DoReturnHero()
 {
 	// The player's own slot only (D288): the queue refuses a defeated slot (D358), the step checks the rest.
 	const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
@@ -5461,9 +5461,9 @@ void AHOLPlayerController::RequestDuelChallenge(const int32 TargetSlot)
 {
 	if (!IsSpectator())
 	{
-		if (!HOLRpcScriptRoute_Haldir1117n::Call(this, TEXT("hol.Rpc.ScriptDuel"), TEXT("ServerDuelChallenge"), true, TargetSlot))
+		if (!HOLRpcScriptRoute_Haldir1117n::Call(this, nullptr, TEXT("ServerDuelChallenge"), true, TargetSlot))
 		{
-			ServerDuelChallenge(TargetSlot);
+			HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("DuelChallenge"));
 		}
 	}
 }
@@ -5472,9 +5472,9 @@ void AHOLPlayerController::RequestDuelAnswer(const bool bAccept)
 {
 	if (!IsSpectator())
 	{
-		if (!HOLRpcScriptRoute_Haldir1117n::Call(this, TEXT("hol.Rpc.ScriptDuel"), TEXT("ServerDuelAnswer"), true, bAccept ? 1 : 0))
+		if (!HOLRpcScriptRoute_Haldir1117n::Call(this, nullptr, TEXT("ServerDuelAnswer"), true, bAccept ? 1 : 0))
 		{
-			ServerDuelAnswer(bAccept);
+			HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("DuelAnswer"));
 		}
 	}
 }
@@ -5652,9 +5652,9 @@ void AHOLPlayerController::RequestSpecialization(const int32 Tier, const int32 O
 	if (!IsSpectator())
 	{
 		const int32 SpecArgs[] = { Tier, Option };
-		if (!HOLRpcScriptRoute_Haldir1117n::CallN(this, TEXT("hol.Rpc.ScriptSpecialization"), TEXT("ServerStartSpecialization"), SpecArgs))
+		if (!HOLRpcScriptRoute_Haldir1117n::CallN(this, nullptr, TEXT("ServerStartSpecialization"), SpecArgs))
 		{
-			ServerStartSpecialization(Tier, Option);
+			HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("StartSpecialization"));
 		}
 	}
 }
@@ -5663,14 +5663,14 @@ void AHOLPlayerController::RequestCancelSpecialization()
 {
 	if (!IsSpectator())
 	{
-		if (!HOLRpcScriptRoute_Haldir1117n::Call(this, TEXT("hol.Rpc.ScriptSpecialization"), TEXT("ServerCancelSpecialization"), false, 0))
+		if (!HOLRpcScriptRoute_Haldir1117n::Call(this, nullptr, TEXT("ServerCancelSpecialization"), false, 0))
 		{
-			ServerCancelSpecialization();
+			HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("CancelSpecialization"));
 		}
 	}
 }
 
-void AHOLPlayerController::ServerStartSpecialization_Implementation(const int32 Tier, const int32 Option)
+void AHOLPlayerController::DoStartSpecialization(const int32 Tier, const int32 Option)
 {
 	// The player's own seat only (D288); the script's board decides (HOLSpecialization::Start with the seat's tier and its Forum).
 	UWorld* World = GetWorld();
@@ -5687,7 +5687,7 @@ void AHOLPlayerController::ServerStartSpecialization_Implementation(const int32 
 	Board->RefreshView(*HOLPlayerState);
 }
 
-void AHOLPlayerController::ServerCancelSpecialization_Implementation()
+void AHOLPlayerController::DoCancelSpecialization()
 {
 	UWorld* World = GetWorld();
 	AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
@@ -5737,29 +5737,6 @@ void AHOLPlayerController::ServerDiplomacyVision_Implementation(const int32 Targ
 	{
 		UE_LOG(LogHOLMatch, Display, TEXT("Diplomacy order: slot %d vision %d toward slot %d queued"), HOLPlayerState->GetPlayerIndex(), bShare ? 1 : 0, TargetSlot);
 		Commands->IssueDiplomacyOrder(HOLPlayerState->GetPlayerIndex(), EHOLDiplomacyOrderKind::Vision, TargetSlot, bShare ? 1 : 0);
-	}
-}
-
-void AHOLPlayerController::ServerDuelChallenge_Implementation(const int32 TargetSlot)
-{
-	// The player's own slot only (D288); the target and the conditions are checked by the rules at the step's end.
-	const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
-	UHOLCommandSubsystem* Commands = GetWorld()->GetSubsystem<UHOLCommandSubsystem>();
-	if (HOLPlayerState && Commands)
-	{
-		UE_LOG(LogHOLMatch, Display, TEXT("Duel order: slot %d challenge at slot %d queued"), HOLPlayerState->GetPlayerIndex(), TargetSlot);
-		Commands->IssueDuelOrder(HOLPlayerState->GetPlayerIndex(), EHOLDuelOrderKind::Challenge, TargetSlot);
-	}
-}
-
-void AHOLPlayerController::ServerDuelAnswer_Implementation(const bool bAccept)
-{
-	const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
-	UHOLCommandSubsystem* Commands = GetWorld()->GetSubsystem<UHOLCommandSubsystem>();
-	if (HOLPlayerState && Commands)
-	{
-		UE_LOG(LogHOLMatch, Display, TEXT("Duel order: slot %d %s queued"), HOLPlayerState->GetPlayerIndex(), bAccept ? TEXT("accept") : TEXT("refuse"));
-		Commands->IssueDuelOrder(HOLPlayerState->GetPlayerIndex(), bAccept ? EHOLDuelOrderKind::Accept : EHOLDuelOrderKind::Refuse, INDEX_NONE);
 	}
 }
 

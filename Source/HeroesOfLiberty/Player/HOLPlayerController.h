@@ -857,9 +857,8 @@ private:
 	UFUNCTION(Server, Reliable)
 	void ServerSurrender();
 
-	/** J8a.4: the player's own slot's hero return, queued (UHOLCommandSubsystem::IssueHeroReturnOrder); no argument to trust. */
-	UFUNCTION(Server, Reliable)
-	void ServerReturnHero();
+	/** J8a.4: the player's own slot's hero return, queued (UHOLCommandSubsystem::IssueHeroReturnOrder); no argument to trust. D845: the RPC is in the script RPC actor; this is the body its bridge calls on the server. */
+	void DoReturnHero();
 
 	/** J8c.3: the player's own slot's hero ability, queued (UHOLCommandSubsystem::IssueHeroAbilityOrder); the server checks the rest. */
 	UFUNCTION(Server, Reliable)
@@ -873,11 +872,7 @@ private:
 	UFUNCTION(Server, Reliable)
 	void ServerHeroTalent(int32 Family);
 
-	/** D4: the player's own slot's challenge / answer, queued (UHOLCommandSubsystem::IssueDuelOrder); the server checks the rest. */
-	UFUNCTION(Server, Reliable)
-	void ServerDuelChallenge(int32 TargetSlot);
-	UFUNCTION(Server, Reliable)
-	void ServerDuelAnswer(bool bAccept);
+	// D845: the duel challenge / answer RPCs are in the script RPC actor; the one body is UHOLRpcBridgeLibrary::QueueDuelOrder (UHOLCommandSubsystem::IssueDuelOrder), no C++ RPC here.
 
 	/** D5: the player's own slot's stance / shared vision, queued (UHOLCommandSubsystem::IssueDiplomacyOrder); the game state checks the rest. */
 	UFUNCTION(Server, Reliable)
@@ -909,12 +904,10 @@ private:
 	TArray<int32> ChatPostTimesMs;
 
 	/** SP2 (D07, D684): the server's board starts the unlock of Option at Tier for this player's seat (HOLSpecialization::Start). */
-	UFUNCTION(Server, Reliable)
-	void ServerStartSpecialization(int32 Tier, int32 Option);
+	void DoStartSpecialization(int32 Tier, int32 Option);
 
-	/** SP2: the server's board cancels this player's running unlock (HOLSpecialization::Cancel). */
-	UFUNCTION(Server, Reliable)
-	void ServerCancelSpecialization();
+	/** SP2: the server's board cancels this player's running unlock (HOLSpecialization::Cancel). D845: bodies of the script RPC actor's RPCs, called by its bridge. */
+	void DoCancelSpecialization();
 
 	UPROPERTY(Transient)
 	TObjectPtr<AHOLRTSCamera> RTSCamera;

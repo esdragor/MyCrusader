@@ -58,7 +58,7 @@ bool UHOLRpcBridgeLibrary::QueueDuelOrder(AActor* RpcActor, const int32 Kind, co
 	{
 		return false;
 	}
-	// Same lines as AHOLPlayerController::ServerDuelChallenge_Implementation / ServerDuelAnswer_Implementation.
+	// D845: the one body of the duel challenge / answer RPCs (the controller's C++ twins are gone).
 	if (Kind == 0)
 	{
 		UE_LOG(LogHOLMatch, Display, TEXT("Duel order: slot %d challenge at slot %d queued"), Slot, OtherSlot);
@@ -145,21 +145,21 @@ namespace HOLRpcBridgeL1_Haldir1117o
 bool UHOLRpcBridgeLibrary::StartSpecialization(AActor* RpcActor, const int32 Tier, const int32 Option)
 {
 	AHOLPlayerController* Controller = HOLRpcBridgeL1_Haldir1117o::OwnerController(RpcActor);
-	if (Controller) { Controller->ServerStartSpecialization_Implementation(Tier, Option); }
+	if (Controller) { Controller->DoStartSpecialization(Tier, Option); }
 	return Controller != nullptr;
 }
 
 bool UHOLRpcBridgeLibrary::CancelSpecialization(AActor* RpcActor)
 {
 	AHOLPlayerController* Controller = HOLRpcBridgeL1_Haldir1117o::OwnerController(RpcActor);
-	if (Controller) { Controller->ServerCancelSpecialization_Implementation(); }
+	if (Controller) { Controller->DoCancelSpecialization(); }
 	return Controller != nullptr;
 }
 
 bool UHOLRpcBridgeLibrary::ReturnHero(AActor* RpcActor)
 {
 	AHOLPlayerController* Controller = HOLRpcBridgeL1_Haldir1117o::OwnerController(RpcActor);
-	if (Controller) { Controller->ServerReturnHero_Implementation(); }
+	if (Controller) { Controller->DoReturnHero(); }
 	return Controller != nullptr;
 }
 
