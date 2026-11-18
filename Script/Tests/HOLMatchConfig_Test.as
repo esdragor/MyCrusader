@@ -6,8 +6,8 @@
 // a round trip" go through RoundTripsLosslessly (FromJson, ToJson, FromJson, same configuration) since the script holds no struct; "output
 // untouched on failure" is ReadLeavesOutputUntouchedOnFailure. SubsystemFile, PlayerColors and NeutralUnitColor are ported below (CELEBORN-1117o) through new library functions (RunSubsystemFile,
 // GetPaletteDWColors, GetPaletteColorName, PaletteLinearColorsEqual, OwnerColorIsPaletteColor, GetNeutralOwner); not ported: the refusal of a
-// missing file in SubsystemFile (it logs an Error that only the C++ test declares expected), so the C++ SubsystemFile test stays. This file compiles
-// only after the C++ lot of the library is built (the build is pending); the three C++ tests are NOT removed until red then green is seen.
+// missing file in SubsystemFile (it logs an Error that only the C++ test declares expected), so the C++ SubsystemFile test stays (CELEBORN-1118m: the C++ PlayerColors and NeutralUnitColor tests are removed, to be reverted if their mutation is not seen red). This file compiles
+// only after the C++ lot of the library is built.
 
 struct FMCFGView
 {
