@@ -1,0 +1,5 @@
+# <nom de capture> | ce que l'utilisateur doit voir
+hud_banniere_aucune | Capture 1920x1080, camera au-dessus de ton forum : le HUD sans banniere (barre des ressources en haut, fil de messages en haut a droite, mini-carte, panneau de production du forum) ; AUCUN bandeau d'attente ni d'absence sous la barre du haut.
+hud_banniere_absence | Capture 1920x1080 : une banniere sombre sous la barre du haut, centree, avec le texte "Bob : connexion perdue" suivi d'un compte a rebours m:ss (1:2x environ, la fausse absence dure 90 s) ; les autres panneaux du HUD (ressources, fil de messages, mini-carte, panneau du bas) a la meme place que sur hud_banniere_aucune. Journal exact : "Absence banner: shown, Bob : connexion perdue ...".
+hud_banniere_retour | Capture 1920x1080 : la meme banniere dit "Bob : de retour" (sans compte a rebours), meme place, meme fond. Journal exact : "Absence banner: shown, Bob : de retour".
+hud_banniere_fin | Capture 1920x1080 : la banniere a disparu (la notice de retour a dure 5 s), le HUD est comme sur hud_banniere_aucune. Journal exact : "Absence banner: hidden".
