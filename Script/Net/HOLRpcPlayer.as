@@ -682,8 +682,8 @@ if ((Routes & 134217728) != 0)
 	Commands.Add("hol.Select.Own");
 	Commands.Add("hol.Build.PlaceNear House 1500 -1800");
 	// Real run 2026-11-18: no "Cancel request" line. hol.Prod.Queue Peasant House DID select a foundation ("Selection: House of slot 0 (own), foundation") but the "@4 hol.Select.Own" of the BuildUnits / Garrison bits ran before the cancel and replaced it by 6 units. The select and the cancel now run in the SAME step (@5), after the other bits' "@3" (rally site) and "@4" (Select.Own, Units.Build) steps.
-	Commands.Add("@5 hol.Prod.Queue Peasant House");
-	Commands.Add("@5 hol.Build.CancelSelected");
+	Commands.Add("@6 hol.Prod.Queue Peasant House"); // @6: the delay table of ProofStepSeconds has no 5 (an unknown delay ran the step raw, "Command not recognized")
+	Commands.Add("@6 hol.Build.CancelSelected");
 }
 if ((Routes & 268435456) != 0)
 {
