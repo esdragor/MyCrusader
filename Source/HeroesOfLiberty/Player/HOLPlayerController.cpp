@@ -66,6 +66,8 @@ namespace HOLRpcScriptRoute_Haldir1117n
 	bool RouteCancelProduction(AHOLPlayerController* Controller, AHOLBuilding* Building, int32 Index);
 	bool RouteTribute(AHOLPlayerController* Controller, AHOLBuilding* Building, int32 Receiver, int32 Resource, int32 Amount);
 	bool RouteMarketTrade(AHOLPlayerController* Controller, AHOLBuilding* Building, int32 Resource, int32 Lots, bool bBuy);
+	// D845: no C++ RPC fallback any more; a call the script actor did not take is only logged (defined next to IsOn).
+	void LogNotSent(const TCHAR* Name);
 }
 
 namespace UE::HeroesOfLiberty::Player
@@ -3951,7 +3953,7 @@ void AHOLPlayerController::ExecuteGridCommand(const FHOLGridCommand& Command)
 			UE_CLOG(HasBuildingGroup(), LogHOLMatch, Display, TEXT("Grid: %s queued at %s (#%u), subgroup %s"), *Command.TypeName.ToString(),
 				*DescribeBuilding(Building), Building->GetUniqueID(), *DescribeSubgroup());
 			LastProductionBuilding.Add(Command.TypeName, Building->GetUniqueID());
-			if (!HOLRpcScriptRoute_Haldir1117n::RouteQueueProduction(this, Building, Command.TypeName)) { ServerQueueProduction(Building, Command.TypeName); }
+			if (!HOLRpcScriptRoute_Haldir1117n::RouteQueueProduction(this, Building, Command.TypeName)) { HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("QueueProduction")); }
 		}
 		return;
 	}
@@ -3993,7 +3995,7 @@ void AHOLPlayerController::ExecuteGridCommand(const FHOLGridCommand& Command)
 		}
 		UE_LOG(LogHOLMatch, Display, TEXT("Grid: research %s at %s (#%u)"), *Command.TypeName.ToString(), *DescribeBuilding(Building), Building->GetUniqueID());
 		LastProductionBuilding.Add(Command.TypeName, Building->GetUniqueID());
-		if (!HOLRpcScriptRoute_Haldir1117n::RouteQueueProduction(this, Building, Command.TypeName)) { ServerQueueProduction(Building, Command.TypeName); }
+		if (!HOLRpcScriptRoute_Haldir1117n::RouteQueueProduction(this, Building, Command.TypeName)) { HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("QueueProduction")); }
 		return;
 	}
 	case EHOLGridCommand::Trade:
@@ -4192,7 +4194,7 @@ void AHOLPlayerController::RequestProduction(const FName TypeName)
 {
 	if (AHOLBuilding* Building = GetOwnSelection())
 	{
-		if (!HOLRpcScriptRoute_Haldir1117n::RouteQueueProduction(this, Building, TypeName)) { ServerQueueProduction(Building, TypeName); }
+		if (!HOLRpcScriptRoute_Haldir1117n::RouteQueueProduction(this, Building, TypeName)) { HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("QueueProduction")); }
 	}
 }
 
@@ -4204,7 +4206,7 @@ void AHOLPlayerController::RequestCancelProduction(const int32 Index)
 	}
 	if (AHOLBuilding* Building = GetOwnSelection())
 	{
-		if (!HOLRpcScriptRoute_Haldir1117n::RouteCancelProduction(this, Building, Index)) { ServerCancelProduction(Building, Index); }
+		if (!HOLRpcScriptRoute_Haldir1117n::RouteCancelProduction(this, Building, Index)) { HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("CancelProduction")); }
 	}
 }
 
@@ -4216,7 +4218,7 @@ void AHOLPlayerController::RequestTribute(const int32 Receiver, const int32 Reso
 	}
 	if (AHOLBuilding* Building = GetOwnSelection())
 	{
-		if (!HOLRpcScriptRoute_Haldir1117n::RouteTribute(this, Building, Receiver, Resource, Amount)) { ServerTribute(Building, Receiver, Resource, Amount); }
+		if (!HOLRpcScriptRoute_Haldir1117n::RouteTribute(this, Building, Receiver, Resource, Amount)) { HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("Tribute")); }
 	}
 }
 
@@ -4231,7 +4233,7 @@ void AHOLPlayerController::RequestPanelTribute(const int32 Receiver, const int32
 	{
 		if (It->GetOwnerPlayer() == HOLPlayerState->GetPlayerIndex() && It->GetTypeName() == HOLBuildingTypeNames::Market && It->IsFinished())
 		{
-			if (!HOLRpcScriptRoute_Haldir1117n::RouteTribute(this, *It, Receiver, Resource, Amount)) { ServerTribute(*It, Receiver, Resource, Amount); }
+			if (!HOLRpcScriptRoute_Haldir1117n::RouteTribute(this, *It, Receiver, Resource, Amount)) { HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("Tribute")); }
 			return;
 		}
 	}
@@ -4245,7 +4247,7 @@ void AHOLPlayerController::RequestMarketTrade(const int32 Resource, const int32 
 	}
 	if (AHOLBuilding* Building = GetOwnSelection())
 	{
-		if (!HOLRpcScriptRoute_Haldir1117n::RouteMarketTrade(this, Building, Resource, Lots, bBuy)) { ServerMarketTrade(Building, Resource, Lots, bBuy); }
+		if (!HOLRpcScriptRoute_Haldir1117n::RouteMarketTrade(this, Building, Resource, Lots, bBuy)) { HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("MarketTrade")); }
 	}
 }
 
@@ -5226,11 +5228,17 @@ namespace HOLRpcScriptRoute_Haldir1117n
 		return CVar && CVar->GetInt() != 0;
 	}
 
+	// D845: the script RPC actor is the only path of the RPCs taken over; a call it did not take is journalled, never sent another way.
+	void LogNotSent(const TCHAR* Name)
+	{
+		UE_LOG(LogHOLMatch, Error, TEXT("RpcRoute: %s not sent: no script RPC actor / function"), Name);
+	}
+
 	// Calls the script actor's RPC by name (Server from a client, or Client from the server: HALDIR-1117p). Int arguments (bool as 0 / 1) fill the bool / int32 / uint32 parameters in order,
 	// Text the FString parameter and Location the FVector one. false: no actor, no such function (script not loaded): the caller falls back to the C++ RPC.
 	bool CallFull(AHOLPlayerController* Controller, const TCHAR* CVarName, const TCHAR* FunctionName, const TArrayView<const int32> Args, const FString* Text, const FVector* Location, UObject* Object, const FName* Name)
 	{
-		if (!Controller || !IsOn(CVarName))
+		if (!Controller || (CVarName && !IsOn(CVarName)))
 		{
 			return false;
 		}
@@ -5308,25 +5316,25 @@ namespace HOLRpcScriptRoute_Haldir1117n
 	// HALDIR-1117q (NOT COMPILED): the Economy routes. The building object and the type name fill the object / name parameters, the ints the rest in order (bool as 0 / 1).
 	bool RouteQueueProduction(AHOLPlayerController* Controller, AHOLBuilding* Building, const FName TypeName)
 	{
-		return CallFull(Controller, TEXT("hol.Rpc.ScriptEconomy"), TEXT("ServerQueueProduction"), TArrayView<const int32>(), nullptr, nullptr, Building, &TypeName);
+		return CallFull(Controller, nullptr, TEXT("ServerQueueProduction"), TArrayView<const int32>(), nullptr, nullptr, Building, &TypeName);
 	}
 
 	bool RouteCancelProduction(AHOLPlayerController* Controller, AHOLBuilding* Building, const int32 Index)
 	{
 		const int32 Args[1] = { Index };
-		return CallFull(Controller, TEXT("hol.Rpc.ScriptEconomy"), TEXT("ServerCancelProduction"), TArrayView<const int32>(Args, 1), nullptr, nullptr, Building, nullptr);
+		return CallFull(Controller, nullptr, TEXT("ServerCancelProduction"), TArrayView<const int32>(Args, 1), nullptr, nullptr, Building, nullptr);
 	}
 
 	bool RouteTribute(AHOLPlayerController* Controller, AHOLBuilding* Building, const int32 Receiver, const int32 Resource, const int32 Amount)
 	{
 		const int32 Args[3] = { Receiver, Resource, Amount };
-		return CallFull(Controller, TEXT("hol.Rpc.ScriptEconomy"), TEXT("ServerTribute"), TArrayView<const int32>(Args, 3), nullptr, nullptr, Building, nullptr);
+		return CallFull(Controller, nullptr, TEXT("ServerTribute"), TArrayView<const int32>(Args, 3), nullptr, nullptr, Building, nullptr);
 	}
 
 	bool RouteMarketTrade(AHOLPlayerController* Controller, AHOLBuilding* Building, const int32 Resource, const int32 Lots, const bool bBuy)
 	{
 		const int32 Args[3] = { Resource, Lots, bBuy ? 1 : 0 };
-		return CallFull(Controller, TEXT("hol.Rpc.ScriptEconomy"), TEXT("ServerMarketTrade"), TArrayView<const int32>(Args, 3), nullptr, nullptr, Building, nullptr);
+		return CallFull(Controller, nullptr, TEXT("ServerMarketTrade"), TArrayView<const int32>(Args, 3), nullptr, nullptr, Building, nullptr);
 	}
 
 	// The int-only form (the HALDIR-1117n / 1117o routes).
@@ -5922,7 +5930,7 @@ void AHOLPlayerController::ServerSetRallyPoint_Implementation(AHOLBuilding* Buil
 	}
 }
 
-void AHOLPlayerController::ServerQueueProduction_Implementation(AHOLBuilding* Building, const FName TypeName)
+void AHOLPlayerController::DoQueueProduction(AHOLBuilding* Building, const FName TypeName)
 {
 	const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
 	UHOLCommandSubsystem* Commands = GetWorld()->GetSubsystem<UHOLCommandSubsystem>();
@@ -5937,7 +5945,7 @@ void AHOLPlayerController::ServerQueueProduction_Implementation(AHOLBuilding* Bu
 	}
 }
 
-void AHOLPlayerController::ServerCancelProduction_Implementation(AHOLBuilding* Building, const int32 Index)
+void AHOLPlayerController::DoCancelProduction(AHOLBuilding* Building, const int32 Index)
 {
 	const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
 	UHOLCommandSubsystem* Commands = GetWorld()->GetSubsystem<UHOLCommandSubsystem>();
@@ -5952,7 +5960,7 @@ void AHOLPlayerController::ServerCancelProduction_Implementation(AHOLBuilding* B
 	}
 }
 
-void AHOLPlayerController::ServerTribute_Implementation(AHOLBuilding* Building, const int32 Receiver, const int32 Resource, const int32 Amount)
+void AHOLPlayerController::DoTribute(AHOLBuilding* Building, const int32 Receiver, const int32 Resource, const int32 Amount)
 {
 	const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
 	UHOLCommandSubsystem* Commands = GetWorld()->GetSubsystem<UHOLCommandSubsystem>();
@@ -5969,7 +5977,7 @@ void AHOLPlayerController::ServerTribute_Implementation(AHOLBuilding* Building, 
 	}
 }
 
-void AHOLPlayerController::ServerMarketTrade_Implementation(AHOLBuilding* Building, const int32 Resource, const int32 Lots, const bool bBuy)
+void AHOLPlayerController::DoMarketTrade(AHOLBuilding* Building, const int32 Resource, const int32 Lots, const bool bBuy)
 {
 	const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
 	UHOLCommandSubsystem* Commands = GetWorld()->GetSubsystem<UHOLCommandSubsystem>();
@@ -6677,18 +6685,18 @@ void AHOLPlayerController::UpdateDrag()
 void AHOLPlayerController::RequestPause()
 {
 	UE_LOG(LogHOLMatch, Display, TEXT("Pause: pause asked by this player"));
-	if (!HOLRpcScriptRoute_Haldir1117n::Call(this, TEXT("hol.Rpc.ScriptMatch"), TEXT("ServerRequestPause"), false, 0))
+	if (!HOLRpcScriptRoute_Haldir1117n::Call(this, nullptr, TEXT("ServerRequestPause"), false, 0))
 	{
-		ServerRequestPause();
+		HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("ServerRequestPause"));
 	}
 }
 
 void AHOLPlayerController::RequestResume()
 {
 	UE_LOG(LogHOLMatch, Display, TEXT("Pause: resume asked by this player"));
-	if (!HOLRpcScriptRoute_Haldir1117n::Call(this, TEXT("hol.Rpc.ScriptMatch"), TEXT("ServerRequestResume"), false, 0))
+	if (!HOLRpcScriptRoute_Haldir1117n::Call(this, nullptr, TEXT("ServerRequestResume"), false, 0))
 	{
-		ServerRequestResume();
+		HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("ServerRequestResume"));
 	}
 }
 
@@ -6696,24 +6704,6 @@ bool AHOLPlayerController::IsInputFrozen() const
 {
 	const AHOLGameState* HOLGameState = GetWorld() ? GetWorld()->GetGameState<AHOLGameState>() : nullptr;
 	return HOLGameState && HOLGameState->IsMatchPaused();
-}
-
-void AHOLPlayerController::ServerRequestPause_Implementation()
-{
-	AHOLGameState* HOLGameState = GetWorld()->GetGameState<AHOLGameState>();
-	if (const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState(); HOLGameState && HOLPlayerState)
-	{
-		HOLGameState->RequestPause(*HOLPlayerState, HOLGameState->GetServerWorldTimeSeconds());
-	}
-}
-
-void AHOLPlayerController::ServerRequestResume_Implementation()
-{
-	AHOLGameState* HOLGameState = GetWorld()->GetGameState<AHOLGameState>();
-	if (const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState(); HOLGameState && HOLPlayerState)
-	{
-		HOLGameState->RequestResume(*HOLPlayerState, HOLGameState->GetServerWorldTimeSeconds());
-	}
 }
 
 void AHOLPlayerController::ServerRequestMatchStats_Implementation(const int32 FromSample, const int32 FromEvent)

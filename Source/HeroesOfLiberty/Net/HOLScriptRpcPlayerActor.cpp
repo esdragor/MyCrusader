@@ -342,27 +342,27 @@ bool UHOLRpcBridgeLibrary::ReceiveChat(AActor* RpcActor, const int32 SenderSlot,
 bool UHOLRpcBridgeLibrary::QueueProduction(AActor* RpcActor, AHOLBuilding* Building, const FName TypeName)
 {
 	AHOLPlayerController* Controller = HOLRpcBridgeL1_Haldir1117o::OwnerController(RpcActor);
-	if (Controller) { Controller->ServerQueueProduction_Implementation(Building, TypeName); }
+	if (Controller) { Controller->DoQueueProduction(Building, TypeName); }
 	return Controller != nullptr;
 }
 
 bool UHOLRpcBridgeLibrary::CancelProduction(AActor* RpcActor, AHOLBuilding* Building, const int32 Index)
 {
 	AHOLPlayerController* Controller = HOLRpcBridgeL1_Haldir1117o::OwnerController(RpcActor);
-	if (Controller) { Controller->ServerCancelProduction_Implementation(Building, Index); }
+	if (Controller) { Controller->DoCancelProduction(Building, Index); }
 	return Controller != nullptr;
 }
 
 bool UHOLRpcBridgeLibrary::Tribute(AActor* RpcActor, AHOLBuilding* Building, const int32 Receiver, const int32 Resource, const int32 Amount)
 {
 	AHOLPlayerController* Controller = HOLRpcBridgeL1_Haldir1117o::OwnerController(RpcActor);
-	if (Controller) { Controller->ServerTribute_Implementation(Building, Receiver, Resource, Amount); }
+	if (Controller) { Controller->DoTribute(Building, Receiver, Resource, Amount); }
 	return Controller != nullptr;
 }
 
 bool UHOLRpcBridgeLibrary::MarketTrade(AActor* RpcActor, AHOLBuilding* Building, const int32 Resource, const int32 Lots, const bool bBuy)
 {
 	AHOLPlayerController* Controller = HOLRpcBridgeL1_Haldir1117o::OwnerController(RpcActor);
-	if (Controller) { Controller->ServerMarketTrade_Implementation(Building, Resource, Lots, bBuy); }
+	if (Controller) { Controller->DoMarketTrade(Building, Resource, Lots, bBuy); }
 	return Controller != nullptr;
 }

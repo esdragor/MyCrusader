@@ -644,10 +644,7 @@ public:
 	 * P5 (D513): the Pause button of the Escape menu (and hol.Match.Pause / hol.Match.Resume): the server's game state
 	 * decides (AHOLGameState::RequestPause, RequestResume), every machine sees the result by replication.
 	 */
-	UFUNCTION(Server, Reliable)
-	void ServerRequestPause();
-	UFUNCTION(Server, Reliable)
-	void ServerRequestResume();
+	// D845: the pause and resume RPCs are in the script RPC actor (HOLRpc::RequestPause / RequestResume, one body in UHOLRpcBridgeLibrary); no C++ RPC here.
 
 	/** P5: the Escape menu's « Pause » and the pause screen's « Reprendre » (the server decides). Logs "Pause: asked by this player". */
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Match")
@@ -738,19 +735,16 @@ private:
 	/** The ghost under the cursor, its colour checked again (placement mode, every frame). */
 	void UpdatePlacementGhost();
 
-	UFUNCTION(Server, Reliable)
-	void ServerQueueProduction(AHOLBuilding* Building, FName TypeName);
+	// D845: the economy RPCs are in the script RPC actor (Script/Net/HOLRpcPlayer.as); these are the bodies its bridge (friend UHOLRpcBridgeLibrary) calls on the server, no C++ RPC.
+	void DoQueueProduction(AHOLBuilding* Building, FName TypeName);
 
-	UFUNCTION(Server, Reliable)
-	void ServerCancelProduction(AHOLBuilding* Building, int32 Index);
+	void DoCancelProduction(AHOLBuilding* Building, int32 Index);
 
 	/** M4c: an exchange at a Market (UHOLProductionSubsystem::ApplyMarketTrade checks the owner, the Market, the lots and the stock). */
-	UFUNCTION(Server, Reliable)
-	void ServerMarketTrade(AHOLBuilding* Building, int32 Resource, int32 Lots, bool bBuy);
+	void DoMarketTrade(AHOLBuilding* Building, int32 Resource, int32 Lots, bool bBuy);
 
 	/** D372: a tribute from a Market (UHOLProductionSubsystem::ApplyTribute checks the owner, the Market, the receiver, the resource and the stock). */
-	UFUNCTION(Server, Reliable)
-	void ServerTribute(AHOLBuilding* Building, int32 Receiver, int32 Resource, int32 Amount);
+	void DoTribute(AHOLBuilding* Building, int32 Receiver, int32 Resource, int32 Amount);
 
 	/** The units' identifiers (D223) and the ground point: ~4 bytes a unit, a player's selection at most (D288). */
 	UFUNCTION(Server, Reliable)

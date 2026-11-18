@@ -59,7 +59,7 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Rpc")
 	static bool QueueDuelOrder(AActor* RpcActor, int32 Kind, int32 OtherSlot);
 
-	/** Server: AHOLGameState::RequestPause for the owner's player state, at the server time (body of ServerRequestPause_Implementation). False: refused (the game state logs why) or no state. */
+	/** Server: AHOLGameState::RequestPause for the owner's player state, at the server time (the one body of the pause RPC, D845). False: refused (the game state logs why) or no state. */
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Rpc")
 	static bool RequestPause(AActor* RpcActor);
 
