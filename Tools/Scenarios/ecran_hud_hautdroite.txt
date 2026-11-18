@@ -22,18 +22,21 @@ hol.Mouse.Hover 960 600 5
 waitlog Mouse hover 960,600
 frames 30
 hol.HUD.Report
+notereset Etape 1 : barre du haut a gauche = quatre ressources (nourriture, bois, pierre, or) avec leur montant, puis la population (par ex. 8 / 10) ; a droite le compteur d'ouvriers inactifs "(N)", le bouton Menu ; pas de bouton Statistiques pendant une partie de joueur.
 waitkey Entree : etape 1, la barre du haut au depart
 capture hud_haut_depart
 hol.Cheat.Wood 1000
 hol.Cheat.Gold 250
 frames 30
 hol.HUD.Report
+notereset Etape 2 : le montant du bois a monte de 1000 et celui de l'or de 250 (valeurs rondes : depart + triche). Les autres montants et la population ne bougent pas.
 waitkey Entree : etape 2, bois +1000 et or +250 par triche
 capture hud_haut_triche
 hol.HUD.Click IdleWorkers
 waitlog Next idle worker
 frames 30
 hol.HUD.Report
+notereset Etape 3 : un clic sur le compteur d'inactifs selectionne un ouvrier inactif et y amene la camera.
 waitkey Entree : etape 3, clic sur le compteur d'inactifs
 capture hud_haut_inactifs
 hol.Camera.FocusSlot own
@@ -42,6 +45,7 @@ hol.Mouse.Hover WoodAmount 30
 waitlog Mouse hover WoodAmount
 waitlog  bois/min"
 frames 5
+notereset Etape 4 : en survolant le bois, l'infobulle "+0 bois/min" apparait sous le montant (aucun ouvrier ne recolte).
 waitkey Entree : etape 4, survol du montant de bois (infobulle de revenu)
 capture hud_haut_survol
 hol.Mouse.Hover 960 600 5
@@ -50,15 +54,11 @@ frames 10
 hol.HUD.Click MenuButton
 waitlog Game menu: opened
 frames 20
+notereset Etape 5 : le bouton Menu ouvre le menu de partie (Reprendre, Pause, Abandonner...) ; Echap le referme et la barre du haut est comme avant.
 waitkey Entree : etape 5, le menu de partie est ouvert (Entree le referme)
 capture hud_haut_menu
 hol.UI.Key Escape 0 0.1
 frames 30
 hol.HUD.Report
 capture hud_haut_menu_ferme
-note Etape 1 : barre du haut a gauche = quatre ressources (nourriture, bois, pierre, or) avec leur montant, puis la population (par ex. 8 / 10) ; a droite le compteur d'ouvriers inactifs "(N)", le bouton Menu ; pas de bouton Statistiques pendant une partie de joueur.
-note Etape 2 : le montant du bois a monte de 1000 et celui de l'or de 250 (valeurs rondes : depart + triche). Les autres montants et la population ne bougent pas.
-note Etape 3 : un clic sur le compteur d'inactifs selectionne un ouvrier inactif et y amene la camera.
-note Etape 4 : en survolant le bois, l'infobulle "+0 bois/min" apparait sous le montant (aucun ouvrier ne recolte).
-note Etape 5 : le bouton Menu ouvre le menu de partie (Reprendre, Pause, Abandonner...) ; Echap le referme et la barre du haut est comme avant.
 quit
