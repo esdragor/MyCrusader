@@ -828,7 +828,7 @@ FString TalentTipTexts = "";
 		{
 			if (!Row.bVisionEnabled || !DipVisionButtons[Slot].IsVisible())
 				return false;
-			Controller.RequestShareVision(Slot, !Row.bVisionChecked);
+			HOLRpc::RequestVision(Controller, Slot, !Row.bVisionChecked);
 			return true;
 		}
 		// A tribute button (E-diplomacy_locked): its kind says its resource; greyed (no Market, out of the match) it does nothing.

@@ -20,6 +20,22 @@ void Test_RpcStanceRefused(FUnitTest& T)
 	T.AssertEquals(3, HOLRpc::StanceRefusal(0, 1, 3), "a stance above Ally is refused");
 }
 
+// Lot E (D847 Q2 = B): ServerDiplomacyVision, HOLRpc::VisionRefusal(Sender, Target). The bShare flag needs no rule.
+void Test_RpcVisionQueued(FUnitTest& T)
+{
+	T.AssertEquals(0, HOLRpc::VisionRefusal(0, 1), "slot 0 shares its vision with slot 1: queued");
+	T.AssertEquals(0, HOLRpc::VisionRefusal(7, 0), "slot 7 toward slot 0: queued (the last slot is in range)");
+}
+
+void Test_RpcVisionRefused(FUnitTest& T)
+{
+	T.AssertEquals(1, HOLRpc::VisionRefusal(-1, 1), "a spectator (no slot) is refused");
+	T.AssertEquals(1, HOLRpc::VisionRefusal(8, 1), "a sender past the 8 slots is refused");
+	T.AssertEquals(2, HOLRpc::VisionRefusal(0, -1), "a target below 0 is refused");
+	T.AssertEquals(2, HOLRpc::VisionRefusal(0, 8), "a target past the 8 slots is refused");
+	T.AssertEquals(1, HOLRpc::VisionRefusal(-1, 99), "the sender is checked first");
+}
+
 void Test_RpcStanceOrderOfChecks(FUnitTest& T)
 {
 	T.AssertEquals(1, HOLRpc::StanceRefusal(-1, 99, 99), "the sender is checked first: a spectator with garbage arguments is refused as a spectator");

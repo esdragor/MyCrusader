@@ -8,18 +8,8 @@ const FConsoleVariable CVar_RpcDiplomacyStance("hol.Rpc.DiplomacyStance", 1);
 const FConsoleVariable CVar_RpcProofRoute("hol.Rpc.ProofRoute", 0);
 const FConsoleVariable CVar_RpcProofCheats("hol.Rpc.ProofCheats", 0); // ELROND-1118b: bits 1 FastBuild, 2 Population, 4 Technology, 8 Tier, 16 UnitSpeed, 32 GatherSpeed, 64 Wound, 128 DamageBuilding, 256 SpawnBuilding, 512 Defeat, 1024 FallForum, 2048 SkipForum, 4096 HoldPresence (Tools\Scenarios\rpc_cheats_run.ps1)
 
-// T3 (SAURON-1117m): the Match (surrender) lot, guard model: 0 = the C++ RPC stays the only one (this script RPC logs and does nothing), 1 = the script RPC acts. The Duel cvar is retired (D845, lot B).
-const FConsoleVariable CVar_RpcScriptMatch("hol.Rpc.ScriptMatch", 1);
-
-// T4 lot L1 (HALDIR-1117o): the Hero RPCs still guarded (ability, rage, watch unit), same guard model (the C++ RPC stays the only one at 0). ServerHeroTalent (D845, lot D), ServerReturnHero, ServerStartSpecialization, ServerCancelSpecialization have no guard.
-const FConsoleVariable CVar_RpcScriptHero("hol.Rpc.ScriptHero", 1);
-
-// T5 lot L1 (HALDIR-1117p): the Signals and Chat RPCs. ServerPostSignal / ServerPostChat have no guard and no C++ RPC left (D845, lot C). These two cvars are no longer read by this script: only the C++ fan-out
-// (HOLPlayerController.cpp, CallEx) still reads them, to reach each viewer through its script actor's Client RPC (ClientReceiveSignal / ClientReceiveChat, still a C++ RPC with fallback, out of lot C).
-const FConsoleVariable CVar_RpcScriptSignal("hol.Rpc.ScriptSignal", 1);
-const FConsoleVariable CVar_RpcScriptChat("hol.Rpc.ScriptChat", 1);
-
-// The 14 cheat RPCs (Resources, FastBuild, Population, Technology, Tier, UnitSpeed, GatherSpeed, Wound, DamageBuilding, SpawnBuilding, Defeat, FallForum, SkipForum, HoldPresence) have no cvar and no C++ RPC left (D845, lots C and D).
+// D845, lot E: no cvar guards a script RPC any more (hol.Rpc.ScriptMatch, ScriptHero, ScriptSignal, ScriptChat are retired) and no C++ RPC is left for the player: every Server RPC (Match, Hero, Signals, Chat, Specialization, Duel,
+// Diplomacy, Economy, the 14 cheats) and the Client RPCs ClientReceiveSignal / ClientReceiveChat are declared here, the C++ routes reach them through the script actor (RpcRoute: ... not sent when there is none).
 
 const int HOLRpcSlots = 8; // FHOLMatchConfig::MaxSlots
 const int HOLRpcStanceAlly = 2; // HOLDiplomacy::Enemy 0 / Neutral 1 / Ally 2
@@ -38,7 +28,17 @@ int StanceRefusal(int SenderSlot, int TargetSlot, int Stance)
 	return 0;
 }
 
-// Duel (C++ ServerDuelChallenge / ServerDuelAnswer): why an order is not queued: 0 none, 1 the sender has no slot (spectator, out of range), 2 the challenged slot is out of range.
+// Why a vision order is not queued (ServerDiplomacyVision, D847 Q2 = B): 0 none (queue it), 1 the sender has no slot (spectator, out of range), 2 the target is out of range. bShare needs no check (any value is a boolean).
+int VisionRefusal(int SenderSlot, int TargetSlot)
+{
+	if (SenderSlot < 0 || SenderSlot >= HOLRpcSlots)
+		return 1;
+	if (TargetSlot < 0 || TargetSlot >= HOLRpcSlots)
+		return 2;
+	return 0;
+}
+
+// Duel (ServerDuelChallenge / ServerDuelAnswer): why an order is not queued: 0 none, 1 the sender has no slot (spectator, out of range), 2 the challenged slot is out of range.
 // The rest (hero alive, in range, a challenge already waiting) stays the duel rules' at the step's end (HOLDuel::CanChallenge), as for the C++ RPC.
 int DuelChallengeRefusal(int SenderSlot, int TargetSlot)
 {
@@ -312,6 +312,21 @@ void RequestStance(AHOLPlayerController Controller, int TargetSlot, int Stance)
 	}
 	Rpc.ServerDiplomacyStance(TargetSlot, Stance);
 }
+
+// The interface's call for the vision share (HOLGameScreenScript.PanelClick, D847 Q2 = B): same route as RequestStance, no C++ detour. No C++ fallback: the C++ RequestShareVision (console command
+// hol.Diplomacy.Vision) itself goes through the script actor, so a fallback to it would loop.
+void RequestVision(AHOLPlayerController Controller, int TargetSlot, bool bShare)
+{
+	if (Controller == nullptr)
+		return;
+	AHOLRpcPlayer Rpc = Cast<AHOLRpcPlayer>(HOLRpcBridge::FindPlayerActor(Controller));
+	if (Rpc == nullptr)
+	{
+		Log(n"LogHOLMatch", f"RpcRoute: DiplomacyVision not sent: no script RPC actor");
+		return;
+	}
+	Rpc.ServerDiplomacyVision(TargetSlot, bShare);
+}
 } // namespace HOLRpc
 
 class AHOLRpcPlayer : AHOLScriptRpcPlayerActor
@@ -328,7 +343,7 @@ class AHOLRpcPlayer : AHOLScriptRpcPlayerActor
 	UFUNCTION(BlueprintOverride)
 	void Tick(float DeltaSeconds)
 	{
-		// Proof of the C++ -> script routes (Tools\Scenarios\rpc_routes_run.ps1): hol.Rpc.ProofRoute bits: 1 duel challenge, 2 pause, 4 spec cancel, 8 hero return, 16 cheat resources, fired ONCE 4 s after the owner's first tick.
+		// Proof of the C++ -> script routes (Tools\Scenarios\rpc_routes_run.ps1): hol.Rpc.ProofRoute bits: 1 duel challenge, 2 pause, 4 spec cancel, 8 hero return, 16 cheat resources, 32 to 512 below, 1024 vision, 2048 hero ability, 4096 rage, 8192 watch unit, fired ONCE 4 s after the owner's first tick.
 		if (!HasAuthority() && !bRouteProved && (CVar_RpcProofRoute.GetInt() > 0 || CVar_RpcProofCheats.GetInt() > 0))
 		{
 			APlayerController RouteController = Cast<APlayerController>(GetOwner());
@@ -375,6 +390,18 @@ if ((Routes & 256) != 0)
 	Commands.Add("hol.Prod.Queue Peasant");
 	Commands.Add("hol.Prod.Cancel 0");
 }
+// Lot E (D847): 1024 the vision share by the console command (C++ RequestShareVision -> script actor ServerDiplomacyVision), 2048 the hero ability CloseRanks (ServerHeroAbility), 4096 select an own unit then the rage (hol.Hero.Rage, C++ console command: ServerCastRage), 8192 select an own unit alone (BroadcastSelection -> ServerWatchUnit).
+if ((Routes & 1024) != 0)
+	Commands.Add("hol.Diplomacy.Vision 1 1");
+if ((Routes & 2048) != 0)
+	Commands.Add("hol.Hero.Cast CloseRanks");
+if ((Routes & 4096) != 0)
+{
+	Commands.Add("hol.Select.ClickUnit 0");
+	Commands.Add("hol.Hero.Rage");
+}
+if ((Routes & 8192) != 0)
+	Commands.Add("hol.Select.ClickUnit 0");
 const int Cheats = CVar_RpcProofCheats.GetInt();
 if ((Cheats & 1) != 0)
 	Commands.Add("hol.Cheat.FastBuild 1");
@@ -435,6 +462,23 @@ for (FString Command : Commands)
 			Log(n"LogHOLMatch", f"Diplomacy order: slot {Slot} stance {Stance} toward slot {TargetSlot} queued");
 	}
 
+	// Vision share (D847 Q2 = B; lot E: the only entry, no C++ RPC left). The bridge queues the order as Kind 1 (Vision); HOLDiplomacy checks the pair and the mode at the next step.
+	UFUNCTION(Server)
+	void ServerDiplomacyVision(int TargetSlot, bool bShare)
+	{
+		const int Slot = HOLRpcBridge::GetSenderSlot(this);
+		const int Shared = bShare ? 1 : 0;
+		Log(n"LogHOLMatch", f"RpcDiplomacy: vision received by the server: sender slot {Slot} vision {Shared} toward slot {TargetSlot}");
+		const int Refusal = HOLRpc::VisionRefusal(Slot, TargetSlot);
+		if (Refusal != 0)
+		{
+			Log(n"LogHOLMatch", f"RpcDiplomacy: vision refused ({Refusal}) for sender slot {Slot}");
+			return;
+		}
+		if (HOLRpcBridge::QueueDiplomacyOrder(this, 1, TargetSlot, Shared))
+			Log(n"LogHOLMatch", f"Diplomacy order: slot {Slot} vision {Shared} toward slot {TargetSlot} queued");
+	}
+
 	// ---- T3 (SAURON-1117m) Duel lot (D845: the only entry of ServerDuelChallenge / ServerDuelAnswer, no C++ RPC left, no cvar). The slot comes from the owner (D288).
 	// The last call, UHOLCommandSubsystem::IssueDuelOrder(Slot, EHOLDuelOrderKind::Challenge, TargetSlot), goes through HOLRpcBridge::QueueDuelOrder(this, Kind, OtherSlot) (HALDIR-1117n, C++ NOT COMPILED).
 	UFUNCTION(Server)
@@ -467,7 +511,7 @@ for (FString Command : Commands)
 		HOLRpcBridge::QueueDuelOrder(this, HOLRpc::DuelAnswerKind(bAccept), -1);
 	}
 
-	// ---- T3 Match lot. ServerRequestPause / ServerRequestResume have no guard and no C++ RPC left (D845); only ServerSurrender keeps the guard hol.Rpc.ScriptMatch (its C++ RPC stays, not proved).
+	// ---- T3 Match lot. ServerRequestPause / ServerRequestResume / ServerSurrender have no guard and no C++ RPC left (D845, lots B and E).
 	// The end calls go through HOLRpcBridge::RequestPause(this) / RequestResume(this) / Surrender(this) (owner's state, GetServerWorldTimeSeconds, EHOLDefeatReason::Surrender; HALDIR-1117n, C++ NOT COMPILED);
 	// AHOLGameState logs its own "Pause: ..." refusals and the bridge keeps the line "Victory: surrender of slot N refused".
 	UFUNCTION(Server)
@@ -499,8 +543,6 @@ for (FString Command : Commands)
 	UFUNCTION(Server)
 	void ServerSurrender()
 	{
-		if (CVar_RpcScriptMatch.GetInt() == 0)
-			return;
 		const int Slot = HOLRpcBridge::GetSenderSlot(this);
 		if (HOLRpc::MatchRefusal(Slot) != 0)
 		{
@@ -539,8 +581,8 @@ for (FString Command : Commands)
 		HOLRpcBridge::CancelSpecialization(this);
 	}
 
-	// ---- T4 lot L1 Hero lot. ServerReturnHero and ServerHeroTalent have no guard and no C++ RPC left (D845, lots B and D: the bridge calls the C++ DoReturnHero / DoHeroTalent); ServerHeroAbility / ServerCastRage / ServerWatchUnit keep the guard hol.Rpc.ScriptHero (their C++ RPC stays, the bridge calls the C++ _Implementation). Journals: "Hero return order ...", "Hero talent order ...", "Hero ability order ...",
-	// "Rage order ...". The C++ interface route covers ReturnHero and HeroTalent (no cvar) and WatchUnit (cvar 1); HeroAbility and CastRage (enum + vector, array) are not routed from C++ yet: call them from script.
+	// ---- T4 lot L1 Hero lot. ServerReturnHero, ServerHeroTalent, ServerHeroAbility, ServerCastRage and ServerWatchUnit have no guard and no C++ RPC left (D845, lots B, D and E: the bridge calls the C++ DoReturnHero / DoHeroTalent / DoHeroAbility / DoCastRage / DoWatchUnit). Journals: "Hero return order ...", "Hero talent order ...", "Hero ability order ...",
+	// "Rage order ..."; the acceptance lines "RpcHero: ability / rage / watch received by the server" prove the route. The C++ interface routes reach all five through the script actor.
 	UFUNCTION(Server)
 	void ServerReturnHero()
 	{
@@ -570,8 +612,6 @@ for (FString Command : Commands)
 	UFUNCTION(Server)
 	void ServerHeroAbility(EHOLHeroAbility Ability, FVector_NetQuantize Location)
 	{
-		if (CVar_RpcScriptHero.GetInt() == 0)
-			return;
 		const int Slot = HOLRpcBridge::GetSenderSlot(this);
 		const int Refusal = HOLRpc::HeroAbilityRefusal(Slot, Ability);
 		if (Refusal != 0)
@@ -579,14 +619,13 @@ for (FString Command : Commands)
 			Log(n"LogHOLMatch", f"RpcHero: ability refused ({Refusal}) for sender slot {Slot}");
 			return;
 		}
+		Log(n"LogHOLMatch", f"RpcHero: ability received by the server: slot {Slot}");
 		HOLRpcBridge::HeroAbility(this, Ability, Location.X, Location.Y, Location.Z);
 	}
 
 	UFUNCTION(Server)
 	void ServerCastRage(const TArray<uint32>& UnitIds)
 	{
-		if (CVar_RpcScriptHero.GetInt() == 0)
-			return;
 		const int Slot = HOLRpcBridge::GetSenderSlot(this);
 		const int Refusal = HOLRpc::RageRefusal(Slot, UnitIds.Num());
 		if (Refusal != 0)
@@ -594,6 +633,7 @@ for (FString Command : Commands)
 			Log(n"LogHOLMatch", f"RpcHero: rage refused ({Refusal}) for sender slot {Slot}");
 			return;
 		}
+		Log(n"LogHOLMatch", f"RpcHero: rage received by the server: slot {Slot} units {UnitIds.Num()}");
 		TArray<int> Ids;
 		for (int i = 0; i < UnitIds.Num(); i++)
 			Ids.Add(int(UnitIds[i]));
@@ -603,9 +643,9 @@ for (FString Command : Commands)
 	UFUNCTION(Server)
 	void ServerWatchUnit(uint32 UnitId)
 	{
-		if (CVar_RpcScriptHero.GetInt() == 0)
-			return;
-		// The C++ body only stores the id and sends the load of the player's OWN unit (D288 checked in SendWatchedLoad): no slot refusal here, as in C++.
+		// The C++ DoWatchUnit only stores the id and sends the load of the player's OWN unit (D288 checked in SendWatchedLoad): no slot refusal here, as before; the slot is only read for the journal.
+		const int Slot = HOLRpcBridge::GetSenderSlot(this);
+		Log(n"LogHOLMatch", f"RpcHero: watch received by the server: slot {Slot} unit {int(UnitId)}");
 		HOLRpcBridge::WatchUnit(this, int(UnitId));
 	}
 
@@ -805,7 +845,7 @@ for (FString Command : Commands)
 	}
 
 	// ---- T5 lot L1 Signals and chat (HALDIR-1117p). ServerPostSignal / ServerPostChat: the only entry, no C++ RPC left, no guard (D845, lot C; the chat body keeps its ChatRefusal door, D376: a spectator may speak). The bridge calls the C++ _Implementation (board, fan-out, journal);
-	// its fan-out calls the viewers' Client RPC below when hol.Rpc.ScriptSignal / ScriptChat is 1 (the Client RPC keep their C++ fallback). The two Client RPCs are called BY THE SERVER on the owning client: this actor is owned and bAlwaysRelevant (PLAN-MIG2-S3 section 6).
+	// its fan-out calls the viewers' Client RPC below through their script actor (no C++ Client RPC and no cvar left, lot E: RpcRoute: ... not sent when a viewer has none). The two Client RPCs are called BY THE SERVER on the owning client: this actor is owned and bAlwaysRelevant (PLAN-MIG2-S3 section 6).
 	UFUNCTION(Server)
 	void ServerPostSignal(int Kind, FVector Location)
 	{
