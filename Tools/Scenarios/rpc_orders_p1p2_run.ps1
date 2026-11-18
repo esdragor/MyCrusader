@@ -209,6 +209,7 @@ $runs = @()
 if ($Combined) { $runs += Run-One "combined" $sel } else { $i = 0; foreach ($o in $sel) { $i++; $runs += Run-One ("o$i") @($o) } }
 
 "===== TABLE : order -> received yes/NO ; Do<X> (OrderRecv) yes/NO ; effect yes/NO"
+$runs = @($runs | Where-Object { $_.Tag })   # run-one outputs only (stray pipeline output made empty entries that failed the verdict)
 $fail = $false
 foreach ($r in $runs) {
     foreach ($x in $r.Results) {

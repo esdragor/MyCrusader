@@ -74,7 +74,7 @@ $all = @(
             for ($i = $a + 1; $i -lt $s.Count; $i++) { if ($s[$i].Contains('Construction: slot 0 ' + $site) -and $s[$i] -match '[1-9]\d* builders at work') { return ($s[$a].Substring($s[$a].IndexOf('Build order')) + ' THEN ' + $s[$i].Substring($s[$i].IndexOf('Construction'))) } }; return $null } },
     @{ Lot = 'P3'; Name = 'PlaceBuilding'; Recv = 'RpcOrder: place building received by the server: slot 0 '; Kind = 'PlaceBuilding'; Dead = 30
         Eff = { param($s) $a = FirstIdx $s 'Construction: slot 0 placed House foundation at \(.*\), paid '; if ($a -ge 0) { return $s[$a] }; return $null } },
-    @{ Lot = 'P4'; Name = 'CancelBuilding'; Recv = 'RpcOrder: cancel building received by the server: slot 0 '; Kind = 'CancelBuilding'; Dead = 30
+    @{ Lot = 'P4'; Name = 'CancelBuilding'; Recv = 'RpcOrder: cancel building received by the server: slot 0'; Kind = 'CancelBuilding'; Dead = 30
         Eff = { param($s) $a = FirstIdx $s 'Construction: slot 0 cancelled House at .*, refund'; if ($a -ge 0) { return $s[$a] }; return $null } },
     @{ Lot = 'P4'; Name = 'SetRallyPoint'; Recv = 'RpcOrder: set rally point received by the server: slot 0 '; Kind = 'SetRally'; Dead = 30
         Eff = { param($s) $a = FirstIdx $s 'Rally: slot 0 set the rally point of .* at \(.*\).* on site'; if ($a -ge 0) { return $s[$a] }; return $null } },
