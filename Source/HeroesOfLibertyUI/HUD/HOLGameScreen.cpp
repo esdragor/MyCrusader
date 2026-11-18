@@ -2755,28 +2755,6 @@ void UHOLGameScreen::ShowMessage(const FString& Key, const FText& Text)
 		UE_LOG(LogHOLUI, Display, TEXT("HUD message: %s \"%s\""), *Key, *Text.ToString());
 	}
 }
-void UHOLGameScreen::UpdateMessage(const float DeltaSeconds)
-{
-	using namespace UE::HeroesOfLiberty::UI::GameScreen;
-
-	if (MessageKey.IsEmpty())
-	{
-		return;
-	}
-	MessageAge += DeltaSeconds;
-	if (MessageAge >= MessageSeconds)
-	{
-		MessageKey.Reset();
-		SetShown(MessagePanel, false);
-		return;
-	}
-	const float Left = MessageSeconds - MessageAge;
-	if (MessagePanel)
-	{
-		MessagePanel->SetRenderOpacity(Left < MessageFadeSeconds ? Left / MessageFadeSeconds : 1.f);
-	}
-}
-
 bool UHOLGameScreen::IsProductionHeldForRoom() const
 {
 	using namespace UE::HeroesOfLiberty::UI::GameScreen;
@@ -2803,27 +2781,6 @@ bool UHOLGameScreen::IsProductionHeldForRoom() const
 		}
 	}
 	return bBlocked;
-}
-
-void UHOLGameScreen::CheckPopulationBlocked()
-{
-	using namespace UE::HeroesOfLiberty::UI::GameScreen;
-
-	const bool bBlocked = IsProductionHeldForRoom();
-	if (bBlocked && !bPopulationBlocked)
-	{
-		// The production stops (D313): the player's first wall.
-		FHOLCommandFeedback Feedback;
-		Feedback.Kind = EHOLCommandFeedback::PopulationFull;
-		ShowMessage(GetFeedbackKey(Feedback), GetFeedbackText(Feedback));
-	}
-	if (bBlocked && !bPopulationBlocked)
-	{
-		// D829 (the user's BUG on alert_population): the production stops at 100 %, the population full line goes to the thread (D202).
-		AddThreadLine(LOCTEXT("PopulationFull", "Population pleine"));
-		UE_LOG(LogHOLUI, Display, TEXT("HUD: production held at 100 %% (population full), line to the thread"));
-	}
-	bPopulationBlocked = bBlocked;
 }
 
 void UHOLGameScreen::HandleQueueItemClicked(const int32 Index)
