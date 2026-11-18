@@ -521,7 +521,7 @@ public:
 	 */
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Hero")
 	void RequestHeroAbility(EHOLHeroAbility Ability, FVector Location);
-	/** L4: the grid's button of the necrotic rage: the units named, the server keeps the player's own Damned Warriors (ServerCastRage). */
+	/** L4: the grid's button of the necrotic rage: the units named, the server keeps the player's own Damned Warriors (the script RPC actor's ServerCastRage). */
 	void RequestCastRage(TConstArrayView<uint32> UnitIds);
 
 	/**
@@ -563,11 +563,14 @@ public:
 	/** SG3: the received signals still alive (hol.Signal.IconSeconds), for the minimap's icons (HOLGameScreenScript). */
 	UFUNCTION(BlueprintCallable, Category = "Signals")
 	TArray<FHOLReceivedSignal> GetActiveSignals() const;
-	/** SG3: what ClientReceiveSignal does on this machine (keeps the signal for the minimap and the ground mark, D825; its thread line). */
+	/** SG3: what the script RPC actor's ClientReceiveSignal does on this machine, through its bridge (keeps the signal for the minimap and the ground mark, D825; its thread line). */
 	void ReceiveSignal(int32 Sender, int32 Kind, const FVector& Location);
 
+	/** A4: a chat message this seat reads (the script RPC actor's ClientReceiveChat, through its bridge): its line in the thread (AHOLGameState::NoteChatReceived). */
+	void ReceiveChat(int32 SenderSlot, int32 Channel, const FString& Text);
+
 private:
-	/** SG3: the received signals (ClientReceiveSignal), faded by HOLSignalInput::Expire. */
+	/** SG3: the received signals (ReceiveSignal), faded by HOLSignalInput::Expire. */
 	TArray<FHOLReceivedSignal> ReceivedSignals;
 	/** SG3: an Alt + click pressed (resolved at the release: brief = neutral, a drag = the wheel's kind). */
 	bool bSignalPressed = false;
@@ -806,8 +809,8 @@ private:
 	void ServerSetRallyPoint(AHOLBuilding* Building, FVector_NetQuantize Point, int32 SourceIndex, AHOLBuilding* Site, bool bQueue);
 
 	/** The player's own unit selected alone (D303), or 0: the server sends its load at every change. */
-	UFUNCTION(Server, Reliable)
-	void ServerWatchUnit(uint32 UnitId);
+	/** D845: the RPC is in the script RPC actor; this is the body its bridge calls on the server. */
+	void DoWatchUnit(uint32 UnitId);
 
 	/** R3.5 (R-Q7): true, and logged, when this server refuses a client's cheat (FHOLCheatRules); every cheat RPC asks it. */
 	bool IsCheatRefused(const TCHAR* What) const;
@@ -841,46 +844,35 @@ private:
 
 	void DoCheatHoldPresence(int32 Slot, bool bOff, bool bAttackers, bool bDefenders, int32 AttackerSlot);
 
-	UFUNCTION(Server, Reliable)
-	void ServerSurrender();
+	// D845: the surrender RPC is in the script RPC actor; the one body is UHOLRpcBridgeLibrary::Surrender (DefeatSlot), no C++ RPC here.
 
 	/** J8a.4: the player's own slot's hero return, queued (UHOLCommandSubsystem::IssueHeroReturnOrder); no argument to trust. D845: the RPC is in the script RPC actor; this is the body its bridge calls on the server. */
 	void DoReturnHero();
 
 	/** J8c.3: the player's own slot's hero ability, queued (UHOLCommandSubsystem::IssueHeroAbilityOrder); the server checks the rest. */
-	UFUNCTION(Server, Reliable)
-	void ServerHeroAbility(EHOLHeroAbility Ability, FVector_NetQuantize Location);
+	/** D845: the RPC is in the script RPC actor; this is the body its bridge calls on the server. */
+	void DoHeroAbility(EHOLHeroAbility Ability, FVector_NetQuantize Location);
 
 	/** L4: the player's necrotic rage order (UHOLCommandSubsystem::IssueRageOrder); the simulation checks the owner, the type, the health and the cool-down. */
-	UFUNCTION(Server, Reliable)
-	void ServerCastRage(const TArray<uint32>& UnitIds);
+	/** D845: the RPC is in the script RPC actor; this is the body its bridge calls on the server. */
+	void DoCastRage(const TArray<uint32>& UnitIds);
 
 	/** T3: the player's own slot's talent pick, queued (UHOLCommandSubsystem::IssueHeroTalentOrder); the server checks the rest. D845: the RPC is in the script RPC actor; this is the body its bridge calls on the server. */
 	void DoHeroTalent(int32 Family);
 
 	// D845: the duel challenge / answer RPCs are in the script RPC actor; the one body is UHOLRpcBridgeLibrary::QueueDuelOrder (UHOLCommandSubsystem::IssueDuelOrder), no C++ RPC here.
 
-	/** D5: the player's own slot's shared vision, queued (UHOLCommandSubsystem::IssueDiplomacyOrder); the game state checks the rest. D845: the stance RPC is in the script RPC actor (UHOLRpcBridgeLibrary::QueueDiplomacyOrder), no C++ RPC here. */
-	UFUNCTION(Server, Reliable)
-	void ServerDiplomacyVision(int32 TargetSlot, bool bShare);
+	/** D5: the player's own slot's shared vision, queued (UHOLCommandSubsystem::IssueDiplomacyOrder); the game state checks the rest. D845: the stance and the vision RPCs are in the script RPC actor (UHOLRpcBridgeLibrary::QueueDiplomacyOrder), no C++ RPC here. */
 
 	/** SG2 (D386): the server's board takes the signal (HOLSignal::Post) and sends it to the seats that see it (HOLSignal::Sees). */
 	/** D845: the RPC is in the script RPC actor; this is the body its bridge calls on the server (the relay to the seats stays the Client RPC below). */
 	void DoPostSignal(int32 Kind, FVector Location);
-
-	/** SG2: a signal this seat sees (its own, a mutual ally's, or any as a spectator); SG3 draws it. */
-	UFUNCTION(Client, Reliable)
-	void ClientReceiveSignal(int32 Sender, int32 Kind, FVector Location);
 
 	/** SG2: the signals this seat received so far (a test reads it; SG3 draws them). */
 	int32 NumReceivedSignals = 0;
 	/** A4 (D385, D376, D792): the server's gate (HOLChat::CheckPost: length, rate), then each seat the message reaches (HOLChat::Reaches). */
 	/** D845: the RPC is in the script RPC actor; this is the body its bridge calls on the server (the relay to the seats stays the Client RPC below). */
 	void DoPostChat(int32 Channel, const FString& Text, int32 TargetSlot);
-
-	/** A4: a chat message this seat reads: its line in the thread (AHOLGameState::NoteChatReceived). */
-	UFUNCTION(Client, Reliable)
-	void ClientReceiveChat(int32 SenderSlot, int32 Channel, const FString& Text);
 
 	/** A4: the chat messages this seat received so far. */
 	int32 NumReceivedChats = 0;

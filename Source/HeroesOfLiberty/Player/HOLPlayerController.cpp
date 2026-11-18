@@ -1618,6 +1618,18 @@ namespace UE::HeroesOfLiberty::Player
 			}
 		}));
 
+	/** Lot E (D847), until the interface's button: the local players send the necrotic rage of their selected units (the server keeps the own Damned Warriors). Proof of the CastRage route over the network. */
+	FAutoConsoleCommand HeroRageCommand(
+		TEXT("hol.Hero.Rage"),
+		TEXT("hol.Hero.Rage: the local player casts the necrotic rage of its selected units (the server keeps its own Damned Warriors)"),
+		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>&)
+		{
+			for (AHOLPlayerController* Controller : GetLocalControllers())
+			{
+				Controller->RequestCastRage(Controller->GetOwnSelectedUnits());
+			}
+		}));
+
 	/** D4, until the interface's buttons: the local players challenge a hero to a duel, or answer the challenge waiting for them (the server checks it). */
 	FAutoConsoleCommand DuelChallengeCommand(
 		TEXT("hol.Duel.Challenge"),
@@ -3447,14 +3459,14 @@ void AHOLPlayerController::UpdateWatchedUnit()
 	{
 		SentWatchedUnitId = UnitId;
 		const int32 WatchArgs[] = { static_cast<int32>(UnitId) };
-		if (!HOLRpcScriptRoute_Haldir1117n::CallN(this, TEXT("hol.Rpc.ScriptHero"), TEXT("ServerWatchUnit"), WatchArgs))
+		if (!HOLRpcScriptRoute_Haldir1117n::CallN(this, nullptr, TEXT("ServerWatchUnit"), WatchArgs))
 		{
-			ServerWatchUnit(UnitId);
+			HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("WatchUnit"));
 		}
 	}
 }
 
-void AHOLPlayerController::ServerWatchUnit_Implementation(const uint32 UnitId)
+void AHOLPlayerController::DoWatchUnit(const uint32 UnitId)
 {
 	WatchedUnitId = UnitId;
 	SendWatchedLoad();
@@ -5218,7 +5230,7 @@ namespace HOLRpcScriptRoute_Haldir1117n
 
 	// Calls the script actor's RPC by name (Server from a client, or Client from the server: HALDIR-1117p). Int arguments (bool as 0 / 1) fill the bool / int32 / uint32 parameters in order,
 	// Text the FString parameter and Location the FVector one. false: no actor, no such function (script not loaded): the caller logs it (LogNotSent), nothing else is sent (D845).
-	bool CallFull(AHOLPlayerController* Controller, const TCHAR* CVarName, const TCHAR* FunctionName, const TArrayView<const int32> Args, const FString* Text, const FVector* Location, UObject* Object, const FName* Name)
+	bool CallFull(AHOLPlayerController* Controller, const TCHAR* CVarName, const TCHAR* FunctionName, const TArrayView<const int32> Args, const FString* Text, const FVector* Location, UObject* Object, const FName* Name, const TArray<int32>* Array = nullptr)
 	{
 		if (!Controller || (CVarName && !IsOn(CVarName)))
 		{
@@ -5263,9 +5275,24 @@ namespace HOLRpcScriptRoute_Haldir1117n
 				}
 			else if (const FStructProperty* StructProperty = CastField<FStructProperty>(*It))
 			{
-				if (Location && StructProperty->Struct == TBaseStructure<FVector>::Get())
+				// FVector, or FVector_NetQuantize (same layout, a child of FVector; the name test covers a struct whose super is not set).
+				if (Location && (StructProperty->Struct->IsChildOf(TBaseStructure<FVector>::Get()) || StructProperty->Struct->GetFName() == FName(TEXT("Vector_NetQuantize"))))
 				{
 					*StructProperty->ContainerPtrToValuePtr<FVector>(Params.GetData()) = *Location;
+				}
+			}
+			else if (const FArrayProperty* ArrayProperty = CastField<FArrayProperty>(*It))
+			{
+				// An array of uint32 / int32 (the unit ids of ServerCastRage).
+				const FNumericProperty* Inner = CastField<FNumericProperty>(ArrayProperty->Inner);
+				if (Array && Inner)
+				{
+					FScriptArrayHelper Helper(ArrayProperty, ArrayProperty->ContainerPtrToValuePtr<void>(Params.GetData()));
+					Helper.Resize(Array->Num());
+					for (int32 Index = 0; Index < Array->Num(); ++Index)
+					{
+						Inner->SetIntPropertyValue(Helper.GetRawPtr(Index), static_cast<int64>(static_cast<uint32>((*Array)[Index])));
+					}
 				}
 			}
 			else if (Args.IsValidIndex(ArgIndex))
@@ -5281,6 +5308,16 @@ namespace HOLRpcScriptRoute_Haldir1117n
 				else if (const FUInt32Property* UIntProperty = CastField<FUInt32Property>(*It))
 				{
 					UIntProperty->SetPropertyValue_InContainer(Params.GetData(), static_cast<uint32>(Args[ArgIndex]));
+				}
+				else if (const FByteProperty* ByteProperty = CastField<FByteProperty>(*It))
+				{
+					// An enum parameter (TEnumAsByte / uint8 enum), or a byte.
+					ByteProperty->SetPropertyValue_InContainer(Params.GetData(), static_cast<uint8>(Args[ArgIndex]));
+				}
+				else if (const FEnumProperty* EnumProperty = CastField<FEnumProperty>(*It))
+				{
+					// An enum class parameter (UENUM): the underlying integer.
+					EnumProperty->GetUnderlyingProperty()->SetIntPropertyValue(EnumProperty->ContainerPtrToValuePtr<void>(Params.GetData()), static_cast<int64>(Args[ArgIndex]));
 				}
 				++ArgIndex;
 			}
@@ -5319,6 +5356,18 @@ namespace HOLRpcScriptRoute_Haldir1117n
 		return CallFull(Controller, nullptr, TEXT("ServerMarketTrade"), TArrayView<const int32>(Args, 3), nullptr, nullptr, Building, nullptr);
 	}
 
+	// Lot E (D845): the hero routes. The ability (an enum) is the one int, the point the vector; the rage's unit ids are the array.
+	bool RouteHeroAbility(AHOLPlayerController* Controller, const int32 Ability, const FVector& Location)
+	{
+		const int32 Args[1] = { Ability };
+		return CallFull(Controller, nullptr, TEXT("ServerHeroAbility"), TArrayView<const int32>(Args, 1), nullptr, &Location, nullptr, nullptr);
+	}
+
+	bool RouteCastRage(AHOLPlayerController* Controller, const TArray<int32>& UnitIds)
+	{
+		return CallFull(Controller, nullptr, TEXT("ServerCastRage"), TArrayView<const int32>(), nullptr, nullptr, nullptr, nullptr, &UnitIds);
+	}
+
 	// The int-only form (the HALDIR-1117n / 1117o routes).
 	bool CallN(AHOLPlayerController* Controller, const TCHAR* CVarName, const TCHAR* FunctionName, const TArrayView<const int32> Args)
 	{
@@ -5333,22 +5382,10 @@ namespace HOLRpcScriptRoute_Haldir1117n
 
 void AHOLPlayerController::RequestSurrender()
 {
-	if (HOLRpcScriptRoute_Haldir1117n::Call(this, TEXT("hol.Rpc.ScriptMatch"), TEXT("ServerSurrender"), false, 0))
+	// D845: the RPC is in the script RPC actor (the body is UHOLRpcBridgeLibrary::Surrender: the player's own slot only, D356; DefeatSlot refuses a slot already defeated and a match over).
+	if (!HOLRpcScriptRoute_Haldir1117n::Call(this, nullptr, TEXT("ServerSurrender"), false, 0))
 	{
-		return;
-	}
-	ServerSurrender();
-}
-
-void AHOLPlayerController::ServerSurrender_Implementation()
-{
-	// The player's own slot only (D356); DefeatSlot refuses a slot already defeated and a match over.
-	const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
-	AHOLGameState* HOLGameState = GetWorld()->GetGameState<AHOLGameState>();
-	const int32 Slot = HOLPlayerState ? HOLPlayerState->GetPlayerIndex() : INDEX_NONE;
-	if (!HOLGameState || Slot == INDEX_NONE || !HOLGameState->DefeatSlot(Slot, EHOLDefeatReason::Surrender))
-	{
-		UE_LOG(LogHOLMatch, Display, TEXT("Victory: surrender of slot %d refused"), Slot);
+		HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("Surrender"));
 	}
 }
 
@@ -5382,18 +5419,30 @@ void AHOLPlayerController::RequestHeroAbility(const EHOLHeroAbility Ability, con
 	{
 		return;
 	}
-	ServerHeroAbility(Ability, Location);
+	if (!HOLRpcScriptRoute_Haldir1117n::RouteHeroAbility(this, static_cast<int32>(Ability), Location))
+	{
+		HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("HeroAbility"));
+	}
 }
 
 void AHOLPlayerController::RequestCastRage(const TConstArrayView<uint32> UnitIds)
 {
 	if (UnitIds.Num() > 0)
 	{
-		ServerCastRage(TArray<uint32>(UnitIds));
+		TArray<int32> Ids;
+		Ids.Reserve(UnitIds.Num());
+		for (const uint32 UnitId : UnitIds)
+		{
+			Ids.Add(static_cast<int32>(UnitId));
+		}
+		if (!HOLRpcScriptRoute_Haldir1117n::RouteCastRage(this, Ids))
+		{
+			HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("CastRage"));
+		}
 	}
 }
 
-void AHOLPlayerController::ServerCastRage_Implementation(const TArray<uint32>& UnitIds)
+void AHOLPlayerController::DoCastRage(const TArray<uint32>& UnitIds)
 {
 	const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
 	UHOLCommandSubsystem* Commands = GetWorld() ? GetWorld()->GetSubsystem<UHOLCommandSubsystem>() : nullptr;
@@ -5403,7 +5452,7 @@ void AHOLPlayerController::ServerCastRage_Implementation(const TArray<uint32>& U
 		Commands->IssueRageOrder(HOLPlayerState->GetPlayerIndex(), UnitIds);
 	}
 }
-void AHOLPlayerController::ServerHeroAbility_Implementation(const EHOLHeroAbility Ability, const FVector_NetQuantize Location)
+void AHOLPlayerController::DoHeroAbility(const EHOLHeroAbility Ability, const FVector_NetQuantize Location)
 {
 	// The player's own slot only (D288), an ability that is cast (not the aura, not a value out of the enum).
 	const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
@@ -5506,19 +5555,14 @@ void AHOLPlayerController::DoPostSignal(const int32 Kind, const FVector Location
 		const bool bSpectator = UHOLSignalSubsystem::IsSignalSpectator(World, ViewerSlot, Viewer->IsSpectator());
 		if (Board->SeesNow(Book, Sender, ViewerSlot, bSpectator))
 		{
-			// HALDIR-1117p: through the viewer's script actor (Client RPC) when hol.Rpc.ScriptSignal is 1, else the C++ RPC as before.
-				const int32 ReceiveArgs[2] = { Sender, Kind };
-				if (!HOLRpcScriptRoute_Haldir1117n::CallEx(Viewer, TEXT("hol.Rpc.ScriptSignal"), TEXT("ClientReceiveSignal"), TArrayView<const int32>(ReceiveArgs, 2), nullptr, &Location))
-				{
-					Viewer->ClientReceiveSignal(Sender, Kind, Location);
-				}
+			// D845: through the viewer's script actor (Client RPC ClientReceiveSignal, whose bridge calls ReceiveSignal on that machine).
+			const int32 ReceiveArgs[2] = { Sender, Kind };
+			if (!HOLRpcScriptRoute_Haldir1117n::CallEx(Viewer, nullptr, TEXT("ClientReceiveSignal"), TArrayView<const int32>(ReceiveArgs, 2), nullptr, &Location))
+			{
+				HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("ReceiveSignal"));
+			}
 		}
 	}
-}
-
-void AHOLPlayerController::ClientReceiveSignal_Implementation(const int32 Sender, const int32 Kind, const FVector Location)
-{
-	ReceiveSignal(Sender, Kind, Location);
 }
 
 void AHOLPlayerController::ReceiveSignal(const int32 Sender, const int32 Kind, const FVector& Location)
@@ -5606,19 +5650,19 @@ void AHOLPlayerController::DoPostChat(const int32 Channel, const FString& Text, 
 		const bool bReaches = Viewer == this || Board->ReachesNow(Seats, Channel, Sender, TargetSlot, ViewerSlot);
 		if (bReaches)
 		{
-			// HALDIR-1117p: through the viewer's script actor (Client RPC) when hol.Rpc.ScriptChat is 1, else the C++ RPC as before.
-				const int32 ReceiveChatArgs[2] = { Sender, Channel };
-				if (!HOLRpcScriptRoute_Haldir1117n::CallEx(Viewer, TEXT("hol.Rpc.ScriptChat"), TEXT("ClientReceiveChat"), TArrayView<const int32>(ReceiveChatArgs, 2), &Text, nullptr))
-				{
-					Viewer->ClientReceiveChat(Sender, Channel, Text);
-				}
+			// D845: through the viewer's script actor (Client RPC ClientReceiveChat, whose bridge calls ReceiveChat on that machine).
+			const int32 ReceiveChatArgs[2] = { Sender, Channel };
+			if (!HOLRpcScriptRoute_Haldir1117n::CallEx(Viewer, nullptr, TEXT("ClientReceiveChat"), TArrayView<const int32>(ReceiveChatArgs, 2), &Text, nullptr))
+			{
+				HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("ReceiveChat"));
+			}
 			++Sent;
 		}
 	}
 	UE_LOG(LogHOLMatch, Display, TEXT("Chat: slot %d channel %d sent to %d seats"), Sender, Channel, Sent);
 }
 
-void AHOLPlayerController::ClientReceiveChat_Implementation(const int32 SenderSlot, const int32 Channel, const FString& Text)
+void AHOLPlayerController::ReceiveChat(const int32 SenderSlot, const int32 Channel, const FString& Text)
 {
 	++NumReceivedChats;
 	UE_LOG(LogHOLMatch, Display, TEXT("Chat: received channel %d from slot %d: %s"), Channel, SenderSlot, *Text);
@@ -5699,18 +5743,12 @@ void AHOLPlayerController::RequestShareVision(const int32 TargetSlot, const bool
 {
 	if (!IsSpectator())
 	{
-		ServerDiplomacyVision(TargetSlot, bShare);
-	}
-}
-
-void AHOLPlayerController::ServerDiplomacyVision_Implementation(const int32 TargetSlot, const bool bShare)
-{
-	const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
-	UHOLCommandSubsystem* Commands = GetWorld()->GetSubsystem<UHOLCommandSubsystem>();
-	if (HOLPlayerState && Commands)
-	{
-		UE_LOG(LogHOLMatch, Display, TEXT("Diplomacy order: slot %d vision %d toward slot %d queued"), HOLPlayerState->GetPlayerIndex(), bShare ? 1 : 0, TargetSlot);
-		Commands->IssueDiplomacyOrder(HOLPlayerState->GetPlayerIndex(), EHOLDiplomacyOrderKind::Vision, TargetSlot, bShare ? 1 : 0);
+		// D845: the RPC is in the script RPC actor (ServerDiplomacyVision: the journal "Diplomacy order: ... vision ..." and the queue are in the script and its bridge).
+		const int32 VisionArgs[2] = { TargetSlot, bShare ? 1 : 0 };
+		if (!HOLRpcScriptRoute_Haldir1117n::CallN(this, nullptr, TEXT("ServerDiplomacyVision"), VisionArgs))
+		{
+			HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("DiplomacyVision"));
+		}
 	}
 }
 
