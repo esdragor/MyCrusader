@@ -343,7 +343,7 @@ class AHOLRpcPlayer : AHOLScriptRpcPlayerActor
 	UFUNCTION(BlueprintOverride)
 	void Tick(float DeltaSeconds)
 	{
-		// Proof of the C++ -> script routes (Tools\Scenarios\rpc_routes_run.ps1): hol.Rpc.ProofRoute bits: 1 duel challenge, 2 pause, 4 spec cancel, 8 hero return, 16 cheat resources, 32 to 512 below, 1024 vision, 2048 hero ability, 4096 rage, 8192 watch unit, fired ONCE 4 s after the owner's first tick.
+		// Proof of the C++ -> script routes (Tools\Scenarios\rpc_routes_run.ps1): hol.Rpc.ProofRoute bits: 1 duel challenge, 2 pause, 4 spec cancel, 8 hero return, 16 cheat resources, 32 to 512 below, 1024 vision, 2048 hero ability, 4096 rage, 8192 watch unit (both select an idle worker by hol.Select.NextIdle: no screen projection needed), 16384 surrender (last), fired ONCE 4 s after the owner's first tick.
 		if (!HasAuthority() && !bRouteProved && (CVar_RpcProofRoute.GetInt() > 0 || CVar_RpcProofCheats.GetInt() > 0))
 		{
 			APlayerController RouteController = Cast<APlayerController>(GetOwner());
@@ -397,11 +397,11 @@ if ((Routes & 2048) != 0)
 	Commands.Add("hol.Hero.Cast CloseRanks");
 if ((Routes & 4096) != 0)
 {
-	Commands.Add("hol.Select.ClickUnit 0");
+	Commands.Add("hol.Select.NextIdle");
 	Commands.Add("hol.Hero.Rage");
 }
 if ((Routes & 8192) != 0)
-	Commands.Add("hol.Select.ClickUnit 0");
+	Commands.Add("hol.Select.NextIdle");
 const int Cheats = CVar_RpcProofCheats.GetInt();
 if ((Cheats & 1) != 0)
 	Commands.Add("hol.Cheat.FastBuild 1");
@@ -429,6 +429,9 @@ if ((Cheats & 2048) != 0)
 	Commands.Add("hol.Victory.SkipRuin 7");
 if ((Cheats & 4096) != 0)
 	Commands.Add("hol.Victory.HoldPresence 7 off");
+// Lot E P3: 16384 the surrender of the owner (hol.Victory.Surrender -> C++ RequestSurrender -> script ServerSurrender); LAST, the player is defeated after it.
+if ((Routes & 16384) != 0)
+	Commands.Add("hol.Victory.Surrender");
 for (FString Command : Commands)
 					{
 						Log(n"LogHOLMatch", f"RpcRoute: the client runs '{Command}'");

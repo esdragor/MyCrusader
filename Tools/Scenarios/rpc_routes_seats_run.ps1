@@ -21,14 +21,14 @@ $sv = Start-Process $ed -ArgumentList "`"$up`" /Game/Maps/Plain -server -nullrhi
 $a = Start-Process $ed -ArgumentList "`"$up`" 127.0.0.1:${port}?Name=Bob -game -nullrhi -nosound -unattended -nosplash -Multiprocess -LiveCoding=0 -asdebugport=0 -saveddirsuffix=RouteCli1 -abslog=`"$c1`"" -PassThru -WindowStyle Hidden
 "red client joined, made no call: $(WaitFor $c1 'Welcomed by server' 90) $(Get-Date -Format HH:mm:ss)"
 Start-Sleep 5
-# ProofRoute 7199 = 31 + 1024 (vision) + 2048 (hero ability) + 4096 (rage, lot E): the server must also show the lines of the lot E map below.
+# ProofRoute 31775 = 31 + 1024 (vision) + 2048 (hero ability) + 4096 (rage) + 8192 (watch) + 16384 (surrender, last): the server must also show the lines of the lot E map below.
 $pat = 'RpcDuel: |RpcMatch: |RpcSpec: |RpcHero: |RpcCheat: '
 $patE = 'Diplomacy order: |Hero ability order: |Rage order: '
 "RED CHECK $(Get-Date -Format HH:mm:ss): script lines on the server = $((Select-String -Path $sl -Pattern $pat | Measure-Object).Count) (expected 0)"
-$b = Start-Process $ed -ArgumentList "`"$up`" 127.0.0.1:${port}?Name=Alice -game -nullrhi -nosound -unattended -nosplash -Multiprocess -LiveCoding=0 -asdebugport=0 -saveddirsuffix=RouteCli2 -abslog=`"$c2`" -ExecCmds=`"hol.Rpc.ProofRoute 7199`"" -PassThru -WindowStyle Hidden
+$b = Start-Process $ed -ArgumentList "`"$up`" 127.0.0.1:${port}?Name=Alice -game -nullrhi -nosound -unattended -nosplash -Multiprocess -LiveCoding=0 -asdebugport=0 -saveddirsuffix=RouteCli2 -abslog=`"$c2`" -ExecCmds=`"hol.Rpc.ProofRoute 31775`"" -PassThru -WindowStyle Hidden
 "green client ran its commands: $(WaitFor $c2 'RpcRoute: the client runs .hol.Cheat.Resources' 90) $(Get-Date -Format HH:mm:ss)"
 "green server received a script line: $(WaitFor $sl 'RpcMatch: ' 30) $(Get-Date -Format HH:mm:ss)"
-foreach ($pt in 'Diplomacy order: slot 0 vision 1 toward slot 1 queued', 'RpcHero: ability received by the server: slot 0', 'RpcHero: rage received by the server: slot 0', 'RpcHero: watch received by the server: slot 0', 'Hero ability order: slot 0', 'Rage order: slot 0 queued') { "server has '$pt': $(WaitFor $sl ([regex]::Escape($pt)) 30)" }
+foreach ($pt in 'Diplomacy order: slot 0 vision 1 toward slot 1 queued', 'RpcHero: ability received by the server: slot 0', 'RpcHero: rage received by the server: slot 0', 'RpcHero: watch received by the server: slot 0', 'RpcMatch: received by the server: slot 0 surrenders', 'Hero ability order: slot 0', 'Rage order: slot 0 queued') { "server has '$pt': $(WaitFor $sl ([regex]::Escape($pt)) 30)" }
 "no RpcRoute not sent on the server: $(-not (Select-String -Path $sl -Pattern 'RpcRoute: .* not sent' -Quiet)) (expected True)"
 Start-Sleep 5
 foreach ($p in $a, $b, $sv) { if ($p -and -not $p.HasExited) { Stop-Process -Id $p.Id -Force } }
