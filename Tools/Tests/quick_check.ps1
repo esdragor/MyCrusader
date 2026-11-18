@@ -124,7 +124,7 @@ param(
 )
 # C0.5: -Map checked against Tools/Data/Maps.csv before anything starts. $MapKey keeps the table's spelling; the name Map
 # itself is reused by the parts below as a local variable.
-$RpcScriptCommands = @(); if ($RpcScript) { $RpcScriptCommands = @('Diplomacy', 'Hero', 'Match', 'Signal', 'Chat', 'CheatResources', 'CheatFastBuild', 'CheatTechnology', 'CheatTier', 'CheatPopulation', 'CheatUnitSpeed', 'CheatGatherSpeed', 'CheatWound', 'CheatDamageBuilding', 'CheatSpawnBuilding', 'CheatDefeat', 'CheatFallForum', 'CheatSkipForum', 'CheatHoldPresence') | ForEach-Object { "hol.Rpc.Script$_ 1" } }
+$RpcScriptCommands = @(); if ($RpcScript) { $RpcScriptCommands = @('Diplomacy', 'Hero', 'Match', 'Signal', 'Chat', 'CheatFastBuild', 'CheatTechnology', 'CheatTier', 'CheatPopulation', 'CheatUnitSpeed', 'CheatGatherSpeed', 'CheatWound', 'CheatDamageBuilding', 'CheatSpawnBuilding', 'CheatDefeat', 'CheatFallForum', 'CheatSkipForum', 'CheatHoldPresence') | ForEach-Object { "hol.Rpc.Script$_ 1" } }
 # D845 gate "script actor loaded": the net and netsig3 server sequences start with a waitlog on "RpcPlayer: the C++ bridge spawned" (the journal line of SpawnAllFor), before any waitplayers: without the script RPC actor no RPC has an entry any more.
 # A client's steps with the cvar commands put just BEFORE its first waitplayers (the waitlog steps before it read lines logged once, early: 22 steps before them would make them miss the line).
 function Add-RpcScriptSteps($Steps) {

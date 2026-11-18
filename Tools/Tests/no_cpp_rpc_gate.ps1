@@ -4,8 +4,10 @@
 $NoCppRpcLotA = @('ServerQueueProduction', 'ServerTribute', 'ServerMarketTrade', 'ServerCancelProduction', 'ServerRequestPause', 'ServerRequestResume')
 # Lot B (D845): StartSpecialization, CancelSpecialization, DuelChallenge, DuelAnswer, ReturnHero (RED until the C++ lot B is committed).
 $NoCppRpcLotB = @('ServerStartSpecialization', 'ServerCancelSpecialization', 'ServerDuelChallenge', 'ServerDuelAnswer', 'ServerReturnHero')
+# Lot C (D845): PostSignal, PostChat, CheatResources (RED until the C++ lot C is committed). ClientReceiveSignal / ClientReceiveChat stay C++ RPCs (Client, out of this gate).
+$NoCppRpcLotC = @('ServerPostSignal', 'ServerPostChat', 'ServerCheatResources')
 
-function Get-NoCppRpcLeft([string] $HeaderPath, [string[]] $Names = ($NoCppRpcLotA + $NoCppRpcLotB)) {
+function Get-NoCppRpcLeft([string] $HeaderPath, [string[]] $Names = ($NoCppRpcLotA + $NoCppRpcLotB + $NoCppRpcLotC)) {
     if (-not (Test-Path $HeaderPath)) { return @('header missing') }
     $Text = [IO.File]::ReadAllText($HeaderPath)
     $Alt = ($Names | ForEach-Object { [regex]::Escape($_) }) -join '|'

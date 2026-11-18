@@ -1,7 +1,8 @@
 # P2 / P1 proof of the C++ -> script RPC routes for the 13 cheats and the Hero / Duel / Diplomacy / Economy routes not yet proved (ELROND-1118b, PLAN-1118a sections 2 and 3). NOT RUN when written (machine saturated).
 # Model: rpc_routes_seats_run.ps1. Dedicated server with -HOLCheats, Plain, 2 Human seats (Alice slot 0 = GREEN client, Bob slot 1 = RED client).
 # SERVER and GREEN client: the 13 cheat cvars hol.Rpc.ScriptCheat<Name> at 1 (plus ScriptHero / ScriptDiplomacy at 1 for the P1 routes; the Economy, Duel and Specialization cvars are retired, D845).
-# RED client: every cvar at 0 -> its Request* calls fall back on the C++ RPC, so the server must write NO "RpcCheat: / RpcHero: / RpcDuel: / RpcDiplomacy: / RpcEconomy: " line for it (the red check, before the green client joins).
+# D845 (lot C): the Resources, Signal and Chat cheats/RPCs have no C++ RPC and no cvar left either (the Resources cvar is deleted). ScriptSignal / ScriptChat stay (the C++ Client relays read them), they are not set here.
+# RED client (D845, witness "client with no call"): it joins and executes NO ProofRoute / ProofCheats (no cvar, no command), so the server must write NO "RpcCheat: / RpcHero: / RpcDuel: / RpcDiplomacy: / RpcEconomy: / RpcMatch: / RpcSpec: " line before the green client joins (the red check).
 # The green client fires, 4 s after its first owner tick, the hook of Script\Net\HOLRpcPlayer.as: hol.Rpc.ProofCheats (13 bits, the table below) and hol.Rpc.ProofRoute (P1 bits 32 talent, 64 duel answer, 128 stance, 256 cancel production).
 # The server must write "RpcCheat: <name> received" for each cheat (log lines added in the script bodies by ELROND-1118b). The table prints name -> received yes/no.
 # Known limits (said in the report): Defeat / FallForum / SkipForum / HoldPresence target slot 7 (a Closed slot, so the match does not end); if the rules refuse a closed slot the table says "refused", which still proves the route.
@@ -43,16 +44,15 @@ $routeTable = @(
 )
 $cheatCvars = @($cheatTable | ForEach-Object { "hol.Rpc.ScriptCheat$($_.Name)" }) + @('hol.Rpc.ScriptHero', 'hol.Rpc.ScriptDiplomacy')
 $on = ($cheatCvars | ForEach-Object { "$_ 1" }) -join ','
-$off = ($cheatCvars | ForEach-Object { "$_ 0" }) -join ','
 $proof = "hol.Rpc.ProofCheats $Cheats,hol.Rpc.ProofRoute $Routes"
 "start $(Get-Date -Format HH:mm:ss) cheats=$Cheats routes=$Routes"
 $sv = Start-Process $ed -ArgumentList "`"$up`" /Game/Maps/Plain -server -nullrhi -nosound -Port=$port -unattended -nosplash -Multiprocess -LiveCoding=0 -asdebugport=0 -as-exit-on-error -HOLCheats -MatchConfig=`"$cfg`" -saveddirsuffix=CheatSrv -abslog=`"$sl`" -ExecCmds=`"$on`"" -PassThru -WindowStyle Hidden
 "server up: $(WaitFor $sl 'Bringing World .* up for play|Angelscript: Error' 90) $(Get-Date -Format HH:mm:ss)"
-# RED client: cvars 0, same proof hooks. Its calls go through the C++ RPC: no script line expected.
-$a = Start-Process $ed -ArgumentList "`"$up`" 127.0.0.1:${port}?Name=Bob -game -nullrhi -nosound -unattended -nosplash -Multiprocess -LiveCoding=0 -asdebugport=0 -saveddirsuffix=CheatCli1 -abslog=`"$c1`" -ExecCmds=`"$off,$proof`"" -PassThru -WindowStyle Hidden
-"red client ran its commands: $(WaitFor $c1 'RpcRoute: the client runs' 90) $(Get-Date -Format HH:mm:ss)"
+# RED client (D845): joins, runs no ProofRoute / ProofCheats and no cvar command. No script line expected on the server.
+$a = Start-Process $ed -ArgumentList "`"$up`" 127.0.0.1:${port}?Name=Bob -game -nullrhi -nosound -unattended -nosplash -Multiprocess -LiveCoding=0 -asdebugport=0 -saveddirsuffix=CheatCli1 -abslog=`"$c1`" -PassThru -WindowStyle Hidden
+"red client joined, made no call: $(WaitFor $c1 'Welcomed by server' 90) $(Get-Date -Format HH:mm:ss)"
 Start-Sleep 12
-$pat = 'RpcCheat: |RpcHero: |RpcDuel: |RpcDiplomacy: |RpcEconomy: '
+$pat = 'RpcCheat: |RpcHero: |RpcDuel: |RpcDiplomacy: |RpcEconomy: |RpcMatch: |RpcSpec: '
 $redCount = (Select-String -Path $sl -Pattern $pat | Measure-Object).Count
 "RED CHECK $(Get-Date -Format HH:mm:ss): script lines on the server = $redCount (expected 0)"
 # GREEN client: cvars 1 on the client too, same hooks.
@@ -66,5 +66,5 @@ foreach ($row in $routeTable) { if (($Routes -band $row.Bit) -ne 0) { $got = (Se
 "WatchUnit          -> not proved (no console command, no script hook: requires C++ or a selection command)"
 "RED CHECK again: script lines before the green client = $redCount (expected 0)"
 "=====SERVER (script lines)"; Select-String -Path $sl -Pattern "$pat|RpcPlayer|Angelscript: Error" | ForEach-Object { $_.Line.Substring(0, [Math]::Min(220, $_.Line.Length)) } | Select-Object -First 50
-"=====RED CLIENT"; if (Test-Path $c1) { Select-String -Path $c1 -Pattern 'RpcRoute|NetworkFailure|Angelscript: Error' | ForEach-Object { $_.Line.Substring(0, [Math]::Min(200, $_.Line.Length)) } | Select-Object -First 20 }
+"=====RED CLIENT"; if (Test-Path $c1) { Select-String -Path $c1 -Pattern 'Welcomed by server|RpcRoute|NetworkFailure|Angelscript: Error' | ForEach-Object { $_.Line.Substring(0, [Math]::Min(200, $_.Line.Length)) } | Select-Object -First 20 }
 "=====GREEN CLIENT"; if (Test-Path $c2) { Select-String -Path $c2 -Pattern 'RpcRoute|NetworkFailure|Angelscript: Error' | ForEach-Object { $_.Line.Substring(0, [Math]::Min(200, $_.Line.Length)) } | Select-Object -First 20 }

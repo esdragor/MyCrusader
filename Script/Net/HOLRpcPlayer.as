@@ -16,13 +16,12 @@ const FConsoleVariable CVar_RpcScriptMatch("hol.Rpc.ScriptMatch", 1);
 // T4 lot L1 (HALDIR-1117o): the Hero RPCs (talent, ability, rage, watch unit), same guard model (the C++ RPC stays the only one at 0). ServerReturnHero, ServerStartSpecialization, ServerCancelSpecialization have no guard (D845, lot B).
 const FConsoleVariable CVar_RpcScriptHero("hol.Rpc.ScriptHero", 1);
 
-// T5 lot L1 (HALDIR-1117p, C++ NOT COMPILED): the Signals and Chat RPCs (Server and Client). Default 0: the C++ RPC stays the only one. With 1 on the SERVER, the C++ fan-out reaches each viewer
-// through its script actor's Client RPC (the actor is owned and bAlwaysRelevant), and the interface's Server calls go through this actor. The Client bodies do not read the cvar (the server decides).
+// T5 lot L1 (HALDIR-1117p): the Signals and Chat RPCs. ServerPostSignal / ServerPostChat have no guard and no C++ RPC left (D845, lot C). These two cvars are no longer read by this script: only the C++ fan-out
+// (HOLPlayerController.cpp, CallEx) still reads them, to reach each viewer through its script actor's Client RPC (ClientReceiveSignal / ClientReceiveChat, still a C++ RPC with fallback, out of lot C).
 const FConsoleVariable CVar_RpcScriptSignal("hol.Rpc.ScriptSignal", 1);
 const FConsoleVariable CVar_RpcScriptChat("hol.Rpc.ScriptChat", 1);
 
-// CHEATS A (ELROND-1117q, C++ NOT COMPILED): L4 group A, the seven cheat RPCs. Same guard model: default 0 = the C++ RPC stays the only one (these script RPCs return and do nothing), 1 = the script RPC acts.
-const FConsoleVariable CVar_RpcScriptCheatResources("hol.Rpc.ScriptCheatResources", 1);
+// CHEATS A (ELROND-1117q): L4 group A, the cheat RPCs. Same guard model: default 0 = the C++ RPC stays the only one (these script RPCs return and do nothing), 1 = the script RPC acts. The Resources cvar is retired (D845, lot C).
 const FConsoleVariable CVar_RpcScriptCheatFastBuild("hol.Rpc.ScriptCheatFastBuild", 0);
 const FConsoleVariable CVar_RpcScriptCheatPopulation("hol.Rpc.ScriptCheatPopulation", 0);
 const FConsoleVariable CVar_RpcScriptCheatTechnology("hol.Rpc.ScriptCheatTechnology", 0);
@@ -630,8 +629,6 @@ for (FString Command : Commands)
 	UFUNCTION(Server)
 	void ServerCheatResources(int Food, int Wood, int Stone, int Gold)
 	{
-		if (CVar_RpcScriptCheatResources.GetInt() == 0)
-			return;
 		const int Slot = HOLRpcBridge::GetSenderSlot(this);
 		const int Refusal = HOLRpc::CheatRefusal(!HOLRpcBridge::CheatRefused(this, "resources"), Slot);
 		if (Refusal != 0)
@@ -848,13 +845,11 @@ for (FString Command : Commands)
 		HOLRpcBridge::CheatHoldPresence(this, Slot, bOff, bAttackers, bDefenders, AttackerSlot);
 	}
 
-	// ---- T5 lot L1 Signals and chat (HALDIR-1117p, C++ NOT COMPILED). Guards hol.Rpc.ScriptSignal / hol.Rpc.ScriptChat (default 0). The bridge calls the C++ _Implementation (board, fan-out, journal);
-	// its fan-out calls the viewers' Client RPC below when the cvar is 1. The two Client RPCs are called BY THE SERVER on the owning client: this actor is owned and bAlwaysRelevant (PLAN-MIG2-S3 section 6).
+	// ---- T5 lot L1 Signals and chat (HALDIR-1117p). ServerPostSignal / ServerPostChat: the only entry, no C++ RPC left, no guard (D845, lot C; the chat body keeps its ChatRefusal door, D376: a spectator may speak). The bridge calls the C++ _Implementation (board, fan-out, journal);
+	// its fan-out calls the viewers' Client RPC below when hol.Rpc.ScriptSignal / ScriptChat is 1 (the Client RPC keep their C++ fallback). The two Client RPCs are called BY THE SERVER on the owning client: this actor is owned and bAlwaysRelevant (PLAN-MIG2-S3 section 6).
 	UFUNCTION(Server)
 	void ServerPostSignal(int Kind, FVector Location)
 	{
-		if (CVar_RpcScriptSignal.GetInt() == 0)
-			return;
 		const int Slot = HOLRpcBridge::GetSenderSlot(this);
 		if (HOLRpc::SignalRefusal(Slot) != 0)
 		{
@@ -880,8 +875,6 @@ for (FString Command : Commands)
 	UFUNCTION(Server)
 	void ServerPostChat(int Channel, const FString& Text, int TargetSlot)
 	{
-		if (CVar_RpcScriptChat.GetInt() == 0)
-			return;
 		const int Slot = HOLRpcBridge::GetSenderSlot(this);
 		const int Refusal = HOLRpc::ChatRefusal(Channel, Text);
 		if (Refusal != 0)
