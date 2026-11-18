@@ -28,4 +28,7 @@ protected:
 
 	UPROPERTY(meta = (BindWidgetOptional))
 	TObjectPtr<UCommonTextBlock> Label;
+
+	/** The label last given by SetLabel: kept so that one given before NativeOnInitialized built the text block is shown. */
+	FText LabelText;
 };
