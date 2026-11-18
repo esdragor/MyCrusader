@@ -9,7 +9,10 @@
 // NG-4: `default bScriptOwnsGestures = true` makes the base NOT subscribe its Handle*Chosen; this class subscribes UHOLDropdown::OnChosen itself
 // (BuildNewGame, with the lists it has just created) and applies each gesture: read the configuration (GetConfigJson + HOLMatchConfigRead::Describe,
 // HOLNewGameRead::DescribeGlobals), apply the pure rule (HOLNewGameRules::), write by the base's SetConfig* / ChooseNewGameSize, then Refresh() (C++,
-// the widgets). Launch, ShowError, Back, focus stay the base's. The LOBBY (IsLobby()) is the next lot: its gestures do nothing here.
+// the widgets). Launch, ShowError, Back, focus stay the base's.
+// NG-5: the LOBBY (IsLobby()): each gesture sends to the manager (SendSettings, SendSlotAIChoice, SendSlotOpen, SendMyChoice) instead of only writing the
+// local configuration, by the rule HOLNewGameRules::LobbyStateAction; ShowLobby() shows a read lobby (GetLobbyView) on the widgets. EnterLobby, ReadLobby,
+// JoinMatch, the network sends and the Ready / Spectator buttons (wired by the base to ToggleReady / ToggleSpectator) stay the base's.
 class UHOLNewGameScreenScript : UHOLNewGameScreen
 {
 	default bScriptOwnsGestures = true;
@@ -31,6 +34,15 @@ class UHOLNewGameScreenScript : UHOLNewGameScreen
 	TArray<UHOLDropdown> SlotFactionLists;
 	TArray<UHOLDropdown> SlotColorLists;
 	TArray<UHOLDropdown> SlotTeamLists;
+
+	// NG-5: the widgets the lobby display writes (the base's own members are protected C++ fields; the script keeps what AddNewGame* returned).
+	UCommonTextBlock LobbyHeading;
+	UCommonTextBlock LobbySpectators;
+	TArray<UCommonTextBlock> LobbySlotNames;
+	UCommonTextBlock LobbyYouText;
+	UHOLButton LobbyReadyButton;
+	UHOLButton LobbySpectateButton;
+	UHOLButton LobbyLaunchButton;
 
 	// The configuration as ReadConfig last read it (numbers are the enums': state 0 Closed 1 Human 2 AI; size 0 None..5 Huge; fog 0 Disabled..2 Normal).
 	int CfgVersion = 0;
@@ -127,10 +139,11 @@ class UHOLNewGameScreenScript : UHOLNewGameScreen
 		SlotFactionLists.Empty();
 		SlotColorLists.Empty();
 		SlotTeamLists.Empty();
+		LobbySlotNames.Empty();
 
 		// Text styles of AddNewGameText / AddNewGameCellText: 0 heading, 1 note, 2 body.
 		UVerticalBox Column = MakeNewGameColumn();
-		AddNewGameText(Column, n"Heading", UHOLNewGameScreen::GetNewGameText(n"Heading"), 0);
+		LobbyHeading = AddNewGameText(Column, n"Heading", UHOLNewGameScreen::GetNewGameText(n"Heading"), 0);
 
 		// The map line: the map, then the fog (F8, over the "Equipes ensemble" of the line below).
 		UHorizontalBox MapLine = AddNewGameRow(Column, 0.0);
@@ -166,10 +179,10 @@ class UHOLNewGameScreenScript : UHOLNewGameScreen
 		{
 			UHorizontalBox Row = AddNewGameRow(Column, 0.0);
 			// "Joueur n" comes from the base (PlayerN, SlotIndex 0-based).
-			AddNewGameCellText(Row, SlotWidgetName("SlotName", SlotIndex), UHOLNewGameScreen::GetNewGamePlayerName(SlotIndex), 2, NameWidth);
+			LobbySlotNames.Add(AddNewGameCellText(Row, SlotWidgetName("SlotName", SlotIndex), UHOLNewGameScreen::GetNewGamePlayerName(SlotIndex), 2, NameWidth));
 			UHOLDropdown StateList = nullptr;
 			if (SlotIndex == 0)
-				AddNewGameCellText(Row, n"SlotYou0", UHOLNewGameScreen::GetNewGameText(n"You"), 2, StateWidth);
+				LobbyYouText = AddNewGameCellText(Row, n"SlotYou0", UHOLNewGameScreen::GetNewGameText(n"You"), 2, StateWidth);
 			else
 				StateList = AddNewGameDropdown(Row, SlotWidgetName("SlotState", SlotIndex), StateNames, 0, StateWidth);
 			SlotStateLists.Add(StateList);
@@ -197,9 +210,9 @@ class UHOLNewGameScreenScript : UHOLNewGameScreen
 		SacredSitesList = AddNewGameDropdown(Options, n"SacredSitesDropdown", OffOn, 0, ToggleWidth);
 
 		// The texts under the grid: the lobby's spectators (hidden), the note, the error (hidden).
-		UCommonTextBlock Spectators = AddNewGameText(Column, n"SpectatorsText", FText(), 1);
-		if (Spectators != nullptr)
-			Spectators.SetVisibility(ESlateVisibility::Collapsed);
+		LobbySpectators = AddNewGameText(Column, n"SpectatorsText", FText(), 1);
+		if (LobbySpectators != nullptr)
+			LobbySpectators.SetVisibility(ESlateVisibility::Collapsed);
 		AddNewGameText(Column, n"Note", UHOLNewGameScreen::GetNewGameText(n"GreyedTeamsOpen"), 1);
 		UCommonTextBlock Error = AddNewGameText(Column, n"ErrorText", FText(), 2);
 		// The error's colour (HOLUIStyle::Missing) is set by the base's AddNewGameText for the name "ErrorText" (ARWEN-1118q 2).
@@ -216,7 +229,9 @@ class UHOLNewGameScreenScript : UHOLNewGameScreen
 		if (Spectate != nullptr)
 			Spectate.SetVisibility(ESlateVisibility::Collapsed);
 		// The Launch / Back / Ready / Spectate buttons stay wired by the base (Launch(), Close, ToggleReady, ToggleSpectator).
-		AddNewGameButton(Buttons, n"LaunchButton", UHOLNewGameScreen::GetNewGameText(n"Launch"));
+		LobbyLaunchButton = AddNewGameButton(Buttons, n"LaunchButton", UHOLNewGameScreen::GetNewGameText(n"Launch"));
+		LobbyReadyButton = Ready;
+		LobbySpectateButton = Spectate;
 
 		// NG-4: the gestures. Each list's OnChosen is broadcast just after the value is taken (never by Refresh's SetSelectedIndex).
 		Subscribe(MapList, n"OnMapChosen");
