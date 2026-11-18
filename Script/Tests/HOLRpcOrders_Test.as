@@ -64,3 +64,60 @@ void Test_RpcOrderIds(FUnitTest& T)
 	TArray<int> NoIds = HOLRpc::OrderIds(None);
 	T.AssertEquals(0, NoIds.Num(), "an empty list stays empty");
 }
+
+// ---- L2 orders, last 8 (A2, D846): the pure refusals of ServerGatherUnits (UnitOrderRefusal), ServerPlaceBuilding, ServerBuildUnits and ServerGarrisonUnits (BuildingOrderRefusal), ServerDropOffUnits, ServerUngarrisonAll and ServerCancelBuilding, ServerSetRallyPoint.
+// RED FIRST for the main session: make a body return 0 (`PlaceBuildingRefusal`, `DropOffRefusal`, `RallyPointRefusal`, `BuildingOnlyRefusal`) or falsify one expected value (the "4" of "no type name" in Test_RpcOrderPlaceBuildingRefusal), run quick_check -Parts tests, see N-1/N, then restore.
+
+void Test_RpcOrderBuildingOnlyRefusal(FUnitTest& T)
+{
+	// UngarrisonAll and CancelBuilding: no unit list, so no "2".
+	T.AssertEquals(0, HOLRpc::BuildingOnlyRefusal(0, true), "a seat and a building: passed on");
+	T.AssertEquals(0, HOLRpc::BuildingOnlyRefusal(7, true), "slot 7 (the last) is in range");
+	T.AssertEquals(1, HOLRpc::BuildingOnlyRefusal(-1, true), "a spectator is refused");
+	T.AssertEquals(1, HOLRpc::BuildingOnlyRefusal(8, true), "a sender past the 8 slots is refused");
+	T.AssertEquals(3, HOLRpc::BuildingOnlyRefusal(0, false), "no building named is refused");
+	T.AssertEquals(1, HOLRpc::BuildingOnlyRefusal(-1, false), "the seat is checked first");
+}
+
+void Test_RpcOrderDropOffRefusal(FUnitTest& T)
+{
+	const float Huge = 1e300;
+	const float Infinite = Huge * Huge;
+	const float NotANumber = Infinite - Infinite;
+	T.AssertEquals(0, HOLRpc::DropOffRefusal(0, 4, true, 100.0, 200.0, 0.0), "units, a building and a finite point: passed on");
+	T.AssertEquals(1, HOLRpc::DropOffRefusal(-1, 4, true, 100.0, 200.0, 0.0), "a spectator is refused");
+	T.AssertEquals(2, HOLRpc::DropOffRefusal(0, 0, true, 100.0, 200.0, 0.0), "no unit named is refused");
+	T.AssertEquals(3, HOLRpc::DropOffRefusal(0, 4, false, 100.0, 200.0, 0.0), "no building named is refused");
+	T.AssertEquals(3, HOLRpc::DropOffRefusal(0, 4, true, Infinite, 200.0, 0.0), "an infinite X is refused");
+	T.AssertEquals(3, HOLRpc::DropOffRefusal(0, 4, true, 100.0, NotANumber, 0.0), "a NaN Y is refused");
+	T.AssertEquals(3, HOLRpc::DropOffRefusal(0, 4, true, 100.0, 200.0, -Infinite), "a negative infinite Z is refused");
+	T.AssertEquals(2, HOLRpc::DropOffRefusal(0, 0, false, Infinite, 0.0, 0.0), "the units are checked before the building and the point");
+}
+
+void Test_RpcOrderPlaceBuildingRefusal(FUnitTest& T)
+{
+	const float Huge = 1e300;
+	const float Infinite = Huge * Huge;
+	T.AssertEquals(0, HOLRpc::PlaceBuildingRefusal(0, 2, 500.0, -300.0, 10.0, true), "builders, a finite point and a type name: passed on");
+	T.AssertEquals(1, HOLRpc::PlaceBuildingRefusal(-1, 2, 500.0, -300.0, 10.0, true), "a spectator is refused");
+	T.AssertEquals(2, HOLRpc::PlaceBuildingRefusal(0, 0, 500.0, -300.0, 10.0, true), "no builder named is refused");
+	T.AssertEquals(3, HOLRpc::PlaceBuildingRefusal(0, 2, Infinite, -300.0, 10.0, true), "an infinite X is refused");
+	T.AssertEquals(4, HOLRpc::PlaceBuildingRefusal(0, 2, 500.0, -300.0, 10.0, false), "no type name is refused");
+	T.AssertEquals(3, HOLRpc::PlaceBuildingRefusal(0, 2, Infinite, -300.0, 10.0, false), "the point is checked before the type name");
+	// The name test of the RPC itself: the empty name is NAME_None, a real type is not.
+	T.AssertTrue(n"Farm" != NAME_None, "a type name is not NAME_None");
+	T.AssertFalse(NAME_None != NAME_None, "the empty name is NAME_None");
+}
+
+void Test_RpcOrderRallyPointRefusal(FUnitTest& T)
+{
+	const float Huge = 1e300;
+	const float Infinite = Huge * Huge;
+	const float NotANumber = Infinite - Infinite;
+	T.AssertEquals(0, HOLRpc::RallyPointRefusal(0, true, 300.0, 400.0, 0.0), "a seat, a building and a finite point: passed on");
+	T.AssertEquals(1, HOLRpc::RallyPointRefusal(9, true, 300.0, 400.0, 0.0), "a sender past the 8 slots is refused");
+	T.AssertEquals(3, HOLRpc::RallyPointRefusal(0, false, 300.0, 400.0, 0.0), "no building named is refused");
+	T.AssertEquals(3, HOLRpc::RallyPointRefusal(0, true, Infinite, 400.0, 0.0), "an infinite X is refused");
+	T.AssertEquals(3, HOLRpc::RallyPointRefusal(0, true, 300.0, 400.0, NotANumber), "a NaN Z is refused");
+	T.AssertEquals(1, HOLRpc::RallyPointRefusal(-1, false, Infinite, 0.0, 0.0), "the seat is checked first");
+}

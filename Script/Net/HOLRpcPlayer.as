@@ -389,6 +389,50 @@ TArray<int> OrderIds(const TArray<uint32>& UnitIds)
 		Ids.Add(int(UnitIds[i]));
 	return Ids;
 }
+
+// ---- L2 orders, last 8 (A2, D846). Same codes as the first 8: 1 no seat, 2 no unit named, 3 a point not finite or no building, 4 (PlaceBuilding only) no type name.
+// Orders on a building alone (UngarrisonAll, CancelBuilding): the seat (1) and the building (3); no unit list.
+int BuildingOnlyRefusal(int SenderSlot, bool bHasBuilding)
+{
+	if (SenderSlot < 0 || SenderSlot >= HOLRpcSlots)
+		return 1;
+	if (!bHasBuilding)
+		return 3;
+	return 0;
+}
+
+// DropOff: units (2), a building (3) and a finite point (3), the seat first (1).
+int DropOffRefusal(int SenderSlot, int UnitCount, bool bHasBuilding, float X, float Y, float Z)
+{
+	const int Base = BuildingOrderRefusal(SenderSlot, UnitCount, bHasBuilding);
+	if (Base != 0)
+		return Base;
+	if (!IsFiniteNumber(X) || !IsFiniteNumber(Y) || !IsFiniteNumber(Z))
+		return 3;
+	return 0;
+}
+
+// PlaceBuilding: as PointOrderRefusal (builders, finite point), and 4 when the type name is empty.
+int PlaceBuildingRefusal(int SenderSlot, int UnitCount, float X, float Y, float Z, bool bHasTypeName)
+{
+	const int Base = PointOrderRefusal(SenderSlot, UnitCount, X, Y, Z);
+	if (Base != 0)
+		return Base;
+	if (!bHasTypeName)
+		return 4;
+	return 0;
+}
+
+// SetRallyPoint: the seat (1), a building (3) and a finite point (3); no unit list, the second building (Site) may be null.
+int RallyPointRefusal(int SenderSlot, bool bHasBuilding, float X, float Y, float Z)
+{
+	const int Base = BuildingOnlyRefusal(SenderSlot, bHasBuilding);
+	if (Base != 0)
+		return Base;
+	if (!IsFiniteNumber(X) || !IsFiniteNumber(Y) || !IsFiniteNumber(Z))
+		return 3;
+	return 0;
+}
 } // namespace HOLRpc
 
 class AHOLRpcPlayer : AHOLScriptRpcPlayerActor
@@ -1131,5 +1175,118 @@ for (FString Command : Commands)
 			return;
 		}
 		HOLRpcBridge::OrderMoveInLine(this, HOLRpc::OrderIds(UnitIds), Start.X, Start.Y, Start.Z, End.X, End.Y, End.Z, bWidth, bQueue);
+	}
+
+	// ---- L2 orders, last 8 (A2, D846). Same parameters as the C++ ServerX of AHOLPlayerController (same route and journal as the first 8: "RpcOrder: <name> received by the server: slot N ...", the pure refusal, then the bridge).
+	UFUNCTION(Server)
+	void ServerGatherUnits(const TArray<uint32>& UnitIds, int SourceIndex, bool bQueue)
+	{
+		const int Slot = HOLRpcBridge::GetSenderSlot(this);
+		Log(n"LogHOLMatch", f"RpcOrder: gather received by the server: slot {Slot} units {UnitIds.Num()} source {SourceIndex} queue {bQueue}");
+		const int Refusal = HOLRpc::UnitOrderRefusal(Slot, UnitIds.Num());
+		if (Refusal != 0)
+		{
+			Log(n"LogHOLMatch", f"RpcOrder: gather refused ({Refusal}) for sender slot {Slot}");
+			return;
+		}
+		HOLRpcBridge::OrderGather(this, HOLRpc::OrderIds(UnitIds), SourceIndex, bQueue);
+	}
+
+	UFUNCTION(Server)
+	void ServerPlaceBuilding(FName TypeName, FVector_NetQuantize Point, const TArray<uint32>& UnitIds, bool bQueue)
+	{
+		const int Slot = HOLRpcBridge::GetSenderSlot(this);
+		Log(n"LogHOLMatch", f"RpcOrder: place building received by the server: slot {Slot} type {TypeName} builders {UnitIds.Num()} queue {bQueue}");
+		const int Refusal = HOLRpc::PlaceBuildingRefusal(Slot, UnitIds.Num(), Point.X, Point.Y, Point.Z, TypeName != NAME_None);
+		if (Refusal != 0)
+		{
+			Log(n"LogHOLMatch", f"RpcOrder: place building refused ({Refusal}) for sender slot {Slot}");
+			return;
+		}
+		HOLRpcBridge::OrderPlaceBuilding(this, TypeName, Point.X, Point.Y, Point.Z, HOLRpc::OrderIds(UnitIds), bQueue);
+	}
+
+	UFUNCTION(Server)
+	void ServerBuildUnits(const TArray<uint32>& UnitIds, AHOLBuilding Building, bool bQueue)
+	{
+		const int Slot = HOLRpcBridge::GetSenderSlot(this);
+		Log(n"LogHOLMatch", f"RpcOrder: build units received by the server: slot {Slot} units {UnitIds.Num()} queue {bQueue}");
+		const int Refusal = HOLRpc::BuildingOrderRefusal(Slot, UnitIds.Num(), Building != nullptr);
+		if (Refusal != 0)
+		{
+			Log(n"LogHOLMatch", f"RpcOrder: build units refused ({Refusal}) for sender slot {Slot}");
+			return;
+		}
+		HOLRpcBridge::OrderBuildUnits(this, HOLRpc::OrderIds(UnitIds), Building, bQueue);
+	}
+
+	UFUNCTION(Server)
+	void ServerDropOffUnits(const TArray<uint32>& UnitIds, AHOLBuilding Building, FVector_NetQuantize Point, bool bQueue)
+	{
+		const int Slot = HOLRpcBridge::GetSenderSlot(this);
+		Log(n"LogHOLMatch", f"RpcOrder: drop off received by the server: slot {Slot} units {UnitIds.Num()} queue {bQueue}");
+		const int Refusal = HOLRpc::DropOffRefusal(Slot, UnitIds.Num(), Building != nullptr, Point.X, Point.Y, Point.Z);
+		if (Refusal != 0)
+		{
+			Log(n"LogHOLMatch", f"RpcOrder: drop off refused ({Refusal}) for sender slot {Slot}");
+			return;
+		}
+		HOLRpcBridge::OrderDropOff(this, HOLRpc::OrderIds(UnitIds), Building, Point.X, Point.Y, Point.Z, bQueue);
+	}
+
+	UFUNCTION(Server)
+	void ServerGarrisonUnits(const TArray<uint32>& UnitIds, AHOLBuilding Building)
+	{
+		const int Slot = HOLRpcBridge::GetSenderSlot(this);
+		Log(n"LogHOLMatch", f"RpcOrder: garrison received by the server: slot {Slot} units {UnitIds.Num()}");
+		const int Refusal = HOLRpc::BuildingOrderRefusal(Slot, UnitIds.Num(), Building != nullptr);
+		if (Refusal != 0)
+		{
+			Log(n"LogHOLMatch", f"RpcOrder: garrison refused ({Refusal}) for sender slot {Slot}");
+			return;
+		}
+		HOLRpcBridge::OrderGarrison(this, HOLRpc::OrderIds(UnitIds), Building);
+	}
+
+	UFUNCTION(Server)
+	void ServerUngarrisonAll(AHOLBuilding Building)
+	{
+		const int Slot = HOLRpcBridge::GetSenderSlot(this);
+		Log(n"LogHOLMatch", f"RpcOrder: ungarrison all received by the server: slot {Slot}");
+		const int Refusal = HOLRpc::BuildingOnlyRefusal(Slot, Building != nullptr);
+		if (Refusal != 0)
+		{
+			Log(n"LogHOLMatch", f"RpcOrder: ungarrison all refused ({Refusal}) for sender slot {Slot}");
+			return;
+		}
+		HOLRpcBridge::OrderUngarrisonAll(this, Building);
+	}
+
+	UFUNCTION(Server)
+	void ServerCancelBuilding(AHOLBuilding Building)
+	{
+		const int Slot = HOLRpcBridge::GetSenderSlot(this);
+		Log(n"LogHOLMatch", f"RpcOrder: cancel building received by the server: slot {Slot}");
+		const int Refusal = HOLRpc::BuildingOnlyRefusal(Slot, Building != nullptr);
+		if (Refusal != 0)
+		{
+			Log(n"LogHOLMatch", f"RpcOrder: cancel building refused ({Refusal}) for sender slot {Slot}");
+			return;
+		}
+		HOLRpcBridge::OrderCancelBuilding(this, Building);
+	}
+
+	UFUNCTION(Server)
+	void ServerSetRallyPoint(AHOLBuilding Building, FVector_NetQuantize Point, int SourceIndex, AHOLBuilding Site, bool bQueue)
+	{
+		const int Slot = HOLRpcBridge::GetSenderSlot(this);
+		Log(n"LogHOLMatch", f"RpcOrder: set rally point received by the server: slot {Slot} source {SourceIndex} queue {bQueue}");
+		const int Refusal = HOLRpc::RallyPointRefusal(Slot, Building != nullptr, Point.X, Point.Y, Point.Z);
+		if (Refusal != 0)
+		{
+			Log(n"LogHOLMatch", f"RpcOrder: set rally point refused ({Refusal}) for sender slot {Slot}");
+			return;
+		}
+		HOLRpcBridge::OrderSetRallyPoint(this, Building, Point.X, Point.Y, Point.Z, SourceIndex, Site, bQueue);
 	}
 }
