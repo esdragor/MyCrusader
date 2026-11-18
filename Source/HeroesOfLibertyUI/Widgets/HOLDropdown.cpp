@@ -189,6 +189,7 @@ void UHOLDropdown::Choose(const int32 Index)
 		SetSelectedIndex(Index);
 		UE_LOG(LogHOLUI, Display, TEXT("Dropdown %s: value %d chosen"), *GetName(), Index);
 		OnSelectionChanged.Broadcast(Index);
+		OnChosen.Broadcast(this, Index);
 	}
 }
 

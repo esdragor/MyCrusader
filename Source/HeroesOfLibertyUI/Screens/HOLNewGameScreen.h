@@ -7,7 +7,11 @@
 #include "HOLNewGameScreen.generated.h"
 
 class UCommonTextBlock;
+class UHorizontalBox;
+class UHOLButton;
+class UHOLDropdown;
 class UImage;
+class UVerticalBox;
 
 /**
  * New game screen (D240, D244): the match configuration of a single-player game, read by the game mode when the
@@ -49,6 +53,7 @@ public:
 	const FHOLMatchConfig& GetConfig() const { return Config; }
 
 	/** Gives the configuration to the match subsystem and opens its map (Launch button, hol.UI.NewGame.Launch). */
+	UFUNCTION(BlueprintCallable, Category = "HOL|NewGame")
 	void Launch();
 
 	/**
@@ -59,7 +64,87 @@ public:
 	 * and Launch. Back leaves the lobby; a lobby lost (manager gone, removed) goes back to the list, which says why.
 	 */
 	void EnterLobby(const FHOLLobby& InLobby);
+	UFUNCTION(BlueprintPure, Category = "HOL|NewGame")
 	bool IsLobby() const { return bLobby; }
+
+	// ---- NG-1a (D851, step 4): what the script's screen (a class deriving from this one) calls; the C++ screen still plays. ----
+
+	/** The script's screen (the newest class deriving from this one, as UHOLSettingsScreen::FindScriptClass); null: none. */
+	UFUNCTION(BlueprintPure, Category = "HOL|NewGame")
+	static TSubclassOf<UHOLNewGameScreen> FindScriptClass();
+
+	/** The script's layout: called by BuildLayout instead of the C++ one when the object is of a class other than UHOLNewGameScreen itself. */
+	UFUNCTION(BlueprintImplementableEvent, Category = "HOL|NewGame")
+	void BP_BuildNewGame();
+
+	/** Shows the configuration and the lobby again in the widgets (the lists, the greyed values, the lobby's lines). */
+	UFUNCTION(BlueprintCallable, Category = "HOL|NewGame")
+	void Refresh();
+	/** Network mode: my Ready, a toggle. */
+	UFUNCTION(BlueprintCallable, Category = "HOL|NewGame")
+	void ToggleReady();
+	/** SP1: network mode, Spectateur / Jouer. */
+	UFUNCTION(BlueprintCallable, Category = "HOL|NewGame")
+	void ToggleSpectator();
+	/** Network mode: the map and options sent (leader). */
+	UFUNCTION(BlueprintCallable, Category = "HOL|NewGame")
+	void SendSettings();
+	/** SendSlotAI for the script: -1 leaves the colour or the team unset, an empty Faction leaves the faction unset. */
+	UFUNCTION(BlueprintCallable, Category = "HOL|NewGame")
+	void SendSlotAIChoice(int32 SlotIndex, int32 ColorIndex, int32 Team, const FString& Faction);
+	/** The manager's refusal (or any message) shown in red under the grid; empty text hides it. */
+	UFUNCTION(BlueprintCallable, Category = "HOL|NewGame")
+	void ShowError(const FText& Text);
+	/** IA0.6 L4: network mode, the slot holds an AI in the lobby read last. */
+	UFUNCTION(BlueprintPure, Category = "HOL|NewGame")
+	bool IsLobbyAI(int32 SlotIndex) const;
+
+	/** The maps offered, as names (GetMapName), in the order of the table. */
+	UFUNCTION(BlueprintPure, Category = "HOL|NewGame")
+	TArray<FText> GetMapNames() const;
+	/** The values of a list by kind: SlotState (Closed, Human, AI), LobbyState (Open, Closed, NotReady, Ready, AI), Level (the AI's), Faction (6, the Templars last), Team (None, 1..), Color (the colours and "Aléatoire" last), Fog, OffOn, Size (index = EHOLMapSize, "—" first), Mode. */
+	UFUNCTION(BlueprintPure, Category = "HOL|NewGame")
+	static TArray<FText> GetNewGameOptions(FName Kind);
+	/** The size alone ("Petite"; empty for 0 / None), Size = EHOLMapSize as an int. */
+	UFUNCTION(BlueprintPure, Category = "HOL|NewGame")
+	static FText GetShortSizeNameOf(int32 Size);
+	/** The size with its players ("Petite (2 joueurs)"; "—" for 0 / None), Size = EHOLMapSize as an int. */
+	UFUNCTION(BlueprintPure, Category = "HOL|NewGame")
+	static FText GetSizeNameOf(int32 Size);
+	/** The swatches of the colour list ("Aléatoire" last), for UHOLDropdown::SetOptionSwatches. */
+	UFUNCTION(BlueprintPure, Category = "HOL|NewGame")
+	static TArray<FLinearColor> GetNewGameColorSwatches();
+	/** A width of the grid by key: Name, State, Faction, Swatch, Color, Team, Level, Option, Toggle, OptionLabel, TeamsTogetherLabel, MapList (State + Faction + 8), FogList (Team + 60); 0 for another key. */
+	UFUNCTION(BlueprintPure, Category = "HOL|NewGame")
+	static float GetNewGameWidth(FName Key);
+
+	/** UHOLScreen::MakeCenteredColumn for the script. */
+	UFUNCTION(BlueprintCallable, Category = "HOL|NewGame")
+	UVerticalBox* MakeNewGameColumn();
+	/** A line of the column: style 0 the heading (24 under it), 1 a note (4 under it), 2 the body text (4 under it). */
+	UFUNCTION(BlueprintCallable, Category = "HOL|NewGame")
+	UCommonTextBlock* AddNewGameText(UVerticalBox* Column, FName Name, const FText& Text, int32 Style);
+	/** A line of the grid, left-aligned, TopPadding above and 4 under it (a line of cells: AddNewGameCellText, AddNewGameDropdown, AddNewGameSwatch). */
+	UFUNCTION(BlueprintCallable, Category = "HOL|NewGame")
+	UHorizontalBox* AddNewGameRow(UVerticalBox* Column, float TopPadding);
+	/** A text in a cell of the given width (style 1 the note, 2 the body text). */
+	UFUNCTION(BlueprintCallable, Category = "HOL|NewGame")
+	UCommonTextBlock* AddNewGameCellText(UHorizontalBox* Row, FName Name, const FText& Text, int32 Style, float Width);
+	/** A drop-down list in the row (UHOLScreen::AddDropdown); its choice: UHOLDropdown::OnChosen. */
+	UFUNCTION(BlueprintCallable, Category = "HOL|NewGame")
+	UHOLDropdown* AddNewGameDropdown(UHorizontalBox* Row, FName Name, const TArray<FText>& Options, int32 SelectedIndex, float Width);
+	/** A colour square in a cell of its own width (SlotSwatch<N>). */
+	UFUNCTION(BlueprintCallable, Category = "HOL|NewGame")
+	UImage* AddNewGameSwatch(UHorizontalBox* Row, FName Name);
+	/** The gamepad hint under the grid (UHOLScreen::AddColumnHint). */
+	UFUNCTION(BlueprintCallable, Category = "HOL|NewGame")
+	UCommonTextBlock* AddNewGameHint(UVerticalBox* Column);
+	/** UHOLScreen::AddButtonRow for the script. */
+	UFUNCTION(BlueprintCallable, Category = "HOL|NewGame")
+	UHorizontalBox* AddNewGameButtonRow(UVerticalBox* Column);
+	/** A button of the button row (UHOLScreen::AddButton); its clicks: OnButtonBaseClicked / OnClicked(). */
+	UFUNCTION(BlueprintCallable, Category = "HOL|NewGame")
+	UHOLButton* AddNewGameButton(UHorizontalBox* Row, FName Name, const FText& Label);
 
 	/** The faction cheat (HOLFactionChoice) switched while the screen is open (hol.Faction.Cheat): the lists show the Templars or not at once. */
 	void OnFactionCheatChanged() { Refresh(); }
@@ -177,7 +262,6 @@ protected:
 	TObjectPtr<UCommonTextBlock> HeadingText;
 
 private:
-	void Refresh();
 	/** Asks the manager for the lobby's state (one call at a time). */
 	void ReadLobby();
 	void ShowLobby(const FHOLLobby& InLobby);
@@ -201,23 +285,15 @@ private:
 	/** The faction lists hold five entries, six with the cheat (the Templars last, so the index is the enum's value); the greyed ones greyed. */
 	void UpdateFactionLists();
 	void HandleOptionChosen(int32 Value);
-	void ToggleReady();
-	/** SP1: network mode, PUT me { "spectator": ... } the other way round from the lobby read last. */
-	void ToggleSpectator();
-	/** Network mode: the map and options sent (leader). */
-	void SendSettings();
 	/**
 	 * IA0.6 L4 (Q4): network mode, the leader puts an AI on a slot (nothing set), or changes an AI's colour or team
 	 * (UHOLManagerClient::SetSlotAI).
 	 */
 	void SendSlotAI(int32 SlotIndex, TOptional<int32> ColorIndex, TOptional<int32> Team, const FString& Faction = FString());
-	/** IA0.6 L4: network mode, the slot holds an AI in the lobby read last. */
-	bool IsLobbyAI(int32 SlotIndex) const;
 	/** Network mode: "Lancer" sent (leader); what follows is B6. */
 	void StartMatch();
 	/** The answer of a change: the state shown, or the refusal in red (the next read shows the truth again). */
 	void HandleWritten(const FHOLLobby& Written, const struct FHOLManagerError& Error, const FString& What);
-	void ShowError(const FText& Text);
 	class UHOLManagerClient* GetClient() const;
 
 	/** A colour held by another occupied slot. */

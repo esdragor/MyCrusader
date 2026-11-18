@@ -225,6 +225,14 @@ void UHOLNewGameScreen::BuildLayout()
 {
 	using namespace UE::HeroesOfLiberty::UI::NewGame;
 
+	// NG-1a (D851): a script class lays itself out (Script/UI/HOLNewGameScreen.as, BP_BuildNewGame); this C++ layout is the
+	// one of the class itself, played until the switch (NG-6).
+	if (GetClass() != StaticClass())
+	{
+		BP_BuildNewGame();
+		return;
+	}
+
 	UVerticalBox* Column = MakeCenteredColumn();
 	HeadingText = AddText(Column, TEXT("Heading"), LOCTEXT("Heading", "Nouvelle partie"), UHOLTextStyleHeading::StaticClass(), 24.f);
 
@@ -1398,6 +1406,186 @@ void UHOLNewGameScreen::Launch()
 		Router->SetActiveUIInputConfig(FUIInputConfig(ECommonInputMode::Game, EMouseCaptureMode::NoCapture), this);
 	}
 	UGameplayStatics::OpenLevelBySoftObjectPtr(this, TSoftObjectPtr<UWorld>(MapFile));
+}
+
+// ---- NG-1a (D851, step 4): the base the script's screen stands on (the C++ screen above still plays). ----
+
+namespace UE::HeroesOfLiberty::UI::NewGame
+{
+	/** NG-1a: a widget in a fixed-width cell of a row (the grid's cells, as BuildLayout's AddCell). */
+	USizeBox* AddNewGameCell(UWidgetTree& Tree, UHorizontalBox& Row, UWidget* Content, const float Width)
+	{
+		USizeBox* Box = Tree.ConstructWidget<USizeBox>(USizeBox::StaticClass());
+		Box->SetWidthOverride(Width);
+		Box->SetContent(Content);
+		UHorizontalBoxSlot* CellSlot = Row.AddChildToHorizontalBox(Box);
+		CellSlot->SetVerticalAlignment(VAlign_Center);
+		CellSlot->SetPadding(FMargin(4.f, 0.f));
+		return Box;
+	}
+
+	TSubclassOf<UCommonTextStyle> NewGameTextStyle(const int32 Style)
+	{
+		return Style == 0 ? TSubclassOf<UCommonTextStyle>(UHOLTextStyleHeading::StaticClass())
+			: Style == 1 ? TSubclassOf<UCommonTextStyle>(UHOLTextStyleNote::StaticClass())
+			: TSubclassOf<UCommonTextStyle>(UHOLTextStyleBody::StaticClass());
+	}
+}
+
+TSubclassOf<UHOLNewGameScreen> UHOLNewGameScreen::FindScriptClass()
+{
+	// Angelscript's hot reload keeps the older classes, flagged CLASS_NewerVersionExists.
+	for (TObjectIterator<UClass> It; It; ++It)
+	{
+		if (It->IsChildOf(StaticClass()) && !It->HasAnyClassFlags(CLASS_Abstract | CLASS_NewerVersionExists | CLASS_Deprecated))
+		{
+			// The C++ class itself is concrete until the switch (NG-6): only a class deriving from it is the script's.
+			if (*It != StaticClass())
+			{
+				return *It;
+			}
+		}
+	}
+	return nullptr;
+}
+
+void UHOLNewGameScreen::SendSlotAIChoice(const int32 SlotIndex, const int32 ColorIndex, const int32 Team, const FString& Faction)
+{
+	SendSlotAI(SlotIndex, ColorIndex >= 0 ? TOptional<int32>(ColorIndex) : TOptional<int32>(),
+		Team >= 0 ? TOptional<int32>(Team) : TOptional<int32>(), Faction);
+}
+
+TArray<FText> UHOLNewGameScreen::GetMapNames() const
+{
+	TArray<FText> Names;
+	for (const FSoftObjectPath& Map : Maps)
+	{
+		Names.Add(GetMapName(Map));
+	}
+	return Names;
+}
+
+TArray<FText> UHOLNewGameScreen::GetNewGameOptions(const FName Kind)
+{
+	namespace NG = UE::HeroesOfLiberty::UI::NewGame;
+	if (Kind == TEXT("SlotState")) { return NG::StateNames(); }
+	if (Kind == TEXT("LobbyState")) { return NG::LobbyStateNames(); }
+	if (Kind == TEXT("Level")) { return NG::LevelNames(); }
+	if (Kind == TEXT("Faction")) { return NG::FactionNames(); }
+	if (Kind == TEXT("Team")) { return NG::TeamNames(); }
+	if (Kind == TEXT("Color")) { return NG::ColorNames(); }
+	if (Kind == TEXT("Fog")) { return NG::FogNames(); }
+	if (Kind == TEXT("OffOn")) { return NG::OffOn(); }
+	if (Kind == TEXT("Size")) { return NG::SizeNames(); }
+	if (Kind == TEXT("Mode")) { return { LOCTEXT("Standard", "Standard"), LOCTEXT("ModeDiplomacy", "Diplomatie") }; }
+	return {};
+}
+
+FText UHOLNewGameScreen::GetShortSizeNameOf(const int32 Size)
+{
+	return UE::HeroesOfLiberty::UI::NewGame::GetShortSizeName(static_cast<EHOLMapSize>(Size));
+}
+
+FText UHOLNewGameScreen::GetSizeNameOf(const int32 Size)
+{
+	return GetSizeName(static_cast<EHOLMapSize>(Size));
+}
+
+TArray<FLinearColor> UHOLNewGameScreen::GetNewGameColorSwatches()
+{
+	return UE::HeroesOfLiberty::UI::NewGame::ColorSwatches();
+}
+
+float UHOLNewGameScreen::GetNewGameWidth(const FName Key)
+{
+	namespace NG = UE::HeroesOfLiberty::UI::NewGame;
+	if (Key == TEXT("Name")) { return NG::NameWidth; }
+	if (Key == TEXT("State")) { return NG::StateWidth; }
+	if (Key == TEXT("Faction")) { return NG::FactionWidth; }
+	if (Key == TEXT("Swatch")) { return NG::SwatchSize; }
+	if (Key == TEXT("Color")) { return NG::ColorWidth; }
+	if (Key == TEXT("Team")) { return NG::TeamWidth; }
+	if (Key == TEXT("Level")) { return NG::LevelWidth; }
+	if (Key == TEXT("Option")) { return NG::OptionWidth; }
+	if (Key == TEXT("Toggle")) { return NG::ToggleWidth; }
+	if (Key == TEXT("OptionLabel")) { return NG::OptionLabelWidth; }
+	if (Key == TEXT("TeamsTogetherLabel")) { return NG::TeamsTogetherLabelWidth; }
+	if (Key == TEXT("MapList")) { return NG::StateWidth + NG::FactionWidth + 8.f; }
+	if (Key == TEXT("FogList")) { return NG::TeamWidth + 60.f; }
+	return 0.f;
+}
+
+UVerticalBox* UHOLNewGameScreen::MakeNewGameColumn()
+{
+	return MakeCenteredColumn();
+}
+
+UCommonTextBlock* UHOLNewGameScreen::AddNewGameText(UVerticalBox* Column, const FName Name, const FText& Text, const int32 Style)
+{
+	if (!Column)
+	{
+		return nullptr;
+	}
+	return AddText(Column, Name, Text, UE::HeroesOfLiberty::UI::NewGame::NewGameTextStyle(Style), Style == 0 ? 24.f : 4.f);
+}
+
+UHorizontalBox* UHOLNewGameScreen::AddNewGameRow(UVerticalBox* Column, const float TopPadding)
+{
+	if (!Column)
+	{
+		return nullptr;
+	}
+	// Lines start on the same left edge, the one of the slot lines (the widest).
+	UHorizontalBox* Row = WidgetTree->ConstructWidget<UHorizontalBox>(UHorizontalBox::StaticClass());
+	UVerticalBoxSlot* RowSlot = Column->AddChildToVerticalBox(Row);
+	RowSlot->SetHorizontalAlignment(HAlign_Left);
+	RowSlot->SetPadding(FMargin(0.f, TopPadding, 0.f, 4.f));
+	return Row;
+}
+
+UCommonTextBlock* UHOLNewGameScreen::AddNewGameCellText(UHorizontalBox* Row, const FName Name, const FText& Text, const int32 Style, const float Width)
+{
+	if (!Row)
+	{
+		return nullptr;
+	}
+	UCommonTextBlock* Block = WidgetTree->ConstructWidget<UCommonTextBlock>(UCommonTextBlock::StaticClass(), Name);
+	Block->SetStyle(UE::HeroesOfLiberty::UI::NewGame::NewGameTextStyle(Style));
+	Block->SetText(Text);
+	UE::HeroesOfLiberty::UI::NewGame::AddNewGameCell(*WidgetTree, *Row, Block, Width);
+	return Block;
+}
+
+UHOLDropdown* UHOLNewGameScreen::AddNewGameDropdown(UHorizontalBox* Row, const FName Name, const TArray<FText>& Options, const int32 SelectedIndex, const float Width)
+{
+	return Row ? AddDropdown(Row, Name, Options, SelectedIndex, Width) : nullptr;
+}
+
+UImage* UHOLNewGameScreen::AddNewGameSwatch(UHorizontalBox* Row, const FName Name)
+{
+	if (!Row)
+	{
+		return nullptr;
+	}
+	UImage* Swatch = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass(), Name);
+	Swatch->SetDesiredSizeOverride(FVector2D(UE::HeroesOfLiberty::UI::NewGame::SwatchSize, UE::HeroesOfLiberty::UI::NewGame::SwatchSize));
+	UE::HeroesOfLiberty::UI::NewGame::AddNewGameCell(*WidgetTree, *Row, Swatch, UE::HeroesOfLiberty::UI::NewGame::SwatchSize);
+	return Swatch;
+}
+
+UCommonTextBlock* UHOLNewGameScreen::AddNewGameHint(UVerticalBox* Column)
+{
+	return Column ? AddColumnHint(Column) : nullptr;
+}
+
+UHorizontalBox* UHOLNewGameScreen::AddNewGameButtonRow(UVerticalBox* Column)
+{
+	return Column ? AddButtonRow(Column) : nullptr;
+}
+
+UHOLButton* UHOLNewGameScreen::AddNewGameButton(UHorizontalBox* Row, const FName Name, const FText& Label)
+{
+	return Row ? AddButton(Row, Name, Label) : nullptr;
 }
 
 #undef LOCTEXT_NAMESPACE
