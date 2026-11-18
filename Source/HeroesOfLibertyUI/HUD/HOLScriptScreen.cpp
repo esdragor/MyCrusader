@@ -42,6 +42,19 @@ int32 UHOLScriptScreen::GetLocalSlot() const
 	return PlayerState ? PlayerState->GetPlayerIndex() : INDEX_NONE;
 }
 
+int32 UHOLScriptScreen::GetShownSlot() const
+{
+	const UHOLGameScreen* GameScreen = GetTypedOuter<UHOLGameScreen>();
+	const AHOLPlayerState* PlayerState = GameScreen ? GameScreen->GetBoundPlayerState() : nullptr;
+	return PlayerState ? PlayerState->GetPlayerIndex() : INDEX_NONE;
+}
+
+UBorder* UHOLScriptScreen::GetPlayersPanel() const
+{
+	const UHOLGameScreen* GameScreen = GetTypedOuter<UHOLGameScreen>();
+	return GameScreen ? GameScreen->GetPlayersPanel() : nullptr;
+}
+
 bool UHOLScriptScreen::GetPopulationNow(int32& OutUsed, int32& OutCap, float& OutRealSeconds) const
 {
 	const UHOLGameScreen* GameScreen = GetTypedOuter<UHOLGameScreen>();

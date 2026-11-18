@@ -230,6 +230,7 @@ namespace HOLPlayerTable
 // PlayerNameStrikeBox<N> > PlayerNameStrike<N>, PlayerLivesBox<N> > PlayerLives<N>, PlayerStateBox<N> > PlayerState<N>).
 class UHOLPlayerTablePanel : UObject
 {
+	UHOLScriptScreen Screen;
 	UBorder Host;
 	UVerticalBox List;
 	TArray<UHorizontalBox> RowBoxes;
@@ -250,8 +251,9 @@ class UHOLPlayerTablePanel : UObject
 	FString LastStatesLine = "";
 
 	// Host: the C++ screen's PlayersPanel (Screen.GetPlayersPanel()), already in its column with its brush, its 8/4 padding, collapsed.
-	void Build(UHOLScriptScreen Screen, UBorder PlayersPanel)
+	void Build(UHOLScriptScreen Screen_, UBorder PlayersPanel)
 	{
+		Screen = Screen_;
 		Host = PlayersPanel;
 		List = Cast<UVerticalBox>(Screen.ConstructWidget(UVerticalBox, n"PlayersList"));
 		Host.SetContent(List);
@@ -335,7 +337,8 @@ class UHOLPlayerTablePanel : UObject
 	void Refresh()
 	{
 		TArray<FHOLPlayersTableRowRead> Read;
-		HOLPlayersTableRead::GetRows(Read);
+		// The slot the C++ screen read the table for (its bound player state: a spectator who follows a player included).
+		HOLPlayersTableRead::GetRows(Screen.GetShownSlot(), Read);
 		TArray<FHOLPlayerRow> Rows;
 		for (int Index = 0; Index < Read.Num(); ++Index)
 			Rows.Add(HOLPlayerTable::FromRead(Read[Index]));

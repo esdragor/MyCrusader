@@ -85,6 +85,9 @@ public:
 	/** The player state the screen shows (the local player's); null for a spectator or before it arrives. */
 	const AHOLPlayerState* GetBoundPlayerState() const;
 
+	/** HUD H-4: the PlayersPanel (table host in the right column), filled by the script's table. */
+	UBorder* GetPlayersPanel() const { return PlayersPanel; }
+
 	/** The population full alert's test binds a player state without a player controller. */
 	friend class FHOLPopulationAlertThreadTest;
 

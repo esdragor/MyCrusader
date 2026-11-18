@@ -72,6 +72,17 @@ public:
 	int32 GetLocalSlot() const;
 
 	/**
+	 * The slot of the player the C++ screen shows (its bound player state, what its players' table was read for): INDEX_NONE for a
+	 * spectator or before the player state arrives. HUD H-4: the script's players table reads its rows for this slot.
+	 */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|UI")
+	int32 GetShownSlot() const;
+
+	/** The C++ screen's PlayersPanel (the right column's table host, kept in C++ with the thread of messages); the script fills it (HUD H-4). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|UI")
+	UBorder* GetPlayersPanel() const;
+
+	/**
 	 * The minor alerts (D202, HOLAlertRules.as): the shown player's places taken and given (D282) and the HUD's real time (s).
 	 * False for a spectator or before the player state arrives.
 	 */
