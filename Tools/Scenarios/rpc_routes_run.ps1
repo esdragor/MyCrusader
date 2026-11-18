@@ -15,7 +15,7 @@ function WaitFor($f, $pat, $sec) { $t0 = Get-Date; while (((Get-Date) - $t0).Tot
 "start $(Get-Date -Format HH:mm:ss)"
 $sv = Start-Process $ed -ArgumentList "`"$up`" /Game/Maps/Plain -server -nullrhi -nosound -Port=$port -unattended -nosplash -Multiprocess -LiveCoding=0 -asdebugport=0 -as-exit-on-error -saveddirsuffix=RouteSrv -abslog=`"$sl`" -ExecCmds=`"hol.Rpc.ScriptMatch 1,hol.Rpc.ScriptHero 1`"" -PassThru -WindowStyle Hidden
 "server up: $(WaitFor $sl 'Bringing World .* up for play|Angelscript: Error' 90) $(Get-Date -Format HH:mm:ss)"
-$a = Start-Process $ed -ArgumentList "`"$up`" 127.0.0.1:$port -game -nullrhi -nosound -unattended -nosplash -Multiprocess -LiveCoding=0 -asdebugport=0 -saveddirsuffix=RouteCli1 -abslog=`"$c1`" -PassThru -WindowStyle Hidden
+$a = Start-Process $ed -ArgumentList "`"$up`" 127.0.0.1:$port -game -nullrhi -nosound -unattended -nosplash -Multiprocess -LiveCoding=0 -asdebugport=0 -saveddirsuffix=RouteCli1 -abslog=`"$c1`"" -PassThru -WindowStyle Hidden
 "red client joined, made no call: $(WaitFor $c1 'Welcomed by server' 90) $(Get-Date -Format HH:mm:ss)"
 Start-Sleep 5
 $pat = 'RpcDuel: |RpcMatch: |RpcSpec: |RpcHero: '

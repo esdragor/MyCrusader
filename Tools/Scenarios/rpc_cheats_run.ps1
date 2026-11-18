@@ -49,7 +49,7 @@ $proof = "hol.Rpc.ProofCheats $Cheats,hol.Rpc.ProofRoute $Routes"
 $sv = Start-Process $ed -ArgumentList "`"$up`" /Game/Maps/Plain -server -nullrhi -nosound -Port=$port -unattended -nosplash -Multiprocess -LiveCoding=0 -asdebugport=0 -as-exit-on-error -HOLCheats -MatchConfig=`"$cfg`" -saveddirsuffix=CheatSrv -abslog=`"$sl`" -ExecCmds=`"$on`"" -PassThru -WindowStyle Hidden
 "server up: $(WaitFor $sl 'Bringing World .* up for play|Angelscript: Error' 90) $(Get-Date -Format HH:mm:ss)"
 # RED client (D845): joins, runs no ProofRoute / ProofCheats and no cvar command. No script line expected on the server.
-$a = Start-Process $ed -ArgumentList "`"$up`" 127.0.0.1:${port}?Name=Bob -game -nullrhi -nosound -unattended -nosplash -Multiprocess -LiveCoding=0 -asdebugport=0 -saveddirsuffix=CheatCli1 -abslog=`"$c1`" -PassThru -WindowStyle Hidden
+$a = Start-Process $ed -ArgumentList "`"$up`" 127.0.0.1:${port}?Name=Bob -game -nullrhi -nosound -unattended -nosplash -Multiprocess -LiveCoding=0 -asdebugport=0 -saveddirsuffix=CheatCli1 -abslog=`"$c1`"" -PassThru -WindowStyle Hidden
 "red client joined, made no call: $(WaitFor $c1 'Welcomed by server' 90) $(Get-Date -Format HH:mm:ss)"
 Start-Sleep 12
 $pat = 'RpcCheat: |RpcHero: |RpcDuel: |RpcDiplomacy: |RpcEconomy: |RpcMatch: |RpcSpec: '
