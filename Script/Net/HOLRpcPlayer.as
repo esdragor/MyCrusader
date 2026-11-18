@@ -8,11 +8,6 @@ const FConsoleVariable CVar_RpcDiplomacyStance("hol.Rpc.DiplomacyStance", 1);
 const FConsoleVariable CVar_RpcProofRoute("hol.Rpc.ProofRoute", 0);
 const FConsoleVariable CVar_RpcProofCheats("hol.Rpc.ProofCheats", 0); // ELROND-1118b: bits 1 FastBuild, 2 Population, 4 Technology, 8 Tier, 16 UnitSpeed, 32 GatherSpeed, 64 Wound, 128 DamageBuilding, 256 SpawnBuilding, 512 Defeat, 1024 FallForum, 2048 SkipForum, 4096 HoldPresence (Tools\Scenarios\rpc_cheats_run.ps1)
 
-// L2 orders (D846): ONE cvar for the 16 order RPCs (this actor's first 8: Move, AttackUnit, HealUnit, AttackBuilding, AttackMove, Stop, ToggleDeploy, MoveInLine). 0 = the C++ RPC of the controller (default), 1 = the C++ routes the order here (read by its name in C++).
-const FConsoleVariable CVar_RpcOrderScript("hol.Rpc.OrderScript", 1); // R0 (D848): the script route is the default; the C++ RPCs are still there as the 0 setting until the retirement
-// The C++ controller reads hol.Rpc.OrderTrace by name (OrderSend / OrderRecv lines, Tools\Scenarios\order_latency_run.ps1); declared here so that -ExecCmds finds it on every process (it was declared nowhere: the measurement saw 0 lines).
-const FConsoleVariable CVar_RpcOrderTrace("hol.Rpc.OrderTrace", 0);
-
 // D845, lot E: no cvar guards a script RPC any more (hol.Rpc.ScriptMatch, ScriptHero, ScriptSignal, ScriptChat are retired) and no C++ RPC is left for the player: every Server RPC (Match, Hero, Signals, Chat, Specialization, Duel,
 // Diplomacy, Economy, the 14 cheats) and the Client RPCs ClientReceiveSignal / ClientReceiveChat are declared here, the C++ routes reach them through the script actor (RpcRoute: ... not sent when there is none).
 
@@ -333,7 +328,7 @@ void RequestVision(AHOLPlayerController Controller, int TargetSlot, bool bShare)
 	Rpc.ServerDiplomacyVision(TargetSlot, bShare);
 }
 
-// ---- L2 orders, first 8 (A1, D846: the order RPCs of the unit selection, now also on this actor; the cvar hol.Rpc.OrderScript, default 0, chooses the route in C++, the C++ RPCs stay until the verdict).
+// ---- L2 orders, first 8 (A1, D846: the order RPCs of the unit selection, on this actor, their only entry since D848: the C++ controller keeps only the Do<X> bodies, called by the bridge).
 // Pure refusals: the sender holds a seat (1: spectator or out of range) and names at least one unit (2). The 200 unit cap and the spectator rule stay HOLPlayerOrders::IsAccepted's (C++ Do<X> bodies, called by the bridge).
 int UnitOrderRefusal(int SenderSlot, int UnitCount)
 {
@@ -1262,7 +1257,7 @@ for (FString Command : Commands)
 		Log(n"LogHOLMatch", f"RpcEconomy: trade received by the server: slot {Slot} resource {Resource} lots {Lots} buy {bBuy}");
 		HOLRpcBridge::MarketTrade(this, Building, Resource, Lots, bBuy);
 	}
-	// ---- L2 orders, first 8 (A1, D846). Same parameters as the C++ ServerX of AHOLPlayerController; the C++ routes here when hol.Rpc.OrderScript is 1 (default 0: the C++ RPC). Journal "RpcOrder: <name> received by the server: slot N ..."
+	// ---- L2 orders, first 8 (A1, D846). The C++ RequestX of AHOLPlayerController routes here (HOLRpcScriptRoute); no C++ Server RPC is left (D848). Journal "RpcOrder: <name> received by the server: slot N ..."
 	// then the pure refusal (HOLRpc::UnitOrderRefusal, PointOrderRefusal, BuildingOrderRefusal, LineOrderRefusal), then the bridge calls the controller's C++ Do<X> (the rules, HOLPlayerOrders::IsAccepted: cap 200, spectator).
 	UFUNCTION(Server)
 	void ServerMoveUnits(TArray<uint32> UnitIds, FVector_NetQuantize Target, bool bQueue)
@@ -1380,7 +1375,7 @@ for (FString Command : Commands)
 		HOLRpcBridge::OrderMoveInLine(this, HOLRpc::OrderIds(UnitIds), Start.X, Start.Y, Start.Z, End.X, End.Y, End.Z, bWidth, bQueue);
 	}
 
-	// ---- L2 orders, last 8 (A2, D846). Same parameters as the C++ ServerX of AHOLPlayerController (same route and journal as the first 8: "RpcOrder: <name> received by the server: slot N ...", the pure refusal, then the bridge).
+	// ---- L2 orders, last 8 (A2, D846). Same parameters as the former C++ ServerX (retired, D848) (same route and journal as the first 8: "RpcOrder: <name> received by the server: slot N ...", the pure refusal, then the bridge).
 	UFUNCTION(Server)
 	void ServerGatherUnits(TArray<uint32> UnitIds, int SourceIndex, bool bQueue)
 	{
