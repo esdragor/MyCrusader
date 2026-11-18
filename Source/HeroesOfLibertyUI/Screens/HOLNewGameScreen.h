@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "Match/HOLMatchConfig.h"
+#include "Match/HOLNewGameReadLibrary.h"
 #include "Net/HOLManagerClientRules.h"
 #include "Screens/HOLScreen.h"
 #include "HOLNewGameScreen.generated.h"
@@ -145,6 +146,58 @@ public:
 	/** A button of the button row (UHOLScreen::AddButton); its clicks: OnButtonBaseClicked / OnClicked(). */
 	UFUNCTION(BlueprintCallable, Category = "HOL|NewGame")
 	UHOLButton* AddNewGameButton(UHorizontalBox* Row, FName Name, const FText& Label);
+
+	// ---- NG-1c (D851, step 4): the raccords the script's gestures need (state in, state out, texts); none changes the C++ screen. ----
+
+	/** True in a script class that handles the drop-downs' choices itself (UHOLDropdown::OnChosen): the base then does not subscribe its Handle*Chosen. Set with `default bScriptOwnsGestures = true;`. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "HOL|NewGame")
+	bool bScriptOwnsGestures = false;
+
+	/** One label of the screen by its LOCTEXT key (Heading, Map, Fog, Size, TeamsTogether, Player, Slot, Level, Faction, Colour, Team, You, Mode, Nomad, Regicide, Catastrophe, SacredSites, GreyedTeamsOpen, LobbyGreyed, Back, LeaveLobby, ReadyAction, NotReadyAction, BecomeSpectator, BecomePlayer, Launch, Starting, NoMatchAddress, TooManyPlayers); empty for another key. */
+	UFUNCTION(BlueprintPure, Category = "HOL|NewGame")
+	static FText GetNewGameText(FName Key);
+	/** "Joueur 1".."Joueur 8" (the PlayerN text of slot SlotIndex, 0-based). */
+	UFUNCTION(BlueprintPure, Category = "HOL|NewGame")
+	static FText GetNewGamePlayerName(int32 SlotIndex);
+
+	/** The lobby read last, flattened for the script (UHOLNewGameReadLibrary::MakeLobbyView); the default view (bHasMatch false) in solo. */
+	UFUNCTION(BlueprintPure, Category = "HOL|NewGame")
+	FHOLNewGameLobbyView GetLobbyView() const;
+
+	/** The configuration shown, as its JSON text (FHOLMatchConfig::ToJson): read it with HOLMatchConfigRead::Describe / HOLNewGameRead::DescribeGlobals. */
+	UFUNCTION(BlueprintPure, Category = "HOL|NewGame")
+	FString GetConfigJson() const;
+	/** SetConfig(FromJson(Json)): normalised (a colour "Aleatoire" becomes a real one), a map missing from the list replaced; Refresh included. False (nothing changed) when the JSON is unreadable. */
+	UFUNCTION(BlueprintCallable, Category = "HOL|NewGame")
+	bool SetConfigJson(const FString& Json);
+
+	/** The index in GetMapNames() of the configuration's map; -1 when it is not in the list. */
+	UFUNCTION(BlueprintPure, Category = "HOL|NewGame")
+	int32 GetConfigMapIndex() const;
+	/** Field writes of the configuration, NOT normalised, no Refresh (call Refresh() once the gesture is done). The map by its index in GetMapNames(); out of range = unchanged. */
+	UFUNCTION(BlueprintCallable, Category = "HOL|NewGame")
+	void SetConfigMapIndex(int32 Index);
+	/** Lobby: the size as it is (EHOLMapSize as int), unchanged when it is no size of the table. */
+	UFUNCTION(BlueprintCallable, Category = "HOL|NewGame")
+	void SetConfigMapSize(int32 Size);
+	/** Solo: ChooseSize (FitSlotsToSize, places drawn); false (nothing changed) when the players do not fit the size. */
+	UFUNCTION(BlueprintCallable, Category = "HOL|NewGame")
+	bool ChooseNewGameSize(int32 Size);
+	/** TeamsTogether, FogMode (EHOLFogMode: 0 Disabled, 1 Explored, 2 Normal = 2 - the list's index), Mode (0 Standard, 1 Diplomacy); both clamped. */
+	UFUNCTION(BlueprintCallable, Category = "HOL|NewGame")
+	void SetConfigGlobals(bool bTeamsTogether, int32 FogMode, int32 Mode);
+	UFUNCTION(BlueprintCallable, Category = "HOL|NewGame")
+	void SetConfigOptions(bool bNomad, bool bRegicide, bool bCatastrophe, bool bSacredSites);
+	/** One slot: State (EHOLSlotState: 0 Closed, 1 Human, 2 AI), Faction (EHOLFaction), ColorIndex (RandomColor allowed), Team; -1 leaves a field as it is; an index outside 0..7 does nothing. */
+	UFUNCTION(BlueprintCallable, Category = "HOL|NewGame")
+	void SetConfigSlot(int32 SlotIndex, int32 State, int32 Faction, int32 ColorIndex, int32 Team);
+
+	/** Lobby, my line: -1 leaves a field unset (UHOLManagerClient::UpdateMe); Ready and Spectator are 0 / 1; Faction empty = unset. The answer is shown by the base (HandleWritten). Nothing without a lobby. */
+	UFUNCTION(BlueprintCallable, Category = "HOL|NewGame")
+	void SendMyChoice(int32 ColorIndex, int32 Team, int32 Ready, int32 Spectator, const FString& Faction);
+	/** Lobby, leader: the slot opened or closed (UHOLManagerClient::SetSlot). Nothing without a lobby. */
+	UFUNCTION(BlueprintCallable, Category = "HOL|NewGame")
+	void SendSlotOpen(int32 SlotIndex, bool bOpen);
 
 	/** The faction cheat (HOLFactionChoice) switched while the screen is open (hol.Faction.Cheat): the lists show the Templars or not at once. */
 	void OnFactionCheatChanged() { Refresh(); }
