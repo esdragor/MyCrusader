@@ -37,8 +37,14 @@
 param(
     [string]$Root = (Split-Path (Split-Path $PSScriptRoot -Parent) -Parent),
     [string]$Out = (Join-Path $env:TEMP "rpc_orders_p3p4"),
-    [ValidateSet('P3', 'P4', 'P3P4')][string]$Lot = 'P3P4'
+    [ValidateSet('P3', 'P4', 'P3P4')][string]$Lot = 'P3P4',
+    # D850 (criterion B of D846, simulated locally): one-way packet lag (ms), its variance (ms) and packet loss (%) on the server and on the green client; 0 = no emulation
+    [int]$Lag = 0,
+    [int]$LagVariance = 0,
+    [int]$Loss = 0
 )
+$NetEm = @(); if ($Lag -gt 0) { $NetEm += "NetEmulation.PktLag $Lag" }; if ($LagVariance -gt 0) { $NetEm += "NetEmulation.PktLagVariance $LagVariance" }; if ($Loss -gt 0) { $NetEm += "NetEmulation.PktLoss $Loss" }
+$svExec = if ($NetEm.Count -gt 0) { " -ExecCmds=`"" + ($NetEm -join "," ) + "`"" } else { "" }   # never pass an empty -ExecCmds
 $w = $Root; New-Item -ItemType Directory -Force $Out | Out-Null
 $up = (Get-ChildItem $w -Filter *.uproject).FullName
 $ed = 'C:\UE\UE_5.8_HOL\Engine\Binaries\Win64\UnrealEditor.exe'
@@ -103,7 +109,7 @@ if (Test-Path $lc) { . $lc; $stale = Get-StaleBinaryProblem $w; if ($stale) { "S
 # no server -ExecCmds at all (no ProofSpawn: the P3 / P4 orders need no spawned unit, the proof's Barracks is placed from the client): the argument is omitted, never passed empty
 $procs = @(); $code = 1
 try {
-    $sv = Start-Process $ed -ArgumentList "`"$up`" /Game/Maps/Plain -server -nullrhi -nosound -Port=$port -unattended -nosplash -Multiprocess -LiveCoding=0 -asdebugport=0 -as-exit-on-error -HOLCheats -MatchConfig=`"$cfg`" -saveddirsuffix=OrdSrv -abslog=`"$sl`"" -PassThru -WindowStyle Hidden
+    $sv = Start-Process $ed -ArgumentList "`"$up`" /Game/Maps/Plain -server -nullrhi -nosound -Port=$port -unattended -nosplash -Multiprocess -LiveCoding=0 -asdebugport=0 -as-exit-on-error -HOLCheats -MatchConfig=`"$cfg`" -saveddirsuffix=OrdSrv -abslog=`"$sl`"$svExec" -PassThru -WindowStyle Hidden
     $procs += $sv
     $upOk = WaitFor $sl 'Bringing World .* up for play|Angelscript: Error' 90
     "server up: $upOk $(Get-Date -Format HH:mm:ss)"
@@ -111,7 +117,7 @@ try {
     $procs += $a
     "red client joined, made no call: $(WaitFor $c1 'Welcomed by server' 90) $(Get-Date -Format HH:mm:ss)"
     Start-Sleep 5
-    $b = Start-Process $ed -ArgumentList "`"$up`" 127.0.0.1:${port}?Name=Alice -game -nullrhi -nosound -unattended -nosplash -Multiprocess -LiveCoding=0 -asdebugport=0 -saveddirsuffix=OrdCli2 -abslog=`"$c2`" -ExecCmds=`"hol.Rpc.ProofRoute $bits`"" -PassThru -WindowStyle Hidden
+    $b = Start-Process $ed -ArgumentList "`"$up`" 127.0.0.1:${port}?Name=Alice -game -nullrhi -nosound -unattended -nosplash -Multiprocess -LiveCoding=0 -asdebugport=0 -saveddirsuffix=OrdCli2 -abslog=`"$c2`" -ExecCmds=`"$(((@($NetEm) + @('hol.Rpc.ProofRoute ' + $bits)) -join ','))`"" -PassThru -WindowStyle Hidden
     $procs += $b
     $shot = WaitFor $c2 'RpcRoute: ' 90
     $t0 = Get-Date

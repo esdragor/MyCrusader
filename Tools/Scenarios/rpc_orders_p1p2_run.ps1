@@ -31,9 +31,14 @@ param(
     [string]$Only = "",
     [switch]$Combined,
     [int]$Port = 7995,
+    # D850 (criterion B of D846, simulated locally): one-way packet lag (ms), its variance (ms) and packet loss (%) on the server and on the green client; 0 = no emulation
+    [int]$Lag = 0,
+    [int]$LagVariance = 0,
+    [int]$Loss = 0,
     [int]$Tol = 800,
     [int]$SettleSec = 26 # after the reception: the last report ("@20 Where" of attack building) is due 20 s after the shot
 )
+$NetEm = @(); if ($Lag -gt 0) { $NetEm += "NetEmulation.PktLag $Lag" }; if ($LagVariance -gt 0) { $NetEm += "NetEmulation.PktLagVariance $LagVariance" }; if ($Loss -gt 0) { $NetEm += "NetEmulation.PktLoss $Loss" }
 $w = $Root; New-Item -ItemType Directory -Force $Out | Out-Null
 $up = (Get-ChildItem $w -Filter *.uproject).FullName
 $ed = 'C:\UE\UE_5.8_HOL\Engine\Binaries\Win64\UnrealEditor.exe'
@@ -176,6 +181,7 @@ function Run-One($tag, $group) {
     $sl = "$Out\orders_${tag}_server.log"; $c1 = "$Out\orders_${tag}_client_red.log"; $c2 = "$Out\orders_${tag}_client_green.log"
     Remove-Item $sl, $c1, $c2 -ErrorAction SilentlyContinue
     $svParts = @(); if (($spawnBits -band 2) -ne 0) { $svParts += "hol.Siege.Deployable 1" }; if ($spawn) { $svParts += "hol.Rpc.ProofSpawn $spawnBits" }
+    if ($NetEm.Count -gt 0) { $svParts = @($NetEm) + @($svParts) }
     $svCmds = $svParts -join ","
     $svExec = if ($svCmds) { " -ExecCmds=`"$svCmds`"" } else { "" }   # never pass an empty -ExecCmds
     "[$tag] bits $bits, server ExecCmds '$svCmds' $(Get-Date -Format HH:mm:ss)"
@@ -185,7 +191,7 @@ function Run-One($tag, $group) {
     $a = Start-Process $ed -ArgumentList "`"$up`" 127.0.0.1:${Port}?Name=Bob -game -nullrhi -nosound -unattended -nosplash -Multiprocess -LiveCoding=0 -asdebugport=0 -saveddirsuffix=OrdCli1 -abslog=`"$c1`"" -PassThru -WindowStyle Hidden
     "[$tag] red client joined, no call: $(WaitFor $c1 'Welcomed by server' 90)"
     Start-Sleep 5
-    $b = Start-Process $ed -ArgumentList "`"$up`" 127.0.0.1:${Port}?Name=Alice -game -nullrhi -nosound -unattended -nosplash -Multiprocess -LiveCoding=0 -asdebugport=0 -saveddirsuffix=OrdCli2 -abslog=`"$c2`" -ExecCmds=`"hol.Rpc.ProofRoute $bits`"" -PassThru -WindowStyle Hidden
+    $b = Start-Process $ed -ArgumentList "`"$up`" 127.0.0.1:${Port}?Name=Alice -game -nullrhi -nosound -unattended -nosplash -Multiprocess -LiveCoding=0 -asdebugport=0 -saveddirsuffix=OrdCli2 -abslog=`"$c2`" -ExecCmds=`"$(((@($NetEm) + @('hol.Rpc.ProofRoute ' + $bits)) -join ','))`"" -PassThru -WindowStyle Hidden
     foreach ($o in $group) { "[$tag] server has the reception line of '$($o.Name)': $(WaitFor $sl ('RpcOrder: ' + [regex]::Escape($o.Name) + ' (received|refused)') 75)" }
     Start-Sleep $SettleSec
     $S = Read-LinesShared $sl; $K = Read-LinesShared $c2
