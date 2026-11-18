@@ -311,7 +311,7 @@ class UHOLTopBarPanel : UObject
 		USizeBox IdleBox = Cast<USizeBox>(Screen.ConstructWidget(USizeBox, n"IdleWorkersBox"));
 		IdleBox.SetWidthOverride(HOLTopBar::IdleWorkersWidth());
 		IdleBox.SetHeightOverride(ButtonHeight);
-		IdleWorkers = MakeQueueButton(n"IdleWorkers", FText::GetEmpty());
+		IdleWorkers = MakeQueueButton(n"IdleWorkers", FText::FromString(""));
 		IdleBox.SetContent(IdleWorkers);
 		AddToRow(Resources, IdleBox, 0.0);
 
@@ -341,19 +341,19 @@ class UHOLTopBarPanel : UObject
 	}
 
 	UFUNCTION()
-	void IdleWorkersClicked()
+	void IdleWorkersClicked(UCommonButtonBase Button)
 	{
 		ClickIdleWorkers();
 	}
 
 	UFUNCTION()
-	void MenuButtonClicked()
+	void MenuButtonClicked(UCommonButtonBase Button)
 	{
 		Screen.OpenGameMenu();
 	}
 
 	UFUNCTION()
-	void StatsButtonClicked()
+	void StatsButtonClicked(UCommonButtonBase Button)
 	{
 		ClickStats();
 	}
