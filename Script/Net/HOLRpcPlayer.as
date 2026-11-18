@@ -39,8 +39,6 @@ const FConsoleVariable CVar_RpcScriptCheatDefeat("hol.Rpc.ScriptCheatDefeat", 0)
 const FConsoleVariable CVar_RpcScriptCheatFallForum("hol.Rpc.ScriptCheatFallForum", 0);
 const FConsoleVariable CVar_RpcScriptCheatSkipForum("hol.Rpc.ScriptCheatSkipForum", 0);
 const FConsoleVariable CVar_RpcScriptCheatHoldPresence("hol.Rpc.ScriptCheatHoldPresence", 0);
-// T8 lot L3 Economy (HALDIR-1117q, C++ NOT COMPILED): ServerQueueProduction, ServerCancelProduction, ServerTribute, ServerMarketTrade. One guard, default 0: the C++ RPC stays the only one.
-const FConsoleVariable CVar_RpcScriptEconomy("hol.Rpc.ScriptEconomy", 1);
 
 const int HOLRpcSlots = 8; // FHOLMatchConfig::MaxSlots
 const int HOLRpcStanceAlly = 2; // HOLDiplomacy::Enemy 0 / Neutral 1 / Ally 2
@@ -489,14 +487,12 @@ for (FString Command : Commands)
 		HOLRpcBridge::QueueDuelOrder(this, HOLRpc::DuelAnswerKind(bAccept), -1);
 	}
 
-	// ---- T3 Match lot. Guard hol.Rpc.ScriptMatch (default 0: the C++ RPC stays active). Bodies of ServerRequestPause / ServerRequestResume / ServerSurrender _Implementation.
+	// ---- T3 Match lot. ServerRequestPause / ServerRequestResume have no guard and no C++ RPC left (D845); only ServerSurrender keeps the guard hol.Rpc.ScriptMatch (its C++ RPC stays, not proved).
 	// The end calls go through HOLRpcBridge::RequestPause(this) / RequestResume(this) / Surrender(this) (owner's state, GetServerWorldTimeSeconds, EHOLDefeatReason::Surrender; HALDIR-1117n, C++ NOT COMPILED);
 	// AHOLGameState logs its own "Pause: ..." refusals and the bridge keeps the line "Victory: surrender of slot N refused".
 	UFUNCTION(Server)
 	void ServerRequestPause()
 	{
-		if (CVar_RpcScriptMatch.GetInt() == 0)
-			return;
 		const int Slot = HOLRpcBridge::GetSenderSlot(this);
 		if (HOLRpc::MatchRefusal(Slot) != 0)
 		{
@@ -510,8 +506,6 @@ for (FString Command : Commands)
 	UFUNCTION(Server)
 	void ServerRequestResume()
 	{
-		if (CVar_RpcScriptMatch.GetInt() == 0)
-			return;
 		const int Slot = HOLRpcBridge::GetSenderSlot(this);
 		if (HOLRpc::MatchRefusal(Slot) != 0)
 		{
@@ -923,13 +917,11 @@ for (FString Command : Commands)
 		HOLRpcBridge::ReceiveChat(this, SenderSlot, Channel, Text);
 	}
 
-	// ---- T8 lot L3 Economy (HALDIR-1117q, C++ NOT COMPILED). Guard hol.Rpc.ScriptEconomy (default 0). The bridge calls the C++ _Implementation (builds the FHOLProductionCommand, IssueProductionOrder).
+	// ---- T8 lot L3 Economy (D845: the only entry of these 4 RPC, no C++ RPC left, no cvar). The bridge calls the C++ Do<Name> methods of the controller (builds the FHOLProductionCommand, IssueProductionOrder).
 	// Building is passed as the AHOLBuilding object (replicated by net id), the type as an FName: no index needed.
 	UFUNCTION(Server)
 	void ServerQueueProduction(AHOLBuilding Building, FName TypeName)
 	{
-		if (CVar_RpcScriptEconomy.GetInt() == 0)
-			return;
 		const int Slot = HOLRpcBridge::GetSenderSlot(this);
 		const int Refusal = HOLRpc::QueueProductionRefusal(Slot, Building != nullptr);
 		if (Refusal != 0)
@@ -944,8 +936,6 @@ for (FString Command : Commands)
 	UFUNCTION(Server)
 	void ServerCancelProduction(AHOLBuilding Building, int Index)
 	{
-		if (CVar_RpcScriptEconomy.GetInt() == 0)
-			return;
 		const int Slot = HOLRpcBridge::GetSenderSlot(this);
 		const int Refusal = HOLRpc::CancelProductionRefusal(Slot, Building != nullptr, Index);
 		if (Refusal != 0)
@@ -960,8 +950,6 @@ for (FString Command : Commands)
 	UFUNCTION(Server)
 	void ServerTribute(AHOLBuilding Building, int Receiver, int Resource, int Amount)
 	{
-		if (CVar_RpcScriptEconomy.GetInt() == 0)
-			return;
 		const int Slot = HOLRpcBridge::GetSenderSlot(this);
 		const int Refusal = HOLRpc::TributeRefusal(Slot, Building != nullptr, Receiver, Resource, Amount);
 		if (Refusal != 0)
@@ -976,8 +964,6 @@ for (FString Command : Commands)
 	UFUNCTION(Server)
 	void ServerMarketTrade(AHOLBuilding Building, int Resource, int Lots, bool bBuy)
 	{
-		if (CVar_RpcScriptEconomy.GetInt() == 0)
-			return;
 		const int Slot = HOLRpcBridge::GetSenderSlot(this);
 		const int Refusal = HOLRpc::MarketTradeRefusal(Slot, Building != nullptr, Resource, Lots);
 		if (Refusal != 0)

@@ -124,7 +124,7 @@ param(
 )
 # C0.5: -Map checked against Tools/Data/Maps.csv before anything starts. $MapKey keeps the table's spelling; the name Map
 # itself is reused by the parts below as a local variable.
-$RpcScriptCommands = @(); if ($RpcScript) { $RpcScriptCommands = @('Diplomacy', 'Economy', 'Hero', 'Match', 'Duel', 'Signal', 'Chat', 'Specialization', 'CheatResources', 'CheatFastBuild', 'CheatTechnology', 'CheatTier', 'CheatPopulation', 'CheatUnitSpeed', 'CheatGatherSpeed', 'CheatWound', 'CheatDamageBuilding', 'CheatSpawnBuilding', 'CheatDefeat', 'CheatFallForum', 'CheatSkipForum', 'CheatHoldPresence') | ForEach-Object { "hol.Rpc.Script$_ 1" } }
+$RpcScriptCommands = @(); if ($RpcScript) { $RpcScriptCommands = @('Diplomacy', 'Hero', 'Match', 'Duel', 'Signal', 'Chat', 'Specialization', 'CheatResources', 'CheatFastBuild', 'CheatTechnology', 'CheatTier', 'CheatPopulation', 'CheatUnitSpeed', 'CheatGatherSpeed', 'CheatWound', 'CheatDamageBuilding', 'CheatSpawnBuilding', 'CheatDefeat', 'CheatFallForum', 'CheatSkipForum', 'CheatHoldPresence') | ForEach-Object { "hol.Rpc.Script$_ 1" } }
 # A client's steps with the cvar commands put just BEFORE its first waitplayers (the waitlog steps before it read lines logged once, early: 22 steps before them would make them miss the line).
 function Add-RpcScriptSteps($Steps) {
     $Steps = @($Steps)
@@ -238,6 +238,11 @@ if ($Parts -contains "values") {
         $StartingPeasantsOutput = @(python -I (Join-Path $PSScriptRoot "starting_peasants_count_test.py") 2>&1)
         $ValuesChecks["starting_peasants_count_test.py ($($StartingPeasantsOutput | Select-Object -Last 1))"] = ($LASTEXITCODE -eq 0)
     }
+    # ELROND-1118c (D845, lot A): no UFUNCTION(Server) left in the C++ controller for the RPCs retired to the script actor.
+    . (Join-Path $PSScriptRoot "no_cpp_rpc_gate.ps1")
+    $NoCppRpcLeft = @(Get-NoCppRpcLeft (Join-Path $PSScriptRoot "..\..\Source\HeroesOfLiberty\Player\HOLPlayerController.h"))
+    $ValuesChecks["no-cpp-rpc: no UFUNCTION(Server) left for the retired RPCs"] = ($NoCppRpcLeft.Count -eq 0)
+    if ($NoCppRpcLeft.Count -gt 0) { Write-Host "    no-cpp-rpc left: $($NoCppRpcLeft -join ', ')" }
     $ValuesOk = Report "values" $ValuesChecks
     if (-not $ValuesOk) { $ValuesOutput = @($ValuesTestOutput) + @($ValuesCheckOutput) + @($ConsumersTestOutput) + @($ConsumersOutput); $ValuesOutput | Where-Object { $_ -match "^(ERREUR|DERIVE|ORPHELIN|FAIL|ERROR|AVERTISSEMENT|DEAD|STALE)" } | Select-Object -First 20 | ForEach-Object { Write-Host "    $_" } }
     if (-not $Parts.Count) { Write-Host "quick_check : $(if ($ValuesOk) { 'PASS' } else { 'FAIL' })"; if (-not $ValuesOk) { Write-Host (Get-RedSummary $FailedParts $KnownReds); exit 1 }; exit 0 }
