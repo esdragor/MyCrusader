@@ -588,6 +588,14 @@ bool FHOLStartingNomadWholeMapTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+// D831: the cell of the Nomad's first forum is the setting hol.Nomad.ForumCell (E = 2 in Config/DefaultEngine.ini, C = 10 by the C++ default):
+// the two tests below read it instead of assuming C.
+static int32 GetNomadForumCellForTests()
+{
+	const IConsoleVariable* Cell = IConsoleManager::Get().FindConsoleVariable(TEXT("hol.Nomad.ForumCell"));
+	return Cell ? Cell->GetInt() : 10;
+}
+
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLStartingNomadFirstForumTest, "HeroesOfLiberty.Match.StartingHero.NomadFirstForum",
 	UE::HeroesOfLiberty::Tests::StartingHero::Flags)
 
@@ -603,11 +611,12 @@ bool FHOLStartingNomadFirstForumTest::RunTest(const FString& Parameters)
 	constexpr int32 Slot = 0;
 	const FTransform Start(FRotator(0.f, 90.f, 0.f), FVector(5000.0, 2000.0, 0.0));
 	const FVector Spot(11000.0, 2000.0, 0.0);
-	const auto Lists = [](const TArray<FHOLBuildable>& List)
+	const int32 ForumCell = GetNomadForumCellForTests();
+	const auto Lists = [ForumCell](const TArray<FHOLBuildable>& List)
 	{
 		// D797 (the user's setting, 2026-11-14: "le centre doit apparaître dans le palier 2"): page « Palier II » (age index 1, where
-		// the secondary centre opens, GDD 11.1), cell C (10), defaults of hol.Nomad.ForumAge / hol.Nomad.ForumCell.
-		return List.ContainsByPredicate([](const FHOLBuildable& Each) { return Each.TypeName == HOLBuildingTypeNames::MainCentre && Each.Age == 1 && Each.Cell == 10; });
+		// the secondary centre opens, GDD 11.1), the cell of hol.Nomad.ForumCell (D831: E), page of hol.Nomad.ForumAge.
+		return List.ContainsByPredicate([ForumCell](const FHOLBuildable& Each) { return Each.TypeName == HOLBuildingTypeNames::MainCentre && Each.Age == 1 && Each.Cell == ForumCell; });
 	};
 	for (int32 Way = 0; Way < 2; ++Way)
 	{
@@ -635,7 +644,7 @@ bool FHOLStartingNomadFirstForumTest::RunTest(const FString& Parameters)
 				const FHOLResources Before = Player->GetResources();
 				TArray<FHOLBuildable> List;
 				UHOLBuildingSettings::GetBuildableTypesForSlot(World, Slot, List);
-				TestEqual(*FString::Printf(TEXT("%s: the forum in the builders' list, page Palier II, cell C"), Name), Lists(List), bNomad);
+				TestEqual(*FString::Printf(TEXT("%s: the forum in the builders' list, page Palier II, at its cell"), Name), Lists(List), bNomad);
 				// D797: the keys a player presses (HOLCommandGrid::PressKey, the builders' grid of a seat at tier 0): Z opens page II for
 				// the Nomad only (its forum always buildable there), then C asks to build the forum; the Market (II A) stays locked.
 				FHOLGridContext Grid;
@@ -645,12 +654,12 @@ bool FHOLStartingNomadFirstForumTest::RunTest(const FString& Parameters)
 				Grid.Buildable = List;
 				const FHOLGridKeyResult PageTwo = HOLCommandGrid::PressKey(Grid, INDEX_NONE, 1);
 				TestEqual(*FString::Printf(TEXT("%s: Z opens the page Palier II at tier 0"), Name), PageTwo.ChosenAge, bNomad ? 1 : INDEX_NONE);
-				const FHOLGridKeyResult KeyC = HOLCommandGrid::PressKey(Grid, 1, 10);
-				TestEqual(*FString::Printf(TEXT("%s: II C builds the forum"), Name), KeyC.Target == EHOLGridKeyTarget::Build && KeyC.TypeName == HOLBuildingTypeNames::MainCentre, bNomad);
+				const FHOLGridKeyResult KeyC = HOLCommandGrid::PressKey(Grid, 1, ForumCell);
+				TestEqual(*FString::Printf(TEXT("%s: the forum key of page II builds the forum"), Name), KeyC.Target == EHOLGridKeyTarget::Build && KeyC.TypeName == HOLBuildingTypeNames::MainCentre, bNomad);
 				const FHOLGridKeyResult KeyA = HOLCommandGrid::PressKey(Grid, 1, 0);
 				TestFalse(*FString::Printf(TEXT("%s: II A (the Market) still locked at tier 0"), Name), KeyA.Target == EHOLGridKeyTarget::Build);
-				const FHOLGridKeyResult Clicked = HOLCommandGrid::ClickAge(Grid, INDEX_NONE, 1, 10);
-				TestEqual(*FString::Printf(TEXT("%s: a click on II C builds the forum"), Name), Clicked.Target == EHOLGridKeyTarget::Build && Clicked.TypeName == HOLBuildingTypeNames::MainCentre, bNomad);
+				const FHOLGridKeyResult Clicked = HOLCommandGrid::ClickAge(Grid, INDEX_NONE, 1, ForumCell);
+				TestEqual(*FString::Printf(TEXT("%s: a click on the forum cell of page II builds the forum"), Name), Clicked.Target == EHOLGridKeyTarget::Build && Clicked.TypeName == HOLBuildingTypeNames::MainCentre, bNomad);
 				const auto CountForums = [World]()
 				{
 					int32 Count = 0;
@@ -714,7 +723,7 @@ bool FHOLStartingNomadReplicatedTest::RunTest(const FString& Parameters)
 		Grid.bOwnUnits = true;
 		Grid.ReachedAge = 0;
 		Grid.Buildable = List;
-		return HOLCommandGrid::GetAgeBuilding(Grid, 1, 10);
+		return HOLCommandGrid::GetAgeBuilding(Grid, 1, GetNomadForumCellForTests());
 	};
 	UWorld* Server = MakeWorld();
 	UWorld* Client = MakeWorld();
