@@ -39,15 +39,30 @@ class UHOLStatsScreenScript : UHOLStatsScreen
 		BackButton = AddStatsButton(AddStatsRow(Column), n"BackButton", UHOLStatsScreen::TextOf(n"Back"));
 	}
 
-	// A figure as the C++ screen showed it (a plain integer: FText::AsNumber is not bound in script, so no grouping by the culture; MANQUE: a base NumberText(int)), the dash of a missing team, or a text of the screen.
-	// MANQUE: the dash is a string here (the C++ had FText::AsCultureInvariant(TEXT("—"))); a base text Key would hold it.
+	// A figure as the C++ screen showed it (NumberText of the base: FText::AsNumber, thousands grouped by the culture), the dash of a missing team (TextOf Dash), or a text of the screen.
 	FText CellText(const FHOLStatsCell& Cell)
 	{
 		if (Cell.bDash)
-			return FText::FromString("—");
+			return UHOLStatsScreen::TextOf(n"Dash");
 		if (!Cell.Key.IsNone())
 			return UHOLStatsScreen::TextOf(Cell.Key);
-		return FText::FromString(f"{Cell.Value}");
+		return UHOLStatsScreen::NumberText(Cell.Value);
+	}
+
+	// The dated marks: one a recorded event, in the colour and the name of its slot, a closed one included (the base's GetWorldSlotColor / GetWorldSlotName; HOLStatsRules::BuildMarks
+	// only knew the slots with a row), the label by the base (MakeMarkLabel).
+	TArray<FHOLStatsGraphMark> BuildSlotMarks(const FHOLMatchStatsState& Stats)
+	{
+		TArray<FHOLStatsGraphMark> Marks;
+		for (int Index = 0; Index < Stats.Events.Num(); Index++)
+		{
+			FHOLStatsGraphMark Mark;
+			Mark.TimeSeconds = Stats.Events[Index].TimeSeconds;
+			Mark.Color = HOLMatchStatsRead::GetWorldSlotColor(Stats.Events[Index].PlayerIndex);
+			Mark.Label = UHOLStatsScreen::MakeMarkLabel(Stats.Events[Index].Kind, HOLMatchStatsRead::GetWorldSlotName(Stats.Events[Index].PlayerIndex));
+			Marks.Add(Mark);
+		}
+		return Marks;
 	}
 
 	UFUNCTION(BlueprintOverride)
@@ -112,6 +127,9 @@ class UHOLStatsScreenScript : UHOLStatsScreen
 				for (int Column = 1; Column < Headers.Num() && Column - 1 < Cells.Num(); Column++)
 					AddStatsCell(Tables[Tab], GridRow, Column, CellText(Cells[Column - 1]), false, false, FLinearColor::White);
 			}
+			const int MilitaryScore = HOLMatchStatsRead::GetMilitaryScore(Player.UnitsKilled);
+			const int EconomyScore = HOLMatchStatsRead::GetEconomyScore(Player.Gathered, Player.UnitsTrained);
+			Log(n"LogHOLUI", f"Stats screen: row {Rows[Index].Name.ToString()} (slot {Rows[Index].SlotIndex}) military {MilitaryScore} economy {EconomyScore}, {HOLMatchStatsRead::DescribePlayer(Player)}");
 		}
 		DrawTimeline(GetActiveSeries());
 	}
@@ -133,10 +151,14 @@ class UHOLStatsScreenScript : UHOLStatsScreen
 			return;
 		FHOLMatchStatsState Stats = HOLMatchStatsRead::GetWorldStats();
 		TArray<FHOLStatsGraphCurve> Curves = HOLStatsRules::BuildCurves(Series, Rows, Stats);
-		TArray<FHOLStatsGraphMark> Marks = HOLStatsRules::BuildMarks(Rows, Stats);
+		TArray<FHOLStatsGraphMark> Marks = BuildSlotMarks(Stats);
 		const int NumCurves = Curves.Num();
 		const int NumMarks = Marks.Num();
+		int Points = 0;
+		for (int Index = 0; Index < NumCurves; Index++)
+			Points += Curves[Index].Points.Num();
 		Graph.SetGraphData(Curves, Marks);
-		Log(n"LogHOLUI", f"Stats screen: timeline {HOLStatsRules::SeriesName(HOLStatsRules::ClampSeries(Series))}, {NumCurves} curves, {NumMarks} marks, {Graph.GetAxesDescription()}");
+		// The line quick_check parses (curves, points, marks, axes), as the C++ screen wrote it.
+		Log(n"LogHOLUI", f"Stats screen: timeline {HOLStatsRules::SeriesName(HOLStatsRules::ClampSeries(Series))}, {NumCurves} curves, {Points} points, {NumMarks} marks, {Graph.GetAxesDescription()}");
 	}
 }

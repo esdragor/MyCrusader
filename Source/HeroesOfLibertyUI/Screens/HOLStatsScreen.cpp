@@ -580,7 +580,13 @@ FText UHOLStatsScreen::TextOf(const FName Key)
 	if (Is(TEXT("Winner"))) { return LOCTEXT("Winner", "Vainqueur"); }
 	if (Is(TEXT("Defeated"))) { return LOCTEXT("Defeated", "Vaincu"); }
 	if (Is(TEXT("Playing"))) { return LOCTEXT("Playing", "En jeu"); }
+	if (Is(TEXT("Dash"))) { return FText::AsCultureInvariant(TEXT("—")); }
 	return FText::GetEmpty();
+}
+
+FText UHOLStatsScreen::NumberText(const int32 Value)
+{
+	return FText::AsNumber(Value);
 }
 
 FText UHOLStatsScreen::MakeMarkLabel(const int32 Kind, const FText& PlayerName)
