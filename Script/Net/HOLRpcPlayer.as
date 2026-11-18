@@ -8,6 +8,9 @@ const FConsoleVariable CVar_RpcDiplomacyStance("hol.Rpc.DiplomacyStance", 1);
 const FConsoleVariable CVar_RpcProofRoute("hol.Rpc.ProofRoute", 0);
 const FConsoleVariable CVar_RpcProofCheats("hol.Rpc.ProofCheats", 0); // ELROND-1118b: bits 1 FastBuild, 2 Population, 4 Technology, 8 Tier, 16 UnitSpeed, 32 GatherSpeed, 64 Wound, 128 DamageBuilding, 256 SpawnBuilding, 512 Defeat, 1024 FallForum, 2048 SkipForum, 4096 HoldPresence (Tools\Scenarios\rpc_cheats_run.ps1)
 
+// L2 orders (D846): ONE cvar for the 16 order RPCs (this actor's first 8: Move, AttackUnit, HealUnit, AttackBuilding, AttackMove, Stop, ToggleDeploy, MoveInLine). 0 = the C++ RPC of the controller (default), 1 = the C++ routes the order here (read by its name in C++).
+const FConsoleVariable CVar_RpcOrderScript("hol.Rpc.OrderScript", 0);
+
 // D845, lot E: no cvar guards a script RPC any more (hol.Rpc.ScriptMatch, ScriptHero, ScriptSignal, ScriptChat are retired) and no C++ RPC is left for the player: every Server RPC (Match, Hero, Signals, Chat, Specialization, Duel,
 // Diplomacy, Economy, the 14 cheats) and the Client RPCs ClientReceiveSignal / ClientReceiveChat are declared here, the C++ routes reach them through the script actor (RpcRoute: ... not sent when there is none).
 
@@ -326,6 +329,65 @@ void RequestVision(AHOLPlayerController Controller, int TargetSlot, bool bShare)
 		return;
 	}
 	Rpc.ServerDiplomacyVision(TargetSlot, bShare);
+}
+
+// ---- L2 orders, first 8 (A1, D846: the order RPCs of the unit selection, now also on this actor; the cvar hol.Rpc.OrderScript, default 0, chooses the route in C++, the C++ RPCs stay until the verdict).
+// Pure refusals: the sender holds a seat (1: spectator or out of range) and names at least one unit (2). The 200 unit cap and the spectator rule stay HOLPlayerOrders::IsAccepted's (C++ Do<X> bodies, called by the bridge).
+int UnitOrderRefusal(int SenderSlot, int UnitCount)
+{
+	if (SenderSlot < 0 || SenderSlot >= HOLRpcSlots)
+		return 1;
+	if (UnitCount <= 0)
+		return 2;
+	return 0;
+}
+
+// A finite number: x - x is 0 only for a finite x (NaN and infinities give NaN).
+bool IsFiniteNumber(float Value)
+{
+	return Value - Value == 0.0;
+}
+
+// Move / AttackMove: as UnitOrderRefusal, and 3 when one coordinate of the point is not finite.
+int PointOrderRefusal(int SenderSlot, int UnitCount, float X, float Y, float Z)
+{
+	const int Base = UnitOrderRefusal(SenderSlot, UnitCount);
+	if (Base != 0)
+		return Base;
+	if (!IsFiniteNumber(X) || !IsFiniteNumber(Y) || !IsFiniteNumber(Z))
+		return 3;
+	return 0;
+}
+
+// AttackBuilding: as UnitOrderRefusal, and 3 when no building is named (null object).
+int BuildingOrderRefusal(int SenderSlot, int UnitCount, bool bHasBuilding)
+{
+	const int Base = UnitOrderRefusal(SenderSlot, UnitCount);
+	if (Base != 0)
+		return Base;
+	if (!bHasBuilding)
+		return 3;
+	return 0;
+}
+
+// MoveInLine: as UnitOrderRefusal, and 3 when one coordinate of the two points (Start, End) is not finite.
+int LineOrderRefusal(int SenderSlot, int UnitCount, float StartX, float StartY, float StartZ, float EndX, float EndY, float EndZ)
+{
+	const int Base = PointOrderRefusal(SenderSlot, UnitCount, StartX, StartY, StartZ);
+	if (Base != 0)
+		return Base;
+	if (!IsFiniteNumber(EndX) || !IsFiniteNumber(EndY) || !IsFiniteNumber(EndZ))
+		return 3;
+	return 0;
+}
+
+// The unit ids as the bridge takes them (int32: uint32 is not BlueprintCallable); the C++ side casts them back to uint32.
+TArray<int> OrderIds(const TArray<uint32>& UnitIds)
+{
+	TArray<int> Ids;
+	for (int i = 0; i < UnitIds.Num(); i++)
+		Ids.Add(int(UnitIds[i]));
+	return Ids;
 }
 } // namespace HOLRpc
 
@@ -956,5 +1018,118 @@ for (FString Command : Commands)
 		}
 		Log(n"LogHOLMatch", f"RpcEconomy: trade received by the server: slot {Slot} resource {Resource} lots {Lots} buy {bBuy}");
 		HOLRpcBridge::MarketTrade(this, Building, Resource, Lots, bBuy);
+	}
+	// ---- L2 orders, first 8 (A1, D846). Same parameters as the C++ ServerX of AHOLPlayerController; the C++ routes here when hol.Rpc.OrderScript is 1 (default 0: the C++ RPC). Journal "RpcOrder: <name> received by the server: slot N ..."
+	// then the pure refusal (HOLRpc::UnitOrderRefusal, PointOrderRefusal, BuildingOrderRefusal, LineOrderRefusal), then the bridge calls the controller's C++ Do<X> (the rules, HOLPlayerOrders::IsAccepted: cap 200, spectator).
+	UFUNCTION(Server)
+	void ServerMoveUnits(const TArray<uint32>& UnitIds, FVector_NetQuantize Target, bool bQueue)
+	{
+		const int Slot = HOLRpcBridge::GetSenderSlot(this);
+		Log(n"LogHOLMatch", f"RpcOrder: move received by the server: slot {Slot} units {UnitIds.Num()} queue {bQueue}");
+		const int Refusal = HOLRpc::PointOrderRefusal(Slot, UnitIds.Num(), Target.X, Target.Y, Target.Z);
+		if (Refusal != 0)
+		{
+			Log(n"LogHOLMatch", f"RpcOrder: move refused ({Refusal}) for sender slot {Slot}");
+			return;
+		}
+		HOLRpcBridge::OrderMove(this, HOLRpc::OrderIds(UnitIds), Target.X, Target.Y, Target.Z, bQueue);
+	}
+
+	UFUNCTION(Server)
+	void ServerAttackUnit(const TArray<uint32>& UnitIds, uint32 TargetUnitId, bool bQueue)
+	{
+		const int Slot = HOLRpcBridge::GetSenderSlot(this);
+		Log(n"LogHOLMatch", f"RpcOrder: attack unit received by the server: slot {Slot} units {UnitIds.Num()} target {int(TargetUnitId)} queue {bQueue}");
+		const int Refusal = HOLRpc::UnitOrderRefusal(Slot, UnitIds.Num());
+		if (Refusal != 0)
+		{
+			Log(n"LogHOLMatch", f"RpcOrder: attack unit refused ({Refusal}) for sender slot {Slot}");
+			return;
+		}
+		HOLRpcBridge::OrderAttackUnit(this, HOLRpc::OrderIds(UnitIds), int(TargetUnitId), bQueue);
+	}
+
+	UFUNCTION(Server)
+	void ServerHealUnit(const TArray<uint32>& UnitIds, uint32 TargetUnitId, bool bQueue)
+	{
+		const int Slot = HOLRpcBridge::GetSenderSlot(this);
+		Log(n"LogHOLMatch", f"RpcOrder: heal unit received by the server: slot {Slot} units {UnitIds.Num()} target {int(TargetUnitId)} queue {bQueue}");
+		const int Refusal = HOLRpc::UnitOrderRefusal(Slot, UnitIds.Num());
+		if (Refusal != 0)
+		{
+			Log(n"LogHOLMatch", f"RpcOrder: heal unit refused ({Refusal}) for sender slot {Slot}");
+			return;
+		}
+		HOLRpcBridge::OrderHealUnit(this, HOLRpc::OrderIds(UnitIds), int(TargetUnitId), bQueue);
+	}
+
+	UFUNCTION(Server)
+	void ServerAttackBuilding(const TArray<uint32>& UnitIds, AHOLBuilding Building, bool bQueue)
+	{
+		const int Slot = HOLRpcBridge::GetSenderSlot(this);
+		Log(n"LogHOLMatch", f"RpcOrder: attack building received by the server: slot {Slot} units {UnitIds.Num()} queue {bQueue}");
+		const int Refusal = HOLRpc::BuildingOrderRefusal(Slot, UnitIds.Num(), Building != nullptr);
+		if (Refusal != 0)
+		{
+			Log(n"LogHOLMatch", f"RpcOrder: attack building refused ({Refusal}) for sender slot {Slot}");
+			return;
+		}
+		HOLRpcBridge::OrderAttackBuilding(this, HOLRpc::OrderIds(UnitIds), Building, bQueue);
+	}
+
+	UFUNCTION(Server)
+	void ServerAttackMove(const TArray<uint32>& UnitIds, FVector_NetQuantize Target, bool bQueue)
+	{
+		const int Slot = HOLRpcBridge::GetSenderSlot(this);
+		Log(n"LogHOLMatch", f"RpcOrder: attack move received by the server: slot {Slot} units {UnitIds.Num()} queue {bQueue}");
+		const int Refusal = HOLRpc::PointOrderRefusal(Slot, UnitIds.Num(), Target.X, Target.Y, Target.Z);
+		if (Refusal != 0)
+		{
+			Log(n"LogHOLMatch", f"RpcOrder: attack move refused ({Refusal}) for sender slot {Slot}");
+			return;
+		}
+		HOLRpcBridge::OrderAttackMove(this, HOLRpc::OrderIds(UnitIds), Target.X, Target.Y, Target.Z, bQueue);
+	}
+
+	UFUNCTION(Server)
+	void ServerStopUnits(const TArray<uint32>& UnitIds, bool bHold)
+	{
+		const int Slot = HOLRpcBridge::GetSenderSlot(this);
+		Log(n"LogHOLMatch", f"RpcOrder: stop received by the server: slot {Slot} units {UnitIds.Num()} hold {bHold}");
+		const int Refusal = HOLRpc::UnitOrderRefusal(Slot, UnitIds.Num());
+		if (Refusal != 0)
+		{
+			Log(n"LogHOLMatch", f"RpcOrder: stop refused ({Refusal}) for sender slot {Slot}");
+			return;
+		}
+		HOLRpcBridge::OrderStop(this, HOLRpc::OrderIds(UnitIds), bHold);
+	}
+
+	UFUNCTION(Server)
+	void ServerToggleDeploy(const TArray<uint32>& UnitIds)
+	{
+		const int Slot = HOLRpcBridge::GetSenderSlot(this);
+		Log(n"LogHOLMatch", f"RpcOrder: toggle deploy received by the server: slot {Slot} units {UnitIds.Num()}");
+		const int Refusal = HOLRpc::UnitOrderRefusal(Slot, UnitIds.Num());
+		if (Refusal != 0)
+		{
+			Log(n"LogHOLMatch", f"RpcOrder: toggle deploy refused ({Refusal}) for sender slot {Slot}");
+			return;
+		}
+		HOLRpcBridge::OrderToggleDeploy(this, HOLRpc::OrderIds(UnitIds));
+	}
+
+	UFUNCTION(Server)
+	void ServerMoveUnitsInLine(const TArray<uint32>& UnitIds, FVector_NetQuantize Start, FVector_NetQuantize End, bool bWidth, bool bQueue)
+	{
+		const int Slot = HOLRpcBridge::GetSenderSlot(this);
+		Log(n"LogHOLMatch", f"RpcOrder: move in line received by the server: slot {Slot} units {UnitIds.Num()} width {bWidth} queue {bQueue}");
+		const int Refusal = HOLRpc::LineOrderRefusal(Slot, UnitIds.Num(), Start.X, Start.Y, Start.Z, End.X, End.Y, End.Z);
+		if (Refusal != 0)
+		{
+			Log(n"LogHOLMatch", f"RpcOrder: move in line refused ({Refusal}) for sender slot {Slot}");
+			return;
+		}
+		HOLRpcBridge::OrderMoveInLine(this, HOLRpc::OrderIds(UnitIds), Start.X, Start.Y, Start.Z, End.X, End.Y, End.Z, bWidth, bQueue);
 	}
 }
