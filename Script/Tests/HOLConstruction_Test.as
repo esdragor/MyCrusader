@@ -1130,36 +1130,6 @@ void Test_Construction_FreeFootprint(FUnitTest& T)
 // read through HOLConstructionRead::FindBuildingType (the row fields are BlueprintReadOnly since the lot of 2026-11-17). Resources as ints:
 // 0 Food, 1 Wood, 2 Stone, 3 Gold; category 0 Economic, 1 Military, 2 Technological. The 4 m tile is read from the settings (GetSettingTileSize).
 
-bool ConSameInts(TArray<int> A, TArray<int> B)
-{
-	if (A.Num() != B.Num())
-	{
-		return false;
-	}
-	for (int Index = 0; Index < A.Num(); ++Index)
-	{
-		if (A[Index] != B[Index])
-		{
-			return false;
-		}
-	}
-	return true;
-}
-
-TArray<int> ConInts(int A = -1, int B = -1)
-{
-	TArray<int> Out;
-	if (A >= 0)
-	{
-		Out.Add(A);
-	}
-	if (B >= 0)
-	{
-		Out.Add(B);
-	}
-	return Out;
-}
-
 // One of the four economic types of the C++ table (House, LumberCamp, MiningCamp, Mill): slot, population, resources accepted, wood-only cost, 2 x 2 tiles.
 void ConCheckEconomicType(FUnitTest& T, FName Name, int Slot, int Population, TArray<int> Accepts, int Wood, double Grid, double CentreWidth)
 {

@@ -61,7 +61,7 @@ void Test_SiegeRemaining_TableWorkshop(FUnitTest& T)
 	const double Grid = HOLSiegeCheck::GetTileSize();
 	T.AssertTrue(Workshop.BuildGridSlot != -1, "Workshop: built by Peasants");
 	T.AssertEquals(int(EHOLBuildingCategory::Military), int(Workshop.Category), "Workshop: military");
-	T.AssertEquals(2, Workshop.Age, "Workshop: age II, the tier of the Ram (GDD 6.1, 11.1)");
+	T.AssertEquals(1, Workshop.Age, "Workshop: age II (index 1), the tier of the Ram (GDD 6.1, 11.1)");
 	T.AssertEquals(4, Workshop.BuildGridSlot, "Workshop: Q of page II (slot 4, military row)");
 	T.AssertTrue(Math::Abs(Workshop.Footprint.X - 3.0 * Grid) < 0.01 && Math::Abs(Workshop.Footprint.Y - 3.0 * Grid) < 0.01, "Workshop: 3 x 3 tiles");
 	T.AssertEquals(1500, Workshop.MaxHealth, "Workshop: 1 500 health");
