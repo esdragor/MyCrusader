@@ -3,6 +3,12 @@
 #include "Match/HOLMatchStatsReadLibrary.h"
 
 #include "Match/HOLMatchStats.h"
+#include "Engine/Engine.h"
+#include "Engine/World.h"
+#include "Match/HOLForumMessages.h"
+#include "Match/HOLGameState.h"
+#include "Match/HOLMatchStatsSubsystem.h"
+#include "Match/HOLPlayerColors.h"
 
 namespace
 {
@@ -250,4 +256,68 @@ TArray<FVector2D> UHOLMatchStatsReadLibrary::MakeCurve(const FHOLPlayerMatchStat
 		return Flat;
 	}
 	return HOLMatchStats::MakeCurve(ToPlayer(Player), static_cast<EHOLMatchStatsSeries>(SeriesIndex));
+}
+
+FHOLMatchStatsState UHOLMatchStatsReadLibrary::GetWorldStats(const UObject* WorldContextObject)
+{
+	const UWorld* World = GEngine ? GEngine->GetWorldFromContextObject(WorldContextObject, EGetWorldErrorMode::ReturnNull) : nullptr;
+	const UHOLMatchStatsSubsystem* Subsystem = World ? World->GetSubsystem<UHOLMatchStatsSubsystem>() : nullptr;
+	return Subsystem ? FromStats(Subsystem->GetStats()) : FHOLMatchStatsState();
+}
+
+bool UHOLMatchStatsReadLibrary::HasWorldStats(const UObject* WorldContextObject)
+{
+	const UWorld* World = GEngine ? GEngine->GetWorldFromContextObject(WorldContextObject, EGetWorldErrorMode::ReturnNull) : nullptr;
+	const UHOLMatchStatsSubsystem* Subsystem = World ? World->GetSubsystem<UHOLMatchStatsSubsystem>() : nullptr;
+	return Subsystem && Subsystem->GetStats().Players.ContainsByPredicate([](const FHOLPlayerMatchStats& Player) { return Player.PlayerIndex != INDEX_NONE; });
+}
+
+TArray<FHOLStatsRowState> UHOLMatchStatsReadLibrary::GetWorldStatsRows(const UObject* WorldContextObject)
+{
+	TArray<FHOLStatsRowState> Rows;
+	const UWorld* World = GEngine ? GEngine->GetWorldFromContextObject(WorldContextObject, EGetWorldErrorMode::ReturnNull) : nullptr;
+	const AHOLGameState* GameState = World ? World->GetGameState<AHOLGameState>() : nullptr;
+	if (!GameState)
+	{
+		return Rows;
+	}
+	const TArray<FHOLMatchSlot>& Slots = GameState->GetLaunchConfig().Slots;
+	for (int32 SlotIndex = 0; SlotIndex < Slots.Num(); ++SlotIndex)
+	{
+		if (Slots[SlotIndex].State == EHOLSlotState::Closed)
+		{
+			continue;
+		}
+		FHOLStatsRowState& Row = Rows.AddDefaulted_GetRef();
+		Row.SlotIndex = SlotIndex;
+		Row.Name = HOLForumMessages::GetPlayerName(GameState->GetLaunchConfig(), SlotIndex, INDEX_NONE);
+		Row.Color = FLinearColor(HOLPlayerColors::GetColor(Slots[SlotIndex].ColorIndex));
+		Row.Team = Slots[SlotIndex].Team;
+		Row.Result = GameState->IsWinner(SlotIndex) ? 1 : GameState->IsSlotDefeated(SlotIndex) ? 2 : 0;
+	}
+	return Rows;
+}
+
+FText UHOLMatchStatsReadLibrary::GetWorldSlotName(const UObject* WorldContextObject, const int32 SlotIndex)
+{
+	const UWorld* World = GEngine ? GEngine->GetWorldFromContextObject(WorldContextObject, EGetWorldErrorMode::ReturnNull) : nullptr;
+	const AHOLGameState* GameState = World ? World->GetGameState<AHOLGameState>() : nullptr;
+	return GameState ? HOLForumMessages::GetPlayerName(GameState->GetLaunchConfig(), SlotIndex, INDEX_NONE) : FText::GetEmpty();
+}
+
+FLinearColor UHOLMatchStatsReadLibrary::GetWorldSlotColor(const UObject* WorldContextObject, const int32 SlotIndex)
+{
+	const UWorld* World = GEngine ? GEngine->GetWorldFromContextObject(WorldContextObject, EGetWorldErrorMode::ReturnNull) : nullptr;
+	const AHOLGameState* GameState = World ? World->GetGameState<AHOLGameState>() : nullptr;
+	if (!GameState)
+	{
+		return FLinearColor::White;
+	}
+	const TArray<FHOLMatchSlot>& Slots = GameState->GetLaunchConfig().Slots;
+	return Slots.IsValidIndex(SlotIndex) ? FLinearColor(HOLPlayerColors::GetColor(Slots[SlotIndex].ColorIndex)) : FLinearColor::White;
+}
+
+FString UHOLMatchStatsReadLibrary::DescribePlayer(const FHOLPlayerMatchStatsState& Player)
+{
+	return HOLMatchStats::DescribePlayer(ToPlayer(Player));
 }

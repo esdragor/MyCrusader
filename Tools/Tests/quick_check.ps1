@@ -694,7 +694,7 @@ if ($Parts -contains "menu") {
                 "hol.UI.Shown SlotFaction3 SlotSwatch3 SlotColor3 SlotTeam3", "capture qc_fr_takenrow", "hol.UI.Choose SlotState3 0", "frames 3"
             # TC3: the size under the map (Small by default for one player, opened above), "Équipes ensemble" beside it;
             # three players on Medium: Small greyed (not chosen), slot 5 past the 4 places stays closed; back to Small.
-            # TC-Q12: in solo the teams can be chosen (the factions stay greyed), "Équipes ensemble" too.
+            # TC-Q12: in solo the teams can be chosen (the factions too since ec41678), "Équipes ensemble" too.
             Step "mark menu sizes", "hol.UI.Shown SizeDropdown TeamsTogetherDropdown SlotTeam0 SlotFaction0", "hol.UI.Choose SlotTeam0 1", "frames 2",
                 "hol.UI.Choose SlotTeam0 0", "hol.UI.Choose SlotState1 1", "hol.UI.Choose SlotState2 1",
                 "frames 3", "hol.UI.Choose SizeDropdown 1", "hol.UI.Choose SlotState5 1", "frames 3", "capture qc_fr_sizes",
@@ -3595,8 +3595,9 @@ if ($Parts -contains "menu") {
             $SmallLines = @($Sizes | Select-String -SimpleMatch "New game: size Small, 2 places")
             $Checks["size: Small greyed for three players, chosen again for one ($($SmallLines.Count) time(s))"] = $SmallLines.Count -eq 1 -and
                 @($Sizes | Select-String -SimpleMatch "SizeDropdown: value 1 chosen").Count -eq 1
-            $Checks["teams open in solo, factions greyed (TC-Q12)"] = [bool]($Sizes | Select-String -Pattern "Shown SlotTeam0: yes$" -Quiet) -and
-                [bool]($Sizes | Select-String -SimpleMatch "Shown SlotFaction0: yes, greyed" -Quiet) -and
+            # The faction list is open in solo since ec41678 (FactionChoiceInProgress.md lifted the grey): shown, not greyed.
+            $Checks["teams and factions open in solo (TC-Q12)"] = [bool]($Sizes | Select-String -Pattern "Shown SlotTeam0: yes$" -Quiet) -and
+                [bool]($Sizes | Select-String -Pattern "Shown SlotFaction0: yes$" -Quiet) -and
                 [bool]($Sizes | Select-String -Pattern "Shown TeamsTogetherDropdown: yes$" -Quiet)
             $Checks["slot 5 past the 4 places of Medium stays closed"] = [bool]($Sizes | Select-String -SimpleMatch "New game: slot 5 stays closed, past the 4 places of the size" -Quiet)
             # IA0.6 S1: "IA" chosen on slot 1 in solo (a greyed option is ignored by Choose: no "value 2 chosen"), colour and team shown.

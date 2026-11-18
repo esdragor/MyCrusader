@@ -143,11 +143,11 @@ $Pick = { param($Who, $Line) @("waitlog : 2 players (", "waitui", "wait 1", "hol
     "wait 0.5") + (& $Press ReadyButton) + @("waitlog Lobby: ready on accepted") }
 # TC3: the leader turns the new lobby (Large) to Small: two places, Plain_Small.
 $ToSmall = @("waitlog map Plain Large teams together 1:", "waitui", "hol.UI.Choose SizeDropdown 1",
-    "waitlog settings Plain size Small teams together 1 nomad 0 regicide 0 catastrophe 0 accepted")
+    "waitlog settings Plain size Small teams together 1 nomad 0 regicide 0 catastrophe 0 sacred sites 0 accepted")
 $InMatch = { param($Who) @("waitlog Lobby: joining match", "waitmap $PlainMap", "waitlog Camera above the start", "frames 60", "capture lobby_match_$($Who.ToLower())") }
 # -Team: the leader turns the new lobby to Moyenne (4 places), sets the camps: Alice (slot 0) and an AI (slot 2) in camp 1, Bob (slot 1, his own team below) and an AI (slot 3) in camp 2.
 $ToMedium = @("waitlog map Plain Large teams together 1:", "waitui", "hol.UI.Choose SizeDropdown 2",
-    "waitlog settings Plain size Medium teams together 1 nomad 0 regicide 0 catastrophe 0 accepted", "wait 1",
+    "waitlog settings Plain size Medium teams together 1 nomad 0 regicide 0 catastrophe 0 sacred sites 0 accepted", "wait 1",
     "hol.UI.Choose SlotTeam0 1", "waitlog Lobby: team 1 accepted", "wait 0.5",
     "hol.UI.Choose SlotState2 4", "waitlog Lobby: slot 2 ai accepted", "wait 0.5", "hol.UI.Choose SlotTeam2 1", "waitlog Lobby: ai 2 team 1 accepted", "wait 0.5",
     "hol.UI.Choose SlotState3 4", "waitlog Lobby: slot 3 ai accepted", "wait 0.5", "hol.UI.Choose SlotTeam3 2", "waitlog Lobby: ai 3 team 2 accepted", "wait 0.5")
@@ -274,7 +274,7 @@ if ($Faction) {
         if (-not $Status) { throw "the manager does not answer on $Url" }
         $Games.Alice = Start-Game Alice (@("waitmap MainMenu", "waitui", "hol.UI.Open Multiplayer", "waitui", "waitlog Multiplayer: 0 lobbies shown", "frames 3") +
             (& $Press CreateButton) + @("waitlog map Plain Large teams together 1:", "waitui", "hol.UI.Choose SizeDropdown 2",
-            "waitlog settings Plain size Medium teams together 1 nomad 0 regicide 0 catastrophe 0 accepted", "wait 1", "hol.Faction.Cheat 1", "frames 5",
+            "waitlog settings Plain size Medium teams together 1 nomad 0 regicide 0 catastrophe 0 sacred sites 0 accepted", "wait 1", "hol.Faction.Cheat 1", "frames 5",
             "hol.UI.Choose SlotFaction0 1", "waitlog Lobby: faction BlackLegions accepted", "wait 0.5",
             "hol.UI.Choose SlotFaction0 5", "waitlog Lobby: faction Templars accepted", "wait 0.5",
             "hol.UI.Choose SlotState2 4", "waitlog Lobby: slot 2 ai accepted", "wait 0.5",

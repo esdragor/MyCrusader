@@ -8,8 +8,12 @@
 #include "HOLDropdown.generated.h"
 
 class UCommonTextBlock;
+class UHOLDropdown;
 class UHOLDropdownList;
 class UImage;
+
+/** NG-1a (D851): a value taken in a drop-down list, for the script (the native OnSelectionChanged cannot be bound from it): the list and the index. */
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FHOLDropdownChosen, UHOLDropdown*, Dropdown, int32, Index);
 
 /** The anchor of a drop-down list: no engine menu background, the list draws its own panel. */
 UCLASS()
@@ -40,30 +44,45 @@ public:
 	UHOLDropdown(const FObjectInitializer& ObjectInitializer);
 
 	/** Values and the one shown first. */
+	UFUNCTION(BlueprintCallable, Category = "HOL|Dropdown")
 	void SetOptions(const TArray<FText>& InOptions, int32 InSelectedIndex = 0);
 	/** A colour square before each value in the list (player colours); none if empty. */
+	UFUNCTION(BlueprintCallable, Category = "HOL|Dropdown")
 	void SetOptionSwatches(const TArray<FLinearColor>& InSwatches);
 	/** Greys one value in the list: it is shown but cannot be taken. */
+	UFUNCTION(BlueprintCallable, Category = "HOL|Dropdown")
 	void SetOptionEnabled(int32 Index, bool bEnabled);
 
-	/** Shows a value, without broadcasting OnSelectionChanged. */
+	/** Shows a value, without broadcasting OnSelectionChanged (nor OnChosen). */
+	UFUNCTION(BlueprintCallable, Category = "HOL|Dropdown")
 	void SetSelectedIndex(int32 Index);
+	UFUNCTION(BlueprintPure, Category = "HOL|Dropdown")
 	int32 GetSelectedIndex() const { return SelectedIndex; }
 	/** The text the dropdown shows (its value's, unless the screen shows another one); hol.UI.Text for the scripted trials. */
+	UFUNCTION(BlueprintPure, Category = "HOL|Dropdown")
 	FText GetShownText() const;
 	/** Shows another text than the value's (IA0.6 S2: the slot's name), until the next SetSelectedIndex; the list keeps its values. */
+	UFUNCTION(BlueprintCallable, Category = "HOL|Dropdown")
 	void SetShownText(const FText& Text);
 
+	UFUNCTION(BlueprintPure, Category = "HOL|Dropdown")
 	bool IsListOpen() const;
 	/** Opens the list (as a click does) or closes it without a choice; for the scripted trials. */
+	UFUNCTION(BlueprintCallable, Category = "HOL|Dropdown")
 	void OpenList();
+	UFUNCTION(BlueprintCallable, Category = "HOL|Dropdown")
 	void CloseList();
 	/** A value taken in the list (as a click on it does; also hol.UI.Choose for the scripted trials). */
+	UFUNCTION(BlueprintCallable, Category = "HOL|Dropdown")
 	void Choose(int32 Index);
 
 	/** The player took a value in the list (a different one from the value shown). */
 	DECLARE_MULTICAST_DELEGATE_OneParam(FOnSelectionChanged, int32 /*Index*/);
 	FOnSelectionChanged OnSelectionChanged;
+
+	/** The same event for the script (Dropdown.OnChosen.AddUFunction(this, n"OnDropdownChosen"), (UHOLDropdown, int32)); broadcast just after OnSelectionChanged. */
+	UPROPERTY(BlueprintAssignable, Category = "HOL|Dropdown")
+	FHOLDropdownChosen OnChosen;
 
 protected:
 	virtual void NativeOnInitialized() override;

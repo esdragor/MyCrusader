@@ -1,0 +1,6 @@
+# <nom de capture> | ce que l'utilisateur doit voir
+ecran_np_ouverture | ecran Nouvelle partie : en haut les listes Carte, Taille (Petite), Brouillard et Equipes ensemble ; la grille de 8 places (« Vous » en place 1, « IA Normal 2 » avec sa liste de niveau Normal en place 2, les 6 autres Fermees) avec colonnes alignees etat / niveau / faction / pastille et couleur / equipe ; en bas les options et les boutons Retour et Lancer, rien de coupe
+ecran_np_ia_niveau | les places 2 et 3 de la grille sur IA (« IA Normal 2 », « IA Normal 3 »), chacune avec sa liste de niveau (Normal, en gris) affichee sur sa ligne, la place 3 en Vert ; la liste Taille sur Moyenne (4 joueurs) ; les notes jaunes du scenario se superposent en haut de l'image
+ecran_np_couleur | les places 2, 3 et 4 de la grille ouvertes, avec des pastilles de couleur toutes DIFFERENTES (Rouge, Jaune, Turquoise ; la place 4 a saute a la couleur libre suivante apres que la place 3 a pris la sienne)
+ecran_np_taille_liste | la liste Taille ouverte sous la liste, l'entree Petite grisee (4 joueurs, 2 places), Moyenne et les suivantes en clair
+ecran_np_retour | ecran titre : Jouer, Multijoueur, Reglages, Quitter

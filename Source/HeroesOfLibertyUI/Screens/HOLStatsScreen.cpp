@@ -17,6 +17,7 @@
 #include "Match/HOLMatchStatsSubsystem.h"
 #include "Match/HOLPlayerColors.h"
 #include "TimerManager.h"
+#include "UObject/UObjectIterator.h"
 #include "Screens/HOLGameMenuScreen.h"
 #include "Style/HOLUIStyles.h"
 #include "Widgets/HOLButton.h"
@@ -61,6 +62,11 @@ UHOLStatsScreen* UHOLStatsScreen::Open(APlayerController* PlayerController)
 
 void UHOLStatsScreen::BuildLayout()
 {
+	if (IsScriptScreen())
+	{
+		BP_BuildStats();
+		return;
+	}
 	using namespace UE::HeroesOfLiberty::UI::StatsScreen;
 	UVerticalBox* Column = MakeDialogColumn();
 	AddText(Column, TEXT("Heading"), LOCTEXT("Heading", "Statistiques"), UHOLTextStyleHeading::StaticClass(), 16.f);
@@ -241,6 +247,11 @@ void UHOLStatsScreen::SelectSeries(const int32 Index)
 
 void UHOLStatsScreen::RefreshTimeline()
 {
+	if (IsScriptScreen())
+	{
+		BP_RefreshTimeline(SeriesIndex);
+		return;
+	}
 	using namespace UE::HeroesOfLiberty::UI::StatsScreen;
 	const UWorld* World = GetWorld();
 	const UHOLMatchStatsSubsystem* Subsystem = World ? World->GetSubsystem<UHOLMatchStatsSubsystem>() : nullptr;
@@ -307,6 +318,11 @@ void UHOLStatsScreen::OnRefused()
 
 void UHOLStatsScreen::Refresh()
 {
+	if (IsScriptScreen())
+	{
+		BP_RefreshStats(bRefused);
+		return;
+	}
 	using namespace UE::HeroesOfLiberty::UI::StatsScreen;
 	const UWorld* World = GetWorld();
 	const UHOLMatchStatsSubsystem* Subsystem = World ? World->GetSubsystem<UHOLMatchStatsSubsystem>() : nullptr;
@@ -332,53 +348,13 @@ void UHOLStatsScreen::Refresh()
 		return;
 	}
 
-	const auto AddCell = [this](UGridPanel* Grid, const int32 Row, const int32 Column, const FText& Text, const bool bHeader,
-		const FLinearColor* Color = nullptr)
-	{
-		UCommonTextBlock* Cell = WidgetTree->ConstructWidget<UCommonTextBlock>(UCommonTextBlock::StaticClass());
-		Cell->SetStyle(bHeader ? UHOLTextStyleNote::StaticClass() : UHOLTextStyleBody::StaticClass());
-		Cell->SetText(Text);
-		// The player's colour as a swatch before the name, as the lobby's slots: the text style would override the
-		// text's own colour once the cell is built.
-		UWidget* CellContent = Cell;
-		if (Color)
-		{
-			UHorizontalBox* NameBox = WidgetTree->ConstructWidget<UHorizontalBox>(UHorizontalBox::StaticClass());
-			UImage* Swatch = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass());
-			Swatch->SetColorAndOpacity(*Color);
-			Swatch->SetDesiredSizeOverride(FVector2D(SwatchSize, SwatchSize));
-			UHorizontalBoxSlot* SwatchSlot = NameBox->AddChildToHorizontalBox(Swatch);
-			SwatchSlot->SetVerticalAlignment(VAlign_Center);
-			SwatchSlot->SetPadding(FMargin(0.f, 0.f, SwatchGap, 0.f));
-			NameBox->AddChildToHorizontalBox(Cell)->SetVerticalAlignment(VAlign_Center);
-			CellContent = NameBox;
-		}
-		UGridSlot* CellSlot = Grid->AddChildToGrid(CellContent, Row, Column);
-		// The name on the left, the figures on the right of their column, as a sheet of numbers.
-		CellSlot->SetHorizontalAlignment(Column == 0 ? HAlign_Left : HAlign_Right);
-		CellSlot->SetVerticalAlignment(VAlign_Center);
-		CellSlot->SetPadding(FMargin(Column == 0 ? 0.f : ColumnGap, 0.f, 0.f, Row == 0 ? RowGap * 2.f : RowGap));
-		if (Column == 0)
-		{
-			Cell->SetMinDesiredWidth(Color ? NameWidth - SwatchSize - SwatchGap : NameWidth);
-		}
-	};
-
-	const TArray<FText> Headers[] =
-	{
-		{ LOCTEXT("Player", "Joueur"), LOCTEXT("Team", "Équipe"), LOCTEXT("Result", "Résultat"),
-			LOCTEXT("MilitaryScore", "Score militaire"), LOCTEXT("EconomyScore", "Score économique"), LOCTEXT("Total", "Total") },
-		{ LOCTEXT("Player", "Joueur"), LOCTEXT("Killed", "Tués"), LOCTEXT("Lost", "Perdus"), LOCTEXT("BuildingsLost", "Bâtiments perdus"),
-			LOCTEXT("MaxMilitary", "Armée max") },
-		{ LOCTEXT("Player", "Joueur"), LOCTEXT("Food", "Nourriture"), LOCTEXT("Wood", "Bois"), LOCTEXT("Stone", "Pierre"), LOCTEXT("Gold", "Or"),
-			LOCTEXT("Trained", "Produits"), LOCTEXT("MaxWorkers", "Péons max"), LOCTEXT("MaxPopulation", "Population max") },
-	};
+	const TArray<FText> Headers[] = { HeadersOf(0), HeadersOf(1), HeadersOf(2) };
 	for (int32 Tab = 0; Tab < Timeline; ++Tab)
 	{
 		Grids[Tab]->ClearChildren();
 		for (int32 Column = 0; Column < Headers[Tab].Num(); ++Column)
 		{
-			AddCell(Grids[Tab], 0, Column, Headers[Tab][Column], true);
+			AddStatsCell(Grids[Tab], 0, Column, Headers[Tab][Column], true, false, FLinearColor::White);
 		}
 	}
 
@@ -396,7 +372,7 @@ void UHOLStatsScreen::Refresh()
 		const FLinearColor Color(HOLPlayerColors::GetColor(Slots[SlotIndex].ColorIndex));
 		for (int32 Tab = 0; Tab < Timeline; ++Tab)
 		{
-			AddCell(Grids[Tab], Row, 0, NameText, false, &Color);
+			AddStatsCell(Grids[Tab], Row, 0, NameText, false, true, Color);
 		}
 		const auto Number = [](const int32 Value) { return FText::AsNumber(Value); };
 		const int32 MilitaryScore = HOLMatchStats::GetMilitaryScore(Player);
@@ -415,7 +391,7 @@ void UHOLStatsScreen::Refresh()
 		{
 			for (int32 Column = 1; Column < Headers[Tab].Num(); ++Column)
 			{
-				AddCell(Grids[Tab], Row, Column, Values[Tab][Column - 1], false);
+				AddStatsCell(Grids[Tab], Row, Column, Values[Tab][Column - 1], false, false, FLinearColor::White);
 			}
 		}
 		UE_LOG(LogHOLUI, Display, TEXT("Stats screen: row %s (slot %d) military %d economy %d, %s"), *NameText.ToString(), SlotIndex, MilitaryScore, EconomyScore,
@@ -423,6 +399,200 @@ void UHOLStatsScreen::Refresh()
 		++Row;
 	}
 	RefreshTimeline();
+}
+
+TSubclassOf<UHOLStatsScreen> UHOLStatsScreen::FindScriptClass()
+{
+	// Angelscript's hot reload keeps the older classes, flagged CLASS_NewerVersionExists; the C++ class is concrete (until ST-3), so it is skipped.
+	for (TObjectIterator<UClass> It; It; ++It)
+	{
+		if (*It != StaticClass() && It->IsChildOf(StaticClass()) && !It->HasAnyClassFlags(CLASS_Abstract | CLASS_NewerVersionExists | CLASS_Deprecated))
+		{
+			return *It;
+		}
+	}
+	return nullptr;
+}
+
+bool UHOLStatsScreen::IsScriptScreen() const
+{
+	return GetClass() != StaticClass();
+}
+
+UVerticalBox* UHOLStatsScreen::MakeStatsColumn()
+{
+	return MakeDialogColumn();
+}
+
+UCommonTextBlock* UHOLStatsScreen::AddStatsText(UVerticalBox* Column, const FName Name, const FText& Text, const int32 Style)
+{
+	if (Style == 0)
+	{
+		return AddText(Column, Name, Text, UHOLTextStyleHeading::StaticClass(), 16.f);
+	}
+	return AddText(Column, Name, Text, UHOLTextStyleBody::StaticClass(), 0.f);
+}
+
+UHorizontalBox* UHOLStatsScreen::AddStatsRow(UVerticalBox* Column)
+{
+	return AddButtonRow(Column);
+}
+
+UHOLButton* UHOLStatsScreen::AddStatsButton(UHorizontalBox* Row, const FName Name, const FText& Label)
+{
+	return AddButton(Row, Name, Label);
+}
+
+UWidgetSwitcher* UHOLStatsScreen::AddStatsPages(UVerticalBox* Column)
+{
+	TabPages = WidgetTree->ConstructWidget<UWidgetSwitcher>(UWidgetSwitcher::StaticClass(), TEXT("TabPages"));
+	UVerticalBoxSlot* PagesSlot = Column->AddChildToVerticalBox(TabPages);
+	PagesSlot->SetHorizontalAlignment(HAlign_Center);
+	PagesSlot->SetPadding(FMargin(0.f, 24.f, 0.f, 24.f));
+	Grids.Reset();
+	return TabPages;
+}
+
+UGridPanel* UHOLStatsScreen::AddStatsGridPage()
+{
+	if (!TabPages)
+	{
+		return nullptr;
+	}
+	UGridPanel* Grid = WidgetTree->ConstructWidget<UGridPanel>(UGridPanel::StaticClass());
+	TabPages->AddChild(Grid);
+	Grids.Add(Grid);
+	return Grid;
+}
+
+UVerticalBox* UHOLStatsScreen::AddStatsTimelinePage()
+{
+	if (!TabPages)
+	{
+		return nullptr;
+	}
+	UVerticalBox* TimelinePage = WidgetTree->ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass());
+	TabPages->AddChild(TimelinePage);
+	SeriesButtons.Reset();
+	return TimelinePage;
+}
+
+UHorizontalBox* UHOLStatsScreen::AddStatsSeriesRow(UVerticalBox* TimelinePage)
+{
+	UHorizontalBox* SeriesRow = WidgetTree->ConstructWidget<UHorizontalBox>(UHorizontalBox::StaticClass());
+	TimelinePage->AddChildToVerticalBox(SeriesRow)->SetHorizontalAlignment(HAlign_Center);
+	return SeriesRow;
+}
+
+UHOLButton* UHOLStatsScreen::AddStatsSeriesButton(UHorizontalBox* Row, const FName Name, const FText& Label)
+{
+	UHOLButton* Button = AddButton(Row, Name, Label);
+	SeriesButtons.Add(Button);
+	return Button;
+}
+
+UHOLStatsGraph* UHOLStatsScreen::AddStatsGraph(UVerticalBox* TimelinePage)
+{
+	using namespace UE::HeroesOfLiberty::UI::StatsScreen;
+	USizeBox* GraphBox = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass());
+	GraphBox->SetWidthOverride(GraphWidth);
+	GraphBox->SetHeightOverride(GraphHeight);
+	Graph = WidgetTree->ConstructWidget<UHOLStatsGraph>(UHOLStatsGraph::StaticClass(), TEXT("StatsGraph"));
+	GraphBox->AddChild(Graph);
+	UVerticalBoxSlot* GraphSlot = TimelinePage->AddChildToVerticalBox(GraphBox);
+	GraphSlot->SetHorizontalAlignment(HAlign_Center);
+	GraphSlot->SetPadding(FMargin(0.f, 16.f, 0.f, 0.f));
+	return Graph;
+}
+
+void UHOLStatsScreen::AddStatsCell(UGridPanel* Grid, const int32 Row, const int32 Column, const FText& Text, const bool bHeader, const bool bColored,
+	const FLinearColor& Color)
+{
+	using namespace UE::HeroesOfLiberty::UI::StatsScreen;
+	if (!Grid)
+	{
+		return;
+	}
+	UCommonTextBlock* Cell = WidgetTree->ConstructWidget<UCommonTextBlock>(UCommonTextBlock::StaticClass());
+	Cell->SetStyle(bHeader ? UHOLTextStyleNote::StaticClass() : UHOLTextStyleBody::StaticClass());
+	Cell->SetText(Text);
+	// The player's colour as a swatch before the name, as the lobby's slots: the text style would override the
+	// text's own colour once the cell is built.
+	UWidget* CellContent = Cell;
+	if (bColored)
+	{
+		UHorizontalBox* NameBox = WidgetTree->ConstructWidget<UHorizontalBox>(UHorizontalBox::StaticClass());
+		UImage* Swatch = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass());
+		Swatch->SetColorAndOpacity(Color);
+		Swatch->SetDesiredSizeOverride(FVector2D(SwatchSize, SwatchSize));
+		UHorizontalBoxSlot* SwatchSlot = NameBox->AddChildToHorizontalBox(Swatch);
+		SwatchSlot->SetVerticalAlignment(VAlign_Center);
+		SwatchSlot->SetPadding(FMargin(0.f, 0.f, SwatchGap, 0.f));
+		NameBox->AddChildToHorizontalBox(Cell)->SetVerticalAlignment(VAlign_Center);
+		CellContent = NameBox;
+	}
+	UGridSlot* CellSlot = Grid->AddChildToGrid(CellContent, Row, Column);
+	// The name on the left, the figures on the right of their column, as a sheet of numbers.
+	CellSlot->SetHorizontalAlignment(Column == 0 ? HAlign_Left : HAlign_Right);
+	CellSlot->SetVerticalAlignment(VAlign_Center);
+	CellSlot->SetPadding(FMargin(Column == 0 ? 0.f : ColumnGap, 0.f, 0.f, Row == 0 ? RowGap * 2.f : RowGap));
+	if (Column == 0)
+	{
+		Cell->SetMinDesiredWidth(bColored ? NameWidth - SwatchSize - SwatchGap : NameWidth);
+	}
+}
+
+TArray<FText> UHOLStatsScreen::HeadersOf(const int32 Tab)
+{
+	switch (Tab)
+	{
+	case 0:
+		return { LOCTEXT("Player", "Joueur"), LOCTEXT("Team", "Équipe"), LOCTEXT("Result", "Résultat"),
+			LOCTEXT("MilitaryScore", "Score militaire"), LOCTEXT("EconomyScore", "Score économique"), LOCTEXT("Total", "Total") };
+	case 1:
+		return { LOCTEXT("Player", "Joueur"), LOCTEXT("Killed", "Tués"), LOCTEXT("Lost", "Perdus"), LOCTEXT("BuildingsLost", "Bâtiments perdus"),
+			LOCTEXT("MaxMilitary", "Armée max") };
+	case 2:
+		return { LOCTEXT("Player", "Joueur"), LOCTEXT("Food", "Nourriture"), LOCTEXT("Wood", "Bois"), LOCTEXT("Stone", "Pierre"), LOCTEXT("Gold", "Or"),
+			LOCTEXT("Trained", "Produits"), LOCTEXT("MaxWorkers", "Péons max"), LOCTEXT("MaxPopulation", "Population max") };
+	default:
+		return {};
+	}
+}
+
+FText UHOLStatsScreen::TextOf(const FName Key)
+{
+	const auto Is = [&Key](const TCHAR* Name) { return Key == FName(Name); };
+	if (Is(TEXT("Heading"))) { return LOCTEXT("Heading", "Statistiques"); }
+	if (Is(TEXT("Summary"))) { return LOCTEXT("Summary", "Résumé"); }
+	if (Is(TEXT("Military"))) { return LOCTEXT("Military", "Militaire"); }
+	if (Is(TEXT("Economy"))) { return LOCTEXT("Economy", "Économie"); }
+	if (Is(TEXT("Timeline"))) { return LOCTEXT("Timeline", "Chronologie"); }
+	if (Is(TEXT("SeriesWorkers"))) { return LOCTEXT("SeriesWorkers", "Péons"); }
+	if (Is(TEXT("SeriesMilitary"))) { return LOCTEXT("SeriesMilitary", "Armée"); }
+	if (Is(TEXT("SeriesPopulation"))) { return LOCTEXT("SeriesPopulation", "Population"); }
+	if (Is(TEXT("SeriesBuildings"))) { return LOCTEXT("SeriesBuildings", "Bâtiments"); }
+	if (Is(TEXT("SeriesGathered"))) { return LOCTEXT("SeriesGathered", "Ressources récoltées"); }
+	if (Is(TEXT("SeriesStock"))) { return LOCTEXT("SeriesStock", "Stock"); }
+	if (Is(TEXT("Back"))) { return LOCTEXT("Back", "Retour"); }
+	if (Is(TEXT("Refused"))) { return LOCTEXT("Refused", "Les statistiques seront disponibles à la fin de la partie."); }
+	if (Is(TEXT("Waiting"))) { return LOCTEXT("Waiting", "Statistiques en attente du serveur…"); }
+	if (Is(TEXT("Winner"))) { return LOCTEXT("Winner", "Vainqueur"); }
+	if (Is(TEXT("Defeated"))) { return LOCTEXT("Defeated", "Vaincu"); }
+	if (Is(TEXT("Playing"))) { return LOCTEXT("Playing", "En jeu"); }
+	if (Is(TEXT("Dash"))) { return FText::AsCultureInvariant(TEXT("—")); }
+	return FText::GetEmpty();
+}
+
+FText UHOLStatsScreen::NumberText(const int32 Value)
+{
+	return FText::AsNumber(Value);
+}
+
+FText UHOLStatsScreen::MakeMarkLabel(const int32 Kind, const FText& PlayerName)
+{
+	return FText::Format(Kind == static_cast<int32>(EHOLMatchStatsEvent::Defeated) ? LOCTEXT("MarkDefeated", "{0} vaincu")
+		: LOCTEXT("MarkForumFell", "Forum de {0} tombé"), PlayerName);
 }
 
 #undef LOCTEXT_NAMESPACE

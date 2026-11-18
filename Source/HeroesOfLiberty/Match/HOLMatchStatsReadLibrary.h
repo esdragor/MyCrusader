@@ -129,6 +129,33 @@ struct HEROESOFLIBERTY_API FHOLMatchStatsChunkState
 	bool bComplete = true;
 };
 
+/** A row of the statistics tables (a slot held by a human or an AI, closed ones left out), in the slots' order (ST-1). */
+USTRUCT(BlueprintType)
+struct HEROESOFLIBERTY_API FHOLStatsRowState
+{
+	GENERATED_BODY()
+
+	/** The slot, also the index of its FHOLPlayerMatchStatsState in FHOLMatchStatsState::Players. */
+	UPROPERTY(BlueprintReadWrite, Category = "MatchStats")
+	int32 SlotIndex = INDEX_NONE;
+
+	/** The lobby's name, an AI's "IA Difficile 3", else "Joueur N" (HOLForumMessages::GetPlayerName). */
+	UPROPERTY(BlueprintReadWrite, Category = "MatchStats")
+	FText Name;
+
+	/** The player's colour (HOLPlayerColors). */
+	UPROPERTY(BlueprintReadWrite, Category = "MatchStats")
+	FLinearColor Color = FLinearColor::White;
+
+	/** 0: no team (shown "—"), else the team number. */
+	UPROPERTY(BlueprintReadWrite, Category = "MatchStats")
+	int32 Team = 0;
+
+	/** 0 Playing, 1 Winner, 2 Defeated. */
+	UPROPERTY(BlueprintReadWrite, Category = "MatchStats")
+	int32 Result = 0;
+};
+
 /**
  * The pure rules of the match statistics (HOLMatchStats, Match/HOLMatchStats.h, C++, recorded by the server) for Angelscript (namespace
  * HOLMatchStatsRead there): D836 keeps the rules in C++ and the script reads them here, so that their test (HOLMatchStatsTests.cpp) can be
@@ -216,4 +243,28 @@ public:
 	/** HOLMatchStats::MakeCurve (SeriesIndex as GetSeriesValue): one point a sample, X the match time, Y the value; out of range: Y 0. */
 	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|MatchStats")
 	static TArray<FVector2D> MakeCurve(const FHOLPlayerMatchStatsState& Player, int32 SeriesIndex);
+
+	/** What UHOLMatchStatsSubsystem::GetStats holds now (solo: the recording, client: the copy received), as the script's state; empty without a subsystem. */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|MatchStats", meta = (WorldContext = "WorldContextObject"))
+	static FHOLMatchStatsState GetWorldStats(const UObject* WorldContextObject);
+
+	/** True when the subsystem holds at least one player table (the screen shows "waiting for the server" otherwise). */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|MatchStats", meta = (WorldContext = "WorldContextObject"))
+	static bool HasWorldStats(const UObject* WorldContextObject);
+
+	/** The rows of the tables from the game state's launch configuration and results (name, colour, team, result), in the slots' order; empty without a game state. */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|MatchStats", meta = (WorldContext = "WorldContextObject"))
+	static TArray<FHOLStatsRowState> GetWorldStatsRows(const UObject* WorldContextObject);
+
+	/** The name of any slot, a closed one too (a mark of the timeline names the player of an event): the lobby's name, an AI's "IA Difficile 3", else "Joueur N"; empty without a game state. */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|MatchStats", meta = (WorldContext = "WorldContextObject"))
+	static FText GetWorldSlotName(const UObject* WorldContextObject, int32 SlotIndex);
+
+	/** The colour of any slot (HOLPlayerColors), white without a game state or for a slot out of range. */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|MatchStats", meta = (WorldContext = "WorldContextObject"))
+	static FLinearColor GetWorldSlotColor(const UObject* WorldContextObject, int32 SlotIndex);
+
+	/** HOLMatchStats::DescribePlayer (the one-line description the screen writes to the log for each row). */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|MatchStats")
+	static FString DescribePlayer(const FHOLPlayerMatchStatsState& Player);
 };
