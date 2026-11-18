@@ -382,8 +382,12 @@ if ((Routes & 32) != 0 && RouteTalent != nullptr)
 }
 if ((Routes & 64) != 0)
 	Commands.Add("hol.Duel.Accept");
-if ((Routes & 128) != 0)
-	Commands.Add("hol.Diplomacy.Stance 1 ally");
+if ((Routes & 128) != 0 && RouteTalent != nullptr)
+{
+	// The console command hol.Diplomacy.Stance calls the C++ RequestStance (direct C++ RPC); only the interface's script call HOLRpc::RequestStance takes the script route.
+	Log(n"LogHOLMatch", f"RpcRoute: the client runs 'HOLRpc::RequestStance 1 ally'");
+	HOLRpc::RequestStance(RouteTalent, 1, 2);
+}
 if ((Routes & 256) != 0)
 {
 	Commands.Add("hol.Prod.Queue Peasant");
