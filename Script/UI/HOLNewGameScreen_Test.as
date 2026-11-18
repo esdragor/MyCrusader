@@ -6,35 +6,23 @@
 UHOLNewGameScreen NGS_CreateScreen(FUnitTest& T)
 {
 	const TSubclassOf<UHOLNewGameScreen> Found = UHOLNewGameScreen::FindScriptClass();
-	APlayerController Controller = Gameplay::GetPlayerController(0);
 	if (!Found.IsValid())
 	{
 		T.AssertTrue(false, "the New game screen has a script class to create");
 		return nullptr;
 	}
-	if (Controller == nullptr)
-	{
-		T.AssertTrue(false, "a player controller exists to create the New game screen");
-		return nullptr;
-	}
+	// A script unit test's world has no local player: the C++ test library builds the world, the player and the screen the way the game does.
 	TSubclassOf<UUserWidget> Wanted = Found;
-	UHOLNewGameScreen Screen = Cast<UHOLNewGameScreen>(WidgetBlueprint::CreateWidget(Wanted, Controller));
+	UHOLNewGameScreen Screen = Cast<UHOLNewGameScreen>(HOLScreenTest::CreateScreenForTest(Wanted));
 	if (Screen == nullptr)
 		T.AssertTrue(false, "the New game screen is created");
 	return Screen;
 }
 
-// A widget of the screen by its name (no GetWidgetFromName binding here: UUserWidget::GetAllWidgets is the one that exists).
+// A widget of the screen by its name (the widget tree's own search, through the test library).
 UWidget NGS_Find(UHOLNewGameScreen Screen, FName Name)
 {
-	TArray<UWidget> All;
-	Screen.GetAllWidgets(All);
-	for (int Index = 0; Index < All.Num(); Index++)
-	{
-		if (All[Index] != nullptr && All[Index].GetName() == Name)
-			return All[Index];
-	}
-	return nullptr;
+	return HOLScreenTest::FindWidgetByName(Screen, Name);
 }
 
 void Test_NewGameScriptClass(FUnitTest& T)
@@ -69,6 +57,7 @@ void Test_NewGameWidgets(FUnitTest& T)
 	T.AssertTrue(NGS_Find(Screen, n"Heading") != nullptr, "the heading exists");
 	T.AssertTrue(NGS_Find(Screen, n"LaunchButton") != nullptr, "the launch button exists");
 	T.AssertTrue(NGS_Find(Screen, n"BackButton") != nullptr, "the back button exists");
+	HOLScreenTest::EndScreenTest();
 }
 
 void Test_NewGameSlotCount(FUnitTest& T)
@@ -87,4 +76,5 @@ void Test_NewGameSlotCount(FUnitTest& T)
 	for (int SlotIndex = 1; SlotIndex < 8; SlotIndex++)
 		T.AssertTrue(NGS_Find(Screen, FName("SlotState" + SlotIndex)) != nullptr, "the slot " + SlotIndex + " has its state list");
 	T.AssertTrue(NGS_Find(Screen, n"SlotYou0") != nullptr, "the slot 0 is the player's (Vous)");
+	HOLScreenTest::EndScreenTest();
 }
