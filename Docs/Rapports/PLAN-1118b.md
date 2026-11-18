@@ -81,3 +81,8 @@ Risques : (a) ordre entre canaux en migration par familles (§2) ; (b) script no
 ## Réponses de l'utilisateur (2026-11-18, D846)
 - Q1 critère de latence : A (local seulement, médiane et p95 < 1 pas, 100 % reçu, 0 inversion).
 - Q2 bascule : A (une seule cvar hol.Rpc.OrderScript pour les 16 ordres).
+
+
+## Verdict de l'utilisateur sur la mesure (2026-11-18, D848)
+- Verdict : A (adopter le script : cvar a 1 par defaut, preuves reseau avec effet, puis retrait des 16 RPC C++).
+- Commandes de preuve hol.Units.* : gardees hors build final ; cvar hol.Rpc.ProofSpawn : oui derriere -HOLCheats ; UngarrisonAll : route comme les autres.
