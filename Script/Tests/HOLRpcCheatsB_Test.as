@@ -1,6 +1,6 @@
 // MIG2-S3 T9 lot L4 Cheats, group B (CELEBORN-1117q): the pure rules of the script RPCs ServerCheatWound, ServerCheatDamageBuilding, ServerCheatSpawnBuilding, ServerCheatDefeat,
 // ServerCheatFallForum, ServerCheatSkipForum, ServerCheatHoldPresence of Script/Net/HOLRpcPlayer.as. The first argument is "cheats active" (R3.5: the bridge asks the C++ AHOLPlayerController::IsCheatRefused);
-// the bodies stay the C++ _Implementation (called by the bridge), the script only validates. RED FIRST for the main session: replace each body by `return 0;` (stub), run quick_check -Parts tests, then restore.
+// the bodies stay the C++ Do<X> (called by the bridge), the script only validates. RED FIRST for the main session: replace each body by `return 0;` (stub), run quick_check -Parts tests, then restore.
 
 void Test_RpcCheatWoundRefusal(FUnitTest& T)
 {

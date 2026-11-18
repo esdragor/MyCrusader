@@ -1,5 +1,5 @@
 // MIG2-S3 T8 lot L3 (HALDIR-1117q): the pure rules of the script RPCs of the Economy lot (ServerQueueProduction, ServerCancelProduction, ServerTribute, ServerMarketTrade) of Script/Net/HOLRpcPlayer.as.
-// The sender is the owner's slot (D288); the production (UHOLCommandSubsystem::IssueProductionOrder) decides owner, type, queue, stock, Market, lots at its step, as for the C++ RPC.
+// The sender is the owner's slot (D288); the production (UHOLCommandSubsystem::IssueProductionOrder) decides owner, type, queue, stock, Market, lots at its step, as the retired C++ RPC did.
 // RED FIRST for the main session: replace each body by `return 0;` (stub), run quick_check -Parts tests, then restore.
 
 void Test_RpcQueueProductionRefusal(FUnitTest& T)

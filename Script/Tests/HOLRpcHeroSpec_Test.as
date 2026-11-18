@@ -1,6 +1,6 @@
 // MIG2-S3 T4 lot L1 (HALDIR-1117o): the pure rules of the script RPCs of the Specialization lot (ServerStartSpecialization, ServerCancelSpecialization) and the Hero lot (ServerReturnHero,
 // ServerHeroTalent, ServerHeroAbility, ServerCastRage, ServerWatchUnit) of Script/Net/HOLRpcPlayer.as. The sender is the owner's slot (D288); a spectator is refused; the board and the hero rules
-// decide the rest at the step's end, as for the C++ RPC. RED FIRST for the main session: replace each body by `return 0;` (stub), run quick_check -Parts tests, then restore.
+// decide the rest at the step's end, as the retired C++ RPC did. RED FIRST for the main session: replace each body by `return 0;` (stub), run quick_check -Parts tests, then restore.
 
 void Test_RpcSeatRefusal(FUnitTest& T)
 {

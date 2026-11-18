@@ -1,6 +1,6 @@
 // MIG2-S3 pilot (D842 Q1 = A, ELROND-1117o): the rule of the script RPC ServerDiplomacyStance (Script/Net/HOLRpcPlayer.as), pure: HOLRpc::StanceRefusal(Sender, Target, Stance)
 // says why an order is not queued (0 = queue it). The Sender is the owner's slot read by the server (D288), never a number the client says; the rest (the mode, the pair, the
-// lock) stays HOLDiplomacy::SetStance's at the next step, as for the C++ RPC. RED FIRST: this file compiles only with HOLRpcPlayer.as (absent at the red commit: no function).
+// lock) stays HOLDiplomacy::SetStance's at the next step, as the retired C++ RPC did. RED FIRST: this file compiles only with HOLRpcPlayer.as (absent at the red commit: no function).
 // The network proof (2 clients) is Tools\Scenarios\rpc_diplomacy_run.ps1; it needs the C++ lot (HOLScriptRpcPlayerActor) built.
 
 void Test_RpcStanceQueued(FUnitTest& T)

@@ -1,10 +1,8 @@
 // MIG2-S3 pilot (D842 Q1 = A, ELROND-1117o): the per-player RPC actor written in script, model of the proven probe (HOLScriptRpcProbe.as). The server spawns one per controller,
-// owned by it (C++ HOLScriptRpcPlayerBridge::SpawnAllFor, called from the game mode's PostLogin); each RPC of the player is declared here. Pilot: ONE RPC, ServerDiplomacyStance,
-// the same body as the C++ AHOLPlayerController::ServerDiplomacyStance_Implementation (slot read from the owner: D288; HOLDiplomacy::SetStance checks the rest at the next step).
+// owned by it (C++ HOLScriptRpcPlayerBridge::SpawnAllFor, called from the game mode's PostLogin); each RPC of the player is declared here. ServerDiplomacyStance is the only entry of the stance order
+// (D845, lot D: no C++ RPC and no cvar left; slot read from the owner: D288; HOLDiplomacy::SetStance checks the rest at the next step); the C++ RequestStance (console command hol.Diplomacy.Stance) reaches it through the C++ -> script route.
 // This file lives in Script/Net: the plugin skips Script/Dev, Developers, Examples and Editor outside the interactive editor. NEEDS THE C++ LOT (HOLScriptRpcPlayerActor, HOLRpcBridge::).
-// Switch hol.Rpc.ScriptDiplomacy (default 0): 0 = the interface keeps the old C++ RPC (RequestStance); 1 = it goes through this actor. The C++ RPC stays until the 2-client proof.
 // Proof: hol.Rpc.DiplomacyTarget (default -1; >= 0 on a client: it calls ServerDiplomacyStance(Target, hol.Rpc.DiplomacyStance) once) used by Tools\Scenarios\rpc_diplomacy_run.ps1.
-const FConsoleVariable CVar_RpcScriptDiplomacy("hol.Rpc.ScriptDiplomacy", 1);
 const FConsoleVariable CVar_RpcDiplomacyTarget("hol.Rpc.DiplomacyTarget", -1);
 const FConsoleVariable CVar_RpcDiplomacyStance("hol.Rpc.DiplomacyStance", 1);
 const FConsoleVariable CVar_RpcProofRoute("hol.Rpc.ProofRoute", 0);
@@ -13,7 +11,7 @@ const FConsoleVariable CVar_RpcProofCheats("hol.Rpc.ProofCheats", 0); // ELROND-
 // T3 (SAURON-1117m): the Match (surrender) lot, guard model: 0 = the C++ RPC stays the only one (this script RPC logs and does nothing), 1 = the script RPC acts. The Duel cvar is retired (D845, lot B).
 const FConsoleVariable CVar_RpcScriptMatch("hol.Rpc.ScriptMatch", 1);
 
-// T4 lot L1 (HALDIR-1117o): the Hero RPCs (talent, ability, rage, watch unit), same guard model (the C++ RPC stays the only one at 0). ServerReturnHero, ServerStartSpecialization, ServerCancelSpecialization have no guard (D845, lot B).
+// T4 lot L1 (HALDIR-1117o): the Hero RPCs still guarded (ability, rage, watch unit), same guard model (the C++ RPC stays the only one at 0). ServerHeroTalent (D845, lot D), ServerReturnHero, ServerStartSpecialization, ServerCancelSpecialization have no guard.
 const FConsoleVariable CVar_RpcScriptHero("hol.Rpc.ScriptHero", 1);
 
 // T5 lot L1 (HALDIR-1117p): the Signals and Chat RPCs. ServerPostSignal / ServerPostChat have no guard and no C++ RPC left (D845, lot C). These two cvars are no longer read by this script: only the C++ fan-out
@@ -21,21 +19,7 @@ const FConsoleVariable CVar_RpcScriptHero("hol.Rpc.ScriptHero", 1);
 const FConsoleVariable CVar_RpcScriptSignal("hol.Rpc.ScriptSignal", 1);
 const FConsoleVariable CVar_RpcScriptChat("hol.Rpc.ScriptChat", 1);
 
-// CHEATS A (ELROND-1117q): L4 group A, the cheat RPCs. Same guard model: default 0 = the C++ RPC stays the only one (these script RPCs return and do nothing), 1 = the script RPC acts. The Resources cvar is retired (D845, lot C).
-const FConsoleVariable CVar_RpcScriptCheatFastBuild("hol.Rpc.ScriptCheatFastBuild", 0);
-const FConsoleVariable CVar_RpcScriptCheatPopulation("hol.Rpc.ScriptCheatPopulation", 0);
-const FConsoleVariable CVar_RpcScriptCheatTechnology("hol.Rpc.ScriptCheatTechnology", 0);
-const FConsoleVariable CVar_RpcScriptCheatTier("hol.Rpc.ScriptCheatTier", 0);
-const FConsoleVariable CVar_RpcScriptCheatUnitSpeed("hol.Rpc.ScriptCheatUnitSpeed", 0);
-const FConsoleVariable CVar_RpcScriptCheatGatherSpeed("hol.Rpc.ScriptCheatGatherSpeed", 0);
-// CHEATS B (CELEBORN-1117q, C++ NOT COMPILED): T9 lot L4, the cheat RPCs Wound, DamageBuilding, SpawnBuilding, Defeat, FallForum, SkipForum, HoldPresence. One guard each (default 0: the C++ RPC stays the only one).
-const FConsoleVariable CVar_RpcScriptCheatWound("hol.Rpc.ScriptCheatWound", 0);
-const FConsoleVariable CVar_RpcScriptCheatDamageBuilding("hol.Rpc.ScriptCheatDamageBuilding", 0);
-const FConsoleVariable CVar_RpcScriptCheatSpawnBuilding("hol.Rpc.ScriptCheatSpawnBuilding", 0);
-const FConsoleVariable CVar_RpcScriptCheatDefeat("hol.Rpc.ScriptCheatDefeat", 0);
-const FConsoleVariable CVar_RpcScriptCheatFallForum("hol.Rpc.ScriptCheatFallForum", 0);
-const FConsoleVariable CVar_RpcScriptCheatSkipForum("hol.Rpc.ScriptCheatSkipForum", 0);
-const FConsoleVariable CVar_RpcScriptCheatHoldPresence("hol.Rpc.ScriptCheatHoldPresence", 0);
+// The 14 cheat RPCs (Resources, FastBuild, Population, Technology, Tier, UnitSpeed, GatherSpeed, Wound, DamageBuilding, SpawnBuilding, Defeat, FallForum, SkipForum, HoldPresence) have no cvar and no C++ RPC left (D845, lots C and D).
 
 const int HOLRpcSlots = 8; // FHOLMatchConfig::MaxSlots
 const int HOLRpcStanceAlly = 2; // HOLDiplomacy::Enemy 0 / Neutral 1 / Ally 2
@@ -314,21 +298,19 @@ int MarketTradeRefusal(int SenderSlot, bool bHasBuilding, int Resource, int Lots
 	return 0;
 }
 
-// The interface's call (HOLGameScreenScript.PanelClick): through the script actor if hol.Rpc.ScriptDiplomacy is 1 and this controller has it, else the C++ RPC as before.
+// The interface's call (HOLGameScreenScript.PanelClick): through the script actor of this controller, the only route of the stance order (D845, lot D). No C++ fallback: the C++ RequestStance (console command
+// hol.Diplomacy.Stance) itself goes through the script actor, so a fallback to it would loop.
 void RequestStance(AHOLPlayerController Controller, int TargetSlot, int Stance)
 {
 	if (Controller == nullptr)
 		return;
-	if (CVar_RpcScriptDiplomacy.GetInt() != 0)
+	AHOLRpcPlayer Rpc = Cast<AHOLRpcPlayer>(HOLRpcBridge::FindPlayerActor(Controller));
+	if (Rpc == nullptr)
 	{
-		AHOLRpcPlayer Rpc = Cast<AHOLRpcPlayer>(HOLRpcBridge::FindPlayerActor(Controller));
-		if (Rpc != nullptr)
-		{
-			Rpc.ServerDiplomacyStance(TargetSlot, Stance);
-			return;
-		}
+		Log(n"LogHOLMatch", f"RpcRoute: DiplomacyStance not sent: no script RPC actor");
+		return;
 	}
-	Controller.RequestStance(TargetSlot, Stance);
+	Rpc.ServerDiplomacyStance(TargetSlot, Stance);
 }
 } // namespace HOLRpc
 
@@ -368,7 +350,7 @@ class AHOLRpcPlayer : AHOLScriptRpcPlayerActor
 						Commands.Add("hol.Hero.Return");
 					if ((Routes & 16) != 0)
 						Commands.Add("hol.Cheat.Resources 100");
-					// ELROND-1118b: P1 bits 32 hero talent (the C++ interface call RequestHeroTalent), 64 duel answer, 128 stance toward slot 1, 256 queue then cancel production (selects the main centre); P2: hol.Rpc.ProofCheats.
+					// ELROND-1118b: P1 bits 32 hero talent (the C++ interface call RequestHeroTalent), 64 duel answer, 128 stance toward slot 1 (the interface call HOLRpc::RequestStance), 256 queue then cancel production (selects the main centre), 512 stance toward slot 1 by the console command hol.Diplomacy.Stance; P2: hol.Rpc.ProofCheats.
 AHOLPlayerController RouteTalent = Cast<AHOLPlayerController>(RouteController);
 if ((Routes & 32) != 0 && RouteTalent != nullptr)
 {
@@ -379,9 +361,14 @@ if ((Routes & 64) != 0)
 	Commands.Add("hol.Duel.Accept");
 if ((Routes & 128) != 0 && RouteTalent != nullptr)
 {
-	// The console command hol.Diplomacy.Stance calls the C++ RequestStance (direct C++ RPC); only the interface's script call HOLRpc::RequestStance takes the script route.
+	// The interface's script call HOLRpc::RequestStance takes the script route directly; bit 512 below proves the console command's route (C++ RequestStance -> script actor, lot D).
 	Log(n"LogHOLMatch", f"RpcRoute: the client runs 'HOLRpc::RequestStance 1 ally'");
 	HOLRpc::RequestStance(RouteTalent, 1, 2);
+}
+if ((Routes & 512) != 0)
+{
+	// The loop below logs "RpcRoute: the client runs 'hol.Diplomacy.Stance 1 ally'" then runs the command: the C++ RequestStance now goes through the script actor's ServerDiplomacyStance (proof of the trap, D845 lot D).
+	Commands.Add("hol.Diplomacy.Stance 1 ally");
 }
 if ((Routes & 256) != 0)
 {
@@ -465,7 +452,7 @@ for (FString Command : Commands)
 		HOLRpcBridge::QueueDuelOrder(this, HOLRpc::DuelKindChallenge(), TargetSlot);
 	}
 
-	// Body of ServerDuelAnswer_Implementation (kind Accept / Refuse, no other slot). Same TODO as the challenge.
+	// Duel answer (kind Accept / Refuse, no other slot): same bridge call as the challenge.
 	UFUNCTION(Server)
 	void ServerDuelAnswer(bool bAccept)
 	{
@@ -524,8 +511,8 @@ for (FString Command : Commands)
 		HOLRpcBridge::Surrender(this); // logs "Victory: surrender of slot N refused" itself when the game state refuses
 	}
 
-	// ---- T4 lot L1 (HALDIR-1117o). Specialization lot (D845: the only entry, no C++ RPC left, no cvar). The bridge calls AHOLPlayerController::ServerStartSpecialization_Implementation
-	// / ServerCancelSpecialization_Implementation (the board's answer and the "Specialization: slot N ..." journal are the C++ ones).
+	// ---- T4 lot L1 (HALDIR-1117o). Specialization lot (D845: the only entry, no C++ RPC left, no cvar). The bridge calls AHOLPlayerController::DoStartSpecialization
+	// / DoCancelSpecialization (the board's answer and the "Specialization: slot N ..." journal are the C++ ones).
 	UFUNCTION(Server)
 	void ServerStartSpecialization(int Tier, int Option)
 	{
@@ -552,8 +539,8 @@ for (FString Command : Commands)
 		HOLRpcBridge::CancelSpecialization(this);
 	}
 
-	// ---- T4 lot L1 Hero lot. ServerReturnHero has no guard (D845, no C++ RPC left); ServerHeroTalent / WatchUnit / HeroAbility / CastRage keep the guard hol.Rpc.ScriptHero (their C++ RPC stays). Same model: the bridge calls the C++ _Implementation (journals "Hero return order ...", "Hero talent order ...", "Hero ability order ...",
-	// "Rage order ..."). The C++ interface route (cvar 1) covers ReturnHero, HeroTalent and WatchUnit; HeroAbility and CastRage (enum + vector, array) are not routed from C++ yet: call them from script.
+	// ---- T4 lot L1 Hero lot. ServerReturnHero and ServerHeroTalent have no guard and no C++ RPC left (D845, lots B and D: the bridge calls the C++ DoReturnHero / DoHeroTalent); ServerHeroAbility / ServerCastRage / ServerWatchUnit keep the guard hol.Rpc.ScriptHero (their C++ RPC stays, the bridge calls the C++ _Implementation). Journals: "Hero return order ...", "Hero talent order ...", "Hero ability order ...",
+	// "Rage order ...". The C++ interface route covers ReturnHero and HeroTalent (no cvar) and WatchUnit (cvar 1); HeroAbility and CastRage (enum + vector, array) are not routed from C++ yet: call them from script.
 	UFUNCTION(Server)
 	void ServerReturnHero()
 	{
@@ -570,8 +557,6 @@ for (FString Command : Commands)
 	UFUNCTION(Server)
 	void ServerHeroTalent(int Family)
 	{
-		if (CVar_RpcScriptHero.GetInt() == 0)
-			return;
 		const int Slot = HOLRpcBridge::GetSenderSlot(this);
 		if (HOLRpc::SeatRefusal(Slot) != 0)
 		{
@@ -624,8 +609,8 @@ for (FString Command : Commands)
 		HOLRpcBridge::WatchUnit(this, int(UnitId));
 	}
 
-	// ---- CHEATS A (ELROND-1117q, C++ NOT COMPILED): L4 group A. Guards hol.Rpc.ScriptCheat<Name> (default 0). Each Server RPC refuses unless the cheats are active (R3.5: HOLRpcBridge::CheatRefused, which logs the
-	// C++ line "Cheat refused: ...") and the sender has a seat (D288), then the bridge calls the C++ _Implementation (stock, cvars, tier, cap, journal: one source). FHOLResources travels as 4 ints.
+	// ---- CHEATS A (ELROND-1117q): L4 group A, no guard and no C++ RPC left (D845, lots C and D). Each Server RPC refuses unless the cheats are active (R3.5: HOLRpcBridge::CheatRefused, which logs the
+	// C++ line "Cheat refused: ...") and the sender has a seat (D288), then the bridge calls the C++ Do<X> (stock, cvars, tier, cap, journal: one source). FHOLResources travels as 4 ints.
 	UFUNCTION(Server)
 	void ServerCheatResources(int Food, int Wood, int Stone, int Gold)
 	{
@@ -643,8 +628,6 @@ for (FString Command : Commands)
 	UFUNCTION(Server)
 	void ServerCheatFastBuild(bool bOn)
 	{
-		if (CVar_RpcScriptCheatFastBuild.GetInt() == 0)
-			return;
 		const int Slot = HOLRpcBridge::GetSenderSlot(this);
 		const int Refusal = HOLRpc::CheatRefusal(!HOLRpcBridge::CheatRefused(this, "fast build"), Slot);
 		if (Refusal != 0)
@@ -659,8 +642,6 @@ for (FString Command : Commands)
 	UFUNCTION(Server)
 	void ServerCheatPopulation(int Places)
 	{
-		if (CVar_RpcScriptCheatPopulation.GetInt() == 0)
-			return;
 		const int Slot = HOLRpcBridge::GetSenderSlot(this);
 		const int Refusal = HOLRpc::CheatRefusal(!HOLRpcBridge::CheatRefused(this, "population"), Slot);
 		if (Refusal != 0)
@@ -675,8 +656,6 @@ for (FString Command : Commands)
 	UFUNCTION(Server)
 	void ServerCheatTechnology(FName Technology)
 	{
-		if (CVar_RpcScriptCheatTechnology.GetInt() == 0)
-			return;
 		const int Slot = HOLRpcBridge::GetSenderSlot(this);
 		const int Refusal = HOLRpc::CheatTechnologyRefusal(!HOLRpcBridge::CheatRefused(this, "technology"), Slot, Technology);
 		if (Refusal != 0)
@@ -691,8 +670,6 @@ for (FString Command : Commands)
 	UFUNCTION(Server)
 	void ServerCheatTier(int Tier, int Slot)
 	{
-		if (CVar_RpcScriptCheatTier.GetInt() == 0)
-			return;
 		const int Sender = HOLRpcBridge::GetSenderSlot(this);
 		const int Refusal = HOLRpc::CheatTierRefusal(!HOLRpcBridge::CheatRefused(this, "tier"), Sender, Slot);
 		if (Refusal != 0)
@@ -707,8 +684,6 @@ for (FString Command : Commands)
 	UFUNCTION(Server)
 	void ServerCheatUnitSpeed(float Scale)
 	{
-		if (CVar_RpcScriptCheatUnitSpeed.GetInt() == 0)
-			return;
 		const int Slot = HOLRpcBridge::GetSenderSlot(this);
 		const int Refusal = HOLRpc::CheatScaleRefusal(!HOLRpcBridge::CheatRefused(this, "unit speed"), Slot, Scale);
 		if (Refusal != 0)
@@ -723,8 +698,6 @@ for (FString Command : Commands)
 	UFUNCTION(Server)
 	void ServerCheatGatherSpeed(float Scale)
 	{
-		if (CVar_RpcScriptCheatGatherSpeed.GetInt() == 0)
-			return;
 		const int Slot = HOLRpcBridge::GetSenderSlot(this);
 		const int Refusal = HOLRpc::CheatScaleRefusal(!HOLRpcBridge::CheatRefused(this, "gather speed"), Slot, Scale);
 		if (Refusal != 0)
@@ -736,13 +709,11 @@ for (FString Command : Commands)
 		HOLRpcBridge::CheatGatherSpeed(this, Scale);
 	}
 
-	// ---- CHEATS B (CELEBORN-1117q, C++ NOT COMPILED): T9 lot L4 cheat RPCs. Guards hol.Rpc.ScriptCheat<Name> (default 0). Each asks the C++ IsCheatRefused through HOLRpcBridge::CheatsAllowed (R3.5), validates with the
-	// HOLRpc::Cheat*Refusal functions, then the bridge calls the C++ _Implementation (the body and its "Cheat: ..." journal stay the single source). SpawnBuilding takes the type as an FString (the route fills it by CallEx).
+	// ---- CHEATS B (CELEBORN-1117q): T9 lot L4 cheat RPCs, no guard and no C++ RPC left (D845, lot D). Each asks the C++ IsCheatRefused through HOLRpcBridge::CheatsAllowed (R3.5), validates with the
+	// HOLRpc::Cheat*Refusal functions, then the bridge calls the C++ Do<X> (the body and its "Cheat: ..." journal stay the single source). SpawnBuilding takes the type as an FString (the route fills it by CallEx).
 	UFUNCTION(Server)
 	void ServerCheatWound(int Percent)
 	{
-		if (CVar_RpcScriptCheatWound.GetInt() == 0)
-			return;
 		const int Slot = HOLRpcBridge::GetSenderSlot(this);
 		const int Refusal = HOLRpc::CheatWoundRefusal(HOLRpcBridge::CheatsAllowed(this, "wound"), Slot);
 		if (Refusal != 0)
@@ -757,8 +728,6 @@ for (FString Command : Commands)
 	UFUNCTION(Server)
 	void ServerCheatDamageBuilding(int Amount, int AttackType, FVector Point)
 	{
-		if (CVar_RpcScriptCheatDamageBuilding.GetInt() == 0)
-			return;
 		const int Refusal = HOLRpc::CheatDamageBuildingRefusal(HOLRpcBridge::CheatsAllowed(this, "damage building"), Amount);
 		if (Refusal != 0)
 		{
@@ -772,8 +741,6 @@ for (FString Command : Commands)
 	UFUNCTION(Server)
 	void ServerCheatSpawnBuilding(const FString& TypeName, int Slot, FVector Point)
 	{
-		if (CVar_RpcScriptCheatSpawnBuilding.GetInt() == 0)
-			return;
 		const int Refusal = HOLRpc::CheatSpawnBuildingRefusal(HOLRpcBridge::CheatsAllowed(this, "spawn building"), TypeName, Slot);
 		if (Refusal != 0)
 		{
@@ -787,8 +754,6 @@ for (FString Command : Commands)
 	UFUNCTION(Server)
 	void ServerCheatDefeat(int Slot)
 	{
-		if (CVar_RpcScriptCheatDefeat.GetInt() == 0)
-			return;
 		const int Refusal = HOLRpc::CheatSlotRefusal(HOLRpcBridge::CheatsAllowed(this, "defeat"), Slot);
 		if (Refusal != 0)
 		{
@@ -802,8 +767,6 @@ for (FString Command : Commands)
 	UFUNCTION(Server)
 	void ServerCheatFallForum(int Slot)
 	{
-		if (CVar_RpcScriptCheatFallForum.GetInt() == 0)
-			return;
 		const int Refusal = HOLRpc::CheatSlotRefusal(HOLRpcBridge::CheatsAllowed(this, "fall forum"), Slot);
 		if (Refusal != 0)
 		{
@@ -817,8 +780,6 @@ for (FString Command : Commands)
 	UFUNCTION(Server)
 	void ServerCheatSkipForum(int Slot)
 	{
-		if (CVar_RpcScriptCheatSkipForum.GetInt() == 0)
-			return;
 		const int Refusal = HOLRpc::CheatSlotRefusal(HOLRpcBridge::CheatsAllowed(this, "skip forum"), Slot);
 		if (Refusal != 0)
 		{
@@ -829,12 +790,10 @@ for (FString Command : Commands)
 		HOLRpcBridge::CheatSkipForum(this, Slot);
 	}
 
-	// The C++ ServerCheatHoldPresence_Implementation has NO IsCheatRefused check (found by CELEBORN-1117q): the script path refuses when cheats are off (stricter, R3.5).
+	// The C++ DoCheatHoldPresence has NO IsCheatRefused check (found by CELEBORN-1117q): the script RPC, now the only entry, is the one that refuses when cheats are off (R3.5).
 	UFUNCTION(Server)
 	void ServerCheatHoldPresence(int Slot, bool bOff, bool bAttackers, bool bDefenders, int AttackerSlot)
 	{
-		if (CVar_RpcScriptCheatHoldPresence.GetInt() == 0)
-			return;
 		const int Refusal = HOLRpc::CheatHoldPresenceRefusal(HOLRpcBridge::CheatsAllowed(this, "hold presence"), Slot, bOff, bAttackers, bDefenders, AttackerSlot);
 		if (Refusal != 0)
 		{

@@ -1,5 +1,5 @@
 // MIG2-S3 T5 lot L1 (HALDIR-1117p): the pure rules of the script RPCs of the Signals and chat lot (ServerPostSignal, ClientReceiveSignal, ServerPostChat, ClientReceiveChat) of Script/Net/HOLRpcPlayer.as.
-// The sender is the owner's slot (D288); a spectator places no signal but talks (D376, slot -1 valid for the chat); the boards (HOLSignal::Post, the chat's length / rate / reach) decide the rest, as for the C++ RPC.
+// The sender is the owner's slot (D288); a spectator places no signal but talks (D376, slot -1 valid for the chat); the boards (HOLSignal::Post, the chat's length / rate / reach) decide the rest, as the retired C++ RPC did.
 // RED FIRST for the main session: replace each body by `return 0;` (stub), run quick_check -Parts tests, then restore.
 
 void Test_RpcSignalRefusal(FUnitTest& T)

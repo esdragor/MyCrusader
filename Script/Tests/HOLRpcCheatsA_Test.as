@@ -1,5 +1,5 @@
 // MIG2-S3 L4 group A (ELROND-1117q): the pure refusals of the script cheat RPCs (ServerCheatResources, FastBuild, Population, Technology, Tier, UnitSpeed, GatherSpeed) of Script/Net/HOLRpcPlayer.as.
-// R3.5: refused unless the cheats are active on the server (the bridge reads FHOLCheatRules::AreCheatsAllowed); the sender is the owner's slot (D288, a seat is needed). The effect stays the C++ _Implementation's.
+// R3.5: refused unless the cheats are active on the server (the bridge reads FHOLCheatRules::AreCheatsAllowed); the sender is the owner's slot (D288, a seat is needed). The effect is the C++ Do<X> body's (called by the bridge).
 // RED FIRST for the main session: replace each body in HOLRpc (CheatRefusal, CheatTierRefusal, CheatTechnologyRefusal, CheatScaleRefusal) by `return 0;` (stub), run quick_check -Parts tests, then restore.
 
 void Test_RpcCheatSeatRefusal(FUnitTest& T)
