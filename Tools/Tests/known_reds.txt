@@ -4,4 +4,3 @@
 # (vide depuis 2026-11-07 : camera 2p et camera 8p sont vertes sur main, quick_check -Parts camera x2 dans Faramir a bc3cf59)
 # Partie "tests" (SAURON-1116n) : une ligne peut nommer un test (chemin complet, ex. HeroesOfLiberty.Match...) ; la partie tests est
 # un rouge connu quand TOUS ses tests KO sont listes ici, une REGRESSION des qu'un seul ne l'est pas (Find-KnownTestRed).
-menu fr | 2026-11-17 | TC-Q12 (equipes ouvertes en solo, factions grisees) echoue deja sur main : vu le 2026-11-17 puis le 2026-11-18 20:53 sur un binaire de main sans les lots Nouvelle partie ; cause non cherchee (controle perime ou ecran ?), a diagnostiquer avant la bascule NG-6
