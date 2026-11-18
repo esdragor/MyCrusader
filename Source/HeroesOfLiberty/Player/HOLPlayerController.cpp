@@ -61,6 +61,8 @@
 namespace HOLRpcScriptRoute_Haldir1117n
 {
 	bool CallN(AHOLPlayerController* Controller, const TCHAR* CVarName, const TCHAR* FunctionName, TArrayView<const int32> Args);
+	// The cheat form (ints + one real + one name), a one-line wrapper of CallFull (defined next to CallN).
+	bool CallCheat(AHOLPlayerController* Controller, const TCHAR* CVarName, const TCHAR* FunctionName, TArrayView<const int32> Ints, const double* Real, const FName* Name);
 	// HALDIR-1117q (NOT COMPILED): the Economy routes (hol.Rpc.ScriptEconomy); true = the script actor took the call, false = nothing was sent (D845: no C++ RPC any more; the caller logs it with LogNotSent).
 	bool RouteQueueProduction(AHOLPlayerController* Controller, AHOLBuilding* Building, FName TypeName);
 	bool RouteCancelProduction(AHOLPlayerController* Controller, AHOLBuilding* Building, int32 Index);
@@ -5048,70 +5050,10 @@ bool AHOLPlayerController::IsCheatRefused(const TCHAR* What) const
 	return true;
 }
 
-// CHEATS A (ELROND-1117q, NOT COMPILED): the L4 group A cheat calls go through the script RPC actor (Script/Net/HOLRpcPlayer.as) only (D845: no cvar, no C++ RPC; the bodies are DoCheat<Name>, called by the bridge).
-// Self-contained (the HOLRpcScriptRoute_Haldir1117n helper is defined further down); a non-null cvar name is only READ here (declared by the script, a missing one reads as 0), the cheats pass null. Unique namespace name (unity builds).
-namespace HOLRpcScriptRoute_Elrond1117q
-{
-	// Ints fill the bool / int32 / uint32 parameters in order, Real the double / float one, Name the FName one. false: no actor, no such function: the caller logs it (LogNotSent), nothing else is sent (D845).
-	bool CallCheat(AHOLPlayerController* Controller, const TCHAR* CVarName, const TCHAR* FunctionName, const TArrayView<const int32> Ints, const double* Real, const FName* Name)
-	{
-		// D845: a null cvar name = no guard (the RPC has no C++ twin any more); the other cheats keep theirs.
-		const IConsoleVariable* CVar = CVarName ? IConsoleManager::Get().FindConsoleVariable(CVarName) : nullptr;
-		if (!Controller || (CVarName && (!CVar || CVar->GetInt() == 0)))
-		{
-			return false;
-		}
-		AActor* RpcActor = UHOLRpcBridgeLibrary::FindPlayerActor(Controller);
-		UFunction* Function = RpcActor ? RpcActor->FindFunction(FunctionName) : nullptr;
-		if (!Function || !Function->HasAnyFunctionFlags(FUNC_Net))
-		{
-			return false;
-		}
-		TArray<uint8> Params;
-		Params.SetNumZeroed(FMath::Max<int32>(Function->ParmsSize, 1));
-		Function->InitializeStruct(Params.GetData());
-		int32 IntIndex = 0;
-		for (TFieldIterator<FProperty> It(Function); It && It->HasAnyPropertyFlags(CPF_Parm); ++It)
-		{
-			if (It->HasAnyPropertyFlags(CPF_ReturnParm))
-			{
-				continue;
-			}
-			if (const FDoubleProperty* DoubleProperty = CastField<FDoubleProperty>(*It))
-			{
-				if (Real) { DoubleProperty->SetPropertyValue_InContainer(Params.GetData(), *Real); }
-			}
-			else if (const FFloatProperty* FloatProperty = CastField<FFloatProperty>(*It))
-			{
-				if (Real) { FloatProperty->SetPropertyValue_InContainer(Params.GetData(), static_cast<float>(*Real)); }
-			}
-			else if (const FNameProperty* NameProperty = CastField<FNameProperty>(*It))
-			{
-				if (Name) { NameProperty->SetPropertyValue_InContainer(Params.GetData(), *Name); }
-			}
-			else if (Ints.IsValidIndex(IntIndex))
-			{
-				if (const FBoolProperty* BoolProperty = CastField<FBoolProperty>(*It))
-				{
-					BoolProperty->SetPropertyValue_InContainer(Params.GetData(), Ints[IntIndex] != 0);
-				}
-				else if (const FIntProperty* IntProperty = CastField<FIntProperty>(*It))
-				{
-					IntProperty->SetPropertyValue_InContainer(Params.GetData(), Ints[IntIndex]);
-				}
-				++IntIndex;
-			}
-		}
-		RpcActor->ProcessEvent(Function, Params.GetData());
-		Function->DestroyStruct(Params.GetData());
-		return true;
-	}
-}
-
 void AHOLPlayerController::RequestCheatResources(const FHOLResources& Amount)
 {
 	const int32 StockInts[4] = {Amount.Food, Amount.Wood, Amount.Stone, Amount.Gold};
-	if (!HOLRpcScriptRoute_Elrond1117q::CallCheat(this, nullptr, TEXT("ServerCheatResources"), TArrayView<const int32>(StockInts, 4), nullptr, nullptr))
+	if (!HOLRpcScriptRoute_Haldir1117n::CallCheat(this, nullptr, TEXT("ServerCheatResources"), TArrayView<const int32>(StockInts, 4), nullptr, nullptr))
 	{
 		HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("CheatResources"));
 	}
@@ -5120,7 +5062,7 @@ void AHOLPlayerController::RequestCheatResources(const FHOLResources& Amount)
 void AHOLPlayerController::RequestCheatFastBuild(const bool bOn)
 {
 	const int32 FastBuildInt = bOn ? 1 : 0;
-	if (!HOLRpcScriptRoute_Elrond1117q::CallCheat(this, nullptr, TEXT("ServerCheatFastBuild"), TArrayView<const int32>(&FastBuildInt, 1), nullptr, nullptr))
+	if (!HOLRpcScriptRoute_Haldir1117n::CallCheat(this, nullptr, TEXT("ServerCheatFastBuild"), TArrayView<const int32>(&FastBuildInt, 1), nullptr, nullptr))
 	{
 		HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("CheatFastBuild"));
 	}
@@ -5128,7 +5070,7 @@ void AHOLPlayerController::RequestCheatFastBuild(const bool bOn)
 
 void AHOLPlayerController::RequestCheatTechnology(const FName Technology)
 {
-	if (!HOLRpcScriptRoute_Elrond1117q::CallCheat(this, nullptr, TEXT("ServerCheatTechnology"), TArrayView<const int32>(), nullptr, &Technology))
+	if (!HOLRpcScriptRoute_Haldir1117n::CallCheat(this, nullptr, TEXT("ServerCheatTechnology"), TArrayView<const int32>(), nullptr, &Technology))
 	{
 		HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("CheatTechnology"));
 	}
@@ -5137,7 +5079,7 @@ void AHOLPlayerController::RequestCheatTechnology(const FName Technology)
 void AHOLPlayerController::RequestCheatTier(const int32 Tier, const int32 Slot)
 {
 	const int32 TierInts[2] = {Tier, Slot};
-	if (!HOLRpcScriptRoute_Elrond1117q::CallCheat(this, nullptr, TEXT("ServerCheatTier"), TArrayView<const int32>(TierInts, 2), nullptr, nullptr))
+	if (!HOLRpcScriptRoute_Haldir1117n::CallCheat(this, nullptr, TEXT("ServerCheatTier"), TArrayView<const int32>(TierInts, 2), nullptr, nullptr))
 	{
 		HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("CheatTier"));
 	}
@@ -5145,7 +5087,7 @@ void AHOLPlayerController::RequestCheatTier(const int32 Tier, const int32 Slot)
 
 void AHOLPlayerController::RequestCheatPopulation(const int32 Places)
 {
-	if (!HOLRpcScriptRoute_Elrond1117q::CallCheat(this, nullptr, TEXT("ServerCheatPopulation"), TArrayView<const int32>(&Places, 1), nullptr, nullptr))
+	if (!HOLRpcScriptRoute_Haldir1117n::CallCheat(this, nullptr, TEXT("ServerCheatPopulation"), TArrayView<const int32>(&Places, 1), nullptr, nullptr))
 	{
 		HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("CheatPopulation"));
 	}
@@ -5154,7 +5096,7 @@ void AHOLPlayerController::RequestCheatPopulation(const int32 Places)
 void AHOLPlayerController::RequestCheatUnitSpeed(const float Scale)
 {
 	const double UnitSpeedReal = Scale;
-	if (!HOLRpcScriptRoute_Elrond1117q::CallCheat(this, nullptr, TEXT("ServerCheatUnitSpeed"), TArrayView<const int32>(), &UnitSpeedReal, nullptr))
+	if (!HOLRpcScriptRoute_Haldir1117n::CallCheat(this, nullptr, TEXT("ServerCheatUnitSpeed"), TArrayView<const int32>(), &UnitSpeedReal, nullptr))
 	{
 		HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("CheatUnitSpeed"));
 	}
@@ -5163,7 +5105,7 @@ void AHOLPlayerController::RequestCheatUnitSpeed(const float Scale)
 void AHOLPlayerController::RequestCheatGatherSpeed(const float Scale)
 {
 	const double GatherSpeedReal = Scale;
-	if (!HOLRpcScriptRoute_Elrond1117q::CallCheat(this, nullptr, TEXT("ServerCheatGatherSpeed"), TArrayView<const int32>(), &GatherSpeedReal, nullptr))
+	if (!HOLRpcScriptRoute_Haldir1117n::CallCheat(this, nullptr, TEXT("ServerCheatGatherSpeed"), TArrayView<const int32>(), &GatherSpeedReal, nullptr))
 	{
 		HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("CheatGatherSpeed"));
 	}
@@ -5521,7 +5463,7 @@ namespace HOLRpcScriptRoute_Haldir1117n
 	// Calls the script actor's RPC by name (Server from a client, or Client from the server: HALDIR-1117p). Int arguments (bool as 0 / 1) fill the bool / int32 / uint32 parameters in order,
 	// Text the FString parameter and Location the FVector one. false: no actor, no such function (script not loaded): the caller logs it (LogNotSent), nothing else is sent (D845).
 	// D846: Location2 / Object2 are the SECOND vector / object parameter of the function (MoveInLine: Start, End; SetRallyPoint: Building, Site); the ids go by Array. All additive (default nullptr).
-	bool CallFull(AHOLPlayerController* Controller, const TCHAR* CVarName, const TCHAR* FunctionName, const TArrayView<const int32> Args, const FString* Text, const FVector* Location, UObject* Object, const FName* Name, const TArray<int32>* Array = nullptr, const FVector* Location2 = nullptr, UObject* Object2 = nullptr)
+	bool CallFull(AHOLPlayerController* Controller, const TCHAR* CVarName, const TCHAR* FunctionName, const TArrayView<const int32> Args, const FString* Text, const FVector* Location, UObject* Object, const FName* Name, const TArray<int32>* Array = nullptr, const FVector* Location2 = nullptr, UObject* Object2 = nullptr, const double* Real = nullptr)
 	{
 		int32 ObjectSeen = 0;
 		int32 StructSeen = 0;
@@ -5545,7 +5487,16 @@ namespace HOLRpcScriptRoute_Haldir1117n
 			{
 				continue;
 			}
-			if (const FStrProperty* StrProperty = CastField<FStrProperty>(*It))
+			// Real (the cheat speed scales) fills the double / float parameter; with no Real these two casts are null and the parameter falls to the Args branch as before.
+			if (const FDoubleProperty* DoubleProperty = Real ? CastField<FDoubleProperty>(*It) : nullptr)
+			{
+				DoubleProperty->SetPropertyValue_InContainer(Params.GetData(), *Real);
+			}
+			else if (const FFloatProperty* FloatProperty = Real ? CastField<FFloatProperty>(*It) : nullptr)
+			{
+				FloatProperty->SetPropertyValue_InContainer(Params.GetData(), static_cast<float>(*Real));
+			}
+			else if (const FStrProperty* StrProperty = CastField<FStrProperty>(*It))
 			{
 				if (Text)
 				{
@@ -5784,7 +5735,12 @@ namespace HOLRpcScriptRoute_Haldir1117n
 	// The int-only form (the HALDIR-1117n / 1117o routes).
 	bool CallN(AHOLPlayerController* Controller, const TCHAR* CVarName, const TCHAR* FunctionName, const TArrayView<const int32> Args)
 	{
-		return CallEx(Controller, CVarName, FunctionName, Args, nullptr, nullptr);
+		return CallFull(Controller, CVarName, FunctionName, Args, nullptr, nullptr, nullptr, nullptr);
+	}
+	// The cheat form: Ints fill the bool / int parameters in order, Real the double / float one, Name the FName one (same as the former Elrond1117q::CallCheat; all cheat callers pass a null cvar).
+	bool CallCheat(AHOLPlayerController* Controller, const TCHAR* CVarName, const TCHAR* FunctionName, const TArrayView<const int32> Ints, const double* Real, const FName* Name)
+	{
+		return CallFull(Controller, CVarName, FunctionName, Ints, nullptr, nullptr, nullptr, Name, nullptr, nullptr, nullptr, Real);
 	}
 	// The one-int form of the HALDIR-1117n routes (bool as 0 / 1).
 	bool Call(AHOLPlayerController* Controller, const TCHAR* CVarName, const TCHAR* FunctionName, const bool bHasArg, const int32 Arg)
