@@ -152,7 +152,7 @@ void Test_NewGameSoloGesturesWriteTheirJournalLine(FUnitTest& T)
 		T.AssertEquals(Script.LastLogLine, "New game: fog Explored", "fog list value 1 is Explored (2 - 1)");
 		Mode.Choose(1);
 		T.AssertEquals(Script.LastLogLine, "New game: mode Diplomacy", "mode list value 1 is Diplomacy");
-		Faction.Choose(0);
+		Faction.Choose(1); // the slot 0 opens on the faction 0: choosing 0 again changes nothing and writes nothing
 		T.AssertTrue(Script.LastLogLine.StartsWith("New game: slot 0 faction "), "a faction chosen on the slot 0 is written in the journal");
 	}
 	HOLScreenTest::EndScreenTest();
