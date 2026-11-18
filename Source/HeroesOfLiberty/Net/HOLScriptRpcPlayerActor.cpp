@@ -133,7 +133,7 @@ int32 HOLScriptRpcPlayerBridge::SpawnAllFor(APlayerController* Controller)
 	return Spawned;
 }
 
-// ---- HALDIR-1117o (NOT COMPILED), MIG2-S3 T4 lot L1: Specialization and Hero. The owner controller's _Implementation does the work (friend class): same body, same journal.
+// ---- HALDIR-1117o (NOT COMPILED), MIG2-S3 T4 lot L1: Specialization and Hero. The owner controller's Do<X> does the work (friend class): same body, same journal (DoHeroTalent called by the bridge, D845; HeroAbility, CastRage, WatchUnit keep their _Implementation).
 namespace HOLRpcBridgeL1_Haldir1117o
 {
 	AHOLPlayerController* OwnerController(const AActor* RpcActor)
@@ -166,7 +166,7 @@ bool UHOLRpcBridgeLibrary::ReturnHero(AActor* RpcActor)
 bool UHOLRpcBridgeLibrary::HeroTalent(AActor* RpcActor, const int32 Family)
 {
 	AHOLPlayerController* Controller = HOLRpcBridgeL1_Haldir1117o::OwnerController(RpcActor);
-	if (Controller) { Controller->ServerHeroTalent_Implementation(Family); }
+	if (Controller) { Controller->DoHeroTalent(Family); }
 	return Controller != nullptr;
 }
 
@@ -197,7 +197,7 @@ bool UHOLRpcBridgeLibrary::WatchUnit(AActor* RpcActor, const int32 UnitId)
 	return Controller != nullptr;
 }
 
-// ---- CHEATS A (ELROND-1117q, NOT COMPILED), MIG2-S3 L4 group A (friend class: the _Implementation of the owner controller, same body, same journal, same cheat gate).
+// ---- CHEATS A (ELROND-1117q, NOT COMPILED), MIG2-S3 L4 group A (friend class: DoCheat<X> of the owner controller called by the bridge, D845, same body, same journal, same cheat gate).
 bool UHOLRpcBridgeLibrary::CheatRefused(AActor* RpcActor, const FString& What)
 {
 	const AHOLPlayerController* Controller = HOLRpcBridgeL1_Haldir1117o::OwnerController(RpcActor);
@@ -214,46 +214,46 @@ bool UHOLRpcBridgeLibrary::CheatResources(AActor* RpcActor, const int32 Food, co
 bool UHOLRpcBridgeLibrary::CheatFastBuild(AActor* RpcActor, const bool bOn)
 {
 	AHOLPlayerController* Controller = HOLRpcBridgeL1_Haldir1117o::OwnerController(RpcActor);
-	if (Controller) { Controller->ServerCheatFastBuild_Implementation(bOn); }
+	if (Controller) { Controller->DoCheatFastBuild(bOn); }
 	return Controller != nullptr;
 }
 
 bool UHOLRpcBridgeLibrary::CheatPopulation(AActor* RpcActor, const int32 Places)
 {
 	AHOLPlayerController* Controller = HOLRpcBridgeL1_Haldir1117o::OwnerController(RpcActor);
-	if (Controller) { Controller->ServerCheatPopulation_Implementation(Places); }
+	if (Controller) { Controller->DoCheatPopulation(Places); }
 	return Controller != nullptr;
 }
 
 bool UHOLRpcBridgeLibrary::CheatTechnology(AActor* RpcActor, const FName Technology)
 {
 	AHOLPlayerController* Controller = HOLRpcBridgeL1_Haldir1117o::OwnerController(RpcActor);
-	if (Controller) { Controller->ServerCheatTechnology_Implementation(Technology); }
+	if (Controller) { Controller->DoCheatTechnology(Technology); }
 	return Controller != nullptr;
 }
 
 bool UHOLRpcBridgeLibrary::CheatTier(AActor* RpcActor, const int32 Tier, const int32 Slot)
 {
 	AHOLPlayerController* Controller = HOLRpcBridgeL1_Haldir1117o::OwnerController(RpcActor);
-	if (Controller) { Controller->ServerCheatTier_Implementation(Tier, Slot); }
+	if (Controller) { Controller->DoCheatTier(Tier, Slot); }
 	return Controller != nullptr;
 }
 
 bool UHOLRpcBridgeLibrary::CheatUnitSpeed(AActor* RpcActor, const double Scale)
 {
 	AHOLPlayerController* Controller = HOLRpcBridgeL1_Haldir1117o::OwnerController(RpcActor);
-	if (Controller) { Controller->ServerCheatUnitSpeed_Implementation(static_cast<float>(Scale)); }
+	if (Controller) { Controller->DoCheatUnitSpeed(static_cast<float>(Scale)); }
 	return Controller != nullptr;
 }
 
 bool UHOLRpcBridgeLibrary::CheatGatherSpeed(AActor* RpcActor, const double Scale)
 {
 	AHOLPlayerController* Controller = HOLRpcBridgeL1_Haldir1117o::OwnerController(RpcActor);
-	if (Controller) { Controller->ServerCheatGatherSpeed_Implementation(static_cast<float>(Scale)); }
+	if (Controller) { Controller->DoCheatGatherSpeed(static_cast<float>(Scale)); }
 	return Controller != nullptr;
 }
 
-// ---- CHEATS B (CELEBORN-1117q, NOT COMPILED), MIG2-S3 T9 lot L4: the cheat RPCs (friend class: the _Implementation of the owner controller, same body, same journal).
+// ---- CHEATS B (CELEBORN-1117q, NOT COMPILED), MIG2-S3 T9 lot L4: the cheat RPCs (friend class: DoCheat<X> of the owner controller called by the bridge, D845, same body, same journal).
 bool UHOLRpcBridgeLibrary::CheatsAllowed(AActor* RpcActor, const FString& What)
 {
 	const AHOLPlayerController* Controller = HOLRpcBridgeL1_Haldir1117o::OwnerController(RpcActor);
@@ -263,49 +263,49 @@ bool UHOLRpcBridgeLibrary::CheatsAllowed(AActor* RpcActor, const FString& What)
 bool UHOLRpcBridgeLibrary::CheatWound(AActor* RpcActor, const int32 Percent)
 {
 	AHOLPlayerController* Controller = HOLRpcBridgeL1_Haldir1117o::OwnerController(RpcActor);
-	if (Controller) { Controller->ServerCheatWound_Implementation(Percent); }
+	if (Controller) { Controller->DoCheatWound(Percent); }
 	return Controller != nullptr;
 }
 
 bool UHOLRpcBridgeLibrary::CheatDamageBuilding(AActor* RpcActor, const double X, const double Y, const double Z, const int32 Amount, const int32 AttackType)
 {
 	AHOLPlayerController* Controller = HOLRpcBridgeL1_Haldir1117o::OwnerController(RpcActor);
-	if (Controller) { Controller->ServerCheatDamageBuilding_Implementation(FVector_NetQuantize(FVector(X, Y, Z)), Amount, static_cast<uint8>(FMath::Clamp(AttackType, 0, 255))); }
+	if (Controller) { Controller->DoCheatDamageBuilding(FVector_NetQuantize(FVector(X, Y, Z)), Amount, static_cast<uint8>(FMath::Clamp(AttackType, 0, 255))); }
 	return Controller != nullptr;
 }
 
 bool UHOLRpcBridgeLibrary::CheatSpawnBuilding(AActor* RpcActor, const FString& TypeName, const int32 Slot, const double X, const double Y, const double Z)
 {
 	AHOLPlayerController* Controller = HOLRpcBridgeL1_Haldir1117o::OwnerController(RpcActor);
-	if (Controller) { Controller->ServerCheatSpawnBuilding_Implementation(FName(*TypeName), Slot, FVector_NetQuantize(FVector(X, Y, Z))); }
+	if (Controller) { Controller->DoCheatSpawnBuilding(FName(*TypeName), Slot, FVector_NetQuantize(FVector(X, Y, Z))); }
 	return Controller != nullptr;
 }
 
 bool UHOLRpcBridgeLibrary::CheatDefeat(AActor* RpcActor, const int32 Slot)
 {
 	AHOLPlayerController* Controller = HOLRpcBridgeL1_Haldir1117o::OwnerController(RpcActor);
-	if (Controller) { Controller->ServerCheatDefeat_Implementation(Slot); }
+	if (Controller) { Controller->DoCheatDefeat(Slot); }
 	return Controller != nullptr;
 }
 
 bool UHOLRpcBridgeLibrary::CheatFallForum(AActor* RpcActor, const int32 Slot)
 {
 	AHOLPlayerController* Controller = HOLRpcBridgeL1_Haldir1117o::OwnerController(RpcActor);
-	if (Controller) { Controller->ServerCheatFallForum_Implementation(Slot); }
+	if (Controller) { Controller->DoCheatFallForum(Slot); }
 	return Controller != nullptr;
 }
 
 bool UHOLRpcBridgeLibrary::CheatSkipForum(AActor* RpcActor, const int32 Slot)
 {
 	AHOLPlayerController* Controller = HOLRpcBridgeL1_Haldir1117o::OwnerController(RpcActor);
-	if (Controller) { Controller->ServerCheatSkipForum_Implementation(Slot); }
+	if (Controller) { Controller->DoCheatSkipForum(Slot); }
 	return Controller != nullptr;
 }
 
 bool UHOLRpcBridgeLibrary::CheatHoldPresence(AActor* RpcActor, const int32 Slot, const bool bOff, const bool bAttackers, const bool bDefenders, const int32 AttackerSlot)
 {
 	AHOLPlayerController* Controller = HOLRpcBridgeL1_Haldir1117o::OwnerController(RpcActor);
-	if (Controller) { Controller->ServerCheatHoldPresence_Implementation(Slot, bOff, bAttackers, bDefenders, AttackerSlot); }
+	if (Controller) { Controller->DoCheatHoldPresence(Slot, bOff, bAttackers, bDefenders, AttackerSlot); }
 	return Controller != nullptr;
 }
 

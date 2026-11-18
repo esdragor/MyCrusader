@@ -71,7 +71,7 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Rpc")
 	static bool Surrender(AActor* RpcActor);
 
-	// ---- HALDIR-1117o (NOT COMPILED), MIG2-S3 T4 lot L1: Specialization and Hero. Each calls the owner controller's _Implementation (same body, same journal line as the C++ RPC). False: no owner controller.
+	// ---- HALDIR-1117o (NOT COMPILED), MIG2-S3 T4 lot L1: Specialization and Hero. Each calls the owner controller's Do<X> (DoHeroTalent, called by the bridge, D845) or _Implementation (HeroAbility, CastRage, WatchUnit: still C++ RPCs), same body, same journal line. False: no owner controller.
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Rpc")
 	static bool StartSpecialization(AActor* RpcActor, int32 Tier, int32 Option);
 
@@ -96,7 +96,7 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Rpc")
 	static bool WatchUnit(AActor* RpcActor, int32 UnitId);
 
-	// ---- CHEATS A (ELROND-1117q, NOT COMPILED), MIG2-S3 L4 group A: the seven cheat RPCs. Each calls the owner controller's _Implementation (same body, same journal; the cheat gate IsCheatRefused is theirs). False: no owner controller.
+	// ---- CHEATS A (ELROND-1117q, NOT COMPILED), MIG2-S3 L4 group A: the seven cheat RPCs. Each calls the owner controller's DoCheat<X> (called by the bridge, D845; same body, same journal; the cheat gate IsCheatRefused is theirs). False: no owner controller.
 	/** True when the cheats are refused here (R3.5; logs the C++ line "Cheat refused: What from ..."); also true with no owner controller. */
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Rpc")
 	static bool CheatRefused(AActor* RpcActor, const FString& What);
@@ -123,7 +123,7 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Rpc")
 	static bool CheatGatherSpeed(AActor* RpcActor, double Scale);
-	// ---- CHEATS B (CELEBORN-1117q, NOT COMPILED), MIG2-S3 T9 lot L4: the owner controller's cheat _Implementation does the work (friend class; same body, same "Cheat: ..." journal). False: no owner controller.
+	// ---- CHEATS B (CELEBORN-1117q, NOT COMPILED), MIG2-S3 T9 lot L4: the owner controller's DoCheat<X> does the work (called by the bridge, D845; friend class; same body, same "Cheat: ..." journal). False: no owner controller.
 	/** R3.5: true when the cheats are active on this server; false (and the C++ line "Cheat refused: <What> from ...") otherwise. */
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Rpc")
 	static bool CheatsAllowed(AActor* RpcActor, const FString& What);

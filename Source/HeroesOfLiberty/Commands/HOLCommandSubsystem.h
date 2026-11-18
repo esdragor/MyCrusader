@@ -252,7 +252,7 @@ public:
 	void ConsumeGarrisonOrders(TArray<FHOLGarrisonOrder>& OutOrders);
 
 	/**
-	 * T3: PlayerIndex's player takes the talent of Family in the next row of its hero (ServerHeroTalent), applied at the end of
+	 * T3: PlayerIndex's player takes the talent of Family in the next row of its hero (DoHeroTalent called by the bridge, D845), applied at the end of
 	 * the next step by the hero subsystem, which checks it (HOLHeroTalent::CanPick). Refused here as the ability orders.
 	 */
 	void IssueHeroTalentOrder(int32 PlayerIndex, int32 Family);
@@ -269,7 +269,7 @@ public:
 	void ConsumeDuelOrders(TArray<FHOLDuelOrder>& OutOrders);
 
 	/**
-	 * D5 (DiplomacyInProgress.md, D369, D370): PlayerIndex's player says Value toward OtherSlot (ServerDiplomacyStance,
+	 * D5 (DiplomacyInProgress.md, D369, D370): PlayerIndex's player says Value toward OtherSlot (QueueDiplomacyOrder of the bridge, D845,
 	 * hol.Diplomacy.Stance) or opens / closes its vision to it (ServerDiplomacyVision, hol.Diplomacy.Vision), applied at the start of the
 	 * next step by the game state (HOLDiplomacy::SetStance / SetVision decide). Refused here as the duel orders (no player's slot, a
 	 * defeated one, the match waiting or paused).
