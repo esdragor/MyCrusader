@@ -609,9 +609,9 @@ if ((Cheats & 4096) != 0)
 if ((Routes & 32768) != 0)
 	Commands.Add("hol.Units.OrderNear 1500 0");
 if ((Routes & 65536) != 0)
-	Commands.Add("hol.Units.AttackMove 1500 0");
+	Commands.Add("hol.Units.AttackMove -13300 0"); // absolute point 1500 cm in front of the main centre (-14800, 0): the old (1500, 0) was 16000 cm away, units still walking at +12 s
 if ((Routes & 131072) != 0)
-	Commands.Add("hol.Units.OrderLine 1500 0 1500 600");
+	Commands.Add("hol.Units.OrderLine -13300 -300 -13300 300"); // a 600 cm line close to the base (the old far line was still in transit at +12 s)
 if ((Routes & 262144) != 0)
 {
 	Commands.Add("hol.Select.Own");
@@ -625,7 +625,12 @@ if ((Routes & 524288) != 0)
 	Commands.Add("hol.Select.Attack slot=1");
 }
 if ((Routes & 1048576) != 0)
+{
+	// The enemy main centre is ~30000 cm away (x 15200): speed x5 so the units arrive and strike within the report at +20 s.
+	Commands.Add("hol.Cheat.UnitSpeed 5");
 	Commands.Add("hol.Units.AttackBuilding");
+	Commands.Add("@20 hol.Units.Where 0");
+}
 if ((Routes & 2097152) != 0)
 {
 	Commands.Add("hol.Cheat.Wound 50");
@@ -641,7 +646,7 @@ if ((Routes & 4194304) != 0)
 if ((Routes & 8388608) != 0)
 {
 	Commands.Add("hol.Cheat.GatherSpeed 5");
-	Commands.Add("hol.Units.Gather");
+	Commands.Add("hol.Units.GatherOrder");
 	Commands.Add("@30 hol.Units.Where 0");
 	Commands.Add("@30 hol.Build.Report");
 	Commands.Add("@60 hol.Build.Report");
@@ -649,30 +654,33 @@ if ((Routes & 8388608) != 0)
 if ((Routes & 16777216) != 0)
 {
 	Commands.Add("hol.Cheat.GatherSpeed 5");
-	Commands.Add("hol.Units.Gather");
+	Commands.Add("hol.Units.GatherOrder");
 	Commands.Add("@25 hol.Units.DropOff");
 	Commands.Add("@40 hol.Units.Where 0");
 	Commands.Add("@40 hol.Build.Report");
 }
 if ((Routes & 33554432) != 0)
 {
+	// The site first (no builder), replicated, THEN the units sent on it (@4). (-14800, 1500): ground between the LumberCamp (-14800, -1200) and the Mill (-14000, 2000); (-14000, 0) was "on a building".
 	Commands.Add("hol.Cheat.Resources 100");
-	Commands.Add("hol.Build.PlaceNear House 800 0");
-	Commands.Add("hol.Select.Own");
-	Commands.Add("hol.Units.Build");
+	Commands.Add("hol.Build.PlaceNear House 0 1500");
+	Commands.Add("@4 hol.Select.Own");
+	Commands.Add("@4 hol.Units.Build");
+	Commands.Add("@12 hol.Build.Report");
+	Commands.Add("@30 hol.Build.Report");
 }
 if ((Routes & 67108864) != 0)
 {
 	Commands.Add("hol.Cheat.Resources 100");
 	Commands.Add("hol.Select.Own");
-	Commands.Add("hol.Build.PlaceNear House 800 0");
+	Commands.Add("hol.Build.PlaceNear House -1500 0"); // a spot of its own (BuildUnits uses 0 1500)
 }
 // P4 buildings: 134217728 CancelBuilding (a site, selected by hol.Prod.Queue Peasant House: to be confirmed), 268435456 SetRallyPoint (the point, then the site), 536870912 Garrison (a Barracks from the client, then the garrison), 1073741824 UngarrisonAll (Garrison, then out at +25 s).
 if ((Routes & 134217728) != 0)
 {
 	Commands.Add("hol.Cheat.Resources 100");
 	Commands.Add("hol.Select.Own");
-	Commands.Add("hol.Build.PlaceNear House 800 0");
+	Commands.Add("hol.Build.PlaceNear House 1500 -1800");
 	Commands.Add("@3 hol.Prod.Queue Peasant House");
 	Commands.Add("@4 hol.Build.CancelSelected");
 }
@@ -681,7 +689,7 @@ if ((Routes & 268435456) != 0)
 	Commands.Add("hol.Prod.Rally 800 0");
 	Commands.Add("hol.Cheat.Resources 100");
 	Commands.Add("hol.Select.Own");
-	Commands.Add("hol.Build.PlaceNear House 800 0");
+	Commands.Add("hol.Build.PlaceNear House 3000 0");
 	Commands.Add("@3 hol.Prod.RallySite");
 }
 if ((Routes & (536870912 + 1073741824)) != 0)
@@ -923,7 +931,7 @@ for (FString Command : Commands)
 	}
 
 	UFUNCTION(Server)
-	void ServerCastRage(const TArray<uint32>& UnitIds)
+	void ServerCastRage(TArray<uint32> UnitIds)
 	{
 		const int Slot = HOLRpcBridge::GetSenderSlot(this);
 		const int Refusal = HOLRpc::RageRefusal(Slot, UnitIds.Num());
@@ -1256,7 +1264,7 @@ for (FString Command : Commands)
 	// ---- L2 orders, first 8 (A1, D846). Same parameters as the C++ ServerX of AHOLPlayerController; the C++ routes here when hol.Rpc.OrderScript is 1 (default 0: the C++ RPC). Journal "RpcOrder: <name> received by the server: slot N ..."
 	// then the pure refusal (HOLRpc::UnitOrderRefusal, PointOrderRefusal, BuildingOrderRefusal, LineOrderRefusal), then the bridge calls the controller's C++ Do<X> (the rules, HOLPlayerOrders::IsAccepted: cap 200, spectator).
 	UFUNCTION(Server)
-	void ServerMoveUnits(const TArray<uint32>& UnitIds, FVector_NetQuantize Target, bool bQueue)
+	void ServerMoveUnits(TArray<uint32> UnitIds, FVector_NetQuantize Target, bool bQueue)
 	{
 		const int Slot = HOLRpcBridge::GetSenderSlot(this);
 		Log(n"LogHOLMatch", f"RpcOrder: move received by the server: slot {Slot} units {UnitIds.Num()} queue {bQueue}");
@@ -1270,7 +1278,7 @@ for (FString Command : Commands)
 	}
 
 	UFUNCTION(Server)
-	void ServerAttackUnit(const TArray<uint32>& UnitIds, uint32 TargetUnitId, bool bQueue)
+	void ServerAttackUnit(TArray<uint32> UnitIds, uint32 TargetUnitId, bool bQueue)
 	{
 		const int Slot = HOLRpcBridge::GetSenderSlot(this);
 		Log(n"LogHOLMatch", f"RpcOrder: attack unit received by the server: slot {Slot} units {UnitIds.Num()} target {int(TargetUnitId)} queue {bQueue}");
@@ -1284,7 +1292,7 @@ for (FString Command : Commands)
 	}
 
 	UFUNCTION(Server)
-	void ServerHealUnit(const TArray<uint32>& UnitIds, uint32 TargetUnitId, bool bQueue)
+	void ServerHealUnit(TArray<uint32> UnitIds, uint32 TargetUnitId, bool bQueue)
 	{
 		const int Slot = HOLRpcBridge::GetSenderSlot(this);
 		Log(n"LogHOLMatch", f"RpcOrder: heal unit received by the server: slot {Slot} units {UnitIds.Num()} target {int(TargetUnitId)} queue {bQueue}");
@@ -1298,7 +1306,7 @@ for (FString Command : Commands)
 	}
 
 	UFUNCTION(Server)
-	void ServerAttackBuilding(const TArray<uint32>& UnitIds, AHOLBuilding Building, bool bQueue)
+	void ServerAttackBuilding(TArray<uint32> UnitIds, AHOLBuilding Building, bool bQueue)
 	{
 		const int Slot = HOLRpcBridge::GetSenderSlot(this);
 		Log(n"LogHOLMatch", f"RpcOrder: attack building received by the server: slot {Slot} units {UnitIds.Num()} queue {bQueue}");
@@ -1312,7 +1320,7 @@ for (FString Command : Commands)
 	}
 
 	UFUNCTION(Server)
-	void ServerAttackMove(const TArray<uint32>& UnitIds, FVector_NetQuantize Target, bool bQueue)
+	void ServerAttackMove(TArray<uint32> UnitIds, FVector_NetQuantize Target, bool bQueue)
 	{
 		const int Slot = HOLRpcBridge::GetSenderSlot(this);
 		Log(n"LogHOLMatch", f"RpcOrder: attack move received by the server: slot {Slot} units {UnitIds.Num()} queue {bQueue}");
@@ -1326,7 +1334,7 @@ for (FString Command : Commands)
 	}
 
 	UFUNCTION(Server)
-	void ServerStopUnits(const TArray<uint32>& UnitIds, bool bHold)
+	void ServerStopUnits(TArray<uint32> UnitIds, bool bHold)
 	{
 		const int Slot = HOLRpcBridge::GetSenderSlot(this);
 		Log(n"LogHOLMatch", f"RpcOrder: stop received by the server: slot {Slot} units {UnitIds.Num()} hold {bHold}");
@@ -1340,7 +1348,7 @@ for (FString Command : Commands)
 	}
 
 	UFUNCTION(Server)
-	void ServerToggleDeploy(const TArray<uint32>& UnitIds)
+	void ServerToggleDeploy(TArray<uint32> UnitIds)
 	{
 		const int Slot = HOLRpcBridge::GetSenderSlot(this);
 		Log(n"LogHOLMatch", f"RpcOrder: toggle deploy received by the server: slot {Slot} units {UnitIds.Num()}");
@@ -1354,7 +1362,7 @@ for (FString Command : Commands)
 	}
 
 	UFUNCTION(Server)
-	void ServerMoveUnitsInLine(const TArray<uint32>& UnitIds, FVector_NetQuantize Start, FVector_NetQuantize End, bool bWidth, bool bQueue)
+	void ServerMoveUnitsInLine(TArray<uint32> UnitIds, FVector_NetQuantize Start, FVector_NetQuantize End, bool bWidth, bool bQueue)
 	{
 		const int Slot = HOLRpcBridge::GetSenderSlot(this);
 		Log(n"LogHOLMatch", f"RpcOrder: move in line received by the server: slot {Slot} units {UnitIds.Num()} width {bWidth} queue {bQueue}");
@@ -1369,7 +1377,7 @@ for (FString Command : Commands)
 
 	// ---- L2 orders, last 8 (A2, D846). Same parameters as the C++ ServerX of AHOLPlayerController (same route and journal as the first 8: "RpcOrder: <name> received by the server: slot N ...", the pure refusal, then the bridge).
 	UFUNCTION(Server)
-	void ServerGatherUnits(const TArray<uint32>& UnitIds, int SourceIndex, bool bQueue)
+	void ServerGatherUnits(TArray<uint32> UnitIds, int SourceIndex, bool bQueue)
 	{
 		const int Slot = HOLRpcBridge::GetSenderSlot(this);
 		Log(n"LogHOLMatch", f"RpcOrder: gather received by the server: slot {Slot} units {UnitIds.Num()} source {SourceIndex} queue {bQueue}");
@@ -1383,7 +1391,7 @@ for (FString Command : Commands)
 	}
 
 	UFUNCTION(Server)
-	void ServerPlaceBuilding(FName TypeName, FVector_NetQuantize Point, const TArray<uint32>& UnitIds, bool bQueue)
+	void ServerPlaceBuilding(FName TypeName, FVector_NetQuantize Point, TArray<uint32> UnitIds, bool bQueue)
 	{
 		const int Slot = HOLRpcBridge::GetSenderSlot(this);
 		Log(n"LogHOLMatch", f"RpcOrder: place building received by the server: slot {Slot} type {TypeName} builders {UnitIds.Num()} queue {bQueue}");
@@ -1397,7 +1405,7 @@ for (FString Command : Commands)
 	}
 
 	UFUNCTION(Server)
-	void ServerBuildUnits(const TArray<uint32>& UnitIds, AHOLBuilding Building, bool bQueue)
+	void ServerBuildUnits(TArray<uint32> UnitIds, AHOLBuilding Building, bool bQueue)
 	{
 		const int Slot = HOLRpcBridge::GetSenderSlot(this);
 		Log(n"LogHOLMatch", f"RpcOrder: build units received by the server: slot {Slot} units {UnitIds.Num()} queue {bQueue}");
@@ -1411,7 +1419,7 @@ for (FString Command : Commands)
 	}
 
 	UFUNCTION(Server)
-	void ServerDropOffUnits(const TArray<uint32>& UnitIds, AHOLBuilding Building, FVector_NetQuantize Point, bool bQueue)
+	void ServerDropOffUnits(TArray<uint32> UnitIds, AHOLBuilding Building, FVector_NetQuantize Point, bool bQueue)
 	{
 		const int Slot = HOLRpcBridge::GetSenderSlot(this);
 		Log(n"LogHOLMatch", f"RpcOrder: drop off received by the server: slot {Slot} units {UnitIds.Num()} queue {bQueue}");
@@ -1425,7 +1433,7 @@ for (FString Command : Commands)
 	}
 
 	UFUNCTION(Server)
-	void ServerGarrisonUnits(const TArray<uint32>& UnitIds, AHOLBuilding Building)
+	void ServerGarrisonUnits(TArray<uint32> UnitIds, AHOLBuilding Building)
 	{
 		const int Slot = HOLRpcBridge::GetSenderSlot(this);
 		Log(n"LogHOLMatch", f"RpcOrder: garrison received by the server: slot {Slot} units {UnitIds.Num()}");

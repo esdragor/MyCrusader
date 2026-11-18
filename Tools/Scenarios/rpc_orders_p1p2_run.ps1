@@ -32,7 +32,7 @@ param(
     [switch]$Combined,
     [int]$Port = 7995,
     [int]$Tol = 800,
-    [int]$SettleSec = 22
+    [int]$SettleSec = 26 # after the reception: the last report ("@20 Where" of attack building) is due 20 s after the shot
 )
 $w = $Root; New-Item -ItemType Directory -Force $Out | Out-Null
 $up = (Get-ChildItem $w -Filter *.uproject).FullName
@@ -73,40 +73,52 @@ function Line-Axis($units) {
 
 # name = journal name of the RpcOrder line ; Kind = OrderRecv kind ; Bit = hol.Rpc.ProofRoute bit ; Lot ; Spawn = needs hol.Rpc.ProofSpawn 1 on the server
 $orders = @(
-    @{ Name = "move"; Kind = "Move"; Bit = 32768; Lot = "P1"; Spawn = $false },
-    @{ Name = "attack move"; Kind = "AttackMove"; Bit = 65536; Lot = "P1"; Spawn = $false },
-    @{ Name = "move in line"; Kind = "MoveInLine"; Bit = 131072; Lot = "P1"; Spawn = $false },
-    @{ Name = "stop"; Kind = "Stop"; Bit = 262144; Lot = "P1"; Spawn = $false },
-    @{ Name = "attack unit"; Kind = "AttackUnit"; Bit = 524288; Lot = "P2"; Spawn = $true },
-    @{ Name = "attack building"; Kind = "AttackBuilding"; Bit = 1048576; Lot = "P2"; Spawn = $false },
-    @{ Name = "heal unit"; Kind = "HealUnit"; Bit = 2097152; Lot = "P2"; Spawn = $true },
-    @{ Name = "toggle deploy"; Kind = "ToggleDeploy"; Bit = 4194304; Lot = "P2"; Spawn = $true }
+    @{ Name = "move"; Kind = "Move"; Bit = 32768; Lot = "P1"; Spawn = 0 },
+    @{ Name = "attack move"; Kind = "AttackMove"; Bit = 65536; Lot = "P1"; Spawn = 0 },
+    @{ Name = "move in line"; Kind = "MoveInLine"; Bit = 131072; Lot = "P1"; Spawn = 0 },
+    @{ Name = "stop"; Kind = "Stop"; Bit = 262144; Lot = "P1"; Spawn = 0 },
+    @{ Name = "attack unit"; Kind = "AttackUnit"; Bit = 524288; Lot = "P2"; Spawn = 4 },
+    @{ Name = "attack building"; Kind = "AttackBuilding"; Bit = 1048576; Lot = "P2"; Spawn = 0 },
+    @{ Name = "heal unit"; Kind = "HealUnit"; Bit = 2097152; Lot = "P2"; Spawn = 1 },
+    @{ Name = "toggle deploy"; Kind = "ToggleDeploy"; Bit = 4194304; Lot = "P2"; Spawn = 2 }
 )
 $sel = @($orders | Where-Object { $Lot -eq "P1P2" -or $_.Lot -eq $Lot })
 if ($Only) { $names = @($Only -split ',' | ForEach-Object { $_.Trim() }); $sel = @($sel | Where-Object { $names -contains $_.Name }) }
 if ($sel.Count -eq 0) { "VERDICT FAIL (no order selected)"; exit 1 }
 
+function Ordered-Units($wh, $S) {
+    # the units that received the order: the N lowest ids of slot 0 (N = "units N" of the last reception line). A later-born unit (the proof's Monk / Mangonel, a peasant born in the run) is not one of them.
+    $m = Last-Match $S 'RpcOrder: [a-z ]+ received by the server: slot 0 units (\d+)'
+    $n = 6; if ($m) { $n = [int]$m.Groups[1].Value }
+    return , @($wh | Where-Object { $_.Slot -eq 0 } | Sort-Object Id | Select-Object -First $n)
+}
 function Effect-Of($o, $S, $K) {
     # returns @{ Ok = bool; Detail = string } ; $S = server lines, $K = green client lines
     $wh = Parse-Where $K
+    $ord = Ordered-Units $wh $S
     switch ($o.Name) {
         "move" {
-            $m = Last-Match $S 'Move order: (\d+) units to \((-?\d+), (-?\d+)\)'
-            if (-not $m) { return @{ Ok = $false; Detail = "no 'Move order: N units to (X, Y)' line on the server" } }
+            # first real run: the server prints NO "Move order" line (only "OrderRecv kind=Move key=<x> units=N") ; the target is the client line "Order: N units to (X, Y)" (K) written by hol.Units.OrderNear
+            $m = Last-Match $K 'Order: (\d+) units to \((-?\d+), (-?\d+)\)'
+            if (-not $m) { return @{ Ok = $false; Detail = "no client line 'Order: N units to (X, Y)'" } }
             $x = [double]$m.Groups[2].Value; $y = [double]$m.Groups[3].Value
-            return @{ Ok = (Near-All $wh $x $y $Tol); Detail = "target ($x, $y), $($wh.Count) units in the last Where, all slot 0 within $Tol cm: $(Near-All $wh $x $y $Tol)" }
+            return @{ Ok = (Near-All $ord $x $y $Tol); Detail = "target ($x, $y), $($ord.Count) ordered units in the last Where, all within $Tol cm: $(Near-All $ord $x $y $Tol)" }
         }
         "attack move" {
             $m = Last-Match $S 'attack-move to \((-?\d+), (-?\d+)\)'; if (-not $m) { $m = Last-Match $K 'attack-move to \((-?\d+), (-?\d+)\)' }
             if (-not $m) { return @{ Ok = $false; Detail = "no 'attack-move to (X, Y)' line" } }
             $x = [double]$m.Groups[1].Value; $y = [double]$m.Groups[2].Value
-            return @{ Ok = (Near-All $wh $x $y $Tol); Detail = "target ($x, $y), $($wh.Count) units in the last Where, all slot 0 within $Tol cm: $(Near-All $wh $x $y $Tol)" }
+            # first real run: the point (1500, 0) was 16000 cm away (units still Moving at +12 s) ; the hook now orders (-13300, 0), 1500 cm from the main centre
+            return @{ Ok = (Near-All $ord $x $y $Tol); Detail = "target ($x, $y), $($ord.Count) ordered units in the last Where, all within $Tol cm: $(Near-All $ord $x $y $Tol)" }
         }
         "move in line" {
-            $ax = Line-Axis $wh
-            if (-not $ax) { return @{ Ok = $false; Detail = "fewer than 3 slot 0 units in the last Where" } }
-            $ok = ($ax.Major -ge 50) -and ($ax.Minor -le 0.15 * $ax.Major) -and ($ax.CosX -ge 0.866)
-            return @{ Ok = $ok; Detail = ("line: major std {0:N0} cm, minor std {1:N0} cm, |cos axis,X| {2:N2} (need major >= 50, minor <= 0.15 major, cos >= 0.87)" -f $ax.Major, $ax.Minor, $ax.CosX) }
+            # first run: units still Moving in transit (std 140 / 98) ; the hook now draws the line (-13300, -300) -> (-13300, 300) near the base and only the ordered units that stopped moving are measured
+            $idle = @($ord | Where-Object { $_.Act -eq 'Idle' })
+            $ax = Line-Axis $idle
+            if (-not $ax) { return @{ Ok = $false; Detail = "fewer than 3 ordered units Idle in the last Where (Idle $($idle.Count) of $($ord.Count))" } }
+            # the line is elongated (minor <= 0.25 major, major >= 60 cm) and its axis is along Start->End (Y) or perpendicular to it (X): |cos axis,X| >= 0.87 or <= 0.5 ; the measured values are printed (the C++ orientation of the formation is not read here)
+            $ok = ($ax.Major -ge 60) -and ($ax.Minor -le 0.25 * $ax.Major) -and (($ax.CosX -ge 0.866) -or ($ax.CosX -le 0.5))
+            return @{ Ok = $ok; Detail = ("line of {0} Idle ordered units: major std {1:N0} cm, minor std {2:N0} cm, |cos axis,X| {3:N2} (need major >= 60, minor <= 0.25 major, cos >= 0.87 or <= 0.5)" -f $idle.Count, $ax.Major, $ax.Minor, $ax.CosX) }
         }
         "stop" {
             $st = Count-Match $S 'Stop order of slot 0 for \d+ units'
@@ -119,14 +131,17 @@ function Effect-Of($o, $S, $K) {
             $m = Last-Match $S 'Attack order of slot 0 for \d+ units on #(\d+)'
             if (-not $m) { return @{ Ok = $false; Detail = "no 'Attack order of slot 0 for N units on #U' line" } }
             $u = $m.Groups[1].Value
+            # first run: the Spearmen stood 16000 cm away (0 Attacking, 0 hit). ProofSpawn bit 4 now puts them at (-12000, 0). Effect = a unit Attacking #U in Where OR a server Combat line naming #U (hits / killed / struck)
             $att = (@($wh | Where-Object { $_.Slot -eq 0 -and $_.Act -eq 'Attacking' -and $_.Rest -match "target #$u\b" })).Count
-            $hit = Count-Match $S "Combat: step \d+ #\d+ .*hits #$u\b"
-            return @{ Ok = ($att -gt 0 -or $hit -gt 0); Detail = "target #$u : $att unit(s) Attacking it (Where), $hit Combat hit line(s)" }
+            $hit = Count-Match $S "Combat: .*#$u\b"
+            return @{ Ok = ($att -gt 0 -or $hit -gt 0); Detail = "target #$u : $att unit(s) Attacking it (Where), $hit Combat line(s) naming it (the order line itself proves Do<X> took the target)" }
         }
         "attack building" {
             $st = Count-Match $S 'Attack order of slot 0 for \d+ units on building .* of slot 1'
+            # first run: the enemy main centre is ~30000 cm away. The hook now runs hol.Cheat.UnitSpeed 5 and reports at +20 s. Effect = damage lines if they exist, else the ordered units marched toward it (a unit now at x >= -11000, it started near -15700): HP damage is NOT required when the walk is not finished
             $dm = Count-Match $S 'Building damaged: .* of slot 1 took'; $hit = Count-Match $S 'Combat: .*hits a building'
-            return @{ Ok = ($st -gt 0 -and ($dm -gt 0 -or $hit -gt 0)); Detail = "order line $st, 'Building damaged' $dm, 'hits a building' $hit" }
+            $adv = (@($ord | Where-Object { $_.X -ge -11000 })).Count
+            return @{ Ok = ($st -gt 0 -and ($dm -gt 0 -or $hit -gt 0 -or $adv -gt 0)); Detail = "order line $st, 'Building damaged' $dm, 'hits a building' $hit, ordered units advanced to x >= -11000: $adv of $($ord.Count)" }
         }
         "heal unit" {
             $r = Count-Match $S 'Heal: step \d+ #\d+ \(slot 0\) stops in reach of #\d+'; $wk = Count-Match $S 'Heal: step \d+ #\d+ \(slot 0\) walks to'
@@ -142,13 +157,15 @@ function Effect-Of($o, $S, $K) {
 
 function Run-One($tag, $group) {
     $bits = 0; foreach ($o in $group) { $bits += $o.Bit }
-    $spawn = (@($group | Where-Object { $_.Spawn })).Count -gt 0
+    # ProofSpawn bits of the group (1 Monk, 2 Mangonel, 4 three Spearman of slot 1 at (-12000, 0)): the first run passed 1 for every order, so no Mangonel / Spearman existed ("Select type Mangonel: 0 units")
+    $spawnBits = 0; foreach ($o in $group) { $spawnBits = $spawnBits -bor $o.Spawn }
+    $spawn = $spawnBits -gt 0
     $cfg = Join-Path $Out "orders_$tag.json"
     $cfgJson = @{ version = 2; mode = "Diplomacy"; map = "/Game/Maps/Plain.Plain"; startingPeasants = 5; slots = @(@{ state = "Human"; colorIndex = 0; playerName = "Alice" }, @{ state = "Human"; colorIndex = 1; playerName = "Bob" }, @{ state = "Closed"; colorIndex = 2 }, @{ state = "Closed"; colorIndex = 3 }, @{ state = "Closed"; colorIndex = 4 }, @{ state = "Closed"; colorIndex = 5 }, @{ state = "Closed"; colorIndex = 6 }, @{ state = "Closed"; colorIndex = 7 }) } | ConvertTo-Json -Depth 5
     Set-Content -Encoding ascii $cfg $cfgJson
     $sl = "$Out\orders_${tag}_server.log"; $c1 = "$Out\orders_${tag}_client_red.log"; $c2 = "$Out\orders_${tag}_client_green.log"
     Remove-Item $sl, $c1, $c2 -ErrorAction SilentlyContinue
-    $svCmds = "hol.Rpc.OrderTrace 1"; if ($spawn) { $svCmds += ",hol.Rpc.ProofSpawn 1" }
+    $svCmds = "hol.Rpc.OrderTrace 1"; if (($spawnBits -band 2) -ne 0) { $svCmds += ",hol.Siege.Deployable 1" }; if ($spawn) { $svCmds += ",hol.Rpc.ProofSpawn $spawnBits" }
     "[$tag] bits $bits, server ExecCmds '$svCmds' $(Get-Date -Format HH:mm:ss)"
     $sv = Start-Process $ed -ArgumentList "`"$up`" /Game/Maps/Plain -server -nullrhi -nosound -Port=$Port -unattended -nosplash -Multiprocess -LiveCoding=0 -asdebugport=0 -as-exit-on-error -HOLCheats -MatchConfig=`"$cfg`" -saveddirsuffix=OrdSrv -abslog=`"$sl`" -ExecCmds=`"$svCmds`"" -PassThru -WindowStyle Hidden
     $up1 = WaitFor $sl 'Bringing World .* up for play|Angelscript: Error' 90

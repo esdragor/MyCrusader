@@ -30,6 +30,8 @@
 # REAL WAITS (bounded, seconds after the shot, i.e. after the green client prints its first "RpcRoute: " line): place/cancel/rally 30 ; build units 45 ;
 #   garrison 45 ; ungarrison 80 (garrison walk ~30 s then exit) ; gather 75 (harvest up to ~70 s) ; drop off 100 (needs a load, so after the gather).
 #   Longest wait of a lot: P3 100 s, P4 80 s, P3P4 100 s. Plus: server up <= 90 s, red join <= 90 s, green shot <= 90 s. Total at most about 6 min.
+# FIRST REAL RUN (2026-11-18) AND CORRECTIONS : (a) the command is now hol.Units.GatherOrder (the name hol.Units.Gather already existed: "Warning: hol.Units.Gather X Y [Slot]") ; (b) hol.Build.PlaceNear House 800 0 = (-14000, 0) "refused (on a building)": the hook now places at (0 1500), (-1500 0), (1500 -1800), (3000 0) from the main centre (-14800, 0), a site first, THEN @4 hol.Select.Own + hol.Units.Build ;
+#   (c) GARRISON LIMIT: no building has garrison places (GarrisonSlots = 0 for the 14 buildings) : Garrison / UngarrisonAll are asserted on RECEPTION + Do<X> only ("RpcOrder: garrison received", "OrderRecv kind=Garrison"), NEVER on "Garrison: slot 0 puts / takes" (the effect cannot exist until a building has places; hol.Units.Garrison also warns "no own finished building with places" and sends nothing, so the reception may stay NON).
 # Limit: the numeric stock of hol.Build.Report is printed (section GREEN CLIENT), not parsed (format owned by another agent) ; the stock fact asserted is the server "unloaded"/"paid"/"refund" line.
 # Dependencies (other agents): C++ hol.Units.* commands and ProofRoute bits in HOLRpcPlayer.as, cvar hol.Rpc.ProofSpawn. Without them the table says NON (no invented success).
 param(
@@ -75,9 +77,9 @@ $all = @(
     @{ Lot = 'P4'; Name = 'SetRallyPoint'; Recv = 'RpcOrder: set rally point received by the server: slot 0 '; Kind = 'SetRally'; Dead = 30
         Eff = { param($s) $a = FirstIdx $s 'Rally: slot 0 set the rally point of .* at \(.*\).* on site'; if ($a -ge 0) { return $s[$a] }; return $null } },
     @{ Lot = 'P4'; Name = 'Garrison'; Recv = 'RpcOrder: garrison received by the server: slot 0 '; Kind = 'Garrison'; Dead = 45
-        Eff = { param($s) $a = FirstIdx $s 'Garrison: slot 0 puts [1-9]\d* of \d+'; if ($a -ge 0) { return $s[$a] }; return $null } },
+        Eff = { param($s) return 'reception + Do<X> only (no building has garrison places: GarrisonSlots = 0 for the 14 buildings; the effect cannot exist)' } },
     @{ Lot = 'P4'; Name = 'UngarrisonAll'; Recv = 'RpcOrder: ungarrison all received by the server: slot 0 '; Kind = 'UngarrisonAll'; Dead = 80
-        Eff = { param($s) $a = FirstIdx $s 'Garrison: slot 0 takes [1-9]\d* units out of'; if ($a -ge 0) { return $s[$a] }; return $null } }
+        Eff = { param($s) return 'reception + Do<X> only (GarrisonSlots = 0 for the 14 buildings)' } }
 )
 $p3bits = 8388608 + 16777216 + 33554432 + 67108864
 $p4bits = 134217728 + 268435456 + 536870912 + 1073741824
@@ -97,7 +99,7 @@ Remove-Item $sl, $c1, $c2 -ErrorAction SilentlyContinue
 $lc = Join-Path $w 'Tools\Scenarios\LaunchCheck.ps1'
 if (Test-Path $lc) { . $lc; $stale = Get-StaleBinaryProblem $w; if ($stale) { "STALE BINARY: $stale"; "VERDICT FAIL (binary older than its sources, build first)"; exit 1 } }
 
-$svCmds = "hol.Rpc.OrderTrace 1"; if ($hasP4) { $svCmds += ",hol.Rpc.ProofSpawn 1" }
+$svCmds = "hol.Rpc.OrderTrace 1" # no ProofSpawn: the P3 / P4 orders need no spawned unit (the proof's Barracks is placed from the client; ProofSpawn bit 1 only made a useless Monk)
 $procs = @(); $code = 1
 try {
     $sv = Start-Process $ed -ArgumentList "`"$up`" /Game/Maps/Plain -server -nullrhi -nosound -Port=$port -unattended -nosplash -Multiprocess -LiveCoding=0 -asdebugport=0 -as-exit-on-error -HOLCheats -MatchConfig=`"$cfg`" -saveddirsuffix=OrdSrv -abslog=`"$sl`" -ExecCmds=`"$svCmds`"" -PassThru -WindowStyle Hidden

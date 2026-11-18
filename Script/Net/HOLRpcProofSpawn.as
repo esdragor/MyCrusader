@@ -54,7 +54,7 @@ class UHOLRpcProofSpawn : UScriptWorldSubsystem
 		if ((Bits & 2) != 0)
 			Commands.Add("hol.Units.Spawn 1 400 -300 0 Mangonel 100");
 		if ((Bits & 4) != 0)
-			Commands.Add("hol.Units.Spawn 3 1800 0 1 Spearman 150");
+			Commands.Add("hol.Units.Spawn 3 -12000 0 1 Spearman 150"); // 3000 cm in front of the slot 0 units (they start near (-15700, 0)): the first real run put them at (1800, 0), 16000 cm away, and nobody fought in 12 s
 		if ((Bits & 8) != 0)
 			Commands.Add("hol.Cheat.SpawnBuilding Barracks 0 600 0");
 		for (FString Command : Commands)
