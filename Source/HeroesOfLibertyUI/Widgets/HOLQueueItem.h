@@ -19,6 +19,7 @@ class HEROESOFLIBERTYUI_API UHOLQueueItem : public UCommonButtonBase
 public:
 	UHOLQueueItem();
 
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|UI")
 	void SetLabel(const FText& InLabel);
 
 protected:
