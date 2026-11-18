@@ -645,6 +645,66 @@ void UHOLNewGameScreen::ShowLobby(const FHOLLobby& InLobby)
 	}
 	Refresh();
 
+	const bool bLeader = Lobby.IsYouLeader();
+	const bool bSpectator = Lobby.IsYouSpectator();
+	// NG-1d: a script class that owns the lobby display (bScriptOwnsLobbyDisplay) shows the lobby itself in BP_ShowLobby (reads: GetLobbyView and the GetNewGame* texts); the reading, the sends and the errors stay here.
+	if (bScriptOwnsLobbyDisplay)
+	{
+		BP_ShowLobby();
+	}
+	else
+	{
+		ShowLobbyWidgets();
+	}
+	if (Lobby.State == EHOLLobbyState::Starting)
+	{
+		ShowError(LOCTEXT("Starting", "Lancement…"));
+	}
+	else if (Lobby.State == EHOLLobbyState::InGame && Lobby.bHasMatch)
+	{
+		JoinMatch();
+		return;
+	}
+
+	const int32 NumReady = Lobby.Slots.FilterByPredicate([](const FHOLLobbySlot& Row) { return Row.State == EHOLLobbySlotState::Player && Row.bReady; }).Num();
+	TArray<FString> SlotsShown;
+	for (const FHOLLobbySlot& Row : Lobby.Slots)
+	{
+		// IA0.6 L4: an AI "a<colour>" (no Ready).
+		SlotsShown.Add(Row.State == EHOLLobbySlotState::Open ? FString(TEXT("o")) : Row.State == EHOLLobbySlotState::Closed ? FString(TEXT("x"))
+			: Row.State == EHOLLobbySlotState::AI ? FString::Printf(TEXT("a%d"), Row.ColorIndex)
+			: FString::Printf(TEXT("c%d%s"), Row.ColorIndex, Row.bReady ? TEXT("r") : TEXT("")));
+	}
+	const FString Logged = FString::Printf(TEXT("%d players (%s), you %s%s, leader %s, %d/%d ready, launch %s, slots %s, spectators (%s)"), Players.Num(),
+		*FString::Join(Players, TEXT(", ")), *Lobby.You, bSpectator ? TEXT(" (spectator)") : TEXT(""), *Lobby.Leader, NumReady, Players.Num(),
+		bLeader ? TEXT("shown") : TEXT("hidden"), *FString::Join(SlotsShown, TEXT(" ")), *FString::Join(Lobby.Spectators, TEXT(", ")));
+	// FactionChoiceInProgress.md: the factions of the occupied slots as the manager gave them, logged when they change (the lobby test reads them).
+	TArray<FString> FactionNamesRead;
+	for (const FHOLLobbySlot& Row : Lobby.Slots)
+	{
+		if (Row.State == EHOLLobbySlotState::Player || Row.State == EHOLLobbySlotState::AI)
+		{
+			FactionNamesRead.Add(Row.Faction);
+		}
+	}
+	const FString FactionsRead = FString::Join(FactionNamesRead, TEXT(","));
+	if (FactionsRead != LoggedFactions)
+	{
+		LoggedFactions = FactionsRead;
+		UE_LOG(LogHOLUI, Display, TEXT("Lobby: factions %s"), *FactionsRead);
+	}
+	if (Logged != LoggedPlayers)
+	{
+		LoggedPlayers = Logged;
+		UE_LOG(LogHOLUI, Display, TEXT("Lobby: %s \"%s\" map %s %s teams together %d: %s"), *Lobby.Id, *Lobby.Name, *Lobby.Map, *Lobby.Size,
+			Lobby.bTeamsTogether, *Logged);
+	}
+}
+
+void UHOLNewGameScreen::ShowLobbyWidgets()
+{
+	using namespace UE::HeroesOfLiberty::UI::NewGame;
+
 	if (HeadingText)
 	{
 		HeadingText->SetText(FText::FromString(Lobby.Name));
@@ -736,49 +796,6 @@ void UHOLNewGameScreen::ShowLobby(const FHOLLobby& InLobby)
 	{
 		LaunchButton->SetVisibility(bLeader ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
 		LaunchButton->SetIsEnabled(Lobby.CanStart() && Lobby.State == EHOLLobbyState::Lobby);
-	}
-	if (Lobby.State == EHOLLobbyState::Starting)
-	{
-		ShowError(LOCTEXT("Starting", "Lancement…"));
-	}
-	else if (Lobby.State == EHOLLobbyState::InGame && Lobby.bHasMatch)
-	{
-		JoinMatch();
-		return;
-	}
-
-	const int32 NumReady = Lobby.Slots.FilterByPredicate([](const FHOLLobbySlot& Row) { return Row.State == EHOLLobbySlotState::Player && Row.bReady; }).Num();
-	TArray<FString> SlotsShown;
-	for (const FHOLLobbySlot& Row : Lobby.Slots)
-	{
-		// IA0.6 L4: an AI "a<colour>" (no Ready).
-		SlotsShown.Add(Row.State == EHOLLobbySlotState::Open ? FString(TEXT("o")) : Row.State == EHOLLobbySlotState::Closed ? FString(TEXT("x"))
-			: Row.State == EHOLLobbySlotState::AI ? FString::Printf(TEXT("a%d"), Row.ColorIndex)
-			: FString::Printf(TEXT("c%d%s"), Row.ColorIndex, Row.bReady ? TEXT("r") : TEXT("")));
-	}
-	const FString Logged = FString::Printf(TEXT("%d players (%s), you %s%s, leader %s, %d/%d ready, launch %s, slots %s, spectators (%s)"), Players.Num(),
-		*FString::Join(Players, TEXT(", ")), *Lobby.You, bSpectator ? TEXT(" (spectator)") : TEXT(""), *Lobby.Leader, NumReady, Players.Num(),
-		bLeader ? TEXT("shown") : TEXT("hidden"), *FString::Join(SlotsShown, TEXT(" ")), *FString::Join(Lobby.Spectators, TEXT(", ")));
-	// FactionChoiceInProgress.md: the factions of the occupied slots as the manager gave them, logged when they change (the lobby test reads them).
-	TArray<FString> FactionNamesRead;
-	for (const FHOLLobbySlot& Row : Lobby.Slots)
-	{
-		if (Row.State == EHOLLobbySlotState::Player || Row.State == EHOLLobbySlotState::AI)
-		{
-			FactionNamesRead.Add(Row.Faction);
-		}
-	}
-	const FString FactionsRead = FString::Join(FactionNamesRead, TEXT(","));
-	if (FactionsRead != LoggedFactions)
-	{
-		LoggedFactions = FactionsRead;
-		UE_LOG(LogHOLUI, Display, TEXT("Lobby: factions %s"), *FactionsRead);
-	}
-	if (Logged != LoggedPlayers)
-	{
-		LoggedPlayers = Logged;
-		UE_LOG(LogHOLUI, Display, TEXT("Lobby: %s \"%s\" map %s %s teams together %d: %s"), *Lobby.Id, *Lobby.Name, *Lobby.Map, *Lobby.Size,
-			Lobby.bTeamsTogether, *Logged);
 	}
 }
 
@@ -1657,6 +1674,99 @@ FText UHOLNewGameScreen::GetNewGameText(const FName Key)
 FText UHOLNewGameScreen::GetNewGamePlayerName(const int32 SlotIndex)
 {
 	return FText::Format(LOCTEXT("PlayerN", "Joueur {0}"), SlotIndex + 1);
+}
+
+FText UHOLNewGameScreen::GetNewGameAIName(const int32 Slot, const int32 Level)
+{
+	return HOLForumMessages::GetAIName(Slot, static_cast<EHOLAIDifficulty>(FMath::Clamp(Level, 0, 3)));
+}
+
+FText UHOLNewGameScreen::GetNewGameLeaderName(const FString& Name)
+{
+	return FText::Format(LOCTEXT("Leader", "♛ {0}"), FText::FromString(Name));
+}
+
+FText UHOLNewGameScreen::GetNewGameSpectatorsText(const TArray<FString>& Spectators, const FString& Leader)
+{
+	TArray<FString> Names;
+	for (const FString& Name : Spectators)
+	{
+		Names.Add(Name == Leader ? GetNewGameLeaderName(Name).ToString() : Name);
+	}
+	return Names.IsEmpty() ? FText::GetEmpty() : FText::Format(LOCTEXT("Spectators", "Spectateurs : {0}"), FText::FromString(FString::Join(Names, TEXT(", "))));
+}
+
+FText UHOLNewGameScreen::GetNewGameLobbyLineName(const int32 SlotIndex) const
+{
+	const FHOLLobbySlot* Row = Lobby.Slots.IsValidIndex(SlotIndex) ? &Lobby.Slots[SlotIndex] : nullptr;
+	if (Row && Row->State == EHOLLobbySlotState::AI)
+	{
+		return FText::GetEmpty();
+	}
+	if (!Row || Row->State != EHOLLobbySlotState::Player)
+	{
+		return GetNewGamePlayerName(SlotIndex);
+	}
+	return Row->PlayerName == Lobby.Leader ? GetNewGameLeaderName(Row->PlayerName) : FText::FromString(Row->PlayerName);
+}
+
+FText UHOLNewGameScreen::GetNewGameLobbyAIName(const int32 SlotIndex) const
+{
+	const bool bAI = Lobby.Slots.IsValidIndex(SlotIndex) && Lobby.Slots[SlotIndex].State == EHOLLobbySlotState::AI;
+	return bAI ? HOLForumMessages::GetAIName(SlotIndex, Lobby.Slots[SlotIndex].Level) : FText::GetEmpty();
+}
+
+FString UHOLNewGameScreen::GetNewGameFactionName(const int32 Faction)
+{
+	return Faction >= 0 && Faction <= static_cast<int32>(EHOLFaction::Templars) ? HOLFactionChoice::GetName(static_cast<EHOLFaction>(Faction)) : FString();
+}
+
+void UHOLNewGameScreen::SetNewGameButtonLabel(const FName ButtonName, const FText& Label)
+{
+	if (UHOLButton* Button = WidgetTree ? Cast<UHOLButton>(WidgetTree->FindWidget(ButtonName)) : nullptr)
+	{
+		Button->SetLabel(Label);
+	}
+}
+
+bool UHOLNewGameScreen::HasClient() const
+{
+	return GetClient() != nullptr;
+}
+
+bool UHOLNewGameScreen::CanToggleLobbySlot(const int32 SlotIndex) const
+{
+	return bLobby && Lobby.CanToggleSlot(SlotIndex);
+}
+
+bool UHOLNewGameScreen::CanEditLobbySlot(const int32 SlotIndex) const
+{
+	return bLobby && Lobby.CanEditSlot(SlotIndex);
+}
+
+bool UHOLNewGameScreen::CanEditLobbyAISlot(const int32 SlotIndex) const
+{
+	return bLobby && Lobby.CanEditAISlot(SlotIndex);
+}
+
+bool UHOLNewGameScreen::IsLobbyYouSpectator() const
+{
+	return bLobby && Lobby.IsYouSpectator();
+}
+
+bool UHOLNewGameScreen::IsLobbyYouLeader() const
+{
+	return bLobby && Lobby.IsYouLeader();
+}
+
+bool UHOLNewGameScreen::LobbyHasOpenSlot() const
+{
+	return bLobby && Lobby.HasOpenSlot();
+}
+
+bool UHOLNewGameScreen::CanStartLobby() const
+{
+	return bLobby && Lobby.CanStart();
 }
 
 FHOLNewGameLobbyView UHOLNewGameScreen::GetLobbyView() const

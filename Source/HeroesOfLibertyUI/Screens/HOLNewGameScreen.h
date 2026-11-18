@@ -160,6 +160,57 @@ public:
 	UFUNCTION(BlueprintPure, Category = "HOL|NewGame")
 	static FText GetNewGamePlayerName(int32 SlotIndex);
 
+	// ---- NG-1d (D851, step 4): what the script needs to own the lobby display (BP_ShowLobby); the C++ screen is unchanged unless the flag is set. ----
+
+	/** True in a script class that shows the lobby itself: ShowLobby then calls BP_ShowLobby() instead of ShowLobbyWidgets() (the heading, the 8 lines, Ready, Spectate, spectators, Launch). Set with `default bScriptOwnsLobbyDisplay = true;`. The reading, the sends, the Starting state and JoinMatch stay in the base. Ready and Spectate stay wired to ToggleReady / ToggleSpectator by the base: the script must NOT subscribe them. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "HOL|NewGame")
+	bool bScriptOwnsLobbyDisplay = false;
+
+	/** Called by ShowLobby after Lobby, Config and Refresh() are up to date, when bScriptOwnsLobbyDisplay: GetLobbyView() reads the lobby. In script: `UFUNCTION(BlueprintOverride) void ShowLobby()`. */
+	UFUNCTION(BlueprintImplementableEvent, Category = "HOL|NewGame")
+	void BP_ShowLobby();
+
+	/** HOLForumMessages::GetAIName: "IA Difficile 3" (Slot 0-based, Level = EHOLAIDifficulty 0 Easy, 1 Normal, 2 Hard, 3 Evolving; clamped). */
+	UFUNCTION(BlueprintPure, Category = "HOL|NewGame")
+	static FText GetNewGameAIName(int32 Slot, int32 Level);
+	/** "Crown Name" (the leader's crown). */
+	UFUNCTION(BlueprintPure, Category = "HOL|NewGame")
+	static FText GetNewGameLeaderName(const FString& Name);
+	/** "Spectateurs : A, Crown B" (the leader's name crowned); empty without spectators. */
+	UFUNCTION(BlueprintPure, Category = "HOL|NewGame")
+	static FText GetNewGameSpectatorsText(const TArray<FString>& Spectators, const FString& Leader);
+	/** The name column of the current lobby's line: empty for an AI, "Joueur n" for a slot no player holds, crowned name for the leader, else the name. */
+	UFUNCTION(BlueprintPure, Category = "HOL|NewGame")
+	FText GetNewGameLobbyLineName(int32 SlotIndex) const;
+	/** The AI's name of the current lobby's line ("IA Difficile 3"); empty when the line is no AI. */
+	UFUNCTION(BlueprintPure, Category = "HOL|NewGame")
+	FText GetNewGameLobbyAIName(int32 SlotIndex) const;
+	/** The manager's name of a faction by its EHOLFaction value ("DawnOrder"...); empty out of range. */
+	UFUNCTION(BlueprintPure, Category = "HOL|NewGame")
+	static FString GetNewGameFactionName(int32 Faction);
+	/** The label of a button of the screen by its widget name (LaunchButton, BackButton, ReadyButton, SpectateButton, or a script's own); nothing for an unknown name. */
+	UFUNCTION(BlueprintCallable, Category = "HOL|NewGame")
+	void SetNewGameButtonLabel(FName ButtonName, const FText& Label);
+
+	/** The manager's client exists (the sends do nothing without it). */
+	UFUNCTION(BlueprintPure, Category = "HOL|NewGame")
+	bool HasClient() const;
+	/** FHOLLobby predicates on the current lobby; all false in solo. */
+	UFUNCTION(BlueprintPure, Category = "HOL|NewGame")
+	bool CanToggleLobbySlot(int32 SlotIndex) const;
+	UFUNCTION(BlueprintPure, Category = "HOL|NewGame")
+	bool CanEditLobbySlot(int32 SlotIndex) const;
+	UFUNCTION(BlueprintPure, Category = "HOL|NewGame")
+	bool CanEditLobbyAISlot(int32 SlotIndex) const;
+	UFUNCTION(BlueprintPure, Category = "HOL|NewGame")
+	bool IsLobbyYouSpectator() const;
+	UFUNCTION(BlueprintPure, Category = "HOL|NewGame")
+	bool IsLobbyYouLeader() const;
+	UFUNCTION(BlueprintPure, Category = "HOL|NewGame")
+	bool LobbyHasOpenSlot() const;
+	UFUNCTION(BlueprintPure, Category = "HOL|NewGame")
+	bool CanStartLobby() const;
+
 	/** The lobby read last, flattened for the script (UHOLNewGameReadLibrary::MakeLobbyView); the default view (bHasMatch false) in solo. */
 	UFUNCTION(BlueprintPure, Category = "HOL|NewGame")
 	FHOLNewGameLobbyView GetLobbyView() const;
@@ -318,6 +369,8 @@ private:
 	/** Asks the manager for the lobby's state (one call at a time). */
 	void ReadLobby();
 	void ShowLobby(const FHOLLobby& InLobby);
+	/** NG-1d: the C++ display of the lobby (heading, lines, Ready, Spectate, spectators, Launch): the part of ShowLobby a script class replaces (bScriptOwnsLobbyDisplay). */
+	void ShowLobbyWidgets();
 	void HandleMapChosen(int32 Value);
 	void HandleSizeChosen(int32 Value);
 	void HandleTeamsTogetherChosen(int32 Value);
