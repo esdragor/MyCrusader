@@ -10,6 +10,8 @@ const FConsoleVariable CVar_RpcProofCheats("hol.Rpc.ProofCheats", 0); // ELROND-
 
 // L2 orders (D846): ONE cvar for the 16 order RPCs (this actor's first 8: Move, AttackUnit, HealUnit, AttackBuilding, AttackMove, Stop, ToggleDeploy, MoveInLine). 0 = the C++ RPC of the controller (default), 1 = the C++ routes the order here (read by its name in C++).
 const FConsoleVariable CVar_RpcOrderScript("hol.Rpc.OrderScript", 0);
+// The C++ controller reads hol.Rpc.OrderTrace by name (OrderSend / OrderRecv lines, Tools\Scenarios\order_latency_run.ps1); declared here so that -ExecCmds finds it on every process (it was declared nowhere: the measurement saw 0 lines).
+const FConsoleVariable CVar_RpcOrderTrace("hol.Rpc.OrderTrace", 0);
 
 // D845, lot E: no cvar guards a script RPC any more (hol.Rpc.ScriptMatch, ScriptHero, ScriptSignal, ScriptChat are retired) and no C++ RPC is left for the player: every Server RPC (Match, Hero, Signals, Chat, Specialization, Duel,
 // Diplomacy, Economy, the 14 cheats) and the Client RPCs ClientReceiveSignal / ClientReceiveChat are declared here, the C++ routes reach them through the script actor (RpcRoute: ... not sent when there is none).
