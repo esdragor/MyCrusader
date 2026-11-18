@@ -57,62 +57,20 @@ UHOLStatsScreen* UHOLStatsScreen::Open(APlayerController* PlayerController)
 	{
 		return nullptr;
 	}
-	return Cast<UHOLStatsScreen>(Layout->PushMenu(StaticClass()));
+	// ST-3: the screen is the script's (Script/UI/HOLStatsScreen.as); the C++ class builds nothing by itself.
+	const TSubclassOf<UHOLStatsScreen> ScriptClass = FindScriptClass();
+	if (!ScriptClass)
+	{
+		UE_LOG(LogHOLUI, Warning, TEXT("Stats: no script class (Script/UI/HOLStatsScreen.as)"));
+		return nullptr;
+	}
+	return Cast<UHOLStatsScreen>(Layout->PushMenu(ScriptClass));
 }
 
 void UHOLStatsScreen::BuildLayout()
 {
-	if (IsScriptScreen())
-	{
-		BP_BuildStats();
-		return;
-	}
-	using namespace UE::HeroesOfLiberty::UI::StatsScreen;
-	UVerticalBox* Column = MakeDialogColumn();
-	AddText(Column, TEXT("Heading"), LOCTEXT("Heading", "Statistiques"), UHOLTextStyleHeading::StaticClass(), 16.f);
-
-	UHorizontalBox* TabRow = AddButtonRow(Column);
-	SummaryTab = AddButton(TabRow, TEXT("SummaryTab"), LOCTEXT("Summary", "Résumé"));
-	MilitaryTab = AddButton(TabRow, TEXT("MilitaryTab"), LOCTEXT("Military", "Militaire"));
-	EconomyTab = AddButton(TabRow, TEXT("EconomyTab"), LOCTEXT("Economy", "Économie"));
-	TimelineTab = AddButton(TabRow, TEXT("TimelineTab"), LOCTEXT("Timeline", "Chronologie"));
-
-	Status = AddText(Column, TEXT("Status"), FText::GetEmpty(), UHOLTextStyleBody::StaticClass(), 0.f);
-	Status->SetVisibility(ESlateVisibility::Collapsed);
-
-	TabPages = WidgetTree->ConstructWidget<UWidgetSwitcher>(UWidgetSwitcher::StaticClass(), TEXT("TabPages"));
-	UVerticalBoxSlot* PagesSlot = Column->AddChildToVerticalBox(TabPages);
-	PagesSlot->SetHorizontalAlignment(HAlign_Center);
-	PagesSlot->SetPadding(FMargin(0.f, 24.f, 0.f, 24.f));
-	Grids.Reset();
-	for (int32 Tab = 0; Tab < Timeline; ++Tab)
-	{
-		UGridPanel* Grid = WidgetTree->ConstructWidget<UGridPanel>(UGridPanel::StaticClass());
-		TabPages->AddChild(Grid);
-		Grids.Add(Grid);
-	}
-	// C5: the series' buttons over the curves.
-	UVerticalBox* TimelinePage = WidgetTree->ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass());
-	TabPages->AddChild(TimelinePage);
-	UHorizontalBox* SeriesRow = WidgetTree->ConstructWidget<UHorizontalBox>(UHorizontalBox::StaticClass());
-	TimelinePage->AddChildToVerticalBox(SeriesRow)->SetHorizontalAlignment(HAlign_Center);
-	const FText SeriesLabels[] = { LOCTEXT("SeriesWorkers", "Péons"), LOCTEXT("SeriesMilitary", "Armée"), LOCTEXT("SeriesPopulation", "Population"),
-		LOCTEXT("SeriesBuildings", "Bâtiments"), LOCTEXT("SeriesGathered", "Ressources récoltées"), LOCTEXT("SeriesStock", "Stock") };
-	SeriesButtons.Reset();
-	for (int32 Series = 0; Series < UE_ARRAY_COUNT(SeriesNames); ++Series)
-	{
-		SeriesButtons.Add(AddButton(SeriesRow, *(FString(TEXT("Series")) + SeriesNames[Series]), SeriesLabels[Series]));
-	}
-	USizeBox* GraphBox = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass());
-	GraphBox->SetWidthOverride(GraphWidth);
-	GraphBox->SetHeightOverride(GraphHeight);
-	Graph = WidgetTree->ConstructWidget<UHOLStatsGraph>(UHOLStatsGraph::StaticClass(), TEXT("StatsGraph"));
-	GraphBox->AddChild(Graph);
-	UVerticalBoxSlot* GraphSlot = TimelinePage->AddChildToVerticalBox(GraphBox);
-	GraphSlot->SetHorizontalAlignment(HAlign_Center);
-	GraphSlot->SetPadding(FMargin(0.f, 16.f, 0.f, 0.f));
-
-	BackButton = AddButton(AddButtonRow(Column), TEXT("BackButton"), LOCTEXT("Back", "Retour"));
+	// The screen is built by the script (Script/UI/HOLStatsScreen.as, BuildStats) with the AddStats* helpers above.
+	BP_BuildStats();
 }
 
 void UHOLStatsScreen::NativeOnInitialized()
@@ -247,67 +205,8 @@ void UHOLStatsScreen::SelectSeries(const int32 Index)
 
 void UHOLStatsScreen::RefreshTimeline()
 {
-	if (IsScriptScreen())
-	{
-		BP_RefreshTimeline(SeriesIndex);
-		return;
-	}
-	using namespace UE::HeroesOfLiberty::UI::StatsScreen;
-	const UWorld* World = GetWorld();
-	const UHOLMatchStatsSubsystem* Subsystem = World ? World->GetSubsystem<UHOLMatchStatsSubsystem>() : nullptr;
-	const AHOLGameState* GameState = World ? World->GetGameState<AHOLGameState>() : nullptr;
-	if (!Graph || !Subsystem || !GameState)
-	{
-		return;
-	}
-	const FHOLMatchStats& Stats = Subsystem->GetStats();
-	const EHOLMatchStatsSeries Series = static_cast<EHOLMatchStatsSeries>(SeriesIndex);
-	const TArray<FHOLMatchSlot>& Slots = GameState->GetLaunchConfig().Slots;
-	const auto SlotName = [GameState](const int32 SlotIndex)
-	{
-		// The lobby's name, an AI's « IA Difficile 3 » (IA0.1-Q1), else Joueur N.
-		return HOLForumMessages::GetPlayerName(GameState->GetLaunchConfig(), SlotIndex, INDEX_NONE);
-	};
-	const auto SlotColor = [&Slots](const int32 SlotIndex)
-	{
-		return Slots.IsValidIndex(SlotIndex) ? FLinearColor(HOLPlayerColors::GetColor(Slots[SlotIndex].ColorIndex)) : FLinearColor::White;
-	};
-
-	// A curve a slot held by a human or an AI, in the slots' order, as the tables' rows.
-	TArray<UHOLStatsGraph::FCurve> Curves;
-	for (int32 SlotIndex = 0; SlotIndex < Slots.Num(); ++SlotIndex)
-	{
-		if (Slots[SlotIndex].State == EHOLSlotState::Closed)
-		{
-			continue;
-		}
-		UHOLStatsGraph::FCurve& Curve = Curves.AddDefaulted_GetRef();
-		Curve.Name = SlotName(SlotIndex);
-		Curve.Color = SlotColor(SlotIndex);
-		if (Stats.Players.IsValidIndex(SlotIndex))
-		{
-			Curve.Points = HOLMatchStats::MakeCurve(Stats.Players[SlotIndex], Series);
-		}
-	}
-	TArray<UHOLStatsGraph::FMark> Marks;
-	for (const FHOLMatchStatsEventEntry& Event : Stats.Events)
-	{
-		UHOLStatsGraph::FMark& Mark = Marks.AddDefaulted_GetRef();
-		Mark.TimeSeconds = Event.TimeSeconds;
-		Mark.Color = SlotColor(Event.PlayerIndex);
-		Mark.Label = FText::Format(Event.Kind == EHOLMatchStatsEvent::Defeated ? LOCTEXT("MarkDefeated", "{0} vaincu")
-			: LOCTEXT("MarkForumFell", "Forum de {0} tombé"), SlotName(Event.PlayerIndex));
-	}
-	int32 Points = 0;
-	for (const UHOLStatsGraph::FCurve& Curve : Curves)
-	{
-		Points += Curve.Points.Num();
-	}
-	const int32 NumCurves = Curves.Num();
-	const int32 NumMarks = Marks.Num();
-	Graph->SetData(MoveTemp(Curves), MoveTemp(Marks));
-	UE_LOG(LogHOLUI, Display, TEXT("Stats screen: timeline %s, %d curves, %d points, %d marks, %s"), SeriesNames[SeriesIndex], NumCurves, Points, NumMarks,
-		*Graph->DescribeAxes());
+	// The graph is drawn by the script (RefreshTimeline of the script, BP_RefreshTimeline here) from the statistics now held.
+	BP_RefreshTimeline(SeriesIndex);
 }
 
 void UHOLStatsScreen::OnRefused()
@@ -318,87 +217,8 @@ void UHOLStatsScreen::OnRefused()
 
 void UHOLStatsScreen::Refresh()
 {
-	if (IsScriptScreen())
-	{
-		BP_RefreshStats(bRefused);
-		return;
-	}
-	using namespace UE::HeroesOfLiberty::UI::StatsScreen;
-	const UWorld* World = GetWorld();
-	const UHOLMatchStatsSubsystem* Subsystem = World ? World->GetSubsystem<UHOLMatchStatsSubsystem>() : nullptr;
-	const AHOLGameState* GameState = World ? World->GetGameState<AHOLGameState>() : nullptr;
-	const FHOLMatchStats* Stats = Subsystem ? &Subsystem->GetStats() : nullptr;
-	const bool bHasStats = Stats && Stats->Players.ContainsByPredicate([](const FHOLPlayerMatchStats& Player) { return Player.PlayerIndex != INDEX_NONE; });
-
-	// M6-Q11: a player gets them once the match is over; meanwhile the server says no, or has not answered yet.
-	if (Status)
-	{
-		const FText Text = bRefused ? LOCTEXT("Refused", "Les statistiques seront disponibles à la fin de la partie.")
-			: !bHasStats ? LOCTEXT("Waiting", "Statistiques en attente du serveur…") : FText::GetEmpty();
-		Status->SetText(Text);
-		Status->SetVisibility(Text.IsEmpty() ? ESlateVisibility::Collapsed : ESlateVisibility::HitTestInvisible);
-	}
-	if (TabPages)
-	{
-		TabPages->SetVisibility(bHasStats && !bRefused ? ESlateVisibility::SelfHitTestInvisible : ESlateVisibility::Collapsed);
-	}
-	if (!bHasStats || !GameState || Grids.Num() < Timeline)
-	{
-		UE_LOG(LogHOLUI, Display, TEXT("Stats screen: %s"), bRefused ? TEXT("refused") : TEXT("waiting"));
-		return;
-	}
-
-	const TArray<FText> Headers[] = { HeadersOf(0), HeadersOf(1), HeadersOf(2) };
-	for (int32 Tab = 0; Tab < Timeline; ++Tab)
-	{
-		Grids[Tab]->ClearChildren();
-		for (int32 Column = 0; Column < Headers[Tab].Num(); ++Column)
-		{
-			AddStatsCell(Grids[Tab], 0, Column, Headers[Tab][Column], true, false, FLinearColor::White);
-		}
-	}
-
-	// One row a slot held by a human or an AI, in the slots' order.
-	const TArray<FHOLMatchSlot>& Slots = GameState->GetLaunchConfig().Slots;
-	int32 Row = 1;
-	for (int32 SlotIndex = 0; SlotIndex < Slots.Num(); ++SlotIndex)
-	{
-		if (Slots[SlotIndex].State == EHOLSlotState::Closed)
-		{
-			continue;
-		}
-		const FHOLPlayerMatchStats Player = Stats->Players.IsValidIndex(SlotIndex) ? Stats->Players[SlotIndex] : FHOLPlayerMatchStats();
-		const FText NameText = HOLForumMessages::GetPlayerName(GameState->GetLaunchConfig(), SlotIndex, INDEX_NONE);
-		const FLinearColor Color(HOLPlayerColors::GetColor(Slots[SlotIndex].ColorIndex));
-		for (int32 Tab = 0; Tab < Timeline; ++Tab)
-		{
-			AddStatsCell(Grids[Tab], Row, 0, NameText, false, true, Color);
-		}
-		const auto Number = [](const int32 Value) { return FText::AsNumber(Value); };
-		const int32 MilitaryScore = HOLMatchStats::GetMilitaryScore(Player);
-		const int32 EconomyScore = HOLMatchStats::GetEconomyScore(Player);
-		const FText Result = GameState->IsWinner(SlotIndex) ? LOCTEXT("Winner", "Vainqueur")
-			: GameState->IsSlotDefeated(SlotIndex) ? LOCTEXT("Defeated", "Vaincu") : LOCTEXT("Playing", "En jeu");
-		const FText Values[][7] =
-		{
-			{ Slots[SlotIndex].Team > 0 ? Number(Slots[SlotIndex].Team) : FText::AsCultureInvariant(TEXT("—")), Result, Number(MilitaryScore), Number(EconomyScore),
-				Number(MilitaryScore + EconomyScore) },
-			{ Number(Player.UnitsKilled), Number(Player.UnitsLost), Number(Player.BuildingsLost), Number(Player.MaxMilitary) },
-			{ Number(Player.Gathered.Food), Number(Player.Gathered.Wood), Number(Player.Gathered.Stone), Number(Player.Gathered.Gold),
-				Number(Player.UnitsTrained), Number(Player.MaxWorkers), Number(Player.MaxPopulation) },
-		};
-		for (int32 Tab = 0; Tab < Timeline; ++Tab)
-		{
-			for (int32 Column = 1; Column < Headers[Tab].Num(); ++Column)
-			{
-				AddStatsCell(Grids[Tab], Row, Column, Values[Tab][Column - 1], false, false, FLinearColor::White);
-			}
-		}
-		UE_LOG(LogHOLUI, Display, TEXT("Stats screen: row %s (slot %d) military %d economy %d, %s"), *NameText.ToString(), SlotIndex, MilitaryScore, EconomyScore,
-			*HOLMatchStats::DescribePlayer(Player));
-		++Row;
-	}
-	RefreshTimeline();
+	// The tables are shown by the script (Script/UI/HOLStatsScreen.as, RefreshStats): at each OnStatsUpdated and refusal.
+	BP_RefreshStats(bRefused);
 }
 
 TSubclassOf<UHOLStatsScreen> UHOLStatsScreen::FindScriptClass()
@@ -412,11 +232,6 @@ TSubclassOf<UHOLStatsScreen> UHOLStatsScreen::FindScriptClass()
 		}
 	}
 	return nullptr;
-}
-
-bool UHOLStatsScreen::IsScriptScreen() const
-{
-	return GetClass() != StaticClass();
 }
 
 UVerticalBox* UHOLStatsScreen::MakeStatsColumn()
