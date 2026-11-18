@@ -753,7 +753,7 @@ private:
 	/** D372: a tribute from a Market (UHOLProductionSubsystem::ApplyTribute checks the owner, the Market, the receiver, the resource and the stock). */
 	void DoTribute(AHOLBuilding* Building, int32 Receiver, int32 Resource, int32 Amount);
 
-	/** D846: the bodies of the 16 order RPCs of the player (the UFUNCTION(Server) above stay: their _Implementation forwards here; the script RPC actor's bridge, friend UHOLRpcBridgeLibrary, calls them too). */
+	/** D846: the bodies of the 16 order RPCs (the script RPC actor's bridge calls them); no C++ RPC. */
 	void DoMoveUnits(const TArray<uint32>& UnitIds, FVector_NetQuantize Target, bool bQueue);
 	void DoAttackUnit(const TArray<uint32>& UnitIds, uint32 TargetUnitId, bool bQueue);
 	void DoHealUnit(const TArray<uint32>& UnitIds, uint32 TargetUnitId, bool bQueue);
@@ -770,66 +770,6 @@ private:
 	void DoUngarrisonAll(AHOLBuilding* Building);
 	void DoCancelBuilding(AHOLBuilding* Building);
 	void DoSetRallyPoint(AHOLBuilding* Building, FVector_NetQuantize Point, int32 SourceIndex, AHOLBuilding* Site, bool bQueue);
-	/** The units' identifiers (D223) and the ground point: ~4 bytes a unit, a player's selection at most (D288). */
-	UFUNCTION(Server, Reliable)
-	void ServerMoveUnits(const TArray<uint32>& UnitIds, FVector_NetQuantize Target, bool bQueue);
-
-	/** The combat orders (J7b.3): attack a unit, attack-move, stop or hold (EHOLOrderKind as a byte); the server checks them. */
-	UFUNCTION(Server, Reliable)
-	void ServerAttackUnit(const TArray<uint32>& UnitIds, uint32 TargetUnitId, bool bQueue);
-	UFUNCTION(Server, Reliable)
-	void ServerHealUnit(const TArray<uint32>& UnitIds, uint32 TargetUnitId, bool bQueue);
-	UFUNCTION(Server, Reliable)
-	void ServerAttackBuilding(const TArray<uint32>& UnitIds, AHOLBuilding* Building, bool bQueue);
-	UFUNCTION(Server, Reliable)
-	void ServerAttackMove(const TArray<uint32>& UnitIds, FVector_NetQuantize Target, bool bQueue);
-	UFUNCTION(Server, Reliable)
-	void ServerStopUnits(const TArray<uint32>& UnitIds, bool bHold);
-	UFUNCTION(Server, Reliable)
-	void ServerToggleDeploy(const TArray<uint32>& UnitIds);
-
-	/**
-	 * A right-button drag (J7a.4): the units and the two ends of the front line on the ground (~4 bytes a unit and two
-	 * points); the server makes the formation from them (facing; width with bWidth, Ctrl), as for ServerMoveUnits.
-	 */
-	UFUNCTION(Server, Reliable)
-	void ServerMoveUnitsInLine(const TArray<uint32>& UnitIds, FVector_NetQuantize Start, FVector_NetQuantize End, bool bWidth, bool bQueue);
-
-	/** The units' identifiers and the source's index (J5, D298); Shift (the user's trial of J6a.4). */
-	UFUNCTION(Server, Reliable)
-	void ServerGatherUnits(const TArray<uint32>& UnitIds, int32 SourceIndex, bool bQueue);
-
-	/** A type and a ground point (J6a.3, D311): ~16 bytes a foundation; the units sent to build it (J6a.4), Shift. */
-	UFUNCTION(Server, Reliable)
-	void ServerPlaceBuilding(FName TypeName, FVector_NetQuantize Point, const TArray<uint32>& UnitIds, bool bQueue);
-
-	/** The units' identifiers and the site they build (J6a.4, D312). */
-	UFUNCTION(Server, Reliable)
-	void ServerBuildUnits(const TArray<uint32>& UnitIds, AHOLBuilding* Building, bool bQueue);
-
-	/** The units' identifiers, the building they unload at and the ground point clicked (D485). */
-	UFUNCTION(Server, Reliable)
-	void ServerDropOffUnits(const TArray<uint32>& UnitIds, AHOLBuilding* Building, FVector_NetQuantize Point, bool bQueue);
-
-	/** F7 lot 4b: the units' identifiers and the building they enter. */
-	UFUNCTION(Server, Reliable)
-	void ServerGarrisonUnits(const TArray<uint32>& UnitIds, AHOLBuilding* Building);
-
-	/** F7 lot 4a: the building whose occupants all come out. */
-	UFUNCTION(Server, Reliable)
-	void ServerUngarrisonAll(AHOLBuilding* Building);
-
-	UFUNCTION(Server, Reliable)
-	void ServerCancelBuilding(AHOLBuilding* Building);
-
-	/**
-	 * The building, the ground point, the source there and the site there (the user's trial of J6a.4), both checked; bQueue
-	 * (Shift, EtapeDefini N.1): a step added at the end of the rally point.
-	 */
-	UFUNCTION(Server, Reliable)
-	void ServerSetRallyPoint(AHOLBuilding* Building, FVector_NetQuantize Point, int32 SourceIndex, AHOLBuilding* Site, bool bQueue);
-
-	/** The player's own unit selected alone (D303), or 0: the server sends its load at every change. */
 	/** D845: the RPC is in the script RPC actor; this is the body its bridge calls on the server. */
 	void DoWatchUnit(uint32 UnitId);
 
