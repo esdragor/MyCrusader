@@ -4,5 +4,3 @@
 # (vide depuis 2026-11-07 : camera 2p et camera 8p sont vertes sur main, quick_check -Parts camera x2 dans Faramir a bc3cf59)
 # Partie "tests" (SAURON-1116n) : une ligne peut nommer un test (chemin complet, ex. HeroesOfLiberty.Match...) ; la partie tests est
 # un rouge connu quand TOUS ses tests KO sont listes ici, une REGRESSION des qu'un seul ne l'est pas (Find-KnownTestRed).
-HeroesOfLiberty.Match.StartingHero.NomadFirstForum | 2026-11-16 | D831 (84f2b30, hol.Nomad.ForumCell=2 dans Config\DefaultEngine.ini [SystemSettings]) : le test suppose la case C = 10 en dur (Lists: Cell == 10, PressKey(Grid, 1, 10), ClickAge(..., 1, 10)) ; le forum est maintenant en case E = 2. Correctif : le test lit le cvar (C++, avec la migration D830)
-HeroesOfLiberty.Match.StartingHero.NomadReplicated | 2026-11-16 | D831 (84f2b30, hol.Nomad.ForumCell=2) : ForumCell() lit HOLCommandGrid::GetAgeBuilding(Grid, 1, 10) en dur, la case C n'a plus le forum (il est en E = 2). Correctif : le test lit le cvar (C++, avec la migration D830)
