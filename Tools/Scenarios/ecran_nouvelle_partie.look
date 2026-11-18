@@ -1,6 +1,6 @@
 # <nom de capture> | ce que l'utilisateur doit voir
-ecran_np_ouverture | ecran Nouvelle partie : en haut les listes Carte, Taille, Brouillard et Equipes ensemble ; la grille de 8 places (Humain en place 1, les 7 autres Fermees) avec colonnes alignees etat / faction / pastille et couleur / equipe ; en bas les options et les boutons Retour et Lancer, rien de coupe
-ecran_np_ia_niveau | la place 2 de la grille sur IA, avec sa liste de niveau (Normal) affichee sur sa ligne ; la liste Taille sur Moyenne
-ecran_np_couleur | les places 2 et 3 de la grille ouvertes, avec deux pastilles de couleur DIFFERENTES (la place 3 a saute a la couleur libre suivante)
-ecran_np_taille_liste | la liste Taille ouverte sous la liste, l'entree Petite grisee (3 joueurs, 2 places), Moyenne et les suivantes en clair
+ecran_np_ouverture | ecran Nouvelle partie : en haut les listes Carte, Taille (Petite), Brouillard et Equipes ensemble ; la grille de 8 places (Humain en place 1, IA avec sa liste de niveau en place 2, les 6 autres Fermees) avec colonnes alignees etat / niveau / faction / pastille et couleur / equipe ; en bas les options et les boutons Retour et Lancer, rien de coupe
+ecran_np_ia_niveau | les places 2 et 3 de la grille sur IA, chacune avec sa liste de niveau (Normal) affichee sur sa ligne ; la liste Taille sur Moyenne
+ecran_np_couleur | les places 2, 3 et 4 de la grille ouvertes, avec des pastilles de couleur toutes DIFFERENTES (la place 4 a saute a la couleur libre suivante apres que la place 3 a pris la sienne)
+ecran_np_taille_liste | la liste Taille ouverte sous la liste, l'entree Petite grisee (4 joueurs, 2 places), Moyenne et les suivantes en clair
 ecran_np_retour | ecran titre : Jouer, Multijoueur, Reglages, Quitter
