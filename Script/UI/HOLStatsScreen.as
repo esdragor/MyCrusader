@@ -1,13 +1,13 @@
 // The statistics screen's widget in script (D851, ST-2, as HOLSettingsScreen.as): the screen UHOLStatsScreen::Open pushes (once ST-3 switches it) is the class
 // FindScriptClass finds, the one of this file. Its column, 4 tabs (Summary, Military, Economy, Timeline), the 3 tables, the timeline's 6 series buttons and its
-// graph are built here (BP_BuildStats, in place of BuildLayout) with the same widget names as the C++ screen had (the scenarios and hol.UI.Click aim at
-// them); the tables are filled again at each OnStatsUpdated or refusal (BP_RefreshStats, in place of Refresh) and the graph at each series (BP_RefreshTimeline,
+// graph are built here (BuildStats, the script name of BP_BuildStats, in place of BuildLayout) with the same widget names as the C++ screen had (the scenarios and hol.UI.Click aim at
+// them); the tables are filled again at each OnStatsUpdated or refusal (RefreshStats, of BP_RefreshStats, in place of Refresh) and the graph at each series (RefreshTimeline, of BP_RefreshTimeline,
 // in place of RefreshTimeline). The base keeps the opening, the subscriptions, the 10 s request, the navigation (SelectTab, SelectSeries, Close), the
 // localized texts (TextOf, HeadersOf, MakeMarkLabel) and the painting of the graph. What a row shows is HOLStatsRules (Script/UI/HOLStatsRules.as).
 class UHOLStatsScreenScript : UHOLStatsScreen
 {
 	UFUNCTION(BlueprintOverride)
-	void BP_BuildStats()
+	void BuildStats()
 	{
 		UVerticalBox Column = MakeStatsColumn();
 		AddStatsText(Column, n"Heading", UHOLStatsScreen::TextOf(n"Heading"), 0);
@@ -39,7 +39,7 @@ class UHOLStatsScreenScript : UHOLStatsScreen
 		BackButton = AddStatsButton(AddStatsRow(Column), n"BackButton", UHOLStatsScreen::TextOf(n"Back"));
 	}
 
-	// A figure as the C++ screen showed it (FText::AsNumber, grouped by the culture), the dash of a missing team, or a text of the screen.
+	// A figure as the C++ screen showed it (a plain integer: FText::AsNumber is not bound in script, so no grouping by the culture; MANQUE: a base NumberText(int)), the dash of a missing team, or a text of the screen.
 	// MANQUE: the dash is a string here (the C++ had FText::AsCultureInvariant(TEXT("—"))); a base text Key would hold it.
 	FText CellText(const FHOLStatsCell& Cell)
 	{
@@ -47,13 +47,13 @@ class UHOLStatsScreenScript : UHOLStatsScreen
 			return FText::FromString("—");
 		if (!Cell.Key.IsNone())
 			return UHOLStatsScreen::TextOf(Cell.Key);
-		return FText::AsNumber(float(Cell.Value));
+		return FText::FromString(f"{Cell.Value}");
 	}
 
 	UFUNCTION(BlueprintOverride)
-	void BP_RefreshStats(bool bRefusedNow)
+	void RefreshStats(bool bRefusedNow)
 	{
-		const bool bHasStats = HOLMatchStatsRead::HasWorldStats(this);
+		const bool bHasStats = HOLMatchStatsRead::HasWorldStats();
 
 		// M6-Q11: a player gets them once the match is over; meanwhile the server says no, or has not answered yet.
 		const FName StatusKey = HOLStatsRules::StatusKey(bRefusedNow, bHasStats);
@@ -80,18 +80,22 @@ class UHOLStatsScreenScript : UHOLStatsScreen
 		if (!bHasStats || Grids.Num() < HOLStatsRules::TableCount())
 			return;
 
-		FHOLMatchStatsState Stats = HOLMatchStatsRead::GetWorldStats(this);
-		TArray<FHOLStatsRowState> Rows = HOLMatchStatsRead::GetWorldStatsRows(this);
+		FHOLMatchStatsState Stats = HOLMatchStatsRead::GetWorldStats();
+		TArray<FHOLStatsRowState> Rows = HOLMatchStatsRead::GetWorldStatsRows();
 
 		// The headers of each table (row 0), the names' column included.
 		for (int Tab = 0; Tab < HOLStatsRules::TableCount(); Tab++)
 		{
-			Grids[Tab].ClearChildren();
+			UGridPanel Grid = Grids[Tab];
+			Grid.ClearChildren();
 			TArray<FText> Headers = UHOLStatsScreen::HeadersOf(Tab);
 			for (int Column = 0; Column < Headers.Num(); Column++)
-				AddStatsCell(Grids[Tab], 0, Column, Headers[Column], true, false, FLinearColor::White);
+				AddStatsCell(Grid, 0, Column, Headers[Column], true, false, FLinearColor::White);
 		}
 
+		TArray<UGridPanel> Tables;
+		for (int Tab = 0; Tab < HOLStatsRules::TableCount(); Tab++)
+			Tables.Add(Grids[Tab]);
 		// One row a slot held by a human or an AI, in the slots' order (GetWorldStatsRows leaves the closed ones out).
 		for (int Index = 0; Index < Rows.Num(); Index++)
 		{
@@ -100,28 +104,34 @@ class UHOLStatsScreenScript : UHOLStatsScreen
 			if (Stats.Players.IsValidIndex(Rows[Index].SlotIndex))
 				Player = Stats.Players[Rows[Index].SlotIndex];
 			for (int Tab = 0; Tab < HOLStatsRules::TableCount(); Tab++)
-				AddStatsCell(Grids[Tab], GridRow, 0, Rows[Index].Name, false, true, Rows[Index].Color);
+				AddStatsCell(Tables[Tab], GridRow, 0, Rows[Index].Name, false, true, Rows[Index].Color);
 			for (int Tab = 0; Tab < HOLStatsRules::TableCount(); Tab++)
 			{
 				TArray<FText> Headers = UHOLStatsScreen::HeadersOf(Tab);
 				TArray<FHOLStatsCell> Cells = HOLStatsRules::TableRow(Tab, Rows[Index].Team, Rows[Index].Result, Player);
 				for (int Column = 1; Column < Headers.Num() && Column - 1 < Cells.Num(); Column++)
-					AddStatsCell(Grids[Tab], GridRow, Column, CellText(Cells[Column - 1]), false, false, FLinearColor::White);
+					AddStatsCell(Tables[Tab], GridRow, Column, CellText(Cells[Column - 1]), false, false, FLinearColor::White);
 			}
 		}
-		BP_RefreshTimeline(GetActiveSeries());
+		DrawTimeline(GetActiveSeries());
 	}
 
 	UFUNCTION(BlueprintOverride)
-	void BP_RefreshTimeline(int Series)
+	void RefreshTimeline(int Series)
+	{
+		DrawTimeline(Series);
+	}
+
+	// The graph's data; a name of its own because RefreshTimeline is also a C++ non-UFUNCTION of the base (the call would resolve to it).
+	void DrawTimeline(int Series)
 	{
 		// Called from NativeOnInitialized before any statistic: nothing to draw without a graph or without rows.
 		if (Graph == nullptr)
 			return;
-		TArray<FHOLStatsRowState> Rows = HOLMatchStatsRead::GetWorldStatsRows(this);
+		TArray<FHOLStatsRowState> Rows = HOLMatchStatsRead::GetWorldStatsRows();
 		if (Rows.Num() == 0)
 			return;
-		FHOLMatchStatsState Stats = HOLMatchStatsRead::GetWorldStats(this);
+		FHOLMatchStatsState Stats = HOLMatchStatsRead::GetWorldStats();
 		TArray<FHOLStatsGraphCurve> Curves = HOLStatsRules::BuildCurves(Series, Rows, Stats);
 		TArray<FHOLStatsGraphMark> Marks = HOLStatsRules::BuildMarks(Rows, Stats);
 		const int NumCurves = Curves.Num();
