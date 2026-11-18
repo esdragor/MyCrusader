@@ -1,3 +1,33 @@
+// The journal lines of the solo gestures, as HOLNewGameScreen.cpp writes them (UE_LOG Display, LogHOLUI): quick_check ("slot 5 past the 4 places of Medium stays
+// closed") and the fog / faction scenarios read them. Pure text, tested in HOLNewGameScreen_Test.as.
+namespace HOLNewGameLog
+{
+	// HandleStateChosen, solo: a slot past the places of the size.
+	FString StaysClosedLine(int SlotIndex, int NumPlaces)
+	{
+		return f"New game: slot {SlotIndex} stays closed, past the {NumPlaces} places of the size";
+	}
+
+	// HandleFogChosen: the enum's name (0 Disabled, 1 Explored, 2 Normal), the value clamped as the cpp does.
+	FString FogLine(int Fog)
+	{
+		const int Clamped = Math::Clamp(Fog, 0, 2);
+		return "New game: fog " + (Clamped == 0 ? "Disabled" : (Clamped == 1 ? "Explored" : "Normal"));
+	}
+
+	// HandleModeChosen: 1 is Diplomacy, any other value Standard.
+	FString ModeLine(int Mode)
+	{
+		return "New game: mode " + (Mode == 1 ? "Diplomacy" : "Standard");
+	}
+
+	// HandleFactionChosen, solo (or a lobby without a client): the slot and the faction's name.
+	FString FactionLine(int SlotIndex, FString Name)
+	{
+		return f"New game: slot {SlotIndex} faction {Name}";
+	}
+}
+
 // The New game screen in script (D851, PLAN-ECRANS-1118.md). Lot NG-3: the layout (UHOLNewGameScreen::BuildLayout calls BuildNewGame for a derived class;
 // the C++ layout stays the one of the class itself until the switch, NG-6). Lot NG-4: the SOLO behaviour (the gestures of the lists).
 // This file lays out what HOLNewGameScreen.cpp BuildLayout lays out (224-345), in the same order, with the same widths (GetNewGameWidth, read from the
@@ -64,6 +94,16 @@ class UHOLNewGameScreenScript : UHOLNewGameScreen
 	TArray<FString> CfgNames;
 	int CfgFogMode = 2;
 	bool bCfgTeamsTogether = true;
+
+	// The last journal line this screen wrote (LogNewGame), for the tests: a script test cannot read the journal.
+	FString LastLogLine;
+
+	// The cpp's UE_LOG(LogHOLUI, Display, ...) of the gestures: one line in the journal, and kept in LastLogLine.
+	void LogNewGame(FString Line)
+	{
+		LastLogLine = Line;
+		Log(n"LogHOLUI", Line);
+	}
 
 	// The name of a per-slot widget: the cpp's SlotWidgetName (Prefix + index, "SlotState1").
 	FName SlotWidgetName(FString Prefix, int SlotIndex)
@@ -329,6 +369,7 @@ class UHOLNewGameScreenScript : UHOLNewGameScreen
 		if (Fog > 2)
 			Fog = 2;
 		SetConfigGlobals(bCfgTeamsTogether, Fog, CfgMode);
+		LogNewGame(HOLNewGameLog::FogLine(Fog));
 		if (IsLobby())
 			SendSettings();
 		Refresh();
@@ -342,6 +383,7 @@ class UHOLNewGameScreenScript : UHOLNewGameScreen
 			return;
 		const int NewMode = Index == 1 ? 1 : 0;
 		SetConfigGlobals(bCfgTeamsTogether, CfgFogMode, NewMode);
+		LogNewGame(HOLNewGameLog::ModeLine(NewMode));
 		if (IsLobby())
 			SendSettings();
 		Refresh();
@@ -387,6 +429,13 @@ class UHOLNewGameScreenScript : UHOLNewGameScreen
 		if (!ReadConfig())
 			return;
 		const int NumPlaces = HOLNewGameRules::NumPlacesOfConfig(PlacesBySize(), CfgMapSize);
+		if (SlotIndex >= NumPlaces)
+		{
+			// The cpp's journal line (quick_check "slot 5 past the 4 places of Medium stays closed"); nothing changes, Refresh as in the cpp.
+			LogNewGame(HOLNewGameLog::StaysClosedLine(SlotIndex, NumPlaces));
+			Refresh();
+			return;
+		}
 		if (HOLNewGameRules::ApplyStateChosen(CfgStates, CfgColors, SlotIndex, Index, NumPlaces))
 			SetConfigSlot(SlotIndex, CfgStates[SlotIndex], -1, CfgColors[SlotIndex], -1);
 		Refresh();
@@ -417,13 +466,13 @@ class UHOLNewGameScreenScript : UHOLNewGameScreen
 		}
 		SetConfigSlot(SlotIndex, -1, Index, -1, -1);
 		Refresh();
-		if (!bInLobby)
-			return;
 		const FString Name = UHOLNewGameScreen::GetNewGameFactionName(Index);
-		if (IsLobbyAI(SlotIndex))
+		if (bInLobby && IsLobbyAI(SlotIndex))
 			SendSlotAIChoice(SlotIndex, -1, -1, Name);
-		else
+		else if (bInLobby && HasClient())
 			SendMyChoice(-1, -1, -1, -1, Name);
+		else
+			LogNewGame(HOLNewGameLog::FactionLine(SlotIndex, Name));
 	}
 
 	// HandleColorChosen: the colour (a taken one is greyed in the list; "Aleatoire" is 8); Refresh; lobby: sent (an AI's by SendSlotAIChoice, mine by SendMyChoice).

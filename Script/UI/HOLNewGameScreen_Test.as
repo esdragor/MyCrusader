@@ -109,6 +109,66 @@ void Test_NewGameSoloStateGivesTheLineItsFields(FUnitTest& T)
 	HOLScreenTest::EndScreenTest();
 }
 
+// ELROND-1118w: quick_check "slot 5 past the 4 places of Medium stays closed" reads the journal line the cpp wrote (HandleStateChosen); the script did not write it.
+// Medium (4 places) chosen in the size list: the slots 4..7 are greyed and closed; a choice on slot 5 changes nothing and says why.
+void Test_NewGameSoloSlotPastThePlacesStaysClosed(FUnitTest& T)
+{
+	UHOLNewGameScreen Screen = NGS_CreateScreen(T);
+	if (Screen == nullptr)
+		return;
+	UHOLNewGameScreenScript Script = Cast<UHOLNewGameScreenScript>(Screen);
+	UHOLDropdown Size = NGS_FindList(Screen, n"SizeDropdown");
+	UHOLDropdown State5 = NGS_FindList(Screen, n"SlotState5");
+	T.AssertTrue(Script != nullptr && Size != nullptr && State5 != nullptr, "the script screen, its size list and the slot 5 state list exist");
+	if (Script != nullptr && Size != nullptr && State5 != nullptr)
+	{
+		Size.Choose(2);
+		T.AssertEquals(HOLScreenTest::GetDropdownIndex(Size), 2, "Medium is chosen");
+		T.AssertTrue(HOLScreenTest::IsWidgetEnabled(NGS_Find(Screen, n"SlotState3")), "the slot 3 is within the 4 places: its state list is active");
+		T.AssertTrue(!HOLScreenTest::IsWidgetEnabled(NGS_Find(Screen, n"SlotState5")), "the slot 5 is past the 4 places: its state list is greyed");
+		State5.Choose(1);
+		T.AssertEquals(HOLScreenTest::GetDropdownIndex(State5), 0, "the slot 5 stays closed");
+		T.AssertTrue(!HOLScreenTest::IsWidgetEnabled(NGS_Find(Screen, n"SlotFaction5")), "the slot 5 holds no faction list");
+		const FString Line = Script.LastLogLine;
+		T.AssertEquals(Line, "New game: slot 5 stays closed, past the 4 places of the size", "the journal says the slot 5 stays closed");
+	}
+	HOLScreenTest::EndScreenTest();
+}
+
+// The fog, mode and faction gestures write the cpp's journal lines (the fog and faction scenarios read them).
+void Test_NewGameSoloGesturesWriteTheirJournalLine(FUnitTest& T)
+{
+	UHOLNewGameScreen Screen = NGS_CreateScreen(T);
+	if (Screen == nullptr)
+		return;
+	UHOLNewGameScreenScript Script = Cast<UHOLNewGameScreenScript>(Screen);
+	UHOLDropdown Fog = NGS_FindList(Screen, n"FogDropdown");
+	UHOLDropdown Mode = NGS_FindList(Screen, n"ModeDropdown");
+	UHOLDropdown Faction = NGS_FindList(Screen, n"SlotFaction0");
+	T.AssertTrue(Script != nullptr && Fog != nullptr && Mode != nullptr && Faction != nullptr, "the script screen and its fog, mode and faction lists exist");
+	if (Script != nullptr && Fog != nullptr && Mode != nullptr && Faction != nullptr)
+	{
+		Fog.Choose(1);
+		T.AssertEquals(Script.LastLogLine, "New game: fog Explored", "fog list value 1 is Explored (2 - 1)");
+		Mode.Choose(1);
+		T.AssertEquals(Script.LastLogLine, "New game: mode Diplomacy", "mode list value 1 is Diplomacy");
+		Faction.Choose(0);
+		T.AssertTrue(Script.LastLogLine.StartsWith("New game: slot 0 faction "), "a faction chosen on the slot 0 is written in the journal");
+	}
+	HOLScreenTest::EndScreenTest();
+}
+
+void Test_NewGameJournalLines(FUnitTest& T)
+{
+	T.AssertEquals(HOLNewGameLog::StaysClosedLine(5, 4), "New game: slot 5 stays closed, past the 4 places of the size", "slot line");
+	T.AssertEquals(HOLNewGameLog::FogLine(2), "New game: fog Normal", "fog 2");
+	T.AssertEquals(HOLNewGameLog::FogLine(0), "New game: fog Disabled", "fog 0");
+	T.AssertEquals(HOLNewGameLog::FogLine(9), "New game: fog Normal", "fog clamped");
+	T.AssertEquals(HOLNewGameLog::ModeLine(1), "New game: mode Diplomacy", "mode 1");
+	T.AssertEquals(HOLNewGameLog::ModeLine(0), "New game: mode Standard", "mode 0");
+	T.AssertEquals(HOLNewGameLog::FactionLine(3, "Human"), "New game: slot 3 faction Human", "faction line");
+}
+
 // A slot that takes a seat on a colour another slot holds gives way to a free colour (HOLNewGameRules::ApplyStateChosen).
 void Test_NewGameSoloTakenColourGivesWay(FUnitTest& T)
 {
