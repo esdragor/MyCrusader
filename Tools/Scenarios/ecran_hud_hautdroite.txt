@@ -55,7 +55,7 @@ hol.HUD.Click MenuButton
 waitlog Game menu: opened
 frames 20
 notereset Etape 5 : le bouton Menu ouvre le menu de partie (Reprendre, Pause, Abandonner...) ; Echap le referme et la barre du haut est comme avant.
-waitkey Entree : etape 5, le menu de partie est ouvert (Entree le referme)
+waitkey Entree : etape 5, le menu de partie est ouvert (la suite le ferme par Echap)
 capture hud_haut_menu
 hol.UI.Key Escape 0 0.1
 frames 30
