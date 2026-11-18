@@ -10,12 +10,10 @@ const FConsoleVariable CVar_RpcDiplomacyStance("hol.Rpc.DiplomacyStance", 1);
 const FConsoleVariable CVar_RpcProofRoute("hol.Rpc.ProofRoute", 0);
 const FConsoleVariable CVar_RpcProofCheats("hol.Rpc.ProofCheats", 0); // ELROND-1118b: bits 1 FastBuild, 2 Population, 4 Technology, 8 Tier, 16 UnitSpeed, 32 GatherSpeed, 64 Wound, 128 DamageBuilding, 256 SpawnBuilding, 512 Defeat, 1024 FallForum, 2048 SkipForum, 4096 HoldPresence (Tools\Scenarios\rpc_cheats_run.ps1)
 
-// T3 (SAURON-1117m): the Duel and Match (pause, resume, surrender) lots, same guard model: 0 = the C++ RPC stays the only one (these script RPCs log and do nothing), 1 = the script RPC acts.
-const FConsoleVariable CVar_RpcScriptDuel("hol.Rpc.ScriptDuel", 1);
+// T3 (SAURON-1117m): the Match (surrender) lot, guard model: 0 = the C++ RPC stays the only one (this script RPC logs and does nothing), 1 = the script RPC acts. The Duel cvar is retired (D845, lot B).
 const FConsoleVariable CVar_RpcScriptMatch("hol.Rpc.ScriptMatch", 1);
 
-// T4 lot L1 (HALDIR-1117o, C++ NOT COMPILED): the Specialization (start, cancel) and Hero (return, talent, ability, rage, watch unit) RPCs, same guard model (default 0: the C++ RPC stays the only one).
-const FConsoleVariable CVar_RpcScriptSpecialization("hol.Rpc.ScriptSpecialization", 1);
+// T4 lot L1 (HALDIR-1117o): the Hero RPCs (talent, ability, rage, watch unit), same guard model (the C++ RPC stays the only one at 0). ServerReturnHero, ServerStartSpecialization, ServerCancelSpecialization have no guard (D845, lot B).
 const FConsoleVariable CVar_RpcScriptHero("hol.Rpc.ScriptHero", 1);
 
 // T5 lot L1 (HALDIR-1117p, C++ NOT COMPILED): the Signals and Chat RPCs (Server and Client). Default 0: the C++ RPC stays the only one. With 1 on the SERVER, the C++ fan-out reaches each viewer
@@ -451,13 +449,11 @@ for (FString Command : Commands)
 			Log(n"LogHOLMatch", f"Diplomacy order: slot {Slot} stance {Stance} toward slot {TargetSlot} queued");
 	}
 
-	// ---- T3 (SAURON-1117m) Duel lot. Guard hol.Rpc.ScriptDuel (default 0: the C++ RPC stays active). Body of AHOLPlayerController::ServerDuelChallenge_Implementation: the slot comes from the owner (D288).
+	// ---- T3 (SAURON-1117m) Duel lot (D845: the only entry of ServerDuelChallenge / ServerDuelAnswer, no C++ RPC left, no cvar). The slot comes from the owner (D288).
 	// The last call, UHOLCommandSubsystem::IssueDuelOrder(Slot, EHOLDuelOrderKind::Challenge, TargetSlot), goes through HOLRpcBridge::QueueDuelOrder(this, Kind, OtherSlot) (HALDIR-1117n, C++ NOT COMPILED).
 	UFUNCTION(Server)
 	void ServerDuelChallenge(int TargetSlot)
 	{
-		if (CVar_RpcScriptDuel.GetInt() == 0)
-			return;
 		const int Slot = HOLRpcBridge::GetSenderSlot(this);
 		const int Refusal = HOLRpc::DuelChallengeRefusal(Slot, TargetSlot);
 		if (Refusal != 0)
@@ -474,8 +470,6 @@ for (FString Command : Commands)
 	UFUNCTION(Server)
 	void ServerDuelAnswer(bool bAccept)
 	{
-		if (CVar_RpcScriptDuel.GetInt() == 0)
-			return;
 		const int Slot = HOLRpcBridge::GetSenderSlot(this);
 		if (HOLRpc::DuelAnswerRefusal(Slot) != 0)
 		{
@@ -531,13 +525,11 @@ for (FString Command : Commands)
 		HOLRpcBridge::Surrender(this); // logs "Victory: surrender of slot N refused" itself when the game state refuses
 	}
 
-	// ---- T4 lot L1 (HALDIR-1117o, C++ NOT COMPILED). Specialization lot, guard hol.Rpc.ScriptSpecialization (default 0). The bridge calls AHOLPlayerController::ServerStartSpecialization_Implementation
+	// ---- T4 lot L1 (HALDIR-1117o). Specialization lot (D845: the only entry, no C++ RPC left, no cvar). The bridge calls AHOLPlayerController::ServerStartSpecialization_Implementation
 	// / ServerCancelSpecialization_Implementation (the board's answer and the "Specialization: slot N ..." journal are the C++ ones).
 	UFUNCTION(Server)
 	void ServerStartSpecialization(int Tier, int Option)
 	{
-		if (CVar_RpcScriptSpecialization.GetInt() == 0)
-			return;
 		const int Slot = HOLRpcBridge::GetSenderSlot(this);
 		if (HOLRpc::SeatRefusal(Slot) != 0)
 		{
@@ -551,8 +543,6 @@ for (FString Command : Commands)
 	UFUNCTION(Server)
 	void ServerCancelSpecialization()
 	{
-		if (CVar_RpcScriptSpecialization.GetInt() == 0)
-			return;
 		const int Slot = HOLRpcBridge::GetSenderSlot(this);
 		if (HOLRpc::SeatRefusal(Slot) != 0)
 		{
@@ -563,13 +553,11 @@ for (FString Command : Commands)
 		HOLRpcBridge::CancelSpecialization(this);
 	}
 
-	// ---- T4 lot L1 Hero lot, guard hol.Rpc.ScriptHero (default 0). Same model: the bridge calls the C++ _Implementation (journals "Hero return order ...", "Hero talent order ...", "Hero ability order ...",
+	// ---- T4 lot L1 Hero lot. ServerReturnHero has no guard (D845, no C++ RPC left); ServerHeroTalent / WatchUnit / HeroAbility / CastRage keep the guard hol.Rpc.ScriptHero (their C++ RPC stays). Same model: the bridge calls the C++ _Implementation (journals "Hero return order ...", "Hero talent order ...", "Hero ability order ...",
 	// "Rage order ..."). The C++ interface route (cvar 1) covers ReturnHero, HeroTalent and WatchUnit; HeroAbility and CastRage (enum + vector, array) are not routed from C++ yet: call them from script.
 	UFUNCTION(Server)
 	void ServerReturnHero()
 	{
-		if (CVar_RpcScriptHero.GetInt() == 0)
-			return;
 		const int Slot = HOLRpcBridge::GetSenderSlot(this);
 		if (HOLRpc::SeatRefusal(Slot) != 0)
 		{

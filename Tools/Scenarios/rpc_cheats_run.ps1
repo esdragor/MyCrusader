@@ -1,6 +1,6 @@
 # P2 / P1 proof of the C++ -> script RPC routes for the 13 cheats and the Hero / Duel / Diplomacy / Economy routes not yet proved (ELROND-1118b, PLAN-1118a sections 2 and 3). NOT RUN when written (machine saturated).
 # Model: rpc_routes_seats_run.ps1. Dedicated server with -HOLCheats, Plain, 2 Human seats (Alice slot 0 = GREEN client, Bob slot 1 = RED client).
-# SERVER and GREEN client: the 13 cheat cvars hol.Rpc.ScriptCheat<Name> at 1 (plus ScriptHero / ScriptDuel / ScriptDiplomacy at 1 for the P1 routes; the Economy cvar is retired, D845).
+# SERVER and GREEN client: the 13 cheat cvars hol.Rpc.ScriptCheat<Name> at 1 (plus ScriptHero / ScriptDiplomacy at 1 for the P1 routes; the Economy, Duel and Specialization cvars are retired, D845).
 # RED client: every cvar at 0 -> its Request* calls fall back on the C++ RPC, so the server must write NO "RpcCheat: / RpcHero: / RpcDuel: / RpcDiplomacy: / RpcEconomy: " line for it (the red check, before the green client joins).
 # The green client fires, 4 s after its first owner tick, the hook of Script\Net\HOLRpcPlayer.as: hol.Rpc.ProofCheats (13 bits, the table below) and hol.Rpc.ProofRoute (P1 bits 32 talent, 64 duel answer, 128 stance, 256 cancel production).
 # The server must write "RpcCheat: <name> received" for each cheat (log lines added in the script bodies by ELROND-1118b). The table prints name -> received yes/no.
@@ -41,7 +41,7 @@ $routeTable = @(
   @{ Name = 'DiplomacyStance'; Bit = 128; Pat = 'RpcDiplomacy: received by the server: sender slot 0' },
   @{ Name = 'CancelProduction'; Bit = 256; Pat = 'RpcEconomy: cancel received' }
 )
-$cheatCvars = @($cheatTable | ForEach-Object { "hol.Rpc.ScriptCheat$($_.Name)" }) + @('hol.Rpc.ScriptHero', 'hol.Rpc.ScriptDuel', 'hol.Rpc.ScriptDiplomacy')
+$cheatCvars = @($cheatTable | ForEach-Object { "hol.Rpc.ScriptCheat$($_.Name)" }) + @('hol.Rpc.ScriptHero', 'hol.Rpc.ScriptDiplomacy')
 $on = ($cheatCvars | ForEach-Object { "$_ 1" }) -join ','
 $off = ($cheatCvars | ForEach-Object { "$_ 0" }) -join ','
 $proof = "hol.Rpc.ProofCheats $Cheats,hol.Rpc.ProofRoute $Routes"

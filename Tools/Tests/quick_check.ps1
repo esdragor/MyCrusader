@@ -1,4 +1,4 @@
-﻿# Quick check of the project (D267), on two levels (D327):
+# Quick check of the project (D267), on two levels (D327):
 #   - by default (no argument, under a minute): the automation tests in their own process WHILE a single short game goes
 #     through the "smoke" part: the title and New game screens in French, a 2-player match launched from there, the
 #     camera moved by the arrow key, its own centre selected then nothing, 3 Men-at-arms boxed and sent beside an enemy
@@ -124,7 +124,8 @@ param(
 )
 # C0.5: -Map checked against Tools/Data/Maps.csv before anything starts. $MapKey keeps the table's spelling; the name Map
 # itself is reused by the parts below as a local variable.
-$RpcScriptCommands = @(); if ($RpcScript) { $RpcScriptCommands = @('Diplomacy', 'Hero', 'Match', 'Duel', 'Signal', 'Chat', 'Specialization', 'CheatResources', 'CheatFastBuild', 'CheatTechnology', 'CheatTier', 'CheatPopulation', 'CheatUnitSpeed', 'CheatGatherSpeed', 'CheatWound', 'CheatDamageBuilding', 'CheatSpawnBuilding', 'CheatDefeat', 'CheatFallForum', 'CheatSkipForum', 'CheatHoldPresence') | ForEach-Object { "hol.Rpc.Script$_ 1" } }
+$RpcScriptCommands = @(); if ($RpcScript) { $RpcScriptCommands = @('Diplomacy', 'Hero', 'Match', 'Signal', 'Chat', 'CheatResources', 'CheatFastBuild', 'CheatTechnology', 'CheatTier', 'CheatPopulation', 'CheatUnitSpeed', 'CheatGatherSpeed', 'CheatWound', 'CheatDamageBuilding', 'CheatSpawnBuilding', 'CheatDefeat', 'CheatFallForum', 'CheatSkipForum', 'CheatHoldPresence') | ForEach-Object { "hol.Rpc.Script$_ 1" } }
+# D845 gate "script actor loaded": the net and netsig3 server sequences start with a waitlog on "RpcPlayer: the C++ bridge spawned" (the journal line of SpawnAllFor), before any waitplayers: without the script RPC actor no RPC has an entry any more.
 # A client's steps with the cvar commands put just BEFORE its first waitplayers (the waitlog steps before it read lines logged once, early: 22 steps before them would make them miss the line).
 function Add-RpcScriptSteps($Steps) {
     $Steps = @($Steps)
@@ -489,8 +490,8 @@ if ($Parts -contains "net") {
     # paused and its simulation must step on (two reports 1 s apart).
     # "hero" alone (J8a.6): the clients' cheats allowed at once (Bob's gold), the heroes made once both clients are done
     # with their start (their "done" signals).
-    $(if ($NetHeroOnly) { @("hol.Cheat.Refuse 0", "waitfile $(Join-Path $TestSaved "quick_net_done1.flag") 300", "waitfile $(Join-Path $TestSaved "quick_net_done2.flag") 300") }
-    else { @("waitfile $NetNomadAskFlag 300", "mark net nomad", "hol.Nomad.SetSeat 1 1", "signal $NetNomadSetFlag", "waitfile $NetNomadSeenFlag 60", "hol.Nomad.ForumDone 1", "signal $NetNomadForumFlag", "waitfile $NetNomadForumSeenFlag 60", "hol.Nomad.SetSeat 1 0",
+    $(if ($NetHeroOnly) { @("waitlog RpcPlayer: the C++ bridge spawned", "hol.Cheat.Refuse 0", "waitfile $(Join-Path $TestSaved "quick_net_done1.flag") 300", "waitfile $(Join-Path $TestSaved "quick_net_done2.flag") 300") }
+    else { @("waitlog RpcPlayer: the C++ bridge spawned", "waitfile $NetNomadAskFlag 300", "mark net nomad", "hol.Nomad.SetSeat 1 1", "signal $NetNomadSetFlag", "waitfile $NetNomadSeenFlag 60", "hol.Nomad.ForumDone 1", "signal $NetNomadForumFlag", "waitfile $NetNomadForumSeenFlag 60", "hol.Nomad.SetSeat 1 0",
         "waitfile $NetCheatTriedFlag 300", "hol.Match.PauseReport", "wait 1", "hol.Match.PauseReport", "hol.Cheat.Refuse 0", "signal $NetCheatBackFlag",
         "waitfile $NetPauseCheckFlag 120", "hol.Match.PauseReport", "wait 1", "hol.Match.PauseReport", "signal $NetPauseCheckedFlag",
         "waitfile $NetResumedFlag 60", "hol.Match.PauseReport", "wait 1", "hol.Match.PauseReport",
@@ -8518,7 +8519,7 @@ if ($Parts -contains "netsig3") {
     $Sig3Launched = @(1, 2, 3)
     $Sig3Flag = { param($Name) Join-Path $TestSaved "quick_${Sig3Part}_$Name.flag" }
     $Sig3Done = @(1, 2, 3 | ForEach-Object { & $Sig3Flag "done$_" })
-    @("waitplayers $($Sig3Launched.Count)", "mark $Sig3Part", "wait 2",
+    @("waitlog RpcPlayer: the C++ bridge spawned", "waitplayers $($Sig3Launched.Count)", "mark $Sig3Part", "wait 2",
         "hol.Diplomacy.Force 1 0 ally", "hol.Diplomacy.Force 0 1 ally", "hol.Diplomacy.Force 1 2 neutral", "hol.Diplomacy.Force 2 1 neutral", "wait 2", "hol.Diplomacy.Report", "signal $(& $Sig3Flag 'phase1')",
         "waitfile $(& $Sig3Flag 'posted1') 90", "hol.Diplomacy.Force 1 2 enemy", "hol.Diplomacy.Force 2 1 enemy", "wait 2", "hol.Diplomacy.Report", "signal $(& $Sig3Flag 'phase2')",
         # A4 (D376, D792): Alice and Bob Neutral (no allied victory once Carol is beaten), Alice and Carol mutual allies, then Carol defeated.
