@@ -255,4 +255,16 @@ public:
 	/** The rows of the tables from the game state's launch configuration and results (name, colour, team, result), in the slots' order; empty without a game state. */
 	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|MatchStats", meta = (WorldContext = "WorldContextObject"))
 	static TArray<FHOLStatsRowState> GetWorldStatsRows(const UObject* WorldContextObject);
+
+	/** The name of any slot, a closed one too (a mark of the timeline names the player of an event): the lobby's name, an AI's "IA Difficile 3", else "Joueur N"; empty without a game state. */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|MatchStats", meta = (WorldContext = "WorldContextObject"))
+	static FText GetWorldSlotName(const UObject* WorldContextObject, int32 SlotIndex);
+
+	/** The colour of any slot (HOLPlayerColors), white without a game state or for a slot out of range. */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|MatchStats", meta = (WorldContext = "WorldContextObject"))
+	static FLinearColor GetWorldSlotColor(const UObject* WorldContextObject, int32 SlotIndex);
+
+	/** HOLMatchStats::DescribePlayer (the one-line description the screen writes to the log for each row). */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|MatchStats")
+	static FString DescribePlayer(const FHOLPlayerMatchStatsState& Player);
 };

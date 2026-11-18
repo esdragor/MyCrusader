@@ -297,3 +297,27 @@ TArray<FHOLStatsRowState> UHOLMatchStatsReadLibrary::GetWorldStatsRows(const UOb
 	}
 	return Rows;
 }
+
+FText UHOLMatchStatsReadLibrary::GetWorldSlotName(const UObject* WorldContextObject, const int32 SlotIndex)
+{
+	const UWorld* World = GEngine ? GEngine->GetWorldFromContextObject(WorldContextObject, EGetWorldErrorMode::ReturnNull) : nullptr;
+	const AHOLGameState* GameState = World ? World->GetGameState<AHOLGameState>() : nullptr;
+	return GameState ? HOLForumMessages::GetPlayerName(GameState->GetLaunchConfig(), SlotIndex, INDEX_NONE) : FText::GetEmpty();
+}
+
+FLinearColor UHOLMatchStatsReadLibrary::GetWorldSlotColor(const UObject* WorldContextObject, const int32 SlotIndex)
+{
+	const UWorld* World = GEngine ? GEngine->GetWorldFromContextObject(WorldContextObject, EGetWorldErrorMode::ReturnNull) : nullptr;
+	const AHOLGameState* GameState = World ? World->GetGameState<AHOLGameState>() : nullptr;
+	if (!GameState)
+	{
+		return FLinearColor::White;
+	}
+	const TArray<FHOLMatchSlot>& Slots = GameState->GetLaunchConfig().Slots;
+	return Slots.IsValidIndex(SlotIndex) ? FLinearColor(HOLPlayerColors::GetColor(Slots[SlotIndex].ColorIndex)) : FLinearColor::White;
+}
+
+FString UHOLMatchStatsReadLibrary::DescribePlayer(const FHOLPlayerMatchStatsState& Player)
+{
+	return HOLMatchStats::DescribePlayer(ToPlayer(Player));
+}

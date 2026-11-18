@@ -90,12 +90,15 @@ public:
 	/** The column titles of a table: 0 Summary (Player, Team, Result, MilitaryScore, EconomyScore, Total), 1 Military, 2 Economy; empty out of range. */
 	UFUNCTION(BlueprintPure, Category = "HOL|Stats")
 	static TArray<FText> HeadersOf(int32 Tab);
-	/** A text of the screen by its key (Heading, Summary, Military, Economy, Timeline, SeriesWorkers, SeriesMilitary, SeriesPopulation, SeriesBuildings, SeriesGathered, SeriesStock, Back, Refused, Waiting, Winner, Defeated, Playing); empty for another key. */
+	/** A text of the screen by its key (Heading, Summary, Military, Economy, Timeline, SeriesWorkers, SeriesMilitary, SeriesPopulation, SeriesBuildings, SeriesGathered, SeriesStock, Back, Refused, Waiting, Winner, Defeated, Playing, Dash: the "—" of a missing team); empty for another key. */
 	UFUNCTION(BlueprintPure, Category = "HOL|Stats")
 	static FText TextOf(FName Key);
 	/** The dated mark's label: Kind 0 Defeated "{Player} vaincu", 1 ForumFell "Forum de {Player} tombé" (the order of EHOLMatchStatsEvent). */
 	UFUNCTION(BlueprintPure, Category = "HOL|Stats")
 	static FText MakeMarkLabel(int32 Kind, const FText& PlayerName);
+	/** A figure as the tables show it: FText::AsNumber, the thousands grouped by the culture (FText::AsNumber is not bound in script). */
+	UFUNCTION(BlueprintPure, Category = "HOL|Stats")
+	static FText NumberText(int32 Value);
 
 protected:
 	virtual void BuildLayout() override;
