@@ -334,6 +334,29 @@ FMargin UHOLScriptScreen::GetBottomLeftPlace() const
 	return GetDefault<UHOLGameScreen>()->GetBottomLeftPlace();
 }
 
+bool UHOLScriptScreen::IsProductionHeldForRoom() const
+{
+	const UHOLGameScreen* GameScreen = GetTypedOuter<UHOLGameScreen>();
+	return GameScreen && GameScreen->IsProductionHeldForRoom();
+}
+
+void UHOLScriptScreen::SetShownMessageKey(const FString& Key)
+{
+	if (UHOLGameScreen* GameScreen = GetTypedOuter<UHOLGameScreen>())
+	{
+		GameScreen->SetMessageKeyMirror(Key);
+	}
+	bMessageLive = !Key.IsEmpty();
+}
+
+void UHOLScriptScreen::SetTextWrapWidth(UCommonTextBlock* Text, const float Width) const
+{
+	if (Text)
+	{
+		Text->SetWrapTextAt(Width);
+	}
+}
+
 UClass* UHOLScriptScreen::FindScriptClass()
 {
 	// Angelscript's hot reload keeps the older classes, flagged CLASS_NewerVersionExists.
@@ -368,6 +391,11 @@ void UHOLScriptScreen::NativeConstruct()
 void UHOLScriptScreen::NativeTick(const FGeometry& MyGeometry, const float InDeltaTime)
 {
 	Super::NativeTick(MyGeometry, InDeltaTime);
+	// The short message's fade and end (HOLShortMessage.as): called only while a message with a key is shown.
+	if (bMessageLive)
+	{
+		FrameTick(InDeltaTime);
+	}
 	// The T key (the talent tree, TQ4 = A): the viewport's key state, as the Enter of a test scenario; the console open or a focused menu keeps it.
 	if (const APlayerController* Controller = GetOwningPlayer())
 	{

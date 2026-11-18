@@ -82,6 +82,12 @@ public:
 	/** D202: a minor alert's line in the thread of messages (the script's, HOLAlertRules.as), on this machine only, muted (D449). */
 	void AddThreadLine(const FText& Line);
 
+	/** True when a building of the shown player holds a finished unit for lack of room (D829); the script's panel reads it (UHOLScriptScreen::IsProductionHeldForRoom). */
+	bool IsProductionHeldForRoom() const;
+
+	/** The key Describe prints for the short message (the script draws it and says when it ends). */
+	void SetMessageKeyMirror(const FString& Key) { MessageKey = Key; }
+
 	/** The player state the screen shows (the local player's); null for a spectator or before it arrives. */
 	const AHOLPlayerState* GetBoundPlayerState() const;
 
@@ -138,10 +144,6 @@ public:
 
 	/** L2: the name the selection block writes for a single selected unit (its faction's own name), "none" without it: the "HUD selection name" line of hol.HUD.Report. */
 	FString DescribeSelectionName() const;
-
-	/** Seconds a short message stays above the grid (D313), the last of them fading out. */
-	static constexpr float MessageSeconds = 3.f;
-	static constexpr float MessageFadeSeconds = 0.5f;
 
 	/** The top bar (resources, population, idle workers): the cheats' panel stays under it (UHOLCheatPanel). */
 	UBorder* GetTopBar() const { return TopBar; }
@@ -274,12 +276,6 @@ protected:
 	UPROPERTY(meta = (BindWidgetOptional))
 	TObjectPtr<UCommonTextBlock> SelectionProgressText;
 
-	/** The short message above the grid (D313). */
-	UPROPERTY(meta = (BindWidgetOptional))
-	TObjectPtr<UBorder> MessagePanel;
-
-	UPROPERTY(meta = (BindWidgetOptional))
-	TObjectPtr<UCommonTextBlock> MessageText;
 
 	UPROPERTY(meta = (BindWidgetOptional))
 	TObjectPtr<UBorder> QueuePanel;
@@ -390,13 +386,6 @@ private:
 	void HandleCommandFeedback(const FHOLCommandFeedback& Feedback);
 	/** Shows a short message above the grid for MessageSeconds; Key names it in the logs and in Describe. */
 	void ShowMessage(const FString& Key, const FText& Text);
-	/** The message's age: it fades, then hides. */
-	void UpdateMessage(float DeltaSeconds);
-	/**
-	 * One of the player's buildings has a unit waiting for room in the population (D313): when that starts, the message
-	 * « Population maximale — construisez des maisons ».
-	 */
-	void CheckPopulationBlocked();
 
 	const FHOLUnitTypeRow* FindUnitType(FName TypeName) const;
 	/** The type's row for the player's faction (cost, name, statistics as that player pays and fields them: FindTypeRowFor). */
@@ -624,9 +613,6 @@ private:
 	TArray<FName> ShownQueueTypes;
 	EHeadState HeadState = EHeadState::None;
 	float HeadProgress = 0.f;
-	/** The short message shown (its key, empty: none) and its age (s). */
+	/** The short message shown (its key, empty: none): the script's panel draws it, this is the mirror Describe reads. */
 	FString MessageKey;
-	float MessageAge = 0.f;
-	/** A unit of the player waits for room in the population (the last check). */
-	bool bPopulationBlocked = false;
 };

@@ -168,6 +168,26 @@ public:
 	/** The class made by the game screen: the newest script class derived from this one, not abstract; null: none. */
 	static UClass* FindScriptClass();
 
+	/** The game screen's short message (D313) for the script to show: Key names it in the logs and in Describe (empty: it never ends, as in the C++ it replaced), Text is the C++'s (GetFeedbackText). */
+	UFUNCTION(BlueprintImplementableEvent, Category = "HeroesOfLiberty|UI")
+	void ShortMessage(const FString& Key, const FText& Text);
+
+	/** Once a frame, but ONLY while a message with a key is shown (bMessageLive, set by SetShownMessageKey): the script's fade and the end of the message. */
+	UFUNCTION(BlueprintImplementableEvent, Category = "HeroesOfLiberty|UI")
+	void FrameTick(float DeltaSeconds);
+
+	/** True when a building of the shown player holds a finished unit for lack of room (D829, the loop of the C++ screen's old CheckPopulationBlocked). */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|UI")
+	bool IsProductionHeldForRoom() const;
+
+	/** The key Describe prints (", message <Key>"; empty: none): the screen mirrors it for hol.HUD.Report. Non-empty starts the per-frame FrameTick, empty stops it. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|UI")
+	void SetShownMessageKey(const FString& Key);
+
+	/** Wraps Text at Width (Slate units): the message wraps at the grid's width less 24. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|UI")
+	void SetTextWrapWidth(UCommonTextBlock* Text, float Width) const;
+
 	/** Seconds between two Refresh (4 per second). */
 	static constexpr float RefreshSeconds = 0.25f;
 
@@ -178,4 +198,6 @@ protected:
 
 private:
 	float RefreshLeft = 0.f;
+	/** A message with a key is shown: NativeTick calls FrameTick (D839: no per-frame script call otherwise). */
+	bool bMessageLive = false;
 };
