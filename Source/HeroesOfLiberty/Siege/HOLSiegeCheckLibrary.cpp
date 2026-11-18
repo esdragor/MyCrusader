@@ -2,9 +2,13 @@
 
 #include "Siege/HOLSiegeCheckLibrary.h"
 
+#include "Buildings/HOLBuildingTypes.h"
+#include "Engine/DataTable.h"
 #include "Siege/HOLSiegeRules.h"
 #include "Simulation/HOLCombatRules.h"
+#include "Simulation/HOLSimulationSettings.h"
 #include "Simulation/HOLUnitTypes.h"
+#include "Technologies/HOLTechnologyTypes.h"
 
 namespace
 {
@@ -111,4 +115,73 @@ bool UHOLSiegeCheckLibrary::TakesUnitsOn(const int32 Attack)
 bool UHOLSiegeCheckLibrary::IsInArea(const FVector2D Centre, const FVector2D Other, const float Radius)
 {
 	return HOLCombat::IsInArea(Centre, Other, Radius);
+}
+
+bool UHOLSiegeCheckLibrary::ReadUnitFigures(const FName TypeName, FHOLSiegeUnitFigures& OutFigures)
+{
+	const UDataTable* Table = GetDefault<UHOLSimulationSettings>()->UnitTypesTable.LoadSynchronous();
+	const FHOLUnitTypeRow* Row = (Table && !TypeName.IsNone()) ? Table->FindRow<FHOLUnitTypeRow>(TypeName, TEXT("Siege script"), false) : nullptr;
+	if (!Row)
+	{
+		return false;
+	}
+	OutFigures = FHOLSiegeUnitFigures();
+	OutFigures.bSiegeAttack = Row->AttackType == EHOLAttackType::Siege;
+	OutFigures.bBuildingSiegeAttack = Row->BuildingAttackType == EHOLAttackType::Siege;
+	OutFigures.BuildingAttack = Row->BuildingAttack;
+	OutFigures.BuildingAttackInterval = Row->BuildingAttackInterval;
+	OutFigures.BuildingAttackRange = Row->BuildingAttackRange;
+	OutFigures.AreaRadius = Row->AreaRadius;
+	OutFigures.SightRadius = Row->SightRadius;
+	OutFigures.AttackRange = Row->AttackRange;
+	OutFigures.MeleeArmor = Row->MeleeArmor;
+	OutFigures.RangedArmor = Row->RangedArmor;
+	OutFigures.SiegeArmor = Row->SiegeArmor;
+	OutFigures.HeroArmor = Row->HeroArmor;
+	OutFigures.bHasSiegeCategory = Row->HasArmorCategory(EHOLArmorCategory::Siege);
+	return true;
+}
+
+int32 UHOLSiegeCheckLibrary::CountAreaRowsExcept(const FName Except)
+{
+	const UDataTable* Table = GetDefault<UHOLSimulationSettings>()->UnitTypesTable.LoadSynchronous();
+	if (!Table)
+	{
+		return -1;
+	}
+	int32 Count = 0;
+	for (const FName Name : Table->GetRowNames())
+	{
+		const FHOLUnitTypeRow* Row = Table->FindRow<FHOLUnitTypeRow>(Name, TEXT("Siege script"), false);
+		if (Row != nullptr && Name != Except && Row->AreaRadius != 0.f)
+		{
+			Count++;
+		}
+	}
+	return Count;
+}
+
+float UHOLSiegeCheckLibrary::GetTileSize()
+{
+	return static_cast<float>(UHOLBuildingSettings::GetTileSize());
+}
+
+bool UHOLSiegeCheckLibrary::TechnologyChangesStat(const FName Technology, const FName Stat)
+{
+	const FHOLTechnologyRow* Row = UHOLTechnologySettings::FindTechnology(Technology);
+	return Row != nullptr && Row->Stats.Contains(Stat);
+}
+
+int32 UHOLSiegeCheckLibrary::ChooseSingleTarget(const int32 SeekMode, const bool bCanAttackUnits, const float AttackRange, const FVector2D CandidatePosition)
+{
+	HOLCombat::FSeeker Seeker;
+	Seeker.Position = FVector2D::ZeroVector;
+	Seeker.AttackRange = AttackRange;
+	Seeker.Mode = static_cast<HOLCombat::ESeekMode>(FMath::Clamp(SeekMode, 0, 2));
+	Seeker.bCanAttackUnits = bCanAttackUnits;
+	HOLCombat::FCandidate Enemy;
+	Enemy.Id = 1;
+	Enemy.Position = CandidatePosition;
+	const HOLCombat::FCandidate Candidates[] = { Enemy };
+	return HOLCombat::ChooseTarget(Seeker, Candidates);
 }
