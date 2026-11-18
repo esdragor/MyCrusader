@@ -39,30 +39,30 @@ class UHOLNewGameScreenScript : UHOLNewGameScreen
 
 		// Text styles of AddNewGameText / AddNewGameCellText: 0 heading, 1 note, 2 body.
 		UVerticalBox Column = MakeNewGameColumn();
-		AddNewGameText(Column, n"Heading", NSLOCTEXT("HOLNewGameScreen", "Heading", "Nouvelle partie"), 0);
+		AddNewGameText(Column, n"Heading", UHOLNewGameScreen::GetNewGameText(n"Heading"), 0);
 
 		// The map line: the map, then the fog (F8, over the "Equipes ensemble" of the line below).
 		UHorizontalBox MapLine = AddNewGameRow(Column, 0.0);
-		AddNewGameCellText(MapLine, NAME_None, NSLOCTEXT("HOLNewGameScreen", "Map", "Carte"), 2, NameWidth);
+		AddNewGameCellText(MapLine, NAME_None, UHOLNewGameScreen::GetNewGameText(n"Map"), 2, NameWidth);
 		AddNewGameDropdown(MapLine, n"MapDropdown", GetMapNames(), 0, MapListWidth);
-		AddNewGameCellText(MapLine, NAME_None, NSLOCTEXT("HOLNewGameScreen", "Fog", "Brouillard"), 2, TeamsTogetherLabelWidth);
+		AddNewGameCellText(MapLine, NAME_None, UHOLNewGameScreen::GetNewGameText(n"Fog"), 2, TeamsTogetherLabelWidth);
 		AddNewGameDropdown(MapLine, n"FogDropdown", UHOLNewGameScreen::GetNewGameOptions(n"Fog"), 0, FogListWidth);
 
 		// TC3: the size under the map, then "Equipes ensemble" (the places are drawn at the launch).
 		UHorizontalBox SizeLine = AddNewGameRow(Column, 0.0);
-		AddNewGameCellText(SizeLine, NAME_None, NSLOCTEXT("HOLNewGameScreen", "Size", "Taille"), 2, NameWidth);
+		AddNewGameCellText(SizeLine, NAME_None, UHOLNewGameScreen::GetNewGameText(n"Size"), 2, NameWidth);
 		AddNewGameDropdown(SizeLine, n"SizeDropdown", UHOLNewGameScreen::GetNewGameOptions(n"Size"), 0, MapListWidth);
-		AddNewGameCellText(SizeLine, NAME_None, NSLOCTEXT("HOLNewGameScreen", "TeamsTogether", "Équipes ensemble"), 2, TeamsTogetherLabelWidth);
+		AddNewGameCellText(SizeLine, NAME_None, UHOLNewGameScreen::GetNewGameText(n"TeamsTogether"), 2, TeamsTogetherLabelWidth);
 		AddNewGameDropdown(SizeLine, n"TeamsTogetherDropdown", OffOn, 1, TeamWidth);
 
 		// The column headings (IA0.6 S2: HeadName / HeadSlot / HeadLevel are shown or hidden by Refresh, solo or lobby).
 		UHorizontalBox Headings = AddNewGameRow(Column, 16.0);
-		AddNewGameCellText(Headings, n"HeadName", NSLOCTEXT("HOLNewGameScreen", "Player", "Joueur"), 1, NameWidth);
-		AddNewGameCellText(Headings, n"HeadSlot", NSLOCTEXT("HOLNewGameScreen", "Player", "Joueur"), 1, StateWidth);
-		AddNewGameCellText(Headings, n"HeadLevel", NSLOCTEXT("HOLNewGameScreen", "Level", "Niveau"), 1, LevelWidth);
-		AddNewGameCellText(Headings, NAME_None, NSLOCTEXT("HOLNewGameScreen", "Faction", "Faction"), 1, FactionWidth);
-		AddNewGameCellText(Headings, NAME_None, NSLOCTEXT("HOLNewGameScreen", "Colour", "Couleur"), 1, SwatchSize + 8.0 + ColorWidth);
-		AddNewGameCellText(Headings, NAME_None, NSLOCTEXT("HOLNewGameScreen", "Team", "Équipe"), 1, TeamWidth);
+		AddNewGameCellText(Headings, n"HeadName", UHOLNewGameScreen::GetNewGameText(n"Player"), 1, NameWidth);
+		AddNewGameCellText(Headings, n"HeadSlot", UHOLNewGameScreen::GetNewGameText(n"Player"), 1, StateWidth);
+		AddNewGameCellText(Headings, n"HeadLevel", UHOLNewGameScreen::GetNewGameText(n"Level"), 1, LevelWidth);
+		AddNewGameCellText(Headings, NAME_None, UHOLNewGameScreen::GetNewGameText(n"Faction"), 1, FactionWidth);
+		AddNewGameCellText(Headings, NAME_None, UHOLNewGameScreen::GetNewGameText(n"Colour"), 1, SwatchSize + 8.0 + ColorWidth);
+		AddNewGameCellText(Headings, NAME_None, UHOLNewGameScreen::GetNewGameText(n"Team"), 1, TeamWidth);
 
 		// One line per slot: name, state ("Vous" for slot 0), AI level, faction, swatch, colour, team.
 		const TArray<FText> StateNames = UHOLNewGameScreen::GetNewGameOptions(n"SlotState");
@@ -74,10 +74,10 @@ class UHOLNewGameScreenScript : UHOLNewGameScreen
 		for (int SlotIndex = 0; SlotIndex < SlotCount; SlotIndex++)
 		{
 			UHorizontalBox Row = AddNewGameRow(Column, 0.0);
-			// The cpp's LOCTEXT("PlayerN", "Joueur {0}") (suspect to compile: the FText::Format / FText::AsNumber overloads).
-			AddNewGameCellText(Row, SlotWidgetName("SlotName", SlotIndex), FText::Format(NSLOCTEXT("HOLNewGameScreen", "PlayerN", "Joueur {0}"), FText::AsNumber(SlotIndex + 1)), 2, NameWidth);
+			// "Joueur n" comes from the base (PlayerN, SlotIndex 0-based).
+			AddNewGameCellText(Row, SlotWidgetName("SlotName", SlotIndex), UHOLNewGameScreen::GetNewGamePlayerName(SlotIndex), 2, NameWidth);
 			if (SlotIndex == 0)
-				AddNewGameCellText(Row, n"SlotYou0", NSLOCTEXT("HOLNewGameScreen", "You", "Vous"), 2, StateWidth);
+				AddNewGameCellText(Row, n"SlotYou0", UHOLNewGameScreen::GetNewGameText(n"You"), 2, StateWidth);
 			else
 				AddNewGameDropdown(Row, SlotWidgetName("SlotState", SlotIndex), StateNames, 0, StateWidth);
 			AddNewGameDropdown(Row, SlotWidgetName("SlotLevel", SlotIndex), LevelNames, int(EHOLAIDifficulty::Normal), LevelWidth);
@@ -91,36 +91,36 @@ class UHOLNewGameScreenScript : UHOLNewGameScreen
 
 		// The mode and its options (S7, D699: sacred sites, off by default).
 		UHorizontalBox Options = AddNewGameRow(Column, 16.0);
-		AddNewGameCellText(Options, NAME_None, NSLOCTEXT("HOLNewGameScreen", "Mode", "Mode"), 2, NameWidth);
+		AddNewGameCellText(Options, NAME_None, UHOLNewGameScreen::GetNewGameText(n"Mode"), 2, NameWidth);
 		AddNewGameDropdown(Options, n"ModeDropdown", UHOLNewGameScreen::GetNewGameOptions(n"Mode"), 0, OptionWidth);
-		AddNewGameCellText(Options, NAME_None, NSLOCTEXT("HOLNewGameScreen", "Nomad", "Nomade"), 2, OptionLabelWidth);
+		AddNewGameCellText(Options, NAME_None, UHOLNewGameScreen::GetNewGameText(n"Nomad"), 2, OptionLabelWidth);
 		AddNewGameDropdown(Options, n"NomadDropdown", OffOn, 0, ToggleWidth);
-		AddNewGameCellText(Options, NAME_None, NSLOCTEXT("HOLNewGameScreen", "Regicide", "Régicide"), 2, OptionLabelWidth);
+		AddNewGameCellText(Options, NAME_None, UHOLNewGameScreen::GetNewGameText(n"Regicide"), 2, OptionLabelWidth);
 		AddNewGameDropdown(Options, n"RegicideDropdown", OffOn, 0, ToggleWidth);
-		AddNewGameCellText(Options, NAME_None, NSLOCTEXT("HOLNewGameScreen", "Catastrophe", "Catastrophe"), 2, OptionLabelWidth);
+		AddNewGameCellText(Options, NAME_None, UHOLNewGameScreen::GetNewGameText(n"Catastrophe"), 2, OptionLabelWidth);
 		AddNewGameDropdown(Options, n"CatastropheDropdown", OffOn, 0, ToggleWidth);
-		AddNewGameCellText(Options, NAME_None, NSLOCTEXT("HOLNewGameScreen", "SacredSites", "Sites sacrés"), 2, OptionLabelWidth);
+		AddNewGameCellText(Options, NAME_None, UHOLNewGameScreen::GetNewGameText(n"SacredSites"), 2, OptionLabelWidth);
 		AddNewGameDropdown(Options, n"SacredSitesDropdown", OffOn, 0, ToggleWidth);
 
 		// The texts under the grid: the lobby's spectators (hidden), the note, the error (hidden).
-		UCommonTextBlock Spectators = AddNewGameText(Column, n"SpectatorsText", FText::GetEmpty(), 1);
+		UCommonTextBlock Spectators = AddNewGameText(Column, n"SpectatorsText", FText(), 1);
 		if (Spectators != nullptr)
 			Spectators.SetVisibility(ESlateVisibility::Collapsed);
-		AddNewGameText(Column, n"Note", NSLOCTEXT("HOLNewGameScreen", "GreyedTeamsOpen", "Grisé : pas encore dans le jeu (factions, mode et options)."), 1);
-		UCommonTextBlock Error = AddNewGameText(Column, n"ErrorText", FText::GetEmpty(), 2);
+		AddNewGameText(Column, n"Note", UHOLNewGameScreen::GetNewGameText(n"GreyedTeamsOpen"), 1);
+		UCommonTextBlock Error = AddNewGameText(Column, n"ErrorText", FText(), 2);
 		// MANQUE: the cpp colours the error HOLUIStyle::Missing (SetColorAndOpacity); no exposed colour for it (see the report).
 		if (Error != nullptr)
 			Error.SetVisibility(ESlateVisibility::Collapsed);
 
 		AddNewGameHint(Column);
 		UHorizontalBox Buttons = AddNewGameButtonRow(Column);
-		AddNewGameButton(Buttons, n"BackButton", NSLOCTEXT("HOLNewGameScreen", "Back", "Retour"));
-		UHOLButton Ready = AddNewGameButton(Buttons, n"ReadyButton", NSLOCTEXT("HOLNewGameScreen", "ReadyAction", "Prêt"));
+		AddNewGameButton(Buttons, n"BackButton", UHOLNewGameScreen::GetNewGameText(n"Back"));
+		UHOLButton Ready = AddNewGameButton(Buttons, n"ReadyButton", UHOLNewGameScreen::GetNewGameText(n"ReadyAction"));
 		if (Ready != nullptr)
 			Ready.SetVisibility(ESlateVisibility::Collapsed);
-		UHOLButton Spectate = AddNewGameButton(Buttons, n"SpectateButton", NSLOCTEXT("HOLNewGameScreen", "BecomeSpectator", "Spectateur"));
+		UHOLButton Spectate = AddNewGameButton(Buttons, n"SpectateButton", UHOLNewGameScreen::GetNewGameText(n"BecomeSpectator"));
 		if (Spectate != nullptr)
 			Spectate.SetVisibility(ESlateVisibility::Collapsed);
-		AddNewGameButton(Buttons, n"LaunchButton", NSLOCTEXT("HOLNewGameScreen", "Launch", "Lancer"));
+		AddNewGameButton(Buttons, n"LaunchButton", UHOLNewGameScreen::GetNewGameText(n"Launch"));
 	}
 }

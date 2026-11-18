@@ -1,14 +1,40 @@
 // The New game screen's layout in script (lot NG-3, D851): the class of Script/UI/HOLNewGameScreen.as is found (FindScriptClass), and once the screen is
 // built (BP_BuildNewGame from BuildLayout) its widgets exist under the NAMES the C++ and the scenarios look for. The two widget tests need a player
-// controller to create the widget: without one (no world in the test run) they return, like the settings test without its settings object.
+// controller to create the widget: without one (or if the screen does not create) they FAIL, they never pass silently.
 
-UHOLNewGameScreen NGS_CreateScreen()
+// The screen created for a test, or nullptr (the caller then FAILS: a test never passes without having looked).
+UHOLNewGameScreen NGS_CreateScreen(FUnitTest& T)
 {
 	const TSubclassOf<UHOLNewGameScreen> Found = UHOLNewGameScreen::FindScriptClass();
 	APlayerController Controller = Gameplay::GetPlayerController(0);
-	if (!Found.IsValid() || Controller == nullptr)
+	if (!Found.IsValid())
+	{
+		T.AssertTrue(false, "the New game screen has a script class to create");
 		return nullptr;
-	return Cast<UHOLNewGameScreen>(Widget::CreateWidget(Controller, Found));
+	}
+	if (Controller == nullptr)
+	{
+		T.AssertTrue(false, "a player controller exists to create the New game screen");
+		return nullptr;
+	}
+	TSubclassOf<UUserWidget> Wanted = Found;
+	UHOLNewGameScreen Screen = Cast<UHOLNewGameScreen>(WidgetBlueprint::CreateWidget(Wanted, Controller));
+	if (Screen == nullptr)
+		T.AssertTrue(false, "the New game screen is created");
+	return Screen;
+}
+
+// A widget of the screen by its name (no GetWidgetFromName binding here: UUserWidget::GetAllWidgets is the one that exists).
+UWidget NGS_Find(UHOLNewGameScreen Screen, FName Name)
+{
+	TArray<UWidget> All;
+	Screen.GetAllWidgets(All);
+	for (int Index = 0; Index < All.Num(); Index++)
+	{
+		if (All[Index] != nullptr && All[Index].GetName() == Name)
+			return All[Index];
+	}
+	return nullptr;
 }
 
 void Test_NewGameScriptClass(FUnitTest& T)
@@ -21,7 +47,7 @@ void Test_NewGameScriptClass(FUnitTest& T)
 
 void Test_NewGameWidgets(FUnitTest& T)
 {
-	UHOLNewGameScreen Screen = NGS_CreateScreen();
+	UHOLNewGameScreen Screen = NGS_CreateScreen(T);
 	if (Screen == nullptr)
 		return;
 	// The option lists of the top (map, size, teams together, fog, mode) and of the bottom (nomad, regicide, catastrophe, sacred sites).
@@ -37,28 +63,28 @@ void Test_NewGameWidgets(FUnitTest& T)
 	Lists.Add(n"SacredSitesDropdown");
 	for (int Index = 0; Index < Lists.Num(); Index++)
 	{
-		UHOLDropdown List = Cast<UHOLDropdown>(Screen.GetWidgetFromName(Lists[Index]));
+		UHOLDropdown List = Cast<UHOLDropdown>(NGS_Find(Screen, Lists[Index]));
 		T.AssertTrue(List != nullptr, "the option list " + Lists[Index].ToString() + " exists");
 	}
-	T.AssertTrue(Screen.GetWidgetFromName(n"Heading") != nullptr, "the heading exists");
-	T.AssertTrue(Screen.GetWidgetFromName(n"LaunchButton") != nullptr, "the launch button exists");
-	T.AssertTrue(Screen.GetWidgetFromName(n"BackButton") != nullptr, "the back button exists");
+	T.AssertTrue(NGS_Find(Screen, n"Heading") != nullptr, "the heading exists");
+	T.AssertTrue(NGS_Find(Screen, n"LaunchButton") != nullptr, "the launch button exists");
+	T.AssertTrue(NGS_Find(Screen, n"BackButton") != nullptr, "the back button exists");
 }
 
 void Test_NewGameSlotCount(FUnitTest& T)
 {
-	UHOLNewGameScreen Screen = NGS_CreateScreen();
+	UHOLNewGameScreen Screen = NGS_CreateScreen(T);
 	if (Screen == nullptr)
 		return;
 	// 8 lines of slots: the name of each, and the state list of the slots 1..7 (slot 0 is "Vous", SlotYou0, like the cpp's).
 	int Lines = 0;
 	for (int SlotIndex = 0; SlotIndex < 8; SlotIndex++)
 	{
-		if (Screen.GetWidgetFromName(FName("SlotName" + SlotIndex)) != nullptr)
+		if (NGS_Find(Screen, FName("SlotName" + SlotIndex)) != nullptr)
 			Lines++;
 	}
 	T.AssertEquals(Lines, 8, "the screen has 8 lines of slots");
 	for (int SlotIndex = 1; SlotIndex < 8; SlotIndex++)
-		T.AssertTrue(Screen.GetWidgetFromName(FName("SlotState" + SlotIndex)) != nullptr, "the slot " + SlotIndex + " has its state list");
-	T.AssertTrue(Screen.GetWidgetFromName(n"SlotYou0") != nullptr, "the slot 0 is the player's (Vous)");
+		T.AssertTrue(NGS_Find(Screen, FName("SlotState" + SlotIndex)) != nullptr, "the slot " + SlotIndex + " has its state list");
+	T.AssertTrue(NGS_Find(Screen, n"SlotYou0") != nullptr, "the slot 0 is the player's (Vous)");
 }
