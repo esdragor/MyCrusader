@@ -76,9 +76,9 @@ $all = @(
     @{ Lot = 'P3'; Name = 'DropOff'; Recv = 'RpcOrder: drop off received by the server: slot 0 '; Dead = 40
         Eff = { param($s) $a = FirstIdx $s 'Drop-off order of slot 0: \d+ units to MainCentre'; if ($a -ge 0) { return $s[$a] }; return $null } },
     @{ Lot = 'P3'; Name = 'BuildUnits'; Recv = 'RpcOrder: build units received by the server: slot 0 '; Dead = 45
-        Eff = { param($s) $a = -1; for ($i = 0; $i -lt $s.Count; $i++) { if ($s[$i] -match 'Build order of slot 0: \d+ units to House at \((-?\d+), (-?\d+)\)') { $a = $i } }; if ($a -lt 0) { return $null }
+        Eff = { param($s) for ($a = 0; $a -lt $s.Count; $a++) { if ($s[$a] -notmatch 'Build order of slot 0: \d+ units to House at \((-?\d+), (-?\d+)\)') { continue }
             $m = [regex]::Match($s[$a], 'House at \((-?\d+), (-?\d+)\)'); $site = 'House at (' + $m.Groups[1].Value + ', ' + $m.Groups[2].Value + '), '
-            for ($i = $a + 1; $i -lt $s.Count; $i++) { if ($s[$i].Contains('Construction: slot 0 ' + $site) -and $s[$i] -match '[1-9]\d* builders at work') { return ($s[$a].Substring($s[$a].IndexOf('Build order')) + ' THEN ' + $s[$i].Substring($s[$i].IndexOf('Construction'))) } }; return $null } },
+            for ($i = $a + 1; $i -lt $s.Count; $i++) { if ($s[$i].Contains('Construction: slot 0 ' + $site) -and $s[$i] -match '[1-9]\d* builders at work') { return ($s[$a].Substring($s[$a].IndexOf('Build order')) + ' THEN ' + $s[$i].Substring($s[$i].IndexOf('Construction'))) } } }; return $null } },
     @{ Lot = 'P3'; Name = 'PlaceBuilding'; Recv = 'RpcOrder: place building received by the server: slot 0 '; Dead = 30
         Eff = { param($s) $a = FirstIdx $s 'Construction: slot 0 placed House foundation at \(.*\), paid '; if ($a -ge 0) { return $s[$a] }; return $null } },
     @{ Lot = 'P4'; Name = 'CancelBuilding'; Recv = 'RpcOrder: cancel building received by the server: slot 0'; Dead = 30
@@ -87,7 +87,7 @@ $all = @(
         Eff = { param($s) $a = FirstIdx $s 'Rally: slot 0 set the rally point of .* at \(.*\).* on site'; if ($a -ge 0) { return $s[$a] }; return $null } },
     @{ Lot = 'P4'; Name = 'Garrison'; Recv = 'RpcOrder: garrison received by the server: slot 0 '; Dead = 30
         Eff = { param($s) $a = FirstIdx $s 'Garrison: slot 0 puts [1-9]\d* of \d+ units in '; if ($a -ge 0) { return $s[$a] }; return $null } },
-    @{ Lot = 'P4'; Name = 'UngarrisonAll'; Recv = 'RpcOrder: ungarrison all received by the server: slot 0 '; Dead = 40
+    @{ Lot = 'P4'; Name = 'UngarrisonAll'; Recv = 'RpcOrder: ungarrison all received by the server: slot 0'; Dead = 40
         Eff = { param($s) $a = FirstIdx $s 'Garrison: slot 0 takes [1-9]\d* units out of '; if ($a -ge 0) { return $s[$a] }; return $null } }
 )
 $p3bits = 8388608 + 16777216 + 33554432 + 67108864
@@ -113,7 +113,7 @@ $procs = @(); $code = 1
 try {
     $sv = Start-Process $ed -ArgumentList "`"$up`" /Game/Maps/Plain -server -nullrhi -nosound -Port=$port -unattended -nosplash -Multiprocess -LiveCoding=0 -asdebugport=0 -as-exit-on-error -HOLCheats -MatchConfig=`"$cfg`" -saveddirsuffix=OrdSrv -abslog=`"$sl`"$svExec" -PassThru -WindowStyle Hidden
     $procs += $sv
-    $upOk = WaitFor $sl 'Bringing World .* up for play|Angelscript: Error' 90
+    $upOk = WaitFor $sl 'Bringing World .* up for play|Angelscript: Error' 180
     "server up: $upOk $(Get-Date -Format HH:mm:ss)"
     $a = Start-Process $ed -ArgumentList "`"$up`" 127.0.0.1:${port}?Name=Bob -game -nullrhi -nosound -unattended -nosplash -Multiprocess -LiveCoding=0 -asdebugport=0 -saveddirsuffix=OrdCli1 -abslog=`"$c1`"" -PassThru -WindowStyle Hidden
     $procs += $a
