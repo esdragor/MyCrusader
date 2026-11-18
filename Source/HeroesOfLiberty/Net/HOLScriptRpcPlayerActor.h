@@ -178,6 +178,59 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Rpc")
 	static bool MarketTrade(AActor* RpcActor, AHOLBuilding* Building, int32 Resource, int32 Lots, bool bBuy);
+
+	// ---- L2 ORDERS (ELROND-1118f C2, NOT COMPILED), D845/D846: the 16 player orders. Each calls the owner controller's Do<X> (the former Server<X>_Implementation, private, called by the bridge as friend class): same body, same journal line. UnitIds as int32 (uint32 is not BlueprintCallable), copied back to uint32; points as X, Y, Z doubles (FVector_NetQuantize, same pattern as HeroAbility). False: no owner controller. Guards (empty ids, spectator, cap of 200) stay in the controller / HOLPlayerOrders.
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Rpc")
+	static bool OrderMove(AActor* RpcActor, const TArray<int32>& UnitIds, double X, double Y, double Z, bool bQueue);
+
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Rpc")
+	static bool OrderAttackUnit(AActor* RpcActor, const TArray<int32>& UnitIds, int32 TargetUnitId, bool bQueue);
+
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Rpc")
+	static bool OrderHealUnit(AActor* RpcActor, const TArray<int32>& UnitIds, int32 TargetUnitId, bool bQueue);
+
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Rpc")
+	static bool OrderAttackBuilding(AActor* RpcActor, const TArray<int32>& UnitIds, AHOLBuilding* Building, bool bQueue);
+
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Rpc")
+	static bool OrderAttackMove(AActor* RpcActor, const TArray<int32>& UnitIds, double X, double Y, double Z, bool bQueue);
+
+	/** DoStopUnits (bHold: hold position instead of a plain stop). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Rpc")
+	static bool OrderStop(AActor* RpcActor, const TArray<int32>& UnitIds, bool bHold);
+
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Rpc")
+	static bool OrderToggleDeploy(AActor* RpcActor, const TArray<int32>& UnitIds);
+
+	/** DoMoveUnitsInLine: Start (StartX, StartY, StartZ) and End (EndX, EndY, EndZ) are two separate points. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Rpc")
+	static bool OrderMoveInLine(AActor* RpcActor, const TArray<int32>& UnitIds, double StartX, double StartY, double StartZ, double EndX, double EndY, double EndZ, bool bWidth, bool bQueue);
+
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Rpc")
+	static bool OrderGather(AActor* RpcActor, const TArray<int32>& UnitIds, int32 SourceIndex, bool bQueue);
+
+	/** TypeName is the FName of the building type; the builders are UnitIds. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Rpc")
+	static bool OrderPlaceBuilding(AActor* RpcActor, FName TypeName, double X, double Y, double Z, const TArray<int32>& UnitIds, bool bQueue);
+
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Rpc")
+	static bool OrderBuildUnits(AActor* RpcActor, const TArray<int32>& UnitIds, AHOLBuilding* Building, bool bQueue);
+
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Rpc")
+	static bool OrderDropOff(AActor* RpcActor, const TArray<int32>& UnitIds, AHOLBuilding* Building, double X, double Y, double Z, bool bQueue);
+
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Rpc")
+	static bool OrderGarrison(AActor* RpcActor, const TArray<int32>& UnitIds, AHOLBuilding* Building);
+
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Rpc")
+	static bool OrderUngarrisonAll(AActor* RpcActor, AHOLBuilding* Building);
+
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Rpc")
+	static bool OrderCancelBuilding(AActor* RpcActor, AHOLBuilding* Building);
+
+	/** Site is the optional second building (may be null). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Rpc")
+	static bool OrderSetRallyPoint(AActor* RpcActor, AHOLBuilding* Building, double X, double Y, double Z, int32 SourceIndex, AHOLBuilding* Site, bool bQueue);
 };
 
 /** Server entry point the script cannot have by itself (generalises HOLScriptRpcProbeBridge): one actor per script class derived from the base. */

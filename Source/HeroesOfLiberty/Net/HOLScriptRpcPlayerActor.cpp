@@ -366,3 +366,127 @@ bool UHOLRpcBridgeLibrary::MarketTrade(AActor* RpcActor, AHOLBuilding* Building,
 	if (Controller) { Controller->DoMarketTrade(Building, Resource, Lots, bBuy); }
 	return Controller != nullptr;
 }
+
+// ---- L2 ORDERS (ELROND-1118f C2, NOT COMPILED), D845/D846: the 16 player orders. The owner controller's Do<X> (friend class) does the work: same body, same journal. ids int32 -> uint32, points X, Y, Z -> FVector_NetQuantize.
+namespace HOLRpcBridgeL2Orders_Elrond1118f
+{
+	TArray<uint32> ToIds(const TArray<int32>& UnitIds)
+	{
+		TArray<uint32> Ids;
+		Ids.Reserve(UnitIds.Num());
+		for (const int32 Id : UnitIds) { Ids.Add(static_cast<uint32>(Id)); }
+		return Ids;
+	}
+}
+
+bool UHOLRpcBridgeLibrary::OrderMove(AActor* RpcActor, const TArray<int32>& UnitIds, const double X, const double Y, const double Z, const bool bQueue)
+{
+	AHOLPlayerController* Controller = HOLRpcBridgeL1_Haldir1117o::OwnerController(RpcActor);
+	if (Controller) { Controller->DoMoveUnits(HOLRpcBridgeL2Orders_Elrond1118f::ToIds(UnitIds), FVector_NetQuantize(FVector(X, Y, Z)), bQueue); }
+	return Controller != nullptr;
+}
+
+bool UHOLRpcBridgeLibrary::OrderAttackUnit(AActor* RpcActor, const TArray<int32>& UnitIds, const int32 TargetUnitId, const bool bQueue)
+{
+	AHOLPlayerController* Controller = HOLRpcBridgeL1_Haldir1117o::OwnerController(RpcActor);
+	if (Controller) { Controller->DoAttackUnit(HOLRpcBridgeL2Orders_Elrond1118f::ToIds(UnitIds), static_cast<uint32>(TargetUnitId), bQueue); }
+	return Controller != nullptr;
+}
+
+bool UHOLRpcBridgeLibrary::OrderHealUnit(AActor* RpcActor, const TArray<int32>& UnitIds, const int32 TargetUnitId, const bool bQueue)
+{
+	AHOLPlayerController* Controller = HOLRpcBridgeL1_Haldir1117o::OwnerController(RpcActor);
+	if (Controller) { Controller->DoHealUnit(HOLRpcBridgeL2Orders_Elrond1118f::ToIds(UnitIds), static_cast<uint32>(TargetUnitId), bQueue); }
+	return Controller != nullptr;
+}
+
+bool UHOLRpcBridgeLibrary::OrderAttackBuilding(AActor* RpcActor, const TArray<int32>& UnitIds, AHOLBuilding* Building, const bool bQueue)
+{
+	AHOLPlayerController* Controller = HOLRpcBridgeL1_Haldir1117o::OwnerController(RpcActor);
+	if (Controller) { Controller->DoAttackBuilding(HOLRpcBridgeL2Orders_Elrond1118f::ToIds(UnitIds), Building, bQueue); }
+	return Controller != nullptr;
+}
+
+bool UHOLRpcBridgeLibrary::OrderAttackMove(AActor* RpcActor, const TArray<int32>& UnitIds, const double X, const double Y, const double Z, const bool bQueue)
+{
+	AHOLPlayerController* Controller = HOLRpcBridgeL1_Haldir1117o::OwnerController(RpcActor);
+	if (Controller) { Controller->DoAttackMove(HOLRpcBridgeL2Orders_Elrond1118f::ToIds(UnitIds), FVector_NetQuantize(FVector(X, Y, Z)), bQueue); }
+	return Controller != nullptr;
+}
+
+bool UHOLRpcBridgeLibrary::OrderStop(AActor* RpcActor, const TArray<int32>& UnitIds, const bool bHold)
+{
+	AHOLPlayerController* Controller = HOLRpcBridgeL1_Haldir1117o::OwnerController(RpcActor);
+	if (Controller) { Controller->DoStopUnits(HOLRpcBridgeL2Orders_Elrond1118f::ToIds(UnitIds), bHold); }
+	return Controller != nullptr;
+}
+
+bool UHOLRpcBridgeLibrary::OrderToggleDeploy(AActor* RpcActor, const TArray<int32>& UnitIds)
+{
+	AHOLPlayerController* Controller = HOLRpcBridgeL1_Haldir1117o::OwnerController(RpcActor);
+	if (Controller) { Controller->DoToggleDeploy(HOLRpcBridgeL2Orders_Elrond1118f::ToIds(UnitIds)); }
+	return Controller != nullptr;
+}
+
+bool UHOLRpcBridgeLibrary::OrderMoveInLine(AActor* RpcActor, const TArray<int32>& UnitIds, const double StartX, const double StartY, const double StartZ, const double EndX, const double EndY, const double EndZ, const bool bWidth, const bool bQueue)
+{
+	AHOLPlayerController* Controller = HOLRpcBridgeL1_Haldir1117o::OwnerController(RpcActor);
+	if (Controller) { Controller->DoMoveUnitsInLine(HOLRpcBridgeL2Orders_Elrond1118f::ToIds(UnitIds), FVector_NetQuantize(FVector(StartX, StartY, StartZ)), FVector_NetQuantize(FVector(EndX, EndY, EndZ)), bWidth, bQueue); }
+	return Controller != nullptr;
+}
+
+bool UHOLRpcBridgeLibrary::OrderGather(AActor* RpcActor, const TArray<int32>& UnitIds, const int32 SourceIndex, const bool bQueue)
+{
+	AHOLPlayerController* Controller = HOLRpcBridgeL1_Haldir1117o::OwnerController(RpcActor);
+	if (Controller) { Controller->DoGatherUnits(HOLRpcBridgeL2Orders_Elrond1118f::ToIds(UnitIds), SourceIndex, bQueue); }
+	return Controller != nullptr;
+}
+
+bool UHOLRpcBridgeLibrary::OrderPlaceBuilding(AActor* RpcActor, const FName TypeName, const double X, const double Y, const double Z, const TArray<int32>& UnitIds, const bool bQueue)
+{
+	AHOLPlayerController* Controller = HOLRpcBridgeL1_Haldir1117o::OwnerController(RpcActor);
+	if (Controller) { Controller->DoPlaceBuilding(TypeName, FVector_NetQuantize(FVector(X, Y, Z)), HOLRpcBridgeL2Orders_Elrond1118f::ToIds(UnitIds), bQueue); }
+	return Controller != nullptr;
+}
+
+bool UHOLRpcBridgeLibrary::OrderBuildUnits(AActor* RpcActor, const TArray<int32>& UnitIds, AHOLBuilding* Building, const bool bQueue)
+{
+	AHOLPlayerController* Controller = HOLRpcBridgeL1_Haldir1117o::OwnerController(RpcActor);
+	if (Controller) { Controller->DoBuildUnits(HOLRpcBridgeL2Orders_Elrond1118f::ToIds(UnitIds), Building, bQueue); }
+	return Controller != nullptr;
+}
+
+bool UHOLRpcBridgeLibrary::OrderDropOff(AActor* RpcActor, const TArray<int32>& UnitIds, AHOLBuilding* Building, const double X, const double Y, const double Z, const bool bQueue)
+{
+	AHOLPlayerController* Controller = HOLRpcBridgeL1_Haldir1117o::OwnerController(RpcActor);
+	if (Controller) { Controller->DoDropOffUnits(HOLRpcBridgeL2Orders_Elrond1118f::ToIds(UnitIds), Building, FVector_NetQuantize(FVector(X, Y, Z)), bQueue); }
+	return Controller != nullptr;
+}
+
+bool UHOLRpcBridgeLibrary::OrderGarrison(AActor* RpcActor, const TArray<int32>& UnitIds, AHOLBuilding* Building)
+{
+	AHOLPlayerController* Controller = HOLRpcBridgeL1_Haldir1117o::OwnerController(RpcActor);
+	if (Controller) { Controller->DoGarrisonUnits(HOLRpcBridgeL2Orders_Elrond1118f::ToIds(UnitIds), Building); }
+	return Controller != nullptr;
+}
+
+bool UHOLRpcBridgeLibrary::OrderUngarrisonAll(AActor* RpcActor, AHOLBuilding* Building)
+{
+	AHOLPlayerController* Controller = HOLRpcBridgeL1_Haldir1117o::OwnerController(RpcActor);
+	if (Controller) { Controller->DoUngarrisonAll(Building); }
+	return Controller != nullptr;
+}
+
+bool UHOLRpcBridgeLibrary::OrderCancelBuilding(AActor* RpcActor, AHOLBuilding* Building)
+{
+	AHOLPlayerController* Controller = HOLRpcBridgeL1_Haldir1117o::OwnerController(RpcActor);
+	if (Controller) { Controller->DoCancelBuilding(Building); }
+	return Controller != nullptr;
+}
+
+bool UHOLRpcBridgeLibrary::OrderSetRallyPoint(AActor* RpcActor, AHOLBuilding* Building, const double X, const double Y, const double Z, const int32 SourceIndex, AHOLBuilding* Site, const bool bQueue)
+{
+	AHOLPlayerController* Controller = HOLRpcBridgeL1_Haldir1117o::OwnerController(RpcActor);
+	if (Controller) { Controller->DoSetRallyPoint(Building, FVector_NetQuantize(FVector(X, Y, Z)), SourceIndex, Site, bQueue); }
+	return Controller != nullptr;
+}
