@@ -1870,7 +1870,15 @@ void UHOLNewGameScreen::SendMyChoice(const int32 ColorIndex, const int32 Team, c
 	{
 		return;
 	}
-	const FString What = FString::Printf(TEXT("me colour %d team %d ready %d spectator %d faction %s"), ColorIndex, Team, Ready, Spectator, *Faction);
+	// ELROND-1118x: ONE field changed = the text of the cpp gesture it replaces ("colour 3", "team 2", "ready on", "spectator off", "faction Templars"), the
+	// journal line the lobby test (and the cpp screen) write: "Lobby: colour 3 accepted". Several fields: the whole line.
+	const int32 NumFields = (ColorIndex >= 0 ? 1 : 0) + (Team >= 0 ? 1 : 0) + (Ready >= 0 ? 1 : 0) + (Spectator >= 0 ? 1 : 0) + (Faction.IsEmpty() ? 0 : 1);
+	const FString What = NumFields != 1 ? FString::Printf(TEXT("me colour %d team %d ready %d spectator %d faction %s"), ColorIndex, Team, Ready, Spectator, *Faction)
+		: ColorIndex >= 0 ? FString::Printf(TEXT("colour %d"), ColorIndex)
+		: Team >= 0 ? FString::Printf(TEXT("team %d"), Team)
+		: Ready >= 0 ? FString::Printf(TEXT("ready %s"), Ready == 1 ? TEXT("on") : TEXT("off"))
+		: Spectator >= 0 ? FString::Printf(TEXT("spectator %s"), Spectator == 1 ? TEXT("on") : TEXT("off"))
+		: FString::Printf(TEXT("faction %s"), *Faction);
 	UE_LOG(LogHOLUI, Display, TEXT("Lobby: %s sent"), *What);
 	Client->UpdateMe(ColorIndex >= 0 ? TOptional<int32>(ColorIndex) : TOptional<int32>(), Team >= 0 ? TOptional<int32>(Team) : TOptional<int32>(),
 		Ready >= 0 ? TOptional<bool>(Ready == 1) : TOptional<bool>(),
