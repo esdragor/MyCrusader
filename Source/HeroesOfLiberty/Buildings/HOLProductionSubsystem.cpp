@@ -1,7 +1,6 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "Buildings/HOLProductionSubsystem.h"
-#include "Simulation/HOLUnitTierRules.h"
 #include "Simulation/HOLUnitTierSubsystem.h"
 
 #include "Match/HOLMarketSubsystem.h"
@@ -445,9 +444,9 @@ void UHOLProductionSubsystem::ApplyOrders()
 			if (Type->Produces.Contains(Order.TypeName))
 				{
 					// G1 (Palier3InProgress.md, D711): EVERY unit opens at the tier of its column MinTier (HOLUnitTier, one rule for all); a client that asks for a Man-at-arms at tier 0 is refused here.
-					const int32 UnitMinTier = HOLUnitTier::GetMinTier(Order.TypeName);
+					const int32 UnitMinTier = UHOLUnitTierSubsystem::GetMinTier(Order.TypeName);
 					const AHOLGameState* TierState = GetWorld()->GetGameState<AHOLGameState>();
-					if (UHOLUnitTierSubsystem::CheckUnit(GetWorld(), Order.TypeName, TierState ? TierState->GetTier(Order.PlayerIndex) : 0, true, true) == static_cast<int32>(HOLUnitTier::EBlock::TierTooLow))
+					if (UHOLUnitTierSubsystem::CheckUnit(GetWorld(), Order.TypeName, TierState ? TierState->GetTier(Order.PlayerIndex) : 0, true, true) == HOLUnitTierReason::TierTooLow)
 					{
 						UE_LOG(LogHOLCommands, Display, TEXT("Production: slot %d cannot queue %s (tier too low: it opens at tier %d)"), Order.PlayerIndex, *Order.TypeName.ToString(), UnitMinTier);
 						continue;

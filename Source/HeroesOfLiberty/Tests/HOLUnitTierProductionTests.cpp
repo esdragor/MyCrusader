@@ -18,7 +18,6 @@
 #include "Resources/HOLSourceSubsystem.h"
 #include "Simulation/HOLSimulationSubsystem.h"
 #include "Simulation/HOLUnitSubsystem.h"
-#include "Simulation/HOLUnitTierRules.h"
 #include "Simulation/HOLUnitTypes.h"
 
 #if WITH_DEV_AUTOMATION_TESTS

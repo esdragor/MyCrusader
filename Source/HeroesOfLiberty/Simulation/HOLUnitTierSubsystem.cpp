@@ -2,8 +2,10 @@
 
 #include "Simulation/HOLUnitTierSubsystem.h"
 
+#include "Engine/DataTable.h"
 #include "Engine/World.h"
-#include "Simulation/HOLUnitTierRules.h"
+#include "Simulation/HOLSimulationSettings.h"
+#include "Simulation/HOLUnitTypes.h"
 
 UHOLUnitTierSubsystem* UHOLUnitTierSubsystem::Find(const UWorld* World)
 {
@@ -21,7 +23,21 @@ int32 UHOLUnitTierSubsystem::CheckUnit(const UWorld* World, const FName UnitType
 	{
 		return Board->CheckUnitTierNow(UnitType, Tier, bBuildingFinished, bCanPay);
 	}
-	return static_cast<int32>(HOLUnitTier::Check(HOLUnitTier::GetMinTier(UnitType), Tier, bBuildingFinished, bCanPay));
+	// No script board: no C++ rule to fall back on (D836 point 3). The unit is refused, and the error is said once, not at every order or frame.
+	static bool bLogged = false;
+	if (!bLogged)
+	{
+		bLogged = true;
+		UE_LOG(LogTemp, Error, TEXT("UnitTier: no script board, every unit is refused (tier too low)"));
+	}
+	return HOLUnitTierReason::TierTooLow;
+}
+
+int32 UHOLUnitTierSubsystem::GetMinTier(const FName UnitType)
+{
+	const UDataTable* Table = GetDefault<UHOLSimulationSettings>()->UnitTypesTable.LoadSynchronous();
+	const FHOLUnitTypeRow* Row = Table ? Table->FindRow<FHOLUnitTypeRow>(UnitType, TEXT("unit tier"), /*bWarnIfRowMissing*/ false) : nullptr;
+	return Row ? Row->MinTier : -1;
 }
 
 int32 UHOLUnitTierSubsystem::CheckUnitTierNow(const FName UnitType, const int32 Tier, const bool bBuildingFinished, const bool bCanPay)
@@ -46,5 +62,6 @@ bool UHOLUnitTierSubsystem::DoesSupportWorldType(const EWorldType::Type WorldTyp
 
 int32 UHOLUnitTierSubsystem::CheckUnitTier_Implementation(const FName UnitType, const int32 Tier, const bool bBuildingFinished, const bool bCanPay)
 {
-	return static_cast<int32>(HOLUnitTier::Check(HOLUnitTier::GetMinTier(UnitType), Tier, bBuildingFinished, bCanPay));
+	// No script subclass: refused, the rule is the script's alone (HOLUnitTierBoardScript.as overrides this).
+	return HOLUnitTierReason::TierTooLow;
 }
