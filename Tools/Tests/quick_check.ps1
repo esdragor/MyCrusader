@@ -3155,7 +3155,7 @@ $SequenceChecks["scripts compiled ($(if ($GameScriptErrors.Count) { $GameScriptE
 # Each capture shows the screen it is named after (the screens on top of the layers when it was taken; in a match,
 # the game HUD of J3).
 $Expected = @{ title = "menu=HOLTitleScreenScript modal=none"; stackback = "menu=HOLTitleScreenScript modal=none"; quit = "menu=HOLTitleScreenScript modal=HOLConfirmDialogScreenScript";
-    newgame = "menu=HOLNewGameScreen modal=none"; dropdown = "menu=HOLNewGameScreen modal=none"; video = "menu=HOLSettingsScreenScript modal=none";
+    newgame = "menu=HOLNewGameScreenScript modal=none"; dropdown = "menu=HOLNewGameScreenScript modal=none"; video = "menu=HOLSettingsScreenScript modal=none";
     sound = "menu=HOLSettingsScreenScript modal=none"; controls = "menu=HOLSettingsScreenScript modal=none"; language = "menu=HOLSettingsScreenScript modal=none";
     start = "hud=HOLGameScreen"; end = "hud=HOLGameScreen"; own = "hud=HOLGameScreen"; other = "hud=HOLGameScreen";
     queue = "hud=HOLGameScreen"; done = "hud=HOLGameScreen"; berries = "hud=HOLGameScreen"; wood = "hud=HOLGameScreen"; idle = "hud=HOLGameScreen";
