@@ -94,6 +94,19 @@ public:
 	/** HUD H-4: the PlayersPanel (table host in the right column), filled by the script's table. */
 	UBorder* GetPlayersPanel() const { return PlayersPanel; }
 
+	/** HUD H-7: the QueuePanel (in the CommandColumn, collapsed), filled by the script's queue panel. */
+	UBorder* GetQueuePanel() const { return QueuePanel; }
+
+	/**
+	 * HUD H-7: what RefreshQueue + UpdateHead read, for the script's queue panel: the own selected building's queue (types, research or unit
+	 * names) and its head (started, progress, held at 100 % for lack of room, waiting for room). False, all empty: no own building selected.
+	 */
+	bool ReadQueue(TArray<FName>& OutTypes, TArray<bool>& OutResearch, TArray<FString>& OutTechNames, TArray<FString>& OutUnitNames,
+		bool& bOutHeadStarted, float& OutHeadProgress, bool& bOutBlockedAtFull, bool& bOutPopulationShort) const;
+
+	/** HUD H-7: the queue part of the Describe line, as the script's queue panel wrote it (3 [Peasant 0.40, ...]). */
+	void SetQueueReportMirror(const FString& Line) { QueueReport = Line; }
+
 	/** The population full alert's test binds a player state without a player controller. */
 	friend class FHOLPopulationAlertThreadTest;
 
@@ -538,4 +551,6 @@ private:
 	float HeadProgress = 0.f;
 	/** The short message shown (its key, empty: none): the script's panel draws it, this is the mirror Describe reads. */
 	FString MessageKey;
+	/** HUD H-7: the queue part of Describe (the script's queue panel writes it, UHOLScriptScreen::SetQueueReport). */
+	FString QueueReport = TEXT("0 []");
 };

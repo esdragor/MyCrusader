@@ -60,6 +60,60 @@ UBorder* UHOLScriptScreen::GetPlayersPanel() const
 	return GameScreen ? GameScreen->GetPlayersPanel() : nullptr;
 }
 
+UBorder* UHOLScriptScreen::GetQueuePanel() const
+{
+	const UHOLGameScreen* GameScreen = GetTypedOuter<UHOLGameScreen>();
+	return GameScreen ? GameScreen->GetQueuePanel() : nullptr;
+}
+
+bool UHOLScriptScreen::GetQueueNow(TArray<FName>& OutTypes, TArray<bool>& OutResearch, TArray<FString>& OutTechNames, TArray<FString>& OutUnitNames,
+	bool& bOutHeadStarted, float& OutHeadProgress, bool& bOutBlockedAtFull, bool& bOutPopulationShort) const
+{
+	const UHOLGameScreen* GameScreen = GetTypedOuter<UHOLGameScreen>();
+	if (!GameScreen)
+	{
+		OutTypes.Reset();
+		OutResearch.Reset();
+		OutTechNames.Reset();
+		OutUnitNames.Reset();
+		bOutHeadStarted = false;
+		OutHeadProgress = 0.f;
+		bOutBlockedAtFull = false;
+		bOutPopulationShort = false;
+		return false;
+	}
+	return GameScreen->ReadQueue(OutTypes, OutResearch, OutTechNames, OutUnitNames, bOutHeadStarted, OutHeadProgress, bOutBlockedAtFull, bOutPopulationShort);
+}
+
+void UHOLScriptScreen::SetQueueReport(const FString& Line)
+{
+	if (UHOLGameScreen* GameScreen = GetTypedOuter<UHOLGameScreen>())
+	{
+		GameScreen->SetQueueReportMirror(Line);
+	}
+}
+
+FLinearColor UHOLScriptScreen::GetAccentColor()
+{
+	return HOLUIStyle::Accent;
+}
+
+bool UHOLScriptScreen::CancelProduction(const int32 Index)
+{
+	AHOLPlayerController* PlayerController = Cast<AHOLPlayerController>(GetOwningPlayer());
+	if (!PlayerController)
+	{
+		return false;
+	}
+	PlayerController->RequestCancelProduction(Index);
+	return true;
+}
+
+void UHOLScriptScreen::SetQueueLive(const bool bLive)
+{
+	bQueueLive = bLive;
+}
+
 bool UHOLScriptScreen::GetPopulationNow(int32& OutUsed, int32& OutCap, float& OutRealSeconds) const
 {
 	const UHOLGameScreen* GameScreen = GetTypedOuter<UHOLGameScreen>();
@@ -469,6 +523,11 @@ void UHOLScriptScreen::NativeTick(const FGeometry& MyGeometry, const float InDel
 	if (bMessageLive)
 	{
 		FrameTick(InDeltaTime);
+	}
+	// The queue's head bar, every frame, ONLY while a queue is shown (HUD H-7; the C++ UpdateHead ran every frame).
+	if (bQueueLive)
+	{
+		QueueFrameTick();
 	}
 	// The T key (the talent tree, TQ4 = A): the viewport's key state, as the Enter of a test scenario; the console open or a focused menu keeps it.
 	if (const APlayerController* Controller = GetOwningPlayer())

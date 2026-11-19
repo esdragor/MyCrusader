@@ -2435,6 +2435,71 @@ void UHOLGameScreen::UpdateHead()
 	SetShown(QueueNote, HeadState == EHeadState::PopulationFull);
 }
 
+bool UHOLGameScreen::ReadQueue(TArray<FName>& OutTypes, TArray<bool>& OutResearch, TArray<FString>& OutTechNames, TArray<FString>& OutUnitNames,
+	bool& bOutHeadStarted, float& OutHeadProgress, bool& bOutBlockedAtFull, bool& bOutPopulationShort) const
+{
+	using namespace UE::HeroesOfLiberty::UI::GameScreen;
+
+	OutTypes.Reset();
+	OutResearch.Reset();
+	OutTechNames.Reset();
+	OutUnitNames.Reset();
+	bOutHeadStarted = false;
+	OutHeadProgress = 0.f;
+	bOutBlockedAtFull = false;
+	bOutPopulationShort = false;
+
+	// RefreshQueue(Own): only the owner receives its building's queue (D282).
+	const AHOLPlayerController* PlayerController = Controller.Get();
+	const AHOLBuilding* Own = PlayerController ? PlayerController->GetOwnSelection() : nullptr;
+	if (!Own)
+	{
+		return false;
+	}
+	for (const FHOLProductionItem& Item : Own->GetProductionQueue())
+	{
+		// A research waits in the queue as a unit does (T6): its name, not the type's key.
+		const FHOLTechnologyRow* Research = UHOLTechnologySettings::FindTechnology(Item.TypeName);
+		OutTypes.Add(Item.TypeName);
+		OutResearch.Add(Research != nullptr);
+		OutTechNames.Add(Research ? HOLGameNames::GetTechnologyName(Item.TypeName, Research).ToString() : FString());
+		OutUnitNames.Add(Research ? FString() : HOLGameNames::GetUnitName(Item.TypeName, FindUnitType(Item.TypeName), LocalFactionKey()).ToString());
+	}
+	if (OutTypes.IsEmpty())
+	{
+		return true;
+	}
+
+	// UpdateHead: the queue shown is the selected building's (BoundBuilding), the head its first item.
+	const AHOLBuilding* Building = BoundBuilding.Get();
+	const TArray<FHOLProductionItem>* Queue = Building ? &Building->GetProductionQueue() : nullptr;
+	if (!Queue || Queue->IsEmpty())
+	{
+		return true;
+	}
+	const FHOLProductionItem& Head = (*Queue)[0];
+	const FHOLUnitTypeRow* UnitType = FindUnitType(Head.TypeName);
+	const AHOLPlayerState* PlayerState = BoundPlayerState.Get();
+	const int32 Places = UnitType ? UnitType->Population : 1;
+	bOutHeadStarted = Head.IsStarted();
+	if (bOutHeadStarted)
+	{
+		// Only the start step travels (D282): the progress is computed every frame, at the server's clock as this machine estimates it (D271).
+		const int32 BuildSteps = UnitType
+			? UHOLProductionSubsystem::GetBuildSteps(*UnitType, GetDefault<UHOLSimulationSettings>()->GetStepSeconds())
+			: 1;
+		OutHeadProgress = HOLProduction::GetProgress(Head, UHOLProductionSubsystem::GetDisplayStep(GetWorld()), BuildSteps);
+		// D829: done but no place in the population (the script adds the 100 % test).
+		bOutBlockedAtFull = PlayerState && HOLCommandGrid::IsPopulationBlocked(PlayerState->GetPopulationUsed(), PlayerState->GetPopulationCap(), Places);
+	}
+	else
+	{
+		// Not started: it waits for room in the population (as in AoE), or starts at the server's next step.
+		bOutPopulationShort = PlayerState && PlayerState->GetPopulationUsed() + Places > PlayerState->GetPopulationCap();
+	}
+	return true;
+}
+
 void UHOLGameScreen::HandleGridCellClicked(const int32 Cell)
 {
 	using namespace UE::HeroesOfLiberty::UI::GameScreen;

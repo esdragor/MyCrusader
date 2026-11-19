@@ -4,6 +4,7 @@
 //                                 float32& HeadProgress, bool& bBlockedAtFull, bool& bPopulationShort) -> bool   (false: no own building shown),
 //   UHOLScriptScreen::SetQueueReport(const FString& Line)         (the line Describe() prints after "queue "),
 //   UHOLScriptScreen::GetAccentColor() -> FLinearColor            (HOLUIStyle::Accent),
+//   UHOLScriptScreen::CancelProduction(int) -> bool, SetQueueLive(bool), event QueueFrameTick() (HUD H-7 binding, SAURON-1119e),
 // and the clicks' AHOLPlayerController::RequestCancelProduction(int) is called as the duel's RequestDuelAnswer is (it must be exposed). The recipe is in
 // Docs\Rapports\SAURON-1119d.md. Until the lot exists the whole script module would fail to compile: do NOT build with this file present and without it.
 //
@@ -206,7 +207,10 @@ class UHOLProductionQueuePanel : UObject
 		// The C++ bar: background (0.08, 0.08, 0.1) and the accent fill, both rounded by 2; MakeBar gives the fill's colour (the background and the corners:
 		// to compare on the capture, lesson 3).
 		QueueProgress = Screen.MakeBar(n"QueueProgress", UHOLScriptScreen::GetAccentColor());
-		USizeBox BarBox = Screen.SizedBar(n"QueueProgressBox", QueueProgress, 6.0);
+		// The C++ box has a height only (the bar fills the line's width): UHOLScriptScreen::SizedBar does not exist (the hero block's SizedBar is the script screen's own).
+		USizeBox BarBox = Cast<USizeBox>(Screen.ConstructWidget(USizeBox, n"QueueProgressBox"));
+		BarBox.SetHeightOverride(6.0);
+		BarBox.SetContent(QueueProgress);
 		UOverlaySlot BarSlot = Status.AddChildToOverlay(BarBox);
 		BarSlot.SetHorizontalAlignment(EHorizontalAlignment::HAlign_Fill);
 		BarSlot.SetVerticalAlignment(EVerticalAlignment::VAlign_Center);
@@ -241,12 +245,11 @@ class UHOLProductionQueuePanel : UObject
 	// HandleQueueItemClicked: the journal line, then the cancel (the controller; nothing without one, no line either).
 	bool ClickItem(int Index)
 	{
-		AHOLPlayerController Controller = Cast<AHOLPlayerController>(Screen.GetOwningPlayer());
-		if (Controller == nullptr)
+		// Screen.CancelProduction is AHOLPlayerController::RequestCancelProduction (not a UFUNCTION); false without a controller, no journal line either.
+		if (Cast<AHOLPlayerController>(Screen.GetOwningPlayer()) == nullptr)
 			return false;
 		UHOLGameMenuScreen::MenuLog(HOLQueuePanel::ClickLine(Index));
-		Controller.RequestCancelProduction(Index);
-		return true;
+		return Screen.CancelProduction(Index);
 	}
 
 	// hol.HUD.Click's names (ClickWidget): QueueItem0..4; false when it is not one of ours or when the panel or the button is hidden.
@@ -315,6 +318,13 @@ class UHOLProductionQueuePanel : UObject
 			QueueNote.SetVisibility(HOLQueuePanel::NoteShown(State) ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
 		}
 		Screen.SetQueueReport(Describe());
+		// The head's bar moves every frame: the screen calls QueueFrameTick (-> FrameTick) only while a queue is shown (the C++ UpdateHead ran every frame).
+		Screen.SetQueueLive(bQueueShown);
+	}
+
+	void FrameTick()
+	{
+		Refresh();
 	}
 
 	// Describe's queue part, as the C++ screen printed it.
