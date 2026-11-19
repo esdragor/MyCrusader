@@ -12,6 +12,31 @@ class AHOLGameState;
 class AHOLPlayerState;
 
 /**
+ * A forum's public state as plain ints (FHOLForumState has no script type): Phase as EHOLForumPhase, Hold as EHOLForumHold, HolderSlot -1 for none,
+ * bDown = IsDown. Made by UHOLGameStateTestLibrary::GetForumState.
+ */
+USTRUCT(BlueprintType)
+struct FHOLTestForumState
+{
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadWrite, Category = "HeroesOfLiberty|GameStateTest")
+	int32 Falls = 0;
+	UPROPERTY(BlueprintReadWrite, Category = "HeroesOfLiberty|GameStateTest")
+	int32 Phase = 0;
+	UPROPERTY(BlueprintReadWrite, Category = "HeroesOfLiberty|GameStateTest")
+	int32 RuinStepsLeft = 0;
+	UPROPERTY(BlueprintReadWrite, Category = "HeroesOfLiberty|GameStateTest")
+	int32 HoldSteps = 0;
+	UPROPERTY(BlueprintReadWrite, Category = "HeroesOfLiberty|GameStateTest")
+	int32 Hold = 0;
+	UPROPERTY(BlueprintReadWrite, Category = "HeroesOfLiberty|GameStateTest")
+	int32 HolderSlot = -1;
+	UPROPERTY(BlueprintReadWrite, Category = "HeroesOfLiberty|GameStateTest")
+	bool bDown = false;
+};
+
+/**
  * The forum events of a game state, recorded as plain ints (Kind 0 Fell, 1 HoldStarted, 2 Razed, 3 Defeated, 4 KingDied; Reason 0 None,
  * 1 Disconnected, as FHOLForumEventValue). Made by UHOLGameStateTestLibrary::RecordForumEvents; the script reads them back.
  */
@@ -125,4 +150,99 @@ public:
 	 */
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|GameStateTest")
 	static FString FormatSeatReport(int32 Slot, const FString& Name, int32 SeatState, double SecondsLeft, int32 AIMode);
+
+	// ---- Lot 2, rest (D853, ELROND-1119u): forum state, notices, absences, login, pauses, stock ----
+
+	/** AHOLGameState::GetForumState(Slot) as ints (the default state for a null state). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|GameStateTest")
+	static FHOLTestForumState GetForumState(const AHOLGameState* State, int32 Slot);
+
+	/** The player state of the state's PlayerArray whose GetPlayerIndex is Slot (the first one found, an AI's included); nullptr if none. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|GameStateTest")
+	static AHOLPlayerState* GetPlayerStateOfSlot(const AHOLGameState* State, int32 Slot);
+
+	/** AHOLGameState::GetAbsentNotices, one line a notice, fields joined by a tab: Slot (-1 a fake one), Name, EndsAt, BackAt, WindowSeconds (%.3f). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|GameStateTest")
+	static TArray<FString> GetAbsentNotices(const AHOLGameState* State);
+
+	/** GetAbsentNotices().Num(). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|GameStateTest")
+	static int32 CountAbsentNotices(const AHOLGameState* State);
+
+	/** True when a notice has this Slot and, with bBack false, BackAt <= 0 (still away, banner up); with bBack true, BackAt > 0 (the back notice). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|GameStateTest")
+	static bool HasAbsentNotice(const AHOLGameState* State, int32 Slot, bool bBack);
+
+	/** AHOLGameState::GetAbsenceBannerLines(Now), each line FText::ToString. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|GameStateTest")
+	static TArray<FString> GetAbsenceBannerLines(const AHOLGameState* State, double Now);
+
+	/** AHOLGameState::GetWindowClock(Now): Now minus the time the match spent paused. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|GameStateTest")
+	static double GetWindowClock(const AHOLGameState* State, double Now);
+
+	/** AHOLGameState::GetSlotsInUse(Except); Except may be null. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|GameStateTest")
+	static TArray<int32> GetSlotsInUse(const AHOLGameState* State, const AHOLPlayerState* Except);
+
+	/** AHOLGameState::DefeatExpiredAbsences(Now, WindowSeconds) (WindowSeconds of 0 or less: the default window): the slots it defeated. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|GameStateTest")
+	static TArray<int32> DefeatExpiredAbsences(AHOLGameState* State, double Now, double WindowSeconds);
+
+	/** AHOLGameState::DescribeDisconnections(Now, WindowSeconds) (WindowSeconds of 0 or less: the default window). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|GameStateTest")
+	static TArray<FString> DescribeDisconnections(const AHOLGameState* State, double Now, double WindowSeconds);
+
+	/** AHOLGameState::SimulateReturn(Slot, Starting, Now) (the hol.Net.FakeAbsent Back path). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|GameStateTest")
+	static bool SimulateReturn(AHOLGameState* State, int32 Slot, const FHOLResources& Starting, double Now);
+
+	/** AHOLGameState::FindSlotOnLogin(Config from Json, Name, TakenSlots). -1 (INDEX_NONE) if the JSON fails. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|GameStateTest")
+	static int32 FindSlotOnLogin(const AHOLGameState* State, const FString& Json, const FString& Name, const TArray<int32>& TakenSlots);
+
+	/** AHOLGameState::FindSlotForLogin(Config from Json, Name, Logging, OutReplaced): the slot (-1 if the JSON fails). The holder it would replace: FindReplacedForLogin. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|GameStateTest")
+	static int32 FindSlotForLogin(const AHOLGameState* State, const FString& Json, const FString& Name, const AHOLPlayerState* Logging);
+
+	/** The OutReplaced of the same FindSlotForLogin call (the live holder of the seat of that name, to hand over by RetireHolder); nullptr if none. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|GameStateTest")
+	static AHOLPlayerState* FindReplacedForLogin(const AHOLGameState* State, const FString& Json, const FString& Name, const AHOLPlayerState* Logging);
+
+	/** AHOLGameState::RetireHolder(Old, Now, WindowSeconds) (WindowSeconds of 0 or less: the default window). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|GameStateTest")
+	static void RetireHolder(AHOLGameState* State, AHOLPlayerState* Old, double Now, double WindowSeconds);
+
+	/** AHOLGameState::RequestPause(Requester, Now): the rule decides. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|GameStateTest")
+	static bool RequestPause(AHOLGameState* State, AHOLPlayerState* Requester, double Now);
+
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|GameStateTest")
+	static bool RequestResume(AHOLGameState* State, AHOLPlayerState* Requester, double Now);
+
+	/** AHOLGameState::LiftPauseOf(Slot, Now). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|GameStateTest")
+	static bool LiftPauseOf(AHOLGameState* State, int32 Slot, double Now);
+
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|GameStateTest")
+	static bool IsMatchPaused(const AHOLGameState* State);
+
+	/** AHOLGameState::GetPausesLeft() (one count for the match, no slot). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|GameStateTest")
+	static int32 GetPausesLeft(const AHOLGameState* State);
+
+	/** AHOLPlayerState::GetResources / SetResources (a slot's stock). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|GameStateTest")
+	static FHOLResources GetResources(const AHOLPlayerState* Player);
+
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|GameStateTest")
+	static void SetResources(AHOLPlayerState* Player, const FHOLResources& Resources);
+
+	/** AHOLPlayerState::AddTechnology(Technology), its one-time effects included. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|GameStateTest")
+	static bool AddTechnology(AHOLPlayerState* Player, FName Technology);
+
+	/** AHOLPlayerState::GetHeroPrivate().XP (0 for null). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|GameStateTest")
+	static int32 GetPlayerHeroXP(const AHOLPlayerState* Player);
 };
