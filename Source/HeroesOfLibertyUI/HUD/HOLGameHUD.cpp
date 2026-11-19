@@ -82,13 +82,6 @@ void AHOLGameHUD::BeginPlay()
 		UE_LOG(LogHOLUI, Display, TEXT("Game HUD: game screen shown"));
 	}
 #if !UE_BUILD_SHIPPING
-	// The cheats' panel (D291), over the game screen, under its top bar.
-	CheatPanel = CreateWidget<UHOLCheatPanel>(PlayerController, UHOLCheatPanel::StaticClass());
-	if (CheatPanel)
-	{
-		CheatPanel->SetAnchorWidget(Screen ? Screen->GetTopBar() : nullptr);
-		CheatPanel->AddToViewport(/*ZOrder*/ 1);
-	}
 	// The test scenario's panel (hol.Scenario), at the top centre, over both: what a scenario started before this map
 	// opened shows at once, and what comes after (its notes, ready) through the hook.
 	ScenarioPanel = CreateWidget<UHOLScenarioPanel>(PlayerController, UHOLScenarioPanel::StaticClass());
@@ -220,11 +213,6 @@ void AHOLGameHUD::EndPlay(const EEndPlayReason::Type EndPlayReason)
 		ScenarioPanel->RemoveFromParent();
 		ScenarioPanel = nullptr;
 	}
-	if (CheatPanel)
-	{
-		CheatPanel->RemoveFromParent();
-		CheatPanel = nullptr;
-	}
 	if (Screen)
 	{
 		Screen->RemoveFromParent();
@@ -311,12 +299,6 @@ UHOLGameScreen* AHOLGameHUD::FindScreen(const APlayerController* PlayerControlle
 {
 	const AHOLGameHUD* GameHUD = PlayerController ? Cast<AHOLGameHUD>(PlayerController->GetHUD()) : nullptr;
 	return GameHUD ? GameHUD->GetScreen() : nullptr;
-}
-
-UHOLCheatPanel* AHOLGameHUD::FindCheatPanel(const APlayerController* PlayerController)
-{
-	const AHOLGameHUD* GameHUD = PlayerController ? Cast<AHOLGameHUD>(PlayerController->GetHUD()) : nullptr;
-	return GameHUD ? GameHUD->GetCheatPanel() : nullptr;
 }
 
 UHOLScenarioPanel* AHOLGameHUD::FindScenarioPanel(const APlayerController* PlayerController)

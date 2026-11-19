@@ -98,9 +98,10 @@ namespace UE::HeroesOfLiberty::UI::HUD
 			// L1-12b: the boxes behind that verdict ("HUD rects: name=x0,y0,x1,y1; ..."), read by preflight.ps1 through HudRects.ps1.
 			UE_LOG(LogHOLUI, Display, TEXT("HUD rects: %s"), *Screen.DescribeRects());
 			// On its own line: the checks read the report's line to its end.
-			if (const UHOLCheatPanel* CheatPanel = AHOLGameHUD::FindCheatPanel(Screen.GetOwningPlayer()))
+			const FString CheatsReport = Screen.DescribeCheats();
+			if (!CheatsReport.IsEmpty())
 			{
-				UE_LOG(LogHOLUI, Display, TEXT("HUD cheats: %s"), *CheatPanel->Describe());
+				UE_LOG(LogHOLUI, Display, TEXT("HUD cheats: %s"), *CheatsReport);
 			}
 		});
 	}
@@ -116,9 +117,8 @@ namespace UE::HeroesOfLiberty::UI::HUD
 		const float Delay = Args.Num() > 1 ? FCString::Atof(*Args[1]) : 0.f;
 		WithGameScreen(World, Delay, [Name](UHOLGameScreen& Screen)
 		{
-			UHOLCheatPanel* CheatPanel = AHOLGameHUD::FindCheatPanel(Screen.GetOwningPlayer());
 			UHOLScenarioPanel* ScenarioPanel = AHOLGameHUD::FindScenarioPanel(Screen.GetOwningPlayer());
-			const bool bClicked = Screen.ClickWidget(Name) || (CheatPanel && CheatPanel->ClickWidget(Name))
+			const bool bClicked = Screen.ClickWidget(Name)
 				|| (ScenarioPanel && ScenarioPanel->ClickWidget(Name));
 			UE_LOG(LogHOLUI, Display, TEXT("HUD click %s: %s"), *Name.ToString(), bClicked ? TEXT("done") : TEXT("hidden, greyed or unknown"));
 		});
@@ -172,10 +172,7 @@ namespace UE::HeroesOfLiberty::UI::HUD
 		const bool bOpen = Args.Num() > 0 && FCString::Atoi(*Args[0]) != 0;
 		WithGameScreen(World, 0.f, [bOpen](UHOLGameScreen& Screen)
 		{
-			if (UHOLCheatPanel* CheatPanel = AHOLGameHUD::FindCheatPanel(Screen.GetOwningPlayer()))
-			{
-				CheatPanel->SetOpen(bOpen, /*bKeep*/ false);
-			}
+			Screen.ApplyCheatsOpen(bOpen);
 			UE_LOG(LogHOLUI, Display, TEXT("HUD cheats set: %s"), bOpen ? TEXT("open") : TEXT("folded"));
 		});
 	}

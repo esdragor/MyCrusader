@@ -334,6 +334,15 @@ bool UHOLScriptScreen::GetQueueNow(TArray<FName>& OutTypes, TArray<bool>& OutRes
 	return GameScreen->ReadQueue(OutTypes, OutResearch, OutTechNames, OutUnitNames, bOutHeadStarted, OutHeadProgress, bOutBlockedAtFull, bOutPopulationShort);
 }
 
+void UHOLScriptScreen::SetCheatsReport(const FString& Line)
+{
+	CheatsReport = Line;
+}
+
+void UHOLScriptScreen::ApplyCheatsOpen_Implementation(const bool bOpen)
+{
+}
+
 void UHOLScriptScreen::SetQueueReport(const FString& Line)
 {
 	if (UHOLGameScreen* GameScreen = GetTypedOuter<UHOLGameScreen>())
@@ -530,20 +539,6 @@ FLinearColor UHOLScriptScreen::GetMissingColor()
 	return HOLUIStyle::Missing;
 }
 
-float UHOLScriptScreen::GetCheatPanelBottom() const
-{
-	const UHOLCheatPanel* CheatPanel = AHOLGameHUD::FindCheatPanel(GetOwningPlayer());
-	return CheatPanel ? CheatPanel->GetBottom() : 0.f;
-}
-
-void UHOLScriptScreen::SetCheatsHeroBlockShown(const bool bShown) const
-{
-	if (UHOLCheatPanel* CheatPanel = AHOLGameHUD::FindCheatPanel(GetOwningPlayer()))
-	{
-		CheatPanel->SetHeroBlockShown(bShown);
-	}
-}
-
 FVector2D UHOLScriptScreen::GetViewportSlateSize() const
 {
 	const float Dpi = FMath::Max(UWidgetLayoutLibrary::GetViewportScale(this), UE_KINDA_SMALL_NUMBER);
@@ -577,13 +572,11 @@ bool UHOLScriptScreen::GetGameScreenBox(const FName WidgetName, FVector2D& OutMi
 
 void UHOLScriptScreen::GatherPanelBoxes(TArray<FHOLHUDNamedBox>& OutBoxes) const
 {
-	if (const UHOLCheatPanel* CheatPanel = AHOLGameHUD::FindCheatPanel(GetOwningPlayer()))
+	// H-11a: the cheats' panel is the script's (UHOLCheatPanelScript, its Border "CheatPanel"): its box keeps the name "cheats" and its first place in the list.
+	const UBorder* CheatBorder = WidgetTree ? Cast<UBorder>(WidgetTree->FindWidget(FName(TEXT("CheatPanel")))) : nullptr;
+	if (CheatBorder && CheatBorder->GetVisibility() != ESlateVisibility::Collapsed && !CheatBorder->GetCachedGeometry().GetAbsoluteSize().IsNearlyZero())
 	{
-		FBox2D CheatBox;
-		if (CheatPanel->GetBox(CheatBox))
-		{
-			OutBoxes.Add({ TEXT("cheats"), CheatBox });
-		}
+		OutBoxes.Add({ TEXT("cheats"), HOLHUDSpace::BoxOf(this, CheatBorder->GetCachedGeometry()) });
 	}
 	// L1-12b: the test scenario's own panel (top centre; a development build only): a panel of the script (the duel window) under it is seen.
 	if (const UHOLScenarioPanel* ScenarioPanel = AHOLGameHUD::FindScenarioPanel(GetOwningPlayer()))
@@ -613,7 +606,7 @@ void UHOLScriptScreen::GatherPanelBoxes(TArray<FHOLHUDNamedBox>& OutBoxes) const
 		for (UWidget* Widget : Widgets)
 		{
 			const UBorder* Border = Cast<UBorder>(Widget);
-			if (!Border || !Border->IsVisible())
+			if (!Border || !Border->IsVisible() || Border == CheatBorder)
 			{
 				continue;
 			}

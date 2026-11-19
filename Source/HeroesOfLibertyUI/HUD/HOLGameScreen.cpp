@@ -2215,6 +2215,19 @@ FString UHOLGameScreen::DescribeRects() const
 	return ScriptScreen ? ScriptScreen->DescribeRects() : FString();
 }
 
+FString UHOLGameScreen::DescribeCheats() const
+{
+	return ScriptScreen ? ScriptScreen->GetCheatsReport() : FString();
+}
+
+void UHOLGameScreen::ApplyCheatsOpen(const bool bOpen)
+{
+	if (ScriptScreen)
+	{
+		ScriptScreen->ApplyCheatsOpen(bOpen);
+	}
+}
+
 FString UHOLGameScreen::DescribeScript() const
 {
 	if (!ScriptScreen)

@@ -1,0 +1,45 @@
+﻿# H-11a (etape 4 de la migration) : le PANNEAU DE TRICHE de developpement (haut gauche, sous la barre du haut) est dessine par le script. Plain, deux joueurs. A jouer AVANT (copie C++, commit 3b52f7a) et APRES (script) : captures decoupees sur la zone du panneau et comparees a l'oeil. Les commandes viennent de ecran_hud_joueurs.txt et de la recette GALADRIEL-1119m. Non joue par l'agent qui l'a ecrit (aucun lancement permis).
+waitlog Camera above the start of slot 0
+r.SetRes 1920x1080w
+hol.Cheat.Resources 5000
+hol.Cheat.Population 165
+hol.Camera.FocusSlot own
+hol.HUD.Cheats 0
+frames 60
+hol.HUD.Click ScenarioClose
+frames 10
+hol.HUD.Report 1
+capture triche_pliee
+note 1. Sous la ligne des ressources, en haut a gauche : le seul bouton "Triches  +".
+waitkey Entree : ouvre le panneau
+hol.HUD.Click CheatToggle
+waitlog HUD click CheatToggle: done
+waitlog HUD: cheats open
+frames 10
+hol.HUD.Click ScenarioClose
+hol.HUD.Report 1
+capture triche_ouverte
+note 2. Le panneau est ouvert : 7 boutons (+1000 Nourriture, Bois, Pierre, Or, de tout, Population +165, Construction rapide : non) et deux curseurs "Vitesse des unites : x1.0" et "Vitesse de collecte : x1.0".
+waitkey Entree : clique +1000 Nourriture
+hol.HUD.Click CheatFood
+waitlog HUD: cheat CheatFood clicked
+frames 30
+hol.HUD.Click ScenarioClose
+capture triche_nourriture
+note 3. La nourriture de la barre du haut a pris +1000.
+waitkey Entree : construction rapide
+hol.HUD.Click CheatFastBuild
+waitlog HUD: cheat CheatFastBuild clicked
+frames 30
+hol.HUD.Click ScenarioClose
+capture triche_construction_rapide
+note 4. Le bouton dit "Construction rapide : oui".
+waitkey Entree : vitesse des unites a 2.0
+hol.Cheat.UnitSpeed 2.0
+frames 30
+hol.HUD.Click ScenarioClose
+hol.HUD.Report 1
+capture triche_vitesse
+note 5. Le curseur des unites est a droite de x1.0 et son libelle dit "x2.0".
+waitlog HUD cheats: cheats open, fast build on, unit speed x2.0, gather speed x1.0
+hol.Test.Sanity

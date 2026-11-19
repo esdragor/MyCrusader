@@ -166,6 +166,17 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|UI")
 	void SetQueueReport(const FString& Line);
 
+	/** H-11a: the cheats panel's part of hol.HUD.Report ("cheats open, fast build off, unit speed x1.0, gather speed x1.0"), written by the script at each refresh. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|UI")
+	void SetCheatsReport(const FString& Line);
+
+	/** H-11a: the line SetCheatsReport kept; empty before the script's panel wrote one. */
+	const FString& GetCheatsReport() const { return CheatsReport; }
+
+	/** H-11a: hol.HUD.Cheats <0|1>, the cheats panel folded or open without keeping the choice (the script's panel overrides it). */
+	UFUNCTION(BlueprintNativeEvent, Category = "HeroesOfLiberty|UI")
+	void ApplyCheatsOpen(bool bOpen);
+
 	/** The progress bar's fill colour (HOLUIStyle::Accent). */
 	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|UI")
 	static FLinearColor GetAccentColor();
@@ -271,20 +282,6 @@ public:
 	 */
 	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|UI")
 	FMargin GetBottomLeftPlace() const;
-
-	/**
-	 * The bottom edge (Slate units under the screen's top) of the cheats' panel, top left under the top bar: a block of the script stacked under it
-	 * starts there (the AI level line). 0 without the panel (Shipping, or no HUD).
-	 */
-	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|UI")
-	float GetCheatPanelBottom() const;
-
-	/**
-	 * Tells the cheats' panel whether the hero's block is shown (the script, as it applies the block's view): in a low window (under 700 px) the
-	 * panel folds when the block opens, as they would cover each other (Q-heros-triches-600 = A). Nothing without the panel.
-	 */
-	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|UI")
-	void SetCheatsHeroBlockShown(bool bShown) const;
 
 	/** The window as the HUD sees it, in Slate units (the pixels over the DPI scale): the room the panels are laid out in. */
 	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|UI")
@@ -458,6 +455,9 @@ protected:
 	virtual void NativeTick(const FGeometry& MyGeometry, float InDeltaTime) override;
 
 private:
+	/** H-11a: the cheats panel line of the report (SetCheatsReport). */
+	FString CheatsReport;
+
 	float RefreshLeft = 0.f;
 	/** A message with a key is shown: NativeTick calls FrameTick (D839: no per-frame script call otherwise). */
 	bool bMessageLive = false;

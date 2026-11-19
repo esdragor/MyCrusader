@@ -191,6 +191,12 @@ public:
 	/** L1-12b: the boxes behind "HUD overlap", "name=x0,y0,x1,y1; ..." (empty without a script screen): the "HUD rects" line of hol.HUD.Report. */
 	FString DescribeRects() const;
 
+	/** H-11a: the cheats panel's part of hol.HUD.Report, as the script's panel wrote it (UHOLScriptScreen::SetCheatsReport); empty without it. */
+	FString DescribeCheats() const;
+
+	/** H-11a: hol.HUD.Cheats <0|1>: the script's cheats panel folded or open, the choice not kept. */
+	void ApplyCheatsOpen(bool bOpen);
+
 	/**
 	 * J8a.5: the padding of a block bottom left above the selection's block and the control groups' bar; EtapeDefini T:
 	 * follows the bar's scale (GetBottomScale), read anew on every refresh of the block.

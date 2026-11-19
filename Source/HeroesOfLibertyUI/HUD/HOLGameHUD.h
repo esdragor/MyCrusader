@@ -9,7 +9,6 @@ class AHOLPlayerController;
 class UHOLEndBannerScreen;
 enum class EHOLEndBanner : uint8;
 class UFont;
-class UHOLCheatPanel;
 class UHOLGameScreen;
 class UHOLRootLayout;
 class UHOLScenarioPanel;
@@ -32,14 +31,11 @@ public:
 	UHOLGameScreen* GetScreen() const { return Screen; }
 	/** The layers over the game screen (D356): the in-game menu, its confirmations. */
 	UHOLRootLayout* GetMenuLayout() const { return MenuLayout; }
-	/** The cheats' panel (D291), in a development build only; null in Shipping. */
-	UHOLCheatPanel* GetCheatPanel() const { return CheatPanel; }
 	/** The test scenario's panel, in a development build only; null in Shipping. */
 	UHOLScenarioPanel* GetScenarioPanel() const { return ScenarioPanel; }
 
 	/** The game screen of a local player, if its HUD is this one. */
 	static UHOLGameScreen* FindScreen(const APlayerController* PlayerController);
-	static UHOLCheatPanel* FindCheatPanel(const APlayerController* PlayerController);
 	static UHOLScenarioPanel* FindScenarioPanel(const APlayerController* PlayerController);
 
 	/** Opens the end banner again, the one closed by « Continuer à regarder » (the in-game menu's « Résultat », M6-Q7 revised). */
@@ -65,9 +61,6 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<UHOLGameScreen> Screen;
-
-	UPROPERTY(Transient)
-	TObjectPtr<UHOLCheatPanel> CheatPanel;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UHOLRootLayout> MenuLayout;

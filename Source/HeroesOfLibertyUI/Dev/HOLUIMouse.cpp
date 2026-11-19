@@ -132,7 +132,7 @@ namespace UE::HeroesOfLiberty::UI::Mouse
 			APlayerController* Player = World ? World->GetFirstPlayerController() : nullptr;
 			const UHOLRootLayout* Layout = UHOLRootLayout::Get(Player);
 			const UUserWidget* Roots[] = { Layout ? Layout->GetActiveMenu() : nullptr, AHOLGameHUD::FindScreen(Player),
-				AHOLGameHUD::FindCheatPanel(Player), AHOLGameHUD::FindScenarioPanel(Player), Layout };
+				AHOLGameHUD::FindScenarioPanel(Player), Layout };
 			for (const UUserWidget* Root : Roots)
 			{
 				UWidget* Found = FindIn(Root, Name, 0);
