@@ -305,10 +305,13 @@ public:
 	/** Lives left of a slot's main forum (D349: 1 + tier - falls; 0 once it fell for good). */
 	int32 GetLives(int32 Slot) const;
 	/** P3: the civilisation tier the slot's hero level opens (HOLHeroXP::GetTier; 0 without a hero), as the HUD and the rules read it. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Tier")
 	int32 GetTier(int32 Slot) const;
 	/** G0 (D710), development: forces the slot's tier (0 to 3, whatever its hero's level; GetTier then returns it); Tier below 0 lifts it. Server side, replicated (hol.Cheat.Tier). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Tier")
 	void SetTierOverride(int32 Slot, int32 Tier);
 	/** The tier forced for the slot, -1 when none (every machine: the property is replicated). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Tier")
 	int32 GetTierOverride(int32 Slot) const;
 	/**
 	 * D799 (answer A of Q-nomad-net): the seat plays the Nomad option. Server side (the game mode's SpawnSlotStart, or
