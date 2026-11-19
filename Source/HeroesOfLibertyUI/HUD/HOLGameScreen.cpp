@@ -280,9 +280,6 @@ namespace UE::HeroesOfLiberty::UI::GameScreen
 	/** Seconds between two readings of a selected group's activities. */
 	constexpr float GroupRefreshInterval = 0.25f;
 	const FName AlertPanelName(TEXT("AlertPanel"));
-	/** A control group's slot (J7a.5): its width, and how long it stays lit once its group is selected (s, real time). */
-	constexpr float GroupSlotWidth = 64.f;
-	constexpr double GroupLightSeconds = 0.5;
 
 	FName GridCellName(const int32 Cell)
 	{
@@ -1850,126 +1847,6 @@ void UHOLGameScreen::GetGroupTypes(const int32 Group, TArray<FString>& OutNames,
 			: HOLGameNames::GetUnitName(Type, FindUnitType(Type), LocalFactionKey());
 		OutNames.Add(Name.ToString());
 		OutCounts.Add(PerType[Type]);
-	}
-}
-
-FName UHOLGameScreen::GroupSlotName(const int32 Group)
-{
-	return *FString::Printf(TEXT("ControlGroup%d"), Group);
-}
-
-void UHOLGameScreen::RefreshControlGroups(const float DeltaSeconds)
-{
-	using namespace UE::HeroesOfLiberty::UI::GameScreen;
-
-	const AHOLPlayerController* PlayerController = Controller.Get();
-	const UWorld* World = GetWorld();
-	if (!PlayerController || !World || GroupSlots.Num() != AHOLPlayerController::NumControlGroups)
-	{
-		return;
-	}
-	// The group just selected lit for a moment (its key, its slot).
-	double SelectTime = -1.0;
-	const int32 Selected = PlayerController->GetLastSelectedGroup(SelectTime);
-	const int32 Lit = Selected != INDEX_NONE && World->GetRealTimeSeconds() - SelectTime < GroupLightSeconds ? Selected : INDEX_NONE;
-	if (Lit != LitGroup)
-	{
-		for (int32 Group = 0; Group < GroupSlots.Num(); ++Group)
-		{
-			if (UHOLQueueItem* GroupSlot = GroupSlots[Group])
-			{
-				GroupSlot->SetRenderScale(Group == Lit ? FVector2D(1.15f, 1.15f) : FVector2D(1.f, 1.f));
-				GroupSlot->SetRenderOpacity(Lit == INDEX_NONE || Group == Lit ? 1.f : 0.7f);
-			}
-		}
-		LitGroup = Lit;
-	}
-
-	SinceGroupsRefresh += DeltaSeconds;
-	if (SinceGroupsRefresh < GroupRefreshInterval)
-	{
-		return;
-	}
-	SinceGroupsRefresh = 0.f;
-
-	TArray<FHOLUnitView> Views;
-	bool bViewsRead = false;
-	TArray<FString> LineParts;
-	bool bAny = false;
-	// 1 to 9, then 0, as the keys.
-	for (int32 Index = 1; Index <= AHOLPlayerController::NumControlGroups; ++Index)
-	{
-		const int32 Group = Index % AHOLPlayerController::NumControlGroups;
-		UHOLQueueItem* GroupSlot = GroupSlots[Group];
-		TArray<uint32> Units;
-		TArray<AHOLBuilding*> Buildings;
-		const bool bFull = PlayerController->GetControlGroup(Group, Units, Buildings);
-		const FString Shown = !bFull ? FString() : Units.IsEmpty() ? FString::Printf(TEXT("b%d"), Buildings.Num()) : FString::FromInt(Units.Num());
-		if (bFull)
-		{
-			bAny = true;
-			LineParts.Add(FString::Printf(TEXT("%d=%s"), Group, *Shown));
-		}
-		if (Shown == ShownGroups[Group])
-		{
-			continue;
-		}
-		ShownGroups[Group] = Shown;
-		// The slot's box, which keeps its width even with the slot collapsed.
-		SetShown(GroupSlot ? GroupSlot->GetParent() : nullptr, bFull, ESlateVisibility::SelfHitTestInvisible);
-		if (!bFull || !GroupSlot)
-		{
-			continue;
-		}
-		const int32 Count = Units.IsEmpty() ? Buildings.Num() : Units.Num();
-		GroupSlot->SetLabel(FText::Format(LOCTEXT("ControlGroupSlot", "{0} · {1}"), FText::AsCultureInvariant(FString::FromInt(Group)), Count));
-		// The tooltip: « Groupe 1 », then its types by number, the most first (soldiers before Peasants when even).
-		TMap<FName, int32> PerType;
-		if (!Units.IsEmpty())
-		{
-			if (!bViewsRead)
-			{
-				HOLUnitView::Gather(*World, Views);
-				bViewsRead = true;
-			}
-			for (const FHOLUnitView& View : Views)
-			{
-				if (Units.Contains(View.UnitId))
-				{
-					++PerType.FindOrAdd(View.TypeName);
-				}
-			}
-		}
-		for (const AHOLBuilding* Building : Buildings)
-		{
-			++PerType.FindOrAdd(Building->GetTypeName());
-		}
-		PerType.ValueStableSort([](const int32 A, const int32 B) { return A > B; });
-		TArray<FText> Lines;
-		Lines.Add(FText::Format(LOCTEXT("ControlGroupTooltip", "Groupe {0}"), FText::AsCultureInvariant(FString::FromInt(Group))));
-		for (const TPair<FName, int32>& Type : PerType)
-		{
-			const FText Name = Units.IsEmpty() ? HOLGameNames::GetBuildingName(Type.Key, UHOLBuildingSettings::FindType(Type.Key))
-				: HOLGameNames::GetUnitName(Type.Key, FindUnitType(Type.Key), LocalFactionKey());
-			Lines.Add(FText::Format(LOCTEXT("UnitCount", "{0} × {1}"), Name, Type.Value));
-		}
-		GroupSlot->SetToolTipText(FText::Join(FText::AsCultureInvariant(TEXT("\n")), Lines));
-	}
-	SetShown(GroupsPanel, bAny, ESlateVisibility::SelfHitTestInvisible);
-	const FString Line = bAny ? FString::Join(LineParts, TEXT(" ")) : FString(TEXT("none"));
-	if (Line != ShownGroupsLine)
-	{
-		ShownGroupsLine = Line;
-		UE_LOG(LogHOLUI, Display, TEXT("HUD groups: %s"), *Line);
-	}
-}
-
-void UHOLGameScreen::HandleGroupSlotClicked(const int32 Group)
-{
-	if (AHOLPlayerController* PlayerController = Controller.Get())
-	{
-		UE_LOG(LogHOLUI, Display, TEXT("HUD: group %d clicked"), Group);
-		PlayerController->SelectControlGroup(Group);
 	}
 }
 
