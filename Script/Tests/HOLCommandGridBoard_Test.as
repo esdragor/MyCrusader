@@ -2,11 +2,10 @@
 // GetCommandPriority, IsSelectedByCategory, Blocks, GetCycleRank). NOT COMPILED when written.
 // There is no world in a unit test, so the C++ Ask* (UHOLCommandGridBoard::FindAny) cannot be reached from here, and a script cannot call the board's Answer
 // overrides either (BlueprintNativeEvent, not ScriptCallable: compile error seen 2026-11-19). The tests call the rule each Answer forwards to in ONE line
-// (Script/Player/HOLCommandGridBoard.as, family 4), with the values in clear AND the C++ twin (HOLCommandGridRead = the read library on the *Native bodies).
+// (Script/Player/HOLCommandGridBoard.as, family 4), with the values in clear (no C++ twin any more: one source, D836).
 // The crossing C++ Ask* -> board itself is proved by the game checks (quick_check build / production / selection), not here.
 // To SEE RED (rouge a voir): in Script/Player/HOLCommandGridGroups.as, IsAloneInGroup, change n"MainCentre" to n"House": Test_CGBIsAloneInGroup,
-// Test_CGBGetCommandPriority (hard values) and the Test_CGG* agreement sweeps (script vs C++) go red. Or Keys.as Blocks: drop `QueueFull`: Test_CGBBlocks
-// and the Test_CGKYAgreementFeedback sweep go red. Or Groups.as GetCycleRank: `BuildGridSlot + 1` to `BuildGridSlot`: Test_CGBGetCycleRank and Test_CGGHardValues.
+// Test_CGBGetCommandPriority (hard values) go red. Or Keys.as Blocks: drop `QueueFull`: Test_CGBBlocks and Test_CGKYHardValues go red. Or Groups.as GetCycleRank: `BuildGridSlot + 1` to `BuildGridSlot`: Test_CGBGetCycleRank and Test_CGGHardValues.
 
 UHOLCommandGridBoardScript CGBMakeBoard()
 {
@@ -38,8 +37,6 @@ void Test_CGBIsAloneInGroup(FUnitTest& T)
 	T.AssertTrue(bCentre, "the main centre is alone in its group");
 	T.AssertTrue(!bHouse, "a house joins the others");
 	T.AssertTrue(!bNone, "no name: not alone");
-	T.AssertTrue(bCentre == HOLCommandGridRead::IsAloneInGroup(n"MainCentre"), "centre: the board and the C++ agree");
-	T.AssertTrue(bHouse == HOLCommandGridRead::IsAloneInGroup(n"House"), "house: the board and the C++ agree");
 }
 
 void Test_CGBIsRepeatPress(FUnitTest& T)
@@ -70,8 +67,6 @@ void Test_CGBIsRepeatPress(FUnitTest& T)
 	T.AssertTrue(!bOtherBuilding, "one building replaced: not a repeat");
 	T.AssertTrue(!bShorter, "a shorter selection: not a repeat");
 	T.AssertTrue(!bEmpty, "an empty selection: not a repeat");
-	T.AssertTrue(bSame == HOLCommandGridRead::IsRepeatPress(Selected, SameAnyOrder, true), "same: the board and the C++ agree");
-	T.AssertTrue(bOtherBuilding == HOLCommandGridRead::IsRepeatPress(Selected, OtherOne, true), "other building: the board and the C++ agree");
 }
 
 void Test_CGBGetCommandPriority(FUnitTest& T)
@@ -90,15 +85,6 @@ void Test_CGBGetCommandPriority(FUnitTest& T)
 		T.AssertEquals(0, Order[2], "then the others in the group's order: the mill");
 		T.AssertEquals(2, Order[3], "then the barracks");
 	}
-	TArray<int> Native = HOLCommandGridRead::GetCommandPriority(Members);
-	T.AssertEquals(Native.Num(), Order.Num(), "the board and the C++ give as many places");
-	if (Native.Num() == Order.Num())
-	{
-		for (int I = 0; I < Order.Num(); I++)
-		{
-			T.AssertEquals(Native[I], Order[I], "the board and the C++ agree at place " + I);
-		}
-	}
 	TArray<FHOLGroupMemberView> NoMember;
 	TArray<int> OfNone = HOLCommandGridGroups::GetCommandPriority(NoMember);
 	T.AssertEquals(0, OfNone.Num(), "no building: no order");
@@ -112,8 +98,6 @@ void Test_CGBIsSelectedByCategory(FUnitTest& T)
 	T.AssertTrue(bSame, "an Economic building is selected by the Economic key");
 	T.AssertTrue(!bOther, "a Military building is not selected by the Economic key");
 	T.AssertTrue(!bOtherWay, "an Economic building is not selected by the Military key");
-	T.AssertTrue(bSame == HOLCommandGridRead::IsCategorySelectedByCategory(EHOLBuildingCategory::Economic, EHOLBuildingCategory::Economic), "same: the board and the C++ agree");
-	T.AssertTrue(bOther == HOLCommandGridRead::IsCategorySelectedByCategory(EHOLBuildingCategory::Military, EHOLBuildingCategory::Economic), "other: the board and the C++ agree");
 }
 
 void Test_CGBBlocks(FUnitTest& T)
@@ -130,8 +114,6 @@ void Test_CGBBlocks(FUnitTest& T)
 	T.AssertTrue(bResearch, "a refused research stops the command");
 	T.AssertTrue(!bPopulation, "a full population only waits: it does not block");
 	T.AssertTrue(!bNone, "no feedback: nothing blocks");
-	T.AssertTrue(bQueueFull == HOLCommandGridRead::Blocks(CGBFeedback(EHOLCommandFeedbackKind::QueueFull)), "queue full: the board and the C++ agree");
-	T.AssertTrue(bPopulation == HOLCommandGridRead::Blocks(CGBFeedback(EHOLCommandFeedbackKind::PopulationFull)), "population: the board and the C++ agree");
 }
 
 void Test_CGBGetCycleRank(FUnitTest& T)

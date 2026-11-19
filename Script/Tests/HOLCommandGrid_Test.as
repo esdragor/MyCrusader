@@ -1,4 +1,4 @@
-// G0 (GALADRIEL-1119ba): these 15 tests now run the SCRIPT rules the game reads (HOLCommandGridRules / Keys / Groups); only the table lookups with no script twin (CheckResearch, GetCycleRankOfType, IsTypeSelectedByCategory, WithTableBuildables, GetProducesOf, GetBuildingResearches, IsTypeInTable, GetTypeCategory, technology and block numbers) still go through HOLCommandGridRead. C++ / script agreement: Test_CGRAgreement* in HOLCommandGridRules_Test.as and HOLCommandGridKeys_Test.as.
+// G0 (GALADRIEL-1119ba): these 15 tests now run the SCRIPT rules the game reads (HOLCommandGridRules / Keys / Groups); only the table lookups with no script twin (CheckResearch, GetCycleRankOfType, WithTableBuildables, GetProducesOf, GetBuildingResearches, IsTypeInTable, GetTypeCategory, technology and block numbers) still go through HOLCommandGridRead. The agreement sweeps against the removed *Native bodies are gone (one source, D836); the constants and tables that stay are compared in Test_CGRAgreementTables and Test_CGKYAgreementFeedback.
 // MIG-C-CommandGrid (D830, D836, D839, GALADRIEL-1117m): the script port of HOLCommandGridTests.cpp, run against the read library of the command grid's
 // rules that STAY in C++ (HOLCommandGrid, Player/HOLCommandGrid.h, read by the HUD): UHOLCommandGridReadLibrary (namespace HOLCommandGridRead). Same
 // vectors as the C++ tests. Ported here (15 of 15, GALADRIEL-1117o): MarketGain, Market, Commands, Feedback, Cycle, Categories, Group, Subgroups,
@@ -291,9 +291,9 @@ void Test_CGCategories(FUnitTest& T)
 		if (bOk2)
 		{
 			T.AssertTrue(HOLCommandGridRead::GetTypeCategory(TypeName) == EHOLBuildingCategory::Economic, "economic");
-			T.AssertTrue(HOLCommandGridRead::IsTypeSelectedByCategory(TypeName, EHOLBuildingCategory::Economic), "F2 takes it");
-			T.AssertFalse(HOLCommandGridRead::IsTypeSelectedByCategory(TypeName, EHOLBuildingCategory::Military), "F1 does not");
-			T.AssertFalse(HOLCommandGridRead::IsTypeSelectedByCategory(TypeName, EHOLBuildingCategory::Technological), "F3 does not");
+			T.AssertTrue(HOLCommandGridGroups::IsCategorySelectedByCategory(HOLCommandGridRead::GetTypeCategory(TypeName), EHOLBuildingCategory::Economic), "F2 takes it");
+			T.AssertFalse(HOLCommandGridGroups::IsCategorySelectedByCategory(HOLCommandGridRead::GetTypeCategory(TypeName), EHOLBuildingCategory::Military), "F1 does not");
+			T.AssertFalse(HOLCommandGridGroups::IsCategorySelectedByCategory(HOLCommandGridRead::GetTypeCategory(TypeName), EHOLBuildingCategory::Technological), "F3 does not");
 		}
 	}
 	T.AssertTrue(HOLCommandGridGroups::IsCategorySelectedByCategory(EHOLBuildingCategory::Military, EHOLBuildingCategory::Military), "a military building, site or ghost: F1 takes it");
