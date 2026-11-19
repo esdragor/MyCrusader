@@ -157,7 +157,7 @@ REPRISE 10 (13:35, « continue migration auto journey », session principale) : 
 
 ### Bilan de la reprise 17 du 2026-11-19 (19:17 -> ~20:2x, session principale + 5 agents Sonnet) : LA MIGRATION EST TERMINÉE
 
-**État à la fin.** main = dc993f6 + docs (LOCAL, RIEN POUSSÉ). Les 8 worktrees sont sur main, recompilés. GDD.md modifié non commité (D853 à D857, comme avant). Questions ouvertes : 0. Essais à jouer par l'utilisateur : les 5 essais de revue du HUD, depuis Arwen (maintenant sur main, 6 pré-vols PASS 19:51-19:55).
+**État à la fin.** main = dc993f6 + docs (LOCAL, RIEN POUSSÉ : l'utilisateur a répondu « pas maintenant » au push, ~20:20). Les 8 worktrees sont sur main, recompilés. GDD.md commité en local avec l'accord de l'utilisateur (~20:20 ; il ne portait que D852 à D857). Gate Close de 20:15 : 2 FAIL (GDD.md non commité, tableau des leçons absent), tous deux levés ensuite. Questions ouvertes : 0. Essais à jouer par l'utilisateur : les 5 essais de revue du HUD, depuis Arwen (maintenant sur main, 6 pré-vols PASS 19:51-19:55).
 
 **Ce qui a été fait.**
 1. **D857 (19:23) : l'étape 5 est close** (réponse de l'utilisateur par l'interface de choix) : les 43 corps serveur `Do<X>` et le reste de l'enveloppe réseau restent en C++ ; `Q-etape5-corps-serveur` répondue.
@@ -547,6 +547,59 @@ Seance de migration du soir (le tableau de l'apres-midi est archive dans Docs\Ar
 | L16-8 | non evalue | - |
 | L16-9 | appliquee | idem L16-2, et sync_worktrees sans -NoBuild a 20:5x (8 builds PASS) |
 
+
+### Lecons appliquees 2026-11-19
+
+Reprises 13 a 17 du 2026-11-19 (00:21 -> 20:15 ; bilans ci-dessus ; la reprise 17, courte et interactive, 19:17 -> 20:15, a servi de reference pour les preuves datees). Etats : appliquee / non appliquee / non verifie (les bilans ne prouvent ni ne contredisent la regle : aucune preuve inventee). Ecrit a 20:2x par DOCS-1119cs apres l'echec de session_gate Close.
+
+| Regle | Etat | Preuve |
+|---|---|---|
+| T2-1 | non verifie | reprise 17 sans etape 0 (courte, interactive, pas de nettoyage 0a) ; reprise 16 : ETAPE0-1119ce.md cite au bilan (point 6) ; aucun plan de lancement par worktree releve dans les bilans |
+| T2-2 | non verifie | reprise 17 : 5 agents Sonnet pour 8 worktrees, raison par worktree libre non ecrite dans les bilans |
+| L3-12 | non verifie | file de migration archivee en fin de reprise 17 (141 lignes, 0 restante) ; pas de test « etape 0 sautee a bon droit » |
+| L5-7 | non verifie | gate Merge puis Close : 1 FAIL GDD.md non commite (attend l'accord de l'utilisateur) ; aucune trace d'une question posee AU LANCEMENT |
+| L4-1, L4-3 | non verifie | reprises 13 a 17 sans heure de fin (D837) ; CronList non releve ; agents de 15 min respectes en reprise 17 |
+| L3-8, L4-9, Q5, L1-14 | non verifie | reprise 17 : integration par la session principale (integ-22 puis integ-23, rejeu dans Elrond) ; pas de ligne « integrateur » nommee dans les bilans |
+| L3-9 | non verifie | trois sessions principales a la suite en reprise 16 ; point de reprise ecrit (« Marche a suivre », « Suite ») aux bilans 16 et 17 ; compte des appels de la session principale non releve |
+| T2-3 | appliquee | enonces des agents commencent par « lis agent_rules.md et brief_commun.md » avec arret dur Get-Date (cet enonce DOCS-1119cs compris) ; reprise 17 : gate Launch sans FAIL 19:28 |
+| L1-1, L3-6, L4-7, L5-3 | appliquee | reprise 17 : agents Sonnet de 15 min, 5 agents ; pire cas releve 38 appels (retrait de 141 lignes : 22 + 38 + 37) < 80. Reserve : le plafond de 25 appels du brief depasse par 2 agents ; tool_uses des notifications non reporte aux bilans |
+| L1-2 | non verifie | RAPPORT COMMITS non cite dans les bilans ; git log reprise 17 : dc993f6, 93775ab, 0418497 (heures non relevees ici) |
+| L1-3 | appliquee | integ-23 : dc993f6 « Merge branch 'main' into integ-23 » avant l'avance de main ; integ-22 : main fusionnee (docs seuls) avant preflight_merge |
+| L3-2, L4-5 | appliquee | integ-23 rendue « NON COMPILE » au bilan 16, puis build PASS en reprise 17 avant tests 1786/1786 ; build suivant PASS apres retrait des tests C++ (1782/1782) |
+| L3-5 | non verifie | reprise 17 : aucun agent C++, regle sans objet ; pas de mesure pour les reprises 13 a 16 |
+| L1-8 | non verifie | EtapeDefini.md et journaux a jour d'apres les bilans, mais le champ RAPPORT « un seul enregistrement » n'est pas releve |
+| L1-9, L4-8 | appliquee | D853 a D857 attribues par la session principale (D857 le 19:23) ; GDD.md non commite porte D853 a D857 ; Q-etape5-corps-serveur portait une valeur par defaut (recommandation A, bilan 15) ; 0 question ouverte a la fin de la reprise 17 |
+| L1-7 | appliquee | 1 seule question du jour (Q-etape5-corps-serveur) avec recommandation ecrite (bilans 15 et 16 : clore) ; option « Autre » non relue |
+| L5-6 | non verifie | D857 pose par l'interface de choix (D857, 19:23) ; pas de tableau groupe de plusieurs questions dans les bilans |
+| T2-5 | appliquee | reprise 17 : build PASS puis tests 1786/1786, puis build PASS puis tests 1782/1782 ; builds et quick_check lances par la session principale |
+| T2-6, L5-8 | appliquee | falsify23.ps1 a produit 1779/1786 de bout en bout (7 falsifications, 19:40) ; rouge intermittent du salon (reprise 16) : PASS au rejeu, cause trouvee dans lobby_match.ps1 et corrigee |
+| T2-7, L1-5 | appliquee | fiches ecrites dans Retours\ (Q-etape5-corps-serveur, E-forge-lignes), pas dans Auto_Journey_Retours.md par agent |
+| L4-12, T2 | appliquee | outils partages corriges plutot que contournes : BOM de quick_check.ps1 remis (reprise 16), outil des rouges connus (integ-22), piege ajoute au point 5 de brief_commun.md |
+| L4-13 | non verifie | aucun nettoyage d'Intermediate / UHT cite dans les bilans du jour |
+| L3-11, L5-5 | non verifie | aucune regeneration de cartes dans les reprises 13 a 17, regle sans objet |
+| L3-7, L1-4 | non verifie | pas de veilleur dans la reprise 17 (courte, interactive) ; reprises 13 a 16 : aucun veilleur cite dans les bilans |
+| T2-4 | appliquee | 1 question du jour (Q-etape5-corps-serveur), au plus 2 par chantier |
+| Q1 | appliquee | essai de la Forge : preflight PASS sur le build de main dans Elrond, 4 PNG ouverts et vus ; 6 pre-vols des essais de revue repasses PASS 19:51-19:55 apres resynchronisation d'Arwen. Reserve : 4 pre-vols du HUD de la chaine datent d'integ-21 |
+| Q2 | non verifie | statut « VU A L'ECRAN » / « LOGIQUE SEULEMENT » de la fiche E-forge-lignes non cite dans les bilans |
+| Q3 | non verifie | duree mesuree par le pre-vol non reportee aux bilans |
+| Q4 | non verifie | essais du jour = interface et Forge, pas d'essai d'IA ou de systeme releve |
+| Q5, L5-4 | appliquee | essai de la Forge donne seulement apres pre-vol PASS sur le build de main (rejoue PASS 20:04 apres resynchronisation), gate Essay sans FAIL, commande play.ps1 complete ; joue OK ~20:10. Reserve : geste reel non releve |
+| Q6, Q7 | appliquee | balayage MarchMemberDetourSteps 0 a 8 (SWEEP-1119, reprise 14) ; defaut de la Forge trouve par un balayage en proprietes (D856, reprise 16) |
+| Q8 | non verifie | aucun defaut commun releve par les bilans comme ligne [ ] en tete de file |
+| Q9 | non verifie | libelles et touches des panneaux compares au C++ (egalite de captures), pas a la grille AoE4 |
+| Q11 | non verifie | le 2026-11-19 : 6 essais de revue OK (~10:12) + Forge (~20:10) = 7 joues, 5 essais de revue tenus « prets non donnes » ; le plafond « ~6 » est depasse d'un, mais le calcul par jour est a confirmer |
+| L4-11 | non verifie | les 5 essais de revue du HUD sont des scenarios separes, pas un scenario de revue unique |
+| L3 / T2 | appliquee | reprise 17 : fusions groupees par integration (integ-22 19:27, integ-23 19:44), avances rapides locales de main (ff-only) apres preflight_merge et gate Merge (1 FAIL connu : GDD.md non commite), aucun push |
+| L1-3 (fusion) | appliquee | integ-23 : ecart de code avec integ-22 = Tests\ seulement, donc chaine reseau non rejouee ; tests 1786/1786 puis 1782/1782 |
+| L1-13 | appliquee | integ-23 : test script complete (6f4b5c5) avant le retrait des 4 tests C++ (93775ab) ; rouge vu 1779/1786 a 19:40 avant ce retrait |
+| L5-bilan | appliquee (apres coup) | gate Close 20:15 : FAIL « pas de ### Lecons appliquees 2026-11-19 » ; corrige par ce tableau (20:17), gate Close relance ensuite |
+| L4-14 | appliquee (apres coup) | gate Close 20:15 : FAIL GDD.md modifie non commite ; diff relu : seulement D852 a D857 des seances de migration du jour ; accord de l'utilisateur par l'interface de choix ~20:20, GDD.md commite en local ; push refuse par l'utilisateur (« pas maintenant ») |
+| L12-2 | non appliquee | pas de sync_worktrees AU DEBUT de la reprise 17 (une chaine reseau detachee tournait dans Elrond) ; sync_worktrees -WaitBuilds en fin de reprise 16/17 |
+| L8-9, L15-1 | appliquee | reprise 17 : sync_worktrees -WaitBuilds en fin de seance : 7 fusions sans conflit, 7 builds PASS, 8 worktrees sur main et recompiles, aucun reproche du gate Close sur les worktrees |
+| L7-5, L15-5 | appliquee | rouge prouve a l'execution avant retrait des tests C++ : 1779/1786 sur 7 falsifications (19:40), puis vert 1786/1786, build PASS puis 1782/1782 |
+| L12-6 | non verifie | EtapeDefini.md modifie non commite (git status de depart) ; index « pas dans main » non rejoue dans les bilans |
+| L12-1c | non verifie | reprise 16 : memoire virtuelle libre tombee a 5,5 Go, builds de 38 s a 1 470 s ; reponse du gate Launch a cette charge non relevee |
+| Autres IDs archives (L6-2 a L14-11, voir « Devenues des controles » de la check-list) | non verifie | non evalues au bilan du jour : les bilans 13 a 17 ne les citent pas (liste complete : tableau du 2026-11-17, « non evalue ») |
 
 ### Lecons appliquees 2026-11-17
 
