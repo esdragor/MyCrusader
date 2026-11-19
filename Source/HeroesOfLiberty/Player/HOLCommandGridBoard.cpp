@@ -62,6 +62,7 @@ FHOLGridContextView UHOLCommandGridBoard::MakeContextView(const FHOLGridContext&
 	Out.bMarket = Context.bMarket;
 	Out.Produces = Context.Produces;
 	Out.Researches = Context.Researches;
+	Out.Researched = Context.Researched;
 	Out.bBuilders = Context.bBuilders;
 	Out.bOwnUnits = Context.bOwnUnits;
 	Out.bSoldiers = Context.bSoldiers;

@@ -108,6 +108,9 @@ struct FHOLGridContextView
 	/** The technologies the selected building researches, in the table's order (FHOLGridContext::Researches). */
 	UPROPERTY(BlueprintReadWrite, Category = "HeroesOfLiberty|CommandGrid")
 	TArray<FName> Researches;
+	/** The technologies the owner has researched (FHOLGridContext::Researched, D856). */
+	UPROPERTY(BlueprintReadWrite, Category = "HeroesOfLiberty|CommandGrid")
+	TArray<FName> Researched;
 	UPROPERTY(BlueprintReadWrite, Category = "HeroesOfLiberty|CommandGrid")
 	bool bDeployables = false;
 	UPROPERTY(BlueprintReadWrite, Category = "HeroesOfLiberty|CommandGrid")
@@ -401,6 +404,10 @@ public:
 	/** UHOLTechnologySettings::GetBuildingTechnologies(Building): the building's research row, in the table's order. */
 	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|CommandGrid")
 	static TArray<FName> GetBuildingResearches(FName Building);
+
+	/** The Requires column of a technology of the table (D856: what chains level II to level I); None for a first level or a technology not in the table. */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|CommandGrid")
+	static FName GetTechnologyRequires(FName Technology);
 	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|CommandGrid")
 	static bool IsTechnologyInTable(FName Technology);
 	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|CommandGrid")

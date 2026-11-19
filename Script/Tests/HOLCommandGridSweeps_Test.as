@@ -251,9 +251,9 @@ void Test_CGSWCommandCells(FUnitTest& T)
 			}
 			if (Cmd.Command == EHOLGridCommandKind::Research)
 			{
-				if (!C.bOwnBuilding || !C.bBuildingFinished || C.bMarket || Cell < 8 || Cell - 8 >= C.Researches.Num() || Cmd.TypeName != C.Researches[Cell - 8])
+				if (!C.bOwnBuilding || !C.bBuildingFinished || C.bMarket || Cell < 8 || Cell - 8 >= C.Researches.Num() || !C.Researches.Contains(Cmd.TypeName))
 				{
-					CGSWNote(Bad, First, "Test_CGSWCommandCells", f"{Where}: a Research that is not the technology of that key ({Cmd.TypeName})");
+					CGSWNote(Bad, First, "Test_CGSWCommandCells", f"{Where}: a Research that is not a technology of the building (D856: one cell per line) ({Cmd.TypeName})");
 				}
 			}
 			if (Cmd.Command == EHOLGridCommandKind::Trade)
@@ -449,10 +449,10 @@ void Test_CGSWTableBuildings(FUnitTest& T)
 	T.AssertTrue(Bad == 0, f"{Bad} cells of the table's buildings break an invariant; first: {First}");
 }
 
-// Known red (the future test of the Forge fix): every building must give each of its technologies a cell of the bottom row (W X C V, 4 cells).
-// It is red today: the Forge researches 8 technologies (4 lines x levels I and II in Tools\Data\Technologies.csv) for 4 research cells,
-// so the two armors have no cell (HOLCommandGridRules.as shows Researches[Cell - 8] on cells 8 to 11 only). Not a test fault:
-// known red, see Tools\Tests\known_reds.txt and Retours\Q-forge-technologies.md. Same sweep of the table's buildings as Test_CGSWTableBuildings.
+// D856 (Retours\Q-forge-technologies.md, answer A; it was the known red of the Forge): the research row shows ONE cell per LINE of technologies
+// (a technology and its next levels chained by the Requires column), so what must fit the bottom row (W X C V, 4 cells) is the number of LINES of a
+// building, and every technology of the table must be REACHABLE: researching what the cells show, level after level, shows each technology of the
+// building on a cell at some point. Same sweep of the table's buildings as Test_CGSWTableBuildings.
 void Test_CGSWResearchRowFits(FUnitTest& T)
 {
 	FHOLGridContextView Builders;
@@ -461,6 +461,7 @@ void Test_CGSWResearchRowFits(FUnitTest& T)
 	Builders = HOLCommandGridRead::WithTableBuildables(Builders);
 	T.AssertTrue(Builders.BuildableTypes.Num() >= 8, "the table has several buildings (at least 8 are buildable)");
 
+	FName NoName;
 	int Bad = 0;
 	FString First;
 	int Swept = 0;
@@ -469,9 +470,17 @@ void Test_CGSWResearchRowFits(FUnitTest& T)
 		FName TypeName = Builders.BuildableTypes[Type];
 		TArray<FName> Produces = HOLCommandGridRead::GetProducesOf(TypeName);
 		TArray<FName> Researches = HOLCommandGridRead::GetBuildingResearches(TypeName);
-		if (Researches.Num() > 4)
+		int Lines = 0;
+		for (int Tech = 0; Tech < Researches.Num(); Tech++)
 		{
-			CGSWNote(Bad, First, "Test_CGSWResearchRowFits", f"{TypeName} researches {Researches.Num()} technologies: they do not fit the bottom row (W X C V)");
+			if (HOLCommandGridRead::GetTechnologyRequires(Researches[Tech]) == NoName)
+			{
+				Lines++;
+			}
+		}
+		if (Lines > 4)
+		{
+			CGSWNote(Bad, First, "Test_CGSWResearchRowFits", f"{TypeName} researches {Lines} lines of technologies: they do not fit the bottom row (W X C V)");
 		}
 		for (int Pass = 0; Pass < 8; Pass++)
 		{
@@ -497,14 +506,82 @@ void Test_CGSWResearchRowFits(FUnitTest& T)
 			}
 			bool bSite = !Building.bBuildingFinished || Building.bMarket;
 			bool bAnswers = !bSite && Building.SpecializationTier == 0;
-			if (bAnswers && ResearchCount != Researches.Num())
+			if (bAnswers && ResearchCount != Lines)
 			{
-				CGSWNote(Bad, First, "Test_CGSWResearchRowFits", f"{TypeName} pass {Pass}: {ResearchCount} technology cells for {Researches.Num()} technologies of the table");
+				CGSWNote(Bad, First, "Test_CGSWResearchRowFits", f"{TypeName} pass {Pass}: {ResearchCount} technology cells for {Lines} lines of technologies of the table");
+			}
+		}
+
+		// Reachability: research what the row shows until the row shows nothing new; every technology of the building must have been shown.
+		FHOLGridContextView Open;
+		Open.bOwnBuilding = true;
+		Open.bBuildingFinished = true;
+		Open.Produces = Produces;
+		Open.Researches = Researches;
+		TArray<FName> Seen;
+		for (int Round = 0; Round <= Researches.Num(); Round++)
+		{
+			bool bNew = false;
+			for (int Cell = 8; Cell < 12; Cell++)
+			{
+				FHOLGridCommandView Shown = HOLCommandGridRules::GetCommand(Open, Cell);
+				if (Shown.Command == EHOLGridCommandKind::Research && !Open.Researched.Contains(Shown.TypeName))
+				{
+					Open.Researched.Add(Shown.TypeName);
+					Seen.AddUnique(Shown.TypeName);
+					bNew = true;
+				}
+			}
+			if (!bNew)
+			{
+				break;
+			}
+		}
+		for (int Tech = 0; Tech < Researches.Num(); Tech++)
+		{
+			if (!Seen.Contains(Researches[Tech]))
+			{
+				CGSWNote(Bad, First, "Test_CGSWResearchRowFits", f"{TypeName}: {Researches[Tech]} is never shown on a cell, whatever is researched: it cannot be researched");
 			}
 		}
 	}
 	T.AssertTrue(Swept >= 64, "every building of the table was swept in 8 passes");
-	T.AssertTrue(Bad == 0, f"{Bad} buildings do not give every technology a cell; first: {First}");
+	T.AssertTrue(Bad == 0, f"{Bad} buildings break the one-cell-per-line row (D856); first: {First}");
+}
+
+// What the four cells of a Forge show (the values of D856 in plain words).
+void CGForgeCellsAre(FUnitTest& T, const FHOLGridContextView& Forge, FName W, FName X, FName C, FName V, const FString& When)
+{
+	TArray<FName> Expected;
+	Expected.Add(W);
+	Expected.Add(X);
+	Expected.Add(C);
+	Expected.Add(V);
+	for (int Cell = 0; Cell < 4; Cell++)
+	{
+		FHOLGridCommandView Cmd = HOLCommandGridRules::GetCommand(Forge, 8 + Cell);
+		T.AssertTrue(Cmd.Command == EHOLGridCommandKind::Research, f"{When}: cell {8 + Cell} researches");
+		T.AssertTrue(Cmd.TypeName == Expected[Cell], f"{When}: cell {8 + Cell} shows {Cmd.TypeName}, expected {Expected[Cell]}");
+	}
+}
+
+// D856, the Forge in plain values: W = melee attack, X = ranged attack, C = infantry armor, V = cavalry armor, each showing the next level to research.
+void Test_CGForgeLines(FUnitTest& T)
+{
+	FHOLGridContextView Forge;
+	Forge.bOwnBuilding = true;
+	Forge.bBuildingFinished = true;
+	Forge.Researches = HOLCommandGridRead::GetBuildingResearches(n"Forge");
+	T.AssertEquals(8, Forge.Researches.Num(), "the Forge researches 8 technologies (4 lines, levels I and II)");
+
+	CGForgeCellsAre(T, Forge, n"MeleeAttackI", n"RangedAttackI", n"InfantryArmorI", n"CavalryArmorI", "nothing researched");
+	Forge.Researched.Add(n"MeleeAttackI");
+	CGForgeCellsAre(T, Forge, n"MeleeAttackII", n"RangedAttackI", n"InfantryArmorI", n"CavalryArmorI", "MeleeAttackI researched");
+	Forge.Researched.Add(n"MeleeAttackII");
+	CGForgeCellsAre(T, Forge, n"MeleeAttackII", n"RangedAttackI", n"InfantryArmorI", n"CavalryArmorI", "both melee levels researched: W stays on the last level");
+	Forge.Researched.Add(n"InfantryArmorI");
+	CGForgeCellsAre(T, Forge, n"MeleeAttackII", n"RangedAttackI", n"InfantryArmorII", n"CavalryArmorI", "InfantryArmorI researched: C moves to its level II");
+	T.AssertTrue(HOLCommandGridRules::GetCommand(Forge, 12).Command == EHOLGridCommandKind::None, "no fifth research cell");
 }
 // The builders' panels with the whole table: every building sits on one age page and one cell, and no key answers two buildings.
 void Test_CGSWTableCellsUnique(FUnitTest& T)

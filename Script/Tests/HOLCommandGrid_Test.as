@@ -932,9 +932,15 @@ void Test_CGResearch(FUnitTest& T)
 	{
 		FHOLGridCommandView Command = HOLCommandGridRules::GetCommand(Farm, Cell);
 		int Index = Cell - First;
-		if (Index >= 0 && Index < Farm.Researches.Num())
+		if (Index >= 0 && Index < 2)
 		{
-			T.AssertTrue(Command.Command == EHOLGridCommandKind::Research && Command.TypeName == Farm.Researches[Index], "Farm: the cell researches its technology");
+			// D856: one cell per LINE, nothing researched: W the Plough (I), X the Wheelbarrow (I); not one cell per technology (I, II, I, II).
+			FName Head = n"PloughI";
+			if (Index == 1)
+			{
+				Head = n"WheelbarrowI";
+			}
+			T.AssertTrue(Command.Command == EHOLGridCommandKind::Research && Command.TypeName == Head, "Farm: the cell researches the first level of its line (D856)");
 		}
 		else
 		{

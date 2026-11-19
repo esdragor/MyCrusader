@@ -25,6 +25,7 @@ namespace HOLCommandGridReadLibraryPrivate
 		Out.HeroLevel = View.HeroLevel;
 		Out.ReachedAge = View.ReachedAge;
 		Out.Researches = View.Researches;
+		Out.Researched = View.Researched;
 		Out.bDeployables = View.bDeployables;
 		Out.bDeployedAny = View.bDeployedAny;
 		Out.bRageUnit = View.bRageUnit;
@@ -283,6 +284,12 @@ TArray<FName> UHOLCommandGridReadLibrary::GetBuildingResearches(const FName Buil
 	TArray<FName> Names;
 	UHOLTechnologySettings::GetBuildingTechnologies(Building, Names);
 	return Names;
+}
+
+FName UHOLCommandGridReadLibrary::GetTechnologyRequires(const FName Technology)
+{
+	const FHOLTechnologyRow* Row = UHOLTechnologySettings::FindTechnology(Technology);
+	return Row ? Row->Requires : FName();
 }
 
 bool UHOLCommandGridReadLibrary::IsTechnologyInTable(const FName Technology) { return UHOLTechnologySettings::FindTechnology(Technology) != nullptr; }

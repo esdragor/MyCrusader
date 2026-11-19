@@ -133,6 +133,9 @@ struct FHOLGridContext
 	TArray<FName> Produces;
 	/** The technologies the building researches (T4), in the order of the technology table: its research row, from ResearchFirstCell. */
 	TArray<FName> Researches;
+
+	/** The technologies the owner has researched (D856: the script rule shows, per line of technologies, the next level not yet researched; the rule itself is in HOLCommandGridRules.as). */
+	TArray<FName> Researched;
 	/**
 	 * The player's own selected units count at least one builder (a unit that gathers, CarryCapacity > 0: what the
 	 * server checks for a build order, J6a.4).
