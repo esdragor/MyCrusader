@@ -13,8 +13,7 @@ class AHOLBuilding;
  * order stay in UHOLCommandSubsystem). The verdict is the script's (Script/Commands/HOLPlayerOrdersBoard.as calls namespace HOLPlayerOrders of
  * Script/Commands/HOLPlayerOrders.as, tested in Script/Commands/HOLPlayerOrders_Test.as); this world subsystem asks its script subclass
  * (UHOLPlayerOrdersBoardScript). Abstract: only a script subclass is born. Every Ask* answers 1 (order accepted and queued), 0 (refused), or -1 when
- * the world has no script board (HOLPlayerOrders.cpp then keeps its C++ body, still the twin of the script until the network proof, then removed in a
- * later lot). Same pattern as UHOLMatchFlowSubsystem (pause) and UHOLConstructionBoard (construction).
+ * the world has no script board (HOLPlayerOrders.cpp then REFUSES the order and logs it once; the C++ body is gone, the rule has one source). Same pattern as UHOLMatchFlowSubsystem (pause) and UHOLConstructionBoard (construction).
  */
 UCLASS(Abstract)
 class HEROESOFLIBERTY_API UHOLPlayerOrdersBoard : public UWorldSubsystem
@@ -28,7 +27,7 @@ public:
 	static UHOLPlayerOrdersBoard* FindAny();
 
 	static int32 AskIsAccepted(const UWorld* World, int32 PlayerIndex, int32 NumUnits);
-	/** IsAccepted without a world: the board of any game world, or -1 (a unit test with no world keeps the C++ rule). */
+	/** IsAccepted without a world: the board of any game world, or -1 (no board: HOLPlayerOrders::IsAccepted refuses). */
 	static int32 AskIsAcceptedAnywhere(int32 PlayerIndex, int32 NumUnits);
 	static int32 AskMove(const UWorld* World, int32 PlayerIndex, const TArray<int32>& UnitIds, const FVector& Target, bool bQueue, const FVector2D& FrontLine,
 		bool bFrontWidth);
