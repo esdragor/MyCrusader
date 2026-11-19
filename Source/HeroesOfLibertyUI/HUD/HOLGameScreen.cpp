@@ -533,9 +533,11 @@ void UHOLGameScreen::NativeTick(const FGeometry& MyGeometry, const float InDelta
 		}
 		// P4 (tiers): the builders' age panels follow the tier of the player's hero (his level moves without a delegate).
 		if (bAgesShown && ScriptScreen && BoundPlayerState.IsValid() && BoundTableState.IsValid()
-			&& BoundTableState->GetTier(BoundPlayerState->GetPlayerIndex()) != ShownTier)
+			&& GetBoundTier() != ShownTier)
 		{
-				ScriptScreen->RefreshNow();
+			// The script draws the panels; the tier it was drawn at is kept here so that this check fires once per change.
+			ShownTier = GetBoundTier();
+			ScriptScreen->RefreshAges();
 		}
 	}
 	// S7: the siege workshop's engine cells follow the tier of the hero (his level moves without a delegate): drawn again when it changes.
@@ -594,7 +596,7 @@ void UHOLGameScreen::NativeTick(const FGeometry& MyGeometry, const float InDelta
 	// The chosen age (a key, a placement, Escape) changes without a delegate: its header follows it (the 2nd check of G.1c).
 	if (bAgesShown && ScriptScreen && Controller.IsValid() && Controller->GetChosenAge() != ShownChosenAge)
 	{
-		ScriptScreen->RefreshNow();
+		ScriptScreen->RefreshAges();
 	}
 	RefreshIdleWorkers();
 	RefreshControlGroups(FrameSeconds);
@@ -1937,9 +1939,10 @@ void UHOLGameScreen::RefreshGrid(const AHOLBuilding* OwnBuilding, const bool bOw
 			GridPanel->SetVisibility(Wanted);
 		}
 	}
+	// The builders' age panels only (not the whole script Refresh: its population alert reads the HUD's real time once per timer step).
 	if (ScriptScreen)
 	{
-		ScriptScreen->RefreshNow();
+		ScriptScreen->RefreshAges();
 	}
 
 	// Only a site of the player's own, selected alone (or alone in a group's subgroup), has « Annuler » (HOLCommandGrid::GetCommand).

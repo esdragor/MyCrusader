@@ -51,6 +51,10 @@ public:
 	UFUNCTION(BlueprintImplementableEvent, Category = "HeroesOfLiberty|UI")
 	void Refresh();
 
+	/** The builders' age panels read the game and redraw at once (HUD H-8): the screen's grid, chosen age or tier changed. Not the whole Refresh. */
+	UFUNCTION(BlueprintImplementableEvent, Category = "HeroesOfLiberty|UI")
+	void RefreshAges();
+
 	/**
 	 * A key the script screen listens to went down this frame, read from the player's input state (nothing bound nor consumed, as the Enter
 	 * of a test scenario): "T" opens the talent tree (TQ4 = A). Called from the tick, at most once a press.

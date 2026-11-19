@@ -1397,6 +1397,15 @@ FString TalentTipTexts = "";
 		RefreshShortMessage();
 	}
 
+	// HUD H-8: the age panels alone, drawn again at once (the C++ screen's grid, chosen age and tier changes). Not the whole Refresh: the
+	// population alert and the other blocks read the HUD's real time once per timer step, not at every grid change.
+	UFUNCTION(BlueprintOverride)
+	void RefreshAges()
+	{
+		if (AgePanels != nullptr)
+			AgePanels.Refresh();
+	}
+
 	// D202, Q-alerts-minor default A: the population full line in the thread of messages (muted, no ping), once when the population
 	// becomes full, not again sooner than HOLAlertRules::PopulationRepeatSeconds. Nothing for a spectator (no player state shown).
 	FHOLPopulationAlertWatch PopulationWatch;
