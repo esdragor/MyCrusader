@@ -1,6 +1,5 @@
 // Wired by SAURON-1119q (HUD H-10): HOLCommandGridPanel.as and its C++ bindings exist; not compiled until the session's build.
-// NOT COMPILED YET (SAURON-1119m, H-10 wave 1): needs the C++ lot of Docs\Rapports\SAURON-1119m.md for HOLCommandGridPanel.as (same module: UHOLCommandGridPanel calls bindings that
-// do not exist yet), so the module does not compile with these two files and without the lot. The rules of the view (HOLCommandGridPanelRules), pure, in literals copied from the C++
+// The rules of the view (HOLCommandGridPanelRules), pure, in literals copied from the C++
 // screen's behaviour: GridKeys (HOLGameScreen.cpp:242-245), GridCellName (:278-281), HandleGridCellClicked (:2191-2208: "HUD: order cell %s clicked" / "HUD: grid cell %s clicked"),
 // ClickWidget (:2345-2355), DescribeCells (:2461-2467: "A: Peasant", breaks replaced by a space), RefreshGrid's empty cell (default: ClearUnit, dark) and the panel's Hidden / Visible (:1810-1816).
 // Red to see (once the lot is there): fake the "AZERQSDFWXCV" expectation of Test_GridPanelKeysFollowTheAzertyRows by one letter, run, restore.

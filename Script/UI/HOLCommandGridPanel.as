@@ -1,8 +1,4 @@
 // Wired by SAURON-1119q (HUD H-10): the C++ bindings of Docs\Rapports\SAURON-1119m.md exist in UHOLScriptScreen / UHOLGameScreen; not compiled until the session's build.
-// NOT COMPILED YET (SAURON-1119m, H-10 of the HUD plan, wave 1: new files only, no switch-over): this file calls bindings that do not exist before the next C++ lot
-// (UHOLScriptScreen::GetGridPanelHost, GetGridFrame, ApplyGridCell, ClickGridCell, RegisterGridCells; the struct FHOLGridCellInfoView; the RefreshGridCells event).
-// The recipe, with the exact signatures, is in Docs\Rapports\SAURON-1119m.md; until the lot exists the whole script module would fail to compile with this file
-// present: do NOT build with it and without the lot.
 //
 // The command grid of the game HUD (3 rows of 4 square cells, keys A Z E R / Q S D F / W X C V), in script, as the VIEW only. What each cell holds (which command,
 // greyed or not, cost, missing, tooltip) stays computed by the C++ already there (HOLCommandGrid and the extracted body of UHOLGameScreen::RefreshGrid: one source,
