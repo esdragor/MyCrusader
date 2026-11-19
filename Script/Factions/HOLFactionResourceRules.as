@@ -64,6 +64,12 @@ namespace HOLFactionResource
 		return Faction != "Legions";
 	}
 
+	// STUB of the red commit (replaced by the real rule in the next commit): reads as the old text variant, true except for the Legions.
+	bool HasResource(EHOLFaction Faction)
+	{
+		return Faction != EHOLFaction::BlackLegions;
+	}
+
 	// The stable line of the test log: "<name> 30/100".
 	FString Describe(const FString& Name, const FHOLFactionResource& State)
 	{
