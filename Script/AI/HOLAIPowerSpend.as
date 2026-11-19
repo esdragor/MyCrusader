@@ -13,6 +13,26 @@ namespace HOLAIPowerSpend
 	// row); arrays of different sizes are a caller bug and read as "nothing to cast".
 	int Choose(const TArray<FHOLPowerRow>& Rows, const TArray<int>& CooldownLeftMs, const TArray<bool>& Wanted, int Stock, int Tier, int Reserve)
 	{
+		if (CooldownLeftMs.Num() != Rows.Num() || Wanted.Num() != Rows.Num())
+		{
+			return -1;
+		}
+		for (int Index = 0; Index < Rows.Num(); Index++)
+		{
+			if (!Wanted[Index])
+			{
+				continue;
+			}
+			if (HOLPowerBook::StateOf(Rows[Index], Stock, CooldownLeftMs[Index], Tier) != EHOLPowerState::Ready)
+			{
+				continue;
+			}
+			if (Stock - Rows[Index].Cost < Reserve)
+			{
+				continue;
+			}
+			return Index;
+		}
 		return -1;
 	}
 }

@@ -50,7 +50,7 @@ void Test_AIPowerSpendNothingWhenNoPowerReady(FUnitTest& T)
 	// No power at all.
 	TArray<FHOLPowerRow> NoRows;
 	T.AssertEquals(-1, HOLAIPowerSpend::Choose(NoRows, TArray<int>(), TArray<bool>(), 500, 3, 0), "an empty book casts nothing");
-	// Control: the cool-down over, the same situation casts Beta once the tier is reached.
+	// Control: the cool-down over, the same situation casts the first of the book once the cool-down is over.
 	Rows[0].bEffectCoded = true;
 	const int Open = HOLAIPowerSpend::Choose(Rows, PowerSpendCooldowns(0, 0), PowerSpendWanted(true, true), 500, 2, 0);
 	T.AssertEquals(0, Open, "control: a ready wanted power is cast");
