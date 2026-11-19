@@ -249,15 +249,16 @@ bool UHOLCommandGridBoard::AskMergeCommands(const TConstArrayView<TArray<FHOLGri
 	if (!Board) { return false; }
 	TArray<FHOLGridCommandView> Flat;
 	Flat.Reserve(PerBuilding.Num() * HOLCommandGrid::NumCells);
+	// The flat form is NumCells wide per building. A building given fewer cells is padded with empty commands: the controller sizes the list
+	// to the whole group and fills only the active subgroup's members (HOLPlayerController.cpp, GetGridCommands), so the others come EMPTY.
+	// Refusing them here was harmless while the C++ body took over; once it was removed (L3a) a subgroup narrower than its group had an empty
+	// grid (quick_check "build hud", 2026-11-19 18:02: Tab on the main centre of a group of 8, cells "none").
+	const FHOLGridCommand NoCommand;
 	for (const TArray<FHOLGridCommand>& Building : PerBuilding)
 	{
-		if (Building.Num() != HOLCommandGrid::NumCells)
+		for (int32 Cell = 0; Cell < HOLCommandGrid::NumCells; ++Cell)
 		{
-			return false; // the flat form cannot carry another width: the C++ body keeps it
-		}
-		for (const FHOLGridCommand& Command : Building)
-		{
-			Flat.Add(HOLCommandGridReadLibraryPrivate::FromRule(Command));
+			Flat.Add(HOLCommandGridReadLibraryPrivate::FromRule(Building.IsValidIndex(Cell) ? Building[Cell] : NoCommand));
 		}
 	}
 	TArray<int32> PriorityCopy(Priority.GetData(), Priority.Num());
