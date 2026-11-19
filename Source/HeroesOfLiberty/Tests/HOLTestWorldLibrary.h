@@ -258,4 +258,46 @@ public:
 	/** AHOLPlayerState::GetPlayerIndex() (-1 for null). */
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
 	static int32 GetPlayerStateSlot(const AHOLPlayerState* Player);
+
+	// ---- Lot D853 e (CELEBORN-1119ca): the AI build orders (HOLAIBuildOrdersTests.cpp). Thin wrappers: the test world is the world context ----
+
+	/** UHOLAIOrderLibrary::CheckAIPlacement(World, Slot, TypeName, Point): 0 = placeable, an EHOLPlacementRefusal otherwise, -1 for a type nobody builds. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
+	static int32 CheckAIPlacement(UHOLTestWorldHandle* TestWorld, int32 Slot, FName TypeName, FVector Point);
+
+	/** UHOLAIOrderLibrary::FindAIPlacement(World, Slot, TypeName, Centre, MaxRings, OutPoint). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
+	static bool FindAIPlacement(UHOLTestWorldHandle* TestWorld, int32 Slot, FName TypeName, FVector Centre, int32 MaxRings, FVector& OutPoint);
+
+	/** UHOLAIOrderLibrary::FindAIFarmBlock(World, Slot, Centre, MaxRings, OutMill, OutFarms). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
+	static bool FindAIFarmBlock(UHOLTestWorldHandle* TestWorld, int32 Slot, FVector Centre, int32 MaxRings, FVector& OutMill, TArray<FVector>& OutFarms);
+
+	/** UHOLAIOrderLibrary::IssueAIPlaceOrder(World, Slot, TypeName, Point, {} units, no queue) as the C++ test calls it. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
+	static bool IssueAIPlaceOrder(UHOLTestWorldHandle* TestWorld, int32 Slot, FName TypeName, FVector Point);
+
+	/** UHOLAIOrderLibrary::IssueAISetRallyOrder(World, Slot, BuildingLocation, Point) (source index -1). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
+	static bool IssueAISetRallyOrder(UHOLTestWorldHandle* TestWorld, int32 Slot, FVector BuildingLocation, FVector Point);
+
+	/** static_cast<int32>(EHOLPlacementRefusal::Building): the refusal a spot on a building gets (the enum is not exposed to the script). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
+	static int32 GetPlacementRefusalBuilding();
+
+	/** Whether the footprints (UHOLConstructionSubsystem::SnapFootprint of the mill row at Mill and of the farm row at each farm) overlap each other (HOLConstruction::Overlaps, all pairs). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
+	static bool FarmBlockOverlaps(FVector Mill, const TArray<FVector>& Farms);
+
+	/** HOLConstruction::TryPay(copy of Stock, UHOLBuildingSettings::FindType(TypeName)->Cost): whether the stock covers it; OutAfter is the stock after paying. False if no type row. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
+	static bool PayBuildingCost(FName TypeName, const FHOLResources& Stock, FHOLResources& OutAfter);
+
+	/** AHOLBuilding::HasRallyPoint() (false for null). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
+	static bool HasBuildingRallyPoint(const AHOLBuilding* Building);
+
+	/** AHOLBuilding::GetRallyPoint() (zero for null). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
+	static FVector GetBuildingRallyPoint(const AHOLBuilding* Building);
 };
