@@ -34,7 +34,7 @@ namespace HOLControllerCommandsC9b
 			}
 			Plan.bValid = true;
 			Plan.Type = Args[0];
-			// `last` is compared as typed (the C++ used ==, case sensitive).
+			// FString == is case insensitive in Unreal (C++ and script alike): LAST counts as last, as in the C++ original.
 			Plan.bLast = Args.Num() > 1 && Args[1] == "last";
 		}
 		else if (Command == "hol.Select.Stop" || Command == "hol.Select.Hold" || Command == "hol.Select.NextIdle" || Command == "hol.Select.Own" || Command == "hol.Build.CancelSelected")

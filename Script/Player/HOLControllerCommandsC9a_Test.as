@@ -42,9 +42,13 @@ void Test_ControllerCommandsC9aArguments(FUnitTest& T)
 	T.AssertTrue(Math::IsNearlyEqual(Move.X1, 1500.0), "AttackMove X 1500");
 	T.AssertTrue(Math::IsNearlyEqual(Move.Y1, -250.5), "AttackMove Y -250.5");
 	T.AssertTrue(Move.bShift, "shift is read in any case");
-	FHOLConsolePlanC9a MoveShortShift = HOLControllerCommandsC9a::PlanOf("hol.Units.AttackMove", C9aArgs("1", "shift"));
+	// The C++ refused on Args.Num() < 2 only: ONE word is refused, but two words (1 shift) are accepted (Y = Atod("shift") = 0, shift is looked for from index 2, so none).
+	FHOLConsolePlanC9a MoveShortShift = HOLControllerCommandsC9a::PlanOf("hol.Units.AttackMove", C9aArgs("1"));
 	T.AssertFalse(MoveShortShift.bValid, "AttackMove with one number is refused");
 	T.AssertEquals("Usage: hol.Units.AttackMove <X> <Y> [shift]", MoveShortShift.Usage, "AttackMove usage line");
+	FHOLConsolePlanC9a MoveTwoWords = HOLControllerCommandsC9a::PlanOf("hol.Units.AttackMove", C9aArgs("1", "shift"));
+	T.AssertTrue(MoveTwoWords.bValid, "AttackMove with two words is accepted, as the C++ (it only counted the words)");
+	T.AssertFalse(MoveTwoWords.bShift, "AttackMove: the word shift in the place of Y is no flag");
 	// The flag is looked for from index 2: a word 'shift' in the place of a number does not count.
 	T.AssertFalse(HOLControllerCommandsC9a::PlanOf("hol.Units.AttackMove", C9aArgs("shift", "2")).bShift, "AttackMove: shift before index 2 is no flag");
 

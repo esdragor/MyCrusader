@@ -40,7 +40,9 @@ void Test_ControllerCommandsC9bTypeLast(FUnitTest& T)
 	T.AssertEquals("Monk", Plain.Type, "the type is the first word");
 	T.AssertFalse(Plain.bLast, "no `last` word");
 	T.AssertTrue(HOLControllerCommandsC9b::PlanOf("hol.Select.Type", C9bArgs("Monk", "last")).bLast, "`last` word");
-	T.AssertFalse(HOLControllerCommandsC9b::PlanOf("hol.Select.Type", C9bArgs("Monk", "LAST")).bLast, "`last` is case sensitive as in the C++");
+	// The C++ compared `Args[1] == TEXT("last")` on an FString, whose == is case INSENSITIVE in Unreal: LAST counted as last there too.
+	T.AssertTrue(HOLControllerCommandsC9b::PlanOf("hol.Select.Type", C9bArgs("Monk", "LAST")).bLast, "`last` is case insensitive as in the C++ (FString ==)");
+	T.AssertFalse(HOLControllerCommandsC9b::PlanOf("hol.Select.Type", C9bArgs("Monk", "lastly")).bLast, "another word is no `last`");
 
 	TArray<int> Ids;
 	Ids.Add(4); Ids.Add(9); Ids.Add(12);
