@@ -7,7 +7,8 @@
 
 UHOLPlayerOrdersBoard* UHOLPlayerOrdersBoard::Find(const UWorld* World)
 {
-	if (!World)
+	// Game thread only: the script runs there; an order asked from another thread keeps the C++ body (-1).
+	if (!World || !IsInGameThread())
 	{
 		return nullptr;
 	}
