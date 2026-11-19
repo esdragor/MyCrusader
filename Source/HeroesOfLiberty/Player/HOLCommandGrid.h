@@ -360,9 +360,13 @@ namespace HOLCommandGrid
 	 * the hero's abilities when he is among the units commanded (greyed below their level or cooling down); else nothing (the builders' are the age panels': GetAgeBuilding; the units' orders the orders' panel's: GetOrder).
 	 */
 	HEROESOFLIBERTY_API FHOLGridCommand GetCommand(const FHOLGridContext& Context, int32 Cell);
+	/** GetCommand's C++ body, never the script's: the read library the agreement tests compare against calls this one (UHOLCommandGridBoard is the bridge). */
+	HEROESOFLIBERTY_API FHOLGridCommand GetCommandNative(const FHOLGridContext& Context, int32 Cell);
 
 	/** What Cell of the orders' panel does: with own units and no building, attack-move with soldiers (Q), stop (S), hold (V). */
 	HEROESOFLIBERTY_API FHOLGridCommand GetOrder(const FHOLGridContext& Context, int32 Cell);
+	/** GetOrder's C++ body, never the script's (see GetCommandNative). */
+	HEROESOFLIBERTY_API FHOLGridCommand GetOrderNative(const FHOLGridContext& Context, int32 Cell);
 
 	/** The builders' age panels are shown: builders selected, no soldier among them, no building. */
 	HEROESOFLIBERTY_API bool IsBuildGrid(const FHOLGridContext& Context);

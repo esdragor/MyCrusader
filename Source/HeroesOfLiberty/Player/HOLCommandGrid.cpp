@@ -2,6 +2,7 @@
 
 #include "Player/HOLCommandGrid.h"
 
+#include "Player/HOLCommandGridBoard.h"
 #include "Buildings/HOLBuildingTypes.h"
 #include "HAL/IConsoleManager.h"
 
@@ -53,6 +54,13 @@ namespace HOLCommandGrid
 	}
 
 	FHOLGridCommand GetCommand(const FHOLGridContext& Context, const int32 Cell)
+	{
+		// The script board answers first (UHOLCommandGridBoard); with none in a game world, the C++ body below (the twin, until the proof).
+		FHOLGridCommand Answer;
+		return UHOLCommandGridBoard::AskGetCommand(Context, Cell, Answer) ? Answer : GetCommandNative(Context, Cell);
+	}
+
+	FHOLGridCommand GetCommandNative(const FHOLGridContext& Context, const int32 Cell)
 	{
 		FHOLGridCommand Result;
 		if (Cell < 0 || Cell >= NumCells)
@@ -167,6 +175,12 @@ namespace HOLCommandGrid
 
 	FHOLGridCommand GetOrder(const FHOLGridContext& Context, const int32 Cell)
 	{
+		FHOLGridCommand Answer;
+		return UHOLCommandGridBoard::AskGetOrder(Context, Cell, Answer) ? Answer : GetOrderNative(Context, Cell);
+	}
+
+	FHOLGridCommand GetOrderNative(const FHOLGridContext& Context, const int32 Cell)
+	{
 		FHOLGridCommand Result;
 		if (Context.bOwnUnits && !Context.bOwnBuilding)
 		{
@@ -251,7 +265,7 @@ namespace HOLCommandGrid
 		if (!IsBuildGrid(Context))
 		{
 			// The hero's cells (A Z) are the grid's; the other keys the orders'.
-			Result.Target = GetCommand(Context, Cell).Command == EHOLGridCommand::HeroAbility || GetCommand(Context, Cell).Command == EHOLGridCommand::NecroticRage ? EHOLGridKeyTarget::Grid : EHOLGridKeyTarget::Orders;
+			Result.Target = GetCommandNative(Context, Cell).Command == EHOLGridCommand::HeroAbility || GetCommandNative(Context, Cell).Command == EHOLGridCommand::NecroticRage ? EHOLGridKeyTarget::Grid : EHOLGridKeyTarget::Orders;
 			return Result;
 		}
 		// No age chosen: A Z E R choose one (one not reached: nothing), the others are the orders'.

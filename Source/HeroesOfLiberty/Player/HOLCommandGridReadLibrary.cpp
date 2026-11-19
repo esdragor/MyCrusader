@@ -169,12 +169,12 @@ FString UHOLCommandGridReadLibrary::GetTradeGainText(const FHOLTradeGainView& Ga
 
 FHOLGridCommandView UHOLCommandGridReadLibrary::GetCommand(const FHOLGridContextView& Context, const int32 Cell)
 {
-	return FromRule(HOLCommandGrid::GetCommand(ToRule(Context), Cell));
+	return FromRule(HOLCommandGrid::GetCommandNative(ToRule(Context), Cell));
 }
 
 FHOLGridCommandView UHOLCommandGridReadLibrary::GetOrder(const FHOLGridContextView& Context, const int32 Cell)
 {
-	return FromRule(HOLCommandGrid::GetOrder(ToRule(Context), Cell));
+	return FromRule(HOLCommandGrid::GetOrderNative(ToRule(Context), Cell));
 }
 
 bool UHOLCommandGridReadLibrary::IsBuildGrid(const FHOLGridContextView& Context) { return HOLCommandGrid::IsBuildGrid(ToRule(Context)); }
