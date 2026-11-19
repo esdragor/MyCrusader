@@ -46,6 +46,7 @@
 #include "Player/HOLRTSCamera.h"
 #include "Player/HOLSelectionMarkers.h"
 #include "Player/HOLUnitPicking.h"
+#include "Player/HOLControllerCommandLibrary.h"
 #include "Match/HOLVictoryRules.h"
 #include "Resources/HOLSourceField.h"
 #include "Resources/HOLSourceSubsystem.h"
@@ -103,7 +104,7 @@ namespace UE::HeroesOfLiberty::Player
 	constexpr int32 MaxOrderedUnits = HOLPlayerOrders::MaxOrderedUnits;
 
 	/** Height (cm) of a unit's body drawn at scale 1 (the mannequin), and its drawn width over its radius: what a click aims at (D288). */
-	constexpr double PickBodyHeight = 180.0;
+	constexpr double PickBodyHeight = UHOLControllerCommandLibrary::PickBodyHeight;
 	constexpr double PickWidthFactor = 1.3;
 	/** Margin of a right click's target around an enemy's drawn body (J7c, retour d'essai 8, loop 3; HOLUnitPicking::PickNear). */
 	float TargetMargin = static_cast<float>(HOLUnitPicking::TargetMarginAt1080);
@@ -188,215 +189,11 @@ namespace UE::HeroesOfLiberty::Player
 		return Controllers;
 	}
 
-	/** Scripted checks (D264, D289): a left click at a point of the viewport, without the desktop's mouse. */
-	FAutoConsoleCommand ClickCommand(
-		TEXT("hol.Select.Click"),
-		TEXT("hol.Select.Click <X> <Y> [add] [double]: selects as a left click at that point of the viewport (0 to 1 each way) would; 'add' as with Shift; 'double' as a double click (A.1)"),
-		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
-		{
-			if (Args.Num() < 2)
-			{
-				UE_LOG(LogHOLMatch, Warning, TEXT("Usage: hol.Select.Click <X> <Y> [add]"));
-				return;
-			}
-			const bool bAdd = Args.Contains(TEXT("add"));
-			const bool bDouble = Args.Contains(TEXT("double"));
-			for (AHOLPlayerController* Controller : GetLocalControllers())
-			{
-				const FVector2D Fraction(FCString::Atod(*Args[0]), FCString::Atod(*Args[1]));
-				bDouble ? Controller->SelectSameTypeAt(Fraction, bAdd) : Controller->SelectAt(Fraction, bAdd);
-			}
-		}));
-
-	/** The same on one of the player's own units, wherever it is drawn: a script does not know where units stand on the screen. */
-	FAutoConsoleCommand ClickUnitCommand(
-		TEXT("hol.Select.ClickUnit"),
-		TEXT("hol.Select.ClickUnit <N> [add] [double] [order] [enemy|ally|slot=<S>]: hol.Select.Click (order: hol.Select.Order, a right click) at the middle of the drawn body of the player's N-th own unit known here (by identifier; negative from the last); 'enemy': of the other players' units instead, 'ally': of the players' of its team (D.3), 'slot=<S>': of slot S's (D.2)"),
-		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
-		{
-			const int32 Wanted = Args.IsEmpty() ? 0 : FCString::Atoi(*Args[0]);
-			const bool bAdd = Args.Contains(TEXT("add"));
-			const bool bDouble = Args.Contains(TEXT("double"));
-			const bool bOrder = Args.Contains(TEXT("order"));
-			const bool bEnemy = Args.Contains(TEXT("enemy"));
-			const bool bAlly = Args.Contains(TEXT("ally"));
-			int32 Slot = INDEX_NONE;
-			for (const FString& Arg : Args)
-			{
-				if (Arg.StartsWith(TEXT("slot=")))
-				{
-					Slot = FCString::Atoi(*Arg.RightChop(5));
-				}
-			}
-			for (AHOLPlayerController* Controller : GetLocalControllers())
-			{
-				const AHOLPlayerState* PlayerState = Controller->GetHOLPlayerState();
-				TArray<FHOLUnitView> Views;
-				HOLUnitView::Gather(*Controller->GetWorld(), Views);
-				const AHOLGameState* GameState = Controller->GetWorld()->GetGameState<AHOLGameState>();
-				Views.RemoveAll([PlayerState, GameState, bEnemy, bAlly, Slot](const FHOLUnitView& View)
-				{
-					if (Slot != INDEX_NONE)
-					{
-						return View.OwnerPlayer != Slot;
-					}
-					if (bAlly)
-					{
-						return !PlayerState || !GameState
-							|| HOLUnitPicking::GetSide(GameState->GetLaunchConfig(), View.OwnerPlayer, PlayerState->GetPlayerIndex()) != EHOLSelectionSide::Ally;
-					}
-					const bool bOwn = PlayerState && View.OwnerPlayer == PlayerState->GetPlayerIndex();
-					return bEnemy ? bOwn || !PlayerState : !bOwn;
-				});
-				Views.Sort([](const FHOLUnitView& A, const FHOLUnitView& B) { return A.UnitId < B.UnitId; });
-				// Negative: from the last one (-1), whatever units the steps before made.
-				const int32 N = Wanted < 0 ? Views.Num() + Wanted : Wanted;
-				int32 SizeX = 0, SizeY = 0;
-				Controller->GetViewportSize(SizeX, SizeY);
-				FVector2D Middle;
-				if (!Views.IsValidIndex(N) || SizeX <= 0 || SizeY <= 0 || !Controller->ProjectWorldLocationToScreen(
-					Views[N].Location + FVector(0.0, 0.0, PickBodyHeight * 0.5 * Views[N].MeshScale), Middle))
-				{
-					UE_LOG(LogHOLMatch, Warning, TEXT("hol.Select.ClickUnit: no %s unit %d on the screen"), Slot != INDEX_NONE ? TEXT("such") : bAlly ? TEXT("ally") : bEnemy ? TEXT("enemy") : TEXT("own"), N);
-					continue;
-				}
-				UE_LOG(LogHOLMatch, Display, TEXT("%s on unit #%u at (%.3f, %.3f)"), bOrder ? TEXT("Right click") : TEXT("Click"), Views[N].UnitId, Middle.X / SizeX, Middle.Y / SizeY);
-				const FVector2D Fraction(Middle.X / SizeX, Middle.Y / SizeY);
-				if (bOrder)
-				{
-					Controller->OrderAt(Fraction, false);
-					continue;
-				}
-				bDouble ? Controller->SelectSameTypeAt(Fraction, bAdd) : Controller->SelectAt(Fraction, bAdd);
-			}
-		}));
-
-	FAutoConsoleCommand BoxCommand(
-		TEXT("hol.Select.Box"),
-		TEXT("hol.Select.Box <X1> <Y1> <X2> <Y2> [add]: selects as a box drawn between those points of the viewport (0 to 1 each way) would (any side's units, the first side present kept: own > ally > enemy > neutral); 'add' as with Shift"),
-		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
-		{
-			if (Args.Num() < 4)
-			{
-				UE_LOG(LogHOLMatch, Warning, TEXT("Usage: hol.Select.Box <X1> <Y1> <X2> <Y2> [add]"));
-				return;
-			}
-			const bool bAdd = Args.Num() >= 5 && Args[4] == TEXT("add");
-			for (AHOLPlayerController* Controller : GetLocalControllers())
-			{
-				Controller->SelectInBox(FVector2D(FCString::Atod(*Args[0]), FCString::Atod(*Args[1])),
-					FVector2D(FCString::Atod(*Args[2]), FCString::Atod(*Args[3])), bAdd);
-			}
-		}));
-
-	/** A word among the arguments after the four numbers of hol.Select.OrderLine / OrderLineGround ("ctrl", "shift"). */
-	bool HasLineFlag(const TArray<FString>& Args, const TCHAR* Flag)
-	{
-		for (int32 Index = 4; Index < Args.Num(); ++Index)
-		{
-			if (Args[Index].Equals(Flag, ESearchCase::IgnoreCase))
-			{
-				return true;
-			}
-		}
-		return false;
-	}
-
 	/** Where a ground point (cm) is drawn, as a fraction of the viewport; false when it is not on the screen. */
 	bool ProjectGroundPoint(const AHOLPlayerController& Controller, const double X, const double Y, FVector2D& OutFraction)
 	{
-		int32 SizeX = 0, SizeY = 0;
-		Controller.GetViewportSize(SizeX, SizeY);
-		FVector2D Pixel;
-		if (SizeX <= 0 || SizeY <= 0 || !Controller.ProjectWorldLocationToScreen(FVector(X, Y, 0.), Pixel))
-		{
-			return false;
-		}
-		OutFraction = FVector2D(Pixel.X / SizeX, Pixel.Y / SizeY);
-		return OutFraction.X >= 0. && OutFraction.X <= 1. && OutFraction.Y >= 0. && OutFraction.Y <= 1.;
+		return UHOLControllerCommandLibrary::ProjectGroundFractionOf(Controller, X, Y, OutFraction);
 	}
-
-	/** The box and the right click on ground points (J4.7, D289): a script knows the map, not where it is drawn. */
-	FAutoConsoleCommand BoxGroundCommand(
-		TEXT("hol.Select.BoxGround"),
-		TEXT("hol.Select.BoxGround <X1> <Y1> <X2> <Y2> [add]: hol.Select.Box around where that ground rectangle (cm) is drawn"),
-		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
-		{
-			if (Args.Num() < 4)
-			{
-				UE_LOG(LogHOLMatch, Warning, TEXT("Usage: hol.Select.BoxGround <X1> <Y1> <X2> <Y2> [add]"));
-				return;
-			}
-			const double X1 = FCString::Atod(*Args[0]), Y1 = FCString::Atod(*Args[1]), X2 = FCString::Atod(*Args[2]), Y2 = FCString::Atod(*Args[3]);
-			const bool bAdd = Args.Num() >= 5 && Args[4] == TEXT("add");
-			for (AHOLPlayerController* Controller : GetLocalControllers())
-			{
-				FBox2D Box(ForceInit);
-				bool bOnScreen = true;
-				for (const FVector2D& Corner : { FVector2D(X1, Y1), FVector2D(X1, Y2), FVector2D(X2, Y1), FVector2D(X2, Y2) })
-				{
-					FVector2D Fraction;
-					bOnScreen &= ProjectGroundPoint(*Controller, Corner.X, Corner.Y, Fraction);
-					Box += Fraction;
-				}
-				if (!bOnScreen)
-				{
-					UE_LOG(LogHOLMatch, Warning, TEXT("hol.Select.BoxGround: the rectangle is not wholly on the screen"));
-					continue;
-				}
-				UE_LOG(LogHOLMatch, Display, TEXT("Box on the ground from (%.3f, %.3f) to (%.3f, %.3f)"), Box.Min.X, Box.Min.Y, Box.Max.X, Box.Max.Y);
-				Controller->SelectInBox(Box.Min, Box.Max, bAdd);
-			}
-		}));
-
-	FAutoConsoleCommand OrderGroundCommand(
-		TEXT("hol.Select.OrderGround"),
-		TEXT("hol.Select.OrderGround <X> <Y> [shift]: hol.Select.Order where that ground point (cm) is drawn"),
-		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
-		{
-			if (Args.Num() < 2)
-			{
-				UE_LOG(LogHOLMatch, Warning, TEXT("Usage: hol.Select.OrderGround <X> <Y> [shift]"));
-				return;
-			}
-			const bool bShift = Args.Num() >= 3 && Args[2] == TEXT("shift");
-			for (AHOLPlayerController* Controller : GetLocalControllers())
-			{
-				FVector2D Fraction;
-				if (!ProjectGroundPoint(*Controller, FCString::Atod(*Args[0]), FCString::Atod(*Args[1]), Fraction))
-				{
-					UE_LOG(LogHOLMatch, Warning, TEXT("hol.Select.OrderGround: the point is not on the screen"));
-					continue;
-				}
-				UE_LOG(LogHOLMatch, Display, TEXT("Right click on the ground at (%.3f, %.3f)%s"), Fraction.X, Fraction.Y, bShift ? TEXT(", Shift") : TEXT(""));
-				Controller->OrderAt(Fraction, bShift);
-			}
-		}));
-
-	/** The right-button drag on ground points (J7a.4, quick_check "formation"): hol.Select.OrderLine where they are drawn. */
-	FAutoConsoleCommand OrderLineGroundCommand(
-		TEXT("hol.Select.OrderLineGround"),
-		TEXT("hol.Select.OrderLineGround <X1> <Y1> <X2> <Y2> [ctrl] [shift]: hol.Select.OrderLine between where those ground points (cm) are drawn"),
-		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
-		{
-			if (Args.Num() < 4)
-			{
-				UE_LOG(LogHOLMatch, Warning, TEXT("Usage: hol.Select.OrderLineGround <X1> <Y1> <X2> <Y2>"));
-				return;
-			}
-			for (AHOLPlayerController* Controller : GetLocalControllers())
-			{
-				FVector2D From, To;
-				if (!ProjectGroundPoint(*Controller, FCString::Atod(*Args[0]), FCString::Atod(*Args[1]), From)
-					|| !ProjectGroundPoint(*Controller, FCString::Atod(*Args[2]), FCString::Atod(*Args[3]), To))
-				{
-					UE_LOG(LogHOLMatch, Warning, TEXT("hol.Select.OrderLineGround: a point is not on the screen"));
-					continue;
-				}
-				UE_LOG(LogHOLMatch, Display, TEXT("Right drag on the ground from (%.3f, %.3f) to (%.3f, %.3f)"), From.X, From.Y, To.X, To.Y);
-				Controller->OrderLineAt(From, To, HasLineFlag(Args, TEXT("ctrl")), HasLineFlag(Args, TEXT("shift")));
-			}
-		}));
 
 	/**
 	 * Where the standing source nearest a ground point is drawn (a fraction of the viewport), aimed at the middle of its
@@ -950,31 +747,6 @@ namespace UE::HeroesOfLiberty::Player
 			}
 		}));
 
-	/** A left click on a ground point (cm), where it is drawn: a foundation (J6a.3) or anything else under it. */
-	FAutoConsoleCommand ClickGroundCommand(
-		TEXT("hol.Select.ClickGround"),
-		TEXT("hol.Select.ClickGround <X> <Y> [add]: hol.Select.Click where that ground point (cm) is drawn"),
-		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
-		{
-			if (Args.Num() < 2)
-			{
-				UE_LOG(LogHOLMatch, Warning, TEXT("Usage: hol.Select.ClickGround <X> <Y> [add]"));
-				return;
-			}
-			const bool bAdd = Args.Num() >= 3 && Args[2] == TEXT("add");
-			for (AHOLPlayerController* Controller : GetLocalControllers())
-			{
-				FVector2D Fraction;
-				if (!ProjectGroundPoint(*Controller, FCString::Atod(*Args[0]), FCString::Atod(*Args[1]), Fraction))
-				{
-					UE_LOG(LogHOLMatch, Warning, TEXT("hol.Select.ClickGround: the point is not on the screen"));
-					continue;
-				}
-				UE_LOG(LogHOLMatch, Display, TEXT("Click on the ground at (%.3f, %.3f)"), Fraction.X, Fraction.Y);
-				Controller->SelectAt(Fraction, bAdd);
-			}
-		}));
-
 	/** The main centre of the player (or, with bEnemy, of the first other player known here), or null. */
 	const AHOLBuilding* FindMainCentre(const AHOLPlayerController& Controller, const bool bEnemy)
 	{
@@ -1049,15 +821,7 @@ namespace UE::HeroesOfLiberty::Player
 	/** J7a.6 (quick_check "net"): a ground point given in the frame of the player's main centre (or an enemy's), as hol.Build.PlaceNear. */
 	bool GetPointNear(const AHOLPlayerController& Controller, const TArray<FString>& Args, FVector& OutPoint)
 	{
-		const bool bEnemy = Args.Num() >= 3 && Args[2] == TEXT("enemy");
-		const AHOLBuilding* Centre = Args.Num() >= 2 ? FindMainCentre(Controller, bEnemy) : nullptr;
-		if (!Centre)
-		{
-			return false;
-		}
-		OutPoint = Centre->GetActorLocation() + Centre->GetActorRotation().RotateVector(FVector(FCString::Atod(*Args[0]), FCString::Atod(*Args[1]), 0.));
-		OutPoint.Z = 0.;
-		return true;
+		return Args.Num() >= 2 && UHOLControllerCommandLibrary::PointNearFor(Controller, FCString::Atod(*Args[0]), FCString::Atod(*Args[1]), Args.Num() >= 3 && Args[2] == TEXT("enemy"), OutPoint);
 	}
 
 	FAutoConsoleCommand CameraFocusNearCommand(
@@ -1073,25 +837,6 @@ namespace UE::HeroesOfLiberty::Player
 					Controller->GetRTSCamera()->SetFocus(Point);
 					UE_LOG(LogHOLMatch, Display, TEXT("Camera near: (%.0f, %.0f)"), Point.X, Point.Y);
 				}
-			}
-		}));
-
-	FAutoConsoleCommand OrderNearCommand(
-		TEXT("hol.Select.OrderNear"),
-		TEXT("hol.Select.OrderNear <Dx> <Dy> [enemy]: a right click (hol.Select.OrderGround) at the player's main centre (or an enemy's) plus (Dx, Dy) cm in its frame"),
-		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
-		{
-			for (AHOLPlayerController* Controller : GetLocalControllers())
-			{
-				FVector Point;
-				FVector2D Fraction;
-				if (!GetPointNear(*Controller, Args, Point) || !ProjectGroundPoint(*Controller, Point.X, Point.Y, Fraction))
-				{
-					UE_LOG(LogHOLMatch, Warning, TEXT("hol.Select.OrderNear: the point is not on the screen"));
-					continue;
-				}
-				UE_LOG(LogHOLMatch, Display, TEXT("Right click near the centre at (%.0f, %.0f)"), Point.X, Point.Y);
-				Controller->OrderAt(Fraction, false);
 			}
 		}));
 
