@@ -97,6 +97,29 @@ FHOLGridContextView CGKYMakeBuilders()
 	return Builders;
 }
 
+// The builders' grid of the HARD values: the exact context of HOLCommandGrid_Test.as (CGMakeBuilders 9-23 + Test_CGAges 806-810): three buildable types
+// at age I cells A Z E, the Barracks at age II cell Q, nothing else. NOT the table's (CGKYMakeBuilders): the real table has other buildings at age II
+// (ELROND-1119x: with it, II Q and II S of the hard values failed while the agreement sweep, same context, stayed green).
+FHOLGridContextView CGKYMakeHardBuilders()
+{
+	FHOLGridContextView Builders;
+	Builders.bBuilders = true;
+	Builders.bOwnUnits = true;
+	Builders.BuildableTypes.Add(n"House");
+	Builders.BuildableCells.Add(0);
+	Builders.BuildableAges.Add(0);
+	Builders.BuildableTypes.Add(n"LumberCamp");
+	Builders.BuildableCells.Add(1);
+	Builders.BuildableAges.Add(0);
+	Builders.BuildableTypes.Add(n"MiningCamp");
+	Builders.BuildableCells.Add(2);
+	Builders.BuildableAges.Add(0);
+	Builders.BuildableTypes.Add(n"Barracks");
+	Builders.BuildableCells.Add(4);
+	Builders.BuildableAges.Add(1);
+	return Builders;
+}
+
 // HeroesOfLiberty.CommandGridKeys.AgreementKeys
 void Test_CGKYAgreementKeys(FUnitTest& T)
 {
@@ -395,7 +418,7 @@ void Test_CGKYHardValues(FUnitTest& T)
 	T.AssertTrue(HOLCommandGridKeys::Describe(NoMilitary) == "no Military building" && !HOLCommandGridKeys::Blocks(NoMilitary), "no military building: logged, nothing to block");
 
 	// The keys (copied from Script/Tests/HOLCommandGrid_Test.as 842-880): the builders' grid, only age I reached, then II.
-	FHOLGridContextView Builders = CGKYMakeBuilders();
+	FHOLGridContextView Builders = CGKYMakeHardBuilders();
 	FName NoName;
 	FHOLGridKeyResultView Key = HOLCommandGridKeys::PressKey(Builders, -1, 0);
 	T.AssertTrue(Key.Target == EHOLGridKeyTargetKind::Age && Key.ChosenAge == 0, "A: age I chosen");
