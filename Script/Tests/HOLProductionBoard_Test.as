@@ -137,7 +137,7 @@ void Test_ProductionBoard_QueueOrder(FUnitTest& T)
 
 // Lot R3 (GALADRIEL-1119ab): the outcome of a Rally order, once the gates passed. RallyOutcome(bOnBody, bShift, bHasRally): 0 NoStep (Shift on the body of
 // a building that has a rally point: nothing, a line), 1 Clear (on the body: no more rally point), 2 AddStep (Shift on a ground, with a rally point), 3 Set.
-// RallySiteKept(bIsBuilding, bOwnedByPlayer, bNeedsBuilders, bIsCamp): a named site is kept only if it is another building, the player's own, and a site
+// RallySiteKept(bOtherBuilding, bOwnedByPlayer, bNeedsBuilders, bIsCamp): a named site is kept only if it is another building, the player's own, and a site
 // to build or a camp. NOT COMPILED when written.
 void Test_ProductionBoard_RallyOutcome(FUnitTest& T)
 {
