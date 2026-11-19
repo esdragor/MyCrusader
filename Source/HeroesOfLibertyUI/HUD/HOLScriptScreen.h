@@ -254,6 +254,10 @@ public:
 	UFUNCTION(BlueprintImplementableEvent, Category = "HeroesOfLiberty|UI")
 	void FrameTick(float DeltaSeconds);
 
+	/** The lit control group changed (a recall, or its 0.5 s end): NativeTick detects it each frame and calls this only then (HUD H-6, HOLGroupBar.as RefreshLit). */
+	UFUNCTION(BlueprintImplementableEvent, Category = "HeroesOfLiberty|UI")
+	void GroupLitChanged();
+
 	/** True when a building of the shown player holds a finished unit for lack of room (D829, the loop of the C++ screen's old CheckPopulationBlocked). */
 	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|UI")
 	bool IsProductionHeldForRoom() const;
@@ -278,4 +282,6 @@ private:
 	float RefreshLeft = 0.f;
 	/** A message with a key is shown: NativeTick calls FrameTick (D839: no per-frame script call otherwise). */
 	bool bMessageLive = false;
+	/** The control group lit as NativeTick last saw it (INDEX_NONE: none): a change calls GroupLitChanged. */
+	int32 LitGroupSeen = INDEX_NONE;
 };

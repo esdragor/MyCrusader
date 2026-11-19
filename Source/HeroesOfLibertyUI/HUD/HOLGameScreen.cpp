@@ -416,16 +416,7 @@ void UHOLGameScreen::NativeOnInitialized()
 			Item->OnClicked().AddUObject(this, &UHOLGameScreen::HandleQueueItemClicked, Index);
 		}
 	}
-	for (int32 Group = 0; Group < AHOLPlayerController::NumControlGroups; ++Group)
-	{
-		UHOLQueueItem* GroupSlot = Cast<UHOLQueueItem>(WidgetTree->FindWidget(GroupSlotName(Group)));
-		GroupSlots.Add(GroupSlot);
-		if (GroupSlot)
-		{
-			GroupSlot->OnClicked().AddUObject(this, &UHOLGameScreen::HandleGroupSlotClicked, Group);
-		}
-	}
-	SelectionChips = Cast<UWrapBox>(WidgetTree->FindWidget(TEXT("SelectionChips")));
+	SelectionChips =Cast<UWrapBox>(WidgetTree->FindWidget(TEXT("SelectionChips")));
 	for (int32 Chip = 0; Chip < NumChips; ++Chip)
 	{
 		UHOLQueueItem* Item = Cast<UHOLQueueItem>(WidgetTree->FindWidget(*FString::Printf(TEXT("SelectionChip%d"), Chip)));
@@ -436,7 +427,6 @@ void UHOLGameScreen::NativeOnInitialized()
 			Item->OnClicked().AddUObject(this, &UHOLGameScreen::HandleChipClicked, Chip);
 		}
 	}
-	ShownGroups.Init(FString(), AHOLPlayerController::NumControlGroups);
 	ShownGridTypes.Init(NAME_None, AHOLPlayerController::NumGridCells);
 	ShownOrderTypes.Init(NAME_None, AHOLPlayerController::NumGridCells);
 	for (int32 Age = 0; Age < HOLCommandGrid::NumAges; ++Age)
@@ -624,7 +614,6 @@ void UHOLGameScreen::NativeTick(const FGeometry& MyGeometry, const float InDelta
 		RefreshAges(BoundPlayerState.Get());
 	}
 	RefreshIdleWorkers();
-	RefreshControlGroups(FrameSeconds);
 	UpdateHead();
 }
 
@@ -2670,19 +2659,6 @@ bool UHOLGameScreen::ClickWidget(const FName Name)
 		FocusAlertSlot(Alert.Slot);
 		return true;
 	}
-	for (int32 Group = 0; Group < GroupSlots.Num(); ++Group)
-	{
-		const UHOLQueueItem* GroupSlot = GroupSlots[Group];
-		if (GroupSlot && GroupSlot->GetFName() == Name)
-		{
-			if (!ShownGroups.IsValidIndex(Group) || ShownGroups[Group].IsEmpty())
-			{
-				return false;
-			}
-			HandleGroupSlotClicked(Group);
-			return true;
-		}
-	}
 	for (int32 Cell = 0; Cell < GridCells.Num(); ++Cell)
 	{
 		const UHOLGridCell* GridCell = GridCells[Cell];
@@ -3058,20 +3034,7 @@ void UHOLGameScreen::BuildLayout()
 	UVerticalBoxSlot* GroupsSlot = BottomLeft->AddChildToVerticalBox(GroupsPanel);
 	GroupsSlot->SetHorizontalAlignment(HAlign_Left);
 	GroupsSlot->SetPadding(FMargin(0.f, 0.f, 0.f, BarGap));
-	UHorizontalBox* GroupsRow = MakeHorizontalBox(TEXT("GroupsRow"));
-	GroupsPanel->SetContent(GroupsRow);
-	for (int32 Index = 1; Index <= AHOLPlayerController::NumControlGroups; ++Index)
-	{
-		const int32 Group = Index % AHOLPlayerController::NumControlGroups;
-		USizeBox* GroupBox = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass(), *FString::Printf(TEXT("ControlGroupBox%d"), Group));
-		GroupBox->SetWidthOverride(GroupSlotWidth);
-		GroupBox->SetHeightOverride(QueueItemHeight * 0.8f);
-		UHOLQueueItem* GroupSlot = WidgetTree->ConstructWidget<UHOLQueueItem>(UHOLQueueItem::StaticClass(), GroupSlotName(Group));
-		GroupBox->SetVisibility(ESlateVisibility::Collapsed);
-		GroupSlot->SetRenderTransformPivot(FVector2D(0.5f, 0.5f));
-		GroupBox->SetContent(GroupSlot);
-		AddToRow(GroupsRow, GroupBox, 4.f);
-	}
+	// The row of chips (GroupsRow, ControlGroupBox0-9, ControlGroup0-9) is built by Script\UI\HOLGroupBar.as into this panel (HUD H-6).
 
 	// The bottom bar, bottom left (the user's 2nd trial of G.1, AoE4's way, D201): the selection's block, the command
 	// panel, the builders' age panels, each at a fixed place whatever the selection (a block hidden keeps its place).

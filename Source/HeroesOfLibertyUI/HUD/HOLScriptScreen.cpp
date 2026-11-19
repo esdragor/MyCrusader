@@ -540,6 +540,16 @@ void UHOLScriptScreen::NativeTick(const FGeometry& MyGeometry, const float InDel
 	{
 		FrameTick(InDeltaTime);
 	}
+	// The control group lit (the chip of the group just recalled, HOLGroupBar.as LightSeconds = 0.5 s): the script is called only when it changes, on the very frame.
+	{
+		const int32 SelectedGroup = GetLastSelectedGroup();
+		const int32 LitNow = (SelectedGroup != INDEX_NONE && GetLastSelectedGroupAge() < 0.5f) ? SelectedGroup : INDEX_NONE;
+		if (LitNow != LitGroupSeen)
+		{
+			LitGroupSeen = LitNow;
+			GroupLitChanged();
+		}
+	}
 	// The T key (the talent tree, TQ4 = A): the viewport's key state, as the Enter of a test scenario; the console open or a focused menu keeps it.
 	if (const APlayerController* Controller = GetOwningPlayer())
 	{

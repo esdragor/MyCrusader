@@ -238,14 +238,13 @@ class UHOLGroupBarPanel : UObject
 		return false;
 	}
 
-	// RefreshControlGroups of the C++ screen: the lit group, then the chips whose group changed, the panel, the journal line.
-	void Refresh()
+	// The group just selected, lit for a moment (its key, its chip). Called by GroupLitChanged (the C++ NativeTick, each frame the lit group changes: a recall,
+	// the 0.5 s end) and at the start of Refresh, so the chip lights on the very frame as the C++ screen did.
+	void RefreshLit()
 	{
 		if (Host == nullptr || !Screen.GetControlGroupsAvailable())
 			return;
 		const int Count = Chips.Num();
-
-		// The group just selected, lit for a moment (its key, its chip).
 		const int NewLit = HOLGroupBar::LitGroup(Screen.GetLastSelectedGroup(), Screen.GetLastSelectedGroupAge());
 		if (NewLit != Lit)
 		{
@@ -257,6 +256,15 @@ class UHOLGroupBarPanel : UObject
 			}
 			Lit = NewLit;
 		}
+	}
+
+	// RefreshControlGroups of the C++ screen: the lit group, then the chips whose group changed, the panel, the journal line.
+	void Refresh()
+	{
+		if (Host == nullptr || !Screen.GetControlGroupsAvailable())
+			return;
+		const int Count = Chips.Num();
+		RefreshLit();
 
 		TArray<FString> Parts;
 		bool bAny = false;
