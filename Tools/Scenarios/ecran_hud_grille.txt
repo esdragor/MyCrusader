@@ -1,0 +1,63 @@
+# H-10 (etape 5 de la migration) : la GRILLE DE COMMANDES 3 x 4 du HUD (en bas a gauche, sous la file de production : cases A Z E R / Q S D F / W X C V) est dessinee par le script (HOLCommandGridPanel.as) ; le contenu de chaque case reste calcule par le C++. Plain, toi (5 Paysans) contre une IA figee ; scenario de preuve double : memes captures sur un binaire d'avant (grille C++) et sur celui-ci, zone de la grille decoupee et comparee a l'oeil. 3 minutes au plus.
+# Etat fixe : IA figee, combat coupe, langue fr, curseur immobile, camera au-dessus de ton forum. Le panneau de notes du scenario est ferme avant chaque capture (hol.HUD.Click ScenarioClose : il ne doit pas couvrir la grille) ; les consignes sont dans les lignes "note".
+waitlog Camera above the start of slot 0
+r.SetRes 1920x1080w
+hol.UI.Language fr
+hol.AI.ThinkSteps 100000
+hol.Combat.Enabled 0
+hol.Cheat.Resources 5000
+hol.Prod.BuildTime 40
+hol.Camera.FocusSlot 0
+frames 5
+notereset Etape 1 : rien n'est selectionne : la grille 3 x 4 est CACHEE (son emplacement reste vide, sous la file de production).
+waitkey Entree : etape 1, rien de selectionne, grille cachee
+hol.HUD.Click ScenarioClose
+frames 10
+hol.HUD.Report
+capture hud_grille_cachee
+hol.Select.Own
+waitlog Select own:
+frames 30
+note Etape 2 : tes 5 Paysans sont selectionnes : la grille montre leurs ORDRES, cases S (Arret) et V (Tenir) allumees, pas de Q ; les autres cases sont sombres a leur place.
+waitkey Entree : etape 2, la grille d'un Paysan (ordres)
+hol.HUD.Click ScenarioClose
+frames 10
+hol.HUD.Report
+capture hud_grille_paysan
+hol.Select.Click 0.5 0.5
+waitlog Selection: MainCentre of slot 0 (own)
+frames 30
+note Etape 3 : ton forum est selectionne : la grille montre ses commandes de production, case A = Paysan allumee, les autres cases du forum selon le palier ; les cases vides restent sombres.
+waitkey Entree : etape 3, la grille du forum
+hol.HUD.Click ScenarioClose
+frames 10
+hol.HUD.Report
+capture hud_grille_forum
+hol.Cheat.Resources -100000
+frames 30
+note Etape 4 : ressources a zero (hol.Cheat.Resources est additif, borne a 0) : la case A (Paysan) est GRISEE (attenuee) faute de nourriture, mais reste cliquable ; les autres cases ne changent pas de place.
+waitkey Entree : etape 4, case grisee faute de ressources
+hol.HUD.Click ScenarioClose
+frames 10
+hol.HUD.Report
+capture hud_grille_grisee
+hol.Cheat.Resources 5000
+frames 30
+hol.Mouse.Hover GridCell00
+frames 40
+note Etape 5 : la souris est sur la case A : son INFOBULLE (nom, cout en ressources, effet) s'affiche au-dessus de la case ; la case A est allumee de nouveau (ressources rendues).
+waitkey Entree : etape 5, l'infobulle de la case A
+hol.HUD.Click ScenarioClose
+frames 10
+hol.HUD.Report
+capture hud_grille_infobulle
+hol.Mouse.Click GridCell00
+waitlog queued Peasant (1 in
+frames 20
+note Etape 6 : un CLIC reel sur la case A (le journal dit "HUD: grid cell A clicked" puis "queued Peasant (1 in") a mis un Paysan en file : le panneau de production (au-dessus de la grille) montre un element.
+waitkey Entree : etape 6, clic reel sur la case A = un ordre de production
+hol.HUD.Click ScenarioClose
+frames 10
+hol.HUD.Report
+capture hud_grille_clic
+hol.Test.Sanity
