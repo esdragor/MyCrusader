@@ -1,0 +1,7 @@
+# <nom de capture> | ce que l'utilisateur doit voir
+hud_groupes_vide | Capture 1920x1080, camera au-dessus de ton forum : la BARRE DES GROUPES DE CONTROLE (en bas de l'ecran, au-dessus du panneau du bas) est ABSENTE, aucune puce ; le reste du HUD (barre du haut, mini-carte, panneau du bas) est normal ; rien n'est selectionne.
+hud_groupes_un | Capture 1920x1080 : la barre des groupes en bas affiche UNE puce "1 · 4" (groupe 1, 4 hommes d'armes), non allumee ; les 4 hommes d'armes sont selectionnes (anneaux, bloc dans le panneau du bas) ; journal "HUD groups: 1=4".
+hud_groupes_deux | Capture 1920x1080 : la barre des groupes affiche DEUX puces cote a cote, "1 · 4" puis "2 · 7", aucune allumee ; 7 soldats selectionnes (4 hommes d'armes + 3 piquiers) ; journal "HUD groups: 1=4 2=7".
+hud_groupes_rappel | Capture 1920x1080 a l'image qui suit le rappel du groupe 1 : la puce "1 · 4" de la barre des groupes est ALLUMEE (plus grande, 115 %), la puce "2 · 7" assombrie ; les 4 hommes d'armes sont selectionnes ; journal "Group 1: selected".
+hud_groupes_rappel_eteint | Capture 1920x1080 une seconde apres hud_groupes_rappel : les deux puces "1 · 4" et "2 · 7" de la barre des groupes ont la meme taille et la meme opacite (aucune allumee), meme selection de 4 unites.
+hud_groupes_clic | Capture 1920x1080 a l'image qui suit le clic sur la puce du groupe 2 : la puce "2 · 7" de la barre des groupes est ALLUMEE (plus grande), la puce "1 · 4" assombrie ; les 7 soldats sont selectionnes ; journal "HUD: group 2 clicked" puis "Group 2: selected".
