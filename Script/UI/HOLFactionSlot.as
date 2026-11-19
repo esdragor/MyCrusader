@@ -37,7 +37,7 @@ namespace HOLFactionSlot
 	// The view from: Faction, its gauge Resource, the power book's Rows with the cool-down left (ms) of each (same order; a
 	// missing entry reads 0), the faction's Tier, bHasSpecializationButton (the faction has a button to show in the slot) and
 	// bTierOpen (a tier's specialization is open to choose: the button is lit).
-	FHOLFactionSlotView Make(FString Faction, FHOLFactionResource Resource, TArray<FHOLPowerRow> Rows, TArray<int> CooldownLeftMs,
+	FHOLFactionSlotView Make(EHOLFaction Faction, FHOLFactionResource Resource, TArray<FHOLPowerRow> Rows, TArray<int> CooldownLeftMs,
 		int Tier, bool bHasSpecializationButton, bool bTierOpen)
 	{
 		FHOLFactionSlotView View;

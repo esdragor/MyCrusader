@@ -19,7 +19,7 @@ void Test_FactionSlotEmptyForFactionWithoutResource(FUnitTest& T)
 	Rows.Add(FactionSlotRow("a", 10, 0, true));
 	TArray<int> Cooldowns;
 	Cooldowns.Add(0);
-	const FHOLFactionSlotView View = HOLFactionSlot::Make("Legions", HOLFactionResource::Make(0, 0, 0), Rows, Cooldowns, 1, false, true);
+	const FHOLFactionSlotView View = HOLFactionSlot::Make(EHOLFaction::BlackLegions, HOLFactionResource::Make(0, 0, 0), Rows, Cooldowns, 1, false, true);
 	T.AssertFalse(View.bVisible, "Legions without button: slot empty");
 	T.AssertFalse(View.bHasGauge, "no gauge");
 	T.AssertEquals("", View.GaugeText, "no gauge text");
@@ -27,7 +27,7 @@ void Test_FactionSlotEmptyForFactionWithoutResource(FUnitTest& T)
 	T.AssertFalse(View.bSpecializationLit, "no lit button");
 	T.AssertEquals("slot empty", View.Describe, "described empty");
 	// Whereas the Dawn has a gauge: never empty, whatever the button.
-	const FHOLFactionSlotView Dawn = HOLFactionSlot::Make("Dawn", HOLFactionResource::Make(30, 0, 100), Rows, Cooldowns, 1, false, false);
+	const FHOLFactionSlotView Dawn = HOLFactionSlot::Make(EHOLFaction::DawnOrder, HOLFactionResource::Make(30, 0, 100), Rows, Cooldowns, 1, false, false);
 	T.AssertTrue(Dawn.bVisible, "Dawn: slot visible");
 }
 
@@ -36,7 +36,7 @@ void Test_FactionSlotShowsGaugeText(FUnitTest& T)
 {
 	TArray<FHOLPowerRow> Rows;
 	TArray<int> Cooldowns;
-	const FHOLFactionSlotView View = HOLFactionSlot::Make("Dawn", HOLFactionResource::Make(30, 0, 100), Rows, Cooldowns, 0, false, false);
+	const FHOLFactionSlotView View = HOLFactionSlot::Make(EHOLFaction::DawnOrder, HOLFactionResource::Make(30, 0, 100), Rows, Cooldowns, 0, false, false);
 	T.AssertTrue(View.bVisible, "visible");
 	T.AssertTrue(View.bHasGauge, "has a gauge");
 	T.AssertEquals(30, View.Value, "value 30");
@@ -45,7 +45,7 @@ void Test_FactionSlotShowsGaugeText(FUnitTest& T)
 	T.AssertTrue(Math::Abs(View.Fraction - 0.3) < 0.001, "30 percent of the bar");
 	T.AssertEquals("slot gauge 30 / 100 powers none", View.Describe, "described");
 	// A start above the cap is brought to the cap by the gauge: a full bar.
-	const FHOLFactionSlotView Full = HOLFactionSlot::Make("Dawn", HOLFactionResource::Make(250, 0, 100), Rows, Cooldowns, 0, false, false);
+	const FHOLFactionSlotView Full = HOLFactionSlot::Make(EHOLFaction::DawnOrder, HOLFactionResource::Make(250, 0, 100), Rows, Cooldowns, 0, false, false);
 	T.AssertEquals("100 / 100", Full.GaugeText, "100 / 100");
 	T.AssertTrue(Math::Abs(Full.Fraction - 1.0) < 0.001, "full bar");
 }
@@ -65,7 +65,7 @@ void Test_FactionSlotPowerBoxesFollowBookStates(FUnitTest& T)
 	Cooldowns.Add(0);
 	Cooldowns.Add(0);
 	Cooldowns.Add(4200);
-	const FHOLFactionSlotView View = HOLFactionSlot::Make("Dawn", HOLFactionResource::Make(30, 0, 100), Rows, Cooldowns, 1, false, false);
+	const FHOLFactionSlotView View = HOLFactionSlot::Make(EHOLFaction::DawnOrder, HOLFactionResource::Make(30, 0, 100), Rows, Cooldowns, 1, false, false);
 	T.AssertEquals(5, View.Powers.Num(), "five boxes");
 	if (View.Powers.Num() != 5)
 		return;
@@ -88,21 +88,21 @@ void Test_FactionSlotSpecializationButtonSharesTheSlot(FUnitTest& T)
 {
 	TArray<FHOLPowerRow> Rows;
 	TArray<int> Cooldowns;
-	const FHOLFactionSlotView Dark = HOLFactionSlot::Make("Legions", HOLFactionResource::Make(0, 0, 0), Rows, Cooldowns, 0, true, false);
+	const FHOLFactionSlotView Dark = HOLFactionSlot::Make(EHOLFaction::BlackLegions, HOLFactionResource::Make(0, 0, 0), Rows, Cooldowns, 0, true, false);
 	T.AssertTrue(Dark.bVisible, "the button alone makes the slot visible");
 	T.AssertFalse(Dark.bHasGauge, "still no gauge");
 	T.AssertTrue(Dark.bHasSpecializationButton, "button shown");
 	T.AssertFalse(Dark.bSpecializationLit, "dark while no tier is open");
 	T.AssertEquals("slot spec dark", Dark.Describe, "described dark");
-	const FHOLFactionSlotView Lit = HOLFactionSlot::Make("Legions", HOLFactionResource::Make(0, 0, 0), Rows, Cooldowns, 0, true, true);
+	const FHOLFactionSlotView Lit = HOLFactionSlot::Make(EHOLFaction::BlackLegions, HOLFactionResource::Make(0, 0, 0), Rows, Cooldowns, 0, true, true);
 	T.AssertTrue(Lit.bSpecializationLit, "lit once a tier is open");
 	T.AssertEquals("slot spec lit", Lit.Describe, "described lit");
 	// With a gauge: the same slot carries both.
-	const FHOLFactionSlotView Both = HOLFactionSlot::Make("Dawn", HOLFactionResource::Make(30, 0, 100), Rows, Cooldowns, 0, true, true);
+	const FHOLFactionSlotView Both = HOLFactionSlot::Make(EHOLFaction::DawnOrder, HOLFactionResource::Make(30, 0, 100), Rows, Cooldowns, 0, true, true);
 	T.AssertTrue(Both.bHasGauge, "gauge");
 	T.AssertTrue(Both.bSpecializationLit, "and the lit button");
 	T.AssertEquals("slot gauge 30 / 100 powers none spec lit", Both.Describe, "described together");
 	// A tier open with no button to show lights nothing.
-	const FHOLFactionSlotView NoButton = HOLFactionSlot::Make("Dawn", HOLFactionResource::Make(30, 0, 100), Rows, Cooldowns, 0, false, true);
+	const FHOLFactionSlotView NoButton = HOLFactionSlot::Make(EHOLFaction::DawnOrder, HOLFactionResource::Make(30, 0, 100), Rows, Cooldowns, 0, false, true);
 	T.AssertFalse(NoButton.bSpecializationLit, "no button, nothing lit");
 }
