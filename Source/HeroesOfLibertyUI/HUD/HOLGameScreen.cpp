@@ -64,28 +64,8 @@
 
 #define LOCTEXT_NAMESPACE "HOLGameScreen"
 
-namespace
-{
-	/** The owner of what is selected: Vous, else the slot's name as the players table shows it (an AI's « IA Difficile 3 », IA0.1-Q1). */
-	FText GetOwnerNameIn(const UWorld* World, const int32 Owner, const bool bOwn)
-	{
-		const AHOLGameState* GameState = World ? World->GetGameState<AHOLGameState>() : nullptr;
-		if (bOwn || !GameState)
-		{
-			return bOwn ? LOCTEXT("You", "Vous") : FText::Format(LOCTEXT("PlayerN", "Joueur {0}"), Owner + 1);
-		}
-		return HOLForumMessages::GetPlayerName(GameState->GetLaunchConfig(), Owner, INDEX_NONE);
-	}
-}
-
 namespace UE::HeroesOfLiberty::UI::GameScreen
 {
-	/** At its source or on its round trip (D307): the HUD says « Récolte » for both. */
-	bool IsGatheringActivity(const EHOLUnitActivity Activity)
-	{
-		return Activity == EHOLUnitActivity::Gathering || Activity == EHOLUnitActivity::GatherTrip;
-	}
-
 	/** A resource's name, as the top bar writes it. */
 	FText GetResourceName(const EHOLResource Resource)
 	{
@@ -245,28 +225,18 @@ namespace UE::HeroesOfLiberty::UI::GameScreen
 	constexpr float CellGap = 2.f;
 	constexpr float QueueItemHeight = 36.f;
 	constexpr float ScreenMargin = 16.f;
-	constexpr float SwatchSize = 14.f;
-	/** The site's progress bar in the selection block (J6a.5). */
-	constexpr float SiteBarWidth = 200.f;
 	/** The grid panel's width: the short message above it wraps within it (D313). */
 	constexpr float GridWidth = 4 * (CellSize + 2 * CellGap) + 12.f;
 	/**
 	 * The bottom bar (the user's 2nd trial of G.1, AoE4's way, D201), left to right at fixed places whatever the selection:
 	 * the selection's block (a fixed width), the command panel (3 x 4), the builders' age panels; its height the panel's.
 	 */
-	constexpr float SelectionWidth = 340.f;
 	constexpr float BarHeight = 3 * (CellSize + 2 * CellGap) + 12.f;
 	constexpr float BarGap = 6.f;
 	/** The minimap's place, bottom right (D201): no minimap yet, the place kept free. */
 	constexpr float MinimapSize = 240.f;
 	/** How far the script's age medallions rise over the bar's top edge (MedallionRoom keeps that room free). */
 	constexpr float MedallionRise = 26.f;
-	/** The selection's chips (G.1e): how many (« Tous » and 11 types), their height, at most two on a line, a long name cut. */
-	constexpr int32 NumChips = 12;
-	constexpr float ChipHeight = 30.f;
-	constexpr float ChipGap = 4.f;
-	constexpr float ChipMaxWidth = (SelectionWidth - 24.f - ChipGap) / 2.f;
-	constexpr int32 ChipNameChars = 12;
 	/** The name the HUD's report gives the « Annuler » cell of a site. */
 	const FName CancelName(TEXT("Cancel"));
 	/** Seconds between two readings of a selected group's activities. */
@@ -275,14 +245,6 @@ namespace UE::HeroesOfLiberty::UI::GameScreen
 
 	/** The ages' numerals (I to IV) and names (GDD § 11.1). */
 	const TCHAR* const AgeNumerals[HOLCommandGrid::NumAges] = { TEXT("I"), TEXT("II"), TEXT("III"), TEXT("IV") };
-
-	/** A chip's label (G.1e): « Paysan (5) », a long name cut short (« Homme d'arme. (3) »); Count 0: the name alone. */
-	FText MakeChipLabel(const FText& Name, const int32 Count)
-	{
-		const FString Full = Name.ToString();
-		const FText Shown = Full.Len() <= ChipNameChars ? Name : FText::AsCultureInvariant(Full.Left(ChipNameChars - 1).TrimEnd() + TEXT("."));
-		return Count > 0 ? FText::Format(LOCTEXT("SelectionChip", "{0} ({1})"), Shown, Count) : Shown;
-	}
 
 	FText GetAgeName(const int32 Age)
 	{
@@ -312,17 +274,6 @@ namespace UE::HeroesOfLiberty::UI::GameScreen
 		{
 			Widget->SetVisibility(Wanted);
 		}
-	}
-
-	/** Amounts without thousands separators, as in AoE ("1200"). */
-	FText FormatAmount(const int32 Value)
-	{
-		return FText::AsNumber(Value, &FNumberFormattingOptions::DefaultNoGrouping());
-	}
-
-	FText FormatRatio(const int32 Value, const int32 Max)
-	{
-		return FText::Format(INVTEXT("{0} / {1}"), FormatAmount(Value), FormatAmount(Max));
 	}
 }
 
@@ -372,17 +323,7 @@ void UHOLGameScreen::NativeOnInitialized()
 	UE_LOG(LogHOLUI, Log, TEXT("Game screen: script part %s"), ScriptScreen ? *ScriptScreen->GetClass()->GetName() : TEXT("none"));
 
 	// HUD H-10: the grid's cells are the script's (UHOLCommandGridPanel.Build, then SetGridCells): their keys and clicks are set there.
-	SelectionChips = Cast<UWrapBox>(WidgetTree->FindWidget(TEXT("SelectionChips")));
-	for (int32 Chip = 0; Chip < NumChips; ++Chip)
-	{
-		UHOLQueueItem* Item = Cast<UHOLQueueItem>(WidgetTree->FindWidget(*FString::Printf(TEXT("SelectionChip%d"), Chip)));
-		ChipItems.Add(Item);
-		ChipFrames.Add(Cast<UBorder>(WidgetTree->FindWidget(*FString::Printf(TEXT("SelectionChipFrame%d"), Chip))));
-		if (Item)
-		{
-			Item->OnClicked().AddUObject(this, &UHOLGameScreen::HandleChipClicked, Chip);
-		}
-	}
+	// HUD H-9: the selection chips are the script's (UHOLSelectionChipsPanel): built and clicked there.
 	ShownGridTypes.Init(NAME_None, AHOLPlayerController::NumGridCells);
 	ShownOrderTypes.Init(NAME_None, AHOLPlayerController::NumGridCells);
 	ShownAgeTypes.Init(NAME_None, HOLCommandGrid::NumAges * NumAgeCells);
@@ -515,9 +456,8 @@ void UHOLGameScreen::NativeTick(const FGeometry& MyGeometry, const float InDelta
 			}
 		}
 	}
-	// A gatherer selected alone: its line follows it at every change (D303); a group's activities four times a second; a
-	// source's amount at every change (J5b); a group of buildings (an F key) four times a second, its sites and queues
-	// followed without their delegates. The other blocks follow their delegates.
+	// A gatherer selected alone, a source's amount: the script follows them every frame while its block says so (UHOLScriptScreen::SelectionFrameTick, called by
+	// the script screen's tick). A group of units' activities and a group of buildings (an F key), four times a second: the C++ aiguillage stays, the script draws.
 	using namespace UE::HeroesOfLiberty::UI::GameScreen;
 	const int32 NumSelectedUnits = Controller.IsValid() ? Controller->GetSelectedUnits().Num() : 0;
 	SinceGroupRefresh += FrameSeconds;
@@ -529,24 +469,13 @@ void UHOLGameScreen::NativeTick(const FGeometry& MyGeometry, const float InDelta
 			Refresh();
 		}
 	}
-	else if (NumSelectedUnits == 1)
-	{
-		FHOLUnitView Unit;
-		if (GetWorld() && HOLUnitView::Find(*GetWorld(), Controller->GetSelectedUnits()[0], Unit))
-		{
-			// A soldier's line shows while it strikes alone (J7b.4), a gatherer's always; its health as it changes (J7b.5).
-			RefreshUnitActivity(Unit.CarryCapacity > 0 || Unit.Activity == EHOLUnitActivity::Attacking ? &Unit : nullptr);
-			RefreshUnitHealth(&Unit);
-		}
-	}
 	else if (NumSelectedUnits > 1 && SinceGroupRefresh >= GroupRefreshInterval)
 	{
 		SinceGroupRefresh = 0.f;
-		RefreshUnitSelection(Controller->GetSelectedUnits());
-	}
-	else if (Controller.IsValid() && Controller->GetSelectedSource() != INDEX_NONE)
-	{
-		RefreshSourceSelection(Controller->GetSelectedSource());
+		if (ScriptScreen)
+		{
+			ScriptScreen->RequestRefresh();
+		}
 	}
 	// The chosen age (a key, a placement, Escape) changes without a delegate: its header follows it (the 2nd check of G.1c).
 	if (bAgesShown && ScriptScreen && Controller.IsValid() && Controller->GetChosenAge() != ShownChosenAge)
@@ -848,39 +777,11 @@ void UHOLGameScreen::Refresh()
 {
 	const AHOLPlayerController* PlayerController = Controller.Get();
 	const AHOLPlayerState* PlayerState = BoundPlayerState.Get();
-	const AHOLBuilding* Selected = PlayerController ? PlayerController->GetSelection() : nullptr;
 	// Only the owner gives a building orders, and only the owner receives its queue (D282).
 	const AHOLBuilding* Own = PlayerController ? PlayerController->GetOwnSelection() : nullptr;
 
 	RefreshTopBar(PlayerState);
-	ChipLabels.Reset();
-	ActiveChip = INDEX_NONE;
-	// A main forum's lives row (V2.3d): RefreshSelection alone shows it, for a single building.
-	const bool bSingleBuilding = !PlayerController || (PlayerController->GetSelectedUnits().IsEmpty()
-		&& PlayerController->GetSelectedSource() == INDEX_NONE && !PlayerController->HasBuildingGroup());
-	if (!bSingleBuilding)
-	{
-		UE::HeroesOfLiberty::UI::GameScreen::SetShown(SelectionLivesRow, false);
-	}
-	if (PlayerController && !PlayerController->GetSelectedUnits().IsEmpty())
-	{
-		RefreshUnitSelection(PlayerController->GetSelectedUnits());
-	}
-	else if (PlayerController && PlayerController->GetSelectedSource() != INDEX_NONE)
-	{
-		RefreshSourceSelection(PlayerController->GetSelectedSource());
-	}
-	else if (PlayerController && PlayerController->HasBuildingGroup())
-	{
-		TArray<AHOLBuilding*> Group;
-		PlayerController->GetSelectedBuildings(Group);
-		RefreshBuildingGroup(Group);
-	}
-	else
-	{
-		RefreshSelection(Selected, Selected && Selected == Own);
-	}
-	RefreshChips();
+	// HUD H-9: the selection block (the four paths, the chips) is the script's: RequestRefresh below makes it read the controller again the next frame.
 	RefreshIdleWorkers();
 	// D357: a spectator commands nothing, its grid hidden.
 	const bool bSpectator = PlayerController && PlayerController->IsSpectator();
@@ -913,409 +814,6 @@ void UHOLGameScreen::RefreshTopBar(const AHOLPlayerState* PlayerState)
 	ShownGatherers = PlayerState->GetGatherers();
 }
 
-void UHOLGameScreen::RefreshSelection(const AHOLBuilding* Building, const bool bOwn)
-{
-	using namespace UE::HeroesOfLiberty::UI::GameScreen;
-
-	SetShown(SelectionPanel, Building != nullptr, ESlateVisibility::Visible);
-	const bool bSite = Building && !Building->IsFinished();
-	SetShown(SelectionProgressRow, bSite);
-	if (!Building)
-	{
-		ShownSelection = TEXT("none");
-		ShownHealth.Reset(); HideUnitStats();
-		RefreshUnitActivity(nullptr);
-		return;
-	}
-	const FHOLBuildingTypeRow* Type = Building->GetType();
-	const int32 Percent = FMath::FloorToInt(Building->GetProgress() * 100.f);
-	ShownSelection = FString::Printf(TEXT("%s (%s)%s"), *Building->GetTypeName().ToString(), bOwn ? TEXT("own") : TEXT("other"),
-		Building->IsFoundation() ? TEXT(", foundation") : bSite ? *FString::Printf(TEXT(", under construction %d%%"), Percent) : TEXT(""));
-
-	if (SelectionName)
-	{
-		// A building not finished: its foundation (J6a.3), then its site with its progress (J6a.5, D313).
-		const FText Name = HOLGameNames::GetBuildingName(Building->GetTypeName(), Type);
-		SelectionName->SetText(!bSite ? Name : Building->IsFoundation() ? FText::Format(LOCTEXT("FoundationName", "Fondation : {0}"), Name)
-			: FText::Format(LOCTEXT("SiteName", "Chantier : {0}"), Name));
-	}
-	if (bSite && SelectionProgress)
-	{
-		SelectionProgress->SetPercent(Building->GetProgress());
-	}
-	if (bSite && SelectionProgressText)
-	{
-		SelectionProgressText->SetText(FText::Format(LOCTEXT("ProgressPercent", "{0} %"), FText::AsNumber(Percent)));
-	}
-	SetShown(SelectionOwnerRow, true);
-	if (SelectionSwatch)
-	{
-		SelectionSwatch->SetColorAndOpacity(FLinearColor(HOLPlayerColors::GetColor(Building->GetColorIndex())));
-	}
-	if (SelectionOwner)
-	{
-		SelectionOwner->SetText(GetOwnerNameIn(GetWorld(), Building->GetOwnerPlayer(), bOwn));
-	}
-	ShownHealth.Reset(); HideUnitStats();
-	// A main forum (V2.3b): its lives to anyone (D353); down, its ruin or its rebuilding in place of its health (0 until up).
-	const FHOLForumBlock Forum = Building->GetForumBlock(bOwn);
-	// Reported on the line "HUD forum", not in Describe (the checks read the report's line to its end).
-	ShownForum = Forum.bShown ? Forum.Shown : FString();
-	SetShown(SelectionHealthRow, !Forum.bHideHealth);
-	// Its lives on their own row (V2.3d), styled as the health's.
-	SetShown(SelectionLivesRow, Forum.bShown);
-	if (Forum.bShown)
-	{
-		SetDetailLine(Forum.Shown, Forum.Text);
-		// Standing: no line of its own, its lives alone (the description keeps them for the reports).
-		SetShown(SelectionActivity, !Forum.Text.IsEmpty());
-		if (SelectionLives && Forum.Lives != ShownForumLives)
-		{
-			ShownForumLives = Forum.Lives;
-			SelectionLives->SetText(FText::AsNumber(Forum.Lives));
-		}
-	}
-	else if (!bSite || !bOwn)
-	{
-		RefreshUnitActivity(nullptr);
-	}
-	if (SelectionHealth)
-	{
-		// The health of its work (D312), whole once finished, less the damage it took (D345.2a).
-		SelectionHealth->SetText(FormatRatio(Building->GetHealth(), Building->GetMaxHealth()));
-	}
-	if (bSite && bOwn)
-	{
-		// Its builders at work (D313), which only its owner receives.
-		const int32 Builders = Building->GetBuildersAtWork();
-		SetDetailLine(FString::Printf(TEXT(", builders %d"), Builders), FText::Format(LOCTEXT("Builders", "Bâtisseurs : {0}"), Builders));
-	}
-}
-
-void UHOLGameScreen::RefreshUnitSelection(const TConstArrayView<uint32> UnitIds)
-{
-	using namespace UE::HeroesOfLiberty::UI::GameScreen;
-
-	// The selected units as this machine knows them: type and owner.
-	TArray<FHOLUnitView> Views;
-	if (const UWorld* World = GetWorld())
-	{
-		FHOLUnitView One;
-		if (UnitIds.Num() != 1)
-		{
-			HOLUnitView::Gather(*World, Views);
-		}
-		else if (HOLUnitView::Find(*World, UnitIds[0], One))
-		{
-			Views.Add(One);
-		}
-	}
-	Views.RemoveAll([UnitIds](const FHOLUnitView& View) { return !UnitIds.Contains(View.UnitId); });
-	SetShown(SelectionPanel, !Views.IsEmpty(), ESlateVisibility::Visible);
-	SetShown(SelectionProgressRow, false);
-	if (Views.IsEmpty())
-	{
-		ShownSelection = TEXT("none");
-		ShownHealth.Reset(); HideUnitStats();
-		RefreshUnitActivity(nullptr);
-		return;
-	}
-	const AHOLPlayerState* PlayerState = BoundPlayerState.Get();
-	const int32 Owner = Views[0].OwnerPlayer;
-	const bool bOwn = PlayerState && PlayerState->GetPlayerIndex() == Owner;
-
-	// Types in a stable order, each with its number.
-	TMap<FName, int32> PerType;
-	for (const FHOLUnitView& View : Views)
-	{
-		++PerType.FindOrAdd(View.TypeName);
-	}
-	// Soldiers first, workers (the Peasants) last (J7a.5), each part by name.
-	TSet<FName> WorkerTypes;
-	for (const FHOLUnitView& View : Views)
-	{
-		if (View.CarryCapacity > 0)
-		{
-			WorkerTypes.Add(View.TypeName);
-		}
-	}
-	PerType.KeySort([&WorkerTypes](const FName A, const FName B)
-	{
-		const bool bWorkerA = WorkerTypes.Contains(A);
-		return bWorkerA != WorkerTypes.Contains(B) ? !bWorkerA : A.LexicalLess(B);
-	});
-	TArray<FString> ShownTypes;
-	for (const TPair<FName, int32>& Type : PerType)
-	{
-		ShownTypes.Add(Views.Num() == 1 ? Type.Key.ToString() : FString::Printf(TEXT("%s x%d"), *Type.Key.ToString(), Type.Value));
-	}
-	ShownSelection = FString::Printf(TEXT("%s (%s)"), *FString::Join(ShownTypes, TEXT(", ")), bOwn ? TEXT("own") : TEXT("other"));
-	if (SelectionName && Views.Num() == 1)
-	{
-		SelectionName->SetText(UnitNameFor(Views[0].TypeName, Views[0].OwnerPlayer));
-	}
-	// A group (G.1e, AoE4's way): chips, the player's units of several types by their subgroups (Tab's, « Tous (8) » first,
-	// the active one lit, the soldiers first, the Peasants last); else « Tous » (several types) then one per type.
-	TArray<FHOLSubgroup> Subgroups;
-	FHOLSubgroup Subgroup;
-	const AHOLPlayerController* PlayerController = Controller.Get();
-	if (Views.Num() > 1 && bOwn && PlayerController && PlayerController->GetActiveUnitSubgroup(Subgroup))
-	{
-		PlayerController->GetUnitSubgroups(Subgroups);
-		for (const FHOLSubgroup& Each : Subgroups)
-		{
-			ChipLabels.Add(Each.bAll ? FText::Format(LOCTEXT("SubgroupAll", "Tous ({0})"), Each.Members.Num())
-				: MakeChipLabel(UnitNameFor(Each.TypeName, Owner), Each.Members.Num()));
-		}
-		ActiveChip = Subgroups.IndexOfByKey(Subgroup);
-	}
-	else if (Views.Num() > 1)
-	{
-		if (PerType.Num() > 1)
-		{
-			ChipLabels.Add(FText::Format(LOCTEXT("SubgroupAll", "Tous ({0})"), Views.Num()));
-		}
-		for (const TPair<FName, int32>& Type : PerType)
-		{
-			ChipLabels.Add(MakeChipLabel(UnitNameFor(Type.Key, Owner), Type.Value));
-		}
-		ActiveChip = bOwn ? 0 : INDEX_NONE;
-	}
-	SetShown(SelectionOwnerRow, true);
-	if (SelectionSwatch)
-	{
-		SelectionSwatch->SetColorAndOpacity(FLinearColor(HOLPlayerColors::GetColor(AHOLPlayerState::FindColorIndex(*GetWorld(), Owner))));
-	}
-	if (SelectionOwner)
-	{
-		SelectionOwner->SetText(GetOwnerNameIn(GetWorld(), Owner, bOwn));
-	}
-	// One unit shows its health, a group does not (D288).
-	RefreshUnitHealth(Views.Num() == 1 ? &Views[0] : nullptr);
-	if (Views.Num() == 1)
-	{
-		// One gatherer shows what it does and what it carries (J5, D298); any unit striking, its attack (J7b.4).
-		RefreshUnitActivity(Views[0].CarryCapacity > 0 || Views[0].Activity == EHOLUnitActivity::Attacking ? &Views[0] : nullptr);
-		return;
-	}
-	// A group, its workers by activity (J5b, D298): the round trip counts as gathering (D307); building (J6a.4) on its own;
-	// fighting on its own too, never idle (J7b trial feedback).
-	int32 Gathering = 0, Moving = 0, Idle = 0, Building = 0, Fighting = 0;
-	for (const FHOLUnitView& View : Views)
-	{
-		if (View.CarryCapacity > 0)
-		{
-			++(IsGatheringActivity(View.Activity) ? Gathering : View.Activity == EHOLUnitActivity::Building ? Building
-				: View.Activity == EHOLUnitActivity::Attacking ? Fighting
-				: View.Activity == EHOLUnitActivity::Moving ? Moving : Idle);
-		}
-	}
-	TArray<FText> Parts;
-	if (Gathering > 0)
-	{
-		Parts.Add(FText::Format(LOCTEXT("GroupGathering", "{0} en récolte"), Gathering));
-	}
-	if (Building > 0)
-	{
-		Parts.Add(FText::Format(LOCTEXT("GroupBuilding", "{0} en construction"), Building));
-	}
-	if (Fighting > 0)
-	{
-		Parts.Add(FText::Format(LOCTEXT("GroupFighting", "{0} au combat"), Fighting));
-	}
-	if (Moving > 0)
-	{
-		Parts.Add(FText::Format(LOCTEXT("GroupMoving", "{0} en marche"), Moving));
-	}
-	if (Idle > 0)
-	{
-		Parts.Add(FText::Format(LOCTEXT("GroupIdle", "{0} {0}|plural(one=inactif,other=inactifs)"), Idle));
-	}
-	SetDetailLine(Parts.IsEmpty() ? FString() : FString::Printf(TEXT(", gathering %d building %d fighting %d moving %d idle %d"), Gathering, Building, Fighting, Moving, Idle),
-		FText::Join(FText::AsCultureInvariant(TEXT(" · ")), Parts));
-}
-
-void UHOLGameScreen::RefreshBuildingGroup(const TConstArrayView<AHOLBuilding*> Buildings)
-{
-	using namespace UE::HeroesOfLiberty::UI::GameScreen;
-
-	// Several of the player's buildings (an F key, D30): by type and number, as a group of units; the sites among them.
-	SetShown(SelectionPanel, !Buildings.IsEmpty(), ESlateVisibility::Visible);
-	SetShown(SelectionProgressRow, false);
-	ShownHealth.Reset(); HideUnitStats();
-	SetShown(SelectionHealthRow, false);
-	if (Buildings.IsEmpty())
-	{
-		ShownSelection = TEXT("none");
-		ShownHealth.Reset(); HideUnitStats();
-		SetDetailLine(FString(), FText::GetEmpty());
-		return;
-	}
-	// In the group's order (the centre first), its ghosts and sites counted as « en construction ».
-	TMap<FName, int32> PerType;
-	int32 Sites = 0;
-	for (const AHOLBuilding* Building : Buildings)
-	{
-		++PerType.FindOrAdd(Building->GetTypeName());
-		Sites += Building->IsFinished() ? 0 : 1;
-	}
-	TArray<FString> ShownTypes;
-	for (const TPair<FName, int32>& Type : PerType)
-	{
-		ShownTypes.Add(FString::Printf(TEXT("%s x%d"), *Type.Key.ToString(), Type.Value));
-	}
-	// Chips (G.1e, as a group of units): the subgroups Tab goes through, « Tous (7) », « Maison (3) », « Centre principal »
-	// (each main centre one alone), the active one lit.
-	FHOLSubgroup Subgroup;
-	TArray<FHOLSubgroup> Subgroups;
-	const AHOLPlayerController* PlayerController = Controller.Get();
-	if (PlayerController && PlayerController->GetActiveSubgroup(Subgroup))
-	{
-		PlayerController->GetSubgroups(Subgroups);
-		for (const FHOLSubgroup& Each : Subgroups)
-		{
-			ChipLabels.Add(Each.bAll ? FText::Format(LOCTEXT("SubgroupAll", "Tous ({0})"), Each.Members.Num())
-				: MakeChipLabel(HOLGameNames::GetBuildingName(Each.TypeName, UHOLBuildingSettings::FindType(Each.TypeName)),
-					HOLCommandGrid::IsAloneInGroup(Each.TypeName) ? 0 : Each.Members.Num()));
-		}
-		ActiveChip = Subgroups.IndexOfByKey(Subgroup);
-	}
-	ShownSelection = FString::Printf(TEXT("%d buildings (own): %s, subgroup %s"), Buildings.Num(), *FString::Join(ShownTypes, TEXT(" ")),
-		PlayerController ? *PlayerController->DescribeSubgroup() : TEXT(""));
-	SetShown(SelectionOwnerRow, true);
-	if (SelectionSwatch)
-	{
-		SelectionSwatch->SetColorAndOpacity(FLinearColor(HOLPlayerColors::GetColor(Buildings[0]->GetColorIndex())));
-	}
-	if (SelectionOwner)
-	{
-		SelectionOwner->SetText(LOCTEXT("You", "Vous"));
-	}
-	SetDetailLine(Sites > 0 ? FString::Printf(TEXT(", sites %d"), Sites) : FString(), FText::Format(LOCTEXT("GroupBuilding", "{0} en construction"), Sites));
-}
-
-void UHOLGameScreen::RefreshChips()
-{
-	using namespace UE::HeroesOfLiberty::UI::GameScreen;
-
-	// The chips in place of the name (G.1e), each written when it changed; the active one's frame lit as the chosen age.
-	const bool bChips = !ChipLabels.IsEmpty();
-	SetShown(SelectionName, !bChips);
-	SetShown(SelectionChips, bChips, ESlateVisibility::SelfHitTestInvisible);
-	ShownChips.SetNum(ChipItems.Num());
-	for (int32 Chip = 0; Chip < ChipItems.Num(); ++Chip)
-	{
-		const FText Label = ChipLabels.IsValidIndex(Chip) ? ChipLabels[Chip] : FText::GetEmpty();
-		const FString Shown = Label.ToString();
-		UBorder* Frame = ChipFrames.IsValidIndex(Chip) ? ChipFrames[Chip].Get() : nullptr;
-		if (ShownChips[Chip] != Shown)
-		{
-			ShownChips[Chip] = Shown;
-			if (ChipItems[Chip])
-			{
-				ChipItems[Chip]->SetLabel(Label);
-			}
-			SetShown(Frame, !Shown.IsEmpty(), ESlateVisibility::SelfHitTestInvisible);
-		}
-		if (Frame && (ShownActiveChip == Chip) != (ActiveChip == Chip))
-		{
-			Frame->SetBrushColor(ActiveChip == Chip ? HOLUIStyle::Accent : FLinearColor::Transparent);
-		}
-	}
-	ShownActiveChip = ActiveChip;
-}
-
-void UHOLGameScreen::HandleChipClicked(const int32 Chip)
-{
-	// Tab as many times as it takes from the active subgroup to the chip's (the same path and logs as the key).
-	AHOLPlayerController* PlayerController = Controller.Get();
-	if (!PlayerController)
-	{
-		return;
-	}
-	TArray<FHOLSubgroup> Subgroups;
-	FHOLSubgroup Active;
-	const bool bUnits = !PlayerController->GetSelectedUnits().IsEmpty();
-	const bool bFound = bUnits ? PlayerController->GetActiveUnitSubgroup(Active) : PlayerController->GetActiveSubgroup(Active);
-	if (bUnits)
-	{
-		PlayerController->GetUnitSubgroups(Subgroups);
-	}
-	else
-	{
-		PlayerController->GetSubgroups(Subgroups);
-	}
-	const int32 From = bFound ? Subgroups.IndexOfByKey(Active) : INDEX_NONE;
-	if (From == INDEX_NONE || !Subgroups.IsValidIndex(Chip))
-	{
-		return;
-	}
-	UE_LOG(LogHOLUI, Display, TEXT("HUD: chip %d clicked"), Chip);
-	for (int32 Step = (Chip - From + Subgroups.Num()) % Subgroups.Num(); Step > 0; --Step)
-	{
-		PlayerController->CycleSubgroup();
-	}
-	Refresh();
-}
-
-void UHOLGameScreen::RefreshSourceSelection(const int32 SourceIndex)
-{
-	using namespace UE::HeroesOfLiberty::UI::GameScreen;
-
-	const UHOLSourceSubsystem* Sources = GetWorld() ? GetWorld()->GetSubsystem<UHOLSourceSubsystem>() : nullptr;
-	const FHOLSource* Source = Sources && Sources->GetSources().IsValidIndex(SourceIndex) ? &Sources->GetSources()[SourceIndex] : nullptr;
-	const FName TypeName = Source && Sources->GetTypeNames().IsValidIndex(Source->TypeIndex) ? Sources->GetTypeNames()[Source->TypeIndex] : NAME_None;
-	SetShown(SelectionPanel, !TypeName.IsNone(), ESlateVisibility::Visible);
-	SetShown(SelectionProgressRow, false);
-	if (TypeName.IsNone())
-	{
-		ShownSelection = TEXT("none");
-		ShownHealth.Reset(); HideUnitStats();
-		SetDetailLine(FString(), FText::GetEmpty());
-		return;
-	}
-	// Nobody's: no owner, no health; its name, and what it still holds (« Filon d'or — 1840 », D298).
-	SetShown(SelectionOwnerRow, false);
-	ShownHealth.Reset(); HideUnitStats();
-	SetShown(SelectionHealthRow, false);
-	const FString Shown = FString::Printf(TEXT("%s source %d"), *TypeName.ToString(), SourceIndex);
-	if (Shown != ShownSelection)
-	{
-		ShownSelection = Shown;
-		if (SelectionName)
-		{
-			SelectionName->SetText(HOLGameNames::GetSourceName(TypeName, Sources->GetType(Source->TypeIndex)));
-		}
-	}
-	SetDetailLine(FString::Printf(TEXT(", %d left"), Source->Remaining),
-		FText::Format(LOCTEXT("SourceRemaining", "Reste : {0}"), FormatAmount(Source->Remaining)));
-}
-
-void UHOLGameScreen::RefreshUnitActivity(const FHOLUnitView* Unit)
-{
-	using namespace UE::HeroesOfLiberty::UI::GameScreen;
-
-	// The amount is known in solo, and on a client once the server has sent it (D303): until then, the activity alone.
-	const bool bLoad = Unit && Unit->bLoadAmountKnown && (Unit->LoadAmount > 0 || IsGatheringActivity(Unit->Activity));
-	const FString Shown = !Unit ? FString()
-		: bLoad ? FString::Printf(TEXT(", %s %s %d/%d"), *UEnum::GetValueAsString(Unit->Activity),
-			*UEnum::GetValueAsString(Unit->LoadResource), Unit->LoadAmount, Unit->CarryCapacity)
-		: FString::Printf(TEXT(", %s"), *UEnum::GetValueAsString(Unit->Activity));
-	if (Shown == ShownActivity || !Unit)
-	{
-		SetDetailLine(Shown, FText::GetEmpty());
-		return;
-	}
-	const FText Activity = IsGatheringActivity(Unit->Activity) ? LOCTEXT("ActivityGathering", "Récolte")
-		: Unit->Activity == EHOLUnitActivity::Building ? LOCTEXT("ActivityBuilding", "Construction")
-		: Unit->Activity == EHOLUnitActivity::Attacking ? LOCTEXT("ActivityAttacking", "Attaque")
-		: Unit->Activity == EHOLUnitActivity::Moving ? LOCTEXT("ActivityMoving", "En marche") : LOCTEXT("ActivityIdle", "Inactif");
-	SetDetailLine(Shown, bLoad
-		? FText::Format(LOCTEXT("ActivityWithLoad", "{0} — {1} {2}/{3}"), Activity, GetResourceName(Unit->LoadResource),
-			Unit->LoadAmount, Unit->CarryCapacity)
-		: Activity);
-}
-
 namespace
 {
 	TAutoConsoleVariable<int32> CVarUnitStats(TEXT("hol.HUD.UnitStats"), 1,
@@ -1323,32 +821,30 @@ namespace
 
 	TAutoConsoleVariable<int32> CVarUnitStatsBuilding(TEXT("hol.HUD.UnitStatsBuilding"), 1,
 		TEXT("The blow against buildings in the selected unit's statistics (Q-unit-stats-building): 0 never, 1 only for a unit with no ordinary attack (the Ram), 2 also next to an ordinary attack when it differs"));
+}
 
-	/** A statistic as the line writes it: at most one decimal, none when whole (13,2 ; 12). */
-	FText FormatStat(const float Value)
+namespace
+{
+	// HUD H-9: the script's selection block is built into the game screen's SelectionHost (HOLScriptScreen::GetSelectionHost), so its widgets are OWNED by the script screen's
+	// tree but hang from the game screen's tree: UWidgetTree::FindWidget walks from the root, hence the game screen's tree is searched first, then the script screen's.
+	UWidget* FindSelectionWidget(const UWidgetTree* GameTree, const UWidgetTree* ScriptTree, const FName Name)
 	{
-		FNumberFormattingOptions Options;
-		Options.MinimumFractionalDigits = 0;
-		Options.MaximumFractionalDigits = 1;
-		return FText::AsNumber(Value, &Options);
-	}
-
-	/** The same, culture-free, for the report (hol.HUD.Report's "HUD stats" line). */
-	FString FormatStatPlain(const float Value)
-	{
-		return FString::SanitizeFloat(FMath::RoundToFloat(Value * 10.f) / 10.f, 0);
+		UWidget* Found = GameTree ? GameTree->FindWidget(Name) : nullptr;
+		return Found ? Found : ScriptTree ? ScriptTree->FindWidget(Name) : nullptr;
 	}
 }
 
 FString UHOLGameScreen::DescribeStatsTip() const
 {
 	// One tooltip per shown statistic: only the chips that are visible AND carry a tooltip text are listed.
+	// HUD H-9: the chips are the script's widgets "SelectionStats" and "SelectionStat<i>" (HOLSelectionUnit.as); ShownStatTipList is what SetStatsReport posed.
 	TArray<FString> Parts;
-	if (SelectionStats && SelectionStats->GetVisibility() != ESlateVisibility::Collapsed)
+	const UWidget* StatsBox = FindSelectionWidget(WidgetTree, ScriptScreen ? ScriptScreen->WidgetTree.Get() : nullptr, TEXT("SelectionStats"));
+	if (StatsBox && StatsBox->GetVisibility() != ESlateVisibility::Collapsed)
 	{
-		for (int32 Index = 0; Index < SelectionStatChips.Num() && Index < ShownStatTipList.Num(); ++Index)
+		for (int32 Index = 0; Index < 6 && Index < ShownStatTipList.Num(); ++Index)
 		{
-			UCommonTextBlock* Chip = SelectionStatChips[Index];
+			const UCommonTextBlock* Chip = Cast<UCommonTextBlock>(FindSelectionWidget(WidgetTree, ScriptScreen->WidgetTree.Get(), *FString::Printf(TEXT("SelectionStat%d"), Index)));
 			if (Chip && Chip->GetVisibility() == ESlateVisibility::Visible && !Chip->GetToolTipText().IsEmpty())
 			{
 				Parts.Add(ShownStatTipList[Index]);
@@ -1362,7 +858,9 @@ FString UHOLGameScreen::HoverStat(const int32 Index) const
 {
 	// The hover as the mouse does it (user bug of unit_stats_attack: no tooltip on the other statistics): the centre of the chip is hit-tested
 	// by Slate's own window hit test, and the tooltip the engine would show is the first non-empty one met from the widget found up to the window.
-	UCommonTextBlock* Chip = SelectionStatChips.IsValidIndex(Index) ? SelectionStatChips[Index].Get() : nullptr;
+	// HUD H-9: the chip is the script's widget "SelectionStat<i>" (HOLSelectionUnit.as), found in the script's tree as HoverIncome finds FoodAmount.
+	UCommonTextBlock* Chip = ScriptScreen && Index >= 0 && Index < 6
+		? Cast<UCommonTextBlock>(FindSelectionWidget(WidgetTree, ScriptScreen->WidgetTree.Get(), *FString::Printf(TEXT("SelectionStat%d"), Index))) : nullptr;
 	const TSharedPtr<SWidget> ChipWidget = Chip ? Chip->GetCachedWidget() : TSharedPtr<SWidget>();
 	if (!Chip || !ChipWidget.IsValid() || Chip->GetVisibility() == ESlateVisibility::Collapsed || !FSlateApplication::IsInitialized())
 	{
@@ -1467,173 +965,6 @@ FString UHOLGameScreen::HoverIncome(const int32 Index, const bool bShow)
 		}
 	}
 	return FString::Printf(TEXT("none (hit %s)"), *Hit.Widgets[Hit.Widgets.Num() - 1].Widget->GetTypeAsString());
-}
-
-void UHOLGameScreen::HideUnitStats()
-{
-	ShownStats.Reset();
-	ShownStatsTip.Reset();
-	ShownStatTipList.Reset();
-	if (SelectionStats && SelectionStats->GetVisibility() != ESlateVisibility::Collapsed)
-	{
-		SelectionStats->SetVisibility(ESlateVisibility::Collapsed);
-	}
-}
-void UHOLGameScreen::RefreshUnitStats(const FHOLUnitView* Unit)
-{
-	// One unit selected (not a hero: his statistics come from his level): its attack with the bonus of the technologies researched
-	// (Lames aff·tées: 12 -> 13,2), its armour, its range and its speed, from the row of its owner's faction.
-	const int32 Mode = CVarUnitStats.GetValueOnGameThread();
-	const FHOLUnitTypeRow* Row = Unit && Mode > 0 && !Unit->bHero ? FindUnitTypeFor(Unit->TypeName, Unit->OwnerPlayer) : nullptr;
-	if (!Row)
-	{
-		HideUnitStats();
-		return;
-	}
-	// The bonus is the player's own technologies' (a client does not know the others').
-	int32 Percent = 0;
-	const AHOLPlayerState* Own = BoundPlayerState.Get();
-	const FName AttackStat = HOLTechnology::GetAttackStat(Row->AttackType);
-	if (Own && Own->GetPlayerIndex() == Unit->OwnerPlayer && !AttackStat.IsNone())
-	{
-		Percent = Own->GetTechnologyBonusPercent(AttackStat);
-	}
-	const float Base = static_cast<float>(Row->Attack);
-	const float Attack = Base * static_cast<float>(100 + Percent) / 100.f;
-	const float Bonus = Attack - Base;
-	const bool bStrikes = Row->Attack > 0;
-	// Q-unit-stats-building (default A, hol.HUD.UnitStatsBuilding): a unit with no ordinary attack but a blow against buildings (the Ram:
-	// 0 / 60) shows that blow, otherwise its line has no attack at all. 0 = never (the old line), 1 = only then (default), 2 = also next
-	// to an ordinary attack when it differs (Lancier 8 (bâtiments 20)).
-	const int32 BuildingMode = CVarUnitStatsBuilding.GetValueOnGameThread();
-	const bool bBuildingOnly = BuildingMode >= 1 && !bStrikes && Row->BuildingAttack > 0;
-	const bool bBuildingExtra = BuildingMode >= 2 && bStrikes && Row->BuildingAttack > 0 && Row->BuildingAttack != Row->Attack;
-	// Each statistic of the block is its own text block with its own hover tooltip (REGLAGE of unit_stats_attack, 2026-11-09).
-	TArray<FText> Lines;
-	TArray<FString> Plain;
-	TArray<FText> Tips;
-	TArray<FString> TipPlain;
-	const auto AddStat = [&](const FText& Line, const FString& PlainLine, const FText& Tip, const FString& PlainTip)
-	{
-		Lines.Add(Line);
-		Plain.Add(PlainLine);
-		Tips.Add(Tip);
-		TipPlain.Add(PlainTip);
-	};
-	if (bBuildingOnly)
-	{
-		AddStat(FText::Format(LOCTEXT("StatBuildingAttack", "Attaque bâtiments {0}"), FormatStat(static_cast<float>(Row->BuildingAttack))),
-			FString::Printf(TEXT("building attack %s"), *FormatStatPlain(static_cast<float>(Row->BuildingAttack))),
-			FText::Format(LOCTEXT("TipBuildingAttack", "Attaque bâtiments : {0} par coup"), FormatStat(static_cast<float>(Row->BuildingAttack))),
-			FString::Printf(TEXT("building attack: %s per hit"), *FormatStatPlain(static_cast<float>(Row->BuildingAttack))));
-	}
-	if (bStrikes)
-	{
-		// The tooltip of the attack (short, Q-unit-stats-tooltips B): its base and the technologies' bonus.
-		TArray<FText> AttackTip;
-		FString AttackTipPlain = FString::Printf(TEXT("attack: %s"), *FormatStatPlain(Base));
-		AttackTip.Add(FText::Format(LOCTEXT("TipBaseAttack", "Attaque : {0}"), FormatStat(Base)));
-		if (Percent != 0)
-		{
-			AttackTip.Add(FText::Format(LOCTEXT("TipTechnology", "{0} % technologies"), FText::FromString(FString::Printf(TEXT("%+d"), Percent))));
-			AttackTipPlain += FString::Printf(TEXT(", technology %+d %%"), Percent);
-		}
-		AddStat(Percent != 0 ? FText::Format(LOCTEXT("StatAttackBonus", "Attaque {0} (+{1})"), FormatStat(Attack), FormatStat(Bonus))
-				: FText::Format(LOCTEXT("StatAttack", "Attaque {0}"), FormatStat(Attack)),
-			Percent != 0 ? FString::Printf(TEXT("attack %s (+%s)"), *FormatStatPlain(Attack), *FormatStatPlain(Bonus)) : FString::Printf(TEXT("attack %s"), *FormatStatPlain(Attack)),
-			FText::Join(FText::AsCultureInvariant(TEXT("\n")), AttackTip), AttackTipPlain);
-	}
-	if (bBuildingExtra)
-	{
-		AddStat(FText::Format(LOCTEXT("StatBuildingAttackExtra", "Attaque bâtiments {0}"), FormatStat(static_cast<float>(Row->BuildingAttack))),
-			FString::Printf(TEXT("building attack %s"), *FormatStatPlain(static_cast<float>(Row->BuildingAttack))),
-			FText::Format(LOCTEXT("TipBuildingAttackExtra", "Attaque bâtiments : {0} par coup"), FormatStat(static_cast<float>(Row->BuildingAttack))),
-			FString::Printf(TEXT("building attack: %s per hit"), *FormatStatPlain(static_cast<float>(Row->BuildingAttack))));
-	}
-	// Answer to Q-unit-stats: the line keeps attack, the three armours that matter in a fight (melee, ranged, hero) and speed; the siege armour is in the hero armour's tooltip.
-	AddStat(FText::Format(LOCTEXT("StatMeleeArmor", "Armure mêlée {0}"), Row->MeleeArmor), FString::Printf(TEXT("melee armor %d"), Row->MeleeArmor),
-		FText::Format(LOCTEXT("TipMeleeArmor", "Armure mêlée : -{0} par coup reçu"), Row->MeleeArmor),
-		FString::Printf(TEXT("melee armor: -%d per hit"), Row->MeleeArmor));
-	AddStat(FText::Format(LOCTEXT("StatRangedArmor", "Armure distance {0}"), Row->RangedArmor), FString::Printf(TEXT("ranged armor %d"), Row->RangedArmor),
-		FText::Format(LOCTEXT("TipRangedArmor", "Armure distance : -{0} par tir reçu"), Row->RangedArmor),
-		FString::Printf(TEXT("ranged armor: -%d per shot"), Row->RangedArmor));
-	AddStat(FText::Format(LOCTEXT("StatHeroArmor", "Armure héros {0}"), Row->HeroArmor), FString::Printf(TEXT("hero armor %d"), Row->HeroArmor),
-		FText::Format(LOCTEXT("TipHeroArmor", "Armure héros : -{0} par coup de héros reçu\nArmure siège : -{1} par coup de siège"), Row->HeroArmor, Row->SiegeArmor),
-		FString::Printf(TEXT("hero armor: -%d per hero hit, siege armor: -%d per siege hit"), Row->HeroArmor, Row->SiegeArmor));
-	AddStat(FText::Format(LOCTEXT("StatSpeed", "Vitesse {0} m/s"), FormatStat(Row->Speed / 100.f)), FString::Printf(TEXT("speed %s"), *FormatStatPlain(Row->Speed / 100.f)),
-		FText::Format(LOCTEXT("TipSpeed", "Vitesse : {0} m/s"), FormatStat(Row->Speed / 100.f)),
-		FString::Printf(TEXT("speed: %s m/s"), *FormatStatPlain(Row->Speed / 100.f)));
-
-	ShownStats = FString::Join(Plain, TEXT(", "));
-	ShownStatTipList = TipPlain;
-	ShownStatsTip = FString::Join(TipPlain, TEXT(" | "));
-	if (SelectionStats)
-	{
-		const FText Separator = FText::AsCultureInvariant(TEXT("   ·   "));
-		for (int32 Index = 0; Index < SelectionStatChips.Num(); ++Index)
-		{
-			UCommonTextBlock* Chip = SelectionStatChips[Index];
-			if (!Chip)
-			{
-				continue;
-			}
-			if (Index >= Lines.Num())
-			{
-				Chip->SetVisibility(ESlateVisibility::Collapsed);
-				continue;
-			}
-			const FText Text = Mode == 2 || Index == Lines.Num() - 1 ? Lines[Index] : FText::Format(FText::AsCultureInvariant(TEXT("{0}{1}")), Lines[Index], Separator);
-			if (!Chip->GetText().EqualTo(Text))
-			{
-				Chip->SetText(Text);
-			}
-			Chip->SetToolTipText(Tips[Index]);
-			// Visible (not HitTestInvisible): the hover shows the statistic's own tooltip.
-			Chip->SetVisibility(ESlateVisibility::Visible);
-		}
-		SelectionStats->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
-	}
-}
-void UHOLGameScreen::RefreshUnitHealth(const FHOLUnitView* Unit)
-{
-	using namespace UE::HeroesOfLiberty::UI::GameScreen;
-
-	RefreshUnitStats(Unit);
-
-	// Exact for the troops (J7-Q5 revised: a client receives a wounded unit's exact health); a client's hero (J8a.3) is
-	// exact from his public sheet, before it arrives known by a share of his maximum, drawn back to health points within 2
-	// of his own: " (share)" marks it.
-	const bool bShown = Unit && Unit->MaxHealth > 0;
-	const FString Shown = bShown ? FString::Printf(TEXT(", hp %d/%d%s"), Unit->Health, Unit->MaxHealth, Unit->bHealthExact ? TEXT("") : TEXT(" (share)"))
-		: FString();
-	// Shown or hidden whatever was shown last (the review of J7b): a building selected before left the row shown with an
-	// empty ShownHealth, which a group of units or a unit of unknown type also has.
-	SetShown(SelectionHealthRow, bShown);
-	if (Shown == ShownHealth)
-	{
-		return;
-	}
-	ShownHealth = Shown;
-	if (SelectionHealth && bShown)
-	{
-		SelectionHealth->SetText(FormatRatio(Unit->Health, Unit->MaxHealth));
-	}
-}
-
-void UHOLGameScreen::SetDetailLine(const FString& Shown, const FText& Text)
-{
-	using namespace UE::HeroesOfLiberty::UI::GameScreen;
-
-	if (Shown == ShownActivity)
-	{
-		return;
-	}
-	ShownActivity = Shown;
-	SetShown(SelectionActivity, !Shown.IsEmpty());
-	if (SelectionActivity && !Shown.IsEmpty())
-	{
-		SelectionActivity->SetText(Text);
-	}
 }
 
 void UHOLGameScreen::RefreshIdleWorkers()
@@ -2393,19 +1724,27 @@ FString UHOLGameScreen::Describe() const
 	}
 	const FString TradeText = Trades.IsEmpty() ? FString() : FString::Printf(TEXT(", trades %s"), *FString::Join(Trades, TEXT(" | ")));
 	// A main forum's lives and state (V2.3b) and the players' table (V2.4): on their own line (DescribeForum).
-	const FString Activity = !ShownForum.IsEmpty() && ShownActivity == ShownForum ? FString() : ShownActivity;
-	return FString::Printf(TEXT("resources %s, selection %s%s%s, grid %s, queue %s%s%s%s"), *Economy, *ShownSelection, *Activity, *ShownHealth, *Grid, *Queue,
+	// HUD H-9: the selection part is the script's (UHOLSelectionPanel, the only writer, by SetSelectionReport): the kind ("King (own)", "none"), the activity, the health.
+	const FString& ReportKind = ScriptScreen ? ScriptScreen->GetSelectionReportKind() : ShownSelection;
+	const FString& ReportActivity = ScriptScreen ? ScriptScreen->GetSelectionReportActivity() : ShownActivity;
+	const FString& ReportHealth = ScriptScreen ? ScriptScreen->GetSelectionReportHealth() : ShownHealth;
+	const FString& ReportForum = ScriptScreen ? ScriptScreen->GetSelectionReportForum() : ShownForum;
+	const FString Activity = !ReportForum.IsEmpty() && ReportActivity == ReportForum ? FString() : ReportActivity;
+	return FString::Printf(TEXT("resources %s, selection %s%s%s, grid %s, queue %s%s%s%s"), *Economy, *ReportKind, *Activity, *ReportHealth, *Grid, *Queue,
 		*Message, *Workers, *TradeText);
 }
 
 FString UHOLGameScreen::DescribeForum() const
 {
 	// "selection, in ruin 27 s, lives 1, players [slot 0 you colour 0 lives 1 ruin | ...]" ("selection none" without a main forum selected).
-	const bool bForum = !ShownForum.IsEmpty() && ShownActivity == ShownForum;
+	// HUD H-9: the forum line and the activity are the script's copies (SetSelectionReport).
+	const FString ReportForum = ScriptScreen ? ScriptScreen->GetSelectionReportForum() : ShownForum;
+	const FString ReportActivity = ScriptScreen ? ScriptScreen->GetSelectionReportActivity() : ShownActivity;
+	const bool bForum = !ReportForum.IsEmpty() && ReportActivity == ReportForum;
 	const TArray<FHOLPlayersTableRow> TableRows = UHOLPlayersTableReadLibrary::BuildRows(BoundTableState.Get(), BoundPlayerState.IsValid() ? BoundPlayerState->GetPlayerIndex() : INDEX_NONE);
 	// HUD H-4: the table is the script's now; its rows are read again here (HOLForumRules::GetPlayersTable, one source) for the report line.
 	const FString ShownPlayersTable = FString::JoinBy(TableRows, TEXT(" | "), [](const FHOLPlayersTableRow& Row) { return Row.Shown; });
-	return FString::Printf(TEXT("selection%s, players [%s]"), bForum ? *ShownForum : TEXT(" none"), *ShownPlayersTable);
+	return FString::Printf(TEXT("selection%s, players [%s]"), bForum ? *ReportForum : TEXT(" none"), *ShownPlayersTable);
 }
 
 FString UHOLGameScreen::DescribeCells() const
@@ -2488,8 +1827,10 @@ FName UHOLGameScreen::LocalFactionKey() const
 
 FString UHOLGameScreen::DescribeSelectionName() const
 {
-	return SelectionName && SelectionName->GetVisibility() != ESlateVisibility::Collapsed && !SelectionName->GetText().IsEmpty()
-		? SelectionName->GetText().ToString() : FString(TEXT("none"));
+	// HUD H-9: the name is the script's widget "SelectionName" (HOLSelection.as), found in the script's tree as HoverIncome finds FoodAmount.
+	const UCommonTextBlock* Name = Cast<UCommonTextBlock>(FindSelectionWidget(WidgetTree, ScriptScreen ? ScriptScreen->WidgetTree.Get() : nullptr, TEXT("SelectionName")));
+	return Name && Name->GetVisibility() != ESlateVisibility::Collapsed && !Name->GetText().IsEmpty()
+		? Name->GetText().ToString() : FString(TEXT("none"));
 }
 
 const FHOLUnitTypeRow* UHOLGameScreen::FindUnitTypeFor(const FName TypeName, const int32 OwnerPlayer) const
@@ -2620,100 +1961,10 @@ void UHOLGameScreen::BuildLayout()
 		WidgetSlot->SetPadding(FMargin(LeftPadding, 0.f, 0.f, 0.f));
 	};
 
-	// Selection block, a fixed width and the bar's height (a spacer holds its place while it is collapsed): name, owner
-	// (with its colour), health.
-	UOverlay* SelectionPlace = WidgetTree->ConstructWidget<UOverlay>(UOverlay::StaticClass(), TEXT("SelectionPlace"));
-	SelectionPlace->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
-	AddToBar(SelectionPlace, 0.f);
-	USpacer* SelectionSpacer = WidgetTree->ConstructWidget<USpacer>(USpacer::StaticClass(), TEXT("SelectionSpacer"));
-	SelectionSpacer->SetSize(FVector2D(SelectionWidth, BarHeight));
-	SelectionPlace->AddChildToOverlay(SelectionSpacer);
-	SelectionPanel = MakePanel(TEXT("SelectionPanel"));
-	UOverlaySlot* SelectionSlot = SelectionPlace->AddChildToOverlay(SelectionPanel);
-	SelectionSlot->SetHorizontalAlignment(HAlign_Fill);
-	SelectionSlot->SetVerticalAlignment(VAlign_Fill);
-	USizeBox* SelectionBox = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass(), TEXT("SelectionBox"));
-	SelectionBox->SetWidthOverride(SelectionWidth - 24.f);
-	SelectionPanel->SetContent(SelectionBox);
-	UVerticalBox* SelectionColumn = MakeVerticalBox(TEXT("SelectionColumn"));
-	SelectionBox->SetContent(SelectionColumn);
-
-	SelectionName = MakeText(TEXT("SelectionName"), UHOLTextStyleHUDHeading::StaticClass(), FText::GetEmpty());
-	SelectionColumn->AddChildToVerticalBox(SelectionName)->SetPadding(FMargin(0.f, 0.f, 0.f, 4.f));
-	// A group's chips (G.1e, AoE4's way), in place of the name: wrapping in the block's width, each at most half of it (a
-	// long name cut short), in a frame lit for the active subgroup; a click makes it active, as Tab.
-	SelectionChips = WidgetTree->ConstructWidget<UWrapBox>(UWrapBox::StaticClass(), TEXT("SelectionChips"));
-	SelectionChips->SetInnerSlotPadding(FVector2D(ChipGap, ChipGap));
-	SelectionChips->SetExplicitWrapSize(true);
-	SelectionChips->SetWrapSize(SelectionWidth - 24.f);
-	SelectionChips->SetVisibility(ESlateVisibility::Collapsed);
-	SelectionColumn->AddChildToVerticalBox(SelectionChips)->SetPadding(FMargin(0.f, 0.f, 0.f, 6.f));
-	for (int32 Chip = 0; Chip < NumChips; ++Chip)
-	{
-		UBorder* ChipFrame = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass(), *FString::Printf(TEXT("SelectionChipFrame%d"), Chip));
-		ChipFrame->SetBrush(FSlateRoundedBoxBrush(FLinearColor::White, 5.f));
-		ChipFrame->SetBrushColor(FLinearColor::Transparent);
-		ChipFrame->SetPadding(FMargin(2.f));
-		ChipFrame->SetVisibility(ESlateVisibility::Collapsed);
-		USizeBox* ChipBox = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass());
-		ChipBox->SetHeightOverride(ChipHeight);
-		ChipBox->SetMaxDesiredWidth(ChipMaxWidth - 4.f);
-		ChipBox->SetClipping(EWidgetClipping::ClipToBounds);
-		ChipBox->SetContent(WidgetTree->ConstructWidget<UHOLQueueItem>(UHOLQueueItem::StaticClass(), *FString::Printf(TEXT("SelectionChip%d"), Chip)));
-		ChipFrame->SetContent(ChipBox);
-		SelectionChips->AddChildToWrapBox(ChipFrame);
-	}
-	UHorizontalBox* OwnerRow = MakeHorizontalBox(TEXT("SelectionOwnerRow"));
-	SelectionOwnerRow = OwnerRow;
-	SelectionColumn->AddChildToVerticalBox(OwnerRow)->SetPadding(FMargin(0.f, 0.f, 0.f, 2.f));
-	SelectionSwatch = MakeSquare(TEXT("SelectionSwatch"), FLinearColor::White, SwatchSize);
-	AddToRow(OwnerRow, SelectionSwatch, 8.f);
-	SelectionOwner = MakeText(TEXT("SelectionOwner"), UHOLTextStyleHUD::StaticClass(), FText::GetEmpty());
-	AddToRow(OwnerRow, SelectionOwner, 0.f);
-	UHorizontalBox* HealthRow = MakeHorizontalBox(TEXT("SelectionHealthRow"));
-	SelectionHealthRow = HealthRow;
-	SelectionColumn->AddChildToVerticalBox(HealthRow);
-	AddToRow(HealthRow, MakeText(TEXT("SelectionHealthLabel"), UHOLTextStyleHUDLabel::StaticClass(), LOCTEXT("Health", "Points de vie")), 8.f);
-	SelectionHealth = MakeText(TEXT("SelectionHealth"), UHOLTextStyleHUD::StaticClass(), FText::GetEmpty());
-	AddToRow(HealthRow, SelectionHealth, 0.f);
-		SelectionStats = WidgetTree->ConstructWidget<UWrapBox>(UWrapBox::StaticClass(), TEXT("SelectionStats"));
-		SelectionStats->SetVisibility(ESlateVisibility::Collapsed);
-		SelectionColumn->AddChildToVerticalBox(SelectionStats)->SetPadding(FMargin(0.f, 2.f, 0.f, 0.f));
-		for (int32 StatChip = 0; StatChip < 6; ++StatChip)
-		{
-			UCommonTextBlock* Chip = MakeText(*FString::Printf(TEXT("SelectionStat%d"), StatChip), UHOLTextStyleHUD::StaticClass(), FText::GetEmpty());
-			Chip->SetVisibility(ESlateVisibility::Collapsed);
-			SelectionStats->AddChildToWrapBox(Chip);
-			SelectionStatChips.Add(Chip);
-		}
-// A site's progress (J6a.5, D313): a bar and its percentage.
-	UHorizontalBox* ProgressRow = MakeHorizontalBox(TEXT("SelectionProgressRow"));
-	SelectionProgressRow = ProgressRow;
-	SelectionColumn->AddChildToVerticalBox(ProgressRow)->SetPadding(FMargin(0.f, 4.f, 0.f, 0.f));
-	SelectionProgress = WidgetTree->ConstructWidget<UProgressBar>(UProgressBar::StaticClass(), TEXT("SelectionProgress"));
-	FProgressBarStyle SiteBarStyle;
-	SiteBarStyle.SetBackgroundImage(FSlateRoundedBoxBrush(FLinearColor(0.08f, 0.08f, 0.1f, 1.f), 2.f));
-	SiteBarStyle.SetFillImage(FSlateRoundedBoxBrush(HOLUIStyle::Accent, 2.f));
-	SelectionProgress->SetWidgetStyle(SiteBarStyle);
-	USizeBox* SiteBarBox = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass(), TEXT("SelectionProgressBox"));
-	SiteBarBox->SetWidthOverride(SiteBarWidth);
-	SiteBarBox->SetHeightOverride(8.f);
-	SiteBarBox->SetContent(SelectionProgress);
-	AddToRow(ProgressRow, SiteBarBox, 8.f);
-	SelectionProgressText = MakeText(TEXT("SelectionProgressText"), UHOLTextStyleHUD::StaticClass(), FText::GetEmpty());
-	AddToRow(ProgressRow, SelectionProgressText, 0.f);
-	ProgressRow->SetVisibility(ESlateVisibility::Collapsed);
-	SelectionActivity = MakeText(TEXT("SelectionActivity"), UHOLTextStyleHUD::StaticClass(), FText::GetEmpty());
-	SelectionActivity->SetAutoWrapText(true);
-	SelectionColumn->AddChildToVerticalBox(SelectionActivity)->SetPadding(FMargin(0.f, 2.f, 0.f, 0.f));
-	// A main forum's lives (V2.3d): a row as the health's, under the ruin's or the rebuilding's lines.
-	UHorizontalBox* LivesRow = MakeHorizontalBox(TEXT("SelectionLivesRow"));
-	SelectionLivesRow = LivesRow;
-	SelectionColumn->AddChildToVerticalBox(LivesRow)->SetPadding(FMargin(0.f, 2.f, 0.f, 0.f));
-	AddToRow(LivesRow, MakeText(TEXT("SelectionLivesLabel"), UHOLTextStyleHUDLabel::StaticClass(), LOCTEXT("ForumLivesLabel", "Vies")), 8.f);
-	SelectionLives = MakeText(TEXT("SelectionLives"), UHOLTextStyleHUD::StaticClass(), FText::GetEmpty());
-	AddToRow(LivesRow, SelectionLives, 0.f);
-	LivesRow->SetVisibility(ESlateVisibility::Collapsed);
+	// HUD H-9: the selection block (SelectionPlace, SelectionPanel, name, chips, owner, health, stats, site progress, activity, lives) is the script's (Script\UI\HOLSelection*.as),
+	// built into this empty host, at the bar's first place (it keeps the bar's order and the bar's bottom alignment).
+	SelectionHost = MakeHorizontalBox(TEXT("SelectionHost"));
+	AddToBar(SelectionHost, 0.f);
 
 	// Right of the selection's block, the command panel's width: the short message, the production queue, then the
 	// command panel under them (the column grows upwards, the panel stays at the bar's bottom).
@@ -2751,7 +2002,6 @@ void UHOLGameScreen::BuildLayout()
 	MinimapSlot->SetPadding(FMargin(ScreenMargin));
 
 	// Nothing selected yet.
-	SelectionPanel->SetVisibility(ESlateVisibility::Collapsed);
 	QueuePanel->SetVisibility(ESlateVisibility::Collapsed);
 }
 

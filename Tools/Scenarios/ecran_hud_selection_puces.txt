@@ -1,0 +1,82 @@
+# Bloc de selection du HUD de jeu (bas de l'ecran) : les PUCES de sous-groupes. 8 unites de 3 types (puces « Tous (8) » + Archer, Homme d'armes, Paysan, la puce active allumee), passage au sous-groupe suivant (hol.Select.Subgroup, la commande de Tab), puis un groupe de batiments (hol.Select.Category Economic = la touche F2) : « Tous (N) », « Maison (3) ». Scenario de preuve double : meme scenario sur le binaire d'avant (bloc C++) et celui d'apres (bloc script), captures comparees sur la zone du bloc. 3 minutes au plus.
+# Etat fixe : IA figee, combat coupe, langue fr, aucun Paysan ni heros au depart, unites posees immobiles. Commandes verifiees : quick_check.ps1 (3 Paysans + 2 Hommes d'armes + 3 Archers, Tab : « Subgroup: Archer x3 », « Subgroup: ManAtArms x2 » ; F2 : « Category Economic: », « Subgroup: MainCentre », « Subgroup: House x »), build_walkers.txt (SpawnBuilding House).
+waitlog Camera above the start of slot 0
+r.SetRes 1920x1080w
+hol.UI.Language fr
+hol.AI.ThinkSteps 100000
+hol.Combat.Enabled 0
+hol.Cheat.Population 200
+hol.Cheat.Resources 5000
+hol.Camera.FocusNear 1500 0
+frames 3
+hol.Mouse.Hover 960 80 5
+waitlog Mouse hover 960,80
+panel show
+notereset Etape 1 : 8 unites de 3 types selectionnees (3 Paysans, 2 Hommes d'armes, 3 Archers) : le bloc du bas affiche les PUCES « Tous (8) » plus UNE puce par type avec son nombre ; la puce « Tous (8) » est ALLUMEE (la plus claire / agrandie).
+waitkey Entree : etape 1, les 8 unites
+panel hide
+hol.Units.SpawnSeed 103
+hol.Units.SpawnHere 3 Peasant 0 250
+hol.Units.SpawnHere 2 ManAtArms 0 250
+hol.Units.SpawnHere 3 Archer 0 250
+waitunits 8
+wait 0.5
+hol.Camera.FocusNear 1500 0
+frames 3
+hol.Select.Box 0.25 0.25 0.75 0.7
+waitlog Selection: 8 units (own)
+frames 20
+hol.HUD.Report
+hol.Select.Report
+capture hud_puces_tous
+panel show
+notereset Etape 2 : premier passage au sous-groupe suivant (Tab) : les Archers ; la puce « Archer (3) » est ALLUMEE, « Tous (8) » ne l'est plus ; le reste du bloc ne parle plus que des 3 Archers.
+waitkey Entree : etape 2, sous-groupe suivant (Archers)
+panel hide
+hol.Select.Subgroup
+waitlog Subgroup: Archer x3
+frames 20
+hol.HUD.Report
+hol.Select.Report
+capture hud_puces_archers
+panel show
+notereset Etape 3 : sous-groupe suivant : les Hommes d'armes ; la puce « Homme d'armes (2) » est ALLUMEE, les autres normales.
+waitkey Entree : etape 3, sous-groupe suivant (Hommes d'armes)
+panel hide
+hol.Select.Subgroup
+waitlog Subgroup: ManAtArms x2
+frames 20
+hol.HUD.Report
+hol.Select.Report
+capture hud_puces_hommes_darmes
+panel show
+notereset Etape 4 : un GROUPE DE BATIMENTS (ton forum + 3 maisons) selectionne par la touche F2 (batiments economiques) : le bloc affiche les puces « Tous (4) » (allumee) et par type, dont « Maison (3) », et le forum seul.
+waitkey Entree : etape 4, groupe de batiments (F2)
+panel hide
+hol.Select.Click 0.03 0.05
+waitlog Selection: none
+hol.Cheat.SpawnBuilding House 0 4500 -1600
+hol.Cheat.SpawnBuilding House 0 4500 0
+hol.Cheat.SpawnBuilding House 0 4500 1600
+wait 1
+hol.Camera.FocusNear 3000 0
+frames 5
+hol.Select.Category Economic
+waitlog Category Economic:
+frames 20
+hol.HUD.Report
+hol.Select.Report
+capture hud_puces_batiments_tous
+panel show
+notereset Etape 5 : sous-groupe suivant des batiments (Tab) : une seule categorie reste selectionnee (le forum seul ou les 3 maisons, selon l'ordre du jeu : le journal « Subgroup: » le dit) ; sa puce est ALLUMEE, « Tous (4) » ne l'est plus.
+waitkey Entree : etape 5, sous-groupe de batiments suivant
+panel hide
+hol.Select.Subgroup
+waitlog Subgroup:
+frames 20
+hol.HUD.Report
+hol.Select.Report
+capture hud_puces_batiments_sous
+panel show
+waitkey Entree : fin du scenario
+hol.Test.Sanity

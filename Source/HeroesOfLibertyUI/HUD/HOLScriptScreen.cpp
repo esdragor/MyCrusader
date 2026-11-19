@@ -355,6 +355,14 @@ void UHOLScriptScreen::SetQueueReport(const FString& Line)
 	}
 }
 
+void UHOLScriptScreen::SetSelectionReport(const FString& Kind, const FString& Activity, const FString& Health, const FString& Forum)
+{
+	SelectionReportKind = Kind;
+	SelectionReportActivity = Activity;
+	SelectionReportHealth = Health;
+	SelectionReportForum = Forum;
+}
+
 FLinearColor UHOLScriptScreen::GetAccentColor()
 {
 	return HOLUIStyle::Accent;
@@ -374,6 +382,25 @@ bool UHOLScriptScreen::CancelProduction(const int32 Index)
 void UHOLScriptScreen::SetQueueLive(const bool bLive)
 {
 	bQueueLive = bLive;
+}
+
+UHorizontalBox* UHOLScriptScreen::GetSelectionHost() const
+{
+	const UHOLGameScreen* GameScreen = GetTypedOuter<UHOLGameScreen>();
+	return GameScreen ? GameScreen->GetSelectionHost() : nullptr;
+}
+
+void UHOLScriptScreen::SetStatsReport(const FString& Stats, const TArray<FString>& TipList)
+{
+	if (UHOLGameScreen* GameScreen = GetTypedOuter<UHOLGameScreen>())
+	{
+		GameScreen->SetStatsReportMirror(Stats, TipList);
+	}
+}
+
+void UHOLScriptScreen::SetSelectionLive(const bool bLive)
+{
+	bSelectionLive = bLive;
 }
 
 bool UHOLScriptScreen::GetPopulationNow(int32& OutUsed, int32& OutCap, float& OutRealSeconds) const
@@ -994,6 +1021,11 @@ void UHOLScriptScreen::NativeTick(const FGeometry& MyGeometry, const float InDel
 	if (bQueueLive)
 	{
 		QueueFrameTick();
+	}
+	// HUD H-9: a source's remaining amount, one unit's health, activity and stats: every image, ONLY while the script's selection block says so.
+	if (bSelectionLive)
+	{
+		SelectionFrameTick();
 	}
 	// The T key (the talent tree, TQ4 = A): the viewport's key state, as the Enter of a test scenario; the console open or a focused menu keeps it.
 	if (const APlayerController* Controller = GetOwningPlayer())

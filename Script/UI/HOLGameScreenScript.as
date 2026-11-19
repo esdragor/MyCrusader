@@ -132,6 +132,13 @@ FString TalentTipTexts = "";
 
 	// HUD H-8: the builders' age panels (HOLAgePanels.as), drawn into the C++ screen's AgePanelsHost.
 	UHOLAgePanelsPanel AgePanels;
+	// HUD H-9: the selection block, bottom left of the bar (HOLSelection.as: the panel, kinds 0, 1 and 4; HOLSelectionUnit.as: kind 2; HOLSelectionChips.as: the chips and kind 3).
+	// Built into the C++ screen's SelectionHost (an empty box where the C++ block was: it keeps the bar's order). Not named SelectionPanel: that is the widget's name.
+	UHOLSelectionPanel SelectionBlock;
+	UHOLSelectionUnitPanel SelectionUnitBlock;
+	UHOLSelectionChipsPanel SelectionChipsBlock;
+	// The path the block drew last (HOLSelectionRead::GetSelectionKind), -1 before the first refresh.
+	int SelectionPath = -1;
 	FString VolcanoTexts = "";
 	// H-1: the wait and absence banners (HOLWaitBanner.as).
 	UHOLWaitBannerPanel WaitBanner;
@@ -292,6 +299,13 @@ UHOLScenarioPanelScript ScenarioPanel;
 		CommandGrid.Build(this);
 		AgePanels = Cast<UHOLAgePanelsPanel>(NewObject(this, UHOLAgePanelsPanel));
 		AgePanels.Build(this);
+		// HUD H-9: A first (its two hosts), then B and C into them.
+		SelectionBlock = Cast<UHOLSelectionPanel>(NewObject(this, UHOLSelectionPanel));
+		SelectionBlock.Build(this, GetSelectionHost());
+		SelectionUnitBlock = Cast<UHOLSelectionUnitPanel>(NewObject(this, UHOLSelectionUnitPanel));
+		SelectionUnitBlock.Build(this, SelectionBlock);
+		SelectionChipsBlock = Cast<UHOLSelectionChipsPanel>(NewObject(this, UHOLSelectionChipsPanel));
+		SelectionChipsBlock.Build(this, SelectionBlock);
 		BuildMinimap(Frame);
 		BuildTalentWindow(Frame);
 		// Last: over the other blocks.
@@ -1426,6 +1440,7 @@ UHOLScenarioPanelScript ScenarioPanel;
 			QueueView.Refresh();
 		if (AgePanels != nullptr)
 			AgePanels.Refresh();
+		RefreshSelectionBlock();
 		if (Audio != nullptr)
 			Audio.PlayDueRepeats();
 		RefreshDiplomacy();
@@ -1437,6 +1452,55 @@ UHOLScenarioPanelScript ScenarioPanel;
 		{
 			CheatPanel.Refresh(HeroView.bVisible);
 			SetCheatsReport(CheatPanel.Describe());
+		}
+	}
+
+	// HUD H-9: the selection block, one refresh (the C++ UHOLGameScreen::Refresh's path, then RefreshChips). The ONLY writer of ShownSelection / ShownActivity / ShownHealth is
+	// SelectionBlock (UHOLSelectionPanel::SetShown*, which pushes them by SetSelectionReport); B and C pass it their fragments. Order: A (kinds 0, 1, 4), then B (kind 2 only: its
+	// Refresh would write "none" over a group of buildings' report), then C (it hides the name when there are chips, and draws the group of buildings, kind 3).
+	void RefreshSelectionBlock()
+	{
+		if (SelectionBlock == nullptr || SelectionUnitBlock == nullptr || SelectionChipsBlock == nullptr)
+			return;
+		const int Path = HOLSelectionRead::GetSelectionKind();
+		if (Path != SelectionPath)
+		{
+			// Leaving the units: their stats, health and activity go (before A or C draws the new path); their memos forget what they sent, since A or C wrote since.
+			if (SelectionPath == 2)
+				SelectionUnitBlock.Hide();
+			SelectionUnitBlock.Invalidate();
+			SelectionPath = Path;
+		}
+		SelectionBlock.Refresh();
+		// A and C draw kinds 0, 1, 3, 4 and 2: kinds 2 and 3 show the panel here (A's Refresh only hides its progress and lives rows for them).
+		if (Path == 2 || Path == 3)
+			SelectionBlock.SetPanelShown(true);
+		if (Path == 2)
+			SelectionUnitBlock.Refresh();
+		SelectionChipsBlock.Refresh();
+		SendSelectionStats();
+		SetSelectionLive(SelectionBlock.IsFrameLive() || SelectionUnitBlock.IsFrameLive());
+	}
+
+	// The report read by "HUD stats:" and "HUD stats tip:" (the C++ copies, UHOLScriptScreen::SetStatsReport), sent only when it changed.
+	void SendSelectionStats()
+	{
+		if (SelectionUnitBlock.TakeStatsReportChange())
+			SetStatsReport(SelectionUnitBlock.ShownStats, SelectionUnitBlock.ShownStatTipList);
+	}
+
+	// Once a frame, ONLY while SetSelectionLive(true) (the C++ NativeTick calls it): a selected source's remaining amount (A), one unit's health, activity and stats (B).
+	UFUNCTION(BlueprintOverride)
+	void SelectionFrameTick()
+	{
+		if (SelectionBlock == nullptr || SelectionUnitBlock == nullptr)
+			return;
+		if (SelectionBlock.IsFrameLive())
+			SelectionBlock.FrameTick();
+		if (SelectionUnitBlock.IsFrameLive())
+		{
+			SelectionUnitBlock.RefreshFrame();
+			SendSelectionStats();
 		}
 	}
 
@@ -2363,6 +2427,9 @@ UHOLScenarioPanelScript ScenarioPanel;
 		if (CommandGrid != nullptr && CommandGrid.ClickName(WidgetName))
 			return true;
 		if (AgePanels != nullptr && AgePanels.ClickName(WidgetName))
+			return true;
+		// HUD H-9: SelectionChip0 to SelectionChip11 (a mouse click goes through the chip's own handler).
+		if (SelectionChipsBlock != nullptr && SelectionChipsBlock.ClickName(WidgetName))
 			return true;
 		return false;
 	}

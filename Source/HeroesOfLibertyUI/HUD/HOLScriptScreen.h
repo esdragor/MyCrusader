@@ -177,6 +177,20 @@ public:
 	UFUNCTION(BlueprintNativeEvent, Category = "HeroesOfLiberty|UI")
 	void ApplyCheatsOpen(bool bOpen);
 
+	/**
+	 * HUD H-9: the selection block's part of Describe's line, written by the script panel (UHOLSelectionPanel) at each refresh, the ONLY writer:
+	 * Kind = ShownSelection ("MainCentre (own)", "none"...), Activity = ShownActivity (", gathering Wood 4/10"), Health = ShownHealth (", hp 250/250"),
+	 * Forum = the "HUD forum" line's text (empty unless a main forum). The copies stay here (the screen's own fields are the switch's to remove).
+	 */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|UI")
+	void SetSelectionReport(const FString& Kind, const FString& Activity, const FString& Health, const FString& Forum);
+
+	/** The copies SetSelectionReport posed (the switch makes Describe read them). */
+	const FString& GetSelectionReportKind() const { return SelectionReportKind; }
+	const FString& GetSelectionReportActivity() const { return SelectionReportActivity; }
+	const FString& GetSelectionReportHealth() const { return SelectionReportHealth; }
+	const FString& GetSelectionReportForum() const { return SelectionReportForum; }
+
 	/** The progress bar's fill colour (HOLUIStyle::Accent). */
 	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|UI")
 	static FLinearColor GetAccentColor();
@@ -433,6 +447,22 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|UI")
 	void RegisterGridCells(const TArray<UHOLGridCell*>& Cells);
 
+	/** HUD H-9: the C++ bottom bar's SelectionHost (an empty horizontal box at its first place), the selection block is built into it (HOLSelection.as). */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|UI")
+	UHorizontalBox* GetSelectionHost() const;
+
+	/** HUD H-9: what "HUD stats:" and "HUD stats tip:" read (the six stat chips' text and tips as the script drew them): the screen keeps the copies. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|UI")
+	void SetStatsReport(const FString& Stats, const TArray<FString>& TipList);
+
+	/** True while the selection block needs a call every image (a source's amount, one unit's health): NativeTick then calls SelectionFrameTick, never otherwise. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|UI")
+	void SetSelectionLive(bool bLive);
+
+	/** Once a frame, ONLY while SetSelectionLive(true). */
+	UFUNCTION(BlueprintImplementableEvent, Category = "HeroesOfLiberty|UI")
+	void SelectionFrameTick();
+
 	/** The grid context the age panels read (UHOLGameScreen::RefreshAges' rule): the units' context while no own building or group is selected, else an empty one. */
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|UI")
 	void GetAgesContext(FHOLGridContextView& OutContext) const;
@@ -477,6 +507,12 @@ private:
 	/** H-11a: the cheats panel line of the report (SetCheatsReport). */
 	FString CheatsReport;
 
+	/** HUD H-9: the copies of SetSelectionReport. Kind starts at "none" as UHOLGameScreen::ShownSelection does. */
+	FString SelectionReportKind = TEXT("none");
+	FString SelectionReportActivity;
+	FString SelectionReportHealth;
+	FString SelectionReportForum;
+
 	float RefreshLeft = 0.f;
 	/** A message with a key is shown: NativeTick calls FrameTick (D839: no per-frame script call otherwise). */
 	bool bMessageLive = false;
@@ -489,4 +525,7 @@ private:
 
 	/** The queue panel shows a queue: NativeTick calls QueueFrameTick (HUD H-7). */
 	bool bQueueLive = false;
+
+	/** The selection block needs a call every image: NativeTick calls SelectionFrameTick (HUD H-9). */
+	bool bSelectionLive = false;
 };

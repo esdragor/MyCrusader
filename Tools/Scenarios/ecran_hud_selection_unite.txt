@@ -1,0 +1,95 @@
+# Bloc de selection du HUD de jeu (bas de l'ecran) pour les UNITES : un Lancier (6 puces de stats, survol de la premiere), un Paysan qui recolte (ligne d'activite), un groupe de 5 Paysans (compte par etat), une unite ennemie. Scenario de preuve double : meme scenario sur le binaire d'avant (bloc C++) et celui d'apres (bloc script), captures comparees sur la zone du bloc. 3 minutes au plus.
+# Etat fixe : IA figee, combat coupe, langue fr, aucun Paysan ni heros au depart, chaque unite posee seule a un endroit different du cadre (elles ne bougent pas, sauf le Paysan qui recolte). Commandes verifiees : unit_stats_attack.txt (ClickUnit -1, HUD stats:, HUD.Hover), quick_check.ps1 (Select.OrderSource, Select.Type), enemy_select.txt (SpawnHere sur le slot 1, ClickUnit enemy).
+waitlog Camera above the start of slot 0
+r.SetRes 1920x1080w
+hol.UI.Language fr
+hol.AI.ThinkSteps 100000
+hol.Combat.Enabled 0
+hol.Cheat.Population 200
+hol.Cheat.Resources 5000
+hol.Camera.FocusNear 1500 0
+frames 3
+hol.Mouse.Hover 960 300 5
+waitlog Mouse hover 960,300
+panel show
+notereset Etape 1 : un LANCIER est selectionne par un vrai clic : le bloc du bas affiche son nom, « Vous », sa sante et SIX puces de stats (attaque 8, armures, vitesse...). La 2e capture est prise apres le survol de la premiere puce (hol.HUD.Hover 0) : le journal dit « HUD hover 0: attack: 8 ».
+waitkey Entree : etape 1, le Lancier
+panel hide
+hol.Camera.FocusNear 1500 0
+frames 3
+hol.Units.SpawnHere 1 Spearman 0 250
+waitunits 1
+wait 0.5
+hol.Camera.FocusNear 1500 0
+frames 3
+hol.Select.ClickUnit -1
+frames 10
+hol.Select.Report
+hol.HUD.Report
+frames 5
+waitlog HUD stats: attack 8,
+capture hud_sel_lancier
+hol.HUD.Hover 0
+waitlog HUD hover 0: attack: 8
+capture hud_sel_lancier_survol
+panel show
+notereset Etape 2 : un PAYSAN recolte un arbre (envoye par un vrai clic droit sur la source) : le bloc affiche son nom, « Vous », sa sante et la LIGNE D'ACTIVITE (« Recolte » ou un etat voisin : il marche puis recolte, l'etat exact peut differer d'un passage a l'autre).
+waitkey Entree : etape 2, le Paysan qui recolte
+panel hide
+hol.Sources.Grove 160 -12000 3000 1 7
+frames 5
+hol.Camera.Focus -12000 3000
+frames 3
+hol.Units.SpawnHere 1 Peasant 0 200
+waitunits 2
+wait 0.5
+hol.Camera.Focus -12000 3000
+frames 3
+hol.Select.ClickUnit -1
+frames 5
+hol.Select.OrderSource -12000 3000
+waitlog Gather order of slot 0: 1 units to source
+wait 4
+hol.Units.Where 0
+hol.HUD.Report
+hol.Select.Report
+frames 5
+capture hud_sel_paysan_recolte
+panel show
+notereset Etape 3 : GROUPE de 5 Paysans (1 recolte, 4 posent sans rien faire) : le bloc affiche « 5 unites », la puce « Tous (5) » et le COMPTE PAR ETAT (recolte / inactifs...) ; pas de stats d'une seule unite.
+waitkey Entree : etape 3, 5 Paysans
+panel hide
+hol.Camera.FocusNear 4000 3000
+frames 3
+hol.Units.SpawnHere 4 Peasant 0 300
+waitunits 6
+wait 0.5
+hol.Select.Type Peasant
+waitlog Selection: 5 units (own): Peasant x5
+hol.Camera.FocusNear 4000 3000
+frames 10
+hol.Units.Where 0
+hol.HUD.Report
+hol.Select.Report
+capture hud_sel_groupe_paysans
+panel show
+notereset Etape 4 : une UNITE ENNEMIE (un Lancier du slot 1, pose pres d'un homme d'armes a toi pour etre visible) est selectionnee : le bloc affiche son nom, le proprietaire (nom de l'IA, pas « Vous »), sa sante, ses stats ; aucune commande (grille vide).
+waitkey Entree : etape 4, l'unite ennemie
+panel hide
+hol.Camera.FocusNear 6500 0
+frames 3
+hol.Units.SpawnHere 1 ManAtArms 0 250
+hol.Units.SpawnHere 1 Spearman 1 250
+waitunits 9
+wait 0.5
+hol.Camera.FocusNear 6500 0
+frames 3
+hol.Select.ClickUnit -1 slot=1
+frames 10
+hol.Select.Report
+hol.HUD.Report
+frames 5
+capture hud_sel_unite_ennemie
+panel show
+waitkey Entree : fin du scenario
+hol.Test.Sanity
