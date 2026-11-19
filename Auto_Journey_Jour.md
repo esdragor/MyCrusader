@@ -17,7 +17,18 @@ SÉANCE DE FONCTIONS DU SOIR (« commence ton Auto_Journey », 21:08 -> 23:00, A
 | NETTOYAGE-1119n-file | ab66fb6f | MyCrusader (docs) | main | étape 0a : nettoyage d'`Auto_Journey_File.md` | non | 21:12 |
 | NETTOYAGE-1119n-retours | ab148a9e | MyCrusader (docs) | main | étape 0a : nettoyage du dossier `Retours\` | non | 21:12 |
 | NETTOYAGE-1119n-procedure | a30db92b | MyCrusader (docs) | main | étape 0a : `Auto_Journey.md`, check-list, `brief_commun.md` | non | 21:12 |
-| (session principale) | - | MyCrusader (docs) | main | étape 0a : archive d'`Auto_Journey_Jour.md` et de l'en-tête d'`Auto_Journey_Retours.md` | non | 21:20 |
+| (session principale) | - | MyCrusader (docs) | main | étape 0a : archive d'`Auto_Journey_Jour.md` et de l'en-tête d'`Auto_Journey_Retours.md` ; FINI 21:16 : commit d02ae9f, 8 worktrees synchronisés, gate Launch sans FAIL | non | 21:13 |
+| ETAPE0-1119n-A | a021779b | MyCrusader (lecture seule) | main | étape 0 : priorités 1-2 + Aube A1 ; FINI 21:20 : 4 tâches, rapport `Docs\Rapports\ETAPE0-1119n-A.md` | non | 21:14 |
+| ETAPE0-1119n-B | a4d2c8ac | MyCrusader (lecture seule) | main | étape 0 : priorités 3-5 + Aube A2 + état de Celeborn et Haldir ; FINI 21:20 : 3 tâches, rapport `Docs\Rapports\ETAPE0-1119n-B.md` | non | 21:14 |
+| ELROND-1119n1 | ae261387 | HeroesOfLiberty-Elrond | faction-resource | règle pure de la jauge de ressource de faction (priorité 1, A4) | non | 21:23 |
+| GALADRIEL-1119n1 | aea92e83 | HeroesOfLiberty-Galadriel | power-book | règle pure de l'état des boutons du livre de pouvoirs (priorité 1, A6a) | non | 21:23 |
+| GLORFINDEL-1119n1 | a91ae324 | HeroesOfLiberty-Glorfindel | ground-ability | règle pure d'une capacité visée au sol (priorité 2, L6a) | non | 21:23 |
+| CELEBORN-1119n1 | aa4556ac | HeroesOfLiberty-Celeborn | duel-rewards | règle pure des récompenses du duel (priorité 5, D7) | non | 21:23 |
+| HALDIR-1119n1 | a794ea96 | HeroesOfLiberty-Haldir | templar-options | spécialisation : Templiers à 3 options (priorité 4) | non | 21:23 |
+| SAURON-1119n1 | a0f2c420 | MyCrusader (docs) | main | question `Retours\Q-hallebardier-valeurs.md` (Aube A1, valeurs à choisir, D345) | non | 21:23 |
+| intégrateur = session principale | - | HeroesOfLiberty-Arwen | integ-24 | fusion des commits rouges puis des commits verts, `quick_check -Parts tests` deux fois, avance rapide de main | non | - |
+
+Plan de lancement (étape 0, 21:20) : Elrond, Galadriel, Glorfindel, Celeborn, Haldir = une règle pure en script chacun (ci-dessus) ; Sauron = docs (question du Hallebardier) ; Arwen = intégration (porte main compilé) ; Faramir NON LANCÉ : branche `fog` à +26 commits propres (WIP D827/D828), aucune tâche du socle des factions n'y tient ce soir. Exceptions : aucun C++ ce soir (pas de build avant 23:00) ; écartés et reportés au lot C++ d'une autre séance : réplication et empreinte de la jauge, commande serveur de ciblage au sol, effet de zone côté Mass, moteur de moral M3-M5 et M7, Aube A2 (redirection de dégâts dans `HOLCombatProcessor`), effet de `hol.Cheat.Specialization` (pont `HOLRpcBridge`), faction du siège dans le tableau de spécialisation + 3e case de grille ; Aube A1 (ligne `Halberdier`) attend la réponse à `Q-hallebardier-valeurs` et une régénération de l'asset `UnitTypes` par l'éditeur.
 
 ## Résumé des séances de migration du 2026-11-16 soir au 2026-11-19
 
