@@ -2,7 +2,7 @@
 //   DisconnectRules -> Test_DisconnectRules; DisconnectWindowEnd -> Test_DisconnectWindowEnd; DisconnectGains -> Test_DisconnectGains;
 //   DisconnectTechnologies -> Test_DisconnectTechnologies; DisconnectHeld -> Test_DisconnectHeld; DisconnectHeldStock -> Test_DisconnectHeldStock;
 //   DisconnectLateReturn -> Test_DisconnectLateReturn; DisconnectReplace -> Test_DisconnectReplace; DisconnectFakeBack -> Test_DisconnectFakeBack.
-// Same values as the C++; the differences are said at each test. The C++ file stays (the main session removes tests after the red then the green).
+// Same values as the C++; the differences are said at each test. The C++ tests stay until the main session has seen these red then green (it then removes them).
 // SpawnPlayerStateNoSlot + SetPlayerMatchSlot is the C++ order (SetMatchSlot later than the spawn), so no player state is spawned "after the Destroy".
 
 namespace DisconnectTest2
@@ -202,21 +202,26 @@ void Test_DisconnectGains(FUnitTest& T)
 		int Deposited = HOLTestWorld::DepositLoad(TestWorld, 1, DisconnectTest2::Wood, 10);
 		T.AssertEquals(10, Deposited, "his Peasant unloads 10 wood");
 
-		// Not ported: the enemy destroying his foundation and his centre (the cost of the foundation and the queue back): HOLTestWorld::DestroyBuilding
-		// is a plain Destroy, not UHOLConstructionSubsystem::DestroyBuilding (TYPES_A_EXPOSER); those two refunds stay in the C++ test.
+		// The enemy destroys his foundation and his centre (the combat's path, UHOLConstructionSubsystem::DestroyBuilding): the cost of the foundation and the queue back.
+		HOLTestWorld::DestroyBuildingWithRefund(Foundation);
+		HOLTestWorld::DestroyBuildingWithRefund(Centre);
 
 		AHOLPlayerState BobAgain = DisconnectTest2::Seat(TestWorld, State, 1, false);
 		HOLGameStateTest::GiveSlotStock(State, BobAgain, Starting, 100.0);
 		FHOLResources Expected = AtDeparture;
 		Expected.Wood += 10;
+		Expected.Food += FoundationRefund.Food + PeasantCost.Food;
+		Expected.Wood += FoundationRefund.Wood + PeasantCost.Wood;
+		Expected.Stone += FoundationRefund.Stone + PeasantCost.Stone;
+		Expected.Gold += FoundationRefund.Gold + PeasantCost.Gold;
 		FHOLResources Back = HOLGameStateTest::GetResources(BobAgain);
-		T.AssertTrue(DisconnectTest::SameRes(Back, Expected), f"back: his stock plus the 10 wood (the refunds are not ported) (back {Back.Food}/{Back.Wood}/{Back.Stone}/{Back.Gold}, expected {Expected.Food}/{Expected.Wood}/{Expected.Stone}/{Expected.Gold})");
+		T.AssertTrue(DisconnectTest::SameRes(Back, Expected), f"back: his stock plus the 10 wood, the foundation's cost and the queue's (back {Back.Food}/{Back.Wood}/{Back.Stone}/{Back.Gold}, expected {Expected.Food}/{Expected.Wood}/{Expected.Stone}/{Expected.Gold})");
 	}
 	HOLTestWorld::DestroyTestWorld(TestWorld);
 }
 
 // D719 (T0): the technologies are kept for the absent as the stock. Differences: no journal capture (the two "researched PloughI" count
-// assertions stay in C++), and the AI's reader (ReadAITechnologiesDone) is replaced by the technologies of the AI's player state that holds his seat.
+// assertions stay in C++), and the AI's reader is read twice: GetAITechnologiesDone (ReadAITechnologiesDone) and the technologies of the AI's player state of his seat.
 void Test_DisconnectTechnologies(FUnitTest& T)
 {
 	T.AssertTrue(HOLGameStateTest::IsTechnologyInTable(n"PloughII"), "the technology table is loaded (Plough II)");
@@ -249,12 +254,16 @@ void Test_DisconnectTechnologies(FUnitTest& T)
 		Bob.DestroyActor();
 		AHOLPlayerState HolderAway = HOLTestWorld::FindHeldBot(TestWorld, 1);
 		T.AssertTrue(HolderAway != nullptr && HOLGameStateTest::HasTechnology(HolderAway, n"PloughI"), "away: his Plough I is still his (read on the AI's player state of his seat)");
+		TArray<FName> DoneAway = HOLTestWorld::GetAITechnologiesDone(TestWorld, 1);
+		T.AssertTrue(DoneAway.Contains(n"PloughI"), "away: his Plough I is still read as done (the AI's reader)");
 
 		HOLTestWorld::AdvanceSteps(TestWorld, 3000);
 
 		T.AssertTrue(HOLGameStateTest::HasTechnology(Alice, n"PloughI"), "Alice's research landed in her player state, as ever");
 		AHOLPlayerState HolderLater = HOLTestWorld::FindHeldBot(TestWorld, 1);
 		T.AssertTrue(HolderLater != nullptr && HOLGameStateTest::HasTechnology(HolderLater, n"PloughII"), "away: the research ended while he was gone is his");
+		TArray<FName> DoneLater = HOLTestWorld::GetAITechnologiesDone(TestWorld, 1);
+		T.AssertTrue(DoneLater.Contains(n"PloughII"), "away: the research ended while he was gone is read as done (the AI's reader)");
 
 		AHOLPlayerState BobAgain = DisconnectTest2::Seat(TestWorld, State, 1, true);
 		T.AssertTrue(BobAgain != nullptr, "new player state");
@@ -293,11 +302,13 @@ void Test_DisconnectHeld(FUnitTest& T)
 		const int Normal = 1;
 
 		T.AssertFalse(Brain.IsHeld(1), "present: Bob's seat is not held");
+		T.AssertEquals(-1, HOLTestWorld::GetSlotLevel(TestWorld, 1), "present: a human seat has no level");
 		T.AssertFalse(Brain.GetThinkingSlots().Contains(1), "present: nobody thinks for him");
 
 		T.AssertTrue(HOLGameStateTest::KeepAbsentSlot(State, Bob, 10.0, 180.0), "Bob leaves: slot kept");
 		Bob.DestroyActor();
 		T.AssertTrue(Brain.IsHeld(1), "away: the AI holds his seat");
+		T.AssertEquals(Normal, HOLTestWorld::GetSlotLevel(TestWorld, 1), "away: a held seat is read as Normal");
 		T.AssertFalse(Brain.IsHeld(0), "away: Alice's seat is not held");
 		T.AssertTrue(Brain.GetThinkingSlots().Contains(1), "away: the brain thinks for his seat");
 		T.AssertFalse(Brain.GetThinkingSlots().Contains(0), "away: and not for Alice's");
@@ -310,6 +321,7 @@ void Test_DisconnectHeld(FUnitTest& T)
 			T.AssertTrue(HOLGameStateTest::GiveSlotStock(State, BobAgain, Starting, 100.0), "back at 100");
 			T.AssertFalse(Brain.IsHeld(1), "back: the AI lets the seat go");
 			T.AssertFalse(Brain.GetThinkingSlots().Contains(1), "back: the brain no longer thinks for it");
+			T.AssertEquals(-1, HOLTestWorld::GetSlotLevel(TestWorld, 1), "back: a human seat has no level again");
 		}
 	}
 	HOLTestWorld::DestroyTestWorld(TestWorld);
@@ -357,8 +369,8 @@ void Test_DisconnectHeldStock(FUnitTest& T)
 		// What the brain orders for the seat is paid on his stock (the real order path, as the script's).
 		T.AssertTrue(HOLTestWorld::HasSlotStock(TestWorld, 1), "away: his stock is read");
 		FHOLResources Before = HOLTestWorld::GetSlotStock(TestWorld, 1);
-		// Not the AI's order path (HOLAIOrder::IssueAIProduceOrder has no test-world context: TYPES_A_EXPOSER): the same queue, paid on the holder's stock.
-		T.AssertTrue(Holder != nullptr && HOLTestWorld::EnqueueProduction(TestWorld, BobCentre, n"Peasant", 1, Holder, Starting, 5), "the AI orders a Peasant at his centre");
+		// The AI's order path (UHOLAIOrderLibrary::IssueAIProduceOrder, the test world as its context), paid on the holder's stock.
+		T.AssertTrue(HOLTestWorld::IssueAIProduceOrder(TestWorld, 1, FVector(0.0, 0.0, 0.0), n"Peasant"), "the AI orders a Peasant at his centre");
 		HOLTestWorld::AdvanceSteps(TestWorld, 1);
 		T.AssertEquals(1, HOLTestWorld::GetProductionQueueCount(BobCentre), "next step: the Peasant is in his centre's queue");
 		FHOLResources After = HOLTestWorld::GetSlotStock(TestWorld, 1);
@@ -380,6 +392,7 @@ void Test_DisconnectHeldStock(FUnitTest& T)
 			T.AssertTrue(HOLGameStateTest::HasTechnology(BobAgain, n"PloughI"), "back: his Plough I");
 			T.AssertTrue(HOLTestWorld::FindHeldBot(TestWorld, 1) == nullptr, "back: no player state of the AI any more");
 			T.AssertTrue(HOLTestWorld::FindLiveHolder(TestWorld, 1, nullptr) == BobAgain, "back: one player state for his seat");
+			T.AssertEquals(1, HOLTestWorld::CountPlayerStatesOfSlot(TestWorld, 1), "back: one player state for his seat (counted over the PlayerArray)");
 			T.AssertEquals(1, HOLTestWorld::GetProductionQueueCount(BobCentre), "back: his order stays in the centre's queue");
 		}
 	}
@@ -387,8 +400,8 @@ void Test_DisconnectHeldStock(FUnitTest& T)
 }
 
 // D717 (T4): a name that comes back while its OLD connection is still alive takes his seat back.
-// Difference: his order in the queue is paid by EnqueueProduction on the old player state (the AI order path is Test_DisconnectHeldStock's);
-// not ported: "the old player state's GetPlayerIndex() != 1" (no accessor; the holder checks say the same).
+// Difference: none known (the order is the AI's, HOLTestWorld::IssueAIProduceOrder, then one step applies it, as the C++).
+// D717 (T4) again: the old player state is a spectator without a seat once the new one has it.
 void Test_DisconnectReplace(FUnitTest& T)
 {
 	UHOLTestWorldHandle TestWorld = HOLTestWorld::CreateTestWorld();
@@ -411,7 +424,8 @@ void Test_DisconnectReplace(FUnitTest& T)
 		HOLGameStateTest::GiveSlotStock(State, BobOld, Starting, 0.0);
 		HOLTestWorld::InitProductionSubsystem(TestWorld);
 		HOLGameStateTest::AddTechnology(BobOld, n"PloughI");
-		T.AssertTrue(HOLTestWorld::EnqueueProduction(TestWorld, BobCentre, n"Peasant", 1, BobOld, Starting, 5), "Bob orders a Peasant");
+		T.AssertTrue(HOLTestWorld::IssueAIProduceOrder(TestWorld, 1, FVector(0.0, 0.0, 0.0), n"Peasant"), "Bob orders a Peasant");
+		HOLTestWorld::AdvanceSteps(TestWorld, 1);
 		T.AssertEquals(1, HOLTestWorld::GetProductionQueueCount(BobCentre), "the Peasant is in his centre's queue");
 		FHOLResources BobStock = HOLGameStateTest::GetResources(BobOld);
 		T.AssertFalse(DisconnectTest::SameRes(BobStock, Starting), "(his stock is no longer the starting one)");
@@ -436,6 +450,7 @@ void Test_DisconnectReplace(FUnitTest& T)
 			T.AssertTrue(HOLGameStateTest::HasTechnology(BobNew, n"PloughI"), "his Plough I");
 			T.AssertEquals(1, HOLTestWorld::GetProductionQueueCount(BobCentre), "his order stays in the centre's queue");
 			T.AssertTrue(HOLGameStateTest::IsOnlyASpectator(BobOld), "the old player state is a spectator now");
+			T.AssertTrue(HOLTestWorld::GetPlayerStateSlot(BobOld) != 1, "... without a seat");
 			T.AssertTrue(HOLTestWorld::FindLiveHolder(TestWorld, 1, nullptr) == BobNew, "the new player state alone holds the seat");
 			T.AssertTrue(HOLTestWorld::FindHeldBot(TestWorld, 1) == nullptr, "no player state of the AI is left on the seat");
 			T.AssertFalse(HOLGameStateTest::IsSlotAbsent(State, 1), "his seat is not absent");
@@ -461,7 +476,7 @@ void Test_DisconnectReplace(FUnitTest& T)
 }
 
 // T9: hol.Net.FakeAbsent Back <Slot>, the return without a second client, on the real chain (the console commands).
-// Difference: "one player state for his seat" is FindLiveHolder (the one holder), not a count over PlayerArray.
+// Difference: none (the count of player states of his seat is CountPlayerStatesOfSlot, over the PlayerArray as the C++; FindLiveHolder checks the holder too).
 void Test_DisconnectFakeBack(FUnitTest& T)
 {
 	UHOLTestWorldHandle TestWorld = HOLTestWorld::CreateTestWorld();
@@ -491,6 +506,7 @@ void Test_DisconnectFakeBack(FUnitTest& T)
 		T.AssertTrue(DisconnectTest::SameRes(Read, Stock), "Back 1: the stock as the AI left it (the deposit is there)");
 		T.AssertTrue(DisconnectTest::SameRes(HOLGameStateTest::GetResources(Alice), AliceStock), "Back 1: Alice's stock is untouched");
 		AHOLPlayerState Returned = HOLTestWorld::FindLiveHolder(TestWorld, 1, nullptr);
+		T.AssertEquals(1, HOLTestWorld::CountPlayerStatesOfSlot(TestWorld, 1), "Back 1: one player state for his seat (counted over the PlayerArray)");
 		T.AssertTrue(Returned != nullptr && !HOLGameStateTest::IsABot(Returned) && Returned.GetPlayerName() == "Bob", "Back 1: that player state is Bob's, not an AI's");
 		// Nobody away any more: a second Back has nothing to give back.
 		int Notices = HOLGameStateTest::CountAbsentNotices(State);
@@ -530,6 +546,7 @@ void Test_DisconnectLateReturn(FUnitTest& T)
 			T.AssertFalse(HOLGameStateTest::IsSlotDefeated(State, 1), "... his seat is not defeated");
 			T.AssertTrue(HOLTestWorld::FindHeldBot(TestWorld, 1) != nullptr, "... the AI's player state still holds it");
 			T.AssertFalse(Brain.IsHeld(1), "... the hold mode is over");
+				T.AssertEquals(1, HOLTestWorld::GetSlotLevel(TestWorld, 1), "... at the Normal level");
 			T.AssertTrue(Brain.GetThinkingSlots().Contains(1), "... the brain thinks for it, the full brain");
 			T.AssertFalse(HOLGameStateTest::HasAbsentNotice(State, 1, false), "... his banner is out");
 			HOLGameStateTest::DefeatExpiredAbsences(State, 300.0, 180.0);
@@ -545,6 +562,7 @@ void Test_DisconnectLateReturn(FUnitTest& T)
 				T.AssertTrue(DisconnectTest::SameRes(HOLGameStateTest::GetResources(BobAgain), Starting), "... his stock");
 				T.AssertTrue(HOLTestWorld::FindHeldBot(TestWorld, 1) == nullptr, "... the AI's player state gone");
 				T.AssertFalse(Brain.GetThinkingSlots().Contains(1), "... the brain no longer thinks for it");
+					T.AssertEquals(-1, HOLTestWorld::GetSlotLevel(TestWorld, 1), "... a human seat has no level again");
 				T.AssertFalse(HOLGameStateTest::IsSlotAbsent(State, 1), "... the seat is no longer absent");
 				T.AssertFalse(HOLGameStateTest::IsSlotDefeated(State, 1), "... and never defeated");
 			}
