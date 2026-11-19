@@ -243,7 +243,6 @@ namespace UE::HeroesOfLiberty::UI::GameScreen
 		TEXT("A"), TEXT("Z"), TEXT("E"), TEXT("R"),
 		TEXT("Q"), TEXT("S"), TEXT("D"), TEXT("F"),
 		TEXT("W"), TEXT("X"), TEXT("C"), TEXT("V") };
-	constexpr int32 GridColumns = 4;
 	constexpr float CellSize = 76.f;
 	constexpr float CellGap = 2.f;
 	constexpr float QueueItemHeight = 36.f;
@@ -275,10 +274,6 @@ namespace UE::HeroesOfLiberty::UI::GameScreen
 	/** Seconds between two readings of a selected group's activities. */
 	constexpr float GroupRefreshInterval = 0.25f;
 
-	FName GridCellName(const int32 Cell)
-	{
-		return *FString::Printf(TEXT("GridCell%02d"), Cell);
-	}
 
 	/** The ages' numerals (I to IV) and names (GDD § 11.1). */
 	const TCHAR* const AgeNumerals[HOLCommandGrid::NumAges] = { TEXT("I"), TEXT("II"), TEXT("III"), TEXT("IV") };
@@ -378,16 +373,7 @@ void UHOLGameScreen::NativeOnInitialized()
 	}
 	UE_LOG(LogHOLUI, Log, TEXT("Game screen: script part %s"), ScriptScreen ? *ScriptScreen->GetClass()->GetName() : TEXT("none"));
 
-	for (int32 Cell = 0; Cell < AHOLPlayerController::NumGridCells; ++Cell)
-	{
-		UHOLGridCell* GridCell = Cast<UHOLGridCell>(WidgetTree->FindWidget(GridCellName(Cell)));
-		GridCells.Add(GridCell);
-		if (GridCell)
-		{
-			GridCell->SetKey(FText::AsCultureInvariant(FString(GridKeys[Cell])));
-			GridCell->OnClicked().AddUObject(this, &UHOLGameScreen::HandleGridCellClicked, Cell);
-		}
-	}
+	// HUD H-10: the grid's cells are the script's (UHOLCommandGridPanel.Build, then SetGridCells): their keys and clicks are set there.
 	SelectionChips = Cast<UWrapBox>(WidgetTree->FindWidget(TEXT("SelectionChips")));
 	for (int32 Chip = 0; Chip < NumChips; ++Chip)
 	{
@@ -1806,15 +1792,6 @@ void UHOLGameScreen::RefreshGrid(const AHOLBuilding* OwnBuilding, const bool bOw
 	}
 	bOrdersShown = Orders.ContainsByPredicate([](const FHOLGridCommand& Command) { return !Command.IsNone(); });
 	bHeroCellsShown = Commands.ContainsByPredicate([](const FHOLGridCommand& Command) { return Command.Command == EHOLGridCommand::HeroAbility; });
-	// Hidden, never collapsed: its place in the bottom bar kept (nothing moves from a selection to the next).
-	if (GridPanel)
-	{
-		const ESlateVisibility Wanted = bGridShown || bOrdersShown ? ESlateVisibility::Visible : ESlateVisibility::Hidden;
-		if (GridPanel->GetVisibility() != Wanted)
-		{
-			GridPanel->SetVisibility(Wanted);
-		}
-	}
 	// The builders' age panels only (not the whole script Refresh: its population alert reads the HUD's real time once per timer step).
 	if (ScriptScreen)
 	{
@@ -1824,10 +1801,12 @@ void UHOLGameScreen::RefreshGrid(const AHOLBuilding* OwnBuilding, const bool bOw
 	// Only a site of the player's own, selected alone (or alone in a group's subgroup), has « Annuler » (HOLCommandGrid::GetCommand).
 	const FHOLResources Stock = PlayerState ? PlayerState->GetResources() : FHOLResources();
 	ShownTradeLabels.Reset();
-	ShownTradeLabels.SetNum(GridCells.Num());
+	ShownTradeLabels.SetNum(AHOLPlayerController::NumGridCells);
+	GridFrameFill.Reset();
+	GridFrameFill.SetNum(AHOLPlayerController::NumGridCells);
 	ShownMarketPrices.Reset();
 	ShownEngineTier = INDEX_NONE;
-	for (int32 Cell = 0; Cell < GridCells.Num() && Cell < ShownGridTypes.Num(); ++Cell)
+	for (int32 Cell = 0; Cell < AHOLPlayerController::NumGridCells && Cell < ShownGridTypes.Num(); ++Cell)
 	{
 		const FHOLGridCommand Command = bGridShown && Commands.IsValidIndex(Cell) ? Commands[Cell]
 			: bOrdersShown && Orders.IsValidIndex(Cell) ? Orders[Cell] : FHOLGridCommand();
@@ -1844,11 +1823,8 @@ void UHOLGameScreen::RefreshGrid(const AHOLBuilding* OwnBuilding, const bool bOw
 				: Command.Command == EHOLGridCommand::Stop ? FName(TEXT("Stop")) : Command.Command == EHOLGridCommand::Hold ? FName(TEXT("Hold"))
 				: Command.Command == EHOLGridCommand::Deploy ? FName(Command.bPack ? TEXT("Pack") : TEXT("Deploy")) : NAME_None;
 		}
-		UHOLGridCell* GridCell = GridCells[Cell];
-		if (!GridCell)
-		{
-			continue;
-		}
+		// HUD H-10: the cell is the script's; what it shows is written to the cache the script's panel applies (same method names, the switch is as it was).
+		FHOLGridCellFill* GridCell = &GridFrameFill[Cell];
 		switch (Command.Command)
 		{
 		case EHOLGridCommand::Produce:
@@ -1995,8 +1971,8 @@ void UHOLGameScreen::RefreshGrid(const AHOLBuilding* OwnBuilding, const bool bOw
 				GridCell->SetGain(Gain);
 			}
 			GridCell->SetTooltip(Name, Cost, GetMissing(Stock, Cost), Effect);
-			// What the cell itself shows, read back from its widgets (the name, the gain and its logo: "Bois +96 [Wood]").
-			ShownTradeLabels[Cell] = GridCell->DescribeContent();
+			// What the cell itself shows (the name, the gain and its logo: "Bois +96 [Wood]") is read back from its widgets by ApplyGridCell into ShownTradeLabels.
+			GridCell->bTrade = true;
 			break;
 		}
 		case EHOLGridCommand::CancelConstruction:
@@ -2083,10 +2059,55 @@ void UHOLGameScreen::RefreshGrid(const AHOLBuilding* OwnBuilding, const bool bOw
 			}
 		default:
 			// An empty cell stays, dark (disabled), at its key's place.
-			GridCell->ClearUnit();
-			break;
-		}
+$1	// HUD H-10: the script's grid panel shows the frame just computed.
+	if (ScriptScreen)
+	{
+		ScriptScreen->RefreshGridCells();
 	}
+}
+
+void UHOLGameScreen::SetGridCells(const TArray<UHOLGridCell*>& Cells)
+{
+	GridCells.Reset();
+	for (UHOLGridCell* Cell : Cells)
+	{
+		GridCells.Add(Cell);
+	}
+}
+
+void UHOLGameScreen::ReadGridFrame(TArray<int32>& OutKinds, TArray<int32>& OutStates, TArray<FName>& OutOrderTypes, bool& bOutGrid, bool& bOutOrders) const
+{
+	OutKinds.Reset();
+	OutStates.Reset();
+	OutOrderTypes.Reset();
+	for (int32 Cell = 0; Cell < GridFrameFill.Num(); ++Cell)
+	{
+		OutKinds.Add(GridFrameFill[Cell].bCommand ? 1 : 0);
+		OutStates.Add(static_cast<int32>(GridFrameFill[Cell].State));
+		OutOrderTypes.Add(ShownOrderTypes.IsValidIndex(Cell) ? ShownOrderTypes[Cell] : NAME_None);
+	}
+	bOutGrid = bGridShown;
+	bOutOrders = bOrdersShown;
+}
+
+bool UHOLGameScreen::ApplyGridCell(const int32 Cell, UHOLGridCell* Target)
+{
+	if (!Target || !GridFrameFill.IsValidIndex(Cell) || !GridFrameFill[Cell].bCommand)
+	{
+		return false;
+	}
+	const FHOLGridCellFill& Fill = GridFrameFill[Cell];
+	Target->SetCommand(Fill.Name, Fill.State);
+	if (Fill.bGain)
+	{
+		Target->SetGain(Fill.Gain);
+	}
+	Target->SetTooltip(Fill.TooltipName, Fill.Cost, Fill.Missing, Fill.Effect);
+	if (Fill.bTrade && ShownTradeLabels.IsValidIndex(Cell))
+	{
+		ShownTradeLabels[Cell] = Target->DescribeContent();
+	}
+	return true;
 }
 
 int32 UHOLGameScreen::GetBoundTier() const
@@ -2188,7 +2209,7 @@ bool UHOLGameScreen::ReadQueue(TArray<FName>& OutTypes, TArray<bool>& OutResearc
 	return true;
 }
 
-void UHOLGameScreen::HandleGridCellClicked(const int32 Cell)
+void UHOLGameScreen::ClickGridCell(const int32 Cell)
 {
 	using namespace UE::HeroesOfLiberty::UI::GameScreen;
 
@@ -2200,11 +2221,9 @@ void UHOLGameScreen::HandleGridCellClicked(const int32 Cell)
 	// The player's units: the panel shows their orders (never with a building's grid).
 	if (!bGridShown && bOrdersShown && ShownOrderTypes.IsValidIndex(Cell) && !ShownOrderTypes[Cell].IsNone())
 	{
-		UE_LOG(LogHOLUI, Display, TEXT("HUD: order cell %s clicked"), GridKeys[Cell]);
 		PlayerController->ActivateOrderCell(Cell);
 		return;
 	}
-	UE_LOG(LogHOLUI, Display, TEXT("HUD: grid cell %s clicked"), GridKeys[Cell]);
 	PlayerController->ActivateGridCell(Cell);
 }
 
@@ -2342,19 +2361,7 @@ bool UHOLGameScreen::ClickWidget(const FName Name)
 	{
 		return true;
 	}
-	for (int32 Cell = 0; Cell < GridCells.Num(); ++Cell)
-	{
-		const UHOLGridCell* GridCell = GridCells[Cell];
-		if (GridCell && GridCell->GetFName() == Name)
-		{
-			if ((!bGridShown && !bOrdersShown) || !GridCell->GetIsEnabled())
-			{
-				return false;
-			}
-			HandleGridCellClicked(Cell);
-			return true;
-		}
-	}
+	// HUD H-10: GridCell00..11 are the script's too (UHOLCommandGridPanel.ClickName, same path); the journal lines are the script's (MenuLog).
 	// HUD H-7: QueueItem0..4 are the script's (UHOLProductionQueuePanel.ClickName, through UHOLScriptScreen::ClickWidget above).
 	// HUD H-8: the age panels' buildings (AgeCell<age><cell>) are the script's too (UHOLAgePanelsPanel.ClickName, same path).
 	return false;
@@ -2794,20 +2801,9 @@ void UHOLGameScreen::BuildLayout()
 
 	// The command panel (D30, the user's 2nd trial of G.1): 3 rows of 4 square cells, A Z E R / Q S D F / W X C V, always
 	// all there (an empty one dark): the orders of the player's units or the grid of its building.
-	GridPanel = MakePanel(TEXT("GridPanel"));
-	GridPanel->SetPadding(FMargin(6.f));
-	CommandColumn->AddChildToVerticalBox(GridPanel)->SetHorizontalAlignment(HAlign_Left);
-	UUniformGridPanel* Grid = WidgetTree->ConstructWidget<UUniformGridPanel>(UUniformGridPanel::StaticClass(), TEXT("Grid"));
-	Grid->SetSlotPadding(FMargin(CellGap));
-	GridPanel->SetContent(Grid);
-	for (int32 Cell = 0; Cell < AHOLPlayerController::NumGridCells; ++Cell)
-	{
-		USizeBox* CellBox = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass());
-		CellBox->SetWidthOverride(CellSize);
-		CellBox->SetHeightOverride(CellSize);
-		CellBox->SetContent(WidgetTree->ConstructWidget<UHOLGridCell>(UHOLGridCell::StaticClass(), GridCellName(Cell)));
-		Grid->AddChildToUniformGrid(CellBox, Cell / GridColumns, Cell % GridColumns);
-	}
+	// HUD H-10: the host the script's command grid (GridPanel, Grid, GridCell00..11) is put in, in the same place (under the queue panel).
+	GridPanelHost = MakeVerticalBox(TEXT("GridPanelHost"));
+	CommandColumn->AddChildToVerticalBox(GridPanelHost)->SetHorizontalAlignment(HAlign_Left);
 
 	// HUD H-8: the host the script's age panels are put in (empty here; it takes no room until they are).
 	AgePanelsHost = MakeHorizontalBox(TEXT("AgePanelsHost"));
@@ -2826,7 +2822,6 @@ void UHOLGameScreen::BuildLayout()
 	// Nothing selected yet.
 	SelectionPanel->SetVisibility(ESlateVisibility::Collapsed);
 	QueuePanel->SetVisibility(ESlateVisibility::Collapsed);
-	GridPanel->SetVisibility(ESlateVisibility::Hidden);
 }
 
 #undef LOCTEXT_NAMESPACE
