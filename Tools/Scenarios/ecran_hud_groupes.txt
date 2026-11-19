@@ -20,7 +20,7 @@ notereset Etape 1 : aucun groupe n'existe encore : la barre des groupes de contr
 waitkey Entree : etape 1, la barre des groupes est vide
 capture hud_groupes_vide
 hol.Select.Army
-waitlog Select army: 
+waitlog Select army: 4 soldiers
 hol.Select.Group Add 1
 waitlog Group 1: created
 waitlog HUD groups: 1=4
@@ -37,7 +37,7 @@ waitunits 3
 hol.Camera.FocusSlot own
 waitlog Camera above the start of slot 0
 hol.Select.Army
-waitlog Select army: 
+waitlog Select army: 7 soldiers
 hol.Select.Group Add 2
 waitlog Group 2: created
 waitlog HUD groups: 1=4 2=7
