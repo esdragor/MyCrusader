@@ -122,6 +122,8 @@ FString TalentTipTexts = "";
 	UHOLTopBarPanel TopBar;
 	// HUD H-4: the players' table (HOLPlayerTable.as), drawn into the C++ screen's PlayersPanel.
 	UHOLPlayerTablePanel PlayerTable;
+	// HUD H-6: the control groups' bar (HOLGroupBar.as), drawn into the C++ screen's GroupsPanel.
+	UHOLGroupBarPanel GroupBar;
 	FString VolcanoTexts = "";
 	// H-1: the wait and absence banners (HOLWaitBanner.as).
 	UHOLWaitBannerPanel WaitBanner;
@@ -264,6 +266,8 @@ UHOLAlertBannerPanel AlertBanner;
 		MessageParts = HOLShortMessage::Build(this, Frame);
 		PlayerTable = Cast<UHOLPlayerTablePanel>(NewObject(this, UHOLPlayerTablePanel));
 		PlayerTable.Build(this, GetPlayersPanel());
+		GroupBar = Cast<UHOLGroupBarPanel>(NewObject(this, UHOLGroupBarPanel));
+		GroupBar.Build(this, GetGroupsPanel());
 		BuildMinimap(Frame);
 		BuildTalentWindow(Frame);
 		// Last: over the other blocks.
@@ -1385,6 +1389,8 @@ UHOLAlertBannerPanel AlertBanner;
 			WaitBanner.Refresh();
 		if (PlayerTable != nullptr)
 			PlayerTable.Refresh();
+		if (GroupBar != nullptr)
+			GroupBar.Refresh();
 		if (Audio != nullptr)
 			Audio.PlayDueRepeats();
 		RefreshDiplomacy();
@@ -1440,6 +1446,14 @@ UHOLAlertBannerPanel AlertBanner;
 	{
 		if (HOLShortMessage::Tick(MessageParts, MessageState, DeltaSeconds))
 			SetShownMessageKey("");
+	}
+
+	// The lit control group changed (HUD H-6): the C++ NativeTick sees it each frame (a recall, the 0.5 s end) and calls this, so the chip lights on the very frame.
+	UFUNCTION(BlueprintOverride)
+	void GroupLitChanged()
+	{
+		if (GroupBar != nullptr)
+			GroupBar.RefreshLit();
 	}
 
 	void BuildMinimap(UOverlay Frame)
@@ -2251,6 +2265,8 @@ UHOLAlertBannerPanel AlertBanner;
 		if (WidgetName == n"PauseResumeButton")
 			return ClickPauseResume();
 		if (TopBar != nullptr && TopBar.ClickName(WidgetName))
+			return true;
+		if (GroupBar != nullptr && GroupBar.ClickName(WidgetName))
 			return true;
 		return false;
 	}

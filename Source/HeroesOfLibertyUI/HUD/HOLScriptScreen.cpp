@@ -63,6 +63,76 @@ UBorder* UHOLScriptScreen::GetPlayersPanel() const
 	return GameScreen ? GameScreen->GetPlayersPanel() : nullptr;
 }
 
+UBorder* UHOLScriptScreen::GetGroupsPanel() const
+{
+	const UHOLGameScreen* GameScreen = GetTypedOuter<UHOLGameScreen>();
+	return GameScreen ? GameScreen->GetGroupsPanel() : nullptr;
+}
+
+int32 UHOLScriptScreen::GetNumControlGroups()
+{
+	return AHOLPlayerController::NumControlGroups;
+}
+
+bool UHOLScriptScreen::GetControlGroupsAvailable() const
+{
+	return Cast<AHOLPlayerController>(GetOwningPlayer()) != nullptr && GetWorld() != nullptr;
+}
+
+bool UHOLScriptScreen::GetControlGroupNow(const int32 Group, int32& OutCount, bool& bOutBuildings) const
+{
+	OutCount = 0;
+	bOutBuildings = false;
+	const AHOLPlayerController* PlayerController = Cast<AHOLPlayerController>(GetOwningPlayer());
+	if (!PlayerController || Group < 0 || Group >= AHOLPlayerController::NumControlGroups)
+	{
+		return false;
+	}
+	TArray<uint32> Units;
+	TArray<AHOLBuilding*> Buildings;
+	const bool bFull = PlayerController->GetControlGroup(Group, Units, Buildings);
+	bOutBuildings = Units.IsEmpty();
+	OutCount = Units.IsEmpty() ? Buildings.Num() : Units.Num();
+	return bFull;
+}
+
+void UHOLScriptScreen::GetControlGroupTypes(const int32 Group, TArray<FString>& OutNames, TArray<int32>& OutCounts) const
+{
+	OutNames.Reset();
+	OutCounts.Reset();
+	if (UHOLGameScreen* GameScreen = GetTypedOuter<UHOLGameScreen>())
+	{
+		GameScreen->GetGroupTypes(Group, OutNames, OutCounts);
+	}
+}
+
+int32 UHOLScriptScreen::GetLastSelectedGroup() const
+{
+	const AHOLPlayerController* PlayerController = Cast<AHOLPlayerController>(GetOwningPlayer());
+	double SelectTime = -1.0;
+	return PlayerController ? PlayerController->GetLastSelectedGroup(SelectTime) : INDEX_NONE;
+}
+
+float UHOLScriptScreen::GetLastSelectedGroupAge() const
+{
+	const AHOLPlayerController* PlayerController = Cast<AHOLPlayerController>(GetOwningPlayer());
+	const UWorld* World = GetWorld();
+	double SelectTime = -1.0;
+	if (!PlayerController || !World || PlayerController->GetLastSelectedGroup(SelectTime) == INDEX_NONE)
+	{
+		return 1.0e9f;
+	}
+	return static_cast<float>(World->GetRealTimeSeconds() - SelectTime);
+}
+
+void UHOLScriptScreen::SelectControlGroup(const int32 Group)
+{
+	if (AHOLPlayerController* PlayerController = Cast<AHOLPlayerController>(GetOwningPlayer()))
+	{
+		PlayerController->SelectControlGroup(Group);
+	}
+}
+
 bool UHOLScriptScreen::GetPopulationNow(int32& OutUsed, int32& OutCap, float& OutRealSeconds) const
 {
 	const UHOLGameScreen* GameScreen = GetTypedOuter<UHOLGameScreen>();
@@ -564,6 +634,16 @@ void UHOLScriptScreen::NativeTick(const FGeometry& MyGeometry, const float InDel
 			AlertFrameTick(InDeltaTime);
 		}
 		bAlertLive = bAlertShown;
+	}
+	// The control group lit (the chip of the group just recalled, HOLGroupBar.as LightSeconds = 0.5 s): the script is called only when it changes, on the very frame.
+	{
+		const int32 SelectedGroup = GetLastSelectedGroup();
+		const int32 LitNow = (SelectedGroup != INDEX_NONE && GetLastSelectedGroupAge() < 0.5f) ? SelectedGroup : INDEX_NONE;
+		if (LitNow != LitGroupSeen)
+		{
+			LitGroupSeen = LitNow;
+			GroupLitChanged();
+		}
 	}
 	// The T key (the talent tree, TQ4 = A): the viewport's key state, as the Enter of a test scenario; the console open or a focused menu keeps it.
 	if (const APlayerController* Controller = GetOwningPlayer())

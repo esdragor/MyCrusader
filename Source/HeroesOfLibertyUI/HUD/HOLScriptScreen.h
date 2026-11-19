@@ -84,6 +84,41 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|UI")
 	UBorder* GetPlayersPanel() const;
 
+	/** The C++ screen's GroupsPanel (the control groups bar's host, in its column, margin and gap, collapsed); the script fills it (HUD H-6). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|UI")
+	UBorder* GetGroupsPanel() const;
+
+	/** AHOLPlayerController::NumControlGroups (10). */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|UI")
+	static int32 GetNumControlGroups();
+
+	/** The owning controller AND the world exist (the C++ bar did nothing before them). */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|UI")
+	bool GetControlGroupsAvailable() const;
+
+	/**
+	 * AHOLPlayerController::GetControlGroup(Group): returns bFull (the group holds something). OutCount: the units, or the buildings when it holds no unit;
+	 * bOutBuildings: it holds no unit. False and 0 without a controller or out of range.
+	 */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|UI")
+	bool GetControlGroupNow(int32 Group, int32& OutCount, bool& bOutBuildings) const;
+
+	/** The group's types in the order they are met (the script sorts), names already localised, one count by type (UHOLGameScreen::GetGroupTypes). Empty without a group. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|UI")
+	void GetControlGroupTypes(int32 Group, TArray<FString>& OutNames, TArray<int32>& OutCounts) const;
+
+	/** AHOLPlayerController::GetLastSelectedGroup: the group, INDEX_NONE (-1) when none or without a controller. */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|UI")
+	int32 GetLastSelectedGroup() const;
+
+	/** Real seconds since that selection (1e9, never lit, without a selection or a controller). */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|UI")
+	float GetLastSelectedGroupAge() const;
+
+	/** AHOLPlayerController::SelectControlGroup (the script writes the journal line of the click). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|UI")
+	void SelectControlGroup(int32 Group);
+
 	/**
 	 * The minor alerts (D202, HOLAlertRules.as): the shown player's places taken and given (D282) and the HUD's real time (s).
 	 * False for a spectator or before the player state arrives.
@@ -220,6 +255,10 @@ public:
 	UFUNCTION(BlueprintImplementableEvent, Category = "HeroesOfLiberty|UI")
 	void FrameTick(float DeltaSeconds);
 
+	/** The lit control group changed (a recall, or its 0.5 s end): NativeTick detects it each frame and calls this only then (HUD H-6, HOLGroupBar.as RefreshLit). */
+	UFUNCTION(BlueprintImplementableEvent, Category = "HeroesOfLiberty|UI")
+	void GroupLitChanged();
+
 	/** True when a building of the shown player holds a finished unit for lack of room (D829, the loop of the C++ screen's old CheckPopulationBlocked). */
 	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|UI")
 	bool IsProductionHeldForRoom() const;
@@ -275,4 +314,6 @@ private:
 	bool bMessageLive = false;
 	/** The alert banner was shown at the last frame: NativeTick calls AlertFrameTick while it is, and once more when it ends. */
 	bool bAlertLive = false;
+	/** The control group lit as NativeTick last saw it (INDEX_NONE: none): a change calls GroupLitChanged. */
+	int32 LitGroupSeen = INDEX_NONE;
 };
