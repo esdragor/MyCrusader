@@ -53,7 +53,7 @@ class UHOLPlayerOrdersBoardScript : UHOLPlayerOrdersBoard
 {
 	UHOLCommandSubsystem QueueOfWorld()
 	{
-		return HOLCommandScript::GetCommands(this);
+		return HOLCommandScript::GetCommands();
 	}
 
 	UFUNCTION(BlueprintOverride)
