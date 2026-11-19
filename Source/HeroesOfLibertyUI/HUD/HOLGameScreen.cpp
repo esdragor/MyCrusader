@@ -249,9 +249,7 @@ namespace UE::HeroesOfLiberty::UI::GameScreen
 	constexpr float QueueItemWidth = 56.f;
 	constexpr float QueueItemHeight = 36.f;
 	constexpr float ScreenMargin = 16.f;
-	constexpr float MarkerSize = 12.f;
 	constexpr float SwatchSize = 14.f;
-	constexpr float IdleWorkersWidth = 130.f;
 	/** The site's progress bar in the selection block (J6a.5). */
 	constexpr float SiteBarWidth = 200.f;
 	/** The grid panel's width: the short message above it wraps within it (D313). */
@@ -281,9 +279,6 @@ namespace UE::HeroesOfLiberty::UI::GameScreen
 	const FName CancelName(TEXT("Cancel"));
 	/** Seconds between two readings of a selected group's activities. */
 	constexpr float GroupRefreshInterval = 0.25f;
-	const FName IdleWorkersName(TEXT("IdleWorkers"));
-	const FName MenuButtonName(TEXT("MenuButton"));
-	const FName StatsButtonName(TEXT("StatsButton"));
 	const FName AlertPanelName(TEXT("AlertPanel"));
 	/** A control group's slot (J7a.5): its width, and how long it stays lit once its group is selected (s, real time). */
 	constexpr float GroupSlotWidth = 64.f;
@@ -421,23 +416,6 @@ void UHOLGameScreen::NativeOnInitialized()
 			Item->OnClicked().AddUObject(this, &UHOLGameScreen::HandleQueueItemClicked, Index);
 		}
 	}
-	if (IdleWorkers)
-	{
-		IdleWorkers->OnClicked().AddUObject(this, &UHOLGameScreen::HandleIdleWorkersClicked);
-	}
-	MenuButton = Cast<UHOLQueueItem>(WidgetTree->FindWidget(MenuButtonName));
-	if (MenuButton)
-	{
-		MenuButton->SetLabel(LOCTEXT("Menu", "Menu"));
-		MenuButton->OnClicked().AddUObject(this, &UHOLGameScreen::HandleMenuClicked);
-	}
-	StatsButton = Cast<UHOLQueueItem>(WidgetTree->FindWidget(StatsButtonName));
-	if (StatsButton)
-	{
-		StatsButton->SetLabel(LOCTEXT("Stats", "Statistiques"));
-		StatsButton->OnClicked().AddUObject(this, &UHOLGameScreen::HandleStatsClicked);
-		StatsButton->SetVisibility(ESlateVisibility::Collapsed);
-	}
 	for (int32 Group = 0; Group < AHOLPlayerController::NumControlGroups; ++Group)
 	{
 		UHOLQueueItem* GroupSlot = Cast<UHOLQueueItem>(WidgetTree->FindWidget(GroupSlotName(Group)));
@@ -563,9 +541,6 @@ void UHOLGameScreen::NativeTick(const FGeometry& MyGeometry, const float InDelta
 	{
 		BindTableState(GetWorld() ? GetWorld()->GetGameState<AHOLGameState>() : nullptr);
 		SinceTableRefresh = 0.f;
-		RefreshWaitBanner();
-		RefreshAbsenceBanner();
-		RefreshStatsButton();
 		// V2.3c: a selected main forum on the ground, its ruin's seconds and its rebuilding's percent move with time alone
 		// (the forum's state changes only at its phases): its block is read at the same pace. Standing too (tiers, P4): its
 		// lives follow the level of its player's hero, which moves without telling the forum's state.
@@ -651,8 +626,6 @@ void UHOLGameScreen::NativeTick(const FGeometry& MyGeometry, const float InDelta
 	RefreshIdleWorkers();
 	RefreshControlGroups(FrameSeconds);
 	UpdateHead();
-	CheckPopulationBlocked();
-	UpdateMessage(FrameSeconds);
 }
 
 void UHOLGameScreen::BindPlayerState(AHOLPlayerState* PlayerState)
@@ -1031,75 +1004,6 @@ FString UHOLGameScreen::DescribeMessages() const
 	return MessageThread.Describe();
 }
 
-void UHOLGameScreen::RefreshWaitBanner()
-{
-	using namespace UE::HeroesOfLiberty::UI::GameScreen;
-
-	const AHOLGameState* GameState = BoundTableState.Get();
-	const bool bWaiting = GameState && GameState->IsWaitingForPlayers() && !GameState->GetMissingPlayers().IsEmpty();
-	if (!bWaiting)
-	{
-		if (!ShownWaitPlayers.IsEmpty())
-		{
-			ShownWaitPlayers.Reset();
-			SetShown(WaitPanel, false);
-			UE_LOG(LogHOLUI, Display, TEXT("Wait banner: hidden"));
-		}
-		return;
-	}
-	const FString Players = FString::Join(GameState->GetMissingPlayers(), TEXT(", "));
-	const int32 Left = FMath::Max(0, FMath::CeilToInt(GameState->GetWaitEndSeconds() - GameState->GetServerWorldTimeSeconds()));
-	FFormatNamedArguments Arguments;
-	Arguments.Add(TEXT("Players"), FText::AsCultureInvariant(Players));
-	Arguments.Add(TEXT("Time"), FText::AsCultureInvariant(FString::Printf(TEXT("%d:%02d"), Left / 60, Left % 60)));
-	const FText Text = FText::Format(LOCTEXT("WaitingFor", "En attente de {Players} ({Time})"), Arguments);
-	if (WaitText)
-	{
-		WaitText->SetText(Text);
-	}
-	if (Players != ShownWaitPlayers)
-	{
-		ShownWaitPlayers = Players;
-		SetShown(WaitPanel, true, ESlateVisibility::HitTestInvisible);
-		UE_LOG(LogHOLUI, Display, TEXT("Wait banner: shown, %s"), *Text.ToString());
-	}
-}
-
-void UHOLGameScreen::RefreshAbsenceBanner()
-{
-	using namespace UE::HeroesOfLiberty::UI::GameScreen;
-
-	const AHOLGameState* GameState = BoundTableState.Get();
-	const TArray<FText> Lines = GameState ? GameState->GetAbsenceBannerLines(GameState->GetServerWorldTimeSeconds()) : TArray<FText>();
-	if (Lines.IsEmpty())
-	{
-		if (!ShownAbsence.IsEmpty())
-		{
-			ShownAbsence.Reset();
-			SetShown(AbsencePanel, false);
-			UE_LOG(LogHOLUI, Display, TEXT("Absence banner: hidden"));
-		}
-		return;
-	}
-	const FText Text = FText::Join(FText::AsCultureInvariant(TEXT("\n")), Lines);
-	if (AbsenceText)
-	{
-		AbsenceText->SetText(Text);
-	}
-	// Logged when who is gone or back changes, not at each second of the countdown.
-	FString Shown = FString::FromInt(Lines.Num());
-	for (const FHOLAbsentNotice& Notice : GameState->GetAbsentNotices())
-	{
-		Shown += FString::Printf(TEXT(";%s%s"), *Notice.Name, Notice.BackAt > 0. ? TEXT("+") : TEXT("-"));
-	}
-	if (Shown != ShownAbsence)
-	{
-		ShownAbsence = Shown;
-		SetShown(AbsencePanel, true, ESlateVisibility::HitTestInvisible);
-		UE_LOG(LogHOLUI, Display, TEXT("Absence banner: shown, %s"), *Text.ToString().Replace(TEXT("\n"), TEXT(" | ")));
-	}
-}
-
 void UHOLGameScreen::HandleSelectionChanged()
 {
 	BindBuilding(Controller.IsValid() ? Controller->GetSelection() : nullptr);
@@ -1159,13 +1063,17 @@ void UHOLGameScreen::Refresh()
 	UpdateHead();
 }
 
+UBorder* UHOLGameScreen::GetTopBar() const
+{
+	// H-3: the top bar is the script's (UHOLTopBarPanel, named "TopBar"): found by name in the script's tree, the anchor of the cheats' and scenario panels.
+	return ScriptScreen && ScriptScreen->WidgetTree ? Cast<UBorder>(ScriptScreen->WidgetTree->FindWidget(FName(TEXT("TopBar")))) : nullptr;
+}
+
 void UHOLGameScreen::RefreshTopBar(const AHOLPlayerState* PlayerState)
 {
-	using namespace UE::HeroesOfLiberty::UI::GameScreen;
-
-	// Nothing to show before the player state has reached this machine.
+	// H-3: the bar itself (widgets, tooltips) is the script's (UHOLTopBarPanel); the screen only keeps the fields Describe writes of it
+	// (the "F.. W.. S.. G.., population U/C, gatherers .., idle N" lines of hol.HUD.Report, read by quick_check).
 	bEconomyShown = PlayerState != nullptr;
-	SetShown(TopBar, bEconomyShown, ESlateVisibility::Visible);
 	if (!PlayerState)
 	{
 		return;
@@ -1174,57 +1082,6 @@ void UHOLGameScreen::RefreshTopBar(const AHOLPlayerState* PlayerState)
 	ShownPopulationUsed = PlayerState->GetPopulationUsed();
 	ShownPopulationCap = PlayerState->GetPopulationCap();
 	ShownGatherers = PlayerState->GetGatherers();
-
-	const auto SetAmount = [](UCommonTextBlock* Block, const int32 Value)
-	{
-		if (Block)
-		{
-			Block->SetText(FormatAmount(Value));
-		}
-	};
-	SetAmount(FoodAmount, ShownResources.Food);
-	SetAmount(WoodAmount, ShownResources.Wood);
-	SetAmount(StoneAmount, ShownResources.Stone);
-	SetAmount(GoldAmount, ShownResources.Gold);
-	const auto SetGatherers = [](UCommonTextBlock* Block, const int32 Value)
-	{
-		if (Block)
-		{
-			Block->SetText(FText::Format(LOCTEXT("GathererCount", "({0})"), FormatAmount(Value)));
-		}
-	};
-	SetGatherers(FoodGatherers, ShownGatherers.Food);
-	SetGatherers(WoodGatherers, ShownGatherers.Wood);
-	SetGatherers(StoneGatherers, ShownGatherers.Stone);
-	SetGatherers(GoldGatherers, ShownGatherers.Gold);
-	// Over a resource, its income a minute, every source of it (Retours/Q-sites-gold-line.md, answer "other": its gatherers at their
-	// sources and, for the gold, the sacred sites held), set again only when it changes.
-	const FHOLResources Income = PlayerState->GetIncomePerMinute();
-	if (!(Income == ShownIncome))
-	{
-		ShownIncome = Income;
-		const auto SetIncomeTip = [](UCommonTextBlock* Amount, UCommonTextBlock* Count, const FText& Name, const int32 PerMinute)
-		{
-			const FText Tip = FText::Format(LOCTEXT("IncomeTip", "+{0} {1}/min"), FormatAmount(PerMinute), Name);
-			if (Amount)
-			{
-				Amount->SetToolTipText(Tip);
-			}
-			if (Count)
-			{
-				Count->SetToolTipText(Tip);
-			}
-		};
-		// The resources' words of the tribute's message (HOLForumMessages, same keys).
-		SetIncomeTip(FoodAmount, FoodGatherers, LOCTEXT("TributeFood", "nourriture"), Income.Food);
-		SetIncomeTip(WoodAmount, WoodGatherers, LOCTEXT("TributeWood", "bois"), Income.Wood);
-		SetIncomeTip(StoneAmount, StoneGatherers, LOCTEXT("TributeStone", "pierre"), Income.Stone);
-		SetIncomeTip(GoldAmount, GoldGatherers, LOCTEXT("TributeGold", "or"), Income.Gold);
-	}
-	if (PopulationAmount)
-	{
-		PopulationAmount->SetText(FormatRatio(ShownPopulationUsed, ShownPopulationCap));
-	}
 }
 
 void UHOLGameScreen::RefreshSelection(const AHOLBuilding* Building, const bool bOwn)
@@ -1726,7 +1583,11 @@ FString UHOLGameScreen::HoverIncome(const int32 Index, const bool bShow)
 		}
 		IncomeTipOverlay.Reset();
 	}
-	UCommonTextBlock* const Amounts[] = { FoodAmount.Get(), WoodAmount.Get(), StoneAmount.Get(), GoldAmount.Get() };
+	const auto AmountNamed = [this](const TCHAR* Name) -> UCommonTextBlock*
+	{
+		return ScriptScreen && ScriptScreen->WidgetTree ? Cast<UCommonTextBlock>(ScriptScreen->WidgetTree->FindWidget(FName(Name))) : nullptr;
+	};
+	UCommonTextBlock* const Amounts[] = { AmountNamed(TEXT("FoodAmount")), AmountNamed(TEXT("WoodAmount")), AmountNamed(TEXT("StoneAmount")), AmountNamed(TEXT("GoldAmount")) };
 	if (Index < 0 || Index >= UE_ARRAY_COUNT(Amounts))
 	{
 		return TEXT("closed");
@@ -1948,26 +1809,8 @@ void UHOLGameScreen::SetDetailLine(const FString& Shown, const FText& Text)
 
 void UHOLGameScreen::RefreshIdleWorkers()
 {
-	const int32 Count = Controller.IsValid() ? Controller->GetIdleWorkers().Num() : 0;
-	if (Count == ShownIdleWorkers)
-	{
-		return;
-	}
-	ShownIdleWorkers = Count;
-	if (IdleWorkers)
-	{
-		IdleWorkers->SetLabel(FText::Format(LOCTEXT("IdleWorkers", "Inactifs : {0}"), Count));
-		IdleWorkers->SetIsEnabled(Count > 0);
-	}
-}
-
-void UHOLGameScreen::HandleIdleWorkersClicked()
-{
-	if (AHOLPlayerController* PlayerController = Controller.Get())
-	{
-		UE_LOG(LogHOLUI, Display, TEXT("HUD: idle workers clicked"));
-		PlayerController->SelectNextIdleWorker();
-	}
+	// H-3: the counter button is the script's; Describe reads this number.
+	ShownIdleWorkers = Controller.IsValid() ? Controller->GetIdleWorkers().Num() : 0;
 }
 
 FName UHOLGameScreen::GroupSlotName(const int32 Group)
@@ -2636,45 +2479,18 @@ void UHOLGameScreen::HandleCommandFeedback(const FHOLCommandFeedback& Feedback)
 
 void UHOLGameScreen::ShowMessage(const FString& Key, const FText& Text)
 {
-	using namespace UE::HeroesOfLiberty::UI::GameScreen;
-
+	// H-2: the script's MessagePanel draws the message, fades it and writes the "HUD message: ..." line (HOLShortMessage.as); MessageKey is Describe's mirror.
 	MessageKey = Key;
-	MessageAge = 0.f;
-	if (MessageText)
+	if (ScriptScreen)
 	{
-		MessageText->SetText(Text);
+		ScriptScreen->ShortMessage(Key, Text);
 	}
-	if (MessagePanel)
+	else
 	{
-		MessagePanel->SetRenderOpacity(1.f);
-	}
-	SetShown(MessagePanel, true);
-	UE_LOG(LogHOLUI, Display, TEXT("HUD message: %s \"%s\""), *Key, *Text.ToString());
-}
-
-void UHOLGameScreen::UpdateMessage(const float DeltaSeconds)
-{
-	using namespace UE::HeroesOfLiberty::UI::GameScreen;
-
-	if (MessageKey.IsEmpty())
-	{
-		return;
-	}
-	MessageAge += DeltaSeconds;
-	if (MessageAge >= MessageSeconds)
-	{
-		MessageKey.Reset();
-		SetShown(MessagePanel, false);
-		return;
-	}
-	const float Left = MessageSeconds - MessageAge;
-	if (MessagePanel)
-	{
-		MessagePanel->SetRenderOpacity(Left < MessageFadeSeconds ? Left / MessageFadeSeconds : 1.f);
+		UE_LOG(LogHOLUI, Display, TEXT("HUD message: %s \"%s\""), *Key, *Text.ToString());
 	}
 }
-
-void UHOLGameScreen::CheckPopulationBlocked()
+bool UHOLGameScreen::IsProductionHeldForRoom() const
 {
 	using namespace UE::HeroesOfLiberty::UI::GameScreen;
 
@@ -2699,20 +2515,7 @@ void UHOLGameScreen::CheckPopulationBlocked()
 			bBlocked = HOLCommandGrid::IsPopulationBlocked(PlayerState->GetPopulationUsed(), PlayerState->GetPopulationCap(), UnitType ? UnitType->Population : 1);
 		}
 	}
-	if (bBlocked && !bPopulationBlocked)
-	{
-		// The production stops (D313): the player's first wall.
-		FHOLCommandFeedback Feedback;
-		Feedback.Kind = EHOLCommandFeedback::PopulationFull;
-		ShowMessage(GetFeedbackKey(Feedback), GetFeedbackText(Feedback));
-	}
-	if (bBlocked && !bPopulationBlocked)
-	{
-		// D829 (the user's BUG on alert_population): the production stops at 100 %, the population full line goes to the thread (D202).
-		AddThreadLine(LOCTEXT("PopulationFull", "Population pleine"));
-		UE_LOG(LogHOLUI, Display, TEXT("HUD: production held at 100 %% (population full), line to the thread"));
-	}
-	bPopulationBlocked = bBlocked;
+	return bBlocked;
 }
 
 void UHOLGameScreen::HandleQueueItemClicked(const int32 Index)
@@ -2722,30 +2525,6 @@ void UHOLGameScreen::HandleQueueItemClicked(const int32 Index)
 		UE_LOG(LogHOLUI, Display, TEXT("HUD: queue item %d clicked (cancel)"), Index);
 		PlayerController->RequestCancelProduction(Index);
 	}
-}
-
-void UHOLGameScreen::HandleMenuClicked()
-{
-	UHOLGameMenuScreen::Open(GetOwningPlayer());
-}
-
-void UHOLGameScreen::HandleStatsClicked()
-{
-	if (StatsButton && StatsButton->GetVisibility() != ESlateVisibility::Collapsed)
-	{
-		UHOLStatsScreen::Open(GetOwningPlayer());
-	}
-}
-
-void UHOLGameScreen::RefreshStatsButton()
-{
-	const AHOLPlayerController* PlayerController = Controller.Get();
-	const AHOLGameState* GameState = GetWorld() ? GetWorld()->GetGameState<AHOLGameState>() : nullptr;
-	const bool bShown = PlayerController && UHOLGameMenuRulesBridge::NativeShowsStatsButton(PlayerController->IsSpectator(),
-		GameState && GameState->IsMatchOver());
-	UE::HeroesOfLiberty::UI::GameScreen::SetShown(StatsButton, bShown, ESlateVisibility::Visible);
-	// Its box too: collapsed, « Menu » keeps its place alone.
-	UE::HeroesOfLiberty::UI::GameScreen::SetShown(StatsButton ? StatsButton->GetParent() : nullptr, bShown, ESlateVisibility::SelfHitTestInvisible);
 }
 
 FString UHOLGameScreen::DescribeOverlaps() const
@@ -2838,29 +2617,6 @@ bool UHOLGameScreen::ClickWidget(const FName Name)
 			return false;
 		}
 		FocusAlertSlot(Alert.Slot);
-		return true;
-	}
-	if (MenuButton && Name == UE::HeroesOfLiberty::UI::GameScreen::MenuButtonName)
-	{
-		HandleMenuClicked();
-		return true;
-	}
-	if (StatsButton && Name == UE::HeroesOfLiberty::UI::GameScreen::StatsButtonName)
-	{
-		if (StatsButton->GetVisibility() == ESlateVisibility::Collapsed)
-		{
-			return false;
-		}
-		HandleStatsClicked();
-		return true;
-	}
-	if (IdleWorkers && Name == UE::HeroesOfLiberty::UI::GameScreen::IdleWorkersName)
-	{
-		if (!IdleWorkers->GetIsEnabled())
-		{
-			return false;
-		}
-		HandleIdleWorkersClicked();
 		return true;
 	}
 	for (int32 Group = 0; Group < GroupSlots.Num(); ++Group)
@@ -3161,101 +2917,7 @@ void UHOLGameScreen::BuildLayout()
 		WidgetSlot->SetPadding(FMargin(0.f, 0.f, RightPadding, 0.f));
 	};
 
-	// Top bar, top left: each resource's marker, name and amount, then the population.
-	TopBar = MakePanel(TEXT("TopBar"));
-	UOverlaySlot* TopBarSlot = Frame->AddChildToOverlay(TopBar);
-	TopBarSlot->SetHorizontalAlignment(HAlign_Left);
-	TopBarSlot->SetVerticalAlignment(VAlign_Top);
-	TopBarSlot->SetPadding(FMargin(ScreenMargin));
-	UHorizontalBox* Resources = MakeHorizontalBox(TEXT("Resources"));
-	TopBar->SetContent(Resources);
-	// A resource's gatherers follow its amount (J5b), « (3) »; the population has none.
-	const auto AddResource = [&](const FString& Name, const FLinearColor* Color, const FText& Label, UCommonTextBlock** OutGatherers)
-	{
-		if (Color)
-		{
-			AddToRow(Resources, MakeSquare(*(Name + TEXT("Marker")), *Color, MarkerSize), 6.f);
-		}
-		AddToRow(Resources, MakeText(*(Name + TEXT("Label")), UHOLTextStyleHUDLabel::StaticClass(), Label), 6.f);
-		UCommonTextBlock* Value = MakeText(*(Name + TEXT("Amount")), UHOLTextStyleHUD::StaticClass(), FText::GetEmpty());
-		AddToRow(Resources, Value, OutGatherers ? 4.f : 20.f);
-		if (OutGatherers)
-		{
-			// D788: Visible (a text block is SelfHitTestInvisible by default): the hover of the amount and of its gatherers shows the
-			// income tooltip; the top bar is already a hit-test visible panel, no click to the game is lost.
-			Value->SetVisibility(ESlateVisibility::Visible);
-			*OutGatherers = MakeText(*(Name + TEXT("Gatherers")), UHOLTextStyleHUDLabel::StaticClass(), FText::GetEmpty());
-			(*OutGatherers)->SetVisibility(ESlateVisibility::Visible);
-			AddToRow(Resources, *OutGatherers, 20.f);
-		}
-		return Value;
-	};
-	UCommonTextBlock* Gatherers[4] = {};
-	FoodAmount = AddResource(TEXT("Food"), &HOLUIStyle::Food, LOCTEXT("Food", "Nourriture"), &Gatherers[0]);
-	WoodAmount = AddResource(TEXT("Wood"), &HOLUIStyle::Wood, LOCTEXT("Wood", "Bois"), &Gatherers[1]);
-	StoneAmount = AddResource(TEXT("Stone"), &HOLUIStyle::Stone, LOCTEXT("Stone", "Pierre"), &Gatherers[2]);
-	GoldAmount = AddResource(TEXT("Gold"), &HOLUIStyle::Gold, LOCTEXT("Gold", "Or"), &Gatherers[3]);
-	FoodGatherers = Gatherers[0];
-	WoodGatherers = Gatherers[1];
-	StoneGatherers = Gatherers[2];
-	GoldGatherers = Gatherers[3];
-	PopulationAmount = AddResource(TEXT("Population"), nullptr, LOCTEXT("Population", "Population"), nullptr);
-
-	// The idle workers' counter, a button (J5b, D298): a click selects the next one, as ".".
-	USizeBox* IdleBox = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass(), TEXT("IdleWorkersBox"));
-	IdleBox->SetWidthOverride(IdleWorkersWidth);
-	IdleBox->SetHeightOverride(QueueItemHeight * 0.8f);
-	IdleWorkers = WidgetTree->ConstructWidget<UHOLQueueItem>(UHOLQueueItem::StaticClass(), IdleWorkersName);
-	IdleBox->SetContent(IdleWorkers);
-	AddToRow(Resources, IdleBox, 0.f);
-
-	// The in-game menu's button (D356), top right: opens the menu, as Escape with nothing selected.
-	UBorder* MenuPanel = MakePanel(TEXT("MenuPanel"));
-	MenuPanel->SetPadding(FMargin(6.f, 4.f));
-	UOverlaySlot* MenuPanelSlot = Frame->AddChildToOverlay(MenuPanel);
-	MenuPanelSlot->SetHorizontalAlignment(HAlign_Right);
-	MenuPanelSlot->SetVerticalAlignment(VAlign_Top);
-	MenuPanelSlot->SetPadding(FMargin(ScreenMargin));
-	USizeBox* MenuBox = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass(), TEXT("MenuButtonBox"));
-	MenuBox->SetWidthOverride(IdleWorkersWidth * 0.75f);
-	MenuBox->SetHeightOverride(QueueItemHeight * 0.8f);
-	UHOLQueueItem* Menu = WidgetTree->ConstructWidget<UHOLQueueItem>(UHOLQueueItem::StaticClass(), MenuButtonName);
-	MenuBox->SetContent(Menu);
-	// M6-Q10 (C6): « Statistiques » left of « Menu », a spectator's alone during the match (collapsed otherwise).
-	UHorizontalBox* MenuRow = WidgetTree->ConstructWidget<UHorizontalBox>(UHorizontalBox::StaticClass(), TEXT("MenuRow"));
-	USizeBox* StatsBox = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass(), TEXT("StatsButtonBox"));
-	StatsBox->SetWidthOverride(IdleWorkersWidth * 1.25f);
-	StatsBox->SetHeightOverride(QueueItemHeight * 0.8f);
-	UHOLQueueItem* Stats = WidgetTree->ConstructWidget<UHOLQueueItem>(UHOLQueueItem::StaticClass(), StatsButtonName);
-	StatsBox->SetContent(Stats);
-	UHorizontalBoxSlot* StatsSlot = MenuRow->AddChildToHorizontalBox(StatsBox);
-	StatsSlot->SetPadding(FMargin(0.f, 0.f, 6.f, 0.f));
-	MenuRow->AddChildToHorizontalBox(MenuBox);
-	MenuPanel->SetContent(MenuRow);
-
-	// R3.10: the wait banner, top centre under the top bar, while the match waits for its named players.
-	WaitPanel = MakePanel(TEXT("WaitPanel"));
-	WaitPanel->SetBrush(FSlateRoundedBoxBrush(HOLUIStyle::HUDPanel.CopyWithNewOpacity(0.8f), 4.f));
-	WaitPanel->SetVisibility(ESlateVisibility::Collapsed);
-	UOverlaySlot* WaitSlot = Frame->AddChildToOverlay(WaitPanel);
-	WaitSlot->SetHorizontalAlignment(HAlign_Center);
-	WaitSlot->SetVerticalAlignment(VAlign_Top);
-	WaitSlot->SetPadding(FMargin(ScreenMargin, ScreenMargin + QueueItemHeight * 2.f, ScreenMargin, ScreenMargin));
-	WaitText = MakeText(TEXT("WaitText"), UHOLTextStyleHUDHeading::StaticClass(), FText::GetEmpty());
-	WaitPanel->SetContent(WaitText);
-
-	// R7.5: the disconnection banner, top centre under the alert's place (both can show during the match), as the wait
-	// banner; lets the clicks through.
-	AbsencePanel = MakePanel(TEXT("AbsencePanel"));
-	AbsencePanel->SetBrush(FSlateRoundedBoxBrush(HOLUIStyle::HUDPanel.CopyWithNewOpacity(0.8f), 4.f));
-	AbsencePanel->SetVisibility(ESlateVisibility::Collapsed);
-	UOverlaySlot* AbsenceSlot = Frame->AddChildToOverlay(AbsencePanel);
-	AbsenceSlot->SetHorizontalAlignment(HAlign_Center);
-	AbsenceSlot->SetVerticalAlignment(VAlign_Top);
-	AbsenceSlot->SetPadding(FMargin(ScreenMargin, ScreenMargin + QueueItemHeight * 2.f + 52.f, ScreenMargin, ScreenMargin));
-	AbsenceText = MakeText(TEXT("AbsenceText"), UHOLTextStyleHUDHeading::StaticClass(), FText::GetEmpty());
-	AbsenceText->SetJustification(ETextJustify::Center);
-	AbsencePanel->SetContent(AbsenceText);
+	// H-3: the top bar (TopBar) and the Menu / Statistiques buttons (MenuPanel) are the script's (UHOLTopBarPanel).
 
 	// V4.3: the major alert's banner, top centre under the top bar (the wait banner's place, before the match), larger than
 	// the thread's lines; a click centres the camera on the touched forum.
@@ -3473,20 +3135,6 @@ void UHOLGameScreen::BuildLayout()
 	AddToBar(CommandBox, BarGap);
 	UVerticalBox* CommandColumn = MakeVerticalBox(TEXT("CommandColumn"));
 	CommandBox->SetContent(CommandColumn);
-
-	// The short message (D313), above the queue and the grid, wrapped within the grid's width; it lets the clicks through.
-	MessagePanel = MakePanel(TEXT("MessagePanel"));
-	UVerticalBoxSlot* MessageSlot = CommandColumn->AddChildToVerticalBox(MessagePanel);
-	MessageSlot->SetHorizontalAlignment(HAlign_Left);
-	MessageSlot->SetPadding(FMargin(0.f, 0.f, 0.f, 6.f));
-	USizeBox* MessageBox = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass(), TEXT("MessageBox"));
-	MessageBox->SetMaxDesiredWidth(GridWidth);
-	MessagePanel->SetContent(MessageBox);
-	MessageText = MakeText(TEXT("MessageText"), UHOLTextStyleHUDAlert::StaticClass(), FText::GetEmpty());
-	// Wrapped at a fixed width: a short message keeps its own width, a long one goes on two lines.
-	MessageText->SetWrapTextAt(GridWidth - 24.f);
-	MessageBox->SetContent(MessageText);
-	MessagePanel->SetVisibility(ESlateVisibility::Collapsed);
 
 	// Production queue, as wide as the grid: its items, the head's progress (or the population note), the hint.
 	QueuePanel = MakePanel(TEXT("QueuePanel"));

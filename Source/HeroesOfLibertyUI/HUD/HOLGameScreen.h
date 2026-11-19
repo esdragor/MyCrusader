@@ -82,6 +82,12 @@ public:
 	/** D202: a minor alert's line in the thread of messages (the script's, HOLAlertRules.as), on this machine only, muted (D449). */
 	void AddThreadLine(const FText& Line);
 
+	/** True when a building of the shown player holds a finished unit for lack of room (D829); the script's panel reads it (UHOLScriptScreen::IsProductionHeldForRoom). */
+	bool IsProductionHeldForRoom() const;
+
+	/** The key Describe prints for the short message (the script draws it and says when it ends). */
+	void SetMessageKeyMirror(const FString& Key) { MessageKey = Key; }
+
 	/** The player state the screen shows (the local player's); null for a spectator or before it arrives. */
 	const AHOLPlayerState* GetBoundPlayerState() const;
 
@@ -142,12 +148,8 @@ public:
 	/** L2: the name the selection block writes for a single selected unit (its faction's own name), "none" without it: the "HUD selection name" line of hol.HUD.Report. */
 	FString DescribeSelectionName() const;
 
-	/** Seconds a short message stays above the grid (D313), the last of them fading out. */
-	static constexpr float MessageSeconds = 3.f;
-	static constexpr float MessageFadeSeconds = 0.5f;
-
 	/** The top bar (resources, population, idle workers): the cheats' panel stays under it (UHOLCheatPanel). */
-	UBorder* GetTopBar() const { return TopBar; }
+	UBorder* GetTopBar() const;
 
 	/** Items of the queue built by BuildLayout, the longest queue shown (D283: 5); one line, under the grid's width. */
 	static constexpr int32 NumQueueItems = 5;
@@ -161,52 +163,9 @@ protected:
 	/** Builds the layout in code; only called when no Blueprint gave one. */
 	void BuildLayout();
 
-	UPROPERTY(meta = (BindWidgetOptional))
-	TObjectPtr<UBorder> TopBar;
-
 	/** J8a.5: the part of the screen written in script (UHOLScriptScreen::FindScriptClass), over the frame; null: none. */
 	UPROPERTY(Transient)
 	TObjectPtr<UHOLScriptScreen> ScriptScreen;
-
-	UPROPERTY(meta = (BindWidgetOptional))
-	TObjectPtr<UCommonTextBlock> FoodAmount;
-
-	UPROPERTY(meta = (BindWidgetOptional))
-	TObjectPtr<UCommonTextBlock> WoodAmount;
-
-	UPROPERTY(meta = (BindWidgetOptional))
-	TObjectPtr<UCommonTextBlock> StoneAmount;
-
-	UPROPERTY(meta = (BindWidgetOptional))
-	TObjectPtr<UCommonTextBlock> GoldAmount;
-
-	/** How many of the player's units gather each resource (J5b, D298): « (3) » after its amount. */
-	UPROPERTY(meta = (BindWidgetOptional))
-	TObjectPtr<UCommonTextBlock> FoodGatherers;
-
-	UPROPERTY(meta = (BindWidgetOptional))
-	TObjectPtr<UCommonTextBlock> WoodGatherers;
-
-	UPROPERTY(meta = (BindWidgetOptional))
-	TObjectPtr<UCommonTextBlock> StoneGatherers;
-
-	UPROPERTY(meta = (BindWidgetOptional))
-	TObjectPtr<UCommonTextBlock> GoldGatherers;
-
-	UPROPERTY(meta = (BindWidgetOptional))
-	TObjectPtr<UCommonTextBlock> PopulationAmount;
-
-	/** The idle workers' counter (J5b, D298, D30): a click selects the next one, as ".". Greyed when there is none. */
-	UPROPERTY(meta = (BindWidgetOptional))
-	TObjectPtr<UHOLQueueItem> IdleWorkers;
-
-	/** Top right: opens the in-game menu (D356). */
-	UPROPERTY(Transient)
-	TObjectPtr<UHOLQueueItem> MenuButton;
-
-	/** Left of « Menu »: the statistics screen over the match, a spectator's alone during the match (M6-Q10, C6). */
-	UPROPERTY(Transient)
-	TObjectPtr<UHOLQueueItem> StatsButton;
 
 	/** The control groups' bar (J7a.5, D30), bottom left: one slot per group not empty, 1 to 9 then 0. */
 	UPROPERTY(meta = (BindWidgetOptional))
@@ -277,26 +236,6 @@ protected:
 	UPROPERTY(meta = (BindWidgetOptional))
 	TObjectPtr<UCommonTextBlock> SelectionProgressText;
 
-	/** The short message above the grid (D313). */
-	UPROPERTY(meta = (BindWidgetOptional))
-	TObjectPtr<UBorder> MessagePanel;
-
-	UPROPERTY(meta = (BindWidgetOptional))
-	TObjectPtr<UCommonTextBlock> MessageText;
-
-	/** R3.10: « En attente de Bob (0:42) », top centre, while the match waits for its named players. */
-	UPROPERTY(meta = (BindWidgetOptional))
-	TObjectPtr<UBorder> WaitPanel;
-
-	UPROPERTY(meta = (BindWidgetOptional))
-	TObjectPtr<UCommonTextBlock> WaitText;
-
-	/** R7.5: « Bob : connexion perdue — 2:41 », a line per player gone, top centre under the alert's place; « Bob : de retour » 5 s. */
-	UPROPERTY(meta = (BindWidgetOptional))
-	TObjectPtr<UBorder> AbsencePanel;
-
-	UPROPERTY(meta = (BindWidgetOptional))
-	TObjectPtr<UCommonTextBlock> AbsenceText;
 
 	UPROPERTY(meta = (BindWidgetOptional))
 	TObjectPtr<UBorder> QueuePanel;
@@ -368,13 +307,8 @@ private:
 	void HideUnitStats();
 	/** The line under the name: Shown is what Describe writes of it (empty: hidden); written only when it changed. */
 	void SetDetailLine(const FString& Shown, const FText& Text);
-	/** The idle workers' counter, written when their number changed. */
+	/** The idle workers' number Describe writes (the counter button is the script's, H-3). */
 	void RefreshIdleWorkers();
-	void HandleIdleWorkersClicked();
-	void HandleMenuClicked();
-	void HandleStatsClicked();
-	/** Shows « Statistiques » for a spectator during the match, for everyone after it (UHOLGameMenuRulesBridge::NativeShowsStatsButton). */
-	void RefreshStatsButton();
 	/**
 	 * The control groups' bar (J7a.5), read again four times a second (units die, groups change): a slot per group not
 	 * empty, its digit and number, its types in the tooltip; the group just selected lit briefly. Logs « HUD groups: ... »
@@ -407,25 +341,6 @@ private:
 	void HandleCommandFeedback(const FHOLCommandFeedback& Feedback);
 	/** Shows a short message above the grid for MessageSeconds; Key names it in the logs and in Describe. */
 	void ShowMessage(const FString& Key, const FText& Text);
-	/** The message's age: it fades, then hides. */
-	void UpdateMessage(float DeltaSeconds);
-	/**
-	 * R3.10: the wait banner, read from the game state (IsWaitingForPlayers, GetMissingPlayers, GetWaitEndSeconds) four
-	 * times a second on every machine. Logs "Wait banner: shown, <text>" when the missing players change, then
-	 * "Wait banner: hidden".
-	 */
-	void RefreshWaitBanner();
-	/**
-	 * R7.5: the disconnection banner, read from the game state (GetAbsenceBannerLines at the server's time) four times a
-	 * second on every machine, players and spectators. Logs "Absence banner: shown, <lines>" when who is gone or back
-	 * changes, then "Absence banner: hidden".
-	 */
-	void RefreshAbsenceBanner();
-	/**
-	 * One of the player's buildings has a unit waiting for room in the population (D313): when that starts, the message
-	 * « Population maximale — construisez des maisons ».
-	 */
-	void CheckPopulationBlocked();
 
 	const FHOLUnitTypeRow* FindUnitType(FName TypeName) const;
 	/** The type's row for the player's faction (cost, name, statistics as that player pays and fields them: FindTypeRowFor). */
@@ -564,10 +479,6 @@ private:
 	FDelegateHandle TableTributeHandle;
 	FDelegateHandle TableSignalHandle;
 	FDelegateHandle TableHeroLevelHandle;
-	/** The missing players last logged by the wait banner (empty: hidden). */
-	FString ShownWaitPlayers;
-	/** Who the disconnection banner last logged as gone (-) or back (+) (empty: hidden). */
-	FString ShownAbsence;
 
 	/** What the blocks show, for Describe. */
 	bool bEconomyShown = false;
@@ -575,8 +486,6 @@ private:
 	int32 ShownPopulationUsed = 0;
 	int32 ShownPopulationCap = 0;
 	FHOLResources ShownGatherers;
-	/** Each resource's income a minute in its tooltip (Retours/Q-sites-gold-line.md, answer "other"); -1 until first shown. */
-	FHOLResources ShownIncome = FHOLResources(-1, -1, -1, -1);
 	/** The income tooltip drawn in the viewport by HoverIncome (scenarios), until the next call. */
 	TSharedPtr<SWidget> IncomeTipOverlay;
 	int32 ShownIdleWorkers = INDEX_NONE;
@@ -627,9 +536,6 @@ private:
 	TArray<FName> ShownQueueTypes;
 	EHeadState HeadState = EHeadState::None;
 	float HeadProgress = 0.f;
-	/** The short message shown (its key, empty: none) and its age (s). */
+	/** The short message shown (its key, empty: none): the script's panel draws it, this is the mirror Describe reads. */
 	FString MessageKey;
-	float MessageAge = 0.f;
-	/** A unit of the player waits for room in the population (the last check). */
-	bool bPopulationBlocked = false;
 };

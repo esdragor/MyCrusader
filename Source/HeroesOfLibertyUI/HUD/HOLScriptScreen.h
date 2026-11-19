@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
+#include "Match/HOLResources.h"
 #include "HOLScriptScreen.generated.h"
 
 class UBorder;
@@ -88,6 +89,37 @@ public:
 	 */
 	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|UI")
 	bool GetPopulationNow(int32& OutUsed, int32& OutCap, float& OutRealSeconds) const;
+
+	/**
+	 * The top bar's economy (H-3), of the shown player (UHOLGameScreen::GetBoundPlayerState: a spectator's followed player too): stock, places taken and
+	 * given, gatherers by resource, income a minute (GetIncomePerMinute). False, all zero, before the player state arrives.
+	 */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|UI")
+	bool GetEconomyNow(FHOLResources& OutStock, int32& OutPopulationUsed, int32& OutPopulationCap, FHOLResources& OutGatherers, FHOLResources& OutIncome) const;
+
+	/** The owning controller's idle workers (GetIdleWorkers().Num()), 0 without a controller. */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|UI")
+	int32 GetIdleWorkerCount() const;
+
+	/** True: « Statistiques » is offered (UHOLGameMenuRulesBridge::NativeShowsStatsButton: a spectator during the match, everyone after it); false without a controller. */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|UI")
+	bool GetStatsButtonShown() const;
+
+	/** AHOLPlayerController::SelectNextIdleWorker (the script writes the journal line of the click). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|UI")
+	void SelectNextIdleWorker();
+
+	/** UHOLGameMenuScreen::Open for the owning player (the « Menu » button). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|UI")
+	void OpenGameMenu();
+
+	/** UHOLStatsScreen::Open for the owning player (the « Statistiques » button). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|UI")
+	void OpenStats();
+
+	/** The resource's colour in the top bar (HOLUIStyle::Food / Wood / Stone / Gold for 0..3), grey otherwise. */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|UI")
+	static FLinearColor GetResourceColor(int32 Resource);
 
 	/** A minor alert's line in the C++ screen's thread of messages (D446), on this machine only. */
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|UI")
@@ -179,6 +211,26 @@ public:
 	/** The class made by the game screen: the newest script class derived from this one, not abstract; null: none. */
 	static UClass* FindScriptClass();
 
+	/** The game screen's short message (D313) for the script to show: Key names it in the logs and in Describe (empty: it never ends, as in the C++ it replaced), Text is the C++'s (GetFeedbackText). */
+	UFUNCTION(BlueprintImplementableEvent, Category = "HeroesOfLiberty|UI")
+	void ShortMessage(const FString& Key, const FText& Text);
+
+	/** Once a frame, but ONLY while a message with a key is shown (bMessageLive, set by SetShownMessageKey): the script's fade and the end of the message. */
+	UFUNCTION(BlueprintImplementableEvent, Category = "HeroesOfLiberty|UI")
+	void FrameTick(float DeltaSeconds);
+
+	/** True when a building of the shown player holds a finished unit for lack of room (D829, the loop of the C++ screen's old CheckPopulationBlocked). */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|UI")
+	bool IsProductionHeldForRoom() const;
+
+	/** The key Describe prints (", message <Key>"; empty: none): the screen mirrors it for hol.HUD.Report. Non-empty starts the per-frame FrameTick, empty stops it. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|UI")
+	void SetShownMessageKey(const FString& Key);
+
+	/** Wraps Text at Width (Slate units): the message wraps at the grid's width less 24. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|UI")
+	void SetTextWrapWidth(UCommonTextBlock* Text, float Width) const;
+
 	/** Seconds between two Refresh (4 per second). */
 	static constexpr float RefreshSeconds = 0.25f;
 
@@ -189,4 +241,6 @@ protected:
 
 private:
 	float RefreshLeft = 0.f;
+	/** A message with a key is shown: NativeTick calls FrameTick (D839: no per-frame script call otherwise). */
+	bool bMessageLive = false;
 };

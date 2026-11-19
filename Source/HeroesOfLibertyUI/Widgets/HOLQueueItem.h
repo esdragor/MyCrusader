@@ -19,6 +19,7 @@ class HEROESOFLIBERTYUI_API UHOLQueueItem : public UCommonButtonBase
 public:
 	UHOLQueueItem();
 
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|UI")
 	void SetLabel(const FText& InLabel);
 
 protected:
@@ -27,4 +28,7 @@ protected:
 
 	UPROPERTY(meta = (BindWidgetOptional))
 	TObjectPtr<UCommonTextBlock> Label;
+
+	/** The label last given by SetLabel: kept so that one given before NativeOnInitialized built the text block is shown. */
+	FText LabelText;
 };

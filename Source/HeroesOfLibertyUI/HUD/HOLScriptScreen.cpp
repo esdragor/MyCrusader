@@ -16,7 +16,12 @@
 #include "Components/ProgressBar.h"
 #include "HUD/HOLGameScreen.h"
 #include "Match/HOLPlayerColors.h"
+#include "Match/HOLGameState.h"
 #include "Match/HOLPlayerState.h"
+#include "Player/HOLGameMenuRulesBridge.h"
+#include "Player/HOLPlayerController.h"
+#include "Screens/HOLGameMenuScreen.h"
+#include "Screens/HOLStatsScreen.h"
 #include "Style/HOLUIStyles.h"
 #include "UObject/UObjectIterator.h"
 
@@ -64,6 +69,61 @@ bool UHOLScriptScreen::GetPopulationNow(int32& OutUsed, int32& OutCap, float& Ou
 	OutCap = PlayerState ? PlayerState->GetPopulationCap() : 0;
 	OutRealSeconds = World ? static_cast<float>(World->GetRealTimeSeconds()) : 0.f;
 	return PlayerState != nullptr && World != nullptr;
+}
+
+bool UHOLScriptScreen::GetEconomyNow(FHOLResources& OutStock, int32& OutPopulationUsed, int32& OutPopulationCap, FHOLResources& OutGatherers, FHOLResources& OutIncome) const
+{
+	const UHOLGameScreen* GameScreen = GetTypedOuter<UHOLGameScreen>();
+	const AHOLPlayerState* PlayerState = GameScreen ? GameScreen->GetBoundPlayerState() : nullptr;
+	OutStock = PlayerState ? PlayerState->GetResources() : FHOLResources();
+	OutPopulationUsed = PlayerState ? PlayerState->GetPopulationUsed() : 0;
+	OutPopulationCap = PlayerState ? PlayerState->GetPopulationCap() : 0;
+	OutGatherers = PlayerState ? PlayerState->GetGatherers() : FHOLResources();
+	OutIncome = PlayerState ? PlayerState->GetIncomePerMinute() : FHOLResources();
+	return PlayerState != nullptr;
+}
+
+int32 UHOLScriptScreen::GetIdleWorkerCount() const
+{
+	const AHOLPlayerController* PlayerController = Cast<AHOLPlayerController>(GetOwningPlayer());
+	return PlayerController ? PlayerController->GetIdleWorkers().Num() : 0;
+}
+
+bool UHOLScriptScreen::GetStatsButtonShown() const
+{
+	const AHOLPlayerController* PlayerController = Cast<AHOLPlayerController>(GetOwningPlayer());
+	const AHOLGameState* GameState = GetWorld() ? GetWorld()->GetGameState<AHOLGameState>() : nullptr;
+	return PlayerController && UHOLGameMenuRulesBridge::NativeShowsStatsButton(PlayerController->IsSpectator(), GameState && GameState->IsMatchOver());
+}
+
+void UHOLScriptScreen::SelectNextIdleWorker()
+{
+	if (AHOLPlayerController* PlayerController = Cast<AHOLPlayerController>(GetOwningPlayer()))
+	{
+		PlayerController->SelectNextIdleWorker();
+	}
+}
+
+void UHOLScriptScreen::OpenGameMenu()
+{
+	UHOLGameMenuScreen::Open(GetOwningPlayer());
+}
+
+void UHOLScriptScreen::OpenStats()
+{
+	UHOLStatsScreen::Open(GetOwningPlayer());
+}
+
+FLinearColor UHOLScriptScreen::GetResourceColor(const int32 Resource)
+{
+	switch (Resource)
+	{
+	case 0: return HOLUIStyle::Food;
+	case 1: return HOLUIStyle::Wood;
+	case 2: return HOLUIStyle::Stone;
+	case 3: return HOLUIStyle::Gold;
+	default: return HOLUIStyle::TextMuted;
+	}
 }
 
 void UHOLScriptScreen::AddThreadLine(const FText& Line)
@@ -232,7 +292,8 @@ void UHOLScriptScreen::GatherPanelBoxes(TArray<FHOLHUDNamedBox>& OutBoxes) const
 		}
 	}
 	// The C++ blocks a panel of the script must not cover (the Diplomacy panel's trial): the players' table, the menu's buttons.
-	const TCHAR* const GameNames[] = { TEXT("PlayersPanel"), TEXT("MenuPanel") };
+	// MenuPanel is the script's since H-3 (UHOLTopBarPanel): its box comes with the script's outermost panels below.
+	const TCHAR* const GameNames[] = { TEXT("PlayersPanel") };
 	for (const TCHAR* GameName : GameNames)
 	{
 		FVector2D Low;
@@ -347,6 +408,29 @@ FMargin UHOLScriptScreen::GetBottomLeftPlace() const
 	return GetDefault<UHOLGameScreen>()->GetBottomLeftPlace();
 }
 
+bool UHOLScriptScreen::IsProductionHeldForRoom() const
+{
+	const UHOLGameScreen* GameScreen = GetTypedOuter<UHOLGameScreen>();
+	return GameScreen && GameScreen->IsProductionHeldForRoom();
+}
+
+void UHOLScriptScreen::SetShownMessageKey(const FString& Key)
+{
+	if (UHOLGameScreen* GameScreen = GetTypedOuter<UHOLGameScreen>())
+	{
+		GameScreen->SetMessageKeyMirror(Key);
+	}
+	bMessageLive = !Key.IsEmpty();
+}
+
+void UHOLScriptScreen::SetTextWrapWidth(UCommonTextBlock* Text, const float Width) const
+{
+	if (Text)
+	{
+		Text->SetWrapTextAt(Width);
+	}
+}
+
 UClass* UHOLScriptScreen::FindScriptClass()
 {
 	// Angelscript's hot reload keeps the older classes, flagged CLASS_NewerVersionExists.
@@ -381,6 +465,11 @@ void UHOLScriptScreen::NativeConstruct()
 void UHOLScriptScreen::NativeTick(const FGeometry& MyGeometry, const float InDeltaTime)
 {
 	Super::NativeTick(MyGeometry, InDeltaTime);
+	// The short message's fade and end (HOLShortMessage.as): called only while a message with a key is shown.
+	if (bMessageLive)
+	{
+		FrameTick(InDeltaTime);
+	}
 	// The T key (the talent tree, TQ4 = A): the viewport's key state, as the Enter of a test scenario; the console open or a focused menu keeps it.
 	if (const APlayerController* Controller = GetOwningPlayer())
 	{

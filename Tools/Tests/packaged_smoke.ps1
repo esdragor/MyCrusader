@@ -93,7 +93,7 @@ if ($Errors.Count) { $Faults.Add("$($Errors.Count) interface, match or sequence 
 # Each step of the sequence reached, each capture on the screen it is named after (quick_check's $Expected).
 $Wanted = [ordered]@{
     "title screen"            = "Test capture: smoke_title (menu=HOLTitleScreenScript modal=none)"
-    "New game screen (Jouer)" = "Test capture: smoke_newgame (menu=HOLNewGameScreen modal=none)"
+    "New game screen (Jouer)" = "Test capture: smoke_newgame (menu=HOLNewGameScreenScript modal=none)"
     "match on Plain"          = "Test capture: smoke_start (hud=HOLGameScreen)"
     "Peasant produced"        = "Production: Peasant of slot 0 done"
     "Peasant captured"        = "Test capture: smoke_peasant (hud=HOLGameScreen)"

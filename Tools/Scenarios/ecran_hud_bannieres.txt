@@ -1,0 +1,32 @@
+# H-1 (etape 4 de la migration) : la banniere d'ABSENCE du HUD (Bob : connexion perdue - m:ss, puis Bob : de retour) est dessinee par le script. Plain, toi seul ; Bob n'existe pas : la commande de console hol.Net.FakeAbsent <Nom> <Secondes> pose une fausse notice d'absence (serveur ou solo, aucune IA, aucun camp perdu), Secondes < 0 = "de retour" 5 s. Pas un geste de souris : l'evenement simule est le depart reseau d'un adversaire. La banniere d'ATTENTE (En attente de Bob) n'a pas de scenario solo : elle est vue par quick_check net (capture qcnet_2_wait). 2 minutes environ.
+waitlog Camera above the start of slot 0
+r.SetRes 1920x1080w
+hol.Camera.FocusSlot own
+frames 60
+hol.HUD.Report
+capture hud_banniere_aucune
+waitkey Appuie sur Entree et ne touche plus a rien : le scenario ferme son panneau (il cacherait la banniere), fait partir Bob (fausse absence de 90 s) puis le fait revenir
+# Le panneau du scenario est au meme endroit que la banniere (sous la barre du haut) : on le ferme comme la souris (bouton x), puis les notes le rouvrent a la fin.
+hol.HUD.Click ScenarioClose
+frames 10
+hol.Net.FakeAbsent Bob 90
+waitlog Absence banner: shown, Bob
+frames 60
+hol.HUD.Report
+capture hud_banniere_absence
+# Le compte a rebours doit baisser : on attend 2 s de plus et on relit le journal du HUD.
+wait 2
+hol.Net.FakeAbsent Bob -1
+waitlog de retour
+frames 20
+capture hud_banniere_retour
+hol.HUD.Report
+# La notice de retour dure 5 s : elle s'efface, le journal dit "Absence banner: hidden".
+waitlog Absence banner: hidden
+frames 30
+capture hud_banniere_fin
+hol.Net.FakeAbsent
+hol.Test.Sanity
+note Avant la banniere (capture hud_banniere_aucune) : rien sous la barre du haut. Les autres panneaux du HUD (ressources, fil de messages, mini-carte, panneau du bas) ne bougent pas quand la banniere apparait.
+note Banniere d'absence : sous la barre du haut, centree, fond sombre, texte "Bob : connexion perdue - 1:2x" (le temps baisse d'une seconde par seconde), puis "Bob : de retour" pendant 5 s, puis plus rien. La souris passe a travers la banniere (clique le sol dessous : ca marche).
+note Essaie aussi : hol.Net.FakeAbsent Alice 30 dans la console (banniere pendant 30 s), hol.Net.FakeAbsent seul efface.

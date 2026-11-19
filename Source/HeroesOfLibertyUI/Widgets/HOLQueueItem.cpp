@@ -19,6 +19,11 @@ void UHOLQueueItem::NativeOnInitialized()
 		Label->SetJustification(ETextJustify::Center);
 		WidgetTree->RootWidget = Label;
 	}
+	// A label given before the widget was initialized (a script panel builds the button and labels it at once, H-3).
+	if (Label && !LabelText.IsEmpty())
+	{
+		Label->SetText(LabelText);
+	}
 	Super::NativeOnInitialized();
 }
 
@@ -33,6 +38,7 @@ void UHOLQueueItem::NativeOnCurrentTextStyleChanged()
 
 void UHOLQueueItem::SetLabel(const FText& InLabel)
 {
+	LabelText = InLabel;
 	if (Label)
 	{
 		Label->SetText(InLabel);
