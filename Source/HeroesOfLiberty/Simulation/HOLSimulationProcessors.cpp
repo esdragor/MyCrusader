@@ -169,9 +169,9 @@ namespace UE::HeroesOfLiberty::Simulation
 	FAutoConsoleVariableRef CVarSlotDetourMaxSteps(TEXT("hol.Units.SlotDetourMaxSteps"), SlotDetourMaxSteps,
 		TEXT("Steps a detour is held near the walker's goal before it goes straight to it for the rest of the leg (the slot circling of melee_spin); 0: off"));
 	// CELEBORN-1115b: the trembling walk of a block's march (neutrals_trace run3, #9/#10, HOLAvoid::RemembersMemberDetour).
-	int32 MarchMemberDetourSteps = 8;
+	int32 MarchMemberDetourSteps = 2;
 	FAutoConsoleVariableRef CVarMarchMemberDetourSteps(TEXT("hol.Units.MarchMemberDetourSteps"), MarchMemberDetourSteps,
-		TEXT("Steps a detour round a member of the walker's own order (its block, its forming up) is remembered (default 8, MarchPairNoTremble); 0: never, each step from the straight course (as before)"));
+		TEXT("Steps a detour round a member of the walker's own order (its block, its forming up) is remembered (default 2 since D855: 8 let the files of a marching block drift up to 174 cm, 2 keeps them within 58 cm and still shows no tremble in 24 runs; MarchPairNoTremble); 0: never, each step from the straight course (as before)"));
 	float SlotDetourRadius = 300.f;
 	FAutoConsoleVariableRef CVarSlotDetourRadius(TEXT("hol.Units.SlotDetourRadius"), SlotDetourRadius,
 		TEXT("cm: the goal's distance within which hol.Units.SlotDetourMaxSteps counts"));
