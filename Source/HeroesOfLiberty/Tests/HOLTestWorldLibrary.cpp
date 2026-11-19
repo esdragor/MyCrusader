@@ -750,3 +750,117 @@ int32 UHOLTestWorldLibrary::GetPlayerStateSlot(const AHOLPlayerState* Player)
 {
 	return Player ? Player->GetPlayerIndex() : -1;
 }
+
+// ---- Lot D853 e (CELEBORN-1119ca): the AI build orders ----
+
+int32 UHOLTestWorldLibrary::CheckAIPlacement(UHOLTestWorldHandle* TestWorld, const int32 Slot, const FName TypeName, const FVector Point)
+{
+#if WITH_DEV_AUTOMATION_TESTS
+	if (UWorld* World = HOLTestWorldLibNs::HOLTestWorldLibWorldOf(TestWorld))
+	{
+		return UHOLAIOrderLibrary::CheckAIPlacement(World, Slot, TypeName, Point);
+	}
+#endif
+	return -2;
+}
+
+bool UHOLTestWorldLibrary::FindAIPlacement(UHOLTestWorldHandle* TestWorld, const int32 Slot, const FName TypeName, const FVector Centre, const int32 MaxRings, FVector& OutPoint)
+{
+#if WITH_DEV_AUTOMATION_TESTS
+	if (UWorld* World = HOLTestWorldLibNs::HOLTestWorldLibWorldOf(TestWorld))
+	{
+		return UHOLAIOrderLibrary::FindAIPlacement(World, Slot, TypeName, Centre, MaxRings, OutPoint);
+	}
+#endif
+	return false;
+}
+
+bool UHOLTestWorldLibrary::FindAIFarmBlock(UHOLTestWorldHandle* TestWorld, const int32 Slot, const FVector Centre, const int32 MaxRings, FVector& OutMill, TArray<FVector>& OutFarms)
+{
+#if WITH_DEV_AUTOMATION_TESTS
+	if (UWorld* World = HOLTestWorldLibNs::HOLTestWorldLibWorldOf(TestWorld))
+	{
+		return UHOLAIOrderLibrary::FindAIFarmBlock(World, Slot, Centre, MaxRings, OutMill, OutFarms);
+	}
+#endif
+	return false;
+}
+
+bool UHOLTestWorldLibrary::IssueAIPlaceOrder(UHOLTestWorldHandle* TestWorld, const int32 Slot, const FName TypeName, const FVector Point)
+{
+#if WITH_DEV_AUTOMATION_TESTS
+	if (UWorld* World = HOLTestWorldLibNs::HOLTestWorldLibWorldOf(TestWorld))
+	{
+		return UHOLAIOrderLibrary::IssueAIPlaceOrder(World, Slot, TypeName, Point, {});
+	}
+#endif
+	return false;
+}
+
+bool UHOLTestWorldLibrary::IssueAISetRallyOrder(UHOLTestWorldHandle* TestWorld, const int32 Slot, const FVector BuildingLocation, const FVector Point)
+{
+#if WITH_DEV_AUTOMATION_TESTS
+	if (UWorld* World = HOLTestWorldLibNs::HOLTestWorldLibWorldOf(TestWorld))
+	{
+		return UHOLAIOrderLibrary::IssueAISetRallyOrder(World, Slot, BuildingLocation, Point);
+	}
+#endif
+	return false;
+}
+
+int32 UHOLTestWorldLibrary::GetPlacementRefusalBuilding()
+{
+#if WITH_DEV_AUTOMATION_TESTS
+	return static_cast<int32>(EHOLPlacementRefusal::Building);
+#else
+	return -2;
+#endif
+}
+
+bool UHOLTestWorldLibrary::FarmBlockOverlaps(const FVector Mill, const TArray<FVector>& Farms)
+{
+	bool bOverlap = false;
+#if WITH_DEV_AUTOMATION_TESTS
+	const FHOLBuildingTypeRow* MillType = UHOLBuildingSettings::FindType(HOLBuildingTypeNames::Mill);
+	const FHOLBuildingTypeRow* FarmType = UHOLBuildingSettings::FindType(HOLBuildingTypeNames::Farm);
+	if (MillType && FarmType)
+	{
+		TArray<FBox2D> Boxes;
+		Boxes.Add(UHOLConstructionSubsystem::SnapFootprint(*MillType, Mill));
+		for (const FVector& Farm : Farms)
+		{
+			Boxes.Add(UHOLConstructionSubsystem::SnapFootprint(*FarmType, Farm));
+		}
+		for (int32 A = 0; A < Boxes.Num(); ++A)
+		{
+			for (int32 B = A + 1; B < Boxes.Num(); ++B)
+			{
+				bOverlap |= HOLConstruction::Overlaps(Boxes[A], Boxes[B]);
+			}
+		}
+	}
+#endif
+	return bOverlap;
+}
+
+bool UHOLTestWorldLibrary::PayBuildingCost(const FName TypeName, const FHOLResources& Stock, FHOLResources& OutAfter)
+{
+	OutAfter = Stock;
+#if WITH_DEV_AUTOMATION_TESTS
+	if (const FHOLBuildingTypeRow* Type = UHOLBuildingSettings::FindType(TypeName))
+	{
+		return HOLConstruction::TryPay(OutAfter, Type->Cost);
+	}
+#endif
+	return false;
+}
+
+bool UHOLTestWorldLibrary::HasBuildingRallyPoint(const AHOLBuilding* Building)
+{
+	return Building && Building->HasRallyPoint();
+}
+
+FVector UHOLTestWorldLibrary::GetBuildingRallyPoint(const AHOLBuilding* Building)
+{
+	return Building ? Building->GetRallyPoint() : FVector::ZeroVector;
+}
