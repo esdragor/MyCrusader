@@ -246,7 +246,6 @@ namespace UE::HeroesOfLiberty::UI::GameScreen
 	constexpr int32 GridColumns = 4;
 	constexpr float CellSize = 76.f;
 	constexpr float CellGap = 2.f;
-	constexpr float QueueItemWidth = 56.f;
 	constexpr float QueueItemHeight = 36.f;
 	constexpr float ScreenMargin = 16.f;
 	constexpr float SwatchSize = 14.f;
@@ -323,11 +322,6 @@ namespace UE::HeroesOfLiberty::UI::GameScreen
 	FName AgeCellName(const int32 Age, const int32 Cell)
 	{
 		return *FString::Printf(TEXT("AgeCell%d%02d"), Age, Cell);
-	}
-
-	FName QueueItemName(const int32 Index)
-	{
-		return *FString::Printf(TEXT("QueueItem%d"), Index);
 	}
 
 	/** Shows or collapses a widget, touching it only when that changes (the queue's head is updated every frame). */
@@ -2346,89 +2340,6 @@ void UHOLGameScreen::RefreshAges(const AHOLPlayerState* PlayerState)
 	}
 }
 
-void UHOLGameScreen::RefreshQueue(const AHOLBuilding* OwnBuilding)
-{
-	using namespace UE::HeroesOfLiberty::UI::GameScreen;
-
-	ShownQueueTypes.Reset();
-	if (OwnBuilding)
-	{
-		for (const FHOLProductionItem& Item : OwnBuilding->GetProductionQueue())
-		{
-			ShownQueueTypes.Add(Item.TypeName);
-		}
-	}
-	bQueueShown = !ShownQueueTypes.IsEmpty();
-	SetShown(QueuePanel, bQueueShown, ESlateVisibility::Visible);
-
-	for (int32 Index = 0; Index < QueueItems.Num(); ++Index)
-	{
-		UHOLQueueItem* Item = QueueItems[Index];
-		const bool bShown = ShownQueueTypes.IsValidIndex(Index);
-		SetShown(Item, bShown, ESlateVisibility::Visible);
-		if (Item && bShown)
-		{
-			// A research waits in the queue as a unit does (T6): its name, not the type's key.
-			const FHOLTechnologyRow* Research = UHOLTechnologySettings::FindTechnology(ShownQueueTypes[Index]);
-			Item->SetLabel(Research ? HOLGameNames::GetTechnologyName(ShownQueueTypes[Index], Research)
-				: HOLGameNames::GetUnitName(ShownQueueTypes[Index], FindUnitType(ShownQueueTypes[Index]), LocalFactionKey()));
-		}
-	}
-}
-
-void UHOLGameScreen::UpdateHead()
-{
-	using namespace UE::HeroesOfLiberty::UI::GameScreen;
-
-	// The queue shown is the selected building's, which is then the player's own.
-	const AHOLBuilding* Building = bQueueShown ? BoundBuilding.Get() : nullptr;
-	const TArray<FHOLProductionItem>* Queue = Building ? &Building->GetProductionQueue() : nullptr;
-	if (!Queue || Queue->IsEmpty())
-	{
-		HeadState = EHeadState::None;
-		HeadProgress = 0.f;
-		return;
-	}
-
-	const FHOLProductionItem& Head = (*Queue)[0];
-	const FHOLUnitTypeRow* UnitType = FindUnitType(Head.TypeName);
-	if (Head.IsStarted())
-	{
-		// Only the start step travels (D282): the progress is computed here every frame, at the server's clock as this
-		// machine estimates it (D271).
-		const int32 BuildSteps = UnitType
-			? UHOLProductionSubsystem::GetBuildSteps(*UnitType, GetDefault<UHOLSimulationSettings>()->GetStepSeconds())
-			: 1;
-		HeadProgress = HOLProduction::GetProgress(Head, UHOLProductionSubsystem::GetDisplayStep(GetWorld()), BuildSteps);
-		HeadState = EHeadState::InProgress;
-		// D829: done but no place in the population: it stays at 100 % and the queue says so.
-		const AHOLPlayerState* PlayerStateOfHead = BoundPlayerState.Get();
-		if (HeadProgress >= 1.f && PlayerStateOfHead
-			&& HOLCommandGrid::IsPopulationBlocked(PlayerStateOfHead->GetPopulationUsed(), PlayerStateOfHead->GetPopulationCap(), UnitType ? UnitType->Population : 1))
-		{
-			HeadState = EHeadState::PopulationFull;
-		}
-	}
-	else
-	{
-		// Not started: it waits for room in the population (as in AoE), or starts at the server's next step.
-		const AHOLPlayerState* PlayerState = BoundPlayerState.Get();
-		const int32 Places = UnitType ? UnitType->Population : 1;
-		HeadState = PlayerState && PlayerState->GetPopulationUsed() + Places > PlayerState->GetPopulationCap()
-			? EHeadState::PopulationFull
-			: EHeadState::Starting;
-		HeadProgress = 0.f;
-	}
-
-	if (QueueProgress && QueueProgress->GetPercent() != HeadProgress)
-	{
-		QueueProgress->SetPercent(HeadProgress);
-	}
-	// D829: a unit held at 100 % keeps its full bar, the note beside it.
-	SetShown(QueueProgress, HeadState != EHeadState::PopulationFull || HeadProgress > 0.f);
-	SetShown(QueueNote, HeadState == EHeadState::PopulationFull);
-}
-
 bool UHOLGameScreen::ReadQueue(TArray<FName>& OutTypes, TArray<bool>& OutResearch, TArray<FString>& OutTechNames, TArray<FString>& OutUnitNames,
 	bool& bOutHeadStarted, float& OutHeadProgress, bool& bOutBlockedAtFull, bool& bOutPopulationShort) const
 {
@@ -2575,15 +2486,6 @@ bool UHOLGameScreen::IsProductionHeldForRoom() const
 		}
 	}
 	return bBlocked;
-}
-
-void UHOLGameScreen::HandleQueueItemClicked(const int32 Index)
-{
-	if (AHOLPlayerController* PlayerController = Controller.Get())
-	{
-		UE_LOG(LogHOLUI, Display, TEXT("HUD: queue item %d clicked (cancel)"), Index);
-		PlayerController->RequestCancelProduction(Index);
-	}
 }
 
 FString UHOLGameScreen::DescribeOverlaps() const
