@@ -128,6 +128,8 @@ void Test_DisconnectGameState(FUnitTest& T)
 		T.AssertTrue(DisconnectTest::IsOnly(AtEnd, 1), "the end of the window: slot 1 defeated");
 		int Reason = HOLGameStateTest::GetDefeatReason(State, 1);
 		T.AssertEquals(DisconnectTest::ReasonDisconnected, Reason, "reason Disconnected");
+		FString ReasonName = HOLGameStateTest::GetReasonName(Reason);
+		T.AssertEquals("Disconnected", ReasonName, "reason's name");
 		T.AssertFalse(HOLGameStateTest::IsSlotAbsent(State, 1), "no longer absent once defeated");
 		T.AssertTrue(HOLGameStateTest::IsMatchOver(State), "1v1: his defeat ends the match");
 		bool bKeptDefeated = HOLGameStateTest::KeepAbsentSlot(State, BobAgain, 1200.0, 0.0);
@@ -163,6 +165,15 @@ void Test_DisconnectBanner(FUnitTest& T)
 	FString At161 = "Bob : connexion perdue — 2:41";
 	FString Back = "Bob : de retour";
 	T.AssertFalse(At161 == Back, "gone and back: two texts");
+	// The direct cases of FormatAbsentLine / FormatBackLine (the C++ lines 252-262).
+	FString Direct161 = HOLGameStateTest::FormatAbsentLine("Bob", 161.0, 0.0);
+	FString DirectBack = HOLGameStateTest::FormatBackLine("Bob");
+	T.AssertEquals(At161, Direct161, "161 s: neutral text");
+	T.AssertEquals(Back, DirectBack, "back: neutral text");
+	T.AssertTrue(HOLGameStateTest::FormatAbsentLine("Bob", 160.2, 0.0).Contains("2:41"), "160.2 s rounded up: 2:41");
+	T.AssertTrue(HOLGameStateTest::FormatAbsentLine("Bob", 59.0, 0.0).Contains("0:59"), "59 s: 0:59");
+	T.AssertTrue(HOLGameStateTest::FormatAbsentLine("Bob", -3.0, 0.0).Contains("0:00"), "past the end: 0:00");
+	T.AssertTrue(DirectBack.Contains("Bob") && !DirectBack.Contains("0:") && !DirectBack.Contains("—"), "back: Bob, no time");
 
 	UHOLTestWorldHandle TestWorld = HOLTestWorld::CreateTestWorld();
 	T.AssertTrue(TestWorld != nullptr, "a test world is created");
@@ -262,7 +273,7 @@ void Test_DisconnectHeroSheet(FUnitTest& T)
 		Bob.DestroyActor();
 		// D717 (T2): the player state of slot 1 while he is gone is the AI's that holds his seat (not his).
 		AHOLPlayerState Holder = HOLGameStateTest::GetPlayerStateOfSlot(State, 1);
-		T.AssertTrue(Holder != nullptr && Holder != Bob, "only the AI's player state is left for slot 1 while he is gone");
+		T.AssertTrue(Holder != nullptr && Holder != Bob && HOLGameStateTest::IsABot(Holder), "only the AI's player state is left for slot 1 while he is gone");
 		int KeptXP = HOLTestWorld::GetHeroSheetXP(TestWorld, 1);
 		T.AssertEquals(12, KeptXP, "the subsystem keeps his XP while he is gone");
 
