@@ -149,10 +149,6 @@ public:
 
 	// ---- NG-1c (D851, step 4): the raccords the script's gestures need (state in, state out, texts); none changes the C++ screen. ----
 
-	/** True in a script class that handles the drop-downs' choices itself (UHOLDropdown::OnChosen): the base then does not subscribe its Handle*Chosen. Set with `default bScriptOwnsGestures = true;`. */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "HOL|NewGame")
-	bool bScriptOwnsGestures = false;
-
 	/** One label of the screen by its LOCTEXT key (Heading, Map, Fog, Size, TeamsTogether, Player, Slot, Level, Faction, Colour, Team, You, Mode, Nomad, Regicide, Catastrophe, SacredSites, GreyedTeamsOpen, LobbyGreyed, Back, LeaveLobby, ReadyAction, NotReadyAction, BecomeSpectator, BecomePlayer, Launch, Starting, NoMatchAddress, TooManyPlayers); empty for another key. */
 	UFUNCTION(BlueprintPure, Category = "HOL|NewGame")
 	static FText GetNewGameText(FName Key);
@@ -160,13 +156,9 @@ public:
 	UFUNCTION(BlueprintPure, Category = "HOL|NewGame")
 	static FText GetNewGamePlayerName(int32 SlotIndex);
 
-	// ---- NG-1d (D851, step 4): what the script needs to own the lobby display (BP_ShowLobby); the C++ screen is unchanged unless the flag is set. ----
+	// ---- NG-1d (D851, step 4): what the script needs to own the lobby display (BP_ShowLobby, always the script's since NG-6b). ----
 
-	/** True in a script class that shows the lobby itself: ShowLobby then calls BP_ShowLobby() instead of ShowLobbyWidgets() (the heading, the 8 lines, Ready, Spectate, spectators, Launch). Set with `default bScriptOwnsLobbyDisplay = true;`. The reading, the sends, the Starting state and JoinMatch stay in the base. Ready and Spectate stay wired to ToggleReady / ToggleSpectator by the base: the script must NOT subscribe them. */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "HOL|NewGame")
-	bool bScriptOwnsLobbyDisplay = false;
-
-	/** Called by ShowLobby after Lobby, Config and Refresh() are up to date, when bScriptOwnsLobbyDisplay: GetLobbyView() reads the lobby. In script: `UFUNCTION(BlueprintOverride) void ShowLobby()`. */
+	/** Called by ShowLobby after Lobby, Config and Refresh() are up to date: GetLobbyView() reads the lobby. In script: `UFUNCTION(BlueprintOverride) void ShowLobby()`. */
 	UFUNCTION(BlueprintImplementableEvent, Category = "HOL|NewGame")
 	void BP_ShowLobby();
 
@@ -369,28 +361,13 @@ private:
 	/** Asks the manager for the lobby's state (one call at a time). */
 	void ReadLobby();
 	void ShowLobby(const FHOLLobby& InLobby);
-	/** NG-1d: the C++ display of the lobby (heading, lines, Ready, Spectate, spectators, Launch): the part of ShowLobby a script class replaces (bScriptOwnsLobbyDisplay). */
-	void ShowLobbyWidgets();
-	void HandleMapChosen(int32 Value);
-	void HandleSizeChosen(int32 Value);
-	void HandleTeamsTogetherChosen(int32 Value);
-	/** F8: the fog's list. */
-	void HandleFogChosen(int32 Value);
-	/** D5: the mode's list (0 Standard, 1 Diplomatie = EHOLMatchMode). */
-	void HandleModeChosen(int32 Value);
 	/**
 	 * TC3: the menu's size (FHOLMapSizeRules::FitSlotsToSize: the slots past its places closed, a player past them moved
 	 * below), places drawn at the launch; false (nothing changed) when the players do not fit it.
 	 */
 	bool ChooseSize(EHOLMapSize Size);
-	void HandleStateChosen(int32 SlotIndex, int32 Value);
-	void HandleColorChosen(int32 SlotIndex, int32 Value);
-	void HandleTeamChosen(int32 SlotIndex, int32 Value);
-	/** FactionChoiceInProgress.md: a faction of the list (a greyed one cannot be taken); in a lobby, sent for my line or the AI's. */
-	void HandleFactionChosen(int32 SlotIndex, int32 Value);
 	/** The faction lists hold five entries, six with the cheat (the Templars last, so the index is the enum's value); the greyed ones greyed. */
 	void UpdateFactionLists();
-	void HandleOptionChosen(int32 Value);
 	/**
 	 * IA0.6 L4 (Q4): network mode, the leader puts an AI on a slot (nothing set), or changes an AI's colour or team
 	 * (UHOLManagerClient::SetSlotAI).
@@ -404,8 +381,6 @@ private:
 
 	/** A colour held by another occupied slot. */
 	bool IsColorTaken(int32 SlotIndex, int32 ColorIndex) const;
-	/** First colour from From onwards that no other occupied slot holds (From itself if all are). */
-	int32 FindFreeColor(int32 SlotIndex, int32 From) const;
 
 	FHOLMatchConfig Config;
 

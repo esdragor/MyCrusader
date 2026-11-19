@@ -216,10 +216,14 @@ UHOLNewGameScreen* UHOLNewGameScreen::Open(APlayerController* PlayerController)
 	{
 		return nullptr;
 	}
-	// NG-6 (D851): the script class of Script/UI/HOLNewGameScreen.as plays the screen; without one (script not loaded) the C++ class still does.
+	// NG-6b (D851): the script class of Script/UI/HOLNewGameScreen.as is the screen (the base class has no layout); without it (script not loaded) nothing opens.
 	const TSubclassOf<UHOLNewGameScreen> ScriptClass = FindScriptClass();
-	UClass* ScreenClass = ScriptClass ? ScriptClass.Get() : StaticClass();
-	return Cast<UHOLNewGameScreen>(Layout->PushMenu(ScreenClass));
+	if (!ScriptClass)
+	{
+		UE_LOG(LogHOLUI, Error, TEXT("New game screen: the script class UHOLNewGameScreenScript is not loaded, the screen cannot open"));
+		return nullptr;
+	}
+	return Cast<UHOLNewGameScreen>(Layout->PushMenu(ScriptClass.Get()));
 }
 
 UHOLNewGameScreen* UHOLNewGameScreen::Find(APlayerController* PlayerController)
@@ -230,126 +234,8 @@ UHOLNewGameScreen* UHOLNewGameScreen::Find(APlayerController* PlayerController)
 
 void UHOLNewGameScreen::BuildLayout()
 {
-	using namespace UE::HeroesOfLiberty::UI::NewGame;
-
-	// NG-1a (D851): a script class lays itself out (Script/UI/HOLNewGameScreen.as, BP_BuildNewGame); this C++ layout is the
-	// one of the class itself, played until the switch (NG-6).
-	if (GetClass() != StaticClass())
-	{
-		BP_BuildNewGame();
-		return;
-	}
-
-	UVerticalBox* Column = MakeCenteredColumn();
-	HeadingText = AddText(Column, TEXT("Heading"), LOCTEXT("Heading", "Nouvelle partie"), UHOLTextStyleHeading::StaticClass(), 24.f);
-
-	TArray<FText> MapNames;
-	for (const FSoftObjectPath& Map : Maps)
-	{
-		MapNames.Add(GetMapName(Map));
-	}
-	// The grid: the map, one line per slot under a line of column headings, then the mode and its options.
-	const auto AddCell = [this](UHorizontalBox* Row, UWidget* Content, const float Width)
-	{
-		USizeBox* Box = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass());
-		Box->SetWidthOverride(Width);
-		Box->SetContent(Content);
-		UHorizontalBoxSlot* CellSlot = Row->AddChildToHorizontalBox(Box);
-		CellSlot->SetVerticalAlignment(VAlign_Center);
-		CellSlot->SetPadding(FMargin(4.f, 0.f));
-	};
-	const auto MakeText = [this](const FText& Text, const TSubclassOf<UCommonTextStyle> TextStyle, const FName Name = NAME_None)
-	{
-		UCommonTextBlock* Block = WidgetTree->ConstructWidget<UCommonTextBlock>(UCommonTextBlock::StaticClass(), Name);
-		Block->SetStyle(TextStyle);
-		Block->SetText(Text);
-		return Block;
-	};
-	// Lines start on the same left edge, the one of the slot lines (the widest).
-	const auto AddLine = [this, Column](const float TopPadding)
-	{
-		UHorizontalBox* Row = WidgetTree->ConstructWidget<UHorizontalBox>(UHorizontalBox::StaticClass());
-		UVerticalBoxSlot* RowSlot = Column->AddChildToVerticalBox(Row);
-		RowSlot->SetHorizontalAlignment(HAlign_Left);
-		RowSlot->SetPadding(FMargin(0.f, TopPadding, 0.f, 4.f));
-		return Row;
-	};
-
-	UHorizontalBox* MapLine = AddLine(0.f);
-	AddCell(MapLine, MakeText(LOCTEXT("Map", "Carte"), UHOLTextStyleBody::StaticClass()), NameWidth);
-	MapDropdown = AddDropdown(MapLine, TEXT("MapDropdown"), MapNames, 0, StateWidth + FactionWidth + 8.f);
-	// F8: the fog on the map's line, over the "Équipes ensemble" of the line below.
-	AddCell(MapLine, MakeText(LOCTEXT("Fog", "Brouillard"), UHOLTextStyleBody::StaticClass()), TeamsTogetherLabelWidth);
-	// Wider than the team lists: "Carte explorée" and "Sans brouillard" did not fit in TeamWidth (the arrow was cut, capture of 2026-10-31); nothing sits right of it on this line.
-	FogDropdown = AddDropdown(MapLine, TEXT("FogDropdown"), FogNames(), 0, TeamWidth + 60.f);
-
-	// TC3: the size under the map, then "Équipes ensemble" (the places are drawn at the launch).
-	UHorizontalBox* SizeLine = AddLine(0.f);
-	AddCell(SizeLine, MakeText(LOCTEXT("Size", "Taille"), UHOLTextStyleBody::StaticClass()), NameWidth);
-	SizeDropdown = AddDropdown(SizeLine, TEXT("SizeDropdown"), SizeNames(), 0, StateWidth + FactionWidth + 8.f);
-	AddCell(SizeLine, MakeText(LOCTEXT("TeamsTogether", "Équipes ensemble"), UHOLTextStyleBody::StaticClass()), TeamsTogetherLabelWidth);
-	TeamsTogetherDropdown = AddDropdown(SizeLine, TEXT("TeamsTogetherDropdown"), OffOn(), 1, TeamWidth);
-
-	UHorizontalBox* Headings = AddLine(16.f);
-	// IA0.6 S2 (Q1): in solo one "Joueur" column, its list showing the name the slot will have, then the AI's level; the
-	// lobby keeps its name column and "Emplacement" (Refresh shows the one or the other).
-	AddCell(Headings, MakeText(LOCTEXT("Player", "Joueur"), UHOLTextStyleNote::StaticClass(), TEXT("HeadName")), NameWidth);
-	AddCell(Headings, MakeText(LOCTEXT("Player", "Joueur"), UHOLTextStyleNote::StaticClass(), TEXT("HeadSlot")), StateWidth);
-	AddCell(Headings, MakeText(LOCTEXT("Level", "Niveau"), UHOLTextStyleNote::StaticClass(), TEXT("HeadLevel")), LevelWidth);
-	AddCell(Headings, MakeText(LOCTEXT("Faction", "Faction"), UHOLTextStyleNote::StaticClass()), FactionWidth);
-	AddCell(Headings, MakeText(LOCTEXT("Colour", "Couleur"), UHOLTextStyleNote::StaticClass()), SwatchSize + 8.f + ColorWidth);
-	AddCell(Headings, MakeText(LOCTEXT("Team", "Équipe"), UHOLTextStyleNote::StaticClass()), TeamWidth);
-
-	for (int32 SlotIndex = 0; SlotIndex < FHOLMatchConfig::MaxSlots; ++SlotIndex)
-	{
-		UHorizontalBox* Row = AddLine(0.f);
-		AddCell(Row, MakeText(FText::Format(LOCTEXT("PlayerN", "Joueur {0}"), SlotIndex + 1), UHOLTextStyleBody::StaticClass(),
-			SlotWidgetName(TEXT("SlotName"), SlotIndex)), NameWidth);
-		if (SlotIndex == 0)
-		{
-			AddCell(Row, MakeText(LOCTEXT("You", "Vous"), UHOLTextStyleBody::StaticClass(), TEXT("SlotYou0")), StateWidth);
-		}
-		else
-		{
-			AddDropdown(Row, SlotWidgetName(TEXT("SlotState"), SlotIndex), StateNames(), 0, StateWidth);
-		}
-		AddDropdown(Row, SlotWidgetName(TEXT("SlotLevel"), SlotIndex), LevelNames(), static_cast<int32>(EHOLAIDifficulty::Normal), LevelWidth);
-		AddDropdown(Row, SlotWidgetName(TEXT("SlotFaction"), SlotIndex), FactionNames(), 0, FactionWidth);
-		UImage* Swatch = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass(), SlotWidgetName(TEXT("SlotSwatch"), SlotIndex));
-		Swatch->SetDesiredSizeOverride(FVector2D(SwatchSize, SwatchSize));
-		AddCell(Row, Swatch, SwatchSize);
-		AddDropdown(Row, SlotWidgetName(TEXT("SlotColor"), SlotIndex), ColorNames(), 0, ColorWidth)->SetOptionSwatches(ColorSwatches());
-		AddDropdown(Row, SlotWidgetName(TEXT("SlotTeam"), SlotIndex), TeamNames(), 0, TeamWidth);
-	}
-
-	UHorizontalBox* Options = AddLine(16.f);
-	AddCell(Options, MakeText(LOCTEXT("Mode", "Mode"), UHOLTextStyleBody::StaticClass()), NameWidth);
-	ModeDropdown = AddDropdown(Options, TEXT("ModeDropdown"), { LOCTEXT("Standard", "Standard"), LOCTEXT("ModeDiplomacy", "Diplomatie") }, 0, OptionWidth);
-	AddCell(Options, MakeText(LOCTEXT("Nomad", "Nomade"), UHOLTextStyleBody::StaticClass()), OptionLabelWidth);
-	NomadDropdown = AddDropdown(Options, TEXT("NomadDropdown"), OffOn(), 0, ToggleWidth);
-	AddCell(Options, MakeText(LOCTEXT("Regicide", "Régicide"), UHOLTextStyleBody::StaticClass()), OptionLabelWidth);
-	RegicideDropdown = AddDropdown(Options, TEXT("RegicideDropdown"), OffOn(), 0, ToggleWidth);
-	AddCell(Options, MakeText(LOCTEXT("Catastrophe", "Catastrophe"), UHOLTextStyleBody::StaticClass()), OptionLabelWidth);
-	CatastropheDropdown = AddDropdown(Options, TEXT("CatastropheDropdown"), OffOn(), 0, ToggleWidth);
-	// S7 (D699): "Sites sacrés", off by default (an old match file without the field reads off too).
-	AddCell(Options, MakeText(LOCTEXT("SacredSites", "Sites sacrés"), UHOLTextStyleBody::StaticClass()), OptionLabelWidth);
-	SacredSitesDropdown = AddDropdown(Options, TEXT("SacredSitesDropdown"), OffOn(), 0, ToggleWidth);
-
-	SpectatorsText = AddText(Column, TEXT("SpectatorsText"), FText::GetEmpty(), UHOLTextStyleNote::StaticClass(), 4.f);
-	SpectatorsText->SetVisibility(ESlateVisibility::Collapsed);
-	NoteText = AddText(Column, TEXT("Note"), LOCTEXT("GreyedTeamsOpen", "Grisé : pas encore dans le jeu (factions, mode et options)."),
-		UHOLTextStyleNote::StaticClass(), 4.f);
-	ErrorText = AddText(Column, TEXT("ErrorText"), FText::GetEmpty(), UHOLTextStyleBody::StaticClass(), 4.f);
-	ErrorText->SetColorAndOpacity(HOLUIStyle::Missing);
-	ErrorText->SetVisibility(ESlateVisibility::Collapsed);
-	AddColumnHint(Column);
-	UHorizontalBox* Buttons = AddButtonRow(Column);
-	BackButton = AddButton(Buttons, TEXT("BackButton"), LOCTEXT("Back", "Retour"));
-	ReadyButton = AddButton(Buttons, TEXT("ReadyButton"), LOCTEXT("ReadyAction", "Prêt"));
-	ReadyButton->SetVisibility(ESlateVisibility::Collapsed);
-	SpectateButton = AddButton(Buttons, TEXT("SpectateButton"), LOCTEXT("BecomeSpectator", "Spectateur"));
-	SpectateButton->SetVisibility(ESlateVisibility::Collapsed);
-	LaunchButton = AddButton(Buttons, TEXT("LaunchButton"), LOCTEXT("Launch", "Lancer"));
+	// The screen is laid out by its script class (Script/UI/HOLNewGameScreen.as, BP_BuildNewGame); the base class itself has no layout (NG-6b).
+	BP_BuildNewGame();
 }
 
 void UHOLNewGameScreen::NativeOnInitialized()
@@ -364,28 +250,25 @@ void UHOLNewGameScreen::NativeOnInitialized()
 	}
 	Super::NativeOnInitialized();
 
-	// NG-1c (D851): a script class laid itself out in BP_BuildNewGame (Super above): the members are found by their widget's name, as the Slot* below, so that
-	// the C++ screen's behaviour (Launch, Refresh, ReadLobby, ShowError, focus, the columns) works on that layout. Heading is HeadingText's name, Note NoteText's.
-	if (GetClass() != StaticClass())
-	{
-		MapDropdown = Cast<UHOLDropdown>(WidgetTree->FindWidget(TEXT("MapDropdown")));
-		SizeDropdown = Cast<UHOLDropdown>(WidgetTree->FindWidget(TEXT("SizeDropdown")));
-		TeamsTogetherDropdown = Cast<UHOLDropdown>(WidgetTree->FindWidget(TEXT("TeamsTogetherDropdown")));
-		FogDropdown = Cast<UHOLDropdown>(WidgetTree->FindWidget(TEXT("FogDropdown")));
-		ModeDropdown = Cast<UHOLDropdown>(WidgetTree->FindWidget(TEXT("ModeDropdown")));
-		NomadDropdown = Cast<UHOLDropdown>(WidgetTree->FindWidget(TEXT("NomadDropdown")));
-		RegicideDropdown = Cast<UHOLDropdown>(WidgetTree->FindWidget(TEXT("RegicideDropdown")));
-		CatastropheDropdown = Cast<UHOLDropdown>(WidgetTree->FindWidget(TEXT("CatastropheDropdown")));
-		SacredSitesDropdown = Cast<UHOLDropdown>(WidgetTree->FindWidget(TEXT("SacredSitesDropdown")));
-		LaunchButton = Cast<UHOLButton>(WidgetTree->FindWidget(TEXT("LaunchButton")));
-		BackButton = Cast<UHOLButton>(WidgetTree->FindWidget(TEXT("BackButton")));
-		ReadyButton = Cast<UHOLButton>(WidgetTree->FindWidget(TEXT("ReadyButton")));
-		SpectateButton = Cast<UHOLButton>(WidgetTree->FindWidget(TEXT("SpectateButton")));
-		SpectatorsText = Cast<UCommonTextBlock>(WidgetTree->FindWidget(TEXT("SpectatorsText")));
-		NoteText = Cast<UCommonTextBlock>(WidgetTree->FindWidget(TEXT("Note")));
-		ErrorText = Cast<UCommonTextBlock>(WidgetTree->FindWidget(TEXT("ErrorText")));
-		HeadingText = Cast<UCommonTextBlock>(WidgetTree->FindWidget(TEXT("Heading")));
-	}
+	// The script class laid itself out in BP_BuildNewGame (Super above): the members are found by their widget's name, as the Slot* below, so that
+	// the base's behaviour (Launch, Refresh, ReadLobby, ShowError, focus, the columns) works on that layout. Heading is HeadingText's name, Note NoteText's.
+	MapDropdown = Cast<UHOLDropdown>(WidgetTree->FindWidget(TEXT("MapDropdown")));
+	SizeDropdown = Cast<UHOLDropdown>(WidgetTree->FindWidget(TEXT("SizeDropdown")));
+	TeamsTogetherDropdown = Cast<UHOLDropdown>(WidgetTree->FindWidget(TEXT("TeamsTogetherDropdown")));
+	FogDropdown = Cast<UHOLDropdown>(WidgetTree->FindWidget(TEXT("FogDropdown")));
+	ModeDropdown = Cast<UHOLDropdown>(WidgetTree->FindWidget(TEXT("ModeDropdown")));
+	NomadDropdown = Cast<UHOLDropdown>(WidgetTree->FindWidget(TEXT("NomadDropdown")));
+	RegicideDropdown = Cast<UHOLDropdown>(WidgetTree->FindWidget(TEXT("RegicideDropdown")));
+	CatastropheDropdown = Cast<UHOLDropdown>(WidgetTree->FindWidget(TEXT("CatastropheDropdown")));
+	SacredSitesDropdown = Cast<UHOLDropdown>(WidgetTree->FindWidget(TEXT("SacredSitesDropdown")));
+	LaunchButton = Cast<UHOLButton>(WidgetTree->FindWidget(TEXT("LaunchButton")));
+	BackButton = Cast<UHOLButton>(WidgetTree->FindWidget(TEXT("BackButton")));
+	ReadyButton = Cast<UHOLButton>(WidgetTree->FindWidget(TEXT("ReadyButton")));
+	SpectateButton = Cast<UHOLButton>(WidgetTree->FindWidget(TEXT("SpectateButton")));
+	SpectatorsText = Cast<UCommonTextBlock>(WidgetTree->FindWidget(TEXT("SpectatorsText")));
+	NoteText = Cast<UCommonTextBlock>(WidgetTree->FindWidget(TEXT("Note")));
+	ErrorText = Cast<UCommonTextBlock>(WidgetTree->FindWidget(TEXT("ErrorText")));
+	HeadingText = Cast<UCommonTextBlock>(WidgetTree->FindWidget(TEXT("Heading")));
 
 	SlotYou = Cast<UCommonTextBlock>(WidgetTree->FindWidget(TEXT("SlotYou0")));
 	HeadName = Cast<UCommonTextBlock>(WidgetTree->FindWidget(TEXT("HeadName")));
@@ -405,71 +288,12 @@ void UHOLNewGameScreen::NativeOnInitialized()
 		{
 			SlotLevels[SlotIndex]->SetIsEnabled(false);
 		}
-
-		if (SlotStates[SlotIndex])
-		{
-			// IA0.6: "IA" in solo, and in the lobby for its leader (its own list, LobbyStateNames, L4).
-			if (!bScriptOwnsGestures) SlotStates[SlotIndex]->OnSelectionChanged.AddWeakLambda(this, [this, SlotIndex](const int32 Value)
-			{
-				HandleStateChosen(SlotIndex, Value);
-			});
-		}
-		if (SlotColors[SlotIndex])
-		{
-			if (!bScriptOwnsGestures) SlotColors[SlotIndex]->OnSelectionChanged.AddWeakLambda(this, [this, SlotIndex](const int32 Value)
-			{
-				HandleColorChosen(SlotIndex, Value);
-			});
-		}
-		if (SlotTeams[SlotIndex])
-		{
-			if (!bScriptOwnsGestures) SlotTeams[SlotIndex]->OnSelectionChanged.AddWeakLambda(this, [this, SlotIndex](const int32 Value)
-			{
-				HandleTeamChosen(SlotIndex, Value);
-			});
-		}
-		// FactionChoiceInProgress.md (lifts the grey of D240 and D495): the list is chosen (Dawn, Legions; Dragon, Shadow and Fire greyed in it,
-		// the Templars with the cheat only), in solo and in the lobby (my line, the leader's AIs). TC-Q12: the teams too.
-		if (SlotFactions[SlotIndex])
-		{
-			if (!bScriptOwnsGestures) SlotFactions[SlotIndex]->OnSelectionChanged.AddWeakLambda(this, [this, SlotIndex](const int32 Value)
-			{
-				HandleFactionChosen(SlotIndex, Value);
-			});
-		}
 	}
 	for (UHOLDropdown* Greyed : { NomadDropdown.Get(), RegicideDropdown.Get(), CatastropheDropdown.Get() })
 	{
 		if (Greyed)
 		{
 			Greyed->SetIsEnabled(false);
-		}
-	}
-	if (MapDropdown)
-	{
-		if (!bScriptOwnsGestures) MapDropdown->OnSelectionChanged.AddUObject(this, &UHOLNewGameScreen::HandleMapChosen);
-	}
-	if (SizeDropdown)
-	{
-		if (!bScriptOwnsGestures) SizeDropdown->OnSelectionChanged.AddUObject(this, &UHOLNewGameScreen::HandleSizeChosen);
-	}
-	if (TeamsTogetherDropdown)
-	{
-		if (!bScriptOwnsGestures) TeamsTogetherDropdown->OnSelectionChanged.AddUObject(this, &UHOLNewGameScreen::HandleTeamsTogetherChosen);
-	}
-	if (FogDropdown)
-	{
-		if (!bScriptOwnsGestures) FogDropdown->OnSelectionChanged.AddUObject(this, &UHOLNewGameScreen::HandleFogChosen);
-	}
-	if (ModeDropdown)
-	{
-		if (!bScriptOwnsGestures) ModeDropdown->OnSelectionChanged.AddUObject(this, &UHOLNewGameScreen::HandleModeChosen);
-	}
-	for (UHOLDropdown* Option : { NomadDropdown.Get(), RegicideDropdown.Get(), CatastropheDropdown.Get(), SacredSitesDropdown.Get() })
-	{
-		if (Option)
-		{
-			if (!bScriptOwnsGestures) Option->OnSelectionChanged.AddUObject(this, &UHOLNewGameScreen::HandleOptionChosen);
 		}
 	}
 	if (LaunchButton)
@@ -654,15 +478,8 @@ void UHOLNewGameScreen::ShowLobby(const FHOLLobby& InLobby)
 
 	const bool bLeader = Lobby.IsYouLeader();
 	const bool bSpectator = Lobby.IsYouSpectator();
-	// NG-1d: a script class that owns the lobby display (bScriptOwnsLobbyDisplay) shows the lobby itself in BP_ShowLobby (reads: GetLobbyView and the GetNewGame* texts); the reading, the sends and the errors stay here.
-	if (bScriptOwnsLobbyDisplay)
-	{
-		BP_ShowLobby();
-	}
-	else
-	{
-		ShowLobbyWidgets();
-	}
+	// The script class shows the lobby (BP_ShowLobby: GetLobbyView and the GetNewGame* texts); the reading, the sends and the errors stay here.
+	BP_ShowLobby();
 	if (Lobby.State == EHOLLobbyState::Starting)
 	{
 		ShowError(LOCTEXT("Starting", "Lancement…"));
@@ -705,104 +522,6 @@ void UHOLNewGameScreen::ShowLobby(const FHOLLobby& InLobby)
 		LoggedPlayers = Logged;
 		UE_LOG(LogHOLUI, Display, TEXT("Lobby: %s \"%s\" map %s %s teams together %d: %s"), *Lobby.Id, *Lobby.Name, *Lobby.Map, *Lobby.Size,
 			Lobby.bTeamsTogether, *Logged);
-	}
-}
-
-void UHOLNewGameScreen::ShowLobbyWidgets()
-{
-	using namespace UE::HeroesOfLiberty::UI::NewGame;
-
-	if (HeadingText)
-	{
-		HeadingText->SetText(FText::FromString(Lobby.Name));
-	}
-	const int32 Yours = Lobby.FindYourSlot();
-	for (int32 SlotIndex = 0; SlotIndex < FHOLMatchConfig::MaxSlots; ++SlotIndex)
-	{
-		const FHOLLobbySlot* Row = Lobby.Slots.IsValidIndex(SlotIndex) ? &Lobby.Slots[SlotIndex] : nullptr;
-		const bool bPlayer = Row && Row->State == EHOLLobbySlotState::Player;
-		const bool bAI = Row && Row->State == EHOLLobbySlotState::AI;
-		const bool bMine = SlotIndex == Yours;
-		if (SlotNames[SlotIndex])
-		{
-			// IA0.6 L4 (Q5): an AI's name is in its state list ("IA Normal 3"), as in solo.
-			SlotNames[SlotIndex]->SetText(bAI ? FText::GetEmpty() : !bPlayer ? FText::Format(LOCTEXT("PlayerN", "Joueur {0}"), SlotIndex + 1)
-				: Row->PlayerName == Lobby.Leader ? FText::Format(LOCTEXT("Leader", "♛ {0}"), FText::FromString(Row->PlayerName))
-				: FText::FromString(Row->PlayerName));
-		}
-		// Open, closed, not ready, ready, AI (LobbyStateNames).
-		const int32 State = !Row || Row->State == EHOLLobbySlotState::Open ? 0 : bAI ? LobbyAIState : !bPlayer ? 1 : Row->bReady ? 3 : 2;
-		const FText AIName = bAI ? HOLForumMessages::GetAIName(SlotIndex, Row->Level) : FText::GetEmpty();
-		// The leader opens and closes the slots no player holds, or puts an AI there (IA0.6 L4, Q4): Open, Closed and AI.
-		if (SlotStates[SlotIndex])
-		{
-			SlotStates[SlotIndex]->SetSelectedIndex(State);
-			SlotStates[SlotIndex]->SetIsEnabled(Lobby.CanToggleSlot(SlotIndex));
-			SlotStates[SlotIndex]->SetOptionEnabled(2, false);
-			SlotStates[SlotIndex]->SetOptionEnabled(3, false);
-			if (bAI)
-			{
-				SlotStates[SlotIndex]->SetShownText(AIName);
-			}
-		}
-		else if (SlotIndex == 0 && SlotYou)
-		{
-			SlotYou->SetText(bAI ? AIName : LobbyStateNames()[State]);
-		}
-		// Only my line is mine (M6-Q4), and an AI's is the leader's (IA0.6 L4); the faction too.
-		const bool bEditable = bMine || Lobby.CanEditAISlot(SlotIndex);
-		if (SlotFactions[SlotIndex])
-		{
-			SlotFactions[SlotIndex]->SetIsEnabled(bEditable);
-		}
-		if (SlotColors[SlotIndex])
-		{
-			SlotColors[SlotIndex]->SetIsEnabled(bEditable);
-		}
-		if (SlotTeams[SlotIndex])
-		{
-			SlotTeams[SlotIndex]->SetIsEnabled(bEditable);
-		}
-	}
-	// The map, its size, "Équipes ensemble" and the options are the leader's; the mode has one value yet.
-	const bool bLeader = Lobby.IsYouLeader();
-	for (UHOLDropdown* Setting : { MapDropdown.Get(), SizeDropdown.Get(), TeamsTogetherDropdown.Get(), FogDropdown.Get(), ModeDropdown.Get(), NomadDropdown.Get(),
-		RegicideDropdown.Get(), CatastropheDropdown.Get() })
-	{
-		if (Setting)
-		{
-			Setting->SetIsEnabled(bLeader);
-		}
-	}
-	const bool bReady = Lobby.Slots.IsValidIndex(Yours) && Lobby.Slots[Yours].bReady;
-	// SP1 (D642): a spectator has no Ready; his button takes a slot back (only if one is open), a player's leaves his.
-	const bool bSpectator = Lobby.IsYouSpectator();
-	if (ReadyButton)
-	{
-		ReadyButton->SetLabel(bReady ? LOCTEXT("NotReadyAction", "Plus prêt") : LOCTEXT("ReadyAction", "Prêt"));
-		ReadyButton->SetIsEnabled(Yours != INDEX_NONE && Lobby.State == EHOLLobbyState::Lobby);
-		ReadyButton->SetVisibility(bSpectator ? ESlateVisibility::Collapsed : ESlateVisibility::Visible);
-	}
-	if (SpectateButton)
-	{
-		SpectateButton->SetLabel(bSpectator ? LOCTEXT("BecomePlayer", "Jouer") : LOCTEXT("BecomeSpectator", "Spectateur"));
-		SpectateButton->SetIsEnabled(Lobby.State == EHOLLobbyState::Lobby && (!bSpectator || Lobby.HasOpenSlot()));
-	}
-	if (SpectatorsText)
-	{
-		TArray<FString> Names;
-		for (const FString& Name : Lobby.Spectators)
-		{
-			Names.Add(Name == Lobby.Leader ? FText::Format(LOCTEXT("Leader", "♛ {0}"), FText::FromString(Name)).ToString() : Name);
-		}
-		SpectatorsText->SetText(Names.IsEmpty() ? FText::GetEmpty() : FText::Format(LOCTEXT("Spectators", "Spectateurs : {0}"), FText::FromString(FString::Join(Names, TEXT(", ")))));
-		SpectatorsText->SetVisibility(Names.IsEmpty() ? ESlateVisibility::Collapsed : ESlateVisibility::HitTestInvisible);
-	}
-	// Launch: the leader's only, active when all are ready (the manager still decides).
-	if (LaunchButton)
-	{
-		LaunchButton->SetVisibility(bLeader ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
-		LaunchButton->SetIsEnabled(Lobby.CanStart() && Lobby.State == EHOLLobbyState::Lobby);
 	}
 }
 
@@ -992,86 +711,6 @@ void UHOLNewGameScreen::Refresh()
 	}
 }
 
-void UHOLNewGameScreen::HandleMapChosen(const int32 Value)
-{
-	if (Maps.IsValidIndex(Value))
-	{
-		Config.Map = Maps[Value];
-	}
-	// TC3: a map chosen in the list is played at a size (a test configuration had none).
-	if (!bLobby && Config.MapSize == EHOLMapSize::None)
-	{
-		ChooseSize(FHOLMapSizeRules::GetDefaultSize(Config.GetNumOccupiedSlots()));
-	}
-	Refresh();
-	if (bLobby)
-	{
-		SendSettings();
-	}
-}
-
-void UHOLNewGameScreen::HandleSizeChosen(const int32 Value)
-{
-	// A size too small is greyed in the list: this one holds the players.
-	if (!bLobby)
-	{
-		ChooseSize(static_cast<EHOLMapSize>(Value));
-	}
-	else if (FHOLMapSizeRules::Find(static_cast<EHOLMapSize>(Value)))
-	{
-		// TC3 loop 2: the leader's size, sent; the manager closes the slots past it (and moves the players below).
-		Config.MapSize = static_cast<EHOLMapSize>(Value);
-		SendSettings();
-	}
-	Refresh();
-}
-
-void UHOLNewGameScreen::HandleTeamsTogetherChosen(const int32 Value)
-{
-	Config.bTeamsTogether = Value == 1;
-	if (bLobby)
-	{
-		SendSettings();
-	}
-	Refresh();
-}
-
-void UHOLNewGameScreen::HandleFogChosen(const int32 Value)
-{
-	Config.FogMode = static_cast<EHOLFogMode>(FMath::Clamp(2 - Value, 0, 2));
-	UE_LOG(LogHOLUI, Display, TEXT("New game: fog %s"), *StaticEnum<EHOLFogMode>()->GetNameStringByValue(static_cast<int64>(Config.FogMode)));
-	if (bLobby)
-	{
-		SendSettings();
-	}
-	Refresh();
-}
-
-void UHOLNewGameScreen::HandleModeChosen(const int32 Value)
-{
-	Config.Mode = Value == 1 ? EHOLMatchMode::Diplomacy : EHOLMatchMode::Standard;
-	UE_LOG(LogHOLUI, Display, TEXT("New game: mode %s"), *StaticEnum<EHOLMatchMode>()->GetNameStringByValue(static_cast<int64>(Config.Mode)));
-	if (bLobby)
-	{
-		SendSettings();
-	}
-	Refresh();
-}
-
-void UHOLNewGameScreen::HandleOptionChosen(int32)
-{
-	// S7: the only option already in the game, chosen in solo too (written to the match file at the launch).
-	Config.bSacredSites = SacredSitesDropdown && SacredSitesDropdown->GetSelectedIndex() == 1;
-	if (!bLobby)
-	{
-		return;
-	}
-	Config.bNomad = NomadDropdown && NomadDropdown->GetSelectedIndex() == 1;
-	Config.bRegicide = RegicideDropdown && RegicideDropdown->GetSelectedIndex() == 1;
-	Config.bCatastrophe = CatastropheDropdown && CatastropheDropdown->GetSelectedIndex() == 1;
-	SendSettings();
-}
-
 UHOLManagerClient* UHOLNewGameScreen::GetClient() const
 {
 	const UGameInstance* GameInstance = GetGameInstance();
@@ -1116,25 +755,6 @@ void UHOLNewGameScreen::SendSlotAI(const int32 SlotIndex, const TOptional<int32>
 bool UHOLNewGameScreen::IsLobbyAI(const int32 SlotIndex) const
 {
 	return bLobby && Lobby.Slots.IsValidIndex(SlotIndex) && Lobby.Slots[SlotIndex].State == EHOLLobbySlotState::AI;
-}
-
-void UHOLNewGameScreen::HandleTeamChosen(const int32 SlotIndex, const int32 Value)
-{
-	Config.Slots[SlotIndex].Team = Value;
-	if (IsLobbyAI(SlotIndex))
-	{
-		SendSlotAI(SlotIndex, {}, Value);
-		return;
-	}
-	if (UHOLManagerClient* Client = bLobby ? GetClient() : nullptr)
-	{
-		const FString What = FString::Printf(TEXT("team %d"), Value);
-		UE_LOG(LogHOLUI, Display, TEXT("Lobby: %s sent"), *What);
-		Client->UpdateMe({}, Value, {}, FHOLManagerLobbyDone::CreateWeakLambda(this, [this, What](const FHOLLobby& Written, const FHOLManagerError& Error)
-		{
-			HandleWritten(Written, Error, What);
-		}));
-	}
 }
 
 void UHOLNewGameScreen::ToggleReady()
@@ -1241,46 +861,6 @@ void UHOLNewGameScreen::ShowError(const FText& Text)
 	}
 }
 
-void UHOLNewGameScreen::HandleStateChosen(const int32 SlotIndex, const int32 Value)
-{
-	if (bLobby)
-	{
-		// Open (0) or closed (1), or an AI (IA0.6 L4), the leader's (LobbyStateNames); the next read puts back the manager's value.
-		if (Value == UE::HeroesOfLiberty::UI::NewGame::LobbyAIState)
-		{
-			SendSlotAI(SlotIndex, {}, {});
-			return;
-		}
-		UHOLManagerClient* Client = GetClient();
-		if (Client && Value <= 1)
-		{
-			const FString What = FString::Printf(TEXT("slot %d %s"), SlotIndex, Value == 0 ? TEXT("open") : TEXT("closed"));
-			UE_LOG(LogHOLUI, Display, TEXT("Lobby: %s sent"), *What);
-			Client->SetSlot(SlotIndex, Value == 0, FHOLManagerLobbyDone::CreateWeakLambda(this, [this, What](const FHOLLobby& Written, const FHOLManagerError& Error)
-			{
-				HandleWritten(Written, Error, What);
-			}));
-		}
-		return;
-	}
-	// TC3 (TC-Q4): a slot past the places of the size stays closed (its list is greyed).
-	const int32 NumPlaces = FHOLMapSizeRules::GetNumPlaces(Config);
-	if (SlotIndex >= NumPlaces)
-	{
-		UE_LOG(LogHOLUI, Display, TEXT("New game: slot %d stays closed, past the %d places of the size"), SlotIndex, NumPlaces);
-		Refresh();
-		return;
-	}
-	// Closed, Human or AI (IA0.6): an AI holds its slot like a human (colour, team).
-	FHOLMatchSlot& SlotConfig = Config.Slots[SlotIndex];
-	SlotConfig.State = static_cast<EHOLSlotState>(Value);
-	if (SlotConfig.State != EHOLSlotState::Closed && IsColorTaken(SlotIndex, SlotConfig.ColorIndex))
-	{
-		SlotConfig.ColorIndex = FindFreeColor(SlotIndex, SlotConfig.ColorIndex);
-	}
-	Refresh();
-}
-
 void UHOLNewGameScreen::UpdateFactionLists()
 {
 	const bool bCheat = HOLFactionChoice::IsCheatOn();
@@ -1310,65 +890,6 @@ void UHOLNewGameScreen::UpdateFactionLists()
 	}
 }
 
-void UHOLNewGameScreen::HandleFactionChosen(const int32 SlotIndex, const int32 Value)
-{
-	const EHOLFaction Faction = static_cast<EHOLFaction>(Value);
-	if (!HOLFactionChoice::IsChoosable(Faction, HOLFactionChoice::IsCheatOn()))
-	{
-		// The list greys them already; never taken from a stale list.
-		Refresh();
-		return;
-	}
-	// In a lobby only my line and the leader's AIs are changed (their lists are greyed for the others).
-	if (bLobby && SlotIndex != Lobby.FindYourSlot() && !Lobby.CanEditAISlot(SlotIndex))
-	{
-		Refresh();
-		return;
-	}
-	Config.Slots[SlotIndex].Faction = Faction;
-	Refresh();
-	const FString Name = HOLFactionChoice::GetName(Faction);
-	if (IsLobbyAI(SlotIndex))
-	{
-		SendSlotAI(SlotIndex, {}, {}, Name);
-		return;
-	}
-	if (UHOLManagerClient* Client = bLobby ? GetClient() : nullptr)
-	{
-		const FString What = FString::Printf(TEXT("faction %s"), *Name);
-		UE_LOG(LogHOLUI, Display, TEXT("Lobby: %s sent"), *What);
-		Client->UpdateMe({}, {}, {}, FHOLManagerLobbyDone::CreateWeakLambda(this, [this, What](const FHOLLobby& Written, const FHOLManagerError& Error)
-		{
-			HandleWritten(Written, Error, What);
-		}), {}, Name);
-	}
-	else
-	{
-		UE_LOG(LogHOLUI, Display, TEXT("New game: slot %d faction %s"), SlotIndex, *Name);
-	}
-}
-
-void UHOLNewGameScreen::HandleColorChosen(const int32 SlotIndex, const int32 Value)
-{
-	// A colour held by another occupied slot is greyed in the list: this one is free.
-	Config.Slots[SlotIndex].ColorIndex = Value;
-	Refresh();
-	if (IsLobbyAI(SlotIndex))
-	{
-		SendSlotAI(SlotIndex, Value, {});
-		return;
-	}
-	if (UHOLManagerClient* Client = bLobby ? GetClient() : nullptr)
-	{
-		const FString What = FString::Printf(TEXT("colour %d"), Value);
-		UE_LOG(LogHOLUI, Display, TEXT("Lobby: %s sent"), *What);
-		Client->UpdateMe(Value, {}, {}, FHOLManagerLobbyDone::CreateWeakLambda(this, [this, What](const FHOLLobby& Written, const FHOLManagerError& Error)
-		{
-			HandleWritten(Written, Error, What);
-		}));
-	}
-}
-
 bool UHOLNewGameScreen::IsColorTaken(const int32 SlotIndex, const int32 ColorIndex) const
 {
 	// E2-2: several slots can be on "Aléatoire".
@@ -1384,20 +905,6 @@ bool UHOLNewGameScreen::IsColorTaken(const int32 SlotIndex, const int32 ColorInd
 		}
 	}
 	return false;
-}
-
-int32 UHOLNewGameScreen::FindFreeColor(const int32 SlotIndex, const int32 From) const
-{
-	constexpr int32 NumColors = HOLPlayerColors::NumColors;
-	for (int32 Tried = 0; Tried < NumColors; ++Tried)
-	{
-		const int32 Color = (From + Tried) % NumColors;
-		if (!IsColorTaken(SlotIndex, Color))
-		{
-			return Color;
-		}
-	}
-	return From;
 }
 
 void UHOLNewGameScreen::Launch()
