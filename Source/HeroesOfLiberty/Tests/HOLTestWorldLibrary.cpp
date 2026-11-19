@@ -6,6 +6,7 @@
 #include "Match/HOLGameState.h"
 #include "Match/HOLMatchConfig.h"
 #include "Match/HOLPlayerState.h"
+#include "UObject/Package.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
 #include "Engine/Engine.h"
@@ -1060,4 +1061,54 @@ AActor* UHOLTestWorldLibrary::TraceSelectionRayDown(UHOLTestWorldHandle* TestWor
 	}
 #endif
 	return nullptr;
+}
+
+void UHOLVictoryEventCounter::Bind(AHOLGameState* State)
+{
+	if (State)
+	{
+		State->OnSlotDefeated.AddUObject(this, &UHOLVictoryEventCounter::HandleDefeated);
+		State->OnMatchOver.AddUObject(this, &UHOLVictoryEventCounter::HandleOver);
+	}
+}
+
+bool UHOLTestWorldLibrary::DefeatGameStateSlot(AHOLGameState* State, const int32 Slot, const EHOLDefeatReason Reason)
+{
+	return State && State->DefeatSlot(Slot, Reason);
+}
+
+bool UHOLTestWorldLibrary::IsGameStateSlotDefeated(const AHOLGameState* State, const int32 Slot)
+{
+	return State && State->IsSlotDefeated(Slot);
+}
+
+EHOLDefeatReason UHOLTestWorldLibrary::GetGameStateDefeatReason(const AHOLGameState* State, const int32 Slot)
+{
+	return State ? State->GetDefeatReason(Slot) : EHOLDefeatReason::None;
+}
+
+bool UHOLTestWorldLibrary::IsGameStateMatchOver(const AHOLGameState* State)
+{
+	return State && State->IsMatchOver();
+}
+
+TArray<int32> UHOLTestWorldLibrary::GetGameStateWinners(const AHOLGameState* State)
+{
+	return State ? State->GetWinners() : TArray<int32>();
+}
+
+bool UHOLTestWorldLibrary::IsGameStateWinner(const AHOLGameState* State, const int32 Slot)
+{
+	return State && State->IsWinner(Slot);
+}
+
+UHOLVictoryEventCounter* UHOLTestWorldLibrary::CountVictoryEvents(AHOLGameState* State)
+{
+	if (!State)
+	{
+		return nullptr;
+	}
+	UHOLVictoryEventCounter* Counter = NewObject<UHOLVictoryEventCounter>(GetTransientPackage());
+	Counter->Bind(State);
+	return Counter;
 }

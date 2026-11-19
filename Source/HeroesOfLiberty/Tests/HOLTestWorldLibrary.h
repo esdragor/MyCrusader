@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "Buildings/HOLBuildingTypes.h"
 #include "Kismet/BlueprintFunctionLibrary.h"
+#include "Match/HOLGameState.h"
 #include "Match/HOLResources.h"
 #include "Subsystems/WorldSubsystem.h"
 #include "UObject/Object.h"
@@ -40,6 +41,34 @@ public:
 	TObjectPtr<UWorld> World = nullptr;
 };
 
+/**
+ * Counts the two events of a game state that are plain C++ delegates (not exposed to the script): OnSlotDefeated and OnMatchOver (D853, D839: a
+ * binding to expose). Made by UHOLTestWorldLibrary::CountVictoryEvents; the script keeps it (the delegates hold it weakly).
+ */
+UCLASS()
+class HEROESOFLIBERTY_API UHOLVictoryEventCounter : public UObject
+{
+	GENERATED_BODY()
+
+public:
+	/** C++ side only: starts counting the events of State. */
+	void Bind(AHOLGameState* State);
+
+	/** How many OnSlotDefeated were broadcast since Bind. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
+	int32 GetDefeats() const { return Defeats; }
+
+	/** How many OnMatchOver were broadcast since Bind. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
+	int32 GetEnds() const { return Ends; }
+
+private:
+	void HandleDefeated(int32 Slot, EHOLDefeatReason Reason) { ++Defeats; }
+	void HandleOver() { ++Ends; }
+
+	int32 Defeats = 0;
+	int32 Ends = 0;
+};
 /**
  * World harness of the tests for Angelscript (namespace HOLTestWorld there, D839: a binding exposed to the script, a test harness; D853: the C++
  * tests of a world without Mass are ported to script). Same world as the C++ tests (UWorld::CreateWorld(EWorldType::Game, false), its context,
@@ -383,4 +412,32 @@ public:
 	 */
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
 	static AActor* TraceSelectionRayDown(UHOLTestWorldHandle* TestWorld, double X, double Y);
+
+	/** AHOLGameState::DefeatSlot (not a UFUNCTION): the server's defeat of a slot; false for a closed slot, a defeated one, or once the match is over. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
+	static bool DefeatGameStateSlot(AHOLGameState* State, int32 Slot, EHOLDefeatReason Reason);
+
+	/** AHOLGameState::IsSlotDefeated. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
+	static bool IsGameStateSlotDefeated(const AHOLGameState* State, int32 Slot);
+
+	/** AHOLGameState::GetDefeatReason (None: still in the match). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
+	static EHOLDefeatReason GetGameStateDefeatReason(const AHOLGameState* State, int32 Slot);
+
+	/** AHOLGameState::IsMatchOver. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
+	static bool IsGameStateMatchOver(const AHOLGameState* State);
+
+	/** AHOLGameState::GetWinners (slots, ascending). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
+	static TArray<int32> GetGameStateWinners(const AHOLGameState* State);
+
+	/** AHOLGameState::IsWinner. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
+	static bool IsGameStateWinner(const AHOLGameState* State, int32 Slot);
+
+	/** A counter of the OnSlotDefeated and OnMatchOver broadcasts of State, started now (nullptr without a state). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
+	static UHOLVictoryEventCounter* CountVictoryEvents(AHOLGameState* State);
 };
