@@ -120,6 +120,7 @@ FString TalentTipTexts = "";
 	UOverlaySlot VolcanoSlot;
 	UCommonTextBlock VolcanoText;
 	UHOLTopBarPanel TopBar;
+	UHOLCheatPanelScript CheatPanel;
 	// HUD H-4: the players' table (HOLPlayerTable.as), drawn into the C++ screen's PlayersPanel.
 	UHOLPlayerTablePanel PlayerTable;
 	// HUD H-6: the control groups' bar (HOLGroupBar.as), drawn into the C++ screen's GroupsPanel.
@@ -281,6 +282,9 @@ UHOLAlertBannerPanel AlertBanner;
 		BuildTalentWindow(Frame);
 		// Last: over the other blocks.
 		BuildPauseScreen(Frame);
+		// H-11a: the cheats panel, built last so it stays over every other panel (the C++ panel was a viewport layer at z 1).
+		CheatPanel = Cast<UHOLCheatPanelScript>(NewObject(this, UHOLCheatPanelScript));
+		CheatPanel.Build(this, Frame, TopBar.TopBar);
 	}
 
 	void BuildDuelWindow(UOverlay Frame)
@@ -751,7 +755,7 @@ UHOLAlertBannerPanel AlertBanner;
 			float Limit = Room.Y - GetBottomLeftPlace().Bottom;
 			if (GetWidgetBox(HeroPanel, HeroLow, HeroHigh))
 				Limit = HeroLow.Y;
-			Top = Math::Max(GetCheatPanelBottom() + 8.0, 80.0);
+			Top = Math::Max(CheatBottom() + 8.0, 80.0);
 			MaxHeight = Math::Max(120.0, Limit - 8.0 - Top);
 			Horizontal = EHorizontalAlignment::HAlign_Left;
 			Vertical = EVerticalAlignment::VAlign_Bottom;
@@ -1003,7 +1007,7 @@ UHOLAlertBannerPanel AlertBanner;
 		}
 		VolcanoTexts = VolcanoView.Text.Replace("\n", " / ");
 		// Under the cheats' panel (folded or open) and under the AI level line when it is there.
-		const float Top = Math::Max(AILevelTopMin, GetCheatPanelBottom() + AILevelGap) + (AILevelPanel.GetVisibility() == ESlateVisibility::Collapsed ? 0.0 : VolcanoAfterAILine);
+		const float Top = Math::Max(AILevelTopMin, CheatBottom() + AILevelGap) + (AILevelPanel.GetVisibility() == ESlateVisibility::Collapsed ? 0.0 : VolcanoAfterAILine);
 		if (Math::Abs(Top - VolcanoTop) > 0.5)
 		{
 			VolcanoTop = Top;
@@ -1049,7 +1053,7 @@ UHOLAlertBannerPanel AlertBanner;
 		}
 		AILevelTexts = Text.Replace("\n", " / ");
 		// Under the cheats' panel, as tall as it is now (folded or open).
-		const float Top = Math::Max(AILevelTopMin, GetCheatPanelBottom() + AILevelGap);
+		const float Top = Math::Max(AILevelTopMin, CheatBottom() + AILevelGap);
 		if (Math::Abs(Top - AILevelTop) > 0.5)
 		{
 			AILevelTop = Top;
@@ -1411,6 +1415,11 @@ UHOLAlertBannerPanel AlertBanner;
 		RefreshMinimap();
 		RefreshPopulationAlert();
 		RefreshShortMessage();
+		if (CheatPanel != nullptr)
+		{
+			CheatPanel.Refresh(HeroView.bVisible);
+			SetCheatsReport(CheatPanel.Describe());
+		}
 	}
 
 	// HUD H-8: the age panels alone, drawn again at once (the C++ screen's grid, chosen age and tier changes). Not the whole Refresh: the
@@ -1935,8 +1944,6 @@ UHOLAlertBannerPanel AlertBanner;
 		HeroView = View;
 		HeroTexts = "";
 		HeroPanel.SetVisibility(View.bVisible ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
-		// A low window: the cheats' panel folds when this block opens (Q-heros-triches-600 = A).
-		SetCheatsHeroBlockShown(View.bVisible);
 		if (!View.bVisible)
 			return;
 		// The portrait: the player's colour and the emblem, both darkened while dead (its click does nothing then).
@@ -2254,6 +2261,20 @@ UHOLAlertBannerPanel AlertBanner;
 			ToggleDiplomacy();
 	}
 
+	// H-11a: the cheats panel's bottom edge (0 before it is built): the AI level line and the diplomacy panel stack under it.
+	float CheatBottom()
+	{
+		return CheatPanel != nullptr ? CheatPanel.GetBottom() : 0.0;
+	}
+
+	// hol.HUD.Cheats <0|1> (HOLUIHUD.cpp): folded or open, the choice not kept.
+	UFUNCTION(BlueprintOverride)
+	void ApplyCheatsOpen(bool bOpen)
+	{
+		if (CheatPanel != nullptr)
+			CheatPanel.SetOpen(bOpen, false);
+	}
+
 	UFUNCTION(BlueprintOverride)
 	bool ClickWidget(FName WidgetName)
 	{
@@ -2295,6 +2316,8 @@ UHOLAlertBannerPanel AlertBanner;
 		if (WidgetName == n"PauseResumeButton")
 			return ClickPauseResume();
 		if (TopBar != nullptr && TopBar.ClickName(WidgetName))
+			return true;
+		if (CheatPanel != nullptr && CheatPanel.ClickName(WidgetName))
 			return true;
 		if (GroupBar != nullptr && GroupBar.ClickName(WidgetName))
 			return true;
@@ -2346,7 +2369,7 @@ UHOLAlertBannerPanel AlertBanner;
 		FVector2D HeroHigh;
 		if (GetWidgetBox(HeroPanel, HeroLow, HeroHigh) && Math::Min(PanelHigh.X, HeroHigh.X) > Math::Max(PanelLow.X, HeroLow.X))
 			HeroOver = Math::Max(0.0, Math::Min(PanelHigh.Y, HeroHigh.Y) - Math::Max(PanelLow.Y, HeroLow.Y));
-		const float CheatOver = Math::Max(0.0, GetCheatPanelBottom() - PanelLow.Y);
+		const float CheatOver = Math::Max(0.0, CheatBottom() - PanelLow.Y);
 		// The last player's line against the bottom of the scrolling area: how far it is still below it (0 once scrolled to the end).
 		float LastOut = 0.0;
 		int LastSlot = -1;

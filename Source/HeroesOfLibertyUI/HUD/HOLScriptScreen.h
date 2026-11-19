@@ -261,20 +261,6 @@ public:
 	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|UI")
 	FMargin GetBottomLeftPlace() const;
 
-	/**
-	 * The bottom edge (Slate units under the screen's top) of the cheats' panel, top left under the top bar: a block of the script stacked under it
-	 * starts there (the AI level line). 0 without the panel (Shipping, or no HUD).
-	 */
-	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|UI")
-	float GetCheatPanelBottom() const;
-
-	/**
-	 * Tells the cheats' panel whether the hero's block is shown (the script, as it applies the block's view): in a low window (under 700 px) the
-	 * panel folds when the block opens, as they would cover each other (Q-heros-triches-600 = A). Nothing without the panel.
-	 */
-	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|UI")
-	void SetCheatsHeroBlockShown(bool bShown) const;
-
 	/** The window as the HUD sees it, in Slate units (the pixels over the DPI scale): the room the panels are laid out in. */
 	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|UI")
 	FVector2D GetViewportSlateSize() const;
