@@ -1,5 +1,5 @@
-// NOT COMPILED YET (GALADRIEL-1119w). Script equivalent of the C++ test FHOLCheatPanelTextTest "HeroesOfLiberty.UI.CheatPanel.Localized" (HOLScenarioPanelTests.cpp:164-286),
-// to be seen RED then GREEN before HOLCheatPanel.* and that C++ test are deleted. Needs the binding HOLScreenTest::GetLocalizedTextIn (HOLScreenTestLibrary.h): the text the SCRIPT panel
+// Compiled and RED then GREEN seen 2026-11-19 11:34 (GALADRIEL-1119w; the C++ test and HOLCheatPanel.* are deleted, GALADRIEL-1119x). Script equivalent of the C++ test FHOLCheatPanelTextTest "HeroesOfLiberty.UI.CheatPanel.Localized" (HOLScenarioPanelTests.cpp:164-286),
+// Needs the binding HOLScreenTest::GetLocalizedTextIn (HOLScreenTestLibrary.h): the text the SCRIPT panel
 // uses (HOLCheatPanelText::*, the very FText that HOLCheatPanelScript.as gives the buttons / labels), translated through Content/Localization/Game/<culture>/Game.locres by the
 // namespace and key that FText carries. A label left without a key (FromString, INVTEXT) or with another key than the C++ one gives an empty string and fails here.
 // Expected values = the C++ test's, word for word. RED TO SEE: falsify "+1000 Wood" (CheatWood, en) into "+1000 Woodx", run, restore.

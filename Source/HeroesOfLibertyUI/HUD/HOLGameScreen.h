@@ -244,7 +244,7 @@ public:
 	/** L2: the name the selection block writes for a single selected unit (its faction's own name), "none" without it: the "HUD selection name" line of hol.HUD.Report. */
 	FString DescribeSelectionName() const;
 
-	/** The top bar (resources, population, idle workers): the cheats' panel stays under it (UHOLCheatPanel). */
+	/** The top bar (resources, population, idle workers): the cheats' panel (script, HOLCheatPanelScript.as) stays under it. */
 	UBorder* GetTopBar() const;
 
 protected:

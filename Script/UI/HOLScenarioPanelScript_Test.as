@@ -1,13 +1,13 @@
 // HUD H-11b (NOT COMPILED, needs the same C++ lot as HOLScenarioPanelScript.as for the class; the rules of the namespace HOLScenarioPanelRules need none,
-// except NSLOCTEXT / FText::Format in script, to verify at the first compile). Port of Source\HeroesOfLibertyUI\Tests\HOLScenarioPanelTests.cpp.
+// except NSLOCTEXT / FText::Format in script, to verify at the first compile). Port of the former HOLScenarioPanelTests.cpp (removed, GALADRIEL-1119x).
 //
 // C++ test -> script equivalent:
 //   FHOLScenarioPanelTextTest "HeroesOfLiberty.UI.ScenarioPanel.LocalizedOneLine":
 //     - the French part (title "Scénario deploy", state "en préparation…")        -> Test_ScenarioPanelFrenchTexts
 //     - "the state does not wrap while preparing / once ready, an error wraps"    -> Test_ScenarioPanelStateWrapsOnlyAnError
-//     - the English and Japanese part (Game.locres read by namespace + key)       -> NOT PORTED: a script test cannot read a .locres
-//       (FTextLocalizationResource); it stays C++ until the switch, and must then read the script's FText through a binding (question in the report).
-//   FHOLCheatPanelTextTest "HeroesOfLiberty.UI.CheatPanel.Localized": the cheats' panel, not this file's panel: stays C++ (other panel, same file).
+//     - the English and Japanese part (Game.locres read by namespace + key)       -> HOLScenarioPanelLocalizedScript_Test.as (GetLocalizedTextIn reads the .locres):
+//       red seen 2026-11-19 11:34, then green; the C++ test is removed.
+//   FHOLCheatPanelTextTest "HeroesOfLiberty.UI.CheatPanel.Localized": the cheats' panel, removed with this file: -> HOLCheatPanelLocalizedScript_Test.as.
 // Added, one per rule of HOLScenarioPanel.cpp the C++ test did not cover: shown rule, Describe line, journal lines (read by LaunchCheck.ps1), click routing,
 // anchor placement, notes rebuilt only when changed.
 

@@ -54,7 +54,7 @@ public:
 	static int32 GetDropdownIndex(UWidget* Widget);
 
 	/** The text Shown translated into Culture ("en", "ja"...) through the file the game loads (Content/Localization/Game/<culture>/Game.locres),
-	 * by the namespace and key Shown carries (FTextInspector), as HOLScenarioPanelTests.cpp did for the C++ panels. A formatted text (FText::Format
+	 * by the namespace and key Shown carries (FTextInspector), as the former C++ panel tests did. A formatted text (FText::Format
 	 * of a keyed pattern) gets its pattern translated and its arguments kept. Empty if Shown has no key (INVTEXT, FromString), the file is missing,
 	 * or the table has no entry: a text left out of the localization fails a test that compares it. Empty too where not WITH_DEV_AUTOMATION_TESTS. */
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|ScreenTest")

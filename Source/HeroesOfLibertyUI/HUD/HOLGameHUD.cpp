@@ -9,7 +9,6 @@
 #include "GameFramework/PlayerController.h"
 #include "HeroesOfLibertyUILog.h"
 #include "Dev/HOLTestHooks.h"
-#include "HUD/HOLCheatPanel.h"
 #include "HUD/HOLGameScreen.h"
 #include "Match/HOLForumMessages.h"
 #include "Match/HOLGameState.h"

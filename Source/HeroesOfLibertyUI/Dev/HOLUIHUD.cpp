@@ -4,7 +4,6 @@
 #include "GameFramework/PlayerController.h"
 #include "HAL/IConsoleManager.h"
 #include "HeroesOfLibertyUILog.h"
-#include "HUD/HOLCheatPanel.h"
 #include "HUD/HOLGameHUD.h"
 #include "HUD/HOLGameScreen.h"
 #include "Map/HOLVisionSubsystem.h"
