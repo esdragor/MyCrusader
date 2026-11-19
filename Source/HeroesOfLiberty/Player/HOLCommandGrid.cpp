@@ -422,6 +422,12 @@ namespace HOLCommandGrid
 
 	bool Blocks(const FHOLCommandFeedback& Feedback)
 	{
+		bool bAnswer = false;
+		return UHOLCommandGridBoard::AskBlocks(Feedback, bAnswer) ? bAnswer : BlocksNative(Feedback);
+	}
+
+	bool BlocksNative(const FHOLCommandFeedback& Feedback)
+	{
 		return Feedback.Kind == EHOLCommandFeedback::NotEnoughResources || Feedback.Kind == EHOLCommandFeedback::QueueFull
 			|| Feedback.Kind == EHOLCommandFeedback::PlacementRefused || Feedback.Kind == EHOLCommandFeedback::ResearchRefused;
 	}
@@ -473,15 +479,33 @@ namespace HOLCommandGrid
 
 	int32 GetCycleRank(const FHOLBuildingTypeRow& Type)
 	{
+		int32 Answer = 0;
+		return UHOLCommandGridBoard::AskGetCycleRank(Type.IsBuildable(), Type.BuildGridSlot, Answer) ? Answer : GetCycleRankNative(Type);
+	}
+
+	int32 GetCycleRankNative(const FHOLBuildingTypeRow& Type)
+	{
 		return Type.IsBuildable() ? Type.BuildGridSlot + 1 : 0;
 	}
 
 	bool IsSelectedByCategory(const FHOLBuildingTypeRow& Type, const EHOLBuildingCategory Category)
 	{
+		bool bAnswer = false;
+		return UHOLCommandGridBoard::AskIsSelectedByCategory(Type.Category, Category, bAnswer) ? bAnswer : IsSelectedByCategoryNative(Type, Category);
+	}
+
+	bool IsSelectedByCategoryNative(const FHOLBuildingTypeRow& Type, const EHOLBuildingCategory Category)
+	{
 		return Type.Category == Category;
 	}
 
 	bool IsRepeatPress(const TConstArrayView<uint32> Selected, const TConstArrayView<uint32> LastSelected, const bool bSameKey)
+	{
+		bool bAnswer = false;
+		return UHOLCommandGridBoard::AskIsRepeatPress(Selected, LastSelected, bSameKey, bAnswer) ? bAnswer : IsRepeatPressNative(Selected, LastSelected, bSameKey);
+	}
+
+	bool IsRepeatPressNative(const TConstArrayView<uint32> Selected, const TConstArrayView<uint32> LastSelected, const bool bSameKey)
 	{
 		if (!bSameKey || Selected.IsEmpty() || Selected.Num() != LastSelected.Num())
 		{
@@ -523,6 +547,12 @@ namespace HOLCommandGrid
 	}
 
 	bool IsAloneInGroup(const FName TypeName)
+	{
+		bool bAnswer = false;
+		return UHOLCommandGridBoard::AskIsAloneInGroup(TypeName, bAnswer) ? bAnswer : IsAloneInGroupNative(TypeName);
+	}
+
+	bool IsAloneInGroupNative(const FName TypeName)
 	{
 		return TypeName == HOLBuildingTypeNames::MainCentre;
 	}
@@ -567,6 +597,12 @@ namespace HOLCommandGrid
 	}
 
 	TArray<int32> GetCommandPriority(const TConstArrayView<FHOLGroupMember> Members)
+	{
+		TArray<int32> Answer;
+		return UHOLCommandGridBoard::AskGetCommandPriority(Members, Answer) ? Answer : GetCommandPriorityNative(Members);
+	}
+
+	TArray<int32> GetCommandPriorityNative(const TConstArrayView<FHOLGroupMember> Members)
 	{
 		TArray<int32> Order;
 		for (const bool bCentres : { true, false })

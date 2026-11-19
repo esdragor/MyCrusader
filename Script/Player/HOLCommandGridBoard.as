@@ -100,4 +100,41 @@ class UHOLCommandGridBoardScript : UHOLCommandGridBoard
 	TArray<FHOLGridCommandView> MergeCommandsAnswer(const TArray<FHOLGridCommandView>& PerBuilding, const TArray<int>& Priority)
 	{
 		return HOLCommandGridGroups::MergeCommands(PerBuilding, Priority);
+	}
+
+	// Family 4: small rules (HOLCommandGridGroups / HOLCommandGridKeys). The C++ passes the row's fields (IsBuildable, BuildGridSlot, Category), not the row.
+	UFUNCTION(BlueprintOverride)
+	bool IsAloneInGroupAnswer(FName TypeName)
+	{
+		return HOLCommandGridGroups::IsAloneInGroup(TypeName);
+	}
+
+	UFUNCTION(BlueprintOverride)
+	bool IsRepeatPressAnswer(const TArray<int>& Selected, const TArray<int>& LastSelected, bool bSameKey)
+	{
+		return HOLCommandGridGroups::IsRepeatPress(Selected, LastSelected, bSameKey);
+	}
+
+	UFUNCTION(BlueprintOverride)
+	TArray<int> GetCommandPriorityAnswer(const TArray<FHOLGroupMemberView>& Members)
+	{
+		return HOLCommandGridGroups::GetCommandPriority(Members);
+	}
+
+	UFUNCTION(BlueprintOverride)
+	bool IsSelectedByCategoryAnswer(EHOLBuildingCategory TypeCategory, EHOLBuildingCategory Category)
+	{
+		return HOLCommandGridGroups::IsCategorySelectedByCategory(TypeCategory, Category);
+	}
+
+	UFUNCTION(BlueprintOverride)
+	bool BlocksAnswer(const FHOLFeedbackView& Feedback)
+	{
+		return HOLCommandGridKeys::Blocks(Feedback);
+	}
+
+	UFUNCTION(BlueprintOverride)
+	int GetCycleRankAnswer(bool bBuildable, int BuildGridSlot)
+	{
+		return HOLCommandGridGroups::GetCycleRank(bBuildable, BuildGridSlot);
 	}}

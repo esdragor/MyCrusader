@@ -440,6 +440,13 @@ namespace HOLCommandGrid
 	HEROESOFLIBERTY_API FHOLCommandFeedback CheckBuildNative(const FHOLResources& Stock, const FHOLResources& Cost);
 	HEROESOFLIBERTY_API FString DescribeNative(const FHOLCommandFeedback& Feedback);
 	HEROESOFLIBERTY_API bool Blocks(const FHOLCommandFeedback& Feedback);
+	/** The C++ bodies of Blocks / GetCycleRank / IsSelectedByCategory / IsRepeatPress / IsAloneInGroup / GetCommandPriority, never the script's (the bridge's repli; the read library reads these). */
+	HEROESOFLIBERTY_API bool BlocksNative(const FHOLCommandFeedback& Feedback);
+	HEROESOFLIBERTY_API int32 GetCycleRankNative(const FHOLBuildingTypeRow& Type);
+	HEROESOFLIBERTY_API bool IsSelectedByCategoryNative(const FHOLBuildingTypeRow& Type, EHOLBuildingCategory Category);
+	HEROESOFLIBERTY_API bool IsRepeatPressNative(TConstArrayView<uint32> Selected, TConstArrayView<uint32> LastSelected, bool bSameKey);
+	HEROESOFLIBERTY_API bool IsAloneInGroupNative(FName TypeName);
+	HEROESOFLIBERTY_API TArray<int32> GetCommandPriorityNative(TConstArrayView<FHOLGroupMember> Members);
 
 	/** A unit of Places waits for room in the population (the production stops, D313). */
 	HEROESOFLIBERTY_API bool IsPopulationBlocked(int32 PopulationUsed, int32 PopulationCap, int32 Places);

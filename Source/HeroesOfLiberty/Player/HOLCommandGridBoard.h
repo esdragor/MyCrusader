@@ -45,6 +45,13 @@ public:
 	static bool AskPickEvenly(TConstArrayView<FHOLQueueChoice> Choices, uint32 LastKey, int32& Out);
 	static bool AskSplitSubgroups(TConstArrayView<FHOLGroupMember> Members, TArray<FHOLSubgroup>& Out);
 	static bool AskMergeCommands(TConstArrayView<TArray<FHOLGridCommand>> PerBuilding, TConstArrayView<int32> Priority, TArray<FHOLGridCommand>& Out);
+	// Family 4 (small rules, D.1): the row-reading ones pass the fields read (IsBuildable / BuildGridSlot, Category), never the row.
+	static bool AskIsAloneInGroup(FName TypeName, bool& Out);
+	static bool AskIsRepeatPress(TConstArrayView<uint32> Selected, TConstArrayView<uint32> LastSelected, bool bSameKey, bool& Out);
+	static bool AskGetCommandPriority(TConstArrayView<FHOLGroupMember> Members, TArray<int32>& Out);
+	static bool AskIsSelectedByCategory(EHOLBuildingCategory TypeCategory, EHOLBuildingCategory Category, bool& Out);
+	static bool AskBlocks(const FHOLCommandFeedback& Feedback, bool& Out);
+	static bool AskGetCycleRank(bool bBuildable, int32 BuildGridSlot, int32& Out);
 
 	/** FHOLGridContext as the view the script reads (the inverse of the read library's ToRule). */
 	static FHOLGridContextView MakeContextView(const FHOLGridContext& Context);
@@ -108,4 +115,24 @@ protected:
 	virtual int32 PickEvenlyAnswer_Implementation(const TArray<FHOLQueueChoiceView>& Choices, int32 LastKey);
 	virtual TArray<FHOLSubgroupView> SplitSubgroupsAnswer_Implementation(const TArray<FHOLGroupMemberView>& Members);
 	virtual TArray<FHOLGridCommandView> MergeCommandsAnswer_Implementation(const TArray<FHOLGridCommandView>& PerBuilding, const TArray<int32>& Priority);
+
+	// Family 4 (HOLCommandGridGroups / HOLCommandGridKeys small rules). Default = no answer. Keys cross as int32 (the uint32 bits, like NextInCycle).
+	UFUNCTION(BlueprintNativeEvent, Category = "HeroesOfLiberty|CommandGrid")
+	bool IsAloneInGroupAnswer(FName TypeName);
+	UFUNCTION(BlueprintNativeEvent, Category = "HeroesOfLiberty|CommandGrid")
+	bool IsRepeatPressAnswer(const TArray<int32>& Selected, const TArray<int32>& LastSelected, bool bSameKey);
+	UFUNCTION(BlueprintNativeEvent, Category = "HeroesOfLiberty|CommandGrid")
+	TArray<int32> GetCommandPriorityAnswer(const TArray<FHOLGroupMemberView>& Members);
+	UFUNCTION(BlueprintNativeEvent, Category = "HeroesOfLiberty|CommandGrid")
+	bool IsSelectedByCategoryAnswer(EHOLBuildingCategory TypeCategory, EHOLBuildingCategory Category);
+	UFUNCTION(BlueprintNativeEvent, Category = "HeroesOfLiberty|CommandGrid")
+	bool BlocksAnswer(const FHOLFeedbackView& Feedback);
+	UFUNCTION(BlueprintNativeEvent, Category = "HeroesOfLiberty|CommandGrid")
+	int32 GetCycleRankAnswer(bool bBuildable, int32 BuildGridSlot);
+	virtual bool IsAloneInGroupAnswer_Implementation(FName TypeName);
+	virtual bool IsRepeatPressAnswer_Implementation(const TArray<int32>& Selected, const TArray<int32>& LastSelected, bool bSameKey);
+	virtual TArray<int32> GetCommandPriorityAnswer_Implementation(const TArray<FHOLGroupMemberView>& Members);
+	virtual bool IsSelectedByCategoryAnswer_Implementation(EHOLBuildingCategory TypeCategory, EHOLBuildingCategory Category);
+	virtual bool BlocksAnswer_Implementation(const FHOLFeedbackView& Feedback);
+	virtual int32 GetCycleRankAnswer_Implementation(bool bBuildable, int32 BuildGridSlot);
 };
