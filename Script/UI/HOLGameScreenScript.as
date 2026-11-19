@@ -122,6 +122,9 @@ FString TalentTipTexts = "";
 	UHOLTopBarPanel TopBar;
 	// HUD H-4: the players' table (HOLPlayerTable.as), drawn into the C++ screen's PlayersPanel.
 	UHOLPlayerTablePanel PlayerTable;
+
+	// HUD H-8: the builders' age panels (HOLAgePanels.as), drawn into the C++ screen's AgePanelsHost.
+	UHOLAgePanelsPanel AgePanels;
 	FString VolcanoTexts = "";
 	// H-1: the wait and absence banners (HOLWaitBanner.as).
 	UHOLWaitBannerPanel WaitBanner;
@@ -260,6 +263,8 @@ FString TalentTipTexts = "";
 		MessageParts = HOLShortMessage::Build(this, Frame);
 		PlayerTable = Cast<UHOLPlayerTablePanel>(NewObject(this, UHOLPlayerTablePanel));
 		PlayerTable.Build(this, GetPlayersPanel());
+		AgePanels = Cast<UHOLAgePanelsPanel>(NewObject(this, UHOLAgePanelsPanel));
+		AgePanels.Build(this);
 		BuildMinimap(Frame);
 		BuildTalentWindow(Frame);
 		// Last: over the other blocks.
@@ -1381,6 +1386,8 @@ FString TalentTipTexts = "";
 			WaitBanner.Refresh();
 		if (PlayerTable != nullptr)
 			PlayerTable.Refresh();
+		if (AgePanels != nullptr)
+			AgePanels.Refresh();
 		if (Audio != nullptr)
 			Audio.PlayDueRepeats();
 		RefreshDiplomacy();
@@ -2237,6 +2244,8 @@ FString TalentTipTexts = "";
 		if (WidgetName == n"PauseResumeButton")
 			return ClickPauseResume();
 		if (TopBar != nullptr && TopBar.ClickName(WidgetName))
+			return true;
+		if (AgePanels != nullptr && AgePanels.ClickName(WidgetName))
 			return true;
 		return false;
 	}

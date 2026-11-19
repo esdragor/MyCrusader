@@ -559,10 +559,10 @@ void UHOLGameScreen::NativeTick(const FGeometry& MyGeometry, const float InDelta
 			RefreshGrid(nullptr, false, BoundPlayerState.Get());
 		}
 		// P4 (tiers): the builders' age panels follow the tier of the player's hero (his level moves without a delegate).
-		if (bAgesShown && BoundPlayerState.IsValid() && BoundTableState.IsValid()
+		if (bAgesShown && ScriptScreen && BoundPlayerState.IsValid() && BoundTableState.IsValid()
 			&& BoundTableState->GetTier(BoundPlayerState->GetPlayerIndex()) != ShownTier)
 		{
-			RefreshAges(BoundPlayerState.Get());
+				ScriptScreen->RefreshNow();
 		}
 	}
 	// S7: the siege workshop's engine cells follow the tier of the hero (his level moves without a delegate): drawn again when it changes.
@@ -619,9 +619,9 @@ void UHOLGameScreen::NativeTick(const FGeometry& MyGeometry, const float InDelta
 		RefreshSourceSelection(Controller->GetSelectedSource());
 	}
 	// The chosen age (a key, a placement, Escape) changes without a delegate: its header follows it (the 2nd check of G.1c).
-	if (bAgesShown && Controller.IsValid() && Controller->GetChosenAge() != ShownChosenAge)
+	if (bAgesShown && ScriptScreen && Controller.IsValid() && Controller->GetChosenAge() != ShownChosenAge)
 	{
-		RefreshAges(BoundPlayerState.Get());
+		ScriptScreen->RefreshNow();
 	}
 	RefreshIdleWorkers();
 	RefreshControlGroups(FrameSeconds);
@@ -1964,7 +1964,10 @@ void UHOLGameScreen::RefreshGrid(const AHOLBuilding* OwnBuilding, const bool bOw
 			GridPanel->SetVisibility(Wanted);
 		}
 	}
-	RefreshAges(PlayerState);
+	if (ScriptScreen)
+	{
+		ScriptScreen->RefreshNow();
+	}
 
 	// Only a site of the player's own, selected alone (or alone in a group's subgroup), has « Annuler » (HOLCommandGrid::GetCommand).
 	const FHOLResources Stock = PlayerState ? PlayerState->GetResources() : FHOLResources();
@@ -2601,8 +2604,8 @@ FString UHOLGameScreen::DescribeLayout() const
 	// content to its own area) and the window's top; "cut" = what of it is out of the one or the other (0 = all drawn);
 	// "none" while the age panels are not shown.
 	FString Medallion = TEXT("none");
-	const UBorder* FirstMedallion = AgeMedallions.IsValidIndex(0) ? AgeMedallions[0].Get() : nullptr;
-	const UBorder* FirstPanel = AgePanels.IsValidIndex(0) ? AgePanels[0].Get() : nullptr;
+	const UBorder* FirstMedallion = Cast<UBorder>(WidgetTree->FindWidget(TEXT("AgeMedallion0")));
+	const UBorder* FirstPanel = Cast<UBorder>(WidgetTree->FindWidget(TEXT("AgePanel0")));
 	if (FirstMedallion && FirstPanel && FirstPanel->GetVisibility() != ESlateVisibility::Collapsed && BottomScale)
 	{
 		const float MedallionTop = HOLHUDSpace::BoxOf(this, FirstMedallion->GetCachedGeometry()).Min.Y;
@@ -2679,21 +2682,6 @@ bool UHOLGameScreen::ClickWidget(const FName Name)
 			return true;
 		}
 	}
-	// The builders' age panels' buildings, AgeCell<age><cell> (AgeCell000 the house, AgeCell004 the barracks); an age not reached takes the click
-	// and does nothing, as a greyed cell. Their medallions take no click.
-	for (int32 AgeIndex = 0; AgeIndex < AgeCells.Num(); ++AgeIndex)
-	{
-		const UHOLGridCell* AgeCell = AgeCells[AgeIndex];
-		if (AgeCell && AgeCell->GetFName() == Name)
-		{
-			if (!bAgesShown || !ShownAgeTypes.IsValidIndex(AgeIndex) || ShownAgeTypes[AgeIndex].IsNone())
-			{
-				return false;
-			}
-			HandleAgeClicked(AgeIndex / UE::HeroesOfLiberty::UI::GameScreen::NumAgeCells, AgeIndex % UE::HeroesOfLiberty::UI::GameScreen::NumAgeCells);
-			return true;
-		}
-	}
 	for (int32 Index = 0; Index < QueueItems.Num(); ++Index)
 	{
 		const UHOLQueueItem* Item = QueueItems[Index];
@@ -2732,7 +2720,8 @@ FString UHOLGameScreen::Describe() const
 				const int32 AgeIndex = Age * NumAgeCells + Index;
 				if (ShownAgeTypes.IsValidIndex(AgeIndex) && !ShownAgeTypes[AgeIndex].IsNone())
 				{
-					const EHOLGridCellState State = AgeCells.IsValidIndex(AgeIndex) && AgeCells[AgeIndex] ? AgeCells[AgeIndex]->GetState() : EHOLGridCellState::Disabled;
+					const UHOLGridCell* AgeCell = Cast<UHOLGridCell>(WidgetTree->FindWidget(AgeCellName(AgeIndex / NumAgeCells, AgeIndex % NumAgeCells)));
+					const EHOLGridCellState State = AgeCell ? AgeCell->GetState() : EHOLGridCellState::Disabled;
 					Cells.Add(FString::Printf(TEXT("%s=%s %s"), GridKeys[Index], *ShownAgeTypes[AgeIndex].ToString(),
 						State == EHOLGridCellState::Ready ? TEXT("enabled") : State == EHOLGridCellState::Greyed ? TEXT("greyed") : TEXT("disabled")));
 				}
@@ -2827,9 +2816,9 @@ FString UHOLGameScreen::DescribeCells() const
 		}
 	}
 	// The builders' age panels' buildings (their medallions are no cells): "I A: Maison; I Z: Camp de bûcherons; ...".
-	for (int32 AgeIndex = 0; bAgesShown && AgeIndex < AgeCells.Num(); ++AgeIndex)
+	for (int32 AgeIndex = 0; bAgesShown && AgeIndex < HOLCommandGrid::NumAges * NumAgeCells; ++AgeIndex)
 	{
-		const UHOLGridCell* Cell = ShownAgeTypes.IsValidIndex(AgeIndex) && !ShownAgeTypes[AgeIndex].IsNone() ? AgeCells[AgeIndex].Get() : nullptr;
+		const UHOLGridCell* Cell = ShownAgeTypes.IsValidIndex(AgeIndex) && !ShownAgeTypes[AgeIndex].IsNone() ? Cast<UHOLGridCell>(WidgetTree->FindWidget(AgeCellName(AgeIndex / NumAgeCells, AgeIndex % NumAgeCells))) : nullptr;
 		const FString Content = Cell ? Cell->DescribeContent() : FString();
 		if (!Content.IsEmpty())
 		{
@@ -2859,8 +2848,8 @@ FString UHOLGameScreen::DescribeTooltips() const
 		for (int32 Index = INDEX_NONE; Index < NumAgeCells; ++Index)
 		{
 			const int32 AgeIndex = Age * NumAgeCells + Index;
-			const UHOLGridCell* Cell = Index != INDEX_NONE && AgeCells.IsValidIndex(AgeIndex) && ShownAgeTypes.IsValidIndex(AgeIndex)
-				&& !ShownAgeTypes[AgeIndex].IsNone() ? AgeCells[AgeIndex].Get() : nullptr;
+			const UHOLGridCell* Cell = Index != INDEX_NONE && ShownAgeTypes.IsValidIndex(AgeIndex)
+				&& !ShownAgeTypes[AgeIndex].IsNone() ? Cast<UHOLGridCell>(WidgetTree->FindWidget(AgeCellName(AgeIndex / NumAgeCells, AgeIndex % NumAgeCells))) : nullptr;
 			const FString Tooltip = Index == INDEX_NONE ? (ShownAgeTooltips.IsValidIndex(Age) ? ShownAgeTooltips[Age] : FString()) : Cell ? Cell->DescribeTooltip() : FString();
 			if (!Tooltip.IsEmpty())
 			{
@@ -3233,58 +3222,6 @@ void UHOLGameScreen::BuildLayout()
 		CellBox->SetHeightOverride(CellSize);
 		CellBox->SetContent(WidgetTree->ConstructWidget<UHOLGridCell>(UHOLGridCell::StaticClass(), GridCellName(Cell)));
 		Grid->AddChildToUniformGrid(CellBox, Cell / GridColumns, Cell % GridColumns);
-	}
-
-	// The secondary panel, right of the command panel: the builders' age panels (the user's trials of G.1, AoE4's way), I
-	// to IV side by side, each a medallion (numeral in a disc, its key A Z E R in a square beside; no click) on its top
-	// edge over its buildings, Q S D F / W X C V (RefreshAges packs the used ones). Absent otherwise, nothing moves.
-	for (int32 Age = 0; Age < HOLCommandGrid::NumAges; ++Age)
-	{
-		UBorder* AgePanel = MakePanel(*FString::Printf(TEXT("AgePanel%d"), Age));
-		AgePanel->SetPadding(FMargin(6.f));
-		AddToBar(AgePanel, Age == 0 ? BarGap : 4.f);
-		UVerticalBox* AgeColumn = WidgetTree->ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass());
-		AgePanel->SetContent(AgeColumn);
-		// The medallion rises over the panel's top edge (drawn higher, its place in the panel mostly given back).
-		UHorizontalBox* MedallionRow = MakeHorizontalBox(*FString::Printf(TEXT("AgeMedallionRow%d"), Age));
-		MedallionRow->SetRenderTranslation(FVector2D(0.f, -MedallionRise));
-		UVerticalBoxSlot* MedallionSlot = AgeColumn->AddChildToVerticalBox(MedallionRow);
-		MedallionSlot->SetHorizontalAlignment(HAlign_Center);
-		MedallionSlot->SetPadding(FMargin(0.f, 0.f, 0.f, -MedallionRise + 4.f));
-		USizeBox* MedallionBox = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass());
-		MedallionBox->SetWidthOverride(MedallionSize);
-		MedallionBox->SetHeightOverride(MedallionSize);
-		UBorder* Medallion = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass(), AgeMedallionName(Age));
-		Medallion->SetBrush(FSlateRoundedBoxBrush(FLinearColor(0.1f, 0.11f, 0.14f, 1.f), MedallionSize / 2.f, HOLUIStyle::TextMuted, 1.5f));
-		Medallion->SetPadding(FMargin(0.f));
-		Medallion->SetHorizontalAlignment(HAlign_Center);
-		Medallion->SetVerticalAlignment(VAlign_Center);
-		Medallion->SetContent(MakeText(*FString::Printf(TEXT("AgeNumeral%d"), Age), UHOLTextStyleHUDHeading::StaticClass(), FText::AsCultureInvariant(FString(AgeNumerals[Age]))));
-		MedallionBox->SetContent(Medallion);
-		AddToRow(MedallionRow, MedallionBox, 3.f);
-		USizeBox* KeyBox = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass());
-		KeyBox->SetWidthOverride(KeyBadgeSize);
-		KeyBox->SetHeightOverride(KeyBadgeSize);
-		UBorder* KeyBadge = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass(), *FString::Printf(TEXT("AgeKey%d"), Age));
-		KeyBadge->SetBrush(FSlateRoundedBoxBrush(FLinearColor(0.06f, 0.065f, 0.08f, 1.f), 3.f, HOLUIStyle::TextMuted, 1.f));
-		KeyBadge->SetPadding(FMargin(0.f));
-		KeyBadge->SetHorizontalAlignment(HAlign_Center);
-		KeyBadge->SetVerticalAlignment(VAlign_Center);
-		KeyBadge->SetContent(MakeText(NAME_None, UHOLTextStyleHUDSmall::StaticClass(), FText::AsCultureInvariant(FString(GridKeys[Age]))));
-		KeyBox->SetContent(KeyBadge);
-		AddToRow(MedallionRow, KeyBox, 0.f);
-		UUniformGridPanel* AgeGrid = WidgetTree->ConstructWidget<UUniformGridPanel>(UUniformGridPanel::StaticClass());
-		AgeGrid->SetSlotPadding(FMargin(CellGap));
-		AgeColumn->AddChildToVerticalBox(AgeGrid)->SetHorizontalAlignment(HAlign_Left);
-		for (int32 Index = 0; Index < NumAgeCells; ++Index)
-		{
-			USizeBox* CellBox = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass());
-			CellBox->SetWidthOverride(CellSize);
-			CellBox->SetHeightOverride(CellSize);
-			CellBox->SetContent(WidgetTree->ConstructWidget<UHOLGridCell>(UHOLGridCell::StaticClass(), AgeCellName(Age, Index)));
-			AgeGrid->AddChildToUniformGrid(CellBox, Index / GridColumns, Index % GridColumns);
-		}
-		AgePanel->SetVisibility(ESlateVisibility::Collapsed);
 	}
 
 	// HUD H-8: the host the script's age panels are put in (empty here; it takes no room until they are).
