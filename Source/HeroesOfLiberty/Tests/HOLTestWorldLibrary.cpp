@@ -5,6 +5,7 @@
 #include "Buildings/HOLBuilding.h"
 #include "Match/HOLGameState.h"
 #include "Match/HOLMatchConfig.h"
+#include "Match/HOLPlayerState.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
 #include "Engine/Engine.h"
@@ -131,6 +132,22 @@ AHOLGameState* UHOLTestWorldLibrary::SpawnGameState(UHOLTestWorldHandle* TestWor
 		State->InitVictory(Config);
 	}
 	return State;
+#else
+	return nullptr;
+#endif
+}
+
+AHOLPlayerState* UHOLTestWorldLibrary::SpawnPlayerState(UHOLTestWorldHandle* TestWorld, const int32 Slot, const int32 ColorIndex, const FString& Name)
+{
+#if WITH_DEV_AUTOMATION_TESTS
+	UWorld* World = TestWorld ? TestWorld->GetTestWorld() : nullptr;
+	AHOLPlayerState* Player = World ? World->SpawnActor<AHOLPlayerState>() : nullptr;
+	if (Player)
+	{
+		Player->SetMatchSlot(Slot, ColorIndex);
+		Player->SetPlayerName(Name);
+	}
+	return Player;
 #else
 	return nullptr;
 #endif

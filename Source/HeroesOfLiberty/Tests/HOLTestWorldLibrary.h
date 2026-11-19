@@ -10,6 +10,7 @@
 
 class AHOLBuilding;
 class AHOLGameState;
+class AHOLPlayerState;
 class UWorld;
 
 /**
@@ -67,10 +68,17 @@ public:
 
 	/**
 	 * Spawns the world's AHOLGameState. With NumHumans + NumAI > 0, then InitVictory with FHOLMatchConfig::MakeDefault() whose first NumHumans slots are
-	 * Human, the next NumAI AI, the rest Closed (HOLFarmBuildersTests.cpp); with 0 and 0 the bare actor, no InitVictory (as HOLTierCheatTests.cpp).
+	 * Human, the next NumAI AI, the rest Closed (HOLFarmBuildersTests.cpp); with 0 and 0 the bare actor, no InitVictory (the case of the tier cheat).
 	 */
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
 	static AHOLGameState* SpawnGameState(UHOLTestWorldHandle* TestWorld, int32 NumHumans, int32 NumAI);
+
+	/**
+	 * Spawns an AHOLPlayerState of the world (SpawnActor, SetMatchSlot(Slot, ColorIndex), SetPlayerName(Name)) as the Disconnect tests do; it is NOT
+	 * added to the game state (see UHOLGameStateTestLibrary::AddPlayerState). nullptr if it fails.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
+	static AHOLPlayerState* SpawnPlayerState(UHOLTestWorldHandle* TestWorld, int32 Slot, int32 ColorIndex, const FString& Name);
 
 	/** The buildings of the world as FHOLBuildingIterator walks them (the registry), in its order. Empty for nullptr. */
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
