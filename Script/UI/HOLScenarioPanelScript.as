@@ -176,7 +176,10 @@ class UHOLScenarioPanelScript : UObject
 
 		State = Screen.MakeText(n"ScenarioState", UHOLTextStyleHUDHeading);
 		UHorizontalBoxSlot StateSlot = Header.AddChildToHorizontalBox(State);
-		StateSlot.SetSize(FSlateChildSize(ESlateSizeRule::Fill));
+		FSlateChildSize StateFill;
+		StateFill.SizeRule = ESlateSizeRule::Fill;
+		StateFill.Value = 1.0;
+		StateSlot.SetSize(StateFill);
 		StateSlot.SetVerticalAlignment(EVerticalAlignment::VAlign_Center);
 		StateSlot.SetPadding(FMargin(10.0, 0.0, 16.0, 0.0));
 
@@ -199,7 +202,7 @@ class UHOLScenarioPanelScript : UObject
 		Column.AddChildToVerticalBox(NoteColumn).SetPadding(FMargin(0.0, 4.0, 0.0, 0.0));
 
 		WaitKeyLine = Screen.MakeText(n"ScenarioWaitKey", UHOLTextStyleHUDHeading);
-		WaitKeyLine.SetAutoWrapText(true);
+		Cast<UTextLayoutWidget>(WaitKeyLine).SetAutoWrapText(true);
 		WaitKeyLine.SetColorAndOpacity(HOLScenarioPanelRules::WaitKeyColor());
 		WaitKeyLine.SetVisibility(ESlateVisibility::Collapsed);
 		Column.AddChildToVerticalBox(WaitKeyLine).SetPadding(FMargin(0.0, 8.0, 0.0, 0.0));
@@ -233,13 +236,13 @@ class UHOLScenarioPanelScript : UObject
 		Title.SetText(HOLScenarioPanelRules::TitleText(Name));
 		State.SetText(HOLScenarioPanelRules::StateText(StateValue, Error));
 		if (StateValue == HOLScenarioPanelRules::StatePreparing())
-			State.SetColorAndOpacity(HOLUIStyle::TextMuted());
+			State.SetColorAndOpacity(UHOLScriptScreen::GetMutedColor());
 		else if (StateValue == HOLScenarioPanelRules::StateReady())
-			State.SetColorAndOpacity(HOLUIStyle::Accent());
+			State.SetColorAndOpacity(UHOLScriptScreen::GetAccentColor());
 		else
-			State.SetColorAndOpacity(HOLUIStyle::Missing());
+			State.SetColorAndOpacity(UHOLScriptScreen::GetMissingColor());
 		const bool bWraps = HOLScenarioPanelRules::StateWraps(StateValue);
-		State.SetAutoWrapText(bWraps);
+		Cast<UTextLayoutWidget>(State).SetAutoWrapText(bWraps);
 		State.SetMinDesiredWidth(bWraps ? 0.0 : Screen.MeasureHeadingWidth(HOLScenarioPanelRules::PreparingText(), HOLScenarioPanelRules::ReadyText()));
 		if (!HOLScenarioPanelRules::NotesEqual(ShownNotes, Notes))
 		{
@@ -249,7 +252,7 @@ class UHOLScenarioPanelScript : UObject
 			{
 				UCommonTextBlock Note = Cast<UCommonTextBlock>(Screen.ConstructWidget(UCommonTextBlock, NAME_None));
 				Note.SetStyle(UHOLTextStyleBody);
-				Note.SetAutoWrapText(true);
+				Cast<UTextLayoutWidget>(Note).SetAutoWrapText(true);
 				Note.SetText(FText::FromString(ShownNotes[Index]));
 				NoteColumn.AddChildToVerticalBox(Note).SetPadding(FMargin(0.0, HOLScenarioPanelRules::NoteGap(), 0.0, 0.0));
 			}
