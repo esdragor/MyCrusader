@@ -2057,7 +2057,11 @@ void UHOLGameScreen::RefreshGrid(const AHOLBuilding* OwnBuilding, const bool bOw
 			}
 		default:
 			// An empty cell stays, dark (disabled), at its key's place.
-$1	// HUD H-10: the script's grid panel shows the frame just computed.
+			GridCell->ClearUnit();
+			break;
+		}
+	}
+	// HUD H-10: the script's grid panel shows the frame just computed.
 	if (ScriptScreen)
 	{
 		ScriptScreen->RefreshGridCells();
