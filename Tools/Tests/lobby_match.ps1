@@ -624,7 +624,16 @@ try {
         }
         if ((Test-Log Alice "Menu: back in lobby") -and (Test-Log Bob "Menu: back in lobby")) {
             Start-Sleep 2
-            $After = Invoke-RestMethod "${Url}/lobbies/$($Lobby.id)" -TimeoutSec 2
+            # Intermittent red (2026-11-19, "the lobby has 1 player(s), not Alice and Bob"): the manager is read before the second player is back
+            # on its list. Poll up to 20 s until Alice and Bob are both named; the verdict below still demands both (a lobby that never
+            # gets them is read as it is and fails there).
+            $PollEnd = (Get-Date).AddSeconds(20)
+            do {
+                $After = Invoke-RestMethod "${Url}/lobbies/$($Lobby.id)" -TimeoutSec 2
+                $PolledNames = @($After.slots | Where-Object { $_.playerName } | ForEach-Object { $_.playerName })
+                if (($PolledNames -contains "Alice") -and ($PolledNames -contains "Bob")) { break }
+                Start-Sleep -Milliseconds 500
+            } while ((Get-Date) -lt $PollEnd)
             break
         }
         if ($Games.Alice.HasExited -and $Games.Bob.HasExited) { break }
