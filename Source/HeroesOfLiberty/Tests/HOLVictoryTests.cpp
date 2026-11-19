@@ -1112,33 +1112,11 @@ bool FHOLVictoryForumHoldDisplayTest::RunTest(const FString& Parameters)
 	return true;
 }
 
-// V2.3a (V2-Q1), pure: what a main forum shows in each phase (itself, rubble, a site at the rebuilding's progress), its
-// Peasants standing without a hammer through the ruin only, and its grid empty while down.
+// V2.3a (V2-Q1), pure: the Peasants' hammer at a site, not at a forum in ruin (HOLUnitAnimation::Choose, no script binding).
+// The forum's look (itself, rubble, a site) is tested in script: HOLForumRules_Test.as Test_ForumLook.
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLVictoryForumLookTest, "HeroesOfLiberty.Victory.Forum.Look", UE::HeroesOfLiberty::Tests::Victory::Flags)
 bool FHOLVictoryForumLookTest::RunTest(const FString& Parameters)
 {
-	FHOLForumTuning Tuning;
-	Tuning.RuinSteps = 30;
-	Tuning.RebuildSteps = 100;
-	FHOLForumState State;
-	FHOLForumLookChoice Look = HOLForumRules::GetLook(State, Tuning);
-	TestTrue(TEXT("standing: itself"), Look.Look == EHOLForumLook::Standing);
-	TestEqual(TEXT("standing: whole"), Look.Progress, 1.f);
-	TestFalse(TEXT("standing: nobody waits"), HOLForumRules::BuildersWait(State));
-
-	TestEqual(TEXT("the fall"), HOLForumRules::Fall(State, Tuning), 1);
-	Look = HOLForumRules::GetLook(State, Tuning);
-	TestTrue(TEXT("ruin: rubble"), Look.Look == EHOLForumLook::Rubble);
-	TestEqual(TEXT("ruin: nothing risen"), Look.Progress, 0.f);
-	TestTrue(TEXT("ruin: its Peasants wait"), HOLForumRules::BuildersWait(State));
-
-	State.Phase = EHOLForumPhase::Rebuilding;
-	State.RebuildWork = HOLForumRules::GetRebuildTotalWork(Tuning) / 4;
-	Look = HOLForumRules::GetLook(State, Tuning);
-	TestTrue(TEXT("rebuilding: a site"), Look.Look == EHOLForumLook::Site);
-	TestEqual(TEXT("rebuilding: at its progress"), Look.Progress, 0.25f, 0.001f);
-	TestFalse(TEXT("rebuilding: its Peasants strike"), HOLForumRules::BuildersWait(State));
-
 	// The hammer at a site, not at a forum in ruin (standing: the idle sequence), never idle for the HUD (still Building).
 	FHOLUnitTypeConstants Peasant;
 	Peasant.Speed = 600.f;
