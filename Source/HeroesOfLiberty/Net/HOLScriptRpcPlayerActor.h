@@ -117,6 +117,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Rpc")
 	static bool CheatTier(AActor* RpcActor, int32 Tier, int32 Slot);
 
+	/** Morceau 8 (NOT COMPILED): the owner controller's DoCheatSpecialization(Tier, Option). False: no owner controller. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Rpc")
+	static bool CheatSpecialization(AActor* RpcActor, int32 Tier, int32 Option);
+
 	/** Scale as a double (the script's float), narrowed to the C++ float. */
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Rpc")
 	static bool CheatUnitSpeed(AActor* RpcActor, double Scale);
