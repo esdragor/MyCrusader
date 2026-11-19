@@ -362,7 +362,7 @@ class UHOLCheatPanelScript : UObject
 		UHOLGameMenuScreen::MenuLog(HOLCheatPanelRules::ClickLine(Index));
 		const FHOLCheatPlan Plan = HOLControllerCommands::PlanOf(HOLCheatPanelRules::CommandOf(Index), HOLCheatPanelRules::ArgsOf(Index, bFastBuild));
 		if (Plan.bValid)
-			HOLControllerCommands::Send(Controller, Plan);
+			HOLControllerCommands::Send(Controller, Plan, FVector::ZeroVector); // The panel's commands (resources, population, fast build, speeds) need no point.
 		if (Index == HOLCheatPanelRules::FastBuildIndex())
 		{
 			bFastBuild = !bFastBuild;
@@ -404,7 +404,7 @@ class UHOLCheatPanelScript : UObject
 		Args.Add(HOLCheatPanelRules::OneDecimal(Scale));
 		const FHOLCheatPlan Plan = HOLControllerCommands::PlanOf(HOLCheatPanelRules::SpeedCommand(Index), Args);
 		if (Plan.bValid)
-			HOLControllerCommands::Send(Controller, Plan);
+			HOLControllerCommands::Send(Controller, Plan, FVector::ZeroVector); // The panel's commands (resources, population, fast build, speeds) need no point.
 	}
 
 	void RefreshLabels()
