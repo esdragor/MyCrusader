@@ -15,7 +15,9 @@ Pre-vol 2026-11-13 21:40 : `preflight.ps1 deploy -Root C:\Users\baudo\Documents\
 - deploy_packed_again : Mangonneau reselectionne, case D redit **Monter**, statut « Attaque » parti ; Maison visible en entier sous le panneau court (note 4).
 Le Mangonneau est dessine par le mannequin gris (provisoire). NON VÉRIFIÉ : son, jeu en fenetre par l'utilisateur, projectile (absent).
 
-Lancer UNE commande : `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\MyCrusader\Tools\Scenarios\play.ps1 deploy -Root C:\Users\baudo\Documents\HeroesOfLiberty-Faramir`   (Faramir = fog = main 1639d37, binaire frais : c'est la que le pre-vol a ete joue)
+COMMANDE À JOUR (2026-11-19, la seule à utiliser ; les commandes plus bas vers Faramir ou Elrond sont de l'historique) : `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Arwen\Tools\Scenarios\play.ps1 deploy -Root C:\Users\baudo\Documents\HeroesOfLiberty-Arwen`
+Pré-vol rejoué le 2026-11-19 21:57 (session principale, worktree Arwen = main 7b9d6ec, binaire à jour, gate Essay sans FAIL à 22:00) : `preflight deploy` PASS (49 s, audit Sanity OK, aucun panneau n'en couvre un autre). Les 5 captures ouvertes et vues : case D « Monter » (engin démonté), puis « Démonter » après la touche D, la Maison ennemie à 555 / 600 puis 510 / 600 (45 de moins au coup suivant), puis case D « Monter » de nouveau. Le Mangonneau est toujours le mannequin gris provisoire.
+Ancienne commande (2026-11-13) : `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\MyCrusader\Tools\Scenarios\play.ps1 deploy -Root C:\Users\baudo\Documents\HeroesOfLiberty-Faramir`   (Faramir = fog = main 1639d37, binaire frais : c'est la que le pre-vol a ete joue)
 Duree : environ 1 min. Reponse attendue : `OK`, `BUG: ...` ou `REGLAGE: ...`.
 
 ## Historique
