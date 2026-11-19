@@ -64,13 +64,29 @@ void Test_FactionResourceLoseStopsAtFloor(FUnitTest& T)
 	T.AssertEquals(5, TakenD, "5 removed");
 }
 
-// HasResource: the Dawn alone has a gauge today; the Legions none; an empty name reads as the Dawn (HOLFactionRules.h).
+// HasResource (EHOLFaction): the Dawn alone has a gauge today; every other value of the enumeration has none (the Legions' corpses
+// have their own model, HOLCorpse). Walks the whole enumeration so a faction added later without a rule reads as having none.
 void Test_FactionResourceOnlyDawnHasOne(FUnitTest& T)
 {
-	const bool bDawn = HOLFactionResource::HasResource("Dawn");
-	const bool bLegions = HOLFactionResource::HasResource("Legions");
-	const bool bEmpty = HOLFactionResource::HasResource("");
+	const bool bDawn = HOLFactionResource::HasResource(EHOLFaction::DawnOrder);
+	const bool bLegions = HOLFactionResource::HasResource(EHOLFaction::BlackLegions);
 	T.AssertTrue(bDawn, "the Dawn has one");
 	T.AssertFalse(bLegions, "the Legions have none");
-	T.AssertTrue(bEmpty, "an empty faction reads as the Dawn");
+	for (int Value = 0; Value <= int(EHOLFaction::Templars); ++Value)
+	{
+		const EHOLFaction Faction = EHOLFaction(Value);
+		if (Faction == EHOLFaction::DawnOrder)
+			continue;
+		const bool bHas = HOLFactionResource::HasResource(Faction);
+		T.AssertFalse(bHas, f"faction {Value} (not the Dawn) has none");
+	}
+}
+
+// The Templars (and the other factions without a rule of their own) have no gauge: only the Dawn's Honor is a resource of this model.
+void Test_FactionResourceTemplarsHaveNone(FUnitTest& T)
+{
+	const bool bTemplars = HOLFactionResource::HasResource(EHOLFaction::Templars);
+	const bool bDragon = HOLFactionResource::HasResource(EHOLFaction::DragonChildren);
+	T.AssertFalse(bTemplars, "the Templars have none");
+	T.AssertFalse(bDragon, "the Dragon's Children have none");
 }
