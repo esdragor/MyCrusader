@@ -7,13 +7,35 @@
 // To SEE RED (rouge a voir), one falsification per test, listed in Docs/Rapports/HALDIR-1119ce.md (file, line, before -> after).
 // Names are prefixed CGSW: a global function of a test file is seen by no other file but its name must not clash.
 
-void CGSWNote(int& Bad, FString& First, const FString& Message)
+// The automation log does not show the message of an AssertTrue: a failing case is written to the game log (normal level, not Error or Warning),
+// prefix "CGSW: <test>: <inputs and value read>", at most 20 lines per test (Bad / Fails count the cases of that test only).
+const int CGSWMaxLogLines = 20;
+
+void CGSWNote(int& Bad, FString& First, const FString& Test, const FString& Message)
 {
 	Bad++;
+	if (Bad <= CGSWMaxLogLines)
+	{
+		Log(n"LogHOLMatch", f"CGSW: {Test}: {Message}");
+	}
 	if (First.IsEmpty())
 	{
 		First = Message;
 	}
+}
+
+// An assertion inside a loop whose message the automation log hides: same line in the game log when it fails.
+void CGSWCheck(FUnitTest& T, int& Fails, const FString& Test, bool bOk, const FString& Message)
+{
+	if (!bOk)
+	{
+		Fails++;
+		if (Fails <= CGSWMaxLogLines)
+		{
+			Log(n"LogHOLMatch", f"CGSW: {Test}: {Message}");
+		}
+	}
+	T.AssertTrue(bOk, Message);
 }
 
 // A selection from a number (the 12 flags of the grid, the other fields derived from it); the builders get the table's buildable types.
@@ -129,50 +151,50 @@ FString CGSWWhere(int Mask, int Chosen, int Age, int Cell)
 }
 
 // The properties of one key answer, shared by PressKey and ClickAge: what the answer may and may not be.
-void CGSWCheckKeyAnswer(const FHOLGridContextView& Context, const FHOLGridKeyResultView& Key, int ChosenAge, int Cell, int Mask, int Age, int& Bad, FString& First)
+void CGSWCheckKeyAnswer(const FHOLGridContextView& Context, const FHOLGridKeyResultView& Key, int ChosenAge, int Cell, int Mask, int Age, const FString& Test, int& Bad, FString& First)
 {
 	FName NoName;
 	if (Key.ChosenAge < -1 || Key.ChosenAge >= 4)
 	{
-		CGSWNote(Bad, First, f"{CGSWWhere(Mask, ChosenAge, Age, Cell)}: the chosen age {Key.ChosenAge} is outside -1..3");
+		CGSWNote(Bad, First, Test, f"{CGSWWhere(Mask, ChosenAge, Age, Cell)}: the chosen age {Key.ChosenAge} is outside -1..3");
 	}
 	if (Key.Target == EHOLGridKeyTargetKind::Age)
 	{
 		if (Key.ChosenAge < 0 || !CGSWAgePageOpen(Context, Key.ChosenAge))
 		{
-			CGSWNote(Bad, First, f"{CGSWWhere(Mask, ChosenAge, Age, Cell)}: an age above the tier was opened (age {Key.ChosenAge}, reached {Context.ReachedAge})");
+			CGSWNote(Bad, First, Test, f"{CGSWWhere(Mask, ChosenAge, Age, Cell)}: an age above the tier was opened (age {Key.ChosenAge}, reached {Context.ReachedAge})");
 		}
 		if (!CGSWIsBuildersAlone(Context))
 		{
-			CGSWNote(Bad, First, f"{CGSWWhere(Mask, ChosenAge, Age, Cell)}: an age was chosen while the builders are not alone");
+			CGSWNote(Bad, First, Test, f"{CGSWWhere(Mask, ChosenAge, Age, Cell)}: an age was chosen while the builders are not alone");
 		}
 	}
 	if (Key.Target == EHOLGridKeyTargetKind::Build)
 	{
 		if (Key.TypeName == NoName)
 		{
-			CGSWNote(Bad, First, f"{CGSWWhere(Mask, ChosenAge, Age, Cell)}: a build key without a building name");
+			CGSWNote(Bad, First, Test, f"{CGSWWhere(Mask, ChosenAge, Age, Cell)}: a build key without a building name");
 		}
 		else if (!CGSWIsBuildersAlone(Context))
 		{
-			CGSWNote(Bad, First, f"{CGSWWhere(Mask, ChosenAge, Age, Cell)}: a build key while the builders are not alone");
+			CGSWNote(Bad, First, Test, f"{CGSWWhere(Mask, ChosenAge, Age, Cell)}: a build key while the builders are not alone");
 		}
 		else
 		{
 			int Index = CGSWFindBuildable(Context, Key.TypeName, Key.ChosenAge, Cell);
 			if (Index < 0)
 			{
-				CGSWNote(Bad, First, f"{CGSWWhere(Mask, ChosenAge, Age, Cell)}: {Key.TypeName} is not a building of age {Key.ChosenAge} at cell {Cell}");
+				CGSWNote(Bad, First, Test, f"{CGSWWhere(Mask, ChosenAge, Age, Cell)}: {Key.TypeName} is not a building of age {Key.ChosenAge} at cell {Cell}");
 			}
 			else if (Key.ChosenAge > Context.ReachedAge && !CGSWIsAlwaysOpenIndex(Context, Index))
 			{
-				CGSWNote(Bad, First, f"{CGSWWhere(Mask, ChosenAge, Age, Cell)}: {Key.TypeName} of age {Key.ChosenAge} was built above the tier {Context.ReachedAge}");
+				CGSWNote(Bad, First, Test, f"{CGSWWhere(Mask, ChosenAge, Age, Cell)}: {Key.TypeName} of age {Key.ChosenAge} was built above the tier {Context.ReachedAge}");
 			}
 		}
 	}
 	if (Key.Target == EHOLGridKeyTargetKind::Orders && Context.bOwnBuilding)
 	{
-		CGSWNote(Bad, First, f"{CGSWWhere(Mask, ChosenAge, Age, Cell)}: a key of a selected building went to the orders");
+		CGSWNote(Bad, First, Test, f"{CGSWWhere(Mask, ChosenAge, Age, Cell)}: a key of a selected building went to the orders");
 	}
 }
 
@@ -206,32 +228,32 @@ void Test_CGSWCommandCells(FUnitTest& T)
 			bool bInGrid = Cell >= 0 && Cell < 12;
 			if (!bInGrid && (Cmd.Command != EHOLGridCommandKind::None || Ord.Command != EHOLGridCommandKind::None))
 			{
-				CGSWNote(Bad, First, f"{Where}: a command outside the 3 x 4 grid");
+				CGSWNote(Bad, First, "Test_CGSWCommandCells", f"{Where}: a command outside the 3 x 4 grid");
 			}
 			if (C.bOwnBuilding && C.bForumDown && Cmd.Command != EHOLGridCommandKind::None)
 			{
-				CGSWNote(Bad, First, f"{Where}: a main forum that is down gave a command");
+				CGSWNote(Bad, First, "Test_CGSWCommandCells", f"{Where}: a main forum that is down gave a command");
 			}
 			// A building under construction produces nothing; its site is the only thing to cancel, one at a time.
 			if (C.bOwnBuilding && !C.bBuildingFinished && Cmd.Command != EHOLGridCommandKind::None)
 			{
 				if (Cmd.Command != EHOLGridCommandKind::CancelConstruction || C.bBuildingGroup || Cell != 11)
 				{
-					CGSWNote(Bad, First, f"{Where}: a site gave {int(Cmd.Command)} (only the cancel of one site, on V, is allowed)");
+					CGSWNote(Bad, First, "Test_CGSWCommandCells", f"{Where}: a site gave {int(Cmd.Command)} (only the cancel of one site, on V, is allowed)");
 				}
 			}
 			if (Cmd.Command == EHOLGridCommandKind::Produce)
 			{
 				if (!C.bOwnBuilding || !C.bBuildingFinished || C.bMarket || Cell >= C.Produces.Num() || Cmd.TypeName != C.Produces[Cell])
 				{
-					CGSWNote(Bad, First, f"{Where}: a Produce that is not the building's unit of that key ({Cmd.TypeName})");
+					CGSWNote(Bad, First, "Test_CGSWCommandCells", f"{Where}: a Produce that is not the building's unit of that key ({Cmd.TypeName})");
 				}
 			}
 			if (Cmd.Command == EHOLGridCommandKind::Research)
 			{
 				if (!C.bOwnBuilding || !C.bBuildingFinished || C.bMarket || Cell < 8 || Cell - 8 >= C.Researches.Num() || Cmd.TypeName != C.Researches[Cell - 8])
 				{
-					CGSWNote(Bad, First, f"{Where}: a Research that is not the technology of that key ({Cmd.TypeName})");
+					CGSWNote(Bad, First, "Test_CGSWCommandCells", f"{Where}: a Research that is not the technology of that key ({Cmd.TypeName})");
 				}
 			}
 			if (Cmd.Command == EHOLGridCommandKind::Trade)
@@ -240,12 +262,12 @@ void Test_CGSWCommandCells(FUnitTest& T)
 				if (!C.bOwnBuilding || !C.bBuildingFinished || !C.bMarket || Cell >= 8 || Cell % 4 == 3
 					|| Cmd.bBuy != (Cell < 4) || int(Cmd.Resource) != Cell % 4)
 				{
-					CGSWNote(Bad, First, f"{Where}: a Trade out of place (buy {Cmd.bBuy}, resource {int(Cmd.Resource)})");
+					CGSWNote(Bad, First, "Test_CGSWCommandCells", f"{Where}: a Trade out of place (buy {Cmd.bBuy}, resource {int(Cmd.Resource)})");
 				}
 			}
-			if (C.bOwnBuilding && C.bBuildingFinished && !C.bForumDown && C.bMarket && Cell < 8 && Cell % 4 < 3 && Cmd.Command != EHOLGridCommandKind::Trade)
+			if (C.bOwnBuilding && C.bBuildingFinished && !C.bForumDown && C.bMarket && Cell >= 0 && Cell < 8 && Cell % 4 < 3 && Cmd.Command != EHOLGridCommandKind::Trade)
 			{
-				CGSWNote(Bad, First, f"{Where}: a market cell of the 2 x 3 trades gave no trade");
+				CGSWNote(Bad, First, "Test_CGSWCommandCells", f"{Where}: a market cell of the 2 x 3 trades gave no trade");
 			}
 			if (Cmd.Command == EHOLGridCommandKind::Specialize || Cmd.Command == EHOLGridCommandKind::CancelSpecialization)
 			{
@@ -255,62 +277,62 @@ void Test_CGSWCommandCells(FUnitTest& T)
 					|| (Cmd.Command == EHOLGridCommandKind::CancelSpecialization) != bRunning
 					|| Cmd.RemainingMs != (bRunning ? C.SpecializationRemainingMs : 0))
 				{
-					CGSWNote(Bad, First, f"{Where}: a specialization cell out of place (option {Cmd.Option}, tier {Cmd.Tier}, command {int(Cmd.Command)})");
+					CGSWNote(Bad, First, "Test_CGSWCommandCells", f"{Where}: a specialization cell out of place (option {Cmd.Option}, tier {Cmd.Tier}, command {int(Cmd.Command)})");
 				}
 			}
 			if (Cmd.Command == EHOLGridCommandKind::HeroAbility)
 			{
 				if (C.bOwnBuilding || !C.bHero || Cmd.CooldownSeconds < 0 || (Cmd.CooldownSeconds > 0 && !Cmd.bGreyed))
 				{
-					CGSWNote(Bad, First, f"{Where}: a hero ability out of place (cooldown {Cmd.CooldownSeconds}, greyed {Cmd.bGreyed})");
+					CGSWNote(Bad, First, "Test_CGSWCommandCells", f"{Where}: a hero ability out of place (cooldown {Cmd.CooldownSeconds}, greyed {Cmd.bGreyed})");
 				}
 			}
 			if (Cmd.Command == EHOLGridCommandKind::NecroticRage && (C.bOwnBuilding || !C.bRageUnit))
 			{
-				CGSWNote(Bad, First, f"{Where}: the rage on a selection without a rage unit");
+				CGSWNote(Bad, First, "Test_CGSWCommandCells", f"{Where}: the rage on a selection without a rage unit");
 			}
 			// Nothing but those kinds is ever a command of the grid on the right.
 			if (Cmd.Command == EHOLGridCommandKind::AttackMove || Cmd.Command == EHOLGridCommandKind::Stop || Cmd.Command == EHOLGridCommandKind::Hold
 				|| Cmd.Command == EHOLGridCommandKind::Deploy || Cmd.Command == EHOLGridCommandKind::Build)
 			{
-				CGSWNote(Bad, First, f"{Where}: the grid gave an order or a build command ({int(Cmd.Command)})");
+				CGSWNote(Bad, First, "Test_CGSWCommandCells", f"{Where}: the grid gave an order or a build command ({int(Cmd.Command)})");
 			}
 			// The orders' panel.
 			if (Ord.Command != EHOLGridCommandKind::None)
 			{
 				if (!C.bOwnUnits || C.bOwnBuilding)
 				{
-					CGSWNote(Bad, First, f"{Where}: an order for a selection that is not units");
+					CGSWNote(Bad, First, "Test_CGSWCommandCells", f"{Where}: an order for a selection that is not units");
 				}
 				if (Ord.Command == EHOLGridCommandKind::AttackMove && (!C.bSoldiers || C.bOnlyKings || Cell != 4))
 				{
-					CGSWNote(Bad, First, f"{Where}: attack-move out of place (soldiers {C.bSoldiers}, only kings {C.bOnlyKings})");
+					CGSWNote(Bad, First, "Test_CGSWCommandCells", f"{Where}: attack-move out of place (soldiers {C.bSoldiers}, only kings {C.bOnlyKings})");
 				}
 				if (Ord.Command == EHOLGridCommandKind::Stop && Cell != 5)
 				{
-					CGSWNote(Bad, First, f"{Where}: stop is not on S");
+					CGSWNote(Bad, First, "Test_CGSWCommandCells", f"{Where}: stop is not on S");
 				}
 				if (Ord.Command == EHOLGridCommandKind::Hold && (C.bOnlyKings || Cell != 11))
 				{
-					CGSWNote(Bad, First, f"{Where}: hold out of place (only kings {C.bOnlyKings})");
+					CGSWNote(Bad, First, "Test_CGSWCommandCells", f"{Where}: hold out of place (only kings {C.bOnlyKings})");
 				}
 				if (Ord.Command == EHOLGridCommandKind::Deploy && (!C.bDeployables || Cell != 6 || Ord.bPack != C.bDeployedAny))
 				{
-					CGSWNote(Bad, First, f"{Where}: deploy out of place (pack {Ord.bPack}, deployed {C.bDeployedAny})");
+					CGSWNote(Bad, First, "Test_CGSWCommandCells", f"{Where}: deploy out of place (pack {Ord.bPack}, deployed {C.bDeployedAny})");
 				}
 				if (Ord.Command != EHOLGridCommandKind::AttackMove && Ord.Command != EHOLGridCommandKind::Stop && Ord.Command != EHOLGridCommandKind::Hold
 					&& Ord.Command != EHOLGridCommandKind::Deploy)
 				{
-					CGSWNote(Bad, First, f"{Where}: the orders' panel gave {int(Ord.Command)}");
+					CGSWNote(Bad, First, "Test_CGSWCommandCells", f"{Where}: the orders' panel gave {int(Ord.Command)}");
 				}
 			}
 			if (C.bOwnUnits && !C.bOwnBuilding && Cell == 5 && Ord.Command != EHOLGridCommandKind::Stop)
 			{
-				CGSWNote(Bad, First, f"{Where}: units are selected and S does not stop (even the kings can stop)");
+				CGSWNote(Bad, First, "Test_CGSWCommandCells", f"{Where}: units are selected and S does not stop (even the kings can stop)");
 			}
 			if (C.bOwnUnits && !C.bOwnBuilding && Cell == 4 && C.bSoldiers && !C.bOnlyKings && Ord.Command != EHOLGridCommandKind::AttackMove)
 			{
-				CGSWNote(Bad, First, f"{Where}: soldiers are selected and Q does not attack-move");
+				CGSWNote(Bad, First, "Test_CGSWCommandCells", f"{Where}: soldiers are selected and Q does not attack-move");
 			}
 		}
 	}
@@ -338,15 +360,15 @@ void Test_CGSWTableBuildings(FUnitTest& T)
 		TArray<FName> Researches = HOLCommandGridRead::GetBuildingResearches(TypeName);
 		if (!HOLCommandGridRead::IsTypeInTable(TypeName))
 		{
-			CGSWNote(Bad, First, f"{TypeName} is buildable but not in the table");
+			CGSWNote(Bad, First, "Test_CGSWTableBuildings", f"{TypeName} is buildable but not in the table");
 		}
 		if (Produces.Num() > 8)
 		{
-			CGSWNote(Bad, First, f"{TypeName} trains {Produces.Num()} units: they do not fit the two top rows (8 cells)");
+			CGSWNote(Bad, First, "Test_CGSWTableBuildings", f"{TypeName} trains {Produces.Num()} units: they do not fit the two top rows (8 cells)");
 		}
 		if (Researches.Num() > 4)
 		{
-			CGSWNote(Bad, First, f"{TypeName} researches {Researches.Num()} technologies: they do not fit the bottom row (W X C V)");
+			CGSWNote(Bad, First, "Test_CGSWTableBuildings", f"{TypeName} researches {Researches.Num()} technologies: they do not fit the bottom row (W X C V)");
 		}
 		for (int Pass = 0; Pass < 8; Pass++)
 		{
@@ -374,23 +396,24 @@ void Test_CGSWTableBuildings(FUnitTest& T)
 				}
 				if (Cell < 0 || Cell >= 12)
 				{
-					CGSWNote(Bad, First, f"{Where}: a command outside the grid");
+					CGSWNote(Bad, First, "Test_CGSWTableBuildings", f"{Where}: a command outside the grid");
 				}
 				bool bNamed = Cmd.Command == EHOLGridCommandKind::Produce || Cmd.Command == EHOLGridCommandKind::Research;
 				if (bNamed && Cmd.TypeName == NoName)
 				{
-					CGSWNote(Bad, First, f"{Where}: a command without a name");
+					CGSWNote(Bad, First, "Test_CGSWTableBuildings", f"{Where}: a command without a name");
 				}
 				if (Cmd.Command == EHOLGridCommandKind::Produce)
 				{
 					ProduceCount++;
 					if (Cell >= 8)
 					{
-						CGSWNote(Bad, First, f"{Where}: a unit on the technology row");
+						CGSWNote(Bad, First, "Test_CGSWTableBuildings", f"{Where}: a unit on the technology row");
 					}
-					if (!HOLCommandGridRead::IsTypeInTable(Cmd.TypeName))
+					// A unit is not a building: IsTypeInTable (the building table) logs an Error for "Spearman". The unit must be one this building trains.
+					if (!Produces.Contains(Cmd.TypeName))
 					{
-						CGSWNote(Bad, First, f"{Where}: the unit {Cmd.TypeName} is not in the table");
+						CGSWNote(Bad, First, "Test_CGSWTableBuildings", f"{Where}: the unit {Cmd.TypeName} is not one the table gives to {TypeName}");
 					}
 				}
 				if (Cmd.Command == EHOLGridCommandKind::Research)
@@ -398,18 +421,18 @@ void Test_CGSWTableBuildings(FUnitTest& T)
 					ResearchCount++;
 					if (Cell < 8)
 					{
-						CGSWNote(Bad, First, f"{Where}: a technology above the technology row");
+						CGSWNote(Bad, First, "Test_CGSWTableBuildings", f"{Where}: a technology above the technology row");
 					}
 					if (!HOLCommandGridRead::IsTechnologyInTable(Cmd.TypeName))
 					{
-						CGSWNote(Bad, First, f"{Where}: the technology {Cmd.TypeName} is not in the table");
+						CGSWNote(Bad, First, "Test_CGSWTableBuildings", f"{Where}: the technology {Cmd.TypeName} is not in the table");
 					}
 				}
 				if (bNamed)
 				{
 					if (Seen.Contains(Cmd.TypeName))
 					{
-						CGSWNote(Bad, First, f"{Where}: {Cmd.TypeName} sits on two cells");
+						CGSWNote(Bad, First, "Test_CGSWTableBuildings", f"{Where}: {Cmd.TypeName} sits on two cells");
 					}
 					Seen.Add(Cmd.TypeName);
 				}
@@ -418,15 +441,15 @@ void Test_CGSWTableBuildings(FUnitTest& T)
 			bool bAnswers = !bSite && Building.SpecializationTier == 0;
 			if (bAnswers && ProduceCount != Produces.Num())
 			{
-				CGSWNote(Bad, First, f"{TypeName} pass {Pass}: {ProduceCount} unit cells for {Produces.Num()} units of the table");
+				CGSWNote(Bad, First, "Test_CGSWTableBuildings", f"{TypeName} pass {Pass}: {ProduceCount} unit cells for {Produces.Num()} units of the table");
 			}
 			if (bAnswers && ResearchCount != Researches.Num())
 			{
-				CGSWNote(Bad, First, f"{TypeName} pass {Pass}: {ResearchCount} technology cells for {Researches.Num()} technologies of the table");
+				CGSWNote(Bad, First, "Test_CGSWTableBuildings", f"{TypeName} pass {Pass}: {ResearchCount} technology cells for {Researches.Num()} technologies of the table");
 			}
 			if (bSite && (ProduceCount != 0 || ResearchCount != 0))
 			{
-				CGSWNote(Bad, First, f"{TypeName} pass {Pass}: a site or a market produced or researched");
+				CGSWNote(Bad, First, "Test_CGSWTableBuildings", f"{TypeName} pass {Pass}: a site or a market produced or researched");
 			}
 		}
 	}
@@ -459,15 +482,15 @@ void Test_CGSWTableCellsUnique(FUnitTest& T)
 			FString Where = f"age {Age} cell {Cell}";
 			if (Building.Command != EHOLGridCommandKind::Build || Building.TypeName == NoName || Building.Age != Age)
 			{
-				CGSWNote(Bad, First, f"{Where}: a panel cell that is not a named build command of its own age");
+				CGSWNote(Bad, First, "Test_CGSWTableCellsUnique", f"{Where}: a panel cell that is not a named build command of its own age");
 			}
 			if (CGSWFindBuildable(Builders, Building.TypeName, Age, Cell) < 0)
 			{
-				CGSWNote(Bad, First, f"{Where}: {Building.TypeName} is not a building of that age and cell in the table");
+				CGSWNote(Bad, First, "Test_CGSWTableCellsUnique", f"{Where}: {Building.TypeName} is not a building of that age and cell in the table");
 			}
 			if (Building.bGreyed)
 			{
-				CGSWNote(Bad, First, f"{Where}: {Building.TypeName} is greyed although every age is reached");
+				CGSWNote(Bad, First, "Test_CGSWTableCellsUnique", f"{Where}: {Building.TypeName} is greyed although every age is reached");
 			}
 		}
 	}
@@ -492,26 +515,26 @@ void Test_CGSWAgePanels(FUnitTest& T)
 			{
 				if (bOpen || HOLCommandGridRules::IsAgeReached(C, Age) || Opacity >= 1.0f)
 				{
-					CGSWNote(Bad, First, f"{Where}: an age that does not exist is open or fully opaque");
+					CGSWNote(Bad, First, "Test_CGSWAgePanels", f"{Where}: an age that does not exist is open or fully opaque");
 				}
 			}
 			else
 			{
 				if (Age <= C.ReachedAge && (!bOpen || !HOLCommandGridRules::IsAgeReached(C, Age) || Opacity != 1.0f))
 				{
-					CGSWNote(Bad, First, f"{Where}: a reached age is not open or is faded");
+					CGSWNote(Bad, First, "Test_CGSWAgePanels", f"{Where}: a reached age is not open or is faded");
 				}
 				if (bOpen && !CGSWAgePageOpen(C, Age))
 				{
-					CGSWNote(Bad, First, f"{Where}: an age above the tier is open (reached {C.ReachedAge}) without an always-open building");
+					CGSWNote(Bad, First, "Test_CGSWAgePanels", f"{Where}: an age above the tier is open (reached {C.ReachedAge}) without an always-open building");
 				}
 				if (!bOpen && Opacity >= 1.0f)
 				{
-					CGSWNote(Bad, First, f"{Where}: a locked page is fully opaque");
+					CGSWNote(Bad, First, "Test_CGSWAgePanels", f"{Where}: a locked page is fully opaque");
 				}
 				if (bOpen && Opacity != 1.0f)
 				{
-					CGSWNote(Bad, First, f"{Where}: an open page is faded");
+					CGSWNote(Bad, First, "Test_CGSWAgePanels", f"{Where}: an open page is faded");
 				}
 			}
 			for (int Cell = -1; Cell <= 12; Cell++)
@@ -524,26 +547,26 @@ void Test_CGSWAgePanels(FUnitTest& T)
 				FString CellWhere = f"{Where} cell {Cell}";
 				if (Age < 0 || Age >= 4 || Cell < 0 || Cell >= 12 || !CGSWIsBuildersAlone(C))
 				{
-					CGSWNote(Bad, First, f"{CellWhere}: a building outside the pages or for a selection that is not the builders alone");
+					CGSWNote(Bad, First, "Test_CGSWAgePanels", f"{CellWhere}: a building outside the pages or for a selection that is not the builders alone");
 					continue;
 				}
 				int Index = CGSWFindBuildable(C, Building.TypeName, Age, Cell);
 				if (Index < 0)
 				{
-					CGSWNote(Bad, First, f"{CellWhere}: {Building.TypeName} is not a building of that age and cell");
+					CGSWNote(Bad, First, "Test_CGSWAgePanels", f"{CellWhere}: {Building.TypeName} is not a building of that age and cell");
 					continue;
 				}
 				if (Age <= C.ReachedAge && Building.bGreyed)
 				{
-					CGSWNote(Bad, First, f"{CellWhere}: {Building.TypeName} is greyed on a reached age");
+					CGSWNote(Bad, First, "Test_CGSWAgePanels", f"{CellWhere}: {Building.TypeName} is greyed on a reached age");
 				}
 				if (Age > C.ReachedAge && !CGSWIsAlwaysOpenIndex(C, Index) && !Building.bGreyed)
 				{
-					CGSWNote(Bad, First, f"{CellWhere}: {Building.TypeName} is not greyed above the tier");
+					CGSWNote(Bad, First, "Test_CGSWAgePanels", f"{CellWhere}: {Building.TypeName} is not greyed above the tier");
 				}
 				if (Age > C.ReachedAge && CGSWIsAlwaysOpenIndex(C, Index) && Building.bGreyed)
 				{
-					CGSWNote(Bad, First, f"{CellWhere}: an always-open building is greyed");
+					CGSWNote(Bad, First, "Test_CGSWAgePanels", f"{CellWhere}: an always-open building is greyed");
 				}
 			}
 		}
@@ -569,32 +592,32 @@ void Test_CGSWPressKeySweep(FUnitTest& T)
 				FHOLGridKeyResultView Key = HOLCommandGridKeys::PressKey(C, Chosen, Cell);
 				Swept++;
 				bool bInGrid = Cell >= 0 && Cell < 12;
-				CGSWCheckKeyAnswer(C, Key, Chosen, Cell, Mask, -9, Bad, First);
+				CGSWCheckKeyAnswer(C, Key, Chosen, Cell, Mask, -9, "Test_CGSWPressKeySweep", Bad, First);
 				if (!bInGrid && (Key.Target != EHOLGridKeyTargetKind::None || Key.ChosenAge != Chosen))
 				{
-					CGSWNote(Bad, First, f"{CGSWWhere(Mask, Chosen, -9, Cell)}: a key outside the 3 x 4 grid answered or changed the chosen age");
+					CGSWNote(Bad, First, "Test_CGSWPressKeySweep", f"{CGSWWhere(Mask, Chosen, -9, Cell)}: a key outside the 3 x 4 grid answered or changed the chosen age");
 				}
 				if (bInGrid && C.bOwnBuilding && Key.Target != EHOLGridKeyTargetKind::Grid)
 				{
-					CGSWNote(Bad, First, f"{CGSWWhere(Mask, Chosen, -9, Cell)}: with a building selected every key is the grid's");
+					CGSWNote(Bad, First, "Test_CGSWPressKeySweep", f"{CGSWWhere(Mask, Chosen, -9, Cell)}: with a building selected every key is the grid's");
 				}
 				if (Key.Target == EHOLGridKeyTargetKind::Age)
 				{
 					AgeKeys++;
 					if (Chosen != -1 || Key.ChosenAge != Cell || Cell >= 4)
 					{
-						CGSWNote(Bad, First, f"{CGSWWhere(Mask, Chosen, -9, Cell)}: an age key must be A Z E R with no age chosen, and choose its own age (got {Key.ChosenAge})");
+						CGSWNote(Bad, First, "Test_CGSWPressKeySweep", f"{CGSWWhere(Mask, Chosen, -9, Cell)}: an age key must be A Z E R with no age chosen, and choose its own age (got {Key.ChosenAge})");
 					}
 				}
 				if (Key.Target == EHOLGridKeyTargetKind::Build)
 				{
 					if (Chosen < 0 || Key.ChosenAge != Chosen)
 					{
-						CGSWNote(Bad, First, f"{CGSWWhere(Mask, Chosen, -9, Cell)}: a build key must keep the chosen age (got {Key.ChosenAge})");
+						CGSWNote(Bad, First, "Test_CGSWPressKeySweep", f"{CGSWWhere(Mask, Chosen, -9, Cell)}: a build key must keep the chosen age (got {Key.ChosenAge})");
 					}
 					if (BuiltHere.Contains(Key.TypeName))
 					{
-						CGSWNote(Bad, First, f"{CGSWWhere(Mask, Chosen, -9, Cell)}: {Key.TypeName} answers two keys");
+						CGSWNote(Bad, First, "Test_CGSWPressKeySweep", f"{CGSWWhere(Mask, Chosen, -9, Cell)}: {Key.TypeName} answers two keys");
 					}
 					BuiltHere.Add(Key.TypeName);
 				}
@@ -603,7 +626,7 @@ void Test_CGSWPressKeySweep(FUnitTest& T)
 					EHOLGridCommandKind Kind = HOLCommandGridRules::GetCommand(C, Cell).Command;
 					if (Kind != EHOLGridCommandKind::HeroAbility && Kind != EHOLGridCommandKind::NecroticRage)
 					{
-						CGSWNote(Bad, First, f"{CGSWWhere(Mask, Chosen, -9, Cell)}: units keep a key for the grid only for the hero's abilities and the rage");
+						CGSWNote(Bad, First, "Test_CGSWPressKeySweep", f"{CGSWWhere(Mask, Chosen, -9, Cell)}: units keep a key for the grid only for the hero's abilities and the rage");
 					}
 				}
 				if (CGSWIsBuildersAlone(C) && Chosen >= 0 && bInGrid)
@@ -611,11 +634,11 @@ void Test_CGSWPressKeySweep(FUnitTest& T)
 					// An age chosen: every key is its buildings' (an empty cell: nothing, never an order nor another age), the age kept.
 					if (Key.Target != EHOLGridKeyTargetKind::None && Key.Target != EHOLGridKeyTargetKind::Build)
 					{
-						CGSWNote(Bad, First, f"{CGSWWhere(Mask, Chosen, -9, Cell)}: with an age chosen a key went to {int(Key.Target)} instead of a building or nothing");
+						CGSWNote(Bad, First, "Test_CGSWPressKeySweep", f"{CGSWWhere(Mask, Chosen, -9, Cell)}: with an age chosen a key went to {int(Key.Target)} instead of a building or nothing");
 					}
 					if (Key.ChosenAge != Chosen)
 					{
-						CGSWNote(Bad, First, f"{CGSWWhere(Mask, Chosen, -9, Cell)}: a key changed the chosen age {Chosen} to {Key.ChosenAge}");
+						CGSWNote(Bad, First, "Test_CGSWPressKeySweep", f"{CGSWWhere(Mask, Chosen, -9, Cell)}: a key changed the chosen age {Chosen} to {Key.ChosenAge}");
 					}
 				}
 			}
@@ -631,7 +654,7 @@ void Test_CGSWPressKeySweep(FUnitTest& T)
 				}
 				if (AgeKeys != OpenAges)
 				{
-					CGSWNote(Bad, First, f"selection {Mask}: {AgeKeys} keys choose an age, {OpenAges} ages are open");
+					CGSWNote(Bad, First, "Test_CGSWPressKeySweep", f"selection {Mask}: {AgeKeys} keys choose an age, {OpenAges} ages are open");
 				}
 			}
 		}
@@ -658,28 +681,28 @@ void Test_CGSWClickAgeSweep(FUnitTest& T)
 				{
 					FHOLGridKeyResultView Click = HOLCommandGridKeys::ClickAge(C, Chosen, Age, Cell);
 					Swept++;
-					CGSWCheckKeyAnswer(C, Click, Chosen, Cell, Mask, Age, Bad, First);
+					CGSWCheckKeyAnswer(C, Click, Chosen, Cell, Mask, Age, "Test_CGSWClickAgeSweep", Bad, First);
 					bool bAgeExists = Age >= 0 && Age < 4;
 					if ((!bAgeExists || !CGSWIsBuildersAlone(C)) && (Click.Target != EHOLGridKeyTargetKind::None || Click.ChosenAge != Chosen))
 					{
-						CGSWNote(Bad, First, f"{CGSWWhere(Mask, Chosen, Age, Cell)}: a click on no age, or off the builders' grid, did something");
+						CGSWNote(Bad, First, "Test_CGSWClickAgeSweep", f"{CGSWWhere(Mask, Chosen, Age, Cell)}: a click on no age, or off the builders' grid, did something");
 					}
 					if (Click.Target == EHOLGridKeyTargetKind::Orders || Click.Target == EHOLGridKeyTargetKind::Grid)
 					{
-						CGSWNote(Bad, First, f"{CGSWWhere(Mask, Chosen, Age, Cell)}: a click on an age page went to the orders or the grid");
+						CGSWNote(Bad, First, "Test_CGSWClickAgeSweep", f"{CGSWWhere(Mask, Chosen, Age, Cell)}: a click on an age page went to the orders or the grid");
 					}
 					if (Click.Target == EHOLGridKeyTargetKind::Age && (Cell != -1 || Click.ChosenAge != Age))
 					{
-						CGSWNote(Bad, First, f"{CGSWWhere(Mask, Chosen, Age, Cell)}: only the header of age {Age} chooses age {Age} (got {Click.ChosenAge})");
+						CGSWNote(Bad, First, "Test_CGSWClickAgeSweep", f"{CGSWWhere(Mask, Chosen, Age, Cell)}: only the header of age {Age} chooses age {Age} (got {Click.ChosenAge})");
 					}
 					if (bAgeExists && CGSWIsBuildersAlone(C) && CGSWAgePageOpen(C, Age) && Cell == -1
 						&& (Click.Target != EHOLGridKeyTargetKind::Age || Click.ChosenAge != Age))
 					{
-						CGSWNote(Bad, First, f"{CGSWWhere(Mask, Chosen, Age, Cell)}: the header of an open age did not choose it");
+						CGSWNote(Bad, First, "Test_CGSWClickAgeSweep", f"{CGSWWhere(Mask, Chosen, Age, Cell)}: the header of an open age did not choose it");
 					}
 					if (Click.Target == EHOLGridKeyTargetKind::Build && Click.ChosenAge != Age)
 					{
-						CGSWNote(Bad, First, f"{CGSWWhere(Mask, Chosen, Age, Cell)}: a click on a cell of age {Age} built under age {Click.ChosenAge}");
+						CGSWNote(Bad, First, "Test_CGSWClickAgeSweep", f"{CGSWWhere(Mask, Chosen, Age, Cell)}: a click on a cell of age {Age} built under age {Click.ChosenAge}");
 					}
 				}
 			}
@@ -692,19 +715,26 @@ void Test_CGSWClickAgeSweep(FUnitTest& T)
 // After a placement with Shift the age stays chosen; every other event closes it (GDD: the age page closes unless Shift keeps it).
 void Test_CGSWChosenAgeAfter(FUnitTest& T)
 {
+	int Fails = 0;
 	for (int Chosen = -1; Chosen <= 3; Chosen++)
 	{
-		T.AssertEquals(HOLCommandGridKeys::GetChosenAgeAfter(Chosen, EHOLAgeEventKind::PlacedKept), Chosen, f"Shift placement keeps age {Chosen}");
-		T.AssertEquals(HOLCommandGridKeys::GetChosenAgeAfter(Chosen, EHOLAgeEventKind::Placed), -1, f"a placement closes age {Chosen}");
-		T.AssertEquals(HOLCommandGridKeys::GetChosenAgeAfter(Chosen, EHOLAgeEventKind::Cancelled), -1, f"a cancel closes age {Chosen}");
-		T.AssertEquals(HOLCommandGridKeys::GetChosenAgeAfter(Chosen, EHOLAgeEventKind::Escape), -1, f"Escape closes age {Chosen}");
-		T.AssertEquals(HOLCommandGridKeys::GetChosenAgeAfter(Chosen, EHOLAgeEventKind::SelectionChanged), -1, f"a new selection closes age {Chosen}");
+		int Kept = HOLCommandGridKeys::GetChosenAgeAfter(Chosen, EHOLAgeEventKind::PlacedKept);
+		int Placed = HOLCommandGridKeys::GetChosenAgeAfter(Chosen, EHOLAgeEventKind::Placed);
+		int Cancelled = HOLCommandGridKeys::GetChosenAgeAfter(Chosen, EHOLAgeEventKind::Cancelled);
+		int Escaped = HOLCommandGridKeys::GetChosenAgeAfter(Chosen, EHOLAgeEventKind::Escape);
+		int Changed = HOLCommandGridKeys::GetChosenAgeAfter(Chosen, EHOLAgeEventKind::SelectionChanged);
+		CGSWCheck(T, Fails, "Test_CGSWChosenAgeAfter", Kept == Chosen, f"Shift placement keeps age {Chosen} (got {Kept})");
+		CGSWCheck(T, Fails, "Test_CGSWChosenAgeAfter", Placed == -1, f"a placement closes age {Chosen} (got {Placed})");
+		CGSWCheck(T, Fails, "Test_CGSWChosenAgeAfter", Cancelled == -1, f"a cancel closes age {Chosen} (got {Cancelled})");
+		CGSWCheck(T, Fails, "Test_CGSWChosenAgeAfter", Escaped == -1, f"Escape closes age {Chosen} (got {Escaped})");
+		CGSWCheck(T, Fails, "Test_CGSWChosenAgeAfter", Changed == -1, f"a new selection closes age {Chosen} (got {Changed})");
 	}
 }
 
 // Describe on every combination of kind x resource x refusal x category x block (was the Describe sweep of Test_CGKYAgreementFeedback).
 void Test_CGSWDescribeSweep(FUnitTest& T)
 {
+	int Fails = 0;
 	// The four resources and the three categories, by their names (GDD: Food, Wood, Stone, Gold; economic, military, technological buildings).
 	TArray<FString> ResourceNames;
 	ResourceNames.Add("Food");
@@ -745,27 +775,27 @@ void Test_CGSWDescribeSweep(FUnitTest& T)
 						FString Where = f"kind {Kind} resource {Resource} refusal {Refusal} category {Category} block {Block}";
 						if (Text.IsEmpty())
 						{
-							CGSWNote(Bad, First, f"{Where}: Describe gave an empty text");
+							CGSWNote(Bad, First, "Test_CGSWDescribeSweep", f"{Where}: Describe gave an empty text");
 						}
 						if ((Kind == 0) != (Text == "none"))
 						{
-							CGSWNote(Bad, First, f"{Where}: only a feedback of kind None may read 'none' (got '{Text}')");
+							CGSWNote(Bad, First, "Test_CGSWDescribeSweep", f"{Where}: only a feedback of kind None may read 'none' (got '{Text}')");
 						}
 						if (Kind == 1 && !Text.Contains(ResourceNames[Resource]))
 						{
-							CGSWNote(Bad, First, f"{Where}: 'not enough' must name the missing resource {ResourceNames[Resource]} (got '{Text}')");
+							CGSWNote(Bad, First, "Test_CGSWDescribeSweep", f"{Where}: 'not enough' must name the missing resource {ResourceNames[Resource]} (got '{Text}')");
 						}
 						if (Kind == 5 && !Text.Contains(CategoryNames[Category]))
 						{
-							CGSWNote(Bad, First, f"{Where}: 'no building' must name the category {CategoryNames[Category]} (got '{Text}')");
+							CGSWNote(Bad, First, "Test_CGSWDescribeSweep", f"{Where}: 'no building' must name the category {CategoryNames[Category]} (got '{Text}')");
 						}
 						if (Kind == 4 && !Text.Contains("placement refused"))
 						{
-							CGSWNote(Bad, First, f"{Where}: a placement refusal must say so (got '{Text}')");
+							CGSWNote(Bad, First, "Test_CGSWDescribeSweep", f"{Where}: a placement refusal must say so (got '{Text}')");
 						}
 						if (Kind == 6 && !Text.Contains("research refused"))
 						{
-							CGSWNote(Bad, First, f"{Where}: a research refusal must say so (got '{Text}')");
+							CGSWNote(Bad, First, "Test_CGSWDescribeSweep", f"{Where}: a research refusal must say so (got '{Text}')");
 						}
 						// One text per meaning: record the texts of the first combination of each axis.
 						if (Resource == 0 || Resource > 0)
@@ -796,8 +826,8 @@ void Test_CGSWDescribeSweep(FUnitTest& T)
 			}
 		}
 	}
-	T.AssertTrue(Swept == 7 * 4 * 7 * 3 * 10, "every combination of kind, resource, refusal, category, block was swept");
-	T.AssertTrue(Bad == 0, f"{Bad} feedbacks break an invariant; first: {First}");
+	CGSWCheck(T, Fails, "Test_CGSWDescribeSweep", Swept == 7 * 4 * 7 * 3 * 10, "every combination of kind, resource, refusal, category, block was swept");
+	CGSWCheck(T, Fails, "Test_CGSWDescribeSweep", Bad == 0, f"{Bad} feedbacks break an invariant; first: {First}");
 
 	// Different meanings read differently (no two kinds, resources, refusals, categories or blocks share a text).
 	T.AssertEquals(KindTexts.Num(), 7, "seven feedback kinds");
@@ -805,7 +835,7 @@ void Test_CGSWDescribeSweep(FUnitTest& T)
 	{
 		for (int B = A + 1; B < KindTexts.Num(); B++)
 		{
-			T.AssertTrue(KindTexts[A] != KindTexts[B], f"kinds {A} and {B} read differently ('{KindTexts[A]}')");
+			CGSWCheck(T, Fails, "Test_CGSWDescribeSweep", KindTexts[A] != KindTexts[B], f"kinds {A} and {B} read differently ('{KindTexts[A]}')");
 		}
 	}
 	T.AssertEquals(ResourceTexts.Num(), 4, "four resources");
@@ -813,7 +843,7 @@ void Test_CGSWDescribeSweep(FUnitTest& T)
 	{
 		for (int B = A + 1; B < ResourceTexts.Num(); B++)
 		{
-			T.AssertTrue(ResourceTexts[A] != ResourceTexts[B], f"resources {A} and {B} read differently ('{ResourceTexts[A]}')");
+			CGSWCheck(T, Fails, "Test_CGSWDescribeSweep", ResourceTexts[A] != ResourceTexts[B], f"resources {A} and {B} read differently ('{ResourceTexts[A]}')");
 		}
 	}
 	T.AssertEquals(RefusalTexts.Num(), 6, "refusals 0..5");
@@ -821,7 +851,7 @@ void Test_CGSWDescribeSweep(FUnitTest& T)
 	{
 		for (int B = A + 1; B < RefusalTexts.Num(); B++)
 		{
-			T.AssertTrue(RefusalTexts[A] != RefusalTexts[B], f"placement refusals {A} and {B} read differently ('{RefusalTexts[A]}')");
+			CGSWCheck(T, Fails, "Test_CGSWDescribeSweep", RefusalTexts[A] != RefusalTexts[B], f"placement refusals {A} and {B} read differently ('{RefusalTexts[A]}')");
 		}
 	}
 	T.AssertEquals(CategoryTexts.Num(), 3, "three categories");
@@ -829,7 +859,7 @@ void Test_CGSWDescribeSweep(FUnitTest& T)
 	{
 		for (int B = A + 1; B < CategoryTexts.Num(); B++)
 		{
-			T.AssertTrue(CategoryTexts[A] != CategoryTexts[B], f"categories {A} and {B} read differently ('{CategoryTexts[A]}')");
+			CGSWCheck(T, Fails, "Test_CGSWDescribeSweep", CategoryTexts[A] != CategoryTexts[B], f"categories {A} and {B} read differently ('{CategoryTexts[A]}')");
 		}
 	}
 	T.AssertEquals(BlockTexts.Num(), 8, "technology blocks 1..8");
@@ -837,7 +867,7 @@ void Test_CGSWDescribeSweep(FUnitTest& T)
 	{
 		for (int B = A + 1; B < BlockTexts.Num(); B++)
 		{
-			T.AssertTrue(BlockTexts[A] != BlockTexts[B], f"technology blocks {A + 1} and {B + 1} read differently ('{BlockTexts[A]}')");
+			CGSWCheck(T, Fails, "Test_CGSWDescribeSweep", BlockTexts[A] != BlockTexts[B], f"technology blocks {A + 1} and {B + 1} read differently ('{BlockTexts[A]}')");
 		}
 	}
 
@@ -857,6 +887,7 @@ void Test_CGSWDescribeSweep(FUnitTest& T)
 // What stops a command (a full population only waits, D-population) on every kind.
 void Test_CGSWBlocksKinds(FUnitTest& T)
 {
+	int Fails = 0;
 	for (int Kind = 0; Kind <= 6; Kind++)
 	{
 		FHOLFeedbackView Feedback;
@@ -865,11 +896,11 @@ void Test_CGSWBlocksKinds(FUnitTest& T)
 		bool bMustBlock = Kind == 1 || Kind == 2 || Kind == 4 || Kind == 6;
 		if (bMustBlock)
 		{
-			T.AssertTrue(bBlocks, f"kind {Kind} (not enough resources, queue full, placement refused, research refused) stops the command");
+			CGSWCheck(T, Fails, "Test_CGSWBlocksKinds", bBlocks, f"kind {Kind} (not enough resources, queue full, placement refused, research refused) stops the command");
 		}
 		if (Kind == 0 || Kind == 3)
 		{
-			T.AssertTrue(!bBlocks, f"kind {Kind} (none, population full) does not stop the command: a full population only waits");
+			CGSWCheck(T, Fails, "Test_CGSWBlocksKinds", !bBlocks, f"kind {Kind} (none, population full) does not stop the command: a full population only waits");
 		}
 	}
 }
