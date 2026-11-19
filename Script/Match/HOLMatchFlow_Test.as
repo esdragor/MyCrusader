@@ -3,8 +3,8 @@
 // match, solo free), the lift of the pause of a player who leaves (D720), the gates of ApplyStance / ApplyVision (HOLDiplomacy::SetStance / SetVision
 // stay the rule of the stances themselves). RED until HOLMatchFlowBoard.as exists (compiles after the build).
 //
-// The pause cases replay, value for value, the C++ test HeroesOfLiberty.Net.PauseLimits (FHOLNetPauseLimitsTest, Tests/HOLNetTests.cpp:1130) on
-// FHOLPauseRules: while both copies exist this file IS the agreement test (same vectors on both). The lift replays HeroesOfLiberty.Match.DisconnectPause
+// The pause cases are the vectors of the former C++ test HeroesOfLiberty.Net.PauseLimits (removed with FHOLPauseRules: this file is now the only test of
+// the rule). The lift replays HeroesOfLiberty.Match.DisconnectPause
 // (FHOLDisconnectPauseTest, Tests/HOLDisconnectTests.cpp:800, LiftPauseOf: only the pause of the leaving slot, counted pauses untouched).
 
 // Pause: who may pause. A dedicated or listen server (bSolo false) counts the pauses; the solo game does not.
@@ -56,7 +56,7 @@ void Test_MatchFlowTimerAndCount(FUnitTest& T)
 	T.AssertEquals(0.0, HOLMatchFlow::PausedSeconds(100.0, 90.0), "never negative");
 }
 
-// Pause: the whole numbers the bridge sends are the order the C++ journal reads when it removes FHOLPauseRules (HOLGameState.cpp: the "Pause: refused to ..."
+// Pause: the whole numbers the bridge sends are the order the C++ journal reads (HOLGameState.cpp: the "Pause: refused to ..."
 // reason is picked by this number: allowed, not in the match, no pause left, already paused, not paused, timer running). Changing the order breaks the journal lines.
 void Test_MatchFlowAnswerOrder(FUnitTest& T)
 {
