@@ -106,7 +106,7 @@ void Test_AlertBannerLineFollowsTheCppSoundRule(FUnitTest& T)
 	T.AssertTrue(bFirstSound, "the first banner of a burst carries the sound");
 	T.AssertEquals("Alert: x (sound /Engine/EngineSounds/1kSineTonePing.1kSineTonePing)", HOLAlertBanner::PresentLogLine("x", bFirstSound, true), "its line says the sound");
 	T.AssertTrue(Alert.Expire(14.5), "gone at 4 s");
-	T.AssertTrue(Alert.ShowEvent(AlertBannerEv(0, 0, 0), Teams, 0, 0, false, 40.0), "a new fall long after");
+	T.AssertTrue(Alert.ShowEvent(AlertBannerEv(0, 0, 1), Teams, 0, 0, false, 40.0), "a new fall long after");
 	const bool bLaterSound = Alert.HasSound();
 	T.AssertTrue(bLaterSound, "a banner long after the last one is a new burst: its own sound");
 }

@@ -521,11 +521,11 @@ FEventReply UHOLScriptScreen::HandleAlertMouseDown(FGeometry Geometry, const FPo
 	return FEventReply(ClickWidget(FName(TEXT("AlertPanel"))));
 }
 
-void UHOLScriptScreen::FocusCameraOnForum(const int32 Slot)
+void UHOLScriptScreen::FocusCameraOnForum(const int32 ForumSlot)
 {
 	if (UHOLGameScreen* GameScreen = GetTypedOuter<UHOLGameScreen>())
 	{
-		GameScreen->FocusCameraOnForum(Slot);
+		GameScreen->FocusCameraOnForum(ForumSlot);
 	}
 }
 

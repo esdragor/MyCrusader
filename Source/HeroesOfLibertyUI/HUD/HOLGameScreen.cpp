@@ -904,11 +904,11 @@ FEventReply UHOLGameScreen::HandleMessageLineMouseDown(FGeometry Geometry, const
 	return FEventReply(false);
 }
 
-void UHOLGameScreen::FocusCameraOnForum(const int32 Slot)
+void UHOLGameScreen::FocusCameraOnForum(const int32 ForumSlot)
 {
 	if (AHOLPlayerController* PlayerController = Controller.Get())
 	{
-		PlayerController->FocusCameraOnForum(Slot);
+		PlayerController->FocusCameraOnForum(ForumSlot);
 	}
 }
 

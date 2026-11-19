@@ -248,7 +248,7 @@ public:
 
 	/** The owning controller's FocusCameraOnForum(Slot): the camera only, the journal line is the script's. */
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|UI")
-	void FocusCameraOnForum(int32 Slot);
+	void FocusCameraOnForum(int32 ForumSlot);
 
 	/** The alert banner's panel takes the left mouse button: the C++ receives it (FOnPointerEvent) and asks the script's ClickWidget(AlertPanel), which centres the camera. */
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|UI")

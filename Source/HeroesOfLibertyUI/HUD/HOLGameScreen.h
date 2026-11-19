@@ -96,7 +96,7 @@ public:
 	/** HUD H-5a: how many banners PresentAlert has shown (never reset): the script redraws when it changes. */
 	int32 GetAlertPresentCount() const { return AlertPresentCount; }
 	/** HUD H-5a: the owning controller's camera over the forum of Slot (no journal line: the script writes it). */
-	void FocusCameraOnForum(int32 Slot);
+	void FocusCameraOnForum(int32 ForumSlot);
 
 	/** HUD H-4: the PlayersPanel (table host in the right column), filled by the script's table. */
 	UBorder* GetPlayersPanel() const { return PlayersPanel; }
