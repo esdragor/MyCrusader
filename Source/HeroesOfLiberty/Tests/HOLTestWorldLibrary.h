@@ -318,4 +318,69 @@ public:
 	/** Food + Wood + Stone + Gold of the unit row of TypeName (UHOLUnitSubsystem::FindTypeRow), -1 without a row. */
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
 	static int32 GetUnitCostTotal(UHOLTestWorldHandle* TestWorld, FName TypeName);
+
+	// ---- Lot D853 g (CELEBORN-1119cc): the building tests without components (HOLBuildingTests.cpp: Foundation, Selection, Damage). Thin wrappers on the real AHOLBuilding methods ----
+
+	/** AHOLBuilding::SetConstructionState(State) (nothing for null). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
+	static void SetBuildingConstructionState(AHOLBuilding* Building, EHOLConstructionState State);
+
+	/** AHOLBuilding::SetConstructionWork(Work) (nothing for null). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
+	static void SetBuildingConstructionWork(AHOLBuilding* Building, int64 Work);
+
+	/** AHOLBuilding::ApplyPendingAppearance(): the look the frame applies (D325), at once. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
+	static void ApplyBuildingAppearance(AHOLBuilding* Building);
+
+	/** AHOLBuilding::GetHealth() (0 for null). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
+	static int32 GetBuildingHealth(const AHOLBuilding* Building);
+
+	/** AHOLBuilding::IsHurt() (false for null). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
+	static bool IsBuildingHurt(const AHOLBuilding* Building);
+
+	/** AHOLBuilding::IsFoundation() (false for null). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
+	static bool IsBuildingFoundation(const AHOLBuilding* Building);
+
+	/** AHOLBuilding::IsFinished() (false for null). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
+	static bool IsBuildingFinished(const AHOLBuilding* Building);
+
+	/** AHOLBuilding::HasWorkStarted() (false for null). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
+	static bool HasBuildingWorkStarted(const AHOLBuilding* Building);
+
+	/** AHOLBuilding::IsSeenHere() (false for null). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
+	static bool IsBuildingSeenHere(const AHOLBuilding* Building);
+
+	/** IsValid(Building): false once the actor is destroyed (or for null). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
+	static bool IsBuildingAlive(const AHOLBuilding* Building);
+
+	/** How many UStaticMeshComponent the building owns (AHOLBuilding::GetComponents, as the C++ test counts its pieces). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
+	static int32 CountBuildingMeshPieces(const AHOLBuilding* Building);
+
+	/** UHOLConstructionSubsystem::DamageBuilding(*Building, Damage, Ranged or Melee): the health actually taken off (armour applied by the game). 0 for null. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
+	static int32 DamageBuildingByAttack(AHOLBuilding* Building, int32 Damage, bool bRanged);
+
+	/** The type row's MaxHealth (UHOLBuildingSettings::FindType(TypeName)), -1 without a row. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
+	static int32 GetBuildingTypeMaxHealth(FName TypeName);
+
+	/** The type row's RangedArmor, -1 without a row. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
+	static int32 GetBuildingTypeRangedArmor(FName TypeName);
+
+	/**
+	 * The selection ray as the C++ tests throw it: World->LineTraceSingleByChannel(HOLCollision::Selection) from (X, Y, 5000) straight down 10000 cm.
+	 * Returns the actor hit (nullptr if the ray hits nothing).
+	 */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
+	static AActor* TraceSelectionRayDown(UHOLTestWorldHandle* TestWorld, double X, double Y);
 };

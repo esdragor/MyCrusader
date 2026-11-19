@@ -33,6 +33,8 @@
 #include "Commands/HOLProductionCommand.h"
 #include "Simulation/HOLUnitSubsystem.h"
 #include "Simulation/HOLUnitTypes.h"
+#include "Components/StaticMeshComponent.h"
+#include "HOLCollision.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogHOLTestWorld, Log, All);
 
@@ -934,4 +936,128 @@ int32 UHOLTestWorldLibrary::GetUnitCostTotal(UHOLTestWorldHandle* TestWorld, con
 	}
 #endif
 	return -1;
+}
+
+// ---- Lot D853 g (CELEBORN-1119cc): the building tests without components ----
+
+void UHOLTestWorldLibrary::SetBuildingConstructionState(AHOLBuilding* Building, const EHOLConstructionState State)
+{
+	if (Building)
+	{
+		Building->SetConstructionState(State);
+	}
+}
+
+void UHOLTestWorldLibrary::SetBuildingConstructionWork(AHOLBuilding* Building, const int64 Work)
+{
+	if (Building)
+	{
+		Building->SetConstructionWork(Work);
+	}
+}
+
+void UHOLTestWorldLibrary::ApplyBuildingAppearance(AHOLBuilding* Building)
+{
+	if (Building)
+	{
+		Building->ApplyPendingAppearance();
+	}
+}
+
+int32 UHOLTestWorldLibrary::GetBuildingHealth(const AHOLBuilding* Building)
+{
+	return Building ? Building->GetHealth() : 0;
+}
+
+bool UHOLTestWorldLibrary::IsBuildingHurt(const AHOLBuilding* Building)
+{
+	return Building && Building->IsHurt();
+}
+
+bool UHOLTestWorldLibrary::IsBuildingFoundation(const AHOLBuilding* Building)
+{
+	return Building && Building->IsFoundation();
+}
+
+bool UHOLTestWorldLibrary::IsBuildingFinished(const AHOLBuilding* Building)
+{
+	return Building && Building->IsFinished();
+}
+
+bool UHOLTestWorldLibrary::HasBuildingWorkStarted(const AHOLBuilding* Building)
+{
+	return Building && Building->HasWorkStarted();
+}
+
+bool UHOLTestWorldLibrary::IsBuildingSeenHere(const AHOLBuilding* Building)
+{
+	return Building && Building->IsSeenHere();
+}
+
+bool UHOLTestWorldLibrary::IsBuildingAlive(const AHOLBuilding* Building)
+{
+	return IsValid(Building);
+}
+
+int32 UHOLTestWorldLibrary::CountBuildingMeshPieces(const AHOLBuilding* Building)
+{
+	int32 Count = 0;
+#if WITH_DEV_AUTOMATION_TESTS
+	if (Building)
+	{
+		TArray<UStaticMeshComponent*> Pieces;
+		Building->GetComponents(Pieces);
+		Count = Pieces.Num();
+	}
+#endif
+	return Count;
+}
+
+int32 UHOLTestWorldLibrary::DamageBuildingByAttack(AHOLBuilding* Building, const int32 Damage, const bool bRanged)
+{
+#if WITH_DEV_AUTOMATION_TESTS
+	if (Building)
+	{
+		return UHOLConstructionSubsystem::DamageBuilding(*Building, Damage, bRanged ? EHOLAttackType::Ranged : EHOLAttackType::Melee);
+	}
+#endif
+	return 0;
+}
+
+int32 UHOLTestWorldLibrary::GetBuildingTypeMaxHealth(const FName TypeName)
+{
+#if WITH_DEV_AUTOMATION_TESTS
+	if (const FHOLBuildingTypeRow* Type = UHOLBuildingSettings::FindType(TypeName))
+	{
+		return Type->MaxHealth;
+	}
+#endif
+	return -1;
+}
+
+int32 UHOLTestWorldLibrary::GetBuildingTypeRangedArmor(const FName TypeName)
+{
+#if WITH_DEV_AUTOMATION_TESTS
+	if (const FHOLBuildingTypeRow* Type = UHOLBuildingSettings::FindType(TypeName))
+	{
+		return Type->RangedArmor;
+	}
+#endif
+	return -1;
+}
+
+AActor* UHOLTestWorldLibrary::TraceSelectionRayDown(UHOLTestWorldHandle* TestWorld, const double X, const double Y)
+{
+#if WITH_DEV_AUTOMATION_TESTS
+	if (UWorld* World = HOLTestWorldLibNs::HOLTestWorldLibWorldOf(TestWorld))
+	{
+		FHitResult Hit;
+		const FVector Above(X, Y, 5000.0);
+		if (World->LineTraceSingleByChannel(Hit, Above, Above - FVector(0.0, 0.0, 10000.0), HOLCollision::Selection))
+		{
+			return Hit.GetActor();
+		}
+	}
+#endif
+	return nullptr;
 }
