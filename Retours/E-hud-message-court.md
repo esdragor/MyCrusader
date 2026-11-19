@@ -1,4 +1,4 @@
-# [À ESSAYER] E-hud-message-court : la note « Population maximale — construisez des maisons » et le message court du HUD sont dessinés par le script et s'affichent comme avant
+# [RÉPONDU] E-hud-message-court : la note « Population maximale — construisez des maisons » et le message court du HUD sont dessinés par le script et s'affichent comme avant
 
 STATUT : VU À L'ÉCRAN
 GESTE: interne   (le scénario clique lui-même le forum et appuie lui-même sur A ; l'utilisateur fera de vrais gestes ensuite)
@@ -24,3 +24,4 @@ Geste (3 min) :
 Commande complète (règle 13, 2026-11-14) : chaque commande est écrite en entier, copiable telle quelle, jamais « même commande avec… ».
 Lancer UNE commande : `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Glorfindel\Tools\Scenarios\play.ps1 alert_population -Root C:\Users\baudo\Documents\HeroesOfLiberty-Glorfindel`
 Durée : environ 3 min. Réponse attendue : `OK`, `BUG: ...` ou `REGLAGE: ...`.
+Reponse: OK (utilisateur, 2026-11-19 ~00:40, dans la conversation ; essai joué sur le worktree d'essai ; bascule fusionnée ensuite, voir Auto_Journey_Jour.md « Agents du 2026-11-19 »)

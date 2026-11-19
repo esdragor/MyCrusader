@@ -1,4 +1,4 @@
-# [À ESSAYER] E-ecran-nouvelle-partie : l'écran Nouvelle partie (écrit en script) s'ouvre depuis le titre avec sa grille de 8 places, ses listes qui se grisent et ses boutons Lancer / Retour, identiques à l'écran C++ d'avant
+# [RÉPONDU] E-ecran-nouvelle-partie : l'écran Nouvelle partie (écrit en script) s'ouvre depuis le titre avec sa grille de 8 places, ses listes qui se grisent et ses boutons Lancer / Retour, identiques à l'écran C++ d'avant
 
 STATUT : VU À L'ÉCRAN
 GESTE: interne   (le scénario manipule la grille par commandes ; l'utilisateur fera les vrais clics au waitkey)
@@ -26,3 +26,4 @@ Geste (3 min) :
 Commande complète (règle 13, 2026-11-14) : chaque commande est écrite en entier, copiable telle quelle, jamais « même commande avec… ».
 Lancer UNE commande : `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Arwen\Tools\Scenarios\play.ps1 ecran_nouvelle_partie -Root C:\Users\baudo\Documents\HeroesOfLiberty-Arwen`
 Durée : environ 3 min. Réponse attendue : `OK`, `BUG: ...` ou `REGLAGE: ...`.
+Reponse: OK (utilisateur, 2026-11-19 ~00:40, dans la conversation ; essai joué sur le worktree d'essai ; bascule fusionnée ensuite, voir Auto_Journey_Jour.md « Agents du 2026-11-19 »)
