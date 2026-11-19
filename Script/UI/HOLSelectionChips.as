@@ -115,8 +115,8 @@ class UHOLSelectionChipsPanel : UObject
 		Owner = InOwner;
 		Chips = Cast<UWrapBox>(Screen.ConstructWidget(UWrapBox, n"SelectionChips"));
 		Chips.SetInnerSlotPadding(FVector2D(HOLSelectionChipsRules::ChipGap(), HOLSelectionChipsRules::ChipGap()));
-		Chips.SetExplicitWrapSize(true);
-		Chips.SetWrapSize(HOLSelectionChipsRules::WrapSize());
+		Chips.bExplicitWrapSize = true;
+		Chips.WrapSize = HOLSelectionChipsRules::WrapSize();
 		Chips.SetVisibility(ESlateVisibility::Collapsed);
 		Owner.ChipsHost.AddChildToVerticalBox(Chips).SetPadding(FMargin(0.0, 0.0, 0.0, HOLSelectionChipsRules::ChipsBottomPadding()));
 

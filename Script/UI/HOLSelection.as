@@ -311,7 +311,7 @@ class UHOLSelectionPanel : UObject
 		ProgressRow.SetVisibility(ESlateVisibility::Collapsed);
 
 		ActivityText = Screen.MakeText(n"SelectionActivity", UHOLTextStyleHUD);
-		ActivityText.SetAutoWrapText(true);
+		ActivityText.AutoWrapText = true;
 		AddToColumn(Column, ActivityText, 2.0, 0.0);
 
 		// A main forum's lives (V2.3d): a row as the health's, under the ruin's or the rebuilding's lines.
@@ -496,7 +496,7 @@ class UHOLSelectionPanel : UObject
 			ShownLives = View.ForumLives;
 			LivesText.SetText(FText::FromString(HOLSelectionRules::FormatAmount(View.ForumLives)));
 		}
-		const FHOLSelectionDetail Detail = HOLSelectionRules::BuildingDetail(View.bFinished, View.bOwn, View.Builders, View.bForumShown, View.ForumShown, View.ForumText);
+		const FHOLSelectionDetail Detail = HOLSelectionRules::BuildingDetail(View.bFinished, View.bOwn, View.Builders, View.bForumShown, View.ForumShown, View.ForumText.ToString());
 		SetDetail(Detail);
 		// The row follows the forum's text, each refresh, as the C++ screen's SetShown after SetDetailLine.
 		if (View.bForumShown && !(bSite && View.bOwn))
