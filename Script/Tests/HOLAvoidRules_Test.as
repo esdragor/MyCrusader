@@ -2,7 +2,7 @@
 // Port of HOLAvoidTests.cpp (same vectors): MarchPairNoTremble, DetourSide, HeadOnAndBlockedPlace, DetourTurn, CrossingRole, TimeToContact, NoClearWay,
 // DetourFootprint, LoopPatience. The rules stay C++ (the Mass processors step them per entity); no C++ test is removed by this file.
 // NEEDS THE C++ LOT (Source/HeroesOfLiberty/Simulation/HOLMovementRulesLibrary.*): compile only after the build.
-// MarchPair: the C++ test reads the game's cvars (hol.Units.AvoidTime 0.5, AvoidMaxAngle 60 -> 6 turns, MarchMemberDetourSteps 8): here their shipped
+// MarchPair: the C++ test reads the game's cvars (hol.Units.AvoidTime 0.5, AvoidMaxAngle 60 -> 6 turns, MarchMemberDetourSteps 2, D855): here their shipped
 // defaults, written down (a script FConsoleVariable would create a NEW variable, not read the game's).
 
 double AvdRotX(double X, double Y, double Degrees)
@@ -151,13 +151,13 @@ void Test_AvoidMarchPairNoTremble(FUnitTest& T)
 {
 	const FHOLSanityResultView Before = AvdRunMarchPair(0, false);
 	T.AssertTrue(Before.bShake, "the old rule (never remembered) trembles, as on the real chain (to and fro " + Before.Zigzag + " rad in 8 s)");
-	const int MemberMaxSteps = 8;
+	const int MemberMaxSteps = 2;
 	for (int Who = 0; Who < 2; Who++)
 	{
 		const bool bRight = Who == 1;
 		const FHOLSanityResultView Now = AvdRunMarchPair(MemberMaxSteps, bRight);
 		const FString Name = bRight ? "#10" : "#9";
-		T.AssertFalse(Now.bShake, Name + " does not tremble with MarchMemberDetourSteps 8 (to and fro " + Now.Zigzag + " rad in 8 s, turn " + Now.Turn + ")");
+		T.AssertFalse(Now.bShake, Name + " does not tremble with MarchMemberDetourSteps 2 (to and fro " + Now.Zigzag + " rad in 8 s, turn " + Now.Turn + ")");
 		T.AssertTrue(Now.Net > 0.9f * 697.f * 8.f, Name + " still marches (net " + Now.Net + " cm in 8 s)");
 	}
 }

@@ -1,10 +1,10 @@
 // The pause and diplomacy decisions of AHOLGameState (MIG-CPP step 5, lot S1; D836 point 4: the script is the source of the rule). Pure rules with
 // parameters: nothing here reads the world, the replicated fields of AHOLGameState (PausesLeft, PausedBySlot, PausedAtSeconds, WindowPausedSeconds,
 // the diplomacy book) and their replication stay in C++, as the logs ("Pause: ...", "Diplomacy: ..."), which the C++ still writes word for word.
-// Same rule as the C++ FHOLPauseRules (Net/HOLPauseRules.cpp) while both copies exist; HOLMatchFlow_Test.as replays the C++ vectors on this one.
+// The one source of the pause rule (the C++ FHOLPauseRules and its test Net.PauseLimits are removed); HOLMatchFlow_Test.as holds its vectors.
 // NOT in a Dev / Editor / Examples folder: the dedicated server runs it.
 
-/** The answers of a pause or resume request, in the order of the C++ FHOLPauseRules::EAnswer (the bridge sends them as a whole number). */
+/** The answers of a pause or resume request, the bridge sends them as a whole number and the C++ journal reads the order (Test_MatchFlowAnswerOrder). */
 enum EHOLPauseAnswer
 {
 	Allowed,

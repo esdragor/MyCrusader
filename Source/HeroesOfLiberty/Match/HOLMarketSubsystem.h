@@ -11,10 +11,10 @@
 /**
  * The Market's low-frequency rule where the match runs (MIG-CPP-Market, D836 point 4: the script is the source of the rule). The thinnest bridge, as
  * UHOLUnitTierSubsystem: the server (AHOLProductionSubsystem) asks its script subclass (Script/Economy/HOLMarketBoardScript.as, the rules
- * Script/Economy/HOLMarketRules.as and HOLTributeRules.as) for the two calls that are made rarely: the return of the book to rest (every
- * RecoverEverySeconds, HOLMarket::Recover) and what a tribute delivers (once per Tribute order, HOLTribute::Received). Abstract: only a script
- * subclass is born. There is no C++ copy of these two rules any more: without a script board (no script compiled) the static calls are inert and
- * safe (the book is returned unchanged, the amount received is the amount sent) and log an error. Left in C++: the Slate quote
+ * Script/Economy/HOLMarketRules.as and HOLTributeRules.as) for the calls that are made rarely: the return of the book to rest (every
+ * RecoverEverySeconds, HOLMarket::Recover) and the tribute's settlement (once per Tribute order, HOLTribute::Settle, which applies HOLTribute::Received). Abstract: only a script
+ * subclass is born. There is no C++ copy of these rules any more: without a script board (no script compiled) the static calls are inert and
+ * safe (the book is returned unchanged, a tribute is refused) and log an error. Left in C++: the Slate quote
  * (HOLGameScreen), the taxes of the diplomacy library, HOLPlayerController and HOLAIOrders. The trade itself is now the script's too (UHOLMarketSubsystem::Apply -> HOLMarket::Apply of the script, once per
  * Trade order / Market click, MIG-C++-FINAL); the C++ copies HOLMarket::Apply and Buy are gone (MIG-CPP-Market); Sell/BuyWithGold remain
  * for the Slate quote (HOLGameScreen) and the C++ tests of the table chain; NewBook is the script's too (UHOLMarketSubsystem::NewBook, once per match, HOLGameState::ResetMarketBook).
@@ -30,9 +30,6 @@ public:
 
 	/** The book after Intervals intervals back toward rest: the board's answer; the book unchanged (and an error logged) when the world has no script board. */
 	static HOLMarket::FBook Recover(const UWorld* World, const HOLMarket::FSettings& Settings, const HOLMarket::FBook& Book, int32 Intervals);
-
-	/** What reaches the receiver of a tribute of Sent at TaxPercent: the board's answer; Sent (and an error logged) when the world has no script board. */
-	static int32 Received(const UWorld* World, int32 Sent, int32 TaxPercent);
 
 	/**
 	 * One trade on a player's stock, the script's rule (HOLMarket::Apply of Script/Economy/HOLMarketRules.as, MIG-C++-FINAL) with the stock moved here as the
@@ -58,9 +55,6 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Market")
 	FHOLMarketBridgeBook RecoverNow(const FHOLMarketBridgeSettings& Settings, const FHOLMarketBridgeBook& Book, int32 Intervals);
-
-	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Market")
-	int32 ReceivedNow(int32 Sent, int32 TaxPercent);
 
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Market")
 	FHOLTributeBridgeResult SettleNow(bool bSenderHasMarket, int32 Sender, int32 Receiver, bool bReceiverInMatch, const FHOLResources& GiverStock, const FHOLResources& TakerStock, int32 Resource, int32 Sent, int32 TaxPercent);
@@ -90,11 +84,6 @@ protected:
 	UFUNCTION(BlueprintNativeEvent, Category = "HeroesOfLiberty|Market")
 	FHOLMarketBridgeBook FreshBook(const FHOLMarketBridgeSettings& Settings);
 	virtual FHOLMarketBridgeBook FreshBook_Implementation(const FHOLMarketBridgeSettings& Settings);
-
-	/** What reaches the receiver of Sent at TaxPercent. The script subclass overrides it (HOLTribute::Received of the script); the default is inert: Sent, an error logged. */
-	UFUNCTION(BlueprintNativeEvent, Category = "HeroesOfLiberty|Market")
-	int32 TributeReceived(int32 Sent, int32 TaxPercent);
-	virtual int32 TributeReceived_Implementation(int32 Sent, int32 TaxPercent);
 
 	/** The tribute applied to the two stocks. The script subclass overrides it (HOLTribute::Settle of the script); the default is inert: a refusal with Reason -1 and the stocks as given, an error logged. */
 	UFUNCTION(BlueprintNativeEvent, Category = "HeroesOfLiberty|Market")

@@ -27,6 +27,8 @@ struct FHOLScriptOrderRead
 	UPROPERTY(BlueprintReadWrite) int32 SourceIndex = -1;
 	UPROPERTY(BlueprintReadWrite) bool bQueue = false;
 	UPROPERTY(BlueprintReadWrite) bool bFromTask = false;
+	/** A move-queue order: its chain is drawn (D328; set when it was issued by a player-order emitter, Issue*Player). */
+	UPROPERTY(BlueprintReadWrite) bool bChain = false;
 	/** A building is named and still alive (TargetBuilding, Building, Deposit, RallySite). */
 	UPROPERTY(BlueprintReadWrite) bool bHasBuilding = false;
 	/** Production / construction: the type asked. */
@@ -73,6 +75,24 @@ public:
 	static void IssueDropOffMove(UHOLCommandSubsystem* Commands, const TArray<int32>& UnitIds, AHOLBuilding* Building, const FVector& Point, int32 PlayerIndex, bool bQueue = false);
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Commands")
 	static void IssueQueuedWork(UHOLCommandSubsystem* Commands, const TArray<int32>& UnitIds, int32 SourceIndex, AHOLBuilding* Building, const FVector& Location, int32 PlayerIndex);
+
+	// ---- Emitters, player's orders (lot P1a, D328): the FPlayerOrderScope is opened INSIDE the C++ function (no state leaks to the script), so the order draws its chain (bChain). The rule of refusal (IsAccepted) is script (HOLPlayerOrders.as), not here. ----
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Commands")
+	static void IssueMovePlayer(UHOLCommandSubsystem* Commands, const TArray<int32>& UnitIds, const FVector& Target, int32 PlayerIndex, bool bQueue, const FVector2D& FrontLine, bool bFrontWidth);
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Commands")
+	static void IssueAttackPlayer(UHOLCommandSubsystem* Commands, const TArray<int32>& UnitIds, int32 TargetUnitId, int32 PlayerIndex, bool bQueue);
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Commands")
+	static void IssueAttackMovePlayer(UHOLCommandSubsystem* Commands, const TArray<int32>& UnitIds, const FVector& Target, int32 PlayerIndex, bool bQueue);
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Commands")
+	static void IssueAttackBuildingPlayer(UHOLCommandSubsystem* Commands, const TArray<int32>& UnitIds, AHOLBuilding* Building, int32 PlayerIndex, bool bQueue);
+	/** bHold: Hold, else Stop. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Commands")
+	static void IssueStopPlayer(UHOLCommandSubsystem* Commands, const TArray<int32>& UnitIds, int32 PlayerIndex, bool bHold);
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Commands")
+	static void IssueToggleDeployPlayer(UHOLCommandSubsystem* Commands, const TArray<int32>& UnitIds, int32 PlayerIndex);
+	/** FHOLMatchConfig::MaxSlots (the number of player slots), for the refusal rule of the script. */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Commands")
+	static int32 GetMaxSlots();
 
 	// ---- Emitters (gather, build) ----
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Commands")

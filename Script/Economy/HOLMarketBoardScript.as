@@ -1,6 +1,6 @@
 // The server's market board (MIG-CPP-Market, D836 point 4), the script side of UHOLMarketSubsystem: the C++ part (the production subsystem) gives
-// the numbers of the exchange and the book (bridge structures, converted here to the script rule's own) and the amount of a tribute; the rules
-// are HOLMarketRules.as (HOLMarket::Recover) and HOLTributeRules.as (HOLTribute::Received), the script is the source. Low frequency only: the
+// the numbers of the exchange and the book (bridge structures, converted here to the script rule's own) and the settlement of a tribute; the rules
+// are HOLMarketRules.as (HOLMarket::Recover) and HOLTributeRules.as (HOLTribute::Settle, which applies HOLTribute::Received), the script is the source. Low frequency only: the
 // return of the book to rest and the tribute. Server and solo only. Tested by HeroesOfLiberty.Market.ServerBoard.
 class UHOLMarketBoardScript : UHOLMarketSubsystem
 {
@@ -57,12 +57,6 @@ class UHOLMarketBoardScript : UHOLMarketSubsystem
 		FHOLMarketBridgeBook Out;
 		Out.Prices = After.Prices;
 		return Out;
-	}
-
-	UFUNCTION(BlueprintOverride)
-	int TributeReceived(int Sent, int TaxPercent)
-	{
-		return HOLTribute::Received(Sent, TaxPercent);
 	}
 
 	// One tribute on the two stocks (D851 step 5 R1): HOLTribute::Settle of the script; the C++ caller applies the stocks it returns.

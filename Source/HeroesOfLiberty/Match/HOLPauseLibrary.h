@@ -9,7 +9,7 @@
 /**
  * The limited pause (P5, D513) for Blueprint and Angelscript (HOLPause:: in script): what every machine knows of it from
  * the game state's replicated copy (who paused, the timer, the pauses left), and whether a slot may pause or resume now
- * (FHOLPauseRules, as the server will decide). The requests go through AHOLPlayerController::RequestPause / RequestResume.
+ * (the script's HOLMatchFlow rule, as the server will decide). The requests go through AHOLPlayerController::RequestPause / RequestResume.
  */
 UCLASS()
 class HEROESOFLIBERTY_API UHOLPauseLibrary : public UBlueprintFunctionLibrary

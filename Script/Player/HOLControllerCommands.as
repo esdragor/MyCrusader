@@ -287,7 +287,7 @@ namespace HOLControllerCommands
 			// The C++ made the units here, on the server or in solo only (SpawnUnitsAround is false on a client or without the unit subsystem); the camera focus is Point.
 			if (!HOLControllerRead::SpawnUnitsAround(Controller, Plan.Ints[0], FName(Plan.Name), Plan.Ints[1], Plan.Real, Point))
 			{
-				Log(n"LogHOLMatch", "hol.Units.SpawnHere: on the server or in solo, once the match runs");
+				HOLScriptLog::LogWarning(n"LogHOLMatch", "hol.Units.SpawnHere: on the server or in solo, once the match runs");
 				return;
 			}
 			Log(n"LogHOLMatch", f"SpawnHere: {Plan.Ints[0]} {Plan.Name} of slot {Plan.Ints[1]} around ({Math::RoundToInt(Point.X)}, {Math::RoundToInt(Point.Y)})");
@@ -296,7 +296,7 @@ namespace HOLControllerCommands
 		AHOLRpcPlayer Rpc = Cast<AHOLRpcPlayer>(HOLRpcBridge::FindPlayerActor(Controller));
 		if (Rpc == nullptr)
 		{
-			Log(n"LogHOLMatch", f"RpcRoute: {Plan.Route} not sent: no script RPC actor / function");
+			HOLScriptLog::LogError(n"LogHOLMatch", f"RpcRoute: {Plan.Route} not sent: no script RPC actor / function");
 			return;
 		}
 		if (Plan.Route == "ServerCheatResources")
@@ -328,7 +328,7 @@ namespace HOLControllerCommands
 		else if (Plan.Route == "ServerCheatHoldPresence")
 			Rpc.ServerCheatHoldPresence(Plan.Ints[0], Plan.Ints[1] != 0, Plan.Ints[2] != 0, Plan.Ints[3] != 0, Plan.Ints[4]);
 		else
-			Log(n"LogHOLMatch", f"RpcRoute: {Plan.Route} not sent: no script RPC actor / function");
+			HOLScriptLog::LogError(n"LogHOLMatch", f"RpcRoute: {Plan.Route} not sent: no script RPC actor / function");
 	}
 
 	// The command as typed: refused arguments log their usage line, else every local controller sends the plan (GetLocalControllers of the C++).
@@ -338,7 +338,7 @@ namespace HOLControllerCommands
 		if (!Plan.bValid)
 		{
 			if (!Plan.Usage.IsEmpty())
-				Log(n"LogHOLMatch", Plan.Usage);
+				HOLScriptLog::LogWarning(n"LogHOLMatch", Plan.Usage);
 			return;
 		}
 		TArray<AHOLPlayerController> Controllers;
@@ -359,7 +359,7 @@ namespace HOLControllerCommands
 				// No camera: the C++ logged the same warning as without the unit subsystem.
 				if (!HOLControllerRead::CameraFocus(Controller, Point))
 				{
-					Log(n"LogHOLMatch", "hol.Units.SpawnHere: on the server or in solo, once the match runs");
+					HOLScriptLog::LogWarning(n"LogHOLMatch", "hol.Units.SpawnHere: on the server or in solo, once the match runs");
 					continue;
 				}
 			}

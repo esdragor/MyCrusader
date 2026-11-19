@@ -1,0 +1,43 @@
+# GALADRIEL-1119w : tests script en/ja des panneaux triche et scénario (NON COMPILE)
+
+Worktree `C:\Users\baudo\Documents\HeroesOfLiberty-Galadriel`, branche `galadriel-tab`. Branche prête, NON COMPILÉE, aucun build, aucun jeu lancé. merge main non fait.
+Impact joueur : aucun (outillage de test) ; il débloque la suppression de ~755 + ~498 lignes C++ de panneaux morts.
+
+## Défauts (en tête)
+- Clés : AUCUN écart. Les `.as` des deux panneaux utilisent exactement les NSLOCTEXT du C++ (espace `HOLCheatPanel` : CheatFood/Wood/Stone/Gold/All/Population, ToggleOpen/Folded, FastBuildOn/Off, UnitSpeed, GatherSpeed, SpeedLabel ; espace `HOLScenarioPanel` : Title, Preparing, Ready, Failed, Restart). Comparé : `HOLCheatPanel.cpp:67-80,357-370` / `HOLScenarioPanel.cpp:107-125,289` contre `HOLCheatPanelScript.as:12-36` / `HOLScenarioPanelScript.as:41-49`.
+- Différence de forme (pas de clé) : le panneau script de triche compose le libellé de vitesse en FString (`SpeedLabelText`, `.Replace("{0}"...)` puis `FText::FromString`) au lieu de `FText::Format` : le widget affiché perd sa clé (le texte reste correct car chaque morceau est traduit par `ToString()` avant composition). Le test script compose pareil, donc il prouve les trois morceaux (motif, nom) mais pas le FText posé sur le widget. Acceptable, à savoir.
+- Le panneau script de scénario passe `FText::FromString(Name)` en argument du titre (le C++ : `AsCultureInvariant`) : équivalent.
+- Risque d'exécution à vérifier au premier compile : `NSLOCTEXT` en script doit garder espace + clé dans le FText (sinon `GetLocalizedTextIn` rend "" et TOUS les tests en/ja sont rouges ; ce serait alors une vraie découverte, pas un défaut du test). Le même doute est écrit dans `HOLScenarioPanelScript_Test.as:1-2`.
+
+## Fait
+1. Liaison C++ (commit `9aec9ec`) : `UHOLScreenTestLibrary::GetLocalizedTextIn(const FString& Culture, const FText& Shown)` dans `Source\HeroesOfLibertyUI\Tests\HOLScreenTestLibrary.h/.cpp` (~50 l. de corps sous `#if WITH_DEV_AUTOMATION_TESTS`, 5 includes). Même mécanisme que `HOLScenarioPanelTests.cpp:51-66,101-103` : `FTextLocalizationResource::LoadFromFile(Content/Localization/Game/<culture>/Game.locres)`, entrée `FTextId(FTextInspector::GetNamespace, GetKey)` du FText lui-même ; un texte formaté (`FText::Format` d'un motif à clé) a son motif traduit et ses arguments gardés (`GetHistoricFormatData`). Rend "" si pas de clé, fichier absent ou entrée absente. Choix : prend le FText du panneau (pas Namespace + Key en chaînes) pour que le test échoue si le panneau script perd sa clé. Appel script : `HOLScreenTest::GetLocalizedTextIn("en", texte)` (namespace `HOLScreenTest`, comme `HOLNewGameScreen_Test.as:16`).
+2. Tests script (commit `ad611aa`, 2 fichiers neufs dans `Script\UI\`) :
+   - `HOLCheatPanelLocalizedScript_Test.as` : `Test_CheatPanelButtonsAreTranslatedInEnglish` (7 libellés), `Test_CheatPanelButtonsAreTranslatedInJapanese` (7), `Test_CheatPanelSpeedLabelsAreTranslated` (2 vitesses x en/ja), `Test_CheatPanelWoodStoneGoldLabelsInFrench` (les 3 boutons français qui manquaient, plan section 3(b)). Valeurs = celles de `HOLScenarioPanelTests.cpp:214-226`.
+   - `HOLScenarioPanelLocalizedScript_Test.as` : `Test_ScenarioPanelTitleAndStatesInEnglish`, `...InJapanese` (titre, préparation, prêt), `Test_ScenarioPanelTranslationsAreNotTheFrenchSource`. Valeurs = `HOLScenarioPanelTests.cpp:97-98`.
+   - Le C++ ne vérifie PAS le français de la table `locres` (il lit le widget) ni Failed / Restart en en/ja : non ajoutés.
+   - Limite : `...AreNotTheFrenchSource` seul passerait avec une chaîne vide ; le garde-fou est les tests d'égalité en/ja du même fichier. « Population +165 » en = source française (non testé « différent », comme le C++).
+
+## Rouge à voir (une valeur par fichier, restaurer ensuite)
+- Triche : `Test_CheatPanelButtonsAreTranslatedInEnglish`, remplacer `"+1000 Wood"` par `"+1000 Woodx"` (ligne « en: CheatWood »). Rouge aussi attendu pour tout le fichier si le FText script n'a pas de clé.
+- Scénario : `Test_ScenarioPanelTitleAndStatesInEnglish`, remplacer `"preparing…"` par `"preparing..."`.
+- Bonus liaison : mettre `"xx"` comme culture dans un appel doit rendre "" (log `GetLocalizedTextIn: ... is not readable`).
+
+## Commande pour la session principale (non lancée)
+Un build (C++ de la liaison + les K1a de l'agent précédent déjà sur la branche), puis le run des tests script de ces deux fichiers + `quick_check -Parts` des tests script UI. Tant que K1a n'est pas compilé, les deux fichiers `HOLCheatPanelScript*.as` / `HOLScenarioPanelScript*.as` portent l'avertissement « NOT COMPILED » (liaisons d'écran en attente : `HOLCheatSettings::*`, `Screen.GetScenarioDisplay`, `MeasureHeadingWidth`, `ExecConsole`, `CloseScenarioPanel`, `SetCheatsReport` du recipe `GALADRIEL-1119m.md`) : MAIS le plan dit les panneaux « dessinés par le script depuis ce matin », donc ces liaisons existent déjà dans main ; à confirmer au build (les en-têtes sont peut-être périmés).
+
+## Liste des suppressions du lot suivant (APRÈS rouge vu puis vert)
+Chemins relatifs à `Source\HeroesOfLibertyUI\` (sources du plan RETRAITS-PLAN-1119 §2, §3 ; `HOLScenarioPanelTests.cpp` ne contient que ces deux tests, lu en entier : lignes 1-288 = includes, helpers `HOLScenarioPanelTestsPrivate`, les deux tests).
+1. Supprimer (git rm) : `HUD\HOLScenarioPanel.cpp` (314 l.), `HUD\HOLScenarioPanel.h` (87 l.), `HUD\HOLCheatPanel.cpp` (483 l.), `HUD\HOLCheatPanel.h` (149 l.), `Tests\HOLScenarioPanelTests.cpp` (288 l., entier : plus aucun test dedans). Total 1321 l. (plan : ~755 + ~498 = ~1253 + includes/helpers).
+2. `#include "HUD/HOLCheatPanel.h"` à retirer (aucun usage du type derrière) : `Dev\HOLUIHUD.cpp:7`, `Dev\HOLUIMouse.cpp:16`, `HUD\HOLGameHUD.cpp:12`, `HUD\HOLScriptScreen.cpp:13`. (`Tests\HOLScenarioPanelTests.cpp:9-10` partent avec le fichier.)
+3. Commentaires facultatifs : `HUD\HOLGameScreen.h:247` (« UHOLCheatPanel »), `HUD\HOLScriptScreen.cpp:516` (ScenarioPanel), `HeroesOfLiberty\Tests\HOLScenarioNoteTests.cpp:9`, `Tests\HOLNewGameSitesBoxTests.cpp:37`. NE PAS toucher `HOLScriptScreen.cpp:650-651,696-697` (le script, à garder), ni `HUD\HOLCheatSettingsLibrary.*`, ni `HOLHUDLayoutRules` / `HOLHUDLayoutReadLibrary` (utilisés par le script).
+4. `Tools\Localization\fill_po.py:715-732` : ne rien changer (clés identiques, le script les utilise).
+5. Vérifier au build suivant que `HOLUIHUD.cpp`, `HOLUIMouse.cpp`, `HOLGameHUD.cpp` n'utilisaient rien venant transitivement de `HOLCheatPanel.h` (il inclut `CommonUserWidget.h`) : ajouter l'include direct manquant s'il y en a.
+6. Mettre à jour les commentaires périmés de tests script : `Script\UI\HOLScenarioPanelScript_Test.as:8-10` (« NOT PORTED » devient « -> HOLScenarioPanelLocalizedScript_Test.as ») et l'en-tête des deux `*Script_Test.as` (« NOT COMPILED » une fois le vert vu).
+7. Docs : `Placeholders.txt` : relu pas (aucun provisoire ajouté ou retiré ici) ; `EtapeDefini.md` / `Auto_Journey_File.md` NON touchés sur consigne.
+Commande de contrôle après suppression : build puis `quick_check` ; le total ne doit pas baisser côté script (+10 tests script) et baisse de 2 côté C++ (`UI.ScenarioPanel.LocalizedOneLine`, `UI.CheatPanel.Localized`), compensé par les 10 tests script ajoutés (4 + 3 + 3 selon le découpage ci-dessus : cheat 4, scenario 3 = 7 fonctions de test script).
+
+## Champs
+BUILDS_DEMANDES: 1 (à lancer par la session principale, C++ de la liaison) ; TESTS_CPP_RETIRES: 0 ; TESTS_SCRIPT_AJOUTES: 7 (Test_CheatPanelButtonsAreTranslatedInEnglish, Test_CheatPanelButtonsAreTranslatedInJapanese, Test_CheatPanelSpeedLabelsAreTranslated, Test_CheatPanelWoodStoneGoldLabelsInFrench, Test_ScenarioPanelTitleAndStatesInEnglish, Test_ScenarioPanelTitleAndStatesInJapanese, Test_ScenarioPanelTranslationsAreNotTheFrenchSource) ; LIGNES_CPP_SUPPRIMEES: 0 ; LIGNES_MIGREES_PAR_LOT: ~110 l. de script de test ; TYPES_A_EXPOSER: GetLocalizedTextIn (UHOLScreenTestLibrary) ; TEST_ROUGE: NON VU (non compilé) ; TESTS_TAUTOLOGIQUES: 0 ; PROCESSUS_DETACHES: 0 (aucun processus lancé).
+
+## NON VÉRIFIÉ
+Rien n'est compilé : syntaxe C++ de la liaison (`FHistoricTextFormatData` via `Internationalization/Text.h`, lambda `Translate`, `LogHOLScreenTest` utilisé dans le même bloc `#if`), syntaxe Angelscript (`const FText&` en paramètre de fonction globale, `FString.Replace`, `Cultures[Index]`), conservation de la clé par `NSLOCTEXT` script, nombre exact de tests (« 7 fonctions » ; le compteur quick_check compte peut-être autrement). Les en-têtes « NOT COMPILED » des `.as` des panneaux (liaisons d'écran) n'ont pas été relus contre main.
