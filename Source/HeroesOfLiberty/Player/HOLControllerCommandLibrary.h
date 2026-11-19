@@ -39,6 +39,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|ControllerCommand")
 	static bool EnsureOwnSelection(AHOLPlayerController* Controller, FName FallbackType);
 
+	/** AHOLPlayerController::IsSpectator() (a pure spectator: its player state IsOnlyASpectator). The C++ Request<X> of the hero, duel, diplomacy, signal and specialization commands returned silently for it; the script console commands (C2) ask this before sending (SAURON-1119w). False without a controller. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|ControllerCommand")
+	static bool IsSpectatorController(AHOLPlayerController* Controller);
+
 	// ---- The controller's own Request<X> (not UFUNCTION in the controller) ----
 
 	/** Controller->RequestCastRage(Controller->GetOwnSelectedUnits()) (hol.Hero.Rage). False without a controller. */

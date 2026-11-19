@@ -83,6 +83,11 @@ bool UHOLControllerCommandLibrary::EnsureOwnSelection(AHOLPlayerController* Cont
 	return Controller->GetOwnSelection() != nullptr;
 }
 
+bool UHOLControllerCommandLibrary::IsSpectatorController(AHOLPlayerController* Controller)
+{
+	return Controller && Controller->IsSpectator();
+}
+
 bool UHOLControllerCommandLibrary::RequestCastRageOfSelection(AHOLPlayerController* Controller)
 {
 	if (!Controller)
