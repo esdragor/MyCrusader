@@ -1,8 +1,9 @@
 // MIG-CPP, step D.1 (GALADRIEL-1119ca): the script board's answers to the 6 small rules the C++ bridge now asks first (IsAloneInGroup, IsRepeatPress,
 // GetCommandPriority, IsSelectedByCategory, Blocks, GetCycleRank). NOT COMPILED when written.
-// There is no world in a unit test, so the C++ Ask* (UHOLCommandGridBoard::FindAny) cannot be reached from here: the tests make a board of the script
-// class (UHOLCommandGridBoardScript, Script/Player/HOLCommandGridBoard.as) and call its Answer functions, the very ones the C++ Ask* call. Each test
-// gives the values in clear AND compares with the C++ twin (HOLCommandGridRead = the read library on the HOLCommandGrid::*Native bodies).
+// There is no world in a unit test, so the C++ Ask* (UHOLCommandGridBoard::FindAny) cannot be reached from here, and a script cannot call the board's Answer
+// overrides either (BlueprintNativeEvent, not ScriptCallable: compile error seen 2026-11-19). The tests call the rule each Answer forwards to in ONE line
+// (Script/Player/HOLCommandGridBoard.as, family 4), with the values in clear AND the C++ twin (HOLCommandGridRead = the read library on the *Native bodies).
+// The crossing C++ Ask* -> board itself is proved by the game checks (quick_check build / production / selection), not here.
 // To SEE RED (rouge a voir): in Script/Player/HOLCommandGridGroups.as, IsAloneInGroup, change n"MainCentre" to n"House": Test_CGBIsAloneInGroup,
 // Test_CGBGetCommandPriority (hard values) and the Test_CGG* agreement sweeps (script vs C++) go red. Or Keys.as Blocks: drop `QueueFull`: Test_CGBBlocks
 // and the Test_CGKYAgreementFeedback sweep go red. Or Groups.as GetCycleRank: `BuildGridSlot + 1` to `BuildGridSlot`: Test_CGBGetCycleRank and Test_CGGHardValues.
@@ -31,9 +32,9 @@ void Test_CGBIsAloneInGroup(FUnitTest& T)
 {
 	UHOLCommandGridBoardScript Board = CGBMakeBoard();
 	T.AssertTrue(Board != nullptr, "the script board is born");
-	bool bCentre = Board.IsAloneInGroupAnswer(n"MainCentre");
-	bool bHouse = Board.IsAloneInGroupAnswer(n"House");
-	bool bNone = Board.IsAloneInGroupAnswer(NAME_None);
+	bool bCentre = HOLCommandGridGroups::IsAloneInGroup(n"MainCentre");
+	bool bHouse = HOLCommandGridGroups::IsAloneInGroup(n"House");
+	bool bNone = HOLCommandGridGroups::IsAloneInGroup(NAME_None);
 	T.AssertTrue(bCentre, "the main centre is alone in its group");
 	T.AssertTrue(!bHouse, "a house joins the others");
 	T.AssertTrue(!bNone, "no name: not alone");
@@ -43,7 +44,6 @@ void Test_CGBIsAloneInGroup(FUnitTest& T)
 
 void Test_CGBIsRepeatPress(FUnitTest& T)
 {
-	UHOLCommandGridBoardScript Board = CGBMakeBoard();
 	TArray<int> Selected;
 	Selected.Add(7);
 	Selected.Add(3);
@@ -60,11 +60,11 @@ void Test_CGBIsRepeatPress(FUnitTest& T)
 	Shorter.Add(7);
 	Shorter.Add(3);
 	TArray<int> Empty;
-	bool bSame = Board.IsRepeatPressAnswer(Selected, SameAnyOrder, true);
-	bool bOtherKey = Board.IsRepeatPressAnswer(Selected, SameAnyOrder, false);
-	bool bOtherBuilding = Board.IsRepeatPressAnswer(Selected, OtherOne, true);
-	bool bShorter = Board.IsRepeatPressAnswer(Selected, Shorter, true);
-	bool bEmpty = Board.IsRepeatPressAnswer(Empty, Empty, true);
+	bool bSame = HOLCommandGridGroups::IsRepeatPress(Selected, SameAnyOrder, true);
+	bool bOtherKey = HOLCommandGridGroups::IsRepeatPress(Selected, SameAnyOrder, false);
+	bool bOtherBuilding = HOLCommandGridGroups::IsRepeatPress(Selected, OtherOne, true);
+	bool bShorter = HOLCommandGridGroups::IsRepeatPress(Selected, Shorter, true);
+	bool bEmpty = HOLCommandGridGroups::IsRepeatPress(Empty, Empty, true);
 	T.AssertTrue(bSame, "same key, same buildings in another order: a repeat press");
 	T.AssertTrue(!bOtherKey, "another key: not a repeat");
 	T.AssertTrue(!bOtherBuilding, "one building replaced: not a repeat");
@@ -76,13 +76,12 @@ void Test_CGBIsRepeatPress(FUnitTest& T)
 
 void Test_CGBGetCommandPriority(FUnitTest& T)
 {
-	UHOLCommandGridBoardScript Board = CGBMakeBoard();
 	TArray<FHOLGroupMemberView> Members;
 	Members.Add(CGBMember(n"Mill", false));
 	Members.Add(CGBMember(n"MainCentre", true));
 	Members.Add(CGBMember(n"Barracks", false));
 	Members.Add(CGBMember(n"MainCentre", true));
-	TArray<int> Order = Board.GetCommandPriorityAnswer(Members);
+	TArray<int> Order = HOLCommandGridGroups::GetCommandPriority(Members);
 	T.AssertEquals(4, Order.Num(), "every building has a place");
 	if (Order.Num() == 4)
 	{
@@ -101,16 +100,15 @@ void Test_CGBGetCommandPriority(FUnitTest& T)
 		}
 	}
 	TArray<FHOLGroupMemberView> NoMember;
-	TArray<int> OfNone = Board.GetCommandPriorityAnswer(NoMember);
+	TArray<int> OfNone = HOLCommandGridGroups::GetCommandPriority(NoMember);
 	T.AssertEquals(0, OfNone.Num(), "no building: no order");
 }
 
 void Test_CGBIsSelectedByCategory(FUnitTest& T)
 {
-	UHOLCommandGridBoardScript Board = CGBMakeBoard();
-	bool bSame = Board.IsSelectedByCategoryAnswer(EHOLBuildingCategory::Economic, EHOLBuildingCategory::Economic);
-	bool bOther = Board.IsSelectedByCategoryAnswer(EHOLBuildingCategory::Military, EHOLBuildingCategory::Economic);
-	bool bOtherWay = Board.IsSelectedByCategoryAnswer(EHOLBuildingCategory::Economic, EHOLBuildingCategory::Military);
+	bool bSame = HOLCommandGridGroups::IsCategorySelectedByCategory(EHOLBuildingCategory::Economic, EHOLBuildingCategory::Economic);
+	bool bOther = HOLCommandGridGroups::IsCategorySelectedByCategory(EHOLBuildingCategory::Military, EHOLBuildingCategory::Economic);
+	bool bOtherWay = HOLCommandGridGroups::IsCategorySelectedByCategory(EHOLBuildingCategory::Economic, EHOLBuildingCategory::Military);
 	T.AssertTrue(bSame, "an Economic building is selected by the Economic key");
 	T.AssertTrue(!bOther, "a Military building is not selected by the Economic key");
 	T.AssertTrue(!bOtherWay, "an Economic building is not selected by the Military key");
@@ -120,13 +118,12 @@ void Test_CGBIsSelectedByCategory(FUnitTest& T)
 
 void Test_CGBBlocks(FUnitTest& T)
 {
-	UHOLCommandGridBoardScript Board = CGBMakeBoard();
-	bool bNoResource = Board.BlocksAnswer(CGBFeedback(EHOLCommandFeedbackKind::NotEnoughResources));
-	bool bQueueFull = Board.BlocksAnswer(CGBFeedback(EHOLCommandFeedbackKind::QueueFull));
-	bool bPlacement = Board.BlocksAnswer(CGBFeedback(EHOLCommandFeedbackKind::PlacementRefused));
-	bool bResearch = Board.BlocksAnswer(CGBFeedback(EHOLCommandFeedbackKind::ResearchRefused));
-	bool bPopulation = Board.BlocksAnswer(CGBFeedback(EHOLCommandFeedbackKind::PopulationFull));
-	bool bNone = Board.BlocksAnswer(CGBFeedback(EHOLCommandFeedbackKind::None));
+	bool bNoResource = HOLCommandGridKeys::Blocks(CGBFeedback(EHOLCommandFeedbackKind::NotEnoughResources));
+	bool bQueueFull = HOLCommandGridKeys::Blocks(CGBFeedback(EHOLCommandFeedbackKind::QueueFull));
+	bool bPlacement = HOLCommandGridKeys::Blocks(CGBFeedback(EHOLCommandFeedbackKind::PlacementRefused));
+	bool bResearch = HOLCommandGridKeys::Blocks(CGBFeedback(EHOLCommandFeedbackKind::ResearchRefused));
+	bool bPopulation = HOLCommandGridKeys::Blocks(CGBFeedback(EHOLCommandFeedbackKind::PopulationFull));
+	bool bNone = HOLCommandGridKeys::Blocks(CGBFeedback(EHOLCommandFeedbackKind::None));
 	T.AssertTrue(bNoResource, "not enough resources stops the command");
 	T.AssertTrue(bQueueFull, "a full queue stops the command");
 	T.AssertTrue(bPlacement, "a refused placement stops the command");
@@ -139,10 +136,9 @@ void Test_CGBBlocks(FUnitTest& T)
 
 void Test_CGBGetCycleRank(FUnitTest& T)
 {
-	UHOLCommandGridBoardScript Board = CGBMakeBoard();
-	int Slot3 = Board.GetCycleRankAnswer(true, 3);
-	int Slot0 = Board.GetCycleRankAnswer(true, 0);
-	int NotBuildable = Board.GetCycleRankAnswer(false, 3);
+	int Slot3 = HOLCommandGridGroups::GetCycleRank(true, 3);
+	int Slot0 = HOLCommandGridGroups::GetCycleRank(true, 0);
+	int NotBuildable = HOLCommandGridGroups::GetCycleRank(false, 3);
 	T.AssertEquals(4, Slot3, "a buildable type at slot 3: rank 4");
 	T.AssertEquals(1, Slot0, "a buildable type at slot 0: rank 1 (after the centre, rank 0)");
 	T.AssertEquals(0, NotBuildable, "a type that cannot be built (the main centre): rank 0");

@@ -53,7 +53,8 @@ void Test_ControllerCommandsC10aArguments(FUnitTest& T)
 	T.AssertEquals(0.75, Click.Y1, "Click Y");
 	// Box / ClickGround / OrderGround take their flag at a fixed place.
 	T.AssertTrue(HOLControllerCommandsC10a::PlanOf("hol.Select.Box", C10aArgs("0", "0", "1", "1", "add")).bAdd, "Box add is the fifth word");
-	T.AssertFalse(HOLControllerCommandsC10a::PlanOf("hol.Select.Box", C10aArgs("0", "0", "1", "1", "Add")).bAdd, "Box add is case sensitive");
+	// The C++ compared `Args[4] == TEXT("add")` on an FString, whose == is case INSENSITIVE in Unreal (the script == is the same operator): Add counted there too.
+	T.AssertTrue(HOLControllerCommandsC10a::PlanOf("hol.Select.Box", C10aArgs("0", "0", "1", "1", "Add")).bAdd, "Box `add` is case insensitive as in the C++ (FString ==)");
 	T.AssertTrue(HOLControllerCommandsC10a::PlanOf("hol.Select.ClickGround", C10aArgs("100", "200", "add")).bAdd, "ClickGround add is the third word");
 	T.AssertTrue(HOLControllerCommandsC10a::PlanOf("hol.Select.OrderGround", C10aArgs("100", "200", "shift")).bShift, "OrderGround shift is the third word");
 	// OrderLineGround flags only count after the four numbers, any case.
@@ -75,7 +76,7 @@ void Test_ControllerCommandsC10aArguments(FUnitTest& T)
 	T.AssertTrue(Near.bHasPoint && Near.bEnemy, "OrderNear Dx Dy enemy");
 	T.AssertEquals(-300.0, Near.X1, "OrderNear Dx");
 	T.AssertFalse(HOLControllerCommandsC10a::PlanOf("hol.Select.OrderNear", C10aArgs("5")).bHasPoint, "OrderNear with one number has no point");
-	T.AssertFalse(HOLControllerCommandsC10a::PlanOf("hol.Select.OrderNear", C10aArgs("5", "6", "Enemy")).bEnemy, "OrderNear enemy is case sensitive");
+	T.AssertTrue(HOLControllerCommandsC10a::PlanOf("hol.Select.OrderNear", C10aArgs("5", "6", "Enemy")).bEnemy, "OrderNear `enemy` is case insensitive as in the C++ (FString ==)");
 }
 
 void Test_ControllerCommandsC10aTexts(FUnitTest& T)

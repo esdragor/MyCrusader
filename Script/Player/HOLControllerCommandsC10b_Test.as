@@ -54,7 +54,8 @@ void Test_ControllerCommandsC10bArguments(FUnitTest& T)
 	T.AssertTrue(Source.bShift, "OrderSource shift");
 	T.AssertEquals(-300.5, Source.X1, "OrderSource X");
 	T.AssertEquals(1200.0, Source.Y1, "OrderSource Y");
-	T.AssertFalse(HOLControllerCommandsC10b::PlanOf("hol.Select.OrderSource", C10bArgs("1", "2", "Shift")).bShift, "OrderSource shift is case sensitive");
+	// The C++ compared `Args[2] == TEXT("shift")` on an FString, whose == is case INSENSITIVE in Unreal (the script == is the same operator): Shift counted there too.
+	T.AssertTrue(HOLControllerCommandsC10b::PlanOf("hol.Select.OrderSource", C10bArgs("1", "2", "Shift")).bShift, "OrderSource `shift` is case insensitive as in the C++ (FString ==)");
 	T.AssertFalse(HOLControllerCommandsC10b::PlanOf("hol.Select.ClickSource", C10bArgs("1", "2", "shift")).bShift, "ClickSource has no shift");
 
 	// Heal / Attack: an identifier, or slot=<S>; only Attack queues, and any case.
@@ -72,7 +73,7 @@ void Test_ControllerCommandsC10bArguments(FUnitTest& T)
 	T.AssertTrue(All.bValid && All.bAll, "OrderNear all");
 	T.AssertEquals(-500.0, All.X1, "OrderNear Dx");
 	T.AssertEquals(250.0, All.Y1, "OrderNear Dy");
-	T.AssertFalse(HOLControllerCommandsC10b::PlanOf("hol.Units.Order", C10bArgs("1", "2", "All")).bAll, "Order all is case sensitive");
+	T.AssertTrue(HOLControllerCommandsC10b::PlanOf("hol.Units.Order", C10bArgs("1", "2", "All")).bAll, "Order `all` is case insensitive as in the C++ (FString ==)");
 
 	// Placement: type then two numbers; enemy is the fourth word of PlaceNear.
 	FHOLConsolePlanC10b Near = HOLControllerCommandsC10b::PlanOf("hol.Build.PlaceNear", C10bArgs("House", "800", "-400", "enemy"));
