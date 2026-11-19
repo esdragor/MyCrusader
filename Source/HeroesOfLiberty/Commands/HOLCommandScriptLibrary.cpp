@@ -6,6 +6,7 @@
 #include "Commands/HOLCommandSubsystem.h"
 #include "Engine/Engine.h"
 #include "Engine/World.h"
+#include "Match/HOLMatchConfig.h"
 
 namespace
 {
@@ -132,6 +133,65 @@ void UHOLCommandScriptLibrary::IssueQueuedWork(UHOLCommandSubsystem* Commands, c
 	{
 		Commands->IssueQueuedWorkOrder(ToUnitIds(UnitIds), SourceIndex, Building, Location, PlayerIndex);
 	}
+}
+
+void UHOLCommandScriptLibrary::IssueMovePlayer(UHOLCommandSubsystem* Commands, const TArray<int32>& UnitIds, const FVector& Target, const int32 PlayerIndex, const bool bQueue, const FVector2D& FrontLine, const bool bFrontWidth)
+{
+	if (Commands)
+	{
+		const UHOLCommandSubsystem::FPlayerOrderScope PlayerOrder(*Commands);
+		Commands->IssueMoveOrder(ToUnitIds(UnitIds), Target, PlayerIndex, /*bFromTask*/ false, FrontLine, bFrontWidth, bQueue);
+	}
+}
+
+void UHOLCommandScriptLibrary::IssueAttackPlayer(UHOLCommandSubsystem* Commands, const TArray<int32>& UnitIds, const int32 TargetUnitId, const int32 PlayerIndex, const bool bQueue)
+{
+	if (Commands)
+	{
+		const UHOLCommandSubsystem::FPlayerOrderScope PlayerOrder(*Commands);
+		Commands->IssueCombatOrder(ToUnitIds(UnitIds), EHOLOrderKind::Attack, static_cast<uint32>(TargetUnitId), PlayerIndex, bQueue);
+	}
+}
+
+void UHOLCommandScriptLibrary::IssueAttackMovePlayer(UHOLCommandSubsystem* Commands, const TArray<int32>& UnitIds, const FVector& Target, const int32 PlayerIndex, const bool bQueue)
+{
+	if (Commands)
+	{
+		const UHOLCommandSubsystem::FPlayerOrderScope PlayerOrder(*Commands);
+		Commands->IssueAttackMoveOrder(ToUnitIds(UnitIds), Target, PlayerIndex, bQueue);
+	}
+}
+
+void UHOLCommandScriptLibrary::IssueAttackBuildingPlayer(UHOLCommandSubsystem* Commands, const TArray<int32>& UnitIds, AHOLBuilding* Building, const int32 PlayerIndex, const bool bQueue)
+{
+	if (Commands)
+	{
+		const UHOLCommandSubsystem::FPlayerOrderScope PlayerOrder(*Commands);
+		Commands->IssueAttackBuildingOrder(ToUnitIds(UnitIds), Building, PlayerIndex, bQueue);
+	}
+}
+
+void UHOLCommandScriptLibrary::IssueStopPlayer(UHOLCommandSubsystem* Commands, const TArray<int32>& UnitIds, const int32 PlayerIndex, const bool bHold)
+{
+	if (Commands)
+	{
+		const UHOLCommandSubsystem::FPlayerOrderScope PlayerOrder(*Commands);
+		Commands->IssueCombatOrder(ToUnitIds(UnitIds), bHold ? EHOLOrderKind::Hold : EHOLOrderKind::Stop, 0, PlayerIndex);
+	}
+}
+
+void UHOLCommandScriptLibrary::IssueToggleDeployPlayer(UHOLCommandSubsystem* Commands, const TArray<int32>& UnitIds, const int32 PlayerIndex)
+{
+	if (Commands)
+	{
+		const UHOLCommandSubsystem::FPlayerOrderScope PlayerOrder(*Commands);
+		Commands->IssueCombatOrder(ToUnitIds(UnitIds), EHOLOrderKind::ToggleDeploy, 0, PlayerIndex);
+	}
+}
+
+int32 UHOLCommandScriptLibrary::GetMaxSlots()
+{
+	return FHOLMatchConfig::MaxSlots;
 }
 
 void UHOLCommandScriptLibrary::IssueGather(UHOLCommandSubsystem* Commands, const TArray<int32>& UnitIds, const int32 SourceIndex, const int32 PlayerIndex, const bool bQueue)
@@ -278,6 +338,7 @@ TArray<FHOLScriptOrderRead> UHOLCommandScriptLibrary::ConsumeMoves(UHOLCommandSu
 		Read.SourceIndex = Order.SourceIndex;
 		Read.bQueue = Order.bQueue;
 		Read.bFromTask = Order.bFromTask;
+		Read.bChain = Order.bChain;
 		Read.bHasBuilding = Order.TargetBuilding.IsValid();
 	}
 	return Out;

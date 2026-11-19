@@ -14,7 +14,6 @@
 #include "Match/HOLVictoryRules.h"
 #include "Match/HOLVolcanoView.h"
 #include "Match/HOLSiteCount.h"
-#include "Net/HOLPauseRules.h"
 #include "Simulation/HOLHeroSheet.h"
 #include "HOLGameState.generated.h"
 
@@ -717,7 +716,7 @@ private:
 
 public:
 	/**
-	 * P5 (D513), every machine: the match is paused (FHOLPauseRules): no simulation step and no order, as while waiting
+	 * P5 (D513), every machine: the match is paused (the rule: HOLMatchFlow in script): no simulation step and no order, as while waiting
 	 * for the players (UHOLSimulationSubsystem, UHOLCommandSubsystem::IsRefused read it).
 	 */
 	bool IsMatchPaused() const { return PausedBySlot != INDEX_NONE; }
@@ -733,6 +732,9 @@ public:
 	double GetPauseTimerLeft(double Now) const;
 	/** Solo pauses freely (no limit, no timer). */
 	bool IsPauseFree() const { return GetNetMode() == NM_Standalone; }
+	/** D513: the pauses of a match by default, and the timer after which any player may resume (the rule itself is HOLMatchFlow in script). */
+	static constexpr int32 DefaultPausesPerMatch = 3;
+	static constexpr double PauseTimerSeconds = 60.;
 
 	/**
 	 * P5, server only, by the controller's ServerRequestPause / ServerRequestResume: the rule decides (a player still in
@@ -771,7 +773,7 @@ private:
 
 	/** P5 (D513): shared by every player of the match; set from hol.Match.PausesPerMatch at InitVictory. */
 	UPROPERTY(ReplicatedUsing = OnRep_Pause)
-	int32 PausesLeft = FHOLPauseRules::DefaultPausesPerMatch;
+	int32 PausesLeft = DefaultPausesPerMatch;
 
 	/** INDEX_NONE while the match runs. */
 	UPROPERTY(ReplicatedUsing = OnRep_Pause)

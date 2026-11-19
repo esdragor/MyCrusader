@@ -1312,3 +1312,58 @@ void Test_Construction_Tables(FUnitTest& T)
 		}
 	}
 }
+
+
+// K1a (MIG-CPP step 5, GALADRIEL-1119v): the order of the gates of UHOLConstructionSubsystem::Place and ::Cancel, case by case, on the script board
+// (Script/Buildings/HOLConstructionBoard.as, namespace HOLConstructionBoard). The board calls the rules already exposed (IsAgeOpen, TryPay, CanCancel,
+// GetCancelRefund); only the ORDER and the verdict are new. Place gates, in the C++ order (Place 426-462): buildable, faction, age, placement, payment.
+// RED until HOLConstructionBoard.as exists. To SEE the red: in HOLConstructionBoard.as, swap the faction and age gates of PlaceVerdict (the double refusal
+// case then gives AgeNotReached) or turn the payment test of TryPay into a strict one (50 wood for 50 then gives NotEnoughResources).
+int ConPlace(bool bBuildable, bool bFaction, int Age, int Tier, int Refusal, FHOLResources Stock, FHOLResources Cost)
+{
+	return int(HOLConstructionBoard::PlaceVerdict(bBuildable, bFaction, Age, Tier, Refusal, Stock, Cost));
+}
+
+void Test_Construction_PlaceVerdict(FUnitTest& T)
+{
+	FHOLResources Cost = ConRes(0, 50, 0, 0);
+	FHOLResources Enough = ConRes(0, 50, 0, 0);
+	int Ok = int(EHOLPlaceVerdict::Ok);
+
+	T.AssertEquals(Ok, ConPlace(true, true, 1, 1, 0, Enough, Cost), "all gates open, exactly the cost in stock: placed (50 for 50)");
+	T.AssertEquals(Ok, ConPlace(true, true, 2, 2, 0, ConRes(0, 0, 0, 0), ConRes(0, 0, 0, 0)), "a free building with an empty stock: placed, age = tier");
+	T.AssertEquals(int(EHOLPlaceVerdict::NotEnoughResources), ConPlace(true, true, 1, 1, 0, ConRes(0, 49, 0, 0), Cost), "49 wood for 50: not enough");
+	T.AssertEquals(int(EHOLPlaceVerdict::NotEnoughResources), ConPlace(true, true, 1, 1, 0, ConRes(0, 50, 0, 0), ConRes(5, 50, 0, 0)), "wood enough but food short: not enough");
+	T.AssertEquals(int(EHOLPlaceVerdict::AgeNotReached), ConPlace(true, true, 3, 2, 0, Enough, Cost), "age 3 with tier 2: age not reached");
+
+	// The order of the gates: each case fails the gate named AND every gate after it.
+	T.AssertEquals(int(EHOLPlaceVerdict::NotBuildable), ConPlace(false, false, 3, 1, 3, ConRes(0, 0, 0, 0), Cost), "not buildable first, whatever the rest");
+	T.AssertEquals(int(EHOLPlaceVerdict::NotOfFaction), ConPlace(true, false, 3, 1, 3, ConRes(0, 0, 0, 0), Cost), "faction before age: both shut gives the faction");
+	T.AssertEquals(int(EHOLPlaceVerdict::AgeNotReached), ConPlace(true, true, 3, 1, 3, ConRes(0, 0, 0, 0), Cost), "age before the placement refusal");
+	T.AssertEquals(int(EHOLPlaceVerdict::PlacementRefused), ConPlace(true, true, 1, 1, 3, ConRes(0, 0, 0, 0), Cost), "placement refusal before the payment: refused AND poor gives the refusal");
+	T.AssertEquals(int(EHOLPlaceVerdict::PlacementRefused), ConPlace(true, true, 1, 1, 5, Enough, Cost), "a navmesh refusal (5) with the stock: refused, nothing paid");
+
+	// The stock after a placement: the cost taken, nothing taken by a refusal (the C++ writes it only once the foundation is born).
+	T.AssertTrue(ConResEq(HOLConstructionBoard::StockAfterPlace(Enough, Cost), ConRes(0, 0, 0, 0)), "50 for 50: 0 wood left");
+	T.AssertTrue(ConResEq(HOLConstructionBoard::StockAfterPlace(ConRes(200, 120, 7, 3), Cost), ConRes(200, 70, 7, 3)), "only the wood is taken");
+	T.AssertTrue(ConResEq(HOLConstructionBoard::StockAfterPlace(ConRes(0, 49, 0, 0), Cost), ConRes(0, 49, 0, 0)), "a refusal takes nothing");
+}
+
+void Test_Construction_CancelVerdict(FUnitTest& T)
+{
+	FHOLResources Cost = ConRes(0, 50, 0, 0);
+	int Allowed = int(EHOLCancelVerdict::Allowed);
+	int Ignored = int(EHOLCancelVerdict::Ignored);
+
+	T.AssertEquals(Allowed, int(HOLConstructionBoard::CancelVerdict(true, 1, 1, 0)), "the owner cancels its foundation");
+	T.AssertEquals(Allowed, int(HOLConstructionBoard::CancelVerdict(true, 1, 1, 1)), "the owner cancels a building under construction");
+	T.AssertEquals(Ignored, int(HOLConstructionBoard::CancelVerdict(true, 1, 1, 2)), "a finished building is not cancelled");
+	T.AssertEquals(Ignored, int(HOLConstructionBoard::CancelVerdict(true, 0, 1, 0)), "another player's foundation is not cancelled");
+	T.AssertEquals(Ignored, int(HOLConstructionBoard::CancelVerdict(false, 1, 1, 0)), "no building (a client named a dead or unknown one): ignored");
+
+	T.AssertTrue(ConResEq(HOLConstructionBoard::CancelRefund(true, Cost, 0, 0, 1000), Cost), "a foundation: all back (D311)");
+	T.AssertTrue(ConResEq(HOLConstructionBoard::CancelRefund(true, Cost, 1, 500, 1000), ConRes(0, 25, 0, 0)), "half built: half back");
+	T.AssertTrue(ConResEq(HOLConstructionBoard::CancelRefund(true, Cost, 1, 1, 1000), ConRes(0, 49, 0, 0)), "D345: after a first work 49 of 50 wood come back, not all");
+	T.AssertTrue(ConResEq(HOLConstructionBoard::CancelRefund(true, Cost, 2, 0, 1000), ConRes(0, 0, 0, 0)), "finished: nothing back");
+	T.AssertTrue(ConResEq(HOLConstructionBoard::CancelRefund(false, Cost, 0, 0, 1000), ConRes(0, 0, 0, 0)), "no type row: nothing back (the C++ FHOLResources())");
+}
