@@ -102,3 +102,22 @@ void Test_TributeSettleRefusals(FUnitTest& T)
 	T.AssertEquals(HOLTribute::BadResource, HOLTribute::Settle(true, 0, 1, true, Giver, Taker, 4, 50, 30).Reason, "no such resource");
 	T.AssertFalse(HOLTribute::Settle(true, 0, 1, true, Giver, Taker, 4, 50, 30).bOk, "a refusal is not ok");
 }
+
+// ApplyTribute's own checks, in its order (D851 step 5 R2: the journal line follows the reason, so the order is part of the behavior): the amount and
+// the resource and the market and the recipient come before the stock, the stock last. 99 for 100 with no Market is NoMarket, not NotEnough; a gift to
+// oneself with nobody there is Self; conservation: what leaves the giver is what the receiver got plus the tax.
+void Test_TributeSettleReasonOrderAndConservation(FUnitTest& T)
+{
+	FHOLResources Giver = MarketApplyStock(5, 99, 5, 5);
+	FHOLResources Taker = MarketApplyStock(1, 1, 1, 1);
+	T.AssertEquals(HOLTribute::NoMarket, HOLTribute::Settle(false, 0, 1, true, Giver, Taker, 1, 100, 30).Reason, "no Market before the stock");
+	T.AssertEquals(HOLTribute::Self, HOLTribute::Settle(true, 0, 0, false, Giver, Taker, 1, 100, 30).Reason, "oneself before nobody there");
+	T.AssertEquals(HOLTribute::BadAmount, HOLTribute::Settle(true, 0, 1, true, Giver, Taker, 9, -5, 30).Reason, "the amount before the resource");
+	T.AssertEquals(HOLTribute::BadResource, HOLTribute::Settle(true, 0, 1, true, Giver, Taker, 9, 100, 30).Reason, "the resource before the stock");
+	FHOLTributeSettled Done = HOLTribute::Settle(true, 0, 1, true, Giver, Taker, 1, 99, 30);
+	T.AssertTrue(Done.bOk, "the whole 99 is allowed");
+	T.AssertEquals(99, Giver.Wood - Done.Giver.Wood, "the giver lost 99");
+	T.AssertEquals(Done.Received + Done.Tax, Done.Taker.Wood - Taker.Wood + Done.Tax, "the receiver got what arrived");
+	T.AssertEquals(99, Done.Received + Done.Tax, "arrived plus tax is what was sent");
+	T.AssertEquals(70, Done.Received, "99 at 30 %: 70 arrive");
+}
