@@ -1,0 +1,43 @@
+# H-7 (etape 7 de la migration) : la FILE DE PRODUCTION et sa TETE (panneau de production au-dessus de la grille de commandes) est dessinee par le script. Plain, toi contre une IA. Scenario fait pour etre joue DEUX FOIS (binaire d'avant = file C++, binaire de H-7 = file script) et les zones du panneau comparees. Le temps de production est fixe (hol.Prod.BuildTime 40 : un Paysan en 40 s de jeu) et la tete est capturee a des temps de JEU exacts (wait = secondes de jeu, pas de pause : la barre est a ~2 %, ~50 %, ~57 %). Aucune attente d'Entree entre la mise en file et la derniere capture : le temps de lecture ne fait pas avancer la barre. 3 minutes au plus. Commandes verifiees par grep : hol.Prod.BuildTime (HOLProductionSubsystem.cpp), hol.Select.Click, hol.UI.Key, hol.HUD.Click QueueItem2 (comme quick_check, partie production).
+waitlog Camera above the start of slot 0
+r.SetRes 1920x1080w
+hol.Cheat.Resources 5000
+hol.Prod.BuildTime 40
+hol.Camera.FocusSlot 0
+frames 3
+hol.Select.Click 0.5 0.5
+waitlog Selection: MainCentre of slot 0 (own)
+frames 30
+hol.HUD.Report
+hol.Prod.Report
+capture hud_file_vide
+note 1. Ton forum est selectionne : au-dessus de la grille de commandes, le panneau de production est vide (aucune tete, aucun element en file) ; la grille montre le Paysan sur la touche A.
+waitkey Entree : le scenario met 3 Paysans en file (clic + touche A deux fois), prend 3 captures, annule un element, puis ne touche plus a rien ; ne bouge pas la souris
+# Meme geste que quick_check (production) : un Paysan par la case A (vraie touche), deux autres par la touche A. Le temps de jeu court depuis le 1er Paysan.
+hol.UI.Key A 0 0.1
+waitlog queued Peasant (1 in
+hol.UI.Key A 0 0.1
+waitlog queued Peasant (2 in
+hol.UI.Key A 0 0.1
+waitlog queued Peasant (3 in
+frames 5
+hol.HUD.Report
+hol.Prod.Report
+capture hud_file_trois
+note 2. Trois Paysans en file : trois elements dans le panneau de production, le premier (la tete) avec sa barre de progression qui commence tout juste (~2 %), les deux autres sans barre ; le compteur de file dit 3.
+# Attente exacte en secondes de jeu : ~1 s ecoulee a la capture precedente, 19 s de plus = ~20 s / 40 s.
+wait 19
+hol.HUD.Report
+hol.Prod.Report
+capture hud_file_tete_50
+note 3. Vingt secondes de jeu apres le 1er Paysan (sur 40) : la tete a sa barre a peu pres a la moitie (~50 %), les deux autres elements sont inchanges.
+wait 3
+hol.HUD.Click QueueItem2
+waitlog cancelled Peasant
+frames 10
+hol.HUD.Report
+hol.Prod.Report
+capture hud_file_annule
+note 4. Apres le clic sur le 3e element : il a disparu, la file dit 2 (les 3 Paysans coutaient 150 de nourriture, 50 sont rendus) ; la tete garde sa barre (~57 %, 23 s de jeu) et le 2e element reste en attente.
+waitkey Entree : fin du scenario
+hol.Test.Sanity
