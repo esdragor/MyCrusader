@@ -300,3 +300,73 @@ int32 UHOLCommandGridBoard::NextInCycleAnswer_Implementation(const TArray<FHOLCy
 int32 UHOLCommandGridBoard::PickEvenlyAnswer_Implementation(const TArray<FHOLQueueChoiceView>&, const int32) { return INDEX_NONE; }
 TArray<FHOLSubgroupView> UHOLCommandGridBoard::SplitSubgroupsAnswer_Implementation(const TArray<FHOLGroupMemberView>&) { return TArray<FHOLSubgroupView>(); }
 TArray<FHOLGridCommandView> UHOLCommandGridBoard::MergeCommandsAnswer_Implementation(const TArray<FHOLGridCommandView>&, const TArray<int32>&) { return TArray<FHOLGridCommandView>(); }
+
+// Family 4 (D.1): same contract as the others, Out filled when a script board answered.
+bool UHOLCommandGridBoard::AskIsAloneInGroup(const FName TypeName, bool& Out)
+{
+	UHOLCommandGridBoard* Board = FindAny();
+	if (!Board) { return false; }
+	Out = Board->IsAloneInGroupAnswer(TypeName);
+	return true;
+}
+
+bool UHOLCommandGridBoard::AskIsRepeatPress(const TConstArrayView<uint32> Selected, const TConstArrayView<uint32> LastSelected, const bool bSameKey, bool& Out)
+{
+	UHOLCommandGridBoard* Board = FindAny();
+	if (!Board) { return false; }
+	TArray<int32> SelectedKeys;
+	SelectedKeys.Reserve(Selected.Num());
+	for (const uint32 Key : Selected) { SelectedKeys.Add(static_cast<int32>(Key)); }
+	TArray<int32> LastKeys;
+	LastKeys.Reserve(LastSelected.Num());
+	for (const uint32 Key : LastSelected) { LastKeys.Add(static_cast<int32>(Key)); }
+	Out = Board->IsRepeatPressAnswer(SelectedKeys, LastKeys, bSameKey);
+	return true;
+}
+
+bool UHOLCommandGridBoard::AskGetCommandPriority(const TConstArrayView<FHOLGroupMember> Members, TArray<int32>& Out)
+{
+	UHOLCommandGridBoard* Board = FindAny();
+	if (!Board) { return false; }
+	TArray<FHOLGroupMemberView> Views;
+	Views.Reserve(Members.Num());
+	for (const FHOLGroupMember& Member : Members)
+	{
+		FHOLGroupMemberView& View = Views.AddDefaulted_GetRef();
+		View.TypeName = Member.TypeName;
+		View.bAlone = Member.bAlone;
+	}
+	Out = Board->GetCommandPriorityAnswer(Views);
+	return true;
+}
+
+bool UHOLCommandGridBoard::AskIsSelectedByCategory(const EHOLBuildingCategory TypeCategory, const EHOLBuildingCategory Category, bool& Out)
+{
+	UHOLCommandGridBoard* Board = FindAny();
+	if (!Board) { return false; }
+	Out = Board->IsSelectedByCategoryAnswer(TypeCategory, Category);
+	return true;
+}
+
+bool UHOLCommandGridBoard::AskBlocks(const FHOLCommandFeedback& Feedback, bool& Out)
+{
+	UHOLCommandGridBoard* Board = FindAny();
+	if (!Board) { return false; }
+	Out = Board->BlocksAnswer(HOLCommandGridReadLibraryPrivate::FromRule(Feedback));
+	return true;
+}
+
+bool UHOLCommandGridBoard::AskGetCycleRank(const bool bBuildable, const int32 BuildGridSlot, int32& Out)
+{
+	UHOLCommandGridBoard* Board = FindAny();
+	if (!Board) { return false; }
+	Out = Board->GetCycleRankAnswer(bBuildable, BuildGridSlot);
+	return true;
+}
+
+bool UHOLCommandGridBoard::IsAloneInGroupAnswer_Implementation(const FName) { return false; }
+bool UHOLCommandGridBoard::IsRepeatPressAnswer_Implementation(const TArray<int32>&, const TArray<int32>&, const bool) { return false; }
+TArray<int32> UHOLCommandGridBoard::GetCommandPriorityAnswer_Implementation(const TArray<FHOLGroupMemberView>&) { return TArray<int32>(); }
+bool UHOLCommandGridBoard::IsSelectedByCategoryAnswer_Implementation(const EHOLBuildingCategory, const EHOLBuildingCategory) { return false; }
+bool UHOLCommandGridBoard::BlocksAnswer_Implementation(const FHOLFeedbackView&) { return false; }
+int32 UHOLCommandGridBoard::GetCycleRankAnswer_Implementation(const bool, const int32) { return INDEX_NONE; }

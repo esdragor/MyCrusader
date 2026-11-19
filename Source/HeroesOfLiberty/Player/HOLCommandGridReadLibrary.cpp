@@ -234,20 +234,20 @@ EHOLBuildingCategory UHOLCommandGridReadLibrary::GetTypeCategory(const FName Typ
 int32 UHOLCommandGridReadLibrary::GetCycleRankOfType(const FName TypeName)
 {
 	const FHOLBuildingTypeRow* Type = UHOLBuildingSettings::FindType(TypeName);
-	return Type ? HOLCommandGrid::GetCycleRank(*Type) : INDEX_NONE;
+	return Type ? HOLCommandGrid::GetCycleRankNative(*Type) : INDEX_NONE;
 }
 
 bool UHOLCommandGridReadLibrary::IsTypeSelectedByCategory(const FName TypeName, const EHOLBuildingCategory Category)
 {
 	const FHOLBuildingTypeRow* Type = UHOLBuildingSettings::FindType(TypeName);
-	return Type && HOLCommandGrid::IsSelectedByCategory(*Type, Category);
+	return Type && HOLCommandGrid::IsSelectedByCategoryNative(*Type, Category);
 }
 
 bool UHOLCommandGridReadLibrary::IsCategorySelectedByCategory(const EHOLBuildingCategory TypeCategory, const EHOLBuildingCategory Category)
 {
 	FHOLBuildingTypeRow Row;
 	Row.Category = TypeCategory;
-	return HOLCommandGrid::IsSelectedByCategory(Row, Category);
+	return HOLCommandGrid::IsSelectedByCategoryNative(Row, Category);
 }
 
 bool UHOLCommandGridReadLibrary::HasMissingResource(const FHOLResources& Stock, const FHOLResources& Cost)
@@ -274,7 +274,7 @@ FHOLFeedbackView UHOLCommandGridReadLibrary::CheckBuild(const FHOLResources& Sto
 	return FromRule(HOLCommandGrid::CheckBuildNative(Stock, Cost));
 }
 
-bool UHOLCommandGridReadLibrary::Blocks(const FHOLFeedbackView& Feedback) { return HOLCommandGrid::Blocks(ToRule(Feedback)); }
+bool UHOLCommandGridReadLibrary::Blocks(const FHOLFeedbackView& Feedback) { return HOLCommandGrid::BlocksNative(ToRule(Feedback)); }
 
 bool UHOLCommandGridReadLibrary::IsPopulationBlocked(const int32 PopulationUsed, const int32 PopulationCap, const int32 Places)
 {
@@ -297,7 +297,7 @@ bool UHOLCommandGridReadLibrary::IsRepeatPress(const TArray<int32>& Selected, co
 {
 	const TArray<uint32> SelectedKeys = ToKeys(Selected);
 	const TArray<uint32> LastKeys = ToKeys(LastSelected);
-	return HOLCommandGrid::IsRepeatPress(SelectedKeys, LastKeys, bSameKey);
+	return HOLCommandGrid::IsRepeatPressNative(SelectedKeys, LastKeys, bSameKey);
 }
 
 int32 UHOLCommandGridReadLibrary::NextInCycle(const TArray<FHOLCycleBuildingView>& Buildings, const int32 LastKey)
@@ -310,7 +310,7 @@ int32 UHOLCommandGridReadLibrary::NextInCycle(const TArray<FHOLCycleBuildingView
 	return HOLCommandGrid::NextInCycleNative(Rule, static_cast<uint32>(LastKey));
 }
 
-bool UHOLCommandGridReadLibrary::IsAloneInGroup(const FName TypeName) { return HOLCommandGrid::IsAloneInGroup(TypeName); }
+bool UHOLCommandGridReadLibrary::IsAloneInGroup(const FName TypeName) { return HOLCommandGrid::IsAloneInGroupNative(TypeName); }
 
 TArray<FHOLSubgroupView> UHOLCommandGridReadLibrary::SplitSubgroups(const TArray<FHOLGroupMemberView>& Members)
 {
@@ -330,7 +330,7 @@ TArray<FHOLSubgroupView> UHOLCommandGridReadLibrary::SplitSubgroups(const TArray
 TArray<int32> UHOLCommandGridReadLibrary::GetCommandPriority(const TArray<FHOLGroupMemberView>& Members)
 {
 	const TArray<FHOLGroupMember> Rule = ToRule(Members);
-	return HOLCommandGrid::GetCommandPriority(Rule);
+	return HOLCommandGrid::GetCommandPriorityNative(Rule);
 }
 
 TArray<FHOLGridCommandView> UHOLCommandGridReadLibrary::MergeCommands(const TArray<FHOLGridCommandView>& PerBuilding, const TArray<int32>& Priority)
