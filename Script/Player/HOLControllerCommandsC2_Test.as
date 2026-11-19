@@ -130,6 +130,34 @@ void Test_ControllerCommandsC2Specialization(FUnitTest& T)
 	T.AssertEquals("ServerCancelSpecialization", Cancel.Route, "Spec.Cancel route");
 }
 
+// Morceau 8 (CELEBORN-1119n3, NOT COMPILED): hol.Cheat.Specialization <Tier 1..3> <Option> asks ServerCheatSpecialization; a tier outside 1..3 or a missing word is refused with the usage line.
+// RED to see on the first commit: the plan is a stub (always refused), so the route, the integers and the accepted tiers all fail.
+void Test_ControllerCommandsC2CheatSpecialization(FUnitTest& T)
+{
+	const FString CheatUsage = "Usage: hol.Cheat.Specialization <Tier 1..3> <Option>";
+	FHOLCheatPlan Start = HOLControllerCommandsC2::PlanOf("hol.Cheat.Specialization", C2Args("2", "1"));
+	T.AssertTrue(Start.bValid, "Cheat.Specialization 2 1 is accepted");
+	T.AssertEquals("ServerCheatSpecialization", Start.Route, "Cheat.Specialization route");
+	T.AssertEquals(2, Start.Ints.Num(), "two integers");
+	const int StartTier = Start.Ints.Num() > 0 ? Start.Ints[0] : -99;
+	const int StartOption = Start.Ints.Num() > 1 ? Start.Ints[1] : -99;
+	T.AssertEquals(2, StartTier, "tier 2");
+	T.AssertEquals(1, StartOption, "option 1");
+	FHOLCheatPlan First = HOLControllerCommandsC2::PlanOf("hol.Cheat.Specialization", C2Args("1", "2"));
+	T.AssertTrue(First.bValid, "tier 1 is accepted");
+	FHOLCheatPlan Third = HOLControllerCommandsC2::PlanOf("hol.Cheat.Specialization", C2Args("3", "1"));
+	T.AssertTrue(Third.bValid, "tier 3 is accepted");
+	FHOLCheatPlan Short = HOLControllerCommandsC2::PlanOf("hol.Cheat.Specialization", C2Args("2"));
+	T.AssertFalse(Short.bValid, "a missing option is refused");
+	T.AssertEquals(CheatUsage, Short.Usage, "Cheat.Specialization usage line");
+	FHOLCheatPlan Zero = HOLControllerCommandsC2::PlanOf("hol.Cheat.Specialization", C2Args("0", "1"));
+	T.AssertFalse(Zero.bValid, "tier 0 is refused");
+	T.AssertEquals(CheatUsage, Zero.Usage, "tier 0 gives the usage line");
+	FHOLCheatPlan Four = HOLControllerCommandsC2::PlanOf("hol.Cheat.Specialization", C2Args("4", "1"));
+	T.AssertFalse(Four.bValid, "tier 4 is refused");
+	T.AssertEquals(CheatUsage, Four.Usage, "tier 4 gives the usage line");
+}
+
 // SAURON-1119w: a pure spectator sends nothing (the C++ Request<X> returned silently), for every command but the chat; a player sends all of them.
 void Test_ControllerCommandsC2SpectatorSendsNothing(FUnitTest& T)
 {
