@@ -28,7 +28,7 @@ waitlog HUD cells: A:
 hol.UI.Key A 0 0.1
 waitlog Key pressed: A
 waitlog Production: slot 0 queued
-frames 10
+wait 0.3
 hol.UI.Key A 0 0.1
 waitlog Production: slot 0 queued
 # 2. D829 : en production, un Paysan ne prend pas de place (9 / 10). Le 1er sort (10 / 10) ; le 2e va a 100 % et attend une place :

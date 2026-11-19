@@ -1,6 +1,9 @@
 #include "HUD/HOLScriptScreen.h"
 #include "GameFramework/PlayerController.h"
 #include "InputCoreTypes.h"
+#include "Kismet/GameplayStatics.h"
+#include "Match/HOLForumMessages.h"
+#include "Sound/SoundBase.h"
 
 #include "Blueprint/WidgetLayoutLibrary.h"
 #include "Blueprint/WidgetTree.h"
@@ -58,6 +61,130 @@ UBorder* UHOLScriptScreen::GetPlayersPanel() const
 {
 	const UHOLGameScreen* GameScreen = GetTypedOuter<UHOLGameScreen>();
 	return GameScreen ? GameScreen->GetPlayersPanel() : nullptr;
+}
+
+UBorder* UHOLScriptScreen::GetGroupsPanel() const
+{
+	const UHOLGameScreen* GameScreen = GetTypedOuter<UHOLGameScreen>();
+	return GameScreen ? GameScreen->GetGroupsPanel() : nullptr;
+}
+
+int32 UHOLScriptScreen::GetNumControlGroups()
+{
+	return AHOLPlayerController::NumControlGroups;
+}
+
+bool UHOLScriptScreen::GetControlGroupsAvailable() const
+{
+	return Cast<AHOLPlayerController>(GetOwningPlayer()) != nullptr && GetWorld() != nullptr;
+}
+
+bool UHOLScriptScreen::GetControlGroupNow(const int32 Group, int32& OutCount, bool& bOutBuildings) const
+{
+	OutCount = 0;
+	bOutBuildings = false;
+	const AHOLPlayerController* PlayerController = Cast<AHOLPlayerController>(GetOwningPlayer());
+	if (!PlayerController || Group < 0 || Group >= AHOLPlayerController::NumControlGroups)
+	{
+		return false;
+	}
+	TArray<uint32> Units;
+	TArray<AHOLBuilding*> Buildings;
+	const bool bFull = PlayerController->GetControlGroup(Group, Units, Buildings);
+	bOutBuildings = Units.IsEmpty();
+	OutCount = Units.IsEmpty() ? Buildings.Num() : Units.Num();
+	return bFull;
+}
+
+void UHOLScriptScreen::GetControlGroupTypes(const int32 Group, TArray<FString>& OutNames, TArray<int32>& OutCounts) const
+{
+	OutNames.Reset();
+	OutCounts.Reset();
+	if (UHOLGameScreen* GameScreen = GetTypedOuter<UHOLGameScreen>())
+	{
+		GameScreen->GetGroupTypes(Group, OutNames, OutCounts);
+	}
+}
+
+int32 UHOLScriptScreen::GetLastSelectedGroup() const
+{
+	const AHOLPlayerController* PlayerController = Cast<AHOLPlayerController>(GetOwningPlayer());
+	double SelectTime = -1.0;
+	return PlayerController ? PlayerController->GetLastSelectedGroup(SelectTime) : INDEX_NONE;
+}
+
+float UHOLScriptScreen::GetLastSelectedGroupAge() const
+{
+	const AHOLPlayerController* PlayerController = Cast<AHOLPlayerController>(GetOwningPlayer());
+	const UWorld* World = GetWorld();
+	double SelectTime = -1.0;
+	if (!PlayerController || !World || PlayerController->GetLastSelectedGroup(SelectTime) == INDEX_NONE)
+	{
+		return 1.0e9f;
+	}
+	return static_cast<float>(World->GetRealTimeSeconds() - SelectTime);
+}
+
+void UHOLScriptScreen::SelectControlGroup(const int32 Group)
+{
+	if (AHOLPlayerController* PlayerController = Cast<AHOLPlayerController>(GetOwningPlayer()))
+	{
+		PlayerController->SelectControlGroup(Group);
+	}
+}
+
+UBorder* UHOLScriptScreen::GetQueuePanel() const
+{
+	const UHOLGameScreen* GameScreen = GetTypedOuter<UHOLGameScreen>();
+	return GameScreen ? GameScreen->GetQueuePanel() : nullptr;
+}
+
+bool UHOLScriptScreen::GetQueueNow(TArray<FName>& OutTypes, TArray<bool>& OutResearch, TArray<FString>& OutTechNames, TArray<FString>& OutUnitNames,
+	bool& bOutHeadStarted, float& OutHeadProgress, bool& bOutBlockedAtFull, bool& bOutPopulationShort) const
+{
+	const UHOLGameScreen* GameScreen = GetTypedOuter<UHOLGameScreen>();
+	if (!GameScreen)
+	{
+		OutTypes.Reset();
+		OutResearch.Reset();
+		OutTechNames.Reset();
+		OutUnitNames.Reset();
+		bOutHeadStarted = false;
+		OutHeadProgress = 0.f;
+		bOutBlockedAtFull = false;
+		bOutPopulationShort = false;
+		return false;
+	}
+	return GameScreen->ReadQueue(OutTypes, OutResearch, OutTechNames, OutUnitNames, bOutHeadStarted, OutHeadProgress, bOutBlockedAtFull, bOutPopulationShort);
+}
+
+void UHOLScriptScreen::SetQueueReport(const FString& Line)
+{
+	if (UHOLGameScreen* GameScreen = GetTypedOuter<UHOLGameScreen>())
+	{
+		GameScreen->SetQueueReportMirror(Line);
+	}
+}
+
+FLinearColor UHOLScriptScreen::GetAccentColor()
+{
+	return HOLUIStyle::Accent;
+}
+
+bool UHOLScriptScreen::CancelProduction(const int32 Index)
+{
+	AHOLPlayerController* PlayerController = Cast<AHOLPlayerController>(GetOwningPlayer());
+	if (!PlayerController)
+	{
+		return false;
+	}
+	PlayerController->RequestCancelProduction(Index);
+	return true;
+}
+
+void UHOLScriptScreen::SetQueueLive(const bool bLive)
+{
+	bQueueLive = bLive;
 }
 
 bool UHOLScriptScreen::GetPopulationNow(int32& OutUsed, int32& OutCap, float& OutRealSeconds) const
@@ -444,6 +571,88 @@ UClass* UHOLScriptScreen::FindScriptClass()
 	return nullptr;
 }
 
+bool UHOLScriptScreen::GetAlertBanner(bool& bOutShown, int32& OutSerial, int32& OutSlot, float& OutOpacity, bool& bOutSound, FString& OutText,
+	TArray<FHOLForumPieceValue>& OutPieces, TArray<FLinearColor>& OutColors) const
+{
+	bOutShown = false;
+	OutSerial = 0;
+	OutSlot = INDEX_NONE;
+	OutOpacity = 0.f;
+	bOutSound = false;
+	OutText.Reset();
+	OutPieces.Reset();
+	OutColors.Reset();
+	const UHOLGameScreen* GameScreen = GetTypedOuter<UHOLGameScreen>();
+	const UWorld* World = GetWorld();
+	if (!GameScreen || !World)
+	{
+		return false;
+	}
+	const FHOLForumAlert& Alert = GameScreen->GetAlert();
+	OutSerial = GameScreen->GetAlertPresentCount();
+	bOutShown = Alert.bShown;
+	if (!Alert.bShown)
+	{
+		return true;
+	}
+	OutSlot = Alert.Slot;
+	OutOpacity = Alert.GetOpacity(World->GetRealTimeSeconds());
+	bOutSound = Alert.bSound;
+	OutText = Alert.Message.Text.ToString();
+	// The pieces as the C++ FillMessageRow cuts them (the shown player's reading, the lobby's names when the game state is there).
+	const AHOLGameState* GameState = World->GetGameState<AHOLGameState>();
+	const AHOLPlayerState* PlayerState = GameScreen->GetBoundPlayerState();
+	const int32 ViewerSlot = PlayerState ? PlayerState->GetPlayerIndex() : INDEX_NONE;
+	for (const HOLForumMessages::FPiece& Part : GameState ? HOLForumMessages::SplitNames(Alert.Message, ViewerSlot, GameState->GetLaunchConfig())
+		: HOLForumMessages::SplitNames(Alert.Message, ViewerSlot))
+	{
+		FHOLForumPieceValue Piece;
+		Piece.Text = Part.Text;
+		Piece.Slot = Part.Slot;
+		OutPieces.Add(Piece);
+		const bool bName = Part.Slot != INDEX_NONE && GameState && GameState->GetLaunchConfig().Slots.IsValidIndex(Part.Slot);
+		OutColors.Add(bName ? FLinearColor(HOLPlayerColors::GetColor(GameState->GetLaunchConfig().Slots[Part.Slot].ColorIndex)) : FLinearColor::White);
+	}
+	return true;
+}
+
+bool UHOLScriptScreen::PlayAlertSound()
+{
+	// Provisional, 2D, the alert's only (FHOLForumAlert::SoundPath): the herald's voice will replace it.
+	USoundBase* Sound = LoadObject<USoundBase>(nullptr, FHOLForumAlert::SoundPath);
+	if (Sound)
+	{
+		UGameplayStatics::PlaySound2D(this, Sound);
+	}
+	return Sound != nullptr;
+}
+
+void UHOLScriptScreen::BindAlertClick(UBorder* Panel)
+{
+	if (Panel)
+	{
+		Panel->OnMouseButtonDownEvent.BindUFunction(this, GET_FUNCTION_NAME_CHECKED(UHOLScriptScreen, HandleAlertMouseDown));
+	}
+}
+
+FEventReply UHOLScriptScreen::HandleAlertMouseDown(FGeometry Geometry, const FPointerEvent& MouseEvent)
+{
+	if (MouseEvent.GetEffectingButton() != EKeys::LeftMouseButton)
+	{
+		return FEventReply(false);
+	}
+	// The script's ClickWidget(AlertPanel): true only while a banner is shown, as the C++ handler's own guard was.
+	return FEventReply(ClickWidget(FName(TEXT("AlertPanel"))));
+}
+
+void UHOLScriptScreen::FocusCameraOnForum(const int32 ForumSlot)
+{
+	if (UHOLGameScreen* GameScreen = GetTypedOuter<UHOLGameScreen>())
+	{
+		GameScreen->FocusCameraOnForum(ForumSlot);
+	}
+}
+
 void UHOLScriptScreen::NativeOnInitialized()
 {
 	// The script's OnInitialized builds the tree.
@@ -469,6 +678,31 @@ void UHOLScriptScreen::NativeTick(const FGeometry& MyGeometry, const float InDel
 	if (bMessageLive)
 	{
 		FrameTick(InDeltaTime);
+	}
+	// The major alert banner's fade and end (HOLAlertBanner.as): called only while the C++ state shows one, and once more when it ends.
+	if (const UHOLGameScreen* AlertScreen = GetTypedOuter<UHOLGameScreen>())
+	{
+		const bool bAlertShown = AlertScreen->GetAlert().bShown;
+		if (bAlertShown || bAlertLive)
+		{
+			AlertFrameTick(InDeltaTime);
+		}
+		bAlertLive = bAlertShown;
+	}
+	// The control group lit (the chip of the group just recalled, HOLGroupBar.as LightSeconds = 0.5 s): the script is called only when it changes, on the very frame.
+	{
+		const int32 SelectedGroup = GetLastSelectedGroup();
+		const int32 LitNow = (SelectedGroup != INDEX_NONE && GetLastSelectedGroupAge() < 0.5f) ? SelectedGroup : INDEX_NONE;
+		if (LitNow != LitGroupSeen)
+		{
+			LitGroupSeen = LitNow;
+			GroupLitChanged();
+		}
+	}
+	// The queue's head bar, every frame, ONLY while a queue is shown (HUD H-7; the C++ UpdateHead ran every frame).
+	if (bQueueLive)
+	{
+		QueueFrameTick();
 	}
 	// The T key (the talent tree, TQ4 = A): the viewport's key state, as the Enter of a test scenario; the console open or a focused menu keeps it.
 	if (const APlayerController* Controller = GetOwningPlayer())

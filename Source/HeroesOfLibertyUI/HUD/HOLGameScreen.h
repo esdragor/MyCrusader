@@ -91,8 +91,37 @@ public:
 	/** The player state the screen shows (the local player's); null for a spectator or before it arrives. */
 	const AHOLPlayerState* GetBoundPlayerState() const;
 
+	/** HUD H-5a: the major alert's state (the machine stays here, one source); the script's banner reads it (UHOLScriptScreen::GetAlertBanner). */
+	const FHOLForumAlert& GetAlert() const { return Alert; }
+	/** HUD H-5a: how many banners PresentAlert has shown (never reset): the script redraws when it changes. */
+	int32 GetAlertPresentCount() const { return AlertPresentCount; }
+	/** HUD H-5a: the owning controller's camera over the forum of Slot (no journal line: the script writes it). */
+	void FocusCameraOnForum(int32 ForumSlot);
+
 	/** HUD H-4: the PlayersPanel (table host in the right column), filled by the script's table. */
 	UBorder* GetPlayersPanel() const { return PlayersPanel; }
+
+	/** HUD H-6: the GroupsPanel (control groups bar host, bottom left), filled by the script's bar. */
+	UBorder* GetGroupsPanel() const { return GroupsPanel; }
+
+	/**
+	 * HUD H-6: the types of control group Group in the order they are met, names localised (the faction and unit rows stay here), one count by type; the
+	 * script sorts and writes the tooltip. Empty without a controller or a group.
+	 */
+	void GetGroupTypes(int32 Group, TArray<FString>& OutNames, TArray<int32>& OutCounts);
+
+	/** HUD H-7: the QueuePanel (in the CommandColumn, collapsed), filled by the script's queue panel. */
+	UBorder* GetQueuePanel() const { return QueuePanel; }
+
+	/**
+	 * HUD H-7: what RefreshQueue + UpdateHead read, for the script's queue panel: the own selected building's queue (types, research or unit
+	 * names) and its head (started, progress, held at 100 % for lack of room, waiting for room). False, all empty: no own building selected.
+	 */
+	bool ReadQueue(TArray<FName>& OutTypes, TArray<bool>& OutResearch, TArray<FString>& OutTechNames, TArray<FString>& OutUnitNames,
+		bool& bOutHeadStarted, float& OutHeadProgress, bool& bOutBlockedAtFull, bool& bOutPopulationShort) const;
+
+	/** HUD H-7: the queue part of the Describe line, as the script's queue panel wrote it (3 [Peasant 0.40, ...]). */
+	void SetQueueReportMirror(const FString& Line) { QueueReport = Line; }
 
 	/** The population full alert's test binds a player state without a player controller. */
 	friend class FHOLPopulationAlertThreadTest;
@@ -150,9 +179,6 @@ public:
 
 	/** The top bar (resources, population, idle workers): the cheats' panel stays under it (UHOLCheatPanel). */
 	UBorder* GetTopBar() const;
-
-	/** Items of the queue built by BuildLayout, the longest queue shown (D283: 5); one line, under the grid's width. */
-	static constexpr int32 NumQueueItems = 5;
 
 protected:
 	virtual void NativeOnInitialized() override;
@@ -240,13 +266,6 @@ protected:
 	UPROPERTY(meta = (BindWidgetOptional))
 	TObjectPtr<UBorder> QueuePanel;
 
-	UPROPERTY(meta = (BindWidgetOptional))
-	TObjectPtr<UProgressBar> QueueProgress;
-
-	/** "Population full", in place of the progress bar while the head waits for room. */
-	UPROPERTY(meta = (BindWidgetOptional))
-	TObjectPtr<UCommonTextBlock> QueueNote;
-
 	/**
 	 * The one command panel (the user's 2nd trial of G.1, AoE4's way): 3 x 4 cells at fixed places, the empty ones dark,
 	 * right of the selection's block: the orders of the player's units (Q attack-move, S stop, V hold) or the grid of its
@@ -257,18 +276,6 @@ protected:
 
 
 private:
-	/** What the head of the queue shows. */
-	enum class EHeadState : uint8
-	{
-		None,
-		/** Started: the progress bar. */
-		InProgress,
-		/** Not started, room in the population: it starts at the server's next step. */
-		Starting,
-		/** Not started, no room in the population: the note. */
-		PopulationFull,
-	};
-
 	/** Follows the owning player's state (it reaches a client after the HUD is up): binds its economy; null unbinds. */
 	void BindPlayerState(AHOLPlayerState* PlayerState);
 	/** Follows the selected building: binds its production queue; null unbinds. */
@@ -309,21 +316,8 @@ private:
 	void SetDetailLine(const FString& Shown, const FText& Text);
 	/** The idle workers' number Describe writes (the counter button is the script's, H-3). */
 	void RefreshIdleWorkers();
-	/**
-	 * The control groups' bar (J7a.5), read again four times a second (units die, groups change): a slot per group not
-	 * empty, its digit and number, its types in the tooltip; the group just selected lit briefly. Logs « HUD groups: ... »
-	 * when what it shows changed.
-	 */
-	void RefreshControlGroups(float DeltaSeconds);
-	/** A slot clicked: the group selected, as its key (twice quickly: the camera goes to it). */
-	void HandleGroupSlotClicked(int32 Group);
-	/** A slot's widget name, ControlGroup0 to ControlGroup9 (hol.HUD.Click). */
-	static FName GroupSlotName(int32 Group);
 	/** OwnBuilding: the player's own building selected alone; bOwnGroup: several of its buildings (an F key). */
 	void RefreshGrid(const AHOLBuilding* OwnBuilding, bool bOwnGroup, const AHOLPlayerState* PlayerState);
-	void RefreshQueue(const AHOLBuilding* OwnBuilding);
-	/** The head of the queue: its progress (every frame) or the population note. */
-	void UpdateHead();
 
 	/** A cell of the command panel: an order with the player's units, else the grid's command. */
 	void HandleGridCellClicked(int32 Cell);
@@ -335,7 +329,6 @@ private:
 	 * chosen one's medallion and edge lit.
 	 */
 	void RefreshAges(const AHOLPlayerState* PlayerState);
-	void HandleQueueItemClicked(int32 Index);
 
 	/** A command that did not go through (D313), from the controller: its short message. */
 	void HandleCommandFeedback(const FHOLCommandFeedback& Feedback);
@@ -370,9 +363,6 @@ private:
 	UPROPERTY(Transient)
 	TArray<TObjectPtr<USizeBox>> AgeCellBoxes;
 
-	UPROPERTY(Transient)
-	TArray<TObjectPtr<UHOLQueueItem>> QueueItems;
-
 	/** The selection's chips (G.1e): a pool of SelectionChipN in the wrap box SelectionChips, each in its frame (lit: active). */
 	UPROPERTY(Transient)
 	TObjectPtr<UWrapBox> SelectionChips;
@@ -387,17 +377,6 @@ private:
 	int32 ActiveChip = INDEX_NONE;
 	TArray<FString> ShownChips;
 	int32 ShownActiveChip = -2;
-
-	/** The control groups' slots, by group (0 to 9). */
-	UPROPERTY(Transient)
-	TArray<TObjectPtr<UHOLQueueItem>> GroupSlots;
-	/** What each slot shows (its number of units, « b » and its buildings; empty: hidden) and the line logged of it. */
-	TArray<FString> ShownGroups;
-	FString ShownGroupsLine;
-	float SinceGroupsRefresh = 1.f;
-	/** The group lit (just selected) and since when (real time). */
-	int32 LitGroup = INDEX_NONE;
-	double LitGroupTime = -1.0;
 
 	TWeakObjectPtr<AHOLPlayerController> Controller;
 	TWeakObjectPtr<AHOLPlayerState> BoundPlayerState;
@@ -465,15 +444,11 @@ private:
 	/** False without the game state; bOver: my Victory / Defeat banner due (D202). */
 	bool IsMatchOverForMe(bool& bOver) const;
 	UFUNCTION()
-	FEventReply HandleAlertMouseDown(FGeometry Geometry, const FPointerEvent& MouseEvent);
-	UFUNCTION()
 	FEventReply HandleMessageLineMouseDown(FGeometry Geometry, const FPointerEvent& MouseEvent);
 	void FocusAlertSlot(int32 TouchedSlot);
-	UPROPERTY(Transient)
-	TObjectPtr<UBorder> AlertPanel;
-	UPROPERTY(Transient)
-	TObjectPtr<UHorizontalBox> AlertRow;
 	FHOLForumAlert Alert;
+	/** HUD H-5a: PresentAlert's count (a new banner, even an identical one, is a new number). */
+	int32 AlertPresentCount = 0;
 	FDelegateHandle TableForumEventHandle;
 	FDelegateHandle TableHeroReadyHandle;
 	FDelegateHandle TableTributeHandle;
@@ -532,10 +507,8 @@ private:
 	int32 ShownTier = INDEX_NONE;
 	/** S7: the tier of the hero the grid's siege engine cells were written for (INDEX_NONE: none shown): the grid follows his level. */
 	int32 ShownEngineTier = INDEX_NONE;
-	bool bQueueShown = false;
-	TArray<FName> ShownQueueTypes;
-	EHeadState HeadState = EHeadState::None;
-	float HeadProgress = 0.f;
 	/** The short message shown (its key, empty: none): the script's panel draws it, this is the mirror Describe reads. */
 	FString MessageKey;
+	/** HUD H-7: the queue part of Describe (the script's queue panel writes it, UHOLScriptScreen::SetQueueReport). */
+	FString QueueReport = TEXT("0 []");
 };

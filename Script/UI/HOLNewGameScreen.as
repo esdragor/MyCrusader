@@ -36,7 +36,7 @@ namespace HOLNewGameLog
 // only) or SlotState<n> (slots 1..7), SlotLevel<n>, SlotFaction<n>, SlotSwatch<n>, SlotColor<n>, SlotTeam<n>; ModeDropdown, NomadDropdown,
 // RegicideDropdown, CatastropheDropdown, SacredSitesDropdown, SpectatorsText, Note (the cpp's name of the note: it is "Note", not "NoteText"),
 // ErrorText, BackButton, ReadyButton, SpectateButton, LaunchButton.
-// NG-4: `default bScriptOwnsGestures = true` makes the base NOT subscribe its Handle*Chosen; this class subscribes UHOLDropdown::OnChosen itself
+// NG-4: the base subscribes no gesture (NG-6b removed its Handle*Chosen); this class subscribes UHOLDropdown::OnChosen itself
 // (BuildNewGame, with the lists it has just created) and applies each gesture: read the configuration (GetConfigJson + HOLMatchConfigRead::Describe,
 // HOLNewGameRead::DescribeGlobals), apply the pure rule (HOLNewGameRules::), write by the base's SetConfig* / ChooseNewGameSize, then Refresh() (C++,
 // the widgets). Launch, ShowError, Back, focus stay the base's.
@@ -45,10 +45,6 @@ namespace HOLNewGameLog
 // JoinMatch, the network sends and the Ready / Spectator buttons (wired by the base to ToggleReady / ToggleSpectator) stay the base's.
 class UHOLNewGameScreenScript : UHOLNewGameScreen
 {
-	default bScriptOwnsGestures = true;
-	// NG-5: the lobby display is this class's (the base then calls ShowLobby() below instead of its own ShowLobbyWidgets()).
-	default bScriptOwnsLobbyDisplay = true;
-
 	// The cpp's FHOLMatchConfig::MaxSlots (one line per slot).
 	const int SlotCount = 8;
 
@@ -509,7 +505,7 @@ class UHOLNewGameScreenScript : UHOLNewGameScreen
 	}
 
 	// ---- The lobby display (ShowLobbyWidgets of HOLNewGameScreen.cpp, moved to the script) ----
-	// Called by the base's ShowLobby after the lobby is read, the configuration copied and Refresh() done (bScriptOwnsLobbyDisplay). The base keeps the Starting
+	// Called by the base's ShowLobby after the lobby is read, the configuration copied and Refresh() done. The base keeps the Starting
 	// state, JoinMatch, the journal and the Ready / Spectator wiring (ToggleReady / ToggleSpectator): this only shows.
 
 	// One line of the lobby: the name, the state list (or "Vous" for the slot 0), the faction / colour / team lists greyed but for my line and the leader's AIs.

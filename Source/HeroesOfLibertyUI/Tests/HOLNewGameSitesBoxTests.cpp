@@ -53,7 +53,13 @@ bool FHOLNewGameSitesBoxTest::RunTest(const FString& Parameters)
 		GEngine->DestroyWorldContext(World);
 		World->DestroyWorld(false);
 	};
-	UHOLNewGameScreen* Screen = NewObject<UHOLNewGameScreen>(GetTransientPackage());
+	// NG-6b: the base class has no layout any more (BP_BuildNewGame is the script's): the real screen is the script's class (Script/UI/HOLNewGameScreen.as).
+	const TSubclassOf<UHOLNewGameScreen> ScriptClass = UHOLNewGameScreen::FindScriptClass();
+	if (!TestNotNull(TEXT("the script's New game screen class exists"), ScriptClass.Get()))
+	{
+		return false;
+	}
+	UHOLNewGameScreen* Screen = NewObject<UHOLNewGameScreen>(GetTransientPackage(), ScriptClass);
 	Screen->SetPlayerContext(FLocalPlayerContext(Player, World));
 	if (!TestTrue(TEXT("the screen has a player"), Screen->GetPlayerContext().IsValid()))
 	{

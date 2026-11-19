@@ -1,0 +1,35 @@
+# H-5a : la BANNIERE D'ALERTE MAJEURE du HUD (haut centre) est dessinee par le script. Plain, deux joueurs (slot 0 toi, slot 1 IA, equipes separees). Ton forum tombe (hol.Victory.FallForum 0, le geste de forum_lives / quick_check "mark victory forum alert") : on voit la banniere, on clique dessus (la camera passe au-dessus du forum), puis elle disparait apres 4 s. 3 minutes environ. A rejouer AVANT (branche sans le lot, banniere C++) et APRES (script) : comparer la zone haut-centre des captures a l'oeil.
+waitlog Camera above the start of slot 0
+r.SetRes 1920x1080w
+hol.Cheat.Resources 5000
+hol.Cheat.Population 165
+hol.Camera.FocusSlot own
+frames 90
+hol.HUD.Report 1
+capture hud_alerte_aucune
+note 1. Haut centre, sous la barre du haut : AUCUNE banniere d'alerte (le reste du HUD comme d'habitude).
+waitkey Entree : ton forum va tomber (triche)
+# Le panneau du scenario est au meme endroit que la banniere (haut centre) : on le ferme comme la souris (bouton x) avant chaque capture ; les notes le rouvrent.
+hol.HUD.Click ScenarioClose
+frames 10
+hol.Victory.FallForum 0
+waitlog Alert:
+frames 8
+hol.HUD.Report 1
+capture hud_alerte_majeure
+note 2. Haut centre, une banniere sombre a bords arrondis sous la barre du haut : le texte de la chute de ton forum en gros (un seul libelle, pas de texte coupe), le nom de chaque joueur cite dans la couleur de son slot ; elle est opaque.
+waitkey Entree : clic sur la banniere
+hol.HUD.Click ScenarioClose
+frames 10
+hol.HUD.Click AlertPanel
+waitlog Camera above the forum of slot 0
+frames 8
+hol.HUD.Report 1
+capture hud_alerte_apres_clic
+note 3. La camera est au-dessus de ton forum en ruine (le clic de la banniere l'a centree) ; la banniere est encore la ou deja en fondu.
+hol.HUD.Click ScenarioClose
+wait 5
+hol.HUD.Report 1
+capture hud_alerte_disparue
+note 4. Plus de banniere en haut centre (4 s ecoulees) ; le fil de messages garde la ligne de la chute.
+hol.Test.Sanity

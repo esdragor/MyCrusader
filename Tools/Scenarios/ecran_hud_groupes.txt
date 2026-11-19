@@ -1,0 +1,77 @@
+# H-6 (etape 4 de la migration) : la BARRE DES GROUPES DE CONTROLE (en bas, puces "1 · N") est dessinee par le script (HOLGroupBar.as). Plain, toi contre une IA figee ; scenario de preuve double : les memes captures prises sur un binaire d'avant (barre C++) et sur celui-ci (barre script) doivent etre identiques au pixel, et ce sont aussi les 5 etapes de ton essai. 3 minutes au plus.
+# Etat fixe : IA figee, combat coupe, langue fr, aucun Paysan ni heros au depart (hol.Select.Army ne prend que les soldats poses ici), curseur au meme endroit, camera au-dessus de ton forum. Commandes de quick_check.ps1 (partie groups) : hol.Select.Army, hol.Select.Group Add / Select, hol.HUD.Click ControlGroup2 ; preuve texte : "HUD groups: ...".
+waitlog Camera above the start of slot 0
+r.SetRes 1920x1080w
+hol.UI.Language fr
+hol.AI.ThinkSteps 100000
+hol.Combat.Enabled 0
+hol.Cheat.Resources 500
+hol.Camera.FocusNear 1500 0
+frames 2
+hol.Units.SpawnHere 4 ManAtArms 0 250
+waitunits 4
+wait 0.5
+hol.Camera.FocusSlot own
+waitlog Camera above the start of slot 0
+hol.Mouse.Hover 960 600 5
+waitlog Mouse hover 960,600
+frames 30
+hol.HUD.Report
+notereset Etape 1 : aucun groupe n'existe encore : la barre des groupes de controle, en bas de l'ecran, est absente (rien a afficher) ; le reste du HUD est normal.
+waitkey Entree : etape 1, la barre des groupes est vide
+capture hud_groupes_vide
+hol.Select.Army
+waitlog Select army: 4 soldiers
+hol.Select.Group Add 1
+waitlog Group 1: created
+waitlog HUD groups: 1=4
+wait 1
+frames 5
+hol.HUD.Report
+notereset Etape 2 : 4 hommes d'armes sont selectionnes et verses dans le groupe 1 : la barre apparait en bas avec UNE puce "1 · 4" (journal "HUD groups: 1=4"), non allumee.
+waitkey Entree : etape 2, le groupe 1 est cree (4 unites)
+capture hud_groupes_un
+hol.Camera.FocusNear 1500 0
+frames 2
+hol.Units.SpawnHere 3 Spearman 0 250
+waitunits 3
+# waitunits compte TOUTES les unites (celles de l'IA et les 4 deja la) : il passe tout de suite ; on laisse au jeu le temps de poser les 3 piquiers.
+wait 0.5
+hol.Camera.FocusSlot own
+waitlog Camera above the start of slot 0
+hol.Select.Army
+waitlog Select army: 7 soldiers
+hol.Select.Group Add 2
+waitlog Group 2: created
+waitlog HUD groups: 1=4 2=7
+wait 1
+frames 5
+hol.HUD.Report
+notereset Etape 3 : 3 piquiers de plus ; l'armee entiere (7 unites) est versee dans le groupe 2 : DEUX puces "1 · 4" et "2 · 7" (journal "HUD groups: 1=4 2=7"), aucune allumee.
+waitkey Entree : etape 3, deux groupes (1 = 4 unites, 2 = 7 unites)
+capture hud_groupes_deux
+hol.Select.Click 0.03 0.05
+waitlog Selection: none
+wait 1
+notereset Etape 4 : rappel du groupe 1 (comme la touche 1) : sur la premiere image la puce "1 · 4" est ALLUMEE (plus grande, l'autre puce assombrie), une seconde plus tard elle est eteinte ; les 4 hommes d'armes sont selectionnes (journal "Group 1: selected").
+waitkey Entree : etape 4, rappel du groupe 1 (deux captures : tout de suite, puis 1 s apres)
+hol.Select.Group Select 1
+waitlog Group 1: selected
+frames 1
+capture hud_groupes_rappel
+wait 1
+frames 2
+capture hud_groupes_rappel_eteint
+hol.Select.Click 0.03 0.05
+waitlog Selection: none
+wait 1
+notereset Etape 5 : un clic sur la puce "2 · 7" rappelle le groupe 2 : les 7 soldats sont selectionnes, la puce 2 est allumee sur la premiere image (journal "HUD: group 2 clicked" puis "Group 2: selected").
+waitkey Entree : etape 5, clic sur la puce du groupe 2
+hol.HUD.Click ControlGroup2
+waitlog Group 2: selected
+frames 1
+capture hud_groupes_clic
+wait 1
+frames 2
+hol.HUD.Report
+hol.Test.Sanity
