@@ -1,6 +1,7 @@
 // C2 (SAURON-1119s, UNCOMPILED): the hero, duel, diplomacy, signal, chat and specialization console commands in script (HOLControllerCommandsC2.as). Each command is registered once under its `hol.*` name and
 // asks the right RPC (Server<X> of Script\Net\HOLRpcPlayer.as) with the arguments the C++ command passed; refused arguments give the C++ line and send nothing.
 // RED to see (once, then put back): in HOLControllerCommandsC2.as StanceOf, return 2 for "neutral" instead of 1 -> Test_ControllerCommandsC2DiplomacyStance fails on "neutral is stance 1".
+// RED to see for the spectator guard (once, then put back): in HOLControllerCommandsC2.as ShouldSend, change `return Route == "ServerPostChat";` to `return true;` -> Test_ControllerCommandsC2SpectatorSendsNothing fails on "a spectator sends nothing".
 
 TArray<FString> C2Args(const FString& A = "", const FString& B = "", const FString& C = "", const FString& D = "", const FString& E = "")
 {
@@ -127,4 +128,26 @@ void Test_ControllerCommandsC2Specialization(FUnitTest& T)
 	T.AssertEquals("Usage: hol.Spec.Start <Tier> <Option>", Short.Usage, "Spec.Start usage line");
 	FHOLCheatPlan Cancel = HOLControllerCommandsC2::PlanOf("hol.Spec.Cancel", C2Args());
 	T.AssertEquals("ServerCancelSpecialization", Cancel.Route, "Spec.Cancel route");
+}
+
+// SAURON-1119w: a pure spectator sends nothing (the C++ Request<X> returned silently), for every command but the chat; a player sends all of them.
+void Test_ControllerCommandsC2SpectatorSendsNothing(FUnitTest& T)
+{
+	TArray<FString> Names = HOLControllerCommandsC2::Names();
+	for (int I = 0; I < Names.Num(); I++)
+	{
+		FString Name = Names[I];
+		FHOLCheatPlan Plan = HOLControllerCommandsC2::PlanOf(Name, C2Args("all", "1", "x"));
+		if (!Plan.bValid)
+			continue;
+		bool bPlayerSends = HOLControllerCommandsC2::ShouldSend(false, Plan.Route);
+		T.AssertTrue(bPlayerSends, f"{Name}: a player sends");
+		bool bSpectatorSends = HOLControllerCommandsC2::ShouldSend(true, Plan.Route);
+		if (Plan.Route == "ServerPostChat")
+			T.AssertTrue(bSpectatorSends, f"{Name}: a spectator talks, the server decides (D376)");
+		else
+			T.AssertFalse(bSpectatorSends, f"{Name}: a spectator sends nothing");
+	}
+	T.AssertFalse(HOLControllerCommandsC2::ShouldSend(true, "ServerStartSpecialization"), "hol.Spec.Start: a spectator sends nothing");
+	T.AssertFalse(HOLControllerCommandsC2::ShouldSend(true, "ServerCancelSpecialization"), "hol.Spec.Cancel: a spectator sends nothing");
 }
