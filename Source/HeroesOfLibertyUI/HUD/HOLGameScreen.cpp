@@ -832,24 +832,6 @@ void UHOLGameScreen::TickAlert()
 	Alert.Expire(Now);
 }
 
-FEventReply UHOLGameScreen::HandleMessageLineMouseDown(FGeometry Geometry, const FPointerEvent& MouseEvent)
-{
-	if (MouseEvent.GetEffectingButton() != EKeys::LeftMouseButton)
-	{
-		return FEventReply(false);
-	}
-	// The line under the mouse: only the lines carrying an alert take the clicks (RebuildMessages).
-	for (int32 Index = 0; Index < MessageLines.Num() && MessageThread.Lines.IsValidIndex(Index); ++Index)
-	{
-		if (MessageLines[Index]->IsHovered() && MessageThread.Lines[Index].Message.bAlert)
-		{
-			FocusAlertSlot(MessageThread.Lines[Index].Slot);
-			return FEventReply(true);
-		}
-	}
-	return FEventReply(false);
-}
-
 void UHOLGameScreen::FocusCameraOnForum(const int32 ForumSlot)
 {
 	if (AHOLPlayerController* PlayerController = Controller.Get())
@@ -884,36 +866,13 @@ void UHOLGameScreen::TickMessages()
 	{
 		RebuildMessages();
 	}
-	// The last half second of a line: its fade.
-	for (int32 Index = 0; Index < MessageThread.Lines.Num() && MessageLines.IsValidIndex(Index); ++Index)
-	{
-		MessageLines[Index]->SetRenderOpacity(FHOLForumThread::GetOpacity(MessageThread.Lines[Index], Now));
-	}
+	// The last half second of a line: its fade is the script's (HOLMessageFeed.as reads FHOLForumThread::GetOpacity each frame).
 }
 
 void UHOLGameScreen::RebuildMessages()
 {
-	using namespace UE::HeroesOfLiberty::UI::GameScreen;
-
-	const AHOLGameState* GameState = BoundTableState.Get();
-	const AHOLPlayerState* PlayerState = BoundPlayerState.Get();
-	const int32 ViewerSlot = PlayerState ? PlayerState->GetPlayerIndex() : INDEX_NONE;
-	// The list lets the clicks through but to the lines carrying an alert (V4.3: a click centres the camera on the forum).
-	SetShown(MessagesList, !MessageThread.Lines.IsEmpty(), ESlateVisibility::SelfHitTestInvisible);
-	for (int32 Index = 0; Index < MessageLines.Num(); ++Index)
-	{
-		const FHOLForumThreadLine* Line = MessageThread.Lines.IsValidIndex(Index) ? &MessageThread.Lines[Index] : nullptr;
-		SetShown(MessageLines[Index], Line != nullptr, Line && Line->Message.bAlert ? ESlateVisibility::Visible : ESlateVisibility::HitTestInvisible);
-		UHorizontalBox* Row = MessageRows[Index];
-		if (!Line)
-		{
-			Row->ClearChildren();
-			continue;
-		}
-		MessageLines[Index]->SetRenderOpacity(1.f);
-		// The plain words in the label's style, each name in its player's colour (the table's style).
-		FillMessageRow(*WidgetTree, *Row, Line->Message, ViewerSlot, GameState, UHOLTextStyleHUDLabel::StaticClass(), UHOLTextStyleHUDPlayerName::StaticClass());
-	}
+	// HUD H-5b: the thread's lines are drawn by the script (HOLMessageFeed.as): it redraws when this number changes.
+	++MessageRevision;
 }
 
 FString UHOLGameScreen::DescribeMessages() const
@@ -2615,24 +2574,7 @@ void UHOLGameScreen::BuildLayout()
 	UVerticalBoxSlot* MessagesSlot = RightColumn->AddChildToVerticalBox(MessagesList);
 	MessagesSlot->SetHorizontalAlignment(HAlign_Right);
 	MessagesSlot->SetPadding(FMargin(0.f, 6.f, 0.f, 0.f));
-	MessageLines.Reset();
-	MessageRows.Reset();
-	for (int32 Index = 0; Index < FHOLForumThread::MaxLines; ++Index)
-	{
-		// A line's own panel, as dark as the table's (the names in a dark colour read on it).
-		UBorder* Line = MakePanel(*FString::Printf(TEXT("MessageLine%d"), Index));
-		Line->SetBrush(FSlateRoundedBoxBrush(HOLUIStyle::HUDPanel.CopyWithNewOpacity(0.8f), 4.f));
-		Line->SetPadding(FMargin(8.f, 2.f));
-		Line->SetVisibility(ESlateVisibility::Collapsed);
-		Line->OnMouseButtonDownEvent.BindUFunction(this, GET_FUNCTION_NAME_CHECKED(UHOLGameScreen, HandleMessageLineMouseDown));
-		UHorizontalBox* Row = MakeHorizontalBox(*FString::Printf(TEXT("MessageRow%d"), Index));
-		Line->SetContent(Row);
-		UVerticalBoxSlot* LineSlot = MessagesList->AddChildToVerticalBox(Line);
-		LineSlot->SetHorizontalAlignment(HAlign_Right);
-		LineSlot->SetPadding(FMargin(0.f, Index > 0 ? 2.f : 0.f, 0.f, 0.f));
-		MessageLines.Add(Line);
-		MessageRows.Add(Row);
-	}
+	// H-5b: the thread's lines (MessageLine<i>, MessageRow<i>) are the script's (UHOLMessageFeedPanel), drawn into MessagesList (its host, kept here).
 
 	// The control groups' bar (J7a.5, D30), bottom left over the selection's block (the cheats' panel holds the top left):
 	// a slot per group not empty, « 1 · 9 », in the keys' order.

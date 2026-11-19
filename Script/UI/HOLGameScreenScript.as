@@ -134,6 +134,8 @@ FString TalentTipTexts = "";
 	UHOLWaitBannerPanel WaitBanner;
 // H-5a: the major alert's banner (HOLAlertBanner.as); the state machine stays C++ (UHOLGameScreen::Alert).
 UHOLAlertBannerPanel AlertBanner;
+	// H-5b: the thread of messages (HOLMessageFeed.as), drawn into the C++ screen's MessagesList; its state and source stay C++ (MessageThread).
+	UHOLMessageFeedPanel MessageFeed;
 
 	// H-2 (D313, D829): the short message and the held production note (HOLShortMessage.as).
 	FHOLShortMessageParts MessageParts;
@@ -271,6 +273,8 @@ UHOLAlertBannerPanel AlertBanner;
 		MessageParts = HOLShortMessage::Build(this, Frame);
 		PlayerTable = Cast<UHOLPlayerTablePanel>(NewObject(this, UHOLPlayerTablePanel));
 		PlayerTable.Build(this, GetPlayersPanel());
+		MessageFeed = Cast<UHOLMessageFeedPanel>(NewObject(this, UHOLMessageFeedPanel));
+		MessageFeed.Build(this);
 		GroupBar = Cast<UHOLGroupBarPanel>(NewObject(this, UHOLGroupBarPanel));
 		GroupBar.Build(this, GetGroupsPanel());
 		QueueView = Cast<UHOLProductionQueuePanel>(NewObject(this, UHOLProductionQueuePanel));
@@ -1398,6 +1402,8 @@ UHOLAlertBannerPanel AlertBanner;
 			WaitBanner.Refresh();
 		if (PlayerTable != nullptr)
 			PlayerTable.Refresh();
+		if (MessageFeed != nullptr)
+			MessageFeed.Refresh();
 		if (GroupBar != nullptr)
 			GroupBar.Refresh();
 		if (QueueView != nullptr)
@@ -1463,6 +1469,13 @@ UHOLAlertBannerPanel AlertBanner;
 	}
 
 	// H-7: once a frame, ONLY while the queue panel shows a queue (SetQueueLive): the head's bar moves each frame, as the C++ UpdateHead did.
+	UFUNCTION(BlueprintOverride)
+	void MessageFrameTick(float32 DeltaSeconds)
+	{
+		if (MessageFeed != nullptr)
+			MessageFeed.Refresh();
+	}
+
 	UFUNCTION(BlueprintOverride)
 	void QueueFrameTick()
 	{
@@ -2260,6 +2273,8 @@ UHOLAlertBannerPanel AlertBanner;
 		// The view of now, as the mouse would see it (the tests' waits draw no frame).
 		RefreshNow();
 		if (AlertBanner != nullptr && AlertBanner.ClickName(WidgetName))
+			return true;
+		if (MessageFeed != nullptr && MessageFeed.ClickName(WidgetName))
 			return true;
 		if (WidgetName == n"HeroPortrait")
 			return ClickPortrait();

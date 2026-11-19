@@ -419,11 +419,6 @@ private:
 	void RebuildMessages();
 	UPROPERTY(Transient)
 	TObjectPtr<UVerticalBox> MessagesList;
-	/** One line per message at most (FHOLForumThread::MaxLines): its panel, the row of its pieces. */
-	UPROPERTY(Transient)
-	TArray<TObjectPtr<UBorder>> MessageLines;
-	UPROPERTY(Transient)
-	TArray<TObjectPtr<UHorizontalBox>> MessageRows;
 	FHOLForumThread MessageThread;
 	/** HUD H-5b: RebuildMessages' count (a line added or expired); the script redraws the lines when it changes. */
 	int32 MessageRevision = 0;
@@ -440,8 +435,6 @@ private:
 	void PresentAlert();
 	/** False without the game state; bOver: my Victory / Defeat banner due (D202). */
 	bool IsMatchOverForMe(bool& bOver) const;
-	UFUNCTION()
-	FEventReply HandleMessageLineMouseDown(FGeometry Geometry, const FPointerEvent& MouseEvent);
 	void FocusAlertSlot(int32 TouchedSlot);
 	FHOLForumAlert Alert;
 	/** HUD H-5a: PresentAlert's count (a new banner, even an identical one, is a new number). */
