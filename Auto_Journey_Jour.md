@@ -123,7 +123,8 @@ Séance de fonctions du soir (21:08 -> clôture avant 23:00). Le tableau de la s
 | Q11 | appliquee | 3 essais donnés (plafond ~6) |
 | Q4, Q6, Q8, Q9, L4-11 | sans objet | pas d'essai d'IA, pas de réglage à l'œil, pas de défaut commun neuf |
 | L10-3 | appliquee | lot C++ : build PASS avant chaque passe de tests dans Elrond (200 s, bouchons ; puis implémentation) |
-| L8-9, L15-1 | voir la clôture | `sync_worktrees.ps1 -WaitBuilds` lancé à 21:53 après l'avance de main ; résultat et gate Close : paragraphe « Clôture » ci-dessous |
+| L8-9, L15-1 | appliquee | sync au début (21:16, 8 worktrees) ; `sync_worktrees.ps1 -WaitBuilds` après chaque avance de main : 21:53 (8 builds PASS de 3 à 6 s, script seul) et 22:23 (8 builds PASS : Arwen 202 s, Celeborn 173 s, Faramir 179 s, Galadriel 206 s, Glorfindel 221 s, Elrond 3 s, Haldir 164 s, Sauron en dernier) ; `Get-StaleBinaryProblem` vide sur les 8 worktrees à 22:45 ; gate Close : 4 FAIL à 22:22 (lot C++ hors de main), levés par l'entrée du lot dans main ; résultat final dans le message de fin de séance |
+| L4-1 (alarme) | appliquee | alarme « fin - 15 min » reçue à 22:45 : plus aucun agent lancé depuis 22:00, clôture déjà en cours |
 | L5-bilan | appliquee | ce tableau |
 | Autres IDs archives (voir « Devenues des controles » de la check-list) | non verifie | non évalués un par un ; sortie du gate Close au paragraphe « Clôture » |
 
