@@ -302,39 +302,6 @@ namespace UE::HeroesOfLiberty::Player
 		return false;
 	}
 
-	FAutoConsoleCommand OrderLineCommand(
-		TEXT("hol.Select.OrderLine"),
-		TEXT("hol.Select.OrderLine <X1> <Y1> <X2> <Y2> [ctrl] [shift]: a right-button drag between those points of the viewport (0 to 1 each way): an arrow, the group's front row centred on its base, facing along it; 'ctrl' its length is the front's width, 'shift' queued"),
-		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
-		{
-			if (Args.Num() < 4)
-			{
-				UE_LOG(LogHOLMatch, Warning, TEXT("Usage: hol.Select.OrderLine <X1> <Y1> <X2> <Y2>"));
-				return;
-			}
-			for (AHOLPlayerController* Controller : GetLocalControllers())
-			{
-				Controller->OrderLineAt(FVector2D(FCString::Atod(*Args[0]), FCString::Atod(*Args[1])),
-					FVector2D(FCString::Atod(*Args[2]), FCString::Atod(*Args[3])), HasLineFlag(Args, TEXT("ctrl")), HasLineFlag(Args, TEXT("shift")));
-			}
-		}));
-
-	FAutoConsoleCommand OrderCommand(
-		TEXT("hol.Select.Order"),
-		TEXT("hol.Select.Order <X> <Y> [shift]: orders as a right click at that point of the viewport (0 to 1 each way) would; 'shift' as with Shift held"),
-		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
-		{
-			if (Args.Num() < 2)
-			{
-				UE_LOG(LogHOLMatch, Warning, TEXT("Usage: hol.Select.Order <X> <Y> [shift]"));
-				return;
-			}
-			for (AHOLPlayerController* Controller : GetLocalControllers())
-			{
-				Controller->OrderAt(FVector2D(FCString::Atod(*Args[0]), FCString::Atod(*Args[1])), Args.Num() >= 3 && Args[2] == TEXT("shift"));
-			}
-		}));
-
 	/** Where a ground point (cm) is drawn, as a fraction of the viewport; false when it is not on the screen. */
 	bool ProjectGroundPoint(const AHOLPlayerController& Controller, const double X, const double Y, FVector2D& OutFraction)
 	{
@@ -678,40 +645,6 @@ namespace UE::HeroesOfLiberty::Player
 			}
 		}));
 
-	FAutoConsoleCommand StopCommand(
-		TEXT("hol.Select.Stop"),
-		TEXT("hol.Select.Stop: the local player's selected units stop, as the orders' S"),
-		FConsoleCommandDelegate::CreateLambda([]()
-		{
-			for (AHOLPlayerController* Controller : GetLocalControllers())
-			{
-				Controller->ActivateOrderCell(HOLCommandGrid::StopCell);
-			}
-		}));
-
-	FAutoConsoleCommand HoldCommand(
-		TEXT("hol.Select.Hold"),
-		TEXT("hol.Select.Hold: the local player's selected units hold their position, as the orders' V"),
-		FConsoleCommandDelegate::CreateLambda([]()
-		{
-			for (AHOLPlayerController* Controller : GetLocalControllers())
-			{
-				Controller->ActivateOrderCell(HOLCommandGrid::HoldCell);
-			}
-		}));
-
-	/** The "." key (D30, J5b), without the keyboard. */
-	FAutoConsoleCommand NextIdleCommand(
-		TEXT("hol.Select.NextIdle"),
-		TEXT("hol.Select.NextIdle: selects the local player's next idle worker and centres the camera on it, as the '.' key"),
-		FConsoleCommandDelegate::CreateLambda([]()
-		{
-			for (AHOLPlayerController* Controller : GetLocalControllers())
-			{
-				Controller->SelectNextIdleWorker();
-			}
-		}));
-
 	/** The control groups' keys (D30, J7a.5), without the keyboard. */
 	FAutoConsoleCommand GroupCommand(
 		TEXT("hol.Select.Group"),
@@ -994,66 +927,6 @@ namespace UE::HeroesOfLiberty::Player
 			}
 		}));
 
-	/** Scripted checks of the building (J6a.4): the player's units selected wherever they are, on the screen or not. */
-	FAutoConsoleCommand SelectOwnCommand(
-		TEXT("hol.Select.Own"),
-		TEXT("hol.Select.Own: selects every unit of the local player known here, on the screen or not"),
-		FConsoleCommandDelegate::CreateLambda([]()
-		{
-			for (AHOLPlayerController* Controller : GetLocalControllers())
-			{
-				const AHOLPlayerState* PlayerState = Controller->GetHOLPlayerState();
-				TArray<FHOLUnitView> Views;
-				HOLUnitView::Gather(*Controller->GetWorld(), Views);
-				TArray<uint32> UnitIds;
-				for (const FHOLUnitView& View : Views)
-				{
-					if (PlayerState && View.OwnerPlayer == PlayerState->GetPlayerIndex())
-					{
-						UnitIds.Add(View.UnitId);
-					}
-				}
-				UnitIds.Sort();
-				// Logged even when they already were (the selection then logs nothing).
-				UE_LOG(LogHOLMatch, Display, TEXT("Select own: %d units"), UnitIds.Num());
-				Controller->SetUnitSelection(MoveTemp(UnitIds));
-			}
-		}));
-
-	/** Scripted trials: a unit type picked by its name, whatever stands on top of it on the screen (a click on a crowded spot takes another unit). */
-	FAutoConsoleCommand SelectTypeCommand(
-		TEXT("hol.Select.Type"),
-		TEXT("hol.Select.Type <Type> [last]: selects every unit of the local player known here of that type (Monk, Spearman...), on the screen or not; last: the newest one alone"),
-		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
-		{
-			if (Args.IsEmpty())
-			{
-				UE_LOG(LogHOLMatch, Warning, TEXT("Usage: hol.Select.Type <Type>"));
-				return;
-			}
-			for (AHOLPlayerController* Controller : GetLocalControllers())
-			{
-				const AHOLPlayerState* PlayerState = Controller->GetHOLPlayerState();
-				TArray<FHOLUnitView> Views;
-				HOLUnitView::Gather(*Controller->GetWorld(), Views);
-				TArray<uint32> UnitIds;
-				for (const FHOLUnitView& View : Views)
-				{
-					if (PlayerState && View.OwnerPlayer == PlayerState->GetPlayerIndex() && View.TypeName == FName(*Args[0]))
-					{
-						UnitIds.Add(View.UnitId);
-					}
-				}
-				UnitIds.Sort();
-				if (Args.Num() > 1 && Args[1] == TEXT("last") && UnitIds.Num() > 1)
-				{
-					UnitIds = { UnitIds.Last() };
-				}
-				UE_LOG(LogHOLMatch, Display, TEXT("Select type %s: %d units"), *Args[0], UnitIds.Num());
-				Controller->SetUnitSelection(MoveTemp(UnitIds));
-			}
-		}));
-
 	/** The same, to a point given from the player's own start (a script does not know which slot a client holds). */
 	FAutoConsoleCommand UnitsOrderNearCommand(
 		TEXT("hol.Units.OrderNear"),
@@ -1264,17 +1137,6 @@ namespace UE::HeroesOfLiberty::Player
 				const FHOLSource& Source = Sources->GetSources()[Index];
 				UE_LOG(LogHOLMatch, Display, TEXT("Build on source %d at (%.0f, %.0f)"), Index, Source.Location.X, Source.Location.Y);
 				RequestPlacementAt(*Controller, FName(*Args[0]), Source.Location);
-			}
-		}));
-
-	FAutoConsoleCommand BuildCancelSelectedCommand(
-		TEXT("hol.Build.CancelSelected"),
-		TEXT("hol.Build.CancelSelected: asks the server to cancel the selected building of the player not yet finished (refunded, D311)"),
-		FConsoleCommandDelegate::CreateLambda([]()
-		{
-			for (AHOLPlayerController* Controller : GetLocalControllers())
-			{
-				Controller->RequestCancelBuilding(Controller->GetOwnSelection());
 			}
 		}));
 
