@@ -26,12 +26,46 @@ namespace HOLPowerBook
 	// The state of the button from the row, the stock of the resource, the cool-down left (ms) and the faction's tier.
 	EHOLPowerState StateOf(const FHOLPowerRow& Row, int Stock, int CooldownLeftMs, int Tier)
 	{
-		return EHOLPowerState::Soon;
+		if (!Row.bEffectCoded)
+		{
+			return EHOLPowerState::Soon;
+		}
+		if (Tier < Row.MinTier)
+		{
+			return EHOLPowerState::TierLocked;
+		}
+		if (CooldownLeftMs > 0)
+		{
+			return EHOLPowerState::Cooling;
+		}
+		if (Stock < Row.Cost)
+		{
+			return EHOLPowerState::ShortOfResource;
+		}
+		return EHOLPowerState::Ready;
 	}
 
 	// The stable line of the tests and of the logs: "<key> cost <n> ready", "... cooling <s> s", "... short", "... tier <n>", "... soon".
 	FString Describe(const FHOLPowerRow& Row, EHOLPowerState State, int CooldownLeftMs)
 	{
-		return "";
+		FString Head = f"{Row.Key} cost {Row.Cost}";
+		if (State == EHOLPowerState::Ready)
+		{
+			return f"{Head} ready";
+		}
+		if (State == EHOLPowerState::Cooling)
+		{
+			int Seconds = (CooldownLeftMs + 999) / 1000;
+			return f"{Head} cooling {Seconds} s";
+		}
+		if (State == EHOLPowerState::ShortOfResource)
+		{
+			return f"{Head} short";
+		}
+		if (State == EHOLPowerState::TierLocked)
+		{
+			return f"{Head} tier {Row.MinTier}";
+		}
+		return f"{Head} soon";
 	}
 }
