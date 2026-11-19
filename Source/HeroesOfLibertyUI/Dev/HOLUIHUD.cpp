@@ -7,7 +7,6 @@
 #include "HUD/HOLCheatPanel.h"
 #include "HUD/HOLGameHUD.h"
 #include "HUD/HOLGameScreen.h"
-#include "HUD/HOLScenarioPanel.h"
 #include "Map/HOLVisionSubsystem.h"
 #include "Match/HOLPlayerState.h"
 #include "Widgets/SWindow.h"
@@ -117,9 +116,8 @@ namespace UE::HeroesOfLiberty::UI::HUD
 		WithGameScreen(World, Delay, [Name](UHOLGameScreen& Screen)
 		{
 			UHOLCheatPanel* CheatPanel = AHOLGameHUD::FindCheatPanel(Screen.GetOwningPlayer());
-			UHOLScenarioPanel* ScenarioPanel = AHOLGameHUD::FindScenarioPanel(Screen.GetOwningPlayer());
-			const bool bClicked = Screen.ClickWidget(Name) || (CheatPanel && CheatPanel->ClickWidget(Name))
-				|| (ScenarioPanel && ScenarioPanel->ClickWidget(Name));
+			// The scenario panel's buttons (ScenarioClose, ScenarioRestart) are the game screen's script since H-11b.
+			const bool bClicked = Screen.ClickWidget(Name) || (CheatPanel && CheatPanel->ClickWidget(Name));
 			UE_LOG(LogHOLUI, Display, TEXT("HUD click %s: %s"), *Name.ToString(), bClicked ? TEXT("done") : TEXT("hidden, greyed or unknown"));
 		});
 	}

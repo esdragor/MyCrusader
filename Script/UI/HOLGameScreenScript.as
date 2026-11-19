@@ -135,6 +135,9 @@ FString TalentTipTexts = "";
 // H-5a: the major alert's banner (HOLAlertBanner.as); the state machine stays C++ (UHOLGameScreen::Alert).
 UHOLAlertBannerPanel AlertBanner;
 
+// H-11b: the test scenario's panel (HOLScenarioPanelScript.as), under the top bar; the state is C++ (HOLTestHooks::GetScenarioDisplay).
+UHOLScenarioPanelScript ScenarioPanel;
+
 	// H-2 (D313, D829): the short message and the held production note (HOLShortMessage.as).
 	FHOLShortMessageParts MessageParts;
 	FHOLShortMessageState MessageState;
@@ -268,6 +271,8 @@ UHOLAlertBannerPanel AlertBanner;
 		WaitBanner.Build(this, Frame);
 		AlertBanner = Cast<UHOLAlertBannerPanel>(NewObject(this, UHOLAlertBannerPanel));
 		AlertBanner.Build(this, Frame);
+		ScenarioPanel = Cast<UHOLScenarioPanelScript>(NewObject(this, UHOLScenarioPanelScript));
+		ScenarioPanel.Build(this, Frame, TopBar.TopBar);
 		MessageParts = HOLShortMessage::Build(this, Frame);
 		PlayerTable = Cast<UHOLPlayerTablePanel>(NewObject(this, UHOLPlayerTablePanel));
 		PlayerTable.Build(this, GetPlayersPanel());
@@ -1394,6 +1399,8 @@ UHOLAlertBannerPanel AlertBanner;
 		RefreshVolcano();
 		if (TopBar != nullptr)
 			TopBar.Refresh();
+		if (ScenarioPanel != nullptr)
+			ScenarioPanel.Refresh();
 		if (WaitBanner != nullptr)
 			WaitBanner.Refresh();
 		if (PlayerTable != nullptr)
@@ -2260,6 +2267,8 @@ UHOLAlertBannerPanel AlertBanner;
 		// The view of now, as the mouse would see it (the tests' waits draw no frame).
 		RefreshNow();
 		if (AlertBanner != nullptr && AlertBanner.ClickName(WidgetName))
+			return true;
+		if (ScenarioPanel != nullptr && ScenarioPanel.ClickName(WidgetName))
 			return true;
 		if (WidgetName == n"HeroPortrait")
 			return ClickPortrait();

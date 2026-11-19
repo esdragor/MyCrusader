@@ -1,4 +1,4 @@
-﻿// HUD H-11b, the TEST SCENARIO's panel (hol.Scenario; note / waitkey / panel hide|show of Tools\Scenarios), a development tool: NEW FILE, NOT HOOKED, NOT COMPILED.
+// HUD H-11b, the TEST SCENARIO's panel (hol.Scenario; note / waitkey / panel hide|show of Tools\Scenarios), a development tool: NEW FILE, NOT HOOKED, NOT COMPILED.
 // Port of Source\HeroesOfLibertyUI\HUD\HOLScenarioPanel.cpp (the C++ stays until the switch). It cannot compile alone: it needs the C++ bindings below.
 // C++ bindings to add, members of UHOLScriptScreen (same pattern as HOLTopBar.as / HOLAlertBanner.as), written by the C++ lot:
 //   bool GetScenarioDisplay(FString& OutName, int& OutState, FString& OutError, TArray<FString>& OutNotes, FString& OutWaitingForKey,

@@ -16,7 +16,6 @@
 #include "HUD/HOLCheatPanel.h"
 #include "HUD/HOLGameHUD.h"
 #include "HUD/HOLGameScreen.h"
-#include "HUD/HOLScenarioPanel.h"
 #include "Widgets/HOLRootLayout.h"
 #include "Widgets/IToolTip.h"
 #include "Widgets/SViewport.h"
@@ -132,7 +131,7 @@ namespace UE::HeroesOfLiberty::UI::Mouse
 			APlayerController* Player = World ? World->GetFirstPlayerController() : nullptr;
 			const UHOLRootLayout* Layout = UHOLRootLayout::Get(Player);
 			const UUserWidget* Roots[] = { Layout ? Layout->GetActiveMenu() : nullptr, AHOLGameHUD::FindScreen(Player),
-				AHOLGameHUD::FindCheatPanel(Player), AHOLGameHUD::FindScenarioPanel(Player), Layout };
+				AHOLGameHUD::FindCheatPanel(Player), Layout };
 			for (const UUserWidget* Root : Roots)
 			{
 				UWidget* Found = FindIn(Root, Name, 0);

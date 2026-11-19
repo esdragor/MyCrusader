@@ -11,7 +11,6 @@
 #include "Dev/HOLTestHooks.h"
 #include "HUD/HOLCheatPanel.h"
 #include "HUD/HOLGameScreen.h"
-#include "HUD/HOLScenarioPanel.h"
 #include "Match/HOLForumMessages.h"
 #include "Match/HOLGameState.h"
 #include "Match/HOLPlayerState.h"
@@ -89,19 +88,17 @@ void AHOLGameHUD::BeginPlay()
 		CheatPanel->SetAnchorWidget(Screen ? Screen->GetTopBar() : nullptr);
 		CheatPanel->AddToViewport(/*ZOrder*/ 1);
 	}
-	// The test scenario's panel (hol.Scenario), at the top centre, over both: what a scenario started before this map
-	// opened shows at once, and what comes after (its notes, ready) through the hook.
-	ScenarioPanel = CreateWidget<UHOLScenarioPanel>(PlayerController, UHOLScenarioPanel::StaticClass());
-	if (ScenarioPanel)
+	// The test scenario's panel (hol.Scenario) is the script's since H-11b (UHOLScenarioPanelScript, in the game screen's frame, under
+	// the top bar): what a scenario started before this map opened shows at once, and what comes after (its notes, ready, an error)
+	// through this hook, which refreshes the screen at once so the "Scenario panel: scenario X failed" line (LaunchCheck) is written.
+	if (Screen)
 	{
-		ScenarioPanel->SetAnchorWidget(Screen ? Screen->GetTopBar() : nullptr);
-		ScenarioPanel->AddToViewport(/*ZOrder*/ 2);
-		const TWeakObjectPtr<UHOLScenarioPanel> WeakPanel(ScenarioPanel);
-		HOLTestHooks::OnScenarioChanged() = [WeakPanel]()
+		const TWeakObjectPtr<UHOLGameScreen> WeakScreen(Screen);
+		HOLTestHooks::OnScenarioChanged() = [WeakScreen]()
 		{
-			if (UHOLScenarioPanel* Panel = WeakPanel.Get())
+			if (UHOLGameScreen* GameScreen = WeakScreen.Get())
 			{
-				Panel->Refresh();
+				GameScreen->RefreshNow();
 			}
 		};
 		UE::HeroesOfLiberty::UI::GameHUD::ScenarioHookOwner = this;
@@ -215,11 +212,6 @@ void AHOLGameHUD::EndPlay(const EEndPlayReason::Type EndPlayReason)
 		MenuLayout->RemoveFromParent();
 		MenuLayout = nullptr;
 	}
-	if (ScenarioPanel)
-	{
-		ScenarioPanel->RemoveFromParent();
-		ScenarioPanel = nullptr;
-	}
 	if (CheatPanel)
 	{
 		CheatPanel->RemoveFromParent();
@@ -319,8 +311,3 @@ UHOLCheatPanel* AHOLGameHUD::FindCheatPanel(const APlayerController* PlayerContr
 	return GameHUD ? GameHUD->GetCheatPanel() : nullptr;
 }
 
-UHOLScenarioPanel* AHOLGameHUD::FindScenarioPanel(const APlayerController* PlayerController)
-{
-	const AHOLGameHUD* GameHUD = PlayerController ? Cast<AHOLGameHUD>(PlayerController->GetHUD()) : nullptr;
-	return GameHUD ? GameHUD->GetScenarioPanel() : nullptr;
-}
