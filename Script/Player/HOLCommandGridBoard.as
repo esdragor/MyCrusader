@@ -75,4 +75,29 @@ class UHOLCommandGridBoardScript : UHOLCommandGridBoard
 	FString DescribeAnswer(const FHOLFeedbackView& Feedback)
 	{
 		return HOLCommandGridKeys::Describe(Feedback);
+	}
+
+	// Family 3: groups (HOLCommandGridGroups).
+	UFUNCTION(BlueprintOverride)
+	int NextInCycleAnswer(const TArray<FHOLCycleBuildingView>& Buildings, int LastKey)
+	{
+		return HOLCommandGridGroups::NextInCycle(Buildings, LastKey);
+	}
+
+	UFUNCTION(BlueprintOverride)
+	int PickEvenlyAnswer(const TArray<FHOLQueueChoiceView>& Choices, int LastKey)
+	{
+		return HOLCommandGridGroups::PickEvenly(Choices, LastKey);
+	}
+
+	UFUNCTION(BlueprintOverride)
+	TArray<FHOLSubgroupView> SplitSubgroupsAnswer(const TArray<FHOLGroupMemberView>& Members)
+	{
+		return HOLCommandGridGroups::SplitSubgroups(Members);
+	}
+
+	UFUNCTION(BlueprintOverride)
+	TArray<FHOLGridCommandView> MergeCommandsAnswer(const TArray<FHOLGridCommandView>& PerBuilding, const TArray<int>& Priority)
+	{
+		return HOLCommandGridGroups::MergeCommands(PerBuilding, Priority);
 	}}

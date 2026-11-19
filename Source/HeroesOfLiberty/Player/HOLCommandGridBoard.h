@@ -40,6 +40,11 @@ public:
 		int32 PopulationCap, int32 Places, FHOLCommandFeedback& Out);
 	static bool AskCheckBuild(const FHOLResources& Stock, const FHOLResources& Cost, FHOLCommandFeedback& Out);
 	static bool AskDescribe(const FHOLCommandFeedback& Feedback, FString& Out);
+	// Family 3 (groups). Ask* return false (the caller keeps its C++ body) with no board, or when MergeCommands' input is not NumCells wide per building.
+	static bool AskNextInCycle(TConstArrayView<FHOLCycleBuilding> Buildings, uint32 LastKey, int32& Out);
+	static bool AskPickEvenly(TConstArrayView<FHOLQueueChoice> Choices, uint32 LastKey, int32& Out);
+	static bool AskSplitSubgroups(TConstArrayView<FHOLGroupMember> Members, TArray<FHOLSubgroup>& Out);
+	static bool AskMergeCommands(TConstArrayView<TArray<FHOLGridCommand>> PerBuilding, TConstArrayView<int32> Priority, TArray<FHOLGridCommand>& Out);
 
 	/** FHOLGridContext as the view the script reads (the inverse of the read library's ToRule). */
 	static FHOLGridContextView MakeContextView(const FHOLGridContext& Context);
@@ -89,4 +94,18 @@ protected:
 		int32 PopulationUsed, int32 PopulationCap, int32 Places);
 	virtual FHOLFeedbackView CheckBuildAnswer_Implementation(const FHOLResources& Stock, const FHOLResources& Cost);
 	virtual FString DescribeAnswer_Implementation(const FHOLFeedbackView& Feedback);
+
+	// Family 3 (HOLCommandGridGroups). Default = no answer. MergeCommands takes the buildings' cells flat (NumCells each, like the read library).
+	UFUNCTION(BlueprintNativeEvent, Category = "HeroesOfLiberty|CommandGrid")
+	int32 NextInCycleAnswer(const TArray<FHOLCycleBuildingView>& Buildings, int32 LastKey);
+	UFUNCTION(BlueprintNativeEvent, Category = "HeroesOfLiberty|CommandGrid")
+	int32 PickEvenlyAnswer(const TArray<FHOLQueueChoiceView>& Choices, int32 LastKey);
+	UFUNCTION(BlueprintNativeEvent, Category = "HeroesOfLiberty|CommandGrid")
+	TArray<FHOLSubgroupView> SplitSubgroupsAnswer(const TArray<FHOLGroupMemberView>& Members);
+	UFUNCTION(BlueprintNativeEvent, Category = "HeroesOfLiberty|CommandGrid")
+	TArray<FHOLGridCommandView> MergeCommandsAnswer(const TArray<FHOLGridCommandView>& PerBuilding, const TArray<int32>& Priority);
+	virtual int32 NextInCycleAnswer_Implementation(const TArray<FHOLCycleBuildingView>& Buildings, int32 LastKey);
+	virtual int32 PickEvenlyAnswer_Implementation(const TArray<FHOLQueueChoiceView>& Choices, int32 LastKey);
+	virtual TArray<FHOLSubgroupView> SplitSubgroupsAnswer_Implementation(const TArray<FHOLGroupMemberView>& Members);
+	virtual TArray<FHOLGridCommandView> MergeCommandsAnswer_Implementation(const TArray<FHOLGridCommandView>& PerBuilding, const TArray<int32>& Priority);
 };

@@ -10,6 +10,7 @@ namespace HOLCommandGridReadLibraryPrivate
 {
 	FHOLGridCommand ToRule(const FHOLGridCommandView& View);
 	FHOLFeedbackView FromRule(const FHOLCommandFeedback& Feedback);
+	FHOLGridCommandView FromRule(const FHOLGridCommand& Command);
 	FHOLCommandFeedback ToRule(const FHOLFeedbackView& View);
 }
 
@@ -186,6 +187,88 @@ bool UHOLCommandGridBoard::AskDescribe(const FHOLCommandFeedback& Feedback, FStr
 	return true;
 }
 
+bool UHOLCommandGridBoard::AskNextInCycle(const TConstArrayView<FHOLCycleBuilding> Buildings, const uint32 LastKey, int32& Out)
+{
+	UHOLCommandGridBoard* Board = FindAny();
+	if (!Board) { return false; }
+	TArray<FHOLCycleBuildingView> Views;
+	Views.Reserve(Buildings.Num());
+	for (const FHOLCycleBuilding& Building : Buildings)
+	{
+		FHOLCycleBuildingView& View = Views.AddDefaulted_GetRef();
+		View.Rank = Building.Rank;
+		View.Key = static_cast<int32>(Building.Key);
+	}
+	Out = Board->NextInCycleAnswer(Views, static_cast<int32>(LastKey));
+	return true;
+}
+
+bool UHOLCommandGridBoard::AskPickEvenly(const TConstArrayView<FHOLQueueChoice> Choices, const uint32 LastKey, int32& Out)
+{
+	UHOLCommandGridBoard* Board = FindAny();
+	if (!Board) { return false; }
+	TArray<FHOLQueueChoiceView> Views;
+	Views.Reserve(Choices.Num());
+	for (const FHOLQueueChoice& Choice : Choices)
+	{
+		FHOLQueueChoiceView& View = Views.AddDefaulted_GetRef();
+		View.QueueLength = Choice.QueueLength;
+		View.MaxQueue = Choice.MaxQueue;
+		View.Key = static_cast<int32>(Choice.Key);
+	}
+	Out = Board->PickEvenlyAnswer(Views, static_cast<int32>(LastKey));
+	return true;
+}
+
+bool UHOLCommandGridBoard::AskSplitSubgroups(const TConstArrayView<FHOLGroupMember> Members, TArray<FHOLSubgroup>& Out)
+{
+	UHOLCommandGridBoard* Board = FindAny();
+	if (!Board) { return false; }
+	TArray<FHOLGroupMemberView> Views;
+	Views.Reserve(Members.Num());
+	for (const FHOLGroupMember& Member : Members)
+	{
+		FHOLGroupMemberView& View = Views.AddDefaulted_GetRef();
+		View.TypeName = Member.TypeName;
+		View.bAlone = Member.bAlone;
+	}
+	Out.Reset();
+	for (const FHOLSubgroupView& View : Board->SplitSubgroupsAnswer(Views))
+	{
+		FHOLSubgroup& Subgroup = Out.AddDefaulted_GetRef();
+		Subgroup.bAll = View.bAll;
+		Subgroup.TypeName = View.TypeName;
+		Subgroup.Members = View.Members;
+	}
+	return true;
+}
+
+bool UHOLCommandGridBoard::AskMergeCommands(const TConstArrayView<TArray<FHOLGridCommand>> PerBuilding, const TConstArrayView<int32> Priority, TArray<FHOLGridCommand>& Out)
+{
+	UHOLCommandGridBoard* Board = FindAny();
+	if (!Board) { return false; }
+	TArray<FHOLGridCommandView> Flat;
+	Flat.Reserve(PerBuilding.Num() * HOLCommandGrid::NumCells);
+	for (const TArray<FHOLGridCommand>& Building : PerBuilding)
+	{
+		if (Building.Num() != HOLCommandGrid::NumCells)
+		{
+			return false; // the flat form cannot carry another width: the C++ body keeps it
+		}
+		for (const FHOLGridCommand& Command : Building)
+		{
+			Flat.Add(HOLCommandGridReadLibraryPrivate::FromRule(Command));
+		}
+	}
+	TArray<int32> PriorityCopy(Priority.GetData(), Priority.Num());
+	Out.Reset();
+	for (const FHOLGridCommandView& View : Board->MergeCommandsAnswer(Flat, PriorityCopy))
+	{
+		Out.Add(HOLCommandGridReadLibraryPrivate::ToRule(View));
+	}
+	return true;
+}
+
 bool UHOLCommandGridBoard::ShouldCreateSubsystem(UObject* Outer) const
 {
 	// Never the abstract C++ class, nor a script class replaced by a reload (as UHOLPlayerOrdersBoard).
@@ -213,3 +296,7 @@ int32 UHOLCommandGridBoard::GetChosenAgeAfterAnswer_Implementation(const int32, 
 FHOLFeedbackView UHOLCommandGridBoard::CheckProductionAnswer_Implementation(const FHOLResources&, const FHOLResources&, const int32, const int32, const int32, const int32, const int32) { return FHOLFeedbackView(); }
 FHOLFeedbackView UHOLCommandGridBoard::CheckBuildAnswer_Implementation(const FHOLResources&, const FHOLResources&) { return FHOLFeedbackView(); }
 FString UHOLCommandGridBoard::DescribeAnswer_Implementation(const FHOLFeedbackView&) { return FString(); }
+int32 UHOLCommandGridBoard::NextInCycleAnswer_Implementation(const TArray<FHOLCycleBuildingView>&, const int32) { return INDEX_NONE; }
+int32 UHOLCommandGridBoard::PickEvenlyAnswer_Implementation(const TArray<FHOLQueueChoiceView>&, const int32) { return INDEX_NONE; }
+TArray<FHOLSubgroupView> UHOLCommandGridBoard::SplitSubgroupsAnswer_Implementation(const TArray<FHOLGroupMemberView>&) { return TArray<FHOLSubgroupView>(); }
+TArray<FHOLGridCommandView> UHOLCommandGridBoard::MergeCommandsAnswer_Implementation(const TArray<FHOLGridCommandView>&, const TArray<int32>&) { return TArray<FHOLGridCommandView>(); }

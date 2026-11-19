@@ -475,6 +475,11 @@ namespace HOLCommandGrid
 	HEROESOFLIBERTY_API int32 NextInCycle(TConstArrayView<FHOLCycleBuilding> Buildings, uint32 LastKey);
 
 	/** A building of this type is a subgroup to itself in a group: the main centre. */
+	/** The C++ bodies of NextInCycle / SplitSubgroups / MergeCommands / PickEvenly, never the script's (the bridge's repli; the read library reads these). */
+	HEROESOFLIBERTY_API int32 NextInCycleNative(TConstArrayView<FHOLCycleBuilding> Buildings, uint32 LastKey);
+	HEROESOFLIBERTY_API TArray<FHOLSubgroup> SplitSubgroupsNative(TConstArrayView<FHOLGroupMember> Members);
+	HEROESOFLIBERTY_API TArray<FHOLGridCommand> MergeCommandsNative(TConstArrayView<TArray<FHOLGridCommand>> PerBuilding, TConstArrayView<int32> Priority);
+	HEROESOFLIBERTY_API int32 PickEvenlyNative(TConstArrayView<FHOLQueueChoice> Choices, uint32 LastKey);
 	HEROESOFLIBERTY_API bool IsAloneInGroup(FName TypeName);
 
 	/**

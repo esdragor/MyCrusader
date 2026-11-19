@@ -499,6 +499,12 @@ namespace HOLCommandGrid
 
 	int32 NextInCycle(const TConstArrayView<FHOLCycleBuilding> Buildings, const uint32 LastKey)
 	{
+		int32 Answer = INDEX_NONE;
+		return UHOLCommandGridBoard::AskNextInCycle(Buildings, LastKey, Answer) ? Answer : NextInCycleNative(Buildings, LastKey);
+	}
+
+	int32 NextInCycleNative(const TConstArrayView<FHOLCycleBuilding> Buildings, const uint32 LastKey)
+	{
 		if (Buildings.IsEmpty())
 		{
 			return INDEX_NONE;
@@ -522,6 +528,12 @@ namespace HOLCommandGrid
 	}
 
 	TArray<FHOLSubgroup> SplitSubgroups(const TConstArrayView<FHOLGroupMember> Members)
+	{
+		TArray<FHOLSubgroup> Answer;
+		return UHOLCommandGridBoard::AskSplitSubgroups(Members, Answer) ? Answer : SplitSubgroupsNative(Members);
+	}
+
+	TArray<FHOLSubgroup> SplitSubgroupsNative(const TConstArrayView<FHOLGroupMember> Members)
 	{
 		TArray<FHOLSubgroup> Subgroups;
 		if (Members.IsEmpty())
@@ -572,6 +584,12 @@ namespace HOLCommandGrid
 
 	TArray<FHOLGridCommand> MergeCommands(const TConstArrayView<TArray<FHOLGridCommand>> PerBuilding, const TConstArrayView<int32> Priority)
 	{
+		TArray<FHOLGridCommand> Answer;
+		return UHOLCommandGridBoard::AskMergeCommands(PerBuilding, Priority, Answer) ? Answer : MergeCommandsNative(PerBuilding, Priority);
+	}
+
+	TArray<FHOLGridCommand> MergeCommandsNative(const TConstArrayView<TArray<FHOLGridCommand>> PerBuilding, const TConstArrayView<int32> Priority)
+	{
 		TArray<FHOLGridCommand> Merged;
 		Merged.SetNum(NumCells);
 		for (const int32 Index : Priority)
@@ -593,6 +611,12 @@ namespace HOLCommandGrid
 	}
 
 	int32 PickEvenly(const TConstArrayView<FHOLQueueChoice> Choices, const uint32 LastKey)
+	{
+		int32 Answer = INDEX_NONE;
+		return UHOLCommandGridBoard::AskPickEvenly(Choices, LastKey, Answer) ? Answer : PickEvenlyNative(Choices, LastKey);
+	}
+
+	int32 PickEvenlyNative(const TConstArrayView<FHOLQueueChoice> Choices, const uint32 LastKey)
 	{
 		int32 Fewest = MAX_int32;
 		for (const FHOLQueueChoice& Choice : Choices)

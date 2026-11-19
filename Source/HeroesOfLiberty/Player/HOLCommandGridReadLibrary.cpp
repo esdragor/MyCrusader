@@ -307,7 +307,7 @@ int32 UHOLCommandGridReadLibrary::NextInCycle(const TArray<FHOLCycleBuildingView
 	{
 		Rule.Add({ View.Rank, static_cast<uint32>(View.Key) });
 	}
-	return HOLCommandGrid::NextInCycle(Rule, static_cast<uint32>(LastKey));
+	return HOLCommandGrid::NextInCycleNative(Rule, static_cast<uint32>(LastKey));
 }
 
 bool UHOLCommandGridReadLibrary::IsAloneInGroup(const FName TypeName) { return HOLCommandGrid::IsAloneInGroup(TypeName); }
@@ -316,7 +316,7 @@ TArray<FHOLSubgroupView> UHOLCommandGridReadLibrary::SplitSubgroups(const TArray
 {
 	const TArray<FHOLGroupMember> Rule = ToRule(Members);
 	TArray<FHOLSubgroupView> Out;
-	for (const FHOLSubgroup& Subgroup : HOLCommandGrid::SplitSubgroups(Rule))
+	for (const FHOLSubgroup& Subgroup : HOLCommandGrid::SplitSubgroupsNative(Rule))
 	{
 		FHOLSubgroupView View;
 		View.bAll = Subgroup.bAll;
@@ -346,7 +346,7 @@ TArray<FHOLGridCommandView> UHOLCommandGridReadLibrary::MergeCommands(const TArr
 		}
 	}
 	TArray<FHOLGridCommandView> Out;
-	for (const FHOLGridCommand& Command : HOLCommandGrid::MergeCommands(Rule, Priority))
+	for (const FHOLGridCommand& Command : HOLCommandGrid::MergeCommandsNative(Rule, Priority))
 	{
 		Out.Add(FromRule(Command));
 	}
@@ -360,7 +360,7 @@ int32 UHOLCommandGridReadLibrary::PickEvenly(const TArray<FHOLQueueChoiceView>& 
 	{
 		Rule.Add({ View.QueueLength, View.MaxQueue, static_cast<uint32>(View.Key) });
 	}
-	return HOLCommandGrid::PickEvenly(Rule, static_cast<uint32>(LastKey));
+	return HOLCommandGrid::PickEvenlyNative(Rule, static_cast<uint32>(LastKey));
 }
 
 // ---- MIG-C-CommandGrid, 2nd lot (GALADRIEL-1117n). NOT COMPILED when written. ----
