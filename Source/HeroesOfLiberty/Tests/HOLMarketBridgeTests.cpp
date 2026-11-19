@@ -88,17 +88,6 @@ bool FHOLMarketServerBoardTest::RunTest(const FString& Parameters)
 			}
 		}
 
-		// The tribute: the tax is kept (30 %, rounded down), a gift of 1 is not eaten.
-		TestEqual(TEXT("100 sent at 30 %: 70 arrive"), Board->ReceivedNow(100, HOLTribute::DefaultTaxPercent), 70);
-		TestEqual(TEXT("250 sent at 30 %: 175 arrive"), Board->ReceivedNow(250, HOLTribute::DefaultTaxPercent), 175);
-		TestEqual(TEXT("1 sent at 30 %: 1 arrives"), Board->ReceivedNow(1, HOLTribute::DefaultTaxPercent), 1);
-		// The server's call (the static one), at figures worked by hand: Sent minus Sent * 30 / 100 rounded down.
-		const int32 SentAndArrives[][2] = { { 1, 1 }, { 7, 5 }, { 10, 7 }, { 99, 70 }, { 100, 70 }, { 250, 175 }, { 1000, 700 } };
-		for (const int32 (&Case)[2] : SentAndArrives)
-		{
-			TestEqual(*FString::Printf(TEXT("%d sent: the bridge gives the script's amount"), Case[0]),
-				UHOLMarketSubsystem::Received(World, Case[0], HOLTribute::DefaultTaxPercent), Case[1]);
-		}
 		// The order's two stocks (D851 step 5 R2, the call ApplyTribute makes): the script's Settle, through the static bridge call.
 		const FHOLResources GiverStock(10, 500, 20, 30);
 		const FHOLResources TakerStock(1, 5, 2, 3);

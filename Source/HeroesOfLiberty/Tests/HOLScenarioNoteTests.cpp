@@ -8,7 +8,7 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-// The panel of a scenario (HOLScenarioPanel) shows HOLTestHooks::GetScenarioDisplay(): its notes and its state. These tests run a short
+// The panel of a scenario (HOLScenarioPanelScript.as) shows HOLTestHooks::GetScenarioDisplay(): its notes and its state. These tests run a short
 // scenario through the real runner (HOLTestSequence::Run, as hol.Scenario does) and read what the panel would show.
 namespace HOLScenarioNoteTestsPrivate
 {

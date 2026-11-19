@@ -12,6 +12,11 @@
 #include "Engine/LocalPlayer.h"
 #include "Engine/World.h"
 #include "GameFramework/PlayerController.h"
+#include "Internationalization/Internationalization.h"
+#include "Internationalization/Text.h"
+#include "Internationalization/TextKey.h"
+#include "Internationalization/TextLocalizationResource.h"
+#include "Misc/Paths.h"
 #include "UObject/Package.h"
 #include "UObject/StrongObjectPtr.h"
 
@@ -140,4 +145,50 @@ int32 UHOLScreenTestLibrary::GetDropdownIndex(UWidget* Widget)
 {
 	const UHOLDropdown* Dropdown = Cast<UHOLDropdown>(Widget);
 	return Dropdown ? Dropdown->GetSelectedIndex() : -1;
+}
+
+FString UHOLScreenTestLibrary::GetLocalizedTextIn(const FString& Culture, const FText& Shown)
+{
+#if WITH_DEV_AUTOMATION_TESTS
+	// The way the former C++ panel tests did (TranslationOf): the culture's Game.locres, the entry of the text's own namespace and key.
+	FTextLocalizationResource Resource;
+	const FString File = FPaths::Combine(FPaths::ProjectContentDir(), TEXT("Localization/Game"), Culture, TEXT("Game.locres"));
+	if (!Resource.LoadFromFile(File, 0))
+	{
+		UE_LOG(LogHOLScreenTest, Warning, TEXT("GetLocalizedTextIn: %s is not readable"), *File);
+		return FString();
+	}
+	const auto Translate = [&Resource](const FText& Text, FString& OutTranslation)
+	{
+		const TOptional<FString> Namespace = FTextInspector::GetNamespace(Text);
+		const TOptional<FString> Key = FTextInspector::GetKey(Text);
+		if (!Namespace.IsSet() || !Key.IsSet())
+		{
+			return false;
+		}
+		const FTextLocalizationResource::FEntry* Entry = Resource.Entries.Find(FTextId(FTextKey(*Namespace.GetValue()), FTextKey(*Key.GetValue())));
+		if (!Entry || !Entry->LocalizedString.IsValid())
+		{
+			return false;
+		}
+		OutTranslation = *Entry->LocalizedString;
+		return true;
+	};
+	FString Translated;
+	if (Translate(Shown, Translated))
+	{
+		return Translated;
+	}
+	// A formatted text: its keyed pattern translated, its arguments kept (the title "Scenario {0}").
+	TArray<FHistoricTextFormatData> Formats;
+	FTextInspector::GetHistoricFormatData(Shown, Formats);
+	for (const FHistoricTextFormatData& Data : Formats)
+	{
+		if (Translate(Data.SourceFmt.GetSourceText(), Translated))
+		{
+			return FText::Format(FTextFormat::FromString(Translated), Data.Arguments).ToString();
+		}
+	}
+#endif
+	return FString();
 }

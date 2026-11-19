@@ -5,7 +5,7 @@
 #include "Engine/Engine.h"
 #include "Engine/World.h"
 #include "Match/HOLGameState.h"
-#include "Net/HOLPauseRules.h"
+#include "Match/HOLMatchFlowSubsystem.h"
 
 namespace
 {
@@ -13,16 +13,6 @@ namespace
 	{
 		const UWorld* World = GEngine ? GEngine->GetWorldFromContextObject(WorldContextObject, EGetWorldErrorMode::ReturnNull) : nullptr;
 		return World ? World->GetGameState<AHOLGameState>() : nullptr;
-	}
-
-	/** The game state's pause as the rule sees it at the server time Now (its start from the timer this machine counts). */
-	FHOLPauseRules::FState MakeState(const AHOLGameState& GameState, const double Now)
-	{
-		FHOLPauseRules::FState State;
-		State.PausesLeft = GameState.GetPausesLeft();
-		State.PausedBySlot = GameState.GetPausedBySlot();
-		State.PausedAtSeconds = Now - (FHOLPauseRules::DefaultTimerSeconds - GameState.GetPauseTimerLeft(Now));
-		return State;
 	}
 
 	bool IsInMatch(const AHOLGameState& GameState, const int32 Slot)
@@ -70,14 +60,21 @@ bool UHOLPauseLibrary::IsPauseFree(const UObject* WorldContextObject)
 bool UHOLPauseLibrary::CanPauseNow(const UObject* WorldContextObject, const int32 Slot)
 {
 	const AHOLGameState* GameState = GetGameStateOf(WorldContextObject);
-	return GameState && FHOLPauseRules::CanPause(GameState->GetNetMode(), MakeState(*GameState, GameState->GetServerWorldTimeSeconds()), IsInMatch(*GameState, Slot))
-		== FHOLPauseRules::EAnswer::Allowed;
+	// The script's rule (HOLMatchFlow::CanPause), as the server will decide; no board (-1) = no.
+	return GameState && UHOLMatchFlowSubsystem::AskCanPause(GameState->GetWorld(), GameState->IsPauseFree(), GameState->GetPausedBySlot(), GameState->GetPausesLeft(),
+		IsInMatch(*GameState, Slot)) == UHOLMatchFlowSubsystem::PauseAnswerAllowed;
 }
 
 bool UHOLPauseLibrary::CanResumeNow(const UObject* WorldContextObject, const int32 Slot)
 {
 	const AHOLGameState* GameState = GetGameStateOf(WorldContextObject);
-	const double Now = GameState ? GameState->GetServerWorldTimeSeconds() : 0.;
-	return GameState && FHOLPauseRules::CanResume(GameState->GetNetMode(), MakeState(*GameState, Now), Slot, IsInMatch(*GameState, Slot), Now)
-		== FHOLPauseRules::EAnswer::Allowed;
+	if (!GameState)
+	{
+		return false;
+	}
+	// The start of the pause as the rule sees it at the server time Now (from the timer this machine counts).
+	const double Now = GameState->GetServerWorldTimeSeconds();
+	const double PausedAt = Now - (AHOLGameState::PauseTimerSeconds - GameState->GetPauseTimerLeft(Now));
+	return UHOLMatchFlowSubsystem::AskCanResume(GameState->GetWorld(), GameState->IsPauseFree(), GameState->GetPausedBySlot(), PausedAt, Slot, IsInMatch(*GameState, Slot), Now)
+		== UHOLMatchFlowSubsystem::PauseAnswerAllowed;
 }

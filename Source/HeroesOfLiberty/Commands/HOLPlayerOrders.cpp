@@ -5,6 +5,7 @@
 #include "Buildings/HOLBuilding.h"
 #include "Buildings/HOLBuildingTypes.h"
 #include "Commands/HOLCommandSubsystem.h"
+#include "Commands/HOLPlayerOrdersBoard.h"
 #include "Engine/World.h"
 #include "HAL/IConsoleManager.h"
 #include "HeroesOfLibertyLog.h"
@@ -17,6 +18,24 @@ namespace HOLPlayerOrders
 {
 	namespace
 	{
+		/** The ids of an order as the whole numbers the script bridge takes (UHOLPlayerOrdersBoard; the queue's ids are uint32). */
+		TArray<int32> ToBridgeIds(const TConstArrayView<uint32> UnitIds)
+		{
+			TArray<int32> Ids;
+			Ids.Reserve(UnitIds.Num());
+			for (const uint32 UnitId : UnitIds)
+			{
+				Ids.Add(static_cast<int32>(UnitId));
+			}
+			return Ids;
+		}
+
+		/** The C++ rule, kept as the fallback while the world has no script board (P1b: the twin of HOLPlayerOrders.as, removed after the network proof). */
+		bool IsAcceptedCpp(const int32 PlayerIndex, const int32 NumUnits)
+		{
+			return PlayerIndex >= 0 && PlayerIndex < FHOLMatchConfig::MaxSlots && NumUnits >= 0 && NumUnits <= MaxOrderedUnits;
+		}
+
 		/** The queue of World, when an order of PlayerIndex naming NumUnits units may enter it. */
 		UHOLCommandSubsystem* GetQueue(UWorld& World, const int32 PlayerIndex, const int32 NumUnits)
 		{
@@ -26,7 +45,9 @@ namespace HOLPlayerOrders
 
 	bool IsAccepted(const int32 PlayerIndex, const int32 NumUnits)
 	{
-		return PlayerIndex >= 0 && PlayerIndex < FHOLMatchConfig::MaxSlots && NumUnits >= 0 && NumUnits <= MaxOrderedUnits;
+		// The script rule when a board exists (no world argument here: the board of the game world), else the C++ rule (a test without a world).
+		const int32 Answer = UHOLPlayerOrdersBoard::AskIsAcceptedAnywhere(PlayerIndex, NumUnits);
+		return Answer >= 0 ? Answer != 0 : IsAcceptedCpp(PlayerIndex, NumUnits);
 	}
 
 	void SendNonWorkersTo(UWorld& World, UHOLCommandSubsystem& Commands, const int32 PlayerIndex, TArray<uint32>& InOutUnitIds, const FVector& Point,
@@ -53,6 +74,11 @@ namespace HOLPlayerOrders
 	bool Move(UWorld& World, const int32 PlayerIndex, const TConstArrayView<uint32> UnitIds, const FVector& Target, const bool bQueue,
 		const FVector2D& FrontLine, const bool bFrontWidth)
 	{
+		const int32 Answer = UHOLPlayerOrdersBoard::AskMove(&World, PlayerIndex, ToBridgeIds(UnitIds), Target, bQueue, FrontLine, bFrontWidth);
+		if (Answer >= 0)
+		{
+			return Answer != 0;
+		}
 		UHOLCommandSubsystem* Commands = GetQueue(World, PlayerIndex, UnitIds.Num());
 		if (!Commands)
 		{
@@ -65,6 +91,11 @@ namespace HOLPlayerOrders
 
 	bool Attack(UWorld& World, const int32 PlayerIndex, const TConstArrayView<uint32> UnitIds, const uint32 TargetUnitId, const bool bQueue)
 	{
+		const int32 Answer = UHOLPlayerOrdersBoard::AskAttack(&World, PlayerIndex, ToBridgeIds(UnitIds), static_cast<int32>(TargetUnitId), bQueue);
+		if (Answer >= 0)
+		{
+			return Answer != 0;
+		}
 		UHOLCommandSubsystem* Commands = GetQueue(World, PlayerIndex, UnitIds.Num());
 		if (!Commands)
 		{
@@ -77,6 +108,11 @@ namespace HOLPlayerOrders
 
 	bool AttackBuilding(UWorld& World, const int32 PlayerIndex, const TConstArrayView<uint32> UnitIds, AHOLBuilding* Building, const bool bQueue)
 	{
+		const int32 Answer = UHOLPlayerOrdersBoard::AskAttackBuilding(&World, PlayerIndex, ToBridgeIds(UnitIds), Building, bQueue);
+		if (Answer >= 0)
+		{
+			return Answer != 0;
+		}
 		UHOLCommandSubsystem* Commands = Building ? GetQueue(World, PlayerIndex, UnitIds.Num()) : nullptr;
 		if (!Commands)
 		{
@@ -89,6 +125,11 @@ namespace HOLPlayerOrders
 
 	bool AttackMove(UWorld& World, const int32 PlayerIndex, const TConstArrayView<uint32> UnitIds, const FVector& Target, const bool bQueue)
 	{
+		const int32 Answer = UHOLPlayerOrdersBoard::AskAttackMove(&World, PlayerIndex, ToBridgeIds(UnitIds), Target, bQueue);
+		if (Answer >= 0)
+		{
+			return Answer != 0;
+		}
 		UHOLCommandSubsystem* Commands = GetQueue(World, PlayerIndex, UnitIds.Num());
 		if (!Commands)
 		{
@@ -101,6 +142,11 @@ namespace HOLPlayerOrders
 
 	bool Stop(UWorld& World, const int32 PlayerIndex, const TConstArrayView<uint32> UnitIds, const bool bHold)
 	{
+		const int32 Answer = UHOLPlayerOrdersBoard::AskStop(&World, PlayerIndex, ToBridgeIds(UnitIds), bHold);
+		if (Answer >= 0)
+		{
+			return Answer != 0;
+		}
 		UHOLCommandSubsystem* Commands = GetQueue(World, PlayerIndex, UnitIds.Num());
 		if (!Commands)
 		{
@@ -113,6 +159,11 @@ namespace HOLPlayerOrders
 
 	bool ToggleDeploy(UWorld& World, const int32 PlayerIndex, const TConstArrayView<uint32> UnitIds)
 	{
+		const int32 Answer = UHOLPlayerOrdersBoard::AskToggleDeploy(&World, PlayerIndex, ToBridgeIds(UnitIds));
+		if (Answer >= 0)
+		{
+			return Answer != 0;
+		}
 		UHOLCommandSubsystem* Commands = GetQueue(World, PlayerIndex, UnitIds.Num());
 		if (!Commands)
 		{

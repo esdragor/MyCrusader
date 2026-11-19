@@ -10,7 +10,6 @@
 
 #include "Blueprint/WidgetLayoutLibrary.h"
 #include "Blueprint/WidgetTree.h"
-#include "HUD/HOLCheatPanel.h"
 #include "HUD/HOLGameHUD.h"
 #include "HUD/HOLHUDLayoutRules.h"
 #include "HUD/HOLHUDSpace.h"
@@ -513,7 +512,7 @@ void UHOLScriptScreen::CloseScenarioPanel()
 
 float UHOLScriptScreen::MeasureHeadingWidth(const FText& A, const FText& B) const
 {
-	// The C++ panel's own measure (HOLScenarioPanel.cpp, state's minimum width): 0 with no renderer (-nullrhi, automation).
+	// The scenario panel's heading measure (HOLScenarioPanelScript.as, state's minimum width): 0 with no renderer (-nullrhi, automation).
 	if (!FSlateApplication::IsInitialized())
 	{
 		return 0.f;

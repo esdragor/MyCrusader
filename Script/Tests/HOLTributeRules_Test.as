@@ -8,6 +8,10 @@ void Test_TributeReceived(FUnitTest& T)
 	T.AssertEquals(175, HOLTribute::Received(250, HOLTribute::DefaultTaxPercent), "250 at 30 %: tax 75");
 	T.AssertEquals(1, HOLTribute::Received(1, HOLTribute::DefaultTaxPercent), "1 at 30 %: tax 0.3 rounded down to 0");
 	T.AssertEquals(7, HOLTribute::Received(10, HOLTribute::DefaultTaxPercent), "10 at 30 %");
+	// The vectors the retired C++ bridge test held (HeroesOfLiberty.Market.ServerBoard, worked by hand: Sent minus Sent * 30 / 100 rounded down).
+	T.AssertEquals(5, HOLTribute::Received(7, HOLTribute::DefaultTaxPercent), "7 at 30 %: tax 2.1 rounded down to 2");
+	T.AssertEquals(70, HOLTribute::Received(99, HOLTribute::DefaultTaxPercent), "99 at 30 %: tax 29.7 rounded down to 29");
+	T.AssertEquals(700, HOLTribute::Received(1000, HOLTribute::DefaultTaxPercent), "1000 at 30 %");
 	T.AssertEquals(100, HOLTribute::Received(100, 0), "no tax");
 	T.AssertEquals(50, HOLTribute::Received(100, 50), "half");
 	T.AssertEquals(0, HOLTribute::Received(100, 100), "all taxed");

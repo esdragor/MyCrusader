@@ -10,9 +10,9 @@
  * The pause and diplomacy decisions of AHOLGameState where the match runs (MIG-CPP step 5, lot S1; D839: a binding to expose, the replicated fields
  * and their replication stay in AHOLGameState). The rule is the script's (Script/Match/HOLMatchFlowBoard.as, namespace HOLMatchFlow, tested by
  * Script/Match/HOLMatchFlow_Test.as); this world subsystem asks its script subclass (UHOLMatchFlowBoardScript). Abstract: only a script subclass is
- * born. Every Ask* answers a whole number, or -1 when the world has no script board (AHOLGameState then keeps the C++ rule: FHOLPauseRules and the
- * inline gates, still the twin of the script until the agreement test HOLMatchFlow_Test.as has run green and the twin is removed). The pause answers
- * are the order of FHOLPauseRules::EAnswer (EHOLPauseAnswer of the script), the stance gate 0 Open, 1 not the Diplomacy mode, 2 no such player.
+ * born. Every Ask* answers a whole number, or -1 when the world has no script board (AHOLGameState then keeps the inline gates of the stances; for the
+ * pause there is no C++ rule left: no board = the request is refused with an error line). The pause answers
+ * are the order of EHOLPauseAnswer of the script (HOLMatchFlow_Test.as: Test_MatchFlowAnswerOrder), the stance gate 0 Open, 1 not the Diplomacy mode, 2 no such player.
  */
 UCLASS(Abstract)
 class HEROESOFLIBERTY_API UHOLMatchFlowSubsystem : public UWorldSubsystem
@@ -22,6 +22,15 @@ class HEROESOFLIBERTY_API UHOLMatchFlowSubsystem : public UWorldSubsystem
 public:
 	/** The world's match flow board (its script subclass), or null (no script compiled, or no world). */
 	static UHOLMatchFlowSubsystem* Find(const UWorld* World);
+
+	/** EHOLPauseAnswer::Allowed of the script. */
+	static constexpr int32 PauseAnswerAllowed = 0;
+	/** The journal's reason for a refused pause answer (the order of EHOLPauseAnswer of the script). */
+	static const TCHAR* PauseAnswerToText(const int32 Answer)
+	{
+		static const TCHAR* const Texts[] = { TEXT("allowed"), TEXT("not in the match"), TEXT("no pause left"), TEXT("already paused"), TEXT("not paused"), TEXT("timer running") };
+		return Answer >= 0 && Answer < static_cast<int32>(UE_ARRAY_COUNT(Texts)) ? Texts[Answer] : TEXT("?");
+	}
 
 	static int32 AskCanPause(const UWorld* World, bool bSolo, int32 PausedBySlot, int32 PausesLeft, bool bRequesterInMatch);
 	static int32 AskCanResume(const UWorld* World, bool bSolo, int32 PausedBySlot, double PausedAtSeconds, int32 RequesterSlot, bool bRequesterInMatch, double Now);

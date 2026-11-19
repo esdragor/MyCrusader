@@ -12,7 +12,7 @@
  * that the server and the clients agree to the last gold piece; both are tested on the same figures (the Market.csv ones).
  * Resources by index: 0 food, 1 wood, 2 stone, 3 gold (gold is the money, it has no tradable price).
  */
-/** D372 (tributes, GDD 5.5): the Market keeps a tax on a gift. What a gift reaches the receiver as is the script's rule (Script/Economy/HOLTributeRules.as), reached through UHOLMarketSubsystem::Received; only the default tax figure stays here. */
+/** D372 (tributes, GDD 5.5): the Market keeps a tax on a gift. What a gift reaches the receiver as is the script's rule (Script/Economy/HOLTributeRules.as), reached through UHOLMarketSubsystem::SettleTribute; only the default tax figure stays here. */
 namespace HOLTribute
 {
 	/** About 30 % (D372, indicative, to be tuned in play). */

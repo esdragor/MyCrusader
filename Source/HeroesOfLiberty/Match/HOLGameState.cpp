@@ -30,7 +30,7 @@
 namespace
 {
 	/** P5 (D513): the pauses of a match, shared by all its players (« réglable »). */
-	int32 PausesPerMatch = FHOLPauseRules::DefaultPausesPerMatch;
+	int32 PausesPerMatch = AHOLGameState::DefaultPausesPerMatch;
 	FAutoConsoleVariableRef CVarPausesPerMatch(TEXT("hol.Match.PausesPerMatch"), PausesPerMatch,
 		TEXT("hol.Match.PausesPerMatch N: the pauses of a networked match, shared by all its players (D513, default 3); read at its start"));
 }
@@ -1408,12 +1408,9 @@ double AHOLGameState::GetPauseTimerLeft(const double Now) const
 	}
 	if (GetNetMode() == NM_Client)
 	{
-		return FMath::Max(FHOLPauseRules::DefaultTimerSeconds - (FPlatformTime::Seconds() - PauseRealStartSeconds), 0.);
+		return FMath::Max(PauseTimerSeconds - (FPlatformTime::Seconds() - PauseRealStartSeconds), 0.);
 	}
-	FHOLPauseRules::FState State;
-	State.PausedBySlot = PausedBySlot;
-	State.PausedAtSeconds = PausedAtSeconds;
-	return FHOLPauseRules::TimerLeft(State, Now);
+	return FMath::Max(PauseTimerSeconds - (Now - PausedAtSeconds), 0.);
 }
 
 void AHOLGameState::NotifyPauseChanged()
@@ -1445,29 +1442,29 @@ bool AHOLGameState::IsInMatch(const AHOLPlayerState& Requester) const
 
 bool AHOLGameState::RequestPause(const AHOLPlayerState& Requester, const double Now)
 {
-	FHOLPauseRules::FState State;
-	State.PausesLeft = PausesLeft;
-	State.PausedBySlot = PausedBySlot;
-	State.PausedAtSeconds = PausedAtSeconds;
 	const int32 Slot = Requester.GetPlayerIndex();
-	// S1: the decision is the script's (HOLMatchFlow::CanPause); -1 = no script board, the C++ rule stays the answer.
+	// The decision is the script's (HOLMatchFlow::CanPause); -1 = no script board: refused, said in the journal (never a cast of -1).
 	const bool bSolo = GetNetMode() == NM_Standalone;
-	const int32 ScriptAnswer = UHOLMatchFlowSubsystem::AskCanPause(GetWorld(), bSolo, State.PausedBySlot, State.PausesLeft, IsInMatch(Requester));
-	const FHOLPauseRules::EAnswer Answer = ScriptAnswer >= 0 ? static_cast<FHOLPauseRules::EAnswer>(ScriptAnswer) : FHOLPauseRules::CanPause(GetNetMode(), State, IsInMatch(Requester));
-	if (Answer != FHOLPauseRules::EAnswer::Allowed)
+	const int32 Answer = UHOLMatchFlowSubsystem::AskCanPause(GetWorld(), bSolo, PausedBySlot, PausesLeft, IsInMatch(Requester));
+	if (Answer < 0)
 	{
-		UE_LOG(LogHOLMatch, Display, TEXT("Pause: refused to %s (slot %d): %s"), *Requester.GetPlayerName(), Slot, FHOLPauseRules::ToString(Answer));
+		UE_LOG(LogHOLMatch, Error, TEXT("Pause: refused to %s (slot %d): no script match flow board (HOLMatchFlowBoard.as not compiled)"), *Requester.GetPlayerName(), Slot);
 		return false;
 	}
-	const int32 ScriptLeft = UHOLMatchFlowSubsystem::AskPausesLeftAfterPause(GetWorld(), bSolo, State.PausesLeft);
-	FHOLPauseRules::Pause(GetNetMode(), State, Slot, Now);
-	if (ScriptLeft >= 0)
+	if (Answer != UHOLMatchFlowSubsystem::PauseAnswerAllowed)
 	{
-		State.PausesLeft = ScriptLeft;
+		UE_LOG(LogHOLMatch, Display, TEXT("Pause: refused to %s (slot %d): %s"), *Requester.GetPlayerName(), Slot, UHOLMatchFlowSubsystem::PauseAnswerToText(Answer));
+		return false;
 	}
-	PausesLeft = State.PausesLeft;
-	PausedBySlot = State.PausedBySlot;
-	PausedAtSeconds = State.PausedAtSeconds;
+	const int32 ScriptLeft = UHOLMatchFlowSubsystem::AskPausesLeftAfterPause(GetWorld(), bSolo, PausesLeft);
+	if (ScriptLeft < 0)
+	{
+		UE_LOG(LogHOLMatch, Error, TEXT("Pause: refused to %s (slot %d): the script match flow board gave no count of pauses left"), *Requester.GetPlayerName(), Slot);
+		return false;
+	}
+	PausesLeft = ScriptLeft;
+	PausedBySlot = Slot;
+	PausedAtSeconds = Now;
 	PausedByName = Requester.GetPlayerName();
 	UE_LOG(LogHOLMatch, Display, TEXT("Pause: slot %d (%s) paused, %d left"), Slot, *PausedByName, PausesLeft);
 	ForceNetUpdate();
@@ -1477,16 +1474,16 @@ bool AHOLGameState::RequestPause(const AHOLPlayerState& Requester, const double 
 
 bool AHOLGameState::RequestResume(const AHOLPlayerState& Requester, const double Now)
 {
-	FHOLPauseRules::FState State;
-	State.PausesLeft = PausesLeft;
-	State.PausedBySlot = PausedBySlot;
-	State.PausedAtSeconds = PausedAtSeconds;
 	const int32 Slot = Requester.GetPlayerIndex();
-	const int32 ScriptAnswer = UHOLMatchFlowSubsystem::AskCanResume(GetWorld(), GetNetMode() == NM_Standalone, State.PausedBySlot, State.PausedAtSeconds, Slot, IsInMatch(Requester), Now);
-	const FHOLPauseRules::EAnswer Answer = ScriptAnswer >= 0 ? static_cast<FHOLPauseRules::EAnswer>(ScriptAnswer) : FHOLPauseRules::CanResume(GetNetMode(), State, Slot, IsInMatch(Requester), Now);
-	if (Answer != FHOLPauseRules::EAnswer::Allowed)
+	const int32 Answer = UHOLMatchFlowSubsystem::AskCanResume(GetWorld(), GetNetMode() == NM_Standalone, PausedBySlot, PausedAtSeconds, Slot, IsInMatch(Requester), Now);
+	if (Answer < 0)
 	{
-		UE_LOG(LogHOLMatch, Display, TEXT("Pause: refused to %s (slot %d): %s"), *Requester.GetPlayerName(), Slot, FHOLPauseRules::ToString(Answer));
+		UE_LOG(LogHOLMatch, Error, TEXT("Pause: refused to %s (slot %d): no script match flow board (HOLMatchFlowBoard.as not compiled)"), *Requester.GetPlayerName(), Slot);
+		return false;
+	}
+	if (Answer != UHOLMatchFlowSubsystem::PauseAnswerAllowed)
+	{
+		UE_LOG(LogHOLMatch, Display, TEXT("Pause: refused to %s (slot %d): %s"), *Requester.GetPlayerName(), Slot, UHOLMatchFlowSubsystem::PauseAnswerToText(Answer));
 		return false;
 	}
 	WindowPausedSeconds += FMath::Max(Now - PausedAtSeconds, 0.);

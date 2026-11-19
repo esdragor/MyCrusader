@@ -24,16 +24,6 @@ HOLMarket::FBook UHOLMarketSubsystem::Recover(const UWorld* World, const HOLMark
 	return Book;
 }
 
-int32 UHOLMarketSubsystem::Received(const UWorld* World, const int32 Sent, const int32 TaxPercent)
-{
-	if (UHOLMarketSubsystem* Board = Find(World))
-	{
-		return Board->ReceivedNow(Sent, TaxPercent);
-	}
-	UE_LOG(LogTemp, Error, TEXT("Market: no script board in this world, the tribute arrives untaxed (Script/Economy/HOLMarketBoardScript.as did not compile?)"));
-	return Sent;
-}
-
 FHOLTributeBridgeResult UHOLMarketSubsystem::SettleTribute(const UWorld* World, const bool bSenderHasMarket, const int32 Sender, const int32 Receiver, const bool bReceiverInMatch, const FHOLResources& GiverStock, const FHOLResources& TakerStock, const int32 Resource, const int32 Sent, const int32 TaxPercent)
 {
 	if (UHOLMarketSubsystem* Board = Find(World))
@@ -108,11 +98,6 @@ FHOLMarketBridgeBook UHOLMarketSubsystem::NewBookNow(const FHOLMarketBridgeSetti
 FHOLMarketBridgeBook UHOLMarketSubsystem::RecoverNow(const FHOLMarketBridgeSettings& Settings, const FHOLMarketBridgeBook& Book, const int32 Intervals)
 {
 	return RecoverPrices(Settings, Book, Intervals);
-}
-
-int32 UHOLMarketSubsystem::ReceivedNow(const int32 Sent, const int32 TaxPercent)
-{
-	return TributeReceived(Sent, TaxPercent);
 }
 
 FHOLTributeBridgeResult UHOLMarketSubsystem::SettleNow(const bool bSenderHasMarket, const int32 Sender, const int32 Receiver, const bool bReceiverInMatch, const FHOLResources& GiverStock, const FHOLResources& TakerStock, const int32 Resource, const int32 Sent, const int32 TaxPercent)
@@ -197,12 +182,6 @@ FHOLMarketBridgeBook UHOLMarketSubsystem::FreshBook_Implementation(const FHOLMar
 {
 	UE_LOG(LogTemp, Error, TEXT("Market: FreshBook has no script implementation, the book is empty"));
 	return FHOLMarketBridgeBook();
-}
-
-int32 UHOLMarketSubsystem::TributeReceived_Implementation(const int32 Sent, const int32 TaxPercent)
-{
-	UE_LOG(LogTemp, Error, TEXT("Market: TributeReceived has no script implementation, the amount is returned unchanged"));
-	return Sent;
 }
 
 FHOLTributeBridgeResult UHOLMarketSubsystem::TributeSettle_Implementation(const bool bSenderHasMarket, const int32 Sender, const int32 Receiver, const bool bReceiverInMatch, const FHOLResources& GiverStock, const FHOLResources& TakerStock, const int32 Resource, const int32 Sent, const int32 TaxPercent)
