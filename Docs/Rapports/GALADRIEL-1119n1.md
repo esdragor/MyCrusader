@@ -1,0 +1,15 @@
+# GALADRIEL-1119n1 : livre de pouvoirs, regle pure de l'etat des boutons (A6a)
+- BRANCHE: power-book (worktree C:\Users\baudo\Documents\HeroesOfLiberty-Galadriel), non fusionnee, pas de push, merge main non fait
+- COMMIT_ROUGE: 621c050 (regle en bouchon qui compile : StateOf retourne Soon, Describe retourne "" + 3 tests)
+- COMMIT_VERT: f4b6130 (vraie regle)
+- FICHIERS: Script\Factions\HOLPowerBookRules.as (enum EHOLPowerState, struct FHOLPowerRow, namespace HOLPowerBook : StateOf, Describe), Script\Tests\HOLPowerBookRules_Test.as
+- TESTS_SCRIPT_AJOUTES: 3 (Test_PowerBookStateOrder, Test_PowerBookReadyOnlyWhenAllMet, Test_PowerBookDescribeLine)
+- TEST_ROUGE: NON VU a l'execution (pas de build ni quick_check dans l'agent) ; attendu sur 621c050 : 3/3 rouges (StateOrder : TierLocked/Cooling/Short faux ; ReadyOnlyWhenAllMet : Ready faux ; DescribeLine : lignes vides). Attendu vert sur f4b6130 : 3/3.
+- TESTS_TAUTOLOGIQUES: 0 (les tests passent par la vraie fonction avec des lignes de fixture)
+- BUILDS_DEMANDES: 0 (aucun C++) ; TYPES_A_EXPOSER: aucun
+- A LANCER: quick_check.ps1 -Parts tests, sur le worktree Galadriel (sur 621c050 pour le rouge, puis f4b6130). Surveiller la compilation du module : enum global + struct + namespace dans un meme fichier, `const FHOLPowerRow&` en parametre, f-strings.
+- NON VERIFIE: compilation script, tests (jamais lances) ; enum compare par `==` dans AssertTrue (aucun AssertEquals d'enum dans le depot).
+- NON TRANCHE: couts, recharges, nombre de pouvoirs : fixtures seulement (fixtureA, 40, 8000 ms, palier 1).
+- BRANCHEMENT (hors tache) : (1) HUD de faction : une rangee de boutons dans l'ecran de jeu (UHOLGameScreenScript), un bouton par ligne de table de pouvoirs, etat par StateOf(Row, Honneur, recharge restante, palier), grise + texte « Bientot » pour Soon (D601), Describe pour hol.HUD.Report ; (2) la table des pouvoirs (cout, recharge, palier, bEffectCoded) reste a ecrire ; (3) commande de ciblage au sol : liaison C++ HOLRpcBridge::<pouvoir>(Location) (voir HOLRpcPlayer.as:916) + file d'ordres serveur qui valide avec la meme regle (le serveur ne fait pas confiance au bouton), effet de zone temporaire cote simulation = lot C++ ; (4) le stock = barre d'Honneur (A5), recharge restante tenue cote serveur.
+- ANOMALIES: IN_USE.txt est ignore par git (n'apparait pas dans status) ; le doc A6a de l'Aube cite des durees ~5 s, non codees ici.
+- PROCESSUS_DETACHES: 0 (rien lance)
