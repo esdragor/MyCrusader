@@ -76,3 +76,28 @@ void Test_UnitAbilityRageActsOnTheRealMoraleChain(FUnitTest& T)
 	T.AssertTrue(HOLMorale::Multiplier(State, HOLMorale::LeverRate) > 100, "with the rage: faster cadence");
 	T.AssertEquals(100, HOLMorale::Multiplier(State, HOLMorale::LeverTaken), "the rage does not protect: the damage taken is normal");
 }
+
+// L6a extended (Docs/Rapports/LOT-CPP-socle-factions-1119.md, piece 5): the table says what an ability is aimed at. The existing rage is on its caster
+// (Self, radius 0, range 0: no number decided); a FIXTURE row built here (not a real ability, numbers of the fixture) aimed at the ground is judged
+// by the pure rules of HOLGroundAbility with the fields of its row.
+void Test_UnitAbilityTableGroundColumns(FUnitTest& T)
+{
+	const HOLUnitAbilityTable::FHOLUnitAbilityRow Rage = HOLUnitAbilityTable::Row(HOLUnitAbilityTable::NecroticRage);
+	T.AssertEquals(HOLUnitAbilityTable::TargetSelf, Rage.Target, "the rage is on its caster");
+	T.AssertEquals(0, Rage.RadiusCm, "the rage lays no zone");
+	T.AssertEquals(0, Rage.RangeCm, "the rage has no throw range");
+
+	HOLUnitAbilityTable::FHOLUnitAbilityRow Fixture;
+	Fixture.Key = "FixtureGround";
+	Fixture.Target = HOLUnitAbilityTable::TargetGround;
+	Fixture.RadiusCm = 300;
+	Fixture.RangeCm = 1200;
+	T.AssertEquals(HOLUnitAbilityTable::TargetGround, Fixture.Target, "the fixture is aimed at the ground");
+	T.AssertEquals(0, HOLGroundAbility::TargetRefusal(true, int64(Fixture.RangeCm), int64(Fixture.RangeCm), 0), "a point at the range edge is accepted");
+	T.AssertEquals(3, HOLGroundAbility::TargetRefusal(true, int64(Fixture.RangeCm) + 1, int64(Fixture.RangeCm), 0), "a point past the range is refused: out of range");
+	T.AssertTrue(HOLGroundAbility::IsInZone(1000, 1000, Fixture.RadiusCm, 1000 + Fixture.RadiusCm, 1000), "the zone edge counts as inside");
+	T.AssertFalse(HOLGroundAbility::IsInZone(1000, 1000, Fixture.RadiusCm, 1000 + Fixture.RadiusCm + 1, 1000), "past the radius: outside");
+	// A self ability (radius 0) is a zone of one point.
+	T.AssertTrue(HOLGroundAbility::IsInZone(5, 5, Rage.RadiusCm, 5, 5), "a zero radius holds only its centre");
+	T.AssertFalse(HOLGroundAbility::IsInZone(5, 5, Rage.RadiusCm, 6, 5), "a zero radius holds nothing else");
+}

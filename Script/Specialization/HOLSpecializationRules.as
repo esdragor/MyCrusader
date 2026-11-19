@@ -68,6 +68,26 @@ namespace HOLSpecialization
 		return State;
 	}
 
+	// The number of options of a tier's choice for a faction (D90, D131): 2 for every faction, 3 for the Templars' commanderies.
+	const int TemplarOptionCount = 3;
+
+	int OptionCountOf(EHOLFaction Faction)
+	{
+		return Faction == EHOLFaction::Templars ? TemplarOptionCount : DefaultOptionCount;
+	}
+
+	// A state sized for the faction's options (the existing NewState(int) stays for the callers that give the count themselves).
+	FHOLSpecializationState NewStateFor(EHOLFaction Faction)
+	{
+		return NewState(OptionCountOf(Faction));
+	}
+
+	// An option index (0-based) is one of the faction's options: the Templars accept 0, 1 and 2, the others 0 and 1.
+	bool IsValidOptionFor(EHOLFaction Faction, int Option)
+	{
+		return Option >= 0 && Option < OptionCountOf(Faction);
+	}
+
 	bool IsValidTier(int Tier)
 	{
 		return Tier >= FirstTier && Tier <= LastTier;

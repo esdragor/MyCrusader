@@ -44,6 +44,7 @@ Chantier **Duel de héros** (GDD § 10, D14, D16, D17, D18, D35, D43, D80, D117-
 - **D5** arène : cercle de duel, ciblage protégé dans le processeur de combat (test rouge sur la vraie chaîne), contact automatique des deux héros.
 - **D6** kit de duel : posture, parade commune, attaques fortes annoncées (premier kit : Paladin-Commandant), puis Seigneur Damné.
 - **D7** récompenses branchées (Triomphe / Démoralisé, XP, effet de faction, Hésitation sur les troupes) ; **D8** fenêtre de défi à l'écran (D117) ;
+  - 2026-11-19 21:24 (CELEBORN-1119n1) : **D7 partie regle pure faite**, branche duel-rewards du worktree Celeborn : Script\Duel\HOLDuelRewards.as (HOLDuelRewards::Orders(S, Duel, RadiusCm) -> ordres slot / effet / duree / rayon ; Triomphe gagnant, Demoralise perdant, Hesitation sur le refuseur seul, rien si double KO ou duel pas fini ; durees lues dans HOLMoraleTable) + 5 tests HOLDuelRewards_Test.as ; commit rouge (bouchon + tests) fe8fbce, commit vert a9df9f0 ; NON VU a l'execution. Reste : branchement dans HOLDuelLedger.as (boucle Ended) + pont moral cote simulation (C++, M7), XP du duel (aucun nombre au GDD), effet de faction (Honneur), rayon (12 m provisoire du moral, non tranche).
   **D9** IA (D423) ; **D10** scénario d'essai `duel`, GDD, clôture.
 
 ## Suivi

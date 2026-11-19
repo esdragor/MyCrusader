@@ -17,6 +17,17 @@ Mode d'emploi 5/5 : nettoyage du 2026-11-10 (demande de l'utilisateur) : fichier
 6. Régénération unique des 7 cartes (TÂCHE À PART, Haldir) : `bSitesLaidByMaps = true`, styles de `Q-glade-style.md`, puis tests, crossings, hinterland_paths, aiduel.
 7. Mesures S1/S2 (machine calme, seules) : `biome_decor_cost.ps1 -Rounds 3` du décor générique des Biomes.
 
+## Socle commun des factions (séance du 2026-11-19 soir ; ordre : `Docs\Priorite_Socle_Factions_2026-11-16.md`)
+- [x] (sans C++, 2026-11-19 soir, integ-24) 8 règles pures en script, rouges vus puis verts : jauge de ressource de faction (`Script\Factions\HOLFactionResourceRules.as`), livre de pouvoirs (`HOLPowerBookRules.as`), vue de l'emplacement de faction (`Script\UI\HOLFactionSlot.as`), capacité visée au sol (`Script\Units\HOLGroundAbilityRules.as`), récompenses du duel (`Script\Duel\HOLDuelRewards.as`), Templiers à 3 options (`HOLSpecializationRules.as`), dépense des pouvoirs par l'IA (`Script\AI\HOLAIPowerSpend.as`), pose en ligne des murs (`Script\Buildings\HOLWallLineRules.as`).
+- [?] (attend l'utilisateur) `Retours\Q-socle-factions-valeurs.md` : 10 valeurs de départ (Honneur, Lumière sacrée, Sceau de lumière, duel, Défi du Chevalier) ; les règles ne portent que des valeurs de test.
+- [?] (attend l'utilisateur) `Retours\Q-hallebardier-valeurs.md` : valeurs du Hallebardier (A / B / C) et « remplace ou s'ajoute » ; ensuite Aube A1, plan `Docs\Rapports\SAURON-1119n1.md` (ligne du CSV, régénération de l'asset `UnitTypes` par l'éditeur, test « 16 rows » -> 17, `HOLAIArmy.as`, ligne de `Placeholders.txt`).
+- [ ] (C++, LOT GROUPÉ, un build ; plan `Docs\Rapports\LOT-CPP-socle-factions-1119.md`, 11 morceaux) premier build = morceaux 1 à 8 : jauge répliquée par emplacement (modèle `AHOLGameState::TierOverrides`, PAS `HOLCorpse` qui n'est que de l'affichage), `hol.Cheat.Honor`, commande serveur de pouvoir visé au sol, zone temporaire côté Mass, colonnes de table, hôte du widget de l'emplacement de faction, faction du siège + 3e case de spécialisation, effet de `hol.Cheat.Specialization` ; parties `net` à rejouer.
+- [ ] (C++, avec le morceau 4 du lot) l'appartenance à une zone (`IsInZone`, `ZoneActive`) est lue par le processeur Mass : elle passe en C++ et la copie en script de `HOLGroundAbilityRules.as` est retirée dans le même commit (une seule source, D839) ; `TargetRefusal` (validation de la commande) reste en script.
+- [ ] (sans C++, après le morceau 6 du lot) brancher la vue `HOLFactionSlot` dans l'écran de jeu en script (planche du HUD, `hol.HUD.Report`), scénario + pré-vol + essai de 3 min pour l'utilisateur.
+- [ ] (sans C++) brancher `HOLDuelRewards::Orders` dans `Script\Duel\HOLDuelLedger.as` (boucle `Ended`, l. 194-199) ; l'application des effets attend le pont du moral (morceau 9 du lot, moteur de moral M3-M5 en C++).
+- [ ] (sans C++, à confirmer par l'utilisateur à l'essai) pose en ligne : un glisser hors axe s'aligne sur la plus proche des 8 directions (choix de HALDIR-1119n2, F4 ne dit rien) ; reste : geste de glisser, validation serveur par la même règle, type « palissade » (F5).
+- [ ] (sans C++, essais) repasser en pré-vol sur main `specialization_button`, `signals_altclick` et `deploy` (fiches de `Retours\` sans réponse) avant de les redonner.
+
 ## Migration D851 (2026-11-18 : étape 4 écrans, puis étape 5 enveloppe de jeu)
 Les 3 lignes [x] de cette section sont archivées le 2026-11-19 soir (douzième nettoyage) : `Docs\Archive\Auto_Journey_File_faits_2026-11-19_soir.md`.
 
