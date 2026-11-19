@@ -1,0 +1,10 @@
+# SAURON-1119cn : Get-ScriptErrors et rouge connu d'un test script
+BRANCHE: tool-known-reds (depuis integ-21), commit 1265517, non pousse, non fusionne
+TEST_ROUGE: vu a 18:51 : known_reds_tests_part_test.ps1 => 3 FAIL : Get-ScriptErrors rend "Assertion failed (Expected true, got false)" ; "tests 1786/1787 : FAIL (REGRESSION : pas dans known_reds.txt)" avec [KO] all green + [KO] scripts compiled ; red summary "1 regression(s) ... 0 rouge(s) connu(s)"
+VERT: 18 PASS, "=> tout PASS" (known_reds_tests_part_test.ps1 et known_reds_test.ps1)
+CAUSE: Get-ScriptErrors (quick_check.ps1 ~3101) n'excluait que les lignes dont la SUIVANTE commence par "Assert failed" ; le journal reel ecrit "Angelscript: Error: Assertion failed (...)" sur la ligne meme -> 2e KO "scripts compiled" -> Find-KnownTestRed non appele (Failed.Count -eq 1 requis dans Report) -> REGRESSION.
+CORRECTIF: Get-ScriptErrors ignore aussi un message qui commence par "Assert(ion) failed" (et accepte Assertion failed sur la ligne suivante). Une vraie erreur de compilation (ligne fichier "Script/X.as:", "(12:5): ...", ou message nu "... is not BlueprintCallable or ScriptCallable ...", "script compile errors") reste detectee.
+CAS AJOUTES (known_reds_tests_part_test.ps1): Get-ScriptErrors sur journal fixture assertion (0 erreur) et compilation (detectee) ; test script liste KO par assertion = rouge connu + red summary aucune regression ; non liste = REGRESSION ; liste + non liste = REGRESSION ; liste + vraie erreur de compilation = REGRESSION.
+NON VERIFIE: le vrai quick_check -Parts tests n'a pas tourne (pas d'editeur, machine saturee) ; le format exact du journal reel (aucun quick_tests.log disponible) est deduit de la sortie citee dans l'enonce : fixtures ecrites d'apres elle. known_reds.txt non touche.
+BUILDS_DEMANDES: 0 ; TESTS_CPP_RETIRES: 0 ; TESTS_SCRIPT_AJOUTES: 0 ; EDITS_REFUSES: 0 ; PROCESSUS_DETACHES: voir stray_processes (rien de lance)
+APPELS_VUS: ~14
