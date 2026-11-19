@@ -23,6 +23,9 @@ wait 2
 hol.Units.Remove -14800 0 3000 1
 hol.Camera.FocusSlot own
 frames 60
+# La banniere d'alerte (haut centre) est maintenant dans le rapport des rectangles (panneau script) : le panneau de notes du scenario la couvrirait, on le ferme (bouton x) ; la note suivante le rouvre.
+hol.HUD.Click ScenarioClose
+frames 10
 hol.HUD.Report 1
 capture hud_joueurs_ruine
 note 2. Ton forum est tombe : ta ligne dit "1 vie" puis "Ruine" ; la ligne de l'IA ne change pas ; le reste du HUD (ressources, fil de messages en dessous du tableau, mini-carte) ne bouge pas.
