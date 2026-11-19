@@ -1,0 +1,5 @@
+# <nom de capture> | ce que l'utilisateur doit voir
+hud_fil_aucune | Capture 1920x1080 : haut droite, sous le tableau des joueurs, aucune ligne dans le fil de messages ; rien d'autre ne change.
+hud_fil_ligne | Capture 1920x1080 : sous le tableau des joueurs (haut droite), UNE ligne sombre a bords arrondis avec le texte de la chute de ton forum, ton nom dans ta couleur ; le texte DOIT etre visible (un panneau sans libelle serait le defaut vu sur le bouton Menu de H-3) ; a comparer avec la meme capture de la branche d'avant (meme place, meme taille, meme noirceur).
+hud_fil_apres_clic | Capture 1920x1080 : la camera est au-dessus du forum de slot 0 (en ruine) ; la ligne est encore dans le fil ou deja en fondu.
+hud_fil_vide | Capture 1920x1080 : plus aucune ligne dans le fil de messages ; le tableau des joueurs est seul en haut droite.
