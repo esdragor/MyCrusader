@@ -3,6 +3,7 @@
 #include "Player/HOLControllerCommandLibrary.h"
 
 #include "Buildings/HOLBuilding.h"
+#include "Buildings/HOLConstructionSubsystem.h"
 #include "Buildings/HOLBuildingTypes.h"
 #include "Buildings/HOLProductionRules.h"
 #include "Buildings/HOLProductionSubsystem.h"
@@ -640,4 +641,191 @@ bool UHOLControllerCommandLibrary::PointNearOf(AHOLPlayerController* Controller,
 	OutX = Point.X;
 	OutY = Point.Y;
 	return bFound;
+}
+
+
+// ---- C10b (SAURON-1119ca): sources, heal / attack by identifier, units order, placement near / at a source ----
+
+int32 UHOLControllerCommandLibrary::SourceScreenPoint(AHOLPlayerController* Controller, const double X, const double Y, int32& OutIndex, double& OutFx, double& OutFy)
+{
+	OutIndex = INDEX_NONE;
+	const UHOLSourceSubsystem* Sources = Controller && Controller->GetWorld() ? Controller->GetWorld()->GetSubsystem<UHOLSourceSubsystem>() : nullptr;
+	const int32 Index = Sources ? Sources->FindNearestStanding(FVector(X, Y, 0.)) : INDEX_NONE;
+	if (Index == INDEX_NONE)
+	{
+		return 1;
+	}
+	OutIndex = Index;
+	const FHOLSource& Source = Sources->GetSources()[Index];
+	const FHOLSourceTypeRow* Type = Sources->GetType(Source.TypeIndex);
+	int32 SizeX = 0, SizeY = 0;
+	Controller->GetViewportSize(SizeX, SizeY);
+	FVector2D Pixel;
+	if (!Type || SizeX <= 0 || SizeY <= 0 || !Controller->ProjectWorldLocationToScreen(Source.Location + FVector(0., 0., Type->Height * 0.3), Pixel))
+	{
+		return 2;
+	}
+	OutFx = Pixel.X / SizeX;
+	OutFy = Pixel.Y / SizeY;
+	return 0;
+}
+
+int32 UHOLControllerCommandLibrary::FirstUnitIdOfSlot(AHOLPlayerController* Controller, const int32 Slot)
+{
+	if (!Controller || !Controller->GetWorld())
+	{
+		return 0;
+	}
+	TArray<FHOLUnitView> Views;
+	HOLUnitView::Gather(*Controller->GetWorld(), Views);
+	uint32 TargetId = 0;
+	for (const FHOLUnitView& View : Views)
+	{
+		TargetId = View.OwnerPlayer == Slot && (TargetId == 0 || View.UnitId < TargetId) ? View.UnitId : TargetId;
+	}
+	return static_cast<int32>(TargetId);
+}
+
+bool UHOLControllerCommandLibrary::AllUnitIds(AHOLPlayerController* Controller, TArray<int32>& OutIds)
+{
+	OutIds.Reset();
+	if (!Controller || !Controller->GetWorld())
+	{
+		return false;
+	}
+	TArray<FHOLUnitView> Views;
+	HOLUnitView::Gather(*Controller->GetWorld(), Views);
+	for (const FHOLUnitView& View : Views)
+	{
+		OutIds.Add(static_cast<int32>(View.UnitId));
+	}
+	return true;
+}
+
+bool UHOLControllerCommandLibrary::CommandUnitIds(AHOLPlayerController* Controller, TArray<int32>& OutIds)
+{
+	OutIds.Reset();
+	if (!Controller)
+	{
+		return false;
+	}
+	for (const uint32 UnitId : Controller->GetCommandUnits())
+	{
+		OutIds.Add(static_cast<int32>(UnitId));
+	}
+	return true;
+}
+
+bool UHOLControllerCommandLibrary::RequestHealUnitIds(AHOLPlayerController* Controller, const TArray<int32>& Ids, const int32 TargetId, const bool bQueue)
+{
+	if (!Controller)
+	{
+		return false;
+	}
+	TArray<uint32> Units;
+	for (const int32 Id : Ids)
+	{
+		Units.Add(static_cast<uint32>(Id));
+	}
+	Controller->RequestHealUnit(Units, static_cast<uint32>(TargetId), bQueue);
+	return true;
+}
+
+bool UHOLControllerCommandLibrary::RequestAttackUnitIds(AHOLPlayerController* Controller, const TArray<int32>& Ids, const int32 TargetId, const bool bQueue)
+{
+	if (!Controller)
+	{
+		return false;
+	}
+	TArray<uint32> Units;
+	for (const int32 Id : Ids)
+	{
+		Units.Add(static_cast<uint32>(Id));
+	}
+	Controller->RequestAttackUnit(Units, static_cast<uint32>(TargetId), bQueue);
+	FHOLUnitView View;
+	if (Controller->GetWorld() && HOLUnitView::Find(*Controller->GetWorld(), static_cast<uint32>(TargetId), View))
+	{
+		Controller->OnAttackOrderGiven.Broadcast(View.Location);
+	}
+	return true;
+}
+
+bool UHOLControllerCommandLibrary::RequestMoveUnitIdsTo(AHOLPlayerController* Controller, const TArray<int32>& Ids, const double X, const double Y)
+{
+	if (!Controller)
+	{
+		return false;
+	}
+	TArray<uint32> Units;
+	for (const int32 Id : Ids)
+	{
+		Units.Add(static_cast<uint32>(Id));
+	}
+	Controller->RequestMoveUnits(Units, FVector(X, Y, 0.));
+	return true;
+}
+
+bool UHOLControllerCommandLibrary::StartCentreOf(AHOLPlayerController* Controller, double& OutX, double& OutY)
+{
+	const AHOLPlayerState* PlayerState = Controller && Controller->GetWorld() ? Controller->GetHOLPlayerState() : nullptr;
+	const AHOLStartSlot* Start = PlayerState ? AHOLStartSlot::FindForSlot(Controller->GetWorld(), PlayerState->GetPlayerIndex()) : nullptr;
+	if (!Start)
+	{
+		return false;
+	}
+	const FVector Centre = Start->GetMainCentreLocation();
+	OutX = Centre.X;
+	OutY = Centre.Y;
+	return true;
+}
+
+void UHOLControllerCommandLibrary::RequestPlacementAtPoint(AHOLPlayerController& Controller, const FName TypeName, const FVector& Point)
+{
+	const FHOLBuildingTypeRow* Type = UHOLBuildingSettings::FindType(TypeName);
+	if (!Type)
+	{
+		return;
+	}
+	const FBox2D Footprint = UHOLConstructionSubsystem::SnapFootprint(*Type, Point);
+	FString Reason;
+	const bool bValid = Controller.CheckPlacementHere(TypeName, Footprint, Reason);
+	UE_LOG(LogHOLMatch, Display, TEXT("Build request: %s at (%.0f, %.0f), here %s"), *TypeName.ToString(), Footprint.GetCenter().X,
+		Footprint.GetCenter().Y, bValid ? TEXT("valid") : *FString::Printf(TEXT("refused (%s)"), *Reason));
+	Controller.RequestPlaceBuilding(TypeName, Point);
+}
+
+bool UHOLControllerCommandLibrary::RequestPlacementNear(AHOLPlayerController* Controller, const FName TypeName, const double Dx, const double Dy, const bool bEnemy)
+{
+	const AHOLBuilding* Centre = Controller ? UHOLControllerReadLibrary::FindMainCentre(*Controller, bEnemy) : nullptr;
+	if (!Centre)
+	{
+		return false;
+	}
+	const FVector Offset = Centre->GetActorRotation().RotateVector(FVector(Dx, Dy, 0.));
+	RequestPlacementAtPoint(*Controller, TypeName, Centre->GetActorLocation() + Offset);
+	return true;
+}
+
+int32 UHOLControllerCommandLibrary::StandingSourceNear(AHOLPlayerController* Controller, const double X, const double Y, double& OutX, double& OutY)
+{
+	const UHOLSourceSubsystem* Sources = Controller && Controller->GetWorld() ? Controller->GetWorld()->GetSubsystem<UHOLSourceSubsystem>() : nullptr;
+	const int32 Index = Sources ? Sources->FindNearestStanding(FVector(X, Y, 0.)) : INDEX_NONE;
+	if (Index != INDEX_NONE)
+	{
+		OutX = Sources->GetSources()[Index].Location.X;
+		OutY = Sources->GetSources()[Index].Location.Y;
+	}
+	return Index;
+}
+
+bool UHOLControllerCommandLibrary::RequestPlacementOnSource(AHOLPlayerController* Controller, const FName TypeName, const int32 SourceIndex)
+{
+	const UHOLSourceSubsystem* Sources = Controller && Controller->GetWorld() ? Controller->GetWorld()->GetSubsystem<UHOLSourceSubsystem>() : nullptr;
+	if (!Sources || !Sources->GetSources().IsValidIndex(SourceIndex))
+	{
+		return false;
+	}
+	RequestPlacementAtPoint(*Controller, TypeName, Sources->GetSources()[SourceIndex].Location);
+	return true;
 }

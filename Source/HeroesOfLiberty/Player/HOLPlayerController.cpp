@@ -195,151 +195,6 @@ namespace UE::HeroesOfLiberty::Player
 		return UHOLControllerCommandLibrary::ProjectGroundFractionOf(Controller, X, Y, OutFraction);
 	}
 
-	/**
-	 * Where the standing source nearest a ground point is drawn (a fraction of the viewport), aimed at the middle of its
-	 * trunk: inside its drawn body, in front of the ground behind it. INDEX_NONE (logged for Command) when there is none
-	 * or it is not on the screen.
-	 */
-	int32 AimAtSource(const AHOLPlayerController& Controller, const double X, const double Y, const TCHAR* Command, FVector2D& OutFraction)
-	{
-		const UHOLSourceSubsystem* Sources = Controller.GetWorld()->GetSubsystem<UHOLSourceSubsystem>();
-		const int32 Index = Sources ? Sources->FindNearestStanding(FVector(X, Y, 0.)) : INDEX_NONE;
-		if (Index == INDEX_NONE)
-		{
-			UE_LOG(LogHOLMatch, Warning, TEXT("%s: no standing source"), Command);
-			return INDEX_NONE;
-		}
-		const FHOLSource& Source = Sources->GetSources()[Index];
-		const FHOLSourceTypeRow* Type = Sources->GetType(Source.TypeIndex);
-		int32 SizeX = 0, SizeY = 0;
-		Controller.GetViewportSize(SizeX, SizeY);
-		FVector2D Pixel;
-		if (!Type || SizeX <= 0 || SizeY <= 0 || !Controller.ProjectWorldLocationToScreen(Source.Location + FVector(0., 0., Type->Height * 0.3), Pixel))
-		{
-			UE_LOG(LogHOLMatch, Warning, TEXT("%s: the source is not on the screen"), Command);
-			return INDEX_NONE;
-		}
-		OutFraction = FVector2D(Pixel.X / SizeX, Pixel.Y / SizeY);
-		return Index;
-	}
-
-	/** A right click on the standing source nearest a ground point (J5, D299), where it is drawn: through the picking. */
-	FAutoConsoleCommand OrderSourceCommand(
-		TEXT("hol.Select.OrderSource"),
-		TEXT("hol.Select.OrderSource <X> <Y> [shift]: a right click where the standing resource source nearest that ground point (cm) is drawn; 'shift' as with Shift held"),
-		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
-		{
-			if (Args.Num() < 2)
-			{
-				UE_LOG(LogHOLMatch, Warning, TEXT("Usage: hol.Select.OrderSource <X> <Y> [shift]"));
-				return;
-			}
-			const bool bShift = Args.Num() >= 3 && Args[2] == TEXT("shift");
-			for (AHOLPlayerController* Controller : GetLocalControllers())
-			{
-				FVector2D Fraction;
-				const int32 Index = AimAtSource(*Controller, FCString::Atod(*Args[0]), FCString::Atod(*Args[1]), TEXT("hol.Select.OrderSource"), Fraction);
-				if (Index != INDEX_NONE)
-				{
-					UE_LOG(LogHOLMatch, Display, TEXT("Right click on source %d at (%.3f, %.3f)%s"), Index, Fraction.X, Fraction.Y, bShift ? TEXT(", Shift") : TEXT(""));
-					Controller->OrderAt(Fraction, bShift);
-				}
-			}
-		}));
-
-	/** A left click on the standing source nearest a ground point (J5b, D298): its block in the HUD. */
-	FAutoConsoleCommand ClickSourceCommand(
-		TEXT("hol.Select.ClickSource"),
-		TEXT("hol.Select.ClickSource <X> <Y>: a left click where the standing resource source nearest that ground point (cm) is drawn"),
-		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
-		{
-			if (Args.Num() < 2)
-			{
-				UE_LOG(LogHOLMatch, Warning, TEXT("Usage: hol.Select.ClickSource <X> <Y>"));
-				return;
-			}
-			for (AHOLPlayerController* Controller : GetLocalControllers())
-			{
-				FVector2D Fraction;
-				const int32 Index = AimAtSource(*Controller, FCString::Atod(*Args[0]), FCString::Atod(*Args[1]), TEXT("hol.Select.ClickSource"), Fraction);
-				if (Index != INDEX_NONE)
-				{
-					UE_LOG(LogHOLMatch, Display, TEXT("Click on source %d at (%.3f, %.3f)"), Index, Fraction.X, Fraction.Y);
-					Controller->SelectAt(Fraction);
-				}
-			}
-		}));
-
-	/** Q-chapelle-moine = A, without the mouse: the selected own units get the heal order on an ally (its identifier), as a right click on it would. */
-	FAutoConsoleCommand HealCommand(
-		TEXT("hol.Select.Heal"),
-		TEXT("hol.Select.Heal <UnitId|slot=<S>>: the local player's selected units get the heal order on that ally (slot=<S>: slot S's first unit known here) (a Monk heals it first, the others walk to it), as the right click on it (the server checks it is not an enemy)"),
-		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
-		{
-			if (Args.Num() < 1)
-			{
-				UE_LOG(LogHOLMatch, Warning, TEXT("Usage: hol.Select.Heal <UnitId>"));
-				return;
-			}
-			for (AHOLPlayerController* Controller : GetLocalControllers())
-			{
-				uint32 TargetId = static_cast<uint32>(FCString::Atoi64(*Args[0]));
-				if (Args[0].StartsWith(TEXT("slot=")))
-				{
-					// A script does not know the identifiers (quick_check "net monk"): slot S's first unit known here, as hol.Select.Attack.
-					const int32 Slot = FCString::Atoi(*Args[0].RightChop(5));
-					TArray<FHOLUnitView> Views;
-					HOLUnitView::Gather(*Controller->GetWorld(), Views);
-					TargetId = 0;
-					for (const FHOLUnitView& View : Views)
-					{
-						TargetId = View.OwnerPlayer == Slot && (TargetId == 0 || View.UnitId < TargetId) ? View.UnitId : TargetId;
-					}
-				}
-				const TArray<uint32> Own = Controller->GetCommandUnits();
-				UE_LOG(LogHOLMatch, Display, TEXT("Order: %d units heal #%u"), Own.Num(), TargetId);
-				Controller->RequestHealUnit(Own, TargetId, false);
-			}
-		}));
-
-	/** The combat orders (J7b.3), without the mouse: the selected own units attack a unit (its identifier). */
-	FAutoConsoleCommand AttackCommand(
-		TEXT("hol.Select.Attack"),
-		TEXT("hol.Select.Attack <UnitId|slot=<S>> [shift]: the local player's selected units attack that unit (slot=<S>: slot S's first unit known here), without the right click's checks (the server checks it is an enemy alive)"),
-		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
-		{
-			if (Args.Num() < 1)
-			{
-				UE_LOG(LogHOLMatch, Warning, TEXT("Usage: hol.Select.Attack <UnitId> [shift]"));
-				return;
-			}
-			const bool bQueue = Args.Num() > 1 && Args[1].Equals(TEXT("shift"), ESearchCase::IgnoreCase);
-			for (AHOLPlayerController* Controller : GetLocalControllers())
-			{
-				uint32 TargetId = static_cast<uint32>(FCString::Atoi64(*Args[0]));
-				if (Args[0].StartsWith(TEXT("slot=")))
-				{
-					// A script does not know the identifiers: slot S's first unit (allied combat, quick_check "sides").
-					const int32 Slot = FCString::Atoi(*Args[0].RightChop(5));
-					TArray<FHOLUnitView> Views;
-					HOLUnitView::Gather(*Controller->GetWorld(), Views);
-					TargetId = 0;
-					for (const FHOLUnitView& View : Views)
-					{
-						TargetId = View.OwnerPlayer == Slot && (TargetId == 0 || View.UnitId < TargetId) ? View.UnitId : TargetId;
-					}
-				}
-				const TArray<uint32> Own = Controller->GetCommandUnits();
-				UE_LOG(LogHOLMatch, Display, TEXT("Order: %d units attack #%u%s"), Own.Num(), TargetId, bQueue ? TEXT(", queued") : TEXT(""));
-				Controller->RequestAttackUnit(Own, TargetId, bQueue);
-				FHOLUnitView View;
-				if (HOLUnitView::Find(*Controller->GetWorld(), TargetId, View))
-				{
-					Controller->OnAttackOrderGiven.Broadcast(View.Location);
-				}
-			}
-		}));
-
 	/** J8c.4: the test cursor (hol.Camera.TestCursor) where a ground point (cm) is drawn: the banner's aim read there. */
 	FAutoConsoleCommand TestCursorGroundCommand(
 		TEXT("hol.Camera.TestCursorGround"),
@@ -569,25 +424,6 @@ namespace UE::HeroesOfLiberty::Player
 			}
 		}));
 
-	/** The same from the player's own start (a script does not know which slot a client holds, J5a.5). */
-	FAutoConsoleCommand OrderSourceNearCommand(
-		TEXT("hol.Select.OrderSourceNear"),
-		TEXT("hol.Select.OrderSourceNear [Dx Dy]: hol.Select.OrderSource at the player's start (its main centre's middle) plus (Dx, Dy) (cm)"),
-		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
-		{
-			for (const AHOLPlayerController* Controller : GetLocalControllers())
-			{
-				const AHOLPlayerState* PlayerState = Controller->GetHOLPlayerState();
-				const AHOLStartSlot* Start = PlayerState ? AHOLStartSlot::FindForSlot(Controller->GetWorld(), PlayerState->GetPlayerIndex()) : nullptr;
-				if (Start)
-				{
-					const FVector Point = Start->GetMainCentreLocation() + (Args.Num() >= 2 ? FVector(FCString::Atod(*Args[0]), FCString::Atod(*Args[1]), 0.) : FVector::ZeroVector);
-					IConsoleManager::Get().ProcessUserConsoleInput(*FString::Printf(TEXT("hol.Select.OrderSource %.0f %.0f"), Point.X, Point.Y),
-						*GLog, Controller->GetWorld());
-				}
-			}
-		}));
-
 	FAutoConsoleCommand SelectionReportCommand(
 		TEXT("hol.Select.Report"),
 		TEXT("hol.Select.Report: logs the local player's selection"),
@@ -691,68 +527,6 @@ namespace UE::HeroesOfLiberty::Player
 		return nullptr;
 	}
 
-	/**
-	 * Scripted checks of the orders (J4, D289), without the selection: the player's own units known on this machine
-	 * (or every unit, to check that the server moves only the player's own) ordered to a ground point.
-	 */
-	FAutoConsoleCommand UnitsOrderCommand(
-		TEXT("hol.Units.Order"),
-		TEXT("hol.Units.Order X Y [all]: asks the server to move the local player's units known here to a ground point (cm); 'all' sends every unit, other players' too"),
-		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
-		{
-			if (Args.Num() < 2)
-			{
-				return;
-			}
-			const FVector Target(FCString::Atod(*Args[0]), FCString::Atod(*Args[1]), 0.);
-			const bool bAll = Args.Num() >= 3 && Args[2] == TEXT("all");
-			for (AHOLPlayerController* Controller : GetLocalControllers())
-			{
-				const AHOLPlayerState* PlayerState = Controller->GetHOLPlayerState();
-				TArray<FHOLUnitView> Views;
-				HOLUnitView::Gather(*Controller->GetWorld(), Views);
-				TArray<uint32> UnitIds;
-				for (const FHOLUnitView& View : Views)
-				{
-					if (bAll || (PlayerState && View.OwnerPlayer == PlayerState->GetPlayerIndex()))
-					{
-						UnitIds.Add(View.UnitId);
-					}
-				}
-				UE_LOG(LogHOLMatch, Display, TEXT("Order: %d units to (%.0f, %.0f)%s"), UnitIds.Num(), Target.X, Target.Y, bAll ? TEXT(", other players' too") : TEXT(""));
-				Controller->RequestMoveUnits(UnitIds, Target);
-			}
-		}));
-
-	/** The same, to a point given from the player's own start (a script does not know which slot a client holds). */
-	FAutoConsoleCommand UnitsOrderNearCommand(
-		TEXT("hol.Units.OrderNear"),
-		TEXT("hol.Units.OrderNear Dx Dy [all]: hol.Units.Order to the player's start (its main centre's middle) plus (Dx, Dy) (cm)"),
-		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
-		{
-			if (Args.Num() < 2)
-			{
-				return;
-			}
-			for (const AHOLPlayerController* Controller : GetLocalControllers())
-			{
-				const AHOLPlayerState* PlayerState = Controller->GetHOLPlayerState();
-				const AHOLStartSlot* Start = PlayerState ? AHOLStartSlot::FindForSlot(Controller->GetWorld(), PlayerState->GetPlayerIndex()) : nullptr;
-				if (Start)
-				{
-					const FVector Target = Start->GetMainCentreLocation() + FVector(FCString::Atod(*Args[0]), FCString::Atod(*Args[1]), 0.);
-					IConsoleManager::Get().ProcessUserConsoleInput(*FString::Printf(TEXT("hol.Units.Order %.0f %.0f %s"), Target.X, Target.Y,
-						Args.Num() >= 3 ? *Args[2] : TEXT("")), *GLog, Controller->GetWorld());
-				}
-			}
-		}));
-
-	/** The main centre of the player (or, with bEnemy, of the first other player known here), or null. */
-	const AHOLBuilding* FindMainCentre(const AHOLPlayerController& Controller, const bool bEnemy)
-	{
-		return UHOLControllerReadLibrary::FindMainCentre(Controller, bEnemy);
-	}
-
 	/** Development and scripted checks of the placement (J6a.3, D311), until the Peasant's grid of J6a.5. */
 	FAutoConsoleCommand BuildPlaceCommand(
 		TEXT("hol.Build.Place"),
@@ -775,46 +549,6 @@ namespace UE::HeroesOfLiberty::Player
 			for (AHOLPlayerController* Controller : GetLocalControllers())
 			{
 				Controller->ClickPlacement(bKeep);
-			}
-		}));
-
-	/** Logs what this machine thinks of a placement, then asks the server (which checks everything again). */
-	void RequestPlacementAt(AHOLPlayerController& Controller, const FName TypeName, const FVector& Point)
-	{
-		const FHOLBuildingTypeRow* Type = UHOLBuildingSettings::FindType(TypeName);
-		if (!Type)
-		{
-			return;
-		}
-		const FBox2D Footprint = UHOLConstructionSubsystem::SnapFootprint(*Type, Point);
-		FString Reason;
-		const bool bValid = Controller.CheckPlacementHere(TypeName, Footprint, Reason);
-		UE_LOG(LogHOLMatch, Display, TEXT("Build request: %s at (%.0f, %.0f), here %s"), *TypeName.ToString(), Footprint.GetCenter().X,
-			Footprint.GetCenter().Y, bValid ? TEXT("valid") : *FString::Printf(TEXT("refused (%s)"), *Reason));
-		Controller.RequestPlaceBuilding(TypeName, Point);
-	}
-
-	FAutoConsoleCommand BuildPlaceNearCommand(
-		TEXT("hol.Build.PlaceNear"),
-		TEXT("hol.Build.PlaceNear <Type> <Dx> <Dy> [enemy]: asks the server for a foundation at the player's main centre (or an enemy's) plus (Dx, Dy) cm in its frame (X toward the map's middle), whatever this machine thinks of it"),
-		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
-		{
-			if (Args.Num() < 3)
-			{
-				UE_LOG(LogHOLMatch, Warning, TEXT("Usage: hol.Build.PlaceNear <Type> <Dx> <Dy> [enemy]"));
-				return;
-			}
-			const bool bEnemy = Args.Num() >= 4 && Args[3] == TEXT("enemy");
-			for (AHOLPlayerController* Controller : GetLocalControllers())
-			{
-				const AHOLBuilding* Centre = FindMainCentre(*Controller, bEnemy);
-				if (!Centre)
-				{
-					UE_LOG(LogHOLMatch, Warning, TEXT("hol.Build.PlaceNear: no %s main centre known here"), bEnemy ? TEXT("enemy") : TEXT("own"));
-					continue;
-				}
-				const FVector Offset = Centre->GetActorRotation().RotateVector(FVector(FCString::Atod(*Args[1]), FCString::Atod(*Args[2]), 0.));
-				RequestPlacementAt(*Controller, FName(*Args[0]), Centre->GetActorLocation() + Offset);
 			}
 		}));
 
@@ -857,31 +591,6 @@ namespace UE::HeroesOfLiberty::Player
 				}
 				UE_LOG(LogHOLMatch, Display, TEXT("Attack-move near the centre at (%.0f, %.0f)"), Point.X, Point.Y);
 				Controller->AttackMoveAt(Fraction, false);
-			}
-		}));
-
-	FAutoConsoleCommand BuildPlaceAtSourceCommand(
-		TEXT("hol.Build.PlaceAtSource"),
-		TEXT("hol.Build.PlaceAtSource <Type> <X> <Y>: asks the server for a foundation on the standing resource source nearest that ground point (cm), whatever this machine thinks of it"),
-		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
-		{
-			if (Args.Num() < 3)
-			{
-				UE_LOG(LogHOLMatch, Warning, TEXT("Usage: hol.Build.PlaceAtSource <Type> <X> <Y>"));
-				return;
-			}
-			for (AHOLPlayerController* Controller : GetLocalControllers())
-			{
-				const UHOLSourceSubsystem* Sources = Controller->GetWorld()->GetSubsystem<UHOLSourceSubsystem>();
-				const int32 Index = Sources ? Sources->FindNearestStanding(FVector(FCString::Atod(*Args[1]), FCString::Atod(*Args[2]), 0.)) : INDEX_NONE;
-				if (Index == INDEX_NONE)
-				{
-					UE_LOG(LogHOLMatch, Warning, TEXT("hol.Build.PlaceAtSource: no standing source"));
-					continue;
-				}
-				const FHOLSource& Source = Sources->GetSources()[Index];
-				UE_LOG(LogHOLMatch, Display, TEXT("Build on source %d at (%.0f, %.0f)"), Index, Source.Location.X, Source.Location.Y);
-				RequestPlacementAt(*Controller, FName(*Args[0]), Source.Location);
 			}
 		}));
 
