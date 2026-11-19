@@ -1367,3 +1367,39 @@ void Test_Construction_CancelVerdict(FUnitTest& T)
 	T.AssertTrue(ConResEq(HOLConstructionBoard::CancelRefund(true, Cost, 2, 0, 1000), ConRes(0, 0, 0, 0)), "finished: nothing back");
 	T.AssertTrue(ConResEq(HOLConstructionBoard::CancelRefund(false, Cost, 0, 0, 1000), ConRes(0, 0, 0, 0)), "no type row: nothing back (the C++ FHOLResources())");
 }
+
+// K1b: the refund of a production queue and the destruction of a building (HOLConstructionBoard::QueueRefundVerdict, QueueRefund, DestroyVerdict, RubbleVerdict;
+// the site's share is CancelRefund, tested above). Costs are given in queue order, one per item.
+void Test_Construction_RefundDestroyVerdict(FUnitTest& T)
+{
+	int RefundQueue = int(EHOLQueueRefundVerdict::RefundQueue);
+	int NothingToRefund = int(EHOLQueueRefundVerdict::NothingToRefund);
+	T.AssertEquals(RefundQueue, int(HOLConstructionBoard::QueueRefundVerdict(true, true, 3)), "a server building with a queue: refunded");
+	T.AssertEquals(NothingToRefund, int(HOLConstructionBoard::QueueRefundVerdict(true, true, 0)), "an empty queue: nothing to refund");
+	T.AssertEquals(NothingToRefund, int(HOLConstructionBoard::QueueRefundVerdict(true, false, 3)), "a client (no authority): nothing");
+	T.AssertEquals(NothingToRefund, int(HOLConstructionBoard::QueueRefundVerdict(false, true, 3)), "no world: nothing");
+
+	TArray<FHOLResources> Costs;
+	T.AssertTrue(ConResEq(HOLConstructionBoard::QueueRefund(Costs), ConRes(0, 0, 0, 0)), "no item: nothing back");
+	Costs.Add(ConRes(50, 0, 0, 0));
+	Costs.Add(ConRes(50, 0, 0, 20));
+	Costs.Add(ConRes(0, 10, 0, 0));
+	T.AssertTrue(ConResEq(HOLConstructionBoard::QueueRefund(Costs), ConRes(100, 10, 0, 20)), "every item back in full, the head too: the sum of the costs");
+
+	int DestroyIt = int(EHOLDestroyVerdict::DestroyIt);
+	int LeaveIt = int(EHOLDestroyVerdict::LeaveIt);
+	T.AssertEquals(DestroyIt, int(HOLConstructionBoard::DestroyVerdict(true, true, true)), "a valid server building is destroyed");
+	T.AssertEquals(LeaveIt, int(HOLConstructionBoard::DestroyVerdict(false, true, true)), "no world: left");
+	T.AssertEquals(LeaveIt, int(HOLConstructionBoard::DestroyVerdict(true, false, true)), "a client: left");
+	T.AssertEquals(LeaveIt, int(HOLConstructionBoard::DestroyVerdict(true, true, false)), "an invalid actor: left");
+
+	int NoRubble = int(EHOLRubbleVerdict::NoRubble);
+	int LeaveRubble = int(EHOLRubbleVerdict::LeaveRubble);
+	T.AssertEquals(LeaveRubble, int(HOLConstructionBoard::RubbleVerdict(false, true)), "a finished or rising building leaves rubble (D345.2a)");
+	T.AssertEquals(NoRubble, int(HOLConstructionBoard::RubbleVerdict(true, true)), "a bare foundation: none, the others never saw it");
+	T.AssertEquals(NoRubble, int(HOLConstructionBoard::RubbleVerdict(false, false)), "no type row: none");
+
+	FHOLResources Cost = ConRes(0, 50, 0, 0);
+	T.AssertTrue(ConResEq(HOLConstructionBoard::CancelRefund(true, Cost, 0, 0, 1000), Cost), "destroyed foundation: the site's share is all of it");
+	T.AssertTrue(ConResEq(HOLConstructionBoard::CancelRefund(true, Cost, 2, 0, 1000), ConRes(0, 0, 0, 0)), "destroyed finished building: no site share");
+}
