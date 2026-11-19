@@ -298,6 +298,14 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|GameStateTest")
 	static int32 RulesGetWindowEnd(const FString& Json, int32 Slot);
 
+	/** As RulesGetWindowEnd, with the configuration's Mode set to EHOLMatchMode(Mode) after the JSON is read (0 Standard, 1 Diplomacy: the JSON setters do not carry it). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|GameStateTest")
+	static int32 RulesGetWindowEndInMode(const FString& Json, int32 Slot, int32 Mode);
+
+	/** FHOLDisconnectRules::DefaultWindowSeconds: the window by default, in seconds. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|GameStateTest")
+	static double RulesGetDefaultWindowSeconds();
+
 	/** FHOLDisconnectRules::MayReturn(ESeatState(State), bMatchOver). */
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|GameStateTest")
 	static bool RulesMayReturn(int32 State, bool bMatchOver);

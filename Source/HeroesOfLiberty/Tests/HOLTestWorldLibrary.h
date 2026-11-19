@@ -262,6 +262,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
 	static int32 DepositLoad(UHOLTestWorldHandle* TestWorld, int32 Owner, int32 Resource, int32 Amount);
 
+	/** As DepositLoad, and OutRemaining is the load's Amount left after the deposit (what the C++ Disconnect test reads: 0 once emptied). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
+	static int32 DepositLoadWithRemaining(UHOLTestWorldHandle* TestWorld, int32 Owner, int32 Resource, int32 Amount, int32& OutRemaining);
+
 	// ---- Lot D853 d (CELEBORN-1119ba): the readings the Disconnect tests still kept in C++ ----
 
 	/** UHOLConstructionSubsystem::DestroyBuilding(*Building): the combat's path (a foundation gives its share of the cost back, a queue its costs). Not the plain Destroy of DestroyBuilding. Nothing for null. */
@@ -287,6 +291,18 @@ public:
 	/** AHOLPlayerState::GetPlayerIndex() (-1 for null). */
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
 	static int32 GetPlayerStateSlot(const AHOLPlayerState* Player);
+
+	/** Starts keeping every line the game logs (GLog), for CountCapturedLogLines; a capture already running is ended first. End it with EndLogCapture. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
+	static void BeginLogCapture();
+
+	/** How many captured lines contain both A and B (the pending threaded log is flushed first). 0 without a capture. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
+	static int32 CountCapturedLogLines(const FString& A, const FString& B);
+
+	/** Stops the capture and drops its lines. Nothing without a capture. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
+	static void EndLogCapture();
 
 	// ---- Lot D853 e (CELEBORN-1119ca): the AI build orders (HOLAIBuildOrdersTests.cpp). Thin wrappers: the test world is the world context ----
 

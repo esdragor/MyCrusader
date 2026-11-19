@@ -688,6 +688,24 @@ int32 UHOLTestWorldLibrary::DepositLoad(UHOLTestWorldHandle* TestWorld, const in
 	return 0;
 }
 
+int32 UHOLTestWorldLibrary::DepositLoadWithRemaining(UHOLTestWorldHandle* TestWorld, const int32 Owner, const int32 Resource, const int32 Amount, int32& OutRemaining)
+{
+	OutRemaining = Amount;
+#if WITH_DEV_AUTOMATION_TESTS
+	if (UWorld* World = HOLTestWorldLibNs::HOLTestWorldLibWorldOf(TestWorld))
+	{
+		FHOLGatherLoad Load;
+		Load.Resource = static_cast<EHOLResource>(Resource);
+		Load.Amount = Amount;
+		FHOLResources Stock;
+		const int32 Deposited = UHOLGatherProcessor::DepositLoad(*World, Owner, Load, Stock);
+		OutRemaining = Load.Amount;
+		return Deposited;
+	}
+#endif
+	return 0;
+}
+
 // ---- Lot D853 d (CELEBORN-1119ba) ----
 
 void UHOLTestWorldLibrary::DestroyBuildingWithRefund(AHOLBuilding* Building)
@@ -751,6 +769,55 @@ int32 UHOLTestWorldLibrary::CountPlayerStatesOfSlot(UHOLTestWorldHandle* TestWor
 	}
 #endif
 	return Seats;
+}
+
+namespace HOLTestWorldLibNs
+{
+	/** What the game logs between BeginLogCapture and EndLogCapture. */
+	class FHOLTestLogCapture : public FOutputDevice
+	{
+	public:
+		TArray<FString> Lines;
+		virtual void Serialize(const TCHAR* Text, ELogVerbosity::Type, const FName&) override { Lines.Add(Text); }
+	};
+	TUniquePtr<FHOLTestLogCapture> GHOLTestLogCapture;
+}
+
+void UHOLTestWorldLibrary::BeginLogCapture()
+{
+#if WITH_DEV_AUTOMATION_TESTS
+	EndLogCapture();
+	HOLTestWorldLibNs::GHOLTestLogCapture = MakeUnique<HOLTestWorldLibNs::FHOLTestLogCapture>();
+	GLog->AddOutputDevice(HOLTestWorldLibNs::GHOLTestLogCapture.Get());
+#endif
+}
+
+int32 UHOLTestWorldLibrary::CountCapturedLogLines(const FString& A, const FString& B)
+{
+	int32 Count = 0;
+#if WITH_DEV_AUTOMATION_TESTS
+	if (HOLTestWorldLibNs::GHOLTestLogCapture)
+	{
+		GLog->FlushThreadedLogs();
+		for (const FString& Line : HOLTestWorldLibNs::GHOLTestLogCapture->Lines)
+		{
+			Count += Line.Contains(A) && Line.Contains(B) ? 1 : 0;
+		}
+	}
+#endif
+	return Count;
+}
+
+void UHOLTestWorldLibrary::EndLogCapture()
+{
+#if WITH_DEV_AUTOMATION_TESTS
+	if (HOLTestWorldLibNs::GHOLTestLogCapture)
+	{
+		GLog->FlushThreadedLogs();
+		GLog->RemoveOutputDevice(HOLTestWorldLibNs::GHOLTestLogCapture.Get());
+		HOLTestWorldLibNs::GHOLTestLogCapture.Reset();
+	}
+#endif
 }
 
 int32 UHOLTestWorldLibrary::GetPlayerStateSlot(const AHOLPlayerState* Player)
