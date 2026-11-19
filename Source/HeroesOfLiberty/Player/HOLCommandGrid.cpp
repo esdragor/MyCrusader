@@ -4,13 +4,52 @@
 
 #include "Player/HOLCommandGridBoard.h"
 #include "Buildings/HOLBuildingTypes.h"
+#include "Engine/Engine.h"
+#include "Engine/World.h"
 #include "HAL/IConsoleManager.h"
+#include "Misc/ScopeLock.h"
+#include "UObject/ObjectKey.h"
+
+DEFINE_LOG_CATEGORY_STATIC(LogHOLCommandGridBridge, Log, All);
 
 namespace
 {
 	// SP3 (Retours/Q-specialization-ui.md, default A): the Forum's grid cell of the first specialization option, the second after it.
 	TAutoConsoleVariable<int32> CVarSpecializationCell(TEXT("hol.UI.SpecializationCell"), 6,
 		TEXT("SP3: the main Forum's grid cell (0-10) of the first specialization option, the second one after it (default 6: D then F)."));
+
+	/**
+	 * A rule asked while no world has a script grid board (UHOLCommandGridBoard::FindAny null): the rule is the script's alone, the
+	 * answer is the function's neutral default, said once per game (world) and per function (the HUD asks every frame).
+	 */
+	void LogNoBoardOnce(const TCHAR* Function)
+	{
+		const UWorld* World = nullptr;
+		if (GEngine)
+		{
+			for (const FWorldContext& Context : GEngine->GetWorldContexts())
+			{
+				if (Context.World())
+				{
+					World = Context.World();
+					break;
+				}
+			}
+		}
+		static FCriticalSection Lock;
+		static TMap<FName, FObjectKey> Logged;
+		const FObjectKey Key(World);
+		{
+			FScopeLock ScopeLock(&Lock);
+			const FObjectKey* Last = Logged.Find(FName(Function));
+			if (Last && *Last == Key)
+			{
+				return;
+			}
+			Logged.Add(FName(Function), Key);
+		}
+		UE_LOG(LogHOLCommandGridBridge, Error, TEXT("CommandGrid: %s refused, no script grid board"), Function);
+	}
 }
 
 namespace HOLCommandGrid
@@ -55,7 +94,8 @@ namespace HOLCommandGrid
 
 	FHOLGridCommand GetCommand(const FHOLGridContext& Context, const int32 Cell)
 	{
-		// The script board answers first (UHOLCommandGridBoard); with none in a game world, the C++ body below (the twin, until the proof).
+		// The script board answers first (UHOLCommandGridBoard); with none in a game world, the C++ body below. KEPT (not yet removed):
+		// HOLRegicideTests / HOLVictoryTests (ForumLook) call it in a test with NO world, where the board cannot be found.
 		FHOLGridCommand Answer;
 		return UHOLCommandGridBoard::AskGetCommand(Context, Cell, Answer) ? Answer : GetCommandNative(Context, Cell);
 	}
@@ -175,6 +215,7 @@ namespace HOLCommandGrid
 
 	FHOLGridCommand GetOrder(const FHOLGridContext& Context, const int32 Cell)
 	{
+		// KEPT like GetCommand: HOLRegicideTests (Commands) call it with NO world.
 		FHOLGridCommand Answer;
 		return UHOLCommandGridBoard::AskGetOrder(Context, Cell, Answer) ? Answer : GetOrderNative(Context, Cell);
 	}
@@ -208,29 +249,30 @@ namespace HOLCommandGrid
 	bool IsAgeReached(const FHOLGridContext& Context, const int32 Age)
 	{
 		bool bAnswer = false;
-		return UHOLCommandGridBoard::AskIsAgeReached(Context, Age, bAnswer) ? bAnswer : IsAgeReachedNative(Context, Age);
-	}
-	bool IsAgeReachedNative(const FHOLGridContext& Context, const int32 Age)
-	{
-		return Age >= 0 && Age < NumAges && Age <= Context.ReachedAge;
+		if (UHOLCommandGridBoard::AskIsAgeReached(Context, Age, bAnswer))
+		{
+			return bAnswer;
+		}
+		LogNoBoardOnce(TEXT("IsAgeReached"));
+		return false;
 	}
 
 	bool IsAgeOpen(const FHOLGridContext& Context, const int32 Age)
 	{
 		bool bAnswer = false;
-		return UHOLCommandGridBoard::AskIsAgeOpen(Context, Age, bAnswer) ? bAnswer : IsAgeOpenNative(Context, Age);
-	}
-	bool IsAgeOpenNative(const FHOLGridContext& Context, const int32 Age)
-	{
-		return IsAgeReachedNative(Context, Age) || (Age >= 0 && Age < NumAges
-			&& Context.Buildable.ContainsByPredicate([Age](const FHOLBuildable& Each) { return Each.Age == Age && Each.bAlwaysOpen; }));
+		if (UHOLCommandGridBoard::AskIsAgeOpen(Context, Age, bAnswer))
+		{
+			return bAnswer;
+		}
+		LogNoBoardOnce(TEXT("IsAgeOpen"));
+		return false;
 	}
 
 	float GetAgePanelOpacity(const FHOLGridContext& Context, const int32 Age)
 	{
 		// A page faded only while nothing on it can be built: a page opened by a type built whatever the tier (a Nomad's first
 		// forum, D797) shown whole, its locked cells greyed one by one (bGreyed); its medallion keeps its locked look.
-		return IsAgeOpenNative(Context, Age) ? 1.f : LockedAgePanelOpacity;
+		return IsAgeOpen(Context, Age) ? 1.f : LockedAgePanelOpacity;
 	}
 
 	int32 GetCategoryRow(const EHOLBuildingCategory Category)
@@ -241,104 +283,49 @@ namespace HOLCommandGrid
 	FHOLGridCommand GetAgeBuilding(const FHOLGridContext& Context, const int32 Age, const int32 Cell)
 	{
 		FHOLGridCommand Answer;
-		return UHOLCommandGridBoard::AskGetAgeBuilding(Context, Age, Cell, Answer) ? Answer : GetAgeBuildingNative(Context, Age, Cell);
-	}
-	FHOLGridCommand GetAgeBuildingNative(const FHOLGridContext& Context, const int32 Age, const int32 Cell)
-	{
-		FHOLGridCommand Result;
-		if (!IsBuildGrid(Context) || Age < 0 || Age >= NumAges || Cell < 0 || Cell >= NumCells)
+		if (UHOLCommandGridBoard::AskGetAgeBuilding(Context, Age, Cell, Answer))
 		{
-			return Result;
+			return Answer;
 		}
-		for (const FHOLBuildable& Buildable : Context.Buildable)
-		{
-			if (Buildable.Cell == Cell && Buildable.Age == Age && !Buildable.TypeName.IsNone())
-			{
-				Result.Command = EHOLGridCommand::Build;
-				Result.TypeName = Buildable.TypeName;
-				Result.Age = Age;
-				Result.bGreyed = !IsAgeReachedNative(Context, Age) && !Buildable.bAlwaysOpen;
-				break;
-			}
-		}
-		return Result;
+		LogNoBoardOnce(TEXT("GetAgeBuilding"));
+		return FHOLGridCommand();
 	}
 
 	FHOLGridKeyResult PressKey(const FHOLGridContext& Context, const int32 ChosenAge, const int32 Cell)
 	{
 		FHOLGridKeyResult Answer;
-		return UHOLCommandGridBoard::AskPressKey(Context, ChosenAge, Cell, Answer) ? Answer : PressKeyNative(Context, ChosenAge, Cell);
-	}
-	FHOLGridKeyResult PressKeyNative(const FHOLGridContext& Context, const int32 ChosenAge, const int32 Cell)
-	{
-		FHOLGridKeyResult Result;
-		if (Cell < 0 || Cell >= NumCells)
+		if (UHOLCommandGridBoard::AskPressKey(Context, ChosenAge, Cell, Answer))
 		{
-			Result.ChosenAge = ChosenAge;
-			return Result;
+			return Answer;
 		}
-		if (Context.bOwnBuilding)
-		{
-			Result.Target = EHOLGridKeyTarget::Grid;
-			return Result;
-		}
-		if (!IsBuildGrid(Context))
-		{
-			// The hero's cells (A Z) are the grid's; the other keys the orders'.
-			Result.Target = GetCommandNative(Context, Cell).Command == EHOLGridCommand::HeroAbility || GetCommandNative(Context, Cell).Command == EHOLGridCommand::NecroticRage ? EHOLGridKeyTarget::Grid : EHOLGridKeyTarget::Orders;
-			return Result;
-		}
-		// No age chosen: A Z E R choose one (one not reached: nothing), the others are the orders'.
-		if (ChosenAge == INDEX_NONE)
-		{
-			const bool bAgeKey = Cell < NumAges;
-			const bool bReached = bAgeKey && IsAgeOpenNative(Context, Cell);
-			Result.Target = bReached ? EHOLGridKeyTarget::Age : bAgeKey ? EHOLGridKeyTarget::None : EHOLGridKeyTarget::Orders;
-			Result.ChosenAge = bReached ? Cell : INDEX_NONE;
-			return Result;
-		}
-		// An age chosen: every key is its buildings' (an empty cell: nothing, never an order nor another age), the age kept.
-		Result.ChosenAge = ChosenAge;
-		const FHOLGridCommand Building = GetAgeBuildingNative(Context, ChosenAge, Cell);
-		if (!Building.IsNone() && !Building.bGreyed)
-		{
-			Result.Target = EHOLGridKeyTarget::Build;
-			Result.TypeName = Building.TypeName;
-		}
-		return Result;
+		LogNoBoardOnce(TEXT("PressKey"));
+		FHOLGridKeyResult None;
+		None.ChosenAge = ChosenAge;
+		return None;
 	}
 
 	FHOLGridKeyResult ClickAge(const FHOLGridContext& Context, const int32 ChosenAge, const int32 Age, const int32 Cell)
 	{
 		FHOLGridKeyResult Answer;
-		return UHOLCommandGridBoard::AskClickAge(Context, ChosenAge, Age, Cell, Answer) ? Answer : ClickAgeNative(Context, ChosenAge, Age, Cell);
-	}
-	FHOLGridKeyResult ClickAgeNative(const FHOLGridContext& Context, const int32 ChosenAge, const int32 Age, const int32 Cell)
-	{
-		if (!IsBuildGrid(Context) || !IsAgeOpenNative(Context, Age))
+		if (UHOLCommandGridBoard::AskClickAge(Context, ChosenAge, Age, Cell, Answer))
 		{
-			FHOLGridKeyResult Result;
-			Result.ChosenAge = ChosenAge;
-			return Result;
+			return Answer;
 		}
-		if (Cell == INDEX_NONE)
-		{
-			FHOLGridKeyResult Result;
-			Result.Target = EHOLGridKeyTarget::Age;
-			Result.ChosenAge = Age;
-			return Result;
-		}
-		return PressKeyNative(Context, Age, Cell);
+		LogNoBoardOnce(TEXT("ClickAge"));
+		FHOLGridKeyResult None;
+		None.ChosenAge = ChosenAge;
+		return None;
 	}
 
 	int32 GetChosenAgeAfter(const int32 ChosenAge, const EHOLAgeEvent Event)
 	{
 		int32 Answer = INDEX_NONE;
-		return UHOLCommandGridBoard::AskGetChosenAgeAfter(ChosenAge, Event, Answer) ? Answer : GetChosenAgeAfterNative(ChosenAge, Event);
-	}
-	int32 GetChosenAgeAfterNative(const int32 ChosenAge, const EHOLAgeEvent Event)
-	{
-		return Event == EHOLAgeEvent::PlacedKept ? ChosenAge : INDEX_NONE;
+		if (UHOLCommandGridBoard::AskGetChosenAgeAfter(ChosenAge, Event, Answer))
+		{
+			return Answer;
+		}
+		LogNoBoardOnce(TEXT("GetChosenAgeAfter"));
+		return INDEX_NONE;
 	}
 
 	bool FindMissingResource(const FHOLResources& Stock, const FHOLResources& Cost, EHOLResource& OutResource)
@@ -358,27 +345,12 @@ namespace HOLCommandGrid
 		const int32 PopulationUsed, const int32 PopulationCap, const int32 Places)
 	{
 		FHOLCommandFeedback Answer;
-		return UHOLCommandGridBoard::AskCheckProduction(Stock, Cost, QueueLength, MaxQueue, PopulationUsed, PopulationCap, Places, Answer)
-			? Answer : CheckProductionNative(Stock, Cost, QueueLength, MaxQueue, PopulationUsed, PopulationCap, Places);
-	}
-
-	FHOLCommandFeedback CheckProductionNative(const FHOLResources& Stock, const FHOLResources& Cost, const int32 QueueLength, const int32 MaxQueue,
-		const int32 PopulationUsed, const int32 PopulationCap, const int32 Places)
-	{
-		FHOLCommandFeedback Feedback;
-		if (QueueLength >= MaxQueue)
+		if (UHOLCommandGridBoard::AskCheckProduction(Stock, Cost, QueueLength, MaxQueue, PopulationUsed, PopulationCap, Places, Answer))
 		{
-			Feedback.Kind = EHOLCommandFeedback::QueueFull;
+			return Answer;
 		}
-		else if (FindMissingResource(Stock, Cost, Feedback.Resource))
-		{
-			Feedback.Kind = EHOLCommandFeedback::NotEnoughResources;
-		}
-		else if (IsPopulationBlocked(PopulationUsed, PopulationCap, Places))
-		{
-			Feedback.Kind = EHOLCommandFeedback::PopulationFull;
-		}
-		return Feedback;
+		LogNoBoardOnce(TEXT("CheckProduction"));
+		return FHOLCommandFeedback();
 	}
 
 	FHOLCommandFeedback CheckResearch(const FHOLTechnologyRow& Row, HOLTechnology::FFacts Facts, const FHOLResources& Stock,
@@ -407,29 +379,23 @@ namespace HOLCommandGrid
 	FHOLCommandFeedback CheckBuild(const FHOLResources& Stock, const FHOLResources& Cost)
 	{
 		FHOLCommandFeedback Answer;
-		return UHOLCommandGridBoard::AskCheckBuild(Stock, Cost, Answer) ? Answer : CheckBuildNative(Stock, Cost);
-	}
-
-	FHOLCommandFeedback CheckBuildNative(const FHOLResources& Stock, const FHOLResources& Cost)
-	{
-		FHOLCommandFeedback Feedback;
-		if (FindMissingResource(Stock, Cost, Feedback.Resource))
+		if (UHOLCommandGridBoard::AskCheckBuild(Stock, Cost, Answer))
 		{
-			Feedback.Kind = EHOLCommandFeedback::NotEnoughResources;
+			return Answer;
 		}
-		return Feedback;
+		LogNoBoardOnce(TEXT("CheckBuild"));
+		return FHOLCommandFeedback();
 	}
 
 	bool Blocks(const FHOLCommandFeedback& Feedback)
 	{
 		bool bAnswer = false;
-		return UHOLCommandGridBoard::AskBlocks(Feedback, bAnswer) ? bAnswer : BlocksNative(Feedback);
-	}
-
-	bool BlocksNative(const FHOLCommandFeedback& Feedback)
-	{
-		return Feedback.Kind == EHOLCommandFeedback::NotEnoughResources || Feedback.Kind == EHOLCommandFeedback::QueueFull
-			|| Feedback.Kind == EHOLCommandFeedback::PlacementRefused || Feedback.Kind == EHOLCommandFeedback::ResearchRefused;
+		if (UHOLCommandGridBoard::AskBlocks(Feedback, bAnswer))
+		{
+			return bAnswer;
+		}
+		LogNoBoardOnce(TEXT("Blocks"));
+		return false;
 	}
 
 	bool IsPopulationBlocked(const int32 PopulationUsed, const int32 PopulationCap, const int32 Places)
@@ -440,33 +406,12 @@ namespace HOLCommandGrid
 	FString Describe(const FHOLCommandFeedback& Feedback)
 	{
 		FString Answer;
-		return UHOLCommandGridBoard::AskDescribe(Feedback, Answer) ? Answer : DescribeNative(Feedback);
-	}
-
-	FString DescribeNative(const FHOLCommandFeedback& Feedback)
-	{
-		switch (Feedback.Kind)
+		if (UHOLCommandGridBoard::AskDescribe(Feedback, Answer))
 		{
-		case EHOLCommandFeedback::NotEnoughResources:
-			return FString::Printf(TEXT("not enough %s"), *StaticEnum<EHOLResource>()->GetNameStringByValue(static_cast<int64>(Feedback.Resource)));
-		case EHOLCommandFeedback::QueueFull: return TEXT("queue full");
-		case EHOLCommandFeedback::PopulationFull: return TEXT("population full");
-		case EHOLCommandFeedback::ResearchRefused: return FString::Printf(TEXT("research refused (%s)"), HOLTechnology::DescribeBlock(Feedback.Block));
-		case EHOLCommandFeedback::PlacementRefused:
-			// The words of UHOLConstructionSubsystem::DescribeRefusal (the server's log).
-			switch (Feedback.Refusal)
-			{
-			case EHOLPlacementRefusal::OutOfMap: return TEXT("placement refused (out of the map)");
-			case EHOLPlacementRefusal::Building: return TEXT("placement refused (on a building)");
-			case EHOLPlacementRefusal::Source: return TEXT("placement refused (on a resource source)");
-			case EHOLPlacementRefusal::EnemyCentre: return TEXT("placement refused (too near an enemy main centre)");
-			case EHOLPlacementRefusal::NavMesh: return TEXT("placement refused (off the navmesh)");
-			default: return TEXT("placement refused");
-			}
-		case EHOLCommandFeedback::NoBuilding:
-			return FString::Printf(TEXT("no %s building"), *StaticEnum<EHOLBuildingCategory>()->GetNameStringByValue(static_cast<int64>(Feedback.Category)));
-		default: return TEXT("none");
+			return Answer;
 		}
+		LogNoBoardOnce(TEXT("Describe"));
+		return TEXT("none");
 	}
 
 	FHOLGridCellFace GetCellFace(const bool bHasIcon)
@@ -480,202 +425,99 @@ namespace HOLCommandGrid
 	int32 GetCycleRank(const FHOLBuildingTypeRow& Type)
 	{
 		int32 Answer = 0;
-		return UHOLCommandGridBoard::AskGetCycleRank(Type.IsBuildable(), Type.BuildGridSlot, Answer) ? Answer : GetCycleRankNative(Type);
-	}
-
-	int32 GetCycleRankNative(const FHOLBuildingTypeRow& Type)
-	{
-		return Type.IsBuildable() ? Type.BuildGridSlot + 1 : 0;
+		if (UHOLCommandGridBoard::AskGetCycleRank(Type.IsBuildable(), Type.BuildGridSlot, Answer))
+		{
+			return Answer;
+		}
+		LogNoBoardOnce(TEXT("GetCycleRank"));
+		return 0;
 	}
 
 	bool IsSelectedByCategory(const FHOLBuildingTypeRow& Type, const EHOLBuildingCategory Category)
 	{
 		bool bAnswer = false;
-		return UHOLCommandGridBoard::AskIsSelectedByCategory(Type.Category, Category, bAnswer) ? bAnswer : IsSelectedByCategoryNative(Type, Category);
-	}
-
-	bool IsSelectedByCategoryNative(const FHOLBuildingTypeRow& Type, const EHOLBuildingCategory Category)
-	{
-		return Type.Category == Category;
+		if (UHOLCommandGridBoard::AskIsSelectedByCategory(Type.Category, Category, bAnswer))
+		{
+			return bAnswer;
+		}
+		LogNoBoardOnce(TEXT("IsSelectedByCategory"));
+		return false;
 	}
 
 	bool IsRepeatPress(const TConstArrayView<uint32> Selected, const TConstArrayView<uint32> LastSelected, const bool bSameKey)
 	{
 		bool bAnswer = false;
-		return UHOLCommandGridBoard::AskIsRepeatPress(Selected, LastSelected, bSameKey, bAnswer) ? bAnswer : IsRepeatPressNative(Selected, LastSelected, bSameKey);
-	}
-
-	bool IsRepeatPressNative(const TConstArrayView<uint32> Selected, const TConstArrayView<uint32> LastSelected, const bool bSameKey)
-	{
-		if (!bSameKey || Selected.IsEmpty() || Selected.Num() != LastSelected.Num())
+		if (UHOLCommandGridBoard::AskIsRepeatPress(Selected, LastSelected, bSameKey, bAnswer))
 		{
-			return false;
+			return bAnswer;
 		}
-		for (const uint32 Key : Selected)
-		{
-			if (!LastSelected.Contains(Key))
-			{
-				return false;
-			}
-		}
-		return true;
+		LogNoBoardOnce(TEXT("IsRepeatPress"));
+		return false;
 	}
 
 	int32 NextInCycle(const TConstArrayView<FHOLCycleBuilding> Buildings, const uint32 LastKey)
 	{
 		int32 Answer = INDEX_NONE;
-		return UHOLCommandGridBoard::AskNextInCycle(Buildings, LastKey, Answer) ? Answer : NextInCycleNative(Buildings, LastKey);
-	}
-
-	int32 NextInCycleNative(const TConstArrayView<FHOLCycleBuilding> Buildings, const uint32 LastKey)
-	{
-		if (Buildings.IsEmpty())
+		if (UHOLCommandGridBoard::AskNextInCycle(Buildings, LastKey, Answer))
 		{
-			return INDEX_NONE;
+			return Answer;
 		}
-		TArray<int32> Order;
-		for (int32 Index = 0; Index < Buildings.Num(); ++Index)
-		{
-			Order.Add(Index);
-		}
-		Order.Sort([Buildings](const int32 A, const int32 B)
-		{
-			return Buildings[A].Rank != Buildings[B].Rank ? Buildings[A].Rank < Buildings[B].Rank : Buildings[A].Key < Buildings[B].Key;
-		});
-		const int32 Last = Order.IndexOfByPredicate([Buildings, LastKey](const int32 Index) { return Buildings[Index].Key == LastKey; });
-		return Order[Last == INDEX_NONE ? 0 : (Last + 1) % Order.Num()];
+		LogNoBoardOnce(TEXT("NextInCycle"));
+		return INDEX_NONE;
 	}
 
 	bool IsAloneInGroup(const FName TypeName)
 	{
 		bool bAnswer = false;
-		return UHOLCommandGridBoard::AskIsAloneInGroup(TypeName, bAnswer) ? bAnswer : IsAloneInGroupNative(TypeName);
-	}
-
-	bool IsAloneInGroupNative(const FName TypeName)
-	{
-		return TypeName == HOLBuildingTypeNames::MainCentre;
+		if (UHOLCommandGridBoard::AskIsAloneInGroup(TypeName, bAnswer))
+		{
+			return bAnswer;
+		}
+		LogNoBoardOnce(TEXT("IsAloneInGroup"));
+		return false;
 	}
 
 	TArray<FHOLSubgroup> SplitSubgroups(const TConstArrayView<FHOLGroupMember> Members)
 	{
 		TArray<FHOLSubgroup> Answer;
-		return UHOLCommandGridBoard::AskSplitSubgroups(Members, Answer) ? Answer : SplitSubgroupsNative(Members);
-	}
-
-	TArray<FHOLSubgroup> SplitSubgroupsNative(const TConstArrayView<FHOLGroupMember> Members)
-	{
-		TArray<FHOLSubgroup> Subgroups;
-		if (Members.IsEmpty())
+		if (UHOLCommandGridBoard::AskSplitSubgroups(Members, Answer))
 		{
-			return Subgroups;
+			return Answer;
 		}
-		FHOLSubgroup& All = Subgroups.AddDefaulted_GetRef();
-		All.bAll = true;
-		// Whether each subgroup is a main centre's (never joined by another building).
-		TArray<bool> Alone = { false };
-		for (int32 Index = 0; Index < Members.Num(); ++Index)
-		{
-			Subgroups[0].Members.Add(Index);
-			const FHOLGroupMember& Member = Members[Index];
-			int32 Same = INDEX_NONE;
-			for (int32 Other = 1; Other < Subgroups.Num() && !Member.bAlone && Same == INDEX_NONE; ++Other)
-			{
-				Same = !Alone[Other] && Subgroups[Other].TypeName == Member.TypeName ? Other : INDEX_NONE;
-			}
-			if (Same != INDEX_NONE)
-			{
-				Subgroups[Same].Members.Add(Index);
-				continue;
-			}
-			FHOLSubgroup& Subgroup = Subgroups.AddDefaulted_GetRef();
-			Subgroup.TypeName = Member.TypeName;
-			Subgroup.Members.Add(Index);
-			Alone.Add(Member.bAlone);
-		}
-		return Subgroups;
+		LogNoBoardOnce(TEXT("SplitSubgroups"));
+		return TArray<FHOLSubgroup>();
 	}
 
 	TArray<int32> GetCommandPriority(const TConstArrayView<FHOLGroupMember> Members)
 	{
 		TArray<int32> Answer;
-		return UHOLCommandGridBoard::AskGetCommandPriority(Members, Answer) ? Answer : GetCommandPriorityNative(Members);
-	}
-
-	TArray<int32> GetCommandPriorityNative(const TConstArrayView<FHOLGroupMember> Members)
-	{
-		TArray<int32> Order;
-		for (const bool bCentres : { true, false })
+		if (UHOLCommandGridBoard::AskGetCommandPriority(Members, Answer))
 		{
-			for (int32 Index = 0; Index < Members.Num(); ++Index)
-			{
-				if (Members[Index].bAlone == bCentres)
-				{
-					Order.Add(Index);
-				}
-			}
+			return Answer;
 		}
-		return Order;
+		LogNoBoardOnce(TEXT("GetCommandPriority"));
+		return TArray<int32>();
 	}
 
 	TArray<FHOLGridCommand> MergeCommands(const TConstArrayView<TArray<FHOLGridCommand>> PerBuilding, const TConstArrayView<int32> Priority)
 	{
 		TArray<FHOLGridCommand> Answer;
-		return UHOLCommandGridBoard::AskMergeCommands(PerBuilding, Priority, Answer) ? Answer : MergeCommandsNative(PerBuilding, Priority);
-	}
-
-	TArray<FHOLGridCommand> MergeCommandsNative(const TConstArrayView<TArray<FHOLGridCommand>> PerBuilding, const TConstArrayView<int32> Priority)
-	{
-		TArray<FHOLGridCommand> Merged;
-		Merged.SetNum(NumCells);
-		for (const int32 Index : Priority)
+		if (UHOLCommandGridBoard::AskMergeCommands(PerBuilding, Priority, Answer))
 		{
-			if (!PerBuilding.IsValidIndex(Index))
-			{
-				continue;
-			}
-			const TArray<FHOLGridCommand>& Cells = PerBuilding[Index];
-			for (int32 Cell = 0; Cell < NumCells && Cell < Cells.Num(); ++Cell)
-			{
-				if (Merged[Cell].IsNone() && !Cells[Cell].IsNone())
-				{
-					Merged[Cell] = Cells[Cell];
-				}
-			}
+			return Answer;
 		}
-		return Merged;
+		LogNoBoardOnce(TEXT("MergeCommands"));
+		return TArray<FHOLGridCommand>();
 	}
 
 	int32 PickEvenly(const TConstArrayView<FHOLQueueChoice> Choices, const uint32 LastKey)
 	{
 		int32 Answer = INDEX_NONE;
-		return UHOLCommandGridBoard::AskPickEvenly(Choices, LastKey, Answer) ? Answer : PickEvenlyNative(Choices, LastKey);
-	}
-
-	int32 PickEvenlyNative(const TConstArrayView<FHOLQueueChoice> Choices, const uint32 LastKey)
-	{
-		int32 Fewest = MAX_int32;
-		for (const FHOLQueueChoice& Choice : Choices)
+		if (UHOLCommandGridBoard::AskPickEvenly(Choices, LastKey, Answer))
 		{
-			if (Choice.QueueLength < Choice.MaxQueue)
-			{
-				Fewest = FMath::Min(Fewest, Choice.QueueLength);
-			}
+			return Answer;
 		}
-		if (Fewest == MAX_int32)
-		{
-			return INDEX_NONE;
-		}
-		// Round robin between equals: from the one after the last one picked, in the group's order.
-		const int32 Last = Choices.IndexOfByPredicate([LastKey](const FHOLQueueChoice& Choice) { return Choice.Key == LastKey; });
-		for (int32 Step = 1; Step <= Choices.Num(); ++Step)
-		{
-			const int32 Index = Last == INDEX_NONE ? Step - 1 : (Last + Step) % Choices.Num();
-			if (Choices[Index].QueueLength == Fewest)
-			{
-				return Index;
-			}
-		}
+		LogNoBoardOnce(TEXT("PickEvenly"));
 		return INDEX_NONE;
 	}
 }
