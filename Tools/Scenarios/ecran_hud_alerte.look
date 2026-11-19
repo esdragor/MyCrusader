@@ -1,0 +1,5 @@
+# <nom de capture> | ce que l'utilisateur doit voir
+hud_alerte_aucune | Capture 1920x1080 : haut centre, sous la barre du haut, aucune banniere d'alerte ; rien d'autre ne change.
+hud_alerte_majeure | Capture 1920x1080 : sous la barre du haut, au centre, une banniere sombre a bords arrondis avec le texte de la chute du forum en gros (heading), les noms dans la couleur du slot, bien opaque ; le texte DOIT etre visible (un panneau sans libelle serait le defaut vu sur le bouton Menu de H-3) ; a comparer avec la meme capture de la branche d'avant.
+hud_alerte_apres_clic | Capture 1920x1080 : la camera est au-dessus du forum de slot 0 (en ruine) ; la banniere est encore visible ou en fondu.
+hud_alerte_disparue | Capture 1920x1080 : plus aucune banniere en haut centre ; le fil de messages montre toujours la ligne de la chute.

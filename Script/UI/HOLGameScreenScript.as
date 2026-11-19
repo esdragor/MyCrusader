@@ -119,7 +119,26 @@ FString TalentTipTexts = "";
 	UBorder VolcanoPanel;
 	UOverlaySlot VolcanoSlot;
 	UCommonTextBlock VolcanoText;
+	UHOLTopBarPanel TopBar;
+	// HUD H-4: the players' table (HOLPlayerTable.as), drawn into the C++ screen's PlayersPanel.
+	UHOLPlayerTablePanel PlayerTable;
+	// HUD H-6: the control groups' bar (HOLGroupBar.as), drawn into the C++ screen's GroupsPanel.
+	UHOLGroupBarPanel GroupBar;
+	// HUD H-7: the production queue (HOLQueuePanel.as), drawn into the C++ screen's QueuePanel (the member is not called QueuePanel: no widget of that name here).
+	UHOLProductionQueuePanel QueueView;
+
+	// HUD H-8: the builders' age panels (HOLAgePanels.as), drawn into the C++ screen's AgePanelsHost.
+	UHOLAgePanelsPanel AgePanels;
 	FString VolcanoTexts = "";
+	// H-1: the wait and absence banners (HOLWaitBanner.as).
+	UHOLWaitBannerPanel WaitBanner;
+// H-5a: the major alert's banner (HOLAlertBanner.as); the state machine stays C++ (UHOLGameScreen::Alert).
+UHOLAlertBannerPanel AlertBanner;
+
+	// H-2 (D313, D829): the short message and the held production note (HOLShortMessage.as).
+	FHOLShortMessageParts MessageParts;
+	FHOLShortMessageState MessageState;
+	FHOLPopulationHeldWatch HeldWatch;
 	// The AI line's height with its gap (px at 1080p), when it is shown.
 	const float VolcanoAfterAILine = 34.0;
 	float VolcanoTop = 72.0;
@@ -243,6 +262,21 @@ FString TalentTipTexts = "";
 		BuildDuelWindow(Frame);
 		BuildAILevelLine(Frame);
 		BuildVolcanoBanner(Frame);
+		TopBar = Cast<UHOLTopBarPanel>(NewObject(this, UHOLTopBarPanel));
+		TopBar.Build(this, Frame);
+		WaitBanner = Cast<UHOLWaitBannerPanel>(NewObject(this, UHOLWaitBannerPanel));
+		WaitBanner.Build(this, Frame);
+		AlertBanner = Cast<UHOLAlertBannerPanel>(NewObject(this, UHOLAlertBannerPanel));
+		AlertBanner.Build(this, Frame);
+		MessageParts = HOLShortMessage::Build(this, Frame);
+		PlayerTable = Cast<UHOLPlayerTablePanel>(NewObject(this, UHOLPlayerTablePanel));
+		PlayerTable.Build(this, GetPlayersPanel());
+		GroupBar = Cast<UHOLGroupBarPanel>(NewObject(this, UHOLGroupBarPanel));
+		GroupBar.Build(this, GetGroupsPanel());
+		QueueView = Cast<UHOLProductionQueuePanel>(NewObject(this, UHOLProductionQueuePanel));
+		QueueView.Build(this, GetQueuePanel());
+		AgePanels = Cast<UHOLAgePanelsPanel>(NewObject(this, UHOLAgePanelsPanel));
+		AgePanels.Build(this);
 		BuildMinimap(Frame);
 		BuildTalentWindow(Frame);
 		// Last: over the other blocks.
@@ -594,7 +628,7 @@ FString TalentTipTexts = "";
 		FVector2D MenuLow;
 		FVector2D MenuHigh;
 		const FVector2D Room = GetViewportSlateSize();
-		if (GetGameScreenBox(n"MenuPanel", MenuLow, MenuHigh))
+		if (TopBar != nullptr && GetWidgetBox(TopBar.MenuPanel, MenuLow, MenuHigh))
 		{
 			const float Right = Math::Max(0.0, Room.X - MenuLow.X + 6.0);
 			if (Math::Abs(Right - DipButtonRight) > 0.5 || Math::Abs(MenuLow.Y - DipPanelTop) > 0.5)
@@ -1358,12 +1392,34 @@ FString TalentTipTexts = "";
 		RefreshDuel();
 		RefreshAILevel();
 		RefreshVolcano();
+		if (TopBar != nullptr)
+			TopBar.Refresh();
+		if (WaitBanner != nullptr)
+			WaitBanner.Refresh();
+		if (PlayerTable != nullptr)
+			PlayerTable.Refresh();
+		if (GroupBar != nullptr)
+			GroupBar.Refresh();
+		if (QueueView != nullptr)
+			QueueView.Refresh();
+		if (AgePanels != nullptr)
+			AgePanels.Refresh();
 		if (Audio != nullptr)
 			Audio.PlayDueRepeats();
 		RefreshDiplomacy();
 		RefreshPause();
 		RefreshMinimap();
 		RefreshPopulationAlert();
+		RefreshShortMessage();
+	}
+
+	// HUD H-8: the age panels alone, drawn again at once (the C++ screen's grid, chosen age and tier changes). Not the whole Refresh: the
+	// population alert and the other blocks read the HUD's real time once per timer step, not at every grid change.
+	UFUNCTION(BlueprintOverride)
+	void RefreshAges()
+	{
+		if (AgePanels != nullptr)
+			AgePanels.Refresh();
 	}
 
 	// D202, Q-alerts-minor default A: the population full line in the thread of messages (muted, no ping), once when the population
@@ -1380,6 +1436,54 @@ FString TalentTipTexts = "";
 			return;
 		if (HOLAlertRules::ShouldAlertPopulationFull(PopulationWatch, Used, Cap, Now, HOLAlertRules::PopulationRepeatSeconds))
 			AddThreadLine(HOLAlertRules::PopulationFullText());
+	}
+
+	// H-2: the short message's place and the held production note (read from the C++ here, 4 times a second, the message and its journal lines at the front).
+	void RefreshShortMessage()
+	{
+		HOLShortMessage::Place(this, MessageParts);
+		if (HOLShortMessage::CheckPopulationHeld(this, MessageParts, MessageState, HeldWatch, IsProductionHeldForRoom()))
+			SetShownMessageKey(HOLShortMessage::PopulationKey);
+	}
+
+	// A command did not go through (the C++ GetFeedbackKey / GetFeedbackText): the key and the text; the C++ already set the Describe mirror.
+	UFUNCTION(BlueprintOverride)
+	void ShortMessage(const FString& Key, const FText& Text)
+	{
+		HOLShortMessage::ShowText(MessageParts, MessageState, Key, Text);
+		SetShownMessageKey(Key);
+	}
+
+	// Only while the C++ state shows a major alert, and once more when it ends (the C++ NativeTick): the banner's fade and its end.
+	UFUNCTION(BlueprintOverride)
+	void AlertFrameTick(float32 DeltaSeconds)
+	{
+		if (AlertBanner != nullptr)
+			AlertBanner.Refresh();
+	}
+
+	// H-7: once a frame, ONLY while the queue panel shows a queue (SetQueueLive): the head's bar moves each frame, as the C++ UpdateHead did.
+	UFUNCTION(BlueprintOverride)
+	void QueueFrameTick()
+	{
+		if (QueueView != nullptr)
+			QueueView.FrameTick();
+	}
+
+	// Only while a message with a key is shown (the C++ NativeTick): the fade, then the end (the mirrored key is cleared).
+	UFUNCTION(BlueprintOverride)
+	void FrameTick(float32 DeltaSeconds)
+	{
+		if (HOLShortMessage::Tick(MessageParts, MessageState, DeltaSeconds))
+			SetShownMessageKey("");
+	}
+
+	// The lit control group changed (HUD H-6): the C++ NativeTick sees it each frame (a recall, the 0.5 s end) and calls this, so the chip lights on the very frame.
+	UFUNCTION(BlueprintOverride)
+	void GroupLitChanged()
+	{
+		if (GroupBar != nullptr)
+			GroupBar.RefreshLit();
 	}
 
 	void BuildMinimap(UOverlay Frame)
@@ -2155,6 +2259,8 @@ FString TalentTipTexts = "";
 	{
 		// The view of now, as the mouse would see it (the tests' waits draw no frame).
 		RefreshNow();
+		if (AlertBanner != nullptr && AlertBanner.ClickName(WidgetName))
+			return true;
 		if (WidgetName == n"HeroPortrait")
 			return ClickPortrait();
 		if (WidgetName == n"HeroReturnButton")
@@ -2188,6 +2294,14 @@ FString TalentTipTexts = "";
 			return ClickDuelAnswer(false);
 		if (WidgetName == n"PauseResumeButton")
 			return ClickPauseResume();
+		if (TopBar != nullptr && TopBar.ClickName(WidgetName))
+			return true;
+		if (GroupBar != nullptr && GroupBar.ClickName(WidgetName))
+			return true;
+		if (QueueView != nullptr && QueueView.ClickName(WidgetName))
+			return true;
+		if (AgePanels != nullptr && AgePanels.ClickName(WidgetName))
+			return true;
 		return false;
 	}
 

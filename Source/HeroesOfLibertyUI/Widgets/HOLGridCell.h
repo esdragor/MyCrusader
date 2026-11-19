@@ -11,8 +11,10 @@ class UHorizontalBox;
 class UImage;
 class UVerticalBox;
 struct FHOLTradeGain;
+class UHOLGridCell;
 
 /** How a cell of the grid takes a click. */
+UENUM(BlueprintType)
 enum class EHOLGridCellState : uint8
 {
 	/** Clickable, its command goes through. */
@@ -25,6 +27,9 @@ enum class EHOLGridCellState : uint8
 	/** Not clickable. */
 	Disabled,
 };
+
+/** A cell's click, for the script (HUD H-8: the age panels' cells are built by the script). */
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FHOLGridCellClickedEvent, UHOLGridCell*, Cell);
 
 /**
  * A cell of the command grid (D30, J3): a square with its key in the top left corner and, when it has a command (a unit
@@ -42,8 +47,14 @@ class HEROESOFLIBERTYUI_API UHOLGridCell : public UCommonButtonBase
 public:
 	UHOLGridCell();
 
+	/** Broadcast by the button's click (HUD H-8): the script's age panels listen to it. */
+	UPROPERTY(BlueprintAssignable, Category = "HeroesOfLiberty|UI")
+	FHOLGridCellClickedEvent OnCellClicked;
+
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|UI")
 	void SetKey(const FText& InKey);
 	/** Shows a command: its name (no icon yet), dimmed when greyed; its cost is the tooltip's. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|UI")
 	void SetCommand(const FText& InName, EHOLGridCellState InState);
 	/**
 	 * D781 (a Market's trade cell): under the name set by SetCommand (which hides it), « +X » then the logo of what the trade
@@ -56,8 +67,10 @@ public:
 	 */
 	void SetTooltip(const FText& InName, const FHOLResources& Cost, const FHOLResources& Missing, const FText& InEffect);
 	/** Shows the key only, greyed. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|UI")
 	void ClearUnit();
 
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|UI")
 	EHOLGridCellState GetState() const { return State; }
 	/** "Maison | W 50 | +10 population": what the tooltip says, for the scripted checks (hol.HUD.Report). */
 	FString DescribeTooltip() const;
@@ -117,8 +130,13 @@ private:
 	UPROPERTY(Transient)
 	TObjectPtr<UImage> GainMarker;
 
+	/** The button's native click, broadcast as OnCellClicked. */
+	void BroadcastCellClicked();
+
 	EHOLGridCellState State = EHOLGridCellState::Disabled;
 	FString ShownTooltip;
+	/** The key last given by SetKey: kept so that one given before NativeOnInitialized built the text block is shown. */
+	FText KeyText;
 	/** The resource of the gain's logo, while the gain line is shown (DescribeContent). */
 	EHOLResource ShownGainLogo = EHOLResource::Gold;
 };
