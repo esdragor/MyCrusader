@@ -323,21 +323,11 @@ public:
 	static FString GetTradeGainText(const FHOLTradeGainView& Gain);
 
 	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|CommandGrid")
-	static FHOLGridCommandView GetCommand(const FHOLGridContextView& Context, int32 Cell);
-	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|CommandGrid")
-	static FHOLGridCommandView GetOrder(const FHOLGridContextView& Context, int32 Cell);
-	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|CommandGrid")
 	static bool IsBuildGrid(const FHOLGridContextView& Context);
 	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|CommandGrid")
 	static bool IsAgeReached(const FHOLGridContextView& Context, int32 Age);
 	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|CommandGrid")
 	static FHOLGridCommandView GetAgeBuilding(const FHOLGridContextView& Context, int32 Age, int32 Cell);
-	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|CommandGrid")
-	static FHOLGridKeyResultView PressKey(const FHOLGridContextView& Context, int32 ChosenAge, int32 Cell);
-	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|CommandGrid")
-	static FHOLGridKeyResultView ClickAge(const FHOLGridContextView& Context, int32 ChosenAge, int32 Age, int32 Cell);
-	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|CommandGrid")
-	static int32 GetChosenAgeAfter(int32 ChosenAge, EHOLAgeEventKind Event);
 
 	/** The context with its Buildable arrays filled from the building type table (UHOLBuildingSettings::GetBuildableTypes). */
 	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|CommandGrid")
@@ -349,14 +339,11 @@ public:
 	static bool IsTypeInTable(FName TypeName);
 	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|CommandGrid")
 	static EHOLBuildingCategory GetTypeCategory(FName TypeName);
+	/** Table reads for the script (D839, a binding): the row's IsBuildable(), and its BuildGridSlot (INDEX_NONE for a type not in the table). No rule in them. */
 	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|CommandGrid")
-	static int32 GetCycleRankOfType(FName TypeName);
-	/** HOLCommandGrid::IsSelectedByCategory for a type of the table. */
+	static bool IsTypeBuildable(FName TypeName);
 	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|CommandGrid")
-	static bool IsTypeSelectedByCategory(FName TypeName, EHOLBuildingCategory Category);
-	/** HOLCommandGrid::IsSelectedByCategory for a row that has TypeCategory alone (a building not in the table). */
-	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|CommandGrid")
-	static bool IsCategorySelectedByCategory(EHOLBuildingCategory TypeCategory, EHOLBuildingCategory Category);
+	static int32 GetBuildGridSlotOfType(FName TypeName);
 
 	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|CommandGrid")
 	static bool HasMissingResource(const FHOLResources& Stock, const FHOLResources& Cost);
@@ -364,34 +351,10 @@ public:
 	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|CommandGrid")
 	static EHOLResource GetMissingResource(const FHOLResources& Stock, const FHOLResources& Cost);
 	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|CommandGrid")
-	static FHOLFeedbackView CheckProduction(const FHOLResources& Stock, const FHOLResources& Cost, int32 QueueLength, int32 MaxQueue,
-		int32 PopulationUsed, int32 PopulationCap, int32 Places);
-	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|CommandGrid")
-	static FHOLFeedbackView CheckBuild(const FHOLResources& Stock, const FHOLResources& Cost);
-	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|CommandGrid")
-	static bool Blocks(const FHOLFeedbackView& Feedback);
-	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|CommandGrid")
 	static bool IsPopulationBlocked(int32 PopulationUsed, int32 PopulationCap, int32 Places);
-	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|CommandGrid")
-	static FString Describe(const FHOLFeedbackView& Feedback);
 	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|CommandGrid")
 	static FHOLGridCellFaceView GetCellFace(bool bHasIcon);
 
-	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|CommandGrid")
-	static bool IsRepeatPress(const TArray<int32>& Selected, const TArray<int32>& LastSelected, bool bSameKey);
-	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|CommandGrid")
-	static int32 NextInCycle(const TArray<FHOLCycleBuildingView>& Buildings, int32 LastKey);
-	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|CommandGrid")
-	static bool IsAloneInGroup(FName TypeName);
-	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|CommandGrid")
-	static TArray<FHOLSubgroupView> SplitSubgroups(const TArray<FHOLGroupMemberView>& Members);
-	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|CommandGrid")
-	static TArray<int32> GetCommandPriority(const TArray<FHOLGroupMemberView>& Members);
-	/** HOLCommandGrid::MergeCommands; PerBuilding is the buildings' cells end to end (GetNumCells each: building i, cell c at i * GetNumCells() + c). */
-	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|CommandGrid")
-	static TArray<FHOLGridCommandView> MergeCommands(const TArray<FHOLGridCommandView>& PerBuilding, const TArray<int32>& Priority);
-	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|CommandGrid")
-	static int32 PickEvenly(const TArray<FHOLQueueChoiceView>& Choices, int32 LastKey);
 
 	// ---- MIG-C-CommandGrid, 2nd lot (GALADRIEL-1117n): the orders' cells, the hero, the ages, the cursor, the research. NOT COMPILED when written. ----
 	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|CommandGrid")
@@ -424,8 +387,6 @@ public:
 	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|CommandGrid")
 	static FName GetReportName(const FHOLGridCommandView& Command);
 
-	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|CommandGrid")
-	static bool IsAgeOpen(const FHOLGridContextView& Context, int32 Age);
 	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|CommandGrid")
 	static float GetAgePanelOpacity(const FHOLGridContextView& Context, int32 Age);
 

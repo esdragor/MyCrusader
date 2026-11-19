@@ -1,24 +1,9 @@
-// MIG-C-CommandGrid, lot G2a (SAURON-1119x): the AGREEMENT test of the command grid's keys and feedback. NOT COMPILED when written.
-// Two copies of the rule exist (the script one, Script/Player/HOLCommandGridKeys.as = namespace HOLCommandGridKeys, and the C++ one read through
-// UHOLCommandGridReadLibrary = namespace HOLCommandGridRead): for every selection, age and cell the script must give what the C++ library gives.
-// Sweeps: PressKey on 4096 selections (12 flags) x chosen age -1..3 x cells -1..12, ClickAge on the builders' grids, the stock / cost pairs of
-// HasMissingResource / CheckBuild / CheckProduction, every feedback of Describe (kinds, resources, refusals 0..6, categories, blocks 0..9),
-// the population, the chosen age after an event. Plus hard values copied from the C++ tests of the grid:
-// Script/Tests/HOLCommandGrid_Test.as lines 211-236 (feedback), 842-880 (keys, ages), 773-776 (hero keys).
-// To SEE RED (rouge a voir): in HOLCommandGridKeys.as PressKey, change `Result.ChosenAge = ChosenAge;` (the line after "An age chosen") to
-// `Result.ChosenAge = -1;` (the PressKey sweep and Test_CGKYHardValues go red), or in Describe change "queue full" to "queue is full" (the Describe sweep
-// and the hard values go red), or in FindMissingResource swap the Food and Wood checks.
+// MIG-C-CommandGrid, lot G2a (SAURON-1119x), trimmed by L3b (HALDIR-1119cd): the command grid's keys and feedback (script rule HOLCommandGridKeys). NOT COMPILED when written.
+// The sweeps against the *Native bodies (PressKey, ClickAge, GetChosenAgeAfter, CheckBuild, CheckProduction, Blocks, Describe) are gone (one source, D836). What stays:
+// Test_CGKYAgreementFeedback (missing resource, population, the numbers the script assumes, the cell face: against the C++ code that stays) and Test_CGKYHardValues (the numbers in clear).
+// To SEE RED (rouge a voir): in HOLCommandGridKeys.as PressKey, change `Result.ChosenAge = ChosenAge;` to `Result.ChosenAge = -1;` (Test_CGKYHardValues goes red), or in Describe
+// change "queue full" to "queue is full", or in FindMissingResource swap the Food and Wood checks (Test_CGKYAgreementFeedback goes red).
 // Names are prefixed CGKY: a global function of a test file is seen by no other file but its name must not clash.
-
-bool CGKYSameKey(const FHOLGridKeyResultView& A, const FHOLGridKeyResultView& B)
-{
-	return A.Target == B.Target && A.ChosenAge == B.ChosenAge && A.TypeName == B.TypeName;
-}
-
-FString CGKYDescribeKey(const FHOLGridKeyResultView& Key)
-{
-	return f"target {int(Key.Target)} age {Key.ChosenAge} type {Key.TypeName}";
-}
 
 FHOLResources CGKYRes(int Food, int Wood, int Stone, int Gold)
 {
@@ -28,73 +13,6 @@ FHOLResources CGKYRes(int Food, int Wood, int Stone, int Gold)
 	Out.Stone = Stone;
 	Out.Gold = Gold;
 	return Out;
-}
-
-// A selection from a number (same recipe as CGRMakeContext of HOLCommandGridRules_Test.as, own copy).
-FHOLGridContextView CGKYMakeContext(int Mask)
-{
-	FHOLGridContextView Context;
-	Context.bOwnBuilding = (Mask & 1) != 0;
-	Context.bBuildingFinished = (Mask & 2) != 0;
-	Context.bBuildingGroup = (Mask & 4) != 0;
-	Context.bForumDown = (Mask & 8) != 0;
-	Context.bMarket = (Mask & 16) != 0;
-	Context.bPrimaryForum = (Mask & 32) != 0;
-	Context.bBuilders = (Mask & 64) != 0;
-	Context.bOwnUnits = (Mask & 128) != 0;
-	Context.bSoldiers = (Mask & 256) != 0;
-	Context.bOnlyKings = (Mask & 512) != 0;
-	Context.bHero = (Mask & 1024) != 0;
-	Context.bRageUnit = (Mask & 2048) != 0;
-	Context.bDeployables = Mask % 3 == 0;
-	Context.bDeployedAny = Mask % 5 == 0;
-	Context.HeroLevel = Mask % 2 == 0 ? 1 : 4;
-	Context.ReachedAge = Mask % 4;
-	Context.SpecializationTier = (Mask / 7) % 4;
-	Context.SpecializationPendingOption = (Mask / 5) % 3 - 1;
-	Context.SpecializationRemainingMs = (Mask / 3) % 2 == 0 ? 0 : 12345;
-	int Lists = Mask % 4;
-	if (Lists >= 1)
-	{
-		Context.Produces.Add(n"Peasant");
-		Context.Produces.Add(n"Spearman");
-	}
-	if (Lists >= 2)
-	{
-		Context.Produces.Add(n"ManAtArms");
-		Context.Produces.Add(n"Archer");
-	}
-	if (Mask % 7 == 0)
-	{
-		Context.HeroCooldownSeconds.Add(0);
-		Context.HeroCooldownSeconds.Add(30);
-		Context.HeroCooldownSeconds.Add(0);
-	}
-	if (Mask % 2 == 1 || Context.bBuilders)
-	{
-		Context = HOLCommandGridRead::WithTableBuildables(Context);
-		if (Mask % 9 == 0 && Context.BuildableTypes.Num() > 0)
-		{
-			for (int I = 0; I < Context.BuildableTypes.Num(); I++)
-			{
-				Context.BuildableAlwaysOpen.Add(I == Context.BuildableTypes.Num() - 1);
-			}
-		}
-	}
-	return Context;
-}
-
-// The builders' grid of the C++ tests: the table's buildable types, nothing selected but the builders, the Barracks added at age II cell Q (cpp test 806-812).
-FHOLGridContextView CGKYMakeBuilders()
-{
-	FHOLGridContextView Builders;
-	Builders.bBuilders = true;
-	Builders.bOwnUnits = true;
-	Builders = HOLCommandGridRead::WithTableBuildables(Builders);
-	Builders.BuildableTypes.Add(n"Barracks");
-	Builders.BuildableCells.Add(4);
-	Builders.BuildableAges.Add(1);
-	return Builders;
 }
 
 // The builders' grid of the HARD values: the exact context of HOLCommandGrid_Test.as (CGMakeBuilders 9-23 + Test_CGAges 806-810): three buildable types
@@ -120,100 +38,7 @@ FHOLGridContextView CGKYMakeHardBuilders()
 	return Builders;
 }
 
-// HeroesOfLiberty.CommandGridKeys.AgreementKeys
-void Test_CGKYAgreementKeys(FUnitTest& T)
-{
-	int Mismatches = 0;
-	FString First = "";
-	int NumCells = HOLCommandGridRead::GetNumCells();
-	for (int Mask = 0; Mask < 4096; Mask++)
-	{
-		FHOLGridContextView Context = CGKYMakeContext(Mask);
-		for (int Chosen = -1; Chosen <= 3; Chosen++)
-		{
-			for (int Cell = -1; Cell <= NumCells; Cell++)
-			{
-				FHOLGridKeyResultView Script = HOLCommandGridKeys::PressKey(Context, Chosen, Cell);
-				FHOLGridKeyResultView Native = HOLCommandGridRead::PressKey(Context, Chosen, Cell);
-				if (!CGKYSameKey(Script, Native))
-				{
-					Mismatches++;
-					if (First.IsEmpty())
-					{
-						First = f"PressKey mask {Mask} chosen {Chosen} cell {Cell}: script [{CGKYDescribeKey(Script)}] C++ [{CGKYDescribeKey(Native)}]";
-					}
-				}
-			}
-		}
-		// The clicks: only where a builders' grid can answer (the others give the same empty answer, swept on a few masks).
-		if (!HOLCommandGridRules::IsBuildGrid(Context) && Mask % 16 != 0)
-		{
-			continue;
-		}
-		for (int Chosen = -1; Chosen <= 3; Chosen++)
-		{
-			for (int Age = -1; Age <= HOLCommandGridRead::GetNumAges(); Age++)
-			{
-				for (int Cell = -1; Cell <= NumCells; Cell++)
-				{
-					FHOLGridKeyResultView Script = HOLCommandGridKeys::ClickAge(Context, Chosen, Age, Cell);
-					FHOLGridKeyResultView Native = HOLCommandGridRead::ClickAge(Context, Chosen, Age, Cell);
-					if (!CGKYSameKey(Script, Native))
-					{
-						Mismatches++;
-						if (First.IsEmpty())
-						{
-							First = f"ClickAge mask {Mask} chosen {Chosen} age {Age} cell {Cell}: script [{CGKYDescribeKey(Script)}] C++ [{CGKYDescribeKey(Native)}]";
-						}
-					}
-				}
-			}
-		}
-	}
-
-	// The builders' grid of the table, every age reached, every chosen age and cell (the buildings really exist here).
-	FHOLGridContextView Builders = CGKYMakeBuilders();
-	T.AssertTrue(Builders.BuildableTypes.Num() > 0, "the building table has buildable types");
-	for (int Reached = 0; Reached < HOLCommandGridRead::GetNumAges(); Reached++)
-	{
-		Builders.ReachedAge = Reached;
-		for (int Chosen = -1; Chosen <= HOLCommandGridRead::GetNumAges(); Chosen++)
-		{
-			for (int Cell = -1; Cell <= NumCells; Cell++)
-			{
-				FHOLGridKeyResultView Script = HOLCommandGridKeys::PressKey(Builders, Chosen, Cell);
-				FHOLGridKeyResultView Native = HOLCommandGridRead::PressKey(Builders, Chosen, Cell);
-				if (!CGKYSameKey(Script, Native))
-				{
-					Mismatches++;
-					if (First.IsEmpty())
-					{
-						First = f"table PressKey reached {Reached} chosen {Chosen} cell {Cell}: script [{CGKYDescribeKey(Script)}] C++ [{CGKYDescribeKey(Native)}]";
-					}
-				}
-			}
-		}
-	}
-
-	// The chosen age after every event.
-	for (int Event = 0; Event < 5; Event++)
-	{
-		for (int Chosen = -1; Chosen < 4; Chosen++)
-		{
-			if (HOLCommandGridKeys::GetChosenAgeAfter(Chosen, EHOLAgeEventKind(Event)) != HOLCommandGridRead::GetChosenAgeAfter(Chosen, EHOLAgeEventKind(Event)))
-			{
-				Mismatches++;
-				if (First.IsEmpty())
-				{
-					First = f"GetChosenAgeAfter event {Event} chosen {Chosen}";
-				}
-			}
-		}
-	}
-	T.AssertEquals(0, Mismatches, First);
-}
-
-// HeroesOfLiberty.CommandGridKeys.AgreementFeedback
+// HeroesOfLiberty.CommandGridKeys.AgreementFeedback (the script's feedback helpers against the C++ code that stays: missing resource, population, numbers, cell face)
 void Test_CGKYAgreementFeedback(FUnitTest& T)
 {
 	int Mismatches = 0;
@@ -223,7 +48,7 @@ void Test_CGKYAgreementFeedback(FUnitTest& T)
 	Pool.Add(10);
 	Pool.Add(50);
 
-	// HasMissingResource / GetMissingResource / CheckBuild: 81 stocks x 81 costs.
+	// HasMissingResource / GetMissingResource: 81 stocks x 81 costs.
 	for (int S = 0; S < 81; S++)
 	{
 		FHOLResources Stock = CGKYRes(Pool[S % 3], Pool[(S / 3) % 3], Pool[(S / 9) % 3], Pool[(S / 27) % 3]);
@@ -237,54 +62,12 @@ void Test_CGKYAgreementFeedback(FUnitTest& T)
 			{
 				bSame = HOLCommandGridKeys::FindMissingResource(Stock, Cost) == int(HOLCommandGridRead::GetMissingResource(Stock, Cost));
 			}
-			FHOLFeedbackView ScriptBuild = HOLCommandGridKeys::CheckBuild(Stock, Cost);
-			FHOLFeedbackView NativeBuild = HOLCommandGridRead::CheckBuild(Stock, Cost);
-			bSame = bSame && ScriptBuild.Kind == NativeBuild.Kind && ScriptBuild.Resource == NativeBuild.Resource
-				&& HOLCommandGridKeys::Blocks(ScriptBuild) == HOLCommandGridRead::Blocks(NativeBuild);
 			if (!bSame)
 			{
 				Mismatches++;
 				if (First.IsEmpty())
 				{
-					First = f"missing / CheckBuild stock {S} cost {C}";
-				}
-			}
-		}
-	}
-
-	// CheckProduction: stocks and costs of 0 / 50, the queue empty / one short / full, four population cases.
-	TArray<int> Used;
-	Used.Add(3);
-	Used.Add(10);
-	Used.Add(9);
-	Used.Add(9);
-	TArray<int> Places;
-	Places.Add(1);
-	Places.Add(1);
-	Places.Add(2);
-	Places.Add(-3);
-	for (int S = 0; S < 16; S++)
-	{
-		FHOLResources Stock = CGKYRes((S & 1) != 0 ? 50 : 0, (S & 2) != 0 ? 50 : 0, (S & 4) != 0 ? 50 : 0, (S & 8) != 0 ? 50 : 0);
-		for (int C = 0; C < 16; C++)
-		{
-			FHOLResources Cost = CGKYRes((C & 1) != 0 ? 50 : 0, (C & 2) != 0 ? 50 : 0, (C & 4) != 0 ? 50 : 0, (C & 8) != 0 ? 50 : 0);
-			for (int Queue = 0; Queue <= 6; Queue += 3)
-			{
-				for (int Pop = 0; Pop < 4; Pop++)
-				{
-					FHOLFeedbackView Script = HOLCommandGridKeys::CheckProduction(Stock, Cost, Queue, 5, Used[Pop], 10, Places[Pop]);
-					FHOLFeedbackView Native = HOLCommandGridRead::CheckProduction(Stock, Cost, Queue, 5, Used[Pop], 10, Places[Pop]);
-					if (Script.Kind != Native.Kind || Script.Resource != Native.Resource
-						|| HOLCommandGridKeys::Blocks(Script) != HOLCommandGridRead::Blocks(Native)
-						|| HOLCommandGridKeys::Describe(Script) != HOLCommandGridRead::Describe(Native))
-					{
-						Mismatches++;
-						if (First.IsEmpty())
-						{
-							First = f"CheckProduction stock {S} cost {C} queue {Queue} pop {Pop}: script {HOLCommandGridKeys::Describe(Script)} C++ {HOLCommandGridRead::Describe(Native)}";
-						}
-					}
+					First = f"missing resource stock {S} cost {C}";
 				}
 			}
 		}
@@ -307,39 +90,6 @@ void Test_CGKYAgreementFeedback(FUnitTest& T)
 		}
 	}
 
-	// Describe and Blocks: every kind, resource, refusal (0..6), category and technology block (0..9).
-	for (int Kind = 0; Kind < 7; Kind++)
-	{
-		for (int Resource = 0; Resource < 4; Resource++)
-		{
-			for (int Refusal = 0; Refusal <= 6; Refusal++)
-			{
-				for (int Category = 0; Category < 3; Category++)
-				{
-					for (int Block = 0; Block <= 9; Block++)
-					{
-						FHOLFeedbackView Feedback;
-						Feedback.Kind = EHOLCommandFeedbackKind(Kind);
-						Feedback.Resource = EHOLResource(Resource);
-						Feedback.Refusal = Refusal;
-						Feedback.Category = EHOLBuildingCategory(Category);
-						Feedback.Block = Block;
-						FString ScriptText = HOLCommandGridKeys::Describe(Feedback);
-						FString NativeText = HOLCommandGridRead::Describe(Feedback);
-						if (ScriptText != NativeText || HOLCommandGridKeys::Blocks(Feedback) != HOLCommandGridRead::Blocks(Feedback))
-						{
-							Mismatches++;
-							if (First.IsEmpty())
-							{
-								First = f"Describe kind {Kind} res {Resource} refusal {Refusal} cat {Category} block {Block}: script [{ScriptText}] C++ [{NativeText}]";
-							}
-						}
-					}
-				}
-			}
-		}
-	}
-
 	// The numbers the script assumes for the C++ enums that are not UENUMs (the library gives only some of them).
 	T.AssertEquals(HOLCommandGridRead::GetPlacementRefusalBuilding(), HOLCommandGridKeys::RefusalBuilding, "the placement refusal numbers the script assumes: Building");
 	T.AssertEquals(HOLCommandGridRead::GetBlockNotImplemented(), HOLCommandGridKeys::BlockNotImplemented, "the technology block numbers the script assumes: NotImplemented");
@@ -349,7 +99,7 @@ void Test_CGKYAgreementFeedback(FUnitTest& T)
 	T.AssertEquals(HOLCommandGridRead::GetBlockRequiresMissing(), HOLCommandGridKeys::BlockRequiresMissing, "the technology block numbers the script assumes: RequiresMissing");
 	T.AssertEquals(HOLCommandGridRead::GetBlockNoBuilding(), HOLCommandGridKeys::BlockNoBuilding, "the technology block numbers the script assumes: NoBuilding");
 
-	// The cell face and the category selection.
+	// The cell face.
 	for (int Pass = 0; Pass < 2; Pass++)
 	{
 		FHOLGridCellFaceView ScriptFace = HOLCommandGridKeys::GetCellFace(Pass == 1);
@@ -363,23 +113,9 @@ void Test_CGKYAgreementFeedback(FUnitTest& T)
 			}
 		}
 	}
-	for (int TypeCategory = 0; TypeCategory < 3; TypeCategory++)
-	{
-		for (int Category = 0; Category < 3; Category++)
-		{
-			if (HOLCommandGridKeys::IsCategorySelectedByCategory(EHOLBuildingCategory(TypeCategory), EHOLBuildingCategory(Category))
-				!= HOLCommandGridRead::IsCategorySelectedByCategory(EHOLBuildingCategory(TypeCategory), EHOLBuildingCategory(Category)))
-			{
-				Mismatches++;
-				if (First.IsEmpty())
-				{
-					First = f"IsCategorySelectedByCategory {TypeCategory} {Category}";
-				}
-			}
-		}
-	}
 	T.AssertEquals(0, Mismatches, First);
 }
+
 
 // HeroesOfLiberty.CommandGridKeys.HardValues
 void Test_CGKYHardValues(FUnitTest& T)
