@@ -20,4 +20,84 @@ class UHOLCommandGridBoardScript : UHOLCommandGridBoard
 	{
 		return HOLCommandGridRules::GetOrder(Context, Cell);
 	}
-}
+
+	// Family 1: ages and keys (HOLCommandGridRules / HOLCommandGridKeys).
+	UFUNCTION(BlueprintOverride)
+	bool IsAgeReachedAnswer(const FHOLGridContextView& Context, int Age)
+	{
+		return HOLCommandGridRules::IsAgeReached(Context, Age);
+	}
+
+	UFUNCTION(BlueprintOverride)
+	bool IsAgeOpenAnswer(const FHOLGridContextView& Context, int Age)
+	{
+		return HOLCommandGridRules::IsAgeOpen(Context, Age);
+	}
+
+	UFUNCTION(BlueprintOverride)
+	FHOLGridCommandView GetAgeBuildingAnswer(const FHOLGridContextView& Context, int Age, int Cell)
+	{
+		return HOLCommandGridRules::GetAgeBuilding(Context, Age, Cell);
+	}
+
+	UFUNCTION(BlueprintOverride)
+	FHOLGridKeyResultView PressKeyAnswer(const FHOLGridContextView& Context, int ChosenAge, int Cell)
+	{
+		return HOLCommandGridKeys::PressKey(Context, ChosenAge, Cell);
+	}
+
+	UFUNCTION(BlueprintOverride)
+	FHOLGridKeyResultView ClickAgeAnswer(const FHOLGridContextView& Context, int ChosenAge, int Age, int Cell)
+	{
+		return HOLCommandGridKeys::ClickAge(Context, ChosenAge, Age, Cell);
+	}
+
+	UFUNCTION(BlueprintOverride)
+	int GetChosenAgeAfterAnswer(int ChosenAge, EHOLAgeEventKind Event)
+	{
+		return HOLCommandGridKeys::GetChosenAgeAfter(ChosenAge, Event);
+	}
+
+	// Family 2: checks and Describe (HOLCommandGridKeys). CheckResearch has no script rule: not bridged.
+	UFUNCTION(BlueprintOverride)
+	FHOLFeedbackView CheckProductionAnswer(const FHOLResources& Stock, const FHOLResources& Cost, int QueueLength, int MaxQueue, int PopulationUsed, int PopulationCap, int Places)
+	{
+		return HOLCommandGridKeys::CheckProduction(Stock, Cost, QueueLength, MaxQueue, PopulationUsed, PopulationCap, Places);
+	}
+
+	UFUNCTION(BlueprintOverride)
+	FHOLFeedbackView CheckBuildAnswer(const FHOLResources& Stock, const FHOLResources& Cost)
+	{
+		return HOLCommandGridKeys::CheckBuild(Stock, Cost);
+	}
+
+	UFUNCTION(BlueprintOverride)
+	FString DescribeAnswer(const FHOLFeedbackView& Feedback)
+	{
+		return HOLCommandGridKeys::Describe(Feedback);
+	}
+
+	// Family 3: groups (HOLCommandGridGroups).
+	UFUNCTION(BlueprintOverride)
+	int NextInCycleAnswer(const TArray<FHOLCycleBuildingView>& Buildings, int LastKey)
+	{
+		return HOLCommandGridGroups::NextInCycle(Buildings, LastKey);
+	}
+
+	UFUNCTION(BlueprintOverride)
+	int PickEvenlyAnswer(const TArray<FHOLQueueChoiceView>& Choices, int LastKey)
+	{
+		return HOLCommandGridGroups::PickEvenly(Choices, LastKey);
+	}
+
+	UFUNCTION(BlueprintOverride)
+	TArray<FHOLSubgroupView> SplitSubgroupsAnswer(const TArray<FHOLGroupMemberView>& Members)
+	{
+		return HOLCommandGridGroups::SplitSubgroups(Members);
+	}
+
+	UFUNCTION(BlueprintOverride)
+	TArray<FHOLGridCommandView> MergeCommandsAnswer(const TArray<FHOLGridCommandView>& PerBuilding, const TArray<int>& Priority)
+	{
+		return HOLCommandGridGroups::MergeCommands(PerBuilding, Priority);
+	}}

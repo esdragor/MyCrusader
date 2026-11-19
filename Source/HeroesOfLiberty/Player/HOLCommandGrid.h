@@ -373,8 +373,11 @@ namespace HOLCommandGrid
 
 	/** Age (0 to 3) is reached: its panel's buildings may be placed. */
 	HEROESOFLIBERTY_API bool IsAgeReached(const FHOLGridContext& Context, int32 Age);
+	/** The C++ body, never the script's (the bridge's repli; the read library the agreement tests compare against calls it). Same for every Native below. */
+	HEROESOFLIBERTY_API bool IsAgeReachedNative(const FHOLGridContext& Context, int32 Age);
 	/** The age reached, or a page holding a type built whatever the tier (FHOLBuildable::bAlwaysOpen: a Nomad's first forum, D797). */
 	HEROESOFLIBERTY_API bool IsAgeOpen(const FHOLGridContext& Context, int32 Age);
+	HEROESOFLIBERTY_API bool IsAgeOpenNative(const FHOLGridContext& Context, int32 Age);
 	/** The render opacity of a page not open (IsAgeOpen false): faded, its medallion locked. */
 	inline constexpr float LockedAgePanelOpacity = 0.55f;
 	/** The render opacity of Age's page: whole when open (IsAgeOpen), else LockedAgePanelOpacity. */
@@ -385,6 +388,7 @@ namespace HOLCommandGrid
 	 * when the age is not reached; else nothing.
 	 */
 	HEROESOFLIBERTY_API FHOLGridCommand GetAgeBuilding(const FHOLGridContext& Context, int32 Age, int32 Cell);
+	HEROESOFLIBERTY_API FHOLGridCommand GetAgeBuildingNative(const FHOLGridContext& Context, int32 Age, int32 Cell);
 
 	/**
 	 * Where a key of Cell goes, ChosenAge the age chosen before it (the user's 1st trial of G.1, AoE4's way). A building
@@ -395,15 +399,18 @@ namespace HOLCommandGrid
 	 * cells (A Z, the hero among the units commanded), the orders for the others.
 	 */
 	HEROESOFLIBERTY_API FHOLGridKeyResult PressKey(const FHOLGridContext& Context, int32 ChosenAge, int32 Cell);
+	HEROESOFLIBERTY_API FHOLGridKeyResult PressKeyNative(const FHOLGridContext& Context, int32 ChosenAge, int32 Cell);
 
 	/**
 	 * A click on the builders' panel of Age: on its header (Cell INDEX_NONE) the age chosen, as its key; on its building at
 	 * Cell its ghost, the age chosen. An age not reached: nothing, the chosen age kept.
 	 */
 	HEROESOFLIBERTY_API FHOLGridKeyResult ClickAge(const FHOLGridContext& Context, int32 ChosenAge, int32 Age, int32 Cell);
+	HEROESOFLIBERTY_API FHOLGridKeyResult ClickAgeNative(const FHOLGridContext& Context, int32 ChosenAge, int32 Age, int32 Cell);
 
 	/** The age chosen after Event: kept only by a ghost placed with Shift (the next one); else closed. */
 	HEROESOFLIBERTY_API int32 GetChosenAgeAfter(int32 ChosenAge, EHOLAgeEvent Event);
+	HEROESOFLIBERTY_API int32 GetChosenAgeAfterNative(int32 ChosenAge, EHOLAgeEvent Event);
 
 	/** The first resource of Cost the stock does not cover (Food, Wood, Stone, Gold); false when it covers it all. */
 	HEROESOFLIBERTY_API bool FindMissingResource(const FHOLResources& Stock, const FHOLResources& Cost, EHOLResource& OutResource);
@@ -427,6 +434,11 @@ namespace HOLCommandGrid
 	HEROESOFLIBERTY_API FHOLCommandFeedback CheckBuild(const FHOLResources& Stock, const FHOLResources& Cost);
 
 	/** The command is not sent (the population's feedback is only told: the unit is queued). */
+	/** The C++ bodies of CheckProduction / CheckBuild / Describe, never the script's (the bridge's repli; the read library reads these). */
+	HEROESOFLIBERTY_API FHOLCommandFeedback CheckProductionNative(const FHOLResources& Stock, const FHOLResources& Cost, int32 QueueLength, int32 MaxQueue,
+		int32 PopulationUsed, int32 PopulationCap, int32 Places);
+	HEROESOFLIBERTY_API FHOLCommandFeedback CheckBuildNative(const FHOLResources& Stock, const FHOLResources& Cost);
+	HEROESOFLIBERTY_API FString DescribeNative(const FHOLCommandFeedback& Feedback);
 	HEROESOFLIBERTY_API bool Blocks(const FHOLCommandFeedback& Feedback);
 
 	/** A unit of Places waits for room in the population (the production stops, D313). */
@@ -463,6 +475,11 @@ namespace HOLCommandGrid
 	HEROESOFLIBERTY_API int32 NextInCycle(TConstArrayView<FHOLCycleBuilding> Buildings, uint32 LastKey);
 
 	/** A building of this type is a subgroup to itself in a group: the main centre. */
+	/** The C++ bodies of NextInCycle / SplitSubgroups / MergeCommands / PickEvenly, never the script's (the bridge's repli; the read library reads these). */
+	HEROESOFLIBERTY_API int32 NextInCycleNative(TConstArrayView<FHOLCycleBuilding> Buildings, uint32 LastKey);
+	HEROESOFLIBERTY_API TArray<FHOLSubgroup> SplitSubgroupsNative(TConstArrayView<FHOLGroupMember> Members);
+	HEROESOFLIBERTY_API TArray<FHOLGridCommand> MergeCommandsNative(TConstArrayView<TArray<FHOLGridCommand>> PerBuilding, TConstArrayView<int32> Priority);
+	HEROESOFLIBERTY_API int32 PickEvenlyNative(TConstArrayView<FHOLQueueChoice> Choices, uint32 LastKey);
 	HEROESOFLIBERTY_API bool IsAloneInGroup(FName TypeName);
 
 	/**

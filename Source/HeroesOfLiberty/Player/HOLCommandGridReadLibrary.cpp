@@ -178,26 +178,26 @@ FHOLGridCommandView UHOLCommandGridReadLibrary::GetOrder(const FHOLGridContextVi
 }
 
 bool UHOLCommandGridReadLibrary::IsBuildGrid(const FHOLGridContextView& Context) { return HOLCommandGrid::IsBuildGrid(ToRule(Context)); }
-bool UHOLCommandGridReadLibrary::IsAgeReached(const FHOLGridContextView& Context, const int32 Age) { return HOLCommandGrid::IsAgeReached(ToRule(Context), Age); }
+bool UHOLCommandGridReadLibrary::IsAgeReached(const FHOLGridContextView& Context, const int32 Age) { return HOLCommandGrid::IsAgeReachedNative(ToRule(Context), Age); }
 
 FHOLGridCommandView UHOLCommandGridReadLibrary::GetAgeBuilding(const FHOLGridContextView& Context, const int32 Age, const int32 Cell)
 {
-	return FromRule(HOLCommandGrid::GetAgeBuilding(ToRule(Context), Age, Cell));
+	return FromRule(HOLCommandGrid::GetAgeBuildingNative(ToRule(Context), Age, Cell));
 }
 
 FHOLGridKeyResultView UHOLCommandGridReadLibrary::PressKey(const FHOLGridContextView& Context, const int32 ChosenAge, const int32 Cell)
 {
-	return FromRule(HOLCommandGrid::PressKey(ToRule(Context), ChosenAge, Cell));
+	return FromRule(HOLCommandGrid::PressKeyNative(ToRule(Context), ChosenAge, Cell));
 }
 
 FHOLGridKeyResultView UHOLCommandGridReadLibrary::ClickAge(const FHOLGridContextView& Context, const int32 ChosenAge, const int32 Age, const int32 Cell)
 {
-	return FromRule(HOLCommandGrid::ClickAge(ToRule(Context), ChosenAge, Age, Cell));
+	return FromRule(HOLCommandGrid::ClickAgeNative(ToRule(Context), ChosenAge, Age, Cell));
 }
 
 int32 UHOLCommandGridReadLibrary::GetChosenAgeAfter(const int32 ChosenAge, const EHOLAgeEventKind Event)
 {
-	return HOLCommandGrid::GetChosenAgeAfter(ChosenAge, static_cast<EHOLAgeEvent>(static_cast<uint8>(Event)));
+	return HOLCommandGrid::GetChosenAgeAfterNative(ChosenAge, static_cast<EHOLAgeEvent>(static_cast<uint8>(Event)));
 }
 
 FHOLGridContextView UHOLCommandGridReadLibrary::WithTableBuildables(const FHOLGridContextView& Context)
@@ -266,12 +266,12 @@ EHOLResource UHOLCommandGridReadLibrary::GetMissingResource(const FHOLResources&
 FHOLFeedbackView UHOLCommandGridReadLibrary::CheckProduction(const FHOLResources& Stock, const FHOLResources& Cost, const int32 QueueLength, const int32 MaxQueue,
 	const int32 PopulationUsed, const int32 PopulationCap, const int32 Places)
 {
-	return FromRule(HOLCommandGrid::CheckProduction(Stock, Cost, QueueLength, MaxQueue, PopulationUsed, PopulationCap, Places));
+	return FromRule(HOLCommandGrid::CheckProductionNative(Stock, Cost, QueueLength, MaxQueue, PopulationUsed, PopulationCap, Places));
 }
 
 FHOLFeedbackView UHOLCommandGridReadLibrary::CheckBuild(const FHOLResources& Stock, const FHOLResources& Cost)
 {
-	return FromRule(HOLCommandGrid::CheckBuild(Stock, Cost));
+	return FromRule(HOLCommandGrid::CheckBuildNative(Stock, Cost));
 }
 
 bool UHOLCommandGridReadLibrary::Blocks(const FHOLFeedbackView& Feedback) { return HOLCommandGrid::Blocks(ToRule(Feedback)); }
@@ -281,7 +281,7 @@ bool UHOLCommandGridReadLibrary::IsPopulationBlocked(const int32 PopulationUsed,
 	return HOLCommandGrid::IsPopulationBlocked(PopulationUsed, PopulationCap, Places);
 }
 
-FString UHOLCommandGridReadLibrary::Describe(const FHOLFeedbackView& Feedback) { return HOLCommandGrid::Describe(ToRule(Feedback)); }
+FString UHOLCommandGridReadLibrary::Describe(const FHOLFeedbackView& Feedback) { return HOLCommandGrid::DescribeNative(ToRule(Feedback)); }
 
 FHOLGridCellFaceView UHOLCommandGridReadLibrary::GetCellFace(const bool bHasIcon)
 {
@@ -307,7 +307,7 @@ int32 UHOLCommandGridReadLibrary::NextInCycle(const TArray<FHOLCycleBuildingView
 	{
 		Rule.Add({ View.Rank, static_cast<uint32>(View.Key) });
 	}
-	return HOLCommandGrid::NextInCycle(Rule, static_cast<uint32>(LastKey));
+	return HOLCommandGrid::NextInCycleNative(Rule, static_cast<uint32>(LastKey));
 }
 
 bool UHOLCommandGridReadLibrary::IsAloneInGroup(const FName TypeName) { return HOLCommandGrid::IsAloneInGroup(TypeName); }
@@ -316,7 +316,7 @@ TArray<FHOLSubgroupView> UHOLCommandGridReadLibrary::SplitSubgroups(const TArray
 {
 	const TArray<FHOLGroupMember> Rule = ToRule(Members);
 	TArray<FHOLSubgroupView> Out;
-	for (const FHOLSubgroup& Subgroup : HOLCommandGrid::SplitSubgroups(Rule))
+	for (const FHOLSubgroup& Subgroup : HOLCommandGrid::SplitSubgroupsNative(Rule))
 	{
 		FHOLSubgroupView View;
 		View.bAll = Subgroup.bAll;
@@ -346,7 +346,7 @@ TArray<FHOLGridCommandView> UHOLCommandGridReadLibrary::MergeCommands(const TArr
 		}
 	}
 	TArray<FHOLGridCommandView> Out;
-	for (const FHOLGridCommand& Command : HOLCommandGrid::MergeCommands(Rule, Priority))
+	for (const FHOLGridCommand& Command : HOLCommandGrid::MergeCommandsNative(Rule, Priority))
 	{
 		Out.Add(FromRule(Command));
 	}
@@ -360,7 +360,7 @@ int32 UHOLCommandGridReadLibrary::PickEvenly(const TArray<FHOLQueueChoiceView>& 
 	{
 		Rule.Add({ View.QueueLength, View.MaxQueue, static_cast<uint32>(View.Key) });
 	}
-	return HOLCommandGrid::PickEvenly(Rule, static_cast<uint32>(LastKey));
+	return HOLCommandGrid::PickEvenlyNative(Rule, static_cast<uint32>(LastKey));
 }
 
 // ---- MIG-C-CommandGrid, 2nd lot (GALADRIEL-1117n). NOT COMPILED when written. ----
@@ -385,7 +385,7 @@ int32 UHOLCommandGridReadLibrary::GetRageCell() { return HOLCommandGrid::GetRage
 int32 UHOLCommandGridReadLibrary::GetSpecializationCell(const int32 Option) { return HOLCommandGrid::GetSpecializationCell(Option); }
 FName UHOLCommandGridReadLibrary::GetReportName(const FHOLGridCommandView& Command) { return HOLCommandGrid::GetReportName(ToRule(Command)); }
 
-bool UHOLCommandGridReadLibrary::IsAgeOpen(const FHOLGridContextView& Context, const int32 Age) { return HOLCommandGrid::IsAgeOpen(ToRule(Context), Age); }
+bool UHOLCommandGridReadLibrary::IsAgeOpen(const FHOLGridContextView& Context, const int32 Age) { return HOLCommandGrid::IsAgeOpenNative(ToRule(Context), Age); }
 float UHOLCommandGridReadLibrary::GetAgePanelOpacity(const FHOLGridContextView& Context, const int32 Age) { return HOLCommandGrid::GetAgePanelOpacity(ToRule(Context), Age); }
 
 int32 UHOLCommandGridReadLibrary::GetMouseCursor(const bool bAttackMoveArmed, const bool bPlacing)
