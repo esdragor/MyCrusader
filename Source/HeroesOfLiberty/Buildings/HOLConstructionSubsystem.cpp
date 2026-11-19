@@ -5,6 +5,7 @@
 #include "Match/HOLMatchStatsSubsystem.h"
 
 #include "Buildings/HOLBuilding.h"
+#include "Buildings/HOLConstructionBoard.h"
 #include "Buildings/HOLBuildingTypes.h"
 #include "Buildings/HOLProductionSubsystem.h"
 #include "Buildings/HOLRubble.h"
@@ -422,43 +423,98 @@ void UHOLConstructionSubsystem::Place(const FHOLConstructionCommand& Order, AHOL
 	UWorld* World = GetWorld();
 	// Only a type the builders build (D313): a client could name any row, the main centre too.
 	const FHOLBuildingTypeRow* Type = Order.TypeName.IsNone() ? nullptr : UHOLBuildingSettings::FindType(Order.TypeName);
-	// BUG nomad_start point 1: a Nomad seat's first forum too (UHOLBuildingSettings::IsFirstForumOpen).
-	if (!Type || !UHOLBuildingSettings::IsBuildableBy(World, Order.TypeName, Order.PlayerIndex))
+	// K1a: the script board decides the order of the gates (HOLConstructionBoard.as: buildable, faction, age, placement, payment); the journal lines and the
+	// refusals are the C++ ones. -1 (no board, or an answer out of range) keeps the C++ gates below, the twin until the network proof. The stock is only
+	// COMPUTED here: it is written after the foundation is born (below), never before.
+	FBox2D Footprint;
+	FVector2D Centre;
+	FHOLResources Cost;
+	FHOLResources Stock;
+	int32 Verdict = -1;
+	if (UHOLConstructionBoard::Find(World))
 	{
-		UE_LOG(LogHOLCommands, Display, TEXT("Construction: slot %d cannot place %s: not buildable"), Order.PlayerIndex, *Order.TypeName.ToString());
-		return;
+		const bool bBuildable = Type && UHOLBuildingSettings::IsBuildableBy(World, Order.TypeName, Order.PlayerIndex);
+		const AHOLGameState* BoardState = World->GetGameState<AHOLGameState>();
+		const int32 BoardTier = BoardState ? BoardState->GetTier(Order.PlayerIndex) : 0;
+		int32 Refusal = 0;
+		if (bBuildable)
+		{
+			Footprint = SnapFootprint(*Type, Order.Location);
+			Centre = Footprint.GetCenter();
+			Refusal = static_cast<int32>(CheckPlacement(*World, Footprint, Order.PlayerIndex));
+			Cost = UHOLBuildingSettings::GetBuildCost(World, Order.TypeName, Order.PlayerIndex);
+		}
+		Stock = PlayerState.GetResources();
+		Verdict = UHOLConstructionBoard::AskPlace(World, bBuildable, bBuildable && HOLFactionRules::IsBuildingOpenTo(World, Order.TypeName, Order.PlayerIndex),
+			Type ? Type->Age : 0, BoardTier, Refusal, Stock, Cost);
+		switch (Verdict)
+		{
+		case 0:
+			Stock = UHOLConstructionBoard::AskStockAfterPlace(World, Stock, Cost);
+			break;
+		case 1:
+			UE_LOG(LogHOLCommands, Display, TEXT("Construction: slot %d cannot place %s: not buildable"), Order.PlayerIndex, *Order.TypeName.ToString());
+			return;
+		case 2:
+			UE_LOG(LogHOLCommands, Display, TEXT("Construction: slot %d cannot place %s: not a building of its faction"), Order.PlayerIndex, *Order.TypeName.ToString());
+			return;
+		case 3:
+			UE_LOG(LogHOLCommands, Display, TEXT("Construction: slot %d cannot place %s: age %d not reached (tier %d)"), Order.PlayerIndex,
+				*Order.TypeName.ToString(), Type->Age, BoardTier);
+			return;
+		case 4:
+			UE_LOG(LogHOLCommands, Display, TEXT("Construction: slot %d cannot place %s at (%.0f, %.0f): %s (%s)"), Order.PlayerIndex,
+				*Order.TypeName.ToString(), Centre.X, Centre.Y, DescribeRefusal(static_cast<EHOLPlacementRefusal>(Refusal)), *Stock.ToString());
+			return;
+		case 5:
+			UE_LOG(LogHOLCommands, Display, TEXT("Construction: slot %d cannot place %s at (%.0f, %.0f): not enough resources (%s; cost %s)"),
+				Order.PlayerIndex, *Order.TypeName.ToString(), Centre.X, Centre.Y, *Stock.ToString(), *Cost.ToString());
+			return;
+		default:
+			Verdict = -1;
+			break;
+		}
 	}
-	// L0 (LQ-7): a building the player's faction does not build: the grid hides it, a client could still ask.
-	if (!HOLFactionRules::IsBuildingOpenTo(World, Order.TypeName, Order.PlayerIndex))
+	if (Verdict < 0)
 	{
-		UE_LOG(LogHOLCommands, Display, TEXT("Construction: slot %d cannot place %s: not a building of its faction"), Order.PlayerIndex, *Order.TypeName.ToString());
-		return;
-	}
-	// P3 (D07): a building of an age the player's tier (his hero's level) has not reached; the grid greys it, a client could still ask.
-	const AHOLGameState* GameState = World->GetGameState<AHOLGameState>();
-	const int32 Tier = GameState ? GameState->GetTier(Order.PlayerIndex) : 0;
-	if (!HOLConstruction::IsAgeOpen(Type->Age, Tier))
-	{
-		UE_LOG(LogHOLCommands, Display, TEXT("Construction: slot %d cannot place %s: age %d not reached (tier %d)"), Order.PlayerIndex,
-			*Order.TypeName.ToString(), Type->Age, Tier);
-		return;
-	}
-	const FBox2D Footprint = SnapFootprint(*Type, Order.Location);
-	const FVector2D Centre = Footprint.GetCenter();
-	const EHOLPlacementRefusal Refusal = CheckPlacement(*World, Footprint, Order.PlayerIndex);
-	if (Refusal != EHOLPlacementRefusal::None)
-	{
-		UE_LOG(LogHOLCommands, Display, TEXT("Construction: slot %d cannot place %s at (%.0f, %.0f): %s (%s)"), Order.PlayerIndex,
-			*Order.TypeName.ToString(), Centre.X, Centre.Y, DescribeRefusal(Refusal), *PlayerState.GetResources().ToString());
-		return;
-	}
-	const FHOLResources Cost = UHOLBuildingSettings::GetBuildCost(World, Order.TypeName, Order.PlayerIndex);
-	FHOLResources Stock = PlayerState.GetResources();
-	if (!HOLConstruction::TryPay(Stock, Cost))
-	{
-		UE_LOG(LogHOLCommands, Display, TEXT("Construction: slot %d cannot place %s at (%.0f, %.0f): not enough resources (%s; cost %s)"),
-			Order.PlayerIndex, *Order.TypeName.ToString(), Centre.X, Centre.Y, *Stock.ToString(), *Cost.ToString());
-		return;
+		// BUG nomad_start point 1: a Nomad seat's first forum too (UHOLBuildingSettings::IsFirstForumOpen).
+		if (!Type || !UHOLBuildingSettings::IsBuildableBy(World, Order.TypeName, Order.PlayerIndex))
+		{
+			UE_LOG(LogHOLCommands, Display, TEXT("Construction: slot %d cannot place %s: not buildable"), Order.PlayerIndex, *Order.TypeName.ToString());
+			return;
+		}
+		// L0 (LQ-7): a building the player's faction does not build: the grid hides it, a client could still ask.
+		if (!HOLFactionRules::IsBuildingOpenTo(World, Order.TypeName, Order.PlayerIndex))
+		{
+			UE_LOG(LogHOLCommands, Display, TEXT("Construction: slot %d cannot place %s: not a building of its faction"), Order.PlayerIndex, *Order.TypeName.ToString());
+			return;
+		}
+		// P3 (D07): a building of an age the player's tier (his hero's level) has not reached; the grid greys it, a client could still ask.
+		const AHOLGameState* GameState = World->GetGameState<AHOLGameState>();
+		const int32 Tier = GameState ? GameState->GetTier(Order.PlayerIndex) : 0;
+		if (!HOLConstruction::IsAgeOpen(Type->Age, Tier))
+		{
+			UE_LOG(LogHOLCommands, Display, TEXT("Construction: slot %d cannot place %s: age %d not reached (tier %d)"), Order.PlayerIndex,
+				*Order.TypeName.ToString(), Type->Age, Tier);
+			return;
+		}
+		Footprint = SnapFootprint(*Type, Order.Location);
+		Centre = Footprint.GetCenter();
+		const EHOLPlacementRefusal Refusal = CheckPlacement(*World, Footprint, Order.PlayerIndex);
+		if (Refusal != EHOLPlacementRefusal::None)
+		{
+			UE_LOG(LogHOLCommands, Display, TEXT("Construction: slot %d cannot place %s at (%.0f, %.0f): %s (%s)"), Order.PlayerIndex,
+				*Order.TypeName.ToString(), Centre.X, Centre.Y, DescribeRefusal(Refusal), *PlayerState.GetResources().ToString());
+			return;
+		}
+		Cost = UHOLBuildingSettings::GetBuildCost(World, Order.TypeName, Order.PlayerIndex);
+		Stock = PlayerState.GetResources();
+		if (!HOLConstruction::TryPay(Stock, Cost))
+		{
+			UE_LOG(LogHOLCommands, Display, TEXT("Construction: slot %d cannot place %s at (%.0f, %.0f): not enough resources (%s; cost %s)"),
+				Order.PlayerIndex, *Order.TypeName.ToString(), Centre.X, Centre.Y, *Stock.ToString(), *Cost.ToString());
+			return;
+		}
 	}
 
 	// On the ground, along the grid (no rotation, D311), owned by the player's controller: its production queue and rally
@@ -505,15 +561,26 @@ void UHOLConstructionSubsystem::Place(const FHOLConstructionCommand& Order, AHOL
 void UHOLConstructionSubsystem::Cancel(const FHOLConstructionCommand& Order, AHOLPlayerState& PlayerState)
 {
 	AHOLBuilding* Building = Order.Building.Get();
-	// Only the owner cancels, and only what is not finished (D311): a client could name any building.
-	if (!Building || Building->GetOwnerPlayer() != Order.PlayerIndex || !HOLConstruction::CanCancel(Building->GetConstructionState()))
+	UWorld* World = GetWorld();
+	// K1a: the script board decides who cancels what (HOLConstructionBoard.as); -1 (no board) keeps the C++ gate below, the twin until the network proof.
+	const int32 State = Building ? static_cast<int32>(Building->GetConstructionState()) : 0;
+	int32 Verdict = UHOLConstructionBoard::AskCancel(World, Building != nullptr, Building ? static_cast<int32>(Building->GetOwnerPlayer()) : INDEX_NONE, Order.PlayerIndex, State);
+	const bool bBoardAnswered = Verdict >= 0;
+	if (!bBoardAnswered)
+	{
+		// Only the owner cancels, and only what is not finished (D311): a client could name any building.
+		Verdict = (!Building || Building->GetOwnerPlayer() != Order.PlayerIndex || !HOLConstruction::CanCancel(Building->GetConstructionState())) ? 1 : 0;
+	}
+	if (Verdict != 0 || !Building)
 	{
 		UE_LOG(LogHOLCommands, Display, TEXT("Construction: cancel of slot %d ignored: not its building under construction"), Order.PlayerIndex);
 		return;
 	}
 	const FHOLBuildingTypeRow* Type = Building->GetType();
-	const FHOLResources Refund = Type ? HOLConstruction::GetCancelRefund(UHOLBuildingSettings::GetBuildCost(GetWorld(), Building->GetTypeName(), Building->GetOwnerPlayer()), Building->GetConstructionState(), Building->GetConstructionWork(),
-		Building->GetTotalWork()) : FHOLResources();
+	const FHOLResources BuildCost = Type ? UHOLBuildingSettings::GetBuildCost(World, Building->GetTypeName(), Building->GetOwnerPlayer()) : FHOLResources();
+	const FHOLResources Refund = bBoardAnswered
+		? UHOLConstructionBoard::AskCancelRefund(World, Type != nullptr, BuildCost, State, Building->GetConstructionWork(), Building->GetTotalWork())
+		: (Type ? HOLConstruction::GetCancelRefund(BuildCost, Building->GetConstructionState(), Building->GetConstructionWork(), Building->GetTotalWork()) : FHOLResources());
 	FHOLResources Stock = PlayerState.GetResources();
 	Stock += Refund;
 	PlayerState.SetResources(Stock);
