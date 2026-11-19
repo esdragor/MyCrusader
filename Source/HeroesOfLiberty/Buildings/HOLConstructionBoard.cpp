@@ -40,6 +40,35 @@ FHOLResources UHOLConstructionBoard::AskCancelRefund(const UWorld* World, const 
 	return Board ? Board->CancelRefundAnswer(bHasType, Cost, State, Work, TotalWork) : FHOLResources();
 }
 
+int32 UHOLConstructionBoard::AskQueueRefund(const UWorld* World, const bool bHasWorld, const bool bAuthority, const int32 QueueLength)
+{
+	UHOLConstructionBoard* Board = Find(World);
+	return Board ? Board->QueueRefundAnswer(bHasWorld, bAuthority, QueueLength) : -1;
+}
+
+bool UHOLConstructionBoard::AskQueueTotal(const UWorld* World, const TArray<FHOLResources>& ItemCosts, FHOLResources& OutRefund)
+{
+	UHOLConstructionBoard* Board = Find(World);
+	if (!Board)
+	{
+		return false;
+	}
+	OutRefund = Board->QueueTotalAnswer(ItemCosts);
+	return true;
+}
+
+int32 UHOLConstructionBoard::AskDestroy(const UWorld* World, const bool bHasWorld, const bool bAuthority, const bool bValid)
+{
+	UHOLConstructionBoard* Board = Find(World);
+	return Board ? Board->DestroyAnswer(bHasWorld, bAuthority, bValid) : -1;
+}
+
+int32 UHOLConstructionBoard::AskRubble(const UWorld* World, const bool bFoundation, const bool bHasType)
+{
+	UHOLConstructionBoard* Board = Find(World);
+	return Board ? Board->RubbleAnswer(bFoundation, bHasType) : -1;
+}
+
 bool UHOLConstructionBoard::ShouldCreateSubsystem(UObject* Outer) const
 {
 	// Never the abstract C++ class, nor a script class replaced by a reload (as UHOLMatchFlowSubsystem).
@@ -65,3 +94,11 @@ FHOLResources UHOLConstructionBoard::StockAfterPlaceAnswer_Implementation(const 
 int32 UHOLConstructionBoard::CancelAnswer_Implementation(const bool, const int32, const int32, const int32) { return -1; }
 
 FHOLResources UHOLConstructionBoard::CancelRefundAnswer_Implementation(const bool, const FHOLResources, const int32, const int64, const int64) { return FHOLResources(); }
+
+int32 UHOLConstructionBoard::QueueRefundAnswer_Implementation(const bool, const bool, const int32) { return -1; }
+
+FHOLResources UHOLConstructionBoard::QueueTotalAnswer_Implementation(const TArray<FHOLResources>&) { return FHOLResources(); }
+
+int32 UHOLConstructionBoard::DestroyAnswer_Implementation(const bool, const bool, const bool) { return -1; }
+
+int32 UHOLConstructionBoard::RubbleAnswer_Implementation(const bool, const bool) { return -1; }

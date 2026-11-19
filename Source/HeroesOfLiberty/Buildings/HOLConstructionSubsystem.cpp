@@ -619,20 +619,29 @@ FHOLResources UHOLConstructionSubsystem::RefundProductionQueue(AHOLBuilding& Bui
 {
 	FHOLResources Refund;
 	UWorld* World = Building.GetWorld();
-	if (!World || !Building.HasAuthority())
-	{
-		return Refund;
-	}
 	TArray<FHOLProductionItem>& Queue = Building.GetMutableProductionQueue();
-	if (Queue.IsEmpty())
+	// K1b: the script board decides whether the queue is refunded and adds up its costs (HOLConstructionBoard.as); -1 (no board) keeps the C++ gate and sum, the twin until the network proof.
+	// Not a per-hit path: reached once per forum fall or building death (the combat processor runs on the game thread, bRequiresGameThreadExecution).
+	const int32 QueueVerdict = UHOLConstructionBoard::AskQueueRefund(World, World != nullptr, Building.HasAuthority(), Queue.Num());
+	if (QueueVerdict >= 0 ? QueueVerdict != 0 : (!World || !Building.HasAuthority() || Queue.IsEmpty()))
 	{
 		return Refund;
 	}
 	const UHOLProductionSubsystem* Production = World->GetSubsystem<UHOLProductionSubsystem>();
+	TArray<FHOLResources> ItemCosts;
+	for (int32 Index = Queue.Num() - 1; Index >= 0; --Index)
+	{
+		const FHOLProductionCost ItemCost = Production ? Production->GetCost(Queue[Index].TypeName, Building.GetOwnerPlayer()) : FHOLProductionCost();
+		ItemCosts.Add(ItemCost.Resources);
+	}
 	while (!Queue.IsEmpty())
 	{
 		const FName TypeName = Queue.Last().TypeName;
 		HOLProduction::Cancel(Queue, Queue.Num() - 1, Production ? Production->GetCost(TypeName, Building.GetOwnerPlayer()) : FHOLProductionCost(), Refund);
+	}
+	if (QueueVerdict >= 0)
+	{
+		UHOLConstructionBoard::AskQueueTotal(World, ItemCosts, Refund);
 	}
 	Building.NotifyProductionChanged();
 	// Its owner's stock, or the one kept for him while he is away (M6-Q16).
@@ -644,7 +653,10 @@ FHOLResources UHOLConstructionSubsystem::RefundProductionQueue(AHOLBuilding& Bui
 void UHOLConstructionSubsystem::DestroyBuilding(AHOLBuilding& Building)
 {
 	UWorld* World = Building.GetWorld();
-	if (!World || !Building.HasAuthority() || !IsValid(&Building))
+	// K1b: the script board decides whether it is destroyed, the site's share and the rubble (HOLConstructionBoard.as); -1 (no board) keeps the C++ gates, the twin until the network proof.
+	// Once per building death (DamageBuilding at 0 health, the forum fall): the per-hit path of DamageBuilding itself is not bridged.
+	const int32 DestroyVerdict = UHOLConstructionBoard::AskDestroy(World, World != nullptr, Building.HasAuthority(), IsValid(&Building));
+	if (DestroyVerdict >= 0 ? DestroyVerdict != 0 : (!World || !Building.HasAuthority() || !IsValid(&Building)))
 	{
 		return;
 	}
@@ -655,7 +667,10 @@ void UHOLConstructionSubsystem::DestroyBuilding(AHOLBuilding& Building)
 	FHOLResources SiteRefund;
 	if (Type)
 	{
-		SiteRefund = HOLConstruction::GetCancelRefund(UHOLBuildingSettings::GetBuildCost(Building.GetWorld(), Building.GetTypeName(), Building.GetOwnerPlayer()), Building.GetConstructionState(), Building.GetConstructionWork(), Building.GetTotalWork());
+		const FHOLResources SiteCost = UHOLBuildingSettings::GetBuildCost(Building.GetWorld(), Building.GetTypeName(), Building.GetOwnerPlayer());
+		SiteRefund = DestroyVerdict >= 0
+			? UHOLConstructionBoard::AskCancelRefund(World, true, SiteCost, static_cast<int32>(Building.GetConstructionState()), Building.GetConstructionWork(), Building.GetTotalWork())
+			: HOLConstruction::GetCancelRefund(SiteCost, Building.GetConstructionState(), Building.GetConstructionWork(), Building.GetTotalWork());
 		Refund += SiteRefund;
 	}
 	// Its owner's stock, or the one kept for him while he is away (M6-Q16).
@@ -668,7 +683,8 @@ void UHOLConstructionSubsystem::DestroyBuilding(AHOLBuilding& Building)
 		*Refund.ToString(), bHasStock ? *Stock.ToString() : TEXT("no stock"));
 
 	// Rubble for 10 s where it stood (D345.2a), seen by everyone; none for a bare foundation, which the others never saw.
-	if (!Building.IsFoundation() && Type)
+	const int32 RubbleVerdict = DestroyVerdict >= 0 ? UHOLConstructionBoard::AskRubble(World, Building.IsFoundation(), Type != nullptr) : -1;
+	if (RubbleVerdict >= 0 ? RubbleVerdict != 0 : (!Building.IsFoundation() && Type))
 	{
 		const FTransform Transform = Building.GetActorTransform();
 		if (AHOLRubble* Rubble = World->SpawnActorDeferred<AHOLRubble>(AHOLRubble::StaticClass(), Transform, nullptr, nullptr,
