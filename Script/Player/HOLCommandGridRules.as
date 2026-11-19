@@ -1,6 +1,6 @@
 // MIG-C-CommandGrid, lot G1 (SAURON-1119t, D830, D836, D839): the CONTENT of the 3 x 4 command grid, first half, in script. NOT COMPILED when written.
 // Port of Source/HeroesOfLiberty/Player/HOLCommandGrid.cpp lines 38-237 (GetCommand, GetOrder, the Market's trades, the ages, the cursor), same tables,
-// same decisions. The C++ file is NOT touched: until the bridge and the green agreement test (Script/Tests/HOLCommandGridRules_Test.as) two copies exist.
+// same decisions. The C++ bodies are gone (lot L3): HOLCommandGrid.cpp keeps only the bridge to this rule (UHOLCommandGridBoard), no C++ twin.
 // The input is FHOLGridContextView and the output FHOLGridCommandView (the USTRUCTs of UHOLCommandGridReadLibrary): nothing else is called, except
 //   - HOLCommandGridRead::GetSpecializationCell: the cell of the first specialization option is the cvar hol.UI.SpecializationCell, registered in C++
 //     (HOLCommandGrid.cpp, default 6): a setting, not a rule; read through the library until the cvar moves (TYPES_A_EXPOSER, see the report);

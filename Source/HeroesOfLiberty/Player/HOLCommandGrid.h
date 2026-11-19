@@ -358,15 +358,12 @@ namespace HOLCommandGrid
 	/**
 	 * What Cell of the grid on the right does: the selected building's production (finished) or its cancel cell (a site);
 	 * the hero's abilities when he is among the units commanded (greyed below their level or cooling down); else nothing (the builders' are the age panels': GetAgeBuilding; the units' orders the orders' panel's: GetOrder).
+	 * The rule is the script board's alone (UHOLCommandGridBoard): no board in a game world = an empty command + one log line per function and world.
 	 */
 	HEROESOFLIBERTY_API FHOLGridCommand GetCommand(const FHOLGridContext& Context, int32 Cell);
-	/** GetCommand's C++ body: KEPT, the bridge's repli for the tests that ask with NO world (HOLRegicideTests Commands, HOLVictoryTests ForumLook; remove with them). Every other rule here has the script board alone: no board = neutral default + one log line per function and world. */
-	HEROESOFLIBERTY_API FHOLGridCommand GetCommandNative(const FHOLGridContext& Context, int32 Cell);
 
 	/** What Cell of the orders' panel does: with own units and no building, attack-move with soldiers (Q), stop (S), hold (V). */
 	HEROESOFLIBERTY_API FHOLGridCommand GetOrder(const FHOLGridContext& Context, int32 Cell);
-	/** GetOrder's C++ body: KEPT, same reason as GetCommandNative. */
-	HEROESOFLIBERTY_API FHOLGridCommand GetOrderNative(const FHOLGridContext& Context, int32 Cell);
 
 	/** The builders' age panels are shown: builders selected, no soldier among them, no building. */
 	HEROESOFLIBERTY_API bool IsBuildGrid(const FHOLGridContext& Context);
