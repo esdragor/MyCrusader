@@ -2315,7 +2315,9 @@ UHOLScenarioPanelScript ScenarioPanel;
 		RefreshNow();
 		if (AlertBanner != nullptr && AlertBanner.ClickName(WidgetName))
 			return true;
-		if (MessageFeed != nullptr && MessageFeed.ClickName(WidgetName)) 			return true; 		if (ScenarioPanel != nullptr && ScenarioPanel.ClickName(WidgetName))
+		if (MessageFeed != nullptr && MessageFeed.ClickName(WidgetName))
+			return true;
+		if (ScenarioPanel != nullptr && ScenarioPanel.ClickName(WidgetName))
 			return true;
 		if (WidgetName == n"HeroPortrait")
 			return ClickPortrait();

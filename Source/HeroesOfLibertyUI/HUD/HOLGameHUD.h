@@ -30,7 +30,9 @@ public:
 	UHOLGameScreen* GetScreen() const { return Screen; }
 	/** The layers over the game screen (D356): the in-game menu, its confirmations. */
 	UHOLRootLayout* GetMenuLayout() const { return MenuLayout; }
-	/** The game screen of a local player, if its HUD is this one. */ 	static UHOLGameScreen* FindScreen(const APlayerController* PlayerController);
+
+	/** The game screen of a local player, if its HUD is this one. */
+	static UHOLGameScreen* FindScreen(const APlayerController* PlayerController);
 
 	/** Opens the end banner again, the one closed by « Continuer à regarder » (the in-game menu's « Résultat », M6-Q7 revised). */
 	void ReopenEndBanner();

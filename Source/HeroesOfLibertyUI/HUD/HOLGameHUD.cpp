@@ -81,7 +81,10 @@ void AHOLGameHUD::BeginPlay()
 		UE_LOG(LogHOLUI, Display, TEXT("Game HUD: game screen shown"));
 	}
 #if !UE_BUILD_SHIPPING
-	// The cheats' panel (D291) and the test scenario's panel (hol.Scenario) are the script's since H-11a / H-11b (in the game screen's frame, under 	// the top bar): what a scenario started before this map opened shows at once, and what comes after (its notes, ready, an error) 	// through this hook, which refreshes the screen at once so the "Scenario panel: scenario X failed" line (LaunchCheck) is written. 	if (Screen)
+	// The cheats' panel (D291) and the test scenario's panel (hol.Scenario) are the script's since H-11a / H-11b (in the game screen's frame, under
+	// the top bar): what a scenario started before this map opened shows at once, and what comes after (its notes, ready, an error)
+	// through this hook, which refreshes the screen at once so the "Scenario panel: scenario X failed" line (LaunchCheck) is written.
+	if (Screen)
 	{
 		const TWeakObjectPtr<UHOLGameScreen> WeakScreen(Screen);
 		HOLTestHooks::OnScenarioChanged() = [WeakScreen]()
