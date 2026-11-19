@@ -125,6 +125,8 @@ FString TalentTipTexts = "";
 	FString VolcanoTexts = "";
 	// H-1: the wait and absence banners (HOLWaitBanner.as).
 	UHOLWaitBannerPanel WaitBanner;
+// H-5a: the major alert's banner (HOLAlertBanner.as); the state machine stays C++ (UHOLGameScreen::Alert).
+UHOLAlertBannerPanel AlertBanner;
 
 	// H-2 (D313, D829): the short message and the held production note (HOLShortMessage.as).
 	FHOLShortMessageParts MessageParts;
@@ -257,6 +259,8 @@ FString TalentTipTexts = "";
 		TopBar.Build(this, Frame);
 		WaitBanner = Cast<UHOLWaitBannerPanel>(NewObject(this, UHOLWaitBannerPanel));
 		WaitBanner.Build(this, Frame);
+		AlertBanner = Cast<UHOLAlertBannerPanel>(NewObject(this, UHOLAlertBannerPanel));
+		AlertBanner.Build(this, Frame);
 		MessageParts = HOLShortMessage::Build(this, Frame);
 		PlayerTable = Cast<UHOLPlayerTablePanel>(NewObject(this, UHOLPlayerTablePanel));
 		PlayerTable.Build(this, GetPlayersPanel());
@@ -1422,6 +1426,14 @@ FString TalentTipTexts = "";
 		SetShownMessageKey(Key);
 	}
 
+	// Only while the C++ state shows a major alert, and once more when it ends (the C++ NativeTick): the banner's fade and its end.
+	UFUNCTION(BlueprintOverride)
+	void AlertFrameTick(float32 DeltaSeconds)
+	{
+		if (AlertBanner != nullptr)
+			AlertBanner.Refresh();
+	}
+
 	// Only while a message with a key is shown (the C++ NativeTick): the fade, then the end (the mirrored key is cleared).
 	UFUNCTION(BlueprintOverride)
 	void FrameTick(float32 DeltaSeconds)
@@ -2203,6 +2215,8 @@ FString TalentTipTexts = "";
 	{
 		// The view of now, as the mouse would see it (the tests' waits draw no frame).
 		RefreshNow();
+		if (AlertBanner != nullptr && AlertBanner.ClickName(WidgetName))
+			return true;
 		if (WidgetName == n"HeroPortrait")
 			return ClickPortrait();
 		if (WidgetName == n"HeroReturnButton")

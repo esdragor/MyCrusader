@@ -1,10 +1,11 @@
-// NOT COMPILED, NOT LAUNCHED, NO HOOK (ELROND-1119e, HUD H-5, first half: the major alert's BANNER; the thread of messages is a later lot).
-// THIS FILE CALLS C++ BINDINGS THAT DO NOT EXIST YET (recipe in Docs/Rapports/ELROND-1119e.md (a)): do not compile the script module with it before that lot.
-// They are members of UHOLScriptScreen (same pattern as HOLTopBar.as):
+// HUD H-5a, the major alert's BANNER (the thread of messages is a later lot); hooked by HOLGameScreenScript.as (AlertBanner), uncompiled.
+// C++ bindings, members of UHOLScriptScreen (same pattern as HOLTopBar.as), written by ELROND-1119f:
 //   bool GetAlertBanner(bool& bOutShown, int& OutSerial, int& OutSlot, float32& OutOpacity, bool& bOutSound, FString& OutText,
 //                       TArray<FHOLForumPieceValue>& OutPieces, TArray<FLinearColor>& OutColors) const;
 //   bool PlayAlertSound();                 // LoadObject(FHOLForumAlert::SoundPath) + PlaySound2D; true if the sound was found
 //   void FocusCameraOnForum(int Slot);     // the owning controller's FocusCameraOnForum (journal line written by the script)
+//   void BindAlertClick(UBorder Panel);    // the C++ receives the left click on the panel and calls this screen's ClickWidget(AlertPanel)
+//   AlertFrameTick(float32): once a frame while the C++ state shows a banner (and once more at its end): the screen's override calls Refresh.
 //
 // The major alert's banner (V4.3, V4.5b; D202; the C++ screen's AlertPanel / AlertRow): top centre under the top bar (the wait banner's place),
 // larger than the thread's lines (UHOLTextStyleHUDHeading for the words AND the names, each name in its player's colour); a click on it centres
@@ -59,18 +60,6 @@ namespace HOLAlertBanner
 		return f"HUD: alert of slot {Slot} clicked (camera on its forum)";
 	}
 
-	// HandleAlertMouseDown: only the left button, only while a banner is shown (the panel is Visible but a hidden one is Collapsed anyway).
-	bool MouseClickAccepted(bool bStateShown, bool bLeftButton)
-	{
-		return bStateShown && bLeftButton;
-	}
-
-	// ClickWidget(AlertPanel) (hol.HUD.Click): refused (false) while no banner is shown.
-	bool NamedClickAccepted(bool bStateShown)
-	{
-		return bStateShown;
-	}
-
 	// A piece of the message is a player's name (its slot is not INDEX_NONE = -1): drawn in that player's colour.
 	bool PieceIsName(int Slot)
 	{
@@ -102,7 +91,7 @@ class UHOLAlertBannerPanel : UObject
 		AlertPanel.SetBrushColor(FLinearColor(1.0, 1.0, 1.0, HOLAlertBanner::PanelOpacity()));
 		AlertPanel.SetPadding(FMargin(HOLAlertBanner::PaddingX(), HOLAlertBanner::PaddingY()));
 		AlertPanel.SetVisibility(ESlateVisibility::Collapsed);
-		AlertPanel.OnMouseButtonDownEvent.BindUFunction(this, n"HandleAlertMouseDown");
+		Screen.BindAlertClick(AlertPanel);
 		UOverlaySlot AlertSlot = Frame.AddChildToOverlay(AlertPanel);
 		AlertSlot.SetHorizontalAlignment(EHorizontalAlignment::HAlign_Center);
 		AlertSlot.SetVerticalAlignment(EVerticalAlignment::VAlign_Top);
@@ -167,21 +156,13 @@ class UHOLAlertBannerPanel : UObject
 		ShownPieceCount = Pieces.Num();
 	}
 
-	UFUNCTION()
-	FEventReply HandleAlertMouseDown(FGeometry Geometry, const FPointerEvent& MouseEvent)
-	{
-		if (!HOLAlertBanner::MouseClickAccepted(bVisible, MouseEvent.GetEffectingButton() == EKeys::LeftMouseButton))
-			return WidgetBlueprint::Unhandled();
-		FocusShown();
-		return WidgetBlueprint::Handled();
-	}
-
-	// hol.HUD.Click AlertPanel (the screen's ClickWidget hook): true when it took the click.
+	// The click, mouse (UHOLScriptScreen::HandleAlertMouseDown, left button only) or hol.HUD.Click AlertPanel (the screen's ClickWidget hook): true when it
+	// took it; refused while no banner is shown.
 	bool ClickName(FName Name)
 	{
 		if (Name != n"AlertPanel")
 			return false;
-		if (!HOLAlertBanner::NamedClickAccepted(bVisible))
+		if (!bVisible)
 			return false;
 		FocusShown();
 		return true;

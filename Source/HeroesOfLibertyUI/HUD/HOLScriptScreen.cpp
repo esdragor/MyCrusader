@@ -503,6 +503,24 @@ bool UHOLScriptScreen::PlayAlertSound()
 	return Sound != nullptr;
 }
 
+void UHOLScriptScreen::BindAlertClick(UBorder* Panel)
+{
+	if (Panel)
+	{
+		Panel->OnMouseButtonDownEvent.BindUFunction(this, GET_FUNCTION_NAME_CHECKED(UHOLScriptScreen, HandleAlertMouseDown));
+	}
+}
+
+FEventReply UHOLScriptScreen::HandleAlertMouseDown(FGeometry Geometry, const FPointerEvent& MouseEvent)
+{
+	if (MouseEvent.GetEffectingButton() != EKeys::LeftMouseButton)
+	{
+		return FEventReply(false);
+	}
+	// The script's ClickWidget(AlertPanel): true only while a banner is shown, as the C++ handler's own guard was.
+	return FEventReply(ClickWidget(FName(TEXT("AlertPanel"))));
+}
+
 void UHOLScriptScreen::FocusCameraOnForum(const int32 Slot)
 {
 	if (UHOLGameScreen* GameScreen = GetTypedOuter<UHOLGameScreen>())

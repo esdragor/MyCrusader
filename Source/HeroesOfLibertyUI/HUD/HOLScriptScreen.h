@@ -250,6 +250,13 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|UI")
 	void FocusCameraOnForum(int32 Slot);
 
+	/** The alert banner's panel takes the left mouse button: the C++ receives it (FOnPointerEvent) and asks the script's ClickWidget(AlertPanel), which centres the camera. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|UI")
+	void BindAlertClick(UBorder* Panel);
+
+	UFUNCTION()
+	FEventReply HandleAlertMouseDown(FGeometry Geometry, const FPointerEvent& MouseEvent);
+
 	/** Once a frame, but ONLY while the major alert is shown (and once more when it ends): the banner's fade and its end (HOLAlertBanner.as). */
 	UFUNCTION(BlueprintImplementableEvent, Category = "HeroesOfLiberty|UI")
 	void AlertFrameTick(float DeltaSeconds);

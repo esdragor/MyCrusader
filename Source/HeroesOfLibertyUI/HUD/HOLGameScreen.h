@@ -472,14 +472,8 @@ private:
 	/** False without the game state; bOver: my Victory / Defeat banner due (D202). */
 	bool IsMatchOverForMe(bool& bOver) const;
 	UFUNCTION()
-	FEventReply HandleAlertMouseDown(FGeometry Geometry, const FPointerEvent& MouseEvent);
-	UFUNCTION()
 	FEventReply HandleMessageLineMouseDown(FGeometry Geometry, const FPointerEvent& MouseEvent);
 	void FocusAlertSlot(int32 TouchedSlot);
-	UPROPERTY(Transient)
-	TObjectPtr<UBorder> AlertPanel;
-	UPROPERTY(Transient)
-	TObjectPtr<UHorizontalBox> AlertRow;
 	FHOLForumAlert Alert;
 	/** HUD H-5a: PresentAlert's count (a new banner, even an identical one, is a new number). */
 	int32 AlertPresentCount = 0;

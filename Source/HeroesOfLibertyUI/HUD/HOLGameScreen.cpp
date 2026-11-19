@@ -279,7 +279,6 @@ namespace UE::HeroesOfLiberty::UI::GameScreen
 	const FName CancelName(TEXT("Cancel"));
 	/** Seconds between two readings of a selected group's activities. */
 	constexpr float GroupRefreshInterval = 0.25f;
-	const FName AlertPanelName(TEXT("AlertPanel"));
 	/** A control group's slot (J7a.5): its width, and how long it stays lit once its group is selected (s, real time). */
 	constexpr float GroupSlotWidth = 64.f;
 	constexpr double GroupLightSeconds = 0.5;
@@ -836,7 +835,7 @@ void UHOLGameScreen::ShowAlert(const FHOLForumMessage& Message, const int32 Touc
 {
 	const UWorld* World = GetWorld();
 	bool bMatchOverForMe = false;
-	if (!World || !AlertPanel || !AlertRow || !IsMatchOverForMe(bMatchOverForMe))
+	if (!World || !IsMatchOverForMe(bMatchOverForMe))
 	{
 		return;
 	}
@@ -864,37 +863,14 @@ bool UHOLGameScreen::IsMatchOverForMe(bool& bOver) const
 
 void UHOLGameScreen::PresentAlert()
 {
-	using namespace UE::HeroesOfLiberty::UI::GameScreen;
-
+	// HUD H-5a: the banner, its sound and its journal line are the script's (HOLAlertBanner.as); it redraws when this number changes.
 	++AlertPresentCount;
-	const AHOLGameState* GameState = BoundTableState.Get();
-	const AHOLPlayerState* PlayerState = BoundPlayerState.Get();
-	const int32 ViewerSlot = PlayerState ? PlayerState->GetPlayerIndex() : INDEX_NONE;
-	FillMessageRow(*WidgetTree, *AlertRow, Alert.Message, ViewerSlot, GameState, UHOLTextStyleHUDHeading::StaticClass(), UHOLTextStyleHUDHeading::StaticClass());
-	AlertPanel->SetRenderOpacity(1.f);
-	// Visible: a click on it centres the camera on the touched forum.
-	SetShown(AlertPanel, true, ESlateVisibility::Visible);
-	if (!Alert.bSound)
-	{
-		// V4.5b: one sound for a burst of alerts (less than 1 s apart), played with its first banner.
-		UE_LOG(LogHOLUI, Display, TEXT("Alert: %s (no sound, its burst's played)"), *Alert.Message.Text.ToString());
-		return;
-	}
-	// Provisional, 2D, the alert's only (the thread is silent): the herald's voice will replace it (FHOLForumAlert::SoundPath).
-	USoundBase* Sound = LoadObject<USoundBase>(nullptr, FHOLForumAlert::SoundPath);
-	if (Sound)
-	{
-		UGameplayStatics::PlaySound2D(this, Sound);
-	}
-	UE_LOG(LogHOLUI, Display, TEXT("Alert: %s (sound %s%s)"), *Alert.Message.Text.ToString(), FHOLForumAlert::SoundPath, Sound ? TEXT("") : TEXT(", missing"));
 }
 
 void UHOLGameScreen::TickAlert()
 {
-	using namespace UE::HeroesOfLiberty::UI::GameScreen;
-
 	const UWorld* World = GetWorld();
-	if (!Alert.bShown || !World || !AlertPanel || !AlertRow)
+	if (!Alert.bShown || !World)
 	{
 		return;
 	}
@@ -906,22 +882,8 @@ void UHOLGameScreen::TickAlert()
 		PresentAlert();
 		return;
 	}
-	if (Alert.Expire(Now))
-	{
-		SetShown(AlertPanel, false);
-		return;
-	}
-	AlertPanel->SetRenderOpacity(Alert.GetOpacity(Now));
-}
-
-FEventReply UHOLGameScreen::HandleAlertMouseDown(FGeometry Geometry, const FPointerEvent& MouseEvent)
-{
-	if (!Alert.bShown || MouseEvent.GetEffectingButton() != EKeys::LeftMouseButton)
-	{
-		return FEventReply(false);
-	}
-	FocusAlertSlot(Alert.Slot);
-	return FEventReply(true);
+	// Its 4 s over: the script sees the state show none and hides the banner; the fade is its (Alert.GetOpacity).
+	Alert.Expire(Now);
 }
 
 FEventReply UHOLGameScreen::HandleMessageLineMouseDown(FGeometry Geometry, const FPointerEvent& MouseEvent)
@@ -2619,15 +2581,6 @@ bool UHOLGameScreen::ClickWidget(const FName Name)
 	{
 		return true;
 	}
-	if (AlertPanel && Name == UE::HeroesOfLiberty::UI::GameScreen::AlertPanelName)
-	{
-		if (!Alert.bShown)
-		{
-			return false;
-		}
-		FocusAlertSlot(Alert.Slot);
-		return true;
-	}
 	for (int32 Group = 0; Group < GroupSlots.Num(); ++Group)
 	{
 		const UHOLQueueItem* GroupSlot = GroupSlots[Group];
@@ -2928,19 +2881,7 @@ void UHOLGameScreen::BuildLayout()
 
 	// H-3: the top bar (TopBar) and the Menu / Statistiques buttons (MenuPanel) are the script's (UHOLTopBarPanel).
 
-	// V4.3: the major alert's banner, top centre under the top bar (the wait banner's place, before the match), larger than
-	// the thread's lines; a click centres the camera on the touched forum.
-	AlertPanel = MakePanel(AlertPanelName);
-	AlertPanel->SetBrush(FSlateRoundedBoxBrush(HOLUIStyle::HUDPanel.CopyWithNewOpacity(0.85f), 4.f));
-	AlertPanel->SetPadding(FMargin(16.f, 6.f));
-	AlertPanel->SetVisibility(ESlateVisibility::Collapsed);
-	AlertPanel->OnMouseButtonDownEvent.BindUFunction(this, GET_FUNCTION_NAME_CHECKED(UHOLGameScreen, HandleAlertMouseDown));
-	UOverlaySlot* AlertSlot = Frame->AddChildToOverlay(AlertPanel);
-	AlertSlot->SetHorizontalAlignment(HAlign_Center);
-	AlertSlot->SetVerticalAlignment(VAlign_Top);
-	AlertSlot->SetPadding(FMargin(ScreenMargin, ScreenMargin + QueueItemHeight * 2.f, ScreenMargin, ScreenMargin));
-	AlertRow = MakeHorizontalBox(TEXT("AlertRow"));
-	AlertPanel->SetContent(AlertRow);
+	// H-5a: the major alert's banner (AlertPanel, AlertRow) is the script's (UHOLAlertBannerPanel).
 
 	// The players' table (V2.4, V2-Q4: AoE2's score), top right under the menu's button (the minimap holds the bottom
 	// right): a row per occupied slot, its name in its colour, its lives, its forum's phase. Small, it lets the clicks through.

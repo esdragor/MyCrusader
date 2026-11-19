@@ -1,4 +1,4 @@
-// NOT COMPILED YET (needs the C++ lot of ELROND-1119e for HOLAlertBanner.as, same module). H-5: the alert banner's rules (HOLAlertBanner.as), in literals copied
+// HUD H-5a (uncompiled): the alert banner's rules (HOLAlertBanner.as), in literals copied
 // from the C++ screen (HOLGameScreen.cpp PresentAlert 879-905, FocusAlertSlot 958-965, HandleAlertMouseDown 937-945, ClickWidget 2836-2844) and from the C++ alert state
 // (FHOLForumAlert, reached through UHOLForumAlertHolder: the state machine stays C++, the script draws it).
 
@@ -32,15 +32,6 @@ void Test_AlertBannerLogLinesAreTheCppOnes(FUnitTest& T)
 	T.AssertEquals("Alert: " + Text + " (no sound, its burst's played)", HOLAlertBanner::PresentLogLine(Text, false, false), "a banner of the same burst: silent");
 	T.AssertEquals("HUD: alert of slot 3 clicked (camera on its forum)", HOLAlertBanner::ClickLogLine(3), "the click's line");
 	T.AssertEquals("HUD: alert of slot 0 clicked (camera on its forum)", HOLAlertBanner::ClickLogLine(0), "slot 0 is a slot");
-}
-
-void Test_AlertBannerOnlyAShownBannerTakesALeftClick(FUnitTest& T)
-{
-	T.AssertTrue(HOLAlertBanner::MouseClickAccepted(true, true), "shown, left button: centres the camera");
-	T.AssertFalse(HOLAlertBanner::MouseClickAccepted(true, false), "shown, right button: let through");
-	T.AssertFalse(HOLAlertBanner::MouseClickAccepted(false, true), "hidden: let through");
-	T.AssertTrue(HOLAlertBanner::NamedClickAccepted(true), "hol.HUD.Click AlertPanel while shown");
-	T.AssertFalse(HOLAlertBanner::NamedClickAccepted(false), "hol.HUD.Click AlertPanel while hidden: refused (ClickWidget returns false)");
 }
 
 void Test_AlertBannerNamesAreThePiecesWithASlot(FUnitTest& T)
@@ -104,12 +95,18 @@ void Test_AlertBannerFollowsTheCppStateMachine(FUnitTest& T)
 	T.AssertEquals(HOLAlertBanner::ChangeNone(), HOLAlertBanner::Decide(false, Serial, ShownSerial, bVisible), "hidden, nothing more to do");
 }
 
-void Test_AlertBannerPlaceAndStyleAreTheCppOnes(FUnitTest& T)
+// The sound rule is the C++ state's (FHOLForumAlert: one sound for a burst, the first banner's): the journal line follows what the real state says, so the
+// line quick_check reads (3240) is the one the C++ state implies.
+void Test_AlertBannerLineFollowsTheCppSoundRule(FUnitTest& T)
 {
-	// BuildLayout: Padding(16, 6) in the panel, the HUD panel at 85 %, the slot's top = margin 16 + two queue rows of 36 = 88 (the wait banner's place).
-	T.AssertEquals(88.0, HOLAlertBanner::Top(), "under the top bar and the queue's two rows");
-	T.AssertEquals(16.0, HOLAlertBanner::Margin(), "screen margin");
-	T.AssertEquals(0.85, HOLAlertBanner::PanelOpacity(), "the HUD panel at 85 %");
-	T.AssertEquals(16.0, HOLAlertBanner::PaddingX(), "panel padding x");
-	T.AssertEquals(6.0, HOLAlertBanner::PaddingY(), "panel padding y");
+	FHOLForumScenario Teams = AlertBannerTeams();
+	UHOLForumAlertHolder Alert = UHOLForumAlertHolder::Create();
+	T.AssertTrue(Alert.ShowEvent(AlertBannerEv(0, 0, 1), Teams, 0, 0, false, 10.0), "the first banner is shown at once");
+	const bool bFirstSound = Alert.HasSound();
+	T.AssertTrue(bFirstSound, "the first banner of a burst carries the sound");
+	T.AssertEquals("Alert: x (sound /Engine/EngineSounds/1kSineTonePing.1kSineTonePing)", HOLAlertBanner::PresentLogLine("x", bFirstSound, true), "its line says the sound");
+	T.AssertTrue(Alert.Expire(14.5), "gone at 4 s");
+	T.AssertTrue(Alert.ShowEvent(AlertBannerEv(0, 0, 0), Teams, 0, 0, false, 40.0), "a new fall long after");
+	const bool bLaterSound = Alert.HasSound();
+	T.AssertTrue(bLaterSound, "a banner long after the last one is a new burst: its own sound");
 }
