@@ -40,6 +40,7 @@ AHOLGameState::AHOLGameState()
 	SlotDefeats.Init(EHOLDefeatReason::None, FHOLMatchConfig::MaxSlots);
 	ForumStates.Init(FHOLForumState(), FHOLMatchConfig::MaxSlots);
 	TierOverrides.Init(-1, FHOLMatchConfig::MaxSlots);
+	FactionResource.Init(0, FHOLMatchConfig::MaxSlots);
 	ForumBuilders.Init(0, FHOLMatchConfig::MaxSlots);
 	LaunchConfig = FHOLMatchConfig::MakeDefault();
 	HeroSheets.Init(FHOLHeroSheet(), FHOLMatchConfig::MaxSlots);
@@ -63,6 +64,7 @@ void AHOLGameState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLif
 	DOREPLIFETIME(AHOLGameState, FogMode);
 	DOREPLIFETIME(AHOLGameState, ForumStates);
 	DOREPLIFETIME(AHOLGameState, TierOverrides);
+	DOREPLIFETIME(AHOLGameState, FactionResource);
 	DOREPLIFETIME(AHOLGameState, bWaitingForPlayers);
 	DOREPLIFETIME(AHOLGameState, MissingPlayers);
 	DOREPLIFETIME(AHOLGameState, WaitEndSeconds);
@@ -282,13 +284,16 @@ void AHOLGameState::SetTierOverride(const int32 Slot, const int32 Tier)
 
 int32 AHOLGameState::GetFactionResource(const int32 Slot) const
 {
-	// STUB (red commit): always 0.
-	return 0;
+	return FactionResource.IsValidIndex(Slot) ? FactionResource[Slot] : 0;
 }
 
 void AHOLGameState::SetFactionResource(const int32 Slot, const int32 Value)
 {
-	// STUB (red commit): does nothing.
+	// Authority only: a client's copy comes from the server (a write here would be overwritten at the next replication).
+	if (HasAuthority() && FactionResource.IsValidIndex(Slot))
+	{
+		FactionResource[Slot] = Value;
+	}
 }
 
 int32 AHOLGameState::GetTier(const int32 Slot) const
