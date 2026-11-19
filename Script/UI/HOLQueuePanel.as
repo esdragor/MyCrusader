@@ -257,7 +257,7 @@ class UHOLProductionQueuePanel : UObject
 	{
 		for (int Index = 0; Index < Items.Num(); ++Index)
 		{
-			if (Items[Index] != nullptr && Items[Index].GetFName() == WidgetName)
+			if (Items[Index] != nullptr && Items[Index].GetName() == WidgetName)
 			{
 				if (!HOLQueuePanel::ClickAllowed(bQueueShown, Items[Index].IsVisible()))
 					return false;
