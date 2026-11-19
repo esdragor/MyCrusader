@@ -27,7 +27,7 @@ hol.Camera.FocusSlot 1
 frames 10
 hol.Mouse.Hover MessageLine0
 frames 3
-hol.HUD.Click MessageFeed
+hol.Mouse.Click MessageLine0
 waitlog HUD: alert of slot 0 clicked
 waitlog Camera above the forum of slot 0
 frames 8
