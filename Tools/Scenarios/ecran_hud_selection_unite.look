@@ -1,0 +1,6 @@
+# <nom de capture> | ce que l'utilisateur doit voir
+hud_sel_lancier | Capture 1920x1080, un LANCIER selectionne : le bloc du bas (nom, « Vous », sante, SIX puces de stats : attaque 8, armures, vitesse...) ; journal « HUD stats: attack 8, ... ». Zone du bloc identique sur le binaire C++ et le binaire script.
+hud_sel_lancier_survol | Capture 1920x1080, meme Lancier apres hol.HUD.Hover 0 : la premiere puce (attaque) est survolee, son infobulle « attack: 8 ... » (journal « HUD hover 0: attack: 8 ») ; les 6 puces toujours la.
+hud_sel_paysan_recolte | Capture 1920x1080, un PAYSAN selectionne qui recolte un arbre : le bloc montre nom, « Vous », sante, stats du Paysan et la LIGNE D'ACTIVITE (recolte ou marche vers la source) ; le Paysan se deplace, l'etat peut differer entre deux passages.
+hud_sel_groupe_paysans | Capture 1920x1080, 5 PAYSANS selectionnes : le bloc affiche le compte (« 5 unites » ou « Tous (5) ») et le COMPTE PAR ETAT (1 recolte, 4 inactifs, ou ce que le journal Units.Where montre) ; pas de stats d'une seule unite.
+hud_sel_unite_ennemie | Capture 1920x1080, un LANCIER ENNEMI selectionne : le bloc nomme l'unite, le proprietaire n'est PAS « Vous » (nom de l'IA), sante, stats ; aucune commande dans la grille.
