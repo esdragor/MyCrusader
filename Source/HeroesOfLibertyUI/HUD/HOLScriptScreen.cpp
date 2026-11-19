@@ -1,4 +1,7 @@
 #include "HUD/HOLScriptScreen.h"
+#include "Components/HorizontalBox.h"
+#include "Player/HOLCommandGrid.h"
+#include "Widgets/HOLGridCell.h"
 #include "GameFramework/PlayerController.h"
 #include "InputCoreTypes.h"
 #include "Kismet/GameplayStatics.h"
@@ -55,6 +58,127 @@ int32 UHOLScriptScreen::GetShownSlot() const
 	const UHOLGameScreen* GameScreen = GetTypedOuter<UHOLGameScreen>();
 	const AHOLPlayerState* PlayerState = GameScreen ? GameScreen->GetBoundPlayerState() : nullptr;
 	return PlayerState ? PlayerState->GetPlayerIndex() : INDEX_NONE;
+}
+
+// Unique namespace: unity builds merge the .cpp files.
+namespace HOLScriptScreenAgesPrivate
+{
+	// The reverse of HOLCommandGridReadLibraryPrivate::ToRule (HOLCommandGridReadLibrary.cpp): the rule's context as the script reads it.
+	FHOLGridContextView ToView(const FHOLGridContext& Rule)
+	{
+		FHOLGridContextView Out;
+		Out.bOwnBuilding = Rule.bOwnBuilding;
+		Out.bBuildingGroup = Rule.bBuildingGroup;
+		Out.bBuildingFinished = Rule.bBuildingFinished;
+		Out.bForumDown = Rule.bForumDown;
+		Out.bMarket = Rule.bMarket;
+		Out.Produces = Rule.Produces;
+		Out.bBuilders = Rule.bBuilders;
+		Out.bOwnUnits = Rule.bOwnUnits;
+		Out.bSoldiers = Rule.bSoldiers;
+		Out.bOnlyKings = Rule.bOnlyKings;
+		Out.bHero = Rule.bHero;
+		Out.HeroLevel = Rule.HeroLevel;
+		Out.ReachedAge = Rule.ReachedAge;
+		Out.Researches = Rule.Researches;
+		Out.bDeployables = Rule.bDeployables;
+		Out.bDeployedAny = Rule.bDeployedAny;
+		Out.bRageUnit = Rule.bRageUnit;
+		Out.bPrimaryForum = Rule.bPrimaryForum;
+		Out.SpecializationTier = Rule.SpecializationTier;
+		Out.SpecializationPendingOption = Rule.SpecializationPendingOption;
+		Out.SpecializationRemainingMs = Rule.SpecializationRemainingMs;
+		for (int32 Ability = 0; Ability < 3; ++Ability)
+		{
+			Out.HeroCooldownSeconds.Add(Rule.HeroCooldownSeconds[Ability]);
+		}
+		for (const FHOLBuildable& Buildable : Rule.Buildable)
+		{
+			Out.BuildableTypes.Add(Buildable.TypeName);
+			Out.BuildableCells.Add(Buildable.Cell);
+			Out.BuildableAges.Add(Buildable.Age);
+			Out.BuildableAlwaysOpen.Add(Buildable.bAlwaysOpen);
+		}
+		return Out;
+	}
+}
+
+UHorizontalBox* UHOLScriptScreen::GetAgePanelsHost() const
+{
+	const UHOLGameScreen* GameScreen = GetTypedOuter<UHOLGameScreen>();
+	return GameScreen ? GameScreen->GetAgePanelsHost() : nullptr;
+}
+
+void UHOLScriptScreen::GetAgesContext(FHOLGridContextView& OutContext) const
+{
+	// Exactly RefreshAges' reading: the units' context, unless an own building or a building group is selected (then an empty context).
+	OutContext = FHOLGridContextView();
+	const AHOLPlayerController* PlayerController = Cast<AHOLPlayerController>(GetOwningPlayer());
+	if (PlayerController && !PlayerController->GetOwnSelection() && !PlayerController->HasBuildingGroup())
+	{
+		FHOLGridContext Context;
+		PlayerController->GetUnitsContext(Context);
+		OutContext = HOLScriptScreenAgesPrivate::ToView(Context);
+	}
+}
+
+int32 UHOLScriptScreen::GetChosenAge() const
+{
+	const AHOLPlayerController* PlayerController = Cast<AHOLPlayerController>(GetOwningPlayer());
+	return PlayerController ? PlayerController->GetChosenAge() : INDEX_NONE;
+}
+
+int32 UHOLScriptScreen::GetTier() const
+{
+	const UHOLGameScreen* GameScreen = GetTypedOuter<UHOLGameScreen>();
+	return GameScreen ? GameScreen->GetBoundTier() : INDEX_NONE;
+}
+
+void UHOLScriptScreen::ClickAge(const int32 Age, const int32 Cell)
+{
+	if (AHOLPlayerController* PlayerController = Cast<AHOLPlayerController>(GetOwningPlayer()))
+	{
+		PlayerController->ClickAge(Age, Cell);
+	}
+}
+
+bool UHOLScriptScreen::FillAgeCell(UHOLGridCell* Cell, const FHOLGridCommandView& Building)
+{
+	UHOLGameScreen* GameScreen = GetTypedOuter<UHOLGameScreen>();
+	if (!GameScreen || !Cell || Building.TypeName.IsNone())
+	{
+		return false;
+	}
+	GameScreen->FillAgeCell(Cell, Building.TypeName, Building.bGreyed);
+	return true;
+}
+
+void UHOLScriptScreen::SetAgesReport(const bool bShown, const int32 Chosen, const TArray<FName>& Types, const TArray<bool>& Reached, const TArray<FString>& Tooltips)
+{
+	if (UHOLGameScreen* GameScreen = GetTypedOuter<UHOLGameScreen>())
+	{
+		GameScreen->SetAgesMirror(bShown, Chosen, Types, Reached, Tooltips);
+	}
+}
+
+void UHOLScriptScreen::SetRoundedBrush(UBorder* Border, const FLinearColor Fill, const float Radius, const FLinearColor Outline, const float OutlineWidth) const
+{
+	if (Border)
+	{
+		Border->SetBrush(FSlateRoundedBoxBrush(Fill, Radius, Outline, OutlineWidth));
+	}
+}
+
+FLinearColor UHOLScriptScreen::GetStyleColor(const int32 Which)
+{
+	switch (Which)
+	{
+	case 0: return HOLUIStyle::Accent;
+	case 1: return HOLUIStyle::Text;
+	case 2: return HOLUIStyle::TextMuted;
+	case 3: return HOLUIStyle::HUDPanel;
+	default: return HOLUIStyle::TextMuted;
+	}
 }
 
 UBorder* UHOLScriptScreen::GetPlayersPanel() const

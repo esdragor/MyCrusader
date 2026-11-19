@@ -123,6 +123,15 @@ public:
 	/** HUD H-7: the queue part of the Describe line, as the script's queue panel wrote it (3 [Peasant 0.40, ...]). */
 	void SetQueueReportMirror(const FString& Line) { QueueReport = Line; }
 
+	/** HUD H-8: the bottom bar's AgePanelsHost, an empty horizontal box the script's four age panels fill. */
+	UHorizontalBox* GetAgePanelsHost() const { return AgePanelsHost; }
+	/** HUD H-8: the shown player's tier (BoundTableState->GetTier), INDEX_NONE without one. */
+	int32 GetBoundTier() const;
+	/** HUD H-8: RefreshAges' cell filling (name, Ready or Greyed by the stock, tooltip with cost and effect) for a building of an age panel. */
+	void FillAgeCell(UHOLGridCell* Cell, FName TypeName, bool bGreyed);
+	/** HUD H-8: what the script's age panels show, copied into the mirrors Describe and ClickWidget read without widgets. */
+	void SetAgesMirror(bool bShown, int32 Chosen, const TArray<FName>& Types, const TArray<bool>& Reached, const TArray<FString>& Tooltips);
+
 	/** The population full alert's test binds a player state without a player controller. */
 	friend class FHOLPopulationAlertThreadTest;
 
@@ -321,14 +330,6 @@ private:
 
 	/** A cell of the command panel: an order with the player's units, else the grid's command. */
 	void HandleGridCellClicked(int32 Cell);
-	/** A building of the builders' age panels clicked (AHOLPlayerController::ClickAge); the medallions take no click. */
-	void HandleAgeClicked(int32 Age, int32 Cell);
-	/**
-	 * The builders' age panels (the user's trials of G.1, AoE4's way), right of the command panel: each the width of its
-	 * buildings' columns, only its rows used, a medallion (numeral, key) on its top edge; an age not reached faded, the
-	 * chosen one's medallion and edge lit.
-	 */
-	void RefreshAges(const AHOLPlayerState* PlayerState);
 
 	/** A command that did not go through (D313), from the controller: its short message. */
 	void HandleCommandFeedback(const FHOLCommandFeedback& Feedback);
@@ -346,22 +347,12 @@ private:
 	UPROPERTY(Transient)
 	TArray<TObjectPtr<UHOLGridCell>> GridCells;
 
-	/** The builders' age panels, I to IV, and their medallions (numeral, key A Z E R; no click). */
-	UPROPERTY(Transient)
-	TArray<TObjectPtr<UBorder>> AgePanels;
-
-	UPROPERTY(Transient)
-	TArray<TObjectPtr<UBorder>> AgeMedallions;
-	/** Each medallion's tooltip as Report writes it (« Palier II — Essor | Palier non atteint »), and the look shown (-1: none yet). */
+	/** Each medallion's tooltip as Report writes it (« Palier II — Essor | Palier non atteint »). */
 	TArray<FString> ShownAgeTooltips;
-	TArray<int32> ShownAgeLooks;
 
-	/** Each age's building cells, Q S D F / W X C V (NumAges x NumAgeCells), and their boxes in the panel's grid. */
+	/** HUD H-8: the empty box in the bottom bar the script's age panels are put in. */
 	UPROPERTY(Transient)
-	TArray<TObjectPtr<UHOLGridCell>> AgeCells;
-
-	UPROPERTY(Transient)
-	TArray<TObjectPtr<USizeBox>> AgeCellBoxes;
+	TObjectPtr<UHorizontalBox> AgePanelsHost;
 
 	/** The selection's chips (G.1e): a pool of SelectionChipN in the wrap box SelectionChips, each in its frame (lit: active). */
 	UPROPERTY(Transient)

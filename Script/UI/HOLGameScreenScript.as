@@ -126,6 +126,9 @@ FString TalentTipTexts = "";
 	UHOLGroupBarPanel GroupBar;
 	// HUD H-7: the production queue (HOLQueuePanel.as), drawn into the C++ screen's QueuePanel (the member is not called QueuePanel: no widget of that name here).
 	UHOLProductionQueuePanel QueueView;
+
+	// HUD H-8: the builders' age panels (HOLAgePanels.as), drawn into the C++ screen's AgePanelsHost.
+	UHOLAgePanelsPanel AgePanels;
 	FString VolcanoTexts = "";
 	// H-1: the wait and absence banners (HOLWaitBanner.as).
 	UHOLWaitBannerPanel WaitBanner;
@@ -272,6 +275,8 @@ UHOLAlertBannerPanel AlertBanner;
 		GroupBar.Build(this, GetGroupsPanel());
 		QueueView = Cast<UHOLProductionQueuePanel>(NewObject(this, UHOLProductionQueuePanel));
 		QueueView.Build(this, GetQueuePanel());
+		AgePanels = Cast<UHOLAgePanelsPanel>(NewObject(this, UHOLAgePanelsPanel));
+		AgePanels.Build(this);
 		BuildMinimap(Frame);
 		BuildTalentWindow(Frame);
 		// Last: over the other blocks.
@@ -1397,6 +1402,8 @@ UHOLAlertBannerPanel AlertBanner;
 			GroupBar.Refresh();
 		if (QueueView != nullptr)
 			QueueView.Refresh();
+		if (AgePanels != nullptr)
+			AgePanels.Refresh();
 		if (Audio != nullptr)
 			Audio.PlayDueRepeats();
 		RefreshDiplomacy();
@@ -1404,6 +1411,15 @@ UHOLAlertBannerPanel AlertBanner;
 		RefreshMinimap();
 		RefreshPopulationAlert();
 		RefreshShortMessage();
+	}
+
+	// HUD H-8: the age panels alone, drawn again at once (the C++ screen's grid, chosen age and tier changes). Not the whole Refresh: the
+	// population alert and the other blocks read the HUD's real time once per timer step, not at every grid change.
+	UFUNCTION(BlueprintOverride)
+	void RefreshAges()
+	{
+		if (AgePanels != nullptr)
+			AgePanels.Refresh();
 	}
 
 	// D202, Q-alerts-minor default A: the population full line in the thread of messages (muted, no ping), once when the population
@@ -2283,6 +2299,8 @@ UHOLAlertBannerPanel AlertBanner;
 		if (GroupBar != nullptr && GroupBar.ClickName(WidgetName))
 			return true;
 		if (QueueView != nullptr && QueueView.ClickName(WidgetName))
+			return true;
+		if (AgePanels != nullptr && AgePanels.ClickName(WidgetName))
 			return true;
 		return false;
 	}

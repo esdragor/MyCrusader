@@ -1,0 +1,41 @@
+# H-8 (etape 4 de la migration) : les PANNEAUX D'AGES I a IV (medaillons, touches A Z E R, cellules des batiments, barre du bas) sont dessines par le script (HOLAgePanels.as). Plain, toi (5 Paysans, sans heros) contre une IA figee ; scenario de preuve double : les memes captures prises sur un binaire d'avant (panneaux C++) et sur celui-ci doivent etre identiques au pixel, et ce sont aussi les etapes de ton essai. 3 minutes au plus.
+# Etat fixe : IA figee, combat coupe, 5000 de chaque ressource (aucune cellule grisee par le cout), 5 Paysans de depart tous selectionnes (le contexte des batisseurs ouvre les panneaux d'ages), langue fr, curseur au meme endroit, camera au-dessus de ton forum. Les paliers sont forces par hol.Cheat.Tier (0 = age I ... 3 = age IV), jamais par le heros. Le panneau de notes du scenario est en haut au centre : il ne couvre pas la barre du bas, on ne le ferme pas (il porte les consignes).
+waitlog Camera above the start of slot 0
+r.SetRes 1920x1080w
+hol.UI.Language fr
+hol.AI.ThinkSteps 100000
+hol.Combat.Enabled 0
+hol.Cheat.Resources 5000
+hol.Camera.FocusSlot own
+frames 5
+hol.Select.Own
+waitlog Select own:
+hol.Mouse.Hover 960 600 5
+waitlog Mouse hover 960,600
+frames 30
+hol.HUD.Report
+notereset Etape 1 : au depart (palier 0), tes 5 Paysans sont selectionnes : dans la barre du bas, 4 panneaux d'ages I a IV, chacun avec son medaillon rond (I, II, III, IV) qui depasse du bord haut et sa touche (A, Z, E, R) a droite du medaillon. Seul l'age I est ouvert (ses cellules de batiments sont allumees) ; II, III et IV sont verrouilles (grises, "Palier non atteint"). Aucun age n'est choisi.
+waitkey Entree : etape 1, les panneaux d'ages au depart
+capture hud_ages_depart
+hol.Cheat.Tier 1 0
+waitlog Cheat: slot 0 tier forced to 1
+frames 30
+hol.HUD.Report
+notereset Etape 2 : palier 1 force par triche (age II atteint) : le medaillon II et ses cellules (Marche, Atelier de siege, Chapelle, Ecurie, Forge) s'allument comme celles de l'age I ; III et IV restent verrouilles. Les Paysans restent selectionnes, rien d'autre ne bouge.
+waitkey Entree : etape 2, age II atteint par triche
+capture hud_ages_age2
+hol.Cheat.Tier 3 0
+waitlog Cheat: slot 0 tier forced to 3
+frames 30
+hol.HUD.Report
+notereset Etape 3 : palier 3 force par triche (age IV atteint) : les QUATRE medaillons I a IV sont ouverts. Au prototype aucun batiment n'est d'age III ou IV : leurs panneaux sont vides mais ouverts (plus de cadenas ni de grisage de palier).
+waitkey Entree : etape 3, age IV atteint par triche
+capture hud_ages_age4
+hol.Select.Grid 1
+waitlog Grid: age 1 chosen
+frames 30
+hol.HUD.Report
+notereset Etape 4 : la touche Z (la touche affichee a cote du medaillon II) choisit l'age II, comme au clavier : le medaillon II est mis en valeur (contour / remplissage du medaillon choisi), les autres medaillons gardent leur aspect ouvert ; aucun fantome de batiment n'est pose.
+waitkey Entree : etape 4, l'age II choisi par sa touche Z
+capture hud_ages_choisi
+hol.Test.Sanity
