@@ -545,16 +545,6 @@ FString UHOLGameStateTestLibrary::FormatBackLine(const FString& Name)
 #endif
 }
 
-FString UHOLGameStateTestLibrary::FormatSeatReport(const int32 Slot, const FString& Name, const int32 State, const double SecondsLeft, const int32 AIMode)
-{
-#if WITH_DEV_AUTOMATION_TESTS
-	return FHOLDisconnectRules::FormatSeatReport(Slot, Name, static_cast<FHOLDisconnectRules::ESeatState>(State), SecondsLeft,
-		static_cast<FHOLDisconnectRules::EAIMode>(AIMode));
-#else
-	return FString();
-#endif
-}
-
 bool UHOLGameStateTestLibrary::RulesKeepsSlot(const FString& Json, const int32 Slot, const bool bWaitingForPlayers, const bool bMatchOver, const bool bSlotDefeated)
 {
 #if WITH_DEV_AUTOMATION_TESTS

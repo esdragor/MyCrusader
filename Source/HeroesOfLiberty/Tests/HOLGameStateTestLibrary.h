@@ -282,10 +282,6 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|GameStateTest")
 	static FString FormatBackLine(const FString& Name);
 
-	/** FHOLDisconnectRules::FormatSeatReport; State 0 Present, 1 AbsentAIHolds, 2 AIHolds, 3 Defeated; AIMode 0 None, 1 Hold, 2 Full. */
-	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|GameStateTest")
-	static FString FormatSeatReport(int32 Slot, const FString& Name, int32 State, double SecondsLeft, int32 AIMode);
-
 	/** FHOLDisconnectRules::KeepsSlot(Config from Json, ...). False if the JSON fails. */
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|GameStateTest")
 	static bool RulesKeepsSlot(const FString& Json, int32 Slot, bool bWaitingForPlayers, bool bMatchOver, bool bSlotDefeated);
