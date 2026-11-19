@@ -288,3 +288,41 @@ void Test_SpecializationNomadButtonWaitsForTheFirstForum(FUnitTest& T)
 	FHOLSpecializationState Other = HOLSpecialization::NewState(HOLSpecialization::DefaultOptionCount);
 	T.AssertTrue(HOLSpecialization::IsOpen(Other, 1, 1, HOLNomad::HasCompleteForum(Standard)), "a standard player: lit at tier 1");
 }
+
+// Option count per faction (D90, D131): 2 everywhere, 3 for the Templars' commanderies. The values are written here on purpose (the GDD's).
+void Test_SpecializationOptionCountPerFaction(FUnitTest& T)
+{
+	T.AssertEquals(3, HOLSpecialization::OptionCountOf(EHOLFaction::Templars), "the Templars choose among 3 commanderies (D131)");
+	T.AssertEquals(2, HOLSpecialization::OptionCountOf(EHOLFaction::DawnOrder), "the Dawn: 2 options (D07)");
+	T.AssertEquals(2, HOLSpecialization::OptionCountOf(EHOLFaction::BlackLegions), "the Legions: 2 options");
+	T.AssertEquals(2, HOLSpecialization::OptionCountOf(EHOLFaction::DragonChildren), "the Dragon Children: 2 options");
+	T.AssertEquals(2, HOLSpecialization::OptionCountOf(EHOLFaction::ShadowCircle), "the Shadow Circle: 2 options");
+	T.AssertEquals(2, HOLSpecialization::OptionCountOf(EHOLFaction::FireHeirs), "the Fire Heirs: 2 options");
+	const int TemplarCount = HOLSpecialization::NewStateFor(EHOLFaction::Templars).OptionCount;
+	const int DawnCount = HOLSpecialization::NewStateFor(EHOLFaction::DawnOrder).OptionCount;
+	T.AssertEquals(3, TemplarCount, "a Templar state holds 3 options");
+	T.AssertEquals(2, DawnCount, "a Dawn state holds 2 options");
+	T.AssertTrue(HOLSpecialization::IsValidOptionFor(EHOLFaction::Templars, 2), "option index 2 is valid for the Templars");
+	T.AssertTrue(!HOLSpecialization::IsValidOptionFor(EHOLFaction::Templars, 3), "no 4th option for the Templars");
+	T.AssertTrue(!HOLSpecialization::IsValidOptionFor(EHOLFaction::Templars, -1), "no negative option");
+	T.AssertTrue(!HOLSpecialization::IsValidOptionFor(EHOLFaction::FireHeirs, 2), "option index 2 is not valid for the others");
+}
+
+void Test_SpecializationTemplarsCanPickTheThirdOption(FUnitTest& T)
+{
+	// Through the real chain: a state built for the Templars, Start on option index 2, Advance to the delay, the tier's choice is option 2.
+	FHOLSpecializationState State = HOLSpecialization::NewStateFor(EHOLFaction::Templars);
+	T.AssertEquals(HOLSpecialization::Ok, HOLSpecialization::Start(State, 1, 2, 1), "the Templars start the third commandery (D131)");
+	T.AssertEquals(2, State.RunningOption[1], "the third option runs");
+	T.AssertEquals(1, HOLSpecialization::Advance(State, HOLSpecialization::DelayMs(1), true), "applied at the tier's delay");
+	T.AssertEquals(2, HOLSpecialization::ChosenOption(State, 1), "the third commandery is the tier's choice");
+}
+
+void Test_SpecializationDawnRefusesTheThirdOption(FUnitTest& T)
+{
+	FHOLSpecializationState State = HOLSpecialization::NewStateFor(EHOLFaction::DawnOrder);
+	T.AssertEquals(HOLSpecialization::BadOption, HOLSpecialization::Start(State, 1, 2, 1), "the Dawn has no third option (D07)");
+	T.AssertEquals(HOLSpecialization::None, State.RunningOption[1], "nothing runs after the refused click");
+	T.AssertEquals(0, State.PendingTier, "the bar stays empty");
+	T.AssertEquals(HOLSpecialization::Ok, HOLSpecialization::Start(State, 1, 1, 1), "the second option is still accepted");
+}
