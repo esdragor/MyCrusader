@@ -14,11 +14,13 @@ capture hud_file_vide
 note 1. Ton forum est selectionne : au-dessus de la grille de commandes, le panneau de production est vide (aucune tete, aucun element en file) ; la grille montre le Paysan sur la touche A.
 waitkey Entree : le scenario met 3 Paysans en file (clic + touche A deux fois), prend 3 captures, annule un element, puis ne touche plus a rien ; ne bouge pas la souris
 # Meme geste que quick_check (production) : un Paysan par la case A (vraie touche), deux autres par la touche A. Le temps de jeu court depuis le 1er Paysan.
-hol.UI.Key A 0 0.1
+hol.HUD.Click GridCell00
 waitlog queued Peasant (1 in
 hol.UI.Key A 0 0.1
+wait 0.15
 waitlog queued Peasant (2 in
 hol.UI.Key A 0 0.1
+wait 0.15
 waitlog queued Peasant (3 in
 frames 5
 hol.HUD.Report
