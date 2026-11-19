@@ -14,7 +14,6 @@
 #include "HUD/HOLGameHUD.h"
 #include "HUD/HOLHUDLayoutRules.h"
 #include "HUD/HOLHUDSpace.h"
-#include "HUD/HOLScenarioPanel.h"
 #include "Brushes/SlateRoundedBoxBrush.h"
 #include "CommonTextBlock.h"
 #include "Components/Border.h"
@@ -29,6 +28,11 @@
 #include "Screens/HOLGameMenuScreen.h"
 #include "Screens/HOLStatsScreen.h"
 #include "Style/HOLUIStyles.h"
+#include "Dev/HOLTestHooks.h"
+#include "Engine/Engine.h"
+#include "Fonts/FontMeasure.h"
+#include "Framework/Application/SlateApplication.h"
+#include "Rendering/SlateRenderer.h"
 #include "UObject/UObjectIterator.h"
 
 FString UHOLScriptScreen::Describe_Implementation() const
@@ -462,6 +466,50 @@ UCommonTextBlock* UHOLScriptScreen::MakeText(const FName Name, const TSubclassOf
 	return Block;
 }
 
+bool UHOLScriptScreen::GetScenarioDisplay(FString& OutName, int32& OutState, FString& OutError, TArray<FString>& OutNotes, FString& OutWaitingForKey, bool& bOutClosed, bool& bOutHidden) const
+{
+	const HOLTestHooks::FScenarioDisplay& Display = HOLTestHooks::GetScenarioDisplay();
+	OutName = Display.Name;
+	OutState = static_cast<int32>(Display.State);
+	OutError = Display.Error;
+	OutNotes = Display.Notes;
+	OutWaitingForKey = Display.WaitingForKey;
+	bOutClosed = Display.bClosed;
+	bOutHidden = Display.bHidden;
+	return !Display.Name.IsEmpty();
+}
+
+void UHOLScriptScreen::CloseScenarioPanel()
+{
+	HOLTestHooks::GetScenarioDisplay().bClosed = true;
+}
+
+float UHOLScriptScreen::MeasureHeadingWidth(const FText& A, const FText& B) const
+{
+	// The C++ panel's own measure (HOLScenarioPanel.cpp, state's minimum width): 0 with no renderer (-nullrhi, automation).
+	if (!FSlateApplication::IsInitialized())
+	{
+		return 0.f;
+	}
+	const auto Renderer = FSlateApplication::Get().GetRenderer();
+	if (!Renderer)
+	{
+		return 0.f;
+	}
+	FSlateFontInfo Font;
+	GetDefault<UHOLTextStyleHUDHeading>()->GetFont(Font);
+	const TSharedRef<FSlateFontMeasure> Measure = Renderer->GetFontMeasureService();
+	return FMath::Max(Measure->Measure(A, Font).X, Measure->Measure(B, Font).X);
+}
+
+void UHOLScriptScreen::ExecConsole(const FString& Command)
+{
+	if (GEngine)
+	{
+		GEngine->Exec(GetWorld(), *Command);
+	}
+}
+
 UButton* UHOLScriptScreen::MakeButton(const FName Name)
 {
 	UButton* Button = WidgetTree->ConstructWidget<UButton>(UButton::StaticClass(), Name);
@@ -578,15 +626,6 @@ void UHOLScriptScreen::GatherPanelBoxes(TArray<FHOLHUDNamedBox>& OutBoxes) const
 	{
 		OutBoxes.Add({ TEXT("cheats"), HOLHUDSpace::BoxOf(this, CheatBorder->GetCachedGeometry()) });
 	}
-	// L1-12b: the test scenario's own panel (top centre; a development build only): a panel of the script (the duel window) under it is seen.
-	if (const UHOLScenarioPanel* ScenarioPanel = AHOLGameHUD::FindScenarioPanel(GetOwningPlayer()))
-	{
-		FBox2D ScenarioBox;
-		if (ScenarioPanel->GetBox(ScenarioBox))
-		{
-			OutBoxes.Add({ TEXT("scenario"), ScenarioBox });
-		}
-	}
 	// The C++ blocks a panel of the script must not cover (the Diplomacy panel's trial): the players' table, the menu's buttons.
 	// MenuPanel is the script's since H-3 (UHOLTopBarPanel): its box comes with the script's outermost panels below.
 	const TCHAR* const GameNames[] = { TEXT("PlayersPanel") };
@@ -626,7 +665,10 @@ void UHOLScriptScreen::GatherPanelBoxes(TArray<FHOLHUDNamedBox>& OutBoxes) const
 			{
 				continue;
 			}
-			OutBoxes.Add({ Border->GetName(), HOLHUDSpace::BoxOf(this, Geometry) });
+			// L1-12b: the test scenario's own panel (top centre; a development build only) keeps its box name "scenario" (H-11b: the script's
+			// ScenarioPanel border; Tools\Scenarios\HudRects.ps1 and the "HUD overlap:" lines name it so).
+			const FString BoxName = Border->GetFName() == TEXT("ScenarioPanel") ? FString(TEXT("scenario")) : Border->GetName();
+			OutBoxes.Add({ BoxName, HOLHUDSpace::BoxOf(this, Geometry) });
 		}
 	}
 }

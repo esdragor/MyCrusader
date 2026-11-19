@@ -247,6 +247,25 @@ public:
 	UCommonTextBlock* MakeText(FName Name, TSubclassOf<UCommonTextStyle> TextStyle);
 
 	/**
+	 * H-11b: what the test scenario's panel shows (HOLTestHooks::GetScenarioDisplay, written by hol.Scenario and the test sequence, game
+	 * module). OutState: 0 Preparing, 1 Ready, 2 Failed. False when no scenario was ever started (empty name). Development builds only.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|UI")
+	bool GetScenarioDisplay(FString& OutName, int32& OutState, FString& OutError, TArray<FString>& OutNotes, FString& OutWaitingForKey, bool& bOutClosed, bool& bOutHidden) const;
+
+	/** H-11b: the scenario panel's close button: the display is closed until the next scenario (HOLTestHooks::GetScenarioDisplay().bClosed). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|UI")
+	void CloseScenarioPanel();
+
+	/** H-11b: the larger of the two texts' widths in the HUD heading font (UHOLTextStyleHUDHeading); 0 without a renderer (no-render runs). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|UI")
+	float MeasureHeadingWidth(const FText& A, const FText& B) const;
+
+	/** H-11b: runs a console command in this world (the scenario panel's Relancer: "hol.Scenario <Name>"). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|UI")
+	void ExecConsole(const FString& Command);
+
+	/**
 	 * A HUD button, the look of the C++ screen's (UHOLHUDButtonStyle: dark, a gold edge hovered and pressed, plain dark
 	 * greyed), never focusable; the script sets its content (SetContent) and binds OnClicked. Its clicks stop there.
 	 */
