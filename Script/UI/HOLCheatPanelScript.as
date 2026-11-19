@@ -250,6 +250,9 @@ class UHOLCheatPanelScript : UObject
 		Slider.SetMaxValue(HOLCheatPanelRules::MaxSpeed());
 		Slider.SetStepSize(HOLCheatPanelRules::SpeedStep());
 		Slider.SetValue(1.0);
+		// HOLCheatPanel.cpp:474-475: muted bar, accent handle (the engine's default handle is white).
+		Slider.SetSliderBarColor(UHOLScriptScreen::GetMutedColor());
+		Slider.SetSliderHandleColor(UHOLScriptScreen::GetAccentColor());
 		USizeBox SliderBox = Cast<USizeBox>(Screen.ConstructWidget(USizeBox, FName(Name + "Box")));
 		SliderBox.SetWidthOverride(HOLCheatPanelRules::ButtonWidth());
 		SliderBox.SetHeightOverride(HOLCheatPanelRules::SliderHeight());
@@ -263,6 +266,8 @@ class UHOLCheatPanelScript : UObject
 		Screen = InScreen;
 		Anchor = InAnchor;
 		Panel = Screen.MakePanel(n"CheatPanel");
+		// HOLCheatPanel.cpp:425: inner margin 8 on every side (MakePanel's common 12 x 8 is left alone, other panels use it).
+		Panel.SetPadding(FMargin(8.0));
 		UOverlaySlot PanelSlot = Frame.AddChildToOverlay(Panel);
 		PanelSlot.SetHorizontalAlignment(EHorizontalAlignment::HAlign_Left);
 		PanelSlot.SetVerticalAlignment(EVerticalAlignment::VAlign_Top);
