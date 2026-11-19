@@ -695,6 +695,27 @@ UClass* UHOLScriptScreen::FindScriptClass()
 	return nullptr;
 }
 
+namespace
+{
+	/** The pieces of Message as the C++ FillMessageRow cuts them (the shown player's reading, the lobby's names when the game state is there), a colour per piece. */
+	void FillMessagePieces(const FHOLForumMessage& Message, const UHOLGameScreen* GameScreen, const UWorld* World, TArray<FHOLForumPieceValue>& OutPieces, TArray<FLinearColor>& OutColors)
+	{
+		const AHOLGameState* GameState = World->GetGameState<AHOLGameState>();
+		const AHOLPlayerState* PlayerState = GameScreen->GetBoundPlayerState();
+		const int32 ViewerSlot = PlayerState ? PlayerState->GetPlayerIndex() : INDEX_NONE;
+		for (const HOLForumMessages::FPiece& Part : GameState ? HOLForumMessages::SplitNames(Message, ViewerSlot, GameState->GetLaunchConfig())
+			: HOLForumMessages::SplitNames(Message, ViewerSlot))
+		{
+			FHOLForumPieceValue Piece;
+			Piece.Text = Part.Text;
+			Piece.Slot = Part.Slot;
+			OutPieces.Add(Piece);
+			const bool bName = Part.Slot != INDEX_NONE && GameState && GameState->GetLaunchConfig().Slots.IsValidIndex(Part.Slot);
+			OutColors.Add(bName ? FLinearColor(HOLPlayerColors::GetColor(GameState->GetLaunchConfig().Slots[Part.Slot].ColorIndex)) : FLinearColor::White);
+		}
+	}
+}
+
 bool UHOLScriptScreen::GetAlertBanner(bool& bOutShown, int32& OutSerial, int32& OutSlot, float& OutOpacity, bool& bOutSound, FString& OutText,
 	TArray<FHOLForumPieceValue>& OutPieces, TArray<FLinearColor>& OutColors) const
 {
@@ -723,20 +744,8 @@ bool UHOLScriptScreen::GetAlertBanner(bool& bOutShown, int32& OutSerial, int32& 
 	OutOpacity = Alert.GetOpacity(World->GetRealTimeSeconds());
 	bOutSound = Alert.bSound;
 	OutText = Alert.Message.Text.ToString();
-	// The pieces as the C++ FillMessageRow cuts them (the shown player's reading, the lobby's names when the game state is there).
-	const AHOLGameState* GameState = World->GetGameState<AHOLGameState>();
-	const AHOLPlayerState* PlayerState = GameScreen->GetBoundPlayerState();
-	const int32 ViewerSlot = PlayerState ? PlayerState->GetPlayerIndex() : INDEX_NONE;
-	for (const HOLForumMessages::FPiece& Part : GameState ? HOLForumMessages::SplitNames(Alert.Message, ViewerSlot, GameState->GetLaunchConfig())
-		: HOLForumMessages::SplitNames(Alert.Message, ViewerSlot))
-	{
-		FHOLForumPieceValue Piece;
-		Piece.Text = Part.Text;
-		Piece.Slot = Part.Slot;
-		OutPieces.Add(Piece);
-		const bool bName = Part.Slot != INDEX_NONE && GameState && GameState->GetLaunchConfig().Slots.IsValidIndex(Part.Slot);
-		OutColors.Add(bName ? FLinearColor(HOLPlayerColors::GetColor(GameState->GetLaunchConfig().Slots[Part.Slot].ColorIndex)) : FLinearColor::White);
-	}
+	FillMessagePieces(Alert.Message, GameScreen, World, OutPieces, OutColors);
+
 	return true;
 }
 
@@ -777,6 +786,67 @@ void UHOLScriptScreen::FocusCameraOnForum(const int32 ForumSlot)
 	}
 }
 
+UVerticalBox* UHOLScriptScreen::GetMessagesList() const
+{
+	const UHOLGameScreen* GameScreen = GetTypedOuter<UHOLGameScreen>();
+	return GameScreen ? GameScreen->GetMessagesList() : nullptr;
+}
+
+int32 UHOLScriptScreen::GetMessageState(int32& OutRevision, TArray<bool>& OutAlerts, TArray<int32>& OutSlots, TArray<float>& OutOpacities) const
+{
+	OutRevision = 0;
+	OutAlerts.Reset();
+	OutSlots.Reset();
+	OutOpacities.Reset();
+	const UHOLGameScreen* GameScreen = GetTypedOuter<UHOLGameScreen>();
+	const UWorld* World = GetWorld();
+	if (!GameScreen || !World)
+	{
+		return 0;
+	}
+	OutRevision = GameScreen->GetMessageRevision();
+	const double Now = World->GetRealTimeSeconds();
+	for (const FHOLForumThreadLine& Line : GameScreen->GetMessageThread().Lines)
+	{
+		OutAlerts.Add(Line.Message.bAlert);
+		OutSlots.Add(Line.Slot);
+		OutOpacities.Add(FHOLForumThread::GetOpacity(Line, Now));
+	}
+	return OutAlerts.Num();
+}
+
+bool UHOLScriptScreen::GetMessageLine(const int32 Index, TArray<FHOLForumPieceValue>& OutPieces, TArray<FLinearColor>& OutColors) const
+{
+	OutPieces.Reset();
+	OutColors.Reset();
+	const UHOLGameScreen* GameScreen = GetTypedOuter<UHOLGameScreen>();
+	const UWorld* World = GetWorld();
+	if (!GameScreen || !World || !GameScreen->GetMessageThread().Lines.IsValidIndex(Index))
+	{
+		return false;
+	}
+	FillMessagePieces(GameScreen->GetMessageThread().Lines[Index].Message, GameScreen, World, OutPieces, OutColors);
+	return true;
+}
+
+void UHOLScriptScreen::BindMessageClick(UBorder* Panel)
+{
+	if (Panel)
+	{
+		Panel->OnMouseButtonDownEvent.BindUFunction(this, GET_FUNCTION_NAME_CHECKED(UHOLScriptScreen, HandleMessageMouseDown));
+	}
+}
+
+FEventReply UHOLScriptScreen::HandleMessageMouseDown(FGeometry Geometry, const FPointerEvent& MouseEvent)
+{
+	if (MouseEvent.GetEffectingButton() != EKeys::LeftMouseButton)
+	{
+		return FEventReply(false);
+	}
+	// The script's ClickWidget(MessageFeed): true only while a line carrying an alert is under the mouse, as the C++ handler's own loop was.
+	return FEventReply(ClickWidget(FName(TEXT("MessageFeed"))));
+}
+
 void UHOLScriptScreen::NativeOnInitialized()
 {
 	// The script's OnInitialized builds the tree.
@@ -812,6 +882,16 @@ void UHOLScriptScreen::NativeTick(const FGeometry& MyGeometry, const float InDel
 			AlertFrameTick(InDeltaTime);
 		}
 		bAlertLive = bAlertShown;
+	}
+	// The thread of messages' fades and end (HOLMessageFeed.as): called every frame while the C++ thread holds a line, and once more when it empties.
+	if (const UHOLGameScreen* FeedScreen = GetTypedOuter<UHOLGameScreen>())
+	{
+		const bool bFeedHasLines = !FeedScreen->GetMessageThread().Lines.IsEmpty();
+		if (bFeedHasLines || bFeedLive)
+		{
+			MessageFrameTick(InDeltaTime);
+		}
+		bFeedLive = bFeedHasLines;
 	}
 	// The control group lit (the chip of the group just recalled, HOLGroupBar.as LightSeconds = 0.5 s): the script is called only when it changes, on the very frame.
 	{

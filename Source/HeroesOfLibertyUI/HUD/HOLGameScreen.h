@@ -95,6 +95,10 @@ public:
 	const FHOLForumAlert& GetAlert() const { return Alert; }
 	/** HUD H-5a: how many banners PresentAlert has shown (never reset): the script redraws when it changes. */
 	int32 GetAlertPresentCount() const { return AlertPresentCount; }
+	/** HUD H-5b: the thread's state (stays C++), its host, and the count of its rebuilds, for the script's view (HOLMessageFeed.as). */
+	const FHOLForumThread& GetMessageThread() const { return MessageThread; }
+	int32 GetMessageRevision() const { return MessageRevision; }
+	UVerticalBox* GetMessagesList() const { return MessagesList; }
 	/** HUD H-5a: the owning controller's camera over the forum of Slot (no journal line: the script writes it). */
 	void FocusCameraOnForum(int32 ForumSlot);
 
@@ -421,6 +425,8 @@ private:
 	UPROPERTY(Transient)
 	TArray<TObjectPtr<UHorizontalBox>> MessageRows;
 	FHOLForumThread MessageThread;
+	/** HUD H-5b: RebuildMessages' count (a line added or expired); the script redraws the lines when it changes. */
+	int32 MessageRevision = 0;
 
 	/**
 	 * V4.3 (D353, D202): the major alert, a banner top centre under the resources' bar, the event's text larger than the
