@@ -344,6 +344,33 @@ public:
 	UFUNCTION(BlueprintImplementableEvent, Category = "HeroesOfLiberty|UI")
 	void AlertFrameTick(float DeltaSeconds);
 
+	/** HUD H-5b: the C++ screen's MessagesList (the thread of messages' host in the RightColumn under the players' table, kept in C++ like PlayersPanel): the script fills it. */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|UI")
+	class UVerticalBox* GetMessagesList() const;
+
+	/**
+	 * HUD H-5b: the thread of messages the C++ screen holds (UHOLGameScreen::MessageThread: state and source stay C++, one source). Returns the line count (the oldest first);
+	 * OutRevision changes with every RebuildMessages (a line added or expired); per line: OutAlerts it carries an alert, OutSlots the slot touched (INDEX_NONE if none),
+	 * OutOpacities FHOLForumThread::GetOpacity at the real time now. Neutral (0, empty) without screen or world.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|UI")
+	int32 GetMessageState(int32& OutRevision, TArray<bool>& OutAlerts, TArray<int32>& OutSlots, TArray<float>& OutOpacities) const;
+
+	/** HUD H-5b: the pieces of line Index as FillMessageRow cut them (SplitNames, the shown player's reading), a colour per piece (the name's player colour, white for a word). False: no such line. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|UI")
+	bool GetMessageLine(int32 Index, TArray<FHOLForumPieceValue>& OutPieces, TArray<FLinearColor>& OutColors) const;
+
+	/** HUD H-5b: a line's panel takes the left mouse button: the C++ receives it (FOnPointerEvent) and asks the script's ClickWidget(MessageFeed). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|UI")
+	void BindMessageClick(UBorder* Panel);
+
+	UFUNCTION()
+	FEventReply HandleMessageMouseDown(FGeometry Geometry, const FPointerEvent& MouseEvent);
+
+	/** Once a frame, but ONLY while the C++ thread holds a line (and once more when it empties): the lines' fade and end (HOLMessageFeed.as). */
+	UFUNCTION(BlueprintImplementableEvent, Category = "HeroesOfLiberty|UI")
+	void MessageFrameTick(float DeltaSeconds);
+
 	/** HUD H-8: the C++ bottom bar's AgePanelsHost (an empty horizontal box where the age panels were), filled by the script's four panels. */
 	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|UI")
 	UHorizontalBox* GetAgePanelsHost() const;
@@ -394,6 +421,8 @@ private:
 	bool bMessageLive = false;
 	/** The alert banner was shown at the last frame: NativeTick calls AlertFrameTick while it is, and once more when it ends. */
 	bool bAlertLive = false;
+	/** The thread held a line at the last frame: NativeTick calls MessageFrameTick while it does, and once more when it empties. */
+	bool bFeedLive = false;
 	/** The control group lit as NativeTick last saw it (INDEX_NONE: none): a change calls GroupLitChanged. */
 	int32 LitGroupSeen = INDEX_NONE;
 

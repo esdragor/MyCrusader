@@ -1,0 +1,45 @@
+# H-5b : le FIL DE MESSAGES du HUD (haut droite, sous le tableau des joueurs) est dessine par le script. Plain, deux joueurs (slot 0 toi, slot 1 IA, equipes separees). Ton forum tombe (hol.Victory.FallForum 0) : une ligne dans le fil (qui porte une alerte, donc cliquable) ; on la survole et on clique dessus (la camera passe au-dessus du forum, journal "HUD: alert of slot 0 clicked") ; 8 s plus tard le fil est vide. 3 minutes environ. A rejouer AVANT (branche sans le lot, fil C++) et APRES (script) : comparer la zone haut-droite des captures a l'oeil. La ligne vit 8 s : le pas 2 doit suivre le pas 1 sans attendre (waitkey rapide).
+waitlog Camera above the start of slot 0
+r.SetRes 1920x1080w
+hol.Cheat.Resources 5000
+hol.Cheat.Population 165
+hol.Camera.FocusSlot own
+frames 90
+hol.HUD.Report 1
+capture hud_fil_aucune
+note 1. Haut droite, sous le tableau des joueurs : AUCUNE ligne dans le fil (le reste du HUD comme d'habitude).
+waitkey Entree : ton forum va tomber (triche)
+# Le panneau du scenario peut couvrir la zone : on le ferme comme la souris (bouton x) avant chaque capture ; les notes le rouvrent.
+hol.HUD.Click ScenarioClose
+frames 10
+hol.Victory.FallForum 0
+waitlog Alert:
+frames 8
+hol.HUD.Click ScenarioClose
+frames 5
+hol.HUD.Report 1
+capture hud_fil_ligne
+note 2. Haut droite, sous le tableau des joueurs, une ligne sombre a bords arrondis : le texte de la chute de ton forum (en petit, style libelle), ton nom dans ta couleur ; la banniere d'alerte est en haut centre.
+waitkey Entree : survol et clic sur la ligne du fil
+hol.HUD.Click ScenarioClose
+frames 10
+hol.Camera.FocusSlot 1
+frames 10
+hol.Mouse.Hover MessageLine0
+frames 3
+hol.Mouse.Click MessageLine0
+waitlog HUD: alert of slot 0 clicked
+waitlog Camera above the forum of slot 0
+frames 8
+hol.HUD.Click ScenarioClose
+frames 5
+hol.HUD.Report 1
+capture hud_fil_apres_clic
+note 3. La camera est au-dessus de ton forum en ruine (le clic sur la ligne l'a centree) ; la ligne est encore dans le fil si moins de 8 s se sont ecoulees.
+waitkey Entree : le fil se vide
+hol.HUD.Click ScenarioClose
+wait 9
+hol.HUD.Report 1
+capture hud_fil_vide
+note 4. Plus aucune ligne dans le fil (8 s ecoulees) ; "HUD messages: []" dans le rapport.
+hol.Test.Sanity
