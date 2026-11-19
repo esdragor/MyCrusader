@@ -475,3 +475,109 @@ void Test_CGKYHardValues(FUnitTest& T)
 	Market.bMarket = true;
 	T.AssertTrue(HOLCommandGridKeys::PressKey(Market, -1, 0).Target == EHOLGridKeyTargetKind::Grid, "a key on a Market goes to the grid");
 }
+
+// L1b (SAURON-1119cc, plan C6-PLAN-1119 section 3): the builders' grid of a seat at tier 0, built by hand as UHOLBuildingSettings::GetBuildableTypesForSlot
+// gives it (HOLBuildingTypes.cpp 72-82): the Nomad's list holds the main centre (the forum) at age II (index 1) in cell 10 (C, the C++ default of
+// hol.Nomad.ForumCell) with bAlwaysOpen; the standard seat's list does not. The Market stands at II A (cell 0), not always open.
+FHOLGridContextView CGKYMakeNomadBuilders(bool bNomad)
+{
+	FHOLGridContextView Grid;
+	Grid.bBuilders = true;
+	Grid.bOwnUnits = true;
+	Grid.ReachedAge = 0;
+	Grid.BuildableTypes.Add(n"House");
+	Grid.BuildableCells.Add(0);
+	Grid.BuildableAges.Add(0);
+	Grid.BuildableAlwaysOpen.Add(false);
+	Grid.BuildableTypes.Add(n"Market");
+	Grid.BuildableCells.Add(0);
+	Grid.BuildableAges.Add(1);
+	Grid.BuildableAlwaysOpen.Add(false);
+	if (bNomad)
+	{
+		Grid.BuildableTypes.Add(n"MainCentre");
+		Grid.BuildableCells.Add(10);
+		Grid.BuildableAges.Add(1);
+		Grid.BuildableAlwaysOpen.Add(true);
+	}
+	return Grid;
+}
+
+// HeroesOfLiberty.CommandGridKeys.NomadAges
+// Covers HOLStartingHeroTests.cpp 648-662 (FHOLStartingNomadFirstForumTest, both seats) and 717-727 (the ForumCell lambda of FHOLStartingNomadReplicatedTest).
+void Test_CGNomadAges(FUnitTest& T)
+{
+	for (int Way = 0; Way < 2; Way++)
+	{
+		bool bNomad = Way == 1;
+		FString Name = "standard";
+		if (bNomad)
+		{
+			Name = "nomad";
+		}
+		FHOLGridContextView Grid = CGKYMakeNomadBuilders(bNomad);
+
+		// cpp 655-656: Z opens page II at tier 0 for the Nomad only (ChosenAge 1 against INDEX_NONE = -1).
+		FHOLGridKeyResultView PageTwo = HOLCommandGridKeys::PressKey(Grid, -1, 1);
+		int ExpectedAge = -1;
+		if (bNomad)
+		{
+			ExpectedAge = 1;
+		}
+		T.AssertEquals(ExpectedAge, PageTwo.ChosenAge, f"{Name}: Z opens the page Palier II at tier 0");
+		T.AssertEquals(bNomad, PageTwo.Target == EHOLGridKeyTargetKind::Age, f"{Name}: Z is an age key only when page II is open");
+
+		// cpp 657-658: the forum key of page II builds the forum (Nomad only).
+		FHOLGridKeyResultView KeyC = HOLCommandGridKeys::PressKey(Grid, 1, 10);
+		bool bKeyCBuildsForum = KeyC.Target == EHOLGridKeyTargetKind::Build && KeyC.TypeName == n"MainCentre";
+		T.AssertEquals(bNomad, bKeyCBuildsForum, f"{Name}: the forum key of page II builds the forum");
+
+		// cpp 659-660: II A (the Market) stays locked at tier 0, and the page stays chosen.
+		FHOLGridKeyResultView KeyA = HOLCommandGridKeys::PressKey(Grid, 1, 0);
+		T.AssertFalse(KeyA.Target == EHOLGridKeyTargetKind::Build, f"{Name}: II A (the Market) still locked at tier 0");
+		T.AssertEquals(1, KeyA.ChosenAge, f"{Name}: II A leaves page II chosen");
+
+		// cpp 661-662: a click on the forum cell of page II gives the same result as the key.
+		FHOLGridKeyResultView Clicked = HOLCommandGridKeys::ClickAge(Grid, -1, 1, 10);
+		bool bClickBuildsForum = Clicked.Target == EHOLGridKeyTargetKind::Build && Clicked.TypeName == n"MainCentre";
+		T.AssertEquals(bNomad, bClickBuildsForum, f"{Name}: a click on the forum cell of page II builds the forum");
+		if (bNomad)
+		{
+			T.AssertEquals(KeyC.ChosenAge, Clicked.ChosenAge, "nomad: the click keeps the same age as the key");
+		}
+
+		// cpp 726: GetAgeBuilding of page II at the forum cell.
+		FHOLGridCommandView Building = HOLCommandGridRules::GetAgeBuilding(Grid, 1, 10);
+		bool bForumShown = Building.Command != EHOLGridCommandKind::None && Building.TypeName == n"MainCentre";
+		T.AssertEquals(bNomad, bForumShown, f"{Name}: the forum cell of page II shows the forum");
+		T.AssertFalse(Building.bGreyed, f"{Name}: the forum cell is never greyed (always open or empty)");
+		FHOLGridCommandView MarketCell = HOLCommandGridRules::GetAgeBuilding(Grid, 1, 0);
+		T.AssertTrue(MarketCell.bGreyed, f"{Name}: the Market cell of page II is greyed at tier 0");
+	}
+
+	// The age closes after a placement, stays with Shift.
+	int AfterPlaced = HOLCommandGridKeys::GetChosenAgeAfter(1, EHOLAgeEventKind::Placed);
+	int AfterKept = HOLCommandGridKeys::GetChosenAgeAfter(1, EHOLAgeEventKind::PlacedKept);
+	T.AssertEquals(-1, AfterPlaced, "placed: page II closes");
+	T.AssertEquals(1, AfterKept, "placed with Shift: page II stays");
+}
+
+// HeroesOfLiberty.CommandGridKeys.PopulationBlocked
+// Covers HOLProductionPopulationEndTests.cpp 156-157: 10 / 10 with a Peasant (1 place) = the queue says population full. The values of the
+// C++ test (Used 10, Cap 10, Places 1) plus the neighbours that bracket the rule.
+void Test_CGPopulationBlocked(FUnitTest& T)
+{
+	int Used = 10;
+	int Cap = 10;
+	int Places = 1;
+	bool bFull = HOLCommandGridKeys::IsPopulationBlocked(Used, Cap, Places);
+	T.AssertTrue(bFull, "10 / 10, one place wanted: population full");
+	bool bRoomForOne = HOLCommandGridKeys::IsPopulationBlocked(Used - 1, Cap, Places);
+	T.AssertFalse(bRoomForOne, "9 / 10, one place wanted: room");
+	bool bNoRoomForTwo = HOLCommandGridKeys::IsPopulationBlocked(Used - 1, Cap, 2);
+	T.AssertTrue(bNoRoomForTwo, "9 / 10, two places wanted: full");
+	bool bZeroPlaces = HOLCommandGridKeys::IsPopulationBlocked(Used, Cap, 0);
+	T.AssertFalse(bZeroPlaces, "10 / 10, no place wanted: not blocked");
+	bool bOverCap = HOLCommandGridKeys::IsPopulationBlocked(Used + 1, Cap, Places);
+	T.AssertTrue(bOverCap, "11 / 10 (cap lost): blocked");
+}
