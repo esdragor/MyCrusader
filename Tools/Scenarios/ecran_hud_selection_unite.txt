@@ -84,7 +84,7 @@ waitunits 9
 wait 0.5
 hol.Camera.FocusNear 6500 0
 frames 3
-hol.Select.ClickUnit -1 enemy
+hol.Select.ClickUnit -1 slot=1
 frames 10
 hol.Select.Report
 hol.HUD.Report
