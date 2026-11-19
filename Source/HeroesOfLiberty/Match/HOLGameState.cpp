@@ -412,7 +412,7 @@ bool AHOLGameState::HandleForumFall(AHOLBuilding& Forum)
 		LogMatchFlowBoardAbsentOnce(TEXT("HandleForumFall"));
 		return false;
 	}
-	if (GateAnswer == 0)
+	if (GateAnswer == 0 || !bSlotValid)
 	{
 		return false;
 	}
@@ -455,7 +455,7 @@ bool AHOLGameState::HandleKingDeath(const int32 Slot)
 		LogMatchFlowBoardAbsentOnce(TEXT("HandleKingDeath"));
 		return false;
 	}
-	if (GateAnswer == 0)
+	if (GateAnswer == 0 || !bSlotValid)
 	{
 		return false;
 	}
@@ -694,7 +694,7 @@ bool AHOLGameState::DefeatSlot(const int32 Slot, const EHOLDefeatReason Reason)
 		LogMatchFlowBoardAbsentOnce(TEXT("DefeatSlot"));
 		return false;
 	}
-	if (GateAnswer == 0)
+	if (GateAnswer == 0 || !bSlotValid)
 	{
 		return false;
 	}

@@ -48,6 +48,12 @@ namespace
 			}
 			Logged.Add(FName(Function), Key);
 		}
+		if (!IsInGameThread())
+		{
+			// FindAny is null off the game thread whatever the boards: not the same cause as "no script grid board".
+			UE_LOG(LogHOLCommandGridBridge, Error, TEXT("CommandGrid: %s refused, not on the game thread"), Function);
+			return;
+		}
 		UE_LOG(LogHOLCommandGridBridge, Error, TEXT("CommandGrid: %s refused, no script grid board"), Function);
 	}
 }
