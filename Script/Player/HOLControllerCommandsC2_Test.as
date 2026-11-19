@@ -17,7 +17,7 @@ TArray<FString> C2Args(const FString& A = "", const FString& B = "", const FStri
 void Test_ControllerCommandsC2EachNameOnceAndRouted(FUnitTest& T)
 {
 	TArray<FString> Names = HOLControllerCommandsC2::Names();
-	T.AssertEquals(11, Names.Num(), "11 hero, duel, diplomacy, signal, chat and specialization commands ported");
+	T.AssertEquals(12, Names.Num(), "12 hero, duel, diplomacy, signal, chat and specialization commands (11 ported, plus hol.Cheat.Specialization)");
 	TArray<FString> Seen;
 	for (int I = 0; I < Names.Num(); I++)
 	{
