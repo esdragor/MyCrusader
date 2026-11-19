@@ -458,6 +458,17 @@ private:
 	UPROPERTY(Replicated)
 	TArray<int32> TierOverrides;
 
+	/** One per slot (MaxSlots), the faction resource gauge's value, public so a client reads the same value; authority writes it (SetFactionResource). */
+	UPROPERTY()
+	TArray<int32> FactionResource;
+
+	/** The slot's faction resource gauge value as this machine has it; 0 for a slot out of the table. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Faction")
+	int32 GetFactionResource(int32 Slot) const;
+	/** Authority only (no effect on a client): stores the slot's gauge value; no effect for a slot out of the table. Bounds stay in the script rule. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Faction")
+	void SetFactionResource(int32 Slot, int32 Value);
+
 	/** Server only (R7): the slots kept for their players gone, in the order of the departures. */
 	TArray<FHOLAbsentSlot> AbsentSlots;
 	/** D717 (T2), server only: the AI's player state for the seat just kept (KeepMissingSlot), with his name, stock and technologies. */

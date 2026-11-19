@@ -280,6 +280,17 @@ void AHOLGameState::SetTierOverride(const int32 Slot, const int32 Tier)
 	}
 }
 
+int32 AHOLGameState::GetFactionResource(const int32 Slot) const
+{
+	// STUB (red commit): always 0.
+	return 0;
+}
+
+void AHOLGameState::SetFactionResource(const int32 Slot, const int32 Value)
+{
+	// STUB (red commit): does nothing.
+}
+
 int32 AHOLGameState::GetTier(const int32 Slot) const
 {
 	// G0 (D710): a tier forced by hol.Cheat.Tier wins over the hero's level, for the grid, the server, the technologies and the AI alike.
