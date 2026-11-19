@@ -1,4 +1,4 @@
-# [À RÉPONDRE] Forge : 8 technologies pour 4 cases, les deux armures n'ont pas de case
+# [RÉPONDU 2026-11-19 ~18:20 : A = D856 du GDD] Forge : 8 technologies pour 4 cases, les deux armures n'ont pas de case
 
 Posée le 2026-11-19 18:2x par la session principale (reprise 16 de la migration). Trouvé par un test neuf, pas par un essai :
 **LOGIQUE SEULEMENT, pas encore vu à l'écran.**
@@ -38,4 +38,4 @@ exprès (rouge connu, `Tools\Tests\known_reds.txt`) : il servira de test rouge �
 Valeur codée en attendant : **C de fait** (rien n'est changé, le défaut reste). La correction A ou B est du script seul (règle
 de la grille + son test), sans C++ ; elle attendra dans la file après ta réponse.
 
-Reponse:
+Reponse: A (donnée dans la conversation le 2026-11-19 ~18:20 : « A pour la Forge ») ; enregistrée : GDD D856 ; correction = ligne `[ ]` en tête de la section « Migration D851 » de `Auto_Journey_File.md`.
