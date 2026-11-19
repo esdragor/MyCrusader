@@ -111,3 +111,43 @@ namespace HOLMatchFlow
 		return bAnnounce && bFormed;
 	}
 }
+
+/** The script side of UHOLMatchFlowSubsystem (the C++ part, AHOLGameState, gives the replicated state and keeps its journal lines; the rule is HOLMatchFlow). */
+class UHOLMatchFlowBoardScript : UHOLMatchFlowSubsystem
+{
+	UFUNCTION(BlueprintOverride)
+	int PauseAnswer(bool bSolo, int PausedBySlot, int PausesLeft, bool bRequesterInMatch)
+	{
+		return int(HOLMatchFlow::CanPause(bSolo, PausedBySlot, PausesLeft, bRequesterInMatch));
+	}
+
+	UFUNCTION(BlueprintOverride)
+	int ResumeAnswer(bool bSolo, int PausedBySlot, float64 PausedAtSeconds, int RequesterSlot, bool bRequesterInMatch, float64 Now)
+	{
+		return int(HOLMatchFlow::CanResume(bSolo, PausedBySlot, PausedAtSeconds, RequesterSlot, bRequesterInMatch, Now));
+	}
+
+	UFUNCTION(BlueprintOverride)
+	int PausesAfterPause(bool bSolo, int PausesLeft)
+	{
+		return HOLMatchFlow::PausesLeftAfterPause(bSolo, PausesLeft);
+	}
+
+	UFUNCTION(BlueprintOverride)
+	int StanceGateAnswer(bool bAuthority, bool bDiplomacyMode, bool bFromOccupied, bool bToOccupied)
+	{
+		return int(HOLMatchFlow::StanceGate(bAuthority, bDiplomacyMode, bFromOccupied, bToOccupied));
+	}
+
+	UFUNCTION(BlueprintOverride)
+	int VisionGateAnswer(bool bAuthority, bool bDiplomacyMode)
+	{
+		return HOLMatchFlow::VisionGateOpen(bAuthority, bDiplomacyMode) ? 1 : 0;
+	}
+
+	UFUNCTION(BlueprintOverride)
+	int EvaluateEndAnswer(bool bAnnounce, bool bFormed)
+	{
+		return HOLMatchFlow::ShouldEvaluateMatchEnd(bAnnounce, bFormed) ? 1 : 0;
+	}
+}
