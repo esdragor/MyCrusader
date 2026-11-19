@@ -26,6 +26,9 @@
 #include "AI/HOLAIBrain.h"
 #include "Buildings/HOLConstructionRules.h"
 #include "Simulation/HOLGatherProcessor.h"
+#include "AI/HOLAIOrders.h"
+#include "AI/HOLAITechnologyLibrary.h"
+#include "AI/HOLAITools.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogHOLTestWorld, Log, All);
 
@@ -676,4 +679,74 @@ int32 UHOLTestWorldLibrary::DepositLoad(UHOLTestWorldHandle* TestWorld, const in
 	}
 #endif
 	return 0;
+}
+
+// ---- Lot D853 d (CELEBORN-1119ba) ----
+
+void UHOLTestWorldLibrary::DestroyBuildingWithRefund(AHOLBuilding* Building)
+{
+#if WITH_DEV_AUTOMATION_TESTS
+	if (Building)
+	{
+		UHOLConstructionSubsystem::DestroyBuilding(*Building);
+	}
+#endif
+}
+
+int32 UHOLTestWorldLibrary::GetSlotLevel(UHOLTestWorldHandle* TestWorld, const int32 Slot)
+{
+#if WITH_DEV_AUTOMATION_TESTS
+	if (UWorld* World = HOLTestWorldLibNs::HOLTestWorldLibWorldOf(TestWorld))
+	{
+		return UHOLAIToolsLibrary::GetSlotLevel(World, Slot);
+	}
+#endif
+	return -1;
+}
+
+bool UHOLTestWorldLibrary::IssueAIProduceOrder(UHOLTestWorldHandle* TestWorld, const int32 Slot, const FVector BuildingLocation, const FName TypeName)
+{
+#if WITH_DEV_AUTOMATION_TESTS
+	if (UWorld* World = HOLTestWorldLibNs::HOLTestWorldLibWorldOf(TestWorld))
+	{
+		return UHOLAIOrderLibrary::IssueAIProduceOrder(World, Slot, BuildingLocation, TypeName);
+	}
+#endif
+	return false;
+}
+
+TArray<FName> UHOLTestWorldLibrary::GetAITechnologiesDone(UHOLTestWorldHandle* TestWorld, const int32 Slot)
+{
+	TArray<FName> Done;
+#if WITH_DEV_AUTOMATION_TESTS
+	if (UWorld* World = HOLTestWorldLibNs::HOLTestWorldLibWorldOf(TestWorld))
+	{
+		UHOLAITechnologyLibrary::ReadAITechnologiesDone(World, Slot, Done);
+	}
+#endif
+	return Done;
+}
+
+int32 UHOLTestWorldLibrary::CountPlayerStatesOfSlot(UHOLTestWorldHandle* TestWorld, const int32 Slot)
+{
+	int32 Seats = 0;
+#if WITH_DEV_AUTOMATION_TESTS
+	if (UWorld* World = HOLTestWorldLibNs::HOLTestWorldLibWorldOf(TestWorld))
+	{
+		for (TActorIterator<AHOLGameState> It(World); It; ++It)
+		{
+			for (const APlayerState* Each : It->PlayerArray)
+			{
+				const AHOLPlayerState* HOLEach = Cast<AHOLPlayerState>(Each);
+				Seats += HOLEach && HOLEach->GetPlayerIndex() == Slot ? 1 : 0;
+			}
+		}
+	}
+#endif
+	return Seats;
+}
+
+int32 UHOLTestWorldLibrary::GetPlayerStateSlot(const AHOLPlayerState* Player)
+{
+	return Player ? Player->GetPlayerIndex() : -1;
 }

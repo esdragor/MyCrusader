@@ -231,4 +231,31 @@ public:
 
 	/** UHOLGatherProcessor::DepositLoad(World, Owner, Load{Resource as EHOLResource, Amount}, Out): the amount deposited (the load is emptied: Amount minus it stays). */
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
-	static int32 DepositLoad(UHOLTestWorldHandle* TestWorld, int32 Owner, int32 Resource, int32 Amount);};
+	static int32 DepositLoad(UHOLTestWorldHandle* TestWorld, int32 Owner, int32 Resource, int32 Amount);
+
+	// ---- Lot D853 d (CELEBORN-1119ba): the readings the Disconnect tests still kept in C++ ----
+
+	/** UHOLConstructionSubsystem::DestroyBuilding(*Building): the combat's path (a foundation gives its share of the cost back, a queue its costs). Not the plain Destroy of DestroyBuilding. Nothing for null. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
+	static void DestroyBuildingWithRefund(AHOLBuilding* Building);
+
+	/** UHOLAIToolsLibrary::GetSlotLevel(World, Slot): EHOLAIDifficulty as an int of an AI slot (a held seat reads Normal = 1), -1 for a slot that is not an AI. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
+	static int32 GetSlotLevel(UHOLTestWorldHandle* TestWorld, int32 Slot);
+
+	/** UHOLAIOrderLibrary::IssueAIProduceOrder(World, Slot, BuildingLocation, TypeName) with the test world as the world context (the script's own context does not reach it). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
+	static bool IssueAIProduceOrder(UHOLTestWorldHandle* TestWorld, int32 Slot, FVector BuildingLocation, FName TypeName);
+
+	/** UHOLAITechnologyLibrary::ReadAITechnologiesDone(World, Slot, Out): the technologies the slot has researched, in order (empty if none). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
+	static TArray<FName> GetAITechnologiesDone(UHOLTestWorldHandle* TestWorld, int32 Slot);
+
+	/** How many AHOLPlayerState of the game state's PlayerArray have this PlayerIndex (what the C++ tests count: one player state for the seat). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
+	static int32 CountPlayerStatesOfSlot(UHOLTestWorldHandle* TestWorld, int32 Slot);
+
+	/** AHOLPlayerState::GetPlayerIndex() (-1 for null). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
+	static int32 GetPlayerStateSlot(const AHOLPlayerState* Player);
+};
