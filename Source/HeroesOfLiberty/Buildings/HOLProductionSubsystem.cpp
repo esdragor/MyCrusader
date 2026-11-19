@@ -267,6 +267,21 @@ void UHOLProductionSubsystem::ApplyTribute(const FHOLProductionCommand& Order, c
 	}
 }
 
+namespace
+{
+	/** The script board answered -1 (absent): the caller refuses the order; the error is logged once per action (once per process). */
+	void LogBoardAbsentOnce(const TCHAR* Action)
+	{
+		static TSet<FString> Logged;
+		bool bAlready = false;
+		Logged.Add(FString(Action), &bAlready);
+		if (!bAlready)
+		{
+			UE_LOG(LogHOLCommands, Error, TEXT("Production: %s refused, script board absent"), Action);
+		}
+	}
+}
+
 void UHOLProductionSubsystem::ApplyOrders()
 {
 	using namespace UE::HeroesOfLiberty::Production;
@@ -282,8 +297,8 @@ void UHOLProductionSubsystem::ApplyOrders()
 	{
 		AHOLBuilding* Building = Order.Building.Get();
 		AHOLPlayerState* PlayerState = FindPlayerState(Order.PlayerIndex);
-		// R2a: the script board decides the ORDER of the gates (HOLProductionBoard.as); the facts are read here. -1 (no board) keeps the C++ order,
-		// the twin until the network proof. Only the owner gives its buildings orders: a client could send anything.
+		// R2a: the script board decides the ORDER of the gates (HOLProductionBoard.as); the facts are read here. -1 (no board) refuses the order (error logged once),
+		// the rule is the script's alone. Only the owner gives its buildings orders: a client could send anything.
 		const bool bRallyOrder = Order.Kind == FHOLProductionCommand::EKind::Rally;
 		const bool bOwner = Building && Building->GetOwnerPlayer() == Order.PlayerIndex;
 		const FHOLBuildingTypeRow* Type = bOwner ? Building->GetType() : nullptr;
@@ -293,10 +308,11 @@ void UHOLProductionSubsystem::ApplyOrders()
 		const bool bFinished = bOwner && Building->IsFinished();
 		// A main forum in ruin or rebuilding produces nothing (D351); its rally point stays its owner's to move.
 		const bool bForumDown = bOwner && Building->IsForumDown();
-		int32 Gate = UHOLProductionBoard::AskOrderGate(GetWorld(), PlayerState != nullptr, bOwner, Type != nullptr, bFinished, bEarlyRally, bForumDown, bRallyOrder);
+		const int32 Gate = UHOLProductionBoard::AskOrderGate(GetWorld(), PlayerState != nullptr, bOwner, Type != nullptr, bFinished, bEarlyRally, bForumDown, bRallyOrder);
 		if (Gate < 0)
 		{
-			Gate = !PlayerState ? 1 : !bOwner ? 2 : !Type ? 3 : (!bFinished && !bEarlyRally) ? 4 : (bForumDown && !bRallyOrder) ? 5 : 0;
+			LogBoardAbsentOnce(TEXT("ApplyOrders"));
+			continue;
 		}
 		// IA0.1 E2/E4: no stock to pay with (an AI slot before IA0.1), not "not its building".
 		if (Gate == 1)
@@ -326,12 +342,12 @@ void UHOLProductionSubsystem::ApplyOrders()
 
 		if (Order.Kind == FHOLProductionCommand::EKind::Rally)
 		{
-			// The outcome is the script's (lot R3: 0 no step, 1 clear, 2 add a step, 3 set); -1 (no board): the C++ twin below.
-			int32 RallyVerdict = UHOLProductionBoard::AskRally(GetWorld(), Building->IsOnBody(Order.Location), Order.bQueue, Building->HasRallyPoint());
+			// The outcome is the script's (lot R3: 0 no step, 1 clear, 2 add a step, 3 set); -1 (no board): the order is refused.
+			const int32 RallyVerdict = UHOLProductionBoard::AskRally(GetWorld(), Building->IsOnBody(Order.Location), Order.bQueue, Building->HasRallyPoint());
 			if (RallyVerdict < 0)
 			{
-				RallyVerdict = (Order.bQueue && Building->HasRallyPoint() && Building->IsOnBody(Order.Location)) ? 0
-					: Building->IsOnBody(Order.Location) ? 1 : (Order.bQueue && Building->HasRallyPoint()) ? 2 : 3;
+				LogBoardAbsentOnce(TEXT("ApplyOrders rally"));
+				continue;
 			}
 			// On the building itself: no rally point any more (the units are born at its foot, D283); with Shift (a step added,
 			// EtapeDefini N.1), nothing.
@@ -352,9 +368,13 @@ void UHOLProductionSubsystem::ApplyOrders()
 				// on its middle (as on a source); a client could name any building (D288).
 				AHOLBuilding* Site = Order.RallySite.Get();
 				// Its main forum down is rebuilt as a site (V2.3a).
-				// Kept or dropped: the script's (AskRallySite 1 kept, 0 dropped); -1 (no board): the C++ twin.
+				// Kept or dropped: the script's (AskRallySite 1 kept, 0 dropped); -1 (no board): dropped, the rally goes on the ground.
 				const int32 SiteKept = Site ? UHOLProductionBoard::AskRallySite(GetWorld(), Site != Building, Site->GetOwnerPlayer() == Order.PlayerIndex, Site->NeedsBuilders(), Site->IsCamp()) : -1;
-				if (Site && (SiteKept >= 0 ? SiteKept == 0 : (Site == Building || Site->GetOwnerPlayer() != Order.PlayerIndex || (!Site->NeedsBuilders() && !Site->IsCamp()))))
+				if (Site && SiteKept < 0)
+				{
+					LogBoardAbsentOnce(TEXT("ApplyOrders rally site"));
+				}
+				if (Site && SiteKept != 1)
 				{
 					Site = nullptr;
 				}
@@ -404,8 +424,8 @@ void UHOLProductionSubsystem::ApplyOrders()
 		if (Order.Kind == FHOLProductionCommand::EKind::Queue)
 		{
 				// R2b: the script board decides the verdict of a queue order (HOLProductionBoard.as, QueueVerdict); the facts are read here, the checks stay the
-				// source of their rules (HOLTechnology::Check, HOLSiege::Check, CheckUnit). -1 (no board) keeps the C++ chain below, the twin until the network
-				// proof. A research and a unit do not refuse in the same order: a research says "cannot pay" through its technology check (5) before the queue
+				// source of their rules (HOLTechnology::Check, HOLSiege::Check, CheckUnit). -1 (no board) refuses the order (error logged once).
+				// A research and a unit do not refuse in the same order: a research says "cannot pay" through its technology check (5) before the queue
 				// is asked (2, 3); a unit meets the queue after its siege, age and faction gates. A technology (T3, T-Q6 = A) goes through the same queue as
 				// the units, after the rules of GDD 11.
 				const bool bProduces = Type->Produces.Contains(Order.TypeName);
@@ -452,16 +472,12 @@ void UHOLProductionSubsystem::ApplyOrders()
 					// L0 (LQ-7): a unit type the owner's faction does not field is refused whatever a client asked (its grid hides it).
 					bUnitFactionOpen = HOLFactionRules::IsUnitOpenTo(GetWorld(), Order.TypeName, Order.PlayerIndex);
 				}
-				int32 Verdict = UHOLProductionBoard::AskQueue(GetWorld(), bProduces, Technology != nullptr, bTechFactionOpen, TechBlock != HOLTechnology::EBlock::None,
+				const int32 Verdict = UHOLProductionBoard::AskQueue(GetWorld(), bProduces, Technology != nullptr, bTechFactionOpen, TechBlock != HOLTechnology::EBlock::None,
 					SiegeBlock != HOLSiege::EBlock::None, bTierTooLow, bUnitFactionOpen, Queue.Num(), Type->MaxQueue, Stock, Cost.Resources);
 				if (Verdict < 0)
 				{
-					Verdict = Technology ? (!bTechFactionOpen ? 4 : TechBlock != HOLTechnology::EBlock::None ? 5 : 0)
-						: !bProduces ? 1 : SiegeBlock != HOLSiege::EBlock::None ? 6 : bTierTooLow ? 7 : !bUnitFactionOpen ? 8 : 0;
-					if (Verdict == 0)
-					{
-						Verdict = Queue.Num() >= Type->MaxQueue ? 2 : !Stock.Covers(Cost.Resources) ? 3 : 0;
-					}
+					LogBoardAbsentOnce(TEXT("ApplyOrders queue"));
+					continue;
 				}
 				if (Verdict == 4)
 				{
@@ -523,22 +539,20 @@ void UHOLProductionSubsystem::ApplyOrders()
 		else
 		{
 			const FName TypeName = Queue.IsValidIndex(Order.Index) ? Queue[Order.Index].TypeName : NAME_None;
-			// R2a: the script board decides the cancel (HOLProductionBoard.as); -1 (no board) keeps HOLProduction::Cancel, the twin until the network proof.
+			// R2a: the script board decides the cancel (HOLProductionBoard.as); no board: the cancel is ignored (error logged once).
 			// An index outside the queue is ignored silently, as before.
 			const int32 CancelVerdict = UHOLProductionBoard::AskCancel(GetWorld(), Queue.IsValidIndex(Order.Index));
-			if (CancelVerdict == 1)
+			if (CancelVerdict < 0)
+			{
+				LogBoardAbsentOnce(TEXT("ApplyOrders cancel"));
+				continue;
+			}
+			if (CancelVerdict != 0 || !Queue.IsValidIndex(Order.Index))
 			{
 				continue;
 			}
-			if (CancelVerdict == 0 && Queue.IsValidIndex(Order.Index))
-			{
-				Stock = UHOLProductionBoard::AskStockAfterCancel(GetWorld(), Stock, GetCost(TypeName, Order.PlayerIndex).Resources);
-				Queue.RemoveAt(Order.Index);
-			}
-			else if (!HOLProduction::Cancel(Queue, Order.Index, GetCost(TypeName, Order.PlayerIndex), Stock))
-			{
-				continue;
-			}
+			Stock = UHOLProductionBoard::AskStockAfterCancel(GetWorld(), Stock, GetCost(TypeName, Order.PlayerIndex).Resources);
+			Queue.RemoveAt(Order.Index);
 			UE_LOG(LogHOLCommands, Display, TEXT("Production: slot %d cancelled %s (%d in the queue, %s)"), Order.PlayerIndex,
 				*TypeName.ToString(), Queue.Num(), *Stock.ToString());
 		}
