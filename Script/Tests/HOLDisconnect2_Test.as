@@ -87,6 +87,20 @@ namespace DisconnectTest2
 		}
 		return Player;
 	}
+
+	// Is this very player state in the game state's PlayerArray (what the C++ test reads: "Each == Bob")? Not a count by seat:
+	// when a seat is kept, the game spawns the AI's player state for it (AHOLGameState::SpawnHeldBot, D717 T2), which has the same PlayerIndex.
+	bool IsListed(AHOLGameState State, AHOLPlayerState Player)
+	{
+		for (int Index = 0; Index < State.PlayerArray.Num(); Index++)
+		{
+			// The array's elements are TObjectPtr<APlayerState>: Get() gives the handle.
+			APlayerState Each = State.PlayerArray[Index].Get();
+			if (Each == Player)
+				return true;
+		}
+		return false;
+	}
 }
 
 // D718 (T1): the end of the window by the camps of the launch. (Whole: the two Diplomacy assertions go through RulesGetWindowEndInMode, the JSON setters not carrying the mode.)
@@ -207,9 +221,11 @@ void Test_DisconnectGains(FUnitTest& T)
 		T.AssertTrue(PeasantCost.Food > 0, "a Peasant costs something");
 
 		T.AssertEquals(1, HOLTestWorld::CountPlayerStatesOfSlot(TestWorld, 1), "Bob has his player state in the game state before he leaves");
+		T.AssertTrue(DisconnectTest2::IsListed(State, Bob), "Bob is listed in the game state before he leaves");
 		T.AssertTrue(HOLGameStateTest::KeepAbsentSlot(State, Bob, 10.0, 0.0), "Bob leaves: slot kept");
 		Bob.DestroyActor();
-		T.AssertEquals(0, HOLTestWorld::CountPlayerStatesOfSlot(TestWorld, 1), "his player state gone, as after a Logout");
+		T.AssertFalse(DisconnectTest2::IsListed(State, Bob), "his player state gone, as after a Logout");
+		T.AssertEquals(1, HOLTestWorld::CountPlayerStatesOfSlot(TestWorld, 1), "one player state left for his seat: the AI's, which holds it (D717 T2)");
 
 		// A Peasant of his unloads 10 wood at his centre (the gathering's deposit).
 		int Remaining = -1;
