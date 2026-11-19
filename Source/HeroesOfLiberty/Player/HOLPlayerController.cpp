@@ -3505,6 +3505,37 @@ void AHOLPlayerController::DoCheatTier(const int32 Tier, const int32 Slot)
 #endif
 }
 
+void AHOLPlayerController::DoCheatSpecialization(const int32 Tier, const int32 Option)
+{
+#if !UE_BUILD_SHIPPING
+	if (IsCheatRefused(TEXT("specialization")))
+	{
+		return;
+	}
+	// The player's own seat only; same start as DoStartSpecialization (the board's rules: tier reached, order, Forum), then the countdown is run to its end.
+	UWorld* World = GetWorld();
+	AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
+	const AHOLGameState* GameState = World ? World->GetGameState<AHOLGameState>() : nullptr;
+	UHOLSpecializationSubsystem* Board = UHOLSpecializationSubsystem::Find(World);
+	if (!HOLPlayerState || !GameState || !Board || HOLPlayerState->GetPlayerIndex() < 0)
+	{
+		return;
+	}
+	const int32 Slot = HOLPlayerState->GetPlayerIndex();
+	const int32 Result = Board->StartNow(Slot, Tier, Option, GameState->GetTier(Slot), UHOLSpecializationSubsystem::IsForumComplete(World, Slot));
+	if (Result != 0) // HOLSpecialization::Ok is 0: any other answer changed nothing, the cheat does not force it.
+	{
+		UE_LOG(LogHOLMatch, Display, TEXT("Cheat: slot %d specialization tier %d option %d refused by the board, answer %d"), Slot, Tier, Option, Result);
+		Board->RefreshView(*HOLPlayerState);
+		return;
+	}
+	constexpr int32 EndOfAnyDelayMs = 3600000; // an hour of match time: past every tier's delay
+	const int32 Applied = Board->AdvanceNow(Slot, EndOfAnyDelayMs, true);
+	UE_LOG(LogHOLMatch, Display, TEXT("Cheat: slot %d specialization tier %d option %d started and ended at once, tier applied %d"), Slot, Tier, Option, Applied);
+	Board->RefreshView(*HOLPlayerState);
+#endif
+}
+
 void AHOLPlayerController::DoCheatPopulation(const int32 Places)
 {
 #if !UE_BUILD_SHIPPING

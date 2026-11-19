@@ -787,6 +787,9 @@ private:
 
 	void DoCheatTier(int32 Tier, int32 Slot);
 
+	/** Cheat (morceau 8, NOT COMPILED): this player's seat starts Option of Tier at once (StartNow, the tier and Forum rules apply) then its unlock ends at once (AdvanceNow). A refused start is reported, nothing forced. */
+	void DoCheatSpecialization(int32 Tier, int32 Option);
+
 	void DoCheatUnitSpeed(float Scale);
 
 	void DoCheatGatherSpeed(float Scale);
