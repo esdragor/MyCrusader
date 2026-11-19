@@ -983,9 +983,8 @@ bool FHOLVictoryForumBlockTest::RunTest(const FString& Parameters)
 	return true;
 }
 
-// V3.3 (V3-Q5), pure: the hold shown, on the selection block (« Tenue — 35 s », « Contestée — 35 s »), in the players'
-// table (« Ruine · tenue 35 s ») and on the HUD's forum line; the ring (fill, holder's colour, grey contested, faded
-// receding; nothing with no count and no one) and the zone's outline it follows.
+// V3.3 (V3-Q5), pure, what script cannot read: the ring's colours, the players' table rows and the zone's outline. The hold's lines,
+// the block's text and the ring are tested in script: HOLForumRules_Test.as Test_ForumHoldDisplay.
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLVictoryForumHoldDisplayTest, "HeroesOfLiberty.Victory.Forum.Hold.Display", UE::HeroesOfLiberty::Tests::Victory::Flags)
 bool FHOLVictoryForumHoldDisplayTest::RunTest(const FString& Parameters)
 {
@@ -996,70 +995,15 @@ bool FHOLVictoryForumHoldDisplayTest::RunTest(const FString& Parameters)
 	Tuning.StepSeconds = 0.1f;
 	Tuning.HoldSteps = 600;
 
-	// Standing: nothing of the hold.
+	// The forum state the players' table below reads (rest of the display: script, HOLForumRules_Test.as Test_ForumHoldDisplay).
 	FHOLForumState State;
-	TestFalse(TEXT("standing: no hold shown"), HOLForumRules::ShowsHold(State));
-	TestEqual(TEXT("standing: no ring"), HOLForumRules::GetRing(State, Tuning).Shown, FString(TEXT("none")));
-	TestFalse(TEXT("standing: ring hidden"), HOLForumRules::GetRing(State, Tuning).bShown);
-
-	// In ruin, no one there, count 0: nothing either.
 	HOLForumRules::Fall(State, Tuning);
-	State.RuinStepsLeft = 250;
-	TestFalse(TEXT("ruin, no one: no hold shown"), HOLForumRules::ShowsHold(State));
-	TestEqual(TEXT("ruin, no one: no ring"), HOLForumRules::GetRing(State, Tuning).Shown, FString(TEXT("none")));
-	TestEqual(TEXT("ruin, no one: block unchanged"), HOLForumRules::GetSelectionBlock(&State, Tuning, false, 0).Shown,
-		FString(TEXT(", in ruin 25 s, lives 1")));
-	TestEqual(TEXT("ruin, no one: nothing on the HUD line"), HOLForumRules::DescribeHold(State, Tuning), FString());
-
-	// Held by slot 1 for 35 s: the block's line, the HUD's, the ring at 0.58 in the holder's colour.
-	State.Hold = EHOLForumHold::Holding;
-	State.HoldSteps = 350;
-	State.HolderSlot = 1;
-	TestTrue(TEXT("holding: shown"), HOLForumRules::ShowsHold(State));
-	TestEqual(TEXT("holding: HUD line"), HOLForumRules::DescribeHold(State, Tuning), FString(TEXT("hold 35 s holding by slot 1")));
-	FHOLForumBlock Block = HOLForumRules::GetSelectionBlock(&State, Tuning, false, 0);
-	TestEqual(TEXT("holding: block described"), Block.Shown, FString(TEXT(", in ruin 25 s, hold 35 s holding by slot 1, lives 1")));
-	TestEqual(TEXT("holding: block lines"), Block.Text.BuildSourceString(), FString(TEXT("En ruine — 25 s\nTenue — 35 s")));
-	FHOLForumRing Ring = HOLForumRules::GetRing(State, Tuning);
-	TestTrue(TEXT("holding: ring shown"), Ring.bShown);
-	TestEqual(TEXT("holding: ring"), Ring.Shown, FString(TEXT("fill 0.58 holder slot 1")));
-	TestTrue(TEXT("holding: tint"), Ring.Tint == EHOLForumRingTint::Holder);
-	TestEqual(TEXT("holding: holder"), Ring.HolderSlot, 1);
-
-	// Contested: grey and frozen, « Contestée ».
-	State.Hold = EHOLForumHold::Contested;
-	TestEqual(TEXT("contested: HUD line"), HOLForumRules::DescribeHold(State, Tuning), FString(TEXT("hold 35 s contested by slot 1")));
-	Block = HOLForumRules::GetSelectionBlock(&State, Tuning, true, 2);
-	TestEqual(TEXT("contested: block lines"), Block.Text.BuildSourceString(), FString(TEXT("En ruine — 25 s\nContestée — 35 s")));
-	Ring = HOLForumRules::GetRing(State, Tuning);
-	TestEqual(TEXT("contested: ring"), Ring.Shown, FString(TEXT("fill 0.58 grey")));
-	TestTrue(TEXT("contested: tint"), Ring.Tint == EHOLForumRingTint::Grey);
-
-	// Receding at 20 s, rising again at 40 %: « Tenue » going down, the ring faded in the holder's colour.
 	State.Phase = EHOLForumPhase::Rebuilding;
 	State.RuinStepsLeft = 0;
 	State.RebuildWork = HOLForumRules::GetRebuildTotalWork(Tuning) * 40 / 100;
-	State.Hold = EHOLForumHold::Receding;
-	State.HoldSteps = 200;
-	Block = HOLForumRules::GetSelectionBlock(&State, Tuning, true, 3);
-	TestEqual(TEXT("receding: block described"), Block.Shown, FString(TEXT(", rebuilding 40%, builders 3, hold 20 s receding by slot 1, lives 1")));
-	TestEqual(TEXT("receding: block lines"), Block.Text.BuildSourceString(),
-		FString(TEXT("Reconstruction — 40 %\nBâtisseurs : 3\nTenue — 20 s")));
-	Ring = HOLForumRules::GetRing(State, Tuning);
-	TestEqual(TEXT("receding: ring"), Ring.Shown, FString(TEXT("fill 0.33 faded slot 1")));
-	TestTrue(TEXT("receding: tint"), Ring.Tint == EHOLForumRingTint::Faded);
-
-	// Contested at 0 (defenders came first): the ring shown, empty and grey; held with no holder known: grey too.
-	State.Hold = EHOLForumHold::Contested;
-	State.HoldSteps = 0;
-	TestEqual(TEXT("contested at 0: ring"), HOLForumRules::GetRing(State, Tuning).Shown, FString(TEXT("fill 0.00 grey")));
-	TestEqual(TEXT("contested at 0: block lines"), HOLForumRules::GetSelectionBlock(&State, Tuning, false, 0).Text.BuildSourceString(),
-		FString(TEXT("Reconstruction — 40 %\nContestée — 0 s")));
 	State.Hold = EHOLForumHold::Holding;
 	State.HoldSteps = 300;
 	State.HolderSlot = INDEX_NONE;
-	TestEqual(TEXT("no holder: ring grey"), HOLForumRules::GetRing(State, Tuning).Shown, FString(TEXT("fill 0.50 grey")));
-	TestEqual(TEXT("no holder: HUD line"), HOLForumRules::DescribeHold(State, Tuning), FString(TEXT("hold 30 s holding")));
 
 	// The colours (V3.4b): the holder's own, a neutral dark grey contested (it stands out on the light ground), halfway to
 	// a dark grey receding (darkened, not paled, and still apart from the contested grey).
