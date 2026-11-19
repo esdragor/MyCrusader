@@ -366,10 +366,6 @@ void Test_CGSWTableBuildings(FUnitTest& T)
 		{
 			CGSWNote(Bad, First, "Test_CGSWTableBuildings", f"{TypeName} trains {Produces.Num()} units: they do not fit the two top rows (8 cells)");
 		}
-		if (Researches.Num() > 4)
-		{
-			CGSWNote(Bad, First, "Test_CGSWTableBuildings", f"{TypeName} researches {Researches.Num()} technologies: they do not fit the bottom row (W X C V)");
-		}
 		for (int Pass = 0; Pass < 8; Pass++)
 		{
 			FHOLGridContextView Building;
@@ -443,10 +439,6 @@ void Test_CGSWTableBuildings(FUnitTest& T)
 			{
 				CGSWNote(Bad, First, "Test_CGSWTableBuildings", f"{TypeName} pass {Pass}: {ProduceCount} unit cells for {Produces.Num()} units of the table");
 			}
-			if (bAnswers && ResearchCount != Researches.Num())
-			{
-				CGSWNote(Bad, First, "Test_CGSWTableBuildings", f"{TypeName} pass {Pass}: {ResearchCount} technology cells for {Researches.Num()} technologies of the table");
-			}
 			if (bSite && (ProduceCount != 0 || ResearchCount != 0))
 			{
 				CGSWNote(Bad, First, "Test_CGSWTableBuildings", f"{TypeName} pass {Pass}: a site or a market produced or researched");
@@ -457,6 +449,63 @@ void Test_CGSWTableBuildings(FUnitTest& T)
 	T.AssertTrue(Bad == 0, f"{Bad} cells of the table's buildings break an invariant; first: {First}");
 }
 
+// Known red (the future test of the Forge fix): every building must give each of its technologies a cell of the bottom row (W X C V, 4 cells).
+// It is red today: the Forge researches 8 technologies (4 lines x levels I and II in Tools\Data\Technologies.csv) for 4 research cells,
+// so the two armors have no cell (HOLCommandGridRules.as shows Researches[Cell - 8] on cells 8 to 11 only). Not a test fault:
+// known red, see Tools\Tests\known_reds.txt and Retours\Q-forge-technologies.md. Same sweep of the table's buildings as Test_CGSWTableBuildings.
+void Test_CGSWResearchRowFits(FUnitTest& T)
+{
+	FHOLGridContextView Builders;
+	Builders.bBuilders = true;
+	Builders.bOwnUnits = true;
+	Builders = HOLCommandGridRead::WithTableBuildables(Builders);
+	T.AssertTrue(Builders.BuildableTypes.Num() >= 8, "the table has several buildings (at least 8 are buildable)");
+
+	int Bad = 0;
+	FString First;
+	int Swept = 0;
+	for (int Type = 0; Type < Builders.BuildableTypes.Num(); Type++)
+	{
+		FName TypeName = Builders.BuildableTypes[Type];
+		TArray<FName> Produces = HOLCommandGridRead::GetProducesOf(TypeName);
+		TArray<FName> Researches = HOLCommandGridRead::GetBuildingResearches(TypeName);
+		if (Researches.Num() > 4)
+		{
+			CGSWNote(Bad, First, "Test_CGSWResearchRowFits", f"{TypeName} researches {Researches.Num()} technologies: they do not fit the bottom row (W X C V)");
+		}
+		for (int Pass = 0; Pass < 8; Pass++)
+		{
+			FHOLGridContextView Building;
+			Building.bOwnBuilding = true;
+			Building.bBuildingFinished = (Pass & 1) == 0;
+			Building.bPrimaryForum = (Pass & 2) != 0;
+			Building.bMarket = TypeName == n"Market" || (Pass & 4) != 0;
+			Building.Produces = Produces;
+			Building.Researches = Researches;
+			Building.SpecializationTier = (Pass & 2) != 0 ? 1 : 0;
+			Building.SpecializationPendingOption = Pass % 3 - 1;
+			Building.SpecializationRemainingMs = 4000;
+			Swept++;
+			int ResearchCount = 0;
+			for (int Cell = 0; Cell < 12; Cell++)
+			{
+				FHOLGridCommandView Cmd = HOLCommandGridRules::GetCommand(Building, Cell);
+				if (Cmd.Command == EHOLGridCommandKind::Research)
+				{
+					ResearchCount++;
+				}
+			}
+			bool bSite = !Building.bBuildingFinished || Building.bMarket;
+			bool bAnswers = !bSite && Building.SpecializationTier == 0;
+			if (bAnswers && ResearchCount != Researches.Num())
+			{
+				CGSWNote(Bad, First, "Test_CGSWResearchRowFits", f"{TypeName} pass {Pass}: {ResearchCount} technology cells for {Researches.Num()} technologies of the table");
+			}
+		}
+	}
+	T.AssertTrue(Swept >= 64, "every building of the table was swept in 8 passes");
+	T.AssertTrue(Bad == 0, f"{Bad} buildings do not give every technology a cell; first: {First}");
+}
 // The builders' panels with the whole table: every building sits on one age page and one cell, and no key answers two buildings.
 void Test_CGSWTableCellsUnique(FUnitTest& T)
 {

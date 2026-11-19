@@ -4,3 +4,4 @@
 # (vide depuis 2026-11-07 : camera 2p et camera 8p sont vertes sur main, quick_check -Parts camera x2 dans Faramir a bc3cf59)
 # Partie "tests" (SAURON-1116n) : une ligne peut nommer un test (chemin complet, ex. HeroesOfLiberty.Match...) ; la partie tests est
 # un rouge connu quand TOUS ses tests KO sont listes ici, une REGRESSION des qu'un seul ne l'est pas (Find-KnownTestRed).
+Angelscript.UnitTests.Tests.HOLCommandGridSweeps_Test.Test_CGSWResearchRowFits | 2026-11-19 | Forge : 8 technologies (4 lignes x niveaux I et II) pour 4 cases de recherche, les armures n'ont pas de case ; Retours\Q-forge-technologies.md
