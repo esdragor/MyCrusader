@@ -16,6 +16,7 @@
 #include "MassSimulationSubsystem.h"
 #include "ProfilingDebugging/CpuProfilerTrace.h"
 #include "HeroesOfLibertyLog.h"
+#include "Match/HOLBoardLog.h"
 #include "Match/HOLGameState.h"
 #include "Avoidance/MassAvoidanceFragments.h"
 #include "Simulation/HOLCombatProcessor.h"
@@ -208,6 +209,9 @@ bool UHOLSimulationSubsystem::DoesSupportWorldType(const EWorldType::Type WorldT
 void UHOLSimulationSubsystem::OnWorldBeginPlay(UWorld& InWorld)
 {
 	Super::OnWorldBeginPlay(InWorld);
+
+	// One journal line per script board of the world (server, client and solo alike), before the client early return.
+	HOLBoardLog::LogWorldBoards(InWorld);
 
 	// The simulation is authoritative: clients only interpolate replicated states (D29).
 	if (InWorld.GetNetMode() == NM_Client)

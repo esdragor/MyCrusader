@@ -6805,6 +6805,13 @@ if ($Parts -contains "net") {
     }
     $ServerErrors = @(if (Test-Path $NetServerLog) { Select-String -Path $NetServerLog -Pattern "LogHOLMatch: (Error|Warning)|LogHOLNet: (Error|Warning)" })
     $Checks["server: no match or network error ($($ServerErrors.Count))"] = $ServerErrors.Count -eq 0
+    # The script boards (bridges) of the net server (HOLBoardLog, one line per bridge and world): each says "script <class>", none says "ABSENT (C++ fallback)".
+    $BoardBridges = @("MatchFlow", "Market", "Construction", "PlayerOrders", "Production", "CommandGrid", "UnitTier", "Camp", "Garrison", "Relay", "Site", "Chat", "Signal", "Specialization")
+    $BoardLinesServer = @(if (Test-Path $NetServerLog) { Get-Content $NetServerLog })
+    $BoardMissing = @($BoardBridges | Where-Object { -not ($BoardLinesServer -match "LogHOLMatch: Display: Board: $_ script \S+") })
+    $Checks["server: every script board is there ($(if ($BoardMissing.Count) { 'no line for ' + ($BoardMissing -join ', ') } else { "$($BoardBridges.Count) bridges" }))"] = $BoardMissing.Count -eq 0
+    $BoardAbsent = @($BoardLinesServer -match "Board: \S+ ABSENT")
+    $Checks["server: no script board ABSENT ($($BoardAbsent.Count))"] = $BoardAbsent.Count -eq 0
     # The scripts on the dedicated server (J8a5-Q3c, D484): every .as compiles there too (the editor's -server loads
     # no ClientOnly module: a script naming a class of HeroesOfLibertyUI failed there, "'UHOLGameScreen' is not
     # declared", and the server quit at once on -as-exit-on-error; the interface module is Runtime since).

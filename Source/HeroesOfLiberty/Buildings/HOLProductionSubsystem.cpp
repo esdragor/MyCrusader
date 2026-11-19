@@ -326,14 +326,21 @@ void UHOLProductionSubsystem::ApplyOrders()
 
 		if (Order.Kind == FHOLProductionCommand::EKind::Rally)
 		{
+			// The outcome is the script's (lot R3: 0 no step, 1 clear, 2 add a step, 3 set); -1 (no board): the C++ twin below.
+			int32 RallyVerdict = UHOLProductionBoard::AskRally(GetWorld(), Building->IsOnBody(Order.Location), Order.bQueue, Building->HasRallyPoint());
+			if (RallyVerdict < 0)
+			{
+				RallyVerdict = (Order.bQueue && Building->HasRallyPoint() && Building->IsOnBody(Order.Location)) ? 0
+					: Building->IsOnBody(Order.Location) ? 1 : (Order.bQueue && Building->HasRallyPoint()) ? 2 : 3;
+			}
 			// On the building itself: no rally point any more (the units are born at its foot, D283); with Shift (a step added,
 			// EtapeDefini N.1), nothing.
-			if (Order.bQueue && Building->HasRallyPoint() && Building->IsOnBody(Order.Location))
+			if (RallyVerdict == 0)
 			{
 				UE_LOG(LogHOLCommands, Display, TEXT("Rally: slot %d added no step to the rally point of %s: on the building itself"), Order.PlayerIndex,
 					*Building->GetTypeName().ToString());
 			}
-			else if (Building->IsOnBody(Order.Location))
+			else if (RallyVerdict == 1)
 			{
 				Building->ClearRallyPoint();
 				UE_LOG(LogHOLCommands, Display, TEXT("Rally: slot %d cleared the rally point of %s"), Order.PlayerIndex, *Building->GetTypeName().ToString());
@@ -345,7 +352,9 @@ void UHOLProductionSubsystem::ApplyOrders()
 				// on its middle (as on a source); a client could name any building (D288).
 				AHOLBuilding* Site = Order.RallySite.Get();
 				// Its main forum down is rebuilt as a site (V2.3a).
-				if (Site && (Site == Building || Site->GetOwnerPlayer() != Order.PlayerIndex || (!Site->NeedsBuilders() && !Site->IsCamp())))
+				// Kept or dropped: the script's (AskRallySite 1 kept, 0 dropped); -1 (no board): the C++ twin.
+				const int32 SiteKept = Site ? UHOLProductionBoard::AskRallySite(GetWorld(), Site != Building, Site->GetOwnerPlayer() == Order.PlayerIndex, Site->NeedsBuilders(), Site->IsCamp()) : -1;
+				if (Site && (SiteKept >= 0 ? SiteKept == 0 : (Site == Building || Site->GetOwnerPlayer() != Order.PlayerIndex || (!Site->NeedsBuilders() && !Site->IsCamp()))))
 				{
 					Site = nullptr;
 				}
@@ -355,7 +364,7 @@ void UHOLProductionSubsystem::ApplyOrders()
 					: SourceIndex != INDEX_NONE ? FString::Printf(TEXT(", on source %d"), SourceIndex) : FString();
 				// Shift (EtapeDefini N.1, AoE4): a step at the end of the rally point, MaxRallySteps at most; the first one is the
 				// rally point itself.
-				if (Order.bQueue && Building->HasRallyPoint())
+				if (RallyVerdict == 2)
 				{
 					if (Building->AddRallyStep(Point, SourceIndex, Site))
 					{
@@ -394,92 +403,122 @@ void UHOLProductionSubsystem::ApplyOrders()
 		TArray<FHOLProductionItem>& Queue = Building->GetMutableProductionQueue();
 		if (Order.Kind == FHOLProductionCommand::EKind::Queue)
 		{
-			// A technology (T3, T-Q6 = A) goes through the same queue as the units, after the rules of GDD 11.
-			const FHOLTechnologyRow* Technology = Type->Produces.Contains(Order.TypeName) ? nullptr : UHOLTechnologySettings::FindTechnology(Order.TypeName);
-			if (Technology)
-			{
-				if (!HOLFactionRules::IsTechnologyOpenTo(Order.TypeName, HOLFactionRules::GetSlotFactionKey(GetWorld(), Order.PlayerIndex)))
+				// R2b: the script board decides the verdict of a queue order (HOLProductionBoard.as, QueueVerdict); the facts are read here, the checks stay the
+				// source of their rules (HOLTechnology::Check, HOLSiege::Check, CheckUnit). -1 (no board) keeps the C++ chain below, the twin until the network
+				// proof. A research and a unit do not refuse in the same order: a research says "cannot pay" through its technology check (5) before the queue
+				// is asked (2, 3); a unit meets the queue after its siege, age and faction gates. A technology (T3, T-Q6 = A) goes through the same queue as
+				// the units, after the rules of GDD 11.
+				const bool bProduces = Type->Produces.Contains(Order.TypeName);
+				const FHOLTechnologyRow* Technology = bProduces ? nullptr : UHOLTechnologySettings::FindTechnology(Order.TypeName);
+				const bool bTechFactionOpen = !Technology || HOLFactionRules::IsTechnologyOpenTo(Order.TypeName, HOLFactionRules::GetSlotFactionKey(GetWorld(), Order.PlayerIndex));
+				const AHOLGameState* HOLGameState = GetWorld()->GetGameState<AHOLGameState>();
+				const int32 OwnerTier = HOLGameState ? HOLGameState->GetTier(Order.PlayerIndex) : 0;
+				FHOLProductionCost Cost;
+				HOLTechnology::EBlock TechBlock = HOLTechnology::EBlock::None;
+				HOLSiege::EBlock SiegeBlock = HOLSiege::EBlock::None;
+				bool bTierTooLow = false;
+				bool bUnitFactionOpen = true;
+				if (Technology)
+				{
+					if (bTechFactionOpen)
+					{
+						Cost = GetCost(Order.TypeName, Order.PlayerIndex);
+						HOLTechnology::FFacts Facts;
+						Facts.HeroTier = OwnerTier;
+						Facts.HeroLevel = UHOLHeroLibrary::GetHeroLevel(this, Order.PlayerIndex);
+						Facts.bRequiresDone = Technology->Requires.IsNone() || PlayerState->GetTechnologies().Has(Technology->Requires);
+						Facts.bBuildingFinished = Building->GetTypeName() == Technology->Building;
+						Facts.bCanPay = Stock.Covers(Cost.Resources);
+						Facts.bResearched = PlayerState->GetTechnologies().Has(Order.TypeName);
+						for (FHOLBuildingIterator It(GetWorld()); It && !Facts.bQueued; ++It)
+						{
+							Facts.bQueued = It->GetOwnerPlayer() == Order.PlayerIndex && HOLTechnology::IsQueued(It->GetProductionQueue(), Order.TypeName);
+						}
+						TechBlock = HOLTechnology::Check(*Technology, Facts);
+					}
+				}
+				else if (bProduces)
+				{
+					Cost = GetCost(Order.TypeName, Order.PlayerIndex);
+					// S3 (GDD 6.1, D614): a siege engine opens at its tier (Ram 1, Mangonel 2), by the rules of Siege/HOLSiegeRules; the building is
+					// finished (a site produces nothing) and the payment is the queue's own check.
+					HOLSiege::EEngine Engine;
+					if (HOLSiege::FindEngine(Order.TypeName, Engine))
+					{
+						SiegeBlock = HOLSiege::Check(Engine, OwnerTier, true, true);
+					}
+					// G1 (Palier3InProgress.md, D711): EVERY unit opens at the tier of its column MinTier (HOLUnitTier, one rule for all); a client that asks for a Man-at-arms at tier 0 is refused.
+					bTierTooLow = UHOLUnitTierSubsystem::CheckUnit(GetWorld(), Order.TypeName, OwnerTier, true, true) == HOLUnitTierReason::TierTooLow;
+					// L0 (LQ-7): a unit type the owner's faction does not field is refused whatever a client asked (its grid hides it).
+					bUnitFactionOpen = HOLFactionRules::IsUnitOpenTo(GetWorld(), Order.TypeName, Order.PlayerIndex);
+				}
+				int32 Verdict = UHOLProductionBoard::AskQueue(GetWorld(), bProduces, Technology != nullptr, bTechFactionOpen, TechBlock != HOLTechnology::EBlock::None,
+					SiegeBlock != HOLSiege::EBlock::None, bTierTooLow, bUnitFactionOpen, Queue.Num(), Type->MaxQueue, Stock, Cost.Resources);
+				if (Verdict < 0)
+				{
+					Verdict = Technology ? (!bTechFactionOpen ? 4 : TechBlock != HOLTechnology::EBlock::None ? 5 : 0)
+						: !bProduces ? 1 : SiegeBlock != HOLSiege::EBlock::None ? 6 : bTierTooLow ? 7 : !bUnitFactionOpen ? 8 : 0;
+					if (Verdict == 0)
+					{
+						Verdict = Queue.Num() >= Type->MaxQueue ? 2 : !Stock.Covers(Cost.Resources) ? 3 : 0;
+					}
+				}
+				if (Verdict == 4)
 				{
 					UE_LOG(LogHOLCommands, Display, TEXT("Production: slot %d cannot research %s (not a technology of its faction)"), Order.PlayerIndex,
 						*Order.TypeName.ToString());
 					continue;
 				}
-				const FHOLProductionCost Cost = GetCost(Order.TypeName, Order.PlayerIndex);
-				HOLTechnology::FFacts Facts;
-				const AHOLGameState* HOLGameState = GetWorld()->GetGameState<AHOLGameState>();
-				Facts.HeroTier = HOLGameState ? HOLGameState->GetTier(Order.PlayerIndex) : 0;
-				Facts.HeroLevel = UHOLHeroLibrary::GetHeroLevel(this, Order.PlayerIndex);
-				Facts.bRequiresDone = Technology->Requires.IsNone() || PlayerState->GetTechnologies().Has(Technology->Requires);
-				Facts.bBuildingFinished = Building->GetTypeName() == Technology->Building;
-				Facts.bCanPay = Stock.Covers(Cost.Resources);
-				Facts.bResearched = PlayerState->GetTechnologies().Has(Order.TypeName);
-				for (FHOLBuildingIterator It(GetWorld()); It && !Facts.bQueued; ++It)
-				{
-					Facts.bQueued = It->GetOwnerPlayer() == Order.PlayerIndex && HOLTechnology::IsQueued(It->GetProductionQueue(), Order.TypeName);
-				}
-				const HOLTechnology::EBlock Block = HOLTechnology::Check(*Technology, Facts);
-				if (Block != HOLTechnology::EBlock::None)
+				if (Verdict == 5)
 				{
 					UE_LOG(LogHOLCommands, Display, TEXT("Production: slot %d cannot research %s (%s)"), Order.PlayerIndex,
-						*Order.TypeName.ToString(), HOLTechnology::DescribeBlock(Block));
+						*Order.TypeName.ToString(), HOLTechnology::DescribeBlock(TechBlock));
 					continue;
 				}
-				const EHOLProductionRefusal Refusal = HOLProduction::TryEnqueue(Queue, Order.TypeName, Cost, Type->MaxQueue, Stock);
-				if (Refusal != EHOLProductionRefusal::None)
-				{
-					UE_LOG(LogHOLCommands, Display, TEXT("Production: slot %d cannot research %s (%s)"), Order.PlayerIndex,
-						*Order.TypeName.ToString(), DescribeRefusal(Refusal));
-					continue;
-				}
-				UE_LOG(LogHOLCommands, Display, TEXT("Production: slot %d queued research %s (%d in the queue, %s)"), Order.PlayerIndex,
-					*Order.TypeName.ToString(), Queue.Num(), *Stock.ToString());
-				PlayerState->SetResources(Stock);
-				Building->NotifyProductionChanged();
-				continue;
-			}
-			// S3 (GDD 6.1, D614): a siege engine opens at its tier (Ram 1, Mangonel 2), by the rules of Siege/HOLSiegeRules; the
-			// building is finished (a site produces nothing) and the payment is the queue's own check below.
-			HOLSiege::EEngine Engine;
-			if (Type->Produces.Contains(Order.TypeName) && HOLSiege::FindEngine(Order.TypeName, Engine))
-			{
-				const AHOLGameState* HOLGameState = GetWorld()->GetGameState<AHOLGameState>();
-				const HOLSiege::EBlock Block = HOLSiege::Check(Engine, HOLGameState ? HOLGameState->GetTier(Order.PlayerIndex) : 0, true, true);
-				if (Block != HOLSiege::EBlock::None)
+				if (Verdict == 6)
 				{
 					UE_LOG(LogHOLCommands, Display, TEXT("Production: slot %d cannot queue %s (%s)"), Order.PlayerIndex,
-						*Order.TypeName.ToString(), HOLSiege::DescribeBlock(Block));
+						*Order.TypeName.ToString(), HOLSiege::DescribeBlock(SiegeBlock));
 					continue;
 				}
-			}
-			// L0 (LQ-7): a unit type the owner's faction does not field is refused here whatever a client asked (its grid hides it).
-			if (Type->Produces.Contains(Order.TypeName))
+				if (Verdict == 7)
 				{
-					// G1 (Palier3InProgress.md, D711): EVERY unit opens at the tier of its column MinTier (HOLUnitTier, one rule for all); a client that asks for a Man-at-arms at tier 0 is refused here.
-					const int32 UnitMinTier = UHOLUnitTierSubsystem::GetMinTier(Order.TypeName);
-					const AHOLGameState* TierState = GetWorld()->GetGameState<AHOLGameState>();
-					if (UHOLUnitTierSubsystem::CheckUnit(GetWorld(), Order.TypeName, TierState ? TierState->GetTier(Order.PlayerIndex) : 0, true, true) == HOLUnitTierReason::TierTooLow)
-					{
-						UE_LOG(LogHOLCommands, Display, TEXT("Production: slot %d cannot queue %s (tier too low: it opens at tier %d)"), Order.PlayerIndex, *Order.TypeName.ToString(), UnitMinTier);
-						continue;
-					}
+					UE_LOG(LogHOLCommands, Display, TEXT("Production: slot %d cannot queue %s (tier too low: it opens at tier %d)"), Order.PlayerIndex, *Order.TypeName.ToString(), UHOLUnitTierSubsystem::GetMinTier(Order.TypeName));
+					continue;
 				}
-				if (Type->Produces.Contains(Order.TypeName) && !HOLFactionRules::IsUnitOpenTo(GetWorld(), Order.TypeName, Order.PlayerIndex))
-			{
-				UE_LOG(LogHOLCommands, Display, TEXT("Production: slot %d cannot queue %s (not a unit of its faction)"), Order.PlayerIndex,
-					*Order.TypeName.ToString());
-				continue;
-			}
-			const EHOLProductionRefusal Refusal = Type->Produces.Contains(Order.TypeName)
-				? HOLProduction::TryEnqueue(Queue, Order.TypeName, GetCost(Order.TypeName, Order.PlayerIndex), Type->MaxQueue, Stock)
-				: EHOLProductionRefusal::NotProducible;
-			if (Refusal != EHOLProductionRefusal::None)
-			{
-				UE_LOG(LogHOLCommands, Display, TEXT("Production: slot %d cannot queue %s (%s)"), Order.PlayerIndex,
-					*Order.TypeName.ToString(), DescribeRefusal(Refusal));
-				continue;
-			}
-			UE_LOG(LogHOLCommands, Display, TEXT("Production: slot %d queued %s (%d in the queue, %s)"), Order.PlayerIndex,
-				*Order.TypeName.ToString(), Queue.Num(), *Stock.ToString());
+				if (Verdict == 8)
+				{
+					UE_LOG(LogHOLCommands, Display, TEXT("Production: slot %d cannot queue %s (not a unit of its faction)"), Order.PlayerIndex,
+						*Order.TypeName.ToString());
+					continue;
+				}
+				// The codes 1 to 3 are those of EHOLProductionRefusal (NotProducible, QueueFull, NotEnoughResources); the enqueue stays this C++ effect, which checks again.
+				const EHOLProductionRefusal Refusal = Verdict >= 1 && Verdict <= 3 ? static_cast<EHOLProductionRefusal>(Verdict)
+					: HOLProduction::TryEnqueue(Queue, Order.TypeName, Cost, Type->MaxQueue, Stock);
+				if (Refusal != EHOLProductionRefusal::None)
+				{
+					if (Technology)
+					{
+						UE_LOG(LogHOLCommands, Display, TEXT("Production: slot %d cannot research %s (%s)"), Order.PlayerIndex,
+							*Order.TypeName.ToString(), DescribeRefusal(Refusal));
+					}
+					else
+					{
+						UE_LOG(LogHOLCommands, Display, TEXT("Production: slot %d cannot queue %s (%s)"), Order.PlayerIndex,
+							*Order.TypeName.ToString(), DescribeRefusal(Refusal));
+					}
+					continue;
+				}
+				if (Technology)
+				{
+					UE_LOG(LogHOLCommands, Display, TEXT("Production: slot %d queued research %s (%d in the queue, %s)"), Order.PlayerIndex,
+						*Order.TypeName.ToString(), Queue.Num(), *Stock.ToString());
+					PlayerState->SetResources(Stock);
+					Building->NotifyProductionChanged();
+					continue;
+				}
+				UE_LOG(LogHOLCommands, Display, TEXT("Production: slot %d queued %s (%d in the queue, %s)"), Order.PlayerIndex,
+					*Order.TypeName.ToString(), Queue.Num(), *Stock.ToString());
 		}
 		else
 		{

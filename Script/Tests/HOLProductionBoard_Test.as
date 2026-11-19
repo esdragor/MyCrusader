@@ -64,3 +64,99 @@ void Test_ProductionBoard_Cancel(FUnitTest& T)
 	T.AssertTrue(PBResEq(HOLProductionBoard::StockAfterCancel(PBRes(0, 0, 0, 0), Cost), Cost), "an empty stock gets exactly the cost");
 	T.AssertTrue(PBResEq(HOLProductionBoard::StockAfterCancel(PBRes(20, 5, 0, 0), PBRes(0, 0, 0, 0)), PBRes(20, 5, 0, 0)), "a free item gives nothing back");
 }
+
+// ---- R2b (GALADRIEL-1119aa): the verdict of the queue, HOLProductionBoard::QueueVerdict. NOT COMPILED when written. ----
+// QueueVerdict(bProduces, bTechnology, bTechFactionOpen, bTechBlocked, bSiegeBlocked, bTierTooLow, bUnitFactionOpen, QueueLength, MaxQueue, Stock, Cost):
+// 0 Enqueue, 1 NotProduced, 2 QueueFull, 3 NotEnoughResources, 4 TechFaction, 5 TechBlocked, 6 SiegeBlocked, 7 TierTooLow, 8 UnitFaction.
+// THE HARD POINT: a research and a unit do not refuse in the same order. A research says "cannot pay" through its technology check (5) BEFORE the
+// queue is asked (2, 3); a unit meets the queue (2 full, then 3 no resources) after its siege, age and faction gates.
+
+int PBQ(bool bProduces, bool bTechnology, bool bTechFactionOpen, bool bTechBlocked, bool bSiegeBlocked, bool bTierTooLow, bool bUnitFactionOpen, int Length, int Max, FHOLResources Stock, FHOLResources Cost)
+{
+	return int(HOLProductionBoard::QueueVerdict(bProduces, bTechnology, bTechFactionOpen, bTechBlocked, bSiegeBlocked, bTierTooLow, bUnitFactionOpen, Length, Max, Stock, Cost));
+}
+
+// A unit of the building, every gate open.
+int PBUnit(int Length, int Max, FHOLResources Stock, FHOLResources Cost)
+{
+	return PBQ(true, false, true, false, false, false, true, Length, Max, Stock, Cost);
+}
+
+// A research of the building's faction, its check passed (or not).
+int PBTech(bool bTechBlocked, int Length, int Max, FHOLResources Stock, FHOLResources Cost)
+{
+	return PBQ(false, true, true, bTechBlocked, false, false, true, Length, Max, Stock, Cost);
+}
+
+// One case for each code 0 to 8.
+void Test_ProductionBoard_QueueCodes(FUnitTest& T)
+{
+	FHOLResources Rich = PBRes(100, 100, 100, 100);
+	FHOLResources Cost = PBRes(50, 0, 0, 20);
+	T.AssertEquals(int(EHOLQueueVerdict::Enqueue), PBUnit(0, 5, Rich, Cost), "0: a unit with room and money is queued");
+	T.AssertEquals(int(EHOLQueueVerdict::Enqueue), PBTech(false, 0, 5, Rich, Cost), "0: a research with room and money is queued");
+	T.AssertEquals(int(EHOLQueueVerdict::NotProduced), PBQ(false, false, true, false, false, false, true, 0, 5, Rich, Cost), "1: a type neither produced here nor a technology");
+	T.AssertEquals(int(EHOLQueueVerdict::QueueFull), PBUnit(5, 5, Rich, Cost), "2: a unit in a full queue");
+	T.AssertEquals(int(EHOLQueueVerdict::NotEnoughResources), PBUnit(0, 5, PBRes(10, 0, 0, 0), Cost), "3: a unit the stock cannot pay");
+	T.AssertEquals(int(EHOLQueueVerdict::TechFaction), PBQ(false, true, false, false, false, false, true, 0, 5, Rich, Cost), "4: a technology of another faction");
+	T.AssertEquals(int(EHOLQueueVerdict::TechBlocked), PBTech(true, 0, 5, Rich, Cost), "5: a research blocked by its technology check");
+	T.AssertEquals(int(EHOLQueueVerdict::SiegeBlocked), PBQ(true, false, true, false, true, false, true, 0, 5, Rich, Cost), "6: a siege engine below its tier");
+	T.AssertEquals(int(EHOLQueueVerdict::TierTooLow), PBQ(true, false, true, false, false, true, true, 0, 5, Rich, Cost), "7: a unit below its age");
+	T.AssertEquals(int(EHOLQueueVerdict::UnitFaction), PBQ(true, false, true, false, false, false, false, 0, 5, Rich, Cost), "8: a unit of another faction");
+}
+
+// The two crossed cases: the same two faults (queue full AND no resources), two different refusals.
+void Test_ProductionBoard_QueueCrossed(FUnitTest& T)
+{
+	FHOLResources Poor = PBRes(0, 0, 0, 0);
+	FHOLResources Cost = PBRes(50, 0, 0, 20);
+	T.AssertEquals(int(EHOLQueueVerdict::QueueFull), PBUnit(5, 5, Poor, Cost), "a unit with a full queue AND no resources: queue full (2), not 3");
+	T.AssertEquals(int(EHOLQueueVerdict::TechBlocked), PBTech(true, 5, 5, Poor, Cost), "a research with no resources (its check blocks) AND a full queue: the technology check (5), not 2");
+	// A research whose check passed meets the queue like a unit.
+	T.AssertEquals(int(EHOLQueueVerdict::QueueFull), PBTech(false, 5, 5, PBRes(100, 100, 100, 100), Cost), "a research that may be paid, queue full: 2");
+	// The edge of the queue: one place left queues, a queue at its maximum refuses.
+	T.AssertEquals(int(EHOLQueueVerdict::Enqueue), PBUnit(4, 5, PBRes(100, 100, 100, 100), Cost), "one place left: queued");
+	T.AssertEquals(int(EHOLQueueVerdict::QueueFull), PBUnit(5, 5, PBRes(100, 100, 100, 100), Cost), "queue at its maximum: refused");
+}
+
+// The order of the other gates, and the cost to the unit.
+void Test_ProductionBoard_QueueOrder(FUnitTest& T)
+{
+	FHOLResources Poor = PBRes(0, 0, 0, 0);
+	FHOLResources Cost = PBRes(50, 0, 0, 20);
+	T.AssertEquals(int(EHOLQueueVerdict::NotProduced), PBQ(false, false, false, true, true, true, false, 5, 5, Poor, Cost), "not produced here: 1 before siege, age, faction, queue, cost");
+	T.AssertEquals(int(EHOLQueueVerdict::TechFaction), PBQ(false, true, false, true, false, false, true, 5, 5, Poor, Cost), "a research: faction (4) before its check (5)");
+	T.AssertEquals(int(EHOLQueueVerdict::SiegeBlocked), PBQ(true, false, true, false, true, true, false, 5, 5, Poor, Cost), "a unit: siege (6) before age, faction, queue, cost");
+	T.AssertEquals(int(EHOLQueueVerdict::TierTooLow), PBQ(true, false, true, false, false, true, false, 5, 5, Poor, Cost), "a unit: age (7) before faction (8), queue, cost");
+	T.AssertEquals(int(EHOLQueueVerdict::UnitFaction), PBQ(true, false, true, false, false, false, false, 5, 5, Poor, Cost), "a unit: faction (8) before queue, cost");
+	// A cost exactly equal to the stock is paid (Covers), one more is not.
+	T.AssertEquals(int(EHOLQueueVerdict::Enqueue), PBUnit(0, 5, Cost, Cost), "a stock equal to the cost pays");
+	T.AssertEquals(int(EHOLQueueVerdict::NotEnoughResources), PBUnit(0, 5, PBRes(50, 0, 0, 19), Cost), "one gold short: 3");
+	T.AssertEquals(int(EHOLQueueVerdict::Enqueue), PBUnit(0, 5, Poor, PBRes(0, 0, 0, 0)), "a free unit is queued on an empty stock");
+}
+
+// Lot R3 (GALADRIEL-1119ab): the outcome of a Rally order, once the gates passed. RallyOutcome(bOnBody, bShift, bHasRally): 0 NoStep (Shift on the body of
+// a building that has a rally point: nothing, a line), 1 Clear (on the body: no more rally point), 2 AddStep (Shift on a ground, with a rally point), 3 Set.
+// RallySiteKept(bOtherBuilding, bOwnedByPlayer, bNeedsBuilders, bIsCamp): a named site is kept only if it is another building, the player's own, and a site
+// to build or a camp. NOT COMPILED when written.
+void Test_ProductionBoard_RallyOutcome(FUnitTest& T)
+{
+	T.AssertEquals(int(EHOLRallyOutcome::Set), int(HOLProductionBoard::RallyOutcome(false, false, false)), "a click on the ground, no rally point: set");
+	T.AssertEquals(int(EHOLRallyOutcome::Set), int(HOLProductionBoard::RallyOutcome(false, false, true)), "a click on the ground replaces the rally point: set");
+	T.AssertEquals(int(EHOLRallyOutcome::Set), int(HOLProductionBoard::RallyOutcome(false, true, false)), "Shift on the ground with no rally point: the first one is set, no step");
+	T.AssertEquals(int(EHOLRallyOutcome::AddStep), int(HOLProductionBoard::RallyOutcome(false, true, true)), "Shift on the ground with a rally point: a step is added");
+	T.AssertEquals(int(EHOLRallyOutcome::Clear), int(HOLProductionBoard::RallyOutcome(true, false, false)), "a click on the body, no rally point: cleared");
+	T.AssertEquals(int(EHOLRallyOutcome::Clear), int(HOLProductionBoard::RallyOutcome(true, false, true)), "a click on the body with a rally point: cleared");
+	T.AssertEquals(int(EHOLRallyOutcome::Clear), int(HOLProductionBoard::RallyOutcome(true, true, false)), "Shift on the body with no rally point: cleared, no step (HasRallyPoint is asked)");
+	T.AssertEquals(int(EHOLRallyOutcome::NoStep), int(HOLProductionBoard::RallyOutcome(true, true, true)), "Shift on the body with a rally point: nothing, a step on the body makes no sense");
+}
+
+void Test_ProductionBoard_RallySite(FUnitTest& T)
+{
+	T.AssertTrue(HOLProductionBoard::RallySiteKept(true, true, true, false), "another building of the player, still to build: kept");
+	T.AssertTrue(HOLProductionBoard::RallySiteKept(true, true, false, true), "a camp of the player, finished: kept");
+	T.AssertTrue(HOLProductionBoard::RallySiteKept(true, true, true, true), "a camp to build: kept");
+	T.AssertFalse(HOLProductionBoard::RallySiteKept(false, true, true, true), "the building itself is never its own site");
+	T.AssertFalse(HOLProductionBoard::RallySiteKept(true, false, true, true), "a building of another player is dropped (a client could name any, D288)");
+	T.AssertFalse(HOLProductionBoard::RallySiteKept(true, true, false, false), "a finished building that is no camp: dropped, the flag stays on the ground");
+}
