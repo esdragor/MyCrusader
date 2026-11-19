@@ -1,0 +1,28 @@
+NON COMPILE (ELROND-1119n4, branche faction-gauge-cpp, worktree C:\Users\baudo\Documents\HeroesOfLiberty-Elrond)
+
+Commits : ROUGE 9a51321 (API complete en bouchon + test), VERT 1f7e15b (implementation). Rien compile, aucun test lance.
+
+## Lignes ajoutees par fichier (diff total 9a51321~1..1f7e15b : 139 insertions)
+- Source\HeroesOfLiberty\Match\HOLGameState.h (+11) : avant le commentaire "Server only (R7): the slots kept..." : `UPROPERTY(Replicated) TArray<int32> FactionResource;` + `UFUNCTION(BlueprintCallable, Category="HeroesOfLiberty|Faction") int32 GetFactionResource(int32 Slot) const;` et `void SetFactionResource(int32 Slot, int32 Value);` (commit rouge : `UPROPERTY()` nu).
+- Source\HeroesOfLiberty\Match\HOLGameState.cpp (+16) : ctor `FactionResource.Init(0, FHOLMatchConfig::MaxSlots);` ; `DOREPLIFETIME(AHOLGameState, FactionResource);` apres TierOverrides ; Get (IsValidIndex ? valeur : 0) et Set (HasAuthority() && IsValidIndex) inseres avant `AHOLGameState::GetTier`.
+- Source\HeroesOfLiberty\Match\HOLFactionResourceLibrary.h (+28, neuf) : `UHOLFactionResourceLibrary`, `Get(const UObject* WorldContextObject, int32 Slot)` BlueprintPure et `Set(..., int32 Slot, int32 Value)` BlueprintCallable, `meta=(WorldContext="WorldContextObject")`, categorie "HeroesOfLiberty|Faction".
+- Source\HeroesOfLiberty\Match\HOLFactionResourceLibrary.cpp (+30, neuf) : includes Engine/Engine.h, Engine/World.h, Match/HOLGameState.h ; helper anonyme GetFactionGameStateOf (GEngine->GetWorldFromContextObject(..., ReturnNull) puis World->GetGameState<AHOLGameState>(), modele HOLDiplomacyReadLibrary.cpp:25-28) ; Get rend 0 sans GameState ; Set delegue.
+- Script\Tests\HOLFactionResourceState_Test.as (+54, neuf) : `Test_FactionResourceStateRoundTrip`.
+Aucun autre fichier touche. HashUnits non touche. PowerCooldownEndMs non fait. Suivi : 1 ligne sous A4 de AubeInProgress.md.
+
+## Test et rouge attendu sur 9a51321
+Test_FactionResourceStateRoundTrip appelle State.GetFactionResource / SetFactionResource directement sur le GameState du monde de test (SpawnGameState(.,0,0), meme forme que HOLTierCheat_Test.as, puisque les UFUNCTION du GameState sont appelables en script). Sur le bouchon, rouge : "slot 0 reads what was set" (0 au lieu de 7), "slot 1 ... " (0 au lieu de 3), "a second Set replaces" (0 au lieu de 12), "left slot 0 unchanged" (0 au lieu de 12), "left slot 1 unchanged" (0 au lieu de 3), et "the gauge is a replicated property" (IsPropertyReplicated faux, la propriete n'est pas repliquee dans le bouchon). Verts meme sur le bouchon (normal) : etat frais = 0, indices 99 et -1 lus = 0. Le test n'exerce PAS la bibliotheque statique (voir doute 4) ni le cote client (Set sans effet sur client) : a couvrir par la phase net / net_match.
+
+## Doutes de compilation / de chargement (ou regarder si ca casse)
+1. HOLFactionResourceLibrary.cpp : `GEngine` exige Engine/Engine.h (inclus) ; `World->GetGameState<AHOLGameState>()` sur `const UWorld*` : GetGameState est const (comme HOLDiplomacyReadLibrary.cpp:25-28), mais le helper rend `AHOLGameState*` non const depuis un `const UWorld*` : GetGameState<T>() const rend `T*`, donc OK en theorie, a verifier.
+2. Macro d'API `HEROESOFLIBERTY_API` et include "HOLFactionResourceLibrary.generated.h" copies de HOLUnitAbilityReadLibrary.h ; le dossier Match\ est dans le meme module (HOLGameState.h y est), pas de dossier de include special. Pas de forward declaration necessaire (UObject vient de CoreMinimal).
+3. HOLGameState.cpp : commit rouge a un `UPROPERTY()` NON repliquee (pour eviter l'erreur "Replicated sans DOREPLIFETIME" d'UE) ; le vert passe a `UPROPERTY(Replicated)` ET ajoute DOREPLIFETIME dans le meme commit : verifier qu'ils sont bien ensemble. Les accesseurs ont `UFUNCTION(BlueprintCallable)` comme GetTier/SetTierOverride (les noms GetFactionResource/SetFactionResource sont uniques).
+4. Collision de nom script : la bibliotheque devient l'espace de noms script `HOLFactionResource::` (nom sans U ni Library), deja utilise par Script\Factions\HOLFactionResourceRules.as (`namespace HOLFactionResource` : Make, Gain, Lose, TrySpend...). Pas de Get/Set dans la regle, donc pas de collision de signature, mais un espace de noms natif + script identique est un risque de chargement (precedent probable : HOLHero:: ; non verifie). Si le chargement des scripts echoue : renommer la bibliotheque (ex. UHOLFactionGaugeLibrary). Aussi : le WorldContext implicite d'un appel de bibliotheque depuis un test script n'est pas verifie, d'ou le test via GameState direct.
+5. Fins de ligne : les 3 fichiers neufs ont ete ecrits en LF (git avertit "LF will be replaced by CRLF"), sans consequence a la compilation ; `eol_check.ps1 -Fix` si besoin.
+6. Un Set depuis un client / hors autorite est ignore silencieusement (HasAuthority). Dans le monde de test (standalone) HasAuthority est vrai, comme pour TierOverrides.
+
+## Reste
+- Recharges de pouvoirs (PowerCooldownEndMs) non faites (hors perimetre ce soir).
+- Empreinte : aucun terme pour la jauge (decision a part).
+- A faire par la session principale : build groupe, quick_check -Parts tests (rouge vu sur 9a51321 demande un binaire du bouchon : ou accepter la preuve par lecture), puis -Parts net / net_match a 2 clients pour la replication.
+- BUILDS_DEMANDES: 1 (lot groupe). TESTS_SCRIPT_AJOUTES: 1 (Test_FactionResourceStateRoundTrip). TYPES_A_EXPOSER: UHOLFactionResourceLibrary (HOLFactionResource::Get/Set), AHOLGameState::GetFactionResource/SetFactionResource.
