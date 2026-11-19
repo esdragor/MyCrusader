@@ -1,0 +1,7 @@
+﻿# GALADRIEL-1119n3 - essai specialization_button (2026-11-19 22:09)
+Cause C (ni A ni B) : pas de regression du jeu. Journal Arwen Saved_Tests\Logs\scenario_specialization_button.log : 20:56:10.939 "HUD report ... grid A=Peasant enabled D=SpecializeT1A enabled F=SpecializeT1B enabled", 20:56:14.780 "D=CancelSpecializationT1A" apres le clic ; les noms viennent de HOLCommandGridRules.as:100-107 (GetReportName), inchanges.
+Echec : apres le 2e clic (annulation, "Specialization: slot 0 cancels, answer 0" a 20:56:15.889, image 870), hol.HUD.Report est pris image 884 (frames 10) et montre encore D=CancelSpecializationT1A ; l'attente "=SpecializeT1A enabled" (etape 44) ne voit jamais de 2e rapport -> timeout 60 s. La vue (etat replique au proprietaire) arrive apres ; la 1re attente avait deja "wait 2" avant son rapport, pas la 3e.
+Correctif (scenario seulement) : "frames 10" -> "wait 2" + "frames 8" avant le 3e hol.HUD.Report ; mapSize Small ajoute au .json (D820). Commit sur specialization-trial: fc10863.
+NON VERIFIE : rien rejoue (pas de build/pre-vol). Risque residuel : si la vue ne revient jamais a SpecializeT1A meme apres 2 s, ce serait un vrai bug de rafraichissement de grille a l'annulation (a regarder dans le journal du prochain pre-vol : rapport 3 apres wait 2).
+A relancer : Tools\Scenarios\preflight.ps1 specialization_button (Root = worktree Galadriel apres sync, ou Arwen apres fusion de la branche).
+BUILDS_DEMANDES: 0 ; TESTS_SCRIPT_AJOUTES: 0 ; TYPES_A_EXPOSER: aucun ; TEST_ROUGE: sans objet (cause scenario).
