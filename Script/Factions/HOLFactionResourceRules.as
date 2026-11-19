@@ -57,17 +57,11 @@ namespace HOLFactionResource
 		return true;
 	}
 
-	// Which faction owns a gauge: today the Dawn alone. Another faction without a rule of its own, or an empty name, reads as the
-	// Dawn (HOLFactionRules.h); only the Legions have none.
-	bool HasResource(const FString& Faction)
-	{
-		return Faction != "Legions";
-	}
-
-	// STUB of the red commit (replaced by the real rule in the next commit): reads as the old text variant, true except for the Legions.
+	// Which faction owns a gauge: today the Dawn alone (its Honor is the only resource of this model). Every other value of the
+	// enumeration has none; the Legions' corpses have their own model (HOLCorpse).
 	bool HasResource(EHOLFaction Faction)
 	{
-		return Faction != EHOLFaction::BlackLegions;
+		return Faction == EHOLFaction::DawnOrder;
 	}
 
 	// The stable line of the test log: "<name> 30/100".
