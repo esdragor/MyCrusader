@@ -10,6 +10,7 @@ hol.Camera.FocusNear 1500 0
 frames 2
 hol.Units.SpawnHere 4 ManAtArms 0 250
 waitunits 4
+wait 0.5
 hol.Camera.FocusSlot own
 waitlog Camera above the start of slot 0
 hol.Mouse.Hover 960 600 5
@@ -34,6 +35,8 @@ hol.Camera.FocusNear 1500 0
 frames 2
 hol.Units.SpawnHere 3 Spearman 0 250
 waitunits 3
+# waitunits compte TOUTES les unites (celles de l'IA et les 4 deja la) : il passe tout de suite ; on laisse au jeu le temps de poser les 3 piquiers.
+wait 0.5
 hol.Camera.FocusSlot own
 waitlog Camera above the start of slot 0
 hol.Select.Army
