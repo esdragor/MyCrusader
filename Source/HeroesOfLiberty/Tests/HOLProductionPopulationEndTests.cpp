@@ -15,7 +15,6 @@
 #include "Match/HOLMatchSettings.h"
 #include "Match/HOLPlayerState.h"
 #include "Misc/AutomationTest.h"
-#include "Player/HOLCommandGrid.h"
 #include "Resources/HOLSourceSubsystem.h"
 #include "Simulation/HOLSimulationSettings.h"
 #include "Simulation/HOLSimulationSubsystem.h"
@@ -152,9 +151,6 @@ bool FHOLProductionPopulationEndTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("the second Peasant is at 100 %"), HOLProduction::GetProgress(Queue[0], static_cast<double>(Step), BuildSteps), 1.f);
 	TestTrue(TEXT("it waits at 100 % for a place"), HOLProduction::IsWaitingForRoom(Queue[0], static_cast<double>(Step), BuildSteps));
 	TestEqual(TEXT("the first came out: 10 / 10"), Test.Player->GetPopulationUsed(), 10);
-	// The HUD's condition for the queue note « Population pleine » and the thread line (UHOLGameScreen::CheckPopulationBlocked).
-	TestTrue(TEXT("the queue says population full"), HOLCommandGrid::IsPopulationBlocked(Test.Player->GetPopulationUsed(),
-		Test.Player->GetPopulationCap(), Row->Population));
 
 	// A Peasant dies: a place is free, the second comes out at the next step (10 / 10 again).
 	TArray<uint32> Ids;

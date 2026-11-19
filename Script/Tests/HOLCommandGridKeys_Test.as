@@ -479,6 +479,10 @@ void Test_CGKYHardValues(FUnitTest& T)
 // L1b (SAURON-1119cc, plan C6-PLAN-1119 section 3): the builders' grid of a seat at tier 0, built by hand as UHOLBuildingSettings::GetBuildableTypesForSlot
 // gives it (HOLBuildingTypes.cpp 72-82): the Nomad's list holds the main centre (the forum) at age II (index 1) in cell 10 (C, the C++ default of
 // hol.Nomad.ForumCell) with bAlwaysOpen; the standard seat's list does not. The Market stands at II A (cell 0), not always open.
+// The cell of the Nomad's first forum is the setting hol.Nomad.ForumCell, read here from the real cvar (C++ default 10 = C, E = 2 in
+// Config/DefaultEngine.ini, D831): the test follows the setting instead of assuming a cell. FConsoleVariable is the script's own access to a cvar.
+const FConsoleVariable CGKYNomadForumCell("hol.Nomad.ForumCell", 10);
+
 FHOLGridContextView CGKYMakeNomadBuilders(bool bNomad)
 {
 	FHOLGridContextView Grid;
@@ -496,7 +500,7 @@ FHOLGridContextView CGKYMakeNomadBuilders(bool bNomad)
 	if (bNomad)
 	{
 		Grid.BuildableTypes.Add(n"MainCentre");
-		Grid.BuildableCells.Add(10);
+		Grid.BuildableCells.Add(CGKYNomadForumCell.GetInt());
 		Grid.BuildableAges.Add(1);
 		Grid.BuildableAlwaysOpen.Add(true);
 	}
@@ -507,6 +511,7 @@ FHOLGridContextView CGKYMakeNomadBuilders(bool bNomad)
 // Covers HOLStartingHeroTests.cpp 648-662 (FHOLStartingNomadFirstForumTest, both seats) and 717-727 (the ForumCell lambda of FHOLStartingNomadReplicatedTest).
 void Test_CGNomadAges(FUnitTest& T)
 {
+	const int ForumCell = CGKYNomadForumCell.GetInt();
 	for (int Way = 0; Way < 2; Way++)
 	{
 		bool bNomad = Way == 1;
@@ -528,7 +533,7 @@ void Test_CGNomadAges(FUnitTest& T)
 		T.AssertTrue(bNomad == (PageTwo.Target == EHOLGridKeyTargetKind::Age), f"{Name}: Z is an age key only when page II is open");
 
 		// cpp 657-658: the forum key of page II builds the forum (Nomad only).
-		FHOLGridKeyResultView KeyC = HOLCommandGridKeys::PressKey(Grid, 1, 10);
+		FHOLGridKeyResultView KeyC = HOLCommandGridKeys::PressKey(Grid, 1, ForumCell);
 		bool bKeyCBuildsForum = KeyC.Target == EHOLGridKeyTargetKind::Build && KeyC.TypeName == n"MainCentre";
 		T.AssertTrue(bNomad == (bKeyCBuildsForum), f"{Name}: the forum key of page II builds the forum");
 
@@ -538,7 +543,7 @@ void Test_CGNomadAges(FUnitTest& T)
 		T.AssertEquals(1, KeyA.ChosenAge, f"{Name}: II A leaves page II chosen");
 
 		// cpp 661-662: a click on the forum cell of page II gives the same result as the key.
-		FHOLGridKeyResultView Clicked = HOLCommandGridKeys::ClickAge(Grid, -1, 1, 10);
+		FHOLGridKeyResultView Clicked = HOLCommandGridKeys::ClickAge(Grid, -1, 1, ForumCell);
 		bool bClickBuildsForum = Clicked.Target == EHOLGridKeyTargetKind::Build && Clicked.TypeName == n"MainCentre";
 		T.AssertTrue(bNomad == (bClickBuildsForum), f"{Name}: a click on the forum cell of page II builds the forum");
 		if (bNomad)
@@ -547,7 +552,7 @@ void Test_CGNomadAges(FUnitTest& T)
 		}
 
 		// cpp 726: GetAgeBuilding of page II at the forum cell.
-		FHOLGridCommandView Building = HOLCommandGridRules::GetAgeBuilding(Grid, 1, 10);
+		FHOLGridCommandView Building = HOLCommandGridRules::GetAgeBuilding(Grid, 1, ForumCell);
 		bool bForumShown = Building.Command != EHOLGridCommandKind::None && Building.TypeName == n"MainCentre";
 		T.AssertTrue(bNomad == (bForumShown), f"{Name}: the forum cell of page II shows the forum");
 		T.AssertFalse(Building.bGreyed, f"{Name}: the forum cell is never greyed (always open or empty)");
@@ -569,7 +574,11 @@ void Test_CGPopulationBlocked(FUnitTest& T)
 {
 	int Used = 10;
 	int Cap = 10;
-	int Places = 1;
+	// Places = the Peasant's Population read from the unit type table (UnitTypes.csv), as the C++ test read Row->Population.
+	FHOLUnitTypeSummary PeasantRow;
+	bool bPeasantRow = HOLProductionTables::FindUnitType(n"Peasant", PeasantRow);
+	T.AssertTrue(bPeasantRow, "Peasant in the unit type table");
+	int Places = PeasantRow.Population;
 	bool bFull = HOLCommandGridKeys::IsPopulationBlocked(Used, Cap, Places);
 	T.AssertTrue(bFull, "10 / 10, one place wanted: population full");
 	bool bRoomForOne = HOLCommandGridKeys::IsPopulationBlocked(Used - 1, Cap, Places);

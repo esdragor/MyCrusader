@@ -22,7 +22,6 @@
 #include "Misc/AutomationTest.h"
 #include "Components/StaticMeshComponent.h"
 #include "HOLCollision.h"
-#include "Player/HOLCommandGrid.h"
 #include "Presentation/HOLUnitAnimation.h"
 #include "Buildings/HOLConstructionRules.h"
 #include "Simulation/HOLBuildProcessor.h"
@@ -1192,16 +1191,6 @@ bool FHOLVictoryForumLookTest::RunTest(const FString& Parameters)
 	Input.bSiteWaits = true;
 	TestEqual(TEXT("at a forum in ruin: standing"), HOLUnitAnimation::Choose(Peasant, Input).Sequence, 0);
 	TestFalse(TEXT("at a forum in ruin: not turned to strike"), HOLUnitAnimation::Choose(Peasant, Input).bFacesSite);
-
-	// The grid of a forum down: no production, no Annuler.
-	FHOLGridContext Grid;
-	Grid.bOwnBuilding = true;
-	Grid.bBuildingFinished = true;
-	Grid.Produces = { FName(TEXT("Peasant")) };
-	TestTrue(TEXT("a forum standing produces"), HOLCommandGrid::GetCommand(Grid, 0).Command == EHOLGridCommand::Produce);
-	Grid.bForumDown = true;
-	TestTrue(TEXT("a forum down: no production"), HOLCommandGrid::GetCommand(Grid, 0).IsNone());
-	TestTrue(TEXT("a forum down: nothing to cancel"), HOLCommandGrid::GetCommand(Grid, HOLCommandGrid::CancelCell).IsNone());
 	return true;
 }
 

@@ -645,21 +645,8 @@ bool FHOLStartingNomadFirstForumTest::RunTest(const FString& Parameters)
 				TArray<FHOLBuildable> List;
 				UHOLBuildingSettings::GetBuildableTypesForSlot(World, Slot, List);
 				TestEqual(*FString::Printf(TEXT("%s: the forum in the builders' list, page Palier II, at its cell"), Name), Lists(List), bNomad);
-				// D797: the keys a player presses (HOLCommandGrid::PressKey, the builders' grid of a seat at tier 0): Z opens page II for
-				// the Nomad only (its forum always buildable there), then C asks to build the forum; the Market (II A) stays locked.
-				FHOLGridContext Grid;
-				Grid.bBuilders = true;
-				Grid.bOwnUnits = true;
-				Grid.ReachedAge = 0;
-				Grid.Buildable = List;
-				const FHOLGridKeyResult PageTwo = HOLCommandGrid::PressKey(Grid, INDEX_NONE, 1);
-				TestEqual(*FString::Printf(TEXT("%s: Z opens the page Palier II at tier 0"), Name), PageTwo.ChosenAge, bNomad ? 1 : INDEX_NONE);
-				const FHOLGridKeyResult KeyC = HOLCommandGrid::PressKey(Grid, 1, ForumCell);
-				TestEqual(*FString::Printf(TEXT("%s: the forum key of page II builds the forum"), Name), KeyC.Target == EHOLGridKeyTarget::Build && KeyC.TypeName == HOLBuildingTypeNames::MainCentre, bNomad);
-				const FHOLGridKeyResult KeyA = HOLCommandGrid::PressKey(Grid, 1, 0);
-				TestFalse(*FString::Printf(TEXT("%s: II A (the Market) still locked at tier 0"), Name), KeyA.Target == EHOLGridKeyTarget::Build);
-				const FHOLGridKeyResult Clicked = HOLCommandGrid::ClickAge(Grid, INDEX_NONE, 1, ForumCell);
-				TestEqual(*FString::Printf(TEXT("%s: a click on the forum cell of page II builds the forum"), Name), Clicked.Target == EHOLGridKeyTarget::Build && Clicked.TypeName == HOLBuildingTypeNames::MainCentre, bNomad);
+				// D797: the keys a player presses (Z opens page II for the Nomad only, C builds its forum, the Market stays locked; a click = the key): script test
+				// Test_CGNomadAges (HOLCommandGridKeys_Test.as), on a hand-built builders' context. Here: only the list the slot's start gives (above).
 				const auto CountForums = [World]()
 				{
 					int32 Count = 0;
