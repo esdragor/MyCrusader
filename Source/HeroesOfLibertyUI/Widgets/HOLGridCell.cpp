@@ -133,7 +133,13 @@ void UHOLGridCell::NativeOnInitialized()
 	TooltipColumn->AddChildToVerticalBox(TooltipEffect);
 
 	Super::NativeOnInitialized();
+	OnClicked().AddUObject(this, &UHOLGridCell::BroadcastCellClicked);
 	ClearUnit();
+}
+
+void UHOLGridCell::BroadcastCellClicked()
+{
+	OnCellClicked.Broadcast(this);
 }
 
 void UHOLGridCell::SetKey(const FText& InKey)

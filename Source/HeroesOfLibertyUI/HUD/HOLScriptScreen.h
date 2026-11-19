@@ -1,6 +1,10 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Player/HOLCommandGridReadLibrary.h"
+
+class UHorizontalBox;
+class UHOLGridCell;
 #include "Blueprint/UserWidget.h"
 #include "Match/HOLResources.h"
 #include "HOLScriptScreen.generated.h"
@@ -230,6 +234,42 @@ public:
 	/** Wraps Text at Width (Slate units): the message wraps at the grid's width less 24. */
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|UI")
 	void SetTextWrapWidth(UCommonTextBlock* Text, float Width) const;
+
+	/** HUD H-8: the C++ bottom bar's AgePanelsHost (an empty horizontal box where the age panels were), filled by the script's four panels. */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|UI")
+	UHorizontalBox* GetAgePanelsHost() const;
+
+	/** The grid context the age panels read (UHOLGameScreen::RefreshAges' rule): the units' context while no own building or group is selected, else an empty one. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|UI")
+	void GetAgesContext(FHOLGridContextView& OutContext) const;
+
+	/** The age the controller has chosen (AHOLPlayerController::GetChosenAge), -1 without a controller. */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|UI")
+	int32 GetChosenAge() const;
+
+	/** The shown player's tier (BoundTableState->GetTier), -1 without one. */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|UI")
+	int32 GetTier() const;
+
+	/** AHOLPlayerController::ClickAge(Age, Cell) (the script writes the journal line of the click). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|UI")
+	void ClickAge(int32 Age, int32 Cell);
+
+	/** A cell of an age panel shows Building (name, Ready or Greyed by the stock, tooltip with the cost and the effect, as the C++ screen's RefreshAges did). False: nothing to show. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|UI")
+	bool FillAgeCell(UHOLGridCell* Cell, const FHOLGridCommandView& Building);
+
+	/** What the age panels show, for UHOLGameScreen::Describe and ClickWidget (hol.HUD.Report's "grid ages" line, read without widgets). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|UI")
+	void SetAgesReport(bool bShown, int32 Chosen, const TArray<FName>& Types, const TArray<bool>& Reached, const TArray<FString>& Tooltips);
+
+	/** A border's brush as the C++ screen's rounded boxes (FSlateRoundedBoxBrush(Fill, Radius, Outline, OutlineWidth)). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|UI")
+	void SetRoundedBrush(UBorder* Border, FLinearColor Fill, float Radius, FLinearColor Outline, float OutlineWidth) const;
+
+	/** HOLUIStyle colour: 0 Accent, 1 Text, 2 TextMuted, 3 HUDPanel (grey otherwise). */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|UI")
+	static FLinearColor GetStyleColor(int32 Which);
 
 	/** Seconds between two Refresh (4 per second). */
 	static constexpr float RefreshSeconds = 0.25f;

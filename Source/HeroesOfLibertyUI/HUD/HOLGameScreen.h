@@ -94,6 +94,15 @@ public:
 	/** HUD H-4: the PlayersPanel (table host in the right column), filled by the script's table. */
 	UBorder* GetPlayersPanel() const { return PlayersPanel; }
 
+	/** HUD H-8: the bottom bar's AgePanelsHost, an empty horizontal box the script's four age panels fill. */
+	UHorizontalBox* GetAgePanelsHost() const { return AgePanelsHost; }
+	/** HUD H-8: the shown player's tier (BoundTableState->GetTier), INDEX_NONE without one. */
+	int32 GetBoundTier() const;
+	/** HUD H-8: RefreshAges' cell filling (name, Ready or Greyed by the stock, tooltip with cost and effect) for a building of an age panel. */
+	void FillAgeCell(UHOLGridCell* Cell, FName TypeName, bool bGreyed);
+	/** HUD H-8: what the script's age panels show, copied into the mirrors Describe and ClickWidget read without widgets. */
+	void SetAgesMirror(bool bShown, int32 Chosen, const TArray<FName>& Types, const TArray<bool>& Reached, const TArray<FString>& Tooltips);
+
 	/** The population full alert's test binds a player state without a player controller. */
 	friend class FHOLPopulationAlertThreadTest;
 
@@ -362,6 +371,10 @@ private:
 	/** Each medallion's tooltip as Report writes it (« Palier II — Essor | Palier non atteint »), and the look shown (-1: none yet). */
 	TArray<FString> ShownAgeTooltips;
 	TArray<int32> ShownAgeLooks;
+
+	/** HUD H-8: the empty box in the bottom bar the script's age panels are put in. */
+	UPROPERTY(Transient)
+	TObjectPtr<UHorizontalBox> AgePanelsHost;
 
 	/** Each age's building cells, Q S D F / W X C V (NumAges x NumAgeCells), and their boxes in the panel's grid. */
 	UPROPERTY(Transient)

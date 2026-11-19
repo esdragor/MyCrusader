@@ -2352,6 +2352,40 @@ void UHOLGameScreen::RefreshAges(const AHOLPlayerState* PlayerState)
 	}
 }
 
+int32 UHOLGameScreen::GetBoundTier() const
+{
+	return BoundPlayerState.IsValid() && BoundTableState.IsValid() ? BoundTableState->GetTier(BoundPlayerState->GetPlayerIndex()) : INDEX_NONE;
+}
+
+void UHOLGameScreen::FillAgeCell(UHOLGridCell* Cell, const FName TypeName, const bool bGreyed)
+{
+	using namespace UE::HeroesOfLiberty::UI::GameScreen;
+
+	if (!Cell)
+	{
+		return;
+	}
+	// RefreshAges' body for a building (HUD H-8): greyed when its age is not reached, or when the stock does not cover the cost (in red in the tooltip, D313).
+	const int32 PlayerIndex = BoundPlayerState.IsValid() ? BoundPlayerState->GetPlayerIndex() : INDEX_NONE;
+	const FHOLResources Stock = BoundPlayerState.IsValid() ? BoundPlayerState->GetResources() : FHOLResources();
+	const FHOLBuildingTypeRow* BuildType = UHOLBuildingSettings::FindType(TypeName);
+	// The seat's own price (a Nomad's first forum costs the secondary centre's price, D783), as the server charges it.
+	const FHOLResources Cost = UHOLBuildingSettings::GetBuildCost(GetWorld(), TypeName, PlayerIndex);
+	const FHOLResources Missing = GetMissing(Stock, Cost);
+	const FText Name = HOLGameNames::GetBuildingName(TypeName, BuildType);
+	Cell->SetCommand(Name, !bGreyed && Missing == FHOLResources() ? EHOLGridCellState::Ready : EHOLGridCellState::Greyed);
+	Cell->SetTooltip(Name, Cost, Missing, bGreyed ? LOCTEXT("AgeLocked", "Palier non atteint") : GetBuildingEffect(BuildType, LocalFactionKey(), GetWorld(), PlayerIndex));
+}
+
+void UHOLGameScreen::SetAgesMirror(const bool bShown, const int32 Chosen, const TArray<FName>& Types, const TArray<bool>& Reached, const TArray<FString>& Tooltips)
+{
+	bAgesShown = bShown;
+	ShownChosenAge = Chosen;
+	ShownAgeTypes = Types;
+	ShownAgeReached = Reached;
+	ShownAgeTooltips = Tooltips;
+}
+
 void UHOLGameScreen::RefreshQueue(const AHOLBuilding* OwnBuilding)
 {
 	using namespace UE::HeroesOfLiberty::UI::GameScreen;
@@ -3252,6 +3286,10 @@ void UHOLGameScreen::BuildLayout()
 		}
 		AgePanel->SetVisibility(ESlateVisibility::Collapsed);
 	}
+
+	// HUD H-8: the host the script's age panels are put in (empty here; it takes no room until they are).
+	AgePanelsHost = MakeHorizontalBox(TEXT("AgePanelsHost"));
+	AddToBar(AgePanelsHost, 0.f);
 
 	// The minimap's place, bottom right (D201): no minimap yet; nothing else goes there.
 	MinimapPlace = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass(), TEXT("MinimapPlace"));
