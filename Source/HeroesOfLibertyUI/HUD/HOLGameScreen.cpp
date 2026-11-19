@@ -2231,6 +2231,14 @@ void UHOLGameScreen::ShowMessage(const FString& Key, const FText& Text)
 		UE_LOG(LogHOLUI, Display, TEXT("HUD message: %s \"%s\""), *Key, *Text.ToString());
 	}
 }
+void UHOLGameScreen::RefreshScriptNow()
+{
+	if (ScriptScreen)
+	{
+		ScriptScreen->RefreshNow();
+	}
+}
+
 bool UHOLGameScreen::IsProductionHeldForRoom() const
 {
 	using namespace UE::HeroesOfLiberty::UI::GameScreen;

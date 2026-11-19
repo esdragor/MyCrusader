@@ -85,6 +85,9 @@ public:
 	/** True when a building of the shown player holds a finished unit for lack of room (D829); the script's panel reads it (UHOLScriptScreen::IsProductionHeldForRoom). */
 	bool IsProductionHeldForRoom() const;
 
+	/** HUD H-11b: refreshes the script's part at once (the test scenario's hook: its panel and its "Scenario panel:" journal line follow the change without waiting for a tick). */
+	void RefreshScriptNow();
+
 	/** The key Describe prints for the short message (the script draws it and says when it ends). */
 	void SetMessageKeyMirror(const FString& Key) { MessageKey = Key; }
 

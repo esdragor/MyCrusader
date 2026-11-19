@@ -98,7 +98,7 @@ void AHOLGameHUD::BeginPlay()
 		{
 			if (UHOLGameScreen* GameScreen = WeakScreen.Get())
 			{
-				GameScreen->RefreshNow();
+				GameScreen->RefreshScriptNow();
 			}
 		};
 		UE::HeroesOfLiberty::UI::GameHUD::ScenarioHookOwner = this;
