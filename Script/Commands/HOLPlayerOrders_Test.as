@@ -18,6 +18,7 @@ void Test_PlayerOrdersIsAccepted(FUnitTest& T)
 {
 	int MaxSlots = HOLCommandScript::GetMaxSlots();
 	T.AssertTrue(MaxSlots > 0, "there are player slots");
+	T.AssertEquals(8, MaxSlots, "8 slots: slot 7 is the last one, slot 8 does not exist (the cases below name them)");
 	T.AssertTrue(HOLPlayerOrders::IsAccepted(1, 200), "slot 1, 200 units: accepted");
 	T.AssertTrue(HOLPlayerOrders::IsAccepted(0, 1), "slot 0, 1 unit: accepted");
 	T.AssertTrue(HOLPlayerOrders::IsAccepted(MaxSlots - 1, 0), "last slot, 0 units: accepted");

@@ -151,19 +151,8 @@ namespace UE::HeroesOfLiberty::Tests::AIOrders
 	};
 }
 
-// The rule alone: a player's slot (never INDEX_NONE, the server's own orders every unit obeys), 200 units at most.
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLAIOrdersRuleTest, "HeroesOfLiberty.AI.Orders.Rule", UE::HeroesOfLiberty::Tests::AIOrders::Flags)
-bool FHOLAIOrdersRuleTest::RunTest(const FString& Parameters)
-{
-	TestEqual(TEXT("the cap: a player's whole population (D03)"), HOLPlayerOrders::MaxOrderedUnits, 200);
-	TestTrue(TEXT("slot 1, 200 units: accepted"), HOLPlayerOrders::IsAccepted(1, 200));
-	TestTrue(TEXT("slot 0, one unit: accepted"), HOLPlayerOrders::IsAccepted(0, 1));
-	TestTrue(TEXT("slot 7, no unit (a foundation placed alone): accepted"), HOLPlayerOrders::IsAccepted(FHOLMatchConfig::MaxSlots - 1, 0));
-	TestFalse(TEXT("slot 1, 201 units: refused"), HOLPlayerOrders::IsAccepted(1, 201));
-	TestFalse(TEXT("no slot (INDEX_NONE): refused"), HOLPlayerOrders::IsAccepted(INDEX_NONE, 1));
-	TestFalse(TEXT("slot 8: refused"), HOLPlayerOrders::IsAccepted(FHOLMatchConfig::MaxSlots, 1));
-	return true;
-}
+// (The rule alone, "HeroesOfLiberty.AI.Orders.Rule", is script since the removal of the C++ fallback: the rule needs the script board, and a test without
+// a game world has none. Test_PlayerOrdersIsAccepted in Script/Commands/HOLPlayerOrders_Test.as covers cap 200, slots 0 / 1 / 7, 201, INDEX_NONE, slot 8.)
 
 // An AI slot (1, no PlayerState nor controller) sends its Peasants to a tree: the order enters the queue, nobody moves in
 // this frame, the next step sets them gathering; slot 0's Peasant slipped into the list is refused (D288). A move order
