@@ -11,6 +11,7 @@ class UHorizontalBox;
 class UImage;
 class UVerticalBox;
 struct FHOLTradeGain;
+class UHOLGridCell;
 
 /** How a cell of the grid takes a click. */
 UENUM(BlueprintType)
