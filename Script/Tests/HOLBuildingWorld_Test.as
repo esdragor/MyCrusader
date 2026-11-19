@@ -2,7 +2,7 @@
 //   Buildings.Foundation -> Test_BuildingFoundation; Buildings.Selection -> Test_BuildingSelection; Buildings.Damage -> Test_BuildingDamage.
 // Same chain as the C++ (a spawned AHOLBuilding of the test world, the real AHOLBuilding::SetConstructionState / SetConstructionWork / GetHealth,
 // UHOLConstructionSubsystem::DamageBuilding, the selection channel's line trace); the HOLTestWorld wrappers are thin calls to those methods, no rule
-// copied. The C++ tests stay until the main session has seen these red then green. HOLBuilding_Test.as (the table tests) is a different file.
+// copied. The C++ Selection test is removed (all ported, red seen then green on integ-19, CELEBORN-1119ch); Foundation and Damage stay in HOLBuildingTests.cpp for their unported assertions (listed below). HOLBuilding_Test.as (the table tests) is a different file.
 //
 // Not ported, and why:
 //   Foundation:
@@ -14,7 +14,7 @@
 //   Damage:
 //   - "its footprint blocks the navmesh / no longer blocks" (UBoxComponent::CanEverAffectNavigation): component, not exposed.
 //   - the rubble (TActorIterator<AHOLRubble>: its type name, 10 s life span, no click answered): AHOLRubble is not exposed and has no wrapper yet.
-//   Selection: all ported.
+//   Selection: all ported, C++ test removed.
 
 namespace BuildingWorldTest
 {

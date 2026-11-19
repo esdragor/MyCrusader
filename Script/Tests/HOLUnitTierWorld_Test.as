@@ -1,10 +1,10 @@
-// World half of HOLUnitTierProductionTests.cpp (D853, CELEBORN-1119cb): the one C++ test "HeroesOfLiberty.Production.UnitTier" on the REAL chain.
+// World half of the removed HOLUnitTierProductionTests.cpp (D853, CELEBORN-1119cb): the one former C++ test "HeroesOfLiberty.Production.UnitTier" on the REAL chain.
 // (HOLUnitTierProduction_Test.as, already there, holds the 3 decision tests; this file is the world test, one test: Test_UnitTierProductionWorld.)
 // G1 (GDD 11.1, D711): a unit opens at the tier of its column MinTier, by ONE rule. Same chain as the C++: the production order of a slot goes
 // through the command queue (UHOLCommandSubsystem::IssueProductionOrder) and the production subsystem at the step start (UHOLSimulationSubsystem's
 // OnStepStarted broadcast, no Mass); the stock and the buildings' queues are what is measured (no unit is born, the C++ did not read one either).
 // Two AI slots of the Dawn each own a Barracks, an Archery range, a Stable, a Chapel and a Siege workshop; slot 0 at tier 0, slot 1 at tier 1
-// (forced, hol.Cheat.Tier's own state), the same orders for both. The C++ test stays until the main session has seen this one red then green.
+// (forced, hol.Cheat.Tier's own state), the same orders for both. The C++ test is removed (red seen then green on integ-19, CELEBORN-1119ch).
 //
 // Bindings added for it (UHOLTestWorldLibrary, D839: linking to expose): SetSlotTierOverride, GetSlotTier, IssueProductionOrder, GetUnitCostTotal.
 // Differences: the game state comes from HOLTestWorld::SpawnGameState (default config, InitVictory), the AI player states from the 2-AI json
