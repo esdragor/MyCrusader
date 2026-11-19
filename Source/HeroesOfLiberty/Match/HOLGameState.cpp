@@ -647,8 +647,14 @@ void AHOLGameState::SetForumBuilders(const int32 Slot, const int32 Builders)
 
 bool AHOLGameState::DefeatSlot(const int32 Slot, const EHOLDefeatReason Reason)
 {
-	if (!HasAuthority() || bMatchOver || Reason == EHOLDefeatReason::None || !SlotDefeats.IsValidIndex(Slot)
-		|| IsSlotDefeated(Slot) || HOLVictoryRules::GetCamp(LaunchConfig, Slot) == INDEX_NONE)
+	// S2a (MIG-CPP step 5, D839): the gate is the script board's when a board exists (HOLMatchFlow::DefeatGateOpen); else the inline refusal below
+	// (kept until the script gate is proven: Test_MatchFlowDefeatGateAgreement). Game thread only (every caller of DefeatSlot is: step end, RPC, console).
+	const bool bSlotValid = SlotDefeats.IsValidIndex(Slot);
+	const int32 GateAnswer = UHOLMatchFlowSubsystem::AskDefeatGate(GetWorld(), HasAuthority(), bMatchOver, Reason == EHOLDefeatReason::None, bSlotValid,
+		bSlotValid && IsSlotDefeated(Slot), bSlotValid && HOLVictoryRules::GetCamp(LaunchConfig, Slot) != INDEX_NONE);
+	if (GateAnswer >= 0 ? GateAnswer == 0
+		: (!HasAuthority() || bMatchOver || Reason == EHOLDefeatReason::None || !SlotDefeats.IsValidIndex(Slot)
+			|| IsSlotDefeated(Slot) || HOLVictoryRules::GetCamp(LaunchConfig, Slot) == INDEX_NONE))
 	{
 		return false;
 	}
@@ -709,6 +715,48 @@ bool AHOLGameState::EvaluateMatchEnd()
 			{
 				Result.WinnerMask |= static_cast<uint8>(1 << Winner);
 			}
+		}
+	}
+	// S2a (MIG-CPP step 5, D839): the script board's verdict decides when a board exists (HOLMatchFlow::MatchEndVerdict); Result above is the C++ rule, kept
+	// as the fallback and as a witness: a difference is logged. States / Teams as HOLVictoryRead takes them (the Diplomacy mode: every slot its own camp).
+	{
+		TArray<int32> States;
+		TArray<int32> Teams;
+		for (int32 Index = 0; Index < LaunchConfig.Slots.Num(); ++Index)
+		{
+			States.Add(static_cast<int32>(LaunchConfig.Slots[Index].State));
+			Teams.Add(IsDiplomacyMode() ? 0 : static_cast<int32>(LaunchConfig.Slots[Index].Team));
+		}
+		int32 AlliedMask = -1;
+		if (IsDiplomacyMode() && GetDefeatedMask() != 0)
+		{
+			TArray<bool> Gone;
+			for (int32 Slot = 0; Slot < FHOLMatchConfig::MaxSlots; ++Slot)
+			{
+				Gone.Add(HOLVictoryRules::GetCamp(LaunchConfig, Slot) == INDEX_NONE || IsSlotDefeated(Slot));
+			}
+			const HOLDiplomacy::FAlliedVictory Allied = HOLDiplomacy::AlliedVictory(GetDiplomacyBook(), Gone);
+			if (Allied.bEnded)
+			{
+				AlliedMask = 0;
+				for (const int32 Winner : Allied.Winners)
+				{
+					AlliedMask |= 1 << Winner;
+				}
+			}
+		}
+		const int32 Verdict = UHOLMatchFlowSubsystem::AskMatchEnd(GetWorld(), States, Teams, GetDefeatedMask(), IsDiplomacyMode(), AlliedMask);
+		if (Verdict >= 0)
+		{
+			const bool bScriptOver = Verdict < UHOLMatchFlowSubsystem::MatchNotOver;
+			const uint8 ScriptMask = bScriptOver ? static_cast<uint8>(Verdict) : 0;
+			if (bScriptOver != Result.bOver || (bScriptOver && ScriptMask != Result.WinnerMask))
+			{
+				UE_LOG(LogHOLMatch, Warning, TEXT("Victory: the script verdict (%d) differs from the C++ rule (over %d, winners mask %d); the script's is kept"),
+					Verdict, Result.bOver ? 1 : 0, static_cast<int32>(Result.WinnerMask));
+			}
+			Result.bOver = bScriptOver;
+			Result.WinnerMask = ScriptMask;
 		}
 	}
 	if (!Result.bOver)

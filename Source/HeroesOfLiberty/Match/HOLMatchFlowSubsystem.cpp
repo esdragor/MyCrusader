@@ -50,6 +50,18 @@ int32 UHOLMatchFlowSubsystem::AskEvaluateMatchEnd(const UWorld* World, const boo
 	return Board ? Board->EvaluateEndAnswer(bAnnounce, bFormed) : -1;
 }
 
+int32 UHOLMatchFlowSubsystem::AskDefeatGate(const UWorld* World, const bool bAuthority, const bool bMatchOver, const bool bReasonNone, const bool bSlotValid, const bool bDefeated, const bool bCampOccupied)
+{
+	UHOLMatchFlowSubsystem* Board = Find(World);
+	return Board ? Board->DefeatGateAnswer(bAuthority, bMatchOver, bReasonNone, bSlotValid, bDefeated, bCampOccupied) : -1;
+}
+
+int32 UHOLMatchFlowSubsystem::AskMatchEnd(const UWorld* World, const TArray<int32>& States, const TArray<int32>& Teams, const int32 DefeatedMask, const bool bDiplomacyMode, const int32 AlliedWinnerMask)
+{
+	UHOLMatchFlowSubsystem* Board = Find(World);
+	return Board ? Board->MatchEndAnswer(States, Teams, DefeatedMask, bDiplomacyMode, AlliedWinnerMask) : -1;
+}
+
 bool UHOLMatchFlowSubsystem::ShouldCreateSubsystem(UObject* Outer) const
 {
 	// Never the abstract C++ class, nor a script class replaced by a reload (as UHOLUnitTierSubsystem).
@@ -71,3 +83,5 @@ int32 UHOLMatchFlowSubsystem::PausesAfterPause_Implementation(const bool, const 
 int32 UHOLMatchFlowSubsystem::StanceGateAnswer_Implementation(const bool, const bool, const bool, const bool) { return -1; }
 int32 UHOLMatchFlowSubsystem::VisionGateAnswer_Implementation(const bool, const bool) { return -1; }
 int32 UHOLMatchFlowSubsystem::EvaluateEndAnswer_Implementation(const bool, const bool) { return -1; }
+int32 UHOLMatchFlowSubsystem::DefeatGateAnswer_Implementation(const bool, const bool, const bool, const bool, const bool, const bool) { return -1; }
+int32 UHOLMatchFlowSubsystem::MatchEndAnswer_Implementation(const TArray<int32>&, const TArray<int32>&, const int32, const bool, const int32) { return -1; }
