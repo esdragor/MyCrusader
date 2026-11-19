@@ -13,6 +13,7 @@
 #include "Resources/HOLSourceSubsystem.h"
 #include "Simulation/HOLGarrisonSubsystem.h"
 #include "Simulation/HOLUnitView.h"
+#include "UObject/ObjectKey.h"
 
 namespace HOLPlayerOrders
 {
@@ -30,10 +31,33 @@ namespace HOLPlayerOrders
 			return Ids;
 		}
 
-		/** The C++ rule, kept as the fallback while the world has no script board (P1b: the twin of HOLPlayerOrders.as, removed after the network proof). */
-		bool IsAcceptedCpp(const int32 PlayerIndex, const int32 NumUnits)
+		/** An order refused because the world has no script board: logged once per game (world) and per function, the AI asks in a loop. */
+		void LogBoardAbsent(const UWorld* World, const TCHAR* Order)
 		{
-			return PlayerIndex >= 0 && PlayerIndex < FHOLMatchConfig::MaxSlots && NumUnits >= 0 && NumUnits <= MaxOrderedUnits;
+			static FCriticalSection Lock;
+			static TMap<FName, FObjectKey> Logged;
+			const FObjectKey Key(World);
+			{
+				FScopeLock ScopeLock(&Lock);
+				const FObjectKey* Last = Logged.Find(FName(Order));
+				if (Last && *Last == Key)
+				{
+					return;
+				}
+				Logged.Add(FName(Order), Key);
+			}
+			UE_LOG(LogHOLMatch, Error, TEXT("PlayerOrders: %s refused, script board absent"), Order);
+		}
+
+		/** The board's answer as the order's result: 1 accepted, 0 refused, -1 (no script board) refused and said once. The rule is the script's alone. */
+		bool Verdict(const UWorld* World, const TCHAR* Order, const int32 Answer)
+		{
+			if (Answer < 0)
+			{
+				LogBoardAbsent(World, Order);
+				return false;
+			}
+			return Answer != 0;
 		}
 
 		/** The queue of World, when an order of PlayerIndex naming NumUnits units may enter it. */
@@ -45,9 +69,8 @@ namespace HOLPlayerOrders
 
 	bool IsAccepted(const int32 PlayerIndex, const int32 NumUnits)
 	{
-		// The script rule when a board exists (no world argument here: the board of the game world), else the C++ rule (a test without a world).
-		const int32 Answer = UHOLPlayerOrdersBoard::AskIsAcceptedAnywhere(PlayerIndex, NumUnits);
-		return Answer >= 0 ? Answer != 0 : IsAcceptedCpp(PlayerIndex, NumUnits);
+		// The script rule (no world argument here: the board of the game world); no board: refused.
+		return Verdict(nullptr, TEXT("IsAccepted"), UHOLPlayerOrdersBoard::AskIsAcceptedAnywhere(PlayerIndex, NumUnits));
 	}
 
 	void SendNonWorkersTo(UWorld& World, UHOLCommandSubsystem& Commands, const int32 PlayerIndex, TArray<uint32>& InOutUnitIds, const FVector& Point,
@@ -74,104 +97,32 @@ namespace HOLPlayerOrders
 	bool Move(UWorld& World, const int32 PlayerIndex, const TConstArrayView<uint32> UnitIds, const FVector& Target, const bool bQueue,
 		const FVector2D& FrontLine, const bool bFrontWidth)
 	{
-		const int32 Answer = UHOLPlayerOrdersBoard::AskMove(&World, PlayerIndex, ToBridgeIds(UnitIds), Target, bQueue, FrontLine, bFrontWidth);
-		if (Answer >= 0)
-		{
-			return Answer != 0;
-		}
-		UHOLCommandSubsystem* Commands = GetQueue(World, PlayerIndex, UnitIds.Num());
-		if (!Commands)
-		{
-			return false;
-		}
-		const UHOLCommandSubsystem::FPlayerOrderScope PlayerOrder(*Commands);
-		Commands->IssueMoveOrder(UnitIds, Target, PlayerIndex, /*bFromTask*/ false, FrontLine, bFrontWidth, bQueue);
-		return true;
+		return Verdict(&World, TEXT("Move"), UHOLPlayerOrdersBoard::AskMove(&World, PlayerIndex, ToBridgeIds(UnitIds), Target, bQueue, FrontLine, bFrontWidth));
 	}
 
 	bool Attack(UWorld& World, const int32 PlayerIndex, const TConstArrayView<uint32> UnitIds, const uint32 TargetUnitId, const bool bQueue)
 	{
-		const int32 Answer = UHOLPlayerOrdersBoard::AskAttack(&World, PlayerIndex, ToBridgeIds(UnitIds), static_cast<int32>(TargetUnitId), bQueue);
-		if (Answer >= 0)
-		{
-			return Answer != 0;
-		}
-		UHOLCommandSubsystem* Commands = GetQueue(World, PlayerIndex, UnitIds.Num());
-		if (!Commands)
-		{
-			return false;
-		}
-		const UHOLCommandSubsystem::FPlayerOrderScope PlayerOrder(*Commands);
-		Commands->IssueCombatOrder(UnitIds, EHOLOrderKind::Attack, TargetUnitId, PlayerIndex, bQueue);
-		return true;
+		return Verdict(&World, TEXT("Attack"), UHOLPlayerOrdersBoard::AskAttack(&World, PlayerIndex, ToBridgeIds(UnitIds), static_cast<int32>(TargetUnitId), bQueue));
 	}
 
 	bool AttackBuilding(UWorld& World, const int32 PlayerIndex, const TConstArrayView<uint32> UnitIds, AHOLBuilding* Building, const bool bQueue)
 	{
-		const int32 Answer = UHOLPlayerOrdersBoard::AskAttackBuilding(&World, PlayerIndex, ToBridgeIds(UnitIds), Building, bQueue);
-		if (Answer >= 0)
-		{
-			return Answer != 0;
-		}
-		UHOLCommandSubsystem* Commands = Building ? GetQueue(World, PlayerIndex, UnitIds.Num()) : nullptr;
-		if (!Commands)
-		{
-			return false;
-		}
-		const UHOLCommandSubsystem::FPlayerOrderScope PlayerOrder(*Commands);
-		Commands->IssueAttackBuildingOrder(UnitIds, Building, PlayerIndex, bQueue);
-		return true;
+		return Verdict(&World, TEXT("AttackBuilding"), UHOLPlayerOrdersBoard::AskAttackBuilding(&World, PlayerIndex, ToBridgeIds(UnitIds), Building, bQueue));
 	}
 
 	bool AttackMove(UWorld& World, const int32 PlayerIndex, const TConstArrayView<uint32> UnitIds, const FVector& Target, const bool bQueue)
 	{
-		const int32 Answer = UHOLPlayerOrdersBoard::AskAttackMove(&World, PlayerIndex, ToBridgeIds(UnitIds), Target, bQueue);
-		if (Answer >= 0)
-		{
-			return Answer != 0;
-		}
-		UHOLCommandSubsystem* Commands = GetQueue(World, PlayerIndex, UnitIds.Num());
-		if (!Commands)
-		{
-			return false;
-		}
-		const UHOLCommandSubsystem::FPlayerOrderScope PlayerOrder(*Commands);
-		Commands->IssueAttackMoveOrder(UnitIds, Target, PlayerIndex, bQueue);
-		return true;
+		return Verdict(&World, TEXT("AttackMove"), UHOLPlayerOrdersBoard::AskAttackMove(&World, PlayerIndex, ToBridgeIds(UnitIds), Target, bQueue));
 	}
 
 	bool Stop(UWorld& World, const int32 PlayerIndex, const TConstArrayView<uint32> UnitIds, const bool bHold)
 	{
-		const int32 Answer = UHOLPlayerOrdersBoard::AskStop(&World, PlayerIndex, ToBridgeIds(UnitIds), bHold);
-		if (Answer >= 0)
-		{
-			return Answer != 0;
-		}
-		UHOLCommandSubsystem* Commands = GetQueue(World, PlayerIndex, UnitIds.Num());
-		if (!Commands)
-		{
-			return false;
-		}
-		const UHOLCommandSubsystem::FPlayerOrderScope PlayerOrder(*Commands);
-		Commands->IssueCombatOrder(UnitIds, bHold ? EHOLOrderKind::Hold : EHOLOrderKind::Stop, 0, PlayerIndex);
-		return true;
+		return Verdict(&World, TEXT("Stop"), UHOLPlayerOrdersBoard::AskStop(&World, PlayerIndex, ToBridgeIds(UnitIds), bHold));
 	}
 
 	bool ToggleDeploy(UWorld& World, const int32 PlayerIndex, const TConstArrayView<uint32> UnitIds)
 	{
-		const int32 Answer = UHOLPlayerOrdersBoard::AskToggleDeploy(&World, PlayerIndex, ToBridgeIds(UnitIds));
-		if (Answer >= 0)
-		{
-			return Answer != 0;
-		}
-		UHOLCommandSubsystem* Commands = GetQueue(World, PlayerIndex, UnitIds.Num());
-		if (!Commands)
-		{
-			return false;
-		}
-		const UHOLCommandSubsystem::FPlayerOrderScope PlayerOrder(*Commands);
-		Commands->IssueCombatOrder(UnitIds, EHOLOrderKind::ToggleDeploy, 0, PlayerIndex);
-		return true;
+		return Verdict(&World, TEXT("ToggleDeploy"), UHOLPlayerOrdersBoard::AskToggleDeploy(&World, PlayerIndex, ToBridgeIds(UnitIds)));
 	}
 
 	bool Gather(UWorld& World, const int32 PlayerIndex, const TConstArrayView<uint32> UnitIds, const int32 SourceIndex, const bool bQueue)
