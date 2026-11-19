@@ -1598,36 +1598,7 @@ namespace UE::HeroesOfLiberty::Player
 			}
 		}));
 
-	/** J8a.4, until the interface's button: the local players buy their dead hero's return (the server checks it). */
-	FAutoConsoleCommand HeroReturnCommand(
-		TEXT("hol.Hero.Return"),
-		TEXT("hol.Hero.Return: the local player buys its dead hero's return, at the price of the next step (J8a.4)"),
-		FConsoleCommandDelegate::CreateLambda([]
-		{
-			for (AHOLPlayerController* Controller : GetLocalControllers())
-			{
-				Controller->RequestReturnHero();
-			}
-		}));
 
-	/** J8c.3, until the interface's buttons: the local players cast their hero's cry or plant his banner (the server checks it). */
-	FAutoConsoleCommand HeroCastCommand(
-		TEXT("hol.Hero.Cast"),
-		TEXT("hol.Hero.Cast <CloseRanks|Banner> [X Y]: the local player casts its hero's cry, or plants his banner at X Y (cm) (J8c.3)"),
-		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
-		{
-			const bool bBanner = Args.Num() >= 3 && Args[0].Equals(TEXT("Banner"), ESearchCase::IgnoreCase);
-			if (!bBanner && !(Args.Num() >= 1 && Args[0].Equals(TEXT("CloseRanks"), ESearchCase::IgnoreCase)))
-			{
-				UE_LOG(LogHOLMatch, Warning, TEXT("hol.Hero.Cast: CloseRanks, or Banner X Y"));
-				return;
-			}
-			const FVector Location = bBanner ? FVector(FCString::Atod(*Args[1]), FCString::Atod(*Args[2]), 0.0) : FVector::ZeroVector;
-			for (AHOLPlayerController* Controller : GetLocalControllers())
-			{
-				Controller->RequestHeroAbility(bBanner ? EHOLHeroAbility::Banner : EHOLHeroAbility::CloseRanks, Location);
-			}
-		}));
 
 	/** Lot E (D847), until the interface's button: the local players send the necrotic rage of their selected units (the server keeps the own Damned Warriors). Proof of the CastRage route over the network. */
 	FAutoConsoleCommand HeroRageCommand(
@@ -1641,77 +1612,7 @@ namespace UE::HeroesOfLiberty::Player
 			}
 		}));
 
-	/** D4, until the interface's buttons: the local players challenge a hero to a duel, or answer the challenge waiting for them (the server checks it). */
-	FAutoConsoleCommand DuelChallengeCommand(
-		TEXT("hol.Duel.Challenge"),
-		TEXT("hol.Duel.Challenge <TargetSlot>: the local player's hero challenges the hero of that slot to a duel (D4)"),
-		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
-		{
-			if (Args.Num() < 1)
-			{
-				UE_LOG(LogHOLMatch, Warning, TEXT("hol.Duel.Challenge <TargetSlot>"));
-				return;
-			}
-			for (AHOLPlayerController* Controller : GetLocalControllers())
-			{
-				Controller->RequestDuelChallenge(FCString::Atoi(*Args[0]));
-			}
-		}));
-	FAutoConsoleCommand DuelAcceptCommand(
-		TEXT("hol.Duel.Accept"),
-		TEXT("hol.Duel.Accept: the local player accepts the duel challenge waiting for his hero (D4)"),
-		FConsoleCommandDelegate::CreateLambda([]
-		{
-			for (AHOLPlayerController* Controller : GetLocalControllers())
-			{
-				Controller->RequestDuelAnswer(true);
-			}
-		}));
-	FAutoConsoleCommand DuelRefuseCommand(
-		TEXT("hol.Duel.Refuse"),
-		TEXT("hol.Duel.Refuse: the local player refuses the duel challenge waiting for his hero (D4, D80: final)"),
-		FConsoleCommandDelegate::CreateLambda([]
-		{
-			for (AHOLPlayerController* Controller : GetLocalControllers())
-			{
-				Controller->RequestDuelAnswer(false);
-			}
-		}));
 
-	/** D5, until the panel Diplomatie (D387): the local players say their stance toward a slot, or share their vision with it (the server decides). */
-	FAutoConsoleCommand DiplomacyStanceCommand(
-		TEXT("hol.Diplomacy.Stance"),
-		TEXT("hol.Diplomacy.Stance <Slot> <ally|neutral|enemy>: the local player says that stance toward that slot (Diplomacy mode; at once at the next step, announced to all)"),
-		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
-		{
-			if (Args.Num() < 2)
-			{
-				UE_LOG(LogHOLMatch, Warning, TEXT("Usage: hol.Diplomacy.Stance <Slot> <ally|neutral|enemy>"));
-				return;
-			}
-			const int32 Stance = Args[1].Equals(TEXT("ally"), ESearchCase::IgnoreCase) ? HOLDiplomacy::Ally
-				: Args[1].Equals(TEXT("neutral"), ESearchCase::IgnoreCase) ? HOLDiplomacy::Neutral : HOLDiplomacy::Enemy;
-			for (AHOLPlayerController* Controller : GetLocalControllers())
-			{
-				Controller->RequestStance(FCString::Atoi(*Args[0]), Stance);
-			}
-		}));
-	/** SG2, until the Alt + click (SG3): the local players post a map signal (the server's board decides, ServerPostSignal). */
-	FAutoConsoleCommand SignalPostCommand(
-		TEXT("hol.Signal.Post"),
-		TEXT("hol.Signal.Post <Kind> <X> <Y>: the local player posts a signal of that kind (0 Neutral to 5 Scout) at that place of the map"),
-		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
-		{
-			if (Args.Num() < 3)
-			{
-				UE_LOG(LogHOLMatch, Warning, TEXT("Usage: hol.Signal.Post <Kind> <X> <Y>"));
-				return;
-			}
-			for (AHOLPlayerController* Controller : GetLocalControllers())
-			{
-				Controller->RequestSignal(FCString::Atoi(*Args[0]), FVector(FCString::Atof(*Args[1]), FCString::Atof(*Args[2]), 0.0));
-			}
-		}));
 	FAutoConsoleCommand SignalReportCommand(
 		TEXT("hol.Signal.Report"),
 		TEXT("hol.Signal.Report: logs the signals each local player has received (ClientReceiveSignal)"),
@@ -1721,30 +1622,6 @@ namespace UE::HeroesOfLiberty::Player
 			{
 				const AHOLPlayerState* PlayerState = Controller->GetHOLPlayerState();
 				UE_LOG(LogHOLMatch, Display, TEXT("Signal report: slot %d received %d"), PlayerState ? PlayerState->GetPlayerIndex() : -1, Controller->GetNumReceivedSignals());
-			}
-		}));	/** A4, until the input (Enter and a field, Retours/Q-chat-ui.md): the local players send a chat message (the server decides who reads it). */
-	FAutoConsoleCommand ChatSayCommand(
-		TEXT("hol.Chat.Say"),
-		TEXT("hol.Chat.Say <all|allies|private> [<TargetSlot> for private] <text...>: the local player sends that chat message"),
-		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
-		{
-			const int32 Channel = Args.Num() > 0 ? UHOLChatSubsystem::ParseChannel(Args[0]) : INDEX_NONE;
-			const int32 First = Channel == UHOLChatSubsystem::ChannelPrivate ? 2 : 1;
-			if (Channel == INDEX_NONE || Args.Num() <= First)
-			{
-				UE_LOG(LogHOLMatch, Warning, TEXT("Usage: hol.Chat.Say <all|allies|private> [<TargetSlot>] <text>"));
-				return;
-			}
-			const int32 Target = Channel == UHOLChatSubsystem::ChannelPrivate ? FCString::Atoi(*Args[1]) : INDEX_NONE;
-			TArray<FString> Words;
-			for (int32 Index = First; Index < Args.Num(); ++Index)
-			{
-				Words.Add(Args[Index]);
-			}
-			const FString Text = FString::Join(Words, TEXT(" "));
-			for (AHOLPlayerController* Controller : GetLocalControllers())
-			{
-				Controller->RequestChat(Channel, Text, Target);
 			}
 		}));
 	FAutoConsoleCommand ChatReportCommand(
@@ -1756,32 +1633,6 @@ namespace UE::HeroesOfLiberty::Player
 			{
 				const AHOLPlayerState* PlayerState = Controller->GetHOLPlayerState();
 				UE_LOG(LogHOLMatch, Display, TEXT("Chat report: slot %d received %d"), PlayerState ? PlayerState->GetPlayerIndex() : -1, Controller->GetNumReceivedChats());
-			}
-		}));
-	/** SP2, until the Forum's button (SP3): the local players start or cancel a specialization (the server's board decides). */
-	FAutoConsoleCommand SpecStartCommand(
-		TEXT("hol.Spec.Start"),
-		TEXT("hol.Spec.Start <Tier> <Option>: the local player starts the unlock of that option of that tier at his Forum"),
-		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
-		{
-			if (Args.Num() < 2)
-			{
-				UE_LOG(LogHOLMatch, Warning, TEXT("Usage: hol.Spec.Start <Tier> <Option>"));
-				return;
-			}
-			for (AHOLPlayerController* Controller : GetLocalControllers())
-			{
-				Controller->RequestSpecialization(FCString::Atoi(*Args[0]), FCString::Atoi(*Args[1]));
-			}
-		}));
-	FAutoConsoleCommand SpecCancelCommand(
-		TEXT("hol.Spec.Cancel"),
-		TEXT("hol.Spec.Cancel: the local player cancels his running specialization"),
-		FConsoleCommandDelegate::CreateLambda([]()
-		{
-			for (AHOLPlayerController* Controller : GetLocalControllers())
-			{
-				Controller->RequestCancelSpecialization();
 			}
 		}));
 	FAutoConsoleCommand SpecReportCommand(
@@ -1807,21 +1658,6 @@ namespace UE::HeroesOfLiberty::Player
 							View.RemainingMs, View.GetChosen(1), View.GetChosen(2), View.GetChosen(3));
 					}
 				}
-			}
-		}));
-	FAutoConsoleCommand DiplomacyVisionCommand(
-		TEXT("hol.Diplomacy.Vision"),
-		TEXT("hol.Diplomacy.Vision <Slot> <0|1>: the local player stops (0) or starts (1) sharing his vision with that slot (allies only)"),
-		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
-		{
-			if (Args.Num() < 2)
-			{
-				UE_LOG(LogHOLMatch, Warning, TEXT("Usage: hol.Diplomacy.Vision <Slot> <0|1>"));
-				return;
-			}
-			for (AHOLPlayerController* Controller : GetLocalControllers())
-			{
-				Controller->RequestShareVision(FCString::Atoi(*Args[0]), FCString::Atoi(*Args[1]) != 0);
 			}
 		}));
 	/** D5, scenarios: the server (or a solo game) sets a stance of any slot at once, as if that player had said it. No effect on a client. */
