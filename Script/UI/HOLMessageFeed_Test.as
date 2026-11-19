@@ -57,8 +57,21 @@ void Test_MessageFeedClicksAndPlaceAreTheCppOnes(FUnitTest& T)
 	T.AssertFalse(HOLMessageFeed::PieceIsName(-1), "INDEX_NONE: a word");
 	T.AssertEquals(0.0, HOLMessageFeed::TopPadding(0), "the first line touches the list's top");
 	T.AssertEquals(2.0, HOLMessageFeed::TopPadding(3), "2 px between two lines");
-	// Values recopied from BuildLayout (a copy guard, no logic): the look is proven by the capture.
-	T.AssertEquals(0.8, HOLMessageFeed::LineOpacity(), "the table's darkness");
-	T.AssertEquals(8.0, HOLMessageFeed::PaddingX(), "padding x");
-	T.AssertEquals(2.0, HOLMessageFeed::PaddingY(), "padding y");
+	// The look constants (LineOpacity, PaddingX, PaddingY) are copies of BuildLayout with no logic: the capture proves them, no test here.
+}
+
+void Test_MessageFeedHitTestStaysInsideTheShortestList(FUnitTest& T)
+{
+	// The thread says 4 lines but the hover list holds 2 and the alert list 3: only indices present in all three can be hit.
+	TArray<bool> Hovered;
+	TArray<bool> Alerts;
+	Hovered.Add(false);
+	Hovered.Add(false);
+	Alerts.Add(false);
+	Alerts.Add(false);
+	Alerts.Add(true);
+	T.AssertEquals(-1, HOLMessageFeed::HoveredAlertLine(Hovered, Alerts, 4), "line 2 has an alert but no hover entry: no hit, no out-of-range read");
+	Hovered.Add(true);
+	T.AssertEquals(2, HOLMessageFeed::HoveredAlertLine(Hovered, Alerts, 4), "once line 2 has a hover entry it is hit");
+	T.AssertEquals(-1, HOLMessageFeed::HoveredAlertLine(Hovered, Alerts, 0), "a count of 0 hides every line");
 }
