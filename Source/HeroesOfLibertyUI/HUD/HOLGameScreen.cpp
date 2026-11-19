@@ -1396,6 +1396,10 @@ void UHOLGameScreen::FillAgeCell(UHOLGridCell* Cell, const FName TypeName, const
 void UHOLGameScreen::SetAgesMirror(const bool bShown, const int32 Chosen, const TArray<FName>& Types, const TArray<bool>& Reached, const TArray<FString>& Tooltips)
 {
 	bAgesShown = bShown;
+	// The tier the script has just drawn the panels at (it read GetTier in the same call): kept at every draw, not only by
+	// NativeTick's check. Left to that check alone it went stale when a draw came from elsewhere (a selection): a tier
+	// lowered (hol.Cheat.Tier off) then back to the stale value was never drawn (quick_check "build tiers": II locked at level 3).
+	ShownTier = GetBoundTier();
 	ShownChosenAge = Chosen;
 	ShownAgeTypes = Types;
 	ShownAgeReached = Reached;
