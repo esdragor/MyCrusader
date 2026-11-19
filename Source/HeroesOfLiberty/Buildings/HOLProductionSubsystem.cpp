@@ -235,28 +235,28 @@ void UHOLProductionSubsystem::ApplyMarketTrade(const FHOLProductionCommand& Orde
 
 void UHOLProductionSubsystem::ApplyTribute(const FHOLProductionCommand& Order, const AHOLBuilding& Building, AHOLPlayerState& Giver)
 {
-	// A client could send anything: only from a Market, to another player of the match, one of the four resources, a positive amount in stock.
+	// A client could send anything: the rule (from a Market, to another player of the match, one of the four resources, a positive amount in stock)
+	// is the script's (HOLTribute::Settle, Script/Economy/HOLTributeRules.as, D851 step 5 R2), reached through the market board; here the stocks and the journal.
 	AHOLPlayerState* Taker = Order.Receiver != Order.PlayerIndex ? FindPlayerState(Order.Receiver) : nullptr;
-	const bool bResource = Order.Resource >= 0 && Order.Resource <= static_cast<int32>(EHOLResource::Gold);
-	if (Building.GetTypeName() != HOLBuildingTypeNames::Market || !Taker || !bResource || Order.Amount <= 0)
+	const FHOLTributeBridgeResult Done = UHOLMarketSubsystem::SettleTribute(GetWorld(), Building.GetTypeName() == HOLBuildingTypeNames::Market, Order.PlayerIndex, Order.Receiver,
+		Taker != nullptr, Giver.GetResources(), Taker ? Taker->GetResources() : Giver.GetResources(), Order.Resource, Order.Amount, HOLTribute::DefaultTaxPercent);
+	if (!Done.bOk || !Taker)
 	{
-		UE_LOG(LogHOLCommands, Display, TEXT("Tribute: slot %d to slot %d ignored (%s, resource %d, amount %d)"), Order.PlayerIndex, Order.Receiver,
-			*Building.GetTypeName().ToString(), Order.Resource, Order.Amount);
+		if (Done.Reason == HOLTribute::NotEnoughReason)
+		{
+			UE_LOG(LogHOLCommands, Display, TEXT("Tribute: slot %d cannot give %d of resource %d (stock %d)"), Order.PlayerIndex, Order.Amount, Order.Resource, Giver.GetResources()[static_cast<EHOLResource>(Order.Resource)]);
+		}
+		else
+		{
+			// Also what a missing script board gives (Reason -1, stocks unchanged, the error is logged by the bridge): nobody pays.
+			UE_LOG(LogHOLCommands, Display, TEXT("Tribute: slot %d to slot %d ignored (%s, resource %d, amount %d)"), Order.PlayerIndex, Order.Receiver,
+				*Building.GetTypeName().ToString(), Order.Resource, Order.Amount);
+		}
 		return;
 	}
-	const EHOLResource Resource = static_cast<EHOLResource>(Order.Resource);
-	FHOLResources GiverStock = Giver.GetResources();
-	if (GiverStock[Resource] < Order.Amount)
-	{
-		UE_LOG(LogHOLCommands, Display, TEXT("Tribute: slot %d cannot give %d of resource %d (stock %d)"), Order.PlayerIndex, Order.Amount, Order.Resource, GiverStock[Resource]);
-		return;
-	}
-	const int32 Arrives = UHOLMarketSubsystem::Received(GetWorld(), Order.Amount, HOLTribute::DefaultTaxPercent);
-	FHOLResources TakerStock = Taker->GetResources();
-	GiverStock[Resource] -= Order.Amount;
-	TakerStock[Resource] += Arrives;
-	Giver.SetResources(GiverStock);
-	Taker->SetResources(TakerStock);
+	const int32 Arrives = Done.Received;
+	Giver.SetResources(Done.Giver);
+	Taker->SetResources(Done.Taker);
 	UE_LOG(LogHOLCommands, Display, TEXT("Tribute: slot %d gave %d of resource %d to slot %d, %d arrived (tax %d)"), Order.PlayerIndex, Order.Amount, Order.Resource,
 		Order.Receiver, Arrives, Order.Amount - Arrives);
 	// Only the receiver is told (TB-Q1).

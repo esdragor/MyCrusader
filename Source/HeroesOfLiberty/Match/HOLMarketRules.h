@@ -17,6 +17,8 @@ namespace HOLTribute
 {
 	/** About 30 % (D372, indicative, to be tuned in play). */
 	constexpr int32 DefaultTaxPercent = 30;
+	/** The script's reason number for "stock too short" (HOLTribute::NotEnough in HOLTributeRules.as, held by the Market.ServerBoard test): ApplyTribute tells it from the other refusals in the journal. */
+	constexpr int32 NotEnoughReason = 4;
 }
 
 namespace HOLMarket
