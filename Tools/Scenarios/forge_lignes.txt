@@ -1,0 +1,69 @@
+# Essai D856 (forge-essai, HALDIR-1119cl) : la rangee de RECHERCHE de la grille de commandes (cases W X C V) montre UNE CASE PAR LIGNE de technologies, et dans chaque case le PROCHAIN niveau a rechercher. Forge : W Lames affûtées, X Empennage, C Maille, V Barde ; Ferme : W Charrue, X Brouette ; Camp de bûcherons : W Haches doubles. 3 minutes au plus.
+# Plain, toi (5 Paysans) contre une IA figee ; ressources et palier 1 par triche (hol.Cheat.Resources, hol.Cheat.Tier 1) ; les batiments sont poses finis par hol.Cheat.SpawnBuilding ; recherche de 2 s (hol.Prod.BuildTime 2). Le CLIC sur la case W est un vrai clic de souris (hol.Mouse.Click GridCell08, W = case 8 de la grille) ; la selection des batiments passe par F3 / F1 (hol.Select.Category), Tab (hol.Select.Subgroup) et un clic sur le batiment (hol.Select.Click).
+# Le panneau de notes est ferme avant chaque capture (hol.HUD.Click ScenarioClose : il ne doit pas couvrir la grille) ; les consignes sont dans les lignes "note". Capture de la grille en bas a gauche.
+waitlog Camera above the start of slot 0
+r.SetRes 1920x1080w
+hol.UI.Language fr
+hol.AI.ThinkSteps 100000
+hol.Combat.Enabled 0
+hol.Cheat.Resources 5000
+hol.Cheat.Tier 1
+hol.Prod.BuildTime 2
+hol.Camera.FocusNear 2500 2500
+frames 5
+hol.Cheat.SpawnBuilding Forge 0 2500 2500
+waitlog Cheat: spawned Forge of slot 0
+frames 30
+hol.Select.Category Technological
+waitlog Selection: Forge
+frames 30
+notereset Etape 1 : ta Forge (finie) est selectionnee, palier 1. La rangee du BAS de la grille (en bas a gauche, touches W X C V) montre QUATRE cases, une par ligne : Lames affûtées (W), Empennage (X), Maille (C), Barde (V). Avant, les deux armures n'avaient aucune case et Lames affûtées II avait la sienne.
+waitkey Entree : etape 1, les 4 lignes de la Forge
+hol.HUD.Click ScenarioClose
+frames 10
+hol.HUD.Report
+capture forge_4_lignes
+hol.Mouse.Click GridCell08
+waitlog Production: slot 0 queued research MeleeAttackI
+waitlog Technology: slot 0 researched MeleeAttackI
+frames 30
+note Etape 2 : tu as clique la case W (Lames affûtées) : elle est partie en file puis faite en 2 s. La case W montre maintenant Lames affûtées II, GRISEE (attenuee) car il faut le palier 2 ; X Empennage, C Maille et V Barde n'ont pas change. Il y a toujours 4 cases, pas une de plus.
+waitkey Entree : etape 2, la case W est passee au niveau II
+hol.HUD.Click ScenarioClose
+frames 10
+hol.HUD.Report
+capture forge_niveau_2
+hol.Camera.FocusNear -2500 2500
+frames 5
+hol.Cheat.SpawnBuilding Farm 0 -2500 2500
+waitlog Cheat: spawned Farm of slot 0
+frames 30
+hol.Select.Category Economic
+frames 2
+hol.Select.Subgroup
+frames 2
+hol.Select.Subgroup
+frames 2
+waitlog Subgroup: Farm
+frames 30
+notereset Etape 3 : la Ferme est selectionnee (Tab dans les batiments economiques). La rangee du bas montre DEUX cases : Charrue (W) et Brouette (X) ; C et V sont vides (sombres). Avant, la Ferme avait 4 cases : Charrue, Charrue II, Brouette, Brouette II.
+waitkey Entree : etape 3, la Ferme a 2 lignes
+hol.HUD.Click ScenarioClose
+frames 10
+hol.HUD.Report
+capture ferme_2_lignes
+hol.Camera.FocusNear 2500 -2500
+frames 5
+hol.Cheat.SpawnBuilding LumberCamp 0 2500 -2500
+waitlog Cheat: spawned LumberCamp of slot 0
+frames 30
+hol.Select.Click 0.5 0.5
+waitlog Selection: LumberCamp
+frames 30
+notereset Etape 4 : le Camp de bûcherons est selectionne (clic sur le batiment). La rangee du bas montre UNE seule case : Haches doubles (W) ; X, C et V sont vides. Avant, il en avait deux (Haches doubles I et II). Le Camp de mineurs fait pareil (Pioches de mineur) : non montre ici.
+waitkey Entree : etape 4, le Camp de bûcherons a 1 ligne
+hol.HUD.Click ScenarioClose
+frames 10
+hol.HUD.Report
+capture camp_1_ligne
+hol.Test.Sanity
