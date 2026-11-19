@@ -424,7 +424,7 @@ void UHOLConstructionSubsystem::Place(const FHOLConstructionCommand& Order, AHOL
 	// Only a type the builders build (D313): a client could name any row, the main centre too.
 	const FHOLBuildingTypeRow* Type = Order.TypeName.IsNone() ? nullptr : UHOLBuildingSettings::FindType(Order.TypeName);
 	// K1a: the script board decides the order of the gates (HOLConstructionBoard.as: buildable, faction, age, placement, payment); the journal lines and the
-	// refusals are the C++ ones. -1 (no board, or an answer out of range) keeps the C++ gates below, the twin until the network proof. The stock is only
+	// refusals are the C++ ones. -1 (no board, or an answer out of range) refuses the order (error logged once). The stock is only
 	// COMPUTED here: it is written after the foundation is born (below), never before.
 	FBox2D Footprint;
 	FVector2D Centre;
@@ -477,44 +477,13 @@ void UHOLConstructionSubsystem::Place(const FHOLConstructionCommand& Order, AHOL
 	}
 	if (Verdict < 0)
 	{
-		// BUG nomad_start point 1: a Nomad seat's first forum too (UHOLBuildingSettings::IsFirstForumOpen).
-		if (!Type || !UHOLBuildingSettings::IsBuildableBy(World, Order.TypeName, Order.PlayerIndex))
+		static bool bLogged = false;
+		if (!bLogged)
 		{
-			UE_LOG(LogHOLCommands, Display, TEXT("Construction: slot %d cannot place %s: not buildable"), Order.PlayerIndex, *Order.TypeName.ToString());
-			return;
+			bLogged = true;
+			UE_LOG(LogHOLCommands, Error, TEXT("Construction: Place refused, script board absent"));
 		}
-		// L0 (LQ-7): a building the player's faction does not build: the grid hides it, a client could still ask.
-		if (!HOLFactionRules::IsBuildingOpenTo(World, Order.TypeName, Order.PlayerIndex))
-		{
-			UE_LOG(LogHOLCommands, Display, TEXT("Construction: slot %d cannot place %s: not a building of its faction"), Order.PlayerIndex, *Order.TypeName.ToString());
-			return;
-		}
-		// P3 (D07): a building of an age the player's tier (his hero's level) has not reached; the grid greys it, a client could still ask.
-		const AHOLGameState* GameState = World->GetGameState<AHOLGameState>();
-		const int32 Tier = GameState ? GameState->GetTier(Order.PlayerIndex) : 0;
-		if (!HOLConstruction::IsAgeOpen(Type->Age, Tier))
-		{
-			UE_LOG(LogHOLCommands, Display, TEXT("Construction: slot %d cannot place %s: age %d not reached (tier %d)"), Order.PlayerIndex,
-				*Order.TypeName.ToString(), Type->Age, Tier);
-			return;
-		}
-		Footprint = SnapFootprint(*Type, Order.Location);
-		Centre = Footprint.GetCenter();
-		const EHOLPlacementRefusal Refusal = CheckPlacement(*World, Footprint, Order.PlayerIndex);
-		if (Refusal != EHOLPlacementRefusal::None)
-		{
-			UE_LOG(LogHOLCommands, Display, TEXT("Construction: slot %d cannot place %s at (%.0f, %.0f): %s (%s)"), Order.PlayerIndex,
-				*Order.TypeName.ToString(), Centre.X, Centre.Y, DescribeRefusal(Refusal), *PlayerState.GetResources().ToString());
-			return;
-		}
-		Cost = UHOLBuildingSettings::GetBuildCost(World, Order.TypeName, Order.PlayerIndex);
-		Stock = PlayerState.GetResources();
-		if (!HOLConstruction::TryPay(Stock, Cost))
-		{
-			UE_LOG(LogHOLCommands, Display, TEXT("Construction: slot %d cannot place %s at (%.0f, %.0f): not enough resources (%s; cost %s)"),
-				Order.PlayerIndex, *Order.TypeName.ToString(), Centre.X, Centre.Y, *Stock.ToString(), *Cost.ToString());
-			return;
-		}
+		return;
 	}
 
 	// On the ground, along the grid (no rotation, D311), owned by the player's controller: its production queue and rally
@@ -562,14 +531,18 @@ void UHOLConstructionSubsystem::Cancel(const FHOLConstructionCommand& Order, AHO
 {
 	AHOLBuilding* Building = Order.Building.Get();
 	UWorld* World = GetWorld();
-	// K1a: the script board decides who cancels what (HOLConstructionBoard.as); -1 (no board) keeps the C++ gate below, the twin until the network proof.
+	// K1a: the script board decides who cancels what (HOLConstructionBoard.as); no board: the cancel is ignored.
 	const int32 State = Building ? static_cast<int32>(Building->GetConstructionState()) : 0;
 	int32 Verdict = UHOLConstructionBoard::AskCancel(World, Building != nullptr, Building ? static_cast<int32>(Building->GetOwnerPlayer()) : INDEX_NONE, Order.PlayerIndex, State);
-	const bool bBoardAnswered = Verdict >= 0;
-	if (!bBoardAnswered)
+	if (Verdict < 0)
 	{
-		// Only the owner cancels, and only what is not finished (D311): a client could name any building.
-		Verdict = (!Building || Building->GetOwnerPlayer() != Order.PlayerIndex || !HOLConstruction::CanCancel(Building->GetConstructionState())) ? 1 : 0;
+		static bool bLogged = false;
+		if (!bLogged)
+		{
+			bLogged = true;
+			UE_LOG(LogHOLCommands, Error, TEXT("Construction: Cancel refused, script board absent"));
+		}
+		Verdict = 1;
 	}
 	if (Verdict != 0 || !Building)
 	{
@@ -578,9 +551,7 @@ void UHOLConstructionSubsystem::Cancel(const FHOLConstructionCommand& Order, AHO
 	}
 	const FHOLBuildingTypeRow* Type = Building->GetType();
 	const FHOLResources BuildCost = Type ? UHOLBuildingSettings::GetBuildCost(World, Building->GetTypeName(), Building->GetOwnerPlayer()) : FHOLResources();
-	const FHOLResources Refund = bBoardAnswered
-		? UHOLConstructionBoard::AskCancelRefund(World, Type != nullptr, BuildCost, State, Building->GetConstructionWork(), Building->GetTotalWork())
-		: (Type ? HOLConstruction::GetCancelRefund(BuildCost, Building->GetConstructionState(), Building->GetConstructionWork(), Building->GetTotalWork()) : FHOLResources());
+	const FHOLResources Refund = UHOLConstructionBoard::AskCancelRefund(World, Type != nullptr, BuildCost, State, Building->GetConstructionWork(), Building->GetTotalWork());
 	FHOLResources Stock = PlayerState.GetResources();
 	Stock += Refund;
 	PlayerState.SetResources(Stock);
@@ -620,10 +591,20 @@ FHOLResources UHOLConstructionSubsystem::RefundProductionQueue(AHOLBuilding& Bui
 	FHOLResources Refund;
 	UWorld* World = Building.GetWorld();
 	TArray<FHOLProductionItem>& Queue = Building.GetMutableProductionQueue();
-	// K1b: the script board decides whether the queue is refunded and adds up its costs (HOLConstructionBoard.as); -1 (no board) keeps the C++ gate and sum, the twin until the network proof.
+	// K1b: the script board decides whether the queue is refunded and adds up its costs (HOLConstructionBoard.as); no board: nothing is refunded.
 	// Not a per-hit path: reached once per forum fall or building death (the combat processor runs on the game thread, bRequiresGameThreadExecution).
 	const int32 QueueVerdict = UHOLConstructionBoard::AskQueueRefund(World, World != nullptr, Building.HasAuthority(), Queue.Num());
-	if (QueueVerdict >= 0 ? QueueVerdict != 0 : (!World || !Building.HasAuthority() || Queue.IsEmpty()))
+	if (QueueVerdict < 0)
+	{
+		static bool bLogged = false;
+		if (!bLogged)
+		{
+			bLogged = true;
+			UE_LOG(LogHOLCommands, Error, TEXT("Construction: RefundProductionQueue refused, script board absent"));
+		}
+		return Refund;
+	}
+	if (QueueVerdict != 0)
 	{
 		return Refund;
 	}
@@ -639,10 +620,7 @@ FHOLResources UHOLConstructionSubsystem::RefundProductionQueue(AHOLBuilding& Bui
 		const FName TypeName = Queue.Last().TypeName;
 		HOLProduction::Cancel(Queue, Queue.Num() - 1, Production ? Production->GetCost(TypeName, Building.GetOwnerPlayer()) : FHOLProductionCost(), Refund);
 	}
-	if (QueueVerdict >= 0)
-	{
-		UHOLConstructionBoard::AskQueueTotal(World, ItemCosts, Refund);
-	}
+	UHOLConstructionBoard::AskQueueTotal(World, ItemCosts, Refund);
 	Building.NotifyProductionChanged();
 	// Its owner's stock, or the one kept for him while he is away (M6-Q16).
 	FHOLResources Stock;
@@ -653,10 +631,23 @@ FHOLResources UHOLConstructionSubsystem::RefundProductionQueue(AHOLBuilding& Bui
 void UHOLConstructionSubsystem::DestroyBuilding(AHOLBuilding& Building)
 {
 	UWorld* World = Building.GetWorld();
-	// K1b: the script board decides whether it is destroyed, the site's share and the rubble (HOLConstructionBoard.as); -1 (no board) keeps the C++ gates, the twin until the network proof.
-	// Once per building death (DamageBuilding at 0 health, the forum fall): the per-hit path of DamageBuilding itself is not bridged.
+	// K1b: the script board decides whether it is destroyed, the site's share and the rubble (HOLConstructionBoard.as). No board: a dead building must not stay up, so it is
+	// still destroyed (the engine's own guards only), with no refund and no rubble, and the error says so once. Once per building death (DamageBuilding at 0 health, the forum fall).
 	const int32 DestroyVerdict = UHOLConstructionBoard::AskDestroy(World, World != nullptr, Building.HasAuthority(), IsValid(&Building));
-	if (DestroyVerdict >= 0 ? DestroyVerdict != 0 : (!World || !Building.HasAuthority() || !IsValid(&Building)))
+	if (DestroyVerdict < 0)
+	{
+		static bool bLogged = false;
+		if (!bLogged)
+		{
+			bLogged = true;
+			UE_LOG(LogHOLCommands, Error, TEXT("Construction: Destroy kept without rules, script board absent (no refund, no rubble)"));
+		}
+		if (!World || !Building.HasAuthority() || !IsValid(&Building))
+		{
+			return;
+		}
+	}
+	else if (DestroyVerdict != 0)
 	{
 		return;
 	}
@@ -668,9 +659,7 @@ void UHOLConstructionSubsystem::DestroyBuilding(AHOLBuilding& Building)
 	if (Type)
 	{
 		const FHOLResources SiteCost = UHOLBuildingSettings::GetBuildCost(Building.GetWorld(), Building.GetTypeName(), Building.GetOwnerPlayer());
-		SiteRefund = DestroyVerdict >= 0
-			? UHOLConstructionBoard::AskCancelRefund(World, true, SiteCost, static_cast<int32>(Building.GetConstructionState()), Building.GetConstructionWork(), Building.GetTotalWork())
-			: HOLConstruction::GetCancelRefund(SiteCost, Building.GetConstructionState(), Building.GetConstructionWork(), Building.GetTotalWork());
+		SiteRefund = UHOLConstructionBoard::AskCancelRefund(World, true, SiteCost, static_cast<int32>(Building.GetConstructionState()), Building.GetConstructionWork(), Building.GetTotalWork());
 		Refund += SiteRefund;
 	}
 	// Its owner's stock, or the one kept for him while he is away (M6-Q16).
@@ -683,8 +672,8 @@ void UHOLConstructionSubsystem::DestroyBuilding(AHOLBuilding& Building)
 		*Refund.ToString(), bHasStock ? *Stock.ToString() : TEXT("no stock"));
 
 	// Rubble for 10 s where it stood (D345.2a), seen by everyone; none for a bare foundation, which the others never saw.
-	const int32 RubbleVerdict = DestroyVerdict >= 0 ? UHOLConstructionBoard::AskRubble(World, Building.IsFoundation(), Type != nullptr) : -1;
-	if (RubbleVerdict >= 0 ? RubbleVerdict != 0 : (!Building.IsFoundation() && Type))
+	const int32 RubbleVerdict = UHOLConstructionBoard::AskRubble(World, Building.IsFoundation(), Type != nullptr);
+	if (RubbleVerdict > 0)
 	{
 		const FTransform Transform = Building.GetActorTransform();
 		if (AHOLRubble* Rubble = World->SpawnActorDeferred<AHOLRubble>(AHOLRubble::StaticClass(), Transform, nullptr, nullptr,
