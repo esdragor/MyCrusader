@@ -267,9 +267,10 @@ void Test_CGCycle(FUnitTest& T)
 	T.AssertTrue(bOk1, "centre, house, mining camp are in the table");
 	if (bOk1)
 	{
-		int Centre = HOLCommandGridRead::GetCycleRankOfType(n"MainCentre");
-		int House = HOLCommandGridRead::GetCycleRankOfType(n"House");
-		int Camp = HOLCommandGridRead::GetCycleRankOfType(n"MiningCamp");
+		// The rank comes from the script rule (HOLCommandGridGroups::GetCycleRank) fed by two table reads: no slot + 1 copy in C++.
+		int Centre = HOLCommandGridGroups::GetCycleRank(HOLCommandGridRead::IsTypeBuildable(n"MainCentre"), HOLCommandGridRead::GetBuildGridSlotOfType(n"MainCentre"));
+		int House = HOLCommandGridGroups::GetCycleRank(HOLCommandGridRead::IsTypeBuildable(n"House"), HOLCommandGridRead::GetBuildGridSlotOfType(n"House"));
+		int Camp = HOLCommandGridGroups::GetCycleRank(HOLCommandGridRead::IsTypeBuildable(n"MiningCamp"), HOLCommandGridRead::GetBuildGridSlotOfType(n"MiningCamp"));
 		T.AssertTrue(Centre < House && House < Camp, "ranks: centre < house < mining camp");
 	}
 }

@@ -206,10 +206,16 @@ EHOLBuildingCategory UHOLCommandGridReadLibrary::GetTypeCategory(const FName Typ
 	return Type ? Type->Category : EHOLBuildingCategory::Economic;
 }
 
-int32 UHOLCommandGridReadLibrary::GetCycleRankOfType(const FName TypeName)
+bool UHOLCommandGridReadLibrary::IsTypeBuildable(const FName TypeName)
 {
 	const FHOLBuildingTypeRow* Type = UHOLBuildingSettings::FindType(TypeName);
-	return Type ? (Type->IsBuildable() ? Type->BuildGridSlot + 1 : 0) : INDEX_NONE;
+	return Type && Type->IsBuildable();
+}
+
+int32 UHOLCommandGridReadLibrary::GetBuildGridSlotOfType(const FName TypeName)
+{
+	const FHOLBuildingTypeRow* Type = UHOLBuildingSettings::FindType(TypeName);
+	return Type ? Type->BuildGridSlot : INDEX_NONE;
 }
 
 bool UHOLCommandGridReadLibrary::HasMissingResource(const FHOLResources& Stock, const FHOLResources& Cost)

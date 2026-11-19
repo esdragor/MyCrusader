@@ -339,8 +339,11 @@ public:
 	static bool IsTypeInTable(FName TypeName);
 	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|CommandGrid")
 	static EHOLBuildingCategory GetTypeCategory(FName TypeName);
+	/** Table reads for the script (D839, a binding): the row's IsBuildable(), and its BuildGridSlot (INDEX_NONE for a type not in the table). No rule in them. */
 	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|CommandGrid")
-	static int32 GetCycleRankOfType(FName TypeName);
+	static bool IsTypeBuildable(FName TypeName);
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|CommandGrid")
+	static int32 GetBuildGridSlotOfType(FName TypeName);
 
 	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|CommandGrid")
 	static bool HasMissingResource(const FHOLResources& Stock, const FHOLResources& Cost);
