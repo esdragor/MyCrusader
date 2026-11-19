@@ -99,6 +99,14 @@ bool FHOLMarketServerBoardTest::RunTest(const FString& Parameters)
 			TestEqual(*FString::Printf(TEXT("%d sent: the bridge gives the script's amount"), Case[0]),
 				UHOLMarketSubsystem::Received(World, Case[0], HOLTribute::DefaultTaxPercent), Case[1]);
 		}
+		// The order's two stocks (D851 step 5 R2, the call ApplyTribute makes): the script's Settle, through the static bridge call.
+		const FHOLResources GiverStock(10, 500, 20, 30);
+		const FHOLResources TakerStock(1, 5, 2, 3);
+		const FHOLTributeBridgeResult Done = UHOLMarketSubsystem::SettleTribute(World, true, 0, 1, true, GiverStock, TakerStock, static_cast<int32>(EHOLResource::Wood), 100, HOLTribute::DefaultTaxPercent);
+		TestTrue(TEXT("100 wood given: accepted"), Done.bOk && Done.Reason == 0);
+		TestTrue(TEXT("the giver pays 100, the receiver gets 70"), Done.Giver == FHOLResources(10, 400, 20, 30) && Done.Taker == FHOLResources(1, 75, 2, 3) && Done.Received == 70);
+		const FHOLTributeBridgeResult Short = UHOLMarketSubsystem::SettleTribute(World, true, 0, 1, true, FHOLResources(0, 99, 0, 0), TakerStock, static_cast<int32>(EHOLResource::Wood), 100, HOLTribute::DefaultTaxPercent);
+		TestTrue(TEXT("99 cannot give 100: refused for the stock (4), nothing moves"), !Short.bOk && Short.Reason == 4 && Short.Giver == FHOLResources(0, 99, 0, 0) && Short.Taker == TakerStock);
 	}
 	GEngine->DestroyWorldContext(World);
 	World->DestroyWorld(false);
