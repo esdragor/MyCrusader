@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
+#include "Match/HOLForumMessagesReadLibrary.h"
 #include "Match/HOLResources.h"
 #include "HOLScriptScreen.generated.h"
 
@@ -231,6 +232,28 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|UI")
 	void SetTextWrapWidth(UCommonTextBlock* Text, float Width) const;
 
+	/**
+	 * HUD H-5a: the major alert banner the C++ screen's state (UHOLGameScreen::Alert, FHOLForumAlert: the state machine stays C++, one source) shows now.
+	 * bOutShown = Alert.bShown; OutSerial = the count of banners presented so far (UHOLGameScreen::GetAlertPresentCount, never reset); OutSlot = Alert.Slot;
+	 * OutOpacity = Alert.GetOpacity(real time); bOutSound = Alert.bSound; OutText = Alert.Message.Text; OutPieces = HOLForumMessages::SplitNames as the shown
+	 * player reads them; OutColors parallel to OutPieces: the colour of the name's player, white for a word. False without the screen or world (all neutral).
+	 */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|UI")
+	bool GetAlertBanner(bool& bOutShown, int32& OutSerial, int32& OutSlot, float& OutOpacity, bool& bOutSound, FString& OutText,
+		TArray<FHOLForumPieceValue>& OutPieces, TArray<FLinearColor>& OutColors) const;
+
+	/** FHOLForumAlert::SoundPath played 2D; false when the asset did not load. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|UI")
+	bool PlayAlertSound();
+
+	/** The owning controller's FocusCameraOnForum(Slot): the camera only, the journal line is the script's. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|UI")
+	void FocusCameraOnForum(int32 Slot);
+
+	/** Once a frame, but ONLY while the major alert is shown (and once more when it ends): the banner's fade and its end (HOLAlertBanner.as). */
+	UFUNCTION(BlueprintImplementableEvent, Category = "HeroesOfLiberty|UI")
+	void AlertFrameTick(float DeltaSeconds);
+
 	/** Seconds between two Refresh (4 per second). */
 	static constexpr float RefreshSeconds = 0.25f;
 
@@ -243,4 +266,6 @@ private:
 	float RefreshLeft = 0.f;
 	/** A message with a key is shown: NativeTick calls FrameTick (D839: no per-frame script call otherwise). */
 	bool bMessageLive = false;
+	/** The alert banner was shown at the last frame: NativeTick calls AlertFrameTick while it is, and once more when it ends. */
+	bool bAlertLive = false;
 };

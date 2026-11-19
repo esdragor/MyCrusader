@@ -866,6 +866,7 @@ void UHOLGameScreen::PresentAlert()
 {
 	using namespace UE::HeroesOfLiberty::UI::GameScreen;
 
+	++AlertPresentCount;
 	const AHOLGameState* GameState = BoundTableState.Get();
 	const AHOLPlayerState* PlayerState = BoundPlayerState.Get();
 	const int32 ViewerSlot = PlayerState ? PlayerState->GetPlayerIndex() : INDEX_NONE;
@@ -939,6 +940,14 @@ FEventReply UHOLGameScreen::HandleMessageLineMouseDown(FGeometry Geometry, const
 		}
 	}
 	return FEventReply(false);
+}
+
+void UHOLGameScreen::FocusCameraOnForum(const int32 Slot)
+{
+	if (AHOLPlayerController* PlayerController = Controller.Get())
+	{
+		PlayerController->FocusCameraOnForum(Slot);
+	}
 }
 
 void UHOLGameScreen::FocusAlertSlot(const int32 TouchedSlot)

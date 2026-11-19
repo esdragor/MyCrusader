@@ -1,6 +1,9 @@
 #include "HUD/HOLScriptScreen.h"
 #include "GameFramework/PlayerController.h"
 #include "InputCoreTypes.h"
+#include "Kismet/GameplayStatics.h"
+#include "Match/HOLForumMessages.h"
+#include "Sound/SoundBase.h"
 
 #include "Blueprint/WidgetLayoutLibrary.h"
 #include "Blueprint/WidgetTree.h"
@@ -444,6 +447,70 @@ UClass* UHOLScriptScreen::FindScriptClass()
 	return nullptr;
 }
 
+bool UHOLScriptScreen::GetAlertBanner(bool& bOutShown, int32& OutSerial, int32& OutSlot, float& OutOpacity, bool& bOutSound, FString& OutText,
+	TArray<FHOLForumPieceValue>& OutPieces, TArray<FLinearColor>& OutColors) const
+{
+	bOutShown = false;
+	OutSerial = 0;
+	OutSlot = INDEX_NONE;
+	OutOpacity = 0.f;
+	bOutSound = false;
+	OutText.Reset();
+	OutPieces.Reset();
+	OutColors.Reset();
+	const UHOLGameScreen* GameScreen = GetTypedOuter<UHOLGameScreen>();
+	const UWorld* World = GetWorld();
+	if (!GameScreen || !World)
+	{
+		return false;
+	}
+	const FHOLForumAlert& Alert = GameScreen->GetAlert();
+	OutSerial = GameScreen->GetAlertPresentCount();
+	bOutShown = Alert.bShown;
+	if (!Alert.bShown)
+	{
+		return true;
+	}
+	OutSlot = Alert.Slot;
+	OutOpacity = Alert.GetOpacity(World->GetRealTimeSeconds());
+	bOutSound = Alert.bSound;
+	OutText = Alert.Message.Text.ToString();
+	// The pieces as the C++ FillMessageRow cuts them (the shown player's reading, the lobby's names when the game state is there).
+	const AHOLGameState* GameState = World->GetGameState<AHOLGameState>();
+	const AHOLPlayerState* PlayerState = GameScreen->GetBoundPlayerState();
+	const int32 ViewerSlot = PlayerState ? PlayerState->GetPlayerIndex() : INDEX_NONE;
+	for (const HOLForumMessages::FPiece& Part : GameState ? HOLForumMessages::SplitNames(Alert.Message, ViewerSlot, GameState->GetLaunchConfig())
+		: HOLForumMessages::SplitNames(Alert.Message, ViewerSlot))
+	{
+		FHOLForumPieceValue Piece;
+		Piece.Text = Part.Text;
+		Piece.Slot = Part.Slot;
+		OutPieces.Add(Piece);
+		const bool bName = Part.Slot != INDEX_NONE && GameState && GameState->GetLaunchConfig().Slots.IsValidIndex(Part.Slot);
+		OutColors.Add(bName ? FLinearColor(HOLPlayerColors::GetColor(GameState->GetLaunchConfig().Slots[Part.Slot].ColorIndex)) : FLinearColor::White);
+	}
+	return true;
+}
+
+bool UHOLScriptScreen::PlayAlertSound()
+{
+	// Provisional, 2D, the alert's only (FHOLForumAlert::SoundPath): the herald's voice will replace it.
+	USoundBase* Sound = LoadObject<USoundBase>(nullptr, FHOLForumAlert::SoundPath);
+	if (Sound)
+	{
+		UGameplayStatics::PlaySound2D(this, Sound);
+	}
+	return Sound != nullptr;
+}
+
+void UHOLScriptScreen::FocusCameraOnForum(const int32 Slot)
+{
+	if (UHOLGameScreen* GameScreen = GetTypedOuter<UHOLGameScreen>())
+	{
+		GameScreen->FocusCameraOnForum(Slot);
+	}
+}
+
 void UHOLScriptScreen::NativeOnInitialized()
 {
 	// The script's OnInitialized builds the tree.
@@ -469,6 +536,16 @@ void UHOLScriptScreen::NativeTick(const FGeometry& MyGeometry, const float InDel
 	if (bMessageLive)
 	{
 		FrameTick(InDeltaTime);
+	}
+	// The major alert banner's fade and end (HOLAlertBanner.as): called only while the C++ state shows one, and once more when it ends.
+	if (const UHOLGameScreen* AlertScreen = GetTypedOuter<UHOLGameScreen>())
+	{
+		const bool bAlertShown = AlertScreen->GetAlert().bShown;
+		if (bAlertShown || bAlertLive)
+		{
+			AlertFrameTick(InDeltaTime);
+		}
+		bAlertLive = bAlertShown;
 	}
 	// The T key (the talent tree, TQ4 = A): the viewport's key state, as the Enter of a test scenario; the console open or a focused menu keeps it.
 	if (const APlayerController* Controller = GetOwningPlayer())
