@@ -73,3 +73,68 @@ namespace HOLTribute
 		return Gift;
 	}
 }
+
+// The tribute applied to the stocks of the sender and of the receiver (UHOLProductionSubsystem::ApplyTribute's core, D851 step 5 R1): the
+// reason (HOLTribute::Check), then the sender's stock loses Sent and the receiver's gains Received. Pure; a refusal returns both stocks as given.
+struct FHOLTributeSettled
+{
+	bool bOk = false;
+	// HOLTribute::Ok, NotEnough, ...
+	int Reason = 0;
+	FHOLResources Giver;
+	FHOLResources Taker;
+	int Sent = 0;
+	int Received = 0;
+	int Tax = 0;
+}
+
+namespace HOLTribute
+{
+	// The amount of one resource of a stock (0 food, 1 wood, 2 stone, 3 gold); 0 for another index.
+	int StockOf(FHOLResources Stock, int Resource)
+	{
+		if (Resource == 0)
+			return Stock.Food;
+		if (Resource == 1)
+			return Stock.Wood;
+		if (Resource == 2)
+			return Stock.Stone;
+		if (Resource == 3)
+			return Stock.Gold;
+		return 0;
+	}
+
+	// The stock with Delta added to one resource (a copy; another index changes nothing).
+	FHOLResources WithAdded(FHOLResources Stock, int Resource, int Delta)
+	{
+		FHOLResources Result = Stock;
+		if (Resource == 0)
+			Result.Food += Delta;
+		else if (Resource == 1)
+			Result.Wood += Delta;
+		else if (Resource == 2)
+			Result.Stone += Delta;
+		else if (Resource == 3)
+			Result.Gold += Delta;
+		return Result;
+	}
+
+	// The order's rule: Check on the giver's stock of Resource, then Giver loses Sent and Taker gains Received (Sent at TaxPercent).
+	FHOLTributeSettled Settle(bool bSenderHasMarket, int Sender, int Receiver, bool bReceiverInMatch, FHOLResources GiverStock, FHOLResources TakerStock, int Resource, int Sent, int TaxPercent)
+	{
+		FHOLTributeSettled Out;
+		Out.Giver = GiverStock;
+		Out.Taker = TakerStock;
+		Out.Reason = Check(bSenderHasMarket, Sender, Receiver, bReceiverInMatch, StockOf(GiverStock, Resource), Sent, Resource);
+		if (Out.Reason != Ok)
+			return Out;
+		int Arrives = Received(Sent, TaxPercent);
+		Out.bOk = true;
+		Out.Sent = Sent;
+		Out.Received = Arrives;
+		Out.Tax = Sent - Arrives;
+		Out.Giver = WithAdded(GiverStock, Resource, -Sent);
+		Out.Taker = WithAdded(TakerStock, Resource, Arrives);
+		return Out;
+	}
+}
