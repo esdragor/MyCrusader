@@ -4,6 +4,7 @@
 
 #include "Buildings/HOLBuilding.h"
 #include "Commands/HOLCommandSubsystem.h"
+#include "Commands/HOLPlayerOrders.h"
 #include "Engine/Engine.h"
 #include "Engine/World.h"
 #include "Match/HOLMatchConfig.h"
@@ -317,6 +318,87 @@ void UHOLCommandScriptLibrary::IssueRage(UHOLCommandSubsystem* Commands, const i
 	}
 }
 
+void UHOLCommandScriptLibrary::IssueGatherPlayer(UHOLCommandSubsystem* Commands, const TArray<int32>& UnitIds, const int32 SourceIndex, const int32 PlayerIndex, const bool bQueue)
+{
+	if (Commands)
+	{
+		const UHOLCommandSubsystem::FPlayerOrderScope PlayerOrder(*Commands);
+		Commands->IssueGatherOrder(ToUnitIds(UnitIds), SourceIndex, PlayerIndex, bQueue);
+	}
+}
+
+void UHOLCommandScriptLibrary::IssueQueuedWorkPlayer(UHOLCommandSubsystem* Commands, const TArray<int32>& UnitIds, const int32 SourceIndex, AHOLBuilding* Building, const FVector& Location, const int32 PlayerIndex)
+{
+	if (Commands)
+	{
+		const UHOLCommandSubsystem::FPlayerOrderScope PlayerOrder(*Commands);
+		Commands->IssueQueuedWorkOrder(ToUnitIds(UnitIds), SourceIndex, Building, Location, PlayerIndex);
+	}
+}
+
+void UHOLCommandScriptLibrary::IssueBuildPlayer(UHOLCommandSubsystem* Commands, const TArray<int32>& UnitIds, AHOLBuilding* Building, const int32 PlayerIndex, const bool bQueue)
+{
+	if (Commands)
+	{
+		const UHOLCommandSubsystem::FPlayerOrderScope PlayerOrder(*Commands);
+		FHOLBuildOrder Order;
+		Order.UnitIds = ToUnitIds(UnitIds);
+		Order.Building = Building;
+		Order.PlayerIndex = PlayerIndex;
+		Order.bQueue = bQueue;
+		Commands->IssueBuildOrder(Order);
+	}
+}
+
+void UHOLCommandScriptLibrary::IssueDropOffMovePlayer(UHOLCommandSubsystem* Commands, const TArray<int32>& UnitIds, AHOLBuilding* Building, const FVector& Point, const int32 PlayerIndex, const bool bQueue)
+{
+	if (Commands)
+	{
+		const UHOLCommandSubsystem::FPlayerOrderScope PlayerOrder(*Commands);
+		Commands->IssueDropOffMoveOrder(ToUnitIds(UnitIds), Building, Point, PlayerIndex, bQueue);
+	}
+}
+
+void UHOLCommandScriptLibrary::IssueRallyOrder(UHOLCommandSubsystem* Commands, const int32 PlayerIndex, AHOLBuilding* Building, const FVector& Location, const int32 SourceIndex, AHOLBuilding* RallySite, const bool bQueue)
+{
+	if (Commands)
+	{
+		FHOLProductionCommand Command;
+		Command.Kind = FHOLProductionCommand::EKind::Rally;
+		Command.PlayerIndex = PlayerIndex;
+		Command.Building = Building;
+		Command.Location = Location;
+		Command.SourceIndex = SourceIndex;
+		Command.RallySite = RallySite;
+		Command.bQueue = bQueue;
+		Commands->IssueProductionOrder(Command);
+	}
+}
+
+void UHOLCommandScriptLibrary::IssueProductionTrade(UHOLCommandSubsystem* Commands, const int32 PlayerIndex, AHOLBuilding* Building, const int32 Resource, const int32 Lots, const bool bBuy)
+{
+	if (Commands)
+	{
+		FHOLProductionCommand Command;
+		Command.Kind = FHOLProductionCommand::EKind::Trade;
+		Command.PlayerIndex = PlayerIndex;
+		Command.Building = Building;
+		Command.Resource = Resource;
+		Command.Lots = Lots;
+		Command.bBuy = bBuy;
+		Commands->IssueProductionOrder(Command);
+	}
+}
+
+bool UHOLCommandScriptLibrary::TakesGarrisonOrder(const AHOLBuilding* Building, const int32 PlayerIndex)
+{
+	return Building && HOLPlayerOrders::TakesGarrisonOrder(*Building, PlayerIndex);
+}
+
+bool UHOLCommandScriptLibrary::OwnsBuilding(const AHOLBuilding* Building, const int32 PlayerIndex)
+{
+	return Building && Building->GetOwnerPlayer() == PlayerIndex;
+}
 int32 UHOLCommandScriptLibrary::GetNumPendingMoveOrders(const UHOLCommandSubsystem* Commands)
 {
 	return Commands ? Commands->GetNumPendingOrders() : 0;

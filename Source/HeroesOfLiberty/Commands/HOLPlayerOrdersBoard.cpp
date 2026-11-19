@@ -82,6 +82,60 @@ int32 UHOLPlayerOrdersBoard::AskToggleDeploy(const UWorld* World, const int32 Pl
 	return Board ? Board->ToggleDeployAnswer(PlayerIndex, UnitIds) : -1;
 }
 
+int32 UHOLPlayerOrdersBoard::AskGather(const UWorld* World, int32 PlayerIndex, const TArray<int32>& UnitIds, int32 SourceIndex, bool bQueue, bool bSource, FVector SourceLocation)
+{
+	UHOLPlayerOrdersBoard* Board = Find(World);
+	return Board ? Board->GatherAnswer(PlayerIndex, UnitIds, SourceIndex, bQueue, bSource, SourceLocation) : -1;
+}
+
+int32 UHOLPlayerOrdersBoard::AskBuild(const UWorld* World, int32 PlayerIndex, const TArray<int32>& UnitIds, AHOLBuilding* Building, bool bQueue)
+{
+	UHOLPlayerOrdersBoard* Board = Find(World);
+	return Board ? Board->BuildAnswer(PlayerIndex, UnitIds, Building, bQueue) : -1;
+}
+
+int32 UHOLPlayerOrdersBoard::AskDropOff(const UWorld* World, int32 PlayerIndex, const TArray<int32>& UnitIds, AHOLBuilding* Building, FVector Point, bool bQueue, bool bDeposit)
+{
+	UHOLPlayerOrdersBoard* Board = Find(World);
+	return Board ? Board->DropOffAnswer(PlayerIndex, UnitIds, Building, Point, bQueue, bDeposit) : -1;
+}
+
+int32 UHOLPlayerOrdersBoard::AskPlace(const UWorld* World, int32 PlayerIndex, FName TypeName, FVector Point, const TArray<int32>& UnitIds, bool bQueue)
+{
+	UHOLPlayerOrdersBoard* Board = Find(World);
+	return Board ? Board->PlaceAnswer(PlayerIndex, TypeName, Point, UnitIds, bQueue) : -1;
+}
+
+int32 UHOLPlayerOrdersBoard::AskQueueProduction(const UWorld* World, int32 PlayerIndex, AHOLBuilding* Building, FName TypeName)
+{
+	UHOLPlayerOrdersBoard* Board = Find(World);
+	return Board ? Board->QueueProductionAnswer(PlayerIndex, Building, TypeName) : -1;
+}
+
+int32 UHOLPlayerOrdersBoard::AskMarketTrade(const UWorld* World, int32 PlayerIndex, AHOLBuilding* Building, int32 Resource, int32 Lots, bool bBuy)
+{
+	UHOLPlayerOrdersBoard* Board = Find(World);
+	return Board ? Board->MarketTradeAnswer(PlayerIndex, Building, Resource, Lots, bBuy) : -1;
+}
+
+int32 UHOLPlayerOrdersBoard::AskSetRally(const UWorld* World, int32 PlayerIndex, AHOLBuilding* Building, FVector Point, int32 SourceIndex, bool bSourceStanding, AHOLBuilding* Site, bool bQueue)
+{
+	UHOLPlayerOrdersBoard* Board = Find(World);
+	return Board ? Board->SetRallyAnswer(PlayerIndex, Building, Point, SourceIndex, bSourceStanding, Site, bQueue) : -1;
+}
+
+int32 UHOLPlayerOrdersBoard::AskGarrison(const UWorld* World, int32 PlayerIndex, const TArray<int32>& UnitIds, AHOLBuilding* Building)
+{
+	UHOLPlayerOrdersBoard* Board = Find(World);
+	return Board ? Board->GarrisonAnswer(PlayerIndex, UnitIds, Building) : -1;
+}
+
+int32 UHOLPlayerOrdersBoard::AskUngarrisonAll(const UWorld* World, int32 PlayerIndex, AHOLBuilding* Building)
+{
+	UHOLPlayerOrdersBoard* Board = Find(World);
+	return Board ? Board->UngarrisonAllAnswer(PlayerIndex, Building) : -1;
+}
+
 bool UHOLPlayerOrdersBoard::ShouldCreateSubsystem(UObject* Outer) const
 {
 	// Never the abstract C++ class, nor a script class replaced by a reload (as UHOLMatchFlowSubsystem and UHOLConstructionBoard).
@@ -104,3 +158,12 @@ int32 UHOLPlayerOrdersBoard::AttackBuildingAnswer_Implementation(const int32, co
 int32 UHOLPlayerOrdersBoard::AttackMoveAnswer_Implementation(const int32, const TArray<int32>&, const FVector, const bool) { return -1; }
 int32 UHOLPlayerOrdersBoard::StopAnswer_Implementation(const int32, const TArray<int32>&, const bool) { return -1; }
 int32 UHOLPlayerOrdersBoard::ToggleDeployAnswer_Implementation(const int32, const TArray<int32>&) { return -1; }
+int32 UHOLPlayerOrdersBoard::GatherAnswer_Implementation(int32, const TArray<int32>&, int32, bool, bool, FVector) { return -1; }
+int32 UHOLPlayerOrdersBoard::BuildAnswer_Implementation(int32, const TArray<int32>&, AHOLBuilding*, bool) { return -1; }
+int32 UHOLPlayerOrdersBoard::DropOffAnswer_Implementation(int32, const TArray<int32>&, AHOLBuilding*, FVector, bool, bool) { return -1; }
+int32 UHOLPlayerOrdersBoard::PlaceAnswer_Implementation(int32, FName, FVector, const TArray<int32>&, bool) { return -1; }
+int32 UHOLPlayerOrdersBoard::QueueProductionAnswer_Implementation(int32, AHOLBuilding*, FName) { return -1; }
+int32 UHOLPlayerOrdersBoard::MarketTradeAnswer_Implementation(int32, AHOLBuilding*, int32, int32, bool) { return -1; }
+int32 UHOLPlayerOrdersBoard::SetRallyAnswer_Implementation(int32, AHOLBuilding*, FVector, int32, bool, AHOLBuilding*, bool) { return -1; }
+int32 UHOLPlayerOrdersBoard::GarrisonAnswer_Implementation(int32, const TArray<int32>&, AHOLBuilding*) { return -1; }
+int32 UHOLPlayerOrdersBoard::UngarrisonAllAnswer_Implementation(int32, AHOLBuilding*) { return -1; }
