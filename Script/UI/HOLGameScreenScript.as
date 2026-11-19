@@ -120,7 +120,16 @@ FString TalentTipTexts = "";
 	UOverlaySlot VolcanoSlot;
 	UCommonTextBlock VolcanoText;
 	UHOLTopBarPanel TopBar;
+	// HUD H-4: the players' table (HOLPlayerTable.as), drawn into the C++ screen's PlayersPanel.
+	UHOLPlayerTablePanel PlayerTable;
 	FString VolcanoTexts = "";
+	// H-1: the wait and absence banners (HOLWaitBanner.as).
+	UHOLWaitBannerPanel WaitBanner;
+
+	// H-2 (D313, D829): the short message and the held production note (HOLShortMessage.as).
+	FHOLShortMessageParts MessageParts;
+	FHOLShortMessageState MessageState;
+	FHOLPopulationHeldWatch HeldWatch;
 	// The AI line's height with its gap (px at 1080p), when it is shown.
 	const float VolcanoAfterAILine = 34.0;
 	float VolcanoTop = 72.0;
@@ -246,6 +255,11 @@ FString TalentTipTexts = "";
 		BuildVolcanoBanner(Frame);
 		TopBar = Cast<UHOLTopBarPanel>(NewObject(this, UHOLTopBarPanel));
 		TopBar.Build(this, Frame);
+		WaitBanner = Cast<UHOLWaitBannerPanel>(NewObject(this, UHOLWaitBannerPanel));
+		WaitBanner.Build(this, Frame);
+		MessageParts = HOLShortMessage::Build(this, Frame);
+		PlayerTable = Cast<UHOLPlayerTablePanel>(NewObject(this, UHOLPlayerTablePanel));
+		PlayerTable.Build(this, GetPlayersPanel());
 		BuildMinimap(Frame);
 		BuildTalentWindow(Frame);
 		// Last: over the other blocks.
@@ -1363,12 +1377,17 @@ FString TalentTipTexts = "";
 		RefreshVolcano();
 		if (TopBar != nullptr)
 			TopBar.Refresh();
+		if (WaitBanner != nullptr)
+			WaitBanner.Refresh();
+		if (PlayerTable != nullptr)
+			PlayerTable.Refresh();
 		if (Audio != nullptr)
 			Audio.PlayDueRepeats();
 		RefreshDiplomacy();
 		RefreshPause();
 		RefreshMinimap();
 		RefreshPopulationAlert();
+		RefreshShortMessage();
 	}
 
 	// D202, Q-alerts-minor default A: the population full line in the thread of messages (muted, no ping), once when the population
@@ -1385,6 +1404,30 @@ FString TalentTipTexts = "";
 			return;
 		if (HOLAlertRules::ShouldAlertPopulationFull(PopulationWatch, Used, Cap, Now, HOLAlertRules::PopulationRepeatSeconds))
 			AddThreadLine(HOLAlertRules::PopulationFullText());
+	}
+
+	// H-2: the short message's place and the held production note (read from the C++ here, 4 times a second, the message and its journal lines at the front).
+	void RefreshShortMessage()
+	{
+		HOLShortMessage::Place(this, MessageParts);
+		if (HOLShortMessage::CheckPopulationHeld(this, MessageParts, MessageState, HeldWatch, IsProductionHeldForRoom()))
+			SetShownMessageKey(HOLShortMessage::PopulationKey);
+	}
+
+	// A command did not go through (the C++ GetFeedbackKey / GetFeedbackText): the key and the text; the C++ already set the Describe mirror.
+	UFUNCTION(BlueprintOverride)
+	void ShortMessage(const FString& Key, const FText& Text)
+	{
+		HOLShortMessage::ShowText(MessageParts, MessageState, Key, Text);
+		SetShownMessageKey(Key);
+	}
+
+	// Only while a message with a key is shown (the C++ NativeTick): the fade, then the end (the mirrored key is cleared).
+	UFUNCTION(BlueprintOverride)
+	void FrameTick(float32 DeltaSeconds)
+	{
+		if (HOLShortMessage::Tick(MessageParts, MessageState, DeltaSeconds))
+			SetShownMessageKey("");
 	}
 
 	void BuildMinimap(UOverlay Frame)

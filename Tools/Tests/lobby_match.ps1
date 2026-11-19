@@ -680,12 +680,12 @@ try {
         elseif (-not ($L -match "LoadMap: 127\.0\.0\.1(:\d+)?/Game/Maps/Plain_Small\?Version=")) { $Failure = "Carol : Plain_Small not loaded from the server (or with a Name)" }
         elseif (-not ($L -match "Test capture: lobby_match_watch \(hud=HOLGameScreen\)")) { $Failure = "Carol : no capture of the match" }
         elseif (-not ($L -match "Players table: Alice, Bob$")) { $Failure = "Carol : the table of players without 'Alice, Bob'" }
-        elseif (-not ($L -match "Test capture: lobby_match_stats_live \(hud=HOLGameScreen menu=HOLStatsScreen\)")) { $Failure = "Carol : no capture of the statistics during the match" }
+        elseif (-not ($L -match "Test capture: lobby_match_stats_live \(hud=HOLGameScreen menu=HOLStatsScreenScript\)")) { $Failure = "Carol : no capture of the statistics during the match" }
         elseif (-not ($L -match "End banner: MatchOver")) { $Failure = "Carol : no MatchOver banner" }
         elseif (-not ($L -match 'End banner: detail "Vainqueur : Alice"')) { $Failure = "Carol : no 'Vainqueur : Alice' on her banner" }
         elseif ($L -match "End banner: (lobby match|back to lobby)") { $Failure = "Carol : a lobby end banner (she has no lobby)" }
         elseif (-not ($L -match "Test capture: lobby_match_watch_end")) { $Failure = "Carol : no capture of her banner" }
-        elseif (-not ($L -match "Test capture: lobby_match_stats \(hud=HOLGameScreen menu=HOLStatsScreen\)")) { $Failure = "Carol : no capture of the statistics screen" }
+        elseif (-not ($L -match "Test capture: lobby_match_stats \(hud=HOLGameScreen menu=HOLStatsScreenScript\)")) { $Failure = "Carol : no capture of the statistics screen" }
         elseif (-not ($L -match "Stats screen: closed")) { $Failure = "Carol : the statistics screen not closed by « Retour »" }
         elseif (-not ($L -match "End banner: way out list")) { $Failure = "Carol : her banner without « Quitter vers la liste »" }
         elseif (-not ($L -match "End banner: quit to list")) { $Failure = "Carol : « Quitter vers la liste » not pressed" }

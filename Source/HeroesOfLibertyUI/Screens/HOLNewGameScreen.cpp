@@ -212,7 +212,14 @@ FText UHOLNewGameScreen::GetMapName(const FSoftObjectPath& Map)
 UHOLNewGameScreen* UHOLNewGameScreen::Open(APlayerController* PlayerController)
 {
 	UHOLRootLayout* Layout = UHOLRootLayout::Get(PlayerController);
-	return Layout ? Cast<UHOLNewGameScreen>(Layout->PushMenu(StaticClass())) : nullptr;
+	if (!Layout)
+	{
+		return nullptr;
+	}
+	// NG-6 (D851): the script class of Script/UI/HOLNewGameScreen.as plays the screen; without one (script not loaded) the C++ class still does.
+	const TSubclassOf<UHOLNewGameScreen> ScriptClass = FindScriptClass();
+	UClass* ScreenClass = ScriptClass ? ScriptClass.Get() : StaticClass();
+	return Cast<UHOLNewGameScreen>(Layout->PushMenu(ScreenClass));
 }
 
 UHOLNewGameScreen* UHOLNewGameScreen::Find(APlayerController* PlayerController)

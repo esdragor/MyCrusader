@@ -21,7 +21,7 @@ class UHOLStatsGraph;
  * (a player during the match) or the wait for the server's copy is said in place of the tables. A spectator opens it
  * during the match from the game screen's « Statistiques » (C6); while open it asks again every 10 s.
  */
-UCLASS(Blueprintable)
+UCLASS(Blueprintable, Abstract)
 class HEROESOFLIBERTYUI_API UHOLStatsScreen : public UHOLScreen
 {
 	GENERATED_BODY()
@@ -30,7 +30,7 @@ public:
 	/** Opens the screen over the match (« Statistiques », hol.UI.Open Stats); null when no match layout. */
 	static UHOLStatsScreen* Open(APlayerController* PlayerController);
 
-	/** The script's screen (the newest class deriving from this one, never the C++ class itself); null: none. ST-3 will make Open push it. */
+	/** The script's screen (the newest class deriving from this one, never the C++ class itself); null: none. Open pushes it (ST-3). */
 	UFUNCTION(BlueprintPure, Category = "HOL|Stats")
 	static TSubclassOf<UHOLStatsScreen> FindScriptClass();
 
@@ -153,8 +153,6 @@ public:
 	TObjectPtr<UHOLStatsGraph> Graph;
 
 private:
-	/** True for a class deriving from this one (the script's): it builds and fills the screen through the BP_ events. */
-	bool IsScriptScreen() const;
 	/** The tables again from the statistics now held, or the status line when there are none. */
 	void Refresh();
 	void OnRefused();

@@ -37,7 +37,7 @@
 #include "Framework/Application/SlateApplication.h"
 #include "HeroesOfLibertyUILog.h"
 #include "HUD/HOLGameNames.h"
-#include "HUD/HOLRelationIcons.h"
+#include "Match/HOLPlayersTableReadLibrary.h"
 #include "HUD/HOLScriptScreen.h"
 #include "Match/HOLFactionRules.h"
 #include "Match/HOLForumRules.h"
@@ -499,7 +499,6 @@ void UHOLGameScreen::NativeConstruct()
 	BindBuilding(PlayerController ? PlayerController->GetSelection() : nullptr);
 	BindTableState(GetWorld() ? GetWorld()->GetGameState<AHOLGameState>() : nullptr);
 	Refresh();
-	RefreshPlayersTable();
 }
 
 void UHOLGameScreen::NativeDestruct()
@@ -541,9 +540,7 @@ void UHOLGameScreen::NativeTick(const FGeometry& MyGeometry, const float InDelta
 	if (SinceTableRefresh >= UE::HeroesOfLiberty::UI::GameScreen::GroupRefreshInterval)
 	{
 		BindTableState(GetWorld() ? GetWorld()->GetGameState<AHOLGameState>() : nullptr);
-		RefreshPlayersTable();
-		RefreshWaitBanner();
-		RefreshAbsenceBanner();
+		SinceTableRefresh = 0.f;
 		// V2.3c: a selected main forum on the ground, its ruin's seconds and its rebuilding's percent move with time alone
 		// (the forum's state changes only at its phases): its block is read at the same pace. Standing too (tiers, P4): its
 		// lives follow the level of its player's hero, which moves without telling the forum's state.
@@ -629,8 +626,6 @@ void UHOLGameScreen::NativeTick(const FGeometry& MyGeometry, const float InDelta
 	RefreshIdleWorkers();
 	RefreshControlGroups(FrameSeconds);
 	UpdateHead();
-	CheckPopulationBlocked();
-	UpdateMessage(FrameSeconds);
 }
 
 void UHOLGameScreen::BindPlayerState(AHOLPlayerState* PlayerState)
@@ -694,18 +689,12 @@ void UHOLGameScreen::BindTableState(AHOLGameState* GameState)
 	}
 	if (AHOLGameState* Previous = BoundTableState.Get())
 	{
-		Previous->OnForumsChanged.Remove(TableForumsHandle);
-		Previous->OnVictoryChanged.Remove(TableVictoryHandle);
-		Previous->OnDiplomacyChanged.Remove(TableDiplomacyHandle);
 		Previous->OnForumEvent.Remove(TableForumEventHandle);
 		Previous->OnHeroReadyMessage.Remove(TableHeroReadyHandle);
 		Previous->OnTributeMessage.Remove(TableTributeHandle);
 		Previous->OnSignalMessage.Remove(TableSignalHandle);
 		Previous->OnHeroLevelUp.Remove(TableHeroLevelHandle);
 	}
-	TableForumsHandle.Reset();
-	TableVictoryHandle.Reset();
-	TableDiplomacyHandle.Reset();
 	TableForumEventHandle.Reset();
 	TableHeroReadyHandle.Reset();
 	TableHeroLevelHandle.Reset();
@@ -713,9 +702,6 @@ void UHOLGameScreen::BindTableState(AHOLGameState* GameState)
 	if (GameState)
 	{
 		// Every machine: the server at once, a client by its OnReps (D353: public).
-		TableForumsHandle = GameState->OnForumsChanged.AddUObject(this, &UHOLGameScreen::RefreshPlayersTable);
-		TableVictoryHandle = GameState->OnVictoryChanged.AddUObject(this, &UHOLGameScreen::RefreshPlayersTable);
-		TableDiplomacyHandle = GameState->OnDiplomacyChanged.AddUObject(this, &UHOLGameScreen::RefreshPlayersTable);
 		// V4.2: the events of the ruin, every machine (a reliable multicast).
 		TableForumEventHandle = GameState->OnForumEvent.AddUObject(this, &UHOLGameScreen::HandleForumEvent);
 		// J8a.4: the local player's hero ready to return (its owner alone, once per death).
@@ -1016,175 +1002,6 @@ void UHOLGameScreen::RebuildMessages()
 FString UHOLGameScreen::DescribeMessages() const
 {
 	return MessageThread.Describe();
-}
-
-void UHOLGameScreen::RefreshPlayersTable()
-{
-	using namespace UE::HeroesOfLiberty::UI::GameScreen;
-
-	SinceTableRefresh = 0.f;
-	const AHOLGameState* GameState = BoundTableState.Get();
-	const AHOLPlayerState* PlayerState = BoundPlayerState.Get();
-	TArray<FHOLPlayersTableRow> Rows;
-	if (GameState)
-	{
-		TArray<FHOLForumState> Forums;
-		TArray<int32> Tiers;
-		for (int32 Seat = 0; Seat < FHOLMatchConfig::MaxSlots; ++Seat)
-		{
-			Forums.Add(GameState->GetForumState(Seat));
-			Tiers.Add(GameState->GetForumTuning(Seat).Tier);
-		}
-		// D6: in the Diplomacy mode the allies and enemies are the book's, not the lobby's teams.
-		const HOLDiplomacy::FBook Book = GameState->IsDiplomacyMode() ? GameState->GetDiplomacyBook() : HOLDiplomacy::FBook();
-		Rows = HOLForumRules::GetPlayersTable(GameState->GetLaunchConfig(), Forums, GameState->GetDefeatedMask(),
-			PlayerState ? PlayerState->GetPlayerIndex() : INDEX_NONE, FHOLForumTuning::FromSettings(), Tiers, GameState->IsDiplomacyMode() ? &Book : nullptr,
-			GameState->GetAbsentMask(), GameState->GetAIHeldMask());
-	}
-	const FString Shown = FString::JoinBy(Rows, TEXT(" | "), [](const FHOLPlayersTableRow& Row) { return Row.Shown; });
-	if (Shown == ShownPlayersTable)
-	{
-		return;
-	}
-	// M6-Q12: the names shown, logged when they change (the lobby's names reach the client with the launch configuration).
-	const FString Names = FString::JoinBy(Rows, TEXT(", "), [](const FHOLPlayersTableRow& Row) { return Row.Name.ToString(); });
-	if (Names != ShownPlayerNames)
-	{
-		ShownPlayerNames = Names;
-		UE_LOG(LogHOLUI, Display, TEXT("Players table: %s"), *Names);
-	}
-	ShownPlayersTable = Shown;
-	// T8 on the wire: the pastilles this client reads from the replicated masks, logged when they change (lobby_match).
-	FString States;
-	for (const FHOLPlayersTableRow& Row : Rows)
-	{
-		if (Row.bAway || Row.bAIHeld)
-		{
-			States += (States.IsEmpty() ? FString() : FString(TEXT(", "))) + Row.Name.ToString() + TEXT("=") + (Row.bAIHeld ? TEXT("IA") : TEXT("Connexion perdue"));
-		}
-	}
-	if (States != ShownPlayerStates)
-	{
-		ShownPlayerStates = States;
-		UE_LOG(LogHOLUI, Display, TEXT("Players table state: %s"), States.IsEmpty() ? TEXT("none") : *States);
-	}
-	SetShown(PlayersPanel, !Rows.IsEmpty(), ESlateVisibility::HitTestInvisible);
-	for (int32 Index = 0; Index < PlayerRows.Num(); ++Index)
-	{
-		const FHOLPlayersTableRow* Row = Rows.IsValidIndex(Index) ? &Rows[Index] : nullptr;
-		SetShown(PlayerRows[Index], Row != nullptr, ESlateVisibility::SelfHitTestInvisible);
-		if (!Row)
-		{
-			continue;
-		}
-		// A new team: a gap above its first row.
-		if (UVerticalBoxSlot* RowSlot = Cast<UVerticalBoxSlot>(PlayerRows[Index]->Slot))
-		{
-			RowSlot->SetPadding(FMargin(0.f, Row->bNewGroup ? 6.f : 0.f, 0.f, 0.f));
-		}
-		// The name in the player's colour, the whole row faded once defeated.
-		PlayerRows[Index]->SetRenderOpacity(Row->bGreyed ? 0.45f : 1.f);
-		PlayerNames[Index]->SetText(Row->Name);
-		const FLinearColor NameColor(HOLPlayerColors::GetColor(Row->ColorIndex));
-		PlayerNames[Index]->SetColorAndOpacity(FSlateColor(NameColor));
-		// E4-2: a defeated player's name struck through, in the name's colour (faded with the row).
-		PlayerStrikes[Index]->SetColorAndOpacity(NameColor);
-		SetShown(PlayerStrikes[Index], Row->bStruck, ESlateVisibility::HitTestInvisible);
-		// E4-1: an ally's green shield, an enemy's red swords (faded with a defeated row). The viewer's own row keeps the
-		// icon's room empty, so that the names line up; a spectator's table (all None) has no room for it.
-		UTexture2D* Icon = Row->Relation == EHOLPlayerRelation::Ally ? AllyIcon.Get()
-			: Row->Relation == EHOLPlayerRelation::Enemy ? EnemyIcon.Get() : nullptr;
-		if (Icon)
-		{
-			PlayerRelations[Index]->SetBrushFromTexture(Icon);
-			PlayerRelations[Index]->SetDesiredSizeOverride(FVector2D(16.f, 16.f));
-		}
-		const bool bNeutral = Row->Relation == EHOLPlayerRelation::Neutral;
-		if (bNeutral)
-		{
-			// The Diplomacy mode's Neutral: a small grey dot in the icon's room (no texture for it).
-			PlayerRelations[Index]->SetBrush(FSlateRoundedBoxBrush(FLinearColor(0.62f, 0.62f, 0.62f, 1.f), 5.f, FVector2D(10.f, 10.f)));
-			PlayerRelations[Index]->SetDesiredSizeOverride(FVector2D(16.f, 16.f));
-		}
-		const ESlateVisibility RelationVisibility = Icon || bNeutral ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Hidden;
-		if (PlayerRelations[Index]->GetVisibility() != RelationVisibility)
-		{
-			PlayerRelations[Index]->SetVisibility(RelationVisibility);
-		}
-		// The room itself: on every row of a player's table, none in a spectator's (no relation at all).
-		SetShown(PlayerRelations[Index]->GetParent(), Row->Relation != EHOLPlayerRelation::None, ESlateVisibility::HitTestInvisible);
-		PlayerLives[Index]->SetText(Row->Lives);
-		PlayerStates[Index]->SetText(Row->State);
-	}
-}
-
-void UHOLGameScreen::RefreshWaitBanner()
-{
-	using namespace UE::HeroesOfLiberty::UI::GameScreen;
-
-	const AHOLGameState* GameState = BoundTableState.Get();
-	const bool bWaiting = GameState && GameState->IsWaitingForPlayers() && !GameState->GetMissingPlayers().IsEmpty();
-	if (!bWaiting)
-	{
-		if (!ShownWaitPlayers.IsEmpty())
-		{
-			ShownWaitPlayers.Reset();
-			SetShown(WaitPanel, false);
-			UE_LOG(LogHOLUI, Display, TEXT("Wait banner: hidden"));
-		}
-		return;
-	}
-	const FString Players = FString::Join(GameState->GetMissingPlayers(), TEXT(", "));
-	const int32 Left = FMath::Max(0, FMath::CeilToInt(GameState->GetWaitEndSeconds() - GameState->GetServerWorldTimeSeconds()));
-	FFormatNamedArguments Arguments;
-	Arguments.Add(TEXT("Players"), FText::AsCultureInvariant(Players));
-	Arguments.Add(TEXT("Time"), FText::AsCultureInvariant(FString::Printf(TEXT("%d:%02d"), Left / 60, Left % 60)));
-	const FText Text = FText::Format(LOCTEXT("WaitingFor", "En attente de {Players} ({Time})"), Arguments);
-	if (WaitText)
-	{
-		WaitText->SetText(Text);
-	}
-	if (Players != ShownWaitPlayers)
-	{
-		ShownWaitPlayers = Players;
-		SetShown(WaitPanel, true, ESlateVisibility::HitTestInvisible);
-		UE_LOG(LogHOLUI, Display, TEXT("Wait banner: shown, %s"), *Text.ToString());
-	}
-}
-
-void UHOLGameScreen::RefreshAbsenceBanner()
-{
-	using namespace UE::HeroesOfLiberty::UI::GameScreen;
-
-	const AHOLGameState* GameState = BoundTableState.Get();
-	const TArray<FText> Lines = GameState ? GameState->GetAbsenceBannerLines(GameState->GetServerWorldTimeSeconds()) : TArray<FText>();
-	if (Lines.IsEmpty())
-	{
-		if (!ShownAbsence.IsEmpty())
-		{
-			ShownAbsence.Reset();
-			SetShown(AbsencePanel, false);
-			UE_LOG(LogHOLUI, Display, TEXT("Absence banner: hidden"));
-		}
-		return;
-	}
-	const FText Text = FText::Join(FText::AsCultureInvariant(TEXT("\n")), Lines);
-	if (AbsenceText)
-	{
-		AbsenceText->SetText(Text);
-	}
-	// Logged when who is gone or back changes, not at each second of the countdown.
-	FString Shown = FString::FromInt(Lines.Num());
-	for (const FHOLAbsentNotice& Notice : GameState->GetAbsentNotices())
-	{
-		Shown += FString::Printf(TEXT(";%s%s"), *Notice.Name, Notice.BackAt > 0. ? TEXT("+") : TEXT("-"));
-	}
-	if (Shown != ShownAbsence)
-	{
-		ShownAbsence = Shown;
-		SetShown(AbsencePanel, true, ESlateVisibility::HitTestInvisible);
-		UE_LOG(LogHOLUI, Display, TEXT("Absence banner: shown, %s"), *Text.ToString().Replace(TEXT("\n"), TEXT(" | ")));
-	}
 }
 
 void UHOLGameScreen::HandleSelectionChanged()
@@ -2662,45 +2479,18 @@ void UHOLGameScreen::HandleCommandFeedback(const FHOLCommandFeedback& Feedback)
 
 void UHOLGameScreen::ShowMessage(const FString& Key, const FText& Text)
 {
-	using namespace UE::HeroesOfLiberty::UI::GameScreen;
-
+	// H-2: the script's MessagePanel draws the message, fades it and writes the "HUD message: ..." line (HOLShortMessage.as); MessageKey is Describe's mirror.
 	MessageKey = Key;
-	MessageAge = 0.f;
-	if (MessageText)
+	if (ScriptScreen)
 	{
-		MessageText->SetText(Text);
+		ScriptScreen->ShortMessage(Key, Text);
 	}
-	if (MessagePanel)
+	else
 	{
-		MessagePanel->SetRenderOpacity(1.f);
-	}
-	SetShown(MessagePanel, true);
-	UE_LOG(LogHOLUI, Display, TEXT("HUD message: %s \"%s\""), *Key, *Text.ToString());
-}
-
-void UHOLGameScreen::UpdateMessage(const float DeltaSeconds)
-{
-	using namespace UE::HeroesOfLiberty::UI::GameScreen;
-
-	if (MessageKey.IsEmpty())
-	{
-		return;
-	}
-	MessageAge += DeltaSeconds;
-	if (MessageAge >= MessageSeconds)
-	{
-		MessageKey.Reset();
-		SetShown(MessagePanel, false);
-		return;
-	}
-	const float Left = MessageSeconds - MessageAge;
-	if (MessagePanel)
-	{
-		MessagePanel->SetRenderOpacity(Left < MessageFadeSeconds ? Left / MessageFadeSeconds : 1.f);
+		UE_LOG(LogHOLUI, Display, TEXT("HUD message: %s \"%s\""), *Key, *Text.ToString());
 	}
 }
-
-void UHOLGameScreen::CheckPopulationBlocked()
+bool UHOLGameScreen::IsProductionHeldForRoom() const
 {
 	using namespace UE::HeroesOfLiberty::UI::GameScreen;
 
@@ -2725,20 +2515,7 @@ void UHOLGameScreen::CheckPopulationBlocked()
 			bBlocked = HOLCommandGrid::IsPopulationBlocked(PlayerState->GetPopulationUsed(), PlayerState->GetPopulationCap(), UnitType ? UnitType->Population : 1);
 		}
 	}
-	if (bBlocked && !bPopulationBlocked)
-	{
-		// The production stops (D313): the player's first wall.
-		FHOLCommandFeedback Feedback;
-		Feedback.Kind = EHOLCommandFeedback::PopulationFull;
-		ShowMessage(GetFeedbackKey(Feedback), GetFeedbackText(Feedback));
-	}
-	if (bBlocked && !bPopulationBlocked)
-	{
-		// D829 (the user's BUG on alert_population): the production stops at 100 %, the population full line goes to the thread (D202).
-		AddThreadLine(LOCTEXT("PopulationFull", "Population pleine"));
-		UE_LOG(LogHOLUI, Display, TEXT("HUD: production held at 100 %% (population full), line to the thread"));
-	}
-	bPopulationBlocked = bBlocked;
+	return bBlocked;
 }
 
 void UHOLGameScreen::HandleQueueItemClicked(const int32 Index)
@@ -2996,6 +2773,9 @@ FString UHOLGameScreen::DescribeForum() const
 {
 	// "selection, in ruin 27 s, lives 1, players [slot 0 you colour 0 lives 1 ruin | ...]" ("selection none" without a main forum selected).
 	const bool bForum = !ShownForum.IsEmpty() && ShownActivity == ShownForum;
+	const TArray<FHOLPlayersTableRow> TableRows = UHOLPlayersTableReadLibrary::BuildRows(BoundTableState.Get(), BoundPlayerState.IsValid() ? BoundPlayerState->GetPlayerIndex() : INDEX_NONE);
+	// HUD H-4: the table is the script's now; its rows are read again here (HOLForumRules::GetPlayersTable, one source) for the report line.
+	const FString ShownPlayersTable = FString::JoinBy(TableRows, TEXT(" | "), [](const FHOLPlayersTableRow& Row) { return Row.Shown; });
 	return FString::Printf(TEXT("selection%s, players [%s]"), bForum ? *ShownForum : TEXT(" none"), *ShownPlayersTable);
 }
 
@@ -3139,30 +2919,6 @@ void UHOLGameScreen::BuildLayout()
 
 	// H-3: the top bar (TopBar) and the Menu / Statistiques buttons (MenuPanel) are the script's (UHOLTopBarPanel).
 
-	// R3.10: the wait banner, top centre under the top bar, while the match waits for its named players.
-	WaitPanel = MakePanel(TEXT("WaitPanel"));
-	WaitPanel->SetBrush(FSlateRoundedBoxBrush(HOLUIStyle::HUDPanel.CopyWithNewOpacity(0.8f), 4.f));
-	WaitPanel->SetVisibility(ESlateVisibility::Collapsed);
-	UOverlaySlot* WaitSlot = Frame->AddChildToOverlay(WaitPanel);
-	WaitSlot->SetHorizontalAlignment(HAlign_Center);
-	WaitSlot->SetVerticalAlignment(VAlign_Top);
-	WaitSlot->SetPadding(FMargin(ScreenMargin, ScreenMargin + QueueItemHeight * 2.f, ScreenMargin, ScreenMargin));
-	WaitText = MakeText(TEXT("WaitText"), UHOLTextStyleHUDHeading::StaticClass(), FText::GetEmpty());
-	WaitPanel->SetContent(WaitText);
-
-	// R7.5: the disconnection banner, top centre under the alert's place (both can show during the match), as the wait
-	// banner; lets the clicks through.
-	AbsencePanel = MakePanel(TEXT("AbsencePanel"));
-	AbsencePanel->SetBrush(FSlateRoundedBoxBrush(HOLUIStyle::HUDPanel.CopyWithNewOpacity(0.8f), 4.f));
-	AbsencePanel->SetVisibility(ESlateVisibility::Collapsed);
-	UOverlaySlot* AbsenceSlot = Frame->AddChildToOverlay(AbsencePanel);
-	AbsenceSlot->SetHorizontalAlignment(HAlign_Center);
-	AbsenceSlot->SetVerticalAlignment(VAlign_Top);
-	AbsenceSlot->SetPadding(FMargin(ScreenMargin, ScreenMargin + QueueItemHeight * 2.f + 52.f, ScreenMargin, ScreenMargin));
-	AbsenceText = MakeText(TEXT("AbsenceText"), UHOLTextStyleHUDHeading::StaticClass(), FText::GetEmpty());
-	AbsenceText->SetJustification(ETextJustify::Center);
-	AbsencePanel->SetContent(AbsenceText);
-
 	// V4.3: the major alert's banner, top centre under the top bar (the wait banner's place, before the match), larger than
 	// the thread's lines; a click centres the camera on the touched forum.
 	AlertPanel = MakePanel(AlertPanelName);
@@ -3214,70 +2970,6 @@ void UHOLGameScreen::BuildLayout()
 		LineSlot->SetPadding(FMargin(0.f, Index > 0 ? 2.f : 0.f, 0.f, 0.f));
 		MessageLines.Add(Line);
 		MessageRows.Add(Row);
-	}
-	UVerticalBox* PlayersList = MakeVerticalBox(TEXT("PlayersList"));
-	PlayersPanel->SetContent(PlayersList);
-	PlayerRows.Reset();
-	PlayerNames.Reset();
-	PlayerRelations.Reset();
-	AllyIcon = LoadObject<UTexture2D>(nullptr, HOLRelationIcons::AllyPath);
-	EnemyIcon = LoadObject<UTexture2D>(nullptr, HOLRelationIcons::EnemyPath);
-	PlayerStrikes.Reset();
-	PlayerLives.Reset();
-	PlayerStates.Reset();
-	for (int32 Seat = 0; Seat < FHOLMatchConfig::MaxSlots; ++Seat)
-	{
-		UHorizontalBox* Row = MakeHorizontalBox(*FString::Printf(TEXT("PlayerRow%d"), Seat));
-		Row->SetVisibility(ESlateVisibility::Collapsed);
-		PlayersList->AddChildToVerticalBox(Row);
-		const auto AddCell = [&](const TCHAR* Name, const TSubclassOf<UCommonTextStyle> TextStyle, const float Width, const float RightPadding)
-		{
-			UCommonTextBlock* Text = MakeText(*FString::Printf(TEXT("Player%s%d"), Name, Seat), TextStyle, FText::GetEmpty());
-			USizeBox* Box = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass(), *FString::Printf(TEXT("Player%sBox%d"), Name, Seat));
-			Box->SetMinDesiredWidth(Width);
-			Box->SetContent(Text);
-			AddToRow(Row, Box, RightPadding);
-			return Text;
-		};
-		PlayerRows.Add(Row);
-		// E4-1: the relation's icon before the name (an ally's shield, an enemy's swords), set by RefreshPlayersTable.
-		UImage* Relation = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass(), *FString::Printf(TEXT("PlayerRelation%d"), Seat));
-		Relation->SetDesiredSizeOverride(FVector2D(16.f, 16.f));
-		Relation->SetVisibility(ESlateVisibility::Hidden);
-		// A fixed 16 px room, kept on the viewer's own row so that the names line up (a hidden image alone gave none).
-		USizeBox* RelationBox = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass(), *FString::Printf(TEXT("PlayerRelationBox%d"), Seat));
-		RelationBox->SetWidthOverride(16.f);
-		RelationBox->SetHeightOverride(16.f);
-		RelationBox->SetContent(Relation);
-		RelationBox->SetVisibility(ESlateVisibility::Collapsed);
-		AddToRow(Row, RelationBox, 4.f);
-		PlayerRelations.Add(Relation);
-		// E4-2: the name in an overlay with a thin bar across it, its width, shown once defeated (a text has no strike).
-		UCommonTextBlock* Name = MakeText(*FString::Printf(TEXT("PlayerName%d"), Seat), UHOLTextStyleHUDPlayerName::StaticClass(), FText::GetEmpty());
-		UOverlay* NameOverlay = WidgetTree->ConstructWidget<UOverlay>(UOverlay::StaticClass(), *FString::Printf(TEXT("PlayerNameOverlay%d"), Seat));
-		NameOverlay->AddChildToOverlay(Name);
-		UImage* Strike = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass(), *FString::Printf(TEXT("PlayerNameStrike%d"), Seat));
-		Strike->SetVisibility(ESlateVisibility::Collapsed);
-		// A size box holds the bar to 2 px: the image alone took the whole line's height (seen in a capture).
-		USizeBox* StrikeBox = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass(), *FString::Printf(TEXT("PlayerNameStrikeBox%d"), Seat));
-		StrikeBox->SetHeightOverride(2.f);
-		StrikeBox->SetContent(Strike);
-		UOverlaySlot* StrikeSlot = NameOverlay->AddChildToOverlay(StrikeBox);
-		StrikeSlot->SetHorizontalAlignment(HAlign_Fill);
-		StrikeSlot->SetVerticalAlignment(VAlign_Center);
-		PlayerStrikes.Add(Strike);
-		USizeBox* NameBox = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass(), *FString::Printf(TEXT("PlayerNameBox%d"), Seat));
-		NameBox->SetMinDesiredWidth(64.f);
-		NameBox->SetContent(NameOverlay);
-		// The overlay as wide as the name, not the box (the bar the name's width).
-		if (USizeBoxSlot* NameSlot = Cast<USizeBoxSlot>(NameOverlay->Slot))
-		{
-			NameSlot->SetHorizontalAlignment(HAlign_Left);
-		}
-		AddToRow(Row, NameBox, 10.f);
-		PlayerNames.Add(Name);
-		PlayerLives.Add(AddCell(TEXT("Lives"), UHOLTextStyleHUDLabel::StaticClass(), 44.f, 10.f));
-		PlayerStates.Add(AddCell(TEXT("State"), UHOLTextStyleHUDLabel::StaticClass(), 0.f, 0.f));
 	}
 
 	// The control groups' bar (J7a.5, D30), bottom left over the selection's block (the cheats' panel holds the top left):
@@ -3443,20 +3135,6 @@ void UHOLGameScreen::BuildLayout()
 	AddToBar(CommandBox, BarGap);
 	UVerticalBox* CommandColumn = MakeVerticalBox(TEXT("CommandColumn"));
 	CommandBox->SetContent(CommandColumn);
-
-	// The short message (D313), above the queue and the grid, wrapped within the grid's width; it lets the clicks through.
-	MessagePanel = MakePanel(TEXT("MessagePanel"));
-	UVerticalBoxSlot* MessageSlot = CommandColumn->AddChildToVerticalBox(MessagePanel);
-	MessageSlot->SetHorizontalAlignment(HAlign_Left);
-	MessageSlot->SetPadding(FMargin(0.f, 0.f, 0.f, 6.f));
-	USizeBox* MessageBox = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass(), TEXT("MessageBox"));
-	MessageBox->SetMaxDesiredWidth(GridWidth);
-	MessagePanel->SetContent(MessageBox);
-	MessageText = MakeText(TEXT("MessageText"), UHOLTextStyleHUDAlert::StaticClass(), FText::GetEmpty());
-	// Wrapped at a fixed width: a short message keeps its own width, a long one goes on two lines.
-	MessageText->SetWrapTextAt(GridWidth - 24.f);
-	MessageBox->SetContent(MessageText);
-	MessagePanel->SetVisibility(ESlateVisibility::Collapsed);
 
 	// Production queue, as wide as the grid: its items, the head's progress (or the population note), the hint.
 	QueuePanel = MakePanel(TEXT("QueuePanel"));
