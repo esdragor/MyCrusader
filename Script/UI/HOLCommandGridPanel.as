@@ -1,3 +1,4 @@
+// Wired by SAURON-1119q (HUD H-10): the C++ bindings of Docs\Rapports\SAURON-1119m.md exist in UHOLScriptScreen / UHOLGameScreen; not compiled until the session's build.
 // NOT COMPILED YET (SAURON-1119m, H-10 of the HUD plan, wave 1: new files only, no switch-over): this file calls bindings that do not exist before the next C++ lot
 // (UHOLScriptScreen::GetGridPanelHost, GetGridFrame, ApplyGridCell, ClickGridCell, RegisterGridCells; the struct FHOLGridCellInfoView; the RefreshGridCells event).
 // The recipe, with the exact signatures, is in Docs\Rapports\SAURON-1119m.md; until the lot exists the whole script module would fail to compile with this file
