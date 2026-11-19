@@ -126,6 +126,8 @@ FString TalentTipTexts = "";
 	UHOLGroupBarPanel GroupBar;
 	// HUD H-7: the production queue (HOLQueuePanel.as), drawn into the C++ screen's QueuePanel (the member is not called QueuePanel: no widget of that name here).
 	UHOLProductionQueuePanel QueueView;
+	// HUD H-10: the command grid (HOLCommandGridPanel.as), 3 x 4 cells put in the C++ screen's GridPanelHost (under the queue panel, before the age panels).
+	UHOLCommandGridPanel CommandGrid;
 
 	// HUD H-8: the builders' age panels (HOLAgePanels.as), drawn into the C++ screen's AgePanelsHost.
 	UHOLAgePanelsPanel AgePanels;
@@ -279,6 +281,9 @@ UHOLAlertBannerPanel AlertBanner;
 		GroupBar.Build(this, GetGroupsPanel());
 		QueueView = Cast<UHOLProductionQueuePanel>(NewObject(this, UHOLProductionQueuePanel));
 		QueueView.Build(this, GetQueuePanel());
+		// H-10: after the queue panel (the grid is under it in the command column), before the age panels; Build registers the cells with the C++ screen.
+		CommandGrid = Cast<UHOLCommandGridPanel>(NewObject(this, UHOLCommandGridPanel));
+		CommandGrid.Build(this);
 		AgePanels = Cast<UHOLAgePanelsPanel>(NewObject(this, UHOLAgePanelsPanel));
 		AgePanels.Build(this);
 		BuildMinimap(Frame);
@@ -1428,6 +1433,14 @@ UHOLAlertBannerPanel AlertBanner;
 			AgePanels.Refresh();
 	}
 
+	// HUD H-10: the command grid alone, drawn again from the frame the C++ screen just computed (selection, stock, hero / rage / deploy tick).
+	UFUNCTION(BlueprintOverride)
+	void RefreshGridCells()
+	{
+		if (CommandGrid != nullptr)
+			CommandGrid.Refresh();
+	}
+
 	// D202, Q-alerts-minor default A: the population full line in the thread of messages (muted, no ping), once when the population
 	// becomes full, not again sooner than HOLAlertRules::PopulationRepeatSeconds. Nothing for a spectator (no player state shown).
 	FHOLPopulationAlertWatch PopulationWatch;
@@ -2314,6 +2327,8 @@ UHOLAlertBannerPanel AlertBanner;
 		if (GroupBar != nullptr && GroupBar.ClickName(WidgetName))
 			return true;
 		if (QueueView != nullptr && QueueView.ClickName(WidgetName))
+			return true;
+		if (CommandGrid != nullptr && CommandGrid.ClickName(WidgetName))
 			return true;
 		if (AgePanels != nullptr && AgePanels.ClickName(WidgetName))
 			return true;

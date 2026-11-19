@@ -16,6 +16,24 @@ class UProgressBar;
 class UCommonTextBlock;
 class UCommonTextStyle;
 class UWidget;
+class UVerticalBox;
+
+/** HUD H-10: one cell of the command grid as the C++ frame left it (no widget touched): what the script's grid panel needs to show or clear it. */
+USTRUCT(BlueprintType)
+struct FHOLGridCellInfoView
+{
+	GENERATED_BODY()
+
+	/** 0 none (the cell stays dark at its key's place), 1 a command. */
+	UPROPERTY(BlueprintReadWrite, Category = "HeroesOfLiberty|UI")
+	int32 Kind = 0;
+	/** EHOLGridCellState as an int: 0 Ready, 1 Greyed, 2 Disabled. */
+	UPROPERTY(BlueprintReadWrite, Category = "HeroesOfLiberty|UI")
+	int32 State = 2;
+	/** ShownOrderTypes[Cell]: AttackMove / Stop / Hold / Pack / Deploy for an order, none for a grid command. */
+	UPROPERTY(BlueprintReadWrite, Category = "HeroesOfLiberty|UI")
+	FName OrderType;
+};
 
 /** A HUD box and its name (Slate units of the HUD), as UHOLScriptScreen::GatherPanelBoxes lists them. */
 struct FHOLHUDNamedBox
@@ -55,6 +73,10 @@ public:
 	/** The builders' age panels read the game and redraw at once (HUD H-8): the screen's grid, chosen age or tier changed. Not the whole Refresh. */
 	UFUNCTION(BlueprintImplementableEvent, Category = "HeroesOfLiberty|UI")
 	void RefreshAges();
+
+	/** HUD H-10: the command grid redraws from the frame the C++ screen just computed (selection, stock or hero/rage/deploy tick). Like RefreshAges. */
+	UFUNCTION(BlueprintImplementableEvent, Category = "HeroesOfLiberty|UI")
+	void RefreshGridCells();
 
 	/**
 	 * A key the script screen listens to went down this frame, read from the player's input state (nothing bound nor consumed, as the Enter
@@ -374,6 +396,26 @@ public:
 	/** HUD H-8: the C++ bottom bar's AgePanelsHost (an empty horizontal box where the age panels were), filled by the script's four panels. */
 	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|UI")
 	UHorizontalBox* GetAgePanelsHost() const;
+
+	/** HUD H-10: the C++ command column's GridPanelHost (an empty vertical box where GridPanel was), the script's command grid is put in it. */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|UI")
+	UVerticalBox* GetGridPanelHost() const;
+
+	/** HUD H-10: the last frame: per cell its kind / state / order type (no widget touched); bOutGrid / bOutOrders = the screen's bGridShown / bOrdersShown. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|UI")
+	void GetGridFrame(TArray<FHOLGridCellInfoView>& OutCells, bool& bOutGrid, bool& bOutOrders) const;
+
+	/** HUD H-10: applies the cached fill of cell Cell (SetCommand, SetGain when quoted, SetTooltip) to Target, and keeps ShownTradeLabels[Cell] for a trade cell. False: no command. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|UI")
+	bool ApplyGridCell(int32 Cell, UHOLGridCell* Target);
+
+	/** HUD H-10: the click of a cell, UHOLGameScreen::ClickGridCell: an order cell (ActivateOrderCell) or a grid cell (ActivateGridCell); the script writes the journal line. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|UI")
+	void ClickGridCell(int32 Cell);
+
+	/** HUD H-10: the screen keeps the cells for its report (GridCells: DescribeCells, DescribeTooltips, Describe's states, ClickWidget's GetIsEnabled). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|UI")
+	void RegisterGridCells(const TArray<UHOLGridCell*>& Cells);
 
 	/** The grid context the age panels read (UHOLGameScreen::RefreshAges' rule): the units' context while no own building or group is selected, else an empty one. */
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|UI")

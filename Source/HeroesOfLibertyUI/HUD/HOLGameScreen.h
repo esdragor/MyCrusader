@@ -8,6 +8,7 @@
 #include "Match/HOLMarketRules.h"
 #include "Match/HOLResources.h"
 #include "Player/HOLCommandGrid.h"
+#include "Widgets/HOLGridCell.h"
 #include "HOLGameScreen.generated.h"
 
 class AHOLBuilding;
@@ -27,6 +28,30 @@ class UProgressBar;
 class UScaleBox;
 class UWrapBox;
 struct FHOLUnitTypeRow;
+
+/** HUD H-10: what RefreshGrid computed for one cell of the command grid (the content of the switch), kept for the script's grid panel to apply to the cell (ApplyGridCell). Same method names as UHOLGridCell so the switch reads as it did. */
+struct FHOLGridCellFill
+{
+	bool bCommand = false;
+	FText Name;
+	EHOLGridCellState State = EHOLGridCellState::Disabled;
+	FText TooltipName;
+	FHOLResources Cost;
+	FHOLResources Missing;
+	FText Effect;
+	bool bGain = false;
+	FHOLTradeGain Gain;
+	/** A Market's trade cell: ApplyGridCell reads the cell's drawn content back into ShownTradeLabels. */
+	bool bTrade = false;
+
+	void SetCommand(const FText& InName, const EHOLGridCellState InState) { bCommand = true; Name = InName; State = InState; }
+	void SetGain(const FHOLTradeGain& InGain) { bGain = true; Gain = InGain; }
+	void SetTooltip(const FText& InName, const FHOLResources& InCost, const FHOLResources& InMissing, const FText& InEffect)
+	{
+		TooltipName = InName; Cost = InCost; Missing = InMissing; Effect = InEffect;
+	}
+	void ClearUnit() { *this = FHOLGridCellFill(); }
+};
 
 /**
  * Game screen of a match (J3, D281): the HUD of D201 with only the blocks the game has a use for so far, at their
@@ -133,6 +158,17 @@ public:
 	int32 GetBoundTier() const;
 	/** HUD H-8: RefreshAges' cell filling (name, Ready or Greyed by the stock, tooltip with cost and effect) for a building of an age panel. */
 	void FillAgeCell(UHOLGridCell* Cell, FName TypeName, bool bGreyed);
+
+	/** HUD H-10: the command column's GridPanelHost, an empty vertical box the script's command grid is put in. */
+	UVerticalBox* GetGridPanelHost() const { return GridPanelHost; }
+	/** HUD H-10: the script's twelve cells, kept for the report (GridCells: DescribeCells, DescribeTooltips, Describe's states). */
+	void SetGridCells(const TArray<UHOLGridCell*>& Cells);
+	/** HUD H-10: the last RefreshGrid frame without any widget: per cell 0 none / 1 command, the state as int (0 Ready, 1 Greyed, 2 Disabled) and the order type. */
+	void ReadGridFrame(TArray<int32>& OutKinds, TArray<int32>& OutStates, TArray<FName>& OutOrderTypes, bool& bOutGrid, bool& bOutOrders) const;
+	/** HUD H-10: applies the cached fill of Cell to Target (SetCommand, SetGain, SetTooltip) and keeps ShownTradeLabels. False: the cell holds no command. */
+	bool ApplyGridCell(int32 Cell, UHOLGridCell* Target);
+	/** HUD H-10: a cell of the command panel: an order with the player's units, else the grid's command (no journal line: the script writes it). */
+	void ClickGridCell(int32 Cell);
 	/** HUD H-8: what the script's age panels show, copied into the mirrors Describe and ClickWidget read without widgets. */
 	void SetAgesMirror(bool bShown, int32 Chosen, const TArray<FName>& Types, const TArray<bool>& Reached, const TArray<FString>& Tooltips);
 
@@ -279,13 +315,9 @@ protected:
 	UPROPERTY(meta = (BindWidgetOptional))
 	TObjectPtr<UBorder> QueuePanel;
 
-	/**
-	 * The one command panel (the user's 2nd trial of G.1, AoE4's way): 3 x 4 cells at fixed places, the empty ones dark,
-	 * right of the selection's block: the orders of the player's units (Q attack-move, S stop, V hold) or the grid of its
-	 * building or group (production, « Annuler »). Hidden (its place kept) without anything of the player's selected.
-	 */
-	UPROPERTY(meta = (BindWidgetOptional))
-	TObjectPtr<UBorder> GridPanel;
+	/** HUD H-10: the empty vertical box in the command column (under the queue panel) the script's command grid (GridPanel, 3 x 4 cells) is put in. */
+	UPROPERTY(Transient)
+	TObjectPtr<UVerticalBox> GridPanelHost;
 
 
 private:
@@ -332,9 +364,6 @@ private:
 	/** OwnBuilding: the player's own building selected alone; bOwnGroup: several of its buildings (an F key). */
 	void RefreshGrid(const AHOLBuilding* OwnBuilding, bool bOwnGroup, const AHOLPlayerState* PlayerState);
 
-	/** A cell of the command panel: an order with the player's units, else the grid's command. */
-	void HandleGridCellClicked(int32 Cell);
-
 	/** A command that did not go through (D313), from the controller: its short message. */
 	void HandleCommandFeedback(const FHOLCommandFeedback& Feedback);
 	/** Shows a short message above the grid for MessageSeconds; Key names it in the logs and in Describe. */
@@ -350,6 +379,8 @@ private:
 
 	UPROPERTY(Transient)
 	TArray<TObjectPtr<UHOLGridCell>> GridCells;
+	/** HUD H-10: the content RefreshGrid computed for each cell, applied by the script's grid panel (ApplyGridCell). */
+	TArray<FHOLGridCellFill> GridFrameFill;
 
 	/** Each medallion's tooltip as Report writes it (« Palier II — Essor | Palier non atteint »). */
 	TArray<FString> ShownAgeTooltips;

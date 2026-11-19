@@ -109,6 +109,58 @@ UHorizontalBox* UHOLScriptScreen::GetAgePanelsHost() const
 	return GameScreen ? GameScreen->GetAgePanelsHost() : nullptr;
 }
 
+UVerticalBox* UHOLScriptScreen::GetGridPanelHost() const
+{
+	const UHOLGameScreen* GameScreen = GetTypedOuter<UHOLGameScreen>();
+	return GameScreen ? GameScreen->GetGridPanelHost() : nullptr;
+}
+
+void UHOLScriptScreen::GetGridFrame(TArray<FHOLGridCellInfoView>& OutCells, bool& bOutGrid, bool& bOutOrders) const
+{
+	OutCells.Reset();
+	bOutGrid = false;
+	bOutOrders = false;
+	const UHOLGameScreen* GameScreen = GetTypedOuter<UHOLGameScreen>();
+	if (!GameScreen)
+	{
+		return;
+	}
+	TArray<int32> Kinds;
+	TArray<int32> States;
+	TArray<FName> OrderTypes;
+	GameScreen->ReadGridFrame(Kinds, States, OrderTypes, bOutGrid, bOutOrders);
+	for (int32 Cell = 0; Cell < Kinds.Num(); ++Cell)
+	{
+		FHOLGridCellInfoView View;
+		View.Kind = Kinds[Cell];
+		View.State = States[Cell];
+		View.OrderType = OrderTypes[Cell];
+		OutCells.Add(View);
+	}
+}
+
+bool UHOLScriptScreen::ApplyGridCell(const int32 Cell, UHOLGridCell* Target)
+{
+	UHOLGameScreen* GameScreen = GetTypedOuter<UHOLGameScreen>();
+	return GameScreen && GameScreen->ApplyGridCell(Cell, Target);
+}
+
+void UHOLScriptScreen::ClickGridCell(const int32 Cell)
+{
+	if (UHOLGameScreen* GameScreen = GetTypedOuter<UHOLGameScreen>())
+	{
+		GameScreen->ClickGridCell(Cell);
+	}
+}
+
+void UHOLScriptScreen::RegisterGridCells(const TArray<UHOLGridCell*>& Cells)
+{
+	if (UHOLGameScreen* GameScreen = GetTypedOuter<UHOLGameScreen>())
+	{
+		GameScreen->SetGridCells(Cells);
+	}
+}
+
 void UHOLScriptScreen::GetAgesContext(FHOLGridContextView& OutContext) const
 {
 	// Exactly RefreshAges' reading: the units' context, unless an own building or a building group is selected (then an empty context).
