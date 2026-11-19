@@ -119,6 +119,8 @@ if ($ServerVersionMade) { [IO.File]::WriteAllText($ServerVersion, "dev", (New-Ob
 $Manager = Start-Process -FilePath $Exe -ArgumentList "--urls $Url --GameVersion=dev --VersionsDir=`"$(Join-Path $Work "Versions")`" --AccessKeyFile=no_key.txt --ServerExe=`"$ServerExe`" --ManagerUrl=$Url --FirstServerPort=$FirstServerPort" `
     -WorkingDirectory $Work -PassThru -WindowStyle Hidden -RedirectStandardOutput $ManagerLog
 $Games = @{}
+# The script boards (bridges) every game world reports at the match start (Source/HeroesOfLiberty/Match/HOLBoardLog.cpp).
+$BoardBridges = @("MatchFlow", "Market", "Construction", "PlayerOrders", "Production", "CommandGrid", "UnitTier", "Camp", "Garrison", "Relay", "Site", "Chat", "Signal", "Specialization")
 $Failure = $null
 $Matches0 = Join-Path $Project "Saved\Manager\Saved\Matches"
 $Servers = Join-Path $Work "servers.json"
@@ -246,6 +248,9 @@ if ($AI) {
         elseif (-not ($L -match "End banner: lobby match")) { $Failure = "Alice : no lobby end banner" }
         elseif ($L -match "Test sequence: timeout") { $Failure = "Alice : her sequence timed out" }
         elseif (-not $ServerLog) { $Failure = "no server log of the match" }
+        # The script boards (bridges) of the cooked dedicated server (HOLBoardLog): each says "script <class>", none says "ABSENT (C++ fallback)" (a missing script board falls back on C++ in silence otherwise).
+        elseif (@($BoardBridges | Where-Object { -not ($S -match "LogHOLMatch: Display: Board: $_ script \S+") }).Count) { $Failure = "the server has no 'Board: <bridge> script <class>' line for: $((@($BoardBridges | Where-Object { -not ($S -match "LogHOLMatch: Display: Board: $_ script \S+") })) -join ', ')" }
+        elseif ($S -match "Board: \S+ ABSENT") { $Failure = "the server has a script board ABSENT (C++ fallback): $(($S -match 'Board: \S+ ABSENT') -join ' | ')" }
         elseif (-not $AISlot -or $AISlot.state -ne "AI" -or $AISlot.difficulty -ne "Normal") { $Failure = "match.json without slot 1 'AI' Normal" }
         elseif ($Start -match "StartingPeasants") { $Failure = "the server started with StartingPeasants on its command line" }
         elseif (-not ($S -match "Match on \S+: given configuration, 2 occupied slots")) { $Failure = "the server has no 'given configuration, 2 occupied slots'" }
