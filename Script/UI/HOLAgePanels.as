@@ -400,7 +400,7 @@ class UHOLAgePanelsPanel : UObject
 	{
 		for (int AgeIndex = 0; AgeIndex < Cells.Num(); AgeIndex++)
 		{
-			if (Cells[AgeIndex].GetFName() != WidgetName)
+			if (Cells[AgeIndex].GetName() != WidgetName)
 				continue;
 			bool bHasBuilding = ShownTypes.IsValidIndex(AgeIndex) && ShownTypes[AgeIndex] != NAME_None;
 			if (!HOLAgePanels::ClickAllowed(bAgesShown, bHasBuilding))
