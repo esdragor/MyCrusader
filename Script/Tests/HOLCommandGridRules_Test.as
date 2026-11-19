@@ -430,3 +430,65 @@ void Test_CGRHardValues(FUnitTest& T)
 	T.AssertTrue(Math::IsNearlyEqual(HOLCommandGridRules::GetAgePanelOpacity(Builders, 1), 0.55, 0.0001), "a page not open: faded to 0.55");
 	T.AssertTrue(Math::IsNearlyEqual(HOLCommandGridRules::GetAgePanelOpacity(Builders, 0), 1.0, 0.0001), "age I: the page whole");
 }
+
+// MIG-C-CommandGrid, lot L1a (GALADRIEL-1119cc): the grid extracts of the C++ group-A tests, as script tests on the SCRIPT rule alone (no C++ copy read, no *Answer
+// called): the same inputs and the same expected values as HOLRegicideTests.cpp:288-299, HOLVictoryTests.cpp:1197-1204, HOLDamnedWarriorTests.cpp:230-235.
+// NOT COMPILED when written. To SEE RED: see the FALSIFICATION of GALADRIEL-1119cc.md (one wrong expected value per test).
+
+// HeroesOfLiberty.CommandGridRules.KingsOnly (HOLRegicideTests.cpp:288-299)
+void Test_CGKingsOnly(FUnitTest& T)
+{
+	FHOLGridContextView Kings;
+	Kings.bOwnUnits = true;
+	Kings.bSoldiers = true;
+	Kings.bOnlyKings = true;
+	int AttackMoveCell = HOLCommandGridRules::GetAttackMoveCell();
+	int StopCell = HOLCommandGridRules::GetStopCell();
+	int HoldCell = HOLCommandGridRules::GetHoldCell();
+	FHOLGridCommandView KingsAttackMove = HOLCommandGridRules::GetOrder(Kings, AttackMoveCell);
+	FHOLGridCommandView KingsStop = HOLCommandGridRules::GetOrder(Kings, StopCell);
+	FHOLGridCommandView KingsHold = HOLCommandGridRules::GetOrder(Kings, HoldCell);
+	bool KingsBuildGrid = HOLCommandGridRules::IsBuildGrid(Kings);
+	T.AssertTrue(KingsAttackMove.Command == EHOLGridCommandKind::None, "Kings alone: no attack-move");
+	T.AssertTrue(KingsStop.Command == EHOLGridCommandKind::Stop, "Kings alone: stop");
+	T.AssertTrue(KingsHold.Command == EHOLGridCommandKind::None, "Kings alone: no hold (it would take on enemies in reach)");
+	T.AssertFalse(KingsBuildGrid, "Kings alone: no builders' grid");
+
+	FHOLGridContextView Mixed = Kings;
+	Mixed.bOnlyKings = false;
+	FHOLGridCommandView MixedAttackMove = HOLCommandGridRules::GetOrder(Mixed, AttackMoveCell);
+	FHOLGridCommandView MixedHold = HOLCommandGridRules::GetOrder(Mixed, HoldCell);
+	T.AssertTrue(MixedAttackMove.Command == EHOLGridCommandKind::AttackMove, "A King with soldiers: the attack-move stays");
+	T.AssertTrue(MixedHold.Command == EHOLGridCommandKind::Hold, "A King with soldiers: the hold stays");
+}
+
+// HeroesOfLiberty.CommandGridRules.ForumDown (HOLVictoryTests.cpp:1197-1204)
+void Test_CGForumDown(FUnitTest& T)
+{
+	FHOLGridContextView Grid;
+	Grid.bOwnBuilding = true;
+	Grid.bBuildingFinished = true;
+	Grid.Produces.Add(n"Peasant");
+	FHOLGridCommandView Standing = HOLCommandGridRules::GetCommand(Grid, 0);
+	T.AssertTrue(Standing.Command == EHOLGridCommandKind::Produce, "a forum standing produces");
+	Grid.bForumDown = true;
+	int CancelCell = HOLCommandGridRules::GetCancelCell();
+	FHOLGridCommandView DownFirst = HOLCommandGridRules::GetCommand(Grid, 0);
+	FHOLGridCommandView DownCancel = HOLCommandGridRules::GetCommand(Grid, CancelCell);
+	T.AssertTrue(DownFirst.Command == EHOLGridCommandKind::None, "a forum down: no production");
+	T.AssertTrue(DownCancel.Command == EHOLGridCommandKind::None, "a forum down: nothing to cancel");
+}
+
+// HeroesOfLiberty.CommandGridRules.RageButton (HOLDamnedWarriorTests.cpp:230-235)
+void Test_CGRageButton(FUnitTest& T)
+{
+	FHOLGridContextView Selection;
+	Selection.bOwnUnits = true;
+	Selection.bRageUnit = true;
+	int RageCell = HOLCommandGridRules::GetRageCell();
+	FHOLGridCommandView WithRage = HOLCommandGridRules::GetCommand(Selection, RageCell);
+	T.AssertTrue(WithRage.Command == EHOLGridCommandKind::NecroticRage, "the grid shows the rage button for a selection with a Damned Warrior");
+	Selection.bRageUnit = false;
+	FHOLGridCommandView WithoutRage = HOLCommandGridRules::GetCommand(Selection, RageCell);
+	T.AssertTrue(WithoutRage.Command != EHOLGridCommandKind::NecroticRage, "... and none for another selection");
+}
