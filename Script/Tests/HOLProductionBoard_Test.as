@@ -134,3 +134,29 @@ void Test_ProductionBoard_QueueOrder(FUnitTest& T)
 	T.AssertEquals(int(EHOLQueueVerdict::NotEnoughResources), PBUnit(0, 5, PBRes(50, 0, 0, 19), Cost), "one gold short: 3");
 	T.AssertEquals(int(EHOLQueueVerdict::Enqueue), PBUnit(0, 5, Poor, PBRes(0, 0, 0, 0)), "a free unit is queued on an empty stock");
 }
+
+// Lot R3 (GALADRIEL-1119ab): the outcome of a Rally order, once the gates passed. RallyOutcome(bOnBody, bShift, bHasRally): 0 NoStep (Shift on the body of
+// a building that has a rally point: nothing, a line), 1 Clear (on the body: no more rally point), 2 AddStep (Shift on a ground, with a rally point), 3 Set.
+// RallySiteKept(bIsBuilding, bOwnedByPlayer, bNeedsBuilders, bIsCamp): a named site is kept only if it is another building, the player's own, and a site
+// to build or a camp. NOT COMPILED when written.
+void Test_ProductionBoard_RallyOutcome(FUnitTest& T)
+{
+	T.AssertEquals(int(EHOLRallyOutcome::Set), int(HOLProductionBoard::RallyOutcome(false, false, false)), "a click on the ground, no rally point: set");
+	T.AssertEquals(int(EHOLRallyOutcome::Set), int(HOLProductionBoard::RallyOutcome(false, false, true)), "a click on the ground replaces the rally point: set");
+	T.AssertEquals(int(EHOLRallyOutcome::Set), int(HOLProductionBoard::RallyOutcome(false, true, false)), "Shift on the ground with no rally point: the first one is set, no step");
+	T.AssertEquals(int(EHOLRallyOutcome::AddStep), int(HOLProductionBoard::RallyOutcome(false, true, true)), "Shift on the ground with a rally point: a step is added");
+	T.AssertEquals(int(EHOLRallyOutcome::Clear), int(HOLProductionBoard::RallyOutcome(true, false, false)), "a click on the body, no rally point: cleared");
+	T.AssertEquals(int(EHOLRallyOutcome::Clear), int(HOLProductionBoard::RallyOutcome(true, false, true)), "a click on the body with a rally point: cleared");
+	T.AssertEquals(int(EHOLRallyOutcome::Clear), int(HOLProductionBoard::RallyOutcome(true, true, false)), "Shift on the body with no rally point: cleared, no step (HasRallyPoint is asked)");
+	T.AssertEquals(int(EHOLRallyOutcome::NoStep), int(HOLProductionBoard::RallyOutcome(true, true, true)), "Shift on the body with a rally point: nothing, a step on the body makes no sense");
+}
+
+void Test_ProductionBoard_RallySite(FUnitTest& T)
+{
+	T.AssertTrue(HOLProductionBoard::RallySiteKept(true, true, true, false), "another building of the player, still to build: kept");
+	T.AssertTrue(HOLProductionBoard::RallySiteKept(true, true, false, true), "a camp of the player, finished: kept");
+	T.AssertTrue(HOLProductionBoard::RallySiteKept(true, true, true, true), "a camp to build: kept");
+	T.AssertFalse(HOLProductionBoard::RallySiteKept(false, true, true, true), "the building itself is never its own site");
+	T.AssertFalse(HOLProductionBoard::RallySiteKept(true, false, true, true), "a building of another player is dropped (a client could name any, D288)");
+	T.AssertFalse(HOLProductionBoard::RallySiteKept(true, true, false, false), "a finished building that is no camp: dropped, the flag stays on the ground");
+}
