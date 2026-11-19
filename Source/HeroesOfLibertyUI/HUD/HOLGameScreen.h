@@ -435,7 +435,6 @@ private:
 	void PresentAlert();
 	/** False without the game state; bOver: my Victory / Defeat banner due (D202). */
 	bool IsMatchOverForMe(bool& bOver) const;
-	void FocusAlertSlot(int32 TouchedSlot);
 	FHOLForumAlert Alert;
 	/** HUD H-5a: PresentAlert's count (a new banner, even an identical one, is a new number). */
 	int32 AlertPresentCount = 0;

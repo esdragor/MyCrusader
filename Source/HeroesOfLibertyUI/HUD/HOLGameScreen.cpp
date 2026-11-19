@@ -752,31 +752,6 @@ void UHOLGameScreen::HandleForumEvent(const FHOLForumEvent& Event)
 	ShowAlert(Message, Event.Slot);
 }
 
-namespace UE::HeroesOfLiberty::UI::GameScreen
-{
-	/** V4.2, V4.3: Row filled with Message's pieces, the words in WordsStyle, each name in NamesStyle and its player's colour. */
-	void FillMessageRow(UWidgetTree& Tree, UHorizontalBox& Row, const FHOLForumMessage& Message, const int32 ViewerSlot, const AHOLGameState* GameState,
-		const TSubclassOf<UCommonTextStyle> WordsStyle, const TSubclassOf<UCommonTextStyle> NamesStyle)
-	{
-		Row.ClearChildren();
-		for (const HOLForumMessages::FPiece& Part : GameState ? HOLForumMessages::SplitNames(Message, ViewerSlot, GameState->GetLaunchConfig())
-			: HOLForumMessages::SplitNames(Message, ViewerSlot))
-		{
-			const bool bName = Part.Slot != INDEX_NONE;
-			UCommonTextBlock* Text = Tree.ConstructWidget<UCommonTextBlock>(UCommonTextBlock::StaticClass());
-			Text->SetStyle(bName ? NamesStyle : WordsStyle);
-			Text->SetText(FText::AsCultureInvariant(Part.Text));
-			UHorizontalBoxSlot* TextSlot = Row.AddChildToHorizontalBox(Text);
-			TextSlot->SetVerticalAlignment(VAlign_Center);
-			// After it joins the row: its style, applied when its widget is built, would put back the style's colour.
-			if (bName && GameState && GameState->GetLaunchConfig().Slots.IsValidIndex(Part.Slot))
-			{
-				Text->SetColorAndOpacity(FSlateColor(FLinearColor(HOLPlayerColors::GetColor(GameState->GetLaunchConfig().Slots[Part.Slot].ColorIndex))));
-			}
-		}
-	}
-}
-
 void UHOLGameScreen::ShowAlert(const FHOLForumMessage& Message, const int32 TouchedSlot)
 {
 	const UWorld* World = GetWorld();
@@ -837,15 +812,6 @@ void UHOLGameScreen::FocusCameraOnForum(const int32 ForumSlot)
 	if (AHOLPlayerController* PlayerController = Controller.Get())
 	{
 		PlayerController->FocusCameraOnForum(ForumSlot);
-	}
-}
-
-void UHOLGameScreen::FocusAlertSlot(const int32 TouchedSlot)
-{
-	if (AHOLPlayerController* PlayerController = Controller.Get())
-	{
-		UE_LOG(LogHOLUI, Display, TEXT("HUD: alert of slot %d clicked (camera on its forum)"), TouchedSlot);
-		PlayerController->FocusCameraOnForum(TouchedSlot);
 	}
 }
 
