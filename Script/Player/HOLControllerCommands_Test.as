@@ -164,7 +164,7 @@ void Test_ControllerCommandsDamageNear(FUnitTest& T)
 	T.AssertTrue(Math::IsNearlyEqual(Plan.Dx, 100.0) && Math::IsNearlyEqual(Plan.Dy, -250.5), "Dx and Dy parsed as reals");
 	T.AssertTrue(Plan.bEnemy, "enemy flag");
 	FHOLCheatPlan Own = HOLControllerCommands::PlanOf("hol.Cheat.DamageNear", CheatArgs("50", "0", "0", "ENEMY", "hero"));
-	T.AssertFalse(Own.bEnemy, "enemy is compared case-sensitive, as the C++");
+	T.AssertTrue(Own.bEnemy, "enemy is compared case-insensitive, as the C++ FString ==");
 	T.AssertEquals(3, Own.Ints[1], "hero is attack type 3");
 	T.AssertEquals(0, HOLControllerCommands::PlanOf("hol.Cheat.DamageNear", CheatArgs("1", "0", "0")).Ints[1], "no attack type is melee 0");
 }
