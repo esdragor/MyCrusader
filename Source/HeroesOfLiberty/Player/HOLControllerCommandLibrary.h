@@ -186,4 +186,41 @@ public:
 	/** Controller->RequestSetRallyPointOf(Producer, Site->GetActorLocation(), INDEX_NONE, Site, bShift) (hol.Prod.RallySite). */
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|ControllerCommand")
 	static bool RequestRallyOnSite(AHOLPlayerController* Controller, AHOLBuilding* Producer, AHOLBuilding* Site, bool bShift);
+
+	// ---- C10a (SAURON-1119ba): pointing by viewport fraction and by ground point (hol.Select.Click / ClickUnit / Box / BoxGround / OrderGround / OrderLineGround / ClickGround / OrderNear) ----
+
+	/** Height (cm) of a unit's body drawn at scale 1 (the mannequin): what a click aims at (D288). The controller's PickBodyHeight is this. */
+	static constexpr double PickBodyHeight = 180.0;
+
+	/** Where a ground point (cm) is drawn, as a fraction of the viewport: true only when it is ON the screen (0 to 1 each way). The fraction is filled whenever the point projects. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|ControllerCommand")
+	static bool ProjectGroundFraction(AHOLPlayerController* Controller, double X, double Y, double& OutFx, double& OutFy);
+	/** The same for the C++ callers (the controller's ProjectGroundPoint): ONE rule. */
+	static bool ProjectGroundFractionOf(const AHOLPlayerController& Controller, double X, double Y, FVector2D& OutFraction);
+
+	/** Controller->SelectAt (bDouble: SelectSameTypeAt) at that viewport fraction. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|ControllerCommand")
+	static void SelectAtFraction(AHOLPlayerController* Controller, double Fx, double Fy, bool bAdd, bool bDouble);
+	/** Controller->SelectInBox between two viewport fractions. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|ControllerCommand")
+	static void SelectInBoxFraction(AHOLPlayerController* Controller, double X1, double Y1, double X2, double Y2, bool bAdd);
+	/** Controller->OrderAt (a right click) at that viewport fraction. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|ControllerCommand")
+	static void OrderAtFraction(AHOLPlayerController* Controller, double Fx, double Fy, bool bQueue);
+	/** Controller->OrderLineAt (a right-button drag) between two viewport fractions. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|ControllerCommand")
+	static void OrderLineAtFractions(AHOLPlayerController* Controller, double X1, double Y1, double X2, double Y2, bool bWidth, bool bQueue);
+
+	/**
+	 * Where the Wanted-th unit (by identifier, negative from the last) of the chosen side is drawn (hol.Select.ClickUnit): the units known here, those of slot Slot when it is not
+	 * INDEX_NONE, else the ally ones (bAlly), else the other players' (bEnemy), else the player's own. OutN is the resolved index (also set on failure); false when there is no such
+	 * unit or it does not project (the fraction is not range checked, as before).
+	 */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|ControllerCommand")
+	static bool UnitScreenPoint(AHOLPlayerController* Controller, int32 Wanted, bool bEnemy, bool bAlly, int32 Slot, int32& OutUnitId, double& OutFx, double& OutFy, int32& OutN);
+
+	/** The ground point (Dx, Dy) cm in the frame of the player's main centre (or an enemy's), Z 0 (hol.Select.OrderNear, AttackMoveNear, Camera.FocusNear); false without a centre. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|ControllerCommand")
+	static bool PointNearOf(AHOLPlayerController* Controller, double Dx, double Dy, bool bEnemy, double& OutX, double& OutY);
+	static bool PointNearFor(const AHOLPlayerController& Controller, double Dx, double Dy, bool bEnemy, FVector& OutPoint);
 };
