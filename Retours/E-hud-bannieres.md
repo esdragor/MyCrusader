@@ -1,4 +1,4 @@
-# [À ESSAYER] E-hud-bannieres : les bannières « Bob : connexion perdue — m:ss » et « Bob : de retour » du HUD sont dessinées par le script et s'affichent comme avant
+# [RÉPONDU] E-hud-bannieres : les bannières « Bob : connexion perdue — m:ss » et « Bob : de retour » du HUD sont dessinées par le script et s'affichent comme avant
 
 STATUT : VU À L'ÉCRAN
 GESTE: interne   (le scénario ferme lui-même son panneau et simule le départ puis le retour de « Bob » par la commande hol.Net.FakeAbsent ; aucun vrai joueur ; l'utilisateur fera ses propres gestes ensuite)
@@ -25,3 +25,4 @@ Geste (2 min) :
 Commande complète (règle 13, 2026-11-14) : chaque commande est écrite en entier, copiable telle quelle, jamais « même commande avec… ».
 Lancer UNE commande : `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Galadriel\Tools\Scenarios\play.ps1 ecran_hud_bannieres -Root C:\Users\baudo\Documents\HeroesOfLiberty-Galadriel`
 Durée : environ 2 min. Réponse attendue : `OK`, `BUG: ...` ou `REGLAGE: ...`.
+Reponse: OK (utilisateur, 2026-11-19 ~00:40, dans la conversation ; essai joué sur le worktree d'essai ; bascule fusionnée ensuite, voir Auto_Journey_Jour.md « Agents du 2026-11-19 »)
