@@ -122,6 +122,8 @@ FString TalentTipTexts = "";
 	UHOLTopBarPanel TopBar;
 	// HUD H-4: the players' table (HOLPlayerTable.as), drawn into the C++ screen's PlayersPanel.
 	UHOLPlayerTablePanel PlayerTable;
+	// HUD H-7: the production queue (HOLQueuePanel.as), drawn into the C++ screen's QueuePanel (the member is not called QueuePanel: no widget of that name here).
+	UHOLProductionQueuePanel QueueView;
 	FString VolcanoTexts = "";
 	// H-1: the wait and absence banners (HOLWaitBanner.as).
 	UHOLWaitBannerPanel WaitBanner;
@@ -260,6 +262,8 @@ FString TalentTipTexts = "";
 		MessageParts = HOLShortMessage::Build(this, Frame);
 		PlayerTable = Cast<UHOLPlayerTablePanel>(NewObject(this, UHOLPlayerTablePanel));
 		PlayerTable.Build(this, GetPlayersPanel());
+		QueueView = Cast<UHOLProductionQueuePanel>(NewObject(this, UHOLProductionQueuePanel));
+		QueueView.Build(this, GetQueuePanel());
 		BuildMinimap(Frame);
 		BuildTalentWindow(Frame);
 		// Last: over the other blocks.
@@ -1381,6 +1385,8 @@ FString TalentTipTexts = "";
 			WaitBanner.Refresh();
 		if (PlayerTable != nullptr)
 			PlayerTable.Refresh();
+		if (QueueView != nullptr)
+			QueueView.Refresh();
 		if (Audio != nullptr)
 			Audio.PlayDueRepeats();
 		RefreshDiplomacy();
@@ -1420,6 +1426,14 @@ FString TalentTipTexts = "";
 	{
 		HOLShortMessage::ShowText(MessageParts, MessageState, Key, Text);
 		SetShownMessageKey(Key);
+	}
+
+	// H-7: once a frame, ONLY while the queue panel shows a queue (SetQueueLive): the head's bar moves each frame, as the C++ UpdateHead did.
+	UFUNCTION(BlueprintOverride)
+	void QueueFrameTick()
+	{
+		if (QueueView != nullptr)
+			QueueView.FrameTick();
 	}
 
 	// Only while a message with a key is shown (the C++ NativeTick): the fade, then the end (the mirrored key is cleared).
@@ -2237,6 +2251,8 @@ FString TalentTipTexts = "";
 		if (WidgetName == n"PauseResumeButton")
 			return ClickPauseResume();
 		if (TopBar != nullptr && TopBar.ClickName(WidgetName))
+			return true;
+		if (QueueView != nullptr && QueueView.ClickName(WidgetName))
 			return true;
 		return false;
 	}

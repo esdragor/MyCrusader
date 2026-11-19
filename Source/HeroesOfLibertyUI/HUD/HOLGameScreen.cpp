@@ -407,15 +407,6 @@ void UHOLGameScreen::NativeOnInitialized()
 			GridCell->OnClicked().AddUObject(this, &UHOLGameScreen::HandleGridCellClicked, Cell);
 		}
 	}
-	for (int32 Index = 0; Index < NumQueueItems; ++Index)
-	{
-		UHOLQueueItem* Item = Cast<UHOLQueueItem>(WidgetTree->FindWidget(QueueItemName(Index)));
-		QueueItems.Add(Item);
-		if (Item)
-		{
-			Item->OnClicked().AddUObject(this, &UHOLGameScreen::HandleQueueItemClicked, Index);
-		}
-	}
 	for (int32 Group = 0; Group < AHOLPlayerController::NumControlGroups; ++Group)
 	{
 		UHOLQueueItem* GroupSlot = Cast<UHOLQueueItem>(WidgetTree->FindWidget(GroupSlotName(Group)));
@@ -625,7 +616,7 @@ void UHOLGameScreen::NativeTick(const FGeometry& MyGeometry, const float InDelta
 	}
 	RefreshIdleWorkers();
 	RefreshControlGroups(FrameSeconds);
-	UpdateHead();
+	// HUD H-7: the queue's head bar moves each frame in the script (UHOLScriptScreen::QueueFrameTick, only while a queue is shown).
 }
 
 void UHOLGameScreen::BindPlayerState(AHOLPlayerState* PlayerState)
@@ -1059,8 +1050,11 @@ void UHOLGameScreen::Refresh()
 	// D357: a spectator commands nothing, its grid hidden.
 	const bool bSpectator = PlayerController && PlayerController->IsSpectator();
 	RefreshGrid(bSpectator ? nullptr : Own, !bSpectator && PlayerController && PlayerController->HasBuildingGroup(), PlayerState);
-	RefreshQueue(Own);
-	UpdateHead();
+	// HUD H-7: the queue is the script's (HOLQueuePanel.as): it reads it again the next frame (RequestRefresh), not 250 ms later.
+	if (ScriptScreen)
+	{
+		ScriptScreen->RequestRefresh();
+	}
 }
 
 UBorder* UHOLGameScreen::GetTopBar() const
@@ -2725,19 +2719,7 @@ bool UHOLGameScreen::ClickWidget(const FName Name)
 			return true;
 		}
 	}
-	for (int32 Index = 0; Index < QueueItems.Num(); ++Index)
-	{
-		const UHOLQueueItem* Item = QueueItems[Index];
-		if (Item && Item->GetFName() == Name)
-		{
-			if (!bQueueShown || !Item->IsVisible())
-			{
-				return false;
-			}
-			HandleQueueItemClicked(Index);
-			return true;
-		}
-	}
+	// HUD H-7: QueueItem0..4 are the script's (UHOLProductionQueuePanel.ClickName, through UHOLScriptScreen::ClickWidget above).
 	return false;
 }
 
@@ -2788,19 +2770,8 @@ FString UHOLGameScreen::Describe() const
 		}
 		Grid = Cells.IsEmpty() ? FString(TEXT("empty")) : FString::Join(Cells, TEXT(" "));
 
-		TArray<FString> Items;
-		for (int32 Index = 0; Index < ShownQueueTypes.Num(); ++Index)
-		{
-			FString State = TEXT("waiting");
-			if (Index == 0)
-			{
-				State = HeadState == EHeadState::InProgress ? FString::Printf(TEXT("%.2f"), HeadProgress)
-					: HeadState == EHeadState::PopulationFull ? FString(TEXT("population full"))
-					: FString(TEXT("starting"));
-			}
-			Items.Add(FString::Printf(TEXT("%s %s"), *ShownQueueTypes[Index].ToString(), *State));
-		}
-		Queue = FString::Printf(TEXT("%d [%s]"), Items.Num(), *FString::Join(Items, TEXT(", ")));
+		// HUD H-7: the queue part is the script's (UHOLProductionQueuePanel.Describe: "N [Type state, ...]", written by SetQueueReport at each refresh).
+		Queue = QueueReport;
 	}
 	// The orders' panel (the user's choice of 2026-10-21), after the grid: Q=AttackMove S=Stop V=Hold.
 	TArray<FString> Orders;
@@ -3201,53 +3172,12 @@ void UHOLGameScreen::BuildLayout()
 	UVerticalBox* CommandColumn = MakeVerticalBox(TEXT("CommandColumn"));
 	CommandBox->SetContent(CommandColumn);
 
-	// Production queue, as wide as the grid: its items, the head's progress (or the population note), the hint.
+	// Production queue, as wide as the grid (the panel only: HUD H-7, the script draws what is in it).
 	QueuePanel = MakePanel(TEXT("QueuePanel"));
 	UVerticalBoxSlot* QueueSlot = CommandColumn->AddChildToVerticalBox(QueuePanel);
 	QueueSlot->SetHorizontalAlignment(HAlign_Fill);
 	QueueSlot->SetPadding(FMargin(0.f, 0.f, 0.f, 6.f));
-	UVerticalBox* QueueColumn = MakeVerticalBox(TEXT("QueueColumn"));
-	QueuePanel->SetContent(QueueColumn);
-	UHorizontalBox* QueueRow = MakeHorizontalBox(TEXT("QueueRow"));
-	QueueColumn->AddChildToVerticalBox(QueueRow);
-	for (int32 Index = 0; Index < NumQueueItems; ++Index)
-	{
-		USizeBox* ItemBox = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass());
-		ItemBox->SetWidthOverride(QueueItemWidth);
-		ItemBox->SetHeightOverride(QueueItemHeight);
-		ItemBox->SetContent(WidgetTree->ConstructWidget<UHOLQueueItem>(UHOLQueueItem::StaticClass(), QueueItemName(Index)));
-		AddToRow(QueueRow, ItemBox, 4.f);
-	}
-
-	// The bar and the note share one line of a fixed height, so that the panel does not move when one replaces the other.
-	USizeBox* StatusBox = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass(), TEXT("QueueStatus"));
-	StatusBox->SetHeightOverride(18.f);
-	QueueColumn->AddChildToVerticalBox(StatusBox)->SetPadding(FMargin(0.f, 6.f, 0.f, 0.f));
-	UOverlay* Status = WidgetTree->ConstructWidget<UOverlay>(UOverlay::StaticClass(), TEXT("QueueStatusLine"));
-	StatusBox->SetContent(Status);
-
-	QueueProgress = WidgetTree->ConstructWidget<UProgressBar>(UProgressBar::StaticClass(), TEXT("QueueProgress"));
-	FProgressBarStyle BarStyle;
-	BarStyle.SetBackgroundImage(FSlateRoundedBoxBrush(FLinearColor(0.08f, 0.08f, 0.1f, 1.f), 2.f));
-	BarStyle.SetFillImage(FSlateRoundedBoxBrush(HOLUIStyle::Accent, 2.f));
-	QueueProgress->SetWidgetStyle(BarStyle);
-	USizeBox* BarBox = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass(), TEXT("QueueProgressBox"));
-	BarBox->SetHeightOverride(6.f);
-	BarBox->SetContent(QueueProgress);
-	UOverlaySlot* BarSlot = Status->AddChildToOverlay(BarBox);
-	BarSlot->SetHorizontalAlignment(HAlign_Fill);
-	BarSlot->SetVerticalAlignment(VAlign_Center);
-
-	QueueNote = MakeText(TEXT("QueueNote"), UHOLTextStyleHUDAlert::StaticClass(), LOCTEXT("PopulationFull", "Population pleine"));
-	QueueNote->SetVisibility(ESlateVisibility::Collapsed);
-	UOverlaySlot* NoteSlot = Status->AddChildToOverlay(QueueNote);
-	NoteSlot->SetHorizontalAlignment(HAlign_Left);
-	NoteSlot->SetVerticalAlignment(VAlign_Center);
-
-	UCommonTextBlock* Hint = MakeText(TEXT("QueueHint"), UHOLTextStyleHUDLabel::StaticClass(), LOCTEXT("CancelHint", "Clic : annuler"));
-	UVerticalBoxSlot* HintSlot = QueueColumn->AddChildToVerticalBox(Hint);
-	HintSlot->SetHorizontalAlignment(HAlign_Right);
-	HintSlot->SetPadding(FMargin(0.f, 4.f, 0.f, 0.f));
+	// HUD H-7: the script's queue panel (HOLQueuePanel.as) fills QueuePanel (QueueColumn, QueueRow, QueueItem0..4, QueueStatus, QueueProgress, QueueNote, QueueHint).
 
 	// The command panel (D30, the user's 2nd trial of G.1): 3 rows of 4 square cells, A Z E R / Q S D F / W X C V, always
 	// all there (an empty one dark): the orders of the player's units or the grid of its building.
