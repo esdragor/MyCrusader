@@ -1,0 +1,6 @@
+﻿# <nom de capture> | ce que l'utilisateur doit voir
+hud_puces_tous | Capture 1920x1080, 8 unites selectionnees (3 Paysans, 2 Hommes d'armes, 3 Archers) : le bloc du bas montre les puces « Tous (8) » (ALLUMEE) + 3 puces de type (Archer 3, Homme d'arm. 2, Paysan 3) ; journal « Selection: 8 units (own) ».
+hud_puces_archers | Capture 1920x1080, apres hol.Select.Subgroup : la puce « Archer (3) » est ALLUMEE, « Tous (8) » ne l'est plus ; journal « Subgroup: Archer x3 ».
+hud_puces_hommes_darmes | Capture 1920x1080, apres un second hol.Select.Subgroup : la puce « Homme d'arm. (2) » est ALLUMEE ; journal « Subgroup: ManAtArms x2 ».
+hud_puces_batiments_tous | Capture 1920x1080, forum + 3 maisons selectionnes (F2) : le bloc montre « Tous (4) » (ALLUMEE) et les puces par type dont « Maison (3) » et le forum ; journal « Category Economic: ».
+hud_puces_batiments_sous | Capture 1920x1080, apres hol.Select.Subgroup sur les batiments : un seul sous-groupe (le forum seul ou « Maison (3) ») est selectionne, sa puce ALLUMEE, « Tous (4) » eteinte ; journal « Subgroup: ... ».

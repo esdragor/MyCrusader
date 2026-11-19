@@ -16,6 +16,24 @@ class UProgressBar;
 class UCommonTextBlock;
 class UCommonTextStyle;
 class UWidget;
+class UVerticalBox;
+
+/** HUD H-10: one cell of the command grid as the C++ frame left it (no widget touched): what the script's grid panel needs to show or clear it. */
+USTRUCT(BlueprintType)
+struct FHOLGridCellInfoView
+{
+	GENERATED_BODY()
+
+	/** 0 none (the cell stays dark at its key's place), 1 a command. */
+	UPROPERTY(BlueprintReadWrite, Category = "HeroesOfLiberty|UI")
+	int32 Kind = 0;
+	/** EHOLGridCellState as an int: 0 Ready, 1 Greyed, 2 Disabled. */
+	UPROPERTY(BlueprintReadWrite, Category = "HeroesOfLiberty|UI")
+	int32 State = 2;
+	/** ShownOrderTypes[Cell]: AttackMove / Stop / Hold / Pack / Deploy for an order, none for a grid command. */
+	UPROPERTY(BlueprintReadWrite, Category = "HeroesOfLiberty|UI")
+	FName OrderType;
+};
 
 /** A HUD box and its name (Slate units of the HUD), as UHOLScriptScreen::GatherPanelBoxes lists them. */
 struct FHOLHUDNamedBox
@@ -55,6 +73,10 @@ public:
 	/** The builders' age panels read the game and redraw at once (HUD H-8): the screen's grid, chosen age or tier changed. Not the whole Refresh. */
 	UFUNCTION(BlueprintImplementableEvent, Category = "HeroesOfLiberty|UI")
 	void RefreshAges();
+
+	/** HUD H-10: the command grid redraws from the frame the C++ screen just computed (selection, stock or hero/rage/deploy tick). Like RefreshAges. */
+	UFUNCTION(BlueprintImplementableEvent, Category = "HeroesOfLiberty|UI")
+	void RefreshGridCells();
 
 	/**
 	 * A key the script screen listens to went down this frame, read from the player's input state (nothing bound nor consumed, as the Enter
@@ -144,6 +166,31 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|UI")
 	void SetQueueReport(const FString& Line);
 
+	/** H-11a: the cheats panel's part of hol.HUD.Report ("cheats open, fast build off, unit speed x1.0, gather speed x1.0"), written by the script at each refresh. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|UI")
+	void SetCheatsReport(const FString& Line);
+
+	/** H-11a: the line SetCheatsReport kept; empty before the script's panel wrote one. */
+	const FString& GetCheatsReport() const { return CheatsReport; }
+
+	/** H-11a: hol.HUD.Cheats <0|1>, the cheats panel folded or open without keeping the choice (the script's panel overrides it). */
+	UFUNCTION(BlueprintNativeEvent, Category = "HeroesOfLiberty|UI")
+	void ApplyCheatsOpen(bool bOpen);
+
+	/**
+	 * HUD H-9: the selection block's part of Describe's line, written by the script panel (UHOLSelectionPanel) at each refresh, the ONLY writer:
+	 * Kind = ShownSelection ("MainCentre (own)", "none"...), Activity = ShownActivity (", gathering Wood 4/10"), Health = ShownHealth (", hp 250/250"),
+	 * Forum = the "HUD forum" line's text (empty unless a main forum). The copies stay here (the screen's own fields are the switch's to remove).
+	 */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|UI")
+	void SetSelectionReport(const FString& Kind, const FString& Activity, const FString& Health, const FString& Forum);
+
+	/** The copies SetSelectionReport posed (the switch makes Describe read them). */
+	const FString& GetSelectionReportKind() const { return SelectionReportKind; }
+	const FString& GetSelectionReportActivity() const { return SelectionReportActivity; }
+	const FString& GetSelectionReportHealth() const { return SelectionReportHealth; }
+	const FString& GetSelectionReportForum() const { return SelectionReportForum; }
+
 	/** The progress bar's fill colour (HOLUIStyle::Accent). */
 	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|UI")
 	static FLinearColor GetAccentColor();
@@ -214,6 +261,25 @@ public:
 	UCommonTextBlock* MakeText(FName Name, TSubclassOf<UCommonTextStyle> TextStyle);
 
 	/**
+	 * H-11b: what the test scenario's panel shows (HOLTestHooks::GetScenarioDisplay, written by hol.Scenario and the test sequence, game
+	 * module). OutState: 0 Preparing, 1 Ready, 2 Failed. False when no scenario was ever started (empty name). Development builds only.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|UI")
+	bool GetScenarioDisplay(FString& OutName, int32& OutState, FString& OutError, TArray<FString>& OutNotes, FString& OutWaitingForKey, bool& bOutClosed, bool& bOutHidden) const;
+
+	/** H-11b: the scenario panel's close button: the display is closed until the next scenario (HOLTestHooks::GetScenarioDisplay().bClosed). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|UI")
+	void CloseScenarioPanel();
+
+	/** H-11b: the larger of the two texts' widths in the HUD heading font (UHOLTextStyleHUDHeading); 0 without a renderer (no-render runs). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|UI")
+	float MeasureHeadingWidth(const FText& A, const FText& B) const;
+
+	/** H-11b: runs a console command in this world (the scenario panel's Relancer: "hol.Scenario <Name>"). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|UI")
+	void ExecConsole(const FString& Command);
+
+	/**
 	 * A HUD button, the look of the C++ screen's (UHOLHUDButtonStyle: dark, a gold edge hovered and pressed, plain dark
 	 * greyed), never focusable; the script sets its content (SetContent) and binds OnClicked. Its clicks stop there.
 	 */
@@ -249,20 +315,6 @@ public:
 	 */
 	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|UI")
 	FMargin GetBottomLeftPlace() const;
-
-	/**
-	 * The bottom edge (Slate units under the screen's top) of the cheats' panel, top left under the top bar: a block of the script stacked under it
-	 * starts there (the AI level line). 0 without the panel (Shipping, or no HUD).
-	 */
-	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|UI")
-	float GetCheatPanelBottom() const;
-
-	/**
-	 * Tells the cheats' panel whether the hero's block is shown (the script, as it applies the block's view): in a low window (under 700 px) the
-	 * panel folds when the block opens, as they would cover each other (Q-heros-triches-600 = A). Nothing without the panel.
-	 */
-	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|UI")
-	void SetCheatsHeroBlockShown(bool bShown) const;
 
 	/** The window as the HUD sees it, in Slate units (the pixels over the DPI scale): the room the panels are laid out in. */
 	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|UI")
@@ -344,9 +396,72 @@ public:
 	UFUNCTION(BlueprintImplementableEvent, Category = "HeroesOfLiberty|UI")
 	void AlertFrameTick(float DeltaSeconds);
 
+	/** HUD H-5b: the C++ screen's MessagesList (the thread of messages' host in the RightColumn under the players' table, kept in C++ like PlayersPanel): the script fills it. */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|UI")
+	class UVerticalBox* GetMessagesList() const;
+
+	/**
+	 * HUD H-5b: the thread of messages the C++ screen holds (UHOLGameScreen::MessageThread: state and source stay C++, one source). Returns the line count (the oldest first);
+	 * OutRevision changes with every RebuildMessages (a line added or expired); per line: OutAlerts it carries an alert, OutSlots the slot touched (INDEX_NONE if none),
+	 * OutOpacities FHOLForumThread::GetOpacity at the real time now. Neutral (0, empty) without screen or world.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|UI")
+	int32 GetMessageState(int32& OutRevision, TArray<bool>& OutAlerts, TArray<int32>& OutSlots, TArray<float>& OutOpacities) const;
+
+	/** HUD H-5b: the pieces of line Index as FillMessageRow cut them (SplitNames, the shown player's reading), a colour per piece (the name's player colour, white for a word). False: no such line. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|UI")
+	bool GetMessageLine(int32 Index, TArray<FHOLForumPieceValue>& OutPieces, TArray<FLinearColor>& OutColors) const;
+
+	/** HUD H-5b: a line's panel takes the left mouse button: the C++ receives it (FOnPointerEvent) and asks the script's ClickWidget(MessageFeed). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|UI")
+	void BindMessageClick(UBorder* Panel);
+
+	UFUNCTION()
+	FEventReply HandleMessageMouseDown(FGeometry Geometry, const FPointerEvent& MouseEvent);
+
+	/** Once a frame, but ONLY while the C++ thread holds a line (and once more when it empties): the lines' fade and end (HOLMessageFeed.as). */
+	UFUNCTION(BlueprintImplementableEvent, Category = "HeroesOfLiberty|UI")
+	void MessageFrameTick(float DeltaSeconds);
+
 	/** HUD H-8: the C++ bottom bar's AgePanelsHost (an empty horizontal box where the age panels were), filled by the script's four panels. */
 	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|UI")
 	UHorizontalBox* GetAgePanelsHost() const;
+
+	/** HUD H-10: the C++ command column's GridPanelHost (an empty vertical box where GridPanel was), the script's command grid is put in it. */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|UI")
+	UVerticalBox* GetGridPanelHost() const;
+
+	/** HUD H-10: the last frame: per cell its kind / state / order type (no widget touched); bOutGrid / bOutOrders = the screen's bGridShown / bOrdersShown. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|UI")
+	void GetGridFrame(TArray<FHOLGridCellInfoView>& OutCells, bool& bOutGrid, bool& bOutOrders) const;
+
+	/** HUD H-10: applies the cached fill of cell Cell (SetCommand, SetGain when quoted, SetTooltip) to Target, and keeps ShownTradeLabels[Cell] for a trade cell. False: no command. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|UI")
+	bool ApplyGridCell(int32 Cell, UHOLGridCell* Target);
+
+	/** HUD H-10: the click of a cell, UHOLGameScreen::ClickGridCell: an order cell (ActivateOrderCell) or a grid cell (ActivateGridCell); the script writes the journal line. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|UI")
+	void ClickGridCell(int32 Cell);
+
+	/** HUD H-10: the screen keeps the cells for its report (GridCells: DescribeCells, DescribeTooltips, Describe's states, ClickWidget's GetIsEnabled). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|UI")
+	void RegisterGridCells(const TArray<UHOLGridCell*>& Cells);
+
+	/** HUD H-9: the C++ bottom bar's SelectionHost (an empty horizontal box at its first place), the selection block is built into it (HOLSelection.as). */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|UI")
+	UHorizontalBox* GetSelectionHost() const;
+
+	/** HUD H-9: what "HUD stats:" and "HUD stats tip:" read (the six stat chips' text and tips as the script drew them): the screen keeps the copies. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|UI")
+	void SetStatsReport(const FString& Stats, const TArray<FString>& TipList);
+
+	/** True while the selection block needs a call every image (a source's amount, one unit's health): NativeTick then calls SelectionFrameTick, never otherwise. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|UI")
+	void SetSelectionLive(bool bLive);
+
+	/** Once a frame, ONLY while SetSelectionLive(true). */
+	UFUNCTION(BlueprintImplementableEvent, Category = "HeroesOfLiberty|UI")
+	void SelectionFrameTick();
 
 	/** The grid context the age panels read (UHOLGameScreen::RefreshAges' rule): the units' context while no own building or group is selected, else an empty one. */
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|UI")
@@ -389,14 +504,28 @@ protected:
 	virtual void NativeTick(const FGeometry& MyGeometry, float InDeltaTime) override;
 
 private:
+	/** H-11a: the cheats panel line of the report (SetCheatsReport). */
+	FString CheatsReport;
+
+	/** HUD H-9: the copies of SetSelectionReport. Kind starts at "none" as UHOLGameScreen::ShownSelection does. */
+	FString SelectionReportKind = TEXT("none");
+	FString SelectionReportActivity;
+	FString SelectionReportHealth;
+	FString SelectionReportForum;
+
 	float RefreshLeft = 0.f;
 	/** A message with a key is shown: NativeTick calls FrameTick (D839: no per-frame script call otherwise). */
 	bool bMessageLive = false;
 	/** The alert banner was shown at the last frame: NativeTick calls AlertFrameTick while it is, and once more when it ends. */
 	bool bAlertLive = false;
+	/** The thread held a line at the last frame: NativeTick calls MessageFrameTick while it does, and once more when it empties. */
+	bool bFeedLive = false;
 	/** The control group lit as NativeTick last saw it (INDEX_NONE: none): a change calls GroupLitChanged. */
 	int32 LitGroupSeen = INDEX_NONE;
 
 	/** The queue panel shows a queue: NativeTick calls QueueFrameTick (HUD H-7). */
 	bool bQueueLive = false;
+
+	/** The selection block needs a call every image: NativeTick calls SelectionFrameTick (HUD H-9). */
+	bool bSelectionLive = false;
 };

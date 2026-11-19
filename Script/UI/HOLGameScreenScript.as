@@ -120,20 +120,35 @@ FString TalentTipTexts = "";
 	UOverlaySlot VolcanoSlot;
 	UCommonTextBlock VolcanoText;
 	UHOLTopBarPanel TopBar;
+	UHOLCheatPanelScript CheatPanel;
 	// HUD H-4: the players' table (HOLPlayerTable.as), drawn into the C++ screen's PlayersPanel.
 	UHOLPlayerTablePanel PlayerTable;
 	// HUD H-6: the control groups' bar (HOLGroupBar.as), drawn into the C++ screen's GroupsPanel.
 	UHOLGroupBarPanel GroupBar;
 	// HUD H-7: the production queue (HOLQueuePanel.as), drawn into the C++ screen's QueuePanel (the member is not called QueuePanel: no widget of that name here).
 	UHOLProductionQueuePanel QueueView;
+	// HUD H-10: the command grid (HOLCommandGridPanel.as), 3 x 4 cells put in the C++ screen's GridPanelHost (under the queue panel, before the age panels).
+	UHOLCommandGridPanel CommandGrid;
 
 	// HUD H-8: the builders' age panels (HOLAgePanels.as), drawn into the C++ screen's AgePanelsHost.
 	UHOLAgePanelsPanel AgePanels;
+	// HUD H-9: the selection block, bottom left of the bar (HOLSelection.as: the panel, kinds 0, 1 and 4; HOLSelectionUnit.as: kind 2; HOLSelectionChips.as: the chips and kind 3).
+	// Built into the C++ screen's SelectionHost (an empty box where the C++ block was: it keeps the bar's order). Not named SelectionPanel: that is the widget's name.
+	UHOLSelectionPanel SelectionBlock;
+	UHOLSelectionUnitPanel SelectionUnitBlock;
+	UHOLSelectionChipsPanel SelectionChipsBlock;
+	// The path the block drew last (HOLSelectionRead::GetSelectionKind), -1 before the first refresh.
+	int SelectionPath = -1;
 	FString VolcanoTexts = "";
 	// H-1: the wait and absence banners (HOLWaitBanner.as).
 	UHOLWaitBannerPanel WaitBanner;
 // H-5a: the major alert's banner (HOLAlertBanner.as); the state machine stays C++ (UHOLGameScreen::Alert).
 UHOLAlertBannerPanel AlertBanner;
+	// H-5b: the thread of messages (HOLMessageFeed.as), drawn into the C++ screen's MessagesList; its state and source stay C++ (MessageThread).
+	UHOLMessageFeedPanel MessageFeed;
+
+// H-11b: the test scenario's panel (HOLScenarioPanelScript.as), under the top bar; the state is C++ (HOLTestHooks::GetScenarioDisplay).
+UHOLScenarioPanelScript ScenarioPanel;
 
 	// H-2 (D313, D829): the short message and the held production note (HOLShortMessage.as).
 	FHOLShortMessageParts MessageParts;
@@ -268,19 +283,36 @@ UHOLAlertBannerPanel AlertBanner;
 		WaitBanner.Build(this, Frame);
 		AlertBanner = Cast<UHOLAlertBannerPanel>(NewObject(this, UHOLAlertBannerPanel));
 		AlertBanner.Build(this, Frame);
+		ScenarioPanel = Cast<UHOLScenarioPanelScript>(NewObject(this, UHOLScenarioPanelScript));
+		ScenarioPanel.Build(this, Frame, TopBar.TopBar);
 		MessageParts = HOLShortMessage::Build(this, Frame);
 		PlayerTable = Cast<UHOLPlayerTablePanel>(NewObject(this, UHOLPlayerTablePanel));
 		PlayerTable.Build(this, GetPlayersPanel());
+		MessageFeed = Cast<UHOLMessageFeedPanel>(NewObject(this, UHOLMessageFeedPanel));
+		MessageFeed.Build(this);
 		GroupBar = Cast<UHOLGroupBarPanel>(NewObject(this, UHOLGroupBarPanel));
 		GroupBar.Build(this, GetGroupsPanel());
 		QueueView = Cast<UHOLProductionQueuePanel>(NewObject(this, UHOLProductionQueuePanel));
 		QueueView.Build(this, GetQueuePanel());
+		// H-10: after the queue panel (the grid is under it in the command column), before the age panels; Build registers the cells with the C++ screen.
+		CommandGrid = Cast<UHOLCommandGridPanel>(NewObject(this, UHOLCommandGridPanel));
+		CommandGrid.Build(this);
 		AgePanels = Cast<UHOLAgePanelsPanel>(NewObject(this, UHOLAgePanelsPanel));
 		AgePanels.Build(this);
+		// HUD H-9: A first (its two hosts), then B and C into them.
+		SelectionBlock = Cast<UHOLSelectionPanel>(NewObject(this, UHOLSelectionPanel));
+		SelectionBlock.Build(this, GetSelectionHost());
+		SelectionUnitBlock = Cast<UHOLSelectionUnitPanel>(NewObject(this, UHOLSelectionUnitPanel));
+		SelectionUnitBlock.Build(this, SelectionBlock);
+		SelectionChipsBlock = Cast<UHOLSelectionChipsPanel>(NewObject(this, UHOLSelectionChipsPanel));
+		SelectionChipsBlock.Build(this, SelectionBlock);
 		BuildMinimap(Frame);
 		BuildTalentWindow(Frame);
 		// Last: over the other blocks.
 		BuildPauseScreen(Frame);
+		// H-11a: the cheats panel, built last so it stays over every other panel (the C++ panel was a viewport layer at z 1).
+		CheatPanel = Cast<UHOLCheatPanelScript>(NewObject(this, UHOLCheatPanelScript));
+		CheatPanel.Build(this, Frame, TopBar.TopBar);
 	}
 
 	void BuildDuelWindow(UOverlay Frame)
@@ -751,7 +783,7 @@ UHOLAlertBannerPanel AlertBanner;
 			float Limit = Room.Y - GetBottomLeftPlace().Bottom;
 			if (GetWidgetBox(HeroPanel, HeroLow, HeroHigh))
 				Limit = HeroLow.Y;
-			Top = Math::Max(GetCheatPanelBottom() + 8.0, 80.0);
+			Top = Math::Max(CheatBottom() + 8.0, 80.0);
 			MaxHeight = Math::Max(120.0, Limit - 8.0 - Top);
 			Horizontal = EHorizontalAlignment::HAlign_Left;
 			Vertical = EVerticalAlignment::VAlign_Bottom;
@@ -1003,7 +1035,7 @@ UHOLAlertBannerPanel AlertBanner;
 		}
 		VolcanoTexts = VolcanoView.Text.Replace("\n", " / ");
 		// Under the cheats' panel (folded or open) and under the AI level line when it is there.
-		const float Top = Math::Max(AILevelTopMin, GetCheatPanelBottom() + AILevelGap) + (AILevelPanel.GetVisibility() == ESlateVisibility::Collapsed ? 0.0 : VolcanoAfterAILine);
+		const float Top = Math::Max(AILevelTopMin, CheatBottom() + AILevelGap) + (AILevelPanel.GetVisibility() == ESlateVisibility::Collapsed ? 0.0 : VolcanoAfterAILine);
 		if (Math::Abs(Top - VolcanoTop) > 0.5)
 		{
 			VolcanoTop = Top;
@@ -1049,7 +1081,7 @@ UHOLAlertBannerPanel AlertBanner;
 		}
 		AILevelTexts = Text.Replace("\n", " / ");
 		// Under the cheats' panel, as tall as it is now (folded or open).
-		const float Top = Math::Max(AILevelTopMin, GetCheatPanelBottom() + AILevelGap);
+		const float Top = Math::Max(AILevelTopMin, CheatBottom() + AILevelGap);
 		if (Math::Abs(Top - AILevelTop) > 0.5)
 		{
 			AILevelTop = Top;
@@ -1394,16 +1426,21 @@ UHOLAlertBannerPanel AlertBanner;
 		RefreshVolcano();
 		if (TopBar != nullptr)
 			TopBar.Refresh();
+		if (ScenarioPanel != nullptr)
+			ScenarioPanel.Refresh();
 		if (WaitBanner != nullptr)
 			WaitBanner.Refresh();
 		if (PlayerTable != nullptr)
 			PlayerTable.Refresh();
+		if (MessageFeed != nullptr)
+			MessageFeed.Refresh();
 		if (GroupBar != nullptr)
 			GroupBar.Refresh();
 		if (QueueView != nullptr)
 			QueueView.Refresh();
 		if (AgePanels != nullptr)
 			AgePanels.Refresh();
+		RefreshSelectionBlock();
 		if (Audio != nullptr)
 			Audio.PlayDueRepeats();
 		RefreshDiplomacy();
@@ -1411,6 +1448,60 @@ UHOLAlertBannerPanel AlertBanner;
 		RefreshMinimap();
 		RefreshPopulationAlert();
 		RefreshShortMessage();
+		if (CheatPanel != nullptr)
+		{
+			CheatPanel.Refresh(HeroView.bVisible);
+			SetCheatsReport(CheatPanel.Describe());
+		}
+	}
+
+	// HUD H-9: the selection block, one refresh (the C++ UHOLGameScreen::Refresh's path, then RefreshChips). The ONLY writer of ShownSelection / ShownActivity / ShownHealth is
+	// SelectionBlock (UHOLSelectionPanel::SetShown*, which pushes them by SetSelectionReport); B and C pass it their fragments. Order: A (kinds 0, 1, 4), then B (kind 2 only: its
+	// Refresh would write "none" over a group of buildings' report), then C (it hides the name when there are chips, and draws the group of buildings, kind 3).
+	void RefreshSelectionBlock()
+	{
+		if (SelectionBlock == nullptr || SelectionUnitBlock == nullptr || SelectionChipsBlock == nullptr)
+			return;
+		const int Path = HOLSelectionRead::GetSelectionKind();
+		if (Path != SelectionPath)
+		{
+			// Leaving the units: their stats, health and activity go (before A or C draws the new path); their memos forget what they sent, since A or C wrote since.
+			if (SelectionPath == 2)
+				SelectionUnitBlock.Hide();
+			SelectionUnitBlock.Invalidate();
+			SelectionPath = Path;
+		}
+		SelectionBlock.Refresh();
+		// A and C draw kinds 0, 1, 3, 4 and 2: kinds 2 and 3 show the panel here (A's Refresh only hides its progress and lives rows for them).
+		if (Path == 2 || Path == 3)
+			SelectionBlock.SetPanelShown(true);
+		if (Path == 2)
+			SelectionUnitBlock.Refresh();
+		SelectionChipsBlock.Refresh();
+		SendSelectionStats();
+		SetSelectionLive(SelectionBlock.IsFrameLive() || SelectionUnitBlock.IsFrameLive());
+	}
+
+	// The report read by "HUD stats:" and "HUD stats tip:" (the C++ copies, UHOLScriptScreen::SetStatsReport), sent only when it changed.
+	void SendSelectionStats()
+	{
+		if (SelectionUnitBlock.TakeStatsReportChange())
+			SetStatsReport(SelectionUnitBlock.ShownStats, SelectionUnitBlock.ShownStatTipList);
+	}
+
+	// Once a frame, ONLY while SetSelectionLive(true) (the C++ NativeTick calls it): a selected source's remaining amount (A), one unit's health, activity and stats (B).
+	UFUNCTION(BlueprintOverride)
+	void SelectionFrameTick()
+	{
+		if (SelectionBlock == nullptr || SelectionUnitBlock == nullptr)
+			return;
+		if (SelectionBlock.IsFrameLive())
+			SelectionBlock.FrameTick();
+		if (SelectionUnitBlock.IsFrameLive())
+		{
+			SelectionUnitBlock.RefreshFrame();
+			SendSelectionStats();
+		}
 	}
 
 	// HUD H-8: the age panels alone, drawn again at once (the C++ screen's grid, chosen age and tier changes). Not the whole Refresh: the
@@ -1420,6 +1511,14 @@ UHOLAlertBannerPanel AlertBanner;
 	{
 		if (AgePanels != nullptr)
 			AgePanels.Refresh();
+	}
+
+	// HUD H-10: the command grid alone, drawn again from the frame the C++ screen just computed (selection, stock, hero / rage / deploy tick).
+	UFUNCTION(BlueprintOverride)
+	void RefreshGridCells()
+	{
+		if (CommandGrid != nullptr)
+			CommandGrid.Refresh();
 	}
 
 	// D202, Q-alerts-minor default A: the population full line in the thread of messages (muted, no ping), once when the population
@@ -1463,6 +1562,13 @@ UHOLAlertBannerPanel AlertBanner;
 	}
 
 	// H-7: once a frame, ONLY while the queue panel shows a queue (SetQueueLive): the head's bar moves each frame, as the C++ UpdateHead did.
+	UFUNCTION(BlueprintOverride)
+	void MessageFrameTick(float32 DeltaSeconds)
+	{
+		if (MessageFeed != nullptr)
+			MessageFeed.Refresh();
+	}
+
 	UFUNCTION(BlueprintOverride)
 	void QueueFrameTick()
 	{
@@ -1935,8 +2041,6 @@ UHOLAlertBannerPanel AlertBanner;
 		HeroView = View;
 		HeroTexts = "";
 		HeroPanel.SetVisibility(View.bVisible ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
-		// A low window: the cheats' panel folds when this block opens (Q-heros-triches-600 = A).
-		SetCheatsHeroBlockShown(View.bVisible);
 		if (!View.bVisible)
 			return;
 		// The portrait: the player's colour and the emblem, both darkened while dead (its click does nothing then).
@@ -2254,12 +2358,30 @@ UHOLAlertBannerPanel AlertBanner;
 			ToggleDiplomacy();
 	}
 
+	// H-11a: the cheats panel's bottom edge (0 before it is built): the AI level line and the diplomacy panel stack under it.
+	float CheatBottom() const
+	{
+		return CheatPanel != nullptr ? CheatPanel.GetBottom() : 0.0;
+	}
+
+	// hol.HUD.Cheats <0|1> (HOLUIHUD.cpp): folded or open, the choice not kept.
+	UFUNCTION(BlueprintOverride)
+	void ApplyCheatsOpen(bool bOpen)
+	{
+		if (CheatPanel != nullptr)
+			CheatPanel.SetOpen(bOpen, false);
+	}
+
 	UFUNCTION(BlueprintOverride)
 	bool ClickWidget(FName WidgetName)
 	{
 		// The view of now, as the mouse would see it (the tests' waits draw no frame).
 		RefreshNow();
 		if (AlertBanner != nullptr && AlertBanner.ClickName(WidgetName))
+			return true;
+		if (MessageFeed != nullptr && MessageFeed.ClickName(WidgetName))
+			return true;
+		if (ScenarioPanel != nullptr && ScenarioPanel.ClickName(WidgetName))
 			return true;
 		if (WidgetName == n"HeroPortrait")
 			return ClickPortrait();
@@ -2296,11 +2418,18 @@ UHOLAlertBannerPanel AlertBanner;
 			return ClickPauseResume();
 		if (TopBar != nullptr && TopBar.ClickName(WidgetName))
 			return true;
+		if (CheatPanel != nullptr && CheatPanel.ClickName(WidgetName))
+			return true;
 		if (GroupBar != nullptr && GroupBar.ClickName(WidgetName))
 			return true;
 		if (QueueView != nullptr && QueueView.ClickName(WidgetName))
 			return true;
+		if (CommandGrid != nullptr && CommandGrid.ClickName(WidgetName))
+			return true;
 		if (AgePanels != nullptr && AgePanels.ClickName(WidgetName))
+			return true;
+		// HUD H-9: SelectionChip0 to SelectionChip11 (a mouse click goes through the chip's own handler).
+		if (SelectionChipsBlock != nullptr && SelectionChipsBlock.ClickName(WidgetName))
 			return true;
 		return false;
 	}
@@ -2346,7 +2475,7 @@ UHOLAlertBannerPanel AlertBanner;
 		FVector2D HeroHigh;
 		if (GetWidgetBox(HeroPanel, HeroLow, HeroHigh) && Math::Min(PanelHigh.X, HeroHigh.X) > Math::Max(PanelLow.X, HeroLow.X))
 			HeroOver = Math::Max(0.0, Math::Min(PanelHigh.Y, HeroHigh.Y) - Math::Max(PanelLow.Y, HeroLow.Y));
-		const float CheatOver = Math::Max(0.0, GetCheatPanelBottom() - PanelLow.Y);
+		const float CheatOver = Math::Max(0.0, CheatBottom() - PanelLow.Y);
 		// The last player's line against the bottom of the scrolling area: how far it is still below it (0 once scrolled to the end).
 		float LastOut = 0.0;
 		int LastSlot = -1;

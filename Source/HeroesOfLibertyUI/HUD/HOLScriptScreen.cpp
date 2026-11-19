@@ -14,7 +14,6 @@
 #include "HUD/HOLGameHUD.h"
 #include "HUD/HOLHUDLayoutRules.h"
 #include "HUD/HOLHUDSpace.h"
-#include "HUD/HOLScenarioPanel.h"
 #include "Brushes/SlateRoundedBoxBrush.h"
 #include "CommonTextBlock.h"
 #include "Components/Border.h"
@@ -29,6 +28,11 @@
 #include "Screens/HOLGameMenuScreen.h"
 #include "Screens/HOLStatsScreen.h"
 #include "Style/HOLUIStyles.h"
+#include "Dev/HOLTestHooks.h"
+#include "Engine/Engine.h"
+#include "Fonts/FontMeasure.h"
+#include "Framework/Application/SlateApplication.h"
+#include "Rendering/SlateRenderer.h"
 #include "UObject/UObjectIterator.h"
 
 FString UHOLScriptScreen::Describe_Implementation() const
@@ -107,6 +111,58 @@ UHorizontalBox* UHOLScriptScreen::GetAgePanelsHost() const
 {
 	const UHOLGameScreen* GameScreen = GetTypedOuter<UHOLGameScreen>();
 	return GameScreen ? GameScreen->GetAgePanelsHost() : nullptr;
+}
+
+UVerticalBox* UHOLScriptScreen::GetGridPanelHost() const
+{
+	const UHOLGameScreen* GameScreen = GetTypedOuter<UHOLGameScreen>();
+	return GameScreen ? GameScreen->GetGridPanelHost() : nullptr;
+}
+
+void UHOLScriptScreen::GetGridFrame(TArray<FHOLGridCellInfoView>& OutCells, bool& bOutGrid, bool& bOutOrders) const
+{
+	OutCells.Reset();
+	bOutGrid = false;
+	bOutOrders = false;
+	const UHOLGameScreen* GameScreen = GetTypedOuter<UHOLGameScreen>();
+	if (!GameScreen)
+	{
+		return;
+	}
+	TArray<int32> Kinds;
+	TArray<int32> States;
+	TArray<FName> OrderTypes;
+	GameScreen->ReadGridFrame(Kinds, States, OrderTypes, bOutGrid, bOutOrders);
+	for (int32 Cell = 0; Cell < Kinds.Num(); ++Cell)
+	{
+		FHOLGridCellInfoView View;
+		View.Kind = Kinds[Cell];
+		View.State = States[Cell];
+		View.OrderType = OrderTypes[Cell];
+		OutCells.Add(View);
+	}
+}
+
+bool UHOLScriptScreen::ApplyGridCell(const int32 Cell, UHOLGridCell* Target)
+{
+	UHOLGameScreen* GameScreen = GetTypedOuter<UHOLGameScreen>();
+	return GameScreen && GameScreen->ApplyGridCell(Cell, Target);
+}
+
+void UHOLScriptScreen::ClickGridCell(const int32 Cell)
+{
+	if (UHOLGameScreen* GameScreen = GetTypedOuter<UHOLGameScreen>())
+	{
+		GameScreen->ClickGridCell(Cell);
+	}
+}
+
+void UHOLScriptScreen::RegisterGridCells(const TArray<UHOLGridCell*>& Cells)
+{
+	if (UHOLGameScreen* GameScreen = GetTypedOuter<UHOLGameScreen>())
+	{
+		GameScreen->SetGridCells(Cells);
+	}
 }
 
 void UHOLScriptScreen::GetAgesContext(FHOLGridContextView& OutContext) const
@@ -282,12 +338,29 @@ bool UHOLScriptScreen::GetQueueNow(TArray<FName>& OutTypes, TArray<bool>& OutRes
 	return GameScreen->ReadQueue(OutTypes, OutResearch, OutTechNames, OutUnitNames, bOutHeadStarted, OutHeadProgress, bOutBlockedAtFull, bOutPopulationShort);
 }
 
+void UHOLScriptScreen::SetCheatsReport(const FString& Line)
+{
+	CheatsReport = Line;
+}
+
+void UHOLScriptScreen::ApplyCheatsOpen_Implementation(const bool bOpen)
+{
+}
+
 void UHOLScriptScreen::SetQueueReport(const FString& Line)
 {
 	if (UHOLGameScreen* GameScreen = GetTypedOuter<UHOLGameScreen>())
 	{
 		GameScreen->SetQueueReportMirror(Line);
 	}
+}
+
+void UHOLScriptScreen::SetSelectionReport(const FString& Kind, const FString& Activity, const FString& Health, const FString& Forum)
+{
+	SelectionReportKind = Kind;
+	SelectionReportActivity = Activity;
+	SelectionReportHealth = Health;
+	SelectionReportForum = Forum;
 }
 
 FLinearColor UHOLScriptScreen::GetAccentColor()
@@ -309,6 +382,25 @@ bool UHOLScriptScreen::CancelProduction(const int32 Index)
 void UHOLScriptScreen::SetQueueLive(const bool bLive)
 {
 	bQueueLive = bLive;
+}
+
+UHorizontalBox* UHOLScriptScreen::GetSelectionHost() const
+{
+	const UHOLGameScreen* GameScreen = GetTypedOuter<UHOLGameScreen>();
+	return GameScreen ? GameScreen->GetSelectionHost() : nullptr;
+}
+
+void UHOLScriptScreen::SetStatsReport(const FString& Stats, const TArray<FString>& TipList)
+{
+	if (UHOLGameScreen* GameScreen = GetTypedOuter<UHOLGameScreen>())
+	{
+		GameScreen->SetStatsReportMirror(Stats, TipList);
+	}
+}
+
+void UHOLScriptScreen::SetSelectionLive(const bool bLive)
+{
+	bSelectionLive = bLive;
 }
 
 bool UHOLScriptScreen::GetPopulationNow(int32& OutUsed, int32& OutCap, float& OutRealSeconds) const
@@ -401,6 +493,50 @@ UCommonTextBlock* UHOLScriptScreen::MakeText(const FName Name, const TSubclassOf
 	return Block;
 }
 
+bool UHOLScriptScreen::GetScenarioDisplay(FString& OutName, int32& OutState, FString& OutError, TArray<FString>& OutNotes, FString& OutWaitingForKey, bool& bOutClosed, bool& bOutHidden) const
+{
+	const HOLTestHooks::FScenarioDisplay& Display = HOLTestHooks::GetScenarioDisplay();
+	OutName = Display.Name;
+	OutState = static_cast<int32>(Display.State);
+	OutError = Display.Error;
+	OutNotes = Display.Notes;
+	OutWaitingForKey = Display.WaitingForKey;
+	bOutClosed = Display.bClosed;
+	bOutHidden = Display.bHidden;
+	return !Display.Name.IsEmpty();
+}
+
+void UHOLScriptScreen::CloseScenarioPanel()
+{
+	HOLTestHooks::GetScenarioDisplay().bClosed = true;
+}
+
+float UHOLScriptScreen::MeasureHeadingWidth(const FText& A, const FText& B) const
+{
+	// The C++ panel's own measure (HOLScenarioPanel.cpp, state's minimum width): 0 with no renderer (-nullrhi, automation).
+	if (!FSlateApplication::IsInitialized())
+	{
+		return 0.f;
+	}
+	const auto Renderer = FSlateApplication::Get().GetRenderer();
+	if (!Renderer)
+	{
+		return 0.f;
+	}
+	FSlateFontInfo Font;
+	GetDefault<UHOLTextStyleHUDHeading>()->GetFont(Font);
+	const TSharedRef<FSlateFontMeasure> Measure = Renderer->GetFontMeasureService();
+	return FMath::Max(Measure->Measure(A, Font).X, Measure->Measure(B, Font).X);
+}
+
+void UHOLScriptScreen::ExecConsole(const FString& Command)
+{
+	if (GEngine)
+	{
+		GEngine->Exec(GetWorld(), *Command);
+	}
+}
+
 UButton* UHOLScriptScreen::MakeButton(const FName Name)
 {
 	UButton* Button = WidgetTree->ConstructWidget<UButton>(UButton::StaticClass(), Name);
@@ -478,20 +614,6 @@ FLinearColor UHOLScriptScreen::GetMissingColor()
 	return HOLUIStyle::Missing;
 }
 
-float UHOLScriptScreen::GetCheatPanelBottom() const
-{
-	const UHOLCheatPanel* CheatPanel = AHOLGameHUD::FindCheatPanel(GetOwningPlayer());
-	return CheatPanel ? CheatPanel->GetBottom() : 0.f;
-}
-
-void UHOLScriptScreen::SetCheatsHeroBlockShown(const bool bShown) const
-{
-	if (UHOLCheatPanel* CheatPanel = AHOLGameHUD::FindCheatPanel(GetOwningPlayer()))
-	{
-		CheatPanel->SetHeroBlockShown(bShown);
-	}
-}
-
 FVector2D UHOLScriptScreen::GetViewportSlateSize() const
 {
 	const float Dpi = FMath::Max(UWidgetLayoutLibrary::GetViewportScale(this), UE_KINDA_SMALL_NUMBER);
@@ -525,22 +647,11 @@ bool UHOLScriptScreen::GetGameScreenBox(const FName WidgetName, FVector2D& OutMi
 
 void UHOLScriptScreen::GatherPanelBoxes(TArray<FHOLHUDNamedBox>& OutBoxes) const
 {
-	if (const UHOLCheatPanel* CheatPanel = AHOLGameHUD::FindCheatPanel(GetOwningPlayer()))
+	// H-11a: the cheats' panel is the script's (UHOLCheatPanelScript, its Border "CheatPanel"): its box keeps the name "cheats" and its first place in the list.
+	const UBorder* CheatBorder = WidgetTree ? Cast<UBorder>(WidgetTree->FindWidget(FName(TEXT("CheatPanel")))) : nullptr;
+	if (CheatBorder && CheatBorder->GetVisibility() != ESlateVisibility::Collapsed && !CheatBorder->GetCachedGeometry().GetAbsoluteSize().IsNearlyZero())
 	{
-		FBox2D CheatBox;
-		if (CheatPanel->GetBox(CheatBox))
-		{
-			OutBoxes.Add({ TEXT("cheats"), CheatBox });
-		}
-	}
-	// L1-12b: the test scenario's own panel (top centre; a development build only): a panel of the script (the duel window) under it is seen.
-	if (const UHOLScenarioPanel* ScenarioPanel = AHOLGameHUD::FindScenarioPanel(GetOwningPlayer()))
-	{
-		FBox2D ScenarioBox;
-		if (ScenarioPanel->GetBox(ScenarioBox))
-		{
-			OutBoxes.Add({ TEXT("scenario"), ScenarioBox });
-		}
+		OutBoxes.Add({ TEXT("cheats"), HOLHUDSpace::BoxOf(this, CheatBorder->GetCachedGeometry()) });
 	}
 	// The C++ blocks a panel of the script must not cover (the Diplomacy panel's trial): the players' table, the menu's buttons.
 	// MenuPanel is the script's since H-3 (UHOLTopBarPanel): its box comes with the script's outermost panels below.
@@ -561,7 +672,7 @@ void UHOLScriptScreen::GatherPanelBoxes(TArray<FHOLHUDNamedBox>& OutBoxes) const
 		for (UWidget* Widget : Widgets)
 		{
 			const UBorder* Border = Cast<UBorder>(Widget);
-			if (!Border || !Border->IsVisible())
+			if (!Border || !Border->IsVisible() || Border == CheatBorder)
 			{
 				continue;
 			}
@@ -581,7 +692,10 @@ void UHOLScriptScreen::GatherPanelBoxes(TArray<FHOLHUDNamedBox>& OutBoxes) const
 			{
 				continue;
 			}
-			OutBoxes.Add({ Border->GetName(), HOLHUDSpace::BoxOf(this, Geometry) });
+			// L1-12b: the test scenario's own panel (top centre; a development build only) keeps its box name "scenario" (H-11b: the script's
+			// ScenarioPanel border; Tools\Scenarios\HudRects.ps1 and the "HUD overlap:" lines name it so).
+			const FString BoxName = Border->GetFName() == TEXT("ScenarioPanel") ? FString(TEXT("scenario")) : Border->GetName();
+			OutBoxes.Add({ BoxName, HOLHUDSpace::BoxOf(this, Geometry) });
 		}
 	}
 }
@@ -695,6 +809,27 @@ UClass* UHOLScriptScreen::FindScriptClass()
 	return nullptr;
 }
 
+namespace
+{
+	/** The pieces of Message as the C++ FillMessageRow cuts them (the shown player's reading, the lobby's names when the game state is there), a colour per piece. */
+	void FillMessagePieces(const FHOLForumMessage& Message, const UHOLGameScreen* GameScreen, const UWorld* World, TArray<FHOLForumPieceValue>& OutPieces, TArray<FLinearColor>& OutColors)
+	{
+		const AHOLGameState* GameState = World->GetGameState<AHOLGameState>();
+		const AHOLPlayerState* PlayerState = GameScreen->GetBoundPlayerState();
+		const int32 ViewerSlot = PlayerState ? PlayerState->GetPlayerIndex() : INDEX_NONE;
+		for (const HOLForumMessages::FPiece& Part : GameState ? HOLForumMessages::SplitNames(Message, ViewerSlot, GameState->GetLaunchConfig())
+			: HOLForumMessages::SplitNames(Message, ViewerSlot))
+		{
+			FHOLForumPieceValue Piece;
+			Piece.Text = Part.Text;
+			Piece.Slot = Part.Slot;
+			OutPieces.Add(Piece);
+			const bool bName = Part.Slot != INDEX_NONE && GameState && GameState->GetLaunchConfig().Slots.IsValidIndex(Part.Slot);
+			OutColors.Add(bName ? FLinearColor(HOLPlayerColors::GetColor(GameState->GetLaunchConfig().Slots[Part.Slot].ColorIndex)) : FLinearColor::White);
+		}
+	}
+}
+
 bool UHOLScriptScreen::GetAlertBanner(bool& bOutShown, int32& OutSerial, int32& OutSlot, float& OutOpacity, bool& bOutSound, FString& OutText,
 	TArray<FHOLForumPieceValue>& OutPieces, TArray<FLinearColor>& OutColors) const
 {
@@ -723,20 +858,8 @@ bool UHOLScriptScreen::GetAlertBanner(bool& bOutShown, int32& OutSerial, int32& 
 	OutOpacity = Alert.GetOpacity(World->GetRealTimeSeconds());
 	bOutSound = Alert.bSound;
 	OutText = Alert.Message.Text.ToString();
-	// The pieces as the C++ FillMessageRow cuts them (the shown player's reading, the lobby's names when the game state is there).
-	const AHOLGameState* GameState = World->GetGameState<AHOLGameState>();
-	const AHOLPlayerState* PlayerState = GameScreen->GetBoundPlayerState();
-	const int32 ViewerSlot = PlayerState ? PlayerState->GetPlayerIndex() : INDEX_NONE;
-	for (const HOLForumMessages::FPiece& Part : GameState ? HOLForumMessages::SplitNames(Alert.Message, ViewerSlot, GameState->GetLaunchConfig())
-		: HOLForumMessages::SplitNames(Alert.Message, ViewerSlot))
-	{
-		FHOLForumPieceValue Piece;
-		Piece.Text = Part.Text;
-		Piece.Slot = Part.Slot;
-		OutPieces.Add(Piece);
-		const bool bName = Part.Slot != INDEX_NONE && GameState && GameState->GetLaunchConfig().Slots.IsValidIndex(Part.Slot);
-		OutColors.Add(bName ? FLinearColor(HOLPlayerColors::GetColor(GameState->GetLaunchConfig().Slots[Part.Slot].ColorIndex)) : FLinearColor::White);
-	}
+	FillMessagePieces(Alert.Message, GameScreen, World, OutPieces, OutColors);
+
 	return true;
 }
 
@@ -777,6 +900,67 @@ void UHOLScriptScreen::FocusCameraOnForum(const int32 ForumSlot)
 	}
 }
 
+UVerticalBox* UHOLScriptScreen::GetMessagesList() const
+{
+	const UHOLGameScreen* GameScreen = GetTypedOuter<UHOLGameScreen>();
+	return GameScreen ? GameScreen->GetMessagesList() : nullptr;
+}
+
+int32 UHOLScriptScreen::GetMessageState(int32& OutRevision, TArray<bool>& OutAlerts, TArray<int32>& OutSlots, TArray<float>& OutOpacities) const
+{
+	OutRevision = 0;
+	OutAlerts.Reset();
+	OutSlots.Reset();
+	OutOpacities.Reset();
+	const UHOLGameScreen* GameScreen = GetTypedOuter<UHOLGameScreen>();
+	const UWorld* World = GetWorld();
+	if (!GameScreen || !World)
+	{
+		return 0;
+	}
+	OutRevision = GameScreen->GetMessageRevision();
+	const double Now = World->GetRealTimeSeconds();
+	for (const FHOLForumThreadLine& Line : GameScreen->GetMessageThread().Lines)
+	{
+		OutAlerts.Add(Line.Message.bAlert);
+		OutSlots.Add(Line.Slot);
+		OutOpacities.Add(FHOLForumThread::GetOpacity(Line, Now));
+	}
+	return OutAlerts.Num();
+}
+
+bool UHOLScriptScreen::GetMessageLine(const int32 Index, TArray<FHOLForumPieceValue>& OutPieces, TArray<FLinearColor>& OutColors) const
+{
+	OutPieces.Reset();
+	OutColors.Reset();
+	const UHOLGameScreen* GameScreen = GetTypedOuter<UHOLGameScreen>();
+	const UWorld* World = GetWorld();
+	if (!GameScreen || !World || !GameScreen->GetMessageThread().Lines.IsValidIndex(Index))
+	{
+		return false;
+	}
+	FillMessagePieces(GameScreen->GetMessageThread().Lines[Index].Message, GameScreen, World, OutPieces, OutColors);
+	return true;
+}
+
+void UHOLScriptScreen::BindMessageClick(UBorder* Panel)
+{
+	if (Panel)
+	{
+		Panel->OnMouseButtonDownEvent.BindUFunction(this, GET_FUNCTION_NAME_CHECKED(UHOLScriptScreen, HandleMessageMouseDown));
+	}
+}
+
+FEventReply UHOLScriptScreen::HandleMessageMouseDown(FGeometry Geometry, const FPointerEvent& MouseEvent)
+{
+	if (MouseEvent.GetEffectingButton() != EKeys::LeftMouseButton)
+	{
+		return FEventReply(false);
+	}
+	// The script's ClickWidget(MessageFeed): true only while a line carrying an alert is under the mouse, as the C++ handler's own loop was.
+	return FEventReply(ClickWidget(FName(TEXT("MessageFeed"))));
+}
+
 void UHOLScriptScreen::NativeOnInitialized()
 {
 	// The script's OnInitialized builds the tree.
@@ -813,6 +997,16 @@ void UHOLScriptScreen::NativeTick(const FGeometry& MyGeometry, const float InDel
 		}
 		bAlertLive = bAlertShown;
 	}
+	// The thread of messages' fades and end (HOLMessageFeed.as): called every frame while the C++ thread holds a line, and once more when it empties.
+	if (const UHOLGameScreen* FeedScreen = GetTypedOuter<UHOLGameScreen>())
+	{
+		const bool bFeedHasLines = !FeedScreen->GetMessageThread().Lines.IsEmpty();
+		if (bFeedHasLines || bFeedLive)
+		{
+			MessageFrameTick(InDeltaTime);
+		}
+		bFeedLive = bFeedHasLines;
+	}
 	// The control group lit (the chip of the group just recalled, HOLGroupBar.as LightSeconds = 0.5 s): the script is called only when it changes, on the very frame.
 	{
 		const int32 SelectedGroup = GetLastSelectedGroup();
@@ -827,6 +1021,11 @@ void UHOLScriptScreen::NativeTick(const FGeometry& MyGeometry, const float InDel
 	if (bQueueLive)
 	{
 		QueueFrameTick();
+	}
+	// HUD H-9: a source's remaining amount, one unit's health, activity and stats: every image, ONLY while the script's selection block says so.
+	if (bSelectionLive)
+	{
+		SelectionFrameTick();
 	}
 	// The T key (the talent tree, TQ4 = A): the viewport's key state, as the Enter of a test scenario; the console open or a focused menu keeps it.
 	if (const APlayerController* Controller = GetOwningPlayer())

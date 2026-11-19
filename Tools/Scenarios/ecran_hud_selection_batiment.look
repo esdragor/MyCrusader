@@ -1,0 +1,6 @@
+# <nom de capture> | ce que l'utilisateur doit voir
+hud_sel_forum_ami | Capture 1920x1080, ton FORUM (centre principal) selectionne : le bloc du bas (nom du batiment, proprietaire « Vous », barre de sante pleine, vies du forum) ; zone du bloc identique sur le binaire C++ d'avant et le binaire script.
+hud_sel_fondation | Capture 1920x1080, une FONDATION de maison selectionnee (posee, sans batisseur) : le bloc nomme la maison, indique qu'elle est une fondation, proprietaire « Vous » ; pas de barre de construction qui avance.
+hud_sel_chantier | Capture 1920x1080, une MAISON EN CHANTIER selectionnee (2 Paysans la batissent depuis ~2 s) : le bloc a sa BARRE de construction avec son pourcentage (petit, il avance : ne comparer que la mise en page), le nom, les batisseurs.
+hud_sel_arbre | Capture 1920x1080, un ARBRE selectionne : le bloc nomme la source et affiche « Reste : N » (le bois restant) ; pas de barre de sante de combat.
+hud_sel_forum_ennemi | Capture 1920x1080, le FORUM ENNEMI selectionne : le bloc nomme le centre, le proprietaire n'est PAS « Vous » (nom de l'IA), sante, vies ; aucune commande de production dans la grille.

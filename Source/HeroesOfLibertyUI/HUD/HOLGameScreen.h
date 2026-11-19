@@ -8,6 +8,7 @@
 #include "Match/HOLMarketRules.h"
 #include "Match/HOLResources.h"
 #include "Player/HOLCommandGrid.h"
+#include "Widgets/HOLGridCell.h"
 #include "HOLGameScreen.generated.h"
 
 class AHOLBuilding;
@@ -27,6 +28,30 @@ class UProgressBar;
 class UScaleBox;
 class UWrapBox;
 struct FHOLUnitTypeRow;
+
+/** HUD H-10: what RefreshGrid computed for one cell of the command grid (the content of the switch), kept for the script's grid panel to apply to the cell (ApplyGridCell). Same method names as UHOLGridCell so the switch reads as it did. */
+struct FHOLGridCellFill
+{
+	bool bCommand = false;
+	FText Name;
+	EHOLGridCellState State = EHOLGridCellState::Disabled;
+	FText TooltipName;
+	FHOLResources Cost;
+	FHOLResources Missing;
+	FText Effect;
+	bool bGain = false;
+	FHOLTradeGain Gain;
+	/** A Market's trade cell: ApplyGridCell reads the cell's drawn content back into ShownTradeLabels. */
+	bool bTrade = false;
+
+	void SetCommand(const FText& InName, const EHOLGridCellState InState) { bCommand = true; Name = InName; State = InState; }
+	void SetGain(const FHOLTradeGain& InGain) { bGain = true; Gain = InGain; }
+	void SetTooltip(const FText& InName, const FHOLResources& InCost, const FHOLResources& InMissing, const FText& InEffect)
+	{
+		TooltipName = InName; Cost = InCost; Missing = InMissing; Effect = InEffect;
+	}
+	void ClearUnit() { *this = FHOLGridCellFill(); }
+};
 
 /**
  * Game screen of a match (J3, D281): the HUD of D201 with only the blocks the game has a use for so far, at their
@@ -85,6 +110,9 @@ public:
 	/** True when a building of the shown player holds a finished unit for lack of room (D829); the script's panel reads it (UHOLScriptScreen::IsProductionHeldForRoom). */
 	bool IsProductionHeldForRoom() const;
 
+	/** HUD H-11b: refreshes the script's part at once (the test scenario's hook: its panel and its "Scenario panel:" journal line follow the change without waiting for a tick). */
+	void RefreshScriptNow();
+
 	/** The key Describe prints for the short message (the script draws it and says when it ends). */
 	void SetMessageKeyMirror(const FString& Key) { MessageKey = Key; }
 
@@ -95,6 +123,10 @@ public:
 	const FHOLForumAlert& GetAlert() const { return Alert; }
 	/** HUD H-5a: how many banners PresentAlert has shown (never reset): the script redraws when it changes. */
 	int32 GetAlertPresentCount() const { return AlertPresentCount; }
+	/** HUD H-5b: the thread's state (stays C++), its host, and the count of its rebuilds, for the script's view (HOLMessageFeed.as). */
+	const FHOLForumThread& GetMessageThread() const { return MessageThread; }
+	int32 GetMessageRevision() const { return MessageRevision; }
+	UVerticalBox* GetMessagesList() const { return MessagesList; }
 	/** HUD H-5a: the owning controller's camera over the forum of Slot (no journal line: the script writes it). */
 	void FocusCameraOnForum(int32 ForumSlot);
 
@@ -125,10 +157,30 @@ public:
 
 	/** HUD H-8: the bottom bar's AgePanelsHost, an empty horizontal box the script's four age panels fill. */
 	UHorizontalBox* GetAgePanelsHost() const { return AgePanelsHost; }
+	/** HUD H-9: the bottom bar's SelectionHost, an empty horizontal box the script's selection block is built into. */
+	UHorizontalBox* GetSelectionHost() const { return SelectionHost; }
+	/** HUD H-9: the stats' report as the script's unit panel wrote it (SetStatsReport): read by DescribeStats / DescribeStatsTip / HoverStat. */
+	void SetStatsReportMirror(const FString& Stats, const TArray<FString>& TipList)
+	{
+		ShownStats = Stats;
+		ShownStatTipList = TipList;
+		ShownStatsTip = FString::Join(TipList, TEXT(" | "));
+	}
 	/** HUD H-8: the shown player's tier (BoundTableState->GetTier), INDEX_NONE without one. */
 	int32 GetBoundTier() const;
 	/** HUD H-8: RefreshAges' cell filling (name, Ready or Greyed by the stock, tooltip with cost and effect) for a building of an age panel. */
 	void FillAgeCell(UHOLGridCell* Cell, FName TypeName, bool bGreyed);
+
+	/** HUD H-10: the command column's GridPanelHost, an empty vertical box the script's command grid is put in. */
+	UVerticalBox* GetGridPanelHost() const { return GridPanelHost; }
+	/** HUD H-10: the script's twelve cells, kept for the report (GridCells: DescribeCells, DescribeTooltips, Describe's states). */
+	void SetGridCells(const TArray<UHOLGridCell*>& Cells);
+	/** HUD H-10: the last RefreshGrid frame without any widget: per cell 0 none / 1 command, the state as int (0 Ready, 1 Greyed, 2 Disabled) and the order type. */
+	void ReadGridFrame(TArray<int32>& OutKinds, TArray<int32>& OutStates, TArray<FName>& OutOrderTypes, bool& bOutGrid, bool& bOutOrders) const;
+	/** HUD H-10: applies the cached fill of Cell to Target (SetCommand, SetGain, SetTooltip) and keeps ShownTradeLabels. False: the cell holds no command. */
+	bool ApplyGridCell(int32 Cell, UHOLGridCell* Target);
+	/** HUD H-10: a cell of the command panel: an order with the player's units, else the grid's command (no journal line: the script writes it). */
+	void ClickGridCell(int32 Cell);
 	/** HUD H-8: what the script's age panels show, copied into the mirrors Describe and ClickWidget read without widgets. */
 	void SetAgesMirror(bool bShown, int32 Chosen, const TArray<FName>& Types, const TArray<bool>& Reached, const TArray<FString>& Tooltips);
 
@@ -150,6 +202,12 @@ public:
 
 	/** L1-12b: the boxes behind "HUD overlap", "name=x0,y0,x1,y1; ..." (empty without a script screen): the "HUD rects" line of hol.HUD.Report. */
 	FString DescribeRects() const;
+
+	/** H-11a: the cheats panel's part of hol.HUD.Report, as the script's panel wrote it (UHOLScriptScreen::SetCheatsReport); empty without it. */
+	FString DescribeCheats() const;
+
+	/** H-11a: hol.HUD.Cheats <0|1>: the script's cheats panel folded or open, the choice not kept. */
+	void ApplyCheatsOpen(bool bOpen);
 
 	/**
 	 * J8a.5: the padding of a block bottom left above the selection's block and the control groups' bar; EtapeDefini T:
@@ -218,70 +276,13 @@ protected:
 	UPROPERTY(Transient)
 	TObjectPtr<UScaleBox> BottomScale;
 
-	UPROPERTY(meta = (BindWidgetOptional))
-	TObjectPtr<UBorder> SelectionPanel;
-
-	UPROPERTY(meta = (BindWidgetOptional))
-	TObjectPtr<UCommonTextBlock> SelectionName;
-
-	/** The owner's colour and name: hidden for a resource source, which is nobody's. */
-	UPROPERTY(meta = (BindWidgetOptional))
-	TObjectPtr<UHorizontalBox> SelectionOwnerRow;
-
-	UPROPERTY(meta = (BindWidgetOptional))
-	TObjectPtr<UImage> SelectionSwatch;
-
-	UPROPERTY(meta = (BindWidgetOptional))
-	TObjectPtr<UCommonTextBlock> SelectionOwner;
-
-	UPROPERTY(meta = (BindWidgetOptional))
-	TObjectPtr<UHorizontalBox> SelectionHealthRow;
-
-	UPROPERTY(meta = (BindWidgetOptional))
-	TObjectPtr<UCommonTextBlock> SelectionHealth;
-
-	/** The selected unit's statistics (attack with the technologies' bonus, armour, range, speed): one line or one per statistic (hol.HUD.UnitStats). */
-	UPROPERTY()
-	TObjectPtr<UWrapBox> SelectionStats;
-	/** One text block per statistic of that block, each with its own hover tooltip (REGLAGE of unit_stats_attack, 2026-11-09). */
-	UPROPERTY()
-	TArray<TObjectPtr<UCommonTextBlock>> SelectionStatChips;
-
-	/**
-	 * The line under the name (J5, D298): what a gatherer does and carries (« Récolte — Bois 7/10 »), a group's workers by
-	 * activity (« 8 en récolte · 2 inactifs »), what a source still holds (« Reste : 1840 »).
-	 */
-	UPROPERTY(meta = (BindWidgetOptional))
-	TObjectPtr<UCommonTextBlock> SelectionActivity;
-
-	/** A main forum's lives (V2.3d), under the line above, styled as the health's row: « Vies » small and grey, then « 2 ». */
-	UPROPERTY(meta = (BindWidgetOptional))
-	TObjectPtr<UHorizontalBox> SelectionLivesRow;
-
-	UPROPERTY(meta = (BindWidgetOptional))
-	TObjectPtr<UCommonTextBlock> SelectionLives;
-
-	/** A building not finished (J6a.5, D313): its progress, a bar and « 45 % ». */
-	UPROPERTY(meta = (BindWidgetOptional))
-	TObjectPtr<UHorizontalBox> SelectionProgressRow;
-
-	UPROPERTY(meta = (BindWidgetOptional))
-	TObjectPtr<UProgressBar> SelectionProgress;
-
-	UPROPERTY(meta = (BindWidgetOptional))
-	TObjectPtr<UCommonTextBlock> SelectionProgressText;
-
 
 	UPROPERTY(meta = (BindWidgetOptional))
 	TObjectPtr<UBorder> QueuePanel;
 
-	/**
-	 * The one command panel (the user's 2nd trial of G.1, AoE4's way): 3 x 4 cells at fixed places, the empty ones dark,
-	 * right of the selection's block: the orders of the player's units (Q attack-move, S stop, V hold) or the grid of its
-	 * building or group (production, « Annuler »). Hidden (its place kept) without anything of the player's selected.
-	 */
-	UPROPERTY(meta = (BindWidgetOptional))
-	TObjectPtr<UBorder> GridPanel;
+	/** HUD H-10: the empty vertical box in the command column (under the queue panel) the script's command grid (GridPanel, 3 x 4 cells) is put in. */
+	UPROPERTY(Transient)
+	TObjectPtr<UVerticalBox> GridPanelHost;
 
 
 private:
@@ -294,42 +295,10 @@ private:
 	/** Updates every block from the match state (on the economy, selection and production delegates). */
 	void Refresh();
 	void RefreshTopBar(const AHOLPlayerState* PlayerState);
-	void RefreshSelection(const AHOLBuilding* Building, bool bOwn);
-	/**
-	 * Selected units (never with a building): one is shown as a building is, several by type and number, with their
-	 * workers by activity (read again four times a second).
-	 */
-	void RefreshUnitSelection(TConstArrayView<uint32> UnitIds);
-	/** The selected resource source (J5b, D298): its name and what it still holds, read again every frame. */
-	void RefreshSourceSelection(int32 SourceIndex);
-	/** Several of the player's buildings (an F key, D30): the active subgroup, then by type and number, the sites among them. */
-	void RefreshBuildingGroup(TConstArrayView<AHOLBuilding*> Buildings);
-	/**
-	 * The selection's chips (G.1e, AoE4's way), from ChipLabels and ActiveChip that the selection's refresh filled: shown
-	 * in place of the name, wrapping in the block's width, the active one's edge lit; none: the name alone. Written when changed.
-	 */
-	void RefreshChips();
-	/** A chip clicked: its subgroup made active, as Tab (chip N is the subgroup N, « Tous » the first). */
-	void HandleChipClicked(int32 Chip);
-	/**
-	 * The line of a gatherer selected alone (J5, D298), or hidden (null): what it does and carries, read again every
-	 * frame and written when it changed (D303).
-	 */
-	void RefreshUnitActivity(const struct FHOLUnitView* Unit);
-	/** One unit's health in the selection block (J7b.5), or none (nullptr: a group, a building, a source). */
-	void RefreshUnitHealth(const struct FHOLUnitView* Unit);
-	/** One unit's statistics under its health (the technologies' bonus on its attack), or hidden (nullptr: a group, a building, a source, a hero). */
-	void RefreshUnitStats(const struct FHOLUnitView* Unit);
-	void HideUnitStats();
-	/** The line under the name: Shown is what Describe writes of it (empty: hidden); written only when it changed. */
-	void SetDetailLine(const FString& Shown, const FText& Text);
 	/** The idle workers' number Describe writes (the counter button is the script's, H-3). */
 	void RefreshIdleWorkers();
 	/** OwnBuilding: the player's own building selected alone; bOwnGroup: several of its buildings (an F key). */
 	void RefreshGrid(const AHOLBuilding* OwnBuilding, bool bOwnGroup, const AHOLPlayerState* PlayerState);
-
-	/** A cell of the command panel: an order with the player's units, else the grid's command. */
-	void HandleGridCellClicked(int32 Cell);
 
 	/** A command that did not go through (D313), from the controller: its short message. */
 	void HandleCommandFeedback(const FHOLCommandFeedback& Feedback);
@@ -346,6 +315,8 @@ private:
 
 	UPROPERTY(Transient)
 	TArray<TObjectPtr<UHOLGridCell>> GridCells;
+	/** HUD H-10: the content RefreshGrid computed for each cell, applied by the script's grid panel (ApplyGridCell). */
+	TArray<FHOLGridCellFill> GridFrameFill;
 
 	/** Each medallion's tooltip as Report writes it (« Palier II — Essor | Palier non atteint »). */
 	TArray<FString> ShownAgeTooltips;
@@ -354,20 +325,9 @@ private:
 	UPROPERTY(Transient)
 	TObjectPtr<UHorizontalBox> AgePanelsHost;
 
-	/** The selection's chips (G.1e): a pool of SelectionChipN in the wrap box SelectionChips, each in its frame (lit: active). */
+	/** HUD H-9: the empty box at the bottom bar's first place the script's selection block (HOLSelection.as) is built into. */
 	UPROPERTY(Transient)
-	TObjectPtr<UWrapBox> SelectionChips;
-
-	UPROPERTY(Transient)
-	TArray<TObjectPtr<UHOLQueueItem>> ChipItems;
-
-	UPROPERTY(Transient)
-	TArray<TObjectPtr<UBorder>> ChipFrames;
-	/** What the selection's refresh wants shown (empty: the name alone), and what the chips show (-2: nothing yet). */
-	TArray<FText> ChipLabels;
-	int32 ActiveChip = INDEX_NONE;
-	TArray<FString> ShownChips;
-	int32 ShownActiveChip = -2;
+	TObjectPtr<UHorizontalBox> SelectionHost;
 
 	TWeakObjectPtr<AHOLPlayerController> Controller;
 	TWeakObjectPtr<AHOLPlayerState> BoundPlayerState;
@@ -415,12 +375,9 @@ private:
 	void RebuildMessages();
 	UPROPERTY(Transient)
 	TObjectPtr<UVerticalBox> MessagesList;
-	/** One line per message at most (FHOLForumThread::MaxLines): its panel, the row of its pieces. */
-	UPROPERTY(Transient)
-	TArray<TObjectPtr<UBorder>> MessageLines;
-	UPROPERTY(Transient)
-	TArray<TObjectPtr<UHorizontalBox>> MessageRows;
 	FHOLForumThread MessageThread;
+	/** HUD H-5b: RebuildMessages' count (a line added or expired); the script redraws the lines when it changes. */
+	int32 MessageRevision = 0;
 
 	/**
 	 * V4.3 (D353, D202): the major alert, a banner top centre under the resources' bar, the event's text larger than the
@@ -434,9 +391,6 @@ private:
 	void PresentAlert();
 	/** False without the game state; bOver: my Victory / Defeat banner due (D202). */
 	bool IsMatchOverForMe(bool& bOver) const;
-	UFUNCTION()
-	FEventReply HandleMessageLineMouseDown(FGeometry Geometry, const FPointerEvent& MouseEvent);
-	void FocusAlertSlot(int32 TouchedSlot);
 	FHOLForumAlert Alert;
 	/** HUD H-5a: PresentAlert's count (a new banner, even an identical one, is a new number). */
 	int32 AlertPresentCount = 0;
@@ -471,8 +425,6 @@ private:
 	FString ShownStatsTip;
 	/** The plain text of each shown statistic's own tooltip, in the order of the chips (the report's HUD stats tip line). */
 	TArray<FString> ShownStatTipList;
-	/** A main forum's lives last written in SelectionLives (V2.3d). */
-	int32 ShownForumLives = INDEX_NONE;
 
 	/** The selected main forum's part of the description (", in ruin 27 s, lives 1"), empty for anything else. */
 	FString ShownForum;

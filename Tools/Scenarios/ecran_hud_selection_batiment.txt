@@ -1,0 +1,103 @@
+# Bloc de selection du HUD de jeu (bas de l'ecran) pour les BATIMENTS : nom, proprietaire, sante, vies du forum, chantier (barre + %), fondation, source (Reste : N), forum ennemi. Scenario de preuve double : meme scenario joue sur le binaire d'avant (bloc C++) et sur celui d'apres (bloc script), captures comparees sur la zone du bloc. 3 minutes au plus.
+# Etat fixe : IA figee, combat coupe, langue fr, ressources par triche, aucun Paysan ni heros au depart (seuls ceux de l'etape 3 existent), curseur au centre. Commandes verifiees : quick_check.ps1 (build, selection), HOLTestSequence.cpp (panel hide|show, notereset, waitkey), HOLPlayerController.cpp (Build.PlaceNear, Select.ClickSource, Camera.FocusNear/FocusSlot).
+waitlog Camera above the start of slot 0
+r.SetRes 1920x1080w
+hol.UI.Language fr
+hol.AI.ThinkSteps 100000
+hol.Combat.Enabled 0
+hol.Cheat.Population 200
+hol.Cheat.Resources 5000
+hol.Camera.FocusSlot own
+waitlog Camera above the start of slot 0
+hol.Mouse.Hover 960 540 5
+waitlog Mouse hover 960,540
+frames 30
+hol.HUD.Report
+panel show
+notereset Etape 1 : ton forum (centre principal) va etre selectionne : le bloc du bas affiche son nom, le proprietaire « Vous », la barre de sante pleine et les vies du forum.
+waitkey Entree : etape 1, ton forum selectionne
+panel hide
+hol.Camera.FocusSlot own
+waitlog Camera above the start of slot 0
+frames 3
+hol.Select.Click 0.5 0.5
+waitlog Selection: MainCentre of slot 0 (own)
+frames 20
+hol.HUD.Report
+hol.Select.Report
+capture hud_sel_forum_ami
+panel show
+notereset Etape 2 : une FONDATION de maison (posee, personne ne la batit) est selectionnee : le bloc affiche « Maison », la fondation (pas de barre de construction qui avance), le proprietaire.
+waitkey Entree : etape 2, fondation de maison
+panel hide
+hol.Build.PlaceNear House 3500 -2500
+waitlog Construction: slot 0 placed House foundation at
+hol.Camera.FocusNear 3500 -2500
+frames 5
+hol.Select.Click 0.5 0.5
+waitlog Selection: House of slot 0 (own), foundation
+frames 20
+hol.HUD.Report
+hol.Select.Report
+capture hud_sel_fondation
+panel show
+notereset Etape 3 : 2 Paysans batissent une AUTRE maison ; la maison en chantier est selectionnee : le bloc affiche son nom, la BARRE de construction et son pourcentage (quelques % : le chantier avance pendant la capture), ses batisseurs.
+waitkey Entree : etape 3, maison en chantier
+panel hide
+hol.Camera.FocusNear 3500 3000
+frames 2
+hol.Units.SpawnHere 2 Peasant 0 150
+waitunits 2
+wait 0.5
+hol.Select.Type Peasant
+waitlog Selection: 2 units (own): Peasant x2
+hol.Camera.FocusNear 3500 3000
+frames 3
+hol.Mouse.Hover 960 540 5
+waitlog Mouse hover 960,540
+hol.UI.Key A 0 0.1
+wait 0.15
+hol.UI.Key A 0 0.1
+wait 0.15
+waitlog Placement ghost: House at
+hol.Build.Click
+waitlog Build order of slot 0: 2 units to House at
+waitlog Construction: slot 0 first work on House at
+wait 2
+hol.Select.Click 0.5 0.5
+frames 10
+hol.HUD.Report
+hol.Select.Report
+capture hud_sel_chantier
+panel show
+notereset Etape 4 : un ARBRE (source de bois) est selectionne : le bloc affiche son nom et « Reste : N » (le bois qui reste), sans sante de combat.
+waitkey Entree : etape 4, arbre
+panel hide
+hol.Sources.Grove 160 -12000 3000 1 7
+frames 5
+hol.Camera.Focus -12000 3000
+frames 5
+hol.Select.ClickSource -12000 3000
+frames 20
+hol.HUD.Report
+hol.Select.Report
+capture hud_sel_arbre
+panel show
+notereset Etape 5 : le forum ENNEMI est selectionne (une unite a toi est posee a 30 m pour le voir) : le bloc affiche son nom, le proprietaire (pas « Vous », le nom de l'IA), sa sante, ses vies, et AUCUNE commande de production.
+waitkey Entree : etape 5, forum ennemi
+panel hide
+hol.Camera.FocusNear 3000 0 enemy
+frames 3
+hol.Units.SpawnHere 1 Spearman 0 200
+waitunits 2
+wait 0.5
+hol.Camera.FocusNear 0 0 enemy
+frames 5
+hol.Select.Click 0.5 0.5
+frames 20
+hol.HUD.Report
+hol.Select.Report
+capture hud_sel_forum_ennemi
+panel show
+waitkey Entree : fin du scenario
+hol.Test.Sanity

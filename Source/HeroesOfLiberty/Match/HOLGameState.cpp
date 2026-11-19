@@ -16,6 +16,7 @@
 #include "Map/HOLVisionSubsystem.h"
 #include "Match/HOLForumPresence.h"
 #include "Match/HOLMarketSubsystem.h"
+#include "Match/HOLMatchFlowSubsystem.h"
 #include "Match/HOLMatchStatsSubsystem.h"
 #include "Match/HOLPlayerState.h"
 #include "Match/HOLSpecializationSubsystem.h"
@@ -1449,13 +1450,21 @@ bool AHOLGameState::RequestPause(const AHOLPlayerState& Requester, const double 
 	State.PausedBySlot = PausedBySlot;
 	State.PausedAtSeconds = PausedAtSeconds;
 	const int32 Slot = Requester.GetPlayerIndex();
-	const FHOLPauseRules::EAnswer Answer = FHOLPauseRules::CanPause(GetNetMode(), State, IsInMatch(Requester));
+	// S1: the decision is the script's (HOLMatchFlow::CanPause); -1 = no script board, the C++ rule stays the answer.
+	const bool bSolo = GetNetMode() == NM_Standalone;
+	const int32 ScriptAnswer = UHOLMatchFlowSubsystem::AskCanPause(GetWorld(), bSolo, State.PausedBySlot, State.PausesLeft, IsInMatch(Requester));
+	const FHOLPauseRules::EAnswer Answer = ScriptAnswer >= 0 ? static_cast<FHOLPauseRules::EAnswer>(ScriptAnswer) : FHOLPauseRules::CanPause(GetNetMode(), State, IsInMatch(Requester));
 	if (Answer != FHOLPauseRules::EAnswer::Allowed)
 	{
 		UE_LOG(LogHOLMatch, Display, TEXT("Pause: refused to %s (slot %d): %s"), *Requester.GetPlayerName(), Slot, FHOLPauseRules::ToString(Answer));
 		return false;
 	}
+	const int32 ScriptLeft = UHOLMatchFlowSubsystem::AskPausesLeftAfterPause(GetWorld(), bSolo, State.PausesLeft);
 	FHOLPauseRules::Pause(GetNetMode(), State, Slot, Now);
+	if (ScriptLeft >= 0)
+	{
+		State.PausesLeft = ScriptLeft;
+	}
 	PausesLeft = State.PausesLeft;
 	PausedBySlot = State.PausedBySlot;
 	PausedAtSeconds = State.PausedAtSeconds;
@@ -1473,7 +1482,8 @@ bool AHOLGameState::RequestResume(const AHOLPlayerState& Requester, const double
 	State.PausedBySlot = PausedBySlot;
 	State.PausedAtSeconds = PausedAtSeconds;
 	const int32 Slot = Requester.GetPlayerIndex();
-	const FHOLPauseRules::EAnswer Answer = FHOLPauseRules::CanResume(GetNetMode(), State, Slot, IsInMatch(Requester), Now);
+	const int32 ScriptAnswer = UHOLMatchFlowSubsystem::AskCanResume(GetWorld(), GetNetMode() == NM_Standalone, State.PausedBySlot, State.PausedAtSeconds, Slot, IsInMatch(Requester), Now);
+	const FHOLPauseRules::EAnswer Answer = ScriptAnswer >= 0 ? static_cast<FHOLPauseRules::EAnswer>(ScriptAnswer) : FHOLPauseRules::CanResume(GetNetMode(), State, Slot, IsInMatch(Requester), Now);
 	if (Answer != FHOLPauseRules::EAnswer::Allowed)
 	{
 		UE_LOG(LogHOLMatch, Display, TEXT("Pause: refused to %s (slot %d): %s"), *Requester.GetPlayerName(), Slot, FHOLPauseRules::ToString(Answer));
@@ -1607,7 +1617,8 @@ HOLDiplomacy::FStanceChange AHOLGameState::ApplyStance(const int32 From, const i
 {
 	HOLDiplomacy::FStanceChange Change;
 	const auto Occupied = [this](const int32 Slot) { return LaunchConfig.Slots.IsValidIndex(Slot) && LaunchConfig.Slots[Slot].State != EHOLSlotState::Closed; };
-	if (!HasAuthority() || !IsDiplomacyMode() || !Occupied(From) || !Occupied(To))
+	const int32 Gate = UHOLMatchFlowSubsystem::AskStanceGate(GetWorld(), HasAuthority(), IsDiplomacyMode(), Occupied(From), Occupied(To));
+	if (Gate >= 0 ? Gate != 0 : (!HasAuthority() || !IsDiplomacyMode() || !Occupied(From) || !Occupied(To)))
 	{
 		Change.Result = HOLDiplomacy::EResult::NoSuchSlot;
 		UE_LOG(LogHOLMatch, Display, TEXT("Diplomacy: slot %d toward slot %d (%s) refused (%s)"), From, To, StanceName(Stance),
@@ -1629,7 +1640,8 @@ HOLDiplomacy::FStanceChange AHOLGameState::ApplyStance(const int32 From, const i
 			Change.bFormed ? TEXT(", alliance formed") : TEXT(""));
 		OnDiplomacyAnnounced.Broadcast(Change);
 		// D373: an alliance formed after the last defeat can end the match at that second.
-		if (Change.bFormed && EvaluateMatchEnd())
+		const int32 EvaluateEnd = UHOLMatchFlowSubsystem::AskEvaluateMatchEnd(GetWorld(), Change.bAnnounce, Change.bFormed);
+		if ((EvaluateEnd >= 0 ? EvaluateEnd == 1 : Change.bFormed) && EvaluateMatchEnd())
 		{
 			ForceNetUpdate();
 			OnVictoryChanged.Broadcast();
@@ -1641,7 +1653,8 @@ HOLDiplomacy::FStanceChange AHOLGameState::ApplyStance(const int32 From, const i
 HOLDiplomacy::FVisionChange AHOLGameState::ApplyVision(const int32 From, const int32 To, const bool bShare)
 {
 	HOLDiplomacy::FVisionChange Change;
-	if (!HasAuthority() || !IsDiplomacyMode())
+	const int32 VisionGate = UHOLMatchFlowSubsystem::AskVisionGate(GetWorld(), HasAuthority(), IsDiplomacyMode());
+	if (VisionGate >= 0 ? VisionGate == 0 : (!HasAuthority() || !IsDiplomacyMode()))
 	{
 		Change.Result = HOLDiplomacy::EResult::NoSuchSlot;
 		return Change;
