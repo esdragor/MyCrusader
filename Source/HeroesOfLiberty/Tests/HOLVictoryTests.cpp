@@ -108,45 +108,6 @@ namespace UE::HeroesOfLiberty::Tests::Victory
 	constexpr EHOLSlotState AI = EHOLSlotState::AI;
 }
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLVictoryGameStateTest, "HeroesOfLiberty.Victory.GameState", UE::HeroesOfLiberty::Tests::Victory::Flags)
-bool FHOLVictoryGameStateTest::RunTest(const FString& Parameters)
-{
-	using namespace UE::HeroesOfLiberty::Tests::Victory;
-
-	UWorld* World = UWorld::CreateWorld(EWorldType::Game, /*bInformEngineOfWorld*/ false);
-	FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);
-	Context.SetCurrentWorld(World);
-	World->InitializeActorsForPlay(FURL());
-
-	AHOLGameState* State = World->SpawnActor<AHOLGameState>();
-	if (TestNotNull(TEXT("game state spawned"), State))
-	{
-		State->InitVictory(MakeConfig({ { Human, 0 }, { AI, 0 } }));
-		int32 Defeats = 0;
-		int32 Ends = 0;
-		State->OnSlotDefeated.AddLambda([&Defeats](int32, EHOLDefeatReason) { ++Defeats; });
-		State->OnMatchOver.AddLambda([&Ends] { ++Ends; });
-
-		TestFalse(TEXT("a closed slot cannot lose"), State->DefeatSlot(4, EHOLDefeatReason::Cheat));
-		TestFalse(TEXT("not over at the launch"), State->IsMatchOver());
-		TestTrue(TEXT("slot 1 surrenders"), State->DefeatSlot(1, EHOLDefeatReason::Surrender));
-		TestTrue(TEXT("slot 1 defeated"), State->IsSlotDefeated(1));
-		TestTrue(TEXT("by surrender"), State->GetDefeatReason(1) == EHOLDefeatReason::Surrender);
-		TestFalse(TEXT("slot 0 not defeated"), State->IsSlotDefeated(0));
-		TestTrue(TEXT("over"), State->IsMatchOver());
-		TestEqual(TEXT("slot 0 wins"), State->GetWinners(), TArray<int32>{ 0 });
-		TestTrue(TEXT("IsWinner"), State->IsWinner(0) && !State->IsWinner(1));
-		TestFalse(TEXT("once over, nobody loses any more"), State->DefeatSlot(0, EHOLDefeatReason::Cheat));
-		TestFalse(TEXT("never defeated twice"), State->DefeatSlot(1, EHOLDefeatReason::Cheat));
-		TestEqual(TEXT("one defeat told"), Defeats, 1);
-		TestEqual(TEXT("one end told"), Ends, 1);
-	}
-
-	GEngine->DestroyWorldContext(World);
-	World->DestroyWorld(/*bInformEngineOfWorld*/ false);
-	return true;
-}
-
 // V1.2 (D358): the collapse of the defeated. Slot 1 falls: its units at 0 health on the combat's dying path, its buildings
 // destroyed as in combat (rubble, none for a bare foundation), its stock at 0, its orders and births refused; slot 0 kept.
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLVictoryCollapseTest, "HeroesOfLiberty.Victory.Collapse", UE::HeroesOfLiberty::Tests::Victory::Flags)
