@@ -36,6 +36,12 @@ namespace DisconnectTest2
 		return HOLGameStateTest::RulesGetWindowEnd(MakeTeamsJson(Seats), Slot);
 	}
 
+	// The same in a match mode (0 Standard, 1 Diplomacy): the JSON setters do not carry the mode, the envelope sets it after the read.
+	int EndInMode(TArray<int> Seats, int Slot, int Mode)
+	{
+		return HOLGameStateTest::RulesGetWindowEndInMode(MakeTeamsJson(Seats), Slot, Mode);
+	}
+
 	// The 1v1 named configuration (Alice 0 team 1, Bob 1 team 2) when bOneVsOne, else with the AI seat 2 of Bob's camp.
 	FString NamedJson(bool bOneVsOne)
 	{
@@ -83,7 +89,7 @@ namespace DisconnectTest2
 	}
 }
 
-// D718 (T1): the end of the window by the camps of the launch. (Whole but the two Diplomacy assertions: the mode is not in the JSON setters.)
+// D718 (T1): the end of the window by the camps of the launch. (Whole: the two Diplomacy assertions go through RulesGetWindowEndInMode, the JSON setters not carrying the mode.)
 void Test_DisconnectWindowEnd(FUnitTest& T)
 {
 	TArray<int> S;
@@ -118,6 +124,10 @@ void Test_DisconnectWindowEnd(FUnitTest& T)
 	T.AssertTrue(DisconnectTest2::End(DisconnectTest2::Ints2(1, -2), 0) == DisconnectTest2::Defeat, "a human against an AI alone (two camps): defeat");
 	T.AssertTrue(DisconnectTest2::End(DisconnectTest2::Ints2(1, 2), 5) == DisconnectTest2::Defeat && DisconnectTest2::End(DisconnectTest2::Ints2(1, 2), -1) == DisconnectTest2::Defeat, "a closed or unknown slot holds nothing: defeat");
 
+	// Diplomacy (mode 1): the teams are ignored, every human is a camp.
+	T.AssertEquals(DisconnectTest2::AIHolds, DisconnectTest2::EndInMode(TwoVsTwo, 0, 1), "Diplomacy, 2v2 teams ignored: four camps, the AI keeps");
+	T.AssertEquals(DisconnectTest2::Defeat, DisconnectTest2::EndInMode(DisconnectTest2::Ints2(1, 1), 0, 1), "Diplomacy, two players: two camps alone, defeat");
+
 	// The seat's states: Present 0, AbsentAIHolds 1, AIHolds 2, Defeated 3.
 	T.AssertTrue(HOLGameStateTest::RulesMayReturn(0, false), "present: his name takes the seat again (a second connection)");
 	T.AssertTrue(HOLGameStateTest::RulesMayReturn(1, false), "away, the AI holds it (window): he may return");
@@ -128,7 +138,7 @@ void Test_DisconnectWindowEnd(FUnitTest& T)
 }
 
 // The pure rules of FHOLDisconnectRules (KeepsSlot, IsWindowOver, GetSecondsLeft, FindAbsent, GetExpired, GetStockOnTaking).
-// Not ported: DefaultWindowSeconds == 180 (a constant, no accessor), checked indirectly by the GameState test's default window.
+// Whole: DefaultWindowSeconds == 180 is read through RulesGetDefaultWindowSeconds (envelope added by GALADRIEL-1119co).
 void Test_DisconnectRules(FUnitTest& T)
 {
 	FString Named = DisconnectTest::MakeNamedJson(false);
@@ -147,6 +157,7 @@ void Test_DisconnectRules(FUnitTest& T)
 	T.AssertTrue(Left == 159.0, "seconds left");
 	double None = HOLGameStateTest::RulesGetSecondsLeft(10.0, 500.0, 180.0);
 	T.AssertTrue(None == 0.0, "no seconds left after the end");
+	T.AssertEquals(180, int(HOLGameStateTest::RulesGetDefaultWindowSeconds()), "the window by default: 3 min");
 
 	// Absent: Dan (slot 3, left at 0), Bob (slot 1, left at 50, 300 wood).
 	TArray<int> Slots = DisconnectTest2::Ints2(3, 1);
@@ -169,7 +180,7 @@ void Test_DisconnectRules(FUnitTest& T)
 }
 
 // M6-Q16 (R7): what Bob gains while away is kept for him (a Peasant's deposit, a foundation's refund, a queued Peasant's cost).
-// Difference: the Peasant's cost is read through GetProductionCostResources(.., slot 1) and the deposit through DepositLoad (the loaded amount is the 10).
+// Whole (GALADRIEL-1119co: Bob is in the PlayerArray, the player state gone is counted, the load left is read). Difference: the Peasant's cost is read through GetProductionCostResources(.., slot 1) and the deposit through DepositLoad (the loaded amount is the 10).
 void Test_DisconnectGains(FUnitTest& T)
 {
 	UHOLTestWorldHandle TestWorld = HOLTestWorld::CreateTestWorld();
@@ -177,7 +188,7 @@ void Test_DisconnectGains(FUnitTest& T)
 	if (TestWorld == nullptr)
 		return;
 	AHOLGameState State = HOLTestWorld::SpawnGameState(TestWorld, 0, 0);
-	AHOLPlayerState Bob = DisconnectTest2::Seat(TestWorld, State, 1, false);
+	AHOLPlayerState Bob = DisconnectTest2::Seat(TestWorld, State, 1, true);
 	AHOLBuilding Foundation = HOLTestWorld::SpawnBuilding(TestWorld, n"House", 1, FVector(3000.0, 0.0, 0.0), EHOLConstructionState::Foundation);
 	AHOLBuilding Centre = HOLTestWorld::SpawnBuilding(TestWorld, n"MainCentre", 1, FVector(0.0, 0.0, 0.0), EHOLConstructionState::Finished);
 	T.AssertTrue(State != nullptr && Bob != nullptr && Foundation != nullptr && Centre != nullptr, "game state, player state, buildings");
@@ -195,12 +206,16 @@ void Test_DisconnectGains(FUnitTest& T)
 		T.AssertTrue(FoundationRefund.Wood > 0, "a house's foundation gives something back");
 		T.AssertTrue(PeasantCost.Food > 0, "a Peasant costs something");
 
+		T.AssertEquals(1, HOLTestWorld::CountPlayerStatesOfSlot(TestWorld, 1), "Bob has his player state in the game state before he leaves");
 		T.AssertTrue(HOLGameStateTest::KeepAbsentSlot(State, Bob, 10.0, 0.0), "Bob leaves: slot kept");
 		Bob.DestroyActor();
+		T.AssertEquals(0, HOLTestWorld::CountPlayerStatesOfSlot(TestWorld, 1), "his player state gone, as after a Logout");
 
 		// A Peasant of his unloads 10 wood at his centre (the gathering's deposit).
-		int Deposited = HOLTestWorld::DepositLoad(TestWorld, 1, DisconnectTest2::Wood, 10);
+		int Remaining = -1;
+		int Deposited = HOLTestWorld::DepositLoadWithRemaining(TestWorld, 1, DisconnectTest2::Wood, 10, Remaining);
 		T.AssertEquals(10, Deposited, "his Peasant unloads 10 wood");
+		T.AssertEquals(0, Remaining, "its load emptied");
 
 		// The enemy destroys his foundation and his centre (the combat's path, UHOLConstructionSubsystem::DestroyBuilding): the cost of the foundation and the queue back.
 		HOLTestWorld::DestroyBuildingWithRefund(Foundation);
@@ -220,8 +235,8 @@ void Test_DisconnectGains(FUnitTest& T)
 	HOLTestWorld::DestroyTestWorld(TestWorld);
 }
 
-// D719 (T0): the technologies are kept for the absent as the stock. Differences: no journal capture (the two "researched PloughI" count
-// assertions stay in C++), and the AI's reader is read twice: GetAITechnologiesDone (ReadAITechnologiesDone) and the technologies of the AI's player state of his seat.
+// D719 (T0): the technologies are kept for the absent as the stock. Differences: the journal is captured (BeginLogCapture; the two "researched PloughI" count
+// assertions are ported, over 3000 steps instead of 8), and the AI's reader is read twice: GetAITechnologiesDone (ReadAITechnologiesDone) and the technologies of the AI's player state of his seat.
 void Test_DisconnectTechnologies(FUnitTest& T)
 {
 	T.AssertTrue(HOLGameStateTest::IsTechnologyInTable(n"PloughII"), "the technology table is loaded (Plough II)");
@@ -257,13 +272,20 @@ void Test_DisconnectTechnologies(FUnitTest& T)
 		TArray<FName> DoneAway = HOLTestWorld::GetAITechnologiesDone(TestWorld, 1);
 		T.AssertTrue(DoneAway.Contains(n"PloughI"), "away: his Plough I is still read as done (the AI's reader)");
 
+		HOLTestWorld::BeginLogCapture();
 		HOLTestWorld::AdvanceSteps(TestWorld, 3000);
+		int AliceLogged = HOLTestWorld::CountCapturedLogLines("researched PloughI", "slot 0");
+		int NobodyLogged = HOLTestWorld::CountCapturedLogLines("researched PloughI", "slot 3");
+		HOLTestWorld::EndLogCapture();
 
 		T.AssertTrue(HOLGameStateTest::HasTechnology(Alice, n"PloughI"), "Alice's research landed in her player state, as ever");
 		AHOLPlayerState HolderLater = HOLTestWorld::FindHeldBot(TestWorld, 1);
 		T.AssertTrue(HolderLater != nullptr && HOLGameStateTest::HasTechnology(HolderLater, n"PloughII"), "away: the research ended while he was gone is his");
 		TArray<FName> DoneLater = HOLTestWorld::GetAITechnologiesDone(TestWorld, 1);
 		T.AssertTrue(DoneLater.Contains(n"PloughII"), "away: the research ended while he was gone is read as done (the AI's reader)");
+
+		T.AssertEquals(1, AliceLogged, "Alice's research logged once");
+		T.AssertEquals(0, NobodyLogged, "slot 3's research, going nowhere, is not logged as researched");
 
 		AHOLPlayerState BobAgain = DisconnectTest2::Seat(TestWorld, State, 1, true);
 		T.AssertTrue(BobAgain != nullptr, "new player state");

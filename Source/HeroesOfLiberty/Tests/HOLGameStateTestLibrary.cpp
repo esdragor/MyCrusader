@@ -583,6 +583,26 @@ int32 UHOLGameStateTestLibrary::RulesGetWindowEnd(const FString& Json, const int
 #endif
 }
 
+int32 UHOLGameStateTestLibrary::RulesGetWindowEndInMode(const FString& Json, const int32 Slot, const int32 Mode)
+{
+#if WITH_DEV_AUTOMATION_TESTS
+	FHOLMatchConfig Config;
+	if (!FHOLMatchConfig::FromJson(Json, Config))
+	{
+		return 0;
+	}
+	Config.Mode = static_cast<EHOLMatchMode>(Mode);
+	return static_cast<int32>(FHOLDisconnectRules::GetWindowEnd(Config, Slot));
+#else
+	return 0;
+#endif
+}
+
+double UHOLGameStateTestLibrary::RulesGetDefaultWindowSeconds()
+{
+	return FHOLDisconnectRules::DefaultWindowSeconds;
+}
+
 bool UHOLGameStateTestLibrary::RulesMayReturn(const int32 State, const bool bMatchOver)
 {
 #if WITH_DEV_AUTOMATION_TESTS
