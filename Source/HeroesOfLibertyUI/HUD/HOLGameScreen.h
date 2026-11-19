@@ -227,59 +227,6 @@ protected:
 	UPROPERTY(Transient)
 	TObjectPtr<UScaleBox> BottomScale;
 
-	UPROPERTY(meta = (BindWidgetOptional))
-	TObjectPtr<UBorder> SelectionPanel;
-
-	UPROPERTY(meta = (BindWidgetOptional))
-	TObjectPtr<UCommonTextBlock> SelectionName;
-
-	/** The owner's colour and name: hidden for a resource source, which is nobody's. */
-	UPROPERTY(meta = (BindWidgetOptional))
-	TObjectPtr<UHorizontalBox> SelectionOwnerRow;
-
-	UPROPERTY(meta = (BindWidgetOptional))
-	TObjectPtr<UImage> SelectionSwatch;
-
-	UPROPERTY(meta = (BindWidgetOptional))
-	TObjectPtr<UCommonTextBlock> SelectionOwner;
-
-	UPROPERTY(meta = (BindWidgetOptional))
-	TObjectPtr<UHorizontalBox> SelectionHealthRow;
-
-	UPROPERTY(meta = (BindWidgetOptional))
-	TObjectPtr<UCommonTextBlock> SelectionHealth;
-
-	/** The selected unit's statistics (attack with the technologies' bonus, armour, range, speed): one line or one per statistic (hol.HUD.UnitStats). */
-	UPROPERTY()
-	TObjectPtr<UWrapBox> SelectionStats;
-	/** One text block per statistic of that block, each with its own hover tooltip (REGLAGE of unit_stats_attack, 2026-11-09). */
-	UPROPERTY()
-	TArray<TObjectPtr<UCommonTextBlock>> SelectionStatChips;
-
-	/**
-	 * The line under the name (J5, D298): what a gatherer does and carries (« Récolte — Bois 7/10 »), a group's workers by
-	 * activity (« 8 en récolte · 2 inactifs »), what a source still holds (« Reste : 1840 »).
-	 */
-	UPROPERTY(meta = (BindWidgetOptional))
-	TObjectPtr<UCommonTextBlock> SelectionActivity;
-
-	/** A main forum's lives (V2.3d), under the line above, styled as the health's row: « Vies » small and grey, then « 2 ». */
-	UPROPERTY(meta = (BindWidgetOptional))
-	TObjectPtr<UHorizontalBox> SelectionLivesRow;
-
-	UPROPERTY(meta = (BindWidgetOptional))
-	TObjectPtr<UCommonTextBlock> SelectionLives;
-
-	/** A building not finished (J6a.5, D313): its progress, a bar and « 45 % ». */
-	UPROPERTY(meta = (BindWidgetOptional))
-	TObjectPtr<UHorizontalBox> SelectionProgressRow;
-
-	UPROPERTY(meta = (BindWidgetOptional))
-	TObjectPtr<UProgressBar> SelectionProgress;
-
-	UPROPERTY(meta = (BindWidgetOptional))
-	TObjectPtr<UCommonTextBlock> SelectionProgressText;
-
 
 	UPROPERTY(meta = (BindWidgetOptional))
 	TObjectPtr<UBorder> QueuePanel;
@@ -303,35 +250,6 @@ private:
 	/** Updates every block from the match state (on the economy, selection and production delegates). */
 	void Refresh();
 	void RefreshTopBar(const AHOLPlayerState* PlayerState);
-	void RefreshSelection(const AHOLBuilding* Building, bool bOwn);
-	/**
-	 * Selected units (never with a building): one is shown as a building is, several by type and number, with their
-	 * workers by activity (read again four times a second).
-	 */
-	void RefreshUnitSelection(TConstArrayView<uint32> UnitIds);
-	/** The selected resource source (J5b, D298): its name and what it still holds, read again every frame. */
-	void RefreshSourceSelection(int32 SourceIndex);
-	/** Several of the player's buildings (an F key, D30): the active subgroup, then by type and number, the sites among them. */
-	void RefreshBuildingGroup(TConstArrayView<AHOLBuilding*> Buildings);
-	/**
-	 * The selection's chips (G.1e, AoE4's way), from ChipLabels and ActiveChip that the selection's refresh filled: shown
-	 * in place of the name, wrapping in the block's width, the active one's edge lit; none: the name alone. Written when changed.
-	 */
-	void RefreshChips();
-	/** A chip clicked: its subgroup made active, as Tab (chip N is the subgroup N, « Tous » the first). */
-	void HandleChipClicked(int32 Chip);
-	/**
-	 * The line of a gatherer selected alone (J5, D298), or hidden (null): what it does and carries, read again every
-	 * frame and written when it changed (D303).
-	 */
-	void RefreshUnitActivity(const struct FHOLUnitView* Unit);
-	/** One unit's health in the selection block (J7b.5), or none (nullptr: a group, a building, a source). */
-	void RefreshUnitHealth(const struct FHOLUnitView* Unit);
-	/** One unit's statistics under its health (the technologies' bonus on its attack), or hidden (nullptr: a group, a building, a source, a hero). */
-	void RefreshUnitStats(const struct FHOLUnitView* Unit);
-	void HideUnitStats();
-	/** The line under the name: Shown is what Describe writes of it (empty: hidden); written only when it changed. */
-	void SetDetailLine(const FString& Shown, const FText& Text);
 	/** The idle workers' number Describe writes (the counter button is the script's, H-3). */
 	void RefreshIdleWorkers();
 	/** OwnBuilding: the player's own building selected alone; bOwnGroup: several of its buildings (an F key). */
@@ -366,21 +284,6 @@ private:
 	/** HUD H-9: the empty box at the bottom bar's first place the script's selection block (HOLSelection.as) is built into. */
 	UPROPERTY(Transient)
 	TObjectPtr<UHorizontalBox> SelectionHost;
-
-	/** The selection's chips (G.1e): a pool of SelectionChipN in the wrap box SelectionChips, each in its frame (lit: active). */
-	UPROPERTY(Transient)
-	TObjectPtr<UWrapBox> SelectionChips;
-
-	UPROPERTY(Transient)
-	TArray<TObjectPtr<UHOLQueueItem>> ChipItems;
-
-	UPROPERTY(Transient)
-	TArray<TObjectPtr<UBorder>> ChipFrames;
-	/** What the selection's refresh wants shown (empty: the name alone), and what the chips show (-2: nothing yet). */
-	TArray<FText> ChipLabels;
-	int32 ActiveChip = INDEX_NONE;
-	TArray<FString> ShownChips;
-	int32 ShownActiveChip = -2;
 
 	TWeakObjectPtr<AHOLPlayerController> Controller;
 	TWeakObjectPtr<AHOLPlayerState> BoundPlayerState;
@@ -484,8 +387,6 @@ private:
 	FString ShownStatsTip;
 	/** The plain text of each shown statistic's own tooltip, in the order of the chips (the report's HUD stats tip line). */
 	TArray<FString> ShownStatTipList;
-	/** A main forum's lives last written in SelectionLives (V2.3d). */
-	int32 ShownForumLives = INDEX_NONE;
 
 	/** The selected main forum's part of the description (", in ruin 27 s, lives 1"), empty for anything else. */
 	FString ShownForum;
