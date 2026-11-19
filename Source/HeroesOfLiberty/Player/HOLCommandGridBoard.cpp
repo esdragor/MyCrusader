@@ -11,6 +11,21 @@ namespace HOLCommandGridReadLibraryPrivate
 	FHOLGridCommand ToRule(const FHOLGridCommandView& View);
 }
 
+namespace HOLCommandGridBoardPrivate
+{
+	/** FHOLGridKeyResultView -> rule (the read library has only the other way; same enum order). */
+	FHOLGridKeyResult ToKeyResult(const FHOLGridKeyResultView& View)
+	{
+		FHOLGridKeyResult Out;
+		Out.Target = static_cast<EHOLGridKeyTarget>(static_cast<uint8>(View.Target));
+		Out.ChosenAge = View.ChosenAge;
+		Out.TypeName = View.TypeName;
+		return Out;
+	}
+}
+
+using namespace HOLCommandGridBoardPrivate;
+
 UHOLCommandGridBoard* UHOLCommandGridBoard::FindAny()
 {
 	// Game thread only: the script runs there; a read from another thread keeps the C++ body.
@@ -96,6 +111,54 @@ bool UHOLCommandGridBoard::AskGetOrder(const FHOLGridContext& Context, const int
 	return true;
 }
 
+bool UHOLCommandGridBoard::AskIsAgeReached(const FHOLGridContext& Context, const int32 Age, bool& Out)
+{
+	UHOLCommandGridBoard* Board = FindAny();
+	if (!Board) { return false; }
+	Out = Board->IsAgeReachedAnswer(MakeContextView(Context), Age);
+	return true;
+}
+
+bool UHOLCommandGridBoard::AskIsAgeOpen(const FHOLGridContext& Context, const int32 Age, bool& Out)
+{
+	UHOLCommandGridBoard* Board = FindAny();
+	if (!Board) { return false; }
+	Out = Board->IsAgeOpenAnswer(MakeContextView(Context), Age);
+	return true;
+}
+
+bool UHOLCommandGridBoard::AskGetAgeBuilding(const FHOLGridContext& Context, const int32 Age, const int32 Cell, FHOLGridCommand& Out)
+{
+	UHOLCommandGridBoard* Board = FindAny();
+	if (!Board) { return false; }
+	Out = HOLCommandGridReadLibraryPrivate::ToRule(Board->GetAgeBuildingAnswer(MakeContextView(Context), Age, Cell));
+	return true;
+}
+
+bool UHOLCommandGridBoard::AskPressKey(const FHOLGridContext& Context, const int32 ChosenAge, const int32 Cell, FHOLGridKeyResult& Out)
+{
+	UHOLCommandGridBoard* Board = FindAny();
+	if (!Board) { return false; }
+	Out = ToKeyResult(Board->PressKeyAnswer(MakeContextView(Context), ChosenAge, Cell));
+	return true;
+}
+
+bool UHOLCommandGridBoard::AskClickAge(const FHOLGridContext& Context, const int32 ChosenAge, const int32 Age, const int32 Cell, FHOLGridKeyResult& Out)
+{
+	UHOLCommandGridBoard* Board = FindAny();
+	if (!Board) { return false; }
+	Out = ToKeyResult(Board->ClickAgeAnswer(MakeContextView(Context), ChosenAge, Age, Cell));
+	return true;
+}
+
+bool UHOLCommandGridBoard::AskGetChosenAgeAfter(const int32 ChosenAge, const EHOLAgeEvent Event, int32& Out)
+{
+	UHOLCommandGridBoard* Board = FindAny();
+	if (!Board) { return false; }
+	Out = Board->GetChosenAgeAfterAnswer(ChosenAge, static_cast<EHOLAgeEventKind>(static_cast<uint8>(Event)));
+	return true;
+}
+
 bool UHOLCommandGridBoard::ShouldCreateSubsystem(UObject* Outer) const
 {
 	// Never the abstract C++ class, nor a script class replaced by a reload (as UHOLPlayerOrdersBoard).
@@ -113,3 +176,10 @@ bool UHOLCommandGridBoard::DoesSupportWorldType(const EWorldType::Type WorldType
 
 FHOLGridCommandView UHOLCommandGridBoard::GetCommandAnswer_Implementation(const FHOLGridContextView&, const int32) { return FHOLGridCommandView(); }
 FHOLGridCommandView UHOLCommandGridBoard::GetOrderAnswer_Implementation(const FHOLGridContextView&, const int32) { return FHOLGridCommandView(); }
+
+bool UHOLCommandGridBoard::IsAgeReachedAnswer_Implementation(const FHOLGridContextView&, const int32) { return false; }
+bool UHOLCommandGridBoard::IsAgeOpenAnswer_Implementation(const FHOLGridContextView&, const int32) { return false; }
+FHOLGridCommandView UHOLCommandGridBoard::GetAgeBuildingAnswer_Implementation(const FHOLGridContextView&, const int32, const int32) { return FHOLGridCommandView(); }
+FHOLGridKeyResultView UHOLCommandGridBoard::PressKeyAnswer_Implementation(const FHOLGridContextView&, const int32, const int32) { return FHOLGridKeyResultView(); }
+FHOLGridKeyResultView UHOLCommandGridBoard::ClickAgeAnswer_Implementation(const FHOLGridContextView&, const int32, const int32, const int32) { return FHOLGridKeyResultView(); }
+int32 UHOLCommandGridBoard::GetChosenAgeAfterAnswer_Implementation(const int32, const EHOLAgeEventKind) { return INDEX_NONE; }

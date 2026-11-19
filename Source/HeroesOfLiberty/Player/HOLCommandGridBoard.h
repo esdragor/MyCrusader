@@ -28,6 +28,13 @@ public:
 	/** True and Out filled when a script board answered; false: the caller keeps its C++ body. */
 	static bool AskGetCommand(const FHOLGridContext& Context, int32 Cell, FHOLGridCommand& Out);
 	static bool AskGetOrder(const FHOLGridContext& Context, int32 Cell, FHOLGridCommand& Out);
+	// Family 1 (ages and keys): same contract, Out filled when a script board answered.
+	static bool AskIsAgeReached(const FHOLGridContext& Context, int32 Age, bool& Out);
+	static bool AskIsAgeOpen(const FHOLGridContext& Context, int32 Age, bool& Out);
+	static bool AskGetAgeBuilding(const FHOLGridContext& Context, int32 Age, int32 Cell, FHOLGridCommand& Out);
+	static bool AskPressKey(const FHOLGridContext& Context, int32 ChosenAge, int32 Cell, FHOLGridKeyResult& Out);
+	static bool AskClickAge(const FHOLGridContext& Context, int32 ChosenAge, int32 Age, int32 Cell, FHOLGridKeyResult& Out);
+	static bool AskGetChosenAgeAfter(int32 ChosenAge, EHOLAgeEvent Event, int32& Out);
 
 	/** FHOLGridContext as the view the script reads (the inverse of the read library's ToRule). */
 	static FHOLGridContextView MakeContextView(const FHOLGridContext& Context);
@@ -44,4 +51,24 @@ protected:
 	FHOLGridCommandView GetOrderAnswer(const FHOLGridContextView& Context, int32 Cell);
 	virtual FHOLGridCommandView GetCommandAnswer_Implementation(const FHOLGridContextView& Context, int32 Cell);
 	virtual FHOLGridCommandView GetOrderAnswer_Implementation(const FHOLGridContextView& Context, int32 Cell);
+
+	// Family 1 (ages and keys; the rules of HOLCommandGridRules / HOLCommandGridKeys). Default = no answer (empty / false / INDEX_NONE).
+	UFUNCTION(BlueprintNativeEvent, Category = "HeroesOfLiberty|CommandGrid")
+	bool IsAgeReachedAnswer(const FHOLGridContextView& Context, int32 Age);
+	UFUNCTION(BlueprintNativeEvent, Category = "HeroesOfLiberty|CommandGrid")
+	bool IsAgeOpenAnswer(const FHOLGridContextView& Context, int32 Age);
+	UFUNCTION(BlueprintNativeEvent, Category = "HeroesOfLiberty|CommandGrid")
+	FHOLGridCommandView GetAgeBuildingAnswer(const FHOLGridContextView& Context, int32 Age, int32 Cell);
+	UFUNCTION(BlueprintNativeEvent, Category = "HeroesOfLiberty|CommandGrid")
+	FHOLGridKeyResultView PressKeyAnswer(const FHOLGridContextView& Context, int32 ChosenAge, int32 Cell);
+	UFUNCTION(BlueprintNativeEvent, Category = "HeroesOfLiberty|CommandGrid")
+	FHOLGridKeyResultView ClickAgeAnswer(const FHOLGridContextView& Context, int32 ChosenAge, int32 Age, int32 Cell);
+	UFUNCTION(BlueprintNativeEvent, Category = "HeroesOfLiberty|CommandGrid")
+	int32 GetChosenAgeAfterAnswer(int32 ChosenAge, EHOLAgeEventKind Event);
+	virtual bool IsAgeReachedAnswer_Implementation(const FHOLGridContextView& Context, int32 Age);
+	virtual bool IsAgeOpenAnswer_Implementation(const FHOLGridContextView& Context, int32 Age);
+	virtual FHOLGridCommandView GetAgeBuildingAnswer_Implementation(const FHOLGridContextView& Context, int32 Age, int32 Cell);
+	virtual FHOLGridKeyResultView PressKeyAnswer_Implementation(const FHOLGridContextView& Context, int32 ChosenAge, int32 Cell);
+	virtual FHOLGridKeyResultView ClickAgeAnswer_Implementation(const FHOLGridContextView& Context, int32 ChosenAge, int32 Age, int32 Cell);
+	virtual int32 GetChosenAgeAfterAnswer_Implementation(int32 ChosenAge, EHOLAgeEventKind Event);
 };

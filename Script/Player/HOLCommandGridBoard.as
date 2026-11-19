@@ -20,4 +20,40 @@ class UHOLCommandGridBoardScript : UHOLCommandGridBoard
 	{
 		return HOLCommandGridRules::GetOrder(Context, Cell);
 	}
-}
+
+	// Family 1: ages and keys (HOLCommandGridRules / HOLCommandGridKeys).
+	UFUNCTION(BlueprintOverride)
+	bool IsAgeReachedAnswer(const FHOLGridContextView& Context, int Age)
+	{
+		return HOLCommandGridRules::IsAgeReached(Context, Age);
+	}
+
+	UFUNCTION(BlueprintOverride)
+	bool IsAgeOpenAnswer(const FHOLGridContextView& Context, int Age)
+	{
+		return HOLCommandGridRules::IsAgeOpen(Context, Age);
+	}
+
+	UFUNCTION(BlueprintOverride)
+	FHOLGridCommandView GetAgeBuildingAnswer(const FHOLGridContextView& Context, int Age, int Cell)
+	{
+		return HOLCommandGridRules::GetAgeBuilding(Context, Age, Cell);
+	}
+
+	UFUNCTION(BlueprintOverride)
+	FHOLGridKeyResultView PressKeyAnswer(const FHOLGridContextView& Context, int ChosenAge, int Cell)
+	{
+		return HOLCommandGridKeys::PressKey(Context, ChosenAge, Cell);
+	}
+
+	UFUNCTION(BlueprintOverride)
+	FHOLGridKeyResultView ClickAgeAnswer(const FHOLGridContextView& Context, int ChosenAge, int Age, int Cell)
+	{
+		return HOLCommandGridKeys::ClickAge(Context, ChosenAge, Age, Cell);
+	}
+
+	UFUNCTION(BlueprintOverride)
+	int GetChosenAgeAfterAnswer(int ChosenAge, EHOLAgeEventKind Event)
+	{
+		return HOLCommandGridKeys::GetChosenAgeAfter(ChosenAge, Event);
+	}}

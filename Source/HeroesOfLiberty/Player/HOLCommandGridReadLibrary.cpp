@@ -178,26 +178,26 @@ FHOLGridCommandView UHOLCommandGridReadLibrary::GetOrder(const FHOLGridContextVi
 }
 
 bool UHOLCommandGridReadLibrary::IsBuildGrid(const FHOLGridContextView& Context) { return HOLCommandGrid::IsBuildGrid(ToRule(Context)); }
-bool UHOLCommandGridReadLibrary::IsAgeReached(const FHOLGridContextView& Context, const int32 Age) { return HOLCommandGrid::IsAgeReached(ToRule(Context), Age); }
+bool UHOLCommandGridReadLibrary::IsAgeReached(const FHOLGridContextView& Context, const int32 Age) { return HOLCommandGrid::IsAgeReachedNative(ToRule(Context), Age); }
 
 FHOLGridCommandView UHOLCommandGridReadLibrary::GetAgeBuilding(const FHOLGridContextView& Context, const int32 Age, const int32 Cell)
 {
-	return FromRule(HOLCommandGrid::GetAgeBuilding(ToRule(Context), Age, Cell));
+	return FromRule(HOLCommandGrid::GetAgeBuildingNative(ToRule(Context), Age, Cell));
 }
 
 FHOLGridKeyResultView UHOLCommandGridReadLibrary::PressKey(const FHOLGridContextView& Context, const int32 ChosenAge, const int32 Cell)
 {
-	return FromRule(HOLCommandGrid::PressKey(ToRule(Context), ChosenAge, Cell));
+	return FromRule(HOLCommandGrid::PressKeyNative(ToRule(Context), ChosenAge, Cell));
 }
 
 FHOLGridKeyResultView UHOLCommandGridReadLibrary::ClickAge(const FHOLGridContextView& Context, const int32 ChosenAge, const int32 Age, const int32 Cell)
 {
-	return FromRule(HOLCommandGrid::ClickAge(ToRule(Context), ChosenAge, Age, Cell));
+	return FromRule(HOLCommandGrid::ClickAgeNative(ToRule(Context), ChosenAge, Age, Cell));
 }
 
 int32 UHOLCommandGridReadLibrary::GetChosenAgeAfter(const int32 ChosenAge, const EHOLAgeEventKind Event)
 {
-	return HOLCommandGrid::GetChosenAgeAfter(ChosenAge, static_cast<EHOLAgeEvent>(static_cast<uint8>(Event)));
+	return HOLCommandGrid::GetChosenAgeAfterNative(ChosenAge, static_cast<EHOLAgeEvent>(static_cast<uint8>(Event)));
 }
 
 FHOLGridContextView UHOLCommandGridReadLibrary::WithTableBuildables(const FHOLGridContextView& Context)
@@ -385,7 +385,7 @@ int32 UHOLCommandGridReadLibrary::GetRageCell() { return HOLCommandGrid::GetRage
 int32 UHOLCommandGridReadLibrary::GetSpecializationCell(const int32 Option) { return HOLCommandGrid::GetSpecializationCell(Option); }
 FName UHOLCommandGridReadLibrary::GetReportName(const FHOLGridCommandView& Command) { return HOLCommandGrid::GetReportName(ToRule(Command)); }
 
-bool UHOLCommandGridReadLibrary::IsAgeOpen(const FHOLGridContextView& Context, const int32 Age) { return HOLCommandGrid::IsAgeOpen(ToRule(Context), Age); }
+bool UHOLCommandGridReadLibrary::IsAgeOpen(const FHOLGridContextView& Context, const int32 Age) { return HOLCommandGrid::IsAgeOpenNative(ToRule(Context), Age); }
 float UHOLCommandGridReadLibrary::GetAgePanelOpacity(const FHOLGridContextView& Context, const int32 Age) { return HOLCommandGrid::GetAgePanelOpacity(ToRule(Context), Age); }
 
 int32 UHOLCommandGridReadLibrary::GetMouseCursor(const bool bAttackMoveArmed, const bool bPlacing)

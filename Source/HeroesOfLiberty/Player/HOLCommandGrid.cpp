@@ -207,12 +207,22 @@ namespace HOLCommandGrid
 
 	bool IsAgeReached(const FHOLGridContext& Context, const int32 Age)
 	{
+		bool bAnswer = false;
+		return UHOLCommandGridBoard::AskIsAgeReached(Context, Age, bAnswer) ? bAnswer : IsAgeReachedNative(Context, Age);
+	}
+	bool IsAgeReachedNative(const FHOLGridContext& Context, const int32 Age)
+	{
 		return Age >= 0 && Age < NumAges && Age <= Context.ReachedAge;
 	}
 
 	bool IsAgeOpen(const FHOLGridContext& Context, const int32 Age)
 	{
-		return IsAgeReached(Context, Age) || (Age >= 0 && Age < NumAges
+		bool bAnswer = false;
+		return UHOLCommandGridBoard::AskIsAgeOpen(Context, Age, bAnswer) ? bAnswer : IsAgeOpenNative(Context, Age);
+	}
+	bool IsAgeOpenNative(const FHOLGridContext& Context, const int32 Age)
+	{
+		return IsAgeReachedNative(Context, Age) || (Age >= 0 && Age < NumAges
 			&& Context.Buildable.ContainsByPredicate([Age](const FHOLBuildable& Each) { return Each.Age == Age && Each.bAlwaysOpen; }));
 	}
 
@@ -220,7 +230,7 @@ namespace HOLCommandGrid
 	{
 		// A page faded only while nothing on it can be built: a page opened by a type built whatever the tier (a Nomad's first
 		// forum, D797) shown whole, its locked cells greyed one by one (bGreyed); its medallion keeps its locked look.
-		return IsAgeOpen(Context, Age) ? 1.f : LockedAgePanelOpacity;
+		return IsAgeOpenNative(Context, Age) ? 1.f : LockedAgePanelOpacity;
 	}
 
 	int32 GetCategoryRow(const EHOLBuildingCategory Category)
@@ -229,6 +239,11 @@ namespace HOLCommandGrid
 	}
 
 	FHOLGridCommand GetAgeBuilding(const FHOLGridContext& Context, const int32 Age, const int32 Cell)
+	{
+		FHOLGridCommand Answer;
+		return UHOLCommandGridBoard::AskGetAgeBuilding(Context, Age, Cell, Answer) ? Answer : GetAgeBuildingNative(Context, Age, Cell);
+	}
+	FHOLGridCommand GetAgeBuildingNative(const FHOLGridContext& Context, const int32 Age, const int32 Cell)
 	{
 		FHOLGridCommand Result;
 		if (!IsBuildGrid(Context) || Age < 0 || Age >= NumAges || Cell < 0 || Cell >= NumCells)
@@ -242,7 +257,7 @@ namespace HOLCommandGrid
 				Result.Command = EHOLGridCommand::Build;
 				Result.TypeName = Buildable.TypeName;
 				Result.Age = Age;
-				Result.bGreyed = !IsAgeReached(Context, Age) && !Buildable.bAlwaysOpen;
+				Result.bGreyed = !IsAgeReachedNative(Context, Age) && !Buildable.bAlwaysOpen;
 				break;
 			}
 		}
@@ -250,6 +265,11 @@ namespace HOLCommandGrid
 	}
 
 	FHOLGridKeyResult PressKey(const FHOLGridContext& Context, const int32 ChosenAge, const int32 Cell)
+	{
+		FHOLGridKeyResult Answer;
+		return UHOLCommandGridBoard::AskPressKey(Context, ChosenAge, Cell, Answer) ? Answer : PressKeyNative(Context, ChosenAge, Cell);
+	}
+	FHOLGridKeyResult PressKeyNative(const FHOLGridContext& Context, const int32 ChosenAge, const int32 Cell)
 	{
 		FHOLGridKeyResult Result;
 		if (Cell < 0 || Cell >= NumCells)
@@ -272,14 +292,14 @@ namespace HOLCommandGrid
 		if (ChosenAge == INDEX_NONE)
 		{
 			const bool bAgeKey = Cell < NumAges;
-			const bool bReached = bAgeKey && IsAgeOpen(Context, Cell);
+			const bool bReached = bAgeKey && IsAgeOpenNative(Context, Cell);
 			Result.Target = bReached ? EHOLGridKeyTarget::Age : bAgeKey ? EHOLGridKeyTarget::None : EHOLGridKeyTarget::Orders;
 			Result.ChosenAge = bReached ? Cell : INDEX_NONE;
 			return Result;
 		}
 		// An age chosen: every key is its buildings' (an empty cell: nothing, never an order nor another age), the age kept.
 		Result.ChosenAge = ChosenAge;
-		const FHOLGridCommand Building = GetAgeBuilding(Context, ChosenAge, Cell);
+		const FHOLGridCommand Building = GetAgeBuildingNative(Context, ChosenAge, Cell);
 		if (!Building.IsNone() && !Building.bGreyed)
 		{
 			Result.Target = EHOLGridKeyTarget::Build;
@@ -290,7 +310,12 @@ namespace HOLCommandGrid
 
 	FHOLGridKeyResult ClickAge(const FHOLGridContext& Context, const int32 ChosenAge, const int32 Age, const int32 Cell)
 	{
-		if (!IsBuildGrid(Context) || !IsAgeOpen(Context, Age))
+		FHOLGridKeyResult Answer;
+		return UHOLCommandGridBoard::AskClickAge(Context, ChosenAge, Age, Cell, Answer) ? Answer : ClickAgeNative(Context, ChosenAge, Age, Cell);
+	}
+	FHOLGridKeyResult ClickAgeNative(const FHOLGridContext& Context, const int32 ChosenAge, const int32 Age, const int32 Cell)
+	{
+		if (!IsBuildGrid(Context) || !IsAgeOpenNative(Context, Age))
 		{
 			FHOLGridKeyResult Result;
 			Result.ChosenAge = ChosenAge;
@@ -303,10 +328,15 @@ namespace HOLCommandGrid
 			Result.ChosenAge = Age;
 			return Result;
 		}
-		return PressKey(Context, Age, Cell);
+		return PressKeyNative(Context, Age, Cell);
 	}
 
 	int32 GetChosenAgeAfter(const int32 ChosenAge, const EHOLAgeEvent Event)
+	{
+		int32 Answer = INDEX_NONE;
+		return UHOLCommandGridBoard::AskGetChosenAgeAfter(ChosenAge, Event, Answer) ? Answer : GetChosenAgeAfterNative(ChosenAge, Event);
+	}
+	int32 GetChosenAgeAfterNative(const int32 ChosenAge, const EHOLAgeEvent Event)
 	{
 		return Event == EHOLAgeEvent::PlacedKept ? ChosenAge : INDEX_NONE;
 	}
