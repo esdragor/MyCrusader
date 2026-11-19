@@ -913,17 +913,28 @@ namespace
 		TEXT("The blow against buildings in the selected unit's statistics (Q-unit-stats-building): 0 never, 1 only for a unit with no ordinary attack (the Ram), 2 also next to an ordinary attack when it differs"));
 }
 
+namespace
+{
+	// HUD H-9: the script's selection block is built into the game screen's SelectionHost (HOLScriptScreen::GetSelectionHost), so its widgets are OWNED by the script screen's
+	// tree but hang from the game screen's tree: UWidgetTree::FindWidget walks from the root, hence the game screen's tree is searched first, then the script screen's.
+	UWidget* FindSelectionWidget(const UWidgetTree* GameTree, const UWidgetTree* ScriptTree, const FName Name)
+	{
+		UWidget* Found = GameTree ? GameTree->FindWidget(Name) : nullptr;
+		return Found ? Found : ScriptTree ? ScriptTree->FindWidget(Name) : nullptr;
+	}
+}
+
 FString UHOLGameScreen::DescribeStatsTip() const
 {
 	// One tooltip per shown statistic: only the chips that are visible AND carry a tooltip text are listed.
 	// HUD H-9: the chips are the script's widgets "SelectionStats" and "SelectionStat<i>" (HOLSelectionUnit.as); ShownStatTipList is what SetStatsReport posed.
 	TArray<FString> Parts;
-	const UWidget* StatsBox = ScriptScreen && ScriptScreen->WidgetTree ? ScriptScreen->WidgetTree->FindWidget(TEXT("SelectionStats")) : nullptr;
+	const UWidget* StatsBox = FindSelectionWidget(WidgetTree, ScriptScreen ? ScriptScreen->WidgetTree.Get() : nullptr, TEXT("SelectionStats"));
 	if (StatsBox && StatsBox->GetVisibility() != ESlateVisibility::Collapsed)
 	{
 		for (int32 Index = 0; Index < 6 && Index < ShownStatTipList.Num(); ++Index)
 		{
-			const UCommonTextBlock* Chip = Cast<UCommonTextBlock>(ScriptScreen->WidgetTree->FindWidget(*FString::Printf(TEXT("SelectionStat%d"), Index)));
+			const UCommonTextBlock* Chip = Cast<UCommonTextBlock>(FindSelectionWidget(WidgetTree, ScriptScreen->WidgetTree.Get(), *FString::Printf(TEXT("SelectionStat%d"), Index)));
 			if (Chip && Chip->GetVisibility() == ESlateVisibility::Visible && !Chip->GetToolTipText().IsEmpty())
 			{
 				Parts.Add(ShownStatTipList[Index]);
@@ -938,8 +949,8 @@ FString UHOLGameScreen::HoverStat(const int32 Index) const
 	// The hover as the mouse does it (user bug of unit_stats_attack: no tooltip on the other statistics): the centre of the chip is hit-tested
 	// by Slate's own window hit test, and the tooltip the engine would show is the first non-empty one met from the widget found up to the window.
 	// HUD H-9: the chip is the script's widget "SelectionStat<i>" (HOLSelectionUnit.as), found in the script's tree as HoverIncome finds FoodAmount.
-	UCommonTextBlock* Chip = ScriptScreen && ScriptScreen->WidgetTree && Index >= 0 && Index < 6
-		? Cast<UCommonTextBlock>(ScriptScreen->WidgetTree->FindWidget(*FString::Printf(TEXT("SelectionStat%d"), Index))) : nullptr;
+	UCommonTextBlock* Chip = ScriptScreen && Index >= 0 && Index < 6
+		? Cast<UCommonTextBlock>(FindSelectionWidget(WidgetTree, ScriptScreen->WidgetTree.Get(), *FString::Printf(TEXT("SelectionStat%d"), Index))) : nullptr;
 	const TSharedPtr<SWidget> ChipWidget = Chip ? Chip->GetCachedWidget() : TSharedPtr<SWidget>();
 	if (!Chip || !ChipWidget.IsValid() || Chip->GetVisibility() == ESlateVisibility::Collapsed || !FSlateApplication::IsInitialized())
 	{
@@ -1861,7 +1872,7 @@ FName UHOLGameScreen::LocalFactionKey() const
 FString UHOLGameScreen::DescribeSelectionName() const
 {
 	// HUD H-9: the name is the script's widget "SelectionName" (HOLSelection.as), found in the script's tree as HoverIncome finds FoodAmount.
-	const UCommonTextBlock* Name = ScriptScreen && ScriptScreen->WidgetTree ? Cast<UCommonTextBlock>(ScriptScreen->WidgetTree->FindWidget(TEXT("SelectionName"))) : nullptr;
+	const UCommonTextBlock* Name = Cast<UCommonTextBlock>(FindSelectionWidget(WidgetTree, ScriptScreen ? ScriptScreen->WidgetTree.Get() : nullptr, TEXT("SelectionName")));
 	return Name && Name->GetVisibility() != ESlateVisibility::Collapsed && !Name->GetText().IsEmpty()
 		? Name->GetText().ToString() : FString(TEXT("none"));
 }
