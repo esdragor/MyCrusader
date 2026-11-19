@@ -39,6 +39,15 @@ enum EHOLQueueVerdict
 	UnitFaction
 }
 
+/** The outcome of a Rally order once the gates passed (lot R3): the C++ effect of each, and its journal line, stay in ApplyOrders. */
+enum EHOLRallyOutcome
+{
+	NoStep,
+	Clear,
+	AddStep,
+	Set
+}
+
 namespace HOLProductionBoard
 {
 	/**
@@ -59,6 +68,31 @@ namespace HOLProductionBoard
 		if (bForumDown && !bRally)
 			return EHOLOrderGateVerdict::ForumDown;
 		return EHOLOrderGateVerdict::Pass;
+	}
+
+	/**
+	 * The outcome of a Rally order (EtapeDefini N.1, AoE4 Shift). On the building's own body: Shift with a rally point adds nothing (NoStep), otherwise
+	 * the rally point is cleared (the units are born at its foot, D283). Elsewhere: Shift with a rally point adds a step (AddStep: the C++ effect may
+	 * still refuse it at MaxRallySteps and says so), otherwise the rally point is set (the first step is the rally point itself).
+	 */
+	EHOLRallyOutcome RallyOutcome(bool bOnBody, bool bShift, bool bHasRally)
+	{
+		if (bShift && bHasRally && bOnBody)
+			return EHOLRallyOutcome::NoStep;
+		if (bOnBody)
+			return EHOLRallyOutcome::Clear;
+		if (bShift && bHasRally)
+			return EHOLRallyOutcome::AddStep;
+		return EHOLRallyOutcome::Set;
+	}
+
+	/**
+	 * A named site of a Rally order is kept only if it is another building than the one that rallies, the player's own (a client could name any, D288),
+	 * and a site still to build or a camp (finished or not). Dropped, the flag stays on the ground. The C++ computes the four facts of the actor.
+	 */
+	bool RallySiteKept(bool bOtherBuilding, bool bOwnedByPlayer, bool bNeedsBuilders, bool bIsCamp)
+	{
+		return bOtherBuilding && bOwnedByPlayer && (bNeedsBuilders || bIsCamp);
 	}
 
 	/** The cancel is carried out for an index inside the queue, ignored otherwise (HOLProduction::Cancel answers false for a wrong index, silently). */
@@ -142,6 +176,18 @@ class UHOLProductionBoardScript : UHOLProductionBoard
 	int QueueAnswer(bool bProduces, bool bTechnology, bool bTechFactionOpen, bool bTechBlocked, bool bSiegeBlocked, bool bTierTooLow, bool bUnitFactionOpen, int QueueLength, int MaxQueue, FHOLResources Stock, FHOLResources Cost)
 	{
 		return int(HOLProductionBoard::QueueVerdict(bProduces, bTechnology, bTechFactionOpen, bTechBlocked, bSiegeBlocked, bTierTooLow, bUnitFactionOpen, QueueLength, MaxQueue, Stock, Cost));
+	}
+
+	UFUNCTION(BlueprintOverride)
+	int RallyAnswer(bool bOnBody, bool bShift, bool bHasRally)
+	{
+		return int(HOLProductionBoard::RallyOutcome(bOnBody, bShift, bHasRally));
+	}
+
+	UFUNCTION(BlueprintOverride)
+	int RallySiteAnswer(bool bOtherBuilding, bool bOwnedByPlayer, bool bNeedsBuilders, bool bIsCamp)
+	{
+		return HOLProductionBoard::RallySiteKept(bOtherBuilding, bOwnedByPlayer, bNeedsBuilders, bIsCamp) ? 1 : 0;
 	}
 
 	UFUNCTION(BlueprintOverride)
