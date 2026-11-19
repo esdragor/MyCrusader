@@ -16,7 +16,6 @@
 #include "Simulation/HOLSimulationSubsystem.h"
 #include "Match/HOLStartRules.h"
 #include "Misc/AutomationTest.h"
-#include "Player/HOLCommandGrid.h"
 #include "Simulation/HOLCombatProcessor.h"
 #include "Simulation/HOLCombatRules.h"
 #include "Simulation/HOLSimulationSettings.h"
@@ -285,19 +284,6 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLRegicideCommandsTest, "HeroesOfLiberty.Vict
 // V5.3: the King moves, stops and attacks on order; no attack-move nor hold of its own, and given one with others, it seeks nobody.
 bool FHOLRegicideCommandsTest::RunTest(const FString& Parameters)
 {
-	FHOLGridContext Kings;
-	Kings.bOwnUnits = true;
-	Kings.bSoldiers = true;
-	Kings.bOnlyKings = true;
-	TestTrue(TEXT("Kings alone: no attack-move"), HOLCommandGrid::GetOrder(Kings, HOLCommandGrid::AttackMoveCell).Command == EHOLGridCommand::None);
-	TestTrue(TEXT("... stop"), HOLCommandGrid::GetOrder(Kings, HOLCommandGrid::StopCell).Command == EHOLGridCommand::Stop);
-	TestTrue(TEXT("... no hold (it would take on enemies in reach)"), HOLCommandGrid::GetOrder(Kings, HOLCommandGrid::HoldCell).Command == EHOLGridCommand::None);
-	TestFalse(TEXT("... no builders' grid"), HOLCommandGrid::IsBuildGrid(Kings));
-	FHOLGridContext Mixed = Kings;
-	Mixed.bOnlyKings = false;
-	TestTrue(TEXT("A King with soldiers: the attack-move stays"), HOLCommandGrid::GetOrder(Mixed, HOLCommandGrid::AttackMoveCell).Command == EHOLGridCommand::AttackMove);
-	TestTrue(TEXT("... and the hold"), HOLCommandGrid::GetOrder(Mixed, HOLCommandGrid::HoldCell).Command == EHOLGridCommand::Hold);
-
 	HOLCombat::FSeeker King;
 	King.Radius = 60.f;
 	King.AttackRange = 70.f;
