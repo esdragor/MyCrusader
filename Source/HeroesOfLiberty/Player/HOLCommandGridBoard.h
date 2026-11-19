@@ -12,8 +12,8 @@
  * The command grid's rules where the game runs (MIG-CPP, lot G1 bridge; D839: a binding to expose). The cells' content is the script's
  * (Script/Player/HOLCommandGridBoard.as calls namespace HOLCommandGridRules of Script/Player/HOLCommandGridRules.as, tested against the C++ by the
  * agreement tests); this world subsystem asks its script subclass. Abstract: only a script subclass is born. HOLCommandGrid::GetCommand and GetOrder
- * ask it first (Ask*); with no script board in any game world they keep their C++ body (HOLCommandGrid::GetCommandNative / GetOrderNative, the twin
- * kept until the proof, removed in a later lot). The read library the agreement tests compare against calls the Native bodies, never this bridge.
+ * (and every other bridged rule of HOLCommandGrid) ask it (Ask*): the rule is the script's alone, no C++ twin remains; with no script board in any
+ * game world they answer a neutral default and log one line per function and world (CommandGrid: <Function> refused, no script grid board).
  * Same pattern as UHOLPlayerOrdersBoard and UHOLConstructionBoard. Game thread only (the script runs there; another thread keeps the C++ body).
  */
 UCLASS(Abstract)

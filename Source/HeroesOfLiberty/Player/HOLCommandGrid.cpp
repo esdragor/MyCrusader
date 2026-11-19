@@ -94,91 +94,13 @@ namespace HOLCommandGrid
 
 	FHOLGridCommand GetCommand(const FHOLGridContext& Context, const int32 Cell)
 	{
-		// The script board answers first (UHOLCommandGridBoard); with none in a game world, the C++ body below. KEPT (not yet removed):
-		// HOLRegicideTests / HOLVictoryTests (ForumLook) call it in a test with NO world, where the board cannot be found.
 		FHOLGridCommand Answer;
-		return UHOLCommandGridBoard::AskGetCommand(Context, Cell, Answer) ? Answer : GetCommandNative(Context, Cell);
-	}
-
-	FHOLGridCommand GetCommandNative(const FHOLGridContext& Context, const int32 Cell)
-	{
-		FHOLGridCommand Result;
-		if (Cell < 0 || Cell >= NumCells)
+		if (UHOLCommandGridBoard::AskGetCommand(Context, Cell, Answer))
 		{
-			return Result;
+			return Answer;
 		}
-		if (Context.bOwnBuilding)
-		{
-			// A main forum down produces nothing and is no site to cancel (V2.3a, D351).
-			if (Context.bForumDown)
-			{
-				return Result;
-			}
-			// A building under construction produces nothing (D312); its site may be cancelled (D311), one at a time.
-			if (!Context.bBuildingFinished)
-			{
-				if (Cell == CancelCell && !Context.bBuildingGroup)
-				{
-					Result.Command = EHOLGridCommand::CancelConstruction;
-				}
-				return Result;
-			}
-			// M5: a Market produces nothing; its cells are the trades (PURCHASES on the top row A Z E, SALES on the second Q S D:
-		// the user's correction of 2026-11-01).
-			if (Context.bMarket)
-			{
-				const int32 Good = Cell % GridColumns;
-				if (Cell < 2 * GridColumns && Good < TradableGoods)
-				{
-					Result.Command = EHOLGridCommand::Trade;
-					Result.Resource = static_cast<EHOLResource>(Good);
-					Result.bBuy = Cell < GridColumns;
-				}
-				return Result;
-			}
-			if (Context.Produces.IsValidIndex(Cell))
-			{
-				Result.Command = EHOLGridCommand::Produce;
-				Result.TypeName = Context.Produces[Cell];
-			}
-			else if (Context.bPrimaryForum && !Context.bBuildingGroup && Context.SpecializationTier > 0
-				&& Cell >= GetSpecializationCell(0) && Cell < GetSpecializationCell(SpecializationOptions))
-			{
-				// SP3 (D332, D684, D785): the open tier's two options; the running one cancels at no cost (its time left on the cell), the
-				// other still starts (answer B of Q-specialization-switch: it replaces). The server's board decides (ServerStartSpecialization).
-				Result.Option = Cell - GetSpecializationCell(0);
-				Result.Tier = Context.SpecializationTier;
-				const bool bRunning = Result.Option == Context.SpecializationPendingOption;
-				Result.Command = bRunning ? EHOLGridCommand::CancelSpecialization : EHOLGridCommand::Specialize;
-				Result.RemainingMs = bRunning ? Context.SpecializationRemainingMs : 0;
-			}
-			else if (Cell >= ResearchFirstCell && Context.Researches.IsValidIndex(Cell - ResearchFirstCell))
-			{
-				// The technology row (W X C V, D30): the building's technologies in table order, after its units.
-				Result.Command = EHOLGridCommand::Research;
-				Result.TypeName = Context.Researches[Cell - ResearchFirstCell];
-			}
-			return Result;
-		}
-		if (Context.bRageUnit && Cell == GetRageCell())
-		{
-			Result.Command = EHOLGridCommand::NecroticRage;
-			return Result;
-		}
-		if (Context.bHero)
-		{
-			for (const EHOLHeroAbility Ability : { EHOLHeroAbility::CloseRanks, EHOLHeroAbility::Banner })
-			{
-				if (Cell == GetHeroAbilityCell(Ability))
-				{
-					Result.Command = EHOLGridCommand::HeroAbility;
-					Result.Ability = Ability;
-					Result.CooldownSeconds = FMath::Max(0, Context.HeroCooldownSeconds[static_cast<int32>(Ability)]);
-					Result.bGreyed = !HOLHeroAbility::IsUnlocked(Ability, Context.HeroLevel) || Result.CooldownSeconds > 0;
-				}
-			}
-		}
-		return Result;
+		LogNoBoardOnce(TEXT("GetCommand"));
+		return FHOLGridCommand();
 	}
 
 	int32 GetRageCell()
@@ -215,25 +137,13 @@ namespace HOLCommandGrid
 
 	FHOLGridCommand GetOrder(const FHOLGridContext& Context, const int32 Cell)
 	{
-		// KEPT like GetCommand: HOLRegicideTests (Commands) call it with NO world.
 		FHOLGridCommand Answer;
-		return UHOLCommandGridBoard::AskGetOrder(Context, Cell, Answer) ? Answer : GetOrderNative(Context, Cell);
-	}
-
-	FHOLGridCommand GetOrderNative(const FHOLGridContext& Context, const int32 Cell)
-	{
-		FHOLGridCommand Result;
-		if (Context.bOwnUnits && !Context.bOwnBuilding)
+		if (UHOLCommandGridBoard::AskGetOrder(Context, Cell, Answer))
 		{
-			Result.Command = Cell == AttackMoveCell && Context.bSoldiers && !Context.bOnlyKings ? EHOLGridCommand::AttackMove
-				: Cell == StopCell ? EHOLGridCommand::Stop : Cell == HoldCell && !Context.bOnlyKings ? EHOLGridCommand::Hold : EHOLGridCommand::None;
-			if (Cell == DeployCell && Context.bDeployables)
-			{
-				Result.Command = EHOLGridCommand::Deploy;
-				Result.bPack = Context.bDeployedAny;
-			}
+			return Answer;
 		}
-		return Result;
+		LogNoBoardOnce(TEXT("GetOrder"));
+		return FHOLGridCommand();
 	}
 
 	EMouseCursor::Type GetMouseCursor(const bool bAttackMoveArmed, const bool bPlacing)
