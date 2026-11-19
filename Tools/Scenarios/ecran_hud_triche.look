@@ -1,0 +1,6 @@
+﻿# <nom de capture> | ce que l'utilisateur doit voir
+triche_pliee | Capture 1920x1080 : sous la ligne des ressources en haut a gauche, le seul bouton "Triches  +" dans un panneau sombre a bords arrondis ; meme place, meme taille que la capture du C++ d'avant.
+triche_ouverte | Capture 1920x1080 : le panneau ouvert, colonne de 7 boutons de 190 px puis deux libelles "Vitesse des unites : x1.0" / "Vitesse de collecte : x1.0" avec leur curseur ; le bouton du haut dit "Triches  -" ; la ligne du niveau IA est empilee sous le panneau.
+triche_nourriture | Capture 1920x1080 : le panneau ouvert, la nourriture de la barre du haut a pris +1000 par rapport a la capture precedente.
+triche_construction_rapide | Capture 1920x1080 : le bouton du bas du panneau dit "Construction rapide : oui".
+triche_vitesse | Capture 1920x1080 : le curseur de la vitesse des unites est avance et son libelle dit "x2.0" ; journal exact du rapport : "HUD cheats: cheats open, fast build on, unit speed x2.0, gather speed x1.0".
