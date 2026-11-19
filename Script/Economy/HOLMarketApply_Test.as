@@ -41,3 +41,64 @@ void Test_MarketApplyRefusals(FUnitTest& T)
 	T.AssertFalse(Purchase.bOk, "99 gold cannot buy a lot of 100 gold");
 	T.AssertEquals("gold", Purchase.Reason, "refused for the gold");
 }
+
+
+// ---- The tribute applied to two stocks (D851 step 5, lot R1: the script is the only source of the debit and the credit). ----
+// Values copied from UHOLProductionSubsystem::ApplyTribute as it behaves now (30 % tax, the sender loses Sent, the receiver gains
+// Received, a refusal moves nothing). RED until HOLTribute::Settle exists in HOLTributeRules.as (compiles after the build).
+
+FHOLResources MarketApplyStock(int Food, int Wood, int Stone, int Gold)
+{
+	FHOLResources Result;
+	Result.Food = Food;
+	Result.Wood = Wood;
+	Result.Stone = Stone;
+	Result.Gold = Gold;
+	return Result;
+}
+
+// 100 wood given at 30 %: the giver pays all 100, the receiver gets 70, the other three goods of both stocks do not move.
+void Test_TributeSettleDebitsAndCredits(FUnitTest& T)
+{
+	FHOLResources Giver = MarketApplyStock(10, 500, 20, 30);
+	FHOLResources Taker = MarketApplyStock(1, 5, 2, 3);
+	FHOLTributeSettled Done = HOLTribute::Settle(true, 0, 1, true, Giver, Taker, 1, 100, HOLTribute::DefaultTaxPercent);
+	T.AssertTrue(Done.bOk, "accepted");
+	T.AssertEquals(HOLTribute::Ok, Done.Reason, "no reason");
+	T.AssertEquals(400, Done.Giver.Wood, "the giver pays 100");
+	T.AssertEquals(75, Done.Taker.Wood, "the receiver gets 70 (5 + 70)");
+	T.AssertEquals(70, Done.Received, "what arrived");
+	T.AssertEquals(30, Done.Tax, "what the Market kept");
+	T.AssertEquals(10, Done.Giver.Food, "giver food untouched");
+	T.AssertEquals(30, Done.Giver.Gold, "giver gold untouched");
+	T.AssertEquals(3, Done.Taker.Gold, "receiver gold untouched");
+	T.AssertEquals(500, Giver.Wood, "the stock given is a copy: the input does not change");
+}
+
+// Gold is the fourth resource (index 3); a tribute of the whole stock empties it.
+void Test_TributeSettleWholeStockOfGold(FUnitTest& T)
+{
+	FHOLTributeSettled Done = HOLTribute::Settle(true, 2, 0, true, MarketApplyStock(0, 0, 0, 250), MarketApplyStock(0, 0, 0, 0), 3, 250, HOLTribute::DefaultTaxPercent);
+	T.AssertTrue(Done.bOk, "the whole stock is allowed");
+	T.AssertEquals(0, Done.Giver.Gold, "emptied");
+	T.AssertEquals(175, Done.Taker.Gold, "250 at 30 %: 175 arrive");
+}
+
+// A refusal moves nothing and says why: one short, no Market, oneself, nobody there, nothing sent, no such resource.
+void Test_TributeSettleRefusals(FUnitTest& T)
+{
+	FHOLResources Giver = MarketApplyStock(0, 99, 0, 0);
+	FHOLResources Taker = MarketApplyStock(7, 8, 9, 10);
+	FHOLTributeSettled Short = HOLTribute::Settle(true, 0, 1, true, Giver, Taker, 1, 100, HOLTribute::DefaultTaxPercent);
+	T.AssertFalse(Short.bOk, "99 cannot give 100");
+	T.AssertEquals(HOLTribute::NotEnough, Short.Reason, "the stock");
+	T.AssertEquals(99, Short.Giver.Wood, "the giver keeps his 99");
+	T.AssertEquals(8, Short.Taker.Wood, "the receiver gets nothing");
+	T.AssertEquals(0, Short.Received, "nothing arrived");
+	T.AssertEquals(HOLTribute::NoMarket, HOLTribute::Settle(false, 0, 1, true, Giver, Taker, 1, 50, 30).Reason, "no Market");
+	T.AssertEquals(HOLTribute::Self, HOLTribute::Settle(true, 1, 1, true, Giver, Taker, 1, 50, 30).Reason, "to oneself");
+	T.AssertEquals(HOLTribute::NoRecipient, HOLTribute::Settle(true, 0, 5, false, Giver, Taker, 1, 50, 30).Reason, "nobody there");
+	T.AssertEquals(HOLTribute::BadAmount, HOLTribute::Settle(true, 0, 1, true, Giver, Taker, 1, 0, 30).Reason, "nothing sent");
+	T.AssertEquals(HOLTribute::BadResource, HOLTribute::Settle(true, 0, 1, true, Giver, Taker, 4, 50, 30).Reason, "no such resource");
+	T.AssertFalse(HOLTribute::Settle(true, 0, 1, true, Giver, Taker, 4, 50, 30).bOk, "a refusal is not ok");
+}

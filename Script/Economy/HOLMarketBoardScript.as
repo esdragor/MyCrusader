@@ -64,4 +64,18 @@ class UHOLMarketBoardScript : UHOLMarketSubsystem
 	{
 		return HOLTribute::Received(Sent, TaxPercent);
 	}
+
+	// One tribute on the two stocks (D851 step 5 R1): HOLTribute::Settle of the script; the C++ caller applies the stocks it returns.
+	UFUNCTION(BlueprintOverride)
+	FHOLTributeBridgeResult TributeSettle(bool bSenderHasMarket, int Sender, int Receiver, bool bReceiverInMatch, FHOLResources GiverStock, FHOLResources TakerStock, int Resource, int Sent, int TaxPercent)
+	{
+		FHOLTributeSettled Done = HOLTribute::Settle(bSenderHasMarket, Sender, Receiver, bReceiverInMatch, GiverStock, TakerStock, Resource, Sent, TaxPercent);
+		FHOLTributeBridgeResult Out;
+		Out.bOk = Done.bOk;
+		Out.Reason = Done.Reason;
+		Out.Giver = Done.Giver;
+		Out.Taker = Done.Taker;
+		Out.Received = Done.Received;
+		return Out;
+	}
 }

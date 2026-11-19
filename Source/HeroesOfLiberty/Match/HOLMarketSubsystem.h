@@ -43,6 +43,12 @@ public:
 	/** The book at rest from these settings (every price at its base): the board's answer (HOLMarket::NewBook of the script); an all-zero book (and an error logged) when the world has no script board. */
 	static HOLMarket::FBook NewBook(const UWorld* World, const HOLMarket::FSettings& Settings);
 
+	/**
+	 * One tribute on the two stocks, the script's rule (HOLTribute::Settle of Script/Economy/HOLTributeRules.as, D851 step 5 R1): the result carries both stocks
+	 * after the tribute (as given when refused). A refusal with Reason -1 (and an error logged) when the world has no script board. The caller still applies the stocks.
+	 */
+	static FHOLTributeBridgeResult SettleTribute(const UWorld* World, bool bSenderHasMarket, int32 Sender, int32 Receiver, bool bReceiverInMatch, const FHOLResources& GiverStock, const FHOLResources& TakerStock, int32 Resource, int32 Sent, int32 TaxPercent);
+
 	/** The board's answers (the native events below, i.e. the script rules in the script subclass). */
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Market")
 	FHOLMarketBridgeTrade TradeNow(const FHOLMarketBridgeSettings& Settings, const FHOLMarketBridgeBook& Book, int32 Resource, int32 Lots, bool bBuy, int32 Stock);
@@ -55,6 +61,9 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Market")
 	int32 ReceivedNow(int32 Sent, int32 TaxPercent);
+
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Market")
+	FHOLTributeBridgeResult SettleNow(bool bSenderHasMarket, int32 Sender, int32 Receiver, bool bReceiverInMatch, const FHOLResources& GiverStock, const FHOLResources& TakerStock, int32 Resource, int32 Sent, int32 TaxPercent);
 
 	/** The conversions between the C++ rule's structures and the bridge's (a missing price counts as 0 in a short array). */
 	static FHOLMarketBridgeSettings ToBridge(const HOLMarket::FSettings& Settings);
@@ -86,4 +95,9 @@ protected:
 	UFUNCTION(BlueprintNativeEvent, Category = "HeroesOfLiberty|Market")
 	int32 TributeReceived(int32 Sent, int32 TaxPercent);
 	virtual int32 TributeReceived_Implementation(int32 Sent, int32 TaxPercent);
+
+	/** The tribute applied to the two stocks. The script subclass overrides it (HOLTribute::Settle of the script); the default is inert: a refusal with Reason -1 and the stocks as given, an error logged. */
+	UFUNCTION(BlueprintNativeEvent, Category = "HeroesOfLiberty|Market")
+	FHOLTributeBridgeResult TributeSettle(bool bSenderHasMarket, int32 Sender, int32 Receiver, bool bReceiverInMatch, const FHOLResources& GiverStock, const FHOLResources& TakerStock, int32 Resource, int32 Sent, int32 TaxPercent);
+	virtual FHOLTributeBridgeResult TributeSettle_Implementation(bool bSenderHasMarket, int32 Sender, int32 Receiver, bool bReceiverInMatch, const FHOLResources& GiverStock, const FHOLResources& TakerStock, int32 Resource, int32 Sent, int32 TaxPercent);
 };

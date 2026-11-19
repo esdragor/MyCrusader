@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Match/HOLResources.h"
 #include "HOLMarketBridgeTypes.generated.h"
 
 /**
@@ -67,4 +68,26 @@ struct HEROESOFLIBERTY_API FHOLMarketBridgeTrade
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "HeroesOfLiberty|Market")
 	FHOLMarketBridgeBook Book;
+};
+
+/** What one tribute did to the two stocks (mirror of the script's FHOLTributeSettled, D851 step 5 R1): Reason is HOLTribute::Ok (0), NoMarket (1), Self (2), NoRecipient (3), NotEnough (4), BadAmount (5) or BadResource (6). */
+USTRUCT(BlueprintType)
+struct HEROESOFLIBERTY_API FHOLTributeBridgeResult
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "HeroesOfLiberty|Market")
+	bool bOk = false;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "HeroesOfLiberty|Market")
+	int32 Reason = -1;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "HeroesOfLiberty|Market")
+	FHOLResources Giver;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "HeroesOfLiberty|Market")
+	FHOLResources Taker;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "HeroesOfLiberty|Market")
+	int32 Received = 0;
 };

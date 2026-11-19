@@ -34,6 +34,19 @@ int32 UHOLMarketSubsystem::Received(const UWorld* World, const int32 Sent, const
 	return Sent;
 }
 
+FHOLTributeBridgeResult UHOLMarketSubsystem::SettleTribute(const UWorld* World, const bool bSenderHasMarket, const int32 Sender, const int32 Receiver, const bool bReceiverInMatch, const FHOLResources& GiverStock, const FHOLResources& TakerStock, const int32 Resource, const int32 Sent, const int32 TaxPercent)
+{
+	if (UHOLMarketSubsystem* Board = Find(World))
+	{
+		return Board->SettleNow(bSenderHasMarket, Sender, Receiver, bReceiverInMatch, GiverStock, TakerStock, Resource, Sent, TaxPercent);
+	}
+	UE_LOG(LogTemp, Error, TEXT("Market: no script board in this world, the tribute is not settled (Script/Economy/HOLMarketBoardScript.as did not compile?)"));
+	FHOLTributeBridgeResult Refused;
+	Refused.Giver = GiverStock;
+	Refused.Taker = TakerStock;
+	return Refused;
+}
+
 HOLMarket::FBook UHOLMarketSubsystem::NewBook(const UWorld* World, const HOLMarket::FSettings& Settings)
 {
 	if (UHOLMarketSubsystem* Board = Find(World))
@@ -100,6 +113,11 @@ FHOLMarketBridgeBook UHOLMarketSubsystem::RecoverNow(const FHOLMarketBridgeSetti
 int32 UHOLMarketSubsystem::ReceivedNow(const int32 Sent, const int32 TaxPercent)
 {
 	return TributeReceived(Sent, TaxPercent);
+}
+
+FHOLTributeBridgeResult UHOLMarketSubsystem::SettleNow(const bool bSenderHasMarket, const int32 Sender, const int32 Receiver, const bool bReceiverInMatch, const FHOLResources& GiverStock, const FHOLResources& TakerStock, const int32 Resource, const int32 Sent, const int32 TaxPercent)
+{
+	return TributeSettle(bSenderHasMarket, Sender, Receiver, bReceiverInMatch, GiverStock, TakerStock, Resource, Sent, TaxPercent);
 }
 
 FHOLMarketBridgeSettings UHOLMarketSubsystem::ToBridge(const HOLMarket::FSettings& Settings)
@@ -185,4 +203,13 @@ int32 UHOLMarketSubsystem::TributeReceived_Implementation(const int32 Sent, cons
 {
 	UE_LOG(LogTemp, Error, TEXT("Market: TributeReceived has no script implementation, the amount is returned unchanged"));
 	return Sent;
+}
+
+FHOLTributeBridgeResult UHOLMarketSubsystem::TributeSettle_Implementation(const bool bSenderHasMarket, const int32 Sender, const int32 Receiver, const bool bReceiverInMatch, const FHOLResources& GiverStock, const FHOLResources& TakerStock, const int32 Resource, const int32 Sent, const int32 TaxPercent)
+{
+	UE_LOG(LogTemp, Error, TEXT("Market: TributeSettle has no script implementation, the tribute is refused and the stocks are returned unchanged"));
+	FHOLTributeBridgeResult Refused;
+	Refused.Giver = GiverStock;
+	Refused.Taker = TakerStock;
+	return Refused;
 }
