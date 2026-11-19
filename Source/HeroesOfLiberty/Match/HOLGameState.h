@@ -459,7 +459,7 @@ private:
 	TArray<int32> TierOverrides;
 
 	/** One per slot (MaxSlots), the faction resource gauge's value, public so a client reads the same value; authority writes it (SetFactionResource). */
-	UPROPERTY()
+	UPROPERTY(Replicated)
 	TArray<int32> FactionResource;
 
 	/** The slot's faction resource gauge value as this machine has it; 0 for a slot out of the table. */
