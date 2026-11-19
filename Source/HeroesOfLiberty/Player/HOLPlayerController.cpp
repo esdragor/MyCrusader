@@ -2,6 +2,7 @@
 
 #include "Player/HOLPlayerController.h"
 #include "Player/HOLAttackCursor.h"
+#include "Player/HOLControllerReadLibrary.h"
 
 #include "Buildings/HOLBuilding.h"
 #include "Buildings/HOLBuildingTypes.h"
@@ -1127,15 +1128,7 @@ namespace UE::HeroesOfLiberty::Player
 	/** The main centre of the player (or, with bEnemy, of the first other player known here), or null. */
 	const AHOLBuilding* FindMainCentre(const AHOLPlayerController& Controller, const bool bEnemy)
 	{
-		const AHOLPlayerState* PlayerState = Controller.GetHOLPlayerState();
-		for (FHOLBuildingIterator It(Controller.GetWorld()); PlayerState && It; ++It)
-		{
-			if (It->GetTypeName() == HOLBuildingTypeNames::MainCentre && (It->GetOwnerPlayer() == PlayerState->GetPlayerIndex()) != bEnemy)
-			{
-				return *It;
-			}
-		}
-		return nullptr;
+		return UHOLControllerReadLibrary::FindMainCentre(Controller, bEnemy);
 	}
 
 	/** Development and scripted checks of the placement (J6a.3, D311), until the Peasant's grid of J6a.5. */
@@ -1872,107 +1865,6 @@ namespace UE::HeroesOfLiberty::Player
 				GameState->ReportDiplomacy();
 			}
 		}));
-
-#if !UE_BUILD_SHIPPING
-	/**
-	 * Development cheats (the user's trials of J4): console commands, sent to the server by the local players'
-	 * controllers. None of them exists in a Shipping build.
-	 */
-	/** The attack type named by a cheat's argument (melee by default: full damage on a building, D345). */
-	uint8 ParseAttackType(const TArray<FString>& Args, const int32 Index)
-	{
-		const FString Name = Args.IsValidIndex(Index) ? Args[Index].ToLower() : FString();
-		const EHOLAttackType Type = Name == TEXT("ranged") ? EHOLAttackType::Ranged : Name == TEXT("siege") ? EHOLAttackType::Siege
-			: Name == TEXT("hero") ? EHOLAttackType::Hero : EHOLAttackType::Melee;
-		return static_cast<uint8>(Type);
-	}
-
-	FAutoConsoleCommand CheatDamageNearCommand(
-		TEXT("hol.Cheat.DamageNear"),
-		TEXT("hol.Cheat.DamageNear <Amount> <Dx> <Dy> [enemy|own] [melee|ranged|siege|hero]: one attack of Amount on the building nearest the player's main centre (or an enemy's) plus (Dx, Dy) cm in its frame, its armour taken off (D345.2a; development only)"),
-		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
-		{
-			if (Args.Num() < 3)
-			{
-				UE_LOG(LogHOLMatch, Warning, TEXT("Usage: hol.Cheat.DamageNear <Amount> <Dx> <Dy> [enemy|own] [melee|ranged|siege|hero]"));
-				return;
-			}
-			const TArray<FString> PointArgs(&Args[1], FMath::Min(Args.Num() - 1, 3));
-			for (AHOLPlayerController* Controller : GetLocalControllers())
-			{
-				FVector Point;
-				if (GetPointNear(*Controller, PointArgs, Point))
-				{
-					Controller->RequestCheatDamageBuilding(Point, FCString::Atoi(*Args[0]), ParseAttackType(Args, 4));
-				}
-			}
-		}));
-
-	FAutoConsoleCommand CheatSpawnBuildingCommand(
-		TEXT("hol.Cheat.SpawnBuilding"),
-		TEXT("hol.Cheat.SpawnBuilding <Type> <Slot> <Dx> <Dy> [enemy]: a finished building of that type for that slot, free, at the player's main centre (or an enemy's) plus (Dx, Dy) cm in its frame, on the tile grid (D345.2b scenarios; development only)"),
-		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
-		{
-			if (Args.Num() < 4)
-			{
-				UE_LOG(LogHOLMatch, Warning, TEXT("Usage: hol.Cheat.SpawnBuilding <Type> <Slot> <Dx> <Dy> [enemy]"));
-				return;
-			}
-			const TArray<FString> PointArgs(&Args[2], FMath::Min(Args.Num() - 2, 3));
-			for (AHOLPlayerController* Controller : GetLocalControllers())
-			{
-				FVector Point;
-				if (GetPointNear(*Controller, PointArgs, Point))
-				{
-					Controller->RequestCheatSpawnBuilding(FName(*Args[0]), FCString::Atoi(*Args[1]), Point);
-				}
-			}
-		}));
-
-	FAutoConsoleCommand CheatDamageSelectedCommand(
-		TEXT("hol.Cheat.DamageSelected"),
-		TEXT("hol.Cheat.DamageSelected [Amount=100] [melee|ranged|siege|hero]: one attack of Amount on the selected building, its armour taken off (D345.2a; development only)"),
-		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
-		{
-			const int32 Amount = Args.IsEmpty() ? 100 : FCString::Atoi(*Args[0]);
-			for (AHOLPlayerController* Controller : GetLocalControllers())
-			{
-				if (const AHOLBuilding* Building = Controller->GetSelection())
-				{
-					Controller->RequestCheatDamageBuilding(Building->GetActorLocation(), Amount, ParseAttackType(Args, 1));
-				}
-			}
-		}));
-
-	/** For the user's trials of the combat (J7b): enemies where the camera looks, without typing a ground point. */
-	FAutoConsoleCommand SpawnHereCommand(
-		TEXT("hol.Units.SpawnHere"),
-		TEXT("hol.Units.SpawnHere [Count=5] [Type=Spearman] [Slot=1] [Radius=600]: makes units of a slot around the local camera's focus, server or solo; free and over the population cap (development only)"),
-		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
-		{
-			for (AHOLPlayerController* Controller : GetLocalControllers())
-			{
-				const AHOLRTSCamera* Camera = Controller->GetRTSCamera();
-				UWorld* World = Controller->GetWorld();
-				UHOLUnitSubsystem* Units = World && World->GetNetMode() != NM_Client ? World->GetSubsystem<UHOLUnitSubsystem>() : nullptr;
-				if (!Camera || !Units)
-				{
-					UE_LOG(LogHOLMatch, Warning, TEXT("hol.Units.SpawnHere: on the server or in solo, once the match runs"));
-					continue;
-				}
-				FHOLUnitSpawnRequest Request;
-				Request.Count = Args.Num() >= 1 ? FCString::Atoi(*Args[0]) : 5;
-				Request.TypeName = FName(Args.Num() >= 2 ? *Args[1] : TEXT("Spearman"));
-				Request.OwnerPlayer = static_cast<uint8>(Args.Num() >= 3 ? FCString::Atoi(*Args[2]) : 1);
-				Request.Radius = Args.Num() >= 4 ? FCString::Atof(*Args[3]) : 600.f;
-				const FVector Focus = Camera->GetFocus();
-				Request.Center = FVector(Focus.X, Focus.Y, 0.);
-				Units->RequestUnits(Request);
-				UE_LOG(LogHOLMatch, Display, TEXT("SpawnHere: %d %s of slot %d around (%.0f, %.0f)"), Request.Count,
-					*Request.TypeName.ToString(), Request.OwnerPlayer, Focus.X, Focus.Y);
-			}
-		}));
-#endif
 
 #if !UE_BUILD_SHIPPING
 	/**
