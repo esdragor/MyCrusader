@@ -14,7 +14,7 @@ namespace HOLControllerCommandsC2
 		Result.Add("hol.Duel.Challenge"); Result.Add("hol.Duel.Accept"); Result.Add("hol.Duel.Refuse");
 		Result.Add("hol.Diplomacy.Stance"); Result.Add("hol.Diplomacy.Vision");
 		Result.Add("hol.Signal.Post"); Result.Add("hol.Chat.Say");
-		Result.Add("hol.Spec.Start"); Result.Add("hol.Spec.Cancel");
+		Result.Add("hol.Spec.Start"); Result.Add("hol.Spec.Cancel"); Result.Add("hol.Cheat.Specialization");
 		return Result;
 	}
 
@@ -145,7 +145,18 @@ namespace HOLControllerCommandsC2
 			return Plan;
 		}
 		if (Command == "hol.Cheat.Specialization")
-			return Refused("STUB (red commit): hol.Cheat.Specialization not planned yet");
+		{
+			const FString CheatUsage = "Usage: hol.Cheat.Specialization <Tier 1..3> <Option>";
+			if (Args.Num() < 2)
+				return Refused(CheatUsage);
+			const int CheatTier = HOLControllerCommands::ParseInt(Args[0]);
+			if (CheatTier < 1 || CheatTier > 3)
+				return Refused(CheatUsage);
+			FHOLCheatPlan Plan = Accepted("ServerCheatSpecialization");
+			Plan.Ints.Add(CheatTier);
+			Plan.Ints.Add(HOLControllerCommands::ParseInt(Args[1]));
+			return Plan;
+		}
 		if (Command == "hol.Spec.Cancel")
 			return Accepted("ServerCancelSpecialization");
 		return FHOLCheatPlan();
@@ -191,6 +202,8 @@ namespace HOLControllerCommandsC2
 			Rpc.ServerStartSpecialization(Plan.Ints[0], Plan.Ints[1]);
 		else if (Plan.Route == "ServerCancelSpecialization")
 			Rpc.ServerCancelSpecialization();
+		else if (Plan.Route == "ServerCheatSpecialization")
+			Rpc.ServerCheatSpecialization(Plan.Ints[0], Plan.Ints[1]);
 		else
 			LogNotSent(Plan.Route);
 	}
@@ -235,6 +248,7 @@ void HOLSignalPostCommand(const TArray<FString>& Args) { HOLControllerCommandsC2
 void HOLChatSayCommand(const TArray<FString>& Args) { HOLControllerCommandsC2::Run("hol.Chat.Say", Args); }
 void HOLSpecStartCommand(const TArray<FString>& Args) { HOLControllerCommandsC2::Run("hol.Spec.Start", Args); }
 void HOLSpecCancelCommand(const TArray<FString>& Args) { HOLControllerCommandsC2::Run("hol.Spec.Cancel", Args); }
+void HOLCheatSpecializationCommand(const TArray<FString>& Args) { HOLControllerCommandsC2::Run("hol.Cheat.Specialization", Args); }
 
 const FConsoleCommand HOLHeroReturnConsole("hol.Hero.Return", n"HOLHeroReturnCommand");
 const FConsoleCommand HOLHeroCastConsole("hol.Hero.Cast", n"HOLHeroCastCommand");
@@ -247,3 +261,4 @@ const FConsoleCommand HOLSignalPostConsole("hol.Signal.Post", n"HOLSignalPostCom
 const FConsoleCommand HOLChatSayConsole("hol.Chat.Say", n"HOLChatSayCommand");
 const FConsoleCommand HOLSpecStartConsole("hol.Spec.Start", n"HOLSpecStartCommand");
 const FConsoleCommand HOLSpecCancelConsole("hol.Spec.Cancel", n"HOLSpecCancelCommand");
+const FConsoleCommand HOLCheatSpecializationConsole("hol.Cheat.Specialization", n"HOLCheatSpecializationCommand");

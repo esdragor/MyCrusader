@@ -1024,6 +1024,21 @@ for (FString Command : Commands)
 		HOLRpcBridge::CheatTier(this, Tier, Slot);
 	}
 
+	// Morceau 8 (NOT COMPILED): hol.Cheat.Specialization; the bridge calls AHOLPlayerController::DoCheatSpecialization (cheat guard, the board's rules, start then end at once).
+	UFUNCTION(Server)
+	void ServerCheatSpecialization(int Tier, int Option)
+	{
+		const int Sender = HOLRpcBridge::GetSenderSlot(this);
+		const int Refusal = HOLRpc::CheatRefusal(!HOLRpcBridge::CheatRefused(this, "specialization"), Sender);
+		if (Refusal != 0)
+		{
+			Log(n"LogHOLMatch", f"RpcCheat: specialization refused ({Refusal}) for sender slot {Sender}");
+			return;
+		}
+		Log(n"LogHOLMatch", f"RpcCheat: specialization received by the server: sender slot {Sender}, tier {Tier} option {Option}");
+		HOLRpcBridge::CheatSpecialization(this, Tier, Option);
+	}
+
 	UFUNCTION(Server)
 	void ServerCheatUnitSpeed(float Scale)
 	{

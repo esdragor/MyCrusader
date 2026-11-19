@@ -239,6 +239,13 @@ bool UHOLRpcBridgeLibrary::CheatTier(AActor* RpcActor, const int32 Tier, const i
 	return Controller != nullptr;
 }
 
+bool UHOLRpcBridgeLibrary::CheatSpecialization(AActor* RpcActor, const int32 Tier, const int32 Option)
+{
+	AHOLPlayerController* Controller = HOLRpcBridgeL1_Haldir1117o::OwnerController(RpcActor);
+	if (Controller) { Controller->DoCheatSpecialization(Tier, Option); }
+	return Controller != nullptr;
+}
+
 bool UHOLRpcBridgeLibrary::CheatUnitSpeed(AActor* RpcActor, const double Scale)
 {
 	AHOLPlayerController* Controller = HOLRpcBridgeL1_Haldir1117o::OwnerController(RpcActor);
