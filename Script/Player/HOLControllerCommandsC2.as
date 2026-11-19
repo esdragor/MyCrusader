@@ -167,7 +167,13 @@ namespace HOLControllerCommandsC2
 		if (Plan.Route == "ServerReturnHero")
 			Rpc.ServerReturnHero();
 		else if (Plan.Route == "ServerHeroAbility")
-			Rpc.ServerHeroAbility(Plan.Ints[0] == 1 ? EHOLHeroAbility::Banner : EHOLHeroAbility::CloseRanks, FVector(Plan.Dx, Plan.Dy, 0.0));
+		{
+			FVector_NetQuantize AbilityLocation;
+			AbilityLocation.X = Plan.Dx;
+			AbilityLocation.Y = Plan.Dy;
+			AbilityLocation.Z = 0.0;
+			Rpc.ServerHeroAbility(Plan.Ints[0] == 1 ? EHOLHeroAbility::Banner : EHOLHeroAbility::CloseRanks, AbilityLocation);
+		}
 		else if (Plan.Route == "ServerDuelChallenge")
 			Rpc.ServerDuelChallenge(Plan.Ints[0]);
 		else if (Plan.Route == "ServerDuelAnswer")
