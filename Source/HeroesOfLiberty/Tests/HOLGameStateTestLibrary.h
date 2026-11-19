@@ -245,4 +245,82 @@ public:
 	/** AHOLPlayerState::GetHeroPrivate().XP (0 for null). */
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|GameStateTest")
 	static int32 GetPlayerHeroXP(const AHOLPlayerState* Player);
-};
+
+	/** AHOLGameState::GetReasonName(EHOLDefeatReason(Reason)) as a string ("Disconnected" for 5). Script: HOLGameStateTest::GetReasonName. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|GameStateTest")
+	static FString GetReasonName(int32 Reason);
+
+	/** APlayerState::IsABot() (false for null). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|GameStateTest")
+	static bool IsABot(const AHOLPlayerState* Player);
+
+	/** APlayerState::IsOnlyASpectator() (false for null). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|GameStateTest")
+	static bool IsOnlyASpectator(const AHOLPlayerState* Player);
+
+	/** AHOLPlayerState::GetTechnologies().Has(Technology) (false for null). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|GameStateTest")
+	static bool HasTechnology(const AHOLPlayerState* Player, FName Technology);
+
+	/** AHOLPlayerState::GetTechnologies().Done.Num() (0 for null). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|GameStateTest")
+	static int32 GetTechnologyCount(const AHOLPlayerState* Player);
+
+	/** AHOLPlayerState::GetTechnologyBonusPercent(HOLTechnology::GetGatherStat(EHOLResource(Resource))) (0 Wood, 1 Food ... as EHOLResource). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|GameStateTest")
+	static int32 GetGatherBonusPercent(const AHOLPlayerState* Player, int32 Resource);
+
+	/** UHOLTechnologySettings::FindTechnology(Technology) != nullptr (the technology table is loaded and has the row). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|GameStateTest")
+	static bool IsTechnologyInTable(FName Technology);
+
+	/** FHOLDisconnectRules::FormatAbsentLine(Name, SecondsLeft, WindowSeconds).ToString() (WindowSeconds 0: no cap). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|GameStateTest")
+	static FString FormatAbsentLine(const FString& Name, double SecondsLeft, double WindowSeconds);
+
+	/** FHOLDisconnectRules::FormatBackLine(Name).ToString(). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|GameStateTest")
+	static FString FormatBackLine(const FString& Name);
+
+	/** FHOLDisconnectRules::KeepsSlot(Config from Json, ...). False if the JSON fails. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|GameStateTest")
+	static bool RulesKeepsSlot(const FString& Json, int32 Slot, bool bWaitingForPlayers, bool bMatchOver, bool bSlotDefeated);
+
+	/** FHOLDisconnectRules::IsWindowOver(LeftAt, Now, WindowSeconds). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|GameStateTest")
+	static bool RulesIsWindowOver(double LeftAt, double Now, double WindowSeconds);
+
+	/** FHOLDisconnectRules::GetSecondsLeft(LeftAt, Now, WindowSeconds). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|GameStateTest")
+	static double RulesGetSecondsLeft(double LeftAt, double Now, double WindowSeconds);
+
+	/** FHOLDisconnectRules::GetWindowEnd(Config from Json, Slot) as int: 0 Defeat, 1 AIHolds (0 if the JSON fails). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|GameStateTest")
+	static int32 RulesGetWindowEnd(const FString& Json, int32 Slot);
+
+	/** As RulesGetWindowEnd, with the configuration's Mode set to EHOLMatchMode(Mode) after the JSON is read (0 Standard, 1 Diplomacy: the JSON setters do not carry it). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|GameStateTest")
+	static int32 RulesGetWindowEndInMode(const FString& Json, int32 Slot, int32 Mode);
+
+	/** FHOLDisconnectRules::DefaultWindowSeconds: the window by default, in seconds. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|GameStateTest")
+	static double RulesGetDefaultWindowSeconds();
+
+	/** FHOLDisconnectRules::MayReturn(ESeatState(State), bMatchOver). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|GameStateTest")
+	static bool RulesMayReturn(int32 State, bool bMatchOver);
+
+	/** FHOLDisconnectRules::FindAbsent on a list built from Slots (one FHOLAbsentSlot per entry): the index, -1 if absent from the list. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|GameStateTest")
+	static int32 RulesFindAbsent(const TArray<int32>& Slots, int32 Slot);
+
+	/** FHOLDisconnectRules::GetExpired on a list of (Slots[i], LeftAts[i]) (bWindowOver false): the expired slots in order; the shorter array rules. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|GameStateTest")
+	static TArray<int32> RulesGetExpired(const TArray<int32>& Slots, const TArray<double>& LeftAts, double Now, double WindowSeconds);
+
+	/** FHOLDisconnectRules::GetStockOnTaking(bHasAbsent ? an absent slot holding AbsentStock : nullptr, Starting). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|GameStateTest")
+	static FHOLResources RulesGetStockOnTaking(bool bHasAbsent, const FHOLResources& AbsentStock, const FHOLResources& Starting);
+	/** AHOLPlayerState::SetMatchSlot(Slot, ColorIndex), for a player state spawned by HOLTestWorld::SpawnPlayerStateNoSlot. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|GameStateTest")
+	static void SetPlayerMatchSlot(AHOLPlayerState* Player, int32 Slot, int32 ColorIndex);};

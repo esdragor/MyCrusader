@@ -1,6 +1,6 @@
 // MIG-C-CommandGrid, lot G1 (SAURON-1119t, D830, D836, D839): the CONTENT of the 3 x 4 command grid, first half, in script. NOT COMPILED when written.
 // Port of Source/HeroesOfLiberty/Player/HOLCommandGrid.cpp lines 38-237 (GetCommand, GetOrder, the Market's trades, the ages, the cursor), same tables,
-// same decisions. The C++ file is NOT touched: until the bridge and the green agreement test (Script/Tests/HOLCommandGridRules_Test.as) two copies exist.
+// same decisions. The C++ bodies are gone (lot L3): HOLCommandGrid.cpp keeps only the bridge to this rule (UHOLCommandGridBoard), no C++ twin.
 // The input is FHOLGridContextView and the output FHOLGridCommandView (the USTRUCTs of UHOLCommandGridReadLibrary): nothing else is called, except
 //   - HOLCommandGridRead::GetSpecializationCell: the cell of the first specialization option is the cvar hol.UI.SpecializationCell, registered in C++
 //     (HOLCommandGrid.cpp, default 6): a setting, not a rule; read through the library until the cvar moves (TYPES_A_EXPOSER, see the report);
@@ -157,6 +157,7 @@ namespace HOLCommandGridRules
 				}
 				return Result;
 			}
+			TArray<FName> ResearchCells = GetResearchLineCells(Context.Researches, Context.Researched);
 			int FirstOption = HOLCommandGridRead::GetSpecializationCell(0);
 			if (Cell < Context.Produces.Num())
 			{
@@ -174,11 +175,11 @@ namespace HOLCommandGridRules
 				Result.Command = bRunning ? EHOLGridCommandKind::CancelSpecialization : EHOLGridCommandKind::Specialize;
 				Result.RemainingMs = bRunning ? Context.SpecializationRemainingMs : 0;
 			}
-			else if (Cell >= ResearchFirstCell && Cell - ResearchFirstCell < Context.Researches.Num())
+			else if (Cell >= ResearchFirstCell && Cell < NumCells && Cell - ResearchFirstCell < ResearchCells.Num())
 			{
-				// The technology row (W X C V, D30): the building's technologies in table order, after its units.
+				// The technology row (W X C V, D30, D856): ONE cell per LINE of technologies, the next level to research of that line, after its units.
 				Result.Command = EHOLGridCommandKind::Research;
-				Result.TypeName = Context.Researches[Cell - ResearchFirstCell];
+				Result.TypeName = ResearchCells[Cell - ResearchFirstCell];
 			}
 			return Result;
 		}
@@ -199,6 +200,46 @@ namespace HOLCommandGridRules
 			}
 		}
 		return Result;
+	}
+
+	// D856 (Retours\Q-forge-technologies.md, answer A): the research row shows one cell per LINE of technologies. A line is a technology
+	// with no Requires and the technologies chained to it by the Requires column (I <- II <- III), lines in the order of the table
+	// (`Researches`). Each cell shows the next level not yet researched of its line (`Researched`: what the owner has done); a line
+	// with every level done keeps its last level (the grid then reads it as done). The table's own order of the levels is not assumed.
+	TArray<FName> GetResearchLineCells(const TArray<FName>& Researches, const TArray<FName>& Researched)
+	{
+		TArray<FName> Cells;
+		FName NoName;
+		for (int Head = 0; Head < Researches.Num(); Head++)
+		{
+			if (HOLCommandGridRead::GetTechnologyRequires(Researches[Head]) != NoName)
+			{
+				continue;
+			}
+			FName Shown = Researches[Head];
+			for (int Step = 0; Step < Researches.Num(); Step++)
+			{
+				if (!Researched.Contains(Shown))
+				{
+					break;
+				}
+				bool bAdvanced = false;
+				for (int Next = 0; Next < Researches.Num() && !bAdvanced; Next++)
+				{
+					if (HOLCommandGridRead::GetTechnologyRequires(Researches[Next]) == Shown)
+					{
+						Shown = Researches[Next];
+						bAdvanced = true;
+					}
+				}
+				if (!bAdvanced)
+				{
+					break;
+				}
+			}
+			Cells.Add(Shown);
+		}
+		return Cells;
 	}
 
 	// GetOrder (cpp 168-183): the orders' panel left of the grid: Q attack-move (soldiers, no king alone), S stop, V hold, D deploy / pack.

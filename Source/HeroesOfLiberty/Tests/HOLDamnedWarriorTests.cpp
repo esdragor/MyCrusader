@@ -13,7 +13,6 @@
 #include "Simulation/HOLUnitAbilityRules.h"
 #include "Simulation/HOLRageVisual.h"
 #include "Commands/HOLCommandSubsystem.h"
-#include "Player/HOLCommandGrid.h"
 #include "Simulation/HOLCombatProcessor.h"
 #include "Simulation/HOLSimulationFragments.h"
 #include "Simulation/HOLSimulationSettings.h"
@@ -225,14 +224,8 @@ bool FHOLDamnedWarriorRageTest::RunTest(const FString& Parameters)
 			TestTrue(TEXT("without the rage the warrior strikes the Peasant (1.5 s apart)"), Calm.Hits >= 4);
 			TestEqual(TEXT("... and it costs him nothing"), Calm.WarriorLost, 0.f, 0.01f);
 
-			// L4 step 5 (f): the player's own route, as the button makes it: the grid offers the button to a selection with a Damned
-			// Warrior (and not to another), the click queues the order (ServerCastRage -> IssueRageOrder), the simulation casts it.
-			FHOLGridContext Selection;
-			Selection.bOwnUnits = true;
-			Selection.bRageUnit = true;
-			TestTrue(TEXT("the grid shows the rage button for a selection with a Damned Warrior"), HOLCommandGrid::GetCommand(Selection, HOLCommandGrid::GetRageCell()).Command == EHOLGridCommand::NecroticRage);
-			Selection.bRageUnit = false;
-			TestTrue(TEXT("... and none for another selection"), HOLCommandGrid::GetCommand(Selection, HOLCommandGrid::GetRageCell()).Command != EHOLGridCommand::NecroticRage);
+			// L4 step 5 (f): the player's own route, as the button makes it: the click queues the order (ServerCastRage -> IssueRageOrder), the simulation
+			// casts it. (That the grid offers the button to a selection with a Damned Warrior, and not to another: script test Test_CGRageButton.)
 			UHOLCommandSubsystem* Commands = World->GetSubsystem<UHOLCommandSubsystem>();
 			if (TestNotNull(TEXT("commands"), Commands))
 			{

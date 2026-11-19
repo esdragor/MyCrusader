@@ -79,28 +79,27 @@ namespace HOLControllerCommands
 				Sign = -1.0;
 			Start = 1;
 		}
+		// The digits are gathered as one whole number and divided once by the power of ten: 0.75 is then exactly the 0.75 of the C++ Atod
+		// (adding 7 * 0.1 and 5 * 0.01 gave 0.7500000000000001, seen red by Test_ControllerCommandsC10aArguments on 2026-11-19).
 		double Value = 0.0;
-		double Scale = 0.0;
+		double Divisor = 1.0;
+		bool bFraction = false;
 		for (int I = Start; I < Text.Len(); I++)
 		{
 			const FString Character = Text.Mid(I, 1);
-			if (Character == "." && Scale == 0.0)
+			if (Character == "." && !bFraction)
 			{
-				Scale = 0.1;
+				bFraction = true;
 				continue;
 			}
 			const int Digit = DigitOf(Character);
 			if (Digit < 0)
 				break;
-			if (Scale == 0.0)
-				Value = Value * 10.0 + Digit;
-			else
-			{
-				Value += Digit * Scale;
-				Scale *= 0.1;
-			}
+			Value = Value * 10.0 + Digit;
+			if (bFraction)
+				Divisor *= 10.0;
 		}
-		return Sign * Value;
+		return Sign * Value / Divisor;
 	}
 
 	// FCString::Atoi: the leading integer (the part after a point is dropped).

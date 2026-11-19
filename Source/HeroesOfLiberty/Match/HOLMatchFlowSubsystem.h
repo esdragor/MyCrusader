@@ -41,6 +41,17 @@ public:
 	static int32 AskVisionGate(const UWorld* World, bool bAuthority, bool bDiplomacyMode);
 	/** 1 yes, 0 no, -1 no board. */
 	static int32 AskEvaluateMatchEnd(const UWorld* World, bool bAnnounce, bool bFormed);
+	/** S2a: 1 open, 0 shut, -1 no board (HOLMatchFlow::DefeatGateOpen of the script, the gate of AHOLGameState::DefeatSlot). */
+	static int32 AskDefeatGate(const UWorld* World, bool bAuthority, bool bMatchOver, bool bReasonNone, bool bSlotValid, bool bDefeated, bool bCampOccupied);
+	/** S2c: 1 open, 0 shut, -1 no board (HOLMatchFlow::FallGateOpen, the gate of AHOLGameState::HandleForumFall). Game thread only. */
+	static int32 AskFallGate(const UWorld* World, bool bAuthority, bool bPrimaryForum, bool bSlotValid, bool bDefeated, bool bPendingForum, bool bCampOccupied);
+	/** S2c: 1 open, 0 shut, -1 no board (HOLMatchFlow::KingGateOpen, the gate of AHOLGameState::HandleKingDeath). Game thread only. */
+	static int32 AskKingGate(const UWorld* World, bool bAuthority, bool bMatchOver, bool bSlotValid, bool bDefeated, bool bPendingKing, bool bCampOccupied);
+	/** S2a: the winner mask 0..255 when the match is over, MatchNotOver when not, -1 no board (HOLMatchFlow::MatchEndVerdict). */
+	static int32 AskMatchEnd(const UWorld* World, const TArray<int32>& States, const TArray<int32>& Teams, int32 DefeatedMask, bool bDiplomacyMode, int32 AlliedWinnerMask);
+
+	/** The script's HOLMatchFlow::MatchNotOver() (the verdict of a match that goes on; a winner mask is below it). */
+	static constexpr int32 MatchNotOver = 256;
 
 	virtual bool ShouldCreateSubsystem(UObject* Outer) const override;
 
@@ -60,6 +71,18 @@ protected:
 	int32 VisionGateAnswer(bool bAuthority, bool bDiplomacyMode);
 	UFUNCTION(BlueprintNativeEvent, Category = "HeroesOfLiberty|MatchFlow")
 	int32 EvaluateEndAnswer(bool bAnnounce, bool bFormed);
+	UFUNCTION(BlueprintNativeEvent, Category = "HeroesOfLiberty|MatchFlow")
+	int32 DefeatGateAnswer(bool bAuthority, bool bMatchOver, bool bReasonNone, bool bSlotValid, bool bDefeated, bool bCampOccupied);
+	UFUNCTION(BlueprintNativeEvent, Category = "HeroesOfLiberty|MatchFlow")
+	int32 FallGateAnswer(bool bAuthority, bool bPrimaryForum, bool bSlotValid, bool bDefeated, bool bPendingForum, bool bCampOccupied);
+	UFUNCTION(BlueprintNativeEvent, Category = "HeroesOfLiberty|MatchFlow")
+	int32 KingGateAnswer(bool bAuthority, bool bMatchOver, bool bSlotValid, bool bDefeated, bool bPendingKing, bool bCampOccupied);
+	virtual int32 FallGateAnswer_Implementation(bool bAuthority, bool bPrimaryForum, bool bSlotValid, bool bDefeated, bool bPendingForum, bool bCampOccupied);
+	virtual int32 KingGateAnswer_Implementation(bool bAuthority, bool bMatchOver, bool bSlotValid, bool bDefeated, bool bPendingKing, bool bCampOccupied);
+	UFUNCTION(BlueprintNativeEvent, Category = "HeroesOfLiberty|MatchFlow")
+	int32 MatchEndAnswer(const TArray<int32>& States, const TArray<int32>& Teams, int32 DefeatedMask, bool bDiplomacyMode, int32 AlliedWinnerMask);
+	virtual int32 DefeatGateAnswer_Implementation(bool bAuthority, bool bMatchOver, bool bReasonNone, bool bSlotValid, bool bDefeated, bool bCampOccupied);
+	virtual int32 MatchEndAnswer_Implementation(const TArray<int32>& States, const TArray<int32>& Teams, int32 DefeatedMask, bool bDiplomacyMode, int32 AlliedWinnerMask);
 	virtual int32 PauseAnswer_Implementation(bool bSolo, int32 PausedBySlot, int32 PausesLeft, bool bRequesterInMatch);
 	virtual int32 ResumeAnswer_Implementation(bool bSolo, int32 PausedBySlot, double PausedAtSeconds, int32 RequesterSlot, bool bRequesterInMatch, double Now);
 	virtual int32 PausesAfterPause_Implementation(bool bSolo, int32 PausesLeft);

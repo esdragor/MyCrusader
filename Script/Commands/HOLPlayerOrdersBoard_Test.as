@@ -120,3 +120,61 @@ void Test_PlayerOrdersBoardAgreesAttackKinds(FUnitTest& T)
 	T.AssertTrue(A[1].Kind == n"AttackMove" && A[1].Kind == B[1].Kind, "second: AttackMove");
 	T.AssertTrue(A[1].bQueue, "Shift kept on the attack-move");
 }
+
+// ---------------- P2 agreement tests: the bridge (Answer*) and the direct rule leave the same orders. NOT COMPILED. ----------------
+// Red planned (P2): in HOLPlayerOrdersBoard.as, AnswerPlace: pass an empty TArray instead of UnitIds: Test_PlayerOrdersBoardAgreesPlace fails on the number of builders.
+
+void Test_PlayerOrdersBoardAgreesPlace(FUnitTest& T)
+{
+	UHOLCommandSubsystem ViaBridge = HOLCommandScript::MakeDetachedForTest();
+	UHOLCommandSubsystem Direct = HOLCommandScript::MakeDetachedForTest();
+	FVector Point(700.0, 800.0, 0.0);
+	int Answer = HOLPlayerOrdersBoard::AnswerPlace(ViaBridge, 0, n"House", Point, POBUnits(3), true);
+	bool bDone = HOLPlayerOrders::Place(Direct, 0, n"House", Point, POBUnits(3), true);
+	T.AssertEquals(POBFromBool(bDone), Answer, "place: same verdict");
+	TArray<FHOLScriptOrderRead> A = HOLCommandScript::ConsumeConstructions(ViaBridge);
+	TArray<FHOLScriptOrderRead> B = HOLCommandScript::ConsumeConstructions(Direct);
+	T.AssertEquals(1, A.Num(), "place: one order through the bridge");
+	T.AssertEquals(B.Num(), A.Num(), "place: same number of orders");
+	T.AssertTrue(A[0].TypeName == B[0].TypeName, "place: same type");
+	T.AssertEquals(B[0].UnitIds.Num(), A[0].UnitIds.Num(), "place: same builders");
+	T.AssertTrue(A[0].bQueue == B[0].bQueue, "place: same Shift flag");
+	T.AssertEquals(0, HOLPlayerOrdersBoard::AnswerPlace(ViaBridge, -1, n"House", Point, POBUnits(1), false), "place: slot -1 answers 0, not -1");
+}
+
+void Test_PlayerOrdersBoardAgreesGatherAndDropOff(FUnitTest& T)
+{
+	UHOLCommandSubsystem ViaBridge = HOLCommandScript::MakeDetachedForTest();
+	UHOLCommandSubsystem Direct = HOLCommandScript::MakeDetachedForTest();
+	FVector Spot(30.0, 40.0, 0.0);
+	T.AssertEquals(1, HOLPlayerOrdersBoard::AnswerGather(ViaBridge, 1, POBUnits(2), 4, false, true, Spot), "gather accepted through the bridge");
+	HOLPlayerOrders::Gather(Direct, 1, POBUnits(2), 4, false, true, Spot);
+	AHOLBuilding NoBuilding = nullptr;
+	T.AssertEquals(1, HOLPlayerOrdersBoard::AnswerDropOff(ViaBridge, 1, POBUnits(2), NoBuilding, Spot, false, false), "drop-off (not a deposit) accepted through the bridge");
+	HOLPlayerOrders::DropOff(Direct, 1, POBUnits(2), NoBuilding, Spot, false, false);
+	TArray<FHOLScriptOrderRead> GA = HOLCommandScript::ConsumeGathers(ViaBridge);
+	TArray<FHOLScriptOrderRead> GB = HOLCommandScript::ConsumeGathers(Direct);
+	T.AssertEquals(1, GA.Num(), "one gather through the bridge");
+	T.AssertEquals(GB.Num(), GA.Num(), "same number of gathers as the direct rule");
+	T.AssertEquals(GB[0].SourceIndex, GA[0].SourceIndex, "same source");
+	TArray<FHOLScriptOrderRead> MA = HOLCommandScript::ConsumeMoves(ViaBridge);
+	TArray<FHOLScriptOrderRead> MB = HOLCommandScript::ConsumeMoves(Direct);
+	T.AssertEquals(1, MA.Num(), "one move through the bridge");
+	T.AssertEquals(MB.Num(), MA.Num(), "same number of moves as the direct rule");
+	T.AssertTrue(MA[0].bChain && MA[0].bChain == MB[0].bChain, "the drop-off walk keeps the chain of the player's order");
+}
+
+void Test_PlayerOrdersBoardAgreesBuildingRefusals(FUnitTest& T)
+{
+	UHOLCommandSubsystem ViaBridge = HOLCommandScript::MakeDetachedForTest();
+	AHOLBuilding NoBuilding = nullptr;
+	FVector Spot(0.0, 0.0, 0.0);
+	T.AssertEquals(0, HOLPlayerOrdersBoard::AnswerBuild(ViaBridge, 0, POBUnits(1), NoBuilding, false), "build: refused is 0, not -1");
+	T.AssertEquals(0, HOLPlayerOrdersBoard::AnswerQueueProduction(ViaBridge, 0, NoBuilding, n"Spearman"), "production: refused");
+	T.AssertEquals(0, HOLPlayerOrdersBoard::AnswerMarketTrade(ViaBridge, 0, NoBuilding, 0, 1, false), "market: refused");
+	T.AssertEquals(0, HOLPlayerOrdersBoard::AnswerSetRally(ViaBridge, 0, NoBuilding, Spot, -1, false, NoBuilding, false), "rally: refused");
+	T.AssertEquals(0, HOLPlayerOrdersBoard::AnswerGarrison(ViaBridge, 0, POBUnits(1), NoBuilding), "garrison: refused");
+	T.AssertEquals(0, HOLPlayerOrdersBoard::AnswerUngarrisonAll(ViaBridge, 0, NoBuilding), "ungarrison: refused");
+	T.AssertEquals(0, HOLPlayerOrdersBoard::AnswerGather(ViaBridge, 0, POBUnits(201), 0, false, false, Spot), "gather: 201 refused");
+	T.AssertEquals(0, HOLCommandScript::ConsumeProductions(ViaBridge).Num(), "nothing queued");
+}

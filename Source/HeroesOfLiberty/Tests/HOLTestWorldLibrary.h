@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "Buildings/HOLBuildingTypes.h"
 #include "Kismet/BlueprintFunctionLibrary.h"
+#include "Match/HOLGameState.h"
 #include "Match/HOLResources.h"
 #include "Subsystems/WorldSubsystem.h"
 #include "UObject/Object.h"
@@ -14,6 +15,7 @@ class AHOLBuilding;
 class AHOLGameState;
 class AHOLPlayerState;
 class UWorld;
+class UHOLAIBrainSubsystem;
 
 /**
  * Handle of the world UHOLTestWorldLibrary::CreateTestWorld makes (D853, lot 1 of PLAN-TESTS-1119): the script keeps this object, never the UWorld
@@ -39,6 +41,34 @@ public:
 	TObjectPtr<UWorld> World = nullptr;
 };
 
+/**
+ * Counts the two events of a game state that are plain C++ delegates (not exposed to the script): OnSlotDefeated and OnMatchOver (D853, D839: a
+ * binding to expose). Made by UHOLTestWorldLibrary::CountVictoryEvents; the script keeps it (the delegates hold it weakly).
+ */
+UCLASS()
+class HEROESOFLIBERTY_API UHOLVictoryEventCounter : public UObject
+{
+	GENERATED_BODY()
+
+public:
+	/** C++ side only: starts counting the events of State. */
+	void Bind(AHOLGameState* State);
+
+	/** How many OnSlotDefeated were broadcast since Bind. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
+	int32 GetDefeats() const { return Defeats; }
+
+	/** How many OnMatchOver were broadcast since Bind. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
+	int32 GetEnds() const { return Ends; }
+
+private:
+	void HandleDefeated(int32 Slot, EHOLDefeatReason Reason) { ++Defeats; }
+	void HandleOver() { ++Ends; }
+
+	int32 Defeats = 0;
+	int32 Ends = 0;
+};
 /**
  * World harness of the tests for Angelscript (namespace HOLTestWorld there, D839: a binding exposed to the script, a test harness; D853: the C++
  * tests of a world without Mass are ported to script). Same world as the C++ tests (UWorld::CreateWorld(EWorldType::Game, false), its context,
@@ -181,4 +211,249 @@ public:
 	/** How many AHOLBuilding of TypeName owned by Owner the world holds (TActorIterator, as HOLAIBuildOrdersTests.cpp CountBuildings). */
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
 	static int32 CountBuildings(UHOLTestWorldHandle* TestWorld, FName TypeName, int32 Owner);
+
+	/** Like SpawnPlayerState but the slot is NOT set (what the C++ Disconnect tests do: SetMatchSlot comes later, HOLGameStateTest::SetPlayerMatchSlot). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
+	static AHOLPlayerState* SpawnPlayerStateNoSlot(UHOLTestWorldHandle* TestWorld, const FString& Name);
+
+	/** AHOLGameState::FindLiveHolder(World, Slot, Except); Except may be null. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
+	static AHOLPlayerState* FindLiveHolder(UHOLTestWorldHandle* TestWorld, int32 Slot, const AHOLPlayerState* Except);
+
+	/** AHOLGameState::GetSlotStock(World, Slot, Out): whether a stock is read (a live holder, an absent record or a held bot). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
+	static bool HasSlotStock(UHOLTestWorldHandle* TestWorld, int32 Slot);
+
+	/** The stock AHOLGameState::GetSlotStock reads (zero if HasSlotStock is false). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
+	static FHOLResources GetSlotStock(UHOLTestWorldHandle* TestWorld, int32 Slot);
+
+	/** UHOLAIBrainSubsystem::Find(World): the script brain (UHOLAIBrain), null if none in this world. Its ThinkNow, IsHeld, GetThinkingSlots, SetHeld, GetAISlots are UFUNCTIONs already. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
+	static UHOLAIBrainSubsystem* GetAIBrain(UHOLTestWorldHandle* TestWorld);
+
+	/** AHOLBuilding::GetProductionQueue().Num() (0 for null). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
+	static int32 GetProductionQueueCount(const AHOLBuilding* Building);
+
+	/** The TypeName of item Index of the building's production queue (NAME_None out of range). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
+	static FName GetProductionQueueName(const AHOLBuilding* Building, int32 Index);
+
+	/** Item Index of the queue has started (StartStep != NotStarted); false out of range. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
+	static bool IsProductionQueueItemStarted(const AHOLBuilding* Building, int32 Index);
+
+	/** AHOLBuilding::GetConstructionState() as int (EHOLConstructionState; 0 for null). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
+	static int32 GetBuildingConstructionState(const AHOLBuilding* Building);
+
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
+	static int64 GetBuildingConstructionWork(const AHOLBuilding* Building);
+
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
+	static int64 GetBuildingTotalWork(const AHOLBuilding* Building);
+
+	/** HOLConstruction::GetCancelRefund(Type->Cost, State, Work, TotalWork) of the building (zero if null or no type row). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
+	static FHOLResources GetBuildingCancelRefund(const AHOLBuilding* Building);
+
+	/** UHOLGatherProcessor::DepositLoad(World, Owner, Load{Resource as EHOLResource, Amount}, Out): the amount deposited (the load is emptied: Amount minus it stays). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
+	static int32 DepositLoad(UHOLTestWorldHandle* TestWorld, int32 Owner, int32 Resource, int32 Amount);
+
+	/** As DepositLoad, and OutRemaining is the load's Amount left after the deposit (what the C++ Disconnect test reads: 0 once emptied). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
+	static int32 DepositLoadWithRemaining(UHOLTestWorldHandle* TestWorld, int32 Owner, int32 Resource, int32 Amount, int32& OutRemaining);
+
+	// ---- Lot D853 d (CELEBORN-1119ba): the readings the Disconnect tests still kept in C++ ----
+
+	/** UHOLConstructionSubsystem::DestroyBuilding(*Building): the combat's path (a foundation gives its share of the cost back, a queue its costs). Not the plain Destroy of DestroyBuilding. Nothing for null. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
+	static void DestroyBuildingWithRefund(AHOLBuilding* Building);
+
+	/** UHOLAIToolsLibrary::GetSlotLevel(World, Slot): EHOLAIDifficulty as an int of an AI slot (a held seat reads Normal = 1), -1 for a slot that is not an AI. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
+	static int32 GetSlotLevel(UHOLTestWorldHandle* TestWorld, int32 Slot);
+
+	/** UHOLAIOrderLibrary::IssueAIProduceOrder(World, Slot, BuildingLocation, TypeName) with the test world as the world context (the script's own context does not reach it). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
+	static bool IssueAIProduceOrder(UHOLTestWorldHandle* TestWorld, int32 Slot, FVector BuildingLocation, FName TypeName);
+
+	/** UHOLAITechnologyLibrary::ReadAITechnologiesDone(World, Slot, Out): the technologies the slot has researched, in order (empty if none). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
+	static TArray<FName> GetAITechnologiesDone(UHOLTestWorldHandle* TestWorld, int32 Slot);
+
+	/** How many AHOLPlayerState of the game state's PlayerArray have this PlayerIndex (what the C++ tests count: one player state for the seat). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
+	static int32 CountPlayerStatesOfSlot(UHOLTestWorldHandle* TestWorld, int32 Slot);
+
+	/** AHOLPlayerState::GetPlayerIndex() (-1 for null). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
+	static int32 GetPlayerStateSlot(const AHOLPlayerState* Player);
+
+	/** Starts keeping every line the game logs (GLog), for CountCapturedLogLines; a capture already running is ended first. End it with EndLogCapture. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
+	static void BeginLogCapture();
+
+	/** How many captured lines contain both A and B (the pending threaded log is flushed first). 0 without a capture. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
+	static int32 CountCapturedLogLines(const FString& A, const FString& B);
+
+	/** Stops the capture and drops its lines. Nothing without a capture. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
+	static void EndLogCapture();
+
+	// ---- Lot D853 e (CELEBORN-1119ca): the AI build orders (HOLAIBuildOrdersTests.cpp). Thin wrappers: the test world is the world context ----
+
+	/** UHOLAIOrderLibrary::CheckAIPlacement(World, Slot, TypeName, Point): 0 = placeable, an EHOLPlacementRefusal otherwise, -1 for a type nobody builds. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
+	static int32 CheckAIPlacement(UHOLTestWorldHandle* TestWorld, int32 Slot, FName TypeName, FVector Point);
+
+	/** UHOLAIOrderLibrary::FindAIPlacement(World, Slot, TypeName, Centre, MaxRings, OutPoint). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
+	static bool FindAIPlacement(UHOLTestWorldHandle* TestWorld, int32 Slot, FName TypeName, FVector Centre, int32 MaxRings, FVector& OutPoint);
+
+	/** UHOLAIOrderLibrary::FindAIFarmBlock(World, Slot, Centre, MaxRings, OutMill, OutFarms). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
+	static bool FindAIFarmBlock(UHOLTestWorldHandle* TestWorld, int32 Slot, FVector Centre, int32 MaxRings, FVector& OutMill, TArray<FVector>& OutFarms);
+
+	/** UHOLAIOrderLibrary::IssueAIPlaceOrder(World, Slot, TypeName, Point, {} units, no queue) as the C++ test calls it. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
+	static bool IssueAIPlaceOrder(UHOLTestWorldHandle* TestWorld, int32 Slot, FName TypeName, FVector Point);
+
+	/** UHOLAIOrderLibrary::IssueAISetRallyOrder(World, Slot, BuildingLocation, Point) (source index -1). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
+	static bool IssueAISetRallyOrder(UHOLTestWorldHandle* TestWorld, int32 Slot, FVector BuildingLocation, FVector Point);
+
+	/** static_cast<int32>(EHOLPlacementRefusal::Building): the refusal a spot on a building gets (the enum is not exposed to the script). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
+	static int32 GetPlacementRefusalBuilding();
+
+	/** Whether the footprints (UHOLConstructionSubsystem::SnapFootprint of the mill row at Mill and of the farm row at each farm) overlap each other (HOLConstruction::Overlaps, all pairs). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
+	static bool FarmBlockOverlaps(FVector Mill, const TArray<FVector>& Farms);
+
+	/** HOLConstruction::TryPay(copy of Stock, UHOLBuildingSettings::FindType(TypeName)->Cost): whether the stock covers it; OutAfter is the stock after paying. False if no type row. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
+	static bool PayBuildingCost(FName TypeName, const FHOLResources& Stock, FHOLResources& OutAfter);
+
+	/** AHOLBuilding::HasRallyPoint() (false for null). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
+	static bool HasBuildingRallyPoint(const AHOLBuilding* Building);
+
+	/** AHOLBuilding::GetRallyPoint() (zero for null). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
+	static FVector GetBuildingRallyPoint(const AHOLBuilding* Building);
+
+	// ---- Lot D853 f (CELEBORN-1119cb): the unit tier production (HOLUnitTierProductionTests.cpp). Thin wrappers, bodies under WITH_DEV_AUTOMATION_TESTS ----
+
+	/** AHOLGameState::SetTierOverride(Slot, Tier) on the test world's game state (false if there is none). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
+	static bool SetSlotTierOverride(UHOLTestWorldHandle* TestWorld, int32 Slot, int32 Tier);
+
+	/** AHOLGameState::GetTier(Slot) (-1 if there is no game state). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
+	static int32 GetSlotTier(UHOLTestWorldHandle* TestWorld, int32 Slot);
+
+	/** UHOLCommandSubsystem::IssueProductionOrder(FHOLProductionCommand{PlayerIndex = Slot, Building, TypeName}): the server's command queue, as a client's order; the order is applied at the next step. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
+	static bool IssueProductionOrder(UHOLTestWorldHandle* TestWorld, int32 Slot, AHOLBuilding* Building, FName TypeName);
+
+	/** Food + Wood + Stone + Gold of the unit row of TypeName (UHOLUnitSubsystem::FindTypeRow), -1 without a row. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
+	static int32 GetUnitCostTotal(UHOLTestWorldHandle* TestWorld, FName TypeName);
+
+	// ---- Lot D853 g (CELEBORN-1119cc): the building tests without components (HOLBuildingTests.cpp: Foundation, Selection, Damage). Thin wrappers on the real AHOLBuilding methods ----
+
+	/** AHOLBuilding::SetConstructionState(State) (nothing for null). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
+	static void SetBuildingConstructionState(AHOLBuilding* Building, EHOLConstructionState State);
+
+	/** AHOLBuilding::SetConstructionWork(Work) (nothing for null). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
+	static void SetBuildingConstructionWork(AHOLBuilding* Building, int64 Work);
+
+	/** AHOLBuilding::ApplyPendingAppearance(): the look the frame applies (D325), at once. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
+	static void ApplyBuildingAppearance(AHOLBuilding* Building);
+
+	/** AHOLBuilding::GetHealth() (0 for null). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
+	static int32 GetBuildingHealth(const AHOLBuilding* Building);
+
+	/** AHOLBuilding::IsHurt() (false for null). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
+	static bool IsBuildingHurt(const AHOLBuilding* Building);
+
+	/** AHOLBuilding::IsFoundation() (false for null). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
+	static bool IsBuildingFoundation(const AHOLBuilding* Building);
+
+	/** AHOLBuilding::IsFinished() (false for null). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
+	static bool IsBuildingFinished(const AHOLBuilding* Building);
+
+	/** AHOLBuilding::HasWorkStarted() (false for null). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
+	static bool HasBuildingWorkStarted(const AHOLBuilding* Building);
+
+	/** AHOLBuilding::IsSeenHere() (false for null). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
+	static bool IsBuildingSeenHere(const AHOLBuilding* Building);
+
+	/** IsValid(Building): false once the actor is destroyed (or for null). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
+	static bool IsBuildingAlive(const AHOLBuilding* Building);
+
+	/** How many UStaticMeshComponent the building owns (AHOLBuilding::GetComponents, as the C++ test counts its pieces). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
+	static int32 CountBuildingMeshPieces(const AHOLBuilding* Building);
+
+	/** UHOLConstructionSubsystem::DamageBuilding(*Building, Damage, Ranged or Melee): the health actually taken off (armour applied by the game). 0 for null. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
+	static int32 DamageBuildingByAttack(AHOLBuilding* Building, int32 Damage, bool bRanged);
+
+	/** The type row's MaxHealth (UHOLBuildingSettings::FindType(TypeName)), -1 without a row. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
+	static int32 GetBuildingTypeMaxHealth(FName TypeName);
+
+	/** The type row's RangedArmor, -1 without a row. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
+	static int32 GetBuildingTypeRangedArmor(FName TypeName);
+
+	/**
+	 * The selection ray as the C++ tests throw it: World->LineTraceSingleByChannel(HOLCollision::Selection) from (X, Y, 5000) straight down 10000 cm.
+	 * Returns the actor hit (nullptr if the ray hits nothing).
+	 */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
+	static AActor* TraceSelectionRayDown(UHOLTestWorldHandle* TestWorld, double X, double Y);
+
+	/** AHOLGameState::DefeatSlot (not a UFUNCTION): the server's defeat of a slot; false for a closed slot, a defeated one, or once the match is over. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
+	static bool DefeatGameStateSlot(AHOLGameState* State, int32 Slot, EHOLDefeatReason Reason);
+
+	/** AHOLGameState::IsSlotDefeated. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
+	static bool IsGameStateSlotDefeated(const AHOLGameState* State, int32 Slot);
+
+	/** AHOLGameState::GetDefeatReason (None: still in the match). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
+	static EHOLDefeatReason GetGameStateDefeatReason(const AHOLGameState* State, int32 Slot);
+
+	/** AHOLGameState::IsMatchOver. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
+	static bool IsGameStateMatchOver(const AHOLGameState* State);
+
+	/** AHOLGameState::GetWinners (slots, ascending). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
+	static TArray<int32> GetGameStateWinners(const AHOLGameState* State);
+
+	/** AHOLGameState::IsWinner. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
+	static bool IsGameStateWinner(const AHOLGameState* State, int32 Slot);
+
+	/** A counter of the OnSlotDefeated and OnMatchOver broadcasts of State, started now (nullptr without a state). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
+	static UHOLVictoryEventCounter* CountVictoryEvents(AHOLGameState* State);
 };

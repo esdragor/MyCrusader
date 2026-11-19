@@ -1,0 +1,5 @@
+# <nom de capture> | ce que l'utilisateur doit voir
+forge_4_lignes | Capture 1920x1080, ta Forge selectionnee (palier 1) : la GRILLE 3 x 4 en bas a gauche ; sa rangee du BAS (W X C V) montre QUATRE cases avec leur libelle et leur badge de touche : W "Lames affûtées", X "Empennage", C "Maille", V "Barde" (pas de "Lames affûtées II" ni de "Empennage II") ; les cases sont allumees (palier 1) ; panneau de notes ferme ; journal "HUD report" avec la grille.
+forge_niveau_2 | Capture 1920x1080, Forge selectionnee, Lames affûtées recherchee : la case W montre "Lames affûtées II" et elle est GRISEE (palier 2 requis) ; X "Empennage", C "Maille", V "Barde" inchangees ; toujours 4 cases dans la rangee du bas.
+ferme_2_lignes | Capture 1920x1080, Ferme selectionnee : la rangee du bas montre DEUX cases, W "Charrue" et X "Brouette" ; les cases C et V sont vides (sombres, sans libelle) ; pas de "Charrue II" ni de "Brouette II".
+camp_1_ligne | Capture 1920x1080, Camp de bûcherons selectionne : la rangee du bas montre UNE case, W "Haches doubles" ; X, C et V vides ; pas de "Haches doubles II".

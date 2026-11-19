@@ -13,6 +13,7 @@
 #include "Resources/HOLSourceSubsystem.h"
 #include "Simulation/HOLGarrisonSubsystem.h"
 #include "Simulation/HOLUnitView.h"
+#include "UObject/ObjectKey.h"
 
 namespace HOLPlayerOrders
 {
@@ -30,24 +31,46 @@ namespace HOLPlayerOrders
 			return Ids;
 		}
 
-		/** The C++ rule, kept as the fallback while the world has no script board (P1b: the twin of HOLPlayerOrders.as, removed after the network proof). */
-		bool IsAcceptedCpp(const int32 PlayerIndex, const int32 NumUnits)
+		/** An order refused because the world has no script board: logged once per game (world) and per function, the AI asks in a loop. */
+		void LogBoardAbsent(const UWorld* World, const TCHAR* Order)
 		{
-			return PlayerIndex >= 0 && PlayerIndex < FHOLMatchConfig::MaxSlots && NumUnits >= 0 && NumUnits <= MaxOrderedUnits;
+			static FCriticalSection Lock;
+			static TMap<FName, FObjectKey> Logged;
+			const FObjectKey Key(World);
+			{
+				FScopeLock ScopeLock(&Lock);
+				const FObjectKey* Last = Logged.Find(FName(Order));
+				if (Last && *Last == Key)
+				{
+					return;
+				}
+				Logged.Add(FName(Order), Key);
+			}
+			if (!IsInGameThread())
+			{
+				// Board::Find is null off the game thread whatever the boards: not the same cause as an absent board.
+				UE_LOG(LogHOLMatch, Error, TEXT("PlayerOrders: %s refused, not on the game thread"), Order);
+				return;
+			}
+			UE_LOG(LogHOLMatch, Error, TEXT("PlayerOrders: %s refused, script board absent"), Order);
 		}
 
-		/** The queue of World, when an order of PlayerIndex naming NumUnits units may enter it. */
-		UHOLCommandSubsystem* GetQueue(UWorld& World, const int32 PlayerIndex, const int32 NumUnits)
+		/** The board's answer as the order's result: 1 accepted, 0 refused, -1 (no script board) refused and said once. The rule is the script's alone. */
+		bool Verdict(const UWorld* World, const TCHAR* Order, const int32 Answer)
 		{
-			return IsAccepted(PlayerIndex, NumUnits) ? World.GetSubsystem<UHOLCommandSubsystem>() : nullptr;
+			if (Answer < 0)
+			{
+				LogBoardAbsent(World, Order);
+				return false;
+			}
+			return Answer != 0;
 		}
 	}
 
 	bool IsAccepted(const int32 PlayerIndex, const int32 NumUnits)
 	{
-		// The script rule when a board exists (no world argument here: the board of the game world), else the C++ rule (a test without a world).
-		const int32 Answer = UHOLPlayerOrdersBoard::AskIsAcceptedAnywhere(PlayerIndex, NumUnits);
-		return Answer >= 0 ? Answer != 0 : IsAcceptedCpp(PlayerIndex, NumUnits);
+		// The script rule (no world argument here: the board of the game world); no board: refused.
+		return Verdict(nullptr, TEXT("IsAccepted"), UHOLPlayerOrdersBoard::AskIsAcceptedAnywhere(PlayerIndex, NumUnits));
 	}
 
 	void SendNonWorkersTo(UWorld& World, UHOLCommandSubsystem& Commands, const int32 PlayerIndex, TArray<uint32>& InOutUnitIds, const FVector& Point,
@@ -74,109 +97,42 @@ namespace HOLPlayerOrders
 	bool Move(UWorld& World, const int32 PlayerIndex, const TConstArrayView<uint32> UnitIds, const FVector& Target, const bool bQueue,
 		const FVector2D& FrontLine, const bool bFrontWidth)
 	{
-		const int32 Answer = UHOLPlayerOrdersBoard::AskMove(&World, PlayerIndex, ToBridgeIds(UnitIds), Target, bQueue, FrontLine, bFrontWidth);
-		if (Answer >= 0)
-		{
-			return Answer != 0;
-		}
-		UHOLCommandSubsystem* Commands = GetQueue(World, PlayerIndex, UnitIds.Num());
-		if (!Commands)
-		{
-			return false;
-		}
-		const UHOLCommandSubsystem::FPlayerOrderScope PlayerOrder(*Commands);
-		Commands->IssueMoveOrder(UnitIds, Target, PlayerIndex, /*bFromTask*/ false, FrontLine, bFrontWidth, bQueue);
-		return true;
+		return Verdict(&World, TEXT("Move"), UHOLPlayerOrdersBoard::AskMove(&World, PlayerIndex, ToBridgeIds(UnitIds), Target, bQueue, FrontLine, bFrontWidth));
 	}
 
 	bool Attack(UWorld& World, const int32 PlayerIndex, const TConstArrayView<uint32> UnitIds, const uint32 TargetUnitId, const bool bQueue)
 	{
-		const int32 Answer = UHOLPlayerOrdersBoard::AskAttack(&World, PlayerIndex, ToBridgeIds(UnitIds), static_cast<int32>(TargetUnitId), bQueue);
-		if (Answer >= 0)
-		{
-			return Answer != 0;
-		}
-		UHOLCommandSubsystem* Commands = GetQueue(World, PlayerIndex, UnitIds.Num());
-		if (!Commands)
-		{
-			return false;
-		}
-		const UHOLCommandSubsystem::FPlayerOrderScope PlayerOrder(*Commands);
-		Commands->IssueCombatOrder(UnitIds, EHOLOrderKind::Attack, TargetUnitId, PlayerIndex, bQueue);
-		return true;
+		return Verdict(&World, TEXT("Attack"), UHOLPlayerOrdersBoard::AskAttack(&World, PlayerIndex, ToBridgeIds(UnitIds), static_cast<int32>(TargetUnitId), bQueue));
 	}
 
 	bool AttackBuilding(UWorld& World, const int32 PlayerIndex, const TConstArrayView<uint32> UnitIds, AHOLBuilding* Building, const bool bQueue)
 	{
-		const int32 Answer = UHOLPlayerOrdersBoard::AskAttackBuilding(&World, PlayerIndex, ToBridgeIds(UnitIds), Building, bQueue);
-		if (Answer >= 0)
-		{
-			return Answer != 0;
-		}
-		UHOLCommandSubsystem* Commands = Building ? GetQueue(World, PlayerIndex, UnitIds.Num()) : nullptr;
-		if (!Commands)
-		{
-			return false;
-		}
-		const UHOLCommandSubsystem::FPlayerOrderScope PlayerOrder(*Commands);
-		Commands->IssueAttackBuildingOrder(UnitIds, Building, PlayerIndex, bQueue);
-		return true;
+		return Verdict(&World, TEXT("AttackBuilding"), UHOLPlayerOrdersBoard::AskAttackBuilding(&World, PlayerIndex, ToBridgeIds(UnitIds), Building, bQueue));
 	}
 
 	bool AttackMove(UWorld& World, const int32 PlayerIndex, const TConstArrayView<uint32> UnitIds, const FVector& Target, const bool bQueue)
 	{
-		const int32 Answer = UHOLPlayerOrdersBoard::AskAttackMove(&World, PlayerIndex, ToBridgeIds(UnitIds), Target, bQueue);
-		if (Answer >= 0)
-		{
-			return Answer != 0;
-		}
-		UHOLCommandSubsystem* Commands = GetQueue(World, PlayerIndex, UnitIds.Num());
-		if (!Commands)
-		{
-			return false;
-		}
-		const UHOLCommandSubsystem::FPlayerOrderScope PlayerOrder(*Commands);
-		Commands->IssueAttackMoveOrder(UnitIds, Target, PlayerIndex, bQueue);
-		return true;
+		return Verdict(&World, TEXT("AttackMove"), UHOLPlayerOrdersBoard::AskAttackMove(&World, PlayerIndex, ToBridgeIds(UnitIds), Target, bQueue));
 	}
 
 	bool Stop(UWorld& World, const int32 PlayerIndex, const TConstArrayView<uint32> UnitIds, const bool bHold)
 	{
-		const int32 Answer = UHOLPlayerOrdersBoard::AskStop(&World, PlayerIndex, ToBridgeIds(UnitIds), bHold);
-		if (Answer >= 0)
-		{
-			return Answer != 0;
-		}
-		UHOLCommandSubsystem* Commands = GetQueue(World, PlayerIndex, UnitIds.Num());
-		if (!Commands)
-		{
-			return false;
-		}
-		const UHOLCommandSubsystem::FPlayerOrderScope PlayerOrder(*Commands);
-		Commands->IssueCombatOrder(UnitIds, bHold ? EHOLOrderKind::Hold : EHOLOrderKind::Stop, 0, PlayerIndex);
-		return true;
+		return Verdict(&World, TEXT("Stop"), UHOLPlayerOrdersBoard::AskStop(&World, PlayerIndex, ToBridgeIds(UnitIds), bHold));
 	}
 
 	bool ToggleDeploy(UWorld& World, const int32 PlayerIndex, const TConstArrayView<uint32> UnitIds)
 	{
-		const int32 Answer = UHOLPlayerOrdersBoard::AskToggleDeploy(&World, PlayerIndex, ToBridgeIds(UnitIds));
-		if (Answer >= 0)
-		{
-			return Answer != 0;
-		}
-		UHOLCommandSubsystem* Commands = GetQueue(World, PlayerIndex, UnitIds.Num());
-		if (!Commands)
-		{
-			return false;
-		}
-		const UHOLCommandSubsystem::FPlayerOrderScope PlayerOrder(*Commands);
-		Commands->IssueCombatOrder(UnitIds, EHOLOrderKind::ToggleDeploy, 0, PlayerIndex);
-		return true;
+		return Verdict(&World, TEXT("ToggleDeploy"), UHOLPlayerOrdersBoard::AskToggleDeploy(&World, PlayerIndex, ToBridgeIds(UnitIds)));
 	}
 
 	bool Gather(UWorld& World, const int32 PlayerIndex, const TConstArrayView<uint32> UnitIds, const int32 SourceIndex, const bool bQueue)
 	{
-		UHOLCommandSubsystem* Commands = GetQueue(World, PlayerIndex, UnitIds.Num());
+		// The slot and the count are the script's rule, asked BEFORE the soldiers walk (this body does the effects the script cannot: HOLUnitView, UHOLSourceSubsystem).
+		if (!Verdict(&World, TEXT("Gather"), UHOLPlayerOrdersBoard::AskIsAccepted(&World, PlayerIndex, UnitIds.Num())))
+		{
+			return false;
+		}
+		UHOLCommandSubsystem* Commands = World.GetSubsystem<UHOLCommandSubsystem>();
 		if (!Commands)
 		{
 			return false;
@@ -185,167 +141,90 @@ namespace HOLPlayerOrders
 		TArray<uint32> Workers(UnitIds);
 		const UHOLSourceSubsystem* Sources = World.GetSubsystem<UHOLSourceSubsystem>();
 		const bool bSource = Sources && Sources->GetSources().IsValidIndex(SourceIndex);
+		const FVector SourceLocation = bSource ? FVector(Sources->GetSources()[SourceIndex].Location) : FVector::ZeroVector;
 		if (bSource)
 		{
-			// With Shift, the soldiers' walk at the end of their queue (L.6, as a deposit's, L.3).
-			SendNonWorkersTo(World, *Commands, PlayerIndex, Workers, Sources->GetSources()[SourceIndex].Location, bQueue);
+			// With Shift, the soldiers' walk at the end of their queue (L.6, as a deposit's, L.3). Stays C++ (HOLUnitView is not exposed to the script).
+			SendNonWorkersTo(World, *Commands, PlayerIndex, Workers, SourceLocation, bQueue);
 		}
-		if (!Workers.IsEmpty())
-		{
-			if (bQueue && bSource)
-			{
-				// EtapeDefini L.6 (the user's 2nd trial: Shift + Pa then Shift + a tree went to the tree at once, Pa dropped):
-				// through the queue of moves, so that it waits for their walks; sorted there by each worker's queue of work.
-				Commands->IssueQueuedWorkOrder(Workers, SourceIndex, nullptr, Sources->GetSources()[SourceIndex].Location, PlayerIndex);
-			}
-			else
-			{
-				Commands->IssueGatherOrder(Workers, SourceIndex, PlayerIndex, bQueue);
-			}
-		}
-		return true;
+		// The script rule (HOLPlayerOrders.as Gather) orders the workers left.
+		return Verdict(&World, TEXT("Gather"), UHOLPlayerOrdersBoard::AskGather(&World, PlayerIndex, ToBridgeIds(Workers), SourceIndex, bQueue, bSource, SourceLocation));
 	}
 
 	bool Build(UWorld& World, const int32 PlayerIndex, const TConstArrayView<uint32> UnitIds, AHOLBuilding* Building, const bool bQueue)
 	{
-		UHOLCommandSubsystem* Commands = Building ? GetQueue(World, PlayerIndex, UnitIds.Num()) : nullptr;
+		if (!Verdict(&World, TEXT("Build"), UHOLPlayerOrdersBoard::AskIsAccepted(&World, PlayerIndex, UnitIds.Num())))
+		{
+			return false;
+		}
+		UHOLCommandSubsystem* Commands = World.GetSubsystem<UHOLCommandSubsystem>();
 		if (!Commands)
 		{
 			return false;
 		}
 		const UHOLCommandSubsystem::FPlayerOrderScope PlayerOrder(*Commands);
 		TArray<uint32> Workers(UnitIds);
-		SendNonWorkersTo(World, *Commands, PlayerIndex, Workers, Building->GetActorLocation(), bQueue);
-		if (!Workers.IsEmpty() && bQueue)
+		if (Building)
 		{
-			// EtapeDefini L.6, as a source with Shift: through the queue of moves (Shift + Pb then Shift + a site built it at once).
-			Commands->IssueQueuedWorkOrder(Workers, INDEX_NONE, Building, Building->GetActorLocation(), PlayerIndex);
+			// A null site is the script's refusal (AskBuild below); the walk needs its location.
+			SendNonWorkersTo(World, *Commands, PlayerIndex, Workers, Building->GetActorLocation(), bQueue);
 		}
-		else if (!Workers.IsEmpty())
-		{
-			FHOLBuildOrder Order;
-			Order.UnitIds = MoveTemp(Workers);
-			Order.Building = Building;
-			Order.PlayerIndex = PlayerIndex;
-			Order.bQueue = bQueue;
-			Commands->IssueBuildOrder(Order);
-		}
-		return true;
+		return Verdict(&World, TEXT("Build"), UHOLPlayerOrdersBoard::AskBuild(&World, PlayerIndex, ToBridgeIds(Workers), Building, bQueue));
 	}
 
 	bool DropOff(UWorld& World, const int32 PlayerIndex, const TConstArrayView<uint32> UnitIds, AHOLBuilding* Building, const FVector& Point,
 		const bool bQueue)
 	{
-		UHOLCommandSubsystem* Commands = GetQueue(World, PlayerIndex, UnitIds.Num());
+		if (!Verdict(&World, TEXT("DropOff"), UHOLPlayerOrdersBoard::AskIsAccepted(&World, PlayerIndex, UnitIds.Num())))
+		{
+			return false;
+		}
+		UHOLCommandSubsystem* Commands = World.GetSubsystem<UHOLCommandSubsystem>();
 		if (!Commands)
 		{
 			return false;
 		}
 		const UHOLCommandSubsystem::FPlayerOrderScope PlayerOrder(*Commands);
+		// bDeposit reads the building type row (FHOLBuildingTypeRow::Accepts, not exposed): game data computed here, the choice it makes is the script's.
 		const FHOLBuildingTypeRow* Type = Building ? Building->GetType() : nullptr;
 		const bool bDeposit = Type && !Type->Accepts.IsEmpty() && Building->TakesDeliveries() && Building->GetOwnerPlayer() == PlayerIndex;
-		if (!bDeposit)
-		{
-			// Not one of its deposits: all walk to the point.
-			Commands->IssueMoveOrder(UnitIds, Point, PlayerIndex, /*bFromTask*/ false, FVector2D::ZeroVector, false, bQueue);
-			return true;
-		}
-		// D485 (EtapeDefini L.5b): through the queue of moves, so that a new order forgets the units' queue as any other, and
-		// Shift waits for their walks; sorted there by each unit's load (UHOLUnitOrderProcessor): the carriers unload, the
-		// others walk to the point. With Shift, the soldiers walk to the point after their own queue (L.3).
+		// D485 (EtapeDefini L.5b): With Shift, the soldiers walk to the point after their own queue (L.3); the rest is the script's (carriers unload, the others walk).
 		TArray<uint32> Workers(UnitIds);
-		if (bQueue)
+		if (bDeposit && bQueue)
 		{
 			SendNonWorkersTo(World, *Commands, PlayerIndex, Workers, Point, /*bQueue*/ true);
 		}
-		if (!Workers.IsEmpty())
+		if (bDeposit && !Workers.IsEmpty())
 		{
 			UE_LOG(LogHOLMatch, Display, TEXT("Drop-off order of slot %d: %d units to %s (%.0f, %.0f)%s"), PlayerIndex, Workers.Num(),
 				*Building->GetTypeName().ToString(), Building->GetActorLocation().X, Building->GetActorLocation().Y, bQueue ? TEXT(", queued") : TEXT(""));
-			Commands->IssueDropOffMoveOrder(Workers, Building, Point, PlayerIndex, bQueue);
 		}
-		return true;
+		const TConstArrayView<uint32> Ordered = bDeposit ? TConstArrayView<uint32>(Workers) : UnitIds;
+		return Verdict(&World, TEXT("DropOff"), UHOLPlayerOrdersBoard::AskDropOff(&World, PlayerIndex, ToBridgeIds(Ordered), Building, Point, bQueue, bDeposit));
 	}
 
 	bool Place(UWorld& World, const int32 PlayerIndex, const FName TypeName, const FVector& Point, const TConstArrayView<uint32> UnitIds, const bool bQueue)
 	{
-		// Too many builders: the foundation is placed all the same, without them.
-		UHOLCommandSubsystem* Commands = GetQueue(World, PlayerIndex, 0);
-		if (!Commands)
-		{
-			return false;
-		}
-		FHOLConstructionCommand Command;
-		Command.Kind = FHOLConstructionCommand::EKind::Place;
-		Command.PlayerIndex = PlayerIndex;
-		Command.TypeName = TypeName;
-		Command.Location = Point;
-		if (UnitIds.Num() <= MaxOrderedUnits)
-		{
-			Command.UnitIds = TArray<uint32>(UnitIds);
-		}
-		Command.bQueue = bQueue;
-		Commands->IssueConstructionOrder(Command);
-		return true;
+		return Verdict(&World, TEXT("Place"), UHOLPlayerOrdersBoard::AskPlace(&World, PlayerIndex, TypeName, Point, ToBridgeIds(UnitIds), bQueue));
 	}
 
 	bool QueueProduction(UWorld& World, const int32 PlayerIndex, AHOLBuilding* Building, const FName TypeName)
 	{
-		UHOLCommandSubsystem* Commands = GetQueue(World, PlayerIndex, 0);
-		if (!Commands || !Building)
-		{
-			return false;
-		}
-		// As AHOLPlayerController::ServerQueueProduction: the production checks the owner, the type, the queue and the stock.
-		FHOLProductionCommand Command;
-		Command.Kind = FHOLProductionCommand::EKind::Queue;
-		Command.PlayerIndex = PlayerIndex;
-		Command.Building = Building;
-		Command.TypeName = TypeName;
-		Commands->IssueProductionOrder(Command);
-		return true;
+		return Verdict(&World, TEXT("QueueProduction"), UHOLPlayerOrdersBoard::AskQueueProduction(&World, PlayerIndex, Building, TypeName));
 	}
 
 	bool MarketTrade(UWorld& World, const int32 PlayerIndex, AHOLBuilding* Building, const int32 Resource, const int32 Lots, const bool bBuy)
 	{
-		UHOLCommandSubsystem* Commands = GetQueue(World, PlayerIndex, 0);
-		if (!Commands || !Building)
-		{
-			return false;
-		}
-		// As AHOLPlayerController::ServerMarketTrade: the production checks the owner, the Market, the lots and the stock.
-		FHOLProductionCommand Command;
-		Command.Kind = FHOLProductionCommand::EKind::Trade;
-		Command.PlayerIndex = PlayerIndex;
-		Command.Building = Building;
-		Command.Resource = Resource;
-		Command.Lots = Lots;
-		Command.bBuy = bBuy;
-		Commands->IssueProductionOrder(Command);
-		return true;
+		return Verdict(&World, TEXT("MarketTrade"), UHOLPlayerOrdersBoard::AskMarketTrade(&World, PlayerIndex, Building, Resource, Lots, bBuy));
 	}
 
 	bool SetRally(UWorld& World, const int32 PlayerIndex, AHOLBuilding* Building, const FVector& Point, const int32 SourceIndex, AHOLBuilding* Site,
 		const bool bQueue)
 	{
-		UHOLCommandSubsystem* Commands = GetQueue(World, PlayerIndex, 0);
-		if (!Commands || !Building)
-		{
-			return false;
-		}
-		FHOLProductionCommand Command;
-		Command.Kind = FHOLProductionCommand::EKind::Rally;
-		Command.PlayerIndex = PlayerIndex;
-		Command.Building = Building;
-		Command.Location = Point;
-		// A source that is not standing (any more) is the ground (as the controller's RPC).
+		// A source that is not standing (any more) is the ground (as the controller's RPC): the source subsystem is C++ data, the choice is the script's.
 		const UHOLSourceSubsystem* Sources = World.GetSubsystem<UHOLSourceSubsystem>();
-		Command.SourceIndex = Sources && Sources->GetSources().IsValidIndex(SourceIndex) && Sources->GetSources()[SourceIndex].IsStanding()
-			? SourceIndex : INDEX_NONE;
-		Command.RallySite = Site;
-		Command.bQueue = bQueue;
-		Commands->IssueProductionOrder(Command);
-		return true;
+		const bool bSourceStanding = Sources && Sources->GetSources().IsValidIndex(SourceIndex) && Sources->GetSources()[SourceIndex].IsStanding();
+		return Verdict(&World, TEXT("SetRally"), UHOLPlayerOrdersBoard::AskSetRally(&World, PlayerIndex, Building, Point, SourceIndex, bSourceStanding, Site, bQueue));
 	}
 }
 
@@ -368,23 +247,11 @@ namespace HOLPlayerOrders
 
 	bool Garrison(UWorld& World, const int32 PlayerIndex, const TConstArrayView<uint32> UnitIds, AHOLBuilding* Building)
 	{
-		UHOLCommandSubsystem* Commands = World.GetSubsystem<UHOLCommandSubsystem>();
-		if (!Commands || !Building || UnitIds.IsEmpty() || !IsAccepted(PlayerIndex, UnitIds.Num()) || !TakesGarrisonOrder(*Building, PlayerIndex))
-		{
-			return false;
-		}
-		Commands->IssueGarrisonOrder(PlayerIndex, UnitIds, Building);
-		return true;
+		return Verdict(&World, TEXT("Garrison"), UHOLPlayerOrdersBoard::AskGarrison(&World, PlayerIndex, ToBridgeIds(UnitIds), Building));
 	}
 
 	bool UngarrisonAll(UWorld& World, const int32 PlayerIndex, AHOLBuilding* Building)
 	{
-		UHOLCommandSubsystem* Commands = World.GetSubsystem<UHOLCommandSubsystem>();
-		if (!Commands || !Building || !IsAccepted(PlayerIndex, 1) || Building->GetOwnerPlayer() != PlayerIndex)
-		{
-			return false;
-		}
-		Commands->IssueUngarrisonAllOrder(PlayerIndex, Building);
-		return true;
+		return Verdict(&World, TEXT("UngarrisonAll"), UHOLPlayerOrdersBoard::AskUngarrisonAll(&World, PlayerIndex, Building));
 	}
 }

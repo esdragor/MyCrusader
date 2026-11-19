@@ -1,12 +1,12 @@
 // MIG-C-CommandGrid, lot G2a (SAURON-1119x, D830, D836, D839): the KEYS and the FEEDBACK of the 3 x 4 command grid, in script. NOT COMPILED when written.
 // Port of Source/HeroesOfLiberty/Player/HOLCommandGrid.cpp: PressKey, ClickAge, GetChosenAgeAfter, FindMissingResource, CheckProduction, CheckBuild,
-// Blocks, IsPopulationBlocked, Describe, GetCellFace, IsSelectedByCategory (lines 238-418), same decisions. The C++ file is NOT touched: until the
-// bridge and the green agreement test (Script/Tests/HOLCommandGridKeys_Test.as) two copies exist.
+// Blocks, IsPopulationBlocked, Describe, GetCellFace, IsSelectedByCategory (lines 238-418), same decisions. The C++ bodies are gone (lot L3): HOLCommandGrid.cpp
+// keeps only the bridge to this rule (UHOLCommandGridBoard), no C++ twin.
 // What it calls: HOLCommandGridRules:: (lot G1: GetCommand, IsBuildGrid, IsAgeOpen, GetAgeBuilding, the constants) and the USTRUCTs of
 // UHOLCommandGridReadLibrary (FHOLGridContextView in, FHOLGridKeyResultView / FHOLFeedbackView / FHOLGridCellFaceView out). Nothing else.
 // NOT ported (data not exposed to script, see TYPES_A_EXPOSER in the report):
 //   - CheckResearch: needs FHOLTechnologyRow + HOLTechnology::Check (C++ only); the library's CheckResearch(FName, FHOLTechFactsView, ...) stays the way in.
-//   - GetCycleRank: needs FHOLBuildingTypeRow::IsBuildable / BuildGridSlot; GetCycleRankOfType(FName) of the library stays the way in.
+//   - GetCycleRank: needs FHOLBuildingTypeRow::IsBuildable / BuildGridSlot; the rule is HOLCommandGridGroups::GetCycleRank (the bridge HOLCommandGrid::GetCycleRank passes the two values).
 // Describe: the placement refusals and the technology blocks arrive as NUMBERS in FHOLFeedbackView; the numbers below are the C++ enums' order
 // (EHOLPlacementRefusal in Buildings/HOLConstructionRules.h, HOLTechnology::EBlock in Technologies/HOLTechnologyRules.h), checked by the agreement test.
 

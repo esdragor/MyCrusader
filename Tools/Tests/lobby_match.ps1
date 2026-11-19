@@ -96,7 +96,11 @@ $BobChecked = Join-Path $Work "bob_checked.signal"
 $BobGivesUp = Join-Path $Work "bob_gives_up.signal"
 # 2026-10-28: Alice signals once she has stayed ~70 s in the finished match (still connected): the server must still run.
 $AliceStayed = Join-Path $Work "alice_stayed.signal"
-Remove-Item $ManagerLog, $GameLogs.Bob2, $GameLogs.Alice, $GameLogs.Bob, $GameLogs.Carol, $GameLogs.Dave, $CarolIn, $MatchOver, $DaveDone, $AliceBack, $BobBack, $BobChecked, $BobGivesUp, $AliceStayed -ErrorAction SilentlyContinue
+# 2026-11-19: written by this script once it has read the lobby with Alice and Bob both back. They leave the lobby only then:
+# the manager deletes a lobby when its last player leaves, and Alice used to quit 3 s after her return, Bob 10 s after hers
+# (read 1 to 3 s after both are back: "the lobby has 1 player(s)" when the read came after Alice's leave, 404 once Bob had left too).
+$LobbyRead = Join-Path $Work "lobby_read.signal"
+Remove-Item $ManagerLog, $GameLogs.Bob2, $GameLogs.Alice, $GameLogs.Bob, $GameLogs.Carol, $GameLogs.Dave, $CarolIn, $MatchOver, $DaveDone, $AliceBack, $BobBack, $BobChecked, $BobGivesUp, $AliceStayed, $LobbyRead -ErrorAction SilentlyContinue
 $Colours = @{ Alice = 2; Bob = 5 }
 # -Team: the two AIs of the lobby take colours 1 and 2 by default; the humans choose others (Alice's colour 2 was refused: 2026-11-07).
 if ($Team) { $Colours = @{ Alice = 6; Bob = 7 } }
@@ -119,6 +123,8 @@ if ($ServerVersionMade) { [IO.File]::WriteAllText($ServerVersion, "dev", (New-Ob
 $Manager = Start-Process -FilePath $Exe -ArgumentList "--urls $Url --GameVersion=dev --VersionsDir=`"$(Join-Path $Work "Versions")`" --AccessKeyFile=no_key.txt --ServerExe=`"$ServerExe`" --ManagerUrl=$Url --FirstServerPort=$FirstServerPort" `
     -WorkingDirectory $Work -PassThru -WindowStyle Hidden -RedirectStandardOutput $ManagerLog
 $Games = @{}
+# The script boards (bridges) every game world reports at the match start (Source/HeroesOfLiberty/Match/HOLBoardLog.cpp).
+$BoardBridges = @("MatchFlow", "Market", "Construction", "PlayerOrders", "Production", "CommandGrid", "UnitTier", "Camp", "Garrison", "Relay", "Site", "Chat", "Signal", "Specialization")
 $Failure = $null
 $Matches0 = Join-Path $Project "Saved\Manager\Saved\Matches"
 $Servers = Join-Path $Work "servers.json"
@@ -246,6 +252,9 @@ if ($AI) {
         elseif (-not ($L -match "End banner: lobby match")) { $Failure = "Alice : no lobby end banner" }
         elseif ($L -match "Test sequence: timeout") { $Failure = "Alice : her sequence timed out" }
         elseif (-not $ServerLog) { $Failure = "no server log of the match" }
+        # The script boards (bridges) of the cooked dedicated server (HOLBoardLog): each says "script <class>", none says "ABSENT (C++ fallback)" (a missing script board falls back on C++ in silence otherwise).
+        elseif (@($BoardBridges | Where-Object { -not ($S -match "LogHOLMatch: Display: Board: $_ script \S+") }).Count) { $Failure = "the server has no 'Board: <bridge> script <class>' line for: $((@($BoardBridges | Where-Object { -not ($S -match "LogHOLMatch: Display: Board: $_ script \S+") })) -join ', ')" }
+        elseif ($S -match "Board: \S+ ABSENT") { $Failure = "the server has a script board ABSENT (C++ fallback): $(($S -match 'Board: \S+ ABSENT') -join ' | ')" }
         elseif (-not $AISlot -or $AISlot.state -ne "AI" -or $AISlot.difficulty -ne "Normal") { $Failure = "match.json without slot 1 'AI' Normal" }
         elseif ($Start -match "StartingPeasants") { $Failure = "the server started with StartingPeasants on its command line" }
         elseif (-not ($S -match "Match on \S+: given configuration, 2 occupied slots")) { $Failure = "the server has no 'given configuration, 2 occupied slots'" }
@@ -553,7 +562,7 @@ try {
 
     $Games.Alice = Start-Game Alice (@("waitmap MainMenu", "waitui", "hol.UI.Open Multiplayer", "waitui", "waitlog Multiplayer: 0 lobbies shown", "frames 3") +
         (& $Press CreateButton) + $(if ($Team) { $ToMedium } else { $ToSmall }) + (& $Pick Alice 0) + @("waitlog 2/2 ready", "wait 3") + (& $Press LaunchButton) + @("waitlog Lobby: start sent") +
-        (& $InMatch Alice) + @("waitfile $BobGivesUp 240") + $StatsAfter + $StayAfterEnd + @("waitfile $BobChecked 240") + $Back[2..($Back.Count - 3)] + @("signal $AliceBack") + $Back[($Back.Count - 2)..($Back.Count - 1)])
+        (& $InMatch Alice) + @("waitfile $BobGivesUp 240") + $StatsAfter + $StayAfterEnd + @("waitfile $BobChecked 240") + $Back[2..($Back.Count - 3)] + @("signal $AliceBack", "waitfile $LobbyRead 120", "wait 1", "quit"))
     # Bob only once the manager lists Alice's lobby: the list is read once, when the screen opens.
     $Deadline = (Get-Date).AddSeconds(180)
     $Lobby = $null
@@ -568,8 +577,8 @@ try {
     $Games.Bob = Start-Game Bob (@("waitmap MainMenu", "waitui", "hol.UI.Open Multiplayer", "waitui", "waitlog Multiplayer: 1 lobbies shown", "frames 3") +
         (& $Press JoinButton0) + (& $Pick Bob 1) + @("waitlog 2/2 ready", "wait 0.5", "capture lobby_match_lobby") +
         (& $InMatch Bob) + @("waitfile $CarolIn 180", "hol.Stats.Dump", "waitlog Stats: the server refused", "wait 2", "signal $BobGivesUp", "hol.Victory.Surrender") +
-        # 2026-10-28: Bob stays 10 s in the lobby once Alice is back (3 s raced the read of the lobby below, 2 s after both are back).
-        $StatsAfter + $Back[2..($Back.Count - 3)] + @("signal $BobBack", "waitfile $AliceBack 240", "wait 10", "quit"))
+        # 2026-11-19: Bob (and Alice above) stays in the lobby until this script has read it ($LobbyRead), no longer a fixed 10 s (3 s for Alice).
+        $StatsAfter + $Back[2..($Back.Count - 3)] + @("signal $BobBack", "waitfile $AliceBack 240", "waitfile $LobbyRead 120", "wait 1", "quit"))
 
     # R5.3: Carol, once the match is under way (state "in_game" at the manager), sees the lobby in the list, presses
     # « Regarder », reaches the match as a spectator and captures it; she stays until well after the end (what she gets is noted).
@@ -619,11 +628,21 @@ try {
         }
         if ((Test-Log Alice "Menu: back in lobby") -and (Test-Log Bob "Menu: back in lobby")) {
             Start-Sleep 2
-            $After = Invoke-RestMethod "${Url}/lobbies/$($Lobby.id)" -TimeoutSec 2
+            # Both stay in the lobby until $LobbyRead (see its declaration): the read no longer races their leave. The short poll only covers
+            # the manager listing the second player a moment after her log line; the verdict below still demands both.
+            $PollEnd = (Get-Date).AddSeconds(20)
+            do {
+                $After = Invoke-RestMethod "${Url}/lobbies/$($Lobby.id)" -TimeoutSec 2
+                $PolledNames = @($After.slots | Where-Object { $_.playerName } | ForEach-Object { $_.playerName })
+                if (($PolledNames -contains "Alice") -and ($PolledNames -contains "Bob")) { break }
+                Start-Sleep -Milliseconds 500
+            } while ((Get-Date) -lt $PollEnd)
             break
         }
         if ($Games.Alice.HasExited -and $Games.Bob.HasExited) { break }
     }
+    # Whatever the way out of the loop (read done, a game gone, deadline): Alice and Bob may leave now.
+    "read" | Set-Content -Encoding ascii $LobbyRead
     # Carol, the spectator, quits by herself once Dave is done (her sequence): what she got at the end is in her log.
     if (-not (Test-Path $MatchOver) -and (Test-Log Carol "End banner: MatchOver")) { "over" | Set-Content -Encoding ascii $MatchOver }
     if ($Games.Dave -and -not $Games.Dave.WaitForExit(120000)) { Write-Host "  Dave still there 120 s after the end" }

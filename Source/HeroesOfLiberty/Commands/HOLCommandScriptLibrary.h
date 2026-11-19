@@ -124,6 +124,26 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Commands")
 	static void IssueRage(UHOLCommandSubsystem* Commands, int32 PlayerIndex, const TArray<int32>& UnitIds);
 
+	// ---- Emitters, lot P2 (second half of HOLPlayerOrders.cpp): the FPlayerOrderScope is opened INSIDE the C++ function (bChain, D328). SendNonWorkersTo (HOLUnitView) stays C++: it hands the script the workers already filtered. ----
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Commands")
+	static void IssueGatherPlayer(UHOLCommandSubsystem* Commands, const TArray<int32>& UnitIds, int32 SourceIndex, int32 PlayerIndex, bool bQueue);
+	/** The queued work (Shift + gather or build) through the move queue: SourceIndex a source, or Building a site (SourceIndex -1). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Commands")
+	static void IssueQueuedWorkPlayer(UHOLCommandSubsystem* Commands, const TArray<int32>& UnitIds, int32 SourceIndex, AHOLBuilding* Building, const FVector& Location, int32 PlayerIndex);
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Commands")
+	static void IssueBuildPlayer(UHOLCommandSubsystem* Commands, const TArray<int32>& UnitIds, AHOLBuilding* Building, int32 PlayerIndex, bool bQueue);
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Commands")
+	static void IssueDropOffMovePlayer(UHOLCommandSubsystem* Commands, const TArray<int32>& UnitIds, AHOLBuilding* Building, const FVector& Point, int32 PlayerIndex, bool bQueue);
+	/** As HOLPlayerOrders::SetRally did: the production command Rally WITH bQueue and no player scope (IssueRally has no bQueue). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Commands")
+	static void IssueRallyOrder(UHOLCommandSubsystem* Commands, int32 PlayerIndex, AHOLBuilding* Building, const FVector& Location, int32 SourceIndex, AHOLBuilding* RallySite, bool bQueue);
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Commands")
+	static void IssueProductionTrade(UHOLCommandSubsystem* Commands, int32 PlayerIndex, AHOLBuilding* Building, int32 Resource, int32 Lots, bool bBuy);
+	/** HOLPlayerOrders::TakesGarrisonOrder (CVar hol.Garrison.RightClickEnters, owner, finished, places): game state, stays C++. */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Commands")
+	static bool TakesGarrisonOrder(const AHOLBuilding* Building, int32 PlayerIndex);
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Commands")
+	static bool OwnsBuilding(const AHOLBuilding* Building, int32 PlayerIndex);
 	// ---- Readers (take and empty the queue, as the simulation does) ----
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Commands")
 	static int32 GetNumPendingMoveOrders(const UHOLCommandSubsystem* Commands);

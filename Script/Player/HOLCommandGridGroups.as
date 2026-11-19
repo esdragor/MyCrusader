@@ -1,7 +1,7 @@
 // MIG-C-CommandGrid, lot G2b (HALDIR-1119y, D830, D836, D839): the CYCLE, the SUBGROUPS, the GROUPS and the MERGE of the command grid in script. NOT COMPILED when written.
 // Port of Source/HeroesOfLiberty/Player/HOLCommandGrid.cpp lines 402-557 (GetCellFace, GetCycleRank, IsSelectedByCategory, IsRepeatPress, NextInCycle,
-// IsAloneInGroup, SplitSubgroups, GetCommandPriority, MergeCommands, PickEvenly), same decisions. The C++ file is NOT touched: until the bridge and the green
-// agreement test (Script/Tests/HOLCommandGridGroups_Test.as) two copies exist.
+// IsAloneInGroup, SplitSubgroups, GetCommandPriority, MergeCommands, PickEvenly), same decisions. The C++ bodies are gone (lot L3): HOLCommandGrid.cpp
+// keeps only the bridge to this rule (UHOLCommandGridBoard), no C++ twin.
 // Input and output are the USTRUCT views of UHOLCommandGridReadLibrary (FHOLCycleBuildingView, FHOLQueueChoiceView, FHOLGroupMemberView, FHOLSubgroupView,
 // FHOLGridCommandView, FHOLGridCellFaceView): nothing else is called. This file does NOT depend on HOLCommandGridRules:: (the number of cells is a local constant).
 // Differences of form (the decisions are the same):

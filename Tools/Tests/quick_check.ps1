@@ -3095,13 +3095,17 @@ $GameSeconds = [Math]::Round($Clock.Elapsed.TotalSeconds)
 
 $AllOk = $ValuesOk
 # The first script compile errors of a log (Angelscript, D484), at most three lines: file, then line and message. A script
-# test's failed assertion is written "Angelscript: Error: ::<test>" too, its next line "Assert failed ...": not a compile
-# error (the test's own failure says it, J8a.4 loop 5). The script's Log() lines ("Angelscript: Hero return refused ...")
-# never match.
+# test's failed assertion is written "Angelscript: Error: Assertion failed (Expected true, got false)" (SAURON-1119cn, seen
+# 2026-11-19 on a listed script test: it made "scripts compiled" a second KO, so Find-KnownTestRed gave REGRESSION), or
+# "Angelscript: Error: ::<test>" with "Assert failed ..." on its next line: neither is a compile error (the test's own
+# failure says it, J8a.4 loop 5). A real compile error is a file line ("Script/X.as:"), then "(12:5): <message>" or a bare
+# message ("... is not BlueprintCallable or ScriptCallable ..."). The script's Log() lines ("Angelscript: Hero return
+# refused ...") never match. Test : Tools\Tests\known_reds_tests_part_test.ps1.
 function Get-ScriptErrors([string] $Path) {
     if (-not (Test-Path $Path)) { return @() }
     return @(Select-String -Path $Path -Pattern "Angelscript: Error: (.*)$" -Context 0, 1 |
-        Where-Object { -not ($_.Context.PostContext.Count -and $_.Context.PostContext[0] -match "^\s*Assert failed") } |
+        Where-Object { $_.Matches[0].Groups[1].Value.Trim() -notmatch "^Assert(ion)? failed" } |
+        Where-Object { -not ($_.Context.PostContext.Count -and $_.Context.PostContext[0] -match "^\s*Assert(ion)? failed") } |
         ForEach-Object { $_.Matches[0].Groups[1].Value.Trim() } | Select-Object -First 3)
 }
 # (The known reds and the Report function are defined at the top, before the "values" part, which reports through them too.)
@@ -6805,6 +6809,13 @@ if ($Parts -contains "net") {
     }
     $ServerErrors = @(if (Test-Path $NetServerLog) { Select-String -Path $NetServerLog -Pattern "LogHOLMatch: (Error|Warning)|LogHOLNet: (Error|Warning)" })
     $Checks["server: no match or network error ($($ServerErrors.Count))"] = $ServerErrors.Count -eq 0
+    # The script boards (bridges) of the net server (HOLBoardLog, one line per bridge and world): each says "script <class>", none says "ABSENT (C++ fallback)".
+    $BoardBridges = @("MatchFlow", "Market", "Construction", "PlayerOrders", "Production", "CommandGrid", "UnitTier", "Camp", "Garrison", "Relay", "Site", "Chat", "Signal", "Specialization")
+    $BoardLinesServer = @(if (Test-Path $NetServerLog) { Get-Content $NetServerLog })
+    $BoardMissing = @($BoardBridges | Where-Object { -not ($BoardLinesServer -match "LogHOLMatch: Display: Board: $_ script \S+") })
+    $Checks["server: every script board is there ($(if ($BoardMissing.Count) { 'no line for ' + ($BoardMissing -join ', ') } else { "$($BoardBridges.Count) bridges" }))"] = $BoardMissing.Count -eq 0
+    $BoardAbsent = @($BoardLinesServer -match "Board: \S+ ABSENT")
+    $Checks["server: no script board ABSENT ($($BoardAbsent.Count))"] = $BoardAbsent.Count -eq 0
     # The scripts on the dedicated server (J8a5-Q3c, D484): every .as compiles there too (the editor's -server loads
     # no ClientOnly module: a script naming a class of HeroesOfLibertyUI failed there, "'UHOLGameScreen' is not
     # declared", and the server quit at once on -as-exit-on-error; the interface module is Runtime since).

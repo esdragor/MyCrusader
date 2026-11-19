@@ -18,6 +18,7 @@ void Test_PlayerOrdersIsAccepted(FUnitTest& T)
 {
 	int MaxSlots = HOLCommandScript::GetMaxSlots();
 	T.AssertTrue(MaxSlots > 0, "there are player slots");
+	T.AssertEquals(8, MaxSlots, "8 slots: slot 7 is the last one, slot 8 does not exist (the cases below name them)");
 	T.AssertTrue(HOLPlayerOrders::IsAccepted(1, 200), "slot 1, 200 units: accepted");
 	T.AssertTrue(HOLPlayerOrders::IsAccepted(0, 1), "slot 0, 1 unit: accepted");
 	T.AssertTrue(HOLPlayerOrders::IsAccepted(MaxSlots - 1, 0), "last slot, 0 units: accepted");
@@ -132,4 +133,95 @@ void Test_PlayerOrdersPlayerScopeDrawsChain(FUnitTest& T)
 	TArray<FHOLScriptOrderRead> StopRead = HOLCommandScript::ConsumeMoves(Commands);
 	T.AssertEquals(1, StopRead.Num(), "one stop");
 	T.AssertFalse(StopRead[0].bChain, "a stop draws no chain, as in C++ (the scope is closed and reopened per order)");
+}
+
+// ---------------- P2 tests (second half of the player's orders), on a detached queue. NOT COMPILED. ----------------
+// Red planned (P2): in HOLPlayerOrders.as, Place: change `UnitIds.Num() <= MaxOrderedUnitsValue` to `true`: Test_PlayerOrdersPlaceDropsBuildersWhenTooMany fails
+// (201 builders kept instead of 0). Second red: in Gather, `bQueue && bSource` to `bSource`: Test_PlayerOrdersGatherEntersGatherQueue fails (no order in the gather queue).
+// A rule that names a building (Build, DropOff deposit, QueueProduction, MarketTrade, SetRally, Garrison, UngarrisonAll) cannot get a real AHOLBuilding without a
+// world: here only its refusals are tested (null building, slot, count); the accepted path is proven by the C++ tests (HOLGarrisonOrderTests, HOLGatherTests...)
+// that now go through the bridge, and by the network replay.
+
+void Test_PlayerOrdersGatherEntersGatherQueue(FUnitTest& T)
+{
+	UHOLCommandSubsystem Commands = HOLCommandScript::MakeDetachedForTest();
+	bool bDone = HOLPlayerOrders::Gather(Commands, 0, POUnits(2), 7, false, true, FVector(10.0, 20.0, 0.0));
+	T.AssertTrue(bDone, "the gather order is accepted");
+	TArray<FHOLScriptOrderRead> Gathers = HOLCommandScript::ConsumeGathers(Commands);
+	T.AssertEquals(1, Gathers.Num(), "one order in the gather queue");
+	T.AssertEquals(7, Gathers[0].SourceIndex, "the source asked");
+	T.AssertEquals(2, Gathers[0].UnitIds.Num(), "its two workers");
+	T.AssertEquals(0, Gathers[0].PlayerIndex, "the player who gave it");
+}
+
+void Test_PlayerOrdersGatherRefusedOrEmpty(FUnitTest& T)
+{
+	UHOLCommandSubsystem Commands = HOLCommandScript::MakeDetachedForTest();
+	FVector Spot(0.0, 0.0, 0.0);
+	T.AssertFalse(HOLPlayerOrders::Gather(Commands, -1, POUnits(1), 0, false, true, Spot), "slot -1: refused");
+	T.AssertFalse(HOLPlayerOrders::Gather(Commands, 0, POUnits(201), 0, false, true, Spot), "201 workers: refused");
+	T.AssertFalse(HOLPlayerOrders::Gather(nullptr, 0, POUnits(1), 0, false, true, Spot), "no subsystem: refused");
+	T.AssertEquals(0, HOLCommandScript::ConsumeGathers(Commands).Num(), "nothing queued by the refusals");
+	T.AssertTrue(HOLPlayerOrders::Gather(Commands, 0, POUnits(0), 3, false, true, Spot), "no worker left (all soldiers): accepted, as the C++ did");
+	T.AssertEquals(0, HOLCommandScript::ConsumeGathers(Commands).Num(), "but nothing queued");
+}
+
+void Test_PlayerOrdersDropOffWalksWhenNotADeposit(FUnitTest& T)
+{
+	UHOLCommandSubsystem Commands = HOLCommandScript::MakeDetachedForTest();
+	AHOLBuilding NoBuilding = nullptr;
+	bool bDone = HOLPlayerOrders::DropOff(Commands, 1, POUnits(3), NoBuilding, FVector(300.0, 400.0, 0.0), true, false);
+	T.AssertTrue(bDone, "accepted");
+	TArray<FHOLScriptOrderRead> Orders = HOLCommandScript::ConsumeMoves(Commands);
+	T.AssertEquals(1, Orders.Num(), "all walk to the point: one move");
+	T.AssertTrue(Orders[0].Kind == n"Move", "a plain move");
+	T.AssertEquals(3, Orders[0].UnitIds.Num(), "the three units");
+	T.AssertTrue(Orders[0].bChain, "the player's order draws its chain (D328)");
+	T.AssertTrue(Orders[0].bQueue, "Shift kept");
+	T.AssertFalse(HOLPlayerOrders::DropOff(Commands, 0, POUnits(201), NoBuilding, FVector(0.0, 0.0, 0.0), false, false), "201 units: refused");
+}
+
+void Test_PlayerOrdersPlaceEntersQueue(FUnitTest& T)
+{
+	UHOLCommandSubsystem Commands = HOLCommandScript::MakeDetachedForTest();
+	T.AssertTrue(HOLPlayerOrders::Place(Commands, 0, n"House", FVector(500.0, 600.0, 0.0), POUnits(2), true), "the place order is accepted");
+	TArray<FHOLScriptOrderRead> Orders = HOLCommandScript::ConsumeConstructions(Commands);
+	T.AssertEquals(1, Orders.Num(), "one construction order");
+	T.AssertTrue(Orders[0].Kind == n"Place", "its kind is Place");
+	T.AssertTrue(Orders[0].TypeName == n"House", "the type asked");
+	T.AssertEquals(2, Orders[0].UnitIds.Num(), "its two builders");
+	T.AssertTrue(Orders[0].bQueue, "Shift kept");
+	int MaxSlots = HOLCommandScript::GetMaxSlots();
+	T.AssertFalse(HOLPlayerOrders::Place(Commands, -1, n"House", FVector(0.0, 0.0, 0.0), POUnits(1), false), "slot -1: refused");
+	T.AssertFalse(HOLPlayerOrders::Place(Commands, MaxSlots, n"House", FVector(0.0, 0.0, 0.0), POUnits(1), false), "slot MaxSlots: refused");
+}
+
+void Test_PlayerOrdersPlaceDropsBuildersWhenTooMany(FUnitTest& T)
+{
+	UHOLCommandSubsystem Commands = HOLCommandScript::MakeDetachedForTest();
+	T.AssertTrue(HOLPlayerOrders::Place(Commands, 0, n"House", FVector(1.0, 2.0, 0.0), POUnits(201), false), "201 builders: the foundation is placed all the same");
+	TArray<FHOLScriptOrderRead> Orders = HOLCommandScript::ConsumeConstructions(Commands);
+	T.AssertEquals(1, Orders.Num(), "one construction order");
+	T.AssertEquals(0, Orders[0].UnitIds.Num(), "but without the builders");
+	T.AssertTrue(HOLPlayerOrders::Place(Commands, 0, n"House", FVector(1.0, 2.0, 0.0), POUnits(200), false), "200 builders accepted");
+	TArray<FHOLScriptOrderRead> Kept = HOLCommandScript::ConsumeConstructions(Commands);
+	T.AssertEquals(200, Kept[0].UnitIds.Num(), "200 builders kept");
+}
+
+void Test_PlayerOrdersBuildingRulesRefuseNullBuilding(FUnitTest& T)
+{
+	UHOLCommandSubsystem Commands = HOLCommandScript::MakeDetachedForTest();
+	AHOLBuilding NoBuilding = nullptr;
+	FVector Spot(0.0, 0.0, 0.0);
+	T.AssertFalse(HOLPlayerOrders::Build(Commands, 0, POUnits(2), NoBuilding, false), "build: no site refused");
+	T.AssertFalse(HOLPlayerOrders::QueueProduction(Commands, 0, NoBuilding, n"Spearman"), "production: no building refused");
+	T.AssertFalse(HOLPlayerOrders::MarketTrade(Commands, 0, NoBuilding, 0, 1, true), "market: no building refused");
+	T.AssertFalse(HOLPlayerOrders::SetRally(Commands, 0, NoBuilding, Spot, -1, false, NoBuilding, false), "rally: no building refused");
+	T.AssertFalse(HOLPlayerOrders::Garrison(Commands, 0, POUnits(2), NoBuilding), "garrison: no building refused");
+	T.AssertFalse(HOLPlayerOrders::UngarrisonAll(Commands, 0, NoBuilding), "ungarrison: no building refused");
+	T.AssertFalse(HOLPlayerOrders::QueueProduction(Commands, -1, NoBuilding, n"Spearman"), "slot -1 refused too");
+	T.AssertEquals(0, HOLCommandScript::GetNumPendingMoveOrders(Commands), "nothing in the move queue");
+	T.AssertEquals(0, HOLCommandScript::ConsumeProductions(Commands).Num(), "nothing in the production queue");
+	T.AssertEquals(0, HOLCommandScript::ConsumeGarrisons(Commands).Num(), "nothing in the garrison queue");
+	T.AssertEquals(0, HOLCommandScript::ConsumeBuilds(Commands).Num(), "nothing in the build queue");
 }

@@ -102,3 +102,188 @@ void Test_MatchFlowVisionAndAllianceEnd(FUnitTest& T)
 	T.AssertFalse(HOLMatchFlow::ShouldEvaluateMatchEnd(true, false), "announced, not formed (a break or a neutral): no");
 	T.AssertFalse(HOLMatchFlow::ShouldEvaluateMatchEnd(false, true), "nothing announced: no");
 }
+
+// ---- S2a (MIG-CPP step 5, lot S2a reduced): the gate of DefeatSlot and the verdict of EvaluateMatchEnd (HOLMatchFlowBoard.as). RED until the board has
+// DefeatGateOpen / MatchEndVerdict / MatchNotOver. Cases drawn from AHOLGameState::DefeatSlot (HOLGameState.cpp:650) and EvaluateMatchEnd (:694-717).
+
+/** A list of the first N of A, B, C, D (the slots, their states or their teams). */
+TArray<int> MatchFlowList(int N, int A, int B, int C, int D)
+{
+	TArray<int> Result;
+	if (N > 0) Result.Add(A);
+	if (N > 1) Result.Add(B);
+	if (N > 2) Result.Add(C);
+	if (N > 3) Result.Add(D);
+	return Result;
+}
+
+// DefeatSlot: refused without authority, once the match is over, without a reason, for an invalid or already defeated slot, for a closed camp.
+void Test_MatchFlowDefeatGate(FUnitTest& T)
+{
+	T.AssertTrue(HOLMatchFlow::DefeatGateOpen(true, false, false, true, false, true), "the server, a running match, a reason, a live slot of an occupied camp: open");
+	T.AssertFalse(HOLMatchFlow::DefeatGateOpen(false, false, false, true, false, true), "a client never defeats a slot");
+	T.AssertFalse(HOLMatchFlow::DefeatGateOpen(true, true, false, true, false, true), "the match is over: no more defeat");
+	T.AssertFalse(HOLMatchFlow::DefeatGateOpen(true, false, true, true, false, true), "reason None: refused");
+	T.AssertFalse(HOLMatchFlow::DefeatGateOpen(true, false, false, false, false, true), "a slot outside the table: refused");
+	T.AssertFalse(HOLMatchFlow::DefeatGateOpen(true, false, false, true, true, true), "a slot already defeated: refused (never twice)");
+	T.AssertFalse(HOLMatchFlow::DefeatGateOpen(true, false, false, true, false, false), "a closed camp: refused");
+}
+
+// EvaluateMatchEnd: one against one, free for all, one camp alone, teams, the Diplomacy mode.
+void Test_MatchFlowMatchEndVerdict(FUnitTest& T)
+{
+	int NotOver = HOLMatchFlow::MatchNotOver();
+	TArray<int> TwoStates = MatchFlowList(2, 1, 2, 0, 0);
+	TArray<int> TwoTeams = MatchFlowList(2, 0, 0, 0, 0);
+	int Verdict = HOLMatchFlow::MatchEndVerdict(TwoStates, TwoTeams, 0, false, -1);
+	T.AssertEquals(NotOver, Verdict, "1 against 1, nobody defeated: goes on");
+	Verdict = HOLMatchFlow::MatchEndVerdict(TwoStates, TwoTeams, 1, false, -1);
+	T.AssertEquals(2, Verdict, "1 against 1, slot 0 defeated: slot 1 wins (mask 2)");
+	Verdict = HOLMatchFlow::MatchEndVerdict(TwoStates, TwoTeams, 2, false, -1);
+	T.AssertEquals(1, Verdict, "1 against 1, slot 1 defeated: slot 0 wins (mask 1)");
+	Verdict = HOLMatchFlow::MatchEndVerdict(TwoStates, TwoTeams, 3, false, -1);
+	T.AssertEquals(0, Verdict, "1 against 1, both defeated: over, nobody wins (mask 0, not 'goes on')");
+
+	TArray<int> OneState = MatchFlowList(1, 1, 0, 0, 0);
+	Verdict = HOLMatchFlow::MatchEndVerdict(OneState, TwoTeams, 0, false, -1);
+	T.AssertEquals(NotOver, Verdict, "a camp alone: never wins by itself");
+	Verdict = HOLMatchFlow::MatchEndVerdict(OneState, TwoTeams, 1, false, -1);
+	T.AssertEquals(0, Verdict, "a camp alone, fallen: over, nobody wins");
+
+	TArray<int> FourStates = MatchFlowList(4, 1, 2, 1, 2);
+	TArray<int> FourTeams = MatchFlowList(4, 1, 1, 2, 2);
+	Verdict = HOLMatchFlow::MatchEndVerdict(FourStates, FourTeams, 1, false, -1);
+	T.AssertEquals(NotOver, Verdict, "teams 1+2: one member of a team fell, the team stands");
+	Verdict = HOLMatchFlow::MatchEndVerdict(FourStates, FourTeams, 3, false, -1);
+	T.AssertEquals(12, Verdict, "teams 1+2: team 1 fell, team 2 wins (slots 2 and 3, mask 12)");
+	Verdict = HOLMatchFlow::MatchEndVerdict(FourStates, FourTeams, 12, false, -1);
+	T.AssertEquals(3, Verdict, "teams 1+2: team 2 fell, team 1 wins (mask 3)");
+
+	// The Diplomacy mode (the C++ gives every slot its own camp: Teams all 0): the survivors allied to each other win together.
+	TArray<int> DipStates = MatchFlowList(3, 1, 2, 1, 0);
+	TArray<int> DipTeams = MatchFlowList(3, 0, 0, 0, 0);
+	Verdict = HOLMatchFlow::MatchEndVerdict(DipStates, DipTeams, 4, true, 3);
+	T.AssertEquals(3, Verdict, "Diplomacy: slot 2 beaten, survivors 0 and 1 allied: they win together (mask 3)");
+	Verdict = HOLMatchFlow::MatchEndVerdict(DipStates, DipTeams, 4, true, -1);
+	T.AssertEquals(NotOver, Verdict, "Diplomacy: slot 2 beaten, a hostile survivor: goes on");
+	Verdict = HOLMatchFlow::MatchEndVerdict(DipStates, DipTeams, 0, true, 3);
+	T.AssertEquals(NotOver, Verdict, "Diplomacy: nobody beaten, an alliance alone ends nothing");
+	Verdict = HOLMatchFlow::MatchEndVerdict(DipStates, DipTeams, 0, false, 3);
+	T.AssertEquals(NotOver, Verdict, "standard mode: the alliance winners are never read");
+	Verdict = HOLMatchFlow::MatchEndVerdict(DipStates, DipTeams, 5, true, 3);
+	T.AssertEquals(2, Verdict, "Diplomacy: the camps rule first (slots 0 and 2 fell, slot 1 alone wins) before the alliance");
+}
+
+// Agreement (two copies of the gate while the C++ inline refusal stays): the 64 combinations against the former refusal, written as it was (a chain of ||).
+void Test_MatchFlowDefeatGateAgreement(FUnitTest& T)
+{
+	int Wrong = 0;
+	for (int Bits = 0; Bits < 64; ++Bits)
+	{
+		bool bAuthority = (Bits & 1) != 0;
+		bool bMatchOver = (Bits & 2) != 0;
+		bool bReasonNone = (Bits & 4) != 0;
+		bool bSlotValid = (Bits & 8) != 0;
+		bool bDefeated = (Bits & 16) != 0;
+		bool bCampOccupied = (Bits & 32) != 0;
+		bool bRefused = !bAuthority || bMatchOver || bReasonNone || !bSlotValid || bDefeated || !bCampOccupied;
+		if (HOLMatchFlow::DefeatGateOpen(bAuthority, bMatchOver, bReasonNone, bSlotValid, bDefeated, bCampOccupied) == bRefused)
+			Wrong += 1;
+	}
+	T.AssertEquals(0, Wrong, "the script gate answers as the C++ inline refusal on the 64 combinations");
+}
+
+// Agreement of the verdict with the C++ rule (HOLVictoryRules::Evaluate through HOLVictoryRead): every defeated mask, three configurations, both modes.
+void MatchFlowVerdictSweep(FUnitTest& T, const TArray<int>& States, const TArray<int>& Teams, const FString& Label)
+{
+	int Wrong = 0;
+	for (int Mask = 0; Mask < 256; ++Mask)
+	{
+		int RuleMask = 0;
+		TArray<int> Winners;
+		bool bOver = HOLVictoryRead::Evaluate(States, Teams, Mask, RuleMask, Winners);
+		int Expected = bOver ? RuleMask : HOLMatchFlow::MatchNotOver();
+		if (HOLMatchFlow::MatchEndVerdict(States, Teams, Mask, false, -1) != Expected)
+			Wrong += 1;
+		if (HOLMatchFlow::MatchEndVerdict(States, Teams, Mask, true, -1) != Expected)
+			Wrong += 1;
+		// With an alliance that ended: the rule still goes first; else the alliance winners, only with a beaten slot.
+		int ExpectedAllied = Expected;
+		if (!bOver && Mask != 0)
+			ExpectedAllied = 5;
+		if (HOLMatchFlow::MatchEndVerdict(States, Teams, Mask, true, 5) != ExpectedAllied)
+			Wrong += 1;
+	}
+	T.AssertEquals(0, Wrong, Label + ": the script verdict equals the C++ rule on the 256 masks (both modes, with and without an ended alliance)");
+}
+
+void Test_MatchFlowMatchEndVerdictAgreement(FUnitTest& T)
+{
+	MatchFlowVerdictSweep(T, MatchFlowList(2, 1, 2, 0, 0), MatchFlowList(2, 0, 0, 0, 0), "1 against 1");
+	MatchFlowVerdictSweep(T, MatchFlowList(4, 1, 2, 1, 2), MatchFlowList(4, 1, 1, 2, 2), "teams 1+2");
+	MatchFlowVerdictSweep(T, MatchFlowList(4, 1, 2, 2, 1), MatchFlowList(4, 0, 0, 0, 0), "free for all of 4");
+}
+
+// ---- S2c: the gates of HandleForumFall and HandleKingDeath (HOLMatchFlowBoard.as). RED until the board has FallGateOpen / KingGateOpen. Cases drawn from
+// AHOLGameState::HandleForumFall (HOLGameState.cpp:385) and HandleKingDeath (:418).
+
+// HandleForumFall: refused without authority, for a forum that is not the main one, an invalid slot, a slot already defeated, a defeat already pending, a closed camp.
+void Test_MatchFlowFallGate(FUnitTest& T)
+{
+	T.AssertTrue(HOLMatchFlow::FallGateOpen(true, true, true, false, false, true), "the server, a main forum, a live slot of an occupied camp: open");
+	T.AssertFalse(HOLMatchFlow::FallGateOpen(false, true, true, false, false, true), "a client never takes a forum's fall");
+	T.AssertFalse(HOLMatchFlow::FallGateOpen(true, false, true, false, false, true), "a forum that is not the main one: refused");
+	T.AssertFalse(HOLMatchFlow::FallGateOpen(true, true, false, false, false, true), "a slot outside the table: refused");
+	T.AssertFalse(HOLMatchFlow::FallGateOpen(true, true, true, true, false, true), "a slot already defeated: refused");
+	T.AssertFalse(HOLMatchFlow::FallGateOpen(true, true, true, false, true, true), "a forum defeat already pending: refused (never twice in a step)");
+	T.AssertFalse(HOLMatchFlow::FallGateOpen(true, true, true, false, false, false), "a closed camp: refused");
+}
+
+// HandleKingDeath: refused without authority, once the match is over, for an invalid slot, a slot already defeated, a king defeat already pending, a closed camp.
+void Test_MatchFlowKingGate(FUnitTest& T)
+{
+	T.AssertTrue(HOLMatchFlow::KingGateOpen(true, false, true, false, false, true), "the server, a running match, a live slot of an occupied camp: open");
+	T.AssertFalse(HOLMatchFlow::KingGateOpen(false, false, true, false, false, true), "a client never takes a king's death");
+	T.AssertFalse(HOLMatchFlow::KingGateOpen(true, true, true, false, false, true), "the match is over: refused");
+	T.AssertFalse(HOLMatchFlow::KingGateOpen(true, false, false, false, false, true), "a slot outside the table: refused");
+	T.AssertFalse(HOLMatchFlow::KingGateOpen(true, false, true, true, false, true), "a slot already defeated: refused");
+	T.AssertFalse(HOLMatchFlow::KingGateOpen(true, false, true, false, true, true), "a king defeat already pending: refused (a second king of the slot)");
+	T.AssertFalse(HOLMatchFlow::KingGateOpen(true, false, true, false, false, false), "a closed camp: refused");
+}
+
+// Agreement (two copies of the gate while the C++ inline refusal stays): the 64 combinations against the former refusal, written as it was (a chain of ||).
+void Test_MatchFlowFallGateAgreement(FUnitTest& T)
+{
+	int Wrong = 0;
+	for (int Bits = 0; Bits < 64; ++Bits)
+	{
+		bool bAuthority = (Bits & 1) != 0;
+		bool bPrimaryForum = (Bits & 2) != 0;
+		bool bSlotValid = (Bits & 4) != 0;
+		bool bDefeated = (Bits & 8) != 0;
+		bool bPendingForum = (Bits & 16) != 0;
+		bool bCampOccupied = (Bits & 32) != 0;
+		bool bRefused = !bAuthority || !bPrimaryForum || !bSlotValid || bDefeated || bPendingForum || !bCampOccupied;
+		if (HOLMatchFlow::FallGateOpen(bAuthority, bPrimaryForum, bSlotValid, bDefeated, bPendingForum, bCampOccupied) == bRefused)
+			Wrong += 1;
+	}
+	T.AssertEquals(0, Wrong, "the script gate answers as the C++ inline refusal of HandleForumFall on the 64 combinations");
+}
+
+void Test_MatchFlowKingGateAgreement(FUnitTest& T)
+{
+	int Wrong = 0;
+	for (int Bits = 0; Bits < 64; ++Bits)
+	{
+		bool bAuthority = (Bits & 1) != 0;
+		bool bMatchOver = (Bits & 2) != 0;
+		bool bSlotValid = (Bits & 4) != 0;
+		bool bDefeated = (Bits & 8) != 0;
+		bool bPendingKing = (Bits & 16) != 0;
+		bool bCampOccupied = (Bits & 32) != 0;
+		bool bRefused = !bAuthority || bMatchOver || !bSlotValid || bDefeated || bPendingKing || !bCampOccupied;
+		if (HOLMatchFlow::KingGateOpen(bAuthority, bMatchOver, bSlotValid, bDefeated, bPendingKing, bCampOccupied) == bRefused)
+			Wrong += 1;
+	}
+	T.AssertEquals(0, Wrong, "the script gate answers as the C++ inline refusal of HandleKingDeath on the 64 combinations");
+}

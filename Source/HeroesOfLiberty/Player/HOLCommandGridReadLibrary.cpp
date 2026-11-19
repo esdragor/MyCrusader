@@ -25,6 +25,7 @@ namespace HOLCommandGridReadLibraryPrivate
 		Out.HeroLevel = View.HeroLevel;
 		Out.ReachedAge = View.ReachedAge;
 		Out.Researches = View.Researches;
+		Out.Researched = View.Researched;
 		Out.bDeployables = View.bDeployables;
 		Out.bDeployedAny = View.bDeployedAny;
 		Out.bRageUnit = View.bRageUnit;
@@ -167,37 +168,12 @@ FString UHOLCommandGridReadLibrary::GetTradeGainText(const FHOLTradeGainView& Ga
 	return HOLCommandGrid::GetTradeGainText(Rule);
 }
 
-FHOLGridCommandView UHOLCommandGridReadLibrary::GetCommand(const FHOLGridContextView& Context, const int32 Cell)
-{
-	return FromRule(HOLCommandGrid::GetCommand(ToRule(Context), Cell));
-}
-
-FHOLGridCommandView UHOLCommandGridReadLibrary::GetOrder(const FHOLGridContextView& Context, const int32 Cell)
-{
-	return FromRule(HOLCommandGrid::GetOrder(ToRule(Context), Cell));
-}
-
 bool UHOLCommandGridReadLibrary::IsBuildGrid(const FHOLGridContextView& Context) { return HOLCommandGrid::IsBuildGrid(ToRule(Context)); }
 bool UHOLCommandGridReadLibrary::IsAgeReached(const FHOLGridContextView& Context, const int32 Age) { return HOLCommandGrid::IsAgeReached(ToRule(Context), Age); }
 
 FHOLGridCommandView UHOLCommandGridReadLibrary::GetAgeBuilding(const FHOLGridContextView& Context, const int32 Age, const int32 Cell)
 {
 	return FromRule(HOLCommandGrid::GetAgeBuilding(ToRule(Context), Age, Cell));
-}
-
-FHOLGridKeyResultView UHOLCommandGridReadLibrary::PressKey(const FHOLGridContextView& Context, const int32 ChosenAge, const int32 Cell)
-{
-	return FromRule(HOLCommandGrid::PressKey(ToRule(Context), ChosenAge, Cell));
-}
-
-FHOLGridKeyResultView UHOLCommandGridReadLibrary::ClickAge(const FHOLGridContextView& Context, const int32 ChosenAge, const int32 Age, const int32 Cell)
-{
-	return FromRule(HOLCommandGrid::ClickAge(ToRule(Context), ChosenAge, Age, Cell));
-}
-
-int32 UHOLCommandGridReadLibrary::GetChosenAgeAfter(const int32 ChosenAge, const EHOLAgeEventKind Event)
-{
-	return HOLCommandGrid::GetChosenAgeAfter(ChosenAge, static_cast<EHOLAgeEvent>(static_cast<uint8>(Event)));
 }
 
 FHOLGridContextView UHOLCommandGridReadLibrary::WithTableBuildables(const FHOLGridContextView& Context)
@@ -231,23 +207,16 @@ EHOLBuildingCategory UHOLCommandGridReadLibrary::GetTypeCategory(const FName Typ
 	return Type ? Type->Category : EHOLBuildingCategory::Economic;
 }
 
-int32 UHOLCommandGridReadLibrary::GetCycleRankOfType(const FName TypeName)
+bool UHOLCommandGridReadLibrary::IsTypeBuildable(const FName TypeName)
 {
 	const FHOLBuildingTypeRow* Type = UHOLBuildingSettings::FindType(TypeName);
-	return Type ? HOLCommandGrid::GetCycleRank(*Type) : INDEX_NONE;
+	return Type && Type->IsBuildable();
 }
 
-bool UHOLCommandGridReadLibrary::IsTypeSelectedByCategory(const FName TypeName, const EHOLBuildingCategory Category)
+int32 UHOLCommandGridReadLibrary::GetBuildGridSlotOfType(const FName TypeName)
 {
 	const FHOLBuildingTypeRow* Type = UHOLBuildingSettings::FindType(TypeName);
-	return Type && HOLCommandGrid::IsSelectedByCategory(*Type, Category);
-}
-
-bool UHOLCommandGridReadLibrary::IsCategorySelectedByCategory(const EHOLBuildingCategory TypeCategory, const EHOLBuildingCategory Category)
-{
-	FHOLBuildingTypeRow Row;
-	Row.Category = TypeCategory;
-	return HOLCommandGrid::IsSelectedByCategory(Row, Category);
+	return Type ? Type->BuildGridSlot : INDEX_NONE;
 }
 
 bool UHOLCommandGridReadLibrary::HasMissingResource(const FHOLResources& Stock, const FHOLResources& Cost)
@@ -263,25 +232,10 @@ EHOLResource UHOLCommandGridReadLibrary::GetMissingResource(const FHOLResources&
 	return Missing;
 }
 
-FHOLFeedbackView UHOLCommandGridReadLibrary::CheckProduction(const FHOLResources& Stock, const FHOLResources& Cost, const int32 QueueLength, const int32 MaxQueue,
-	const int32 PopulationUsed, const int32 PopulationCap, const int32 Places)
-{
-	return FromRule(HOLCommandGrid::CheckProduction(Stock, Cost, QueueLength, MaxQueue, PopulationUsed, PopulationCap, Places));
-}
-
-FHOLFeedbackView UHOLCommandGridReadLibrary::CheckBuild(const FHOLResources& Stock, const FHOLResources& Cost)
-{
-	return FromRule(HOLCommandGrid::CheckBuild(Stock, Cost));
-}
-
-bool UHOLCommandGridReadLibrary::Blocks(const FHOLFeedbackView& Feedback) { return HOLCommandGrid::Blocks(ToRule(Feedback)); }
-
 bool UHOLCommandGridReadLibrary::IsPopulationBlocked(const int32 PopulationUsed, const int32 PopulationCap, const int32 Places)
 {
 	return HOLCommandGrid::IsPopulationBlocked(PopulationUsed, PopulationCap, Places);
 }
-
-FString UHOLCommandGridReadLibrary::Describe(const FHOLFeedbackView& Feedback) { return HOLCommandGrid::Describe(ToRule(Feedback)); }
 
 FHOLGridCellFaceView UHOLCommandGridReadLibrary::GetCellFace(const bool bHasIcon)
 {
@@ -291,76 +245,6 @@ FHOLGridCellFaceView UHOLCommandGridReadLibrary::GetCellFace(const bool bHasIcon
 	Out.bName = Face.bName;
 	Out.bCost = Face.bCost;
 	return Out;
-}
-
-bool UHOLCommandGridReadLibrary::IsRepeatPress(const TArray<int32>& Selected, const TArray<int32>& LastSelected, const bool bSameKey)
-{
-	const TArray<uint32> SelectedKeys = ToKeys(Selected);
-	const TArray<uint32> LastKeys = ToKeys(LastSelected);
-	return HOLCommandGrid::IsRepeatPress(SelectedKeys, LastKeys, bSameKey);
-}
-
-int32 UHOLCommandGridReadLibrary::NextInCycle(const TArray<FHOLCycleBuildingView>& Buildings, const int32 LastKey)
-{
-	TArray<FHOLCycleBuilding> Rule;
-	for (const FHOLCycleBuildingView& View : Buildings)
-	{
-		Rule.Add({ View.Rank, static_cast<uint32>(View.Key) });
-	}
-	return HOLCommandGrid::NextInCycle(Rule, static_cast<uint32>(LastKey));
-}
-
-bool UHOLCommandGridReadLibrary::IsAloneInGroup(const FName TypeName) { return HOLCommandGrid::IsAloneInGroup(TypeName); }
-
-TArray<FHOLSubgroupView> UHOLCommandGridReadLibrary::SplitSubgroups(const TArray<FHOLGroupMemberView>& Members)
-{
-	const TArray<FHOLGroupMember> Rule = ToRule(Members);
-	TArray<FHOLSubgroupView> Out;
-	for (const FHOLSubgroup& Subgroup : HOLCommandGrid::SplitSubgroups(Rule))
-	{
-		FHOLSubgroupView View;
-		View.bAll = Subgroup.bAll;
-		View.TypeName = Subgroup.TypeName;
-		View.Members = Subgroup.Members;
-		Out.Add(View);
-	}
-	return Out;
-}
-
-TArray<int32> UHOLCommandGridReadLibrary::GetCommandPriority(const TArray<FHOLGroupMemberView>& Members)
-{
-	const TArray<FHOLGroupMember> Rule = ToRule(Members);
-	return HOLCommandGrid::GetCommandPriority(Rule);
-}
-
-TArray<FHOLGridCommandView> UHOLCommandGridReadLibrary::MergeCommands(const TArray<FHOLGridCommandView>& PerBuilding, const TArray<int32>& Priority)
-{
-	TArray<TArray<FHOLGridCommand>> Rule;
-	const int32 Cells = HOLCommandGrid::NumCells;
-	for (int32 Start = 0; Start + Cells <= PerBuilding.Num(); Start += Cells)
-	{
-		TArray<FHOLGridCommand>& Building = Rule.AddDefaulted_GetRef();
-		for (int32 Cell = 0; Cell < Cells; ++Cell)
-		{
-			Building.Add(ToRule(PerBuilding[Start + Cell]));
-		}
-	}
-	TArray<FHOLGridCommandView> Out;
-	for (const FHOLGridCommand& Command : HOLCommandGrid::MergeCommands(Rule, Priority))
-	{
-		Out.Add(FromRule(Command));
-	}
-	return Out;
-}
-
-int32 UHOLCommandGridReadLibrary::PickEvenly(const TArray<FHOLQueueChoiceView>& Choices, const int32 LastKey)
-{
-	TArray<FHOLQueueChoice> Rule;
-	for (const FHOLQueueChoiceView& View : Choices)
-	{
-		Rule.Add({ View.QueueLength, View.MaxQueue, static_cast<uint32>(View.Key) });
-	}
-	return HOLCommandGrid::PickEvenly(Rule, static_cast<uint32>(LastKey));
 }
 
 // ---- MIG-C-CommandGrid, 2nd lot (GALADRIEL-1117n). NOT COMPILED when written. ----
@@ -385,7 +269,6 @@ int32 UHOLCommandGridReadLibrary::GetRageCell() { return HOLCommandGrid::GetRage
 int32 UHOLCommandGridReadLibrary::GetSpecializationCell(const int32 Option) { return HOLCommandGrid::GetSpecializationCell(Option); }
 FName UHOLCommandGridReadLibrary::GetReportName(const FHOLGridCommandView& Command) { return HOLCommandGrid::GetReportName(ToRule(Command)); }
 
-bool UHOLCommandGridReadLibrary::IsAgeOpen(const FHOLGridContextView& Context, const int32 Age) { return HOLCommandGrid::IsAgeOpen(ToRule(Context), Age); }
 float UHOLCommandGridReadLibrary::GetAgePanelOpacity(const FHOLGridContextView& Context, const int32 Age) { return HOLCommandGrid::GetAgePanelOpacity(ToRule(Context), Age); }
 
 int32 UHOLCommandGridReadLibrary::GetMouseCursor(const bool bAttackMoveArmed, const bool bPlacing)
@@ -401,6 +284,12 @@ TArray<FName> UHOLCommandGridReadLibrary::GetBuildingResearches(const FName Buil
 	TArray<FName> Names;
 	UHOLTechnologySettings::GetBuildingTechnologies(Building, Names);
 	return Names;
+}
+
+FName UHOLCommandGridReadLibrary::GetTechnologyRequires(const FName Technology)
+{
+	const FHOLTechnologyRow* Row = UHOLTechnologySettings::FindTechnology(Technology);
+	return Row ? Row->Requires : FName();
 }
 
 bool UHOLCommandGridReadLibrary::IsTechnologyInTable(const FName Technology) { return UHOLTechnologySettings::FindTechnology(Technology) != nullptr; }

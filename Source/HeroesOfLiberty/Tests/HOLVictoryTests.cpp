@@ -22,7 +22,6 @@
 #include "Misc/AutomationTest.h"
 #include "Components/StaticMeshComponent.h"
 #include "HOLCollision.h"
-#include "Player/HOLCommandGrid.h"
 #include "Presentation/HOLUnitAnimation.h"
 #include "Buildings/HOLConstructionRules.h"
 #include "Simulation/HOLBuildProcessor.h"
@@ -107,45 +106,6 @@ namespace UE::HeroesOfLiberty::Tests::Victory
 
 	constexpr EHOLSlotState Human = EHOLSlotState::Human;
 	constexpr EHOLSlotState AI = EHOLSlotState::AI;
-}
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLVictoryGameStateTest, "HeroesOfLiberty.Victory.GameState", UE::HeroesOfLiberty::Tests::Victory::Flags)
-bool FHOLVictoryGameStateTest::RunTest(const FString& Parameters)
-{
-	using namespace UE::HeroesOfLiberty::Tests::Victory;
-
-	UWorld* World = UWorld::CreateWorld(EWorldType::Game, /*bInformEngineOfWorld*/ false);
-	FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);
-	Context.SetCurrentWorld(World);
-	World->InitializeActorsForPlay(FURL());
-
-	AHOLGameState* State = World->SpawnActor<AHOLGameState>();
-	if (TestNotNull(TEXT("game state spawned"), State))
-	{
-		State->InitVictory(MakeConfig({ { Human, 0 }, { AI, 0 } }));
-		int32 Defeats = 0;
-		int32 Ends = 0;
-		State->OnSlotDefeated.AddLambda([&Defeats](int32, EHOLDefeatReason) { ++Defeats; });
-		State->OnMatchOver.AddLambda([&Ends] { ++Ends; });
-
-		TestFalse(TEXT("a closed slot cannot lose"), State->DefeatSlot(4, EHOLDefeatReason::Cheat));
-		TestFalse(TEXT("not over at the launch"), State->IsMatchOver());
-		TestTrue(TEXT("slot 1 surrenders"), State->DefeatSlot(1, EHOLDefeatReason::Surrender));
-		TestTrue(TEXT("slot 1 defeated"), State->IsSlotDefeated(1));
-		TestTrue(TEXT("by surrender"), State->GetDefeatReason(1) == EHOLDefeatReason::Surrender);
-		TestFalse(TEXT("slot 0 not defeated"), State->IsSlotDefeated(0));
-		TestTrue(TEXT("over"), State->IsMatchOver());
-		TestEqual(TEXT("slot 0 wins"), State->GetWinners(), TArray<int32>{ 0 });
-		TestTrue(TEXT("IsWinner"), State->IsWinner(0) && !State->IsWinner(1));
-		TestFalse(TEXT("once over, nobody loses any more"), State->DefeatSlot(0, EHOLDefeatReason::Cheat));
-		TestFalse(TEXT("never defeated twice"), State->DefeatSlot(1, EHOLDefeatReason::Cheat));
-		TestEqual(TEXT("one defeat told"), Defeats, 1);
-		TestEqual(TEXT("one end told"), Ends, 1);
-	}
-
-	GEngine->DestroyWorldContext(World);
-	World->DestroyWorld(/*bInformEngineOfWorld*/ false);
-	return true;
 }
 
 // V1.2 (D358): the collapse of the defeated. Slot 1 falls: its units at 0 health on the combat's dying path, its buildings
@@ -956,76 +916,8 @@ bool FHOLVictoryForumBuildersTest::RunTest(const FString& Parameters)
 	return true;
 }
 
-// V2.3b, pure: a main forum's selection block (D353: its lives public), standing, in ruin, rising again, its builders
-// shown to its owner alone; a secondary centre unchanged.
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLVictoryForumBlockTest, "HeroesOfLiberty.Victory.Forum.Block", UE::HeroesOfLiberty::Tests::Victory::Flags)
-bool FHOLVictoryForumBlockTest::RunTest(const FString& Parameters)
-{
-	FHOLForumTuning Tuning;
-	Tuning.Tier = 0;
-	Tuning.RuinSteps = 300;
-	Tuning.RebuildSteps = 1200;
-	Tuning.StepSeconds = 0.1f;
-
-	// A secondary centre (no forum state): nothing changes.
-	const FHOLForumBlock Secondary = HOLForumRules::GetSelectionBlock(nullptr, Tuning, true, 3);
-	TestFalse(TEXT("secondary centre: no forum block"), Secondary.bShown);
-	TestFalse(TEXT("secondary centre: health kept"), Secondary.bHideHealth);
-	TestEqual(TEXT("secondary centre: nothing described"), Secondary.Shown, FString());
-
-	// Standing: its health as before, its lives under it, to anyone.
-	FHOLForumState State;
-	for (const bool bOwn : { true, false })
-	{
-		const FHOLForumBlock Standing = HOLForumRules::GetSelectionBlock(&State, Tuning, bOwn, 0);
-		TestTrue(TEXT("standing: shown"), Standing.bShown);
-		TestFalse(TEXT("standing: health kept"), Standing.bHideHealth);
-		TestEqual(TEXT("standing: described"), Standing.Shown, FString(TEXT(", lives 2")));
-		// V2.3d: its lives on a row of their own (label and value as the health's), no line of text.
-		TestEqual(TEXT("standing: its lives"), Standing.Lives, 2);
-		TestTrue(TEXT("standing: no line"), Standing.Text.IsEmpty());
-	}
-
-	// In ruin, 25 s left (24.1 s rounds up): the seconds in place of the health, then its lives.
-	TestEqual(TEXT("fell: 1 life left"), HOLForumRules::Fall(State, Tuning), 1);
-	State.RuinStepsLeft = 250;
-	TestEqual(TEXT("ruin: 25 s left"), HOLForumRules::GetRuinSecondsLeft(State, Tuning), 25);
-	State.RuinStepsLeft = 241;
-	TestEqual(TEXT("ruin: 24.1 s shows 25 s"), HOLForumRules::GetRuinSecondsLeft(State, Tuning), 25);
-	for (const bool bOwn : { true, false })
-	{
-		const FHOLForumBlock Ruin = HOLForumRules::GetSelectionBlock(&State, Tuning, bOwn, 2);
-		TestTrue(TEXT("ruin: shown"), Ruin.bShown);
-		TestTrue(TEXT("ruin: health hidden"), Ruin.bHideHealth);
-		TestEqual(TEXT("ruin: described"), Ruin.Shown, FString(TEXT(", in ruin 25 s, lives 1")));
-		TestEqual(TEXT("ruin: its lines"), Ruin.Text.BuildSourceString(), FString(TEXT("En ruine \u2014 25 s")));
-		TestEqual(TEXT("ruin: its lives"), Ruin.Lives, 1);
-	}
-
-	// Rising again at 40 %: its builders to its owner alone (as a site's, D313).
-	State.Phase = EHOLForumPhase::Rebuilding;
-	State.RuinStepsLeft = 0;
-	State.RebuildWork = HOLForumRules::GetRebuildTotalWork(Tuning) * 40 / 100;
-	TestEqual(TEXT("rebuilding: 40 %"), HOLForumRules::GetRebuildPercent(State, Tuning), 40);
-	TestEqual(TEXT("rebuilding: no ruin left"), HOLForumRules::GetRuinSecondsLeft(State, Tuning), 0);
-	const FHOLForumBlock OwnRebuilding = HOLForumRules::GetSelectionBlock(&State, Tuning, true, 3);
-	TestTrue(TEXT("rebuilding: health hidden"), OwnRebuilding.bHideHealth);
-	TestEqual(TEXT("rebuilding, own: described"), OwnRebuilding.Shown, FString(TEXT(", rebuilding 40%, builders 3, lives 1")));
-	TestEqual(TEXT("rebuilding, own: its lines"), OwnRebuilding.Text.BuildSourceString(),
-		FString(TEXT("Reconstruction \u2014 40 %\nB\u00e2tisseurs : 3")));
-	TestEqual(TEXT("rebuilding, own: its lives"), OwnRebuilding.Lives, 1);
-	const FHOLForumBlock OtherRebuilding = HOLForumRules::GetSelectionBlock(&State, Tuning, false, 3);
-	TestTrue(TEXT("rebuilding, another's: health hidden"), OtherRebuilding.bHideHealth);
-	TestEqual(TEXT("rebuilding, another's: described"), OtherRebuilding.Shown, FString(TEXT(", rebuilding 40%, lives 1")));
-	TestEqual(TEXT("rebuilding, another's: no builders"), OtherRebuilding.Text.BuildSourceString(),
-		FString(TEXT("Reconstruction \u2014 40 %")));
-	TestEqual(TEXT("rebuilding, another's: its lives"), OtherRebuilding.Lives, 1);
-	return true;
-}
-
-// V3.3 (V3-Q5), pure: the hold shown, on the selection block (« Tenue — 35 s », « Contestée — 35 s »), in the players'
-// table (« Ruine · tenue 35 s ») and on the HUD's forum line; the ring (fill, holder's colour, grey contested, faded
-// receding; nothing with no count and no one) and the zone's outline it follows.
+// V3.3 (V3-Q5), pure, what script cannot read: the ring's colours, the players' table rows and the zone's outline. The hold's lines,
+// the block's text and the ring are tested in script: HOLForumRules_Test.as Test_ForumHoldDisplay.
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLVictoryForumHoldDisplayTest, "HeroesOfLiberty.Victory.Forum.Hold.Display", UE::HeroesOfLiberty::Tests::Victory::Flags)
 bool FHOLVictoryForumHoldDisplayTest::RunTest(const FString& Parameters)
 {
@@ -1036,70 +928,15 @@ bool FHOLVictoryForumHoldDisplayTest::RunTest(const FString& Parameters)
 	Tuning.StepSeconds = 0.1f;
 	Tuning.HoldSteps = 600;
 
-	// Standing: nothing of the hold.
+	// The forum state the players' table below reads (rest of the display: script, HOLForumRules_Test.as Test_ForumHoldDisplay).
 	FHOLForumState State;
-	TestFalse(TEXT("standing: no hold shown"), HOLForumRules::ShowsHold(State));
-	TestEqual(TEXT("standing: no ring"), HOLForumRules::GetRing(State, Tuning).Shown, FString(TEXT("none")));
-	TestFalse(TEXT("standing: ring hidden"), HOLForumRules::GetRing(State, Tuning).bShown);
-
-	// In ruin, no one there, count 0: nothing either.
 	HOLForumRules::Fall(State, Tuning);
-	State.RuinStepsLeft = 250;
-	TestFalse(TEXT("ruin, no one: no hold shown"), HOLForumRules::ShowsHold(State));
-	TestEqual(TEXT("ruin, no one: no ring"), HOLForumRules::GetRing(State, Tuning).Shown, FString(TEXT("none")));
-	TestEqual(TEXT("ruin, no one: block unchanged"), HOLForumRules::GetSelectionBlock(&State, Tuning, false, 0).Shown,
-		FString(TEXT(", in ruin 25 s, lives 1")));
-	TestEqual(TEXT("ruin, no one: nothing on the HUD line"), HOLForumRules::DescribeHold(State, Tuning), FString());
-
-	// Held by slot 1 for 35 s: the block's line, the HUD's, the ring at 0.58 in the holder's colour.
-	State.Hold = EHOLForumHold::Holding;
-	State.HoldSteps = 350;
-	State.HolderSlot = 1;
-	TestTrue(TEXT("holding: shown"), HOLForumRules::ShowsHold(State));
-	TestEqual(TEXT("holding: HUD line"), HOLForumRules::DescribeHold(State, Tuning), FString(TEXT("hold 35 s holding by slot 1")));
-	FHOLForumBlock Block = HOLForumRules::GetSelectionBlock(&State, Tuning, false, 0);
-	TestEqual(TEXT("holding: block described"), Block.Shown, FString(TEXT(", in ruin 25 s, hold 35 s holding by slot 1, lives 1")));
-	TestEqual(TEXT("holding: block lines"), Block.Text.BuildSourceString(), FString(TEXT("En ruine — 25 s\nTenue — 35 s")));
-	FHOLForumRing Ring = HOLForumRules::GetRing(State, Tuning);
-	TestTrue(TEXT("holding: ring shown"), Ring.bShown);
-	TestEqual(TEXT("holding: ring"), Ring.Shown, FString(TEXT("fill 0.58 holder slot 1")));
-	TestTrue(TEXT("holding: tint"), Ring.Tint == EHOLForumRingTint::Holder);
-	TestEqual(TEXT("holding: holder"), Ring.HolderSlot, 1);
-
-	// Contested: grey and frozen, « Contestée ».
-	State.Hold = EHOLForumHold::Contested;
-	TestEqual(TEXT("contested: HUD line"), HOLForumRules::DescribeHold(State, Tuning), FString(TEXT("hold 35 s contested by slot 1")));
-	Block = HOLForumRules::GetSelectionBlock(&State, Tuning, true, 2);
-	TestEqual(TEXT("contested: block lines"), Block.Text.BuildSourceString(), FString(TEXT("En ruine — 25 s\nContestée — 35 s")));
-	Ring = HOLForumRules::GetRing(State, Tuning);
-	TestEqual(TEXT("contested: ring"), Ring.Shown, FString(TEXT("fill 0.58 grey")));
-	TestTrue(TEXT("contested: tint"), Ring.Tint == EHOLForumRingTint::Grey);
-
-	// Receding at 20 s, rising again at 40 %: « Tenue » going down, the ring faded in the holder's colour.
 	State.Phase = EHOLForumPhase::Rebuilding;
 	State.RuinStepsLeft = 0;
 	State.RebuildWork = HOLForumRules::GetRebuildTotalWork(Tuning) * 40 / 100;
-	State.Hold = EHOLForumHold::Receding;
-	State.HoldSteps = 200;
-	Block = HOLForumRules::GetSelectionBlock(&State, Tuning, true, 3);
-	TestEqual(TEXT("receding: block described"), Block.Shown, FString(TEXT(", rebuilding 40%, builders 3, hold 20 s receding by slot 1, lives 1")));
-	TestEqual(TEXT("receding: block lines"), Block.Text.BuildSourceString(),
-		FString(TEXT("Reconstruction — 40 %\nBâtisseurs : 3\nTenue — 20 s")));
-	Ring = HOLForumRules::GetRing(State, Tuning);
-	TestEqual(TEXT("receding: ring"), Ring.Shown, FString(TEXT("fill 0.33 faded slot 1")));
-	TestTrue(TEXT("receding: tint"), Ring.Tint == EHOLForumRingTint::Faded);
-
-	// Contested at 0 (defenders came first): the ring shown, empty and grey; held with no holder known: grey too.
-	State.Hold = EHOLForumHold::Contested;
-	State.HoldSteps = 0;
-	TestEqual(TEXT("contested at 0: ring"), HOLForumRules::GetRing(State, Tuning).Shown, FString(TEXT("fill 0.00 grey")));
-	TestEqual(TEXT("contested at 0: block lines"), HOLForumRules::GetSelectionBlock(&State, Tuning, false, 0).Text.BuildSourceString(),
-		FString(TEXT("Reconstruction — 40 %\nContestée — 0 s")));
 	State.Hold = EHOLForumHold::Holding;
 	State.HoldSteps = 300;
 	State.HolderSlot = INDEX_NONE;
-	TestEqual(TEXT("no holder: ring grey"), HOLForumRules::GetRing(State, Tuning).Shown, FString(TEXT("fill 0.50 grey")));
-	TestEqual(TEXT("no holder: HUD line"), HOLForumRules::DescribeHold(State, Tuning), FString(TEXT("hold 30 s holding")));
 
 	// The colours (V3.4b): the holder's own, a neutral dark grey contested (it stands out on the light ground), halfway to
 	// a dark grey receding (darkened, not paled, and still apart from the contested grey).
@@ -1152,33 +989,11 @@ bool FHOLVictoryForumHoldDisplayTest::RunTest(const FString& Parameters)
 	return true;
 }
 
-// V2.3a (V2-Q1), pure: what a main forum shows in each phase (itself, rubble, a site at the rebuilding's progress), its
-// Peasants standing without a hammer through the ruin only, and its grid empty while down.
+// V2.3a (V2-Q1), pure: the Peasants' hammer at a site, not at a forum in ruin (HOLUnitAnimation::Choose, no script binding).
+// The forum's look (itself, rubble, a site) is tested in script: HOLForumRules_Test.as Test_ForumLook.
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLVictoryForumLookTest, "HeroesOfLiberty.Victory.Forum.Look", UE::HeroesOfLiberty::Tests::Victory::Flags)
 bool FHOLVictoryForumLookTest::RunTest(const FString& Parameters)
 {
-	FHOLForumTuning Tuning;
-	Tuning.RuinSteps = 30;
-	Tuning.RebuildSteps = 100;
-	FHOLForumState State;
-	FHOLForumLookChoice Look = HOLForumRules::GetLook(State, Tuning);
-	TestTrue(TEXT("standing: itself"), Look.Look == EHOLForumLook::Standing);
-	TestEqual(TEXT("standing: whole"), Look.Progress, 1.f);
-	TestFalse(TEXT("standing: nobody waits"), HOLForumRules::BuildersWait(State));
-
-	TestEqual(TEXT("the fall"), HOLForumRules::Fall(State, Tuning), 1);
-	Look = HOLForumRules::GetLook(State, Tuning);
-	TestTrue(TEXT("ruin: rubble"), Look.Look == EHOLForumLook::Rubble);
-	TestEqual(TEXT("ruin: nothing risen"), Look.Progress, 0.f);
-	TestTrue(TEXT("ruin: its Peasants wait"), HOLForumRules::BuildersWait(State));
-
-	State.Phase = EHOLForumPhase::Rebuilding;
-	State.RebuildWork = HOLForumRules::GetRebuildTotalWork(Tuning) / 4;
-	Look = HOLForumRules::GetLook(State, Tuning);
-	TestTrue(TEXT("rebuilding: a site"), Look.Look == EHOLForumLook::Site);
-	TestEqual(TEXT("rebuilding: at its progress"), Look.Progress, 0.25f, 0.001f);
-	TestFalse(TEXT("rebuilding: its Peasants strike"), HOLForumRules::BuildersWait(State));
-
 	// The hammer at a site, not at a forum in ruin (standing: the idle sequence), never idle for the HUD (still Building).
 	FHOLUnitTypeConstants Peasant;
 	Peasant.Speed = 600.f;
@@ -1192,16 +1007,6 @@ bool FHOLVictoryForumLookTest::RunTest(const FString& Parameters)
 	Input.bSiteWaits = true;
 	TestEqual(TEXT("at a forum in ruin: standing"), HOLUnitAnimation::Choose(Peasant, Input).Sequence, 0);
 	TestFalse(TEXT("at a forum in ruin: not turned to strike"), HOLUnitAnimation::Choose(Peasant, Input).bFacesSite);
-
-	// The grid of a forum down: no production, no Annuler.
-	FHOLGridContext Grid;
-	Grid.bOwnBuilding = true;
-	Grid.bBuildingFinished = true;
-	Grid.Produces = { FName(TEXT("Peasant")) };
-	TestTrue(TEXT("a forum standing produces"), HOLCommandGrid::GetCommand(Grid, 0).Command == EHOLGridCommand::Produce);
-	Grid.bForumDown = true;
-	TestTrue(TEXT("a forum down: no production"), HOLCommandGrid::GetCommand(Grid, 0).IsNone());
-	TestTrue(TEXT("a forum down: nothing to cancel"), HOLCommandGrid::GetCommand(Grid, HOLCommandGrid::CancelCell).IsNone());
 	return true;
 }
 

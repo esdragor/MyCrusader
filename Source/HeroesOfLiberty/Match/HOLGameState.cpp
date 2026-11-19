@@ -382,11 +382,37 @@ AHOLBuilding* AHOLGameState::FindPrimaryForum(const UWorld& World, const int32 S
 	return nullptr;
 }
 
+namespace
+{
+	/** The script match flow board answered -1 (absent): the caller refuses the action; the error is logged once per action (once per process), never a C++ rule. */
+	void LogMatchFlowBoardAbsentOnce(const TCHAR* Action)
+	{
+		static TSet<FString> Logged;
+		bool bAlready = false;
+		Logged.Add(FString(Action), &bAlready);
+		if (!bAlready)
+		{
+			UE_LOG(LogHOLMatch, Error, TEXT("Match flow: %s refused, no script match flow board (HOLMatchFlowBoard.as not compiled)"), Action);
+		}
+	}
+}
+
 bool AHOLGameState::HandleForumFall(AHOLBuilding& Forum)
 {
 	const int32 Slot = Forum.GetOwnerPlayer();
-	if (!HasAuthority() || !Forum.IsPrimaryForum() || !ForumStates.IsValidIndex(Slot) || IsSlotDefeated(Slot)
-		|| (PendingForumDefeats & (1 << Slot)) || HOLVictoryRules::GetCamp(LaunchConfig, Slot) == INDEX_NONE)
+	// S2c (MIG-CPP step 5, D839): the gate is the script board's alone (HOLMatchFlow::FallGateOpen, proven by Test_MatchFlowFallGate). -1 (no board) refuses,
+	// error logged once. Game thread only: the callers of DamageBuilding are the combat processor's Execute (game
+	// thread, outside its three ParallelFor), the cheats and the volcano step (HOLCombatProcessor.cpp:252, 1364, 2528).
+	const bool bSlotValid = ForumStates.IsValidIndex(Slot);
+	const int32 GateAnswer = UHOLMatchFlowSubsystem::AskFallGate(GetWorld(), HasAuthority(), Forum.IsPrimaryForum(), bSlotValid,
+		bSlotValid && IsSlotDefeated(Slot), bSlotValid && (PendingForumDefeats & (1 << Slot)) != 0,
+		bSlotValid && HOLVictoryRules::GetCamp(LaunchConfig, Slot) != INDEX_NONE);
+	if (GateAnswer < 0)
+	{
+		LogMatchFlowBoardAbsentOnce(TEXT("HandleForumFall"));
+		return false;
+	}
+	if (GateAnswer == 0 || !bSlotValid)
 	{
 		return false;
 	}
@@ -417,8 +443,19 @@ bool AHOLGameState::HandleForumFall(AHOLBuilding& Forum)
 
 bool AHOLGameState::HandleKingDeath(const int32 Slot)
 {
-	if (!HasAuthority() || bMatchOver || !SlotDefeats.IsValidIndex(Slot) || IsSlotDefeated(Slot)
-		|| (PendingKingDefeats & (1 << Slot)) || HOLVictoryRules::GetCamp(LaunchConfig, Slot) == INDEX_NONE)
+	// S2c (MIG-CPP step 5, D839): the gate is the script board's alone (HOLMatchFlow::KingGateOpen, proven by Test_MatchFlowKingGate). -1 (no board)
+	// refuses, error logged once. Game thread only: HandleKingDeath is reached from KillUnit, itself called by the combat
+	// processor's Execute (game thread, outside its three ParallelFor: HOLCombatProcessor.cpp:252, 652, 1310, 663).
+	const bool bSlotValid = SlotDefeats.IsValidIndex(Slot);
+	const int32 GateAnswer = UHOLMatchFlowSubsystem::AskKingGate(GetWorld(), HasAuthority(), bMatchOver, bSlotValid,
+		bSlotValid && IsSlotDefeated(Slot), bSlotValid && (PendingKingDefeats & (1 << Slot)) != 0,
+		bSlotValid && HOLVictoryRules::GetCamp(LaunchConfig, Slot) != INDEX_NONE);
+	if (GateAnswer < 0)
+	{
+		LogMatchFlowBoardAbsentOnce(TEXT("HandleKingDeath"));
+		return false;
+	}
+	if (GateAnswer == 0 || !bSlotValid)
 	{
 		return false;
 	}
@@ -647,8 +684,17 @@ void AHOLGameState::SetForumBuilders(const int32 Slot, const int32 Builders)
 
 bool AHOLGameState::DefeatSlot(const int32 Slot, const EHOLDefeatReason Reason)
 {
-	if (!HasAuthority() || bMatchOver || Reason == EHOLDefeatReason::None || !SlotDefeats.IsValidIndex(Slot)
-		|| IsSlotDefeated(Slot) || HOLVictoryRules::GetCamp(LaunchConfig, Slot) == INDEX_NONE)
+	// S2a (MIG-CPP step 5, D839): the gate is the script board's alone (HOLMatchFlow::DefeatGateOpen, proven by Test_MatchFlowDefeatGate). -1 (no board)
+	// refuses the defeat, error logged once. Game thread only (every caller of DefeatSlot is: step end, RPC, console).
+	const bool bSlotValid = SlotDefeats.IsValidIndex(Slot);
+	const int32 GateAnswer = UHOLMatchFlowSubsystem::AskDefeatGate(GetWorld(), HasAuthority(), bMatchOver, Reason == EHOLDefeatReason::None, bSlotValid,
+		bSlotValid && IsSlotDefeated(Slot), bSlotValid && HOLVictoryRules::GetCamp(LaunchConfig, Slot) != INDEX_NONE);
+	if (GateAnswer < 0)
+	{
+		LogMatchFlowBoardAbsentOnce(TEXT("DefeatSlot"));
+		return false;
+	}
+	if (GateAnswer == 0 || !bSlotValid)
 	{
 		return false;
 	}
@@ -691,11 +737,21 @@ bool AHOLGameState::EvaluateMatchEnd()
 	{
 		return false;
 	}
-	FHOLVictoryResult Result = HOLVictoryRules::Evaluate(LaunchConfig, GetDefeatedMask());
-	if (!Result.bOver && IsDiplomacyMode() && GetDefeatedMask() != 0)
+	// S2a (MIG-CPP step 5, D839): the verdict is the script board's alone (HOLMatchFlow::MatchEndVerdict, which reads the camps rule HOLVictoryRules::Evaluate through
+	// HOLVictoryRead; proven by Test_MatchFlowMatchEndVerdict and Test_MatchFlowMatchEndVerdictAgreement). -1 (no board) ends nothing, error logged once.
+	// States / Teams as HOLVictoryRead takes them (the Diplomacy mode: every slot its own camp).
+	TArray<int32> States;
+	TArray<int32> Teams;
+	for (int32 Index = 0; Index < LaunchConfig.Slots.Num(); ++Index)
 	{
-		// D373: the survivors all allied to each other and at least one beaten: they win together, at once. A closed slot counts as beaten
-		// for the rule (it is nobody's ally) but never makes the "at least one beaten" (the mask above holds only real defeats).
+		States.Add(static_cast<int32>(LaunchConfig.Slots[Index].State));
+		Teams.Add(IsDiplomacyMode() ? 0 : static_cast<int32>(LaunchConfig.Slots[Index].Team));
+	}
+	// D373: the survivors all allied to each other and at least one beaten: they win together, at once. A closed slot counts as beaten
+	// for the rule (it is nobody's ally) but never makes the "at least one beaten" (the mask holds only real defeats).
+	int32 AlliedMask = -1;
+	if (IsDiplomacyMode() && GetDefeatedMask() != 0)
+	{
 		TArray<bool> Gone;
 		for (int32 Slot = 0; Slot < FHOLMatchConfig::MaxSlots; ++Slot)
 		{
@@ -704,13 +760,22 @@ bool AHOLGameState::EvaluateMatchEnd()
 		const HOLDiplomacy::FAlliedVictory Allied = HOLDiplomacy::AlliedVictory(GetDiplomacyBook(), Gone);
 		if (Allied.bEnded)
 		{
-			Result.bOver = true;
+			AlliedMask = 0;
 			for (const int32 Winner : Allied.Winners)
 			{
-				Result.WinnerMask |= static_cast<uint8>(1 << Winner);
+				AlliedMask |= 1 << Winner;
 			}
 		}
 	}
+	const int32 Verdict = UHOLMatchFlowSubsystem::AskMatchEnd(GetWorld(), States, Teams, GetDefeatedMask(), IsDiplomacyMode(), AlliedMask);
+	if (Verdict < 0)
+	{
+		LogMatchFlowBoardAbsentOnce(TEXT("EvaluateMatchEnd"));
+		return false;
+	}
+	FHOLVictoryResult Result;
+	Result.bOver = Verdict < UHOLMatchFlowSubsystem::MatchNotOver;
+	Result.WinnerMask = Result.bOver ? static_cast<uint8>(Verdict) : 0;
 	if (!Result.bOver)
 	{
 		return false;

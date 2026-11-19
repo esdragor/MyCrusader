@@ -1,4 +1,4 @@
-# [À RÉPONDRE] Étape 5 : faut-il migrer les corps serveur des ordres (`Do<X>`) alors que le gain est presque nul ?
+# [RÉPONDU] Étape 5 : faut-il migrer les corps serveur des ordres (`Do<X>`) alors que le gain est presque nul ?
 
 Contexte : D851 dit de faire tout le plan d'origine de l'étape 5. Le relevé du 2026-11-19 (`Docs\Rapports\C3-PLAN-1119.md`) montre que les lots C3, C4, C5 (les 43 corps `Do<X>` du contrôleur, ce que le serveur exécute quand un ordre ou une triche arrive par le réseau) rapportent peu : chaque corps migré remplace un pont C++ par une liaison C++ de taille voisine. Pour le joueur rien ne change si tout va bien ; si un lot se trompe, un ordre donné en multijoueur ne part plus (invisible en solo).
 
@@ -20,4 +20,4 @@ Total estimé par le relevé si tout est fait : ~720 lignes quittent le contrôl
 
 Recommandation : **A**. Les règles des ordres sont déjà en script (lots P1 et P2) ; ce qui reste dans `Do<X>` n'est que du transport. Valeur par défaut tant que tu n'as pas répondu : rien n'est lancé sur C3, C4, C5 ; les autres lots continuent.
 
-Reponse:
+Reponse: C, et l'étape 5 est close (2026-11-19 ~19:23, interface de choix, « Clore maintenant » ; **D857** du `GDD.md`) : les 43 corps `Do<X>` restent en C++ comme enveloppe réseau ; lots C3, C4, C5 abandonnés.

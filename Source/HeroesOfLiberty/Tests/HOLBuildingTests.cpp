@@ -501,36 +501,6 @@ bool FHOLBuildingFoundationTest::RunTest(const FString& Parameters)
 	return true;
 }
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLBuildingSelectionTest, "HeroesOfLiberty.Buildings.Selection", UE::HeroesOfLiberty::Tests::Buildings::Flags)
-bool FHOLBuildingSelectionTest::RunTest(const FString& Parameters)
-{
-	UWorld* World = UWorld::CreateWorld(EWorldType::Game, /*bInformEngineOfWorld*/ false);
-	FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);
-	Context.SetCurrentWorld(World);
-	World->InitializeActorsForPlay(FURL());
-
-	AHOLBuilding* Building = World->SpawnActor<AHOLBuilding>();
-	if (TestNotNull(TEXT("building spawned"), Building))
-	{
-		Building->Setup(HOLBuildingTypeNames::MainCentre, 1, 4);
-		// The look is applied at the frame (D325): at once here.
-		Building->ApplyPendingAppearance();
-
-		// D262: the selection ray, from the height of the camera, hits the building and nothing beside it.
-		FHitResult Hit;
-		const FVector Above(0.0, 0.0, 5000.0);
-		World->LineTraceSingleByChannel(Hit, Above, Above - FVector(0.0, 0.0, 10000.0), HOLCollision::Selection);
-		TestTrue(TEXT("the selection ray hits the building"), Hit.GetActor() == Building);
-		const FVector Beside(2000.0, 0.0, 5000.0);
-		TestFalse(TEXT("nothing beside it"),
-			World->LineTraceSingleByChannel(Hit, Beside, Beside - FVector(0.0, 0.0, 10000.0), HOLCollision::Selection));
-	}
-
-	GEngine->DestroyWorldContext(World);
-	World->DestroyWorld(/*bInformEngineOfWorld*/ false);
-	return true;
-}
-
 // D345.2a: a building's health (its work's share, the damage kept), its armour against arrows, its destruction (its
 // footprint reopened, rubble that blocks nothing nor answers a click).
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLBuildingDamageTest, "HeroesOfLiberty.Buildings.Damage", UE::HeroesOfLiberty::Tests::Buildings::Flags)

@@ -247,6 +247,7 @@ void Test_ForumBlock(FUnitTest& T)
 		T.AssertTrue(Ruin.bHideHealth, "ruin: health hidden");
 		T.AssertTrue(Ruin.Shown == ", in ruin 25 s, lives 1", "ruin: described");
 		T.AssertTrue(Ruin.Text.Contains("25 s"), "ruin: its line carries the seconds");
+		T.AssertTrue(Ruin.Text == "En ruine — 25 s", "ruin: its lines");
 		T.AssertEquals(1, Ruin.Lives, "ruin: its lives");
 	}
 
@@ -260,11 +261,13 @@ void Test_ForumBlock(FUnitTest& T)
 	T.AssertTrue(OwnRebuilding.bHideHealth, "rebuilding: health hidden");
 	T.AssertTrue(OwnRebuilding.Shown == ", rebuilding 40%, builders 3, lives 1", "rebuilding, own: described");
 	T.AssertTrue(OwnRebuilding.Text.Contains("40 %") && OwnRebuilding.Text.Contains(": 3"), "rebuilding, own: its lines carry the percent and the builders");
+	T.AssertTrue(OwnRebuilding.Text == "Reconstruction — 40 %\nBâtisseurs : 3", "rebuilding, own: its exact lines");
 	T.AssertEquals(1, OwnRebuilding.Lives, "rebuilding, own: its lives");
 	FHOLForumBlockRead OtherRebuilding = HOLForumRulesRead::GetSelectionBlock(true, State, Tuning, false, 3);
 	T.AssertTrue(OtherRebuilding.bHideHealth, "rebuilding, another's: health hidden");
 	T.AssertTrue(OtherRebuilding.Shown == ", rebuilding 40%, lives 1", "rebuilding, another's: described");
 	T.AssertFalse(OtherRebuilding.Text.Contains(": 3"), "rebuilding, another's: no builders");
+	T.AssertTrue(OtherRebuilding.Text == "Reconstruction — 40 %", "rebuilding, another's: its exact lines");
 	T.AssertEquals(1, OtherRebuilding.Lives, "rebuilding, another's: its lives");
 }
 
@@ -301,6 +304,7 @@ void Test_ForumHoldDisplay(FUnitTest& T)
 	T.AssertTrue(HOLForumRulesRead::DescribeHold(State, Tuning) == "hold 35 s holding by slot 1", "holding: HUD line");
 	FHOLForumBlockRead Block = HOLForumRulesRead::GetSelectionBlock(true, State, Tuning, false, 0);
 	T.AssertTrue(Block.Shown == ", in ruin 25 s, hold 35 s holding by slot 1, lives 1", "holding: block described");
+	T.AssertTrue(Block.Text == "En ruine — 25 s\nTenue — 35 s", "holding: block lines");
 	T.AssertTrue(HOLForumRulesRead::IsRingShown(State, Tuning), "holding: ring shown");
 	T.AssertTrue(HOLForumRulesRead::GetRingShown(State, Tuning) == "fill 0.58 holder slot 1", "holding: ring");
 	T.AssertEquals(1, HOLForumRulesRead::GetRingHolderSlot(State, Tuning), "holding: holder");
@@ -309,6 +313,8 @@ void Test_ForumHoldDisplay(FUnitTest& T)
 	// Contested: grey and frozen.
 	State.Hold = 2;
 	T.AssertTrue(HOLForumRulesRead::DescribeHold(State, Tuning) == "hold 35 s contested by slot 1", "contested: HUD line");
+	Block = HOLForumRulesRead::GetSelectionBlock(true, State, Tuning, true, 2);
+	T.AssertTrue(Block.Text == "En ruine — 25 s\nContestée — 35 s", "contested: block lines");
 	T.AssertTrue(HOLForumRulesRead::GetRingShown(State, Tuning) == "fill 0.58 grey", "contested: ring");
 
 	// Receding at 20 s, rising again at 40 %: the ring faded in the holder's colour.
@@ -319,12 +325,15 @@ void Test_ForumHoldDisplay(FUnitTest& T)
 	State.HoldSteps = 200;
 	Block = HOLForumRulesRead::GetSelectionBlock(true, State, Tuning, true, 3);
 	T.AssertTrue(Block.Shown == ", rebuilding 40%, builders 3, hold 20 s receding by slot 1, lives 1", "receding: block described");
+	T.AssertTrue(Block.Text == "Reconstruction — 40 %\nBâtisseurs : 3\nTenue — 20 s", "receding: block lines");
 	T.AssertTrue(HOLForumRulesRead::GetRingShown(State, Tuning) == "fill 0.33 faded slot 1", "receding: ring");
 
 	// Contested at 0 (defenders came first): the ring shown, empty and grey; held with no holder known: grey too.
 	State.Hold = 2;
 	State.HoldSteps = 0;
 	T.AssertTrue(HOLForumRulesRead::GetRingShown(State, Tuning) == "fill 0.00 grey", "contested at 0: ring");
+	FHOLForumBlockRead AtZero = HOLForumRulesRead::GetSelectionBlock(true, State, Tuning, false, 0);
+	T.AssertTrue(AtZero.Text == "Reconstruction — 40 %\nContestée — 0 s", "contested at 0: block lines");
 	State.Hold = 1;
 	State.HoldSteps = 300;
 	State.HolderSlot = -1;

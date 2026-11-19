@@ -133,6 +133,9 @@ struct FHOLGridContext
 	TArray<FName> Produces;
 	/** The technologies the building researches (T4), in the order of the technology table: its research row, from ResearchFirstCell. */
 	TArray<FName> Researches;
+
+	/** The technologies the owner has researched (D856: the script rule shows, per line of technologies, the next level not yet researched; the rule itself is in HOLCommandGridRules.as). */
+	TArray<FName> Researched;
 	/**
 	 * The player's own selected units count at least one builder (a unit that gathers, CarryCapacity > 0: what the
 	 * server checks for a build order, J6a.4).
@@ -358,6 +361,7 @@ namespace HOLCommandGrid
 	/**
 	 * What Cell of the grid on the right does: the selected building's production (finished) or its cancel cell (a site);
 	 * the hero's abilities when he is among the units commanded (greyed below their level or cooling down); else nothing (the builders' are the age panels': GetAgeBuilding; the units' orders the orders' panel's: GetOrder).
+	 * The rule is the script board's alone (UHOLCommandGridBoard): no board in a game world = an empty command + one log line per function and world.
 	 */
 	HEROESOFLIBERTY_API FHOLGridCommand GetCommand(const FHOLGridContext& Context, int32 Cell);
 
