@@ -33,7 +33,7 @@ namespace HOLAlertBanner
 	float PaddingX() { return 16.0; }
 	float PaddingY() { return 6.0; }
 
-	// FHOLForumAlert::SoundPath, the herald's voice's place until a real sound comes (provisional).
+	// FHOLForumAlert::SoundPath, the herald's voice's place until a real sound comes (a stand-in, listed in Placeholders.txt).
 	FString SoundPath() { return "/Engine/EngineSounds/1kSineTonePing.1kSineTonePing"; }
 
 	// Serial: the number of banners the C++ state has presented so far (0 never); ShownSerial: the one drawn (0 none); bVisible: the panel is up.
