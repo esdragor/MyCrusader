@@ -23,6 +23,9 @@
 #include "Resources/HOLSourceSubsystem.h"
 #include "Simulation/HOLHeroSubsystem.h"
 #include "Simulation/HOLSimulationSubsystem.h"
+#include "AI/HOLAIBrain.h"
+#include "Buildings/HOLConstructionRules.h"
+#include "Simulation/HOLGatherProcessor.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogHOLTestWorld, Log, All);
 
@@ -526,4 +529,151 @@ int32 UHOLTestWorldLibrary::CountBuildings(UHOLTestWorldHandle* TestWorld, const
 	}
 #endif
 	return Count;
+}
+
+AHOLPlayerState* UHOLTestWorldLibrary::SpawnPlayerStateNoSlot(UHOLTestWorldHandle* TestWorld, const FString& Name)
+{
+#if WITH_DEV_AUTOMATION_TESTS
+	UWorld* World = TestWorld ? TestWorld->GetTestWorld() : nullptr;
+	AHOLPlayerState* Player = World ? World->SpawnActor<AHOLPlayerState>() : nullptr;
+	if (Player)
+	{
+		Player->SetPlayerName(Name);
+	}
+	return Player;
+#else
+	return nullptr;
+#endif
+}
+
+AHOLPlayerState* UHOLTestWorldLibrary::FindLiveHolder(UHOLTestWorldHandle* TestWorld, const int32 Slot, const AHOLPlayerState* Except)
+{
+#if WITH_DEV_AUTOMATION_TESTS
+	if (const UWorld* World = HOLTestWorldLibNs::HOLTestWorldLibWorldOf(TestWorld))
+	{
+		return AHOLGameState::FindLiveHolder(*World, Slot, Except);
+	}
+#endif
+	return nullptr;
+}
+
+bool UHOLTestWorldLibrary::HasSlotStock(UHOLTestWorldHandle* TestWorld, const int32 Slot)
+{
+#if WITH_DEV_AUTOMATION_TESTS
+	if (const UWorld* World = HOLTestWorldLibNs::HOLTestWorldLibWorldOf(TestWorld))
+	{
+		FHOLResources Stock;
+		return AHOLGameState::GetSlotStock(*World, Slot, Stock);
+	}
+#endif
+	return false;
+}
+
+FHOLResources UHOLTestWorldLibrary::GetSlotStock(UHOLTestWorldHandle* TestWorld, const int32 Slot)
+{
+	FHOLResources Stock;
+#if WITH_DEV_AUTOMATION_TESTS
+	if (const UWorld* World = HOLTestWorldLibNs::HOLTestWorldLibWorldOf(TestWorld))
+	{
+		if (!AHOLGameState::GetSlotStock(*World, Slot, Stock))
+		{
+			Stock = FHOLResources();
+		}
+	}
+#endif
+	return Stock;
+}
+
+UHOLAIBrainSubsystem* UHOLTestWorldLibrary::GetAIBrain(UHOLTestWorldHandle* TestWorld)
+{
+#if WITH_DEV_AUTOMATION_TESTS
+	if (const UWorld* World = HOLTestWorldLibNs::HOLTestWorldLibWorldOf(TestWorld))
+	{
+		return UHOLAIBrainSubsystem::Find(World);
+	}
+#endif
+	return nullptr;
+}
+
+int32 UHOLTestWorldLibrary::GetProductionQueueCount(const AHOLBuilding* Building)
+{
+#if WITH_DEV_AUTOMATION_TESTS
+	return Building ? Building->GetProductionQueue().Num() : 0;
+#else
+	return 0;
+#endif
+}
+
+FName UHOLTestWorldLibrary::GetProductionQueueName(const AHOLBuilding* Building, const int32 Index)
+{
+#if WITH_DEV_AUTOMATION_TESTS
+	if (Building && Building->GetProductionQueue().IsValidIndex(Index))
+	{
+		return Building->GetProductionQueue()[Index].TypeName;
+	}
+#endif
+	return NAME_None;
+}
+
+bool UHOLTestWorldLibrary::IsProductionQueueItemStarted(const AHOLBuilding* Building, const int32 Index)
+{
+#if WITH_DEV_AUTOMATION_TESTS
+	return Building && Building->GetProductionQueue().IsValidIndex(Index) && Building->GetProductionQueue()[Index].IsStarted();
+#else
+	return false;
+#endif
+}
+
+int32 UHOLTestWorldLibrary::GetBuildingConstructionState(const AHOLBuilding* Building)
+{
+#if WITH_DEV_AUTOMATION_TESTS
+	return Building ? static_cast<int32>(Building->GetConstructionState()) : 0;
+#else
+	return 0;
+#endif
+}
+
+int64 UHOLTestWorldLibrary::GetBuildingConstructionWork(const AHOLBuilding* Building)
+{
+#if WITH_DEV_AUTOMATION_TESTS
+	return Building ? Building->GetConstructionWork() : 0;
+#else
+	return 0;
+#endif
+}
+
+int64 UHOLTestWorldLibrary::GetBuildingTotalWork(const AHOLBuilding* Building)
+{
+#if WITH_DEV_AUTOMATION_TESTS
+	return Building ? Building->GetTotalWork() : 0;
+#else
+	return 0;
+#endif
+}
+
+FHOLResources UHOLTestWorldLibrary::GetBuildingCancelRefund(const AHOLBuilding* Building)
+{
+#if WITH_DEV_AUTOMATION_TESTS
+	const FHOLBuildingTypeRow* Type = Building ? Building->GetType() : nullptr;
+	if (Type)
+	{
+		return HOLConstruction::GetCancelRefund(Type->Cost, Building->GetConstructionState(), Building->GetConstructionWork(), Building->GetTotalWork());
+	}
+#endif
+	return FHOLResources();
+}
+
+int32 UHOLTestWorldLibrary::DepositLoad(UHOLTestWorldHandle* TestWorld, const int32 Owner, const int32 Resource, const int32 Amount)
+{
+#if WITH_DEV_AUTOMATION_TESTS
+	if (UWorld* World = HOLTestWorldLibNs::HOLTestWorldLibWorldOf(TestWorld))
+	{
+		FHOLGatherLoad Load;
+		Load.Resource = static_cast<EHOLResource>(Resource);
+		Load.Amount = Amount;
+		FHOLResources Stock;
+		return UHOLGatherProcessor::DepositLoad(*World, Owner, Load, Stock);
+	}
+#endif
+	return 0;
 }
