@@ -91,6 +91,13 @@ public:
 	/** The player state the screen shows (the local player's); null for a spectator or before it arrives. */
 	const AHOLPlayerState* GetBoundPlayerState() const;
 
+	/** HUD H-5a: the major alert's state (the machine stays here, one source); the script's banner reads it (UHOLScriptScreen::GetAlertBanner). */
+	const FHOLForumAlert& GetAlert() const { return Alert; }
+	/** HUD H-5a: how many banners PresentAlert has shown (never reset): the script redraws when it changes. */
+	int32 GetAlertPresentCount() const { return AlertPresentCount; }
+	/** HUD H-5a: the owning controller's camera over the forum of Slot (no journal line: the script writes it). */
+	void FocusCameraOnForum(int32 ForumSlot);
+
 	/** HUD H-4: the PlayersPanel (table host in the right column), filled by the script's table. */
 	UBorder* GetPlayersPanel() const { return PlayersPanel; }
 
@@ -465,15 +472,11 @@ private:
 	/** False without the game state; bOver: my Victory / Defeat banner due (D202). */
 	bool IsMatchOverForMe(bool& bOver) const;
 	UFUNCTION()
-	FEventReply HandleAlertMouseDown(FGeometry Geometry, const FPointerEvent& MouseEvent);
-	UFUNCTION()
 	FEventReply HandleMessageLineMouseDown(FGeometry Geometry, const FPointerEvent& MouseEvent);
 	void FocusAlertSlot(int32 TouchedSlot);
-	UPROPERTY(Transient)
-	TObjectPtr<UBorder> AlertPanel;
-	UPROPERTY(Transient)
-	TObjectPtr<UHorizontalBox> AlertRow;
 	FHOLForumAlert Alert;
+	/** HUD H-5a: PresentAlert's count (a new banner, even an identical one, is a new number). */
+	int32 AlertPresentCount = 0;
 	FDelegateHandle TableForumEventHandle;
 	FDelegateHandle TableHeroReadyHandle;
 	FDelegateHandle TableTributeHandle;
