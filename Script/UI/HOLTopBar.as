@@ -363,7 +363,7 @@ class UHOLTopBarPanel : UObject
 	{
 		if (IdleWorkers == nullptr || !IdleWorkers.GetIsEnabled())
 			return false;
-		Log(n"LogHOLUI", HOLTopBar::IdleClickLine());
+		UHOLGameMenuScreen::MenuLog(HOLTopBar::IdleClickLine());
 		Screen.SelectNextIdleWorker();
 		return true;
 	}

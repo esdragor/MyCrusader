@@ -147,7 +147,7 @@ namespace HOLShortMessage
 		Parts.Text.SetText(Text);
 		Parts.Panel.SetRenderOpacity(1.0);
 		Parts.Panel.SetVisibility(ESlateVisibility::HitTestInvisible);
-		Log(n"LogHOLUI", MessageLogLine(Key, Text.ToString()));
+		UHOLGameMenuScreen::MenuLog(MessageLogLine(Key, Text.ToString()));
 	}
 
 	// One frame (or one refresh): the fade, the hiding after Seconds; true when the message has just ended (the screen then clears the key it mirrors to the C++).
@@ -185,7 +185,7 @@ namespace HOLShortMessage
 			return false;
 		ShowText(Parts, State, PopulationKey, PopulationMaxText());
 		Screen.AddThreadLine(HOLAlertRules::PopulationFullText());
-		Log(n"LogHOLUI", HeldLogLine());
+		UHOLGameMenuScreen::MenuLog(HeldLogLine());
 		return true;
 	}
 }

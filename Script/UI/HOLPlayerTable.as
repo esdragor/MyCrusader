@@ -350,12 +350,12 @@ class UHOLPlayerTablePanel : UObject
 		if (Plan.bLogNames)
 		{
 			LastNamesLine = Plan.NamesLog;
-			Log(n"LogHOLUI", LastNamesLine);
+			UHOLGameMenuScreen::MenuLog(LastNamesLine);
 		}
 		if (Plan.bLogStates)
 		{
 			LastStatesLine = Plan.StatesLog;
-			Log(n"LogHOLUI", LastStatesLine);
+			UHOLGameMenuScreen::MenuLog(LastStatesLine);
 		}
 		SetShown(Host, Plan.bPanelVisible, ESlateVisibility::HitTestInvisible);
 		for (int Index = 0; Index < RowBoxes.Num(); ++Index)

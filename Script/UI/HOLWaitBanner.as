@@ -180,7 +180,7 @@ class UHOLWaitBannerPanel : UObject
 			ShownWait = WaitNow.bVisible ? WaitNow.Signature : "";
 			WaitPanel.SetVisibility(WaitNow.bVisible ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
 			LastWaitLine = HOLWaitBanner::WaitLogLine(WaitChange, WaitNow);
-			Log(n"LogHOLUI", LastWaitLine);
+			UHOLGameMenuScreen::MenuLog(LastWaitLine);
 		}
 
 		TArray<FString> Lines;
@@ -196,7 +196,7 @@ class UHOLWaitBannerPanel : UObject
 			ShownAbsence = AbsenceNow.bVisible ? AbsenceNow.Signature : "";
 			AbsencePanel.SetVisibility(AbsenceNow.bVisible ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
 			LastAbsenceLine = HOLWaitBanner::AbsenceLogLine(AbsenceChange, AbsenceNow);
-			Log(n"LogHOLUI", LastAbsenceLine);
+			UHOLGameMenuScreen::MenuLog(LastAbsenceLine);
 		}
 	}
 }
