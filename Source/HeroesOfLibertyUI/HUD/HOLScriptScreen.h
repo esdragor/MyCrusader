@@ -144,6 +144,20 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|UI")
 	void SetQueueReport(const FString& Line);
 
+	/**
+	 * HUD H-9: the selection block's part of Describe's line, written by the script panel (UHOLSelectionPanel) at each refresh, the ONLY writer:
+	 * Kind = ShownSelection ("MainCentre (own)", "none"...), Activity = ShownActivity (", gathering Wood 4/10"), Health = ShownHealth (", hp 250/250"),
+	 * Forum = the "HUD forum" line's text (empty unless a main forum). The copies stay here (the screen's own fields are the switch's to remove).
+	 */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|UI")
+	void SetSelectionReport(const FString& Kind, const FString& Activity, const FString& Health, const FString& Forum);
+
+	/** The copies SetSelectionReport posed (the switch makes Describe read them). */
+	const FString& GetSelectionReportKind() const { return SelectionReportKind; }
+	const FString& GetSelectionReportActivity() const { return SelectionReportActivity; }
+	const FString& GetSelectionReportHealth() const { return SelectionReportHealth; }
+	const FString& GetSelectionReportForum() const { return SelectionReportForum; }
+
 	/** The progress bar's fill colour (HOLUIStyle::Accent). */
 	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|UI")
 	static FLinearColor GetAccentColor();
@@ -389,6 +403,12 @@ protected:
 	virtual void NativeTick(const FGeometry& MyGeometry, float InDeltaTime) override;
 
 private:
+	/** HUD H-9: the copies of SetSelectionReport. Kind starts at "none" as UHOLGameScreen::ShownSelection does. */
+	FString SelectionReportKind = TEXT("none");
+	FString SelectionReportActivity;
+	FString SelectionReportHealth;
+	FString SelectionReportForum;
+
 	float RefreshLeft = 0.f;
 	/** A message with a key is shown: NativeTick calls FrameTick (D839: no per-frame script call otherwise). */
 	bool bMessageLive = false;

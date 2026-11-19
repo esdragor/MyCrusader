@@ -290,6 +290,14 @@ void UHOLScriptScreen::SetQueueReport(const FString& Line)
 	}
 }
 
+void UHOLScriptScreen::SetSelectionReport(const FString& Kind, const FString& Activity, const FString& Health, const FString& Forum)
+{
+	SelectionReportKind = Kind;
+	SelectionReportActivity = Activity;
+	SelectionReportHealth = Health;
+	SelectionReportForum = Forum;
+}
+
 FLinearColor UHOLScriptScreen::GetAccentColor()
 {
 	return HOLUIStyle::Accent;
