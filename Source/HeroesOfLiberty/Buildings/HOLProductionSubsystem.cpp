@@ -326,14 +326,21 @@ void UHOLProductionSubsystem::ApplyOrders()
 
 		if (Order.Kind == FHOLProductionCommand::EKind::Rally)
 		{
+			// The outcome is the script's (lot R3: 0 no step, 1 clear, 2 add a step, 3 set); -1 (no board): the C++ twin below.
+			int32 RallyVerdict = UHOLProductionBoard::AskRally(GetWorld(), Building->IsOnBody(Order.Location), Order.bQueue, Building->HasRallyPoint());
+			if (RallyVerdict < 0)
+			{
+				RallyVerdict = (Order.bQueue && Building->HasRallyPoint() && Building->IsOnBody(Order.Location)) ? 0
+					: Building->IsOnBody(Order.Location) ? 1 : (Order.bQueue && Building->HasRallyPoint()) ? 2 : 3;
+			}
 			// On the building itself: no rally point any more (the units are born at its foot, D283); with Shift (a step added,
 			// EtapeDefini N.1), nothing.
-			if (Order.bQueue && Building->HasRallyPoint() && Building->IsOnBody(Order.Location))
+			if (RallyVerdict == 0)
 			{
 				UE_LOG(LogHOLCommands, Display, TEXT("Rally: slot %d added no step to the rally point of %s: on the building itself"), Order.PlayerIndex,
 					*Building->GetTypeName().ToString());
 			}
-			else if (Building->IsOnBody(Order.Location))
+			else if (RallyVerdict == 1)
 			{
 				Building->ClearRallyPoint();
 				UE_LOG(LogHOLCommands, Display, TEXT("Rally: slot %d cleared the rally point of %s"), Order.PlayerIndex, *Building->GetTypeName().ToString());
@@ -345,7 +352,9 @@ void UHOLProductionSubsystem::ApplyOrders()
 				// on its middle (as on a source); a client could name any building (D288).
 				AHOLBuilding* Site = Order.RallySite.Get();
 				// Its main forum down is rebuilt as a site (V2.3a).
-				if (Site && (Site == Building || Site->GetOwnerPlayer() != Order.PlayerIndex || (!Site->NeedsBuilders() && !Site->IsCamp())))
+				// Kept or dropped: the script's (AskRallySite 1 kept, 0 dropped); -1 (no board): the C++ twin.
+				const int32 SiteKept = Site ? UHOLProductionBoard::AskRallySite(GetWorld(), Site != Building, Site->GetOwnerPlayer() == Order.PlayerIndex, Site->NeedsBuilders(), Site->IsCamp()) : -1;
+				if (Site && (SiteKept >= 0 ? SiteKept == 0 : (Site == Building || Site->GetOwnerPlayer() != Order.PlayerIndex || (!Site->NeedsBuilders() && !Site->IsCamp()))))
 				{
 					Site = nullptr;
 				}
@@ -355,7 +364,7 @@ void UHOLProductionSubsystem::ApplyOrders()
 					: SourceIndex != INDEX_NONE ? FString::Printf(TEXT(", on source %d"), SourceIndex) : FString();
 				// Shift (EtapeDefini N.1, AoE4): a step at the end of the rally point, MaxRallySteps at most; the first one is the
 				// rally point itself.
-				if (Order.bQueue && Building->HasRallyPoint())
+				if (RallyVerdict == 2)
 				{
 					if (Building->AddRallyStep(Point, SourceIndex, Site))
 					{

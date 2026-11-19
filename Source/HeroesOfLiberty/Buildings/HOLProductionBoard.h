@@ -39,6 +39,11 @@ public:
 	static int32 AskQueue(const UWorld* World, bool bProduces, bool bTechnology, bool bTechFactionOpen, bool bTechBlocked, bool bSiegeBlocked, bool bTierTooLow,
 		bool bUnitFactionOpen, int32 QueueLength, int32 MaxQueue, const FHOLResources& Stock, const FHOLResources& Cost);
 
+	/** The outcome of a Rally order (lot R3): 0 no step (Shift on the body), 1 clear, 2 add a step, 3 set; or -1 (no board). The facts are computed by the caller. */
+	static int32 AskRally(const UWorld* World, bool bOnBody, bool bShift, bool bHasRally);
+	/** Whether a named rally site is kept: 1 kept, 0 dropped (the flag stays on the ground), -1 (no board). */
+	static int32 AskRallySite(const UWorld* World, bool bOtherBuilding, bool bOwnedByPlayer, bool bNeedsBuilders, bool bIsCamp);
+
 	virtual bool ShouldCreateSubsystem(UObject* Outer) const override;
 protected:
 	virtual bool DoesSupportWorldType(const EWorldType::Type WorldType) const override;
@@ -53,8 +58,15 @@ protected:
 	UFUNCTION(BlueprintNativeEvent, Category = "HeroesOfLiberty|Production")
 	int32 QueueAnswer(bool bProduces, bool bTechnology, bool bTechFactionOpen, bool bTechBlocked, bool bSiegeBlocked, bool bTierTooLow, bool bUnitFactionOpen,
 		int32 QueueLength, int32 MaxQueue, FHOLResources Stock, FHOLResources Cost);
+	UFUNCTION(BlueprintNativeEvent, Category = "HeroesOfLiberty|Production")
+	int32 RallyAnswer(bool bOnBody, bool bShift, bool bHasRally);
+	UFUNCTION(BlueprintNativeEvent, Category = "HeroesOfLiberty|Production")
+	int32 RallySiteAnswer(bool bOtherBuilding, bool bOwnedByPlayer, bool bNeedsBuilders, bool bIsCamp);
 	virtual int32 OrderGateAnswer_Implementation(bool bHasState, bool bOwner, bool bHasType, bool bFinished, bool bEarlyRally, bool bForumDown, bool bRally);
 	virtual int32 CancelAnswer_Implementation(bool bValidIndex);
 	virtual FHOLResources StockAfterCancelAnswer_Implementation(FHOLResources Stock, FHOLResources Cost);
 	virtual int32 QueueAnswer_Implementation(bool bProduces, bool bTechnology, bool bTechFactionOpen, bool bTechBlocked, bool bSiegeBlocked, bool bTierTooLow,
-		bool bUnitFactionOpen, int32 QueueLength, int32 MaxQueue, FHOLResources Stock, FHOLResources Cost);};
+		bool bUnitFactionOpen, int32 QueueLength, int32 MaxQueue, FHOLResources Stock, FHOLResources Cost);
+	virtual int32 RallyAnswer_Implementation(bool bOnBody, bool bShift, bool bHasRally);
+	virtual int32 RallySiteAnswer_Implementation(bool bOtherBuilding, bool bOwnedByPlayer, bool bNeedsBuilders, bool bIsCamp);
+};

@@ -47,6 +47,18 @@ int32 UHOLProductionBoard::AskQueue(const UWorld* World, const bool bProduces, c
 	return Board ? Board->QueueAnswer(bProduces, bTechnology, bTechFactionOpen, bTechBlocked, bSiegeBlocked, bTierTooLow, bUnitFactionOpen, QueueLength, MaxQueue, Stock, Cost) : -1;
 }
 
+int32 UHOLProductionBoard::AskRally(const UWorld* World, const bool bOnBody, const bool bShift, const bool bHasRally)
+{
+	UHOLProductionBoard* Board = Find(World);
+	return Board ? Board->RallyAnswer(bOnBody, bShift, bHasRally) : -1;
+}
+
+int32 UHOLProductionBoard::AskRallySite(const UWorld* World, const bool bOtherBuilding, const bool bOwnedByPlayer, const bool bNeedsBuilders, const bool bIsCamp)
+{
+	UHOLProductionBoard* Board = Find(World);
+	return Board ? Board->RallySiteAnswer(bOtherBuilding, bOwnedByPlayer, bNeedsBuilders, bIsCamp) : -1;
+}
+
 bool UHOLProductionBoard::ShouldCreateSubsystem(UObject* Outer) const
 {
 	// Never the abstract C++ class, nor a script class replaced by a reload (as UHOLMatchFlowSubsystem).
@@ -69,3 +81,7 @@ int32 UHOLProductionBoard::CancelAnswer_Implementation(const bool) { return -1; 
 FHOLResources UHOLProductionBoard::StockAfterCancelAnswer_Implementation(const FHOLResources Stock, const FHOLResources) { return Stock; }
 
 int32 UHOLProductionBoard::QueueAnswer_Implementation(const bool, const bool, const bool, const bool, const bool, const bool, const bool, const int32, const int32, const FHOLResources, const FHOLResources) { return -1; }
+
+int32 UHOLProductionBoard::RallyAnswer_Implementation(const bool, const bool, const bool) { return -1; }
+
+int32 UHOLProductionBoard::RallySiteAnswer_Implementation(const bool, const bool, const bool, const bool) { return -1; }
