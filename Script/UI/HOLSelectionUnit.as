@@ -412,6 +412,23 @@ class UHOLSelectionUnitPanel : UObject
 	FString SentKind = "";
 	FString SentHealth = "";
 	FString SentActivity = "";
+	// One unit selected at the last Refresh (the frame tick runs only then, as the C++ NativeTick did for NumSelectedUnits == 1).
+	bool bSingleUnit = false;
+
+	bool IsFrameLive() const
+	{
+		return bSingleUnit;
+	}
+
+	// The switch (HOLGameScreenScript.as RefreshSelectionBlock) calls this when the block changes path: the lot A or C wrote the shared fields since, so the
+	// memos below no longer match what is shown and the next write must go through.
+	void Invalidate()
+	{
+		SentKind = "\n";
+		SentHealth = "\n";
+		SentActivity = "\n";
+		bSingleUnit = false;
+	}
 	FString StatsKey = "";
 
 	void Build(UHOLScriptScreen InScreen, UHOLSelectionPanel InOwner)
@@ -539,6 +556,7 @@ class UHOLSelectionUnitPanel : UObject
 	void Refresh()
 	{
 		FHOLUnitSelView View;
+		bSingleUnit = false;
 		if (!HOLSelectionUnitRead::GetUnitSelectionView(Screen.GetShownSlot(), View))
 		{
 			if (SentKind != "none")
@@ -567,6 +585,7 @@ class UHOLSelectionUnitPanel : UObject
 		Owner.SetOwner(View.OwnerName, View.OwnerColour, true);
 		if (View.UnitCount == 1)
 		{
+			bSingleUnit = true;
 			ApplySingle(View);
 			return;
 		}
