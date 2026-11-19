@@ -62,5 +62,51 @@ if ($fn) {
   $SubCases = @{}; $KnownReds = @($Fixture | Select-Object -First 1); $FailedParts = @()
   $out = & { $null = Report 'tests 1326/1328' (TestsChecks $false) @($First, $Second) } 6>&1 | Out-String
   Check ($out -match '(?m)^tests 1326/1328 : FAIL \(REGRESSION') 'NomadReplicated retire de la liste -> REGRESSION' $out
+  # --- SAURON-1119cn : un test SCRIPT (Angelscript) liste, en echec par ASSERTION. Le journal ecrit sa ligne
+  # "Angelscript: Error: Assertion failed (...)" ; Get-ScriptErrors (vraie fonction de quick_check.ps1) la prenait pour une erreur de
+  # compilation -> 2 KO ("all green" + "scripts compiled") -> REGRESSION alors que le test etait dans known_reds.txt.
+  $GetErr = $ast.FindAll({ param($a) $a -is [System.Management.Automation.Language.FunctionDefinitionAst] -and $a.Name -eq 'Get-ScriptErrors' }, $true) | Select-Object -First 1
+  Check ($null -ne $GetErr) 'quick_check.ps1 definit Get-ScriptErrors'
+  if ($GetErr) {
+    . ([scriptblock]::Create($GetErr.Extent.Text))
+    $ScriptTest = 'Angelscript.UnitTests.Tests.HOLCommandGridSweeps_Test.Test_CGSWResearchRowFits'
+    $ScriptList = [pscustomobject]@{ Test = $ScriptTest; Since = '2026-11-19'; Cause = 'D856 Forge' }
+    $AssertLog = Join-Path ([IO.Path]::GetTempPath()) ('known_reds_assert-' + [guid]::NewGuid().ToString('N').Substring(0, 8) + '.log')
+    $CompileLog = Join-Path ([IO.Path]::GetTempPath()) ('known_reds_compile-' + [guid]::NewGuid().ToString('N').Substring(0, 8) + '.log')
+    Set-Content -Path $AssertLog -Encoding ASCII -Value @(
+      'LogAutomationController: Test Started. Name={Test_CGSWResearchRowFits} Path={' + $ScriptTest + '}',
+      '[2026.11.19-18.20.01:123][  0]LogScript: Angelscript: Error: Assertion failed (Expected true, got false)',
+      '[2026.11.19-18.20.01:124][  0]LogAutomationController: Test Completed. Result={Fail} Name={Test_CGSWResearchRowFits} Path={' + $ScriptTest + '}')
+    Set-Content -Path $CompileLog -Encoding ASCII -Value @(
+      '[2026.11.19-18.20.01:100][  0]LogScript: Angelscript: Error: Script/Command/HOLX.as:',
+      '[2026.11.19-18.20.01:100][  0]LogScript: Angelscript: Error:  (12:5): Function Y is not BlueprintCallable or ScriptCallable and cannot be called from here',
+      '[2026.11.19-18.20.01:101][  0]LogScript: Angelscript: Error: Hot reload failed, script compile errors')
+    $AssertErrors = @(Get-ScriptErrors $AssertLog)
+    $CompileErrors = @(Get-ScriptErrors $CompileLog)
+    Remove-Item $AssertLog, $CompileLog -ErrorAction SilentlyContinue
+    Check ($AssertErrors.Count -eq 0) 'Get-ScriptErrors : "Angelscript: Error: Assertion failed (...)" n est PAS une erreur de compilation' ($AssertErrors -join ' | ')
+    Check ($CompileErrors.Count -ge 1 -and ($CompileErrors -join ' ') -match 'not BlueprintCallable or ScriptCallable') 'Get-ScriptErrors : une vraie erreur de compilation (not BlueprintCallable or ScriptCallable) reste detectee' ($CompileErrors -join ' | ')
+    # 6. test script liliste seul KO par assertion (les 4 lignes reelles du 2026-11-19 18:20) -> rouge connu, aucune regression
+    $SubCases = @{}; $KnownReds = @($ScriptList); $FailedParts = @()
+    $Compiled = @($AssertErrors).Count -eq 0
+    $c = [ordered]@{}; $c["all green (failed: $ScriptTest)"] = $false; $c["scripts compiled ($(if ($AssertErrors.Count) { $AssertErrors -join ' ' } else { 'no error' }))"] = $Compiled
+    $out = & { $null = Report 'tests 1786/1787' $c @($ScriptTest) } 6>&1 | Out-String
+    Check ($out -match '(?m)^tests 1786/1787 : FAIL \(rouge connu depuis 2026-11-19') 'test script liste KO par assertion -> "rouge connu"' $out
+    $sum = Get-RedSummary $FailedParts $KnownReds
+    Check ($sum -match 'aucune regression') 'test script liste KO par assertion -> red summary "aucune regression"' $sum
+    # 7. test script KO par assertion NON liste -> REGRESSION
+    $SubCases = @{}; $KnownReds = @(); $FailedParts = @()
+    $out = & { $null = Report 'tests 1786/1787' $c @($ScriptTest) } 6>&1 | Out-String
+    Check ($out -match '(?m)^tests 1786/1787 : FAIL \(REGRESSION') 'test script KO par assertion non liste -> REGRESSION' $out
+    # 8. un test script liste + un test non liste -> REGRESSION
+    $SubCases = @{}; $KnownReds = @($ScriptList); $FailedParts = @()
+    $out = & { $null = Report 'tests 1785/1787' $c @($ScriptTest, 'Angelscript.UnitTests.Tests.Other_Test.Test_X') } 6>&1 | Out-String
+    Check ($out -match '(?m)^tests 1785/1787 : FAIL \(REGRESSION') 'test script liste + test non liste -> REGRESSION' $out
+    # 9. test script liste, mais une vraie erreur de compilation dans le journal (tests 0/0 ou chute) -> REGRESSION
+    $SubCases = @{}; $KnownReds = @($ScriptList); $FailedParts = @()
+    $c2 = [ordered]@{}; $c2["all green (failed: $ScriptTest)"] = $false; $c2["scripts compiled ($($CompileErrors -join ' '))"] = @($CompileErrors).Count -eq 0
+    $out = & { $null = Report 'tests 1786/1787' $c2 @($ScriptTest) } 6>&1 | Out-String
+    Check ($out -match '(?m)^tests 1786/1787 : FAIL \(REGRESSION') 'test script liste + vraie erreur de compilation -> REGRESSION' $out
+  }
 }
 if ($Fails -gt 0) { Write-Output "=> $Fails FAIL"; exit 1 } else { Write-Output '=> tout PASS'; exit 0 }
