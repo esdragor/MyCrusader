@@ -14,6 +14,7 @@ class AHOLBuilding;
 class AHOLGameState;
 class AHOLPlayerState;
 class UWorld;
+class UHOLAIBrainSubsystem;
 
 /**
  * Handle of the world UHOLTestWorldLibrary::CreateTestWorld makes (D853, lot 1 of PLAN-TESTS-1119): the script keeps this object, never the UWorld
@@ -181,4 +182,53 @@ public:
 	/** How many AHOLBuilding of TypeName owned by Owner the world holds (TActorIterator, as HOLAIBuildOrdersTests.cpp CountBuildings). */
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
 	static int32 CountBuildings(UHOLTestWorldHandle* TestWorld, FName TypeName, int32 Owner);
-};
+
+	/** Like SpawnPlayerState but the slot is NOT set (what the C++ Disconnect tests do: SetMatchSlot comes later, HOLGameStateTest::SetPlayerMatchSlot). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
+	static AHOLPlayerState* SpawnPlayerStateNoSlot(UHOLTestWorldHandle* TestWorld, const FString& Name);
+
+	/** AHOLGameState::FindLiveHolder(World, Slot, Except); Except may be null. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
+	static AHOLPlayerState* FindLiveHolder(UHOLTestWorldHandle* TestWorld, int32 Slot, const AHOLPlayerState* Except);
+
+	/** AHOLGameState::GetSlotStock(World, Slot, Out): whether a stock is read (a live holder, an absent record or a held bot). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
+	static bool HasSlotStock(UHOLTestWorldHandle* TestWorld, int32 Slot);
+
+	/** The stock AHOLGameState::GetSlotStock reads (zero if HasSlotStock is false). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
+	static FHOLResources GetSlotStock(UHOLTestWorldHandle* TestWorld, int32 Slot);
+
+	/** UHOLAIBrainSubsystem::Find(World): the script brain (UHOLAIBrain), null if none in this world. Its ThinkNow, IsHeld, GetThinkingSlots, SetHeld, GetAISlots are UFUNCTIONs already. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
+	static UHOLAIBrainSubsystem* GetAIBrain(UHOLTestWorldHandle* TestWorld);
+
+	/** AHOLBuilding::GetProductionQueue().Num() (0 for null). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
+	static int32 GetProductionQueueCount(const AHOLBuilding* Building);
+
+	/** The TypeName of item Index of the building's production queue (NAME_None out of range). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
+	static FName GetProductionQueueName(const AHOLBuilding* Building, int32 Index);
+
+	/** Item Index of the queue has started (StartStep != NotStarted); false out of range. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
+	static bool IsProductionQueueItemStarted(const AHOLBuilding* Building, int32 Index);
+
+	/** AHOLBuilding::GetConstructionState() as int (EHOLConstructionState; 0 for null). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
+	static int32 GetBuildingConstructionState(const AHOLBuilding* Building);
+
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
+	static int64 GetBuildingConstructionWork(const AHOLBuilding* Building);
+
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
+	static int64 GetBuildingTotalWork(const AHOLBuilding* Building);
+
+	/** HOLConstruction::GetCancelRefund(Type->Cost, State, Work, TotalWork) of the building (zero if null or no type row). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
+	static FHOLResources GetBuildingCancelRefund(const AHOLBuilding* Building);
+
+	/** UHOLGatherProcessor::DepositLoad(World, Owner, Load{Resource as EHOLResource, Amount}, Out): the amount deposited (the load is emptied: Amount minus it stays). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
+	static int32 DepositLoad(UHOLTestWorldHandle* TestWorld, int32 Owner, int32 Resource, int32 Amount);};

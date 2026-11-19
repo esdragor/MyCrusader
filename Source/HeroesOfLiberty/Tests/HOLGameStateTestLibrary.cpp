@@ -11,6 +11,8 @@
 #include "Match/HOLMatchStats.h"
 #include "Match/HOLMatchStatsSubsystem.h"
 #include "Match/HOLPlayerState.h"
+#include "Technologies/HOLTechnologyRules.h"
+#include "Technologies/HOLTechnologyTypes.h"
 
 // Every body below exists only where WITH_DEV_AUTOMATION_TESTS (the motif of HOLTestWorldLibrary.cpp): elsewhere 0 / false / empty.
 
@@ -459,5 +461,193 @@ int32 UHOLGameStateTestLibrary::GetPlayerHeroXP(const AHOLPlayerState* Player)
 	return Player ? Player->GetHeroPrivate().XP : 0;
 #else
 	return 0;
+#endif
+}
+
+FString UHOLGameStateTestLibrary::GetReasonName(const int32 Reason)
+{
+#if WITH_DEV_AUTOMATION_TESTS
+	return FString(AHOLGameState::GetReasonName(static_cast<EHOLDefeatReason>(Reason)));
+#else
+	return FString();
+#endif
+}
+
+bool UHOLGameStateTestLibrary::IsABot(const AHOLPlayerState* Player)
+{
+#if WITH_DEV_AUTOMATION_TESTS
+	return Player && Player->IsABot();
+#else
+	return false;
+#endif
+}
+
+bool UHOLGameStateTestLibrary::IsOnlyASpectator(const AHOLPlayerState* Player)
+{
+#if WITH_DEV_AUTOMATION_TESTS
+	return Player && Player->IsOnlyASpectator();
+#else
+	return false;
+#endif
+}
+
+bool UHOLGameStateTestLibrary::HasTechnology(const AHOLPlayerState* Player, const FName Technology)
+{
+#if WITH_DEV_AUTOMATION_TESTS
+	return Player && Player->GetTechnologies().Has(Technology);
+#else
+	return false;
+#endif
+}
+
+int32 UHOLGameStateTestLibrary::GetTechnologyCount(const AHOLPlayerState* Player)
+{
+#if WITH_DEV_AUTOMATION_TESTS
+	return Player ? Player->GetTechnologies().Done.Num() : 0;
+#else
+	return 0;
+#endif
+}
+
+int32 UHOLGameStateTestLibrary::GetGatherBonusPercent(const AHOLPlayerState* Player, const int32 Resource)
+{
+#if WITH_DEV_AUTOMATION_TESTS
+	return Player ? Player->GetTechnologyBonusPercent(HOLTechnology::GetGatherStat(static_cast<EHOLResource>(Resource))) : 0;
+#else
+	return 0;
+#endif
+}
+
+bool UHOLGameStateTestLibrary::IsTechnologyInTable(const FName Technology)
+{
+#if WITH_DEV_AUTOMATION_TESTS
+	return UHOLTechnologySettings::FindTechnology(Technology) != nullptr;
+#else
+	return false;
+#endif
+}
+
+FString UHOLGameStateTestLibrary::FormatAbsentLine(const FString& Name, const double SecondsLeft, const double WindowSeconds)
+{
+#if WITH_DEV_AUTOMATION_TESTS
+	return FHOLDisconnectRules::FormatAbsentLine(Name, SecondsLeft, WindowSeconds).ToString();
+#else
+	return FString();
+#endif
+}
+
+FString UHOLGameStateTestLibrary::FormatBackLine(const FString& Name)
+{
+#if WITH_DEV_AUTOMATION_TESTS
+	return FHOLDisconnectRules::FormatBackLine(Name).ToString();
+#else
+	return FString();
+#endif
+}
+
+FString UHOLGameStateTestLibrary::FormatSeatReport(const int32 Slot, const FString& Name, const int32 State, const double SecondsLeft, const int32 AIMode)
+{
+#if WITH_DEV_AUTOMATION_TESTS
+	return FHOLDisconnectRules::FormatSeatReport(Slot, Name, static_cast<FHOLDisconnectRules::ESeatState>(State), SecondsLeft,
+		static_cast<FHOLDisconnectRules::EAIMode>(AIMode));
+#else
+	return FString();
+#endif
+}
+
+bool UHOLGameStateTestLibrary::RulesKeepsSlot(const FString& Json, const int32 Slot, const bool bWaitingForPlayers, const bool bMatchOver, const bool bSlotDefeated)
+{
+#if WITH_DEV_AUTOMATION_TESTS
+	FHOLMatchConfig Config;
+	return FHOLMatchConfig::FromJson(Json, Config) && FHOLDisconnectRules::KeepsSlot(Config, Slot, bWaitingForPlayers, bMatchOver, bSlotDefeated);
+#else
+	return false;
+#endif
+}
+
+bool UHOLGameStateTestLibrary::RulesIsWindowOver(const double LeftAt, const double Now, const double WindowSeconds)
+{
+#if WITH_DEV_AUTOMATION_TESTS
+	return FHOLDisconnectRules::IsWindowOver(LeftAt, Now, WindowSeconds);
+#else
+	return false;
+#endif
+}
+
+double UHOLGameStateTestLibrary::RulesGetSecondsLeft(const double LeftAt, const double Now, const double WindowSeconds)
+{
+#if WITH_DEV_AUTOMATION_TESTS
+	return FHOLDisconnectRules::GetSecondsLeft(LeftAt, Now, WindowSeconds);
+#else
+	return 0.;
+#endif
+}
+
+int32 UHOLGameStateTestLibrary::RulesGetWindowEnd(const FString& Json, const int32 Slot)
+{
+#if WITH_DEV_AUTOMATION_TESTS
+	FHOLMatchConfig Config;
+	return FHOLMatchConfig::FromJson(Json, Config) ? static_cast<int32>(FHOLDisconnectRules::GetWindowEnd(Config, Slot)) : 0;
+#else
+	return 0;
+#endif
+}
+
+bool UHOLGameStateTestLibrary::RulesMayReturn(const int32 State, const bool bMatchOver)
+{
+#if WITH_DEV_AUTOMATION_TESTS
+	return FHOLDisconnectRules::MayReturn(static_cast<FHOLDisconnectRules::ESeatState>(State), bMatchOver);
+#else
+	return false;
+#endif
+}
+
+int32 UHOLGameStateTestLibrary::RulesFindAbsent(const TArray<int32>& Slots, const int32 Slot)
+{
+#if WITH_DEV_AUTOMATION_TESTS
+	TArray<FHOLAbsentSlot> Absent;
+	for (const int32 Each : Slots)
+	{
+		Absent.AddDefaulted_GetRef().Slot = Each;
+	}
+	return FHOLDisconnectRules::FindAbsent(Absent, Slot);
+#else
+	return -1;
+#endif
+}
+
+TArray<int32> UHOLGameStateTestLibrary::RulesGetExpired(const TArray<int32>& Slots, const TArray<double>& LeftAts, const double Now, const double WindowSeconds)
+{
+#if WITH_DEV_AUTOMATION_TESTS
+	TArray<FHOLAbsentSlot> Absent;
+	for (int32 Index = 0; Index < FMath::Min(Slots.Num(), LeftAts.Num()); ++Index)
+	{
+		FHOLAbsentSlot& Entry = Absent.AddDefaulted_GetRef();
+		Entry.Slot = Slots[Index];
+		Entry.LeftAt = LeftAts[Index];
+	}
+	return FHOLDisconnectRules::GetExpired(Absent, Now, WindowSeconds);
+#else
+	return TArray<int32>();
+#endif
+}
+
+FHOLResources UHOLGameStateTestLibrary::RulesGetStockOnTaking(const bool bHasAbsent, const FHOLResources& AbsentStock, const FHOLResources& Starting)
+{
+#if WITH_DEV_AUTOMATION_TESTS
+	FHOLAbsentSlot Absent;
+	Absent.Resources = AbsentStock;
+	return FHOLDisconnectRules::GetStockOnTaking(bHasAbsent ? &Absent : nullptr, Starting);
+#else
+	return FHOLResources();
+#endif
+}
+void UHOLGameStateTestLibrary::SetPlayerMatchSlot(AHOLPlayerState* Player, const int32 Slot, const int32 ColorIndex)
+{
+#if WITH_DEV_AUTOMATION_TESTS
+	if (Player)
+	{
+		Player->SetMatchSlot(Slot, ColorIndex);
+	}
 #endif
 }
