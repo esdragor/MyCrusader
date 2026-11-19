@@ -8,6 +8,7 @@
 
 #include "Buildings/HOLBuilding.h"
 #include "Buildings/HOLBuildingTypes.h"
+#include "Buildings/HOLProductionBoard.h"
 #include "Buildings/HOLConstructionRules.h"
 #include "Commands/HOLCommandSubsystem.h"
 #include "Engine/World.h"
@@ -281,33 +282,43 @@ void UHOLProductionSubsystem::ApplyOrders()
 	{
 		AHOLBuilding* Building = Order.Building.Get();
 		AHOLPlayerState* PlayerState = FindPlayerState(Order.PlayerIndex);
+		// R2a: the script board decides the ORDER of the gates (HOLProductionBoard.as); the facts are read here. -1 (no board) keeps the C++ order,
+		// the twin until the network proof. Only the owner gives its buildings orders: a client could send anything.
+		const bool bRallyOrder = Order.Kind == FHOLProductionCommand::EKind::Rally;
+		const bool bOwner = Building && Building->GetOwnerPlayer() == Order.PlayerIndex;
+		const FHOLBuildingTypeRow* Type = bOwner ? Building->GetType() : nullptr;
+		// A building under construction produces nothing (D312); one that will produce takes its rally point already, from its
+		// ghost on (the user's request of 2026-10-19): kept through the site to the finished building.
+		const bool bEarlyRally = bRallyOrder && Type && !Type->Produces.IsEmpty();
+		const bool bFinished = bOwner && Building->IsFinished();
+		// A main forum in ruin or rebuilding produces nothing (D351); its rally point stays its owner's to move.
+		const bool bForumDown = bOwner && Building->IsForumDown();
+		int32 Gate = UHOLProductionBoard::AskOrderGate(GetWorld(), PlayerState != nullptr, bOwner, Type != nullptr, bFinished, bEarlyRally, bForumDown, bRallyOrder);
+		if (Gate < 0)
+		{
+			Gate = !PlayerState ? 1 : !bOwner ? 2 : !Type ? 3 : (!bFinished && !bEarlyRally) ? 4 : (bForumDown && !bRallyOrder) ? 5 : 0;
+		}
 		// IA0.1 E2/E4: no stock to pay with (an AI slot before IA0.1), not "not its building".
-		if (!PlayerState)
+		if (Gate == 1)
 		{
 			UE_LOG(LogHOLCommands, Warning, TEXT("Production order of slot %d ignored: no player state"), Order.PlayerIndex);
 			continue;
 		}
-		// Only the owner gives its buildings orders: a client could send anything.
-		if (!Building || Building->GetOwnerPlayer() != Order.PlayerIndex)
+		if (Gate == 2)
 		{
 			UE_LOG(LogHOLCommands, Display, TEXT("Production order of slot %d ignored: not its building"), Order.PlayerIndex);
 			continue;
 		}
-		const FHOLBuildingTypeRow* Type = Building->GetType();
-		if (!Type)
+		if (Gate == 3)
 		{
 			continue;
 		}
-		// A building under construction produces nothing (D312); one that will produce takes its rally point already, from its
-		// ghost on (the user's request of 2026-10-19): kept through the site to the finished building.
-		const bool bEarlyRally = Order.Kind == FHOLProductionCommand::EKind::Rally && !Type->Produces.IsEmpty();
-		if (!Building->IsFinished() && !bEarlyRally)
+		if (Gate == 4 && Building)
 		{
 			UE_LOG(LogHOLCommands, Display, TEXT("Production order of slot %d ignored: %s not finished"), Order.PlayerIndex, *Building->GetTypeName().ToString());
 			continue;
 		}
-		// A main forum in ruin or rebuilding produces nothing (D351); its rally point stays its owner's to move.
-		if (Building->IsForumDown() && Order.Kind != FHOLProductionCommand::EKind::Rally)
+		if (Gate == 5)
 		{
 			UE_LOG(LogHOLCommands, Display, TEXT("Production order of slot %d ignored: its forum is down"), Order.PlayerIndex);
 			continue;
@@ -473,7 +484,19 @@ void UHOLProductionSubsystem::ApplyOrders()
 		else
 		{
 			const FName TypeName = Queue.IsValidIndex(Order.Index) ? Queue[Order.Index].TypeName : NAME_None;
-			if (!HOLProduction::Cancel(Queue, Order.Index, GetCost(TypeName, Order.PlayerIndex), Stock))
+			// R2a: the script board decides the cancel (HOLProductionBoard.as); -1 (no board) keeps HOLProduction::Cancel, the twin until the network proof.
+			// An index outside the queue is ignored silently, as before.
+			const int32 CancelVerdict = UHOLProductionBoard::AskCancel(GetWorld(), Queue.IsValidIndex(Order.Index));
+			if (CancelVerdict == 1)
+			{
+				continue;
+			}
+			if (CancelVerdict == 0 && Queue.IsValidIndex(Order.Index))
+			{
+				Stock = UHOLProductionBoard::AskStockAfterCancel(GetWorld(), Stock, GetCost(TypeName, Order.PlayerIndex).Resources);
+				Queue.RemoveAt(Order.Index);
+			}
+			else if (!HOLProduction::Cancel(Queue, Order.Index, GetCost(TypeName, Order.PlayerIndex), Stock))
 			{
 				continue;
 			}
