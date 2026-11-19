@@ -135,6 +135,8 @@ private:
 
 	EHOLGridCellState State = EHOLGridCellState::Disabled;
 	FString ShownTooltip;
+	/** The key last given by SetKey: kept so that one given before NativeOnInitialized built the text block is shown. */
+	FText KeyText;
 	/** The resource of the gain's logo, while the gain line is shown (DescribeContent). */
 	EHOLResource ShownGainLogo = EHOLResource::Gold;
 };

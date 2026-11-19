@@ -121,3 +121,16 @@ void Test_AgePanelsWidgetNamesAndReportParts(FUnitTest& T)
 	T.AssertEquals(HOLAgePanels::ContentPart(0, 0, "Maison\nBois 25"), "I A: Maison Bois 25", "the content line: the breaks replaced by a space");
 	T.AssertEquals(HOLAgePanels::MedallionPart(0, "Palier I — Fondation"), "I A: Palier I — Fondation", "the medallion's report part uses the age's key");
 }
+
+// The letter a cell shows in its top left corner (H-8: the cell was keyed before its widget existed and showed none): one letter per cell, in the grid's order A Z E R / Q S D F / W X C V.
+void Test_AgePanelsEveryCellKeyIsItsGridLetter(FUnitTest& T)
+{
+	FString All = "";
+	for (int Cell = 0; Cell < HOLAgePanels::NumCells(); Cell++)
+	{
+		FString Key = HOLAgePanels::CellKey(Cell);
+		T.AssertEquals(Key.Len(), 1, "one letter per cell");
+		All += Key;
+	}
+	T.AssertEquals(All, "AZERQSDFWXCV", "the 12 cells' letters in the grid's order");
+}

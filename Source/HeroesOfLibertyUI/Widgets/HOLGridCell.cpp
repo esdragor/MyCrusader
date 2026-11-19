@@ -99,6 +99,12 @@ void UHOLGridCell::NativeOnInitialized()
 		UnitBox->AddChildToVerticalBox(UnitName)->SetHorizontalAlignment(HAlign_Fill);
 	}
 
+	// A key given before the widget was initialized (a script panel builds the cell and keys it at once, H-8).
+	if (Key && !KeyText.IsEmpty())
+	{
+		Key->SetText(KeyText);
+	}
+
 	// D781: a trade cell's gain under the name, « +96 » then the logo of what it gives; hidden on every other cell.
 	if (UnitBox && !GainLine)
 	{
@@ -144,6 +150,7 @@ void UHOLGridCell::BroadcastCellClicked()
 
 void UHOLGridCell::SetKey(const FText& InKey)
 {
+	KeyText = InKey;
 	if (Key)
 	{
 		Key->SetText(InKey);
