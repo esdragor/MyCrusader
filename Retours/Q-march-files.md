@@ -1,4 +1,4 @@
-# [À RÉPONDRE] Marche en bloc : les files s'écartent jusqu'à 1,7 m avec le réglage choisi le 2026-11-15 (D815) ; quelle valeur garder ?
+# [RÉPONDU] Marche en bloc : les files s'écartent jusqu'à 1,7 m avec le réglage choisi le 2026-11-15 (D815) ; quelle valeur garder ?
 
 Contexte : le 2026-11-15 tu as choisi de garder 8 pas de « mémoire du détour » autour d'un voisin de bloc (`hol.Units.MarchMemberDetourSteps 8`, D815), pour supprimer un tremblement de deux soldats. L'estimation donnée ce jour-là (« écart de file d'environ 25 cm ») était fausse : mesuré le 2026-11-19, des files d'un bloc en marche s'écartent jusqu'à 174 cm, et le contrôle de formation de `main` est rouge depuis (seuil 60 cm). Ce rouge ne vient pas de la migration.
 
@@ -24,4 +24,4 @@ Recommandation : **A** (2) : c'est la seule valeur mesurée qui tient les deux �
 
 Détail : `Docs\Rapports\DIAG-1119.md`, `Docs\Rapports\DIAG-1119b.md` (cause prouvée sans build), `Docs\Rapports\SWEEP-1119.md` (balayage) ; question d'origine : `Docs\Archive\Retours_2026-11-15\Q-march-member-detour.md`.
 
-Reponse:
+Reponse: A : passer à 2 (réponse donnée dans la conversation, 2026-11-19 ~12:05). Suite : D855 du GDD ; défaut changé 8 -> 2 (commit 02ed311, branche maps, worktree Celeborn), entre dans main avec le prochain build groupé après `quick_check -Parts formation` vert et le test MarchPairNoTremble vert.
