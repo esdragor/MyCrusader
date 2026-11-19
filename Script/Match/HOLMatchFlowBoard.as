@@ -127,6 +127,25 @@ namespace HOLMatchFlow
 	}
 
 	/**
+	 * S2c: the gate of AHOLGameState::HandleForumFall, the server only, for a main forum of a valid slot not yet defeated and whose defeat is not already
+	 * pending, in an occupied camp. Same as the former inline refusal (!HasAuthority || !IsPrimaryForum || !IsValidIndex || IsSlotDefeated || Pending || camp == INDEX_NONE).
+	 * Game thread only (DamageBuilding, called by the combat processor outside its ParallelFor, the cheats and the volcano).
+	 */
+	bool FallGateOpen(bool bAuthority, bool bPrimaryForum, bool bSlotValid, bool bDefeated, bool bPendingForum, bool bCampOccupied)
+	{
+		return bAuthority && bPrimaryForum && bSlotValid && !bDefeated && !bPendingForum && bCampOccupied;
+	}
+
+	/**
+	 * S2c: the gate of AHOLGameState::HandleKingDeath, the server only, a match still running, a valid slot not yet defeated and whose king's defeat is not
+	 * already pending, in an occupied camp. Same as the former inline refusal (!HasAuthority || bMatchOver || !IsValidIndex || IsSlotDefeated || Pending || camp == INDEX_NONE).
+	 */
+	bool KingGateOpen(bool bAuthority, bool bMatchOver, bool bSlotValid, bool bDefeated, bool bPendingKing, bool bCampOccupied)
+	{
+		return bAuthority && !bMatchOver && bSlotValid && !bDefeated && !bPendingKing && bCampOccupied;
+	}
+
+	/**
 	 * S2a: the verdict of AHOLGameState::EvaluateMatchEnd. The winner mask when the match is over, else MatchNotOver(). The camps rule is HOLVictoryRules (C++,
 	 * read through HOLVictoryRead, States / Teams as the C++ gives them: Teams all 0 in the Diplomacy mode); in the Diplomacy mode with at least one beaten
 	 * slot, an alliance of survivors ends it (D373): AlliedWinnerMask is the C++ HOLDiplomacy::AlliedVictory winners (bits), -1 when it did not end.
@@ -186,6 +205,18 @@ class UHOLMatchFlowBoardScript : UHOLMatchFlowSubsystem
 	int DefeatGateAnswer(bool bAuthority, bool bMatchOver, bool bReasonNone, bool bSlotValid, bool bDefeated, bool bCampOccupied)
 	{
 		return HOLMatchFlow::DefeatGateOpen(bAuthority, bMatchOver, bReasonNone, bSlotValid, bDefeated, bCampOccupied) ? 1 : 0;
+	}
+
+	UFUNCTION(BlueprintOverride)
+	int FallGateAnswer(bool bAuthority, bool bPrimaryForum, bool bSlotValid, bool bDefeated, bool bPendingForum, bool bCampOccupied)
+	{
+		return HOLMatchFlow::FallGateOpen(bAuthority, bPrimaryForum, bSlotValid, bDefeated, bPendingForum, bCampOccupied) ? 1 : 0;
+	}
+
+	UFUNCTION(BlueprintOverride)
+	int KingGateAnswer(bool bAuthority, bool bMatchOver, bool bSlotValid, bool bDefeated, bool bPendingKing, bool bCampOccupied)
+	{
+		return HOLMatchFlow::KingGateOpen(bAuthority, bMatchOver, bSlotValid, bDefeated, bPendingKing, bCampOccupied) ? 1 : 0;
 	}
 
 	UFUNCTION(BlueprintOverride)
