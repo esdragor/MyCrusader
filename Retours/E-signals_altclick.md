@@ -6,7 +6,9 @@ SON: non entendu (-nosound ; aucun son prévu pour ce point)
 branches: maps
 
 Commande (copiable telle quelle, durée ~1 min) :
-powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Haldir\Tools\Scenarios\play.ps1 signals_altclick -Root C:\Users\baudo\Documents\HeroesOfLiberty-Haldir
+powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Arwen\Tools\Scenarios\play.ps1 signals_altclick -Root C:\Users\baudo\Documents\HeroesOfLiberty-Arwen
+
+Pré-vol rejoué le 2026-11-19 21:57 (session principale, worktree Arwen = main 7b9d6ec, binaire à jour, gate Essay sans FAIL à 22:00) : `preflight signals_altclick` PASS (34 s, audit Sanity OK). Les 2 captures ouvertes et vues : `signals_altclick` montre le losange blanc au sol à droite du forum, la ligne « Vous : Signal » du fil et le carré blanc sur la mini-carte ; `signals_altclick_after` : le losange et le carré ont disparu. (Ancienne commande, worktree Haldir : remplacée par celle d'Arwen ci-dessus.)
 
 Ce que tu dois voir :
 1. Maintiens Alt et fais un clic gauche bref sur le sol : pendant 5 s, un LOSANGE BARRÉ D'UNE CROIX (blanc = signal neutre ; couleur du type pour un glisser, D821), d'environ 5 m, apparaît AU SOL à l'endroit du clic ; le fil de messages dit « Vous : Signal ».

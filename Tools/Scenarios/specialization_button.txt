@@ -35,7 +35,8 @@ waitkey 2/3 : la case en cours. Entree pour la suite (le scenario reclique la ca
 hol.Mouse.Click GridCell06
 waitlog Mouse click GridCell06 x1 at
 waitlog Specialization: slot 0 cancels, answer 0
-frames 10
+wait 2
+frames 8
 hol.HUD.Report
 waitlog HUD overlap:
 waitlog =SpecializeT1A enabled
