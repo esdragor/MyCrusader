@@ -12,7 +12,7 @@ import subprocess
 import sys
 
 DATA = os.path.dirname(os.path.abspath(__file__))
-COLUMNS = ["Name", "DisplayName", "UnitType", "Faction", "Effect", "CooldownMs", "DurationMs", "HpCostPerHit", "MinHp", "StopHp", "Description"]
+COLUMNS = ["Name", "DisplayName", "UnitType", "Faction", "Effect", "CooldownMs", "DurationMs", "HpCostPerHit", "MinHp", "StopHp", "Description", "Target", "RadiusCm", "RangeCm"]
 
 
 def read(name):
@@ -61,6 +61,11 @@ def main():
         floor_gap = number(row["MinHp"]) - number(row["StopHp"])
         check(number(row["StopHp"]) > 0 and floor_gap > 0, "%s: the refusal floor MinHp is above the stop floor StopHp, above zero" % name)
         check(0 < number(row["HpCostPerHit"]) <= floor_gap, "%s: one blow costs hit points, not more than the gap between the floors" % name)
+        check(row["Target"] in ("Self", "Ground"), "%s: Target is Self or Ground" % name)
+        if row["Target"] == "Ground":
+            check(number(row["RadiusCm"]) > 0 and number(row["RangeCm"]) > 0, "%s: an aimed ability has a zone radius and a throw range" % name)
+        else:
+            check(number(row["RadiusCm"]) == 0 and number(row["RangeCm"]) == 0, "%s: a self ability has no zone and no range" % name)
         if unit is not None:
             check(number(row["MinHp"]) < number(unit["MaxHealth"]), "%s: the unit can be above the refusal floor" % name)
     check(len(names) == len(set(names)), "one row per ability name")

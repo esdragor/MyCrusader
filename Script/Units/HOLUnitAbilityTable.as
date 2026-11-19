@@ -5,6 +5,10 @@ namespace HOLUnitAbilityTable
 	const int Count = 1;
 	const int NecroticRage = 0;
 
+	// What an ability is aimed at (the Target column): the caster itself, or a point on the ground (zone of RadiusCm, thrown from at most RangeCm).
+	const int TargetSelf = 0;
+	const int TargetGround = 1;
+
 	// One row of the table.
 	struct FHOLUnitAbilityRow
 	{
@@ -16,7 +20,9 @@ namespace HOLUnitAbilityTable
 		int DurationMs = 0;
 		int HpCostPerHit = 0;
 		int MinHp = 0;
-		int StopHp = 0;
+		int Target = 0;
+		int RadiusCm = 0;
+		int RangeCm = 0;
 	}
 
 	// The row of an id (an empty row, Key empty, for an id out of the table).
@@ -34,6 +40,9 @@ namespace HOLUnitAbilityTable
 			R.HpCostPerHit = 3;
 			R.MinHp = 30;
 			R.StopHp = 20;
+			R.Target = 1;
+			R.RadiusCm = 0;
+			R.RangeCm = 0;
 			return R;
 		}
 		return R;

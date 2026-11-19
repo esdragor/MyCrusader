@@ -9,6 +9,9 @@ ability), Faction, Effect (the row of Effects.csv the ability lays on the unit: 
 CooldownMs (from the start of the effect), DurationMs (the time of the effect, the same as its Effects.csv row), HpCostPerHit (hit points paid
 for each blow dealt while the effect lasts), MinHp (the ability is refused below it), StopHp (the effect stops when the unit would go below it:
 the ability never kills).
+Last three columns (after Description, so the C++ constants test that reads the first ten fields by position is unchanged): Target (Self: the
+ability is on the caster; Ground: it is aimed at a point on the ground), RadiusCm (the zone it lays, cm; 0 for Self), RangeCm (how far from the
+caster the point may be, cm; 0 for Self). The pure rules of an aimed ability are Script/Units/HOLGroundAbilityRules.as.
 """
 import csv
 import sys
@@ -17,6 +20,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 CSV_PATH = ROOT / "Tools" / "Data" / "UnitAbilities.csv"
 OUT_PATH = ROOT / "Script" / "Units" / "HOLUnitAbilityTable.as"
+
+
+TARGETS = {"Self": 0, "Ground": 1}
 
 
 def q(text):
@@ -38,6 +44,10 @@ def render(rows):
     for i, r in enumerate(rows):
         out.append(f"\tconst int {r['Name']} = {i};")
     out.append("")
+    out.append("\t// What an ability is aimed at (the Target column): the caster itself, or a point on the ground (zone of RadiusCm, thrown from at most RangeCm).")
+    for name, value in TARGETS.items():
+        out.append(f"\tconst int Target{name} = {value};")
+    out.append("")
     out.append("\t// One row of the table.")
     out.append("\tstruct FHOLUnitAbilityRow")
     out.append("\t{")
@@ -49,7 +59,9 @@ def render(rows):
     out.append("\t\tint DurationMs = 0;")
     out.append("\t\tint HpCostPerHit = 0;")
     out.append("\t\tint MinHp = 0;")
-    out.append("\t\tint StopHp = 0;")
+    out.append("\t\tint Target = 0;")
+    out.append("\t\tint RadiusCm = 0;")
+    out.append("\t\tint RangeCm = 0;")
     out.append("\t}")
     out.append("")
     out.append("\t// The row of an id (an empty row, Key empty, for an id out of the table).")
@@ -68,6 +80,9 @@ def render(rows):
         out.append(f"\t\t\tR.HpCostPerHit = {int(r['HpCostPerHit'])};")
         out.append(f"\t\t\tR.MinHp = {int(r['MinHp'])};")
         out.append(f"\t\t\tR.StopHp = {int(r['StopHp'])};")
+        out.append(f"\t\t\tR.Target = {TARGETS[r['Target']]};")
+        out.append(f"\t\t\tR.RadiusCm = {int(r['RadiusCm'])};")
+        out.append(f"\t\t\tR.RangeCm = {int(r['RangeCm'])};")
         out.append("\t\t\treturn R;")
         out.append("\t\t}")
     out.append("\t\treturn R;")
