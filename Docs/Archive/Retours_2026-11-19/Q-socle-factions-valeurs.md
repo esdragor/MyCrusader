@@ -21,4 +21,4 @@ Déjà tranché par le GDD, donc pas posé ici : les Templiers ont 3 voies (Fer,
 
 Valeur par défaut codée : aucune (les règles de ce soir ne portent que des valeurs de test).
 
-Reponse:
+Reponse (2026-11-19 ~22:55) : D859. « OK recommandées partout » : les 10 valeurs recommandées du tableau ci-dessus, sans changement. Reporte dans AubeInProgress.md (A1 a A7 : lignes 1 a 7 et 10) et DuelInProgress.md (D7 : lignes 8 et 9), et Auto_Journey_File.md. Fiche archivee dans Docs\Archive\Retours_2026-11-19\.
