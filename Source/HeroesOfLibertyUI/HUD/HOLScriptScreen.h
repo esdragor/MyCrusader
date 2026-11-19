@@ -144,6 +144,17 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|UI")
 	void SetQueueReport(const FString& Line);
 
+	/** H-11a: the cheats panel's part of hol.HUD.Report ("cheats open, fast build off, unit speed x1.0, gather speed x1.0"), written by the script at each refresh. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|UI")
+	void SetCheatsReport(const FString& Line);
+
+	/** H-11a: the line SetCheatsReport kept; empty before the script's panel wrote one. */
+	const FString& GetCheatsReport() const { return CheatsReport; }
+
+	/** H-11a: hol.HUD.Cheats <0|1>, the cheats panel folded or open without keeping the choice (the script's panel overrides it). */
+	UFUNCTION(BlueprintNativeEvent, Category = "HeroesOfLiberty|UI")
+	void ApplyCheatsOpen(bool bOpen);
+
 	/** The progress bar's fill colour (HOLUIStyle::Accent). */
 	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|UI")
 	static FLinearColor GetAccentColor();
@@ -389,6 +400,9 @@ protected:
 	virtual void NativeTick(const FGeometry& MyGeometry, float InDeltaTime) override;
 
 private:
+	/** H-11a: the cheats panel line of the report (SetCheatsReport). */
+	FString CheatsReport;
+
 	float RefreshLeft = 0.f;
 	/** A message with a key is shown: NativeTick calls FrameTick (D839: no per-frame script call otherwise). */
 	bool bMessageLive = false;

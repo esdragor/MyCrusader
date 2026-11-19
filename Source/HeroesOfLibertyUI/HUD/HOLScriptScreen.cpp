@@ -282,6 +282,15 @@ bool UHOLScriptScreen::GetQueueNow(TArray<FName>& OutTypes, TArray<bool>& OutRes
 	return GameScreen->ReadQueue(OutTypes, OutResearch, OutTechNames, OutUnitNames, bOutHeadStarted, OutHeadProgress, bOutBlockedAtFull, bOutPopulationShort);
 }
 
+void UHOLScriptScreen::SetCheatsReport(const FString& Line)
+{
+	CheatsReport = Line;
+}
+
+void UHOLScriptScreen::ApplyCheatsOpen_Implementation(const bool bOpen)
+{
+}
+
 void UHOLScriptScreen::SetQueueReport(const FString& Line)
 {
 	if (UHOLGameScreen* GameScreen = GetTypedOuter<UHOLGameScreen>())
