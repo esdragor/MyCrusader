@@ -26,31 +26,47 @@ namespace HOLFactionResource
 	// Adds Amount (a negative or null Amount changes nothing); returns the surplus lost above the cap, 0 when all fitted.
 	int Gain(FHOLFactionResource& State, int Amount)
 	{
-		return -1;
+		if (Amount <= 0)
+			return 0;
+		const int Room = Math::Max(State.Cap - State.Value, 0);
+		if (Amount <= Room)
+		{
+			State.Value += Amount;
+			return 0;
+		}
+		State.Value += Room;
+		return Amount - Room;
 	}
 
 	// Removes Amount (a negative or null Amount changes nothing); returns what was really removed (less than Amount at the floor).
 	int Lose(FHOLFactionResource& State, int Amount)
 	{
-		return -1;
+		if (Amount <= 0)
+			return 0;
+		const int Taken = Math::Min(Amount, Math::Max(State.Value - State.Floor, 0));
+		State.Value -= Taken;
+		return Taken;
 	}
 
 	// Spends Amount when the stock allows it (Value - Amount stays at or above the floor); otherwise false and the stock is untouched.
 	bool TrySpend(FHOLFactionResource& State, int Amount)
 	{
-		return false;
+		if (Amount < 0 || State.Value - Amount < State.Floor)
+			return false;
+		State.Value -= Amount;
+		return true;
 	}
 
 	// Which faction owns a gauge: today the Dawn alone. Another faction without a rule of its own, or an empty name, reads as the
 	// Dawn (HOLFactionRules.h); only the Legions have none.
 	bool HasResource(const FString& Faction)
 	{
-		return false;
+		return Faction != "Legions";
 	}
 
 	// The stable line of the test log: "<name> 30/100".
 	FString Describe(const FString& Name, const FHOLFactionResource& State)
 	{
-		return "";
+		return f"{Name} {State.Value}/{State.Cap}";
 	}
 }
