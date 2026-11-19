@@ -431,6 +431,7 @@ void UHOLConstructionSubsystem::Place(const FHOLConstructionCommand& Order, AHOL
 	FHOLResources Cost;
 	FHOLResources Stock;
 	int32 Verdict = -1;
+	int32 RawVerdict = -1; // the board's answer as given, before an out-of-range one is folded into -1
 	if (UHOLConstructionBoard::Find(World))
 	{
 		const bool bBuildable = Type && UHOLBuildingSettings::IsBuildableBy(World, Order.TypeName, Order.PlayerIndex);
@@ -471,14 +472,25 @@ void UHOLConstructionSubsystem::Place(const FHOLConstructionCommand& Order, AHOL
 				Order.PlayerIndex, *Order.TypeName.ToString(), Centre.X, Centre.Y, *Stock.ToString(), *Cost.ToString());
 			return;
 		default:
+			RawVerdict = Verdict;
 			Verdict = -1;
 			break;
 		}
 	}
 	if (Verdict < 0)
 	{
+		// A verdict beyond 0-5 comes from a board that IS there: said as such, not as an absent board.
 		static bool bLogged = false;
-		if (!bLogged)
+		static bool bLoggedRange = false;
+		if (RawVerdict > 5 || RawVerdict < -1)
+		{
+			if (!bLoggedRange)
+			{
+				bLoggedRange = true;
+				UE_LOG(LogHOLCommands, Error, TEXT("Construction: Place refused, verdict out of range %d"), RawVerdict);
+			}
+		}
+		else if (!bLogged)
 		{
 			bLogged = true;
 			UE_LOG(LogHOLCommands, Error, TEXT("Construction: Place refused, script board absent"));
@@ -542,7 +554,9 @@ void UHOLConstructionSubsystem::Cancel(const FHOLConstructionCommand& Order, AHO
 			bLogged = true;
 			UE_LOG(LogHOLCommands, Error, TEXT("Construction: Cancel refused, script board absent"));
 		}
-		Verdict = 1;
+		// Still ignored (as before), but said for what it is: not "not its building under construction".
+		UE_LOG(LogHOLCommands, Display, TEXT("Construction: cancel of slot %d ignored: no script board"), Order.PlayerIndex);
+		return;
 	}
 	if (Verdict != 0 || !Building)
 	{

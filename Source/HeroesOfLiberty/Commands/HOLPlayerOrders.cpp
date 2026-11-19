@@ -46,6 +46,12 @@ namespace HOLPlayerOrders
 				}
 				Logged.Add(FName(Order), Key);
 			}
+			if (!IsInGameThread())
+			{
+				// Board::Find is null off the game thread whatever the boards: not the same cause as an absent board.
+				UE_LOG(LogHOLMatch, Error, TEXT("PlayerOrders: %s refused, not on the game thread"), Order);
+				return;
+			}
 			UE_LOG(LogHOLMatch, Error, TEXT("PlayerOrders: %s refused, script board absent"), Order);
 		}
 

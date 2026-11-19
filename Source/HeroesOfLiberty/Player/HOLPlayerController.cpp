@@ -1950,6 +1950,11 @@ void AHOLPlayerController::SelectBuildingCategory(const EHOLBuildingCategory Cat
 		RestoreSubgroup(ActiveKey);
 	}
 	const int32 Index = HOLCommandGrid::NextInCycle(Entries, LastCategoryBuilding);
+	if (!Buildings.IsValidIndex(Index) || !Entries.IsValidIndex(Index))
+	{
+		// INDEX_NONE: no script grid board (or the board's answer is out of range): no cycle, nothing to focus.
+		return;
+	}
 	AHOLBuilding* Next = Buildings[Index];
 	LastCategoryBuilding = Entries[Index].Key;
 	const FVector Location = Next->GetActorLocation();
