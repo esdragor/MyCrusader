@@ -35,6 +35,11 @@ public:
 	static bool AskPressKey(const FHOLGridContext& Context, int32 ChosenAge, int32 Cell, FHOLGridKeyResult& Out);
 	static bool AskClickAge(const FHOLGridContext& Context, int32 ChosenAge, int32 Age, int32 Cell, FHOLGridKeyResult& Out);
 	static bool AskGetChosenAgeAfter(int32 ChosenAge, EHOLAgeEvent Event, int32& Out);
+	// Family 2 (checks and Describe). CheckResearch is NOT bridged (no script rule: its table rows are not exposed).
+	static bool AskCheckProduction(const FHOLResources& Stock, const FHOLResources& Cost, int32 QueueLength, int32 MaxQueue, int32 PopulationUsed,
+		int32 PopulationCap, int32 Places, FHOLCommandFeedback& Out);
+	static bool AskCheckBuild(const FHOLResources& Stock, const FHOLResources& Cost, FHOLCommandFeedback& Out);
+	static bool AskDescribe(const FHOLCommandFeedback& Feedback, FString& Out);
 
 	/** FHOLGridContext as the view the script reads (the inverse of the read library's ToRule). */
 	static FHOLGridContextView MakeContextView(const FHOLGridContext& Context);
@@ -71,4 +76,17 @@ protected:
 	virtual FHOLGridKeyResultView PressKeyAnswer_Implementation(const FHOLGridContextView& Context, int32 ChosenAge, int32 Cell);
 	virtual FHOLGridKeyResultView ClickAgeAnswer_Implementation(const FHOLGridContextView& Context, int32 ChosenAge, int32 Age, int32 Cell);
 	virtual int32 GetChosenAgeAfterAnswer_Implementation(int32 ChosenAge, EHOLAgeEventKind Event);
+
+	// Family 2 (HOLCommandGridKeys::CheckProduction / CheckBuild / Describe). Default = no answer.
+	UFUNCTION(BlueprintNativeEvent, Category = "HeroesOfLiberty|CommandGrid")
+	FHOLFeedbackView CheckProductionAnswer(const FHOLResources& Stock, const FHOLResources& Cost, int32 QueueLength, int32 MaxQueue, int32 PopulationUsed,
+		int32 PopulationCap, int32 Places);
+	UFUNCTION(BlueprintNativeEvent, Category = "HeroesOfLiberty|CommandGrid")
+	FHOLFeedbackView CheckBuildAnswer(const FHOLResources& Stock, const FHOLResources& Cost);
+	UFUNCTION(BlueprintNativeEvent, Category = "HeroesOfLiberty|CommandGrid")
+	FString DescribeAnswer(const FHOLFeedbackView& Feedback);
+	virtual FHOLFeedbackView CheckProductionAnswer_Implementation(const FHOLResources& Stock, const FHOLResources& Cost, int32 QueueLength, int32 MaxQueue,
+		int32 PopulationUsed, int32 PopulationCap, int32 Places);
+	virtual FHOLFeedbackView CheckBuildAnswer_Implementation(const FHOLResources& Stock, const FHOLResources& Cost);
+	virtual FString DescribeAnswer_Implementation(const FHOLFeedbackView& Feedback);
 };

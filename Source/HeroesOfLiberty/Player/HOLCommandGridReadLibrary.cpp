@@ -266,12 +266,12 @@ EHOLResource UHOLCommandGridReadLibrary::GetMissingResource(const FHOLResources&
 FHOLFeedbackView UHOLCommandGridReadLibrary::CheckProduction(const FHOLResources& Stock, const FHOLResources& Cost, const int32 QueueLength, const int32 MaxQueue,
 	const int32 PopulationUsed, const int32 PopulationCap, const int32 Places)
 {
-	return FromRule(HOLCommandGrid::CheckProduction(Stock, Cost, QueueLength, MaxQueue, PopulationUsed, PopulationCap, Places));
+	return FromRule(HOLCommandGrid::CheckProductionNative(Stock, Cost, QueueLength, MaxQueue, PopulationUsed, PopulationCap, Places));
 }
 
 FHOLFeedbackView UHOLCommandGridReadLibrary::CheckBuild(const FHOLResources& Stock, const FHOLResources& Cost)
 {
-	return FromRule(HOLCommandGrid::CheckBuild(Stock, Cost));
+	return FromRule(HOLCommandGrid::CheckBuildNative(Stock, Cost));
 }
 
 bool UHOLCommandGridReadLibrary::Blocks(const FHOLFeedbackView& Feedback) { return HOLCommandGrid::Blocks(ToRule(Feedback)); }
@@ -281,7 +281,7 @@ bool UHOLCommandGridReadLibrary::IsPopulationBlocked(const int32 PopulationUsed,
 	return HOLCommandGrid::IsPopulationBlocked(PopulationUsed, PopulationCap, Places);
 }
 
-FString UHOLCommandGridReadLibrary::Describe(const FHOLFeedbackView& Feedback) { return HOLCommandGrid::Describe(ToRule(Feedback)); }
+FString UHOLCommandGridReadLibrary::Describe(const FHOLFeedbackView& Feedback) { return HOLCommandGrid::DescribeNative(ToRule(Feedback)); }
 
 FHOLGridCellFaceView UHOLCommandGridReadLibrary::GetCellFace(const bool bHasIcon)
 {

@@ -9,6 +9,8 @@
 namespace HOLCommandGridReadLibraryPrivate
 {
 	FHOLGridCommand ToRule(const FHOLGridCommandView& View);
+	FHOLFeedbackView FromRule(const FHOLCommandFeedback& Feedback);
+	FHOLCommandFeedback ToRule(const FHOLFeedbackView& View);
 }
 
 namespace HOLCommandGridBoardPrivate
@@ -159,6 +161,31 @@ bool UHOLCommandGridBoard::AskGetChosenAgeAfter(const int32 ChosenAge, const EHO
 	return true;
 }
 
+bool UHOLCommandGridBoard::AskCheckProduction(const FHOLResources& Stock, const FHOLResources& Cost, const int32 QueueLength, const int32 MaxQueue,
+	const int32 PopulationUsed, const int32 PopulationCap, const int32 Places, FHOLCommandFeedback& Out)
+{
+	UHOLCommandGridBoard* Board = FindAny();
+	if (!Board) { return false; }
+	Out = HOLCommandGridReadLibraryPrivate::ToRule(Board->CheckProductionAnswer(Stock, Cost, QueueLength, MaxQueue, PopulationUsed, PopulationCap, Places));
+	return true;
+}
+
+bool UHOLCommandGridBoard::AskCheckBuild(const FHOLResources& Stock, const FHOLResources& Cost, FHOLCommandFeedback& Out)
+{
+	UHOLCommandGridBoard* Board = FindAny();
+	if (!Board) { return false; }
+	Out = HOLCommandGridReadLibraryPrivate::ToRule(Board->CheckBuildAnswer(Stock, Cost));
+	return true;
+}
+
+bool UHOLCommandGridBoard::AskDescribe(const FHOLCommandFeedback& Feedback, FString& Out)
+{
+	UHOLCommandGridBoard* Board = FindAny();
+	if (!Board) { return false; }
+	Out = Board->DescribeAnswer(HOLCommandGridReadLibraryPrivate::FromRule(Feedback));
+	return true;
+}
+
 bool UHOLCommandGridBoard::ShouldCreateSubsystem(UObject* Outer) const
 {
 	// Never the abstract C++ class, nor a script class replaced by a reload (as UHOLPlayerOrdersBoard).
@@ -183,3 +210,6 @@ FHOLGridCommandView UHOLCommandGridBoard::GetAgeBuildingAnswer_Implementation(co
 FHOLGridKeyResultView UHOLCommandGridBoard::PressKeyAnswer_Implementation(const FHOLGridContextView&, const int32, const int32) { return FHOLGridKeyResultView(); }
 FHOLGridKeyResultView UHOLCommandGridBoard::ClickAgeAnswer_Implementation(const FHOLGridContextView&, const int32, const int32, const int32) { return FHOLGridKeyResultView(); }
 int32 UHOLCommandGridBoard::GetChosenAgeAfterAnswer_Implementation(const int32, const EHOLAgeEventKind) { return INDEX_NONE; }
+FHOLFeedbackView UHOLCommandGridBoard::CheckProductionAnswer_Implementation(const FHOLResources&, const FHOLResources&, const int32, const int32, const int32, const int32, const int32) { return FHOLFeedbackView(); }
+FHOLFeedbackView UHOLCommandGridBoard::CheckBuildAnswer_Implementation(const FHOLResources&, const FHOLResources&) { return FHOLFeedbackView(); }
+FString UHOLCommandGridBoard::DescribeAnswer_Implementation(const FHOLFeedbackView&) { return FString(); }

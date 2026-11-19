@@ -56,4 +56,23 @@ class UHOLCommandGridBoardScript : UHOLCommandGridBoard
 	int GetChosenAgeAfterAnswer(int ChosenAge, EHOLAgeEventKind Event)
 	{
 		return HOLCommandGridKeys::GetChosenAgeAfter(ChosenAge, Event);
+	}
+
+	// Family 2: checks and Describe (HOLCommandGridKeys). CheckResearch has no script rule: not bridged.
+	UFUNCTION(BlueprintOverride)
+	FHOLFeedbackView CheckProductionAnswer(const FHOLResources& Stock, const FHOLResources& Cost, int QueueLength, int MaxQueue, int PopulationUsed, int PopulationCap, int Places)
+	{
+		return HOLCommandGridKeys::CheckProduction(Stock, Cost, QueueLength, MaxQueue, PopulationUsed, PopulationCap, Places);
+	}
+
+	UFUNCTION(BlueprintOverride)
+	FHOLFeedbackView CheckBuildAnswer(const FHOLResources& Stock, const FHOLResources& Cost)
+	{
+		return HOLCommandGridKeys::CheckBuild(Stock, Cost);
+	}
+
+	UFUNCTION(BlueprintOverride)
+	FString DescribeAnswer(const FHOLFeedbackView& Feedback)
+	{
+		return HOLCommandGridKeys::Describe(Feedback);
 	}}

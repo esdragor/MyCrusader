@@ -357,6 +357,14 @@ namespace HOLCommandGrid
 	FHOLCommandFeedback CheckProduction(const FHOLResources& Stock, const FHOLResources& Cost, const int32 QueueLength, const int32 MaxQueue,
 		const int32 PopulationUsed, const int32 PopulationCap, const int32 Places)
 	{
+		FHOLCommandFeedback Answer;
+		return UHOLCommandGridBoard::AskCheckProduction(Stock, Cost, QueueLength, MaxQueue, PopulationUsed, PopulationCap, Places, Answer)
+			? Answer : CheckProductionNative(Stock, Cost, QueueLength, MaxQueue, PopulationUsed, PopulationCap, Places);
+	}
+
+	FHOLCommandFeedback CheckProductionNative(const FHOLResources& Stock, const FHOLResources& Cost, const int32 QueueLength, const int32 MaxQueue,
+		const int32 PopulationUsed, const int32 PopulationCap, const int32 Places)
+	{
 		FHOLCommandFeedback Feedback;
 		if (QueueLength >= MaxQueue)
 		{
@@ -398,6 +406,12 @@ namespace HOLCommandGrid
 
 	FHOLCommandFeedback CheckBuild(const FHOLResources& Stock, const FHOLResources& Cost)
 	{
+		FHOLCommandFeedback Answer;
+		return UHOLCommandGridBoard::AskCheckBuild(Stock, Cost, Answer) ? Answer : CheckBuildNative(Stock, Cost);
+	}
+
+	FHOLCommandFeedback CheckBuildNative(const FHOLResources& Stock, const FHOLResources& Cost)
+	{
 		FHOLCommandFeedback Feedback;
 		if (FindMissingResource(Stock, Cost, Feedback.Resource))
 		{
@@ -418,6 +432,12 @@ namespace HOLCommandGrid
 	}
 
 	FString Describe(const FHOLCommandFeedback& Feedback)
+	{
+		FString Answer;
+		return UHOLCommandGridBoard::AskDescribe(Feedback, Answer) ? Answer : DescribeNative(Feedback);
+	}
+
+	FString DescribeNative(const FHOLCommandFeedback& Feedback)
 	{
 		switch (Feedback.Kind)
 		{

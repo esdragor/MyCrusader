@@ -434,6 +434,11 @@ namespace HOLCommandGrid
 	HEROESOFLIBERTY_API FHOLCommandFeedback CheckBuild(const FHOLResources& Stock, const FHOLResources& Cost);
 
 	/** The command is not sent (the population's feedback is only told: the unit is queued). */
+	/** The C++ bodies of CheckProduction / CheckBuild / Describe, never the script's (the bridge's repli; the read library reads these). */
+	HEROESOFLIBERTY_API FHOLCommandFeedback CheckProductionNative(const FHOLResources& Stock, const FHOLResources& Cost, int32 QueueLength, int32 MaxQueue,
+		int32 PopulationUsed, int32 PopulationCap, int32 Places);
+	HEROESOFLIBERTY_API FHOLCommandFeedback CheckBuildNative(const FHOLResources& Stock, const FHOLResources& Cost);
+	HEROESOFLIBERTY_API FString DescribeNative(const FHOLCommandFeedback& Feedback);
 	HEROESOFLIBERTY_API bool Blocks(const FHOLCommandFeedback& Feedback);
 
 	/** A unit of Places waits for room in the population (the production stops, D313). */
