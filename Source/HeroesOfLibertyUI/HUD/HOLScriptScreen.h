@@ -83,6 +83,41 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|UI")
 	UBorder* GetPlayersPanel() const;
 
+	/** The C++ screen's GroupsPanel (the control groups bar's host, in its column, margin and gap, collapsed); the script fills it (HUD H-6). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|UI")
+	UBorder* GetGroupsPanel() const;
+
+	/** AHOLPlayerController::NumControlGroups (10). */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|UI")
+	static int32 GetNumControlGroups();
+
+	/** The owning controller AND the world exist (the C++ bar did nothing before them). */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|UI")
+	bool GetControlGroupsAvailable() const;
+
+	/**
+	 * AHOLPlayerController::GetControlGroup(Group): returns bFull (the group holds something). OutCount: the units, or the buildings when it holds no unit;
+	 * bOutBuildings: it holds no unit. False and 0 without a controller or out of range.
+	 */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|UI")
+	bool GetControlGroupNow(int32 Group, int32& OutCount, bool& bOutBuildings) const;
+
+	/** The group's types in the order they are met (the script sorts), names already localised, one count by type (UHOLGameScreen::GetGroupTypes). Empty without a group. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|UI")
+	void GetControlGroupTypes(int32 Group, TArray<FString>& OutNames, TArray<int32>& OutCounts) const;
+
+	/** AHOLPlayerController::GetLastSelectedGroup: the group, INDEX_NONE (-1) when none or without a controller. */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|UI")
+	int32 GetLastSelectedGroup() const;
+
+	/** Real seconds since that selection (1e9, never lit, without a selection or a controller). */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|UI")
+	float GetLastSelectedGroupAge() const;
+
+	/** AHOLPlayerController::SelectControlGroup (the script writes the journal line of the click). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|UI")
+	void SelectControlGroup(int32 Group);
+
 	/**
 	 * The minor alerts (D202, HOLAlertRules.as): the shown player's places taken and given (D282) and the HUD's real time (s).
 	 * False for a spectator or before the player state arrives.

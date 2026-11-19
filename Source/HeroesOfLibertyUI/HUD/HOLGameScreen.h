@@ -94,6 +94,15 @@ public:
 	/** HUD H-4: the PlayersPanel (table host in the right column), filled by the script's table. */
 	UBorder* GetPlayersPanel() const { return PlayersPanel; }
 
+	/** HUD H-6: the GroupsPanel (control groups bar host, bottom left), filled by the script's bar. */
+	UBorder* GetGroupsPanel() const { return GroupsPanel; }
+
+	/**
+	 * HUD H-6: the types of control group Group in the order they are met, names localised (the faction and unit rows stay here), one count by type; the
+	 * script sorts and writes the tooltip. Empty without a controller or a group.
+	 */
+	void GetGroupTypes(int32 Group, TArray<FString>& OutNames, TArray<int32>& OutCounts);
+
 	/** The population full alert's test binds a player state without a player controller. */
 	friend class FHOLPopulationAlertThreadTest;
 

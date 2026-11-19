@@ -1813,6 +1813,57 @@ void UHOLGameScreen::RefreshIdleWorkers()
 	ShownIdleWorkers = Controller.IsValid() ? Controller->GetIdleWorkers().Num() : 0;
 }
 
+void UHOLGameScreen::GetGroupTypes(const int32 Group, TArray<FString>& OutNames, TArray<int32>& OutCounts)
+{
+	OutNames.Reset();
+	OutCounts.Reset();
+	const AHOLPlayerController* PlayerController = Controller.Get();
+	const UWorld* World = GetWorld();
+	TArray<uint32> Units;
+	TArray<AHOLBuilding*> Buildings;
+	if (!PlayerController || !World || !PlayerController->GetControlGroup(Group, Units, Buildings))
+	{
+		return;
+	}
+	TArray<FName> Order;
+	TMap<FName, int32> PerType;
+	const auto AddType = [&Order, &PerType](const FName Type)
+	{
+		if (int32* Count = PerType.Find(Type))
+		{
+			++*Count;
+		}
+		else
+		{
+			PerType.Add(Type, 1);
+			Order.Add(Type);
+		}
+	};
+	if (!Units.IsEmpty())
+	{
+		TArray<FHOLUnitView> Views;
+		HOLUnitView::Gather(*World, Views);
+		for (const FHOLUnitView& View : Views)
+		{
+			if (Units.Contains(View.UnitId))
+			{
+				AddType(View.TypeName);
+			}
+		}
+	}
+	for (const AHOLBuilding* Building : Buildings)
+	{
+		AddType(Building->GetTypeName());
+	}
+	for (const FName Type : Order)
+	{
+		const FText Name = Units.IsEmpty() ? HOLGameNames::GetBuildingName(Type, UHOLBuildingSettings::FindType(Type))
+			: HOLGameNames::GetUnitName(Type, FindUnitType(Type), LocalFactionKey());
+		OutNames.Add(Name.ToString());
+		OutCounts.Add(PerType[Type]);
+	}
+}
+
 FName UHOLGameScreen::GroupSlotName(const int32 Group)
 {
 	return *FString::Printf(TEXT("ControlGroup%d"), Group);
