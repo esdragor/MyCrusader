@@ -2262,7 +2262,7 @@ UHOLAlertBannerPanel AlertBanner;
 	}
 
 	// H-11a: the cheats panel's bottom edge (0 before it is built): the AI level line and the diplomacy panel stack under it.
-	float CheatBottom()
+	float CheatBottom() const
 	{
 		return CheatPanel != nullptr ? CheatPanel.GetBottom() : 0.0;
 	}

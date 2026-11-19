@@ -472,7 +472,7 @@ class UHOLCheatPanelScript : UObject
 	}
 
 	// The panel's bottom edge (what the AI level line is stacked under) and the report's line.
-	float GetBottom()
+	float GetBottom() const
 	{
 		return HOLCheatPanelRules::BottomOf(PlacedAnchorHeight, Panel != nullptr ? Panel.GetDesiredSize().Y : 0.0, Panel != nullptr);
 	}
