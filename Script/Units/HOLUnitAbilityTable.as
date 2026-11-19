@@ -20,6 +20,7 @@ namespace HOLUnitAbilityTable
 		int DurationMs = 0;
 		int HpCostPerHit = 0;
 		int MinHp = 0;
+		int StopHp = 0;
 		int Target = 0;
 		int RadiusCm = 0;
 		int RangeCm = 0;
@@ -40,7 +41,7 @@ namespace HOLUnitAbilityTable
 			R.HpCostPerHit = 3;
 			R.MinHp = 30;
 			R.StopHp = 20;
-			R.Target = 0;
+			R.Target = 1;
 			R.RadiusCm = 0;
 			R.RangeCm = 0;
 			return R;

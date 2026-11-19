@@ -59,6 +59,7 @@ def render(rows):
     out.append("\t\tint DurationMs = 0;")
     out.append("\t\tint HpCostPerHit = 0;")
     out.append("\t\tint MinHp = 0;")
+    out.append("\t\tint StopHp = 0;")
     out.append("\t\tint Target = 0;")
     out.append("\t\tint RadiusCm = 0;")
     out.append("\t\tint RangeCm = 0;")
