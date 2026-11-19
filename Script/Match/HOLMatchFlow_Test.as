@@ -56,6 +56,21 @@ void Test_MatchFlowTimerAndCount(FUnitTest& T)
 	T.AssertEquals(0.0, HOLMatchFlow::PausedSeconds(100.0, 90.0), "never negative");
 }
 
+// Pause: the whole numbers the bridge sends are the order the C++ journal reads when it removes FHOLPauseRules (HOLGameState.cpp: the "Pause: refused to ..."
+// reason is picked by this number: allowed, not in the match, no pause left, already paused, not paused, timer running). Changing the order breaks the journal lines.
+void Test_MatchFlowAnswerOrder(FUnitTest& T)
+{
+	T.AssertEquals(0, int(EHOLPauseAnswer::Allowed), "answer 0: allowed");
+	T.AssertEquals(1, int(EHOLPauseAnswer::NotInMatch), "answer 1: not in the match");
+	T.AssertEquals(2, int(EHOLPauseAnswer::NoPauseLeft), "answer 2: no pause left");
+	T.AssertEquals(3, int(EHOLPauseAnswer::AlreadyPaused), "answer 3: already paused");
+	T.AssertEquals(4, int(EHOLPauseAnswer::NotPaused), "answer 4: not paused");
+	T.AssertEquals(5, int(EHOLPauseAnswer::TimerRunning), "answer 5: timer running");
+	// The bridge (UHOLMatchFlowBoardScript) sends exactly these numbers.
+	T.AssertEquals(5, HOLMatchFlow::CanResume(false, 1, 100.0, 0, true, 159.5) == EHOLPauseAnswer::TimerRunning ? 5 : -1, "159.5 s: still the timer");
+	T.AssertEquals(0, int(HOLMatchFlow::CanResume(false, 1, 100.0, 0, true, 160.5)), "160.5 s: allowed (answer 0)");
+}
+
 // Pause lifted at once when the one who paused leaves (D720); the count is not touched (PausesLeftAfterPause is not called).
 void Test_MatchFlowLiftPauseOfLeaver(FUnitTest& T)
 {
