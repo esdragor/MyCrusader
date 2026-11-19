@@ -119,6 +119,42 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|UI")
 	void SelectControlGroup(int32 Group);
 
+	/** The C++ screen's QueuePanel (built by BuildLayout in the CommandColumn, collapsed, under the short message): the script fills it (HUD H-7). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|UI")
+	UBorder* GetQueuePanel() const;
+
+	/**
+	 * What the queue panel shows (RefreshQueue + UpdateHead of the C++ screen, in one read): the own selected building's queue, one entry per item in
+	 * order (Research: it is a technology; TechNames: its name, empty for a unit; UnitNames: the unit's name, empty for a research), and its head:
+	 * started, its progress (0 when not started), held at the end for lack of room, waiting for room. False, all empty: no own building selected.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|UI")
+	bool GetQueueNow(TArray<FName>& OutTypes, TArray<bool>& OutResearch, TArray<FString>& OutTechNames, TArray<FString>& OutUnitNames,
+		bool& bOutHeadStarted, float& OutHeadProgress, bool& bOutBlockedAtFull, bool& bOutPopulationShort) const;
+
+	/** The queue part of Describe's line (queue + Line): the script writes it at each refresh. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|UI")
+	void SetQueueReport(const FString& Line);
+
+	/** The progress bar's fill colour (HOLUIStyle::Accent). */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|UI")
+	static FLinearColor GetAccentColor();
+
+	/** AHOLPlayerController::RequestCancelProduction(Index) (not exposed itself); false without a controller (the script writes the journal line). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|UI")
+	bool CancelProduction(int32 Index);
+
+	/** True while the queue panel shows a queue: NativeTick then calls QueueFrameTick every frame (the head's bar moves each frame, as UpdateHead did), never otherwise. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|UI")
+	void SetQueueLive(bool bLive);
+
+	/** Once a frame, ONLY while SetQueueLive(true): the script reads the head again. */
+	UFUNCTION(BlueprintImplementableEvent, Category = "HeroesOfLiberty|UI")
+	void QueueFrameTick();
+
+	/** The C++ screen changed what the queue shows (selection, queue event): the next frame refreshes the script screen instead of waiting for its 4 Hz timer. */
+	void RequestRefresh() { RefreshLeft = 0.f; }
+
 	/**
 	 * The minor alerts (D202, HOLAlertRules.as): the shown player's places taken and given (D282) and the HUD's real time (s).
 	 * False for a spectator or before the player state arrives.
@@ -316,4 +352,7 @@ private:
 	bool bAlertLive = false;
 	/** The control group lit as NativeTick last saw it (INDEX_NONE: none): a change calls GroupLitChanged. */
 	int32 LitGroupSeen = INDEX_NONE;
+
+	/** The queue panel shows a queue: NativeTick calls QueueFrameTick (HUD H-7). */
+	bool bQueueLive = false;
 };

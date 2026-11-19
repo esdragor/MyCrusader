@@ -246,7 +246,6 @@ namespace UE::HeroesOfLiberty::UI::GameScreen
 	constexpr int32 GridColumns = 4;
 	constexpr float CellSize = 76.f;
 	constexpr float CellGap = 2.f;
-	constexpr float QueueItemWidth = 56.f;
 	constexpr float QueueItemHeight = 36.f;
 	constexpr float ScreenMargin = 16.f;
 	constexpr float SwatchSize = 14.f;
@@ -319,11 +318,6 @@ namespace UE::HeroesOfLiberty::UI::GameScreen
 	FName AgeCellName(const int32 Age, const int32 Cell)
 	{
 		return *FString::Printf(TEXT("AgeCell%d%02d"), Age, Cell);
-	}
-
-	FName QueueItemName(const int32 Index)
-	{
-		return *FString::Printf(TEXT("QueueItem%d"), Index);
 	}
 
 	/** Shows or collapses a widget, touching it only when that changes (the queue's head is updated every frame). */
@@ -403,16 +397,7 @@ void UHOLGameScreen::NativeOnInitialized()
 			GridCell->OnClicked().AddUObject(this, &UHOLGameScreen::HandleGridCellClicked, Cell);
 		}
 	}
-	for (int32 Index = 0; Index < NumQueueItems; ++Index)
-	{
-		UHOLQueueItem* Item = Cast<UHOLQueueItem>(WidgetTree->FindWidget(QueueItemName(Index)));
-		QueueItems.Add(Item);
-		if (Item)
-		{
-			Item->OnClicked().AddUObject(this, &UHOLGameScreen::HandleQueueItemClicked, Index);
-		}
-	}
-	SelectionChips =Cast<UWrapBox>(WidgetTree->FindWidget(TEXT("SelectionChips")));
+	SelectionChips = Cast<UWrapBox>(WidgetTree->FindWidget(TEXT("SelectionChips")));
 	for (int32 Chip = 0; Chip < NumChips; ++Chip)
 	{
 		UHOLQueueItem* Item = Cast<UHOLQueueItem>(WidgetTree->FindWidget(*FString::Printf(TEXT("SelectionChip%d"), Chip)));
@@ -610,7 +595,7 @@ void UHOLGameScreen::NativeTick(const FGeometry& MyGeometry, const float InDelta
 		RefreshAges(BoundPlayerState.Get());
 	}
 	RefreshIdleWorkers();
-	UpdateHead();
+	// HUD H-7: the queue's head bar moves each frame in the script (UHOLScriptScreen::QueueFrameTick, only while a queue is shown).
 }
 
 void UHOLGameScreen::BindPlayerState(AHOLPlayerState* PlayerState)
@@ -1016,8 +1001,11 @@ void UHOLGameScreen::Refresh()
 	// D357: a spectator commands nothing, its grid hidden.
 	const bool bSpectator = PlayerController && PlayerController->IsSpectator();
 	RefreshGrid(bSpectator ? nullptr : Own, !bSpectator && PlayerController && PlayerController->HasBuildingGroup(), PlayerState);
-	RefreshQueue(Own);
-	UpdateHead();
+	// HUD H-7: the queue is the script's (HOLQueuePanel.as): it reads it again the next frame (RequestRefresh), not 250 ms later.
+	if (ScriptScreen)
+	{
+		ScriptScreen->RequestRefresh();
+	}
 }
 
 UBorder* UHOLGameScreen::GetTopBar() const
@@ -2240,87 +2228,69 @@ void UHOLGameScreen::RefreshAges(const AHOLPlayerState* PlayerState)
 	}
 }
 
-void UHOLGameScreen::RefreshQueue(const AHOLBuilding* OwnBuilding)
+bool UHOLGameScreen::ReadQueue(TArray<FName>& OutTypes, TArray<bool>& OutResearch, TArray<FString>& OutTechNames, TArray<FString>& OutUnitNames,
+	bool& bOutHeadStarted, float& OutHeadProgress, bool& bOutBlockedAtFull, bool& bOutPopulationShort) const
 {
 	using namespace UE::HeroesOfLiberty::UI::GameScreen;
 
-	ShownQueueTypes.Reset();
-	if (OwnBuilding)
+	OutTypes.Reset();
+	OutResearch.Reset();
+	OutTechNames.Reset();
+	OutUnitNames.Reset();
+	bOutHeadStarted = false;
+	OutHeadProgress = 0.f;
+	bOutBlockedAtFull = false;
+	bOutPopulationShort = false;
+
+	// RefreshQueue(Own): only the owner receives its building's queue (D282).
+	const AHOLPlayerController* PlayerController = Controller.Get();
+	const AHOLBuilding* Own = PlayerController ? PlayerController->GetOwnSelection() : nullptr;
+	if (!Own)
 	{
-		for (const FHOLProductionItem& Item : OwnBuilding->GetProductionQueue())
-		{
-			ShownQueueTypes.Add(Item.TypeName);
-		}
+		return false;
 	}
-	bQueueShown = !ShownQueueTypes.IsEmpty();
-	SetShown(QueuePanel, bQueueShown, ESlateVisibility::Visible);
-
-	for (int32 Index = 0; Index < QueueItems.Num(); ++Index)
+	for (const FHOLProductionItem& Item : Own->GetProductionQueue())
 	{
-		UHOLQueueItem* Item = QueueItems[Index];
-		const bool bShown = ShownQueueTypes.IsValidIndex(Index);
-		SetShown(Item, bShown, ESlateVisibility::Visible);
-		if (Item && bShown)
-		{
-			// A research waits in the queue as a unit does (T6): its name, not the type's key.
-			const FHOLTechnologyRow* Research = UHOLTechnologySettings::FindTechnology(ShownQueueTypes[Index]);
-			Item->SetLabel(Research ? HOLGameNames::GetTechnologyName(ShownQueueTypes[Index], Research)
-				: HOLGameNames::GetUnitName(ShownQueueTypes[Index], FindUnitType(ShownQueueTypes[Index]), LocalFactionKey()));
-		}
+		// A research waits in the queue as a unit does (T6): its name, not the type's key.
+		const FHOLTechnologyRow* Research = UHOLTechnologySettings::FindTechnology(Item.TypeName);
+		OutTypes.Add(Item.TypeName);
+		OutResearch.Add(Research != nullptr);
+		OutTechNames.Add(Research ? HOLGameNames::GetTechnologyName(Item.TypeName, Research).ToString() : FString());
+		OutUnitNames.Add(Research ? FString() : HOLGameNames::GetUnitName(Item.TypeName, FindUnitType(Item.TypeName), LocalFactionKey()).ToString());
 	}
-}
+	if (OutTypes.IsEmpty())
+	{
+		return true;
+	}
 
-void UHOLGameScreen::UpdateHead()
-{
-	using namespace UE::HeroesOfLiberty::UI::GameScreen;
-
-	// The queue shown is the selected building's, which is then the player's own.
-	const AHOLBuilding* Building = bQueueShown ? BoundBuilding.Get() : nullptr;
+	// UpdateHead: the queue shown is the selected building's (BoundBuilding), the head its first item.
+	const AHOLBuilding* Building = BoundBuilding.Get();
 	const TArray<FHOLProductionItem>* Queue = Building ? &Building->GetProductionQueue() : nullptr;
 	if (!Queue || Queue->IsEmpty())
 	{
-		HeadState = EHeadState::None;
-		HeadProgress = 0.f;
-		return;
+		return true;
 	}
-
 	const FHOLProductionItem& Head = (*Queue)[0];
 	const FHOLUnitTypeRow* UnitType = FindUnitType(Head.TypeName);
-	if (Head.IsStarted())
+	const AHOLPlayerState* PlayerState = BoundPlayerState.Get();
+	const int32 Places = UnitType ? UnitType->Population : 1;
+	bOutHeadStarted = Head.IsStarted();
+	if (bOutHeadStarted)
 	{
-		// Only the start step travels (D282): the progress is computed here every frame, at the server's clock as this
-		// machine estimates it (D271).
+		// Only the start step travels (D282): the progress is computed every frame, at the server's clock as this machine estimates it (D271).
 		const int32 BuildSteps = UnitType
 			? UHOLProductionSubsystem::GetBuildSteps(*UnitType, GetDefault<UHOLSimulationSettings>()->GetStepSeconds())
 			: 1;
-		HeadProgress = HOLProduction::GetProgress(Head, UHOLProductionSubsystem::GetDisplayStep(GetWorld()), BuildSteps);
-		HeadState = EHeadState::InProgress;
-		// D829: done but no place in the population: it stays at 100 % and the queue says so.
-		const AHOLPlayerState* PlayerStateOfHead = BoundPlayerState.Get();
-		if (HeadProgress >= 1.f && PlayerStateOfHead
-			&& HOLCommandGrid::IsPopulationBlocked(PlayerStateOfHead->GetPopulationUsed(), PlayerStateOfHead->GetPopulationCap(), UnitType ? UnitType->Population : 1))
-		{
-			HeadState = EHeadState::PopulationFull;
-		}
+		OutHeadProgress = HOLProduction::GetProgress(Head, UHOLProductionSubsystem::GetDisplayStep(GetWorld()), BuildSteps);
+		// D829: done but no place in the population (the script adds the 100 % test).
+		bOutBlockedAtFull = PlayerState && HOLCommandGrid::IsPopulationBlocked(PlayerState->GetPopulationUsed(), PlayerState->GetPopulationCap(), Places);
 	}
 	else
 	{
 		// Not started: it waits for room in the population (as in AoE), or starts at the server's next step.
-		const AHOLPlayerState* PlayerState = BoundPlayerState.Get();
-		const int32 Places = UnitType ? UnitType->Population : 1;
-		HeadState = PlayerState && PlayerState->GetPopulationUsed() + Places > PlayerState->GetPopulationCap()
-			? EHeadState::PopulationFull
-			: EHeadState::Starting;
-		HeadProgress = 0.f;
+		bOutPopulationShort = PlayerState && PlayerState->GetPopulationUsed() + Places > PlayerState->GetPopulationCap();
 	}
-
-	if (QueueProgress && QueueProgress->GetPercent() != HeadProgress)
-	{
-		QueueProgress->SetPercent(HeadProgress);
-	}
-	// D829: a unit held at 100 % keeps its full bar, the note beside it.
-	SetShown(QueueProgress, HeadState != EHeadState::PopulationFull || HeadProgress > 0.f);
-	SetShown(QueueNote, HeadState == EHeadState::PopulationFull);
+	return true;
 }
 
 void UHOLGameScreen::HandleGridCellClicked(const int32 Cell)
@@ -2404,15 +2374,6 @@ bool UHOLGameScreen::IsProductionHeldForRoom() const
 		}
 	}
 	return bBlocked;
-}
-
-void UHOLGameScreen::HandleQueueItemClicked(const int32 Index)
-{
-	if (AHOLPlayerController* PlayerController = Controller.Get())
-	{
-		UE_LOG(LogHOLUI, Display, TEXT("HUD: queue item %d clicked (cancel)"), Index);
-		PlayerController->RequestCancelProduction(Index);
-	}
 }
 
 FString UHOLGameScreen::DescribeOverlaps() const
@@ -2526,19 +2487,7 @@ bool UHOLGameScreen::ClickWidget(const FName Name)
 			return true;
 		}
 	}
-	for (int32 Index = 0; Index < QueueItems.Num(); ++Index)
-	{
-		const UHOLQueueItem* Item = QueueItems[Index];
-		if (Item && Item->GetFName() == Name)
-		{
-			if (!bQueueShown || !Item->IsVisible())
-			{
-				return false;
-			}
-			HandleQueueItemClicked(Index);
-			return true;
-		}
-	}
+	// HUD H-7: QueueItem0..4 are the script's (UHOLProductionQueuePanel.ClickName, through UHOLScriptScreen::ClickWidget above).
 	return false;
 }
 
@@ -2589,19 +2538,8 @@ FString UHOLGameScreen::Describe() const
 		}
 		Grid = Cells.IsEmpty() ? FString(TEXT("empty")) : FString::Join(Cells, TEXT(" "));
 
-		TArray<FString> Items;
-		for (int32 Index = 0; Index < ShownQueueTypes.Num(); ++Index)
-		{
-			FString State = TEXT("waiting");
-			if (Index == 0)
-			{
-				State = HeadState == EHeadState::InProgress ? FString::Printf(TEXT("%.2f"), HeadProgress)
-					: HeadState == EHeadState::PopulationFull ? FString(TEXT("population full"))
-					: FString(TEXT("starting"));
-			}
-			Items.Add(FString::Printf(TEXT("%s %s"), *ShownQueueTypes[Index].ToString(), *State));
-		}
-		Queue = FString::Printf(TEXT("%d [%s]"), Items.Num(), *FString::Join(Items, TEXT(", ")));
+		// HUD H-7: the queue part is the script's (UHOLProductionQueuePanel.Describe: "N [Type state, ...]", written by SetQueueReport at each refresh).
+		Queue = QueueReport;
 	}
 	// The orders' panel (the user's choice of 2026-10-21), after the grid: Q=AttackMove S=Stop V=Hold.
 	TArray<FString> Orders;
@@ -2977,53 +2915,12 @@ void UHOLGameScreen::BuildLayout()
 	UVerticalBox* CommandColumn = MakeVerticalBox(TEXT("CommandColumn"));
 	CommandBox->SetContent(CommandColumn);
 
-	// Production queue, as wide as the grid: its items, the head's progress (or the population note), the hint.
+	// Production queue, as wide as the grid (the panel only: HUD H-7, the script draws what is in it).
 	QueuePanel = MakePanel(TEXT("QueuePanel"));
 	UVerticalBoxSlot* QueueSlot = CommandColumn->AddChildToVerticalBox(QueuePanel);
 	QueueSlot->SetHorizontalAlignment(HAlign_Fill);
 	QueueSlot->SetPadding(FMargin(0.f, 0.f, 0.f, 6.f));
-	UVerticalBox* QueueColumn = MakeVerticalBox(TEXT("QueueColumn"));
-	QueuePanel->SetContent(QueueColumn);
-	UHorizontalBox* QueueRow = MakeHorizontalBox(TEXT("QueueRow"));
-	QueueColumn->AddChildToVerticalBox(QueueRow);
-	for (int32 Index = 0; Index < NumQueueItems; ++Index)
-	{
-		USizeBox* ItemBox = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass());
-		ItemBox->SetWidthOverride(QueueItemWidth);
-		ItemBox->SetHeightOverride(QueueItemHeight);
-		ItemBox->SetContent(WidgetTree->ConstructWidget<UHOLQueueItem>(UHOLQueueItem::StaticClass(), QueueItemName(Index)));
-		AddToRow(QueueRow, ItemBox, 4.f);
-	}
-
-	// The bar and the note share one line of a fixed height, so that the panel does not move when one replaces the other.
-	USizeBox* StatusBox = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass(), TEXT("QueueStatus"));
-	StatusBox->SetHeightOverride(18.f);
-	QueueColumn->AddChildToVerticalBox(StatusBox)->SetPadding(FMargin(0.f, 6.f, 0.f, 0.f));
-	UOverlay* Status = WidgetTree->ConstructWidget<UOverlay>(UOverlay::StaticClass(), TEXT("QueueStatusLine"));
-	StatusBox->SetContent(Status);
-
-	QueueProgress = WidgetTree->ConstructWidget<UProgressBar>(UProgressBar::StaticClass(), TEXT("QueueProgress"));
-	FProgressBarStyle BarStyle;
-	BarStyle.SetBackgroundImage(FSlateRoundedBoxBrush(FLinearColor(0.08f, 0.08f, 0.1f, 1.f), 2.f));
-	BarStyle.SetFillImage(FSlateRoundedBoxBrush(HOLUIStyle::Accent, 2.f));
-	QueueProgress->SetWidgetStyle(BarStyle);
-	USizeBox* BarBox = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass(), TEXT("QueueProgressBox"));
-	BarBox->SetHeightOverride(6.f);
-	BarBox->SetContent(QueueProgress);
-	UOverlaySlot* BarSlot = Status->AddChildToOverlay(BarBox);
-	BarSlot->SetHorizontalAlignment(HAlign_Fill);
-	BarSlot->SetVerticalAlignment(VAlign_Center);
-
-	QueueNote = MakeText(TEXT("QueueNote"), UHOLTextStyleHUDAlert::StaticClass(), LOCTEXT("PopulationFull", "Population pleine"));
-	QueueNote->SetVisibility(ESlateVisibility::Collapsed);
-	UOverlaySlot* NoteSlot = Status->AddChildToOverlay(QueueNote);
-	NoteSlot->SetHorizontalAlignment(HAlign_Left);
-	NoteSlot->SetVerticalAlignment(VAlign_Center);
-
-	UCommonTextBlock* Hint = MakeText(TEXT("QueueHint"), UHOLTextStyleHUDLabel::StaticClass(), LOCTEXT("CancelHint", "Clic : annuler"));
-	UVerticalBoxSlot* HintSlot = QueueColumn->AddChildToVerticalBox(Hint);
-	HintSlot->SetHorizontalAlignment(HAlign_Right);
-	HintSlot->SetPadding(FMargin(0.f, 4.f, 0.f, 0.f));
+	// HUD H-7: the script's queue panel (HOLQueuePanel.as) fills QueuePanel (QueueColumn, QueueRow, QueueItem0..4, QueueStatus, QueueProgress, QueueNote, QueueHint).
 
 	// The command panel (D30, the user's 2nd trial of G.1): 3 rows of 4 square cells, A Z E R / Q S D F / W X C V, always
 	// all there (an empty one dark): the orders of the player's units or the grid of its building.

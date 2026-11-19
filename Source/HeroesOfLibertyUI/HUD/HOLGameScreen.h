@@ -110,6 +110,19 @@ public:
 	 */
 	void GetGroupTypes(int32 Group, TArray<FString>& OutNames, TArray<int32>& OutCounts);
 
+	/** HUD H-7: the QueuePanel (in the CommandColumn, collapsed), filled by the script's queue panel. */
+	UBorder* GetQueuePanel() const { return QueuePanel; }
+
+	/**
+	 * HUD H-7: what RefreshQueue + UpdateHead read, for the script's queue panel: the own selected building's queue (types, research or unit
+	 * names) and its head (started, progress, held at 100 % for lack of room, waiting for room). False, all empty: no own building selected.
+	 */
+	bool ReadQueue(TArray<FName>& OutTypes, TArray<bool>& OutResearch, TArray<FString>& OutTechNames, TArray<FString>& OutUnitNames,
+		bool& bOutHeadStarted, float& OutHeadProgress, bool& bOutBlockedAtFull, bool& bOutPopulationShort) const;
+
+	/** HUD H-7: the queue part of the Describe line, as the script's queue panel wrote it (3 [Peasant 0.40, ...]). */
+	void SetQueueReportMirror(const FString& Line) { QueueReport = Line; }
+
 	/** The population full alert's test binds a player state without a player controller. */
 	friend class FHOLPopulationAlertThreadTest;
 
@@ -166,9 +179,6 @@ public:
 
 	/** The top bar (resources, population, idle workers): the cheats' panel stays under it (UHOLCheatPanel). */
 	UBorder* GetTopBar() const;
-
-	/** Items of the queue built by BuildLayout, the longest queue shown (D283: 5); one line, under the grid's width. */
-	static constexpr int32 NumQueueItems = 5;
 
 protected:
 	virtual void NativeOnInitialized() override;
@@ -256,13 +266,6 @@ protected:
 	UPROPERTY(meta = (BindWidgetOptional))
 	TObjectPtr<UBorder> QueuePanel;
 
-	UPROPERTY(meta = (BindWidgetOptional))
-	TObjectPtr<UProgressBar> QueueProgress;
-
-	/** "Population full", in place of the progress bar while the head waits for room. */
-	UPROPERTY(meta = (BindWidgetOptional))
-	TObjectPtr<UCommonTextBlock> QueueNote;
-
 	/**
 	 * The one command panel (the user's 2nd trial of G.1, AoE4's way): 3 x 4 cells at fixed places, the empty ones dark,
 	 * right of the selection's block: the orders of the player's units (Q attack-move, S stop, V hold) or the grid of its
@@ -273,18 +276,6 @@ protected:
 
 
 private:
-	/** What the head of the queue shows. */
-	enum class EHeadState : uint8
-	{
-		None,
-		/** Started: the progress bar. */
-		InProgress,
-		/** Not started, room in the population: it starts at the server's next step. */
-		Starting,
-		/** Not started, no room in the population: the note. */
-		PopulationFull,
-	};
-
 	/** Follows the owning player's state (it reaches a client after the HUD is up): binds its economy; null unbinds. */
 	void BindPlayerState(AHOLPlayerState* PlayerState);
 	/** Follows the selected building: binds its production queue; null unbinds. */
@@ -327,9 +318,6 @@ private:
 	void RefreshIdleWorkers();
 	/** OwnBuilding: the player's own building selected alone; bOwnGroup: several of its buildings (an F key). */
 	void RefreshGrid(const AHOLBuilding* OwnBuilding, bool bOwnGroup, const AHOLPlayerState* PlayerState);
-	void RefreshQueue(const AHOLBuilding* OwnBuilding);
-	/** The head of the queue: its progress (every frame) or the population note. */
-	void UpdateHead();
 
 	/** A cell of the command panel: an order with the player's units, else the grid's command. */
 	void HandleGridCellClicked(int32 Cell);
@@ -341,7 +329,6 @@ private:
 	 * chosen one's medallion and edge lit.
 	 */
 	void RefreshAges(const AHOLPlayerState* PlayerState);
-	void HandleQueueItemClicked(int32 Index);
 
 	/** A command that did not go through (D313), from the controller: its short message. */
 	void HandleCommandFeedback(const FHOLCommandFeedback& Feedback);
@@ -375,9 +362,6 @@ private:
 
 	UPROPERTY(Transient)
 	TArray<TObjectPtr<USizeBox>> AgeCellBoxes;
-
-	UPROPERTY(Transient)
-	TArray<TObjectPtr<UHOLQueueItem>> QueueItems;
 
 	/** The selection's chips (G.1e): a pool of SelectionChipN in the wrap box SelectionChips, each in its frame (lit: active). */
 	UPROPERTY(Transient)
@@ -523,10 +507,8 @@ private:
 	int32 ShownTier = INDEX_NONE;
 	/** S7: the tier of the hero the grid's siege engine cells were written for (INDEX_NONE: none shown): the grid follows his level. */
 	int32 ShownEngineTier = INDEX_NONE;
-	bool bQueueShown = false;
-	TArray<FName> ShownQueueTypes;
-	EHeadState HeadState = EHeadState::None;
-	float HeadProgress = 0.f;
 	/** The short message shown (its key, empty: none): the script's panel draws it, this is the mirror Describe reads. */
 	FString MessageKey;
+	/** HUD H-7: the queue part of Describe (the script's queue panel writes it, UHOLScriptScreen::SetQueueReport). */
+	FString QueueReport = TEXT("0 []");
 };

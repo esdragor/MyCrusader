@@ -124,6 +124,8 @@ FString TalentTipTexts = "";
 	UHOLPlayerTablePanel PlayerTable;
 	// HUD H-6: the control groups' bar (HOLGroupBar.as), drawn into the C++ screen's GroupsPanel.
 	UHOLGroupBarPanel GroupBar;
+	// HUD H-7: the production queue (HOLQueuePanel.as), drawn into the C++ screen's QueuePanel (the member is not called QueuePanel: no widget of that name here).
+	UHOLProductionQueuePanel QueueView;
 	FString VolcanoTexts = "";
 	// H-1: the wait and absence banners (HOLWaitBanner.as).
 	UHOLWaitBannerPanel WaitBanner;
@@ -268,6 +270,8 @@ UHOLAlertBannerPanel AlertBanner;
 		PlayerTable.Build(this, GetPlayersPanel());
 		GroupBar = Cast<UHOLGroupBarPanel>(NewObject(this, UHOLGroupBarPanel));
 		GroupBar.Build(this, GetGroupsPanel());
+		QueueView = Cast<UHOLProductionQueuePanel>(NewObject(this, UHOLProductionQueuePanel));
+		QueueView.Build(this, GetQueuePanel());
 		BuildMinimap(Frame);
 		BuildTalentWindow(Frame);
 		// Last: over the other blocks.
@@ -1391,6 +1395,8 @@ UHOLAlertBannerPanel AlertBanner;
 			PlayerTable.Refresh();
 		if (GroupBar != nullptr)
 			GroupBar.Refresh();
+		if (QueueView != nullptr)
+			QueueView.Refresh();
 		if (Audio != nullptr)
 			Audio.PlayDueRepeats();
 		RefreshDiplomacy();
@@ -1438,6 +1444,14 @@ UHOLAlertBannerPanel AlertBanner;
 	{
 		if (AlertBanner != nullptr)
 			AlertBanner.Refresh();
+	}
+
+	// H-7: once a frame, ONLY while the queue panel shows a queue (SetQueueLive): the head's bar moves each frame, as the C++ UpdateHead did.
+	UFUNCTION(BlueprintOverride)
+	void QueueFrameTick()
+	{
+		if (QueueView != nullptr)
+			QueueView.FrameTick();
 	}
 
 	// Only while a message with a key is shown (the C++ NativeTick): the fade, then the end (the mirrored key is cleared).
@@ -2267,6 +2281,8 @@ UHOLAlertBannerPanel AlertBanner;
 		if (TopBar != nullptr && TopBar.ClickName(WidgetName))
 			return true;
 		if (GroupBar != nullptr && GroupBar.ClickName(WidgetName))
+			return true;
+		if (QueueView != nullptr && QueueView.ClickName(WidgetName))
 			return true;
 		return false;
 	}
