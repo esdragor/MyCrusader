@@ -144,6 +144,8 @@ namespace HOLControllerCommandsC2
 			Plan.Ints.Add(HOLControllerCommands::ParseInt(Args[1]));
 			return Plan;
 		}
+		if (Command == "hol.Cheat.Specialization")
+			return Refused("STUB (red commit): hol.Cheat.Specialization not planned yet");
 		if (Command == "hol.Spec.Cancel")
 			return Accepted("ServerCancelSpecialization");
 		return FHOLCheatPlan();
