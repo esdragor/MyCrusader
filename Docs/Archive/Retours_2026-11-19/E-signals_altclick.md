@@ -19,3 +19,5 @@ Réglage : `hol.Signal.GroundMarkSize` (côté du losange, cm, défaut 500). For
 Ce qui N'EST PAS dans cet essai (D825, lots suivants, non faits : arrêt du C++ du 2026-11-16) : marque de la minicarte ANIMÉE (H2), Alt + clic SUR la minicarte (H3).
 Note de l'agent : sur les deux PNG, un petit carré blanc reste visible en bas de la minicarte au même endroit (le journal dit pourtant « Minimap signals: 0 » avant la 2e capture) : à regarder, NON VÉRIFIÉ que c'est la marque du signal.
 Règle 19 : REGLAGE de l'utilisateur, à rejouer par l'intégrateur sur main fusionné avant de te donner la commande.
+
+Reponse (2026-11-19 ~22:55) : OK mais REGLAGE (D860) : « OK mais REGLAGE: un animation serait bien + clic sur la minimap doit faire la meme chose que clic sur le sol ». Reporte dans SignalsInProgress.md (H2, H3) et Auto_Journey_File.md (ligne D860). Fiche archivee dans Docs\Archive\Retours_2026-11-19\.

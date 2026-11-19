@@ -47,3 +47,5 @@ Pre-vol 2026-11-13 13:56 (ELROND-1113c, tiers 27d91a4, build 13:52) = FAIL (6), 
 NON VERIFIE : tir sur la Maison, demontage, PNG (seul deploy_packed produit, NON OUVERT).
 
 Pre-vol 2026-11-13 16:45 (ELROND-1113d, tiers, build 16:43) = FAIL (6), PLUS LOIN : la case D dit bien 'Demonter' une fois monte (correctif HUD, PNG deploy_deployed ouvert et vu) ; nouveau rouge etape 38 : l'engin monte ne tire pas sur la Maison en 60 s (non diagnostique). Statut inchange : LOGIQUE SEULEMENT, NE PAS JOUER.
+
+Reponse (2026-11-19 ~22:55) : BUG (D861) : « BUG: quand je clique sur une cible a portee d'attaque, il doit lancer le montage puis attaquer et pas juste se deplacer + quand je clique sur deplacement alors que je suis monte, il lance le deplacement mais je dois recliquer pour qu'il se deplace enfin ». Reporte dans Palier3InProgress.md (G6), SiegeInProgress.md et Auto_Journey_File.md (deux lignes D861). Fiche archivee dans Docs\Archive\Retours_2026-11-19\.

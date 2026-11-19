@@ -47,4 +47,4 @@ Autre : (dis ta propre règle)
 
 Valeur par défaut codée : aucune (rien n'est codé tant que tu n'as pas répondu)
 
-Reponse:
+Reponse (2026-11-19 ~22:55) : D858. Valeurs : « B. Équilibrée » = 75 nourriture + 30 bois, 18 s, 100 PV, vitesse 740, attaque 8, cadence 1,875 s, portée 130, +17 contre la cavalerie, +8 contre l'infanterie lourde (catégorie HeavyInfantry). Lancier : « Il remplace le Lancier » pour l'Aube (les Légions gardent le Lancier). Reporte dans AubeInProgress.md (A1) et Auto_Journey_File.md. Fiche archivee dans Docs\Archive\Retours_2026-11-19\.
