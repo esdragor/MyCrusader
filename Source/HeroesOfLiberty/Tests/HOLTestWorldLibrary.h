@@ -300,4 +300,22 @@ public:
 	/** AHOLBuilding::GetRallyPoint() (zero for null). */
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
 	static FVector GetBuildingRallyPoint(const AHOLBuilding* Building);
+
+	// ---- Lot D853 f (CELEBORN-1119cb): the unit tier production (HOLUnitTierProductionTests.cpp). Thin wrappers, bodies under WITH_DEV_AUTOMATION_TESTS ----
+
+	/** AHOLGameState::SetTierOverride(Slot, Tier) on the test world's game state (false if there is none). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
+	static bool SetSlotTierOverride(UHOLTestWorldHandle* TestWorld, int32 Slot, int32 Tier);
+
+	/** AHOLGameState::GetTier(Slot) (-1 if there is no game state). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
+	static int32 GetSlotTier(UHOLTestWorldHandle* TestWorld, int32 Slot);
+
+	/** UHOLCommandSubsystem::IssueProductionOrder(FHOLProductionCommand{PlayerIndex = Slot, Building, TypeName}): the server's command queue, as a client's order; the order is applied at the next step. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
+	static bool IssueProductionOrder(UHOLTestWorldHandle* TestWorld, int32 Slot, AHOLBuilding* Building, FName TypeName);
+
+	/** Food + Wood + Stone + Gold of the unit row of TypeName (UHOLUnitSubsystem::FindTypeRow), -1 without a row. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
+	static int32 GetUnitCostTotal(UHOLTestWorldHandle* TestWorld, FName TypeName);
 };

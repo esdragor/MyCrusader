@@ -29,6 +29,10 @@
 #include "AI/HOLAIOrders.h"
 #include "AI/HOLAITechnologyLibrary.h"
 #include "AI/HOLAITools.h"
+#include "Commands/HOLCommandSubsystem.h"
+#include "Commands/HOLProductionCommand.h"
+#include "Simulation/HOLUnitSubsystem.h"
+#include "Simulation/HOLUnitTypes.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogHOLTestWorld, Log, All);
 
@@ -863,4 +867,71 @@ bool UHOLTestWorldLibrary::HasBuildingRallyPoint(const AHOLBuilding* Building)
 FVector UHOLTestWorldLibrary::GetBuildingRallyPoint(const AHOLBuilding* Building)
 {
 	return Building ? Building->GetRallyPoint() : FVector::ZeroVector;
+}
+
+// ---- Lot D853 f (CELEBORN-1119cb): the unit tier production ----
+
+bool UHOLTestWorldLibrary::SetSlotTierOverride(UHOLTestWorldHandle* TestWorld, const int32 Slot, const int32 Tier)
+{
+#if WITH_DEV_AUTOMATION_TESTS
+	if (UWorld* World = HOLTestWorldLibNs::HOLTestWorldLibWorldOf(TestWorld))
+	{
+		for (TActorIterator<AHOLGameState> It(World); It; ++It)
+		{
+			It->SetTierOverride(Slot, Tier);
+			return true;
+		}
+	}
+#endif
+	return false;
+}
+
+int32 UHOLTestWorldLibrary::GetSlotTier(UHOLTestWorldHandle* TestWorld, const int32 Slot)
+{
+#if WITH_DEV_AUTOMATION_TESTS
+	if (UWorld* World = HOLTestWorldLibNs::HOLTestWorldLibWorldOf(TestWorld))
+	{
+		for (TActorIterator<AHOLGameState> It(World); It; ++It)
+		{
+			return It->GetTier(Slot);
+		}
+	}
+#endif
+	return -1;
+}
+
+bool UHOLTestWorldLibrary::IssueProductionOrder(UHOLTestWorldHandle* TestWorld, const int32 Slot, AHOLBuilding* Building, const FName TypeName)
+{
+#if WITH_DEV_AUTOMATION_TESTS
+	if (UWorld* World = HOLTestWorldLibNs::HOLTestWorldLibWorldOf(TestWorld))
+	{
+		if (UHOLCommandSubsystem* Commands = World->GetSubsystem<UHOLCommandSubsystem>())
+		{
+			FHOLProductionCommand Command;
+			Command.PlayerIndex = Slot;
+			Command.Building = Building;
+			Command.TypeName = TypeName;
+			Commands->IssueProductionOrder(Command);
+			return true;
+		}
+	}
+#endif
+	return false;
+}
+
+int32 UHOLTestWorldLibrary::GetUnitCostTotal(UHOLTestWorldHandle* TestWorld, const FName TypeName)
+{
+#if WITH_DEV_AUTOMATION_TESTS
+	if (UWorld* World = HOLTestWorldLibNs::HOLTestWorldLibWorldOf(TestWorld))
+	{
+		if (UHOLUnitSubsystem* Units = World->GetSubsystem<UHOLUnitSubsystem>())
+		{
+			if (const FHOLUnitTypeRow* Row = Units->FindTypeRow(TypeName))
+			{
+				return Row->Cost.Food + Row->Cost.Wood + Row->Cost.Stone + Row->Cost.Gold;
+			}
+		}
+	}
+#endif
+	return -1;
 }
