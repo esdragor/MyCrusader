@@ -263,9 +263,7 @@ namespace UE::HeroesOfLiberty::UI::GameScreen
 	constexpr float BarGap = 6.f;
 	/** The minimap's place, bottom right (D201): no minimap yet, the place kept free. */
 	constexpr float MinimapSize = 240.f;
-	/** An age's medallion (AoE4's « (I) A »): its numeral's disc, its key's square, how far it rises over the panel's top edge. */
-	constexpr float MedallionSize = 40.f;
-	constexpr float KeyBadgeSize = 24.f;
+	/** How far the script's age medallions rise over the bar's top edge (MedallionRoom keeps that room free). */
 	constexpr float MedallionRise = 26.f;
 	/** The selection's chips (G.1e): how many (« Tous » and 11 types), their height, at most two on a line, a long name cut. */
 	constexpr int32 NumChips = 12;
@@ -273,8 +271,6 @@ namespace UE::HeroesOfLiberty::UI::GameScreen
 	constexpr float ChipGap = 4.f;
 	constexpr float ChipMaxWidth = (SelectionWidth - 24.f - ChipGap) / 2.f;
 	constexpr int32 ChipNameChars = 12;
-	/** A medallion's look: its age not reached (faded), reached, chosen (lit). */
-	enum EMedallionLook : int32 { Locked, Reached, Chosen };
 	/** The name the HUD's report gives the « Annuler » cell of a site. */
 	const FName CancelName(TEXT("Cancel"));
 	/** Seconds between two readings of a selected group's activities. */
@@ -313,11 +309,6 @@ namespace UE::HeroesOfLiberty::UI::GameScreen
 
 	/** The building cells of an age's panel: the grid's 12 keys, one row per category (HOLCommandGrid::GetCategoryRow). */
 	constexpr int32 NumAgeCells = HOLCommandGrid::NumCells;
-
-	FName AgeMedallionName(const int32 Age)
-	{
-		return *FString::Printf(TEXT("AgeMedallion%d"), Age);
-	}
 
 	/** AgeCell<age><cell>: AgeCell000 the house (age 0, A), AgeCell004 the barracks (Q). */
 	FName AgeCellName(const int32 Age, const int32 Cell)
@@ -439,27 +430,9 @@ void UHOLGameScreen::NativeOnInitialized()
 	ShownGroups.Init(FString(), AHOLPlayerController::NumControlGroups);
 	ShownGridTypes.Init(NAME_None, AHOLPlayerController::NumGridCells);
 	ShownOrderTypes.Init(NAME_None, AHOLPlayerController::NumGridCells);
-	for (int32 Age = 0; Age < HOLCommandGrid::NumAges; ++Age)
-	{
-		AgePanels.Add(Cast<UBorder>(WidgetTree->FindWidget(*FString::Printf(TEXT("AgePanel%d"), Age))));
-		AgeMedallions.Add(Cast<UBorder>(WidgetTree->FindWidget(AgeMedallionName(Age))));
-		for (int32 Index = 0; Index < NumAgeCells; ++Index)
-		{
-			const int32 Cell = Index;
-			UHOLGridCell* AgeCell = Cast<UHOLGridCell>(WidgetTree->FindWidget(AgeCellName(Age, Cell)));
-			AgeCells.Add(AgeCell);
-			AgeCellBoxes.Add(AgeCell ? Cast<USizeBox>(AgeCell->GetParent()) : nullptr);
-			if (AgeCell)
-			{
-				AgeCell->SetKey(FText::AsCultureInvariant(FString(GridKeys[Cell])));
-				AgeCell->OnClicked().AddUObject(this, &UHOLGameScreen::HandleAgeClicked, Age, Cell);
-			}
-		}
-	}
 	ShownAgeTypes.Init(NAME_None, HOLCommandGrid::NumAges * NumAgeCells);
 	ShownAgeReached.Init(false, HOLCommandGrid::NumAges);
 	ShownAgeTooltips.Init(FString(), HOLCommandGrid::NumAges);
-	ShownAgeLooks.Init(INDEX_NONE, HOLCommandGrid::NumAges);
 
 	// For the scripted checks (hol.Test.Run): the captures of a match name the HUD, and the screen over it if any (C4c:
 	// the statistics screen).
@@ -2237,124 +2210,6 @@ void UHOLGameScreen::RefreshGrid(const AHOLBuilding* OwnBuilding, const bool bOw
 	}
 }
 
-void UHOLGameScreen::RefreshAges(const AHOLPlayerState* PlayerState)
-{
-	using namespace UE::HeroesOfLiberty::UI::GameScreen;
-
-	// The builders' age panels (the user's trials of G.1, AoE4's way), right of the command panel: I to IV side by side,
-	// each its medallion (numeral, key; no click) on its top edge over its buildings at their keys' places; only the
-	// columns and rows its buildings use (an empty age: its medallion alone); an age not reached faded, medallion and
-	// buildings; the chosen one's medallion and edge lit.
-	const AHOLPlayerController* PlayerController = Controller.Get();
-	FHOLGridContext Context;
-	if (PlayerController && !PlayerController->GetOwnSelection() && !PlayerController->HasBuildingGroup())
-	{
-		PlayerController->GetUnitsContext(Context);
-	}
-	bAgesShown = HOLCommandGrid::IsBuildGrid(Context);
-	ShownChosenAge = bAgesShown && PlayerController ? PlayerController->GetChosenAge() : INDEX_NONE;
-	ShownTier = PlayerState && BoundTableState.IsValid() ? BoundTableState->GetTier(PlayerState->GetPlayerIndex()) : INDEX_NONE;
-	const FHOLResources Stock = PlayerState ? PlayerState->GetResources() : FHOLResources();
-	for (int32 Age = 0; Age < HOLCommandGrid::NumAges; ++Age)
-	{
-		UBorder* AgePanel = AgePanels.IsValidIndex(Age) ? AgePanels[Age].Get() : nullptr;
-		SetShown(AgePanel, bAgesShown, ESlateVisibility::Visible);
-		const bool bReached = HOLCommandGrid::IsAgeReached(Context, Age);
-		ShownAgeReached[Age] = bReached;
-		// The medallion's look, written when it changed: its disc (lit when chosen), the panel's edge, the panel faded.
-		const int32 Look = !bReached ? EMedallionLook::Locked : Age == ShownChosenAge ? EMedallionLook::Chosen : EMedallionLook::Reached;
-		UBorder* Medallion = AgeMedallions.IsValidIndex(Age) ? AgeMedallions[Age].Get() : nullptr;
-		if (ShownAgeLooks.IsValidIndex(Age) && ShownAgeLooks[Age] != Look)
-		{
-			ShownAgeLooks[Age] = Look;
-			const bool bChosen = Look == EMedallionLook::Chosen;
-			if (Medallion)
-			{
-				Medallion->SetBrush(FSlateRoundedBoxBrush(bChosen ? HOLUIStyle::Accent : FLinearColor(0.1f, 0.11f, 0.14f, 1.f), MedallionSize / 2.f,
-					bChosen ? HOLUIStyle::Text : HOLUIStyle::TextMuted, 1.5f));
-			}
-			if (AgePanel)
-			{
-				AgePanel->SetBrush(bChosen ? FSlateRoundedBoxBrush(HOLUIStyle::HUDPanel, 4.f, HOLUIStyle::Accent, 2.f) : FSlateRoundedBoxBrush(HOLUIStyle::HUDPanel, 4.f));
-			}
-		}
-		// The panel faded only while nothing on it can be built (a Nomad's page II with its first forum shown whole, D797);
-		// written when it changed.
-		const float PanelOpacity = HOLCommandGrid::GetAgePanelOpacity(Context, Age);
-		if (AgePanel && AgePanel->GetRenderOpacity() != PanelOpacity)
-		{
-			AgePanel->SetRenderOpacity(PanelOpacity);
-		}
-		// « Palier II — Essor », and « Palier non atteint » under it while not reached; read on every refresh (the language may
-		// change), written when it changed.
-		const FText AgeName = FText::Format(LOCTEXT("AgeHeaderName", "Palier {0} — {1}"), FText::AsCultureInvariant(FString(AgeNumerals[Age])), GetAgeName(Age));
-		const FText Locked = LOCTEXT("AgeLocked", "Palier non atteint");
-		const FString Tooltip = bReached ? AgeName.ToString() : FString::Printf(TEXT("%s | %s"), *AgeName.ToString(), *Locked.ToString());
-		if (ShownAgeTooltips.IsValidIndex(Age) && ShownAgeTooltips[Age] != Tooltip)
-		{
-			ShownAgeTooltips[Age] = Tooltip;
-			if (Medallion)
-			{
-				Medallion->SetToolTipText(bReached ? AgeName : FText::Format(INVTEXT("{0}\n{1}"), AgeName, Locked));
-			}
-		}
-		// The columns its buildings use, packed (the panel the width of its content; an empty age one column); its 3 rows
-		// always kept, empty or not (the user's 3rd trial of G.1): a category always at the same height.
-		bool bUsedColumns[GridColumns] = {};
-		TArray<FHOLGridCommand> Buildings;
-		for (int32 Index = 0; Index < NumAgeCells; ++Index)
-		{
-			const FHOLGridCommand& Building = Buildings.Add_GetRef(HOLCommandGrid::GetAgeBuilding(Context, Age, Index));
-			bUsedColumns[Index % GridColumns] |= !Building.IsNone();
-		}
-		bUsedColumns[0] |= !bUsedColumns[1] && !bUsedColumns[2] && !bUsedColumns[3];
-		for (int32 Index = 0; Index < NumAgeCells; ++Index)
-		{
-			const int32 AgeIndex = Age * NumAgeCells + Index;
-			const FHOLGridCommand& Building = Buildings[Index];
-			ShownAgeTypes[AgeIndex] = bAgesShown ? Building.TypeName : NAME_None;
-			UHOLGridCell* AgeCell = AgeCells.IsValidIndex(AgeIndex) ? AgeCells[AgeIndex].Get() : nullptr;
-			USizeBox* Box = AgeCellBoxes.IsValidIndex(AgeIndex) ? AgeCellBoxes[AgeIndex].Get() : nullptr;
-			const int32 Column = Index % GridColumns;
-			const int32 Row = Index / GridColumns;
-			if (Box)
-			{
-				// Unused columns collapsed; a cell of a used one without a building shown dark (disabled), as the commands'.
-				Box->SetVisibility(bUsedColumns[Column] ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
-				if (UUniformGridSlot* GridSlot = Cast<UUniformGridSlot>(Box->Slot))
-				{
-					int32 PackedColumn = 0;
-					for (int32 Before = 0; Before < Column; ++Before)
-					{
-						PackedColumn += bUsedColumns[Before] ? 1 : 0;
-					}
-					GridSlot->SetColumn(PackedColumn);
-					GridSlot->SetRow(Row);
-				}
-			}
-			if (!AgeCell)
-			{
-				continue;
-			}
-			if (Building.IsNone())
-			{
-				AgeCell->ClearUnit();
-				continue;
-			}
-			// Greyed when its age is not reached, or when the stock does not cover the cost (in red in the tooltip, D313).
-			const FHOLBuildingTypeRow* BuildType = UHOLBuildingSettings::FindType(Building.TypeName);
-			// The seat's own price (a Nomad's first forum costs the secondary centre's price, D783), as the server charges it.
-			const FHOLResources Cost = UHOLBuildingSettings::GetBuildCost(GetWorld(), Building.TypeName,
-				BoundPlayerState.Get() ? BoundPlayerState->GetPlayerIndex() : INDEX_NONE);
-			const FHOLResources Missing = GetMissing(Stock, Cost);
-			const FText Name = HOLGameNames::GetBuildingName(Building.TypeName, BuildType);
-			AgeCell->SetCommand(Name, !Building.bGreyed && Missing == FHOLResources() ? EHOLGridCellState::Ready : EHOLGridCellState::Greyed);
-			AgeCell->SetTooltip(Name, Cost, Missing, Building.bGreyed ? LOCTEXT("AgeLocked", "Palier non atteint") : GetBuildingEffect(BuildType, LocalFactionKey(), GetWorld(),
-					BoundPlayerState.Get() ? BoundPlayerState->GetPlayerIndex() : INDEX_NONE));
-		}
-	}
-}
-
 int32 UHOLGameScreen::GetBoundTier() const
 {
 	return BoundPlayerState.IsValid() && BoundTableState.IsValid() ? BoundTableState->GetTier(BoundPlayerState->GetPlayerIndex()) : INDEX_NONE;
@@ -2490,18 +2345,6 @@ void UHOLGameScreen::HandleGridCellClicked(const int32 Cell)
 	}
 	UE_LOG(LogHOLUI, Display, TEXT("HUD: grid cell %s clicked"), GridKeys[Cell]);
 	PlayerController->ActivateGridCell(Cell);
-}
-
-void UHOLGameScreen::HandleAgeClicked(const int32 Age, const int32 Cell)
-{
-	using namespace UE::HeroesOfLiberty::UI::GameScreen;
-
-	AHOLPlayerController* PlayerController = Controller.Get();
-	if (PlayerController && Age >= 0 && Age < HOLCommandGrid::NumAges)
-	{
-		UE_LOG(LogHOLUI, Display, TEXT("HUD: age %s %s clicked"), AgeNumerals[Age], Cell >= 0 && Cell < AHOLPlayerController::NumGridCells ? GridKeys[Cell] : TEXT("?"));
-		PlayerController->ClickAge(Age, Cell);
-	}
 }
 
 void UHOLGameScreen::HandleCommandFeedback(const FHOLCommandFeedback& Feedback)
