@@ -25,6 +25,20 @@ enum EHOLProductionCancelVerdict
 	IgnoreOrder
 }
 
+/** The verdict of a queue order (a unit, a siege engine or a research), as a whole number for the bridge; the codes of the refusals 1 to 3 are those of EHOLProductionRefusal. */
+enum EHOLQueueVerdict
+{
+	Enqueue,
+	NotProduced,
+	QueueFull,
+	NotEnoughResources,
+	TechFaction,
+	TechBlocked,
+	SiegeBlocked,
+	TierTooLow,
+	UnitFaction
+}
+
 namespace HOLProductionBoard
 {
 	/**
@@ -55,6 +69,48 @@ namespace HOLProductionBoard
 		return EHOLProductionCancelVerdict::CancelItem;
 	}
 
+	/**
+	 * The verdict of a queue order, in the order of ApplyOrders. A RESEARCH (bTechnology: a known technology, not in the building's Produces): its faction
+	 * (4), then its technology check (5: it says "cannot pay" itself, so a research with no resources AND a full queue stops here, not at 2), then the
+	 * queue. A UNIT or siege engine: produced here (1), siege tier (6), age (7), faction (8), then the queue: full (2) BEFORE no resources (3). The queue
+	 * and the cost are NOT recomputed here: the exposed C++ rule HOLProductionRead::TryEnqueue answers on a scratch queue of QueueLength items. The facts
+	 * (bTechBlocked, bSiegeBlocked, bTierTooLow, the faction) come from HOLTechnology::Check, HOLSiege::Check, CheckUnit, IsUnitOpenTo.
+	 */
+	EHOLQueueVerdict QueueVerdict(bool bProduces, bool bTechnology, bool bTechFactionOpen, bool bTechBlocked, bool bSiegeBlocked, bool bTierTooLow, bool bUnitFactionOpen, int QueueLength, int MaxQueue, FHOLResources Stock, FHOLResources Cost)
+	{
+		if (bTechnology)
+		{
+			if (!bTechFactionOpen)
+				return EHOLQueueVerdict::TechFaction;
+			if (bTechBlocked)
+				return EHOLQueueVerdict::TechBlocked;
+		}
+		else
+		{
+			if (!bProduces)
+				return EHOLQueueVerdict::NotProduced;
+			if (bSiegeBlocked)
+				return EHOLQueueVerdict::SiegeBlocked;
+			if (bTierTooLow)
+				return EHOLQueueVerdict::TierTooLow;
+			if (!bUnitFactionOpen)
+				return EHOLQueueVerdict::UnitFaction;
+		}
+		FHOLProductionQueueState Scratch;
+		for (int i = 0; i < QueueLength; i++)
+		{
+			Scratch.Types.Add(n"Item");
+			Scratch.StartSteps.Add(-1);
+		}
+		FHOLResources Paying = Stock;
+		int Refusal = HOLProductionRead::TryEnqueue(Scratch, n"Item", Cost, 1, 0, MaxQueue, Paying);
+		if (Refusal == 2)
+			return EHOLQueueVerdict::QueueFull;
+		if (Refusal == 3)
+			return EHOLQueueVerdict::NotEnoughResources;
+		return EHOLQueueVerdict::Enqueue;
+	}
+
 	/** The stock once the cost of the cancelled item is given back (D282: in full): the C++ rule HOLProduction::Cancel, on a one-item scratch queue. */
 	FHOLResources StockAfterCancel(FHOLResources Stock, FHOLResources Cost)
 	{
@@ -80,6 +136,12 @@ class UHOLProductionBoardScript : UHOLProductionBoard
 	int CancelAnswer(bool bValidIndex)
 	{
 		return int(HOLProductionBoard::CancelVerdict(bValidIndex));
+	}
+
+	UFUNCTION(BlueprintOverride)
+	int QueueAnswer(bool bProduces, bool bTechnology, bool bTechFactionOpen, bool bTechBlocked, bool bSiegeBlocked, bool bTierTooLow, bool bUnitFactionOpen, int QueueLength, int MaxQueue, FHOLResources Stock, FHOLResources Cost)
+	{
+		return int(HOLProductionBoard::QueueVerdict(bProduces, bTechnology, bTechFactionOpen, bTechBlocked, bSiegeBlocked, bTierTooLow, bUnitFactionOpen, QueueLength, MaxQueue, Stock, Cost));
 	}
 
 	UFUNCTION(BlueprintOverride)
