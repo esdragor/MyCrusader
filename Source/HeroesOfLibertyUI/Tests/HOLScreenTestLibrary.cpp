@@ -150,7 +150,7 @@ int32 UHOLScreenTestLibrary::GetDropdownIndex(UWidget* Widget)
 FString UHOLScreenTestLibrary::GetLocalizedTextIn(const FString& Culture, const FText& Shown)
 {
 #if WITH_DEV_AUTOMATION_TESTS
-	// The same way as HOLScenarioPanelTests.cpp (TranslationOf): the culture's Game.locres, the entry of the text's own namespace and key.
+	// The way the former C++ panel tests did (TranslationOf): the culture's Game.locres, the entry of the text's own namespace and key.
 	FTextLocalizationResource Resource;
 	const FString File = FPaths::Combine(FPaths::ProjectContentDir(), TEXT("Localization/Game"), Culture, TEXT("Game.locres"));
 	if (!Resource.LoadFromFile(File, 0))

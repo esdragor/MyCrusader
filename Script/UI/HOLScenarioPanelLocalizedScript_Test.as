@@ -1,5 +1,5 @@
-// NOT COMPILED YET (GALADRIEL-1119w). Script equivalent of the English and Japanese part of the C++ test FHOLScenarioPanelTextTest
-// "HeroesOfLiberty.UI.ScenarioPanel.LocalizedOneLine" (HOLScenarioPanelTests.cpp:91-142), the part HOLScenarioPanelScript_Test.as:8-9 marked NOT PORTED. To be seen RED then GREEN before
+// Compiled and RED then GREEN seen 2026-11-19 11:34 (GALADRIEL-1119w; the C++ test and HOLScenarioPanel.* are deleted, GALADRIEL-1119x). Script equivalent of the English and Japanese part of the C++ test FHOLScenarioPanelTextTest
+// "HeroesOfLiberty.UI.ScenarioPanel.LocalizedOneLine" (HOLScenarioPanelTests.cpp:91-142), the part HOLScenarioPanelScript_Test.as:8-9 marked NOT PORTED. 
 // HOLScenarioPanel.* and that C++ test are deleted. Needs the binding HOLScreenTest::GetLocalizedTextIn (HOLScreenTestLibrary.h): the FText the SCRIPT panel gives its title and state
 // (HOLScenarioPanelRules::TitleText / PreparingText / ReadyText, the very ones HOLScenarioPanelScript.as's Refresh gives the widgets), translated through
 // Content/Localization/Game/<culture>/Game.locres by the namespace and key it carries; a formatted title has its keyed pattern translated and its argument kept.

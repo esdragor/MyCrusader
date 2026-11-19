@@ -34,7 +34,7 @@ bool FHOLNewGameSitesBoxTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("the hook gone: Plain lays its sites again"), FHOLMapRules::GetSiteCount(Plain) >= 2);
 
 	// The real screen. It builds its widgets in NativeOnInitialized, which the engine runs only with a player (UUserWidget::Initialize):
-	// a local player and its controller in a game world, as HOLScenarioPanelTests' cheat panel (GLORFINDEL-1115b: without them the
+	// a local player and its controller in a game world, as the former C++ cheat panel test did (GLORFINDEL-1115b: without them the
 	// screen had no widget, « the screen has its box Sites sacres » failed after the green code).
 	UWorld* World = UWorld::CreateWorld(EWorldType::Game, /*bInformEngineOfWorld*/ false);
 	FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);
