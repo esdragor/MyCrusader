@@ -29,6 +29,11 @@
 #include "Screens/HOLGameMenuScreen.h"
 #include "Screens/HOLStatsScreen.h"
 #include "Style/HOLUIStyles.h"
+#include "Dev/HOLTestHooks.h"
+#include "Engine/Engine.h"
+#include "Fonts/FontMeasure.h"
+#include "Framework/Application/SlateApplication.h"
+#include "Rendering/SlateRenderer.h"
 #include "UObject/UObjectIterator.h"
 
 FString UHOLScriptScreen::Describe_Implementation() const
@@ -399,6 +404,50 @@ UCommonTextBlock* UHOLScriptScreen::MakeText(const FName Name, const TSubclassOf
 	UCommonTextBlock* Block = WidgetTree->ConstructWidget<UCommonTextBlock>(UCommonTextBlock::StaticClass(), Name);
 	Block->SetStyle(TextStyle);
 	return Block;
+}
+
+bool UHOLScriptScreen::GetScenarioDisplay(FString& OutName, int32& OutState, FString& OutError, TArray<FString>& OutNotes, FString& OutWaitingForKey, bool& bOutClosed, bool& bOutHidden) const
+{
+	const HOLTestHooks::FScenarioDisplay& Display = HOLTestHooks::GetScenarioDisplay();
+	OutName = Display.Name;
+	OutState = static_cast<int32>(Display.State);
+	OutError = Display.Error;
+	OutNotes = Display.Notes;
+	OutWaitingForKey = Display.WaitingForKey;
+	bOutClosed = Display.bClosed;
+	bOutHidden = Display.bHidden;
+	return !Display.Name.IsEmpty();
+}
+
+void UHOLScriptScreen::CloseScenarioPanel()
+{
+	HOLTestHooks::GetScenarioDisplay().bClosed = true;
+}
+
+float UHOLScriptScreen::MeasureHeadingWidth(const FText& A, const FText& B) const
+{
+	// The C++ panel's own measure (HOLScenarioPanel.cpp, state's minimum width): 0 with no renderer (-nullrhi, automation).
+	if (!FSlateApplication::IsInitialized())
+	{
+		return 0.f;
+	}
+	const auto Renderer = FSlateApplication::Get().GetRenderer();
+	if (!Renderer)
+	{
+		return 0.f;
+	}
+	FSlateFontInfo Font;
+	GetDefault<UHOLTextStyleHUDHeading>()->GetFont(Font);
+	const TSharedRef<FSlateFontMeasure> Measure = Renderer->GetFontMeasureService();
+	return FMath::Max(Measure->Measure(A, Font).X, Measure->Measure(B, Font).X);
+}
+
+void UHOLScriptScreen::ExecConsole(const FString& Command)
+{
+	if (GEngine)
+	{
+		GEngine->Exec(GetWorld(), *Command);
+	}
 }
 
 UButton* UHOLScriptScreen::MakeButton(const FName Name)
