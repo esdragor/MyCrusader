@@ -13,6 +13,13 @@
 #include "Match/HOLGameState.h"
 #include "Match/HOLPlayerState.h"
 #include "Player/HOLPlayerController.h"
+#include "Player/HOLControllerReadLibrary.h"
+#include "Player/HOLCommandGrid.h"
+#include "Commands/HOLPlayerOrders.h"
+#include "Map/HOLStartSlot.h"
+#include "Resources/HOLSourceSubsystem.h"
+#include "Resources/HOLSourceTypes.h"
+#include "Simulation/HOLUnitView.h"
 #include "Simulation/HOLSimulationSettings.h"
 #include "Simulation/HOLUnitSubsystem.h"
 #include "Simulation/HOLUnitTypes.h"
@@ -309,4 +316,219 @@ bool UHOLControllerCommandLibrary::NoteTributeNotice(const UObject* WorldContext
 	}
 	GameState->NoteTributeReceived(GiverSlot, LocalState->GetPlayerIndex(), Resource, Arrives, Tax);
 	return true;
+}
+
+// ---- C9 (SAURON-1119ab) ----
+
+namespace
+{
+	TArray<uint32> ToUnitIds(const TArray<int32>& Ids)
+	{
+		TArray<uint32> Result;
+		for (const int32 Id : Ids)
+		{
+			Result.Add(static_cast<uint32>(Id));
+		}
+		return Result;
+	}
+
+	/** The first own building (the registry's order) the predicate takes, foundations included (the removed FindOwnBuildingWhere), or null. */
+	AHOLBuilding* FindOwnBuildingMatching(const AHOLPlayerController& Controller, const TFunctionRef<bool(const AHOLBuilding&)> Predicate)
+	{
+		const AHOLPlayerState* PlayerState = Controller.GetHOLPlayerState();
+		for (FHOLBuildingIterator It(Controller.GetWorld()); PlayerState && It; ++It)
+		{
+			if (It->GetOwnerPlayer() == PlayerState->GetPlayerIndex() && Predicate(**It))
+			{
+				return *It;
+			}
+		}
+		return nullptr;
+	}
+
+	/** The sorted ids of the player's units known here (the removed OwnUnitIdsForProof), of one type when TypeName is not none. */
+	void GatherOwnUnitIds(const AHOLPlayerController& Controller, const FName TypeName, TArray<int32>& OutIds)
+	{
+		OutIds.Reset();
+		const AHOLPlayerState* PlayerState = Controller.GetHOLPlayerState();
+		TArray<FHOLUnitView> Views;
+		HOLUnitView::Gather(*Controller.GetWorld(), Views);
+		TArray<uint32> UnitIds;
+		for (const FHOLUnitView& View : Views)
+		{
+			if (PlayerState && View.OwnerPlayer == PlayerState->GetPlayerIndex() && (TypeName.IsNone() || View.TypeName == TypeName))
+			{
+				UnitIds.Add(View.UnitId);
+			}
+		}
+		UnitIds.Sort();
+		for (const uint32 Id : UnitIds)
+		{
+			OutIds.Add(static_cast<int32>(Id));
+		}
+	}
+}
+
+bool UHOLControllerCommandLibrary::RequestMatchPause(AHOLPlayerController* Controller)
+{
+	if (Controller) { Controller->RequestPause(); }
+	return Controller != nullptr;
+}
+
+bool UHOLControllerCommandLibrary::RequestMatchResume(AHOLPlayerController* Controller)
+{
+	if (Controller) { Controller->RequestResume(); }
+	return Controller != nullptr;
+}
+
+bool UHOLControllerCommandLibrary::RequestMatchSurrender(AHOLPlayerController* Controller)
+{
+	if (Controller) { Controller->RequestSurrender(); }
+	return Controller != nullptr;
+}
+
+bool UHOLControllerCommandLibrary::OwnUnitIds(AHOLPlayerController* Controller, TArray<int32>& OutIds)
+{
+	OutIds.Reset();
+	if (Controller) { GatherOwnUnitIds(*Controller, NAME_None, OutIds); }
+	return Controller != nullptr;
+}
+
+bool UHOLControllerCommandLibrary::OwnUnitIdsOfType(AHOLPlayerController* Controller, const FName TypeName, TArray<int32>& OutIds)
+{
+	OutIds.Reset();
+	if (Controller) { GatherOwnUnitIds(*Controller, TypeName, OutIds); }
+	return Controller != nullptr;
+}
+
+bool UHOLControllerCommandLibrary::SelectUnitIds(AHOLPlayerController* Controller, const TArray<int32>& Ids)
+{
+	if (Controller) { Controller->SetUnitSelection(ToUnitIds(Ids)); }
+	return Controller != nullptr;
+}
+
+bool UHOLControllerCommandLibrary::PressStopOrHold(AHOLPlayerController* Controller, const bool bHold)
+{
+	if (Controller) { Controller->ActivateOrderCell(bHold ? HOLCommandGrid::HoldCell : HOLCommandGrid::StopCell); }
+	return Controller != nullptr;
+}
+
+bool UHOLControllerCommandLibrary::SelectNextIdleWorkerOf(AHOLPlayerController* Controller)
+{
+	if (Controller) { Controller->SelectNextIdleWorker(); }
+	return Controller != nullptr;
+}
+
+bool UHOLControllerCommandLibrary::RequestCancelSelectedBuilding(AHOLPlayerController* Controller)
+{
+	if (Controller) { Controller->RequestCancelBuilding(Controller->GetOwnSelection()); }
+	return Controller != nullptr;
+}
+
+AHOLBuilding* UHOLControllerCommandLibrary::FindMainCentreOf(AHOLPlayerController* Controller, const bool bEnemy)
+{
+	return Controller ? const_cast<AHOLBuilding*>(UHOLControllerReadLibrary::FindMainCentre(*Controller, bEnemy)) : nullptr;
+}
+
+AHOLBuilding* UHOLControllerCommandLibrary::FindOwnBuildingByType(AHOLPlayerController* Controller, const FName TypeName)
+{
+	return Controller ? FindOwnBuildingOfType(*Controller, TypeName) : nullptr;
+}
+
+AHOLBuilding* UHOLControllerCommandLibrary::FindOwnSite(AHOLPlayerController* Controller)
+{
+	return Controller ? FindOwnBuildingMatching(*Controller, [](const AHOLBuilding& Building) { return Building.NeedsBuilders(); }) : nullptr;
+}
+
+AHOLBuilding* UHOLControllerCommandLibrary::FindOwnGarrison(AHOLPlayerController* Controller, const FName TypeName)
+{
+	if (!Controller)
+	{
+		return nullptr;
+	}
+	const int32 PlayerIndex = Controller->GetHOLPlayerState() ? Controller->GetHOLPlayerState()->GetPlayerIndex() : INDEX_NONE;
+	return FindOwnBuildingMatching(*Controller, [PlayerIndex, TypeName](const AHOLBuilding& Building)
+	{
+		return (TypeName.IsNone() || Building.GetTypeName() == TypeName) && HOLPlayerOrders::TakesGarrisonOrder(Building, PlayerIndex);
+	});
+}
+
+FString UHOLControllerCommandLibrary::DescribeBuildingOf(AHOLPlayerController* Controller, AHOLBuilding* Building)
+{
+	return Controller ? Controller->DescribeBuilding(Building) : FString();
+}
+
+int32 UHOLControllerCommandLibrary::FindGatherSource(AHOLPlayerController* Controller, const double Dx, const double Dy, int32& OutIndex, FString& OutTypeName, double& OutX, double& OutY)
+{
+	const AHOLPlayerState* PlayerState = Controller ? Controller->GetHOLPlayerState() : nullptr;
+	const AHOLStartSlot* Start = PlayerState ? AHOLStartSlot::FindForSlot(Controller->GetWorld(), PlayerState->GetPlayerIndex()) : nullptr;
+	const UHOLSourceSubsystem* Sources = Controller ? Controller->GetWorld()->GetSubsystem<UHOLSourceSubsystem>() : nullptr;
+	if (!Start || !Sources)
+	{
+		return 1;
+	}
+	OutIndex = Sources->FindNearestStanding(Start->GetMainCentreLocation() + FVector(Dx, Dy, 0.));
+	if (OutIndex == INDEX_NONE)
+	{
+		return 2;
+	}
+	const FHOLSource& Source = Sources->GetSources()[OutIndex];
+	OutTypeName = Sources->GetTypeNames()[Source.TypeIndex].ToString();
+	OutX = Source.Location.X;
+	OutY = Source.Location.Y;
+	return 0;
+}
+
+bool UHOLControllerCommandLibrary::RequestAttackMoveUnits(AHOLPlayerController* Controller, const TArray<int32>& Ids, const double X, const double Y, const bool bShift)
+{
+	if (Controller) { Controller->RequestAttackMove(ToUnitIds(Ids), FVector(X, Y, 0.), bShift); }
+	return Controller != nullptr;
+}
+
+bool UHOLControllerCommandLibrary::RequestMoveUnitsInLineOf(AHOLPlayerController* Controller, const TArray<int32>& Ids, const double X1, const double Y1, const double X2, const double Y2, const bool bWidth, const bool bShift)
+{
+	if (Controller) { Controller->RequestMoveUnitsInLine(ToUnitIds(Ids), FVector(X1, Y1, 0.), FVector(X2, Y2, 0.), bWidth, bShift); }
+	return Controller != nullptr;
+}
+
+bool UHOLControllerCommandLibrary::RequestAttackBuildingUnits(AHOLPlayerController* Controller, const TArray<int32>& Ids, AHOLBuilding* Building, const bool bShift)
+{
+	if (Controller && Building) { Controller->RequestAttackBuilding(ToUnitIds(Ids), Building, bShift); }
+	return Controller && Building;
+}
+
+bool UHOLControllerCommandLibrary::RequestGatherSourceUnits(AHOLPlayerController* Controller, const TArray<int32>& Ids, const int32 SourceIndex, const bool bShift)
+{
+	if (Controller) { Controller->RequestGatherUnits(ToUnitIds(Ids), SourceIndex, bShift); }
+	return Controller != nullptr;
+}
+
+bool UHOLControllerCommandLibrary::RequestDropOffUnitsAt(AHOLPlayerController* Controller, const TArray<int32>& Ids, AHOLBuilding* Building, const bool bShift)
+{
+	if (Controller && Building) { Controller->RequestDropOffUnits(ToUnitIds(Ids), Building, Building->GetActorLocation(), bShift); }
+	return Controller && Building;
+}
+
+bool UHOLControllerCommandLibrary::RequestBuildSiteUnits(AHOLPlayerController* Controller, const TArray<int32>& Ids, AHOLBuilding* Site, const bool bShift)
+{
+	if (Controller && Site) { Controller->RequestBuildUnits(ToUnitIds(Ids), Site, bShift); }
+	return Controller && Site;
+}
+
+bool UHOLControllerCommandLibrary::RequestGarrisonUnitsIn(AHOLPlayerController* Controller, const TArray<int32>& Ids, AHOLBuilding* Building)
+{
+	if (Controller && Building) { Controller->RequestGarrisonUnits(ToUnitIds(Ids), Building); }
+	return Controller && Building;
+}
+
+bool UHOLControllerCommandLibrary::RequestUngarrisonAllOf(AHOLPlayerController* Controller, AHOLBuilding* Building)
+{
+	if (Controller && Building) { Controller->RequestUngarrisonAll(Building); }
+	return Controller && Building;
+}
+
+bool UHOLControllerCommandLibrary::RequestRallyOnSite(AHOLPlayerController* Controller, AHOLBuilding* Producer, AHOLBuilding* Site, const bool bShift)
+{
+	if (Controller && Producer && Site) { Controller->RequestSetRallyPointOf(Producer, Site->GetActorLocation(), INDEX_NONE, Site, bShift); }
+	return Controller && Producer && Site;
 }

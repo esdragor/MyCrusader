@@ -7,6 +7,7 @@
 #include "HOLControllerCommandLibrary.generated.h"
 
 class AHOLPlayerController;
+class AHOLBuilding;
 
 /**
  * What the development console commands that stayed in C++ do on the controller and on the game state, for their script version (C2 step 5,
@@ -104,4 +105,85 @@ public:
 	/** AHOLGameState::NoteTributeReceived(Giver, <slot of the first local player controller's state>, Resource, Arrives, Tax) (hol.Tribute.Notice; Resource 0..3, the C++ command mapped an unknown name to 3). False when there is no game state or no local player state (the "Usage" Warning case). */
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|ControllerCommand", meta = (WorldContext = "WorldContextObject"))
 	static bool NoteTributeNotice(const UObject* WorldContextObject, int32 GiverSlot, int32 Resource, int32 Arrives, int32 Tax);
+
+	// ---- C9 (SAURON-1119ab): the "test pilot" commands hol.Match.Pause / Resume, hol.Victory.Surrender, hol.Units.*, hol.Prod.RallySite, hol.Select.Stop / Hold / NextIdle / Own / Type, hol.Build.CancelSelected ----
+	// Wrappers only: each one is the controller's own call, the lookups are the C++ ones of the removed commands (same loops, same predicates), the script keeps the arguments, the journal lines and the loop over the local controllers.
+
+	/** Controller->RequestPause() / RequestResume() / RequestSurrender() (hol.Match.Pause, hol.Match.Resume, hol.Victory.Surrender). False without a controller. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|ControllerCommand")
+	static bool RequestMatchPause(AHOLPlayerController* Controller);
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|ControllerCommand")
+	static bool RequestMatchResume(AHOLPlayerController* Controller);
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|ControllerCommand")
+	static bool RequestMatchSurrender(AHOLPlayerController* Controller);
+
+	/** The ids (sorted) of every unit of the controller's player known here, on the screen or not (HOLUnitView::Gather filtered on the player index; OwnUnitIdsForProof, hol.Select.Own). False without a controller. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|ControllerCommand")
+	static bool OwnUnitIds(AHOLPlayerController* Controller, TArray<int32>& OutIds);
+
+	/** The same, of one unit type only (hol.Select.Type). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|ControllerCommand")
+	static bool OwnUnitIdsOfType(AHOLPlayerController* Controller, FName TypeName, TArray<int32>& OutIds);
+
+	/** Controller->SetUnitSelection(Ids) (hol.Select.Own, hol.Select.Type). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|ControllerCommand")
+	static bool SelectUnitIds(AHOLPlayerController* Controller, const TArray<int32>& Ids);
+
+	/** Controller->ActivateOrderCell(StopCell or HoldCell) (hol.Select.Stop, hol.Select.Hold). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|ControllerCommand")
+	static bool PressStopOrHold(AHOLPlayerController* Controller, bool bHold);
+
+	/** Controller->SelectNextIdleWorker() (hol.Select.NextIdle). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|ControllerCommand")
+	static bool SelectNextIdleWorkerOf(AHOLPlayerController* Controller);
+
+	/** Controller->RequestCancelBuilding(Controller->GetOwnSelection()) (hol.Build.CancelSelected). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|ControllerCommand")
+	static bool RequestCancelSelectedBuilding(AHOLPlayerController* Controller);
+
+	/** The main centre of the player (bEnemy false) or of the first other player (true) known here, or null (the file-local FindMainCentre of the removed hol.Units.* commands). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|ControllerCommand")
+	static AHOLBuilding* FindMainCentreOf(AHOLPlayerController* Controller, bool bEnemy);
+
+	/** The first own building (registry order, foundations included) of a type, or null (FindOwnBuilding). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|ControllerCommand")
+	static AHOLBuilding* FindOwnBuildingByType(AHOLPlayerController* Controller, FName TypeName);
+
+	/** The first own building that is not finished and waits for builders (a site), or null (hol.Units.Build, hol.Prod.RallySite). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|ControllerCommand")
+	static AHOLBuilding* FindOwnSite(AHOLPlayerController* Controller);
+
+	/** The first own finished building with places (of that type when TypeName is not none), or null (hol.Units.Garrison / UngarrisonAll). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|ControllerCommand")
+	static AHOLBuilding* FindOwnGarrison(AHOLPlayerController* Controller, FName TypeName);
+
+	/** Controller->DescribeBuilding(Building): the text the "Order: ..." lines carry. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|ControllerCommand")
+	static FString DescribeBuildingOf(AHOLPlayerController* Controller, AHOLBuilding* Building);
+
+	/** The standing source nearest the player's start plus (Dx, Dy) cm (hol.Units.GatherOrder): 0 found (index, type name and place filled), 1 no start slot or no source subsystem, 2 no standing source. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|ControllerCommand")
+	static int32 FindGatherSource(AHOLPlayerController* Controller, double Dx, double Dy, int32& OutIndex, FString& OutTypeName, double& OutX, double& OutY);
+
+	/** The controller's Request<X> of the hol.Units.* commands, on the given unit ids (what OwnUnitIds returned). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|ControllerCommand")
+	static bool RequestAttackMoveUnits(AHOLPlayerController* Controller, const TArray<int32>& Ids, double X, double Y, bool bShift);
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|ControllerCommand")
+	static bool RequestMoveUnitsInLineOf(AHOLPlayerController* Controller, const TArray<int32>& Ids, double X1, double Y1, double X2, double Y2, bool bWidth, bool bShift);
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|ControllerCommand")
+	static bool RequestAttackBuildingUnits(AHOLPlayerController* Controller, const TArray<int32>& Ids, AHOLBuilding* Building, bool bShift);
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|ControllerCommand")
+	static bool RequestGatherSourceUnits(AHOLPlayerController* Controller, const TArray<int32>& Ids, int32 SourceIndex, bool bShift);
+	/** Drop off at the building's own place (Building->GetActorLocation(), as the command did). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|ControllerCommand")
+	static bool RequestDropOffUnitsAt(AHOLPlayerController* Controller, const TArray<int32>& Ids, AHOLBuilding* Building, bool bShift);
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|ControllerCommand")
+	static bool RequestBuildSiteUnits(AHOLPlayerController* Controller, const TArray<int32>& Ids, AHOLBuilding* Site, bool bShift);
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|ControllerCommand")
+	static bool RequestGarrisonUnitsIn(AHOLPlayerController* Controller, const TArray<int32>& Ids, AHOLBuilding* Building);
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|ControllerCommand")
+	static bool RequestUngarrisonAllOf(AHOLPlayerController* Controller, AHOLBuilding* Building);
+	/** Controller->RequestSetRallyPointOf(Producer, Site->GetActorLocation(), INDEX_NONE, Site, bShift) (hol.Prod.RallySite). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|ControllerCommand")
+	static bool RequestRallyOnSite(AHOLPlayerController* Controller, AHOLBuilding* Producer, AHOLBuilding* Site, bool bShift);
 };
