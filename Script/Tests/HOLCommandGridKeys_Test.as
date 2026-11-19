@@ -525,12 +525,12 @@ void Test_CGNomadAges(FUnitTest& T)
 			ExpectedAge = 1;
 		}
 		T.AssertEquals(ExpectedAge, PageTwo.ChosenAge, f"{Name}: Z opens the page Palier II at tier 0");
-		T.AssertEquals(bNomad, PageTwo.Target == EHOLGridKeyTargetKind::Age, f"{Name}: Z is an age key only when page II is open");
+		T.AssertTrue(bNomad == (PageTwo.Target == EHOLGridKeyTargetKind::Age), f"{Name}: Z is an age key only when page II is open");
 
 		// cpp 657-658: the forum key of page II builds the forum (Nomad only).
 		FHOLGridKeyResultView KeyC = HOLCommandGridKeys::PressKey(Grid, 1, 10);
 		bool bKeyCBuildsForum = KeyC.Target == EHOLGridKeyTargetKind::Build && KeyC.TypeName == n"MainCentre";
-		T.AssertEquals(bNomad, bKeyCBuildsForum, f"{Name}: the forum key of page II builds the forum");
+		T.AssertTrue(bNomad == (bKeyCBuildsForum), f"{Name}: the forum key of page II builds the forum");
 
 		// cpp 659-660: II A (the Market) stays locked at tier 0, and the page stays chosen.
 		FHOLGridKeyResultView KeyA = HOLCommandGridKeys::PressKey(Grid, 1, 0);
@@ -540,7 +540,7 @@ void Test_CGNomadAges(FUnitTest& T)
 		// cpp 661-662: a click on the forum cell of page II gives the same result as the key.
 		FHOLGridKeyResultView Clicked = HOLCommandGridKeys::ClickAge(Grid, -1, 1, 10);
 		bool bClickBuildsForum = Clicked.Target == EHOLGridKeyTargetKind::Build && Clicked.TypeName == n"MainCentre";
-		T.AssertEquals(bNomad, bClickBuildsForum, f"{Name}: a click on the forum cell of page II builds the forum");
+		T.AssertTrue(bNomad == (bClickBuildsForum), f"{Name}: a click on the forum cell of page II builds the forum");
 		if (bNomad)
 		{
 			T.AssertEquals(KeyC.ChosenAge, Clicked.ChosenAge, "nomad: the click keeps the same age as the key");
@@ -549,7 +549,7 @@ void Test_CGNomadAges(FUnitTest& T)
 		// cpp 726: GetAgeBuilding of page II at the forum cell.
 		FHOLGridCommandView Building = HOLCommandGridRules::GetAgeBuilding(Grid, 1, 10);
 		bool bForumShown = Building.Command != EHOLGridCommandKind::None && Building.TypeName == n"MainCentre";
-		T.AssertEquals(bNomad, bForumShown, f"{Name}: the forum cell of page II shows the forum");
+		T.AssertTrue(bNomad == (bForumShown), f"{Name}: the forum cell of page II shows the forum");
 		T.AssertFalse(Building.bGreyed, f"{Name}: the forum cell is never greyed (always open or empty)");
 		FHOLGridCommandView MarketCell = HOLCommandGridRules::GetAgeBuilding(Grid, 1, 0);
 		T.AssertTrue(MarketCell.bGreyed, f"{Name}: the Market cell of page II is greyed at tier 0");
