@@ -1,8 +1,7 @@
 // C2 (SAURON-1119s, D851 step 5, UNCOMPILED): the hero, duel, diplomacy, signal, chat and specialization console commands of AHOLPlayerController.cpp, now script. Same names `hol.*`, same arguments, same
 // effect: each one calls the script RPC actor of every local controller (AHOLRpcPlayer.Server<X>, Script\Net\HOLRpcPlayer.as), as the C++ Request<X> did through CallN / CallEx; same "Usage: ..." lines.
 // Same pattern as HOLControllerCommands.as (C1); its parsers are reused (HOLControllerCommands::ParseInt / ParseReal / IsNumber), the plan struct too (FHOLCheatPlan: Route, Ints, Name = the chat text, Dx / Dy = X / Y).
-// Journal levels kept: the C++ "Usage" and "unknown" lines were UE_LOG Warning -> `Warning(...)` here (text identical; the script `Warning` has no category argument); the C++ "RpcRoute: ... not sent" line was Error
-// -> LogNotSent below is the ONE place to change when an Error-level script call is wanted (script `Log` is Display, as in C1).
+// Journal levels kept (SAURON-1119v): the C++ "Usage" and "unknown" lines were UE_LOG(LogHOLMatch, Warning) -> HOLScriptLog::LogWarning; the "RpcRoute: ... not sent" line was Error -> HOLScriptLog::LogError (LogNotSent below).
 // Spectator: the C++ Request<X> returned silently for a pure spectator (IsSpectator, not callable from script). Here the RPC goes and the server refuses it (HOLRpc::SeatRefusal in each Server<X>, a "refused" journal line).
 // NOT here (they read C++ state with no script binding, see the report): hol.Hero.Rage, hol.Market.Trade, hol.Tribute, hol.Prod.*, the *.Report and Tribute.Notice, hol.Diplomacy.Force / ForceVision.
 
@@ -150,10 +149,10 @@ namespace HOLControllerCommandsC2
 		return FHOLCheatPlan();
 	}
 
-	// The line of C++ LogNotSent (UE_LOG Error "RpcRoute: %s not sent: no script RPC actor / function"); script Log is Display (as C1), the function name is the RPC's.
+	// The line of C++ LogNotSent (UE_LOG Error "RpcRoute: %s not sent: no script RPC actor / function"); the line is Error as the C++ (HOLScriptLog::LogError), the function name is the RPC's.
 	void LogNotSent(const FString& Route)
 	{
-		Log(n"LogHOLMatch", f"RpcRoute: {Route} not sent: no script RPC actor / function");
+		HOLScriptLog::LogError(n"LogHOLMatch", f"RpcRoute: {Route} not sent: no script RPC actor / function");
 	}
 
 	void Send(AHOLPlayerController Controller, const FHOLCheatPlan& Plan)
@@ -201,7 +200,7 @@ namespace HOLControllerCommandsC2
 		if (!Plan.bValid)
 		{
 			if (!Plan.Usage.IsEmpty())
-				Warning(Plan.Usage);
+				HOLScriptLog::LogWarning(n"LogHOLMatch", Plan.Usage);
 			return;
 		}
 		TArray<AHOLPlayerController> Controllers;
