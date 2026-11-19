@@ -388,17 +388,6 @@ void UHOLGameScreen::NativeOnInitialized()
 			GridCell->OnClicked().AddUObject(this, &UHOLGameScreen::HandleGridCellClicked, Cell);
 		}
 	}
-	SelectionChips = Cast<UWrapBox>(WidgetTree->FindWidget(TEXT("SelectionChips")));
-	for (int32 Chip = 0; Chip < NumChips; ++Chip)
-	{
-		UHOLQueueItem* Item = Cast<UHOLQueueItem>(WidgetTree->FindWidget(*FString::Printf(TEXT("SelectionChip%d"), Chip)));
-		ChipItems.Add(Item);
-		ChipFrames.Add(Cast<UBorder>(WidgetTree->FindWidget(*FString::Printf(TEXT("SelectionChipFrame%d"), Chip))));
-		if (Item)
-		{
-			Item->OnClicked().AddUObject(this, &UHOLGameScreen::HandleChipClicked, Chip);
-		}
-	}
 	ShownGridTypes.Init(NAME_None, AHOLPlayerController::NumGridCells);
 	ShownOrderTypes.Init(NAME_None, AHOLPlayerController::NumGridCells);
 	ShownAgeTypes.Init(NAME_None, HOLCommandGrid::NumAges * NumAgeCells);
@@ -531,9 +520,8 @@ void UHOLGameScreen::NativeTick(const FGeometry& MyGeometry, const float InDelta
 			}
 		}
 	}
-	// A gatherer selected alone: its line follows it at every change (D303); a group's activities four times a second; a
-	// source's amount at every change (J5b); a group of buildings (an F key) four times a second, its sites and queues
-	// followed without their delegates. The other blocks follow their delegates.
+	// A gatherer selected alone, a source's amount: the script follows them every frame while its block says so (UHOLScriptScreen::SelectionFrameTick, called by
+	// the script screen's tick). A group of units' activities and a group of buildings (an F key), four times a second: the C++ aiguillage stays, the script draws.
 	using namespace UE::HeroesOfLiberty::UI::GameScreen;
 	const int32 NumSelectedUnits = Controller.IsValid() ? Controller->GetSelectedUnits().Num() : 0;
 	SinceGroupRefresh += FrameSeconds;
@@ -545,24 +533,13 @@ void UHOLGameScreen::NativeTick(const FGeometry& MyGeometry, const float InDelta
 			Refresh();
 		}
 	}
-	else if (NumSelectedUnits == 1)
-	{
-		FHOLUnitView Unit;
-		if (GetWorld() && HOLUnitView::Find(*GetWorld(), Controller->GetSelectedUnits()[0], Unit))
-		{
-			// A soldier's line shows while it strikes alone (J7b.4), a gatherer's always; its health as it changes (J7b.5).
-			RefreshUnitActivity(Unit.CarryCapacity > 0 || Unit.Activity == EHOLUnitActivity::Attacking ? &Unit : nullptr);
-			RefreshUnitHealth(&Unit);
-		}
-	}
 	else if (NumSelectedUnits > 1 && SinceGroupRefresh >= GroupRefreshInterval)
 	{
 		SinceGroupRefresh = 0.f;
-		RefreshUnitSelection(Controller->GetSelectedUnits());
-	}
-	else if (Controller.IsValid() && Controller->GetSelectedSource() != INDEX_NONE)
-	{
-		RefreshSourceSelection(Controller->GetSelectedSource());
+		if (ScriptScreen)
+		{
+			ScriptScreen->RequestRefresh();
+		}
 	}
 	// The chosen age (a key, a placement, Escape) changes without a delegate: its header follows it (the 2nd check of G.1c).
 	if (bAgesShown && ScriptScreen && Controller.IsValid() && Controller->GetChosenAge() != ShownChosenAge)
@@ -939,39 +916,11 @@ void UHOLGameScreen::Refresh()
 {
 	const AHOLPlayerController* PlayerController = Controller.Get();
 	const AHOLPlayerState* PlayerState = BoundPlayerState.Get();
-	const AHOLBuilding* Selected = PlayerController ? PlayerController->GetSelection() : nullptr;
 	// Only the owner gives a building orders, and only the owner receives its queue (D282).
 	const AHOLBuilding* Own = PlayerController ? PlayerController->GetOwnSelection() : nullptr;
 
 	RefreshTopBar(PlayerState);
-	ChipLabels.Reset();
-	ActiveChip = INDEX_NONE;
-	// A main forum's lives row (V2.3d): RefreshSelection alone shows it, for a single building.
-	const bool bSingleBuilding = !PlayerController || (PlayerController->GetSelectedUnits().IsEmpty()
-		&& PlayerController->GetSelectedSource() == INDEX_NONE && !PlayerController->HasBuildingGroup());
-	if (!bSingleBuilding)
-	{
-		UE::HeroesOfLiberty::UI::GameScreen::SetShown(SelectionLivesRow, false);
-	}
-	if (PlayerController && !PlayerController->GetSelectedUnits().IsEmpty())
-	{
-		RefreshUnitSelection(PlayerController->GetSelectedUnits());
-	}
-	else if (PlayerController && PlayerController->GetSelectedSource() != INDEX_NONE)
-	{
-		RefreshSourceSelection(PlayerController->GetSelectedSource());
-	}
-	else if (PlayerController && PlayerController->HasBuildingGroup())
-	{
-		TArray<AHOLBuilding*> Group;
-		PlayerController->GetSelectedBuildings(Group);
-		RefreshBuildingGroup(Group);
-	}
-	else
-	{
-		RefreshSelection(Selected, Selected && Selected == Own);
-	}
-	RefreshChips();
+	// HUD H-9: the selection block (the four paths, the chips) is the script's: RequestRefresh below makes it read the controller again the next frame.
 	RefreshIdleWorkers();
 	// D357: a spectator commands nothing, its grid hidden.
 	const bool bSpectator = PlayerController && PlayerController->IsSpectator();
@@ -1434,12 +1383,14 @@ namespace
 FString UHOLGameScreen::DescribeStatsTip() const
 {
 	// One tooltip per shown statistic: only the chips that are visible AND carry a tooltip text are listed.
+	// HUD H-9: the chips are the script's widgets "SelectionStats" and "SelectionStat<i>" (HOLSelectionUnit.as); ShownStatTipList is what SetStatsReport posed.
 	TArray<FString> Parts;
-	if (SelectionStats && SelectionStats->GetVisibility() != ESlateVisibility::Collapsed)
+	const UWidget* StatsBox = ScriptScreen && ScriptScreen->WidgetTree ? ScriptScreen->WidgetTree->FindWidget(TEXT("SelectionStats")) : nullptr;
+	if (StatsBox && StatsBox->GetVisibility() != ESlateVisibility::Collapsed)
 	{
-		for (int32 Index = 0; Index < SelectionStatChips.Num() && Index < ShownStatTipList.Num(); ++Index)
+		for (int32 Index = 0; Index < 6 && Index < ShownStatTipList.Num(); ++Index)
 		{
-			UCommonTextBlock* Chip = SelectionStatChips[Index];
+			const UCommonTextBlock* Chip = Cast<UCommonTextBlock>(ScriptScreen->WidgetTree->FindWidget(*FString::Printf(TEXT("SelectionStat%d"), Index)));
 			if (Chip && Chip->GetVisibility() == ESlateVisibility::Visible && !Chip->GetToolTipText().IsEmpty())
 			{
 				Parts.Add(ShownStatTipList[Index]);
@@ -1453,7 +1404,9 @@ FString UHOLGameScreen::HoverStat(const int32 Index) const
 {
 	// The hover as the mouse does it (user bug of unit_stats_attack: no tooltip on the other statistics): the centre of the chip is hit-tested
 	// by Slate's own window hit test, and the tooltip the engine would show is the first non-empty one met from the widget found up to the window.
-	UCommonTextBlock* Chip = SelectionStatChips.IsValidIndex(Index) ? SelectionStatChips[Index].Get() : nullptr;
+	// HUD H-9: the chip is the script's widget "SelectionStat<i>" (HOLSelectionUnit.as), found in the script's tree as HoverIncome finds FoodAmount.
+	UCommonTextBlock* Chip = ScriptScreen && ScriptScreen->WidgetTree && Index >= 0 && Index < 6
+		? Cast<UCommonTextBlock>(ScriptScreen->WidgetTree->FindWidget(*FString::Printf(TEXT("SelectionStat%d"), Index))) : nullptr;
 	const TSharedPtr<SWidget> ChipWidget = Chip ? Chip->GetCachedWidget() : TSharedPtr<SWidget>();
 	if (!Chip || !ChipWidget.IsValid() || Chip->GetVisibility() == ESlateVisibility::Collapsed || !FSlateApplication::IsInitialized())
 	{
@@ -2438,19 +2391,27 @@ FString UHOLGameScreen::Describe() const
 	}
 	const FString TradeText = Trades.IsEmpty() ? FString() : FString::Printf(TEXT(", trades %s"), *FString::Join(Trades, TEXT(" | ")));
 	// A main forum's lives and state (V2.3b) and the players' table (V2.4): on their own line (DescribeForum).
-	const FString Activity = !ShownForum.IsEmpty() && ShownActivity == ShownForum ? FString() : ShownActivity;
-	return FString::Printf(TEXT("resources %s, selection %s%s%s, grid %s, queue %s%s%s%s"), *Economy, *ShownSelection, *Activity, *ShownHealth, *Grid, *Queue,
+	// HUD H-9: the selection part is the script's (UHOLSelectionPanel, the only writer, by SetSelectionReport): the kind ("King (own)", "none"), the activity, the health.
+	const FString& ReportKind = ScriptScreen ? ScriptScreen->GetSelectionReportKind() : ShownSelection;
+	const FString& ReportActivity = ScriptScreen ? ScriptScreen->GetSelectionReportActivity() : ShownActivity;
+	const FString& ReportHealth = ScriptScreen ? ScriptScreen->GetSelectionReportHealth() : ShownHealth;
+	const FString& ReportForum = ScriptScreen ? ScriptScreen->GetSelectionReportForum() : ShownForum;
+	const FString Activity = !ReportForum.IsEmpty() && ReportActivity == ReportForum ? FString() : ReportActivity;
+	return FString::Printf(TEXT("resources %s, selection %s%s%s, grid %s, queue %s%s%s%s"), *Economy, *ReportKind, *Activity, *ReportHealth, *Grid, *Queue,
 		*Message, *Workers, *TradeText);
 }
 
 FString UHOLGameScreen::DescribeForum() const
 {
 	// "selection, in ruin 27 s, lives 1, players [slot 0 you colour 0 lives 1 ruin | ...]" ("selection none" without a main forum selected).
-	const bool bForum = !ShownForum.IsEmpty() && ShownActivity == ShownForum;
+	// HUD H-9: the forum line and the activity are the script's copies (SetSelectionReport).
+	const FString ReportForum = ScriptScreen ? ScriptScreen->GetSelectionReportForum() : ShownForum;
+	const FString ReportActivity = ScriptScreen ? ScriptScreen->GetSelectionReportActivity() : ShownActivity;
+	const bool bForum = !ReportForum.IsEmpty() && ReportActivity == ReportForum;
 	const TArray<FHOLPlayersTableRow> TableRows = UHOLPlayersTableReadLibrary::BuildRows(BoundTableState.Get(), BoundPlayerState.IsValid() ? BoundPlayerState->GetPlayerIndex() : INDEX_NONE);
 	// HUD H-4: the table is the script's now; its rows are read again here (HOLForumRules::GetPlayersTable, one source) for the report line.
 	const FString ShownPlayersTable = FString::JoinBy(TableRows, TEXT(" | "), [](const FHOLPlayersTableRow& Row) { return Row.Shown; });
-	return FString::Printf(TEXT("selection%s, players [%s]"), bForum ? *ShownForum : TEXT(" none"), *ShownPlayersTable);
+	return FString::Printf(TEXT("selection%s, players [%s]"), bForum ? *ReportForum : TEXT(" none"), *ShownPlayersTable);
 }
 
 FString UHOLGameScreen::DescribeCells() const
@@ -2533,8 +2494,10 @@ FName UHOLGameScreen::LocalFactionKey() const
 
 FString UHOLGameScreen::DescribeSelectionName() const
 {
-	return SelectionName && SelectionName->GetVisibility() != ESlateVisibility::Collapsed && !SelectionName->GetText().IsEmpty()
-		? SelectionName->GetText().ToString() : FString(TEXT("none"));
+	// HUD H-9: the name is the script's widget "SelectionName" (HOLSelection.as), found in the script's tree as HoverIncome finds FoodAmount.
+	const UCommonTextBlock* Name = ScriptScreen && ScriptScreen->WidgetTree ? Cast<UCommonTextBlock>(ScriptScreen->WidgetTree->FindWidget(TEXT("SelectionName"))) : nullptr;
+	return Name && Name->GetVisibility() != ESlateVisibility::Collapsed && !Name->GetText().IsEmpty()
+		? Name->GetText().ToString() : FString(TEXT("none"));
 }
 
 const FHOLUnitTypeRow* UHOLGameScreen::FindUnitTypeFor(const FName TypeName, const int32 OwnerPlayer) const
@@ -2682,100 +2645,10 @@ void UHOLGameScreen::BuildLayout()
 		WidgetSlot->SetPadding(FMargin(LeftPadding, 0.f, 0.f, 0.f));
 	};
 
-	// Selection block, a fixed width and the bar's height (a spacer holds its place while it is collapsed): name, owner
-	// (with its colour), health.
-	UOverlay* SelectionPlace = WidgetTree->ConstructWidget<UOverlay>(UOverlay::StaticClass(), TEXT("SelectionPlace"));
-	SelectionPlace->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
-	AddToBar(SelectionPlace, 0.f);
-	USpacer* SelectionSpacer = WidgetTree->ConstructWidget<USpacer>(USpacer::StaticClass(), TEXT("SelectionSpacer"));
-	SelectionSpacer->SetSize(FVector2D(SelectionWidth, BarHeight));
-	SelectionPlace->AddChildToOverlay(SelectionSpacer);
-	SelectionPanel = MakePanel(TEXT("SelectionPanel"));
-	UOverlaySlot* SelectionSlot = SelectionPlace->AddChildToOverlay(SelectionPanel);
-	SelectionSlot->SetHorizontalAlignment(HAlign_Fill);
-	SelectionSlot->SetVerticalAlignment(VAlign_Fill);
-	USizeBox* SelectionBox = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass(), TEXT("SelectionBox"));
-	SelectionBox->SetWidthOverride(SelectionWidth - 24.f);
-	SelectionPanel->SetContent(SelectionBox);
-	UVerticalBox* SelectionColumn = MakeVerticalBox(TEXT("SelectionColumn"));
-	SelectionBox->SetContent(SelectionColumn);
-
-	SelectionName = MakeText(TEXT("SelectionName"), UHOLTextStyleHUDHeading::StaticClass(), FText::GetEmpty());
-	SelectionColumn->AddChildToVerticalBox(SelectionName)->SetPadding(FMargin(0.f, 0.f, 0.f, 4.f));
-	// A group's chips (G.1e, AoE4's way), in place of the name: wrapping in the block's width, each at most half of it (a
-	// long name cut short), in a frame lit for the active subgroup; a click makes it active, as Tab.
-	SelectionChips = WidgetTree->ConstructWidget<UWrapBox>(UWrapBox::StaticClass(), TEXT("SelectionChips"));
-	SelectionChips->SetInnerSlotPadding(FVector2D(ChipGap, ChipGap));
-	SelectionChips->SetExplicitWrapSize(true);
-	SelectionChips->SetWrapSize(SelectionWidth - 24.f);
-	SelectionChips->SetVisibility(ESlateVisibility::Collapsed);
-	SelectionColumn->AddChildToVerticalBox(SelectionChips)->SetPadding(FMargin(0.f, 0.f, 0.f, 6.f));
-	for (int32 Chip = 0; Chip < NumChips; ++Chip)
-	{
-		UBorder* ChipFrame = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass(), *FString::Printf(TEXT("SelectionChipFrame%d"), Chip));
-		ChipFrame->SetBrush(FSlateRoundedBoxBrush(FLinearColor::White, 5.f));
-		ChipFrame->SetBrushColor(FLinearColor::Transparent);
-		ChipFrame->SetPadding(FMargin(2.f));
-		ChipFrame->SetVisibility(ESlateVisibility::Collapsed);
-		USizeBox* ChipBox = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass());
-		ChipBox->SetHeightOverride(ChipHeight);
-		ChipBox->SetMaxDesiredWidth(ChipMaxWidth - 4.f);
-		ChipBox->SetClipping(EWidgetClipping::ClipToBounds);
-		ChipBox->SetContent(WidgetTree->ConstructWidget<UHOLQueueItem>(UHOLQueueItem::StaticClass(), *FString::Printf(TEXT("SelectionChip%d"), Chip)));
-		ChipFrame->SetContent(ChipBox);
-		SelectionChips->AddChildToWrapBox(ChipFrame);
-	}
-	UHorizontalBox* OwnerRow = MakeHorizontalBox(TEXT("SelectionOwnerRow"));
-	SelectionOwnerRow = OwnerRow;
-	SelectionColumn->AddChildToVerticalBox(OwnerRow)->SetPadding(FMargin(0.f, 0.f, 0.f, 2.f));
-	SelectionSwatch = MakeSquare(TEXT("SelectionSwatch"), FLinearColor::White, SwatchSize);
-	AddToRow(OwnerRow, SelectionSwatch, 8.f);
-	SelectionOwner = MakeText(TEXT("SelectionOwner"), UHOLTextStyleHUD::StaticClass(), FText::GetEmpty());
-	AddToRow(OwnerRow, SelectionOwner, 0.f);
-	UHorizontalBox* HealthRow = MakeHorizontalBox(TEXT("SelectionHealthRow"));
-	SelectionHealthRow = HealthRow;
-	SelectionColumn->AddChildToVerticalBox(HealthRow);
-	AddToRow(HealthRow, MakeText(TEXT("SelectionHealthLabel"), UHOLTextStyleHUDLabel::StaticClass(), LOCTEXT("Health", "Points de vie")), 8.f);
-	SelectionHealth = MakeText(TEXT("SelectionHealth"), UHOLTextStyleHUD::StaticClass(), FText::GetEmpty());
-	AddToRow(HealthRow, SelectionHealth, 0.f);
-		SelectionStats = WidgetTree->ConstructWidget<UWrapBox>(UWrapBox::StaticClass(), TEXT("SelectionStats"));
-		SelectionStats->SetVisibility(ESlateVisibility::Collapsed);
-		SelectionColumn->AddChildToVerticalBox(SelectionStats)->SetPadding(FMargin(0.f, 2.f, 0.f, 0.f));
-		for (int32 StatChip = 0; StatChip < 6; ++StatChip)
-		{
-			UCommonTextBlock* Chip = MakeText(*FString::Printf(TEXT("SelectionStat%d"), StatChip), UHOLTextStyleHUD::StaticClass(), FText::GetEmpty());
-			Chip->SetVisibility(ESlateVisibility::Collapsed);
-			SelectionStats->AddChildToWrapBox(Chip);
-			SelectionStatChips.Add(Chip);
-		}
-// A site's progress (J6a.5, D313): a bar and its percentage.
-	UHorizontalBox* ProgressRow = MakeHorizontalBox(TEXT("SelectionProgressRow"));
-	SelectionProgressRow = ProgressRow;
-	SelectionColumn->AddChildToVerticalBox(ProgressRow)->SetPadding(FMargin(0.f, 4.f, 0.f, 0.f));
-	SelectionProgress = WidgetTree->ConstructWidget<UProgressBar>(UProgressBar::StaticClass(), TEXT("SelectionProgress"));
-	FProgressBarStyle SiteBarStyle;
-	SiteBarStyle.SetBackgroundImage(FSlateRoundedBoxBrush(FLinearColor(0.08f, 0.08f, 0.1f, 1.f), 2.f));
-	SiteBarStyle.SetFillImage(FSlateRoundedBoxBrush(HOLUIStyle::Accent, 2.f));
-	SelectionProgress->SetWidgetStyle(SiteBarStyle);
-	USizeBox* SiteBarBox = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass(), TEXT("SelectionProgressBox"));
-	SiteBarBox->SetWidthOverride(SiteBarWidth);
-	SiteBarBox->SetHeightOverride(8.f);
-	SiteBarBox->SetContent(SelectionProgress);
-	AddToRow(ProgressRow, SiteBarBox, 8.f);
-	SelectionProgressText = MakeText(TEXT("SelectionProgressText"), UHOLTextStyleHUD::StaticClass(), FText::GetEmpty());
-	AddToRow(ProgressRow, SelectionProgressText, 0.f);
-	ProgressRow->SetVisibility(ESlateVisibility::Collapsed);
-	SelectionActivity = MakeText(TEXT("SelectionActivity"), UHOLTextStyleHUD::StaticClass(), FText::GetEmpty());
-	SelectionActivity->SetAutoWrapText(true);
-	SelectionColumn->AddChildToVerticalBox(SelectionActivity)->SetPadding(FMargin(0.f, 2.f, 0.f, 0.f));
-	// A main forum's lives (V2.3d): a row as the health's, under the ruin's or the rebuilding's lines.
-	UHorizontalBox* LivesRow = MakeHorizontalBox(TEXT("SelectionLivesRow"));
-	SelectionLivesRow = LivesRow;
-	SelectionColumn->AddChildToVerticalBox(LivesRow)->SetPadding(FMargin(0.f, 2.f, 0.f, 0.f));
-	AddToRow(LivesRow, MakeText(TEXT("SelectionLivesLabel"), UHOLTextStyleHUDLabel::StaticClass(), LOCTEXT("ForumLivesLabel", "Vies")), 8.f);
-	SelectionLives = MakeText(TEXT("SelectionLives"), UHOLTextStyleHUD::StaticClass(), FText::GetEmpty());
-	AddToRow(LivesRow, SelectionLives, 0.f);
-	LivesRow->SetVisibility(ESlateVisibility::Collapsed);
+	// HUD H-9: the selection block (SelectionPlace, SelectionPanel, name, chips, owner, health, stats, site progress, activity, lives) is the script's (Script\UI\HOLSelection*.as),
+	// built into this empty host, at the bar's first place (it keeps the bar's order and the bar's bottom alignment).
+	SelectionHost = MakeHorizontalBox(TEXT("SelectionHost"));
+	AddToBar(SelectionHost, 0.f);
 
 	// Right of the selection's block, the command panel's width: the short message, the production queue, then the
 	// command panel under them (the column grows upwards, the panel stays at the bar's bottom).
@@ -2824,7 +2697,6 @@ void UHOLGameScreen::BuildLayout()
 	MinimapSlot->SetPadding(FMargin(ScreenMargin));
 
 	// Nothing selected yet.
-	SelectionPanel->SetVisibility(ESlateVisibility::Collapsed);
 	QueuePanel->SetVisibility(ESlateVisibility::Collapsed);
 	GridPanel->SetVisibility(ESlateVisibility::Hidden);
 }

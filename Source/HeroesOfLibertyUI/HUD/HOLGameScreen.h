@@ -125,6 +125,15 @@ public:
 
 	/** HUD H-8: the bottom bar's AgePanelsHost, an empty horizontal box the script's four age panels fill. */
 	UHorizontalBox* GetAgePanelsHost() const { return AgePanelsHost; }
+	/** HUD H-9: the bottom bar's SelectionHost, an empty horizontal box the script's selection block is built into. */
+	UHorizontalBox* GetSelectionHost() const { return SelectionHost; }
+	/** HUD H-9: the stats' report as the script's unit panel wrote it (SetStatsReport): read by DescribeStats / DescribeStatsTip / HoverStat. */
+	void SetStatsReportMirror(const FString& Stats, const TArray<FString>& TipList)
+	{
+		ShownStats = Stats;
+		ShownStatTipList = TipList;
+		ShownStatsTip = FString::Join(TipList, TEXT(" | "));
+	}
 	/** HUD H-8: the shown player's tier (BoundTableState->GetTier), INDEX_NONE without one. */
 	int32 GetBoundTier() const;
 	/** HUD H-8: RefreshAges' cell filling (name, Ready or Greyed by the stock, tooltip with cost and effect) for a building of an age panel. */
@@ -353,6 +362,10 @@ private:
 	/** HUD H-8: the empty box in the bottom bar the script's age panels are put in. */
 	UPROPERTY(Transient)
 	TObjectPtr<UHorizontalBox> AgePanelsHost;
+
+	/** HUD H-9: the empty box at the bottom bar's first place the script's selection block (HOLSelection.as) is built into. */
+	UPROPERTY(Transient)
+	TObjectPtr<UHorizontalBox> SelectionHost;
 
 	/** The selection's chips (G.1e): a pool of SelectionChipN in the wrap box SelectionChips, each in its frame (lit: active). */
 	UPROPERTY(Transient)

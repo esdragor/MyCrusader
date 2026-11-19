@@ -362,6 +362,22 @@ public:
 	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|UI")
 	UHorizontalBox* GetAgePanelsHost() const;
 
+	/** HUD H-9: the C++ bottom bar's SelectionHost (an empty horizontal box at its first place), the selection block is built into it (HOLSelection.as). */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|UI")
+	UHorizontalBox* GetSelectionHost() const;
+
+	/** HUD H-9: what "HUD stats:" and "HUD stats tip:" read (the six stat chips' text and tips as the script drew them): the screen keeps the copies. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|UI")
+	void SetStatsReport(const FString& Stats, const TArray<FString>& TipList);
+
+	/** True while the selection block needs a call every image (a source's amount, one unit's health): NativeTick then calls SelectionFrameTick, never otherwise. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|UI")
+	void SetSelectionLive(bool bLive);
+
+	/** Once a frame, ONLY while SetSelectionLive(true). */
+	UFUNCTION(BlueprintImplementableEvent, Category = "HeroesOfLiberty|UI")
+	void SelectionFrameTick();
+
 	/** The grid context the age panels read (UHOLGameScreen::RefreshAges' rule): the units' context while no own building or group is selected, else an empty one. */
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|UI")
 	void GetAgesContext(FHOLGridContextView& OutContext) const;
@@ -419,4 +435,7 @@ private:
 
 	/** The queue panel shows a queue: NativeTick calls QueueFrameTick (HUD H-7). */
 	bool bQueueLive = false;
+
+	/** The selection block needs a call every image: NativeTick calls SelectionFrameTick (HUD H-9). */
+	bool bSelectionLive = false;
 };
