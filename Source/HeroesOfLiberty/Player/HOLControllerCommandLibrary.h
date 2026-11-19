@@ -223,4 +223,59 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|ControllerCommand")
 	static bool PointNearOf(AHOLPlayerController* Controller, double Dx, double Dy, bool bEnemy, double& OutX, double& OutY);
 	static bool PointNearFor(const AHOLPlayerController& Controller, double Dx, double Dy, bool bEnemy, FVector& OutPoint);
+
+	// ---- C10b (SAURON-1119ca): sources, heal / attack by identifier, units order, placement near / at a source ----
+
+	/**
+	 * Where the standing resource source nearest a ground point (cm) is drawn, aimed at the middle of its trunk (the former controller AimAtSource, ONE rule).
+	 * Returns 0 = found and on screen (OutIndex, OutFx, OutFy filled), 1 = no standing source, 2 = the source is not on the screen (OutIndex filled).
+	 */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|ControllerCommand")
+	static int32 SourceScreenPoint(AHOLPlayerController* Controller, double X, double Y, int32& OutIndex, double& OutFx, double& OutFy);
+
+	/** The lowest identifier among the units of slot Slot known here (HOLUnitView::Gather), 0 when there is none (hol.Select.Heal / Attack slot=<S>). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|ControllerCommand")
+	static int32 FirstUnitIdOfSlot(AHOLPlayerController* Controller, int32 Slot);
+
+	/** Every unit known here, whoever owns it (hol.Units.Order ... all). False without a controller. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|ControllerCommand")
+	static bool AllUnitIds(AHOLPlayerController* Controller, TArray<int32>& OutIds);
+
+	/** Controller->GetCommandUnits(): the units the selected orders go to (hol.Select.Heal / Attack). False without a controller. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|ControllerCommand")
+	static bool CommandUnitIds(AHOLPlayerController* Controller, TArray<int32>& OutIds);
+
+	/** Controller->RequestHealUnit(Ids, TargetId, bQueue). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|ControllerCommand")
+	static bool RequestHealUnitIds(AHOLPlayerController* Controller, const TArray<int32>& Ids, int32 TargetId, bool bQueue);
+
+	/** Controller->RequestAttackUnit(Ids, TargetId, bQueue), then OnAttackOrderGiven.Broadcast(the target's place) when the target is known here. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|ControllerCommand")
+	static bool RequestAttackUnitIds(AHOLPlayerController* Controller, const TArray<int32>& Ids, int32 TargetId, bool bQueue);
+
+	/** Controller->RequestMoveUnits(Ids, (X, Y, 0)) (hol.Units.Order). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|ControllerCommand")
+	static bool RequestMoveUnitIdsTo(AHOLPlayerController* Controller, const TArray<int32>& Ids, double X, double Y);
+
+	/** The middle of the main centre of the player's own start slot (OutX, OutY); false without a player state or a start (hol.Select.OrderSourceNear, hol.Units.OrderNear). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|ControllerCommand")
+	static bool StartCentreOf(AHOLPlayerController* Controller, double& OutX, double& OutY);
+
+	/**
+	 * Logs what this machine thinks of a placement ("Build request: ..." at Display) then asks the server (the former controller RequestPlacementAt) for a foundation at the main centre
+	 * of the player (or of an enemy) plus (Dx, Dy) cm in its frame. False without such a centre (nothing logged, nothing sent).
+	 */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|ControllerCommand")
+	static bool RequestPlacementNear(AHOLPlayerController* Controller, FName TypeName, double Dx, double Dy, bool bEnemy);
+
+	/** The standing source nearest a ground point: its index (INDEX_NONE when none) and its place. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|ControllerCommand")
+	static int32 StandingSourceNear(AHOLPlayerController* Controller, double X, double Y, double& OutX, double& OutY);
+
+	/** The same request as RequestPlacementNear, on the place of source SourceIndex. False when the index is not a source. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|ControllerCommand")
+	static bool RequestPlacementOnSource(AHOLPlayerController* Controller, FName TypeName, int32 SourceIndex);
+
+private:
+	static void RequestPlacementAtPoint(AHOLPlayerController& Controller, FName TypeName, const FVector& Point);
 };
