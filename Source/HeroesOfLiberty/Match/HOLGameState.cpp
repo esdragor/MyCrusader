@@ -385,8 +385,16 @@ AHOLBuilding* AHOLGameState::FindPrimaryForum(const UWorld& World, const int32 S
 bool AHOLGameState::HandleForumFall(AHOLBuilding& Forum)
 {
 	const int32 Slot = Forum.GetOwnerPlayer();
-	if (!HasAuthority() || !Forum.IsPrimaryForum() || !ForumStates.IsValidIndex(Slot) || IsSlotDefeated(Slot)
-		|| (PendingForumDefeats & (1 << Slot)) || HOLVictoryRules::GetCamp(LaunchConfig, Slot) == INDEX_NONE)
+	// S2c (MIG-CPP step 5, D839): the gate is the script board's when a board exists (HOLMatchFlow::FallGateOpen); else the inline refusal below (kept until the
+	// script gate is proven: Test_MatchFlowFallGateAgreement). Game thread only: the callers of DamageBuilding are the combat processor's Execute (game
+	// thread, outside its three ParallelFor), the cheats and the volcano step (HOLCombatProcessor.cpp:252, 1364, 2528).
+	const bool bSlotValid = ForumStates.IsValidIndex(Slot);
+	const int32 GateAnswer = UHOLMatchFlowSubsystem::AskFallGate(GetWorld(), HasAuthority(), Forum.IsPrimaryForum(), bSlotValid,
+		bSlotValid && IsSlotDefeated(Slot), bSlotValid && (PendingForumDefeats & (1 << Slot)) != 0,
+		bSlotValid && HOLVictoryRules::GetCamp(LaunchConfig, Slot) != INDEX_NONE);
+	if (GateAnswer >= 0 ? GateAnswer == 0
+		: (!HasAuthority() || !Forum.IsPrimaryForum() || !ForumStates.IsValidIndex(Slot) || IsSlotDefeated(Slot)
+			|| (PendingForumDefeats & (1 << Slot)) || HOLVictoryRules::GetCamp(LaunchConfig, Slot) == INDEX_NONE))
 	{
 		return false;
 	}
@@ -417,8 +425,16 @@ bool AHOLGameState::HandleForumFall(AHOLBuilding& Forum)
 
 bool AHOLGameState::HandleKingDeath(const int32 Slot)
 {
-	if (!HasAuthority() || bMatchOver || !SlotDefeats.IsValidIndex(Slot) || IsSlotDefeated(Slot)
-		|| (PendingKingDefeats & (1 << Slot)) || HOLVictoryRules::GetCamp(LaunchConfig, Slot) == INDEX_NONE)
+	// S2c (MIG-CPP step 5, D839): the gate is the script board's when a board exists (HOLMatchFlow::KingGateOpen); else the inline refusal below (kept until
+	// the script gate is proven: Test_MatchFlowKingGateAgreement). Game thread only: HandleKingDeath is reached from KillUnit, itself called by the combat
+	// processor's Execute (game thread, outside its three ParallelFor: HOLCombatProcessor.cpp:252, 652, 1310, 663).
+	const bool bSlotValid = SlotDefeats.IsValidIndex(Slot);
+	const int32 GateAnswer = UHOLMatchFlowSubsystem::AskKingGate(GetWorld(), HasAuthority(), bMatchOver, bSlotValid,
+		bSlotValid && IsSlotDefeated(Slot), bSlotValid && (PendingKingDefeats & (1 << Slot)) != 0,
+		bSlotValid && HOLVictoryRules::GetCamp(LaunchConfig, Slot) != INDEX_NONE);
+	if (GateAnswer >= 0 ? GateAnswer == 0
+		: (!HasAuthority() || bMatchOver || !SlotDefeats.IsValidIndex(Slot) || IsSlotDefeated(Slot)
+			|| (PendingKingDefeats & (1 << Slot)) || HOLVictoryRules::GetCamp(LaunchConfig, Slot) == INDEX_NONE))
 	{
 		return false;
 	}

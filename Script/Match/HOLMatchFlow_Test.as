@@ -223,3 +223,67 @@ void Test_MatchFlowMatchEndVerdictAgreement(FUnitTest& T)
 	MatchFlowVerdictSweep(T, MatchFlowList(4, 1, 2, 1, 2), MatchFlowList(4, 1, 1, 2, 2), "teams 1+2");
 	MatchFlowVerdictSweep(T, MatchFlowList(4, 1, 2, 2, 1), MatchFlowList(4, 0, 0, 0, 0), "free for all of 4");
 }
+
+// ---- S2c: the gates of HandleForumFall and HandleKingDeath (HOLMatchFlowBoard.as). RED until the board has FallGateOpen / KingGateOpen. Cases drawn from
+// AHOLGameState::HandleForumFall (HOLGameState.cpp:385) and HandleKingDeath (:418).
+
+// HandleForumFall: refused without authority, for a forum that is not the main one, an invalid slot, a slot already defeated, a defeat already pending, a closed camp.
+void Test_MatchFlowFallGate(FUnitTest& T)
+{
+	T.AssertTrue(HOLMatchFlow::FallGateOpen(true, true, true, false, false, true), "the server, a main forum, a live slot of an occupied camp: open");
+	T.AssertFalse(HOLMatchFlow::FallGateOpen(false, true, true, false, false, true), "a client never takes a forum's fall");
+	T.AssertFalse(HOLMatchFlow::FallGateOpen(true, false, true, false, false, true), "a forum that is not the main one: refused");
+	T.AssertFalse(HOLMatchFlow::FallGateOpen(true, true, false, false, false, true), "a slot outside the table: refused");
+	T.AssertFalse(HOLMatchFlow::FallGateOpen(true, true, true, true, false, true), "a slot already defeated: refused");
+	T.AssertFalse(HOLMatchFlow::FallGateOpen(true, true, true, false, true, true), "a forum defeat already pending: refused (never twice in a step)");
+	T.AssertFalse(HOLMatchFlow::FallGateOpen(true, true, true, false, false, false), "a closed camp: refused");
+}
+
+// HandleKingDeath: refused without authority, once the match is over, for an invalid slot, a slot already defeated, a king defeat already pending, a closed camp.
+void Test_MatchFlowKingGate(FUnitTest& T)
+{
+	T.AssertTrue(HOLMatchFlow::KingGateOpen(true, false, true, false, false, true), "the server, a running match, a live slot of an occupied camp: open");
+	T.AssertFalse(HOLMatchFlow::KingGateOpen(false, false, true, false, false, true), "a client never takes a king's death");
+	T.AssertFalse(HOLMatchFlow::KingGateOpen(true, true, true, false, false, true), "the match is over: refused");
+	T.AssertFalse(HOLMatchFlow::KingGateOpen(true, false, false, false, false, true), "a slot outside the table: refused");
+	T.AssertFalse(HOLMatchFlow::KingGateOpen(true, false, true, true, false, true), "a slot already defeated: refused");
+	T.AssertFalse(HOLMatchFlow::KingGateOpen(true, false, true, false, true, true), "a king defeat already pending: refused (a second king of the slot)");
+	T.AssertFalse(HOLMatchFlow::KingGateOpen(true, false, true, false, false, false), "a closed camp: refused");
+}
+
+// Agreement (two copies of the gate while the C++ inline refusal stays): the 64 combinations against the former refusal, written as it was (a chain of ||).
+void Test_MatchFlowFallGateAgreement(FUnitTest& T)
+{
+	int Wrong = 0;
+	for (int Bits = 0; Bits < 64; ++Bits)
+	{
+		bool bAuthority = (Bits & 1) != 0;
+		bool bPrimaryForum = (Bits & 2) != 0;
+		bool bSlotValid = (Bits & 4) != 0;
+		bool bDefeated = (Bits & 8) != 0;
+		bool bPendingForum = (Bits & 16) != 0;
+		bool bCampOccupied = (Bits & 32) != 0;
+		bool bRefused = !bAuthority || !bPrimaryForum || !bSlotValid || bDefeated || bPendingForum || !bCampOccupied;
+		if (HOLMatchFlow::FallGateOpen(bAuthority, bPrimaryForum, bSlotValid, bDefeated, bPendingForum, bCampOccupied) == bRefused)
+			Wrong += 1;
+	}
+	T.AssertEquals(0, Wrong, "the script gate answers as the C++ inline refusal of HandleForumFall on the 64 combinations");
+}
+
+void Test_MatchFlowKingGateAgreement(FUnitTest& T)
+{
+	int Wrong = 0;
+	for (int Bits = 0; Bits < 64; ++Bits)
+	{
+		bool bAuthority = (Bits & 1) != 0;
+		bool bMatchOver = (Bits & 2) != 0;
+		bool bSlotValid = (Bits & 4) != 0;
+		bool bDefeated = (Bits & 8) != 0;
+		bool bPendingKing = (Bits & 16) != 0;
+		bool bCampOccupied = (Bits & 32) != 0;
+		bool bRefused = !bAuthority || bMatchOver || !bSlotValid || bDefeated || bPendingKing || !bCampOccupied;
+		if (HOLMatchFlow::KingGateOpen(bAuthority, bMatchOver, bSlotValid, bDefeated, bPendingKing, bCampOccupied) == bRefused)
+			Wrong += 1;
+	}
+	T.AssertEquals(0, Wrong, "the script gate answers as the C++ inline refusal of HandleKingDeath on the 64 combinations");
+}
