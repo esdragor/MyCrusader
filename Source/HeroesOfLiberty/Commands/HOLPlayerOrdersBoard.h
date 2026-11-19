@@ -1,0 +1,68 @@
+// Copyright Epic Games, Inc. All Rights Reserved.
+
+#pragma once
+
+#include "CoreMinimal.h"
+#include "Subsystems/WorldSubsystem.h"
+#include "HOLPlayerOrdersBoard.generated.h"
+
+class AHOLBuilding;
+
+/**
+ * The rule of the player's orders where the match runs (MIG-CPP step 5, lot P1b; D839: a binding to expose; the queue and the scope of the player's
+ * order stay in UHOLCommandSubsystem). The verdict is the script's (Script/Commands/HOLPlayerOrdersBoard.as calls namespace HOLPlayerOrders of
+ * Script/Commands/HOLPlayerOrders.as, tested in Script/Commands/HOLPlayerOrders_Test.as); this world subsystem asks its script subclass
+ * (UHOLPlayerOrdersBoardScript). Abstract: only a script subclass is born. Every Ask* answers 1 (order accepted and queued), 0 (refused), or -1 when
+ * the world has no script board (HOLPlayerOrders.cpp then keeps its C++ body, still the twin of the script until the network proof, then removed in a
+ * later lot). Same pattern as UHOLMatchFlowSubsystem (pause) and UHOLConstructionBoard (construction).
+ */
+UCLASS(Abstract)
+class HEROESOFLIBERTY_API UHOLPlayerOrdersBoard : public UWorldSubsystem
+{
+	GENERATED_BODY()
+
+public:
+	/** The world's board (its script subclass), or null (no script compiled, or no world). */
+	static UHOLPlayerOrdersBoard* Find(const UWorld* World);
+	/** The board of the first game or PIE world that has one (for IsAccepted, which has no world argument), or null. Game thread only. */
+	static UHOLPlayerOrdersBoard* FindAny();
+
+	static int32 AskIsAccepted(const UWorld* World, int32 PlayerIndex, int32 NumUnits);
+	/** IsAccepted without a world: the board of any game world, or -1 (a unit test with no world keeps the C++ rule). */
+	static int32 AskIsAcceptedAnywhere(int32 PlayerIndex, int32 NumUnits);
+	static int32 AskMove(const UWorld* World, int32 PlayerIndex, const TArray<int32>& UnitIds, const FVector& Target, bool bQueue, const FVector2D& FrontLine,
+		bool bFrontWidth);
+	static int32 AskAttack(const UWorld* World, int32 PlayerIndex, const TArray<int32>& UnitIds, int32 TargetUnitId, bool bQueue);
+	static int32 AskAttackBuilding(const UWorld* World, int32 PlayerIndex, const TArray<int32>& UnitIds, AHOLBuilding* Building, bool bQueue);
+	static int32 AskAttackMove(const UWorld* World, int32 PlayerIndex, const TArray<int32>& UnitIds, const FVector& Target, bool bQueue);
+	static int32 AskStop(const UWorld* World, int32 PlayerIndex, const TArray<int32>& UnitIds, bool bHold);
+	static int32 AskToggleDeploy(const UWorld* World, int32 PlayerIndex, const TArray<int32>& UnitIds);
+
+	virtual bool ShouldCreateSubsystem(UObject* Outer) const override;
+
+protected:
+	virtual bool DoesSupportWorldType(const EWorldType::Type WorldType) const override;
+
+	/** The script subclass overrides these (HOLPlayerOrders::...); the default is -1 (no rule here). */
+	UFUNCTION(BlueprintNativeEvent, Category = "HeroesOfLiberty|Commands")
+	int32 IsAcceptedAnswer(int32 PlayerIndex, int32 NumUnits);
+	UFUNCTION(BlueprintNativeEvent, Category = "HeroesOfLiberty|Commands")
+	int32 MoveAnswer(int32 PlayerIndex, const TArray<int32>& UnitIds, FVector Target, bool bQueue, FVector2D FrontLine, bool bFrontWidth);
+	UFUNCTION(BlueprintNativeEvent, Category = "HeroesOfLiberty|Commands")
+	int32 AttackAnswer(int32 PlayerIndex, const TArray<int32>& UnitIds, int32 TargetUnitId, bool bQueue);
+	UFUNCTION(BlueprintNativeEvent, Category = "HeroesOfLiberty|Commands")
+	int32 AttackBuildingAnswer(int32 PlayerIndex, const TArray<int32>& UnitIds, AHOLBuilding* Building, bool bQueue);
+	UFUNCTION(BlueprintNativeEvent, Category = "HeroesOfLiberty|Commands")
+	int32 AttackMoveAnswer(int32 PlayerIndex, const TArray<int32>& UnitIds, FVector Target, bool bQueue);
+	UFUNCTION(BlueprintNativeEvent, Category = "HeroesOfLiberty|Commands")
+	int32 StopAnswer(int32 PlayerIndex, const TArray<int32>& UnitIds, bool bHold);
+	UFUNCTION(BlueprintNativeEvent, Category = "HeroesOfLiberty|Commands")
+	int32 ToggleDeployAnswer(int32 PlayerIndex, const TArray<int32>& UnitIds);
+	virtual int32 IsAcceptedAnswer_Implementation(int32 PlayerIndex, int32 NumUnits);
+	virtual int32 MoveAnswer_Implementation(int32 PlayerIndex, const TArray<int32>& UnitIds, FVector Target, bool bQueue, FVector2D FrontLine, bool bFrontWidth);
+	virtual int32 AttackAnswer_Implementation(int32 PlayerIndex, const TArray<int32>& UnitIds, int32 TargetUnitId, bool bQueue);
+	virtual int32 AttackBuildingAnswer_Implementation(int32 PlayerIndex, const TArray<int32>& UnitIds, AHOLBuilding* Building, bool bQueue);
+	virtual int32 AttackMoveAnswer_Implementation(int32 PlayerIndex, const TArray<int32>& UnitIds, FVector Target, bool bQueue);
+	virtual int32 StopAnswer_Implementation(int32 PlayerIndex, const TArray<int32>& UnitIds, bool bHold);
+	virtual int32 ToggleDeployAnswer_Implementation(int32 PlayerIndex, const TArray<int32>& UnitIds);
+};
