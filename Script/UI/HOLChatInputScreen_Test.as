@@ -170,3 +170,21 @@ void Test_ChatInputScreenWhisperRefusalTexts(FUnitTest& T)
 	T.AssertTrue(Unknown != Empty, "the two refusals say different things");
 	T.AssertTrue(Fine.IsEmpty(), "an accepted whisper shows no refusal");
 }
+
+// GLORFINDEL-1120sa (RECETTE-1120pb: after a send the 2nd Enter reached the game as `Key pressed: Enter (focus: none)` and never reopened the field): the
+// send's own Close() leaves the collapsed box with the Slate focus, so the viewport must get the keyboard back or the polled Enter (KeyPressed) never comes.
+// The chain: the field opens (Enter), a text is sent (Enter), the field closes ; the focus must have been handed back to the game viewport once, and a later
+// Enter heard with no focus (KeyPressed) must be accepted by the real rule (a pause longer than the guard after the commit).
+// Red: Close() does not hand the focus back (stub: FocusReturns stays 0).
+void Test_ChatInputScreenCloseAfterSendReturnsFocusToGame(FUnitTest& T)
+{
+	UHOLChatInputScreen Chat = Cast<UHOLChatInputScreen>(NewObject(GetTransientPackage(), UHOLChatInputScreen));
+	const int Opened = HOLChatInput::PressEnter(Chat.State, "", false, false);
+	T.AssertEquals(Opened, HOLChatInput::Opened, "first Enter opens the field");
+	const int Sent = HOLChatInput::PressEnter(Chat.State, "salut", false, false);
+	T.AssertEquals(Sent, HOLChatInput::Send, "second Enter sends and closes the state");
+	Chat.Close();
+	T.AssertEquals(Chat.FocusReturns, 1, "the closed field handed the keyboard focus back to the game viewport");
+	const bool bNextEnter = HOLChatInputScreen::EnterOpensField(Chat.State.bOpen, Chat.LastCommitTime + 0.2, Chat.LastCommitTime);
+	T.AssertTrue(bNextEnter, "the next Enter, heard with no focus, reopens the field");
+}
