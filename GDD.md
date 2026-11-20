@@ -3697,4 +3697,12 @@ La courbe d'XP (Q04) reste à régler en test.
 
 **D870** (Marque du signal, taille, complète D860 ; 2026-11-20 ~13:05, réponses à `E-signals_altclick` et `E-signals_minimap_alt`, REGLAGE : « divise par 3 la taille et c'est bon, pas besoin de refaire un essai pour valider ») : la marque du signal est **trois fois plus petite** (taille ÷ 3), au sol et sur la mini-carte ; **validée sans nouvel essai**. Fiches : `Docs\Archive\Retours_2026-11-20\E-signals_altclick.md` et `E-signals_minimap_alt.md` ; `SignalsInProgress.md` (H2, H3).
 
-Prochain numéro : **D871**.
+**D871** (Montage et démontage du Mangonneau, affichage, complète D869 ; 2026-11-20 ~15:5x, réponse à `Q-deploy-visible`, par l'interface de choix) : « A et B puis C en plus » : **maintenant** le texte « Montage... » / « Démontage... » dans la case D (grisée) **et** la barre de progression au-dessus de l'engin (ElapsedMs / durée, lue dans le fragment, visible de tous les joueurs) ; **ensuite**, quand l'asset d'animation existera, l'animation du modèle (pliage / dépliage). Fiche : `Docs\Archive\Retours_2026-11-20\Q-deploy-visible.md` ; `Palier3InProgress.md` (G6).
+
+**D872** (Chat, destinataire du message privé, complète D807 et D387 ; 2026-11-20 ~15:5x, réponse à la question du destinataire privé de `Docs\Rapports\GALADRIEL-1120pa.md`, par l'interface de choix) : « A ET B » : un **clic sur la ligne d'un joueur du panneau Diplomatie** le choisit comme destinataire du canal privé, **et** la commande **« /w Nom message »** envoie un message privé à ce joueur. Sans destinataire choisi, Tab saute le privé (défaut `ChosenSlot = -1`). `ChatInProgress.md`.
+
+**D873** (Chevalier Vertueux, ligne de la table, complète D864 et D865 ; 2026-11-20 ~15:5x, réponse à `Q-chevalier-ligne`, par l'interface de choix) : **A** : une ligne `VirtuousKnight` **provisoire**, calquée sur `ManAtArms` (Caserne, palier 1, faction Dawn), avec la redirection **30 % à 800 cm** (`DamageRedirectPercent` / `DamageRedirectRadius`) ; les stats propres du Chevalier restent à trancher plus tard (D345, réglable par la table) ; listée dans `Placeholders.txt`. Fiche : `Docs\Archive\Retours_2026-11-20\Q-chevalier-ligne.md`.
+
+**D874** (Garnison, portrait d'un occupant dans le cadre du bâtiment, complète D813 ; 2026-11-20 ~15:5x, réponse à `Q-garrison-portrait`, par l'interface de choix) : **A** : le bouton d'un occupant de garnison montre l'**icône du type d'unité** (comme la file de production) ; clic = « cette unité sort ». Une icône manquante est une ligne de `Placeholders.txt`. Demande une lecture client du type par identifiant (lot C++ de Glorfindel), puis le branchement dans `HOLGarrisonFrame.as` (Elrond). Fiche : `Docs\Archive\Retours_2026-11-20\Q-garrison-portrait.md`.
+
+Prochain numéro : **D875**.
