@@ -1487,6 +1487,40 @@ for (FString Command : Commands)
 		HOLRpcBridge::OrderPlaceBuilding(this, TypeName, Point.X, Point.Y, Point.Z, HOLRpc::OrderIds(UnitIds), bQueue);
 	}
 
+	// F4: a wall line dragged from Start to End. The pure part (seat, finite points, length cap hol.Wall.MaxLineCells, map, occupied cells) is HOLWallLine::PlanFromRequest;
+	// accepted, one foundation per cell goes through the same bridge as ServerPlaceBuilding (so the board's gates, price and CheckPlacement apply to each cell). NO builder is sent.
+	// The world (map limit, cells under a building, tile size) is read by the C++ accessor HOLConstructionRead::GetWallLineWorld. TypeName is the wall type chosen by the client.
+	UFUNCTION(Server)
+	void ServerPlaceWallLine(FName TypeName, FVector_NetQuantize Start, FVector_NetQuantize End, bool bQueue)
+	{
+		const int Slot = HOLRpcBridge::GetSenderSlot(this);
+		Log(n"LogHOLMatch", f"RpcOrder: place wall line received by the server: slot {Slot} type {TypeName} queue {bQueue}");
+		if (TypeName == NAME_None)
+		{
+			Log(n"LogHOLMatch", f"RpcOrder: place wall line refused (4) for sender slot {Slot}");
+			return;
+		}
+		FIntPoint MapMin;
+		FIntPoint MapMax;
+		TArray<FIntPoint> Occupied;
+		const double Tile = HOLConstructionRead::GetWallLineWorld(MapMin, MapMax, Occupied);
+		HOLWallLine::FHOLWallLinePlan Plan = HOLWallLine::PlanFromRequest(Slot, FVector(Start.X, Start.Y, Start.Z), FVector(End.X, End.Y, End.Z), Tile, MapMin, MapMax, Occupied, HOLWallLine::MaxLineCells());
+		if (Plan.Refusal != HOLWallLine::EHOLWallLineRefusal::Ok)
+		{
+			const int RefusalCode = int(Plan.Refusal);
+			const int BadX = Plan.BadCell.X;
+			const int BadY = Plan.BadCell.Y;
+			Log(n"LogHOLMatch", f"RpcOrder: place wall line refused ({RefusalCode}) for sender slot {Slot}, cell ({BadX}, {BadY})");
+			return;
+		}
+		TArray<int32> NoBuilders;
+		for (int Index = 0; Index < Plan.Cells.Num(); Index++)
+		{
+			const FVector Point = HOLWallLine::CellToPoint(Plan.Cells[Index], Tile, Start.Z);
+			HOLRpcBridge::OrderPlaceBuilding(this, TypeName, Point.X, Point.Y, Point.Z, NoBuilders, bQueue);
+		}
+	}
+
 	UFUNCTION(Server)
 	void ServerBuildUnits(TArray<uint32> UnitIds, AHOLBuilding Building, bool bQueue)
 	{

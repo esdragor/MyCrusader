@@ -2,8 +2,12 @@
 
 #include "Buildings/HOLConstructionReadLibrary.h"
 
+#include "Buildings/HOLBuilding.h"
 #include "Buildings/HOLBuildingTypes.h"
 #include "Buildings/HOLConstructionRules.h"
+#include "Engine/Engine.h"
+#include "Engine/World.h"
+#include "Map/HOLMapBounds.h"
 #include "Resources/HOLSourceTypes.h"
 #include "Simulation/HOLSimulationFragments.h"
 #include "Simulation/HOLUnitTypes.h"
@@ -542,4 +546,47 @@ bool UHOLConstructionReadLibrary::FindFreeFootprint(const FHOLConstructionBox& F
 	OutFootprint = ConstructionRead_FromBox(Free);
 	OutRing = bFound ? Ring : -1;
 	return bFound;
+}
+
+// NON COMPILE (F4 wall line): see the header. The last cell of a box is the one holding its far edge minus a hair: touching is fine (D311), so a box ending on a cell border does not take that cell.
+double UHOLConstructionReadLibrary::GetWallLineWorld(const UObject* WorldContextObject, FIntPoint& OutMapMin, FIntPoint& OutMapMax, TArray<FIntPoint>& OutOccupied)
+{
+	const double Tile = UHOLBuildingSettings::GetTileSize();
+	OutMapMin = FIntPoint(-100000, -100000);
+	OutMapMax = FIntPoint(100000, 100000);
+	OutOccupied.Reset();
+	const UWorld* World = GEngine ? GEngine->GetWorldFromContextObject(WorldContextObject, EGetWorldErrorMode::ReturnNull) : nullptr;
+	if (!World)
+	{
+		return Tile;
+	}
+	if (const AHOLMapBounds* Bounds = AHOLMapBounds::Find(World))
+	{
+		const FBox2D Area = Bounds->GetArea();
+		if (Area.bIsValid)
+		{
+			OutMapMin = FIntPoint(FMath::FloorToInt(Area.Min.X / Tile), FMath::FloorToInt(Area.Min.Y / Tile));
+			OutMapMax = FIntPoint(FMath::CeilToInt(Area.Max.X / Tile) - 1, FMath::CeilToInt(Area.Max.Y / Tile) - 1);
+		}
+	}
+	for (FHOLBuildingIterator It(World); It; ++It)
+	{
+		if (!It->GetType())
+		{
+			continue;
+		}
+		const FBox2D Box = It->GetFootprintBounds();
+		const int32 MinX = FMath::FloorToInt(Box.Min.X / Tile);
+		const int32 MinY = FMath::FloorToInt(Box.Min.Y / Tile);
+		const int32 MaxX = FMath::CeilToInt(Box.Max.X / Tile) - 1;
+		const int32 MaxY = FMath::CeilToInt(Box.Max.Y / Tile) - 1;
+		for (int32 Y = MinY; Y <= MaxY; ++Y)
+		{
+			for (int32 X = MinX; X <= MaxX; ++X)
+			{
+				OutOccupied.AddUnique(FIntPoint(X, Y));
+			}
+		}
+	}
+	return Tile;
 }
