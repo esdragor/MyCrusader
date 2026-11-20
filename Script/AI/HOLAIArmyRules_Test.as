@@ -24,7 +24,7 @@ FHOLAITypeFigures RulesFigures(int Health, int Damage, float Interval, float Ran
 	return Figures;
 }
 
-FHOLAITypeFigures RulesSpearman()
+FHOLAITypeFigures RulesHalberdier()
 {
 	FHOLAITypeFigures Figures = RulesFigures(80, 8, 1.875f, 130.f, 0, 0, false, 777.f, 60, 20, 0);
 	Figures.ArmorCategories.Add(n"LightInfantry");
@@ -67,8 +67,8 @@ FHOLAIArmyData RulesHandData()
 	FHOLAIArmyData Data = HOLAIArmy::DefaultData();
 	Data.Types.Empty();
 	Data.Figures.Empty();
-	Data.Types.Add(n"Spearman");
-	Data.Figures.Add(RulesSpearman());
+	Data.Types.Add(n"Halberdier");
+	Data.Figures.Add(RulesHalberdier());
 	Data.Types.Add(n"ManAtArms");
 	Data.Figures.Add(RulesManAtArms());
 	Data.Types.Add(n"Archer");
@@ -97,13 +97,13 @@ void RulesAddUnits(TArray<FHOLAIUnit>& List, FName Type, int Count, int Health, 
 
 void Test_ArmyDamagePerSecond(FUnitTest& T)
 {
-	const FHOLAITypeFigures Spear = RulesSpearman();
+	const FHOLAITypeFigures Spear = RulesHalberdier();
 	const FHOLAITypeFigures Heavy = RulesManAtArms();
 	const FHOLAITypeFigures Bow = RulesArcher();
 	const FHOLAITypeFigures Bolt = RulesCrossbowman();
-	T.AssertTrue(RulesNear(HOLAIArmy::DamagePerSecond(Spear, Heavy), 4.f / 1.875f, 0.01f), "Spearman on Man-at-arms: 8 - 4 melee armour");
-	T.AssertTrue(RulesNear(HOLAIArmy::DamagePerSecond(Heavy, Spear), 12.f / 1.375f, 0.01f), "Man-at-arms on Spearman: no armour");
-	T.AssertTrue(RulesNear(HOLAIArmy::DamagePerSecond(Bow, Spear), 10.f / 1.625f, 0.01f), "Archer on Spearman: 5 + 5 light infantry");
+	T.AssertTrue(RulesNear(HOLAIArmy::DamagePerSecond(Spear, Heavy), 4.f / 1.875f, 0.01f), "Halberdier on Man-at-arms: 8 - 4 melee armour");
+	T.AssertTrue(RulesNear(HOLAIArmy::DamagePerSecond(Heavy, Spear), 12.f / 1.375f, 0.01f), "Man-at-arms on Halberdier: no armour");
+	T.AssertTrue(RulesNear(HOLAIArmy::DamagePerSecond(Bow, Spear), 10.f / 1.625f, 0.01f), "Archer on Halberdier: 5 + 5 light infantry");
 	T.AssertTrue(RulesNear(HOLAIArmy::DamagePerSecond(Bow, Heavy), 1.f / 1.625f, 0.01f), "Archer on Man-at-arms: 5 - 4 ranged armour");
 	T.AssertTrue(RulesNear(HOLAIArmy::DamagePerSecond(Bolt, Heavy), 18.f / 2.125f, 0.01f), "Crossbowman on Man-at-arms: 12 + 10 - 4");
 	T.AssertTrue(RulesNear(HOLAIArmy::DamagePerSecond(Bolt, Bow), 12.f / 2.125f, 0.01f), "Crossbowman on Archer: no bonus");
@@ -125,16 +125,16 @@ void Test_ArmyDamageFloorAndNoInterval(FUnitTest& T)
 void Test_ArmyMatchupsFollowTheGdd(FUnitTest& T)
 {
 	const FHOLAIArmyData Data = RulesHandData();
-	const FHOLAITypeFigures Spear = RulesSpearman();
+	const FHOLAITypeFigures Spear = RulesHalberdier();
 	const FHOLAITypeFigures Heavy = RulesManAtArms();
 	const FHOLAITypeFigures Bow = RulesArcher();
 	const FHOLAITypeFigures Bolt = RulesCrossbowman();
 	T.AssertTrue(HOLAIArmy::Matchup(Data, Bolt, Heavy) > 1.f, "the Crossbowman beats the Man-at-arms");
 	T.AssertTrue(HOLAIArmy::Matchup(Data, Heavy, Bow) > 1.f, "the Man-at-arms beats the Archer (armour)");
-	T.AssertTrue(HOLAIArmy::Matchup(Data, Heavy, Spear) > 1.f, "the Man-at-arms beats the Spearman");
-	T.AssertTrue(HOLAIArmy::Matchup(Data, Bow, Spear) > 1.f, "the Archer beats the Spearman (light infantry)");
+	T.AssertTrue(HOLAIArmy::Matchup(Data, Heavy, Spear) > 1.f, "the Man-at-arms beats the Halberdier");
+	T.AssertTrue(HOLAIArmy::Matchup(Data, Bow, Spear) > 1.f, "the Archer beats the Halberdier (light infantry)");
 	T.AssertTrue(HOLAIArmy::Matchup(Data, Heavy, Bolt) < 1.f, "the Man-at-arms loses to the Crossbowman");
-	T.AssertTrue(HOLAIArmy::Matchup(Data, Spear, Bow) < 1.f, "the Spearman loses to the Archer");
+	T.AssertTrue(HOLAIArmy::Matchup(Data, Spear, Bow) < 1.f, "the Halberdier loses to the Archer");
 }
 
 // The matchup of a type against itself is 1, and the two sides of a pair are inverse of each other.
@@ -156,7 +156,7 @@ void Test_ArmyMatchupIsSymmetric(FUnitTest& T)
 void Test_ArmyUnitValue(FUnitTest& T)
 {
 	FHOLAIArmyData Data = RulesHandData();
-	T.AssertTrue(RulesNear(HOLAIArmy::UnitValue(Data, RulesSpearman()), 80.f, 0.01f), "Spearman: 60 food + 20 wood");
+	T.AssertTrue(RulesNear(HOLAIArmy::UnitValue(Data, RulesHalberdier()), 80.f, 0.01f), "Halberdier: 60 food + 20 wood");
 	T.AssertTrue(RulesNear(HOLAIArmy::UnitValue(Data, RulesManAtArms()), 130.f, 0.01f), "Man-at-arms: 100 food + 20 gold x 1.5");
 	T.AssertTrue(RulesNear(HOLAIArmy::UnitValue(Data, RulesCrossbowman()), 140.f, 0.01f), "Crossbowman: 80 food + 40 gold x 1.5");
 	Data.GoldWeight = 2.f;
@@ -170,7 +170,7 @@ void Test_ArmyValueCountsHealthFraction(FUnitTest& T)
 {
 	const FHOLAIArmyData Data = RulesHandData();
 	FHOLAISummary Summary;
-	RulesAddUnits(Summary.Army, n"Spearman", 2, 80, 0);
+	RulesAddUnits(Summary.Army, n"Halberdier", 2, 80, 0);
 	RulesAddUnits(Summary.Army, n"Archer", 1, 35, 0);
 	T.AssertTrue(RulesNear(HOLAIArmy::ArmyValue(Data, Summary), 2.f * 80.f + 0.5f * 80.f, 0.01f), "two whole Spearmen and a half Archer: 160 + 40");
 	FHOLAISummary Empty;
@@ -182,7 +182,7 @@ void Test_ArmyEnemyValueSkipsPeasantsAndUnknown(FUnitTest& T)
 {
 	const FHOLAIArmyData Data = RulesHandData();
 	FHOLAISummary Summary;
-	RulesAddUnits(Summary.Army, n"Spearman", 3, 80, 0);
+	RulesAddUnits(Summary.Army, n"Halberdier", 3, 80, 0);
 	RulesAddUnits(Summary.Enemies, n"Peasant", 10, 50, 1);
 	RulesAddUnits(Summary.Enemies, n"Dragon", 2, 500, 1);
 	T.AssertTrue(RulesNear(HOLAIArmy::EnemyValue(Data, Summary), 0.f, 0.001f), "Peasants and an unknown type are no army");
@@ -210,14 +210,14 @@ void Test_ArmyPowerRatio(FUnitTest& T)
 	const FHOLAIArmyData Data = RulesHandData();
 	FHOLAISummary Strong;
 	RulesAddUnits(Strong.Army, n"Archer", 10, 70, 0);
-	RulesAddUnits(Strong.Enemies, n"Spearman", 2, 80, 1);
+	RulesAddUnits(Strong.Enemies, n"Halberdier", 2, 80, 1);
 	T.AssertTrue(HOLAIArmy::PowerRatio(Data, Strong) > 1.f, "10 Archers against 2 Spearmen: ahead");
 	FHOLAISummary Weak;
-	RulesAddUnits(Weak.Army, n"Spearman", 2, 80, 0);
+	RulesAddUnits(Weak.Army, n"Halberdier", 2, 80, 0);
 	RulesAddUnits(Weak.Enemies, n"Archer", 10, 70, 1);
 	T.AssertTrue(HOLAIArmy::PowerRatio(Data, Weak) < 1.f, "2 Spearmen against 10 Archers: behind");
 	FHOLAISummary NoArmy;
-	RulesAddUnits(NoArmy.Enemies, n"Spearman", 2, 80, 1);
+	RulesAddUnits(NoArmy.Enemies, n"Halberdier", 2, 80, 1);
 	T.AssertTrue(RulesNear(HOLAIArmy::PowerRatio(Data, NoArmy), 0.f, 0.001f), "no army against an army: 0");
 	FHOLAISummary Alone;
 	T.AssertTrue(HOLAIArmy::PowerRatio(Data, Alone) >= Data.LargeRatio, "nobody on either side: a large ratio");
@@ -243,7 +243,7 @@ void Test_ArmyCompositionCountersSpearmenWithArchers(FUnitTest& T)
 {
 	const FHOLAIArmyData Data = RulesHandData();
 	FHOLAISummary Summary;
-	RulesAddUnits(Summary.Enemies, n"Spearman", 6, 80, 1);
+	RulesAddUnits(Summary.Enemies, n"Halberdier", 6, 80, 1);
 	const FHOLAIComposition Choice = HOLAIArmy::ChooseComposition(Summary, Data);
 	T.AssertTrue(Choice.bCounter, "decided by the counter rule");
 	T.AssertTrue(Choice.Type == n"Archer", "6 Spearmen: Archers");
@@ -272,10 +272,10 @@ void Test_ArmyCompositionIgnoresEnemyPeasants(FUnitTest& T)
 	const FHOLAIComposition Choice = HOLAIArmy::ChooseComposition(Summary, Data);
 	T.AssertTrue(Choice.bValid, "a choice");
 	T.AssertFalse(Choice.bCounter, "the fixed mix");
-	T.AssertTrue(Choice.Type == n"Spearman", "nothing yet: the first of the mix");
+	T.AssertTrue(Choice.Type == n"Halberdier", "nothing yet: the first of the mix");
 }
 
-// No enemy: the type the most below its share of the mix (Spearman 2 : ManAtArms 1 : Archer 2 : Crossbowman 1).
+// No enemy: the type the most below its share of the mix (Halberdier 2 : ManAtArms 1 : Archer 2 : Crossbowman 1).
 void Test_ArmyCompositionFixedMix(FUnitTest& T)
 {
 	const FHOLAIArmyData Data = RulesHandData();
@@ -284,10 +284,10 @@ void Test_ArmyCompositionFixedMix(FUnitTest& T)
 	FHOLAIComposition Choice = HOLAIArmy::ChooseComposition(Summary, Data);
 	T.AssertTrue(Choice.bValid, "a choice with nothing at all");
 	T.AssertFalse(Choice.bCounter, "no enemy: the fixed mix");
-	T.AssertTrue(Choice.Type == n"Spearman", "empty army: Spearman (first of the mix)");
+	T.AssertTrue(Choice.Type == n"Halberdier", "empty army: Halberdier (first of the mix)");
 	T.AssertTrue(Choice.Building == n"Barracks", "made at the Barracks");
 
-	RulesAddUnits(Summary.Army, n"Spearman", 2, 80, 0);
+	RulesAddUnits(Summary.Army, n"Halberdier", 2, 80, 0);
 	RulesAddUnits(Summary.Army, n"Archer", 2, 70, 0);
 	Choice = HOLAIArmy::ChooseComposition(Summary, Data);
 	T.AssertTrue(Choice.Type == n"ManAtArms" || Choice.Type == n"Crossbowman", "2 Spearmen and 2 Archers: one of the two types still lacking");
@@ -317,7 +317,7 @@ void Test_ArmyCompositionFixedMix(FUnitTest& T)
 	// ... and once it waits too, every one of the 7 shares is filled: the first of the mix again.
 	Summary.Buildings[1].Queue.Add(n"Arquebusier");
 	Choice = HOLAIArmy::ChooseComposition(Summary, Data);
-	T.AssertTrue(Choice.Type == n"Spearman", "every type at its share: the first of the mix");
+	T.AssertTrue(Choice.Type == n"Halberdier", "every type at its share: the first of the mix");
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------
@@ -332,7 +332,7 @@ void Test_ArmyRealTableFigures(FUnitTest& T)
 	const int Heavy = Data.Types.FindIndex(n"ManAtArms");
 	const int Bolt = Data.Types.FindIndex(n"Crossbowman");
 	const int Bow = Data.Types.FindIndex(n"Archer");
-	const int Spear = Data.Types.FindIndex(n"Spearman");
+	const int Spear = Data.Types.FindIndex(n"Halberdier");
 	T.AssertTrue(Heavy >= 0 && Bolt >= 0 && Bow >= 0 && Spear >= 0, "the four types are known");
 	if (Heavy < 0 || Bolt < 0 || Bow < 0 || Spear < 0)
 	{
@@ -342,8 +342,8 @@ void Test_ArmyRealTableFigures(FUnitTest& T)
 	T.AssertTrue(RulesNear(HOLAIArmy::DamagePerSecond(Data.Figures[Bolt], Data.Figures[Heavy]), HOLAIArmy::DamagePerSecond(RulesCrossbowman(), RulesManAtArms()), 0.05f), "the table gives the typed-in Crossbowman on Man-at-arms");
 	T.AssertTrue(HOLAIArmy::Matchup(Data, Data.Figures[Bolt], Data.Figures[Heavy]) > 1.f, "table: the Crossbowman beats the Man-at-arms");
 	T.AssertTrue(HOLAIArmy::Matchup(Data, Data.Figures[Heavy], Data.Figures[Bow]) > 1.f, "table: the Man-at-arms beats the Archer");
-	T.AssertTrue(HOLAIArmy::Matchup(Data, Data.Figures[Bow], Data.Figures[Spear]) > 1.f, "table: the Archer beats the Spearman");
-	T.AssertTrue(HOLAIArmy::UnitValue(Data, Data.Figures[Heavy]) > HOLAIArmy::UnitValue(Data, Data.Figures[Spear]), "table: the Man-at-arms costs more than the Spearman");
+	T.AssertTrue(HOLAIArmy::Matchup(Data, Data.Figures[Bow], Data.Figures[Spear]) > 1.f, "table: the Archer beats the Halberdier");
+	T.AssertTrue(HOLAIArmy::UnitValue(Data, Data.Figures[Heavy]) > HOLAIArmy::UnitValue(Data, Data.Figures[Spear]), "table: the Man-at-arms costs more than the Halberdier");
 
 	FHOLAISummary Summary;
 	Summary.Tier = 3; // G1 (D711): every unit is open at tier 3
@@ -354,6 +354,6 @@ void Test_ArmyRealTableFigures(FUnitTest& T)
 
 	FHOLAISummary Ahead;
 	RulesAddUnits(Ahead.Army, n"Archer", 10, Data.Figures[Bow].Health, 0);
-	RulesAddUnits(Ahead.Enemies, n"Spearman", 2, Data.Figures[Spear].Health, 1);
+	RulesAddUnits(Ahead.Enemies, n"Halberdier", 2, Data.Figures[Spear].Health, 1);
 	T.AssertTrue(HOLAIArmy::PowerRatio(Data, Ahead) > 1.f, "table: 10 Archers against 2 Spearmen, ahead");
 }

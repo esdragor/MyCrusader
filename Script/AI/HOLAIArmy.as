@@ -272,6 +272,8 @@ namespace HOLAIArmy
 	{
 		FHOLAIArmyData Data;
 		Data.Types.Add(n"Spearman");
+		// D858: the Halberdier replaces the Spearman for the Dawn (the Spearman is the Legions' alone); both count in the power ratio, own and enemy.
+		Data.Types.Add(n"Halberdier");
 		Data.Types.Add(n"ManAtArms");
 		Data.Types.Add(n"Archer");
 		Data.Types.Add(n"Crossbowman");
@@ -279,6 +281,10 @@ namespace HOLAIArmy
 		// composition (its Stable is built and filled by HOLAICavalry, per level), and a table without the row leaves it with no health: it counts for nothing.
 		Data.Types.Add(n"LightCavalry");
 		Data.Candidates.Add(n"Spearman");
+		Data.CandidateBuildings.Add(n"Barracks");
+		Data.CandidateRatios.Add(2);
+		// D858: the Dawn's AI makes the Halberdier with the Spearman's share (2); the Spearman is the Legions' (see CandidateFactions below).
+		Data.Candidates.Add(n"Halberdier");
 		Data.CandidateBuildings.Add(n"Barracks");
 		Data.CandidateRatios.Add(2);
 		Data.Candidates.Add(n"ManAtArms");
@@ -302,7 +308,7 @@ namespace HOLAIArmy
 		for (int Index = 0; Index < Data.Candidates.Num(); Index++)
 		{
 			const FName Key = Data.Candidates[Index];
-			Data.CandidateFactions.Add(Key == n"Arquebusier" ? n"Dawn" : (Key == n"DamnedWarrior" ? n"Legions" : NAME_None));
+			Data.CandidateFactions.Add((Key == n"Arquebusier" || Key == n"Halberdier") ? n"Dawn" : ((Key == n"DamnedWarrior" || Key == n"Spearman") ? n"Legions" : NAME_None));
 		}
 		return Data;
 	}
