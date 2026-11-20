@@ -72,4 +72,18 @@ namespace HOLChatInput
 	{
 		return State.Channel == HOLChat::Private ? ChosenSlot : -1;
 	}
+
+	// "/w Name message" (B of the 2026-11-20 answer): what ParseWhisper decided about a typed text.
+	const int WhisperNone = 0;
+	const int WhisperOk = 1;
+	const int WhisperUnknown = 2;
+	const int WhisperEmpty = 3;
+
+	// STUB (red test first): never a whisper.
+	int ParseWhisper(const FString& Text, const TArray<FString>& Names, const TArray<int>& Slots, int& OutSlot, FString& OutMessage)
+	{
+		OutSlot = -1;
+		OutMessage = "";
+		return WhisperNone;
+	}
 }

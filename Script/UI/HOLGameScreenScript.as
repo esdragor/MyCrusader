@@ -132,6 +132,8 @@ FString TalentTipTexts = "";
 	UCommonTextBlock VolcanoText;
 	UHOLTopBarPanel TopBar;
 	UHOLCheatPanelScript CheatPanel;
+	// D807: the chat field (Enter opens it), bottom left above the hero block.
+	UHOLChatInputScreen ChatInput;
 	// HUD H-4: the players' table (HOLPlayerTable.as), drawn into the C++ screen's PlayersPanel.
 	UHOLPlayerTablePanel PlayerTable;
 	// HUD H-6: the control groups' bar (HOLGroupBar.as), drawn into the C++ screen's GroupsPanel.
@@ -320,6 +322,14 @@ UHOLScenarioPanelScript ScenarioPanel;
 		SelectionChipsBlock.Build(this, SelectionBlock);
 		BuildMinimap(Frame);
 		BuildTalentWindow(Frame);
+		// D807: the chat field, in a column at the bottom left (above the hero block); the pause screen and the cheats stay over it.
+		UVerticalBox ChatHost = Cast<UVerticalBox>(ConstructWidget(UVerticalBox, n"ChatInputHost"));
+		UOverlaySlot ChatSlot = Frame.AddChildToOverlay(ChatHost);
+		ChatSlot.SetHorizontalAlignment(EHorizontalAlignment::HAlign_Left);
+		ChatSlot.SetVerticalAlignment(EVerticalAlignment::VAlign_Bottom);
+		ChatSlot.SetPadding(FMargin(12.0, 0.0, 0.0, 220.0));
+		ChatInput = Cast<UHOLChatInputScreen>(NewObject(this, UHOLChatInputScreen));
+		ChatInput.Build(this, ChatHost);
 		// Last: over the other blocks.
 		BuildPauseScreen(Frame);
 		// H-11a: the cheats panel, built last so it stays over every other panel (the C++ panel was a viewport layer at z 1).
@@ -1427,11 +1437,36 @@ UHOLScenarioPanelScript ScenarioPanel;
 	}
 
 	UFUNCTION(BlueprintOverride)
+	// D807: the local player has an ally when some other slot of the match is Ally both ways (HOLChatInputScreen::HasAlly on the real stances).
+	bool LocalPlayerHasAlly()
+	{
+		const int Viewer = GetLocalSlot();
+		TArray<int> Mine;
+		TArray<int> Theirs;
+		TArray<bool> There;
+		for (int Slot = 0; Slot < DipMaxRows; ++Slot)
+		{
+			const bool bOther = Viewer >= 0 && Slot != Viewer && HOLDiplomacyRead::IsSlotInMatch(Slot);
+			There.Add(bOther);
+			Mine.Add(bOther ? HOLDiplomacyRead::GetStance(Viewer, Slot) : HOLDiplomacyRead::GetStanceEnemy());
+			Theirs.Add(bOther ? HOLDiplomacyRead::GetStance(Slot, Viewer) : HOLDiplomacyRead::GetStanceEnemy());
+		}
+		return HOLChatInputScreen::HasAlly(Viewer, Mine, Theirs, There);
+	}
+
+	// The chosen private target is not known by the screen yet (no selection in the Diplomacy panel): -1 and no name, so Tab skips Private (Q-chat-private-target, default C).
+	void RefreshChatInput()
+	{
+		if (ChatInput != nullptr)
+			ChatInput.SetContext(LocalPlayerHasAlly(), -1, "");
+	}
+
 	void Refresh()
 	{
 		// The block's place follows the bottom bar's scale (EtapeDefini T).
 		if (HeroPanelSlot != nullptr)
 			HeroPanelSlot.SetPadding(GetBottomLeftPlace());
+		RefreshChatInput();
 		RefreshHero();
 		RefreshFactionSlot();
 		RefreshDuel();
@@ -2438,6 +2473,8 @@ UHOLScenarioPanelScript ScenarioPanel;
 			ClickTalent();
 		if (KeyName == n"CtrlD")
 			ToggleDiplomacy();
+		if (ChatInput != nullptr)
+			ChatInput.KeyPressed(KeyName);
 	}
 
 	// H-11a: the cheats panel's bottom edge (0 before it is built): the AI level line and the diplomacy panel stack under it.
