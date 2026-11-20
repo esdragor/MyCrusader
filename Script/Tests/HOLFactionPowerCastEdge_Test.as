@@ -6,7 +6,7 @@
 
 namespace FactionPowerCastEdgeTest
 {
-	FHOLFactionPowerDecision Cast(int Faction, int PowerIndex, const FHOLFactionResource& Gauge, int CooldownEndMs, int NowMs,
+	FHOLFactionPowerDecision CastIt(int Faction, int PowerIndex, const FHOLFactionResource& Gauge, int CooldownEndMs, int NowMs,
 		int OriginX, int OriginY, int PointX, int PointY)
 	{
 		return HOLFactionPowerCast::Decide(Faction, PowerIndex, Gauge, CooldownEndMs, NowMs, OriginX, OriginY, PointX, PointY);
@@ -21,14 +21,14 @@ namespace FactionPowerCastEdgeTest
 	FHOLFactionPowerDecision CastTo(int PointX, int PointY)
 	{
 		FHOLFactionResource Full = FactionPowerCastTest::FullGauge();
-		return Cast(FactionPowerCastTest::Dawn(), 0, Full, 0, 0, 0, 0, PointX, PointY);
+		return CastIt(FactionPowerCastTest::Dawn(), 0, Full, 0, 0, 0, 0, PointX, PointY);
 	}
 }
 
 void Test_FactionPowerCastNegativeIndex(FUnitTest& T)
 {
 	FHOLFactionResource Full = FactionPowerCastTest::FullGauge();
-	FHOLFactionPowerDecision Result = FactionPowerCastEdgeTest::Cast(FactionPowerCastTest::Dawn(), -1, Full, 7000, 1000, 0, 0, 0, 0);
+	FHOLFactionPowerDecision Result = FactionPowerCastEdgeTest::CastIt(FactionPowerCastTest::Dawn(), -1, Full, 7000, 1000, 0, 0, 0, 0);
 	T.AssertFalse(Result.bAccepted, "a negative power index is refused");
 	T.AssertEquals(HOLFactionPowerCast::RefusalNoSuchPower(), Result.Refusal, "the reason is that the power does not exist");
 	T.AssertEquals(Full.Value, Result.NewGaugeValue, "a negative index leaves the gauge untouched");
@@ -44,27 +44,27 @@ void Test_FactionPowerCastRefusalPriority(FUnitTest& T)
 	const int NoPower = HOLDawnPowers::Rows().Num();
 
 	// (a) not the Dawn wins over everything else: invalid index, cool-down running, out of range, empty gauge.
-	FHOLFactionPowerDecision NotDawn = FactionPowerCastEdgeTest::Cast(Dawn + 1, -1, Empty, 9000, 1000, 0, 0, FarX, 0);
+	FHOLFactionPowerDecision NotDawn = FactionPowerCastEdgeTest::CastIt(Dawn + 1, -1, Empty, 9000, 1000, 0, 0, FarX, 0);
 	T.AssertEquals(HOLFactionPowerCast::RefusalNotDawn(), NotDawn.Refusal, "not the Dawn wins over an invalid index, a cool-down, a range and an empty gauge");
 
 	// (b) a power that does not exist wins over a running cool-down, a range and an empty gauge.
-	FHOLFactionPowerDecision NoSuch = FactionPowerCastEdgeTest::Cast(Dawn, NoPower, Empty, 9000, 1000, 0, 0, FarX, 0);
+	FHOLFactionPowerDecision NoSuch = FactionPowerCastEdgeTest::CastIt(Dawn, NoPower, Empty, 9000, 1000, 0, 0, FarX, 0);
 	T.AssertEquals(HOLFactionPowerCast::RefusalNoSuchPower(), NoSuch.Refusal, "no such power wins over a cool-down, a range and an empty gauge");
 
 	// (c) cool-down + out of range -> the cool-down.
-	FHOLFactionPowerDecision CooldownAndRange = FactionPowerCastEdgeTest::Cast(Dawn, 0, Full, 9000, 1000, 0, 0, FarX, 0);
+	FHOLFactionPowerDecision CooldownAndRange = FactionPowerCastEdgeTest::CastIt(Dawn, 0, Full, 9000, 1000, 0, 0, FarX, 0);
 	T.AssertEquals(HOLFactionPowerCast::RefusalCooldown(), CooldownAndRange.Refusal, "the cool-down is reported before the range");
 
 	// (d) out of range + empty gauge -> the range.
-	FHOLFactionPowerDecision RangeAndGauge = FactionPowerCastEdgeTest::Cast(Dawn, 0, Empty, 0, 0, 0, 0, FarX, 0);
+	FHOLFactionPowerDecision RangeAndGauge = FactionPowerCastEdgeTest::CastIt(Dawn, 0, Empty, 0, 0, 0, 0, FarX, 0);
 	T.AssertEquals(HOLFactionPowerCast::RefusalOutOfRange(), RangeAndGauge.Refusal, "the range is reported before an empty gauge");
 
 	// (e) cool-down + empty gauge -> the cool-down.
-	FHOLFactionPowerDecision CooldownAndGauge = FactionPowerCastEdgeTest::Cast(Dawn, 0, Empty, 9000, 1000, 0, 0, 0, 0);
+	FHOLFactionPowerDecision CooldownAndGauge = FactionPowerCastEdgeTest::CastIt(Dawn, 0, Empty, 9000, 1000, 0, 0, 0, 0);
 	T.AssertEquals(HOLFactionPowerCast::RefusalCooldown(), CooldownAndGauge.Refusal, "the cool-down is reported before an empty gauge");
 
 	// (f) all three at once (cool-down, range, empty gauge) -> the cool-down.
-	FHOLFactionPowerDecision AllThree = FactionPowerCastEdgeTest::Cast(Dawn, 0, Empty, 9000, 1000, 0, 0, FarX, 0);
+	FHOLFactionPowerDecision AllThree = FactionPowerCastEdgeTest::CastIt(Dawn, 0, Empty, 9000, 1000, 0, 0, FarX, 0);
 	T.AssertEquals(HOLFactionPowerCast::RefusalCooldown(), AllThree.Refusal, "with a cool-down, a range and an empty gauge the cool-down comes first");
 }
 
@@ -76,23 +76,23 @@ void Test_FactionPowerCastRefusalWritesNothing(FUnitTest& T)
 	const int Cooldown = 12345;
 
 	// A refusal hands back the cool-down end it was given (and the gauge it was given), whatever the reason.
-	FHOLFactionPowerDecision NotDawn = FactionPowerCastEdgeTest::Cast(Dawn + 1, 0, Full, Cooldown, 1, 0, 0, 0, 0);
+	FHOLFactionPowerDecision NotDawn = FactionPowerCastEdgeTest::CastIt(Dawn + 1, 0, Full, Cooldown, 1, 0, 0, 0, 0);
 	T.AssertFalse(NotDawn.bAccepted, "not the Dawn is refused");
 	T.AssertEquals(Cooldown, NotDawn.NewCooldownEndMs, "not the Dawn: cool-down end unchanged");
 	T.AssertEquals(Full.Value, NotDawn.NewGaugeValue, "not the Dawn: gauge unchanged");
 
-	FHOLFactionPowerDecision NoSuch = FactionPowerCastEdgeTest::Cast(Dawn, HOLDawnPowers::Rows().Num(), Full, Cooldown, 1, 0, 0, 0, 0);
+	FHOLFactionPowerDecision NoSuch = FactionPowerCastEdgeTest::CastIt(Dawn, HOLDawnPowers::Rows().Num(), Full, Cooldown, 1, 0, 0, 0, 0);
 	T.AssertFalse(NoSuch.bAccepted, "a power beyond the book is refused");
 	T.AssertEquals(Cooldown, NoSuch.NewCooldownEndMs, "no such power: cool-down end unchanged");
 	T.AssertEquals(Full.Value, NoSuch.NewGaugeValue, "no such power: gauge unchanged");
 
-	FHOLFactionPowerDecision Running = FactionPowerCastEdgeTest::Cast(Dawn, 0, Full, Cooldown, 1, 0, 0, 0, 0);
+	FHOLFactionPowerDecision Running = FactionPowerCastEdgeTest::CastIt(Dawn, 0, Full, Cooldown, 1, 0, 0, 0, 0);
 	T.AssertFalse(Running.bAccepted, "a running cool-down refuses");
 	T.AssertEquals(Cooldown, Running.NewCooldownEndMs, "cool-down refusal: cool-down end unchanged, not pushed back");
 	T.AssertEquals(Full.Value, Running.NewGaugeValue, "cool-down refusal: gauge unchanged");
 
 	// Ready (the clock is past the stored end), but out of range.
-	FHOLFactionPowerDecision Far = FactionPowerCastEdgeTest::Cast(Dawn, 0, Full, Cooldown, Cooldown + 1, 0, 0, FarX, 0);
+	FHOLFactionPowerDecision Far = FactionPowerCastEdgeTest::CastIt(Dawn, 0, Full, Cooldown, Cooldown + 1, 0, 0, FarX, 0);
 	T.AssertFalse(Far.bAccepted, "out of range is refused even when the cool-down has ended");
 	T.AssertEquals(Cooldown, Far.NewCooldownEndMs, "range refusal: cool-down end unchanged");
 	T.AssertEquals(Full.Value, Far.NewGaugeValue, "range refusal: gauge unchanged");
@@ -103,7 +103,7 @@ void Test_FactionPowerCastCooldownLongEnded(FUnitTest& T)
 	FHOLFactionResource Full = FactionPowerCastTest::FullGauge();
 	const int Now = 1000000;
 	// The stored end is far in the past: the remaining time is negative, which must read as "ready", and the new end counts from now.
-	FHOLFactionPowerDecision Result = FactionPowerCastEdgeTest::Cast(FactionPowerCastTest::Dawn(), 0, Full, 500, Now, 0, 0, 0, 0);
+	FHOLFactionPowerDecision Result = FactionPowerCastEdgeTest::CastIt(FactionPowerCastTest::Dawn(), 0, Full, 500, Now, 0, 0, 0, 0);
 	T.AssertTrue(Result.bAccepted, "a cool-down that ended long ago does not refuse");
 	int ExpectedEnd = HOLGroundAbility::CooldownEndMs(Now, HOLFactionPowerCast::SealCooldownMs());
 	T.AssertEquals(ExpectedEnd, Result.NewCooldownEndMs, "the new cool-down end counts from the cast, not from the old end");
@@ -148,9 +148,9 @@ void Test_FactionPowerCastNegativeDeltas(FUnitTest& T)
 	T.AssertTrue(DiagonalNeg.bAccepted, "the exact negative diagonal at the range is accepted");
 
 	// A non-zero origin, the point on the negative side of its circle.
-	FHOLFactionPowerDecision OnCircle = FactionPowerCastEdgeTest::Cast(Dawn, 0, Full, 0, 0, 1000, -500, 1000 - Range, -500);
+	FHOLFactionPowerDecision OnCircle = FactionPowerCastEdgeTest::CastIt(Dawn, 0, Full, 0, 0, 1000, -500, 1000 - Range, -500);
 	T.AssertTrue(OnCircle.bAccepted, "from a non-zero origin, a point at the range on the negative side is accepted");
-	FHOLFactionPowerDecision OffCircle = FactionPowerCastEdgeTest::Cast(Dawn, 0, Full, 0, 0, 1000, -500, 1000 - Range - 1, -500);
+	FHOLFactionPowerDecision OffCircle = FactionPowerCastEdgeTest::CastIt(Dawn, 0, Full, 0, 0, 1000, -500, 1000 - Range - 1, -500);
 	T.AssertFalse(OffCircle.bAccepted, "from a non-zero origin, one centimetre further is refused");
 }
 
@@ -164,11 +164,11 @@ void Test_FactionPowerCastHugeCoordinates(FUnitTest& T)
 	// by a wrapped distance (the client chooses the point).
 	FHOLFactionResource Full = FactionPowerCastTest::FullGauge();
 	const int Dawn = FactionPowerCastTest::Dawn();
-	FHOLFactionPowerDecision OneAxis = FactionPowerCastEdgeTest::Cast(Dawn, 0, Full, 0, 0, IntMin, 0, IntMax, 0);
+	FHOLFactionPowerDecision OneAxis = FactionPowerCastEdgeTest::CastIt(Dawn, 0, Full, 0, 0, IntMin, 0, IntMax, 0);
 	T.AssertFalse(OneAxis.bAccepted, "a delta of 2^32 - 1 cm on one axis is refused");
 	T.AssertEquals(HOLFactionPowerCast::RefusalOutOfRange(), OneAxis.Refusal, "one axis: the reason is the range");
 
-	FHOLFactionPowerDecision BothAxes = FactionPowerCastEdgeTest::Cast(Dawn, 0, Full, 0, 0, IntMin, IntMin, IntMax, IntMax);
+	FHOLFactionPowerDecision BothAxes = FactionPowerCastEdgeTest::CastIt(Dawn, 0, Full, 0, 0, IntMin, IntMin, IntMax, IntMax);
 	T.AssertFalse(BothAxes.bAccepted, "a delta of 2^32 - 1 cm on both axes is refused (no overflow acceptance)");
 	T.AssertEquals(HOLFactionPowerCast::RefusalOutOfRange(), BothAxes.Refusal, "both axes: the reason is the range");
 	T.AssertEquals(Full.Value, BothAxes.NewGaugeValue, "and the gauge is untouched");
