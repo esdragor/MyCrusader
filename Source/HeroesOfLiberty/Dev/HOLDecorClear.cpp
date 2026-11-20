@@ -36,8 +36,9 @@ namespace UE::HeroesOfLiberty::Decor
 		}
 	}
 
-	FDecorCount CountNear(const UWorld& World, const FVector2D& At, const double Radius)
+	FDecorCount CountNear(const UWorld& World, const FVector2D& At, const double Radius, const bool bSources)
 	{
+		(void)bSources; // STUB (red test first): the sources are not counted yet.
 		FDecorCount Count;
 		for (TActorIterator<AActor> It(const_cast<UWorld*>(&World)); It; ++It)
 		{
@@ -67,8 +68,9 @@ namespace UE::HeroesOfLiberty::Decor
 		return Count;
 	}
 
-	FDecorCount ClearNear(UWorld& World, const FVector2D& At, const double Radius)
+	FDecorCount ClearNear(UWorld& World, const FVector2D& At, const double Radius, const bool bSources)
 	{
+		(void)bSources; // STUB (red test first): the sources are not taken yet.
 		FDecorCount Taken;
 		TArray<AActor*> Grove;
 		TArray<TPair<UInstancedStaticMeshComponent*, TArray<int32>>> Scenery;

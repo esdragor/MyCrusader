@@ -9,6 +9,8 @@
 #include "Engine/World.h"
 #include "Materials/MaterialInstanceConstant.h"
 #include "Misc/AutomationTest.h"
+#include "Resources/HOLSourceSubsystem.h"
+#include "Resources/HOLSourceTypes.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
 
@@ -92,6 +94,51 @@ bool FHOLDecorClearTest::RunTest(const FString& Parameters)
 		TestEqual(TEXT("the far decor is still counted: two grove actors, two instances"), Far.Total(), 4);
 		const FDecorCount Again = ClearNear(*World, Origin, Radius);
 		TestEqual(TEXT("a second call takes nothing"), Again.Total(), 0);
+	}
+	GEngine->DestroyWorldContext(World);
+	World->DestroyWorld(false);
+	return true;
+}
+
+// hol.Decor.ClearNear ... Trees (HALDIR-1120pf, scenario neutrals_clairiere): the tree left in front of the camp is a WOOD SOURCE of the
+// registry. Effect on the real registry of a test world: a wood source within the radius is still standing after ClearNear without the
+// argument, gone after ClearNear with it; a far tree and a berry bush in the radius (not wood) stay.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLDecorClearSourcesTest, "HeroesOfLiberty.Dev.DecorClearSources", UE::HeroesOfLiberty::Tests::DecorClear::Flags)
+bool FHOLDecorClearSourcesTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Decor;
+
+	UWorld* World = UWorld::CreateWorld(EWorldType::Game, /*bInformEngineOfWorld*/ false);
+	FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);
+	Context.SetCurrentWorld(World);
+	World->InitializeActorsForPlay(FURL());
+
+	UHOLSourceSubsystem* Sources = World->GetSubsystem<UHOLSourceSubsystem>();
+	if (TestNotNull(TEXT("the source registry"), Sources))
+	{
+		Sources->OnWorldBeginPlay(*World);
+		const int32 NearTree = Sources->AddSource(HOLSourceTypeNames::Tree, FVector(500.0, 0.0, 0.0));
+		const int32 FarTree = Sources->AddSource(HOLSourceTypeNames::Tree, FVector(9000.0, 0.0, 0.0));
+		const int32 Berries = Sources->AddSource(HOLSourceTypeNames::BerryBush, FVector(0.0, 800.0, 0.0));
+		if (TestTrue(TEXT("three sources added"), NearTree != INDEX_NONE && FarTree != INDEX_NONE && Berries != INDEX_NONE))
+		{
+			const FVector2D Origin(0.0, 0.0);
+			const double Radius = 2000.0;
+			TestEqual(TEXT("before: the near tree is counted when the sources are asked"), CountNear(*World, Origin, Radius, true).Sources, 1);
+			TestEqual(TEXT("before: no source is counted without the argument"), CountNear(*World, Origin, Radius).Sources, 0);
+
+			const FDecorCount Without = ClearNear(*World, Origin, Radius);
+			TestEqual(TEXT("without the argument ClearNear takes no source"), Without.Sources, 0);
+			TestTrue(TEXT("EFFECT: the near tree is still standing without the argument"), Sources->GetSources()[NearTree].IsStanding());
+
+			const FDecorCount With = ClearNear(*World, Origin, Radius, true);
+			TestEqual(TEXT("with the argument ClearNear reports the one wood source it took"), With.Sources, 1);
+			TestFalse(TEXT("EFFECT: the near tree is gone with the argument"), Sources->GetSources()[NearTree].IsStanding());
+			TestTrue(TEXT("the far tree stays"), Sources->GetSources()[FarTree].IsStanding());
+			TestTrue(TEXT("the berry bush (not wood) stays"), Sources->GetSources()[Berries].IsStanding());
+			TestEqual(TEXT("no wood source left within the radius"), CountNear(*World, Origin, Radius, true).Sources, 0);
+			TestEqual(TEXT("a second call takes nothing"), ClearNear(*World, Origin, Radius, true).Total(), 0);
+		}
 	}
 	GEngine->DestroyWorldContext(World);
 	World->DestroyWorld(false);
