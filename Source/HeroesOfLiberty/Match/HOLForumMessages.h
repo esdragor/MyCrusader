@@ -75,6 +75,10 @@ struct FHOLForumMessage
 	TArray<int32> NamedSlots;
 	/** For the logs and the tests: "Message: Votre forum est tombé — 1 vie (alert)". */
 	FString Shown;
+	/** The thread's default time for a line (D833: a line may ask for longer, FHOLForumThread::AddText). */
+	static constexpr double DefaultLineSeconds = 8.0;
+	/** D833: how long this message's line stays in the thread before it goes (its last FadeSeconds fading). */
+	double LineSeconds = DefaultLineSeconds;
 };
 
 /** V4.1: the messages of the ruin, pure: no world, no actor. */
@@ -231,7 +235,8 @@ struct FHOLForumThreadLine
  */
 struct HEROESOFLIBERTY_API FHOLForumThread
 {
-	static constexpr double LineSeconds = 8.0;
+	/** The default time of a line (D833: each line carries its own, FHOLForumMessage::LineSeconds). */
+	static constexpr double LineSeconds = FHOLForumMessage::DefaultLineSeconds;
 	static constexpr double FadeSeconds = 0.5;
 	static constexpr int32 MaxLines = 5;
 
@@ -240,7 +245,10 @@ struct HEROESOFLIBERTY_API FHOLForumThread
 
 	void Add(const FHOLForumMessage& Message, double NowSeconds, int32 Slot = INDEX_NONE);
 
-	/** Drops the lines LineSeconds old or more; true if a line went. */
+	/** D833: a plain text line (a minor alert) staying Seconds; Seconds <= 0 = the default LineSeconds. */
+	void AddText(const FText& Text, double Seconds, double NowSeconds);
+
+	/** Drops the lines whose own FHOLForumMessage::LineSeconds is over; true if a line went. */
 	bool Expire(double NowSeconds);
 
 	/** 1, then down to 0 over the line's last FadeSeconds. */

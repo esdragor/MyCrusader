@@ -248,9 +248,12 @@ public:
 	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|UI")
 	static FLinearColor GetResourceColor(int32 Resource);
 
-	/** A minor alert's line in the C++ screen's thread of messages (D446), on this machine only. */
+	/**
+	 * A minor alert's line in the C++ screen's thread of messages (D446), on this machine only. D833: Seconds is how long it
+	 * stays; Seconds <= 0 (the default) = the thread's 8 s.
+	 */
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|UI")
-	void AddThreadLine(const FText& Line);
+	void AddThreadLine(const FText& Line, double Seconds = 0.0);
 
 	/** A HUD panel, the C++ screen's look (rounded, HOLUIStyle::HUDPanel), the only kind of widget taking clicks. */
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|UI")

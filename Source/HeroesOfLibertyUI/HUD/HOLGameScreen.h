@@ -105,7 +105,8 @@ public:
 	FString DescribeAlert() const;
 
 	/** D202: a minor alert's line in the thread of messages (the script's, HOLAlertRules.as), on this machine only, muted (D449). */
-	void AddThreadLine(const FText& Line);
+	/** Seconds <= 0 = the thread's default (FHOLForumThread::LineSeconds, 8 s); D833: a line may stay longer. */
+	void AddThreadLine(const FText& Line, double Seconds = 0.0);
 
 	/** True when a building of the shown player holds a finished unit for lack of room (D829); the script's panel reads it (UHOLScriptScreen::IsProductionHeldForRoom). */
 	bool IsProductionHeldForRoom() const;

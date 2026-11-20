@@ -468,11 +468,11 @@ FLinearColor UHOLScriptScreen::GetResourceColor(const int32 Resource)
 	}
 }
 
-void UHOLScriptScreen::AddThreadLine(const FText& Line)
+void UHOLScriptScreen::AddThreadLine(const FText& Line, const double Seconds)
 {
 	if (UHOLGameScreen* GameScreen = GetTypedOuter<UHOLGameScreen>())
 	{
-		GameScreen->AddThreadLine(Line);
+		GameScreen->AddThreadLine(Line, Seconds);
 	}
 }
 

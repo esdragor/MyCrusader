@@ -266,6 +266,34 @@ void Test_VictoryMessagesThread(FUnitTest& T)
 	T.AssertTrue(Own.Num() == 1 && Own[0].Slot == -1, "no name: one piece");
 }
 
+// HeroesOfLiberty.Victory.Messages.ThreadLineSeconds (D833): a line added with its own duration stays that long (the "Population
+// pleine" line, 15 s); a line added without one keeps the thread's 8 s. Asserts the EFFECT (the lines still there / gone).
+void Test_VictoryMessagesThreadLineSeconds(FUnitTest& T)
+{
+	UHOLForumThreadHolder Thread = UHOLForumThreadHolder::Create();
+	Thread.AddLine("Population pleine", 15.0, 100.0);
+	Thread.AddLine("Ordinaire", 0.0, 100.0);
+
+	// 8.1 s: the ordinary line is gone, the 15 s line stays.
+	T.AssertTrue(Thread.Expire(108.1), "the ordinary line goes at 8.1 s");
+	int Count = Thread.GetLineCount();
+	T.AssertEquals(1, Count, "only the 15 s line left at 8.1 s");
+	T.AssertEquals("[Population pleine]", Thread.Describe(), "the 15 s line is the one left");
+
+	// 14 s: still there, and opaque (its fade is its own last half second).
+	T.AssertFalse(Thread.Expire(114.0), "the 15 s line is still there at 14 s");
+	Count = Thread.GetLineCount();
+	T.AssertEquals(1, Count, "still one line at 14 s");
+	T.AssertEquals(1.0, Thread.GetLineOpacity(0, 114.0), "opaque at 14 s");
+	double Fading = Thread.GetLineOpacity(0, 114.75);
+	T.AssertTrue(Fading < 1.0 && Fading > 0.0, "fading in its last half second (14.75 s)");
+
+	// 15.1 s: expired.
+	T.AssertTrue(Thread.Expire(115.1), "the 15 s line goes at 15.1 s");
+	Count = Thread.GetLineCount();
+	T.AssertEquals(0, Count, "empty at 15.1 s");
+}
+
 // HeroesOfLiberty.Victory.Messages.LobbyNames: the names the lobby gave the slots, as the players' table, not "Joueur N".
 void Test_VictoryMessagesLobbyNames(FUnitTest& T)
 {
