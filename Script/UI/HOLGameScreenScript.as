@@ -1460,6 +1460,7 @@ UHOLScenarioPanelScript ScenarioPanel;
 		RefreshPause();
 		RefreshMinimap();
 		RefreshPopulationAlert();
+		RefreshMinorAlerts();
 		RefreshShortMessage();
 		if (CheatPanel != nullptr)
 		{
@@ -1556,6 +1557,41 @@ UHOLScenarioPanelScript ScenarioPanel;
 		}
 	}
 
+	// D804 B (Q-alerts-minor = B), the minor alerts that come from an event: a finished building or a finished research of the shown player
+	// (UHOLScriptScreen::GetMinorEventsNow, cumulative counters) is a line in the thread, the short alert sound and a ping on the minimap, one line
+	// per kind every 30 s (HOLAlertRules::MinorStep). Nothing for a spectator.
+	FHOLMinorWatch MinorWatch;
+
+	void RefreshMinorAlerts()
+	{
+		int Buildings = 0;
+		int Researches = 0;
+		FVector2D BuildingPlace;
+		FVector2D ResearchPlace;
+		if (!GetMinorEventsNow(Buildings, Researches, BuildingPlace, ResearchPlace))
+			return;
+		const float Now = Gameplay::GetTimeSeconds();
+		FHOLMinorStep Step = HOLAlertRules::MinorStep(MinorWatch, Buildings, Researches, Now);
+		if (Step.Building.bShow)
+			ShowMinorAlert(EHOLMinorAlertKind::BuildingDone, Step.Building, BuildingPlace);
+		if (Step.Research.bShow)
+			ShowMinorAlert(EHOLMinorAlertKind::ResearchDone, Step.Research, ResearchPlace);
+	}
+
+	// The line (for the alert's own seconds), the sound (the provisional ping until D804 B's own sounds exist: Alert.SoundKey is reserved for them),
+	// and the minimap ping at the place of the event when it is known (the accessor leaves the research's place at (0, 0), which is no place).
+	void ShowMinorAlert(EHOLMinorAlertKind Kind, const FHOLMinorAlert& Alert, const FVector2D& Place)
+	{
+		AddThreadLine(HOLAlertRules::MinorAlertText(Kind), Alert.LineSeconds);
+		PlayAlertSound();
+		if (Alert.bPingMinimap && (Math::Abs(Place.X) > 1.0 || Math::Abs(Place.Y) > 1.0))
+		{
+			FHOLMinimapAlert Ping;
+			Ping.X = Place.X;
+			Ping.Y = Place.Y;
+			MinimapAlerts.Add(Ping);
+		}
+	}
 	// H-2: the short message's place and the held production note (read from the C++ here, 4 times a second, the message and its journal lines at the front).
 	void RefreshShortMessage()
 	{
