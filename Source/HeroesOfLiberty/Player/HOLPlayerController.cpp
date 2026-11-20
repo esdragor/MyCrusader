@@ -1,6 +1,7 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "Player/HOLPlayerController.h"
+#include "Siege/HOLDeployRules.h"
 #include "Player/HOLAttackCursor.h"
 #include "Player/HOLControllerReadLibrary.h"
 
@@ -2294,6 +2295,38 @@ void AHOLPlayerController::GetGridCommands(TArray<FHOLGridCommand>& OutCommands)
 	{
 		OutCommands[Cell] = HOLCommandGrid::GetCommand(Context, Cell);
 	}
+}
+
+bool AHOLPlayerController::GetDeployProgress(int32& OutPhase, int32& OutPermille) const
+{
+	OutPhase = -1;
+	OutPermille = -1;
+	int32 Phase = -1;
+	for (const uint32 UnitId : GetCommandUnits())
+	{
+		FHOLUnitView View;
+		if (GetWorld() && HOLUnitView::Find(*GetWorld(), UnitId, View) && (View.DeployPhase == 1 || View.DeployPhase == 3))
+		{
+			Phase = View.DeployPhase;
+			break;
+		}
+	}
+	const double Now = GetWorld() ? GetWorld()->GetTimeSeconds() : 0.0;
+	if (Phase != DeployWatchedPhase)
+	{
+		DeployWatchedPhase = Phase;
+		DeployWatchedSince = Now;
+	}
+	if (Phase < 0)
+	{
+		return false;
+	}
+	HOLDeploy::FState State;
+	State.Phase = HOLDeploy::PhaseAt(Phase);
+	State.ElapsedMs = FMath::RoundToInt((Now - DeployWatchedSince) * 1000.0);
+	OutPhase = Phase;
+	OutPermille = HOLDeploy::ProgressPermille(State, HOLDeploy::DefaultProfile(), 0); // Counterweight is not read by the client yet
+	return true;
 }
 
 void AHOLPlayerController::GetUnitsContext(FHOLGridContext& Context) const

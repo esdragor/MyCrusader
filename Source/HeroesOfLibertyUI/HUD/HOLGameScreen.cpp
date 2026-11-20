@@ -41,6 +41,7 @@
 #include "Match/HOLForumRules.h"
 #include "Match/HOLGameState.h"
 #include "Siege/HOLSiegeRules.h"
+#include "Siege/HOLDeployRules.h"
 #include "Simulation/HOLUnitTierSubsystem.h"
 #include "Match/HOLPlayerColors.h"
 #include "Match/HOLPlayerState.h"
@@ -1022,6 +1023,27 @@ void UHOLGameScreen::GetGroupTypes(const int32 Group, TArray<FString>& OutNames,
 	}
 }
 
+namespace
+{
+	/** D869b: while the selected engine mounts / dismounts, the case D's face (label + text bar) and the key that makes the cell redraw as the bar fills. */
+	bool ReadDeployFace(const APlayerController* Owner, FText& OutFace, FName& OutKey)
+	{
+		int32 Phase = -1;
+		int32 Permille = -1;
+		const AHOLPlayerController* HOLController = Cast<AHOLPlayerController>(Owner);
+		if (!HOLController || !HOLController->GetDeployProgress(Phase, Permille) || Permille < 0)
+		{
+			return false;
+		}
+		const bool bMounting = HOLDeploy::ButtonLabel(HOLDeploy::PhaseAt(Phase)) == 2;
+		const int32 Filled = FMath::Clamp(Permille * 8 / 1000, 0, 8);
+		const FString Bar = FString::ChrN(Filled, TEXT('#')) + FString::ChrN(8 - Filled, TEXT('-'));
+		OutFace = FText::FromString(FString::Printf(TEXT("%s\n[%s]"), bMounting ? TEXT("Montage\u2026") : TEXT("D\u00E9montage\u2026"), *Bar));
+		OutKey = FName(*FString::Printf(TEXT("%s%d"), bMounting ? TEXT("Mounting") : TEXT("Dismounting"), Filled));
+		return true;
+	}
+}
+
 void UHOLGameScreen::RefreshGrid(const AHOLBuilding* OwnBuilding, const bool bOwnGroup, const AHOLPlayerState* PlayerState)
 {
 	using namespace UE::HeroesOfLiberty::UI::GameScreen;
@@ -1073,7 +1095,7 @@ void UHOLGameScreen::RefreshGrid(const AHOLBuilding* OwnBuilding, const bool bOw
 		{
 			ShownOrderTypes[Cell] = Command.Command == EHOLGridCommand::AttackMove ? FName(TEXT("AttackMove"))
 				: Command.Command == EHOLGridCommand::Stop ? FName(TEXT("Stop")) : Command.Command == EHOLGridCommand::Hold ? FName(TEXT("Hold"))
-				: Command.Command == EHOLGridCommand::Deploy ? FName(Command.bPack ? TEXT("Pack") : TEXT("Deploy")) : NAME_None;
+				: Command.Command == EHOLGridCommand::Deploy ? ([&]() { FText Face; FName Key; return ReadDeployFace(GetOwningPlayer(), Face, Key) ? Key : FName(Command.bPack ? TEXT("Pack") : TEXT("Deploy")); })() : NAME_None;
 		}
 		// HUD H-10: the cell is the script's; what it shows is written to the cache the script's panel applies (same method names, the switch is as it was).
 		FHOLGridCellFill* GridCell = &GridFrameFill[Cell];
@@ -1251,7 +1273,9 @@ void UHOLGameScreen::RefreshGrid(const AHOLBuilding* OwnBuilding, const bool bOw
 			break;
 		case EHOLGridCommand::Deploy:
 			// G6 d: PROPOSED labels (Retours/Q-palier3-deploy-button.md); no icon yet, the cell shows its text (Placeholders.txt).
-			GridCell->SetCommand(Command.bPack ? LOCTEXT("Pack", "Démonter") : LOCTEXT("Deploy", "Monter"), EHOLGridCellState::Ready);
+			FText DeployFace; FName DeployKey; // D869b: the face while mounting / dismounting (label + bar), the settled label otherwise
+			const bool bChanging = ReadDeployFace(GetOwningPlayer(), DeployFace, DeployKey);
+			GridCell->SetCommand(bChanging ? DeployFace : Command.bPack ? LOCTEXT("Pack", "Démonter") : LOCTEXT("Deploy", "Monter"), EHOLGridCellState::Ready);
 			GridCell->SetTooltip(Command.bPack ? LOCTEXT("PackName", "Démonter l'engin") : LOCTEXT("DeployName", "Monter l'engin"),
 				FHOLResources(), FHOLResources(),
 				Command.bPack ? LOCTEXT("PackEffect", "Replie l'engin : il ne tire plus, il peut marcher")

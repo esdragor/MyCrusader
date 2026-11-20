@@ -478,6 +478,13 @@ public:
 	 */
 	TArray<uint32> GetCommandUnits() const;
 	/**
+	 * D869b: the selected engine that is deploying (1) or packing (3): its phase and its bar (permille, HOLDeploy::ProgressPermille), from the LOCAL
+	 * time since this phase was first seen (the client receives the phase only, not the elapsed time). False when none is changing state.
+	 */
+	bool GetDeployProgress(int32& OutPhase, int32& OutPermille) const;
+	mutable int32 DeployWatchedPhase = -1;
+	mutable double DeployWatchedSince = 0.0;
+	/**
 	 * Asks the server to have units gather a resource source (J5, D298); it sends only the player's own. bQueue (Shift): at
 	 * the end of their queue, after their sites (the user's trial of J6a.4).
 	 */
