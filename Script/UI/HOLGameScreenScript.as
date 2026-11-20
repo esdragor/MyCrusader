@@ -1689,10 +1689,8 @@ UHOLScenarioPanelScript ScenarioPanel;
 			TArray<FHOLReceivedSignal> Signals = SignalViewer.GetActiveSignals();
 			for (int Index = 0; Index < Signals.Num(); Index++)
 			{
-				FHOLMinimapMark SignalMark;
-				SignalMark.Position = HOLMinimap::ToPicture(MinimapFrame, FVector2D(Signals[Index].Location.X, Signals[Index].Location.Y));
-				SignalMark.Color = Signals[Index].Color;
-				SignalMark.Size = 10.0;
+				// D860 H2: the square pulses like the ground's mark, on the game's clock (the one Expire reads).
+				FHOLMinimapMark SignalMark = HOLSignalMarks::Mark(MinimapFrame, Signals[Index].Location, Signals[Index].Color, Signals[Index].ReceivedAt, Gameplay::GetTimeSeconds());
 				Marks.Add(SignalMark);
 				if (Signals.Num() != MinimapSignalsLogged)
 					Log(n"LogHOLMatch", f"Minimap signal mark at ({SignalMark.Position.X}, {SignalMark.Position.Y}) px of {MinimapSize}, received at {Signals[Index].ReceivedAt} s");

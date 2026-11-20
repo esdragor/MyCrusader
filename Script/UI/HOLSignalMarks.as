@@ -12,7 +12,7 @@ namespace HOLSignalMarks
 		FHOLMinimapMark Out;
 		Out.Position = HOLMinimap::ToPicture(Frame, FVector2D(Location.X, Location.Y));
 		Out.Color = Color;
-		Out.Size = BaseSize;
+		Out.Size = BaseSize * HOLSignalInputRead::PulseScale(Now - ReceivedAt);
 		return Out;
 	}
 }
