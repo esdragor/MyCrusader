@@ -71,10 +71,14 @@ namespace HOLChatInputScreen
 		return "";
 	}
 
-	// STUB (ARWEN-1120pj, red first): whether an Enter heard while the field is closed opens it. Real body in the next commit.
+	// The pause after a commit of the field during which an Enter is still the same press (the polled Enter of the commit's own press). Kept short: the
+	// 2nd Enter of a real player or of a scenario comes ~0.2 s later and must reopen the field (RECETTE-1120pa, ARWEN-1120pj; it was 0.25 s).
+	const float SamePressSeconds = 0.1;
+
+	// Whether an Enter heard while the field is closed opens it: the field is closed and the last commit is older than SamePressSeconds.
 	bool EnterOpensField(bool bOpen, float Now, float LastCommitTime)
 	{
-		return false;
+		return !bOpen && Now - LastCommitTime > SamePressSeconds;
 	}
 
 	// True when some slot other than the viewer is present and the stance is Ally both ways (D369: an alliance needs both sides).
@@ -178,7 +182,7 @@ class UHOLChatInputScreen : UObject
 	// A key the screen heard (KeyPressed of UHOLScriptScreen). Enter only opens: once open, the text box's own commit carries Enter, Escape and Tab.
 	void KeyPressed(FName KeyName)
 	{
-		if (KeyName == n"Enter" && !State.bOpen && Gameplay::GetTimeSeconds() - LastCommitTime > 0.25)
+		if (KeyName == n"Enter" && HOLChatInputScreen::EnterOpensField(State.bOpen, Gameplay::GetTimeSeconds(), LastCommitTime))
 		{
 			HandleEnter();
 		}
@@ -278,6 +282,13 @@ class UHOLChatInputScreen : UObject
 	{
 		if (!State.bOpen)
 		{
+			// The box kept the keyboard focus after the send (its panel is only collapsed): Slate gives it the next Enter, the polled path never sees it.
+			// A closed field that hears Enter by its own commit opens (ARWEN-1120pj).
+			if (CommitMethod == ETextCommit::OnEnter && HOLChatInputScreen::EnterOpensField(State.bOpen, Gameplay::GetTimeSeconds(), LastCommitTime))
+			{
+				LastCommitTime = Gameplay::GetTimeSeconds();
+				HandleEnter();
+			}
 			return;
 		}
 		LastCommitTime = Gameplay::GetTimeSeconds();
