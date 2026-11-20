@@ -3,7 +3,7 @@
 STATUT : VU À L'ÉCRAN
 GESTE: interne      (hol.UI.Key D = événement clavier Slate, le chemin d'une vraie touche D ; mais les clics droits sont `hol.Select.OrderNear`, un appel interne : l'essai reste LOGIQUE SEULEMENT pour le geste tant que la ligne dit interne)
 SON: non entendu
-branches: main, integ-25 24c73b7
+branches: main f46dc2d (integ-37, contient integ-25 24c73b7) ; rejoue sur Arwen par RECETTE-1120sb 2026-11-21 00:14 : preflight deploy PASS (43 s, 13 PNG), 1 diese pendant le montage, Monter au retour du 2e cycle, VU A L'ECRAN
 
 Règle (L7-6) : un essai de GESTE ou de SON reste LOGIQUE SEULEMENT tant que la ligne dit `interne` ou `non entendu`.
 

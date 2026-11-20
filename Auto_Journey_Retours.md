@@ -1,6 +1,6 @@
 # Auto_Journey : ce qui attend l'utilisateur
 
-**ÉTAT AU 2026-11-20 17:27 : 0 essai à jouer (E-neutrals_clairiere joué OK, archivé). Questions ouvertes : 0** (aucune fiche Q-*.md [À RÉPONDRE] dans Retours\ ; E-audio_panel est [NE PAS JOUER], E-playtest_hero_army est LOGIQUE SEULEMENT)**.** Les 6 questions de 15:5x à 16:1x (Q-deploy-visible, Q-chat-private-target sans fiche, Q-chevalier-ligne, Q-garrison-portrait, Q-chevalier-defi-ligne, Q-garrison-cell) sont répondues et archivées dans Docs\Archive\Retours_2026-11-20\ = GDD D871 à D876 (lignes `[ ]` en tête des sections Elrond, Galadriel et Sauron d'Auto_Journey_File.md) ; recette de 17:1x : 3 défauts en file (deploy partiel, 2e Entrée du chat, scénario virtuous_knight). main = 2868866 (LOCAL, RIEN POUSSÉ).
+**ÉTAT AU 2026-11-21 00:2x : 2 essais à essayer (deploy, virtuous_knight), 0 à répondre (E-neutrals_clairiere joué OK, archivé). Questions ouvertes : 0** (aucune fiche Q-*.md [À RÉPONDRE] dans Retours\ ; E-audio_panel est [NE PAS JOUER], E-playtest_hero_army est LOGIQUE SEULEMENT)**.** Les 6 questions de 15:5x à 16:1x (Q-deploy-visible, Q-chat-private-target sans fiche, Q-chevalier-ligne, Q-garrison-portrait, Q-chevalier-defi-ligne, Q-garrison-cell) sont répondues et archivées dans Docs\Archive\Retours_2026-11-20\ = GDD D871 à D876 (lignes `[ ]` en tête des sections Elrond, Galadriel et Sauron d'Auto_Journey_File.md) ; recette de 17:1x : 3 défauts en file (deploy partiel, 2e Entrée du chat, scénario virtuous_knight). main = f46dc2d (local, rien poussé).
 
 Ce fichier ne contient que la manière de faire ; bilans de séance et fusions : `Auto_Journey_Jour.md`. Anciens contenus : `Docs\Archive\Auto_Journey_Retours_jusqu_au_2026-11-09.md` (jusqu'au 2026-11-09), `Docs\Archive\Auto_Journey_Retours_fusions_2026-11-10_archive_2026-11-11.md` (fusions du 2026-11-10) et `Docs\Archive\Auto_Journey_Retours_2026-11-13_matin_archive_2026-11-13.md` (en-tête de 10:2x, fusion du 2026-11-12, décisions en attente à 14:05) et `Docs\Archive\Auto_Journey_Retours_2026-11-15_archive_2026-11-16.md` (en-tête « Précédent (2026-11-15) ») et `Docs\Archive\Auto_Journey_Retours_2026-11-16_apres-midi_archive_2026-11-16.md` (en-tête de la séance interactive du 2026-11-16 après-midi).
 
@@ -13,3 +13,12 @@ Ce fichier ne contient que la manière de faire ; bilans de séance et fusions :
 - Un essai est listé **seulement s'il est testable** : `Tools\Scenarios\preflight.ps1` PASS, statut `VU À L'ÉCRAN` (sinon `LOGIQUE SEULEMENT`, jamais compté prêt), 3 min maximum, commande `play.ps1` en chemin absolu (PowerShell), gestes précis. Sinon : « scénario à créer » dans la file. Règles complètes : `Auto_Journey.md`, « Qualité des essais ».
 
 **Historique** (état du 2026-11-13 21:4x, fusions récentes, essais joués et suites du 2026-11-14) : archivé tel quel le 2026-11-15 dans `Docs\Archive\Auto_Journey_Retours_historique_2026-11-14_archive_2026-11-15.md`.
+
+## 1. Essais à jouer (2026-11-21 00:2x, recette RECETTE-1120sb sur main f46dc2d, Arwen : VU À L'ÉCRAN, GESTE: interne, SON: non entendu)
+- [À ESSAYER] `deploy` (fiche `Retours\E-deploy.md`, environ 2 min) : D monte puis démonte le Mangonneau (case D « Montage… » avec barre, puis « Démonter »), clic droit au sol le démonte puis le fait marcher, clic droit sur la Maison le monte puis il tire. Commande : `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Arwen\Tools\Scenarios\play.ps1 deploy -Root C:\Users\baudo\Documents\HeroesOfLiberty-Arwen`
+  Reponse:
+- [À ESSAYER] `virtuous_knight` (fiche `Retours\E-virtuous_knight.md`, environ 1 min) : la case E de la Caserne Aube est le Chevalier Vertueux (active) ; un Chevalier en garde perd des PV quand un allié proche est frappé, sans coup direct. Commande : `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Arwen\Tools\Scenarios\play.ps1 virtuous_knight -Root C:\Users\baudo\Documents\HeroesOfLiberty-Arwen`
+  Reponse:
+
+## 3. État de main
+- main = f46dc2d (local, rien poussé).
