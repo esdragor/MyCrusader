@@ -61,3 +61,19 @@ void Test_GameNamesHalberdierName(FUnitTest& T)
 		T.AssertTrue(Halberdier == "Hallebardier", "the Halberdier reads Hallebardier in French, not the raw key");
 	}
 }
+// SAURON-1120pb (D864, D865): the Dawn's Virtuous Knight joins the Barracks grid; like the Halberdier before it, HOLGameNames::GetUnitName needs a line for it.
+// In French (the source text) it reads "Chevalier Vertueux" (GDD name), never the raw type key.
+// C++: HOLGameNames.cpp line for VirtuousKnight (not compiled yet; to build with the session's C++ lot).
+void Test_GameNamesVirtuousKnightName(FUnitTest& T)
+{
+	FString Knight = HOLGameNamesRead::GetUnitName(n"VirtuousKnight").ToString();
+	T.AssertFalse(Knight.IsEmpty(), "the Virtuous Knight's name is not empty");
+	T.AssertFalse(Knight == HOLGameNamesRead::GetUnitName(n"ManAtArms").ToString(), "the Virtuous Knight's name is not the Man-at-arms'");
+	T.AssertFalse(Knight == HOLGameNamesRead::GetUnitName(n"Halberdier").ToString(), "the Virtuous Knight's name is not the Halberdier's");
+
+	// French only: the script cannot switch the language (see the header of this file).
+	if (HOLGameNamesRead::GetUnitName(n"Spearman").ToString() == "Lancier")
+	{
+		T.AssertTrue(Knight == "Chevalier Vertueux", "the Virtuous Knight reads Chevalier Vertueux in French, not the raw key");
+	}
+}

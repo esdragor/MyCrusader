@@ -520,6 +520,8 @@ TRANSLATIONS = {
     "HOLGameNames,Spearman": ("Spearman", "槍兵"),
     # Sauron 1120d (D859): the Dawn Halberdier. JA 戟兵 = the word already used by the tech stat keys below. JA is a proposal, to be read again by the user.
     "HOLGameNames,Halberdier": ("Halberdier", "戟兵"),
+    # Sauron 1120pb (D864): the Dawn Virtuous Knight (name from the GDD). JA is a proposal, to be read again by the user.
+    "HOLGameNames,VirtuousKnight": ("Virtuous Knight", "高潔の騎士"),
     "HOLGameNames,ManAtArms": ("Man-at-Arms", "重装歩兵"),
     "HOLGameNames,Archer": ("Archer", "弓兵"),
     "HOLGameNames,Crossbowman": ("Crossbowman", "弩兵"),

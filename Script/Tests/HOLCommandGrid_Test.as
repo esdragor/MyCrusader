@@ -587,7 +587,8 @@ void Test_CGTables(FUnitTest& T)
 	T.AssertTrue(HOLCommandGridRules::GetCommand(Barracks, 1).Command == EHOLGridCommandKind::Produce && HOLCommandGridRules::GetCommand(Barracks, 1).TypeName == n"Halberdier", "Barracks, Z: produce a Halberdier (D858)");
 	T.AssertTrue(HOLCommandGridRules::GetCommand(Barracks, 2).Command == EHOLGridCommandKind::Produce && HOLCommandGridRules::GetCommand(Barracks, 2).TypeName == n"ManAtArms", "Barracks, E: produce a Man-at-arms");
 	T.AssertTrue(HOLCommandGridRules::GetCommand(Barracks, 3).Command == EHOLGridCommandKind::Produce && HOLCommandGridRules::GetCommand(Barracks, 3).TypeName == n"DamnedWarrior", "Barracks, R: produce a Damned Warrior (L4)");
-	for (int Cell = 4; Cell < HOLCommandGridRules::GetNumCells(); Cell++)
+	T.AssertTrue(HOLCommandGridRules::GetCommand(Barracks, 4).Command == EHOLGridCommandKind::Produce && HOLCommandGridRules::GetCommand(Barracks, 4).TypeName == n"VirtuousKnight", "Barracks, T: produce a Virtuous Knight (D864; the Dawn's grid is then A Halberdier, Z Man-at-arms, E Virtuous Knight through FilterProduces)");
+	for (int Cell = 5; Cell < HOLCommandGridRules::GetNumCells(); Cell++)
 	{
 		T.AssertTrue(HOLCommandGridRules::GetCommand(Barracks, Cell).Command == EHOLGridCommandKind::None, "Barracks: the other cells are empty");
 	}

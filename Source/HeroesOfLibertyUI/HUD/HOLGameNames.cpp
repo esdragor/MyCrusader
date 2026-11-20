@@ -55,6 +55,11 @@ namespace HOLGameNames
 			// D858 (the Dawn's Barracks lists the Halberdier instead of the Spearman), translated in Tools/Localization/fill_po.py (SAURON-1120d).
 			return LOCTEXT("Halberdier", "Hallebardier");
 		}
+		if (TypeName == FName(TEXT("VirtuousKnight")))
+		{
+			// D864 (the Dawn's Virtuous Knight, Barracks, damage redirection), translated in Tools/Localization/fill_po.py (SAURON-1120pb). Not compiled.
+			return LOCTEXT("VirtuousKnight", "Chevalier Vertueux");
+		}
 		if (TypeName == ManAtArms)
 		{
 			return LOCTEXT("ManAtArms", "Homme d'armes");

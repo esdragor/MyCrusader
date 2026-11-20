@@ -207,9 +207,13 @@ if ($Parts -contains "values") {
         $ValuesChecks["value_consumers.py --check ($($ConsumersOutput | Select-Object -Last 1))"] = ($LASTEXITCODE -eq 0)
         $UnitStatsOutput = @(python -I (Join-Path $PSScriptRoot "..\Data\unit_stats_test.py") 2>&1)
         $ValuesChecks["unit_stats_test.py ($($UnitStatsOutput | Select-Object -Last 1))"] = ($LASTEXITCODE -eq 0)
+        $UnitColumnsOutput = @(python -I (Join-Path $PSScriptRoot "..\Data\unit_columns_declared_test.py") 2>&1)
+        $ValuesChecks["unit_columns_declared_test.py ($($UnitColumnsOutput | Select-Object -Last 1))"] = ($LASTEXITCODE -eq 0)
         $UnitAbilitiesOutput = @(python -I (Join-Path $PSScriptRoot "..\Data\unit_abilities_test.py") 2>&1)
         $ValuesChecks["unit_abilities_test.py ($($UnitAbilitiesOutput | Select-Object -Last 1))"] = ($LASTEXITCODE -eq 0)
-        $LegionsWarriorOutput = @(python -I (Join-Path $PSScriptRoot "legions_warrior_test.py") 2>&1)
+        $VirtuousKnightOutput = @(python -I (Join-Path $PSScriptRoot "virtuous_knight_test.py") 2>&1)
+$ValuesChecks["virtuous_knight_test.py ($($VirtuousKnightOutput | Select-Object -Last 1))"] = ($LASTEXITCODE -eq 0)
+$LegionsWarriorOutput = @(python -I (Join-Path $PSScriptRoot "legions_warrior_test.py") 2>&1)
         $ValuesChecks["legions_warrior_test.py ($($LegionsWarriorOutput | Select-Object -Last 1))"] = ($LASTEXITCODE -eq 0)
         # S7: FHOLMapInfo::NumSites (greys the box "Sites sacres") = the sites each map's file lays (Tools/Editor/maps, common.py SITE_COUNTS).
         $SiteCountOutput = @(python -I (Join-Path $PSScriptRoot "site_count_accord_test.py") 2>&1)
@@ -4506,8 +4510,8 @@ if (($Parts -contains "build") -and ($Parts -contains "camera")) {
     $Checks["the keys A, Q: the ghost, placed, built by the three, finished"] = [bool]($Barracks | Select-String -Pattern "Placement: Barracks \(cost F 0 W 150 S 0 G 0\)" -Quiet) -and
         [bool]($Barracks | Select-String -Pattern "Build order of slot 0: 3 units to $At$" -Quiet) -and [bool]($Barracks | Select-String -Pattern "Construction: slot 0 finished $At" -Quiet)
     $BarracksCells = @($Barracks | Select-String -Pattern "HUD cells: (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value })
-    $Checks["the barracks selected: A Hallebardier, Z Homme d'armes, no Archer (AR-Q2) ($(@($BarracksCells | Select-Object -Last 1)))"] = ($BarracksCells.Count -ge 2) -and
-        [bool]($BarracksCells[-1] -match "^A: Hallebardier; Z: Homme d'armes(; W: .+)?$")
+    $Checks["the barracks selected: A Hallebardier, Z Homme d'armes, E Chevalier Vertueux, no Archer (AR-Q2) ($(@($BarracksCells | Select-Object -Last 1)))"] = ($BarracksCells.Count -ge 2) -and
+        [bool]($BarracksCells[-1] -match "^A: Hallebardier; Z: Homme d'armes; E: Chevalier Vertueux(; W: .+)?$")
     # The ground point under the cursor, a few cm off the camera's focus (as the group's rally point of J6a.5).
     $RallyAt = if ([string](& $Value $Barracks "(Rally: slot 0 set the rally point of Barracks at .*)$") -match "at \((-?\d+), (-?\d+)\)") { @([int]$Matches[1], [int]$Matches[2]) } else { @() }
     $Checks["its rally point by a right click ($($RallyAt -join ', '))"] = ($RallyAt.Count -eq 2) -and ([Math]::Abs($RallyAt[0] - $BarracksRally[0]) -le 50) -and
