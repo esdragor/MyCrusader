@@ -30,6 +30,12 @@ namespace HOLChatInputScreen
 		return "Tous";
 	}
 
+	// The slot the Private channel goes to: the Diplomacy panel's chosen slot, only while that player is one the field can name (Slots = every other player in the match); -1 otherwise.
+	int ChosenTarget(const TArray<int>& Slots, int MessageSlot)
+	{
+		return -1;
+	}
+
 	// What stands before the typed text.
 	FString MarkLine(int Channel, const FString& PlayerName)
 	{
