@@ -40,6 +40,20 @@ void Test_AlertPopulationFullRepeat(FUnitTest& T)
 	T.AssertTrue(HOLAlertRules::PopulationRepeatSeconds >= 2.0, "the default delay (Q-alerts-minor) is a real delay");
 }
 
+// D833: the population full line goes at most once every 15 s, with the screen's own delay (HOLAlertRules::PopulationRepeatSeconds), not a test's value.
+void Test_AlertPopulationFullAtMostOncePer15s(FUnitTest& T)
+{
+	const float Delay = HOLAlertRules::PopulationRepeatSeconds;
+	T.AssertEquals(15.0, Delay, "the screen's delay between two population full lines is 15 s");
+	FHOLPopulationAlertWatch Watch;
+	T.AssertTrue(HOLAlertRules::ShouldAlertPopulationFull(Watch, 10, 10, 0.0, Delay), "full: the first line goes");
+	// A place is freed and taken again: full again 14 s after the line stays quiet, 16 s after it a new line goes.
+	T.AssertFalse(HOLAlertRules::ShouldAlertPopulationFull(Watch, 9, 10, 5.0, Delay), "a place freed");
+	T.AssertFalse(HOLAlertRules::ShouldAlertPopulationFull(Watch, 10, 10, 14.0, Delay), "full again 14 s after the line: quiet");
+	T.AssertFalse(HOLAlertRules::ShouldAlertPopulationFull(Watch, 9, 10, 15.0, Delay), "a place freed again");
+	T.AssertTrue(HOLAlertRules::ShouldAlertPopulationFull(Watch, 10, 10, 16.0, Delay), "full again 16 s after the first line: a new line");
+}
+
 void Test_AlertAttackedElsewhereOncePer30s(FUnitTest& T)
 {
 	FHOLAttackAlertWatch Watch;
