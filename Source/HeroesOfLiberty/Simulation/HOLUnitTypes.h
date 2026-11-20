@@ -761,5 +761,7 @@ inline FHOLUnitTypeConstants FHOLUnitTypeRow::ToConstants(const FName TypeName) 
 	Constants.AreaRadius = AreaRadius;
 	Constants.HealRate = HealRate;
 	Constants.HealRange = HealRange;
+	Constants.DamageRedirectPercent = FMath::Clamp(DamageRedirectPercent, 0, 100);
+	Constants.DamageRedirectRadius = DamageRedirectRadius;
 	return Constants;
 }
