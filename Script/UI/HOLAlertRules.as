@@ -144,6 +144,27 @@ namespace HOLAlertRules
 	FHOLMinorStep MinorStep(FHOLMinorWatch& Watch, int Buildings, int Researches, float NowSeconds)
 	{
 		FHOLMinorStep Step;
+		if (!Watch.bRead)
+		{
+			Watch.bRead = true;
+			Watch.Buildings = Buildings;
+			Watch.Researches = Researches;
+			return Step;
+		}
+		if (Buildings > Watch.Buildings)
+		{
+			Step.Building = MinorAlert(EHOLMinorAlertKind::BuildingDone, NowSeconds, Watch.LastBuildingShown);
+			if (Step.Building.bShow)
+				Watch.LastBuildingShown = NowSeconds;
+		}
+		if (Researches > Watch.Researches)
+		{
+			Step.Research = MinorAlert(EHOLMinorAlertKind::ResearchDone, NowSeconds, Watch.LastResearchShown);
+			if (Step.Research.bShow)
+				Watch.LastResearchShown = NowSeconds;
+		}
+		Watch.Buildings = Buildings;
+		Watch.Researches = Researches;
 		return Step;
 	}
 }
