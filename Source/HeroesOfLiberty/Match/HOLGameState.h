@@ -462,6 +462,14 @@ private:
 	UPROPERTY(Replicated)
 	TArray<int32> FactionResource;
 
+	/**
+	 * One block of MaxFactionPowers per slot (MaxSlots * MaxFactionPowers, the index is Slot * MaxFactionPowers + PowerIndex): the match time (ms) at which the
+	 * slot's faction power is ready again, 0 = ready. Public so a client reads the same time; authority writes it (SetPowerCooldownEndMs).
+	 * Not mixed into the simulation's hash (the gauge's own rule, LOT-CPP-socle-factions-1119 section 3).
+	 */
+	UPROPERTY(Replicated)
+	TArray<int32> PowerCooldownEndMs;
+
 	/** The slot's faction resource gauge value as this machine has it; 0 for a slot out of the table. */
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Faction")
 	int32 GetFactionResource(int32 Slot) const;
