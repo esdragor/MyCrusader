@@ -72,9 +72,9 @@ namespace HOLDeploy
 	/** The reason of a refusal: the target is nearer than the minimum range. */
 	constexpr int32 TooClose = 1;
 
-	/** PROPOSED values (Q-trebuchet-deploy.md): deploying 8 s, packing 5 s, the target no nearer than 12 m nor farther than 50 m. */
-	constexpr int32 ProposedDeployMs = 8000;
-	constexpr int32 ProposedPackMs = 5000;
+	/** PROPOSED values: deploying 1.5 s, packing 1 s (D869: each visible, 1 to 2 s; was 8 s / 5 s from Q-trebuchet-deploy.md), the target no nearer than 12 m nor farther than 50 m. */
+	constexpr int32 ProposedDeployMs = 1500;
+	constexpr int32 ProposedPackMs = 1000;
 	constexpr int32 ProposedMinRangeCm = 1200;
 	constexpr int32 ProposedMaxRangeCm = 5000;
 
