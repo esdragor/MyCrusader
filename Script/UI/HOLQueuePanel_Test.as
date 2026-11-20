@@ -114,3 +114,4 @@ void Test_QueuePanelNoteDoesNotCoverTheBar(FUnitTest& T)
 	T.AssertTrue(BarRight >= 100.0, "the bar is still wide enough to read");
 	float BarAlone = HOLQueuePanel::BarRightEdge(LineWidth, NoteWidth, false);
 	T.AssertTrue(Math::IsNearlyEqual(BarAlone, LineWidth), "no note: the bar takes the whole line");
+}
