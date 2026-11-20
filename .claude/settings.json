@@ -1,0 +1,28 @@
+{
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "powershell -NoProfile -ExecutionPolicy Bypass -File \"C:/Users/baudo/Documents/MyCrusader/.claude/hooks/auto_journey_reminder.ps1\"",
+            "timeout": 20,
+            "statusMessage": "Rappel Auto_Journey"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "powershell -NoProfile -ExecutionPolicy Bypass -File \"C:/Users/baudo/Documents/MyCrusader/.claude/hooks/main_session_code_edit_warning.ps1\"",
+            "timeout": 20
+          }
+        ]
+      }
+    ]
+  }
+}
