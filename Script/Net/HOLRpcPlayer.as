@@ -188,6 +188,12 @@ int CheatTierRefusal(bool bAllowed, int SenderSlot, int TargetSlot)
 	return 0;
 }
 
+// Honor (CELEBORN-1120b): 3 the sender's faction has no gauge (bHasGauge: HOLFactionResource::HasResource, computed by the caller: the rule stays pure). STUB (red first).
+int CheatHonorRefusal(bool bAllowed, int SenderSlot, bool bHasGauge)
+{
+	return 0;
+}
+
 // Technology: 3 no technology named (None). Whether it exists or is already researched stays the C++ body's (it logs a warning).
 int CheatTechnologyRefusal(bool bAllowed, int SenderSlot, FName Technology)
 {
