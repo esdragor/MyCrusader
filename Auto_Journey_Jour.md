@@ -62,6 +62,15 @@ Exception 23:11 (gate Merge 7 FAIL, passé outre) : 6 branches « sans les derni
 | intégrateur (commande) | br8ncbjgj | Arwen | integrate.ps1 integ-31 passe 1 réelle (L20-6), vert duel-rewards | — | 22:56 | 23:08 | PASS 713 s : tests 1972/1972, net,build PASS ; L20-6 appliquée, l'outil marche du premier coup |
 | CELEBORN-1120sa | a51c9896 | Celeborn + Haldir | fichiers non suivis (c28/c31, Crown.umap) | non | 22:54 | 22:58 | 7f4296c (c28_*) ; c31_f3/4/5/8 doublons et Crown.umap régénérable : SUPPRIMÉS à 23:4x avec l'accord de l'utilisateur (recoupé avant : .json/.look identiques aux c31_f1/6/7/9 suivis, .txt identiques ligne à ligne, seule la fin de ligne diffère) ; Celeborn et Haldir propres |
 
+### Bilan de la séance du 2026-11-20 soir (22:38 -> 00:23, autonome, « choses en suspens »)
+
+- **État à la fin** : main = f46dc2d (code) + docs jusqu'à 44a64f5, LOCAL, rien poussé ; 8 worktrees synchronisés et compilés ; gate Close 00:22 sans FAIL. ~25 agents Sonnet ; 7 passes d'`integrate.ps1` (integ-31 à 37 ; 36 et 37 vertes : 1976 puis 1977/1977, net,build PASS).
+- **Entré dans main, visible** : D869b montage de l'engin (barre dès l'ordre, 2e cycle « Démonter ») VU À L'ÉCRAN ; chat : 2e Entrée rouvre le champ, cible privée juste, marque de canal lisible ; `virtuous_knight` (Chevalier en garde, redirection prouvée, case E active) VU À L'ÉCRAN ; « Population pleine » 15 s aussi dans HOLShortMessage.
+- **Outils** : `merge=union` des journaux (L20-1), gate Close L19-1 (L20-3, gate_test 104/104), `regen_tables.ps1` (L20-9, -DryRun seulement), `integrate.ps1` repart de main avant les verts (37ee2c0), exception `ecran_multijoueur.ps1` de no_window_test.
+- **Trouvé** : 2 erreurs de compilation script à l'intégration (accolade manquante 8ce795d ; `WidgetBlueprint::` au lieu de `Widget::`) ; un test faux (SecondMountReturnsToPack) ; un énoncé de la session principale qui lisait mal D833 (délai au lieu de durée) ; scénarios qui relisaient le HUD trop tôt (deploy).
+- **Reste (tête de file)** : chat Tab perdu (C++ probable, reporté par L18-c à 00:16), « Allies » sans accent, capture deploy_move_unmounting trop tôt, `hol.Select.Hold` nouveau en scénario.
+- **Pour l'utilisateur** : 2 essais [À ESSAYER] (deploy, virtuous_knight) dans `Auto_Journey_Retours.md`, 0 question ; doublons c31_f* et Crown.umap supprimés avec son accord.
+
 ### Lecons appliquees 2026-11-21
 Séance du 2026-11-20 soir (22:38 -> 01:00), bilan écrit à 00:2x par DOCS-1121a depuis le tableau d'agents et les rapports ; les contrôles de `session_gate.ps1 -Phase Close` n'ont pas été relancés par cet agent (à lire à la sortie du gate Close). Les lignes sans sha ni heure reprennent une règle d'agent_rules.md imposée par l'énoncé (champ de rapport non recompté par DOCS-1121a). Règles non appliquées ce soir : L20-8, L19-2, L15-4, L14-5.
 T2-1 : appliquee : ETAPE0-1120s lancé 22:51, plan de lancement une ligne par worktree (Docs\Rapports\ETAPE0-1120s.md)
