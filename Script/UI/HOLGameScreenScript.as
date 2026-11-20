@@ -1751,7 +1751,7 @@ UHOLScenarioPanelScript ScenarioPanel;
 	{
 		if (Minimap == nullptr || !bMinimapFrame || (bRight && bDrag))
 			return;
-		const int Action = HOLMinimap::ClickAction(bRight, Minimap.HasOrderableSelection());
+		const int Action = HOLMinimap::ClickAction(bRight, Minimap.HasOrderableSelection(), false);
 		const FVector2D Ground = HOLMinimap::ToWorld(MinimapFrame, Position);
 		if (Action == HOLMinimap::ClickCamera)
 		{

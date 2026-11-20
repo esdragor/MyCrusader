@@ -1,0 +1,27 @@
+# D860 H3 : Alt + clic gauche sur la MINICARTE pose le meme signal que Alt + clic au sol (meme type neutre, meme chemin ServerPostSignal).
+# Alt maintenu (hol.UI.Key LeftAlt, appui tenu 3 s) puis hol.HUD.Click MinimapClickL120x120 (appui sur le point 120,120 px de l'image) : le script
+# de l'ecran (HOLGameScreenScript.HandleMinimapPressed) lit Alt, ClickAction rend ClickSignal, le serveur renvoie le signal a ton equipe.
+# Effet attendu : « Signal: received kind », « Minimap signals: 1 » puis, apres 5 s de jeu, « Minimap signals: 0 ». Sans Alt : camera, aucun signal.
+# Plain, toi (slot 0) contre une IA gelee (slot 1).
+waitlog AI brain HOLAIBrain awake
+r.SetRes 1920x1080w
+hol.AI.ThinkSteps 100000
+hol.Camera.FocusSlot own
+waitlog Camera above the start of slot 0
+frames 5
+# 1. Temoin : sans Alt, un clic gauche sur la minicarte deplace la camera et ne pose rien.
+hol.HUD.Click MinimapClickL60x60
+frames 5
+waitlog Minimap signals: 0
+# 2. Alt maintenu puis clic gauche sur la minicarte : le signal neutre est pose.
+hol.UI.Key LeftAlt 0 3
+wait 0.5
+hol.HUD.Click MinimapClickL120x120
+waitlog Signal: received kind
+waitlog Minimap signals: 1
+wait 1
+capture signals_minimap_alt
+waitlog Minimap signals: 0
+hol.Test.Sanity
+note Signal : maintiens Alt et clique (gauche, bref) sur la minicarte : le meme signal neutre qu'au sol est pose a ce point (carre colore sur la minicarte, losange au sol, ligne du fil). Alt + glisser ne pose rien ; Alt + clic droit ordonne encore un deplacement.
+quit
