@@ -214,7 +214,7 @@ namespace HOLFactionSlot
 			Result.AimIndex = -1;
 			if (View.bVisible && AimIndex < View.Powers.Num() && View.Powers[AimIndex].State == EHOLPowerState::Ready)
 			{
-				Result.Action = EHOLFactionClickAction::Cast;
+				Result.Action = EHOLFactionClickAction::Launch;
 				Result.CastIndex = AimIndex;
 				Result.Describe = f"cast {AimIndex}";
 			}
