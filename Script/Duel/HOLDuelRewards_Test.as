@@ -276,3 +276,35 @@ void Test_HonorOfAcceptGivesTheAcceptorOfTheDawn(FUnitTest& T)
 	T.AssertEquals(10, Fresh.Delta, "an acceptance of the Dawn is +10 Honor (D859)");
 	T.AssertEquals(-1, Legions.Slot, "a Legions slot: no order");
 }
+
+// D866 Q2 = A: Triumph and Demoralised are posed at the centre of the duel's arena (a circle made by the real MakeArena from the
+// two heroes' positions), Hesitation at the position of the hero who refuses; a refusal given no position has no place.
+void Test_DuelRewardsOrdersCarryTheirPlace(FUnitTest& T)
+{
+	FHOLDuelSettings S = HOLDuel::Preset();
+	FHOLDuel D = RewardDuelActive(S);
+	D.bHasArena = true;
+	D.Arena = HOLDuel::MakeArena(S, 1000, 2000, 1400, 2400);
+	D = HOLDuel::Advance(S, D, 3000, 0, 40);
+	TArray<FHOLDuelMoraleOrder> Won = HOLDuelRewards::OrdersAt(S, D, 0, 0);
+	T.AssertEquals(2, Won.Num(), "two orders: the winner and the loser");
+	for (int Index = 0; Index < Won.Num(); Index++)
+	{
+		T.AssertTrue(Won[Index].bHasCenter, "the order has a place");
+		T.AssertEquals(D.Arena.CenterX, Won[Index].CenterXCm, "x = the arena's centre");
+		T.AssertEquals(D.Arena.CenterY, Won[Index].CenterYCm, "y = the arena's centre");
+	}
+	FHOLDuel Pending = HOLDuel::Challenge(S, RewardChallenger, RewardTarget);
+	FHOLDuel Refused = HOLDuel::Respond(S, Pending, false);
+	TArray<FHOLDuelMoraleOrder> Hesitation = HOLDuelRewards::OrdersAt(S, Refused, 777, -555);
+	T.AssertEquals(1, Hesitation.Num(), "one order on the refuser");
+	if (Hesitation.Num() == 1)
+	{
+		T.AssertTrue(Hesitation[0].bHasCenter, "Hesitation has a place");
+		T.AssertEquals(777, Hesitation[0].CenterXCm, "x = the refuser's position");
+		T.AssertEquals(-555, Hesitation[0].CenterYCm, "y = the refuser's position");
+	}
+	TArray<FHOLDuelMoraleOrder> NoPlace = HOLDuelRewards::Orders(S, Refused);
+	if (NoPlace.Num() == 1)
+		T.AssertFalse(NoPlace[0].bHasCenter, "Orders alone give no place to a refusal");
+}
