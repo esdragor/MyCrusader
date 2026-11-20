@@ -17,7 +17,6 @@ Un chantier ne se clôt pas sans avoir relu ce fichier.
 == UNITÉS (communes aux deux factions aujourd'hui)
 - Paysan Aube [mannequin]
 - Zombie Légions (même corps que le Paysan) [mannequin]
-- Lancier Aube [mannequin]
 - Lancier Légion (Lancier squelette) [mannequin]
 - Garde (Homme d'armes) Aube [mannequin]
 - Garde noire Légions [mannequin]
@@ -37,7 +36,7 @@ Un chantier ne se clôt pas sans avoir relu ce fichier.
 - Héros Paladin-Commandant Aube [mannequin]
 - Héros Légions (même corps que l'Aube) [mannequin]
 - Light infantry / Nanite (unités d'essai) [mannequin]
-- Hallebardier Aube [à venir]
+- Hallebardier Aube [mannequin]
 - Chevalier Vertueux Aube [à venir]
 - Moine Lumineux Aube [à venir]
 - Squelette (levé d'un cadavre) Légions [à venir]
