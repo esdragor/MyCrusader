@@ -41,24 +41,48 @@ namespace HOLDuelRewards
 		return Order;
 	}
 
-	TArray<FHOLDuelMoraleOrder> Orders(const FHOLDuelSettings& S, const FHOLDuel& Duel)
+	FHOLDuelMoraleOrder PlacedAt(FHOLDuelMoraleOrder Order, int XCm, int YCm)
+	{
+		Order.bHasCenter = true;
+		Order.CenterXCm = XCm;
+		Order.CenterYCm = YCm;
+		return Order;
+	}
+
+	// The shared rule: Triumph and Demoralised at the arena's centre (when the duel has its circle), Hesitation at the refuser's
+	// position when the caller has it (bHasRefuser).
+	TArray<FHOLDuelMoraleOrder> PlacedOrders(const FHOLDuelSettings& S, const FHOLDuel& Duel, bool bHasRefuser, int RefuserXCm, int RefuserYCm)
 	{
 		TArray<FHOLDuelMoraleOrder> Result;
 		// The duel rule says who wins, who loses and who pays for a refusal; nothing is read while the duel is not over.
 		FHOLDuelEffects E = HOLDuel::Effects(S, Duel);
 		if (E.TriumphSlot >= 0)
-			Result.Add(MakeOrder(E.TriumphSlot, HOLMoraleTable::Triumph));
+		{
+			FHOLDuelMoraleOrder Order = MakeOrder(E.TriumphSlot, HOLMoraleTable::Triumph);
+			Result.Add(Duel.bHasArena ? PlacedAt(Order, Duel.Arena.CenterX, Duel.Arena.CenterY) : Order);
+		}
 		if (E.DemoralisedSlot >= 0)
-			Result.Add(MakeOrder(E.DemoralisedSlot, HOLMoraleTable::Demoralised));
+		{
+			FHOLDuelMoraleOrder Order = MakeOrder(E.DemoralisedSlot, HOLMoraleTable::Demoralised);
+			Result.Add(Duel.bHasArena ? PlacedAt(Order, Duel.Arena.CenterX, Duel.Arena.CenterY) : Order);
+		}
 		if (E.bRefusalCost && E.HesitationSlot >= 0)
-			Result.Add(MakeOrder(E.HesitationSlot, HOLMoraleTable::Hesitation));
+		{
+			FHOLDuelMoraleOrder Order = MakeOrder(E.HesitationSlot, HOLMoraleTable::Hesitation);
+			Result.Add(bHasRefuser ? PlacedAt(Order, RefuserXCm, RefuserYCm) : Order);
+		}
 		return Result;
+	}
+
+	TArray<FHOLDuelMoraleOrder> Orders(const FHOLDuelSettings& S, const FHOLDuel& Duel)
+	{
+		return PlacedOrders(S, Duel, false, 0, 0);
 	}
 
 	// The orders of the duel's end with their place (D866 Q2 = A): Triumph and Demoralised at the arena's centre, Hesitation at the refuser's position.
 	TArray<FHOLDuelMoraleOrder> OrdersAt(const FHOLDuelSettings& S, const FHOLDuel& Duel, int RefuserXCm, int RefuserYCm)
 	{
-		return Orders(S, Duel);
+		return PlacedOrders(S, Duel, true, RefuserXCm, RefuserYCm);
 	}
 
 	// The Honor of the duel (D859 n. 3, pure): one gauge change, from the slot's gauge now, through the gauge chain (cap 100, floor 0).
