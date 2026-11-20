@@ -110,6 +110,14 @@ public:
 	static int32 CheckPlacement(const FHOLConstructionBox& Footprint, const TArray<FHOLConstructionBox>& Buildings, const TArray<FVector>& Sources,
 		const FHOLConstructionBox& MapArea, const TArray<FVector2D>& EnemyMainCentres, double AntiRushRadius, bool bOnNavMesh);
 
+	/**
+	 * NON COMPILE. F4 wall line, the world the script cannot read: the tile size (returned), the first and last valid cell of the map (OutMapMin, OutMapMax,
+	 * both included; a wide range when the map has no limit) and every cell a building or foundation touches (OutOccupied). Cell = floor(coordinate / tile),
+	 * grid origin at the world origin (UHOLConstructionSubsystem::SnapFootprint). Read on the machine that calls it (the server for ServerPlaceWallLine).
+	 */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Construction", meta = (WorldContext = "WorldContextObject"))
+	static double GetWallLineWorld(const UObject* WorldContextObject, FIntPoint& OutMapMin, FIntPoint& OutMapMax, TArray<FIntPoint>& OutOccupied);
+
 	/** HOLConstruction::IsAgeOpen. */
 	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Construction")
 	static bool IsAgeOpen(int32 BuildingAge, int32 Tier);

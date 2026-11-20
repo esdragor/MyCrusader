@@ -8,6 +8,9 @@
 // The length cap and the cost of one cell are PARAMETERS (their values are the user's choice, not decided here); the cap cuts the line
 // (the first cells from the start are kept). A cap of 0 or less keeps nothing.
 
+// The cap of a dragged line in cells (D345: a setting, not a decision; Retours\Q-mur-ligne-longueur.md recommends A = 16).
+const FConsoleVariable CVar_WallMaxLineCells("hol.Wall.MaxLineCells", 16);
+
 namespace HOLWallLine
 {
 	int SignOf(int Value)
@@ -140,18 +143,43 @@ namespace HOLWallLine
 	// is the recommendation of Retours\Q-mur-ligne-longueur.md (A, 16 cells): a setting, not a decision.
 	int MaxLineCells()
 	{
-		return 0;
+		return CVar_WallMaxLineCells.GetInt();
+	}
+
+	// The cell a world coordinate lies in: floor(Value / Tile), also for negatives.
+	int CellOfCoordinate(double Value, double Tile)
+	{
+		const double Ratio = Value / Tile;
+		int Cell = int(Ratio);
+		if (double(Cell) > Ratio)
+			Cell -= 1;
+		return Cell;
 	}
 
 	// The world point of the centre of a cell (grid origin at the world origin, one cell = Tile, as UHOLConstructionSubsystem::SnapFootprint).
 	FVector CellToPoint(FIntPoint Cell, double Tile, double Z)
 	{
-		return FVector(0.0, 0.0, Z);
+		return FVector((Cell.X + 0.5) * Tile, (Cell.Y + 0.5) * Tile, Z);
 	}
 
 	FHOLWallLinePlan PlanFromRequest(int SenderSlot, FVector Start, FVector End, double Tile, FIntPoint MapMin, FIntPoint MapMax, const TArray<FIntPoint>& Occupied, int MaxCells)
 	{
 		FHOLWallLinePlan Plan;
-		return Plan;
+		Plan.BadCell = FIntPoint(0, 0);
+		// The seat: slot out of range or no seat (spectator), the same test as every order RPC.
+		if (HOLRpc::UnitOrderRefusal(SenderSlot, 1) != 0)
+		{
+			Plan.Refusal = EHOLWallLineRefusal::NoSeat;
+			return Plan;
+		}
+		// Finite points on a real grid, and not so far that the cell index leaves the int range (a client can send anything).
+		const double Limit = 100000.0 * Tile;
+		if (Tile <= 0.0 || !HOLRpc::IsFiniteNumber(float(Start.X)) || !HOLRpc::IsFiniteNumber(float(Start.Y)) || !HOLRpc::IsFiniteNumber(float(End.X)) || !HOLRpc::IsFiniteNumber(float(End.Y))
+			|| Math::Abs(Start.X) > Limit || Math::Abs(Start.Y) > Limit || Math::Abs(End.X) > Limit || Math::Abs(End.Y) > Limit)
+		{
+			Plan.Refusal = EHOLWallLineRefusal::BadPoint;
+			return Plan;
+		}
+		return Validate(FIntPoint(CellOfCoordinate(Start.X, Tile), CellOfCoordinate(Start.Y, Tile)), FIntPoint(CellOfCoordinate(End.X, Tile), CellOfCoordinate(End.Y, Tile)), MapMin, MapMax, Occupied, MaxCells);
 	}
 }
