@@ -79,11 +79,47 @@ namespace HOLChatInput
 	const int WhisperUnknown = 2;
 	const int WhisperEmpty = 3;
 
-	// STUB (red test first): never a whisper.
+	// "/w Name message": WhisperNone (not a command: the text goes on the field's channel), WhisperOk (OutSlot = the slot of Name, OutMessage = the text after it),
+	// WhisperUnknown (no player of that name: the message is refused, never widened), WhisperEmpty (a name but no text). The name is compared without case,
+	// may hold spaces, and the longest name that fits wins ("Mary Jane" before "Mary"); Names[I] is the name of Slots[I].
 	int ParseWhisper(const FString& Text, const TArray<FString>& Names, const TArray<int>& Slots, int& OutSlot, FString& OutMessage)
 	{
 		OutSlot = -1;
 		OutMessage = "";
-		return WhisperNone;
+		const FString Trimmed = Text.TrimStart();
+		if (Trimmed.ToLower() == "/w")
+		{
+			return WhisperEmpty;
+		}
+		if (Trimmed.Len() < 3 || Trimmed.Left(3).ToLower() != "/w ")
+		{
+			return WhisperNone;
+		}
+		const FString Rest = Trimmed.Mid(3).TrimStart();
+		const FString RestLow = Rest.ToLower();
+		int Best = -1;
+		int BestLen = 0;
+		for (int I = 0; I < Names.Num() && I < Slots.Num(); ++I)
+		{
+			const FString NameLow = Names[I].TrimStartAndEnd().ToLower();
+			const int NameLen = NameLow.Len();
+			if (NameLen > BestLen && RestLow.Len() >= NameLen && RestLow.Left(NameLen) == NameLow && (RestLow.Len() == NameLen || RestLow.Mid(NameLen, 1) == " "))
+			{
+				Best = I;
+				BestLen = NameLen;
+			}
+		}
+		if (Best < 0)
+		{
+			return WhisperUnknown;
+		}
+		const FString Message = Rest.Mid(BestLen).TrimStartAndEnd();
+		if (Message.IsEmpty())
+		{
+			return WhisperEmpty;
+		}
+		OutSlot = Slots[Best];
+		OutMessage = Message;
+		return WhisperOk;
 	}
 }
