@@ -125,11 +125,11 @@ void Test_LightSealRowInTable(FUnitTest& T)
 	T.AssertTrue(Seal.Faction == "Dawn", "the seal is a Dawn ability");
 	const int CenterX = 2000;
 	const int CenterY = -500;
-	T.AssertTrue(HOLGroundAbility::IsInZone(CenterX, CenterY, Seal.RadiusCm, CenterX + 590, CenterY), "5.9 m from the centre: inside the zone");
-	T.AssertFalse(HOLGroundAbility::IsInZone(CenterX, CenterY, Seal.RadiusCm, CenterX + 610, CenterY), "6.1 m from the centre: outside the zone");
+	T.AssertTrue(HOLZoneEffect::IsInZone(CenterX, CenterY, Seal.RadiusCm, CenterX + 590, CenterY), "5.9 m from the centre: inside the zone");
+	T.AssertFalse(HOLZoneEffect::IsInZone(CenterX, CenterY, Seal.RadiusCm, CenterX + 610, CenterY), "6.1 m from the centre: outside the zone");
 	T.AssertEquals(0, HOLGroundAbility::TargetRefusal(true, int64(790), int64(Seal.RangeCm), 0), "7.9 m from the caster: accepted");
 	T.AssertEquals(3, HOLGroundAbility::TargetRefusal(true, int64(810), int64(Seal.RangeCm), 0), "8.1 m from the caster: refused, out of range");
-	T.AssertTrue(HOLGroundAbility::ZoneActive(1000, Seal.DurationMs, 1000 + Seal.DurationMs - 1000), "the zone stands a second before its end");
-	T.AssertFalse(HOLGroundAbility::ZoneActive(1000, Seal.DurationMs, 1000 + Seal.DurationMs + 1), "the zone is gone after its duration");
+	T.AssertTrue(HOLZoneEffect::ZoneActive(1000, Seal.DurationMs, 1000 + Seal.DurationMs - 1000), "the zone stands a second before its end");
+	T.AssertFalse(HOLZoneEffect::ZoneActive(1000, Seal.DurationMs, 1000 + Seal.DurationMs + 1), "the zone is gone after its duration");
 	T.AssertTrue(Seal.CooldownMs > Seal.DurationMs && Seal.DurationMs > 0, "the cooldown outlasts the zone");
 }
