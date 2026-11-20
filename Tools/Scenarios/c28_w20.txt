@@ -1,0 +1,26 @@
+# Essai PT7, questions 1 et 7 de GDD 17.1 (PlaytestInProgress.md) : le heros est-il important sans etre obligatoire, et les combats sont-ils interessants sans lui ?
+# Plain, toi (slot 0) contre une IA gelee (slot 1) : le MEME combat deux fois, 6 Hommes d'armes contre 10 Lanciers ; A avec ton heros (niveau 3, a cote), B apres sa mort (hol.Hero.Kill 0).
+# hol.Combat.Report 0 donne les PV de tes unites a la fin de chaque combat : compare les pertes. Entree = passer au combat suivant (aucune attente morte).
+waitlog Starting hero of slot 0 spawned at
+hol.AI.ThinkSteps 100000
+hol.Cheat.Resources 5000
+hol.Cheat.Population 60
+hol.Hero.SetXP 0 600
+waitlog slot 0 level 1 -> 3
+hol.Camera.FocusNear -900 300
+frames 10
+hol.Units.Spawn 6 -16400 300 0 ManAtArms 150
+hol.Units.Spawn 10 -17100 300 1 Spearman 150
+frames 20
+wait 20
+hol.Combat.Report 0
+frames 1
+hol.Hero.Kill 0
+frames 5
+hol.Camera.FocusNear -900 6000
+hol.Units.Spawn 6 -15600 6000 0 ManAtArms 150
+hol.Units.Spawn 10 -14900 6000 1 Spearman 150
+frames 20
+wait 20
+hol.Combat.Report 0
+hol.Test.Sanity
