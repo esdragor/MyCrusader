@@ -424,7 +424,12 @@ void UHOLGameScreen::NativeTick(const FGeometry& MyGeometry, const float InDelta
 		// G6 f: the engine's D cell (« Monter » / « Démonter ») follows its phase, which the simulation moves without a delegate
 		// (the deploy preflight saw « Monter » still shown once the engine was set up).
 		else if (bHeroCellsShown || ShownGridTypes.Contains(FName(TEXT("NecroticRage")))
-			|| ShownOrderTypes.Contains(FName(TEXT("Deploy"))) || ShownOrderTypes.Contains(FName(TEXT("Pack"))))
+			|| ShownOrderTypes.ContainsByPredicate([](const FName& OrderType)
+			{
+				// The D cell's key is Deploy / Pack at rest and Mounting<n> / Dismounting<n> while it moves (ReadDeployFace): refresh in all four (D869).
+				const FString Name = OrderType.ToString();
+				return Name == TEXT("Deploy") || Name == TEXT("Pack") || Name.StartsWith(TEXT("Mounting")) || Name.StartsWith(TEXT("Dismounting"));
+			}))
 		{
 			RefreshGrid(nullptr, false, BoundPlayerState.Get());
 		}
