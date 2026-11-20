@@ -11,6 +11,10 @@ void Test_UnitAbilityEffectIsAMoraleEffect(FUnitTest& T)
 		T.AssertFalse(Row.Key.IsEmpty(), f"ability {Id} has a key");
 		T.AssertFalse(HOLUnitAbilityTable::Name(Id).ToString().IsEmpty(), f"{Row.Key} has a name");
 		T.AssertTrue(Row.CooldownMs > Row.DurationMs && Row.DurationMs > 0, f"{Row.Key}: the cooldown outlasts the effect");
+		// The morale-lever checks below are those of a self ability (the rage lays a bonus effect on its caster). An aimed ability (Target Ground, e.g.
+		// the Light Seal) lays a zone whose slow is simulation C++ (the lot), not a morale row yet: its Effect stays empty until that row exists.
+		if (Row.Target != HOLUnitAbilityTable::TargetSelf)
+			continue;
 		int MoraleId = -1;
 		for (int M = 0; M < HOLMoraleTable::Count; M++)
 		{
@@ -100,4 +104,32 @@ void Test_UnitAbilityTableGroundColumns(FUnitTest& T)
 	// A self ability (radius 0) is a zone of one point.
 	T.AssertTrue(HOLGroundAbility::IsInZone(5, 5, Rage.RadiusCm, 5, 5), "a zero radius holds only its centre");
 	T.AssertFalse(HOLGroundAbility::IsInZone(5, 5, Rage.RadiusCm, 6, 5), "a zero radius holds nothing else");
+}
+
+// D859 step 1c: the Light Seal (Dawn) is a real row of the table, aimed at the ground, and the pure ground rules read ITS fields: the zone holds a
+// point 5.9 m from the centre and not one at 6.1 m, a target 8.1 m from the caster is refused out of range (code 3), and the zone ends within the
+// row's duration. The -40 % slow is simulation C++ (the lot), not asserted here. The row is looked up by key so that a missing row is a red assertion.
+void Test_LightSealRowInTable(FUnitTest& T)
+{
+	int Id = -1;
+	for (int I = 0; I < HOLUnitAbilityTable::Count; I++)
+	{
+		if (HOLUnitAbilityTable::Row(I).Key == "LightSeal")
+			Id = I;
+	}
+	T.AssertTrue(Id >= 0, "the table has the LightSeal row");
+	if (Id < 0)
+		return;
+	const HOLUnitAbilityTable::FHOLUnitAbilityRow Seal = HOLUnitAbilityTable::Row(Id);
+	T.AssertEquals(HOLUnitAbilityTable::TargetGround, Seal.Target, "the seal is aimed at the ground");
+	T.AssertTrue(Seal.Faction == "Dawn", "the seal is a Dawn ability");
+	const int CenterX = 2000;
+	const int CenterY = -500;
+	T.AssertTrue(HOLGroundAbility::IsInZone(CenterX, CenterY, Seal.RadiusCm, CenterX + 590, CenterY), "5.9 m from the centre: inside the zone");
+	T.AssertFalse(HOLGroundAbility::IsInZone(CenterX, CenterY, Seal.RadiusCm, CenterX + 610, CenterY), "6.1 m from the centre: outside the zone");
+	T.AssertEquals(0, HOLGroundAbility::TargetRefusal(true, int64(790), int64(Seal.RangeCm), 0), "7.9 m from the caster: accepted");
+	T.AssertEquals(3, HOLGroundAbility::TargetRefusal(true, int64(810), int64(Seal.RangeCm), 0), "8.1 m from the caster: refused, out of range");
+	T.AssertTrue(HOLGroundAbility::ZoneActive(1000, Seal.DurationMs, 1000 + Seal.DurationMs - 1000), "the zone stands a second before its end");
+	T.AssertFalse(HOLGroundAbility::ZoneActive(1000, Seal.DurationMs, 1000 + Seal.DurationMs + 1), "the zone is gone after its duration");
+	T.AssertTrue(Seal.CooldownMs > Seal.DurationMs && Seal.DurationMs > 0, "the cooldown outlasts the zone");
 }
