@@ -416,17 +416,52 @@ bool UHOLScriptScreen::GetPopulationNow(int32& OutUsed, int32& OutCap, float& Ou
 
 bool UHOLScriptScreen::GetMinorEventsNow(int32& OutBuildingsFinished, int32& OutResearchesDone, FVector2D& OutLastBuildingLocation, FVector2D& OutLastResearchBuildingLocation) const
 {
-	// STUB (red first): the counters stay zero.
-	OutBuildingsFinished = 0;
-	OutResearchesDone = 0;
-	OutLastBuildingLocation = FVector2D::ZeroVector;
-	OutLastResearchBuildingLocation = FVector2D::ZeroVector;
-	return false;
+	// The shown player's finished buildings (their state replicates to every client: a build that ends here, or one that arrives finished) and the
+	// technologies researched (replicated to the owner, OnRep_Technologies); the accumulation is ObserveMinorEvents'.
+	const UHOLGameScreen* GameScreen = GetTypedOuter<UHOLGameScreen>();
+	const AHOLPlayerState* PlayerState = GameScreen ? GameScreen->GetBoundPlayerState() : nullptr;
+	const UWorld* World = GetWorld();
+	if (PlayerState && World)
+	{
+		TArray<AHOLBuilding*> Finished;
+		for (FHOLBuildingIterator It(World); It; ++It)
+		{
+			if (It->IsFinished() && It->GetOwnerPlayer() == PlayerState->GetPlayerIndex())
+			{
+				Finished.Add(*It);
+			}
+		}
+		ObserveMinorEvents(MinorWatch, Finished, PlayerState->GetTechnologies().Done.Num());
+	}
+	OutBuildingsFinished = MinorWatch.BuildingsFinished;
+	OutResearchesDone = MinorWatch.ResearchesDone;
+	OutLastBuildingLocation = MinorWatch.LastBuildingLocation;
+	OutLastResearchBuildingLocation = MinorWatch.LastResearchBuildingLocation;
+	return PlayerState != nullptr && World != nullptr;
 }
 
 void UHOLScriptScreen::ObserveMinorEvents(FHOLMinorEventsWatch& Watch, const TArray<AHOLBuilding*>& FinishedBuildings, const int32 ResearchesDone)
 {
-	// STUB (red first): nothing is counted.
+	for (const AHOLBuilding* Building : FinishedBuildings)
+	{
+		if (!Building || Watch.SeenFinished.Contains(Building))
+		{
+			continue;
+		}
+		Watch.SeenFinished.Add(Building);
+		// The baseline (the first observation) takes what is there without counting it.
+		if (Watch.bPrimed)
+		{
+			++Watch.BuildingsFinished;
+			Watch.LastBuildingLocation = FVector2D(Building->GetActorLocation().X, Building->GetActorLocation().Y);
+		}
+	}
+	if (Watch.bPrimed && ResearchesDone > Watch.ResearchesSeen)
+	{
+		Watch.ResearchesDone += ResearchesDone - Watch.ResearchesSeen;
+	}
+	Watch.ResearchesSeen = ResearchesDone;
+	Watch.bPrimed = true;
 }
 
 bool UHOLScriptScreen::GetEconomyNow(FHOLResources& OutStock, int32& OutPopulationUsed, int32& OutPopulationCap, FHOLResources& OutGatherers, FHOLResources& OutIncome) const
@@ -1048,6 +1083,12 @@ void UHOLScriptScreen::NativeTick(const FGeometry& MyGeometry, const float InDel
 		if (Controller->IsLocalController() && Controller->WasInputKeyJustPressed(EKeys::T))
 		{
 			KeyPressed(TEXT("T"));
+		}
+		// Enter (D807, the chat's input screen): the same key state, for the CLOSED field (nothing has Slate focus then, so no field gets that Enter); an open field
+		// has the keyboard focus, Slate gives it the Enter (OnTextCommitted) and the player input sees no key press: no double, as for the T key.
+		if (Controller->IsLocalController() && Controller->WasInputKeyJustPressed(EKeys::Enter))
+		{
+			KeyPressed(TEXT("Enter"));
 		}
 		// Ctrl + D: the Diplomacy panel (D387, D650). Not F11 (the window's full screen); D alone is a cell of the command grid (D30), so the
 		// chord keeps clear of it. A provisional key (DiplomacyInProgress.md), reconfigurable with the others.
