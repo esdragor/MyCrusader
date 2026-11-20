@@ -1082,7 +1082,7 @@ for (FString Command : Commands)
 			Log(n"LogHOLMatch", f"RpcPower: cast refused ({Decision.Refusal}) for slot {Slot} power {PowerIndex}");
 			return;
 		}
-		if (!HOLZoneEffect::StartLightSeal(this, Slot, Point))
+		if (!HOLZoneEffect::StartLightSeal(Slot, Point))
 		{
 			Log(n"LogHOLMatch", f"RpcPower: Seal of Light not started for slot {Slot} (no world, subsystem or slot)");
 			return;
