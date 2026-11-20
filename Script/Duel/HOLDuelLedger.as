@@ -7,6 +7,24 @@ class UHOLDuelLedger : UHOLDuelSubsystem
 	FHOLDuelSettings Settings;
 	bool bReady = false;
 
+	// D859 n. 3: the Honor of the duel, written on the gauge of the Dawn's slots alone (the faction of a slot: its text, the gauge test:
+	// HOLFactionResource::HasResource; the rules and the numbers: HOLDuelRewards, HOLDawnValues).
+	void ApplyHonorOrders(const TArray<FHOLDuelHonorOrder>& Orders)
+	{
+		HOLDuelRewards::ApplyHonor(Cast<AHOLGameState>(Gameplay::GetGameState()), Orders);
+	}
+
+	void SlotGauges(TArray<bool>& HasGauge, TArray<int>& Current)
+	{
+		AHOLGameState State = Cast<AHOLGameState>(Gameplay::GetGameState());
+		for (int Slot = 0; Slot < Kits.Num(); Slot++)
+		{
+			const FString FactionText = UHOLDiplomacyReadLibrary::GetSlotFactionText(this, Slot);
+			HasGauge.Add(State != nullptr && HOLFactionResource::HasResource(HOLDuelRewards::FactionOfText(FactionText)));
+			Current.Add(State != nullptr ? State.GetFactionResource(Slot) : 0);
+		}
+	}
+
 	// D6: each slot's kit state (posture, parry), reset when its duel begins.
 	FHOLDuelKitSettings KitSettings;
 	TArray<FHOLDuelKit> Kits;
@@ -106,6 +124,15 @@ class UHOLDuelLedger : UHOLDuelSubsystem
 				Kits[Challenger] = FHOLDuelKit();
 			if (Slot >= 0 && Slot < Kits.Num())
 				Kits[Slot] = FHOLDuelKit();
+			// D859 n. 3: the acceptor of a duel that begins gains HonorDuelAccept (the Dawn's slots alone).
+			TArray<bool> HasGauge;
+			TArray<int> Current;
+			SlotGauges(HasGauge, Current);
+			TArray<FHOLDuelHonorOrder> Accepted;
+			FHOLDuelHonorOrder Order = HOLDuelRewards::HonorOfAccept(Slot, HOLDuelRewards::SlotHas(HasGauge, Slot), HOLDuelRewards::SlotValue(Current, Slot));
+			if (Order.Slot >= 0)
+				Accepted.Add(Order);
+			ApplyHonorOrders(Accepted);
 		}
 		return true;
 	}
@@ -197,6 +224,11 @@ class UHOLDuelLedger : UHOLDuelSubsystem
 		}
 		TArray<FHOLDuelEnded> Ended = HOLDuel::Tick(Settings, Book, DeltaMs, Health);
 		PendingMorale.Append(HOLDuelRewards::OrdersOfEnded(Settings, Ended));
+		// D859 n. 3: the Honor of the duels that ended, on the gauges of the Dawn's slots alone.
+		TArray<bool> HasGauge;
+		TArray<int> Current;
+		SlotGauges(HasGauge, Current);
+		ApplyHonorOrders(HOLDuelRewards::HonorOfEnded(Settings, Ended, HasGauge, Current));
 		for (int Index = 0; Index < Ended.Num(); Index++)
 		{
 			Log("Duel ended: slots " + Ended[Index].Duel.Challenger + " and " + Ended[Index].Duel.Target + ", end " + int(Ended[Index].Duel.End) + ", winner " + Ended[Index].Duel.Winner);

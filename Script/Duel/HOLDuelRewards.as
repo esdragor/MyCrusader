@@ -50,18 +50,84 @@ namespace HOLDuelRewards
 		return Result;
 	}
 
-	// STUB (red first, D859 n. 3): the Honor of the duel, nothing computed yet.
-	FHOLDuelHonorOrder HonorOfAccept(int Slot, bool bHasGauge, int Current)
+	// The Honor of the duel (D859 n. 3, pure): one gauge change, from the slot's gauge now, through the gauge chain (cap 100, floor 0).
+	// bGain: Gain(Amount) else Lose(Amount). A slot without a gauge (not the Dawn, bHasGauge computed by the caller) gets no order.
+	FHOLDuelHonorOrder HonorChange(int Slot, bool bHasGauge, int Current, bool bGain, int Amount)
 	{
-		return FHOLDuelHonorOrder();
+		FHOLDuelHonorOrder Order;
+		if (Slot < 0 || !bHasGauge)
+			return Order;
+		FHOLFactionResource Gauge = HOLFactionResource::Make(Current, 0, HOLDawnValues::HonorCap());
+		if (bGain)
+			HOLFactionResource::Gain(Gauge, Amount);
+		else
+			HOLFactionResource::Lose(Gauge, Amount);
+		Order.Slot = Slot;
+		Order.Delta = Gauge.Value - Math::Clamp(Current, 0, HOLDawnValues::HonorCap());
+		Order.NewValue = Gauge.Value;
+		return Order;
 	}
 
+	bool SlotHas(const TArray<bool>& HasGauge, int Slot)
+	{
+		return Slot >= 0 && Slot < HasGauge.Num() && HasGauge[Slot];
+	}
+
+	int SlotValue(const TArray<int>& Values, int Slot)
+	{
+		return (Slot >= 0 && Slot < Values.Num()) ? Values[Slot] : 0;
+	}
+
+	// The acceptance: the one who accepts gains HonorDuelAccept.
+	FHOLDuelHonorOrder HonorOfAccept(int Slot, bool bHasGauge, int Current)
+	{
+		return HonorChange(Slot, bHasGauge, Current, true, HOLDawnValues::HonorDuelAccept());
+	}
+
+	// The Honor of every duel that ended in one step, in the order of the list: the winner gains HonorDuelWin (bFactionEffect), the
+	// refuser who pays loses HonorDuelRefuse (bRefusalCost). A running copy of the gauges carries the result from one order to the next.
 	TArray<FHOLDuelHonorOrder> HonorOfEnded(const FHOLDuelSettings& S, const TArray<FHOLDuelEnded>& Ended, const TArray<bool>& HasGauge, const TArray<int>& Current)
 	{
 		TArray<FHOLDuelHonorOrder> Result;
+		TArray<int> Running = Current;
+		for (int Index = 0; Index < Ended.Num(); Index++)
+		{
+			FHOLDuelEffects E = HOLDuel::Effects(S, Ended[Index].Duel);
+			FHOLDuelHonorOrder Order;
+			if (E.bFactionEffect)
+				Order = HonorChange(E.TriumphSlot, SlotHas(HasGauge, E.TriumphSlot), SlotValue(Running, E.TriumphSlot), true, HOLDawnValues::HonorDuelWin());
+			else if (E.bRefusalCost)
+				Order = HonorChange(E.HesitationSlot, SlotHas(HasGauge, E.HesitationSlot), SlotValue(Running, E.HesitationSlot), false, HOLDawnValues::HonorDuelRefuse());
+			if (Order.Slot >= 0)
+			{
+				if (Order.Slot < Running.Num())
+					Running[Order.Slot] = Order.NewValue;
+				Result.Add(Order);
+			}
+		}
 		return Result;
 	}
 
+	// Writes the orders to the gauges (authority). Returns how many were written.
+	int ApplyHonor(AHOLGameState State, const TArray<FHOLDuelHonorOrder>& Orders)
+	{
+		if (State == nullptr)
+			return 0;
+		for (int Index = 0; Index < Orders.Num(); Index++)
+		{
+			State.SetFactionResource(Orders[Index].Slot, Orders[Index].NewValue);
+		}
+		return Orders.Num();
+	}
+
+	// The faction of a slot from its display text (UHOLDiplomacyReadLibrary::GetSlotFactionText: "Ordre de l'Aube" in French, "Order of the
+	// Dawn" in English). A C++ UFUNCTION giving the EHOLFaction itself would replace this (TYPES_A_EXPOSER).
+	EHOLFaction FactionOfText(const FString& Text)
+	{
+		if (Text.Contains("Aube") || Text.Contains("Dawn"))
+			return EHOLFaction::DawnOrder;
+		return EHOLFaction::BlackLegions;
+	}
 	// The orders of every duel that ended in one step (what HOLDuel::Tick hands back), in the order of the list: the ledger keeps
 	// them in PendingMorale until the bridge to the simulation's morale applies them (MoraleInProgress.md M7).
 	TArray<FHOLDuelMoraleOrder> OrdersOfEnded(const FHOLDuelSettings& S, const TArray<FHOLDuelEnded>& Ended)
