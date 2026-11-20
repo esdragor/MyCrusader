@@ -164,14 +164,15 @@ namespace HOLCommandGridRules
 				return Result;
 			}
 			TArray<FName> ResearchCells = GetResearchLineCells(Context.Researches, Context.Researched);
-			int FirstOption = HOLCommandGridRead::GetSpecializationCell(0);
+			// D868: the cvar cell is the first option of a two-option choice; a third option shifts the row one cell left (Templars: 5 6 7, the research row at 8 stays visible).
+			int FirstOption = HOLCommandGridRead::GetSpecializationCell(0) - (OptionCount - SpecializationOptions);
 			if (Cell < Context.Produces.Num())
 			{
 				Result.Command = EHOLGridCommandKind::Produce;
 				Result.TypeName = Context.Produces[Cell];
 			}
 			else if (Context.bPrimaryForum && !Context.bBuildingGroup && Context.SpecializationTier > 0
-				&& Cell >= FirstOption && Cell < HOLCommandGridRead::GetSpecializationCell(OptionCount))
+				&& Cell >= FirstOption && Cell < FirstOption + OptionCount)
 			{
 				// SP3 (D332, D684, D785): the open tier's options (two, three for the Templars); the running one cancels at no cost (its time left on the cell), the
 				// other still starts (it replaces).
