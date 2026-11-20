@@ -19,7 +19,7 @@ import sys
 
 DATA = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "Data")
 ROSTER = ["Spearman", "ManAtArms", "Archer", "Crossbowman", "LightCavalry", "Ram", "Mangonel"]
-DAWN_ONLY_UNITS = ["Peasant", "Monk", "Halberdier", "Arquebusier"]
+DAWN_ONLY_UNITS = ["Peasant", "Monk", "Halberdier", "Arquebusier", "VirtuousKnight"]
 # D858: the Spearman is the Legions' alone (the Dawn's Barracks makes the Halberdier instead); it stays in ROSTER for the Legions' own checks.
 LEGIONS_ONLY_ROSTER = ["Spearman"]
 DAWN_ONLY_BUILDINGS = ["Chapel", "Sanctuary"]
@@ -128,7 +128,7 @@ def main():
     # D858: the Dawn's Barracks grid is the Halberdier and the Man-at-arms, never the Spearman; the Halberdier is the Dawn's alone.
     if "Barracks" in buildings:
         dawn_grid = [u for u in produces(buildings["Barracks"]["Produces"]) if u in units and allows(units[u]["Faction"], "Dawn")]
-        check(dawn_grid == ["Halberdier", "ManAtArms"], "Barracks grid for the Dawn is [Halberdier, ManAtArms], got %s" % dawn_grid)
+        check(dawn_grid == ["Halberdier", "ManAtArms", "VirtuousKnight"], "Barracks grid for the Dawn is [Halberdier, ManAtArms, VirtuousKnight] (D858, D864), got %s" % dawn_grid)
     if "Halberdier" in units:
         check(allows(units["Halberdier"]["Faction"], "Dawn"), "the Halberdier is open to the Dawn")
     centre = buildings.get("MainCentre")
