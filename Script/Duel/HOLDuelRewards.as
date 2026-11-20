@@ -41,8 +41,10 @@ namespace HOLDuelRewards
 		return Order;
 	}
 
-	FHOLDuelMoraleOrder PlacedAt(FHOLDuelMoraleOrder Order, int XCm, int YCm)
+	FHOLDuelMoraleOrder PlacedAt(const FHOLDuelMoraleOrder& In, int XCm, int YCm)
 	{
+		// A parameter is not an l-value in script: work on a local copy.
+		FHOLDuelMoraleOrder Order = In;
 		Order.bHasCenter = true;
 		Order.CenterXCm = XCm;
 		Order.CenterYCm = YCm;
