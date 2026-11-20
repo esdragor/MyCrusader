@@ -104,6 +104,10 @@ def render(rows):
     return "\n".join(out) + "\n"
 
 
+def render_cpp(rows):
+    return ""  # stub: the red test comes first
+
+
 def main():
     text = render(load())
     if "--check" in sys.argv:
