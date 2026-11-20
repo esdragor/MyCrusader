@@ -28,24 +28,35 @@ namespace HOLGarrisonView
 	const int OrderUngarrisonAll = 1;
 	const int OrderUngarrisonUnit = 2;
 
-	// STUB (red first): the view of a building holding OccupantUnitIds with Slots places.
+	// The view of a building holding OccupantUnitIds with Slots places. A building without places (Slots <= 0) shows nothing.
 	FHOLGarrisonView Build(const TArray<int>& OccupantUnitIds, int Slots)
 	{
 		FHOLGarrisonView View;
+		if (Slots <= 0)
+			return View;
+		View.CounterText = f"{OccupantUnitIds.Num()} / {Slots}";
+		View.PortraitUnitIds = OccupantUnitIds;
+		View.bShowUngarrisonAll = OccupantUnitIds.Num() > 0;
 		return View;
 	}
 
-	// STUB (red first): the order a click on portrait PortraitIndex gives.
+	// The order a click on portrait PortraitIndex gives: that unit comes out; nothing for an index outside the portraits.
 	FHOLGarrisonOrder OrderForPortraitClick(const FHOLGarrisonView& View, int PortraitIndex)
 	{
 		FHOLGarrisonOrder Order;
+		if (PortraitIndex < 0 || PortraitIndex >= View.PortraitUnitIds.Num())
+			return Order;
+		Order.Kind = OrderUngarrisonUnit;
+		Order.UnitId = View.PortraitUnitIds[PortraitIndex];
 		return Order;
 	}
 
-	// STUB (red first): the order of the "Sortir tous" key or cell.
+	// The order of the "Sortir tous" key or cell: every occupant out; nothing while the cell is hidden (nobody inside).
 	FHOLGarrisonOrder OrderForUngarrisonAll(const FHOLGarrisonView& View)
 	{
 		FHOLGarrisonOrder Order;
+		if (View.bShowUngarrisonAll)
+			Order.Kind = OrderUngarrisonAll;
 		return Order;
 	}
 }
