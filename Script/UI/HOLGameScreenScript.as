@@ -208,6 +208,8 @@ UHOLScenarioPanelScript ScenarioPanel;
 	const int DipKindMenu = 4;
 	const int DipKindVision = 5;
 	const int DipKindMessage = 7;
+	// D872: a click on the line itself (HOLDiplomacyPanel::KindRow).
+	const int DipKindRow = 10;
 	const int DipKindChip = 3;
 	// The tribute (E-diplomacy_locked, 2026-11-05): four buttons a line, one per resource (HOLDiplomacyPanel::TributeResource), the click's kind
 	// HOLDiplomacyPanel::TributeKind; the tax is written once in the panel's foot and, without a finished Market, why the buttons are greyed.
@@ -227,6 +229,7 @@ UHOLScenarioPanelScript ScenarioPanel;
 	UCommonTextBlock DipCloseLabel;
 	UVerticalBox DipRowsBox;
 	TArray<UVerticalBox> DipRowBoxes;
+	TArray<UButton> DipRowButtons;
 	TArray<UHorizontalBox> DipLines;
 	TArray<UHorizontalBox> DipMenuBoxes;
 	TArray<UBorder> DipSwatches;
@@ -514,7 +517,14 @@ UHOLScenarioPanelScript ScenarioPanel;
 		for (int Slot = 0; Slot < DipMaxRows; ++Slot)
 		{
 			UVerticalBox RowBox = Cast<UVerticalBox>(ConstructWidget(UVerticalBox, FName(f"DipRow_{Slot}")));
-			DipRowsBox.AddChildToVerticalBox(RowBox).SetPadding(FMargin(0.0, 0.0, 0.0, 2.0));
+			// D872: the whole line is a transparent button, a click on it chooses the player as the private chat target (PanelClick, DipKindRow); the line's own buttons take their clicks first.
+			UButton RowButton = BindDipButton(MakeButton(FName(f"DipRowButton_{Slot}")), Slot, DipKindRow);
+			RowButton.SetBackgroundColor(FLinearColor(1.0, 1.0, 1.0, 0.0));
+			UButtonSlot RowButtonSlot = Cast<UButtonSlot>(RowButton.AddChild(RowBox));
+			if (RowButtonSlot != nullptr)
+				RowButtonSlot.SetPadding(FMargin(0.0, 0.0, 0.0, 0.0));
+			DipRowsBox.AddChildToVerticalBox(RowButton).SetPadding(FMargin(0.0, 0.0, 0.0, 2.0));
+			DipRowButtons.Add(RowButton);
 			DipRowBoxes.Add(RowBox);
 			// Two lines a player (the user's answer of 2026-11-05): the first holds the colour, name, faction, lives, posture, vision and message; the second the four tribute buttons, under the name. Lines 2 and 3 stay empty (no size); DescribeDipFit counts the lines drawn.
 			for (int Line = 0; Line < 4; ++Line)
@@ -727,6 +737,7 @@ UHOLScenarioPanelScript ScenarioPanel;
 		{
 			const bool bThere = HOLDiplomacyRead::IsSlotInMatch(Slot);
 			DipRowBoxes[Slot].SetVisibility(bThere ? ESlateVisibility::SelfHitTestInvisible : ESlateVisibility::Collapsed);
+			DipRowButtons[Slot].SetVisibility(bThere ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
 			if (!bThere)
 			{
 				DipRows[Slot] = FHOLDiplomacyRowView();
@@ -928,11 +939,13 @@ UHOLScenarioPanelScript ScenarioPanel;
 			Controller.RequestPanelTribute(Slot, TributeResource, 100);
 			return true;
 		}
-		if (Kind == DipKindMessage)
+		// The Message button and the whole line (D872) both choose the private chat target; greyed (an AI, a defeated player) they choose nobody.
+		if (Kind == DipKindMessage || Kind == DipKindRow)
 		{
-			if (!Row.bMessageEnabled)
+			const int Chosen = HOLDiplomacyPanel::ChatTargetOfClick(Kind, Slot, Row.bMessageEnabled);
+			if (Chosen < 0)
 				return false;
-			DipMessageSlot = Slot;
+			DipMessageSlot = Chosen;
 			return true;
 		}
 		return false;
@@ -988,6 +1001,8 @@ UHOLScenarioPanelScript ScenarioPanel;
 			}
 			if (WidgetName == FName(f"DipMessage_{Slot}"))
 				return PanelClick(Slot, DipKindMessage);
+			if (WidgetName == FName(f"DipRowButton_{Slot}"))
+				return PanelClick(Slot, DipKindRow);
 		}
 		return false;
 	}
@@ -2669,6 +2684,7 @@ UHOLScenarioPanelScript ScenarioPanel;
 			+ (AILevelTexts.IsEmpty() ? "" : "\nai level: " + AILevelTexts)
 			+ (VolcanoTexts.IsEmpty() ? "" : "\nvolcano: " + VolcanoTexts)
 			+ (SiteTexts.IsEmpty() ? "" : "\nsacred: " + SiteTexts)
+			+ (ChatInput != nullptr ? "\n" + ChatInput.Describe() : "")
 			+ "\ndiplomacy: " + (bDipOpen ? f"open layout {DipLayout}" + (DipMenuSlot >= 0 ? f" menu {DipMenuSlot}" : "") + (DipMessageSlot >= 0 ? f" message to {DipMessageSlot}" : "") + " | " + DescribeDipFit() + " | " + DipTexts : "closed")
 			+ "\npause: " + PauseView.Describe + (PauseTexts.IsEmpty() ? "" : "\npause texts: " + PauseTexts);
 	}

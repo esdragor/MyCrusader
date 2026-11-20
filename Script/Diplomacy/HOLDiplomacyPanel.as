@@ -45,9 +45,11 @@ namespace HOLDiplomacyPanel
 		return 10;
 	}
 
-	// D872 (STUB, red first): the slot a click on a control of a line chooses as the private chat target, -1 when the click chooses nobody.
+	// D872: the slot a click on a control of a line chooses as the private chat target: the line itself or its Message button, when the Message is not greyed (an AI, a defeated player, yourself); -1 when the click chooses nobody.
 	int ChatTargetOfClick(int Kind, int Slot, bool bMessageEnabled)
 	{
+		if ((Kind == KindMessage() || Kind == KindRow()) && bMessageEnabled)
+			return Slot;
 		return -1;
 	}
 
