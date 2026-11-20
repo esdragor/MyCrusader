@@ -687,7 +687,7 @@ bool FHOLDeployMountBarAdvancesTest::RunTest(const FString& Parameters)
 	const auto PermilleAt = [](HOLDeploy::FWatch& Watch, const int32 ObservedPhase, const double NowSeconds)
 	{
 		HOLDeploy::FState State;
-		State.Phase = HOLDeploy::PhaseAt(ObservedPhase);
+		State.Phase = HOLDeploy::PhaseAt(ObservedPhase < 0 ? 2 : ObservedPhase); // as AHOLPlayerController::GetDeployProgress: no changing phase watched = settled, no bar (PhaseAt(-1) would be Packing)
 		State.ElapsedMs = HOLDeploy::WatchElapsedMs(Watch, ObservedPhase, NowSeconds);
 		return HOLDeploy::ProgressPermille(State, HOLDeploy::DefaultProfile(), 0);
 	};
@@ -705,7 +705,7 @@ bool FHOLDeploySecondMountReturnsToPackTest::RunTest(const FString& Parameters)
 	const auto PermilleAt = [](HOLDeploy::FWatch& Watch, const int32 ObservedPhase, const double NowSeconds)
 	{
 		HOLDeploy::FState State;
-		State.Phase = HOLDeploy::PhaseAt(ObservedPhase);
+		State.Phase = HOLDeploy::PhaseAt(ObservedPhase < 0 ? 2 : ObservedPhase); // as AHOLPlayerController::GetDeployProgress: no changing phase watched = settled, no bar (PhaseAt(-1) would be Packing)
 		State.ElapsedMs = HOLDeploy::WatchElapsedMs(Watch, ObservedPhase, NowSeconds);
 		return HOLDeploy::ProgressPermille(State, HOLDeploy::DefaultProfile(), 0);
 	};
