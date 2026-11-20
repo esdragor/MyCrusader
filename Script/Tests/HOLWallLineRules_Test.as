@@ -247,10 +247,29 @@ void Test_WallLinePlanCarriesTheRefusals(FUnitTest& T)
 	T.AssertTrue(NoGrid.Refusal == HOLWallLine::EHOLWallLineRefusal::BadPoint, "a tile size of 0: refused (no division by zero)");
 }
 
-// The length cap comes from the cvar hol.Wall.MaxLineCells, and its default is the recommendation A of the sheet (16): a setting (D345), not a number in the rule.
-void Test_WallLineMaxLineCellsDefaultIsSheetRecommendation(FUnitTest& T)
+// D867: no length cap by default. hol.Wall.MaxLineCells = 0 (its default) or a very large value means no limit; the request rule fed with the cap the server
+// reads (HOLWallLine::MaxLineCells()) accepts a 151-cell line, and lays every cell of it (the effect, computed by the rule).
+void Test_WallLineDefaultHasNoLengthCap(FUnitTest& T)
 {
-	T.AssertEquals(16, HOLWallLine::MaxLineCells(), "hol.Wall.MaxLineCells defaults to 16 (Retours/Q-mur-ligne-longueur.md, A)");
+	TArray<FIntPoint> None;
+	FIntPoint Low(-200, -200);
+	FIntPoint High(200, 200);
+	FVector A = HOLWallLine::CellToPoint(FIntPoint(-75, 3), WallLineTile, 0.0);
+	FVector B = HOLWallLine::CellToPoint(FIntPoint(75, 3), WallLineTile, 0.0);
+	HOLWallLine::FHOLWallLinePlan Plan = HOLWallLine::PlanFromRequest(0, A, B, WallLineTile, Low, High, None, HOLWallLine::MaxLineCells());
+	T.AssertTrue(Plan.Refusal == HOLWallLine::EHOLWallLineRefusal::Ok, "a 151-cell line with the default cap: accepted, not TooLong");
+	T.AssertEquals(151, Plan.Cells.Num(), "every cell of the long line is laid");
+	T.AssertTrue(WallLineHasCell(Plan.Cells, -75, 3) && WallLineHasCell(Plan.Cells, 75, 3) && WallLineIsContiguous(Plan.Cells), "both ends included, no hole");
+}
+
+// D867: the drag shows the whole long line (no cut at 17 cells), the same list the server lays.
+void Test_WallLineDefaultDragShowsTheWholeLongLine(FUnitTest& T)
+{
+	TArray<FIntPoint> None;
+	TArray<FIntPoint> Shown = HOLWallLine::DragCells(FIntPoint(0, 0), FIntPoint(99, 0), HOLWallLine::MaxLineCells());
+	HOLWallLine::FHOLWallLinePlan Plan = HOLWallLine::Validate(FIntPoint(0, 0), FIntPoint(99, 0), FIntPoint(-200, -200), FIntPoint(200, 200), None, HOLWallLine::MaxLineCells());
+	T.AssertEquals(100, Shown.Num(), "the default drag shows the 100 cells of the line");
+	T.AssertEquals(Shown.Num(), Plan.Cells.Num(), "the server lays as many cells as the drag shows");
 }
 
 // A cell centre mapped back lands in the same cell, for a negative cell too.
