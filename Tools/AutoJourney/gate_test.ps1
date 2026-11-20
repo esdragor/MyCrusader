@@ -505,6 +505,10 @@ Check ($c4 -match '(?m)^FAIL .*L19-1.*\b5\b') 'L19-1 close: 5 commits de code (>
 Check ($c4 -match 'agents') 'L19-1 close: le FAIL dit de confier le code aux agents' $c4
 $c4b = Run-C @('-MaxMainCodeCommits', '6')
 Check ($c4b -match '(?m)^WARN .*L19-1' -and -not ($c4b -match '(?m)^FAIL .*L19-1')) 'L19-1 close: -MaxMainCodeCommits 6 : 5 commits -> WARN' $c4b
+Add-CodeCommit $CR 'Script\docs_titled.as' 'Docs: session docs touching a script (L20-3)'
+Add-CodeCommit $CR 'Script\Maps\regen.uasset' 'Regenerate maps assets only (L20-3)'
+$c6 = Run-C
+Check ($c6 -match '(?m)^FAIL .*L19-1.*\b5\b' -and -not ($c6 -match 'Docs: session docs touching|Regenerate maps assets only')) 'L19-1 close (L20-3): un commit Docs: et un commit .uasset seul ne sont pas comptes (toujours 5)' $c6
 foreach ($wn in 'A', 'B', 'Arwen') { & git -C $CR worktree remove --force (Join-Path $CW "HeroesOfLiberty-$wn") 2>&1 | Out-Null }
 
 Remove-Item -Recurse -Force $Tmp -ErrorAction SilentlyContinue
