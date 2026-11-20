@@ -1248,38 +1248,38 @@ void AHOLSelectionMarkers::UpdateOrderLines()
 					Displayed.Add(View.UnitId, View.Location);
 				}
 			}
-			// From the centre of the chain's units as drawn this frame (the group walking), those still standing.
-			FVector Start = FVector::ZeroVector;
-			int32 Count = 0;
+			// One line per block (BUG-order_lines_multi_blocs): from the centre of each block of the chain's units as drawn this frame
+			// (the group walking), those still standing; units of one block share one line, never one from the middle of all of them.
+			TArray<FVector> Standing;
 			for (const uint32 Id : Chain.UnitIds)
 			{
 				if (const FVector* Location = Displayed.Find(Id))
 				{
-					Start += *Location;
-					++Count;
+					Standing.Add(*Location);
 				}
 			}
-			if (Count == 0)
+			TArray<FVector> BlockStarts;
+			HOLFormation::FindBlockCentres(Standing, HOLFormation::BlockJoinDistance, BlockStarts);
+			for (const FVector& BlockStart : BlockStarts)
 			{
-				continue;
-			}
-			Start /= Count;
-			for (const FHOLNetChainStep& Step : Chain.Steps)
-			{
-				// An attack at its target as shown here (it walks), else where it stood.
-				FVector End;
-				AHOLPlayerState::LocateChainStep(*World, Step, End);
-				// F7.3: the line of an attack never follows an enemy out of sight (the step's own point, where it was seen).
-				if (Step.TargetId != 0 && Vision && Vision->IsStarted())
+				FVector Start = BlockStart;
+				for (const FHOLNetChainStep& Step : Chain.Steps)
 				{
-					End = Vision->GetOrderLineEnd(ViewerSlot, FVector(Step.Location), End);
+					// An attack at its target as shown here (it walks), else where it stood.
+					FVector End;
+					AHOLPlayerState::LocateChainStep(*World, Step, End);
+					// F7.3: the line of an attack never follows an enemy out of sight (the step's own point, where it was seen).
+					if (Step.TargetId != 0 && Vision && Vision->IsStarted())
+					{
+						End = Vision->GetOrderLineEnd(ViewerSlot, FVector(Step.Location), End);
+					}
+					const FLinearColor& Color = GetOrderColor(Step.Kind);
+					AddLine(Start, End, Color);
+					PointTransforms.Add(FTransform(FQuat::Identity, End + FVector(0.0, 0.0, OrderPointOffset),
+						FVector(OrderPointRadius * 2.0 / ShapeSize, OrderPointRadius * 2.0 / ShapeSize, 1.0)));
+					AddCustomData(PointData, Color, 1.0);
+					Start = End;
 				}
-				const FLinearColor& Color = GetOrderColor(Step.Kind);
-				AddLine(Start, End, Color);
-				PointTransforms.Add(FTransform(FQuat::Identity, End + FVector(0.0, 0.0, OrderPointOffset),
-					FVector(OrderPointRadius * 2.0 / ShapeSize, OrderPointRadius * 2.0 / ShapeSize, 1.0)));
-				AddCustomData(PointData, Color, 1.0);
-				Start = End;
 			}
 		}
 	}
