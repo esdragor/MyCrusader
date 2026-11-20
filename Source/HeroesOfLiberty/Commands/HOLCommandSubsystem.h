@@ -43,6 +43,8 @@ struct FHOLGarrisonOrder
 	TArray<uint32> UnitIds;
 	TWeakObjectPtr<AHOLBuilding> Building;
 	bool bExitAll = false;
+	/** The one unit that comes out (IssueUngarrisonUnitOrder; Building unused: the unit's own garrison at the step), 0 = none. */
+	uint32 ExitUnitId = 0;
 };
 /** J8c.3: a player's hero ability asked (UHOLCommandSubsystem::IssueHeroAbilityOrder). */
 struct FHOLHeroAbilityOrder
@@ -248,6 +250,8 @@ public:
 	 */
 	void IssueGarrisonOrder(int32 PlayerIndex, TConstArrayView<uint32> UnitIds, AHOLBuilding* Building);
 	void IssueUngarrisonAllOrder(int32 PlayerIndex, AHOLBuilding* Building);
+	/** Takes the one unit UnitId out of the building it is garrisoned in (the garrison checks at the step that it is PlayerIndex's building). */
+	void IssueUngarrisonUnitOrder(int32 PlayerIndex, uint32 UnitId);
 	/** Takes the garrison orders waiting (UHOLGarrisonSubsystem, at the start of each step), in the order given. */
 	void ConsumeGarrisonOrders(TArray<FHOLGarrisonOrder>& OutOrders);
 

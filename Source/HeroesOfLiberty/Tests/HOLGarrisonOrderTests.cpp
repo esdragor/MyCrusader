@@ -959,4 +959,99 @@ bool FHOLGarrisonRightClickTest::RunTest(const FString& Parameters)
 	Table->RemoveRow(TestTowerType);
 	return true;
 }
+// F7 lot 4a (ELROND-1120h): the order "this unit comes out" (HOLPlayerOrders::UngarrisonUnit) takes ONE occupant out of its tower at the next step, the others stay
+// inside; refused to another slot, to a unit on the field and to an unknown unit. The owner's list of occupants (AHOLBuilding::GetGarrisonOccupants, replicated to
+// the owner: what the client's frame reads) follows every enter and exit.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLGarrisonUngarrisonUnitTest, "HeroesOfLiberty.Garrison.UngarrisonUnit", UE::HeroesOfLiberty::Tests::GarrisonOrder::Flags)
+
+bool FHOLGarrisonUngarrisonUnitTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::GarrisonOrder;
+	UDataTable* Table = const_cast<UDataTable*>(GetDefault<UHOLBuildingSettings>()->BuildingTypesTable.LoadSynchronous());
+	const FHOLBuildingTypeRow* HouseRow = Table ? Table->FindRow<FHOLBuildingTypeRow>(HOLBuildingTypeNames::House, TEXT("garrison test")) : nullptr;
+	if (!TestNotNull(TEXT("the building type table and its House row"), HouseRow))
+	{
+		return false;
+	}
+	FHOLBuildingTypeRow TowerRow = *HouseRow;
+	TowerRow.GarrisonSlots = 2;
+	Table->AddRow(TestTowerType, TowerRow);
+
+	UWorld* World = UWorld::CreateWorld(EWorldType::Game, /*bInformEngineOfWorld*/ false);
+	FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);
+	Context.SetCurrentWorld(World);
+	World->InitializeActorsForPlay(FURL());
+	AHOLGameState* GameState = World->SpawnActor<AHOLGameState>();
+	World->SetGameState(GameState);
+	UHOLUnitSubsystem* Units = World->GetSubsystem<UHOLUnitSubsystem>();
+	UHOLSimulationSubsystem* Simulation = World->GetSubsystem<UHOLSimulationSubsystem>();
+	AHOLBuilding* Tower = World->SpawnActor<AHOLBuilding>(FVector(3000.0, 0.0, 0.0), FRotator::ZeroRotator);
+	if (TestNotNull(TEXT("units"), Units) && TestNotNull(TEXT("simulation"), Simulation) && TestNotNull(TEXT("tower"), Tower))
+	{
+		Tower->Setup(TestTowerType, 0, 0);
+		const auto RunStep = [Simulation, Units]
+		{
+			const int64 Step = Simulation->AdvanceStepIndexForTests();
+			Simulation->GetOnStepStarted().Broadcast(Step);
+			Units->ServeBirthRequests();
+			Simulation->GetOnStepEnded().Broadcast(Step);
+		};
+		const auto Place = [Units](const int32 Owner, const FVector& Location)
+		{
+			TArray<uint32> Before;
+			Units->GetAllUnitIds(Before);
+			FHOLUnitSpawnRequest Request;
+			Request.TypeName = FName(TEXT("Spearman"));
+			Request.Count = 1;
+			Request.OwnerPlayer = static_cast<uint8>(Owner);
+			Request.Center = Location;
+			Units->RequestUnits(Request);
+			Units->ServeBirthRequests();
+			TArray<uint32> After;
+			Units->GetAllUnitIds(After);
+			uint32 Born = 0;
+			for (const uint32 Id : After)
+			{
+				Born = Before.Contains(Id) ? Born : Id;
+			}
+			return Born;
+		};
+		const auto Selectable = [World](const uint32 Id)
+		{
+			TArray<FHOLUnitView> Views;
+			HOLUnitView::Gather(*World, Views);
+			return Views.ContainsByPredicate([Id](const FHOLUnitView& View) { return View.UnitId == Id; });
+		};
+		const auto Occupants = [Tower]
+		{
+			TArray<int32> Ids;
+			Tower->GetGarrisonOccupants(Ids);
+			return Ids;
+		};
+
+		const uint32 First = Place(0, FVector(2000.0, -600.0, 0.0));
+		const uint32 Second = Place(0, FVector(2000.0, 600.0, 0.0));
+		if (TestTrue(TEXT("the two Spearmen born"), First && Second))
+		{
+			const uint32 Both[] = { First, Second };
+			TestTrue(TEXT("the garrison order enters the queue"), HOLPlayerOrders::Garrison(*World, 0, Both, Tower));
+			RunStep();
+			TestTrue(TEXT("both are inside"), Units->GetGarrison(First) == Tower && Units->GetGarrison(Second) == Tower);
+			TestTrue(TEXT("the tower's list of occupants has the two ids, in order"), Occupants() == TArray<int32>({ static_cast<int32>(First), static_cast<int32>(Second) }));
+
+			TestFalse(TEXT("another slot cannot take a unit out"), HOLPlayerOrders::UngarrisonUnit(*World, 3, First));
+			TestFalse(TEXT("an unknown unit is refused"), HOLPlayerOrders::UngarrisonUnit(*World, 0, 0x7FFFFFF0u));
+			TestTrue(TEXT("the unit's own player takes it out: the order enters the queue"), HOLPlayerOrders::UngarrisonUnit(*World, 0, First));
+			RunStep();
+			TestTrue(TEXT("after the step the first Spearman is on the field again and selectable"), Units->GetGarrison(First) == nullptr && Selectable(First));
+			TestTrue(TEXT("the second Spearman is still inside, not selectable"), Units->GetGarrison(Second) == Tower && !Selectable(Second));
+			TestTrue(TEXT("the list of occupants lost only the first"), Occupants() == TArray<int32>({ static_cast<int32>(Second) }));
+			TestFalse(TEXT("a unit already on the field is refused"), HOLPlayerOrders::UngarrisonUnit(*World, 0, First));
+		}
+	}
+	GEngine->DestroyWorldContext(World);
+	World->DestroyWorld(false);
+	Table->RemoveRow(TestTowerType);
+	return true;
+}
 #endif // WITH_DEV_AUTOMATION_TESTS

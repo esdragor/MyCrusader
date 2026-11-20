@@ -128,6 +128,12 @@ public:
 	 */
 	int32 GetBuildersAtWork() const { return BuildersAtWork; }
 	void SetBuildersAtWork(int32 InBuilders);
+	/** Server: UnitId goes in / out of the garrison list read by clients (UHOLUnitSubsystem::SetGarrison). Kept sorted, no duplicate. */
+	void AddGarrisonOccupant(int32 UnitId);
+	void RemoveGarrisonOccupant(int32 UnitId);
+	/** The units garrisoned here, for the owner's client as for the server (replicated to the owner only): their ids, in order. Empty for a building that is not the viewer's. */
+	UFUNCTION(BlueprintCallable, Category = "Garrison")
+	void GetGarrisonOccupants(TArray<int32>& OutUnitIds) const;
 
 	/** The construction state, work or damage taken changed: on the server when set, on every machine when it arrives. For the HUD. */
 	DECLARE_MULTICAST_DELEGATE(FOnConstructionChanged);
@@ -498,6 +504,10 @@ private:
 	/** Health taken off it (D345.2a), at most its health: two bytes, to everyone, only when it is hit. */
 	UPROPERTY(ReplicatedUsing = OnRep_DamageTaken)
 	uint16 DamageTaken = 0;
+
+	/** Ids of the units garrisoned here, sorted, to the owner only (one int each, changes on enter or exit). */
+	UPROPERTY(Replicated)
+	TArray<int32> GarrisonOccupants;
 
 	/** V2: the main forum of its owner (IsPrimaryForum). */
 	UPROPERTY(ReplicatedUsing = OnRep_PrimaryForum)

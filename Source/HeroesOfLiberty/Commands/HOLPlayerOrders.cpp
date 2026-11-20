@@ -254,4 +254,9 @@ namespace HOLPlayerOrders
 	{
 		return Verdict(&World, TEXT("UngarrisonAll"), UHOLPlayerOrdersBoard::AskUngarrisonAll(&World, PlayerIndex, Building));
 	}
+
+	bool UngarrisonUnit(UWorld& World, const int32 PlayerIndex, const uint32 UnitId)
+	{
+		return false; // STUB (red test first)
+	}
 }
