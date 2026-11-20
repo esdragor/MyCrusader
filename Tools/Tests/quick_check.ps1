@@ -4506,14 +4506,14 @@ if (($Parts -contains "build") -and ($Parts -contains "camera")) {
     $Checks["the keys A, Q: the ghost, placed, built by the three, finished"] = [bool]($Barracks | Select-String -Pattern "Placement: Barracks \(cost F 0 W 150 S 0 G 0\)" -Quiet) -and
         [bool]($Barracks | Select-String -Pattern "Build order of slot 0: 3 units to $At$" -Quiet) -and [bool]($Barracks | Select-String -Pattern "Construction: slot 0 finished $At" -Quiet)
     $BarracksCells = @($Barracks | Select-String -Pattern "HUD cells: (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value })
-    $Checks["the barracks selected: A Lancier, Z Homme d'armes, no Archer (AR-Q2) ($(@($BarracksCells | Select-Object -Last 1)))"] = ($BarracksCells.Count -ge 2) -and
-        [bool]($BarracksCells[-1] -match "^A: Lancier; Z: Homme d'armes(; W: .+)?$")
+    $Checks["the barracks selected: A Hallebardier, Z Homme d'armes, no Archer (AR-Q2) ($(@($BarracksCells | Select-Object -Last 1)))"] = ($BarracksCells.Count -ge 2) -and
+        [bool]($BarracksCells[-1] -match "^A: Hallebardier; Z: Homme d'armes(; W: .+)?$")
     # The ground point under the cursor, a few cm off the camera's focus (as the group's rally point of J6a.5).
     $RallyAt = if ([string](& $Value $Barracks "(Rally: slot 0 set the rally point of Barracks at .*)$") -match "at \((-?\d+), (-?\d+)\)") { @([int]$Matches[1], [int]$Matches[2]) } else { @() }
     $Checks["its rally point by a right click ($($RallyAt -join ', '))"] = ($RallyAt.Count -eq 2) -and ([Math]::Abs($RallyAt[0] - $BarracksRally[0]) -le 50) -and
         ([Math]::Abs($RallyAt[1] - $BarracksRally[1]) -le 50)
-    $Born = @($Barracks | Select-String -Pattern "Production: (Spearman|ManAtArms|Archer) of slot 0 done" | ForEach-Object { $_.Matches[0].Groups[1].Value })
-    $Checks["a Lancier, a Homme d'armes and a second Lancier born ($($Born -join ', '))"] = ($Born -join ',') -eq "Spearman,ManAtArms,Spearman"
+    $Born = @($Barracks | Select-String -Pattern "Production: (Halberdier|ManAtArms|Archer) of slot 0 done" | ForEach-Object { $_.Matches[0].Groups[1].Value })
+    $Checks["a Hallebardier, a Homme d'armes and a second Hallebardier born ($($Born -join ', '))"] = ($Born -join ',') -eq "Halberdier,ManAtArms,Halberdier"
     $WhereLine = [string]($Barracks | Select-String -Pattern "Units where: (.*)$" | Select-Object -Last 1)
     $Soldiers = @{}
     foreach ($M in [regex]::Matches([string]$WhereLine, "#(\d+) slot 0 at \((-?\d+), (-?\d+)\)")) { $Soldiers[[int]$M.Groups[1].Value] = @([double]$M.Groups[2].Value, [double]$M.Groups[3].Value) }
