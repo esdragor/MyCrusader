@@ -8,8 +8,8 @@
 #include "Match/HOLMatchConfig.h"
 #include "Match/HOLVictoryRules.h"
 #include "Simulation/HOLCombatRules.h"
-#include "HOLCombatProcessor.generated.h"
 #include "Simulation/HOLDamageRedirectRules.h"
+#include "HOLCombatProcessor.generated.h"
 
 struct FHOLCombatFragment;
 struct FHOLMoveOrderFragment;
