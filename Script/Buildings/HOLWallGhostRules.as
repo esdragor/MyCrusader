@@ -15,10 +15,27 @@ namespace HOLWallGhost
 		FIntPoint BadCell = FIntPoint(0, 0);
 	}
 
-	// STUB (red first): nothing shown. The rule is written in the next commit.
 	FHOLWallGhost Build(FIntPoint Start, FIntPoint End, FIntPoint MapMin, FIntPoint MapMax, const TArray<FIntPoint>& Occupied, int MaxCells)
 	{
 		FHOLWallGhost Ghost;
+		HOLWallLine::FHOLWallLinePlan Plan = HOLWallLine::Validate(Start, End, MapMin, MapMax, Occupied, MaxCells);
+		// DragCells is the very list Validate checks (bounded to one cell past the cap), so a refused line is shown whole.
+		Ghost.Cells = HOLWallLine::DragCells(Start, End, MaxCells);
+		Ghost.bValid = Plan.Refusal == HOLWallLine::EHOLWallLineRefusal::Ok;
+		Ghost.BadCell = Plan.BadCell;
 		return Ghost;
+	}
+
+	// From the two ground points the client holds (the press and the cursor), as HOLWallLine::PlanFromRequest reads them.
+	FHOLWallGhost BuildFromPoints(FVector Start, FVector End, double Tile, FIntPoint MapMin, FIntPoint MapMax, const TArray<FIntPoint>& Occupied, int MaxCells)
+	{
+		if (Tile <= 0.0)
+		{
+			FHOLWallGhost Nothing;
+			Nothing.bValid = false;
+			return Nothing;
+		}
+		return Build(FIntPoint(HOLWallLine::CellOfCoordinate(Start.X, Tile), HOLWallLine::CellOfCoordinate(Start.Y, Tile)),
+			FIntPoint(HOLWallLine::CellOfCoordinate(End.X, Tile), HOLWallLine::CellOfCoordinate(End.Y, Tile)), MapMin, MapMax, Occupied, MaxCells);
 	}
 }
