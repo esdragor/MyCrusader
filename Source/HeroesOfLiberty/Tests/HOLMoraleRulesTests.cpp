@@ -1,0 +1,212 @@
+// Copyright Epic Games, Inc. All Rights Reserved.
+
+#include "Misc/AutomationTest.h"
+#include "Simulation/HOLMoraleRules.h"
+#include "Simulation/HOLMoraleTableRows.h"
+
+#if WITH_DEV_AUTOMATION_TESTS
+
+// PLAN-MORAL-1120 step 2: the pure morale rule in C++ (the single source, D836). Pure tests, no world: each posts effects (from the rows of
+// HOLMoraleTableRows.h or made by hand) through Apply / Tick and reads the result from Total / Multiplier.
+namespace UE::HeroesOfLiberty::Tests::MoraleRules
+{
+	constexpr EAutomationTestFlags Flags = EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter;
+	// Ids of hand-made effects, out of the table.
+	constexpr int32 IdA = 100;
+	constexpr int32 IdB = 101;
+	constexpr int32 IdC = 102;
+	constexpr int32 IdD = 103;
+}
+
+// The caps: 50 % taken (both signs), 40 % dealt bonus but 30 % dealt malus, 30 % rate; bonus and malus offset after their caps.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLMoraleCapsTest, "HeroesOfLiberty.Morale.CapsAndOffset", UE::HeroesOfLiberty::Tests::MoraleRules::Flags)
+
+bool FHOLMoraleCapsTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::MoraleRules;
+	HOLMorale::FHOLMoraleState State;
+	// Three taken bonuses of 25: 75 asked, 50 kept; the multiplier of the damage taken is 100 - 50.
+	HOLMorale::Apply(State, HOLMorale::MakeEffect(IdA, 0, 25, 0, 1000, false));
+	HOLMorale::Apply(State, HOLMorale::MakeEffect(IdB, 0, 25, 0, 1000, false));
+	HOLMorale::Apply(State, HOLMorale::MakeEffect(IdC, 0, 25, 0, 1000, false));
+	TestEqual(TEXT("taken bonus capped at 50"), HOLMorale::Total(State, HOLMorale::LeverTaken), 50);
+	TestEqual(TEXT("damage taken multiplier"), HOLMorale::Multiplier(State, HOLMorale::LeverTaken), 50);
+	TestEqual(TEXT("an untouched lever is 0"), HOLMorale::Total(State, HOLMorale::LeverDealt), 0);
+	TestEqual(TEXT("an untouched lever multiplies by 100"), HOLMorale::Multiplier(State, HOLMorale::LeverRate), 100);
+
+	HOLMorale::FHOLMoraleState Dealt;
+	HOLMorale::Apply(Dealt, HOLMorale::MakeEffect(IdA, 30, 0, 20, 1000, false));
+	HOLMorale::Apply(Dealt, HOLMorale::MakeEffect(IdB, 30, 0, 20, 1000, false));
+	TestEqual(TEXT("dealt bonus capped at 40"), HOLMorale::Total(Dealt, HOLMorale::LeverDealt), 40);
+	TestEqual(TEXT("rate bonus capped at 30"), HOLMorale::Total(Dealt, HOLMorale::LeverRate), 30);
+	TestEqual(TEXT("dealt multiplier"), HOLMorale::Multiplier(Dealt, HOLMorale::LeverDealt), 140);
+	// Two dealt malus of -20: 40 asked, 30 kept; with the 40 bonus above they offset to +10.
+	HOLMorale::Apply(Dealt, HOLMorale::MakeEffect(IdC, -20, 0, 0, 1000, false));
+	HOLMorale::Apply(Dealt, HOLMorale::MakeEffect(IdD, -20, 0, 0, 1000, false));
+	TestEqual(TEXT("bonus 40 offset by malus capped at 30"), HOLMorale::Total(Dealt, HOLMorale::LeverDealt), 10);
+
+	HOLMorale::FHOLMoraleState Malus;
+	HOLMorale::Apply(Malus, HOLMorale::MakeEffect(IdA, 0, -30, 0, 1000, false));
+	HOLMorale::Apply(Malus, HOLMorale::MakeEffect(IdB, 0, -30, 0, 1000, false));
+	TestEqual(TEXT("taken malus capped at 50"), HOLMorale::Total(Malus, HOLMorale::LeverTaken), -50);
+	TestEqual(TEXT("damage taken multiplier of a malus"), HOLMorale::Multiplier(Malus, HOLMorale::LeverTaken), 150);
+
+	TestEqual(TEXT("BonusCap dealt"), HOLMorale::BonusCap(HOLMorale::LeverDealt), 40);
+	TestEqual(TEXT("MalusCap dealt"), HOLMorale::MalusCap(HOLMorale::LeverDealt), 30);
+	return true;
+}
+
+// The rows of the table go through the rule: each table effect, posed alone, gives its row's percents; a banner is the hero's aura.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLMoraleTableRowsTest, "HeroesOfLiberty.Morale.TableRowsThroughTheRule", UE::HeroesOfLiberty::Tests::MoraleRules::Flags)
+
+bool FHOLMoraleTableRowsTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::MoraleRules;
+	for (int32 RowId = 0; RowId < HOLMoraleTableRows::HOLMoraleRowCount; RowId++)
+	{
+		const HOLMoraleTableRows::FHOLMoraleTableRow* Row = HOLMoraleTableRows::Find(RowId);
+		if (!TestNotNull(TEXT("row exists"), Row))
+		{
+			continue;
+		}
+		if (Row->Gives >= 0)
+		{
+			continue; // a banner: tested below
+		}
+		HOLMorale::FHOLMoraleState State;
+		const int32 Result = HOLMorale::Apply(State, HOLMorale::MakeEffectFromRow(RowId), 0);
+		const bool bHasIntensity = Row->Dealt != 0 || Row->Taken != 0 || Row->Rate != 0;
+		const bool bHasTime = Row->bAura || Row->DurationMs > 0;
+		TestEqual(*FString::Printf(TEXT("%hs pose result"), Row->Key), Result, (bHasIntensity && bHasTime) ? HOLMorale::ApplyPosed : HOLMorale::ApplyNothing);
+		TestEqual(*FString::Printf(TEXT("%hs dealt"), Row->Key), HOLMorale::Total(State, HOLMorale::LeverDealt), bHasTime ? Row->Dealt : 0);
+		TestEqual(*FString::Printf(TEXT("%hs taken"), Row->Key), HOLMorale::Total(State, HOLMorale::LeverTaken), bHasTime ? Row->Taken : 0);
+		TestEqual(*FString::Printf(TEXT("%hs rate"), Row->Key), HOLMorale::Total(State, HOLMorale::LeverRate), bHasTime ? Row->Rate : 0);
+	}
+
+	// The banner gives the Dawn Aura's levers under the Dawn Aura's id: the hero's aura and a banner are one effect, 15 % and not 30 %.
+	const HOLMorale::FHOLMoraleEffect BannerEffect = HOLMorale::MakeEffectFromRow(HOLMoraleTableRows::HOLMoraleBanner);
+	TestEqual(TEXT("banner effect id is the aura's"), BannerEffect.Id, static_cast<int32>(HOLMoraleTableRows::HOLMoraleDawnAura));
+	TestTrue(TEXT("banner effect is an aura"), BannerEffect.bAura);
+	HOLMorale::FHOLMoraleState State;
+	TestEqual(TEXT("aura posed"), HOLMorale::Apply(State, HOLMorale::MakeEffectFromRow(HOLMoraleTableRows::HOLMoraleDawnAura)), HOLMorale::ApplyPosed);
+	TestEqual(TEXT("banner refreshes the aura"), HOLMorale::Apply(State, BannerEffect), HOLMorale::ApplyRefreshed);
+	TestEqual(TEXT("one effect, not two"), State.Num, 1);
+	TestEqual(TEXT("aura and banner do not add up"), HOLMorale::Total(State, HOLMorale::LeverTaken), HOLMoraleTableRows::Find(HOLMoraleTableRows::HOLMoraleDawnAura)->Taken);
+	return true;
+}
+
+// Posing: the same effect is never added to itself (strongest intensity, longest time), no intensity or no time poses nothing, a full unit
+// takes no new effect.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLMoraleApplyTest, "HeroesOfLiberty.Morale.ApplyNotCumulated", UE::HeroesOfLiberty::Tests::MoraleRules::Flags)
+
+bool FHOLMoraleApplyTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::MoraleRules;
+	HOLMorale::FHOLMoraleState State;
+	TestEqual(TEXT("first pose"), HOLMorale::Apply(State, HOLMorale::MakeEffect(IdA, 0, 10, 0, 4000, false)), HOLMorale::ApplyPosed);
+	TestEqual(TEXT("same id again"), HOLMorale::Apply(State, HOLMorale::MakeEffect(IdA, 0, 25, 0, 2000, false)), HOLMorale::ApplyRefreshed);
+	TestEqual(TEXT("still one effect"), State.Num, 1);
+	TestEqual(TEXT("strongest intensity kept"), HOLMorale::Total(State, HOLMorale::LeverTaken), 25);
+	TestEqual(TEXT("longest time kept"), State.Effects[0].DurationMs, 4000);
+	TestTrue(TEXT("Has"), HOLMorale::Has(State, IdA));
+	TestFalse(TEXT("Has not"), HOLMorale::Has(State, IdB));
+
+	TestEqual(TEXT("no intensity"), HOLMorale::Apply(State, HOLMorale::MakeEffect(IdB, 0, 0, 0, 4000, false)), HOLMorale::ApplyNothing);
+	TestEqual(TEXT("no time"), HOLMorale::Apply(State, HOLMorale::MakeEffect(IdB, 0, 10, 0, 0, false)), HOLMorale::ApplyNothing);
+	TestEqual(TEXT("an aura needs no time"), HOLMorale::Apply(State, HOLMorale::MakeEffect(IdB, 0, 10, 0, 0, true)), HOLMorale::ApplyPosed);
+	// A malus keeps its sign when refreshed: the larger magnitude wins.
+	TestEqual(TEXT("malus pose"), HOLMorale::Apply(State, HOLMorale::MakeEffect(IdC, -5, 0, 0, 1000, false)), HOLMorale::ApplyPosed);
+	TestEqual(TEXT("malus refresh"), HOLMorale::Apply(State, HOLMorale::MakeEffect(IdC, -15, 0, 0, 1000, false)), HOLMorale::ApplyRefreshed);
+	TestEqual(TEXT("larger malus kept"), HOLMorale::Total(State, HOLMorale::LeverDealt), -15);
+
+	TestEqual(TEXT("four slots used"), State.Num, HOLMorale::MaxEffects - 1);
+	TestEqual(TEXT("fourth effect"), HOLMorale::Apply(State, HOLMorale::MakeEffect(IdD, 5, 0, 0, 1000, false)), HOLMorale::ApplyPosed);
+	TestEqual(TEXT("fifth effect has no room"), HOLMorale::Apply(State, HOLMorale::MakeEffect(IdD + 1, 5, 0, 0, 1000, false)), HOLMorale::ApplyNoRoom);
+	TestEqual(TEXT("a full unit still refreshes"), HOLMorale::Apply(State, HOLMorale::MakeEffect(IdD, 9, 0, 0, 1000, false)), HOLMorale::ApplyRefreshed);
+	return true;
+}
+
+// Attenuation (a malus only: time for a temporary one, intensity for an aura), the 75 % cap and the combination of sources, the immunity.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLMoraleAttenuationTest, "HeroesOfLiberty.Morale.AttenuationAndImmunity", UE::HeroesOfLiberty::Tests::MoraleRules::Flags)
+
+bool FHOLMoraleAttenuationTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::MoraleRules;
+	const HOLMorale::FHOLMoraleEffect Demoralised = HOLMorale::MakeEffectFromRow(HOLMoraleTableRows::HOLMoraleDemoralised);
+	const HOLMorale::FHOLMoraleEffect Shorter = HOLMorale::Attenuated(Demoralised, 50);
+	TestEqual(TEXT("temporary malus loses half its time"), Shorter.DurationMs, Demoralised.DurationMs / 2);
+	TestEqual(TEXT("temporary malus keeps its intensity"), Shorter.Taken, Demoralised.Taken);
+	TestEqual(TEXT("attenuation never passes 75"), HOLMorale::Attenuated(Demoralised, 100).DurationMs, Demoralised.DurationMs / 4);
+
+	const HOLMorale::FHOLMoraleEffect AuraMalus = HOLMorale::MakeEffect(IdA, 0, -10, 0, 0, true);
+	TestEqual(TEXT("aura malus loses intensity (-5 at 50 %)"), HOLMorale::Attenuated(AuraMalus, 50).Taken, -5);
+	TestEqual(TEXT("aura malus time unchanged"), HOLMorale::Attenuated(AuraMalus, 50).DurationMs, 0);
+	TestEqual(TEXT("rounding is half away from zero (-5 x 75 % = -4)"), HOLMorale::Attenuated(HOLMorale::MakeEffect(IdA, 0, -5, 0, 0, true), 25).Taken, -4);
+	const HOLMorale::FHOLMoraleEffect Bonus = HOLMorale::MakeEffectFromRow(HOLMoraleTableRows::HOLMoraleCloseRanks);
+	TestEqual(TEXT("a bonus is never attenuated"), HOLMorale::Attenuated(Bonus, 75).DurationMs, Bonus.DurationMs);
+	TestEqual(TEXT("no attenuation"), HOLMorale::Attenuated(Demoralised, 0).DurationMs, Demoralised.DurationMs);
+
+	// Sources: the strongest of one nature counts alone, natures add, 75 at most.
+	const int32 NaturesTwo[] = { 1, 1, 2 };
+	const int32 PercentsTwo[] = { 30, 50, 20 };
+	TestEqual(TEXT("strongest of a nature + another nature"), HOLMorale::CombineAttenuation(NaturesTwo, PercentsTwo, 3), 70);
+	const int32 PercentsBig[] = { 30, 50, 40 };
+	TestEqual(TEXT("capped at 75"), HOLMorale::CombineAttenuation(NaturesTwo, PercentsBig, 3), HOLMorale::AttenuationCap);
+	const int32 PercentsNegative[] = { -20, 10, 0 };
+	TestEqual(TEXT("a negative source counts for nothing"), HOLMorale::CombineAttenuation(NaturesTwo, PercentsNegative, 3), 10);
+	TestEqual(TEXT("no source"), HOLMorale::CombineAttenuation(nullptr, nullptr, 0), 0);
+
+	// Apply with an attenuation shortens the posed malus.
+	HOLMorale::FHOLMoraleState State;
+	TestEqual(TEXT("attenuated malus is posed"), HOLMorale::Apply(State, Demoralised, 50), HOLMorale::ApplyPosed);
+	TestEqual(TEXT("posed with half the time"), State.Effects[0].DurationMs, Demoralised.DurationMs / 2);
+
+	// Immunity: a malus is refused, a bonus is not; the immunity runs down.
+	HOLMorale::FHOLMoraleState Immune;
+	HOLMorale::GrantImmunity(Immune, HOLMorale::SacredLightImmunityMs);
+	HOLMorale::GrantImmunity(Immune, 1000);
+	TestEqual(TEXT("a shorter grant never cuts a longer one"), Immune.ImmunityMs, HOLMorale::SacredLightImmunityMs);
+	TestEqual(TEXT("malus blocked by the immunity"), HOLMorale::Apply(Immune, Demoralised), HOLMorale::ApplyBlockedByImmunity);
+	TestEqual(TEXT("nothing posed"), Immune.Num, 0);
+	TestEqual(TEXT("bonus passes the immunity"), HOLMorale::Apply(Immune, Bonus), HOLMorale::ApplyPosed);
+	HOLMorale::Tick(Immune, HOLMorale::SacredLightImmunityMs);
+	TestEqual(TEXT("immunity over"), Immune.ImmunityMs, 0);
+	TestEqual(TEXT("malus posed after the immunity"), HOLMorale::Apply(Immune, Demoralised), HOLMorale::ApplyPosed);
+	return true;
+}
+
+// Time and removal: temporary effects end at 0, auras stay, ClearAuras takes the auras, RemoveMalus the malus and keeps the bonus.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLMoraleTickTest, "HeroesOfLiberty.Morale.TickClearRemove", UE::HeroesOfLiberty::Tests::MoraleRules::Flags)
+
+bool FHOLMoraleTickTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::MoraleRules;
+	HOLMorale::FHOLMoraleState State;
+	HOLMorale::Apply(State, HOLMorale::MakeEffectFromRow(HOLMoraleTableRows::HOLMoraleCloseRanks));
+	HOLMorale::Apply(State, HOLMorale::MakeEffectFromRow(HOLMoraleTableRows::HOLMoraleDawnAura));
+	const int32 CloseRanksMs = HOLMoraleTableRows::Find(HOLMoraleTableRows::HOLMoraleCloseRanks)->DurationMs;
+	HOLMorale::Tick(State, CloseRanksMs - 1000);
+	TestTrue(TEXT("the cry is still on"), HOLMorale::Has(State, HOLMoraleTableRows::HOLMoraleCloseRanks));
+	TestEqual(TEXT("cry and aura add up (25 + 15)"), HOLMorale::Total(State, HOLMorale::LeverTaken), 40);
+	HOLMorale::Tick(State, 1000);
+	TestFalse(TEXT("the cry is over at 0"), HOLMorale::Has(State, HOLMoraleTableRows::HOLMoraleCloseRanks));
+	TestTrue(TEXT("the aura does not run down"), HOLMorale::Has(State, HOLMoraleTableRows::HOLMoraleDawnAura));
+	TestEqual(TEXT("only the aura left"), HOLMorale::Total(State, HOLMorale::LeverTaken), 15);
+
+	HOLMorale::ClearAuras(State);
+	TestEqual(TEXT("no effect after ClearAuras"), State.Num, 0);
+
+	// Removal keeps the bonus, takes every malus, and keeps the order of the rest.
+	HOLMorale::Apply(State, HOLMorale::MakeEffectFromRow(HOLMoraleTableRows::HOLMoraleDemoralised));
+	HOLMorale::Apply(State, HOLMorale::MakeEffectFromRow(HOLMoraleTableRows::HOLMoraleTriumph));
+	HOLMorale::Apply(State, HOLMorale::MakeEffectFromRow(HOLMoraleTableRows::HOLMoraleHesitation));
+	TestEqual(TEXT("three effects"), State.Num, 3);
+	TestEqual(TEXT("two malus removed"), HOLMorale::RemoveMalus(State), 2);
+	TestEqual(TEXT("the bonus stays"), State.Num, 1);
+	TestTrue(TEXT("it is the Triumph"), HOLMorale::Has(State, HOLMoraleTableRows::HOLMoraleTriumph));
+	TestEqual(TEXT("its percents are intact"), HOLMorale::Total(State, HOLMorale::LeverDealt), HOLMoraleTableRows::Find(HOLMoraleTableRows::HOLMoraleTriumph)->Dealt);
+	TestEqual(TEXT("nothing left to remove"), HOLMorale::RemoveMalus(State), 0);
+	return true;
+}
+
+#endif // WITH_DEV_AUTOMATION_TESTS
