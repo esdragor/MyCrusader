@@ -73,7 +73,7 @@ void Test_UnitAbilityRageActsOnTheRealMoraleChain(FUnitTest& T)
 			MoraleId = M;
 	}
 	T.AssertTrue(MoraleId >= 0, "the rage's effect is in the morale table");
-	HOLMorale::FHOLMoraleState State;
+	FHOLMoraleStateData State;
 	T.AssertEquals(100, HOLMorale::Multiplier(State, HOLMorale::LeverDealt), "without the rage: the damage dealt is normal");
 	HOLMorale::Apply(State, HOLMoraleTable::Effect(MoraleId));
 	T.AssertTrue(HOLMorale::Multiplier(State, HOLMorale::LeverDealt) > 100, "with the rage: more damage dealt");

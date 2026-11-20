@@ -1,4 +1,4 @@
-// The morale display rule (M6, MoraleInProgress.md D707), pure, from a HOLMorale::FHOLMoraleState; tested in HOLMoraleBlock_Test.as.
+// The morale display rule (M6, MoraleInProgress.md D707), pure, from a FHOLMoraleStateData; tested in HOLMoraleBlock_Test.as.
 // What the player reads: beside the health bar a green pastille (a bonus), a red one (a malus), a gold one (the immunity); in the selection block
 // the list of the effects, bonus first then malus (each group in the order the effects were posed), with the time left on OUR units only (an
 // aura has no time: it lasts while the unit is in range). A visible enemy unit shows its effects without a time. A Peasant shows nothing, ever
@@ -30,7 +30,7 @@ namespace HOLMoraleBlock
 		return Ms <= 0 ? 0 : (Ms + 999) / 1000;
 	}
 
-	FHOLMoraleBadge Badge(const HOLMorale::FHOLMoraleState& State, bool bPeasant)
+	FHOLMoraleBadge Badge(const FHOLMoraleStateData& State, bool bPeasant)
 	{
 		FHOLMoraleBadge Badge;
 		if (bPeasant)
@@ -46,7 +46,7 @@ namespace HOLMoraleBlock
 		return Badge;
 	}
 
-	TArray<FHOLMoraleLine> Lines(const HOLMorale::FHOLMoraleState& State, bool bOwn, bool bPeasant)
+	TArray<FHOLMoraleLine> Lines(const FHOLMoraleStateData& State, bool bOwn, bool bPeasant)
 	{
 		TArray<FHOLMoraleLine> Result;
 		if (bPeasant)
@@ -57,7 +57,7 @@ namespace HOLMoraleBlock
 			const bool bWantMalus = Pass == 1;
 			for (int Index = 0; Index < State.Effects.Num(); Index++)
 			{
-				const HOLMorale::FHOLMoraleEffect Effect = State.Effects[Index];
+				const FHOLMoraleEffectData Effect = State.Effects[Index];
 				if (HOLMorale::IsMalus(Effect) != bWantMalus)
 					continue;
 				FHOLMoraleLine Line;
@@ -72,7 +72,7 @@ namespace HOLMoraleBlock
 	}
 
 	// The seconds of immunity left, on our own unit only; -1 when there is none to show.
-	int ImmunitySeconds(const HOLMorale::FHOLMoraleState& State, bool bOwn, bool bPeasant)
+	int ImmunitySeconds(const FHOLMoraleStateData& State, bool bOwn, bool bPeasant)
 	{
 		if (bPeasant || !bOwn || State.ImmunityMs <= 0)
 			return -1;

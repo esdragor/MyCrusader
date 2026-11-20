@@ -1,10 +1,10 @@
 // The morale display rule (M6, HOLMoraleBlock.as; MoraleInProgress.md D707): what a unit shows of its effects. Every state is built on the real
 // chain: HOLMorale::Apply of the rows of the real table (HOLMoraleTable::Effect), HOLMorale::Tick, GrantImmunity, RemoveMalus; no number by hand.
 
-HOLMorale::FHOLMoraleState MoraleBlockPose(const HOLMorale::FHOLMoraleState& Before, int Id)
+FHOLMoraleStateData MoraleBlockPose(const FHOLMoraleStateData& Before, int Id)
 {
-	HOLMorale::FHOLMoraleState State = Before;
-	const HOLMorale::FHOLMoraleEffect Effect = HOLMoraleTable::Effect(Id);
+	FHOLMoraleStateData State = Before;
+	const FHOLMoraleEffectData Effect = HOLMoraleTable::Effect(Id);
 	HOLMorale::Apply(State, Effect);
 	return State;
 }
@@ -12,7 +12,7 @@ HOLMorale::FHOLMoraleState MoraleBlockPose(const HOLMorale::FHOLMoraleState& Bef
 // A unit with no effect shows nothing: no pastille, no line.
 void Test_MoraleBlockNothingWhenNoEffect(FUnitTest& T)
 {
-	HOLMorale::FHOLMoraleState State;
+	FHOLMoraleStateData State;
 	const HOLMoraleBlock::FHOLMoraleBadge Badge = HOLMoraleBlock::Badge(State, false);
 	T.AssertFalse(Badge.bBonus, "no bonus pastille without an effect");
 	T.AssertFalse(Badge.bMalus, "no malus pastille without an effect");
@@ -23,15 +23,15 @@ void Test_MoraleBlockNothingWhenNoEffect(FUnitTest& T)
 // A bonus alone shows the green pastille only; a bonus and a malus together show both.
 void Test_MoraleBlockBonusAndMalusShowBoth(FUnitTest& T)
 {
-	HOLMorale::FHOLMoraleState Bonus = MoraleBlockPose(HOLMorale::FHOLMoraleState(), HOLMoraleTable::CloseRanks);
+	FHOLMoraleStateData Bonus = MoraleBlockPose(FHOLMoraleStateData(), HOLMoraleTable::CloseRanks);
 	const HOLMoraleBlock::FHOLMoraleBadge One = HOLMoraleBlock::Badge(Bonus, false);
 	T.AssertTrue(One.bBonus, "the cry gives the green pastille");
 	T.AssertFalse(One.bMalus, "and no red one");
-	HOLMorale::FHOLMoraleState Both = MoraleBlockPose(Bonus, HOLMoraleTable::Demoralised);
+	FHOLMoraleStateData Both = MoraleBlockPose(Bonus, HOLMoraleTable::Demoralised);
 	const HOLMoraleBlock::FHOLMoraleBadge Two = HOLMoraleBlock::Badge(Both, false);
 	T.AssertTrue(Two.bBonus, "a bonus and a malus together: the green pastille stays");
 	T.AssertTrue(Two.bMalus, "and the red one comes");
-	HOLMorale::FHOLMoraleState MalusOnly = MoraleBlockPose(HOLMorale::FHOLMoraleState(), HOLMoraleTable::Hesitation);
+	FHOLMoraleStateData MalusOnly = MoraleBlockPose(FHOLMoraleStateData(), HOLMoraleTable::Hesitation);
 	const HOLMoraleBlock::FHOLMoraleBadge Three = HOLMoraleBlock::Badge(MalusOnly, false);
 	T.AssertFalse(Three.bBonus, "a malus alone: no green pastille");
 	T.AssertTrue(Three.bMalus, "the red pastille");
@@ -40,7 +40,7 @@ void Test_MoraleBlockBonusAndMalusShowBoth(FUnitTest& T)
 // The list is sorted bonus first, then malus, whatever the order they were posed in.
 void Test_MoraleBlockListIsBonusThenMalus(FUnitTest& T)
 {
-	HOLMorale::FHOLMoraleState State = MoraleBlockPose(HOLMorale::FHOLMoraleState(), HOLMoraleTable::Demoralised);
+	FHOLMoraleStateData State = MoraleBlockPose(FHOLMoraleStateData(), HOLMoraleTable::Demoralised);
 	State = MoraleBlockPose(State, HOLMoraleTable::Triumph);
 	State = MoraleBlockPose(State, HOLMoraleTable::Hesitation);
 	const TArray<HOLMoraleBlock::FHOLMoraleLine> Lines = HOLMoraleBlock::Lines(State, true, false);
@@ -57,7 +57,7 @@ void Test_MoraleBlockListIsBonusThenMalus(FUnitTest& T)
 // Our own unit shows the time left of a temporary effect (rounded up to the second, following the real tick); an aura shows none.
 void Test_MoraleBlockOwnUnitShowsSecondsLeft(FUnitTest& T)
 {
-	HOLMorale::FHOLMoraleState State = MoraleBlockPose(HOLMorale::FHOLMoraleState(), HOLMoraleTable::Triumph);
+	FHOLMoraleStateData State = MoraleBlockPose(FHOLMoraleStateData(), HOLMoraleTable::Triumph);
 	State = MoraleBlockPose(State, HOLMoraleTable::DawnAura);
 	const int FullMs = HOLMoraleTable::Effect(HOLMoraleTable::Triumph).DurationMs;
 	TArray<HOLMoraleBlock::FHOLMoraleLine> Lines = HOLMoraleBlock::Lines(State, true, false);
@@ -79,7 +79,7 @@ void Test_MoraleBlockOwnUnitShowsSecondsLeft(FUnitTest& T)
 // A visible enemy unit shows its effects but never a time.
 void Test_MoraleBlockEnemyShowsNoTime(FUnitTest& T)
 {
-	HOLMorale::FHOLMoraleState State = MoraleBlockPose(HOLMorale::FHOLMoraleState(), HOLMoraleTable::Demoralised);
+	FHOLMoraleStateData State = MoraleBlockPose(FHOLMoraleStateData(), HOLMoraleTable::Demoralised);
 	const TArray<HOLMoraleBlock::FHOLMoraleLine> Lines = HOLMoraleBlock::Lines(State, false, false);
 	T.AssertEquals(1, Lines.Num(), "the enemy's effect is listed");
 	if (Lines.Num() < 1)
@@ -92,7 +92,7 @@ void Test_MoraleBlockEnemyShowsNoTime(FUnitTest& T)
 // A Peasant never shows anything, whatever its state holds.
 void Test_MoraleBlockPeasantShowsNothing(FUnitTest& T)
 {
-	HOLMorale::FHOLMoraleState State = MoraleBlockPose(HOLMorale::FHOLMoraleState(), HOLMoraleTable::Triumph);
+	FHOLMoraleStateData State = MoraleBlockPose(FHOLMoraleStateData(), HOLMoraleTable::Triumph);
 	State = MoraleBlockPose(State, HOLMoraleTable::Demoralised);
 	HOLMorale::GrantImmunity(State, 5000);
 	const HOLMoraleBlock::FHOLMoraleBadge Badge = HOLMoraleBlock::Badge(State, true);
@@ -104,7 +104,7 @@ void Test_MoraleBlockPeasantShowsNothing(FUnitTest& T)
 // The immunity shows the gold pastille (and its time on our own unit only); a malus cannot be posed during it, a bonus can.
 void Test_MoraleBlockImmunityShowsGold(FUnitTest& T)
 {
-	HOLMorale::FHOLMoraleState State;
+	FHOLMoraleStateData State;
 	HOLMorale::GrantImmunity(State, 5000);
 	const int Refused = HOLMorale::Apply(State, HOLMoraleTable::Effect(HOLMoraleTable::Demoralised));
 	T.AssertEquals(HOLMorale::ApplyBlockedByImmunity, Refused, "the real chain refuses the malus during the immunity");
@@ -122,7 +122,7 @@ void Test_MoraleBlockImmunityShowsGold(FUnitTest& T)
 // Lumiere sacree takes the malus and leaves the bonus: the red pastille goes, the green stays; an expired effect leaves the list.
 void Test_MoraleBlockFollowsRemovalAndExpiry(FUnitTest& T)
 {
-	HOLMorale::FHOLMoraleState State = MoraleBlockPose(HOLMorale::FHOLMoraleState(), HOLMoraleTable::Triumph);
+	FHOLMoraleStateData State = MoraleBlockPose(FHOLMoraleStateData(), HOLMoraleTable::Triumph);
 	State = MoraleBlockPose(State, HOLMoraleTable::Demoralised);
 	HOLMorale::RemoveMalus(State);
 	HOLMoraleBlock::FHOLMoraleBadge Badge = HOLMoraleBlock::Badge(State, false);
