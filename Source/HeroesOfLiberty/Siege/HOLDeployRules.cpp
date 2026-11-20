@@ -95,6 +95,28 @@ namespace HOLDeploy
 		return Delay <= 0 ? 1000 : FMath::Clamp(static_cast<int32>(static_cast<int64>(FMath::Max(0, State.ElapsedMs)) * 1000 / Delay), 0, 1000);
 	}
 
+	/** An order older than this that no phase answered was refused by the server: its instant is not used for a later change of state. */
+	constexpr double OrderAnswerSeconds = 2.0;
+
+	void NoteOrder(FWatch& Watch, const double NowSeconds)
+	{
+		// The next phase seen starts a fresh measure, whatever was (or was not) read of the previous cycle.
+		Watch.Phase = -1;
+		Watch.OrderedAt = NowSeconds;
+	}
+
+	int32 WatchElapsedMs(FWatch& Watch, const int32 ObservedPhase, const double NowSeconds)
+	{
+		if (ObservedPhase != Watch.Phase)
+		{
+			Watch.Phase = ObservedPhase;
+			const bool bOrdered = ObservedPhase >= 0 && Watch.OrderedAt >= 0.0 && NowSeconds - Watch.OrderedAt <= OrderAnswerSeconds;
+			Watch.Since = bOrdered ? Watch.OrderedAt : NowSeconds;
+			Watch.OrderedAt = ObservedPhase >= 0 ? -1.0 : Watch.OrderedAt;
+		}
+		return FMath::RoundToInt((NowSeconds - Watch.Since) * 1000.0);
+	}
+
 	FState Advance(const FState& State, const int32 DtMs, const FProfile& Profile, const int32 CounterweightPercent)
 	{
 		FState Next = State;

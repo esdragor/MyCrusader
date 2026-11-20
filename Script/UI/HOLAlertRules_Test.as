@@ -16,7 +16,7 @@ void Test_AlertPopulationFullOnReaching(FUnitTest& T)
 void Test_AlertPopulationFullLineDuration(FUnitTest& T)
 {
 	T.AssertTrue(HOLAlertRules::PopulationFullLineSeconds > 10.0, f"the line stays longer than a glance ({HOLAlertRules::PopulationFullLineSeconds} s)");
-	T.AssertTrue(HOLAlertRules::PopulationFullLineSeconds < HOLAlertRules::PopulationRepeatSeconds, "the line is gone before the repeat delay lets the next one in");
+	T.AssertTrue(HOLAlertRules::PopulationFullLineSeconds <= HOLAlertRules::PopulationRepeatSeconds, "the line is gone when the repeat delay lets the next one in");
 	FHOLPopulationAlertWatch Watch;
 	T.AssertTrue(HOLAlertRules::ShouldAlertPopulationFull(Watch, 10, 10, 0.0, HOLAlertRules::PopulationRepeatSeconds), "the line goes when the population becomes full");
 	T.AssertFalse(HOLAlertRules::ShouldAlertPopulationFull(Watch, 10, 10, HOLAlertRules::PopulationFullLineSeconds, HOLAlertRules::PopulationRepeatSeconds), "still full when the line leaves: nothing new");
@@ -38,6 +38,22 @@ void Test_AlertPopulationFullRepeat(FUnitTest& T)
 	T.AssertFalse(HOLAlertRules::ShouldAlertPopulationFull(Quick, 9, 10, 1.0, 2.0), "dip");
 	T.AssertTrue(HOLAlertRules::ShouldAlertPopulationFull(Quick, 10, 10, 3.0, 2.0), "full again 3 s later with a 2 s delay: a new line");
 	T.AssertTrue(HOLAlertRules::PopulationRepeatSeconds >= 2.0, "the default delay (Q-alerts-minor) is a real delay");
+}
+
+// D833: the population full line STAYS 15 s in the thread (a display duration, not a repeat delay); the repeat delay stays the 30 s of Q-alerts-minor (default A).
+// Both come from the HUD's own constants (HOLAlertRules), the repeat through the real rule.
+void Test_AlertPopulationFullLineStays15s(FUnitTest& T)
+{
+	const float Delay = HOLAlertRules::PopulationRepeatSeconds;
+	T.AssertEquals(15.0, HOLAlertRules::PopulationFullLineSeconds, "the line stays 15 s in the thread (D833)");
+	T.AssertEquals(30.0, Delay, "the repeat delay between two population full lines stays 30 s (Q-alerts-minor, default A)");
+	FHOLPopulationAlertWatch Watch;
+	T.AssertTrue(HOLAlertRules::ShouldAlertPopulationFull(Watch, 10, 10, 0.0, Delay), "full: the first line goes");
+	// The line is gone at 15 s; a place freed and taken again 16 s after the first line is still inside the 30 s delay: quiet, 31 s after it a new line goes.
+	T.AssertFalse(HOLAlertRules::ShouldAlertPopulationFull(Watch, 9, 10, 5.0, Delay), "a place freed");
+	T.AssertFalse(HOLAlertRules::ShouldAlertPopulationFull(Watch, 10, 10, 16.0, Delay), "full again 16 s after the first line (the line is gone): quiet, the delay is 30 s");
+	T.AssertFalse(HOLAlertRules::ShouldAlertPopulationFull(Watch, 9, 10, 20.0, Delay), "a place freed again");
+	T.AssertTrue(HOLAlertRules::ShouldAlertPopulationFull(Watch, 10, 10, 31.0, Delay), "full again 31 s after the first line: a new line");
 }
 
 void Test_AlertAttackedElsewhereOncePer30s(FUnitTest& T)

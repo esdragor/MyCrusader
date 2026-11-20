@@ -8,6 +8,7 @@
 #include "Map/HOLVisionSubsystem.h"
 #include "Match/HOLResources.h"
 #include "Player/HOLCommandGrid.h"
+#include "Siege/HOLDeployRules.h"
 #include "Player/HOLUnitPicking.h"
 #include "Simulation/HOLHeroAbilityRules.h"
 #include "Player/HOLSignalInput.h"
@@ -485,8 +486,7 @@ public:
 	 * time since this phase was first seen (the client receives the phase only, not the elapsed time). False when none is changing state.
 	 */
 	bool GetDeployProgress(int32& OutPhase, int32& OutPermille) const;
-	mutable int32 DeployWatchedPhase = -1;
-	mutable double DeployWatchedSince = 0.0;
+	mutable HOLDeploy::FWatch DeployWatch; // the clock of the change of state shown on the D cell (starts at the order)
 	/**
 	 * Asks the server to have units gather a resource source (J5, D298); it sends only the player's own. bQueue (Shift): at
 	 * the end of their queue, after their sites (the user's trial of J6a.4).
