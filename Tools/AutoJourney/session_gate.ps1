@@ -337,11 +337,17 @@ if ($Phase -eq 'Close') {
   # `cherry-pick:` (ni merge, ni branch:, reset:, checkout:) de main et des branches integ-*, datees d'aujourd'hui, qui touchent Script/, Source/ ou Tools/Tests/.
   $mcRepo = Split-Path -Parent $EtapeFile
   $mcSince = [datetime]::ParseExact($now.ToString('yyyy-MM-dd'), 'yyyy-MM-dd', [Globalization.CultureInfo]::InvariantCulture)
-  $mcBranches = @('main') + @(git -C $mcRepo for-each-ref --format='%(refname:short)' 'refs/heads/integ-*' 2>$null | Where-Object { $_ })
+  # une branche integ-* extraite dans un worktree HeroesOfLiberty-* AUTRE qu'Arwen est une branche de travail d'agent : son reflog n'est pas lu
+  $mcAgentInteg = @(); $mcWt = ''
+  foreach ($wl in @(git -C $mcRepo worktree list --porcelain 2>$null)) {
+    if ($wl -match '^worktree (.+)$') { $mcWt = Split-Path $Matches[1] -Leaf }
+    elseif ($wl -match '^branch refs/heads/(integ-.+)$' -and $mcWt -like 'HeroesOfLiberty-*' -and $mcWt -ne 'HeroesOfLiberty-Arwen') { $mcAgentInteg += $Matches[1] }
+  }
+  $mcBranches = @('main') + @(git -C $mcRepo for-each-ref --format='%(refname:short)' 'refs/heads/integ-*' 2>$null | Where-Object { $_ -and $mcAgentInteg -notcontains $_ })
   $mcSeen = @{}; $mcMine = @()
   foreach ($mb in $mcBranches) {
     foreach ($rl in @(git -C $mcRepo reflog show --date=iso --format='%H %gd %gs' "refs/heads/$mb" 2>$null)) {
-      if ($rl -notmatch '^([0-9a-f]{40}) \S+@\{(\d{4}-\d\d-\d\d \d\d:\d\d:\d\d) [+-]\d{4}\} (commit|commit \(amend\)|cherry-pick): (.*)$') { continue }
+      if ($rl -notmatch '^([0-9a-f]{40}) \S+@\{(\d{4}-\d\d-\d\d \d\d:\d\d:\d\d) [+-]\d{4}\} (commit|commit \(amend\)): (.*)$') { continue }
       $mcSha = $Matches[1]; $mcTitle = $Matches[4]
       if ([datetime]::ParseExact($Matches[2], 'yyyy-MM-dd HH:mm:ss', [Globalization.CultureInfo]::InvariantCulture) -lt $mcSince) { break }   # reflog : du plus recent au plus ancien
       if ($mcSeen.ContainsKey($mcSha)) { continue }
