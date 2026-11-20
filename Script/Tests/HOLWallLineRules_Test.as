@@ -262,3 +262,60 @@ void Test_WallLineCellPointRoundTrip(FUnitTest& T)
 	HOLWallLine::FHOLWallLinePlan Plan = HOLWallLine::PlanFromRequest(0, P, P, WallLineTile, FIntPoint(-100, -100), FIntPoint(100, 100), None, 16);
 	T.AssertTrue(Plan.Refusal == HOLWallLine::EHOLWallLineRefusal::Ok && Plan.Cells.Num() == 1 && WallLineHasCell(Plan.Cells, -5, -2), "the centre of cell (-5,-2) is read back as (-5,-2)");
 }
+
+// ---- The drag gesture shows the cells the server lays (F4 client). The shown list comes from DragCells, the laid list from Validate.
+void Test_WallLineDragShowsTheCellsValidateLays(FUnitTest& T)
+{
+	TArray<FIntPoint> None;
+	FIntPoint Origin(2, 3);
+	TArray<FIntPoint> Ends;
+	Ends.Add(FIntPoint(7, 3));
+	Ends.Add(FIntPoint(6, 7));
+	Ends.Add(FIntPoint(7, 4));
+	for (int Case = 0; Case < 3; Case++)
+	{
+		HOLWallLine::FHOLWallLinePlan Plan = HOLWallLine::Validate(Origin, Ends[Case], FIntPoint(-100, -100), FIntPoint(100, 100), None, 16);
+		TArray<FIntPoint> Shown = HOLWallLine::DragCells(Origin, Ends[Case], 16);
+		T.AssertTrue(Plan.Refusal == HOLWallLine::EHOLWallLineRefusal::Ok && Plan.Cells.Num() > 1, "the drag is accepted and lays several cells");
+		T.AssertEquals(Plan.Cells.Num(), Shown.Num(), "the drag shows as many cells as Validate lays");
+		bool bSame = Shown.Num() == Plan.Cells.Num();
+		for (int Index = 0; bSame && Index < Shown.Num(); Index++)
+			bSame = Shown[Index].X == Plan.Cells[Index].X && Shown[Index].Y == Plan.Cells[Index].Y;
+		T.AssertTrue(bSame, "the shown cells are the laid cells, in the same order");
+	}
+}
+
+// A line too long is refused: the drag shows one cell past the cap, and that cell is the one Validate names.
+void Test_WallLineDragOfATooLongLineEndsAtTheRefusedCell(FUnitTest& T)
+{
+	TArray<FIntPoint> None;
+	HOLWallLine::FHOLWallLinePlan Plan = HOLWallLine::Validate(FIntPoint(0, 0), FIntPoint(12, 0), FIntPoint(-100, -100), FIntPoint(100, 100), None, 4);
+	TArray<FIntPoint> Shown = HOLWallLine::DragCells(FIntPoint(0, 0), FIntPoint(12, 0), 4);
+	T.AssertTrue(Plan.Refusal == HOLWallLine::EHOLWallLineRefusal::TooLong, "a 13-cell drag with a cap of 4 is refused");
+	T.AssertEquals(5, Shown.Num(), "the drag shows the cap plus the one refused cell, not the whole 13 cells");
+	T.AssertTrue(Shown.Num() == 5 && Shown[4].X == Plan.BadCell.X && Shown[4].Y == Plan.BadCell.Y, "the last shown cell is the refused cell");
+}
+
+// From the world points the client holds: the same cells as the server reads from the same two points.
+void Test_WallLineDragFromWorldPointsMatchesThePlanOfTheRequest(FUnitTest& T)
+{
+	TArray<FIntPoint> None;
+	FVector A = HOLWallLine::CellToPoint(FIntPoint(-3, 5), WallLineTile, 0.0);
+	FVector B = HOLWallLine::CellToPoint(FIntPoint(4, 5), WallLineTile, 0.0);
+	HOLWallLine::FHOLWallLinePlan Plan = HOLWallLine::PlanFromRequest(0, A, B, WallLineTile, FIntPoint(-100, -100), FIntPoint(100, 100), None, 16);
+	TArray<FIntPoint> Shown = HOLWallLine::DragCellsFromPoints(A, B, WallLineTile, 16);
+	T.AssertTrue(Plan.Refusal == HOLWallLine::EHOLWallLineRefusal::Ok, "the request is accepted");
+	T.AssertEquals(Plan.Cells.Num(), Shown.Num(), "the drag from the world points shows the cells the request lays");
+	bool bSame = Shown.Num() == Plan.Cells.Num();
+	for (int Index = 0; bSame && Index < Shown.Num(); Index++)
+		bSame = Shown[Index].X == Plan.Cells[Index].X && Shown[Index].Y == Plan.Cells[Index].Y;
+	T.AssertTrue(bSame, "the same cells in the same order");
+}
+
+// No wall type exists before F5: the gesture arms for none (the list grows when F5 adds a row).
+void Test_WallLineNoWallTypeBeforeF5ArmsNoDrag(FUnitTest& T)
+{
+	T.AssertEquals(0, HOLWallLine::WallTypes().Num(), "the list of wall types is empty until F5");
+	T.AssertTrue(!HOLWallLine::IsWallType(n"Palisade"), "Palisade is not a wall type yet");
+	T.AssertTrue(!HOLWallLine::IsWallType(NAME_None), "None is not a wall type");
+}
