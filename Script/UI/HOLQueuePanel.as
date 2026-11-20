@@ -150,7 +150,7 @@ namespace HOLQueuePanel
 	// Right edge of the bar in a line LineWidth wide, the note NoteWidth wide (shown or not).
 	float BarRightEdge(float LineWidth, float NoteWidth, bool bNoteShown)
 	{
-		return LineWidth;
+		return bNoteShown ? LineWidth - NoteWidth - NoteGap() : LineWidth;
 	}
 
 	// Left edge of the note (the line's right end minus its width).
@@ -217,7 +217,8 @@ class UHOLProductionQueuePanel : UObject
 		USizeBox StatusBox = Cast<USizeBox>(Screen.ConstructWidget(USizeBox, n"QueueStatus"));
 		StatusBox.SetHeightOverride(18.0);
 		QueueColumn.AddChildToVerticalBox(StatusBox).SetPadding(FMargin(0.0, 6.0, 0.0, 0.0));
-		UOverlay Status = Cast<UOverlay>(Screen.ConstructWidget(UOverlay, n"QueueStatusLine"));
+		// A horizontal line, not an overlay (SAURON-1116e): the bar fills what the note leaves (HOLQueuePanel::BarRightEdge), the note never covers it.
+		UHorizontalBox Status = Cast<UHorizontalBox>(Screen.ConstructWidget(UHorizontalBox, n"QueueStatusLine"));
 		StatusBox.SetContent(Status);
 
 		// The C++ bar: background (0.08, 0.08, 0.1) and the accent fill, both rounded by 2; MakeBar gives the fill's colour (the background and the corners:
@@ -227,15 +228,20 @@ class UHOLProductionQueuePanel : UObject
 		USizeBox BarBox = Cast<USizeBox>(Screen.ConstructWidget(USizeBox, n"QueueProgressBox"));
 		BarBox.SetHeightOverride(6.0);
 		BarBox.SetContent(QueueProgress);
-		UOverlaySlot BarSlot = Status.AddChildToOverlay(BarBox);
+		UHorizontalBoxSlot BarSlot = Status.AddChildToHorizontalBox(BarBox);
+		FSlateChildSize BarSize;
+		BarSize.SizeRule = ESlateSizeRule::Fill;
+		BarSize.Value = 1.0;
+		BarSlot.SetSize(BarSize);
 		BarSlot.SetHorizontalAlignment(EHorizontalAlignment::HAlign_Fill);
 		BarSlot.SetVerticalAlignment(EVerticalAlignment::VAlign_Center);
 
 		QueueNote = Screen.MakeText(n"QueueNote", UHOLTextStyleHUDAlert);
 		QueueNote.SetText(HOLQueuePanelText::PopulationFull());
 		QueueNote.SetVisibility(ESlateVisibility::Collapsed);
-		UOverlaySlot NoteSlot = Status.AddChildToOverlay(QueueNote);
-		NoteSlot.SetHorizontalAlignment(EHorizontalAlignment::HAlign_Left);
+		UHorizontalBoxSlot NoteSlot = Status.AddChildToHorizontalBox(QueueNote);
+		NoteSlot.SetPadding(FMargin(HOLQueuePanel::NoteGap(), 0.0, 0.0, 0.0));
+		NoteSlot.SetHorizontalAlignment(EHorizontalAlignment::HAlign_Right);
 		NoteSlot.SetVerticalAlignment(EVerticalAlignment::VAlign_Center);
 
 		UCommonTextBlock Hint = Screen.MakeText(n"QueueHint", UHOLTextStyleHUDLabel);
