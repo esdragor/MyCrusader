@@ -27,3 +27,14 @@ void Test_MinimapSignalMarkPulses(FUnitTest& T)
 	FHOLMinimapMark Expiry = HOLSignalMarks::Mark(SignalMarksFrame(), Where, FLinearColor::Red, Received, Received + Life);
 	T.AssertTrue(Math::Abs(Expiry.Size - double(HOLSignalMarks::BaseSize)) < 0.001, "the square is back to its base size at the expiry");
 }
+
+// D870 (the user, 2026-11-20): the signal mark is three times smaller than it was. The square drawn at scale 1 (the expiry) was 10 px
+// (the fixed square of D860 H2); it is now at most a third of that. The size is the one HOLSignalMarks::Mark RETURNS (the minimap's mark).
+void Test_MinimapSignalMarkIsThirdOfFormerSize(FUnitTest& T)
+{
+	const double FormerSquarePx = 10.0;
+	double Life = HOLSignalInputRead::MarkLifetime();
+	FHOLMinimapMark AtScaleOne = HOLSignalMarks::Mark(SignalMarksFrame(), FVector(0.0, 0.0, 0.0), FLinearColor::Red, 100.0, 100.0 + Life);
+	T.AssertTrue(AtScaleOne.Size <= FormerSquarePx / 3.0 + 0.001, f"the minimap square is at most a third of the former {FormerSquarePx} px ({AtScaleOne.Size})");
+	T.AssertTrue(AtScaleOne.Size > 1.0, f"the minimap square is still visible ({AtScaleOne.Size})");
+}
