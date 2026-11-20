@@ -100,3 +100,17 @@ void Test_QueuePanelClickLineAndRefusals(FUnitTest& T)
 	T.AssertFalse(HOLQueuePanel::ClickAllowed(false, true), "the panel hidden: refused");
 	T.AssertFalse(HOLQueuePanel::ClickAllowed(true, false), "the button hidden: refused");
 }
+
+// SAURON-1116e (D833): the queue's note "Population pleine" covered the full bar. The bar's right edge, computed by the rule Build lays the line out with,
+// must leave the note its own room: the bar ends before the note begins, and stays wide enough to read as full.
+void Test_QueuePanelNoteDoesNotCoverTheBar(FUnitTest& T)
+{
+	const float LineWidth = 300.0;
+	const float NoteWidth = 120.0;
+	float BarRight = HOLQueuePanel::BarRightEdge(LineWidth, NoteWidth, true);
+	float NoteLeft = HOLQueuePanel::NoteLeftEdge(LineWidth, NoteWidth, true);
+	float Gap = HOLQueuePanel::NoteGap();
+	T.AssertTrue(BarRight + Gap <= NoteLeft + 0.001, "the note is shown: the full bar ends before the note begins (gap kept)");
+	T.AssertTrue(BarRight >= 100.0, "the bar is still wide enough to read");
+	float BarAlone = HOLQueuePanel::BarRightEdge(LineWidth, NoteWidth, false);
+	T.AssertTrue(Math::IsNearlyEqual(BarAlone, LineWidth), "no note: the bar takes the whole line");

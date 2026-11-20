@@ -143,6 +143,22 @@ namespace HOLQueuePanel
 		return f"HUD: queue item {Index} clicked (cancel)";
 	}
 
+	// SAURON-1116e: the status line (bar + note) in pixels. The note, when shown, takes its own width at the line's right and the bar ends NoteGap before it:
+	// the full bar stays readable and the note does not cover it. Gap between the bar's right edge and the note's left edge.
+	float NoteGap() { return 8.0; }
+
+	// Right edge of the bar in a line LineWidth wide, the note NoteWidth wide (shown or not).
+	float BarRightEdge(float LineWidth, float NoteWidth, bool bNoteShown)
+	{
+		return LineWidth;
+	}
+
+	// Left edge of the note (the line's right end minus its width).
+	float NoteLeftEdge(float LineWidth, float NoteWidth, bool bNoteShown)
+	{
+		return bNoteShown ? LineWidth - NoteWidth : LineWidth;
+	}
+
 	// ClickWidget: a click by name goes to an item only when the panel is shown and the button visible; others are refused.
 	bool ClickAllowed(bool bPanelShown, bool bItemVisible)
 	{
