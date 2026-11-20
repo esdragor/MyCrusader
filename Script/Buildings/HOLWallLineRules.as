@@ -65,4 +65,30 @@ namespace HOLWallLine
 		TArray<FIntPoint> Line = Cells(Start, End, MaxCells);
 		return Line.Num() * CostPerCell;
 	}
-}
+
+	// ---- Server validation of a line (F4): the same Cells rule, then the refusals. All or nothing: one refusal and no cell is laid.
+	// Order of the gates: too long (the line BEFORE the cap cut is longer than MaxCells, so a drag is refused, not trimmed), out of the map
+	// (MapMin and MapMax are the first and last valid cell, both included), occupied (a cell of Occupied lies on the line). The values of the
+	// cap are PARAMETERS (Retours\Q-mur-ligne-longueur.md): no default is coded here. Pure: the caller reads the world (cells under an existing
+	// building, the map size) and passes them in; the terrain, vision and enemy-centre refusals (D22) stay with CheckPlacement.
+	enum EHOLWallLineRefusal
+	{
+		Ok,
+		TooLong,
+		OutOfMap,
+		Occupied
+	}
+
+	struct FHOLWallLinePlan
+	{
+		TArray<FIntPoint> Cells;
+		EHOLWallLineRefusal Refusal = EHOLWallLineRefusal::Ok;
+		// The first cell that caused the refusal (for TooLong: the first cell past the cap); the start cell when none.
+		FIntPoint BadCell = FIntPoint(0, 0);
+	}
+
+	FHOLWallLinePlan Validate(FIntPoint Start, FIntPoint End, FIntPoint MapMin, FIntPoint MapMax, const TArray<FIntPoint>& Occupied, int MaxCells)
+	{
+		FHOLWallLinePlan Plan;
+		return Plan;
+	}}
