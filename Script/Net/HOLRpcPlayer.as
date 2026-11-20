@@ -1035,6 +1035,43 @@ for (FString Command : Commands)
 		HOLRpcBridge::CheatTier(this, Tier, Slot);
 	}
 
+	// FARAMIR-1120c (NOT COMPILED): the Dawn's Seal of Light put down from the server. The rule is HOLFactionPowerCast::Decide (faction,
+	// book row, cool-down, range 800 from the origin, gauge); on an accepted decision the Seal is started FIRST (a failed start costs
+	// nothing), then the gauge is paid and the cool-down written. The slot is the sender's (another slot is refused). Stand-ins to
+	// replace (TYPES_A_EXPOSER): the cast origin is the hero banner location (no caster-position accessor), and NowMs is the world
+	// clock (the zones keep their own ZoneClockMs, not exposed to script).
+	UFUNCTION(Server)
+	void ServerCastFactionPower(int Slot, int PowerIndex, FVector Point)
+	{
+		const int Sender = HOLRpcBridge::GetSenderSlot(this);
+		if (Sender != Slot)
+		{
+			Log(n"LogHOLMatch", f"RpcPower: cast refused, sender slot {Sender} is not slot {Slot}");
+			return;
+		}
+		AHOLGameState State = Cast<AHOLGameState>(Gameplay::GetGameState());
+		if (State == nullptr)
+			return;
+		const FIntPoint Origin = HOLHero::GetHeroBannerLocation(this, Slot);
+		const int NowMs = int(Gameplay::GetTimeSeconds() * 1000.0);
+		FHOLFactionResource Gauge = HOLFactionResource::Make(State.GetFactionResource(Slot), 0, HOLDawnValues::HonorCap());
+		FHOLFactionPowerDecision Decision = HOLFactionPowerCast::Decide(State.GetSlotFaction(Slot), PowerIndex, Gauge,
+			State.GetPowerCooldownEndMs(Slot, PowerIndex), NowMs, Origin.X, Origin.Y, int(Point.X), int(Point.Y));
+		if (!Decision.bAccepted)
+		{
+			Log(n"LogHOLMatch", f"RpcPower: cast refused ({Decision.Refusal}) for slot {Slot} power {PowerIndex}");
+			return;
+		}
+		if (!HOLZoneEffect::StartLightSeal(this, Slot, Point))
+		{
+			Log(n"LogHOLMatch", f"RpcPower: Seal of Light not started for slot {Slot} (no world, subsystem or slot)");
+			return;
+		}
+		State.SetFactionResource(Slot, Decision.NewGaugeValue);
+		State.SetPowerCooldownEndMs(Slot, PowerIndex, Decision.NewCooldownEndMs);
+		Log(n"LogHOLMatch", f"RpcPower: Seal of Light put down by slot {Slot}, gauge {Decision.NewGaugeValue}");
+	}
+
 	// Morceau 8 (NOT COMPILED): hol.Cheat.Specialization; the bridge calls AHOLPlayerController::DoCheatSpecialization (cheat guard, the board's rules, start then end at once).
 	UFUNCTION(Server)
 	void ServerCheatSpecialization(int Tier, int Option)

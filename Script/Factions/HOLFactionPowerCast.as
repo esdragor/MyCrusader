@@ -64,7 +64,43 @@ namespace HOLFactionPowerCast
 		int OriginXCm, int OriginYCm, int PointXCm, int PointYCm)
 	{
 		FHOLFactionPowerDecision Result;
-		Result.Refusal = RefusalNotDawn();
+		Result.NewGaugeValue = Gauge.Value;
+		Result.NewCooldownEndMs = CooldownEndMs;
+		if (Faction != int(EHOLFaction::DawnOrder))
+		{
+			Result.Refusal = RefusalNotDawn();
+			return Result;
+		}
+		TArray<FHOLPowerRow> Rows = HOLDawnPowers::Rows();
+		if (PowerIndex < 0 || PowerIndex >= Rows.Num())
+		{
+			Result.Refusal = RefusalNoSuchPower();
+			return Result;
+		}
+		// Cool-down then range, by the shared ground-ability rule (1 dead caster and 2 cool-down, 3 range): the caster is alive here.
+		const int64 DeltaX = int64(PointXCm) - int64(OriginXCm);
+		const int64 DeltaY = int64(PointYCm) - int64(OriginYCm);
+		const int64 DistanceCm = int64(Math::CeilToInt(Math::Sqrt(double(DeltaX * DeltaX + DeltaY * DeltaY))));
+		const int Reason = HOLGroundAbility::TargetRefusal(true, DistanceCm, SealRangeCm(), Math::Max(CooldownEndMs - NowMs, 0));
+		if (Reason == 2)
+		{
+			Result.Refusal = RefusalCooldown();
+			return Result;
+		}
+		if (Reason == 3)
+		{
+			Result.Refusal = RefusalOutOfRange();
+			return Result;
+		}
+		FHOLFactionResource Spent = Gauge;
+		if (!HOLFactionResource::TrySpend(Spent, Rows[PowerIndex].Cost))
+		{
+			Result.Refusal = RefusalGaugeShort();
+			return Result;
+		}
+		Result.bAccepted = true;
+		Result.NewGaugeValue = Spent.Value;
+		Result.NewCooldownEndMs = HOLGroundAbility::CooldownEndMs(NowMs, SealCooldownMs());
 		return Result;
 	}
 }
