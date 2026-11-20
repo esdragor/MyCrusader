@@ -188,9 +188,14 @@ int CheatTierRefusal(bool bAllowed, int SenderSlot, int TargetSlot)
 	return 0;
 }
 
-// Honor (CELEBORN-1120b): 3 the sender's faction has no gauge (bHasGauge: HOLFactionResource::HasResource, computed by the caller: the rule stays pure). STUB (red first).
+// Honor (CELEBORN-1120b): 3 the sender's faction has no gauge (bHasGauge: HOLFactionResource::HasResource, computed by the caller: the rule stays pure).
 int CheatHonorRefusal(bool bAllowed, int SenderSlot, bool bHasGauge)
 {
+	const int Base = CheatRefusal(bAllowed, SenderSlot);
+	if (Base != 0)
+		return Base;
+	if (!bHasGauge)
+		return 3;
 	return 0;
 }
 
