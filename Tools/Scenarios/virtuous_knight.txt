@@ -4,6 +4,7 @@
 waitlog Starting hero of slot 0 spawned at
 hol.AI.ThinkSteps 100000
 hol.Cheat.Resources 5000
+hol.Cheat.Tier 1
 hol.Cheat.Population 60
 hol.Combat.LogHits 1
 hol.Prod.BuildTime 2
@@ -20,30 +21,36 @@ hol.HUD.Report
 waitlog E=VirtuousKnight
 note 1. La Caserne Aube est selectionnee : la ligne E de sa grille est le Chevalier Vertueux (touche E).
 capture virtuous_knight_grid
-waitkey Entree : je mets un Chevalier Vertueux et un Lancier allie face a trois ennemis
-# Un Chevalier et un allie cote a cote (rayon du Chevalier), les ennemis a portee de l'allie. Spawn direct : la grille est montree au-dessus ; le geste reel de la touche E est le modele neutrals_qground (hol.UI.Key E 0 0.1) a ajouter quand la case est vue.
-hol.Camera.FocusNear 5000 -1500
+waitkey Entree : je mets un Chevalier Vertueux immobile a 6 m d'un Lancier allie, trois ennemis de l'autre cote de l'allie
+# Layout (D864/D865, anneau de 8 m = DamageRedirectRadius 800 cm) : Chevalier a y=-2100, allie a y=-1500 (6 m : DANS l'anneau), ennemis a y=-1300 (2 m de l'allie, ~8 m du Chevalier : l'allie est la cible la plus proche). Le Chevalier est mis en POSITION DE GARDE (hol.Select.Hold, la case Garder de la grille) pour qu'il ne s'avance pas vers les ennemis (SightRadius 3200 : il les voit) : ses PV ne peuvent baisser que par la redirection.
+hol.Camera.FocusNear 5000 -2100
 frames 2
 hol.Units.SpawnHere 1 VirtuousKnight 0 120
+hol.Camera.FocusNear 5000 -1500
+frames 2
 hol.Units.SpawnHere 1 Spearman 0 120
-hol.Camera.FocusNear 5000 -1100
+hol.Camera.FocusNear 5000 -1300
 frames 2
 hol.Units.SpawnHere 3 Spearman 1 120
 waitunits 5
+# Select within 10 frames of the camera placement (preflight 2b): re-center between the Knight (-2100) and the ally (-1500), then hold the Knight.
+hol.Camera.FocusNear 5000 -1800
+frames 2
 hol.Select.Type VirtuousKnight
 waitlog Select type VirtuousKnight: 1 units
+hol.Select.Hold
+waitlog hold position
 hol.HUD.Report
-note 2. Le Chevalier est selectionne : note ses points de vie (panneau en bas). Les ennemis attaquent l'allie, pas lui.
+note 2. Le Chevalier est selectionne et en garde (il ne bouge pas), l'allie est a 6 m, dans l'anneau de 8 m ; les ennemis attaquent l'allie, aucun ne peut atteindre le Chevalier. Note ses points de vie (panneau en bas).
 capture virtuous_knight_before
 waitlog hits
 frames 120
-# Select within 10 frames of the camera placement (preflight 2b): re-center on the Knight's group (-1500), the enemies fought at -1100.
-hol.Camera.FocusNear 5000 -1500
+hol.Camera.FocusNear 5000 -1800
 frames 2
 hol.Select.Type VirtuousKnight
 waitlog Select type VirtuousKnight: 1 units
 hol.HUD.Report
-note 3. Apres quelques coups sur l'allie : les PV du Chevalier ont BAISSE (il encaisse une part des coups), alors qu'aucun ennemi ne l'a vise.
+note 3. Apres quelques coups sur l'allie : les PV du Chevalier ont BAISSE alors qu'il n'a pas bouge et qu'aucun ennemi ne l'a frappe (les coups visent l'allie) : la baisse vient de la redirection D864/D865.
 capture virtuous_knight_hp
 hol.Test.Sanity
 note 4. A toi : fais reculer l'allie hors du rayon du Chevalier, les PV du Chevalier cessent de baisser.
