@@ -84,6 +84,33 @@ try {
     Check ($Code -ne 0 -and (Same $before (Bytes $f))) 'L15-2 -Append -After that no line holds: refused, file unchanged' $o
     $o = Run @('-File', $f, '-Append', "a`r`nb")
     Check ($Code -ne 0 -and (Same $before (Bytes $f))) 'L15-2 -Append text holding a line break: refused, file unchanged' $o
+
+    Write-Output '--- 7. AX-3 : exit code 0 on success, loud failure, written line read back, output cut short does not lose the edit'
+    $f = Put 'Ax3.md' ("# Etapes`r`n- D858 : ligne un`r`n- CELEBORN-1120 : D858 voisin`r`n- ARWEN : fini`r`n")
+    $o = Run @('-File', $f, '-Append', "- GLORFINDEL-1120d : AX-3 (sans C++, outil)", '-After', 'CELEBORN')
+    Check ($Code -eq 0 -and (Text $f) -eq "# Etapes`r`n- D858 : ligne un`r`n- CELEBORN-1120 : D858 voisin`r`n- GLORFINDEL-1120d : AX-3 (sans C++, outil)`r`n- ARWEN : fini`r`n") 'AX-3a -Append: exit code 0 and the line is written after the last -After line' ($o + ' / code ' + $Code)
+    Check ($o -match 'relu : - GLORFINDEL-1120d : AX-3') 'AX-3a the tool prints the line READ BACK from the file after writing ("relu : ...")' $o
+    $f = Put 'Ax3b.md' ("# Etapes`r`n- D858 : ligne un`r`n- CELEBORN-1120 : D858 voisin`r`n- ARWEN : fini`r`n")
+    $before = Bytes $f
+    $o = Run @('-File', $f, '-Match', 'D858', '-NewLine', '- D858 : neuf')
+    Check ($Code -ne 0 -and $o -match '2 lignes' -and (Same $before (Bytes $f))) 'AX-3b -Match hitting TWO lines (D858 is also in the neighbour): refused with a non-zero code, nothing written' $o
+    $o = Run @('-File', $f, '-Match', 'CELEBORN-1120 : D858', '-NewLine', '- CELEBORN-1120 : D858 fait')
+    Check ($Code -eq 0 -and (Text $f) -eq "# Etapes`r`n- D858 : ligne un`r`n- CELEBORN-1120 : D858 fait`r`n- ARWEN : fini`r`n") 'AX-3c -Match text found in the NEIGHBOUR line only: exactly that line changes, the D858 line and the others intact' ((Text $f) -replace "`r", '\r' -replace "`n", '\n')
+    Check ($o -match 'relu : - CELEBORN-1120 : D858 fait') 'AX-3c the line read back after writing is shown' $o
+    $o = Run @('-File', $f, '-Match', '-- tiret', '-NewLine', 'zz')
+    Check ($Code -ne 0 -and $o -match 'aucune ligne') 'AX-3d a -Match starting with "--": handled as a value, refused loudly when absent (no silent success)' $o
+    # output consumer that stops reading after the first line (| Select-Object -First 1) must not lose the edit
+    $f = Put 'Ax3c.md' ("# Etapes`r`n- A`r`n- B`r`n")
+    $null = & powershell -NoProfile -ExecutionPolicy Bypass -File $Tool -File $f -Append '- coupe' | Select-Object -First 1
+    Check ((Text $f) -eq "# Etapes`r`n- A`r`n- B`r`n- coupe`r`n") 'AX-3e output cut by Select-Object -First 1: the edit is still written (print comes AFTER the write)' ((Text $f) -replace "`r", '\r' -replace "`n", '\n')
+    # a write that fails (read-only file): non-zero code and a message that starts with "edit_line : ECHEC", file unchanged
+    $f = Put 'Ax3d.md' ("a`r`nb`r`n")
+    $before = Bytes $f
+    Set-ItemProperty -LiteralPath $f -Name IsReadOnly -Value $true
+    $o = Run @('-File', $f, '-Append', 'c')
+    $failCode = $Code
+    Set-ItemProperty -LiteralPath $f -Name IsReadOnly -Value $false
+    Check ($failCode -ne 0 -and $o -match 'edit_line : ECHEC' -and (Same $before (Bytes $f))) 'AX-3f write failure (read-only file): non-zero code, message "edit_line : ECHEC", file unchanged' ($o + ' / code ' + $failCode)
 } catch {
     $Fails++; Write-Output ('FAIL exception : ' + $_)
 } finally {
