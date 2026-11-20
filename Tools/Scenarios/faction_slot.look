@@ -1,0 +1,4 @@
+# <nom de capture> | ce que l'utilisateur doit voir
+faction_slot_30 | POINT A REGARDER : la barre d'Honneur de l'Aube, 30 sur 100, au-dessus du bloc du heros (coin bas gauche) : texte "30 / 100", barre doree remplie au tiers environ, une ligne de pouvoir (SacredLight cost 25) dessous ; l'emplacement ne chevauche pas le bloc du heros (150 px provisoire) ni la grille de commandes
+faction_slot_100 | la barre d'Honneur de l'Aube pleine, 100 sur 100, au-dessus du bloc du heros : texte "100 / 100", barre remplie de bout en bout, meme place que sur la capture a 30
+faction_slot_0 | la barre d'Honneur de l'Aube vide, 0 sur 100, au-dessus du bloc du heros : texte "0 / 100", barre sans remplissage, l'emplacement toujours affiche
