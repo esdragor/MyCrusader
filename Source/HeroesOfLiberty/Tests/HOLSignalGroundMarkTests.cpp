@@ -54,7 +54,11 @@ bool FHOLSignalGroundMarkTest::RunTest(const FString& Parameters)
 		Marks->GetInstanceTransform(0, Piece, /*bWorldSpace*/ true);
 		TestTrue(TEXT("At the signal's point (x, y)"), FVector2D(Piece.GetLocation()).Equals(FVector2D(Point), 1.0));
 		TestTrue(TEXT("On the ground there, just above it"), FMath::IsNearlyEqual(Piece.GetLocation().Z, Point.Z, 10.0));
-		TestTrue(TEXT("Wide enough to be seen from the camera (at least 3 m)"), Piece.GetScale3D().X * 100.0 >= 300.0);
+		// D870 divided the mark by 3: the size is the cvar's (hol.Signal.GroundMarkSize), not a number of the test; at least half of it after the pulse, and at least 1 m.
+		const IConsoleVariable* SizeVar = IConsoleManager::Get().FindConsoleVariable(TEXT("hol.Signal.GroundMarkSize"));
+		const double ConfiguredSide = SizeVar ? static_cast<double>(SizeVar->GetFloat()) : 0.0;
+		TestTrue(TEXT("The mark's size is the one of hol.Signal.GroundMarkSize (at least half of it, pulse aside)"), ConfiguredSide > 0.0 && Piece.GetScale3D().X * 100.0 >= 0.5 * ConfiguredSide);
+		TestTrue(TEXT("Wide enough to be seen from the camera (at least 1 m)"), Piece.GetScale3D().X * 100.0 >= 100.0);
 		const FLinearColor Drawn(Marks->PerInstanceSMCustomData[0], Marks->PerInstanceSMCustomData[1], Marks->PerInstanceSMCustomData[2]);
 		const TArray<FHOLReceivedSignal> Active = Controller->GetActiveSignals();
 		if (TestEqual(TEXT("One living signal"), Active.Num(), 1))
