@@ -80,7 +80,10 @@ namespace HOLFactionPowerCast
 		// Cool-down then range, by the shared ground-ability rule (1 dead caster and 2 cool-down, 3 range): the caster is alive here.
 		const int64 DeltaX = int64(PointXCm) - int64(OriginXCm);
 		const int64 DeltaY = int64(PointYCm) - int64(OriginYCm);
-		const int64 DistanceCm = int64(Math::CeilToInt(Math::Sqrt(double(DeltaX * DeltaX + DeltaY * DeltaY))));
+		// Squares in double (a delta up to 2^32 - 1 squares to 1.8e19, past an int64, and wrapped negative before: NaN distance, cast
+		// accepted from anywhere), then capped under the int range so the ceiling cannot overflow either.
+		const double ExactCm = Math::Sqrt(double(DeltaX) * double(DeltaX) + double(DeltaY) * double(DeltaY));
+		const int64 DistanceCm = int64(Math::CeilToInt(Math::Min(ExactCm, 2000000000.0)));
 		const int Reason = HOLGroundAbility::TargetRefusal(true, DistanceCm, SealRangeCm(), Math::Max(CooldownEndMs - NowMs, 0));
 		if (Reason == 2)
 		{
