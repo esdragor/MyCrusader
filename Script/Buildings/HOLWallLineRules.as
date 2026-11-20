@@ -182,4 +182,36 @@ namespace HOLWallLine
 		}
 		return Validate(FIntPoint(CellOfCoordinate(Start.X, Tile), CellOfCoordinate(Start.Y, Tile)), FIntPoint(CellOfCoordinate(End.X, Tile), CellOfCoordinate(End.Y, Tile)), MapMin, MapMax, Occupied, MaxCells);
 	}
+
+	// ---- Drag gesture (F4, client): the cells the drag SHOWS. One source with Validate (it lays exactly these cells when the line is accepted); the C++
+	// controller reads them through UHOLWallLineBridge (HOLWallLineBridge.as), it holds no copy of the rule. STUB (red first): empty.
+	// The wall types the drag is armed for. Empty until F5 adds the first wall type (Palissade / Mur): then its row name goes here.
+	TArray<FName> WallTypes()
+	{
+		TArray<FName> Types;
+		return Types;
+	}
+
+	bool IsWallType(FName TypeName)
+	{
+		TArray<FName> Types = WallTypes();
+		for (int Index = 0; Index < Types.Num(); Index++)
+		{
+			if (Types[Index] == TypeName)
+				return true;
+		}
+		return false;
+	}
+
+	TArray<FIntPoint> DragCells(FIntPoint Start, FIntPoint End, int MaxCells)
+	{
+		TArray<FIntPoint> Shown;
+		return Shown;
+	}
+
+	TArray<FIntPoint> DragCellsFromPoints(FVector Start, FVector End, double Tile, int MaxCells)
+	{
+		TArray<FIntPoint> Shown;
+		return Shown;
+	}
 }
