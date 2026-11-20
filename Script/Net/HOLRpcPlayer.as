@@ -1035,6 +1035,26 @@ for (FString Command : Commands)
 		HOLRpcBridge::CheatTier(this, Tier, Slot);
 	}
 
+	// hol.Cheat.Honor <Value> (CELEBORN-1120d): the Dawn's Honor gauge of the SENDER's slot, set to Value held between the floor and the cap (HOLHonorCheat::ServerApply: the faction is read from the
+	// game state by the sender slot, the refusals are HOLRpc::CheatHonorRefusal). Cheats off = refused and logged by HOLRpcBridge::CheatRefused.
+	UFUNCTION(Server)
+	void ServerCheatHonor(int Value)
+	{
+		const int Sender = HOLRpcBridge::GetSenderSlot(this);
+		TArray<AHOLGameState> States;
+		GetAllActorsOfClass(States);
+		AHOLGameState State = nullptr;
+		if (States.Num() > 0)
+			State = States[0];
+		const int Result = HOLHonorCheat::ServerApply(State, !HOLRpcBridge::CheatRefused(this, "honor"), Sender, Value);
+		if (Result < 0)
+		{
+			Log(n"LogHOLMatch", f"RpcCheat: honor refused ({-Result}) for sender slot {Sender}");
+			return;
+		}
+		Log(n"LogHOLMatch", f"RpcCheat: honor set to {Result} for sender slot {Sender}");
+	}
+
 	// Morceau 8 (NOT COMPILED): hol.Cheat.Specialization; the bridge calls AHOLPlayerController::DoCheatSpecialization (cheat guard, the board's rules, start then end at once).
 	UFUNCTION(Server)
 	void ServerCheatSpecialization(int Tier, int Option)

@@ -8,10 +8,16 @@ namespace HOLHonorCheat
 		return 100;
 	}
 
-	// STUB (CELEBORN-1120d, red first): the server side of ServerCheatHonor, nothing done yet.
+	// The server side of ServerCheatHonor (CELEBORN-1120d), pure of the RPC so a test drives it on a game state: the faction is the SENDER's, read from the state (GetSlotFaction, Dawn by default),
+	// never from a client or a display text. Returns the value stored, or minus the refusal of HOLRpc::CheatHonorRefusal (-1 cheats off, -2 no slot, -3 no gauge), or -4 when nothing was written (no state).
 	int ServerApply(AHOLGameState State, bool bCheatsAllowed, int Sender, int Value)
 	{
-		return -9;
+		const EHOLFaction Faction = State != nullptr ? EHOLFaction(State.GetSlotFaction(Sender)) : EHOLFaction::DawnOrder;
+		const int Refusal = HOLRpc::CheatHonorRefusal(bCheatsAllowed, Sender, HOLFactionResource::HasResource(Faction));
+		if (Refusal != 0)
+			return -Refusal;
+		const int Stored = Apply(State, Sender, Faction, Value);
+		return Stored < 0 ? -4 : Stored;
 	}
 
 	// Sets the slot's gauge to Requested held between the floor and the cap; returns the value stored, or -1 when nothing was written (no state, a slot below 0, or a faction without a gauge).
