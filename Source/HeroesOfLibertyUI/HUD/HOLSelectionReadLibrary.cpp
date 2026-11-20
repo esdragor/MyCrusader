@@ -119,6 +119,16 @@ bool UHOLSelectionReadLibrary::GetSourceSelectionView(const UObject* WorldContex
 	return true;
 }
 
+FString UHOLSelectionReadLibrary::GetUnitTypeKey(const UObject* WorldContextObject, const int32 UnitId)
+{
+	return FString(); // stub (red)
+}
+
+void UHOLSelectionReadLibrary::ReadGarrisonOccupants(const UObject* WorldContextObject, const AHOLBuilding* Building, FHOLBuildingSelView& Out)
+{
+	// stub (red): leaves the two lists empty
+}
+
 FText UHOLSelectionReadLibrary::GetOwnerName(const UObject* WorldContextObject, const int32 OwnerSlot, const bool bOwn)
 {
 	return HOLSelectionReadPrivate::OwnerNameIn(HOLSelectionReadPrivate::WorldOf(WorldContextObject), OwnerSlot, bOwn);

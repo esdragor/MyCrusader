@@ -183,6 +183,12 @@ public:
 	static bool RequestGarrisonUnitsIn(AHOLPlayerController* Controller, const TArray<int32>& Ids, AHOLBuilding* Building);
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|ControllerCommand")
 	static bool RequestUngarrisonAllOf(AHOLPlayerController* Controller, AHOLBuilding* Building);
+	/** D813 garrison frame: one occupant out (Controller->RequestUngarrisonUnit). False without a controller or with UnitId <= 0. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|ControllerCommand")
+	static bool RequestUngarrisonUnitOf(AHOLPlayerController* Controller, int32 UnitId);
+	/** D813 garrison frame: everyone out of the building selected alone and owned (Controller->GetOwnSelection()). False without a controller or an own selected building. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|ControllerCommand")
+	static bool RequestUngarrisonAllSelected(AHOLPlayerController* Controller);
 	/** Controller->RequestSetRallyPointOf(Producer, Site->GetActorLocation(), INDEX_NONE, Site, bShift) (hol.Prod.RallySite). */
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|ControllerCommand")
 	static bool RequestRallyOnSite(AHOLPlayerController* Controller, AHOLBuilding* Producer, AHOLBuilding* Site, bool bShift);
