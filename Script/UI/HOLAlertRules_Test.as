@@ -16,7 +16,7 @@ void Test_AlertPopulationFullOnReaching(FUnitTest& T)
 void Test_AlertPopulationFullLineDuration(FUnitTest& T)
 {
 	T.AssertTrue(HOLAlertRules::PopulationFullLineSeconds > 10.0, f"the line stays longer than a glance ({HOLAlertRules::PopulationFullLineSeconds} s)");
-	T.AssertTrue(HOLAlertRules::PopulationFullLineSeconds < HOLAlertRules::PopulationRepeatSeconds, "the line is gone before the repeat delay lets the next one in");
+	T.AssertTrue(HOLAlertRules::PopulationFullLineSeconds <= HOLAlertRules::PopulationRepeatSeconds, "the line is gone when the repeat delay lets the next one in");
 	FHOLPopulationAlertWatch Watch;
 	T.AssertTrue(HOLAlertRules::ShouldAlertPopulationFull(Watch, 10, 10, 0.0, HOLAlertRules::PopulationRepeatSeconds), "the line goes when the population becomes full");
 	T.AssertFalse(HOLAlertRules::ShouldAlertPopulationFull(Watch, 10, 10, HOLAlertRules::PopulationFullLineSeconds, HOLAlertRules::PopulationRepeatSeconds), "still full when the line leaves: nothing new");
