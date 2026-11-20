@@ -2,7 +2,8 @@
 # Usage (une ligne) :
 #   powershell -ExecutionPolicy Bypass -File <wt>\Tools\AutoJourney\integrate.ps1 -Root <worktree d'integration> -Branch <branche a creer depuis main> [-Reds sha1,sha2] [-Greens br1,br2] [-Parts net,build] [-DryRun]
 # Deroule : branche neuve depuis main ; cherry-pick des rouges (commits "test seul") ; build (seulement si un .cpp / .h / .hpp / .inl / .cs a change
-# dans les rouges) ; quick_check -Parts tests (les rouges DOIVENT y etre vus) ; merge des verts (tips) un par un ; build (seulement si C++ dans
+# dans les rouges) ; quick_check -Parts tests (les rouges DOIVENT y etre vus) ; remise a main (reset --hard du sha de main au depart : "verts depuis
+# main, rouges retires", L20-6 ; les verts portent les memes commits, un bouchon de rouge remplace dans sa branche ne conflite plus) ; merge des verts (tips) un par un ; build (seulement si C++ dans
 # un vert) ; quick_check -Parts tests (doit etre vert) ; quick_check -Parts <Parts> ; resume court (10 lignes) imprime ET ecrit dans
 # <Root>\Docs\Integrate_<Branch>.txt (sortie complete : Docs\Integrate_<Branch>.log).
 # -DryRun : imprime le plan (lignes "PLAN <n> <genre> : <commande>" ou "... : SKIP (<raison>)") sans rien creer ni lancer (lit seulement git).
@@ -15,7 +16,8 @@ param(
   [string] $Reds = '',
   [string] $Greens = '',
   [string] $Parts = 'net,build',
-  [switch] $DryRun
+  [switch] $DryRun,
+  [switch] $SkipBuildTests   # RESERVE AU TEST (integrate_test.ps1) : saute build.ps1 et quick_check (etapes build / tests / parts), garde toute la partie git
 )
 $ErrorActionPreference = 'Continue'
 if (-not $Root) { $Root = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path }
@@ -52,6 +54,7 @@ $LogPath = Join-Path $Root "Docs\Integrate_$Branch.log"
 # The plan: one record per step. Kind is what the summary and the test read; Skip is the reason, or '' when the step runs.
 $Plan = New-Object System.Collections.ArrayList
 function Add-Step([string] $Kind, [string] $Text, [string] $Skip = '', [scriptblock] $Action = $null) {
+  if ($SkipBuildTests -and -not $Skip -and ($Kind -in 'build', 'tests', 'parts')) { $Skip = '-SkipBuildTests (reserve au test)' }
   [void] $Plan.Add([pscustomobject]@{ Kind = $Kind; Text = $Text; Skip = $Skip; Action = $Action })
 }
 Add-Step 'branch' "git -C $Root switch -c $Branch main"
@@ -59,6 +62,10 @@ if ($RedList.Count) { foreach ($RedItem in $RedList) { Add-Step 'red' "git -C $R
 else { Add-Step 'red' 'cherry-pick' 'pas de rouge' }
 Add-Step 'build' $BuildCmd $(if (-not $RedList.Count) { 'pas de rouge' } elseif (-not $RedsCpp) { 'pas de C++ (.cpp/.h) dans les rouges' } else { '' })
 Add-Step 'tests' "$QcCmd -Parts tests" $(if ($RedList.Count) { '' } else { 'pas de rouge' })
+# L20-6: the reds only served to see the tests fail; the greens carry the same commits (a red may hold a stub that a later commit of its own
+# branch replaces -> conflict if the cherry-picks stay). The integration branch holds only what this script created: back to main, then the greens.
+$MainSha = (Git-Out rev-parse 'main^{commit}' | Select-Object -First 1).Trim()
+Add-Step 'reset' "git -C $Root reset --hard $MainSha" $(if ($RedList.Count) { '' } else { 'pas de rouge' })
 if ($GreenList.Count) { foreach ($GreenItem in $GreenList) { Add-Step 'green' "git -C $Root merge --no-ff --no-edit $GreenItem" } }
 else { Add-Step 'green' 'merge' 'pas de vert' }
 Add-Step 'build' $BuildCmd $(if (-not $GreenList.Count) { 'pas de vert' } elseif (-not $GreensCpp) { 'pas de C++ (.cpp/.h) dans les verts' } else { '' })
@@ -86,12 +93,13 @@ function Log([string] $Line) { Write-Output $Line; Add-Content -Path $LogPath -V
 function Run-Native([string] $Command) {
   # Runs one command line, mirrors the output to the log, returns @{ Code; Out }.
   $Collected = New-Object System.Collections.ArrayList
+  if ($SkipBuildTests -and ($Command -match 'build\.ps1|quick_check\.ps1')) { Add-Content -Path $LogPath -Value "SKIP (-SkipBuildTests) $Command" -Encoding ASCII; return @{ Code = 0; Out = @('SKIP (-SkipBuildTests)') } }
   & cmd.exe /c "$Command 2>&1" | ForEach-Object { [void] $Collected.Add("$_"); Add-Content -Path $LogPath -Value "$_" -Encoding ASCII }
   return @{ Code = $LASTEXITCODE; Out = @($Collected) }
 }
 function Write-Summary([string] $Verdict) {
   $Lines = @("INTEGRATE $Branch : $Verdict ($([int]((Get-Date) - $Started).TotalSeconds) s, $(Get-Date -Format 'yyyy-MM-dd HH:mm'))")
-  foreach ($Key in 'branche+rouges', 'build rouges', 'tests rouges', 'merge verts', 'build verts', 'tests verts', "parts $PartsText") {
+  foreach ($Key in 'branche+rouges', 'build rouges', 'tests rouges', 'remise a main', 'merge verts', 'build verts', 'tests verts', "parts $PartsText") {
     $Lines += "  $Key : $(if ($Rows.Contains($Key)) { $Rows[$Key] } else { 'NON LANCE' })"
   }
   $Lines += "  rouges vus : $(if ($RedsSeen.Count) { $RedsSeen -join ', ' } else { 'aucun' }) ; sortie complete : Docs\Integrate_$Branch.log"
@@ -150,6 +158,15 @@ if ($RedList.Count) {
   $RedsSeen = $Result.Names
   $Rows['tests rouges'] = "$(if ($Result.Ok) { 'PASS : AUCUN rouge vu (les rouges sont-ils de vrais rouges ?)' } else { 'FAIL attendu' }) $($Result.Count) ($(Stage-Time $Since))"
 } else { $Rows['build rouges'] = 'SKIP (pas de rouge)'; $Rows['tests rouges'] = 'SKIP (pas de rouge)' }
+
+# 3b. Back to main WITHOUT the cherry-picked reds (they served to see the tests fail; the greens carry the same commits).
+if ($RedList.Count) {
+  $Out = Git-Out reset --hard $MainSha
+  Add-Content -Path $LogPath -Value ($Out -join "`n") -Encoding ASCII
+  if ($LASTEXITCODE -ne 0) { Log "integrate : ERROR reset --hard $MainSha : $($Out -join ' ')"; Write-Summary 'FAIL (reset)'; exit 3 }
+  $Rows['remise a main'] = "PASS (verts depuis main, rouges retires : reset --hard $($MainSha.Substring(0, 7)))"
+  Log "integrate : verts depuis main, rouges retires (reset --hard $($MainSha.Substring(0, 7)))"
+} else { $Rows['remise a main'] = 'SKIP (pas de rouge)' }
 
 # 4. Merge the greens, one by one (stop at the first conflict).
 $Since = Get-Date

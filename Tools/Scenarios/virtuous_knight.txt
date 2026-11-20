@@ -30,8 +30,8 @@ hol.Camera.FocusNear 5000 -1100
 frames 2
 hol.Units.SpawnHere 3 Spearman 1 120
 waitunits 5
-hol.Select.ClickUnit 0
-waitlog Selection: VirtuousKnight
+hol.Select.Type VirtuousKnight
+waitlog Select type VirtuousKnight: 1 units
 hol.HUD.Report
 note 2. Le Chevalier est selectionne : note ses points de vie (panneau en bas). Les ennemis attaquent l'allie, pas lui.
 capture virtuous_knight_before
@@ -40,8 +40,8 @@ frames 120
 # Select within 10 frames of the camera placement (preflight 2b): re-center on the Knight's group (-1500), the enemies fought at -1100.
 hol.Camera.FocusNear 5000 -1500
 frames 2
-hol.Select.ClickUnit 0
-waitlog Selection: VirtuousKnight
+hol.Select.Type VirtuousKnight
+waitlog Select type VirtuousKnight: 1 units
 hol.HUD.Report
 note 3. Apres quelques coups sur l'allie : les PV du Chevalier ont BAISSE (il encaisse une part des coups), alors qu'aucun ennemi ne l'a vise.
 capture virtuous_knight_hp

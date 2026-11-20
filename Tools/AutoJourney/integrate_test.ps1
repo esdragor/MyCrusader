@@ -57,7 +57,8 @@ $Base = @('-Root', $Repo, '-Branch', 'integ-x', '-DryRun')
 $P = Run-Plan ($Base + @('-Reds', $RedAs, '-Greens', 'g1,g2'))
 $K = Kinds $P
 Check ($P.Code -eq 0) 'script only: exit 0' "code=$($P.Code) out=$($P.Out -join ' | ')"
-Check (($K -join ',') -eq 'branch,red,build,tests,green,green,build,tests,parts,summary') 'script only: order of the steps' ($K -join ',')
+Check (($K -join ',') -eq 'branch,red,build,tests,reset,green,green,build,tests,parts,summary') 'script only: order of the steps (reset to main between the red tests and the greens)' ($K -join ',')
+Check (@($P.Lines | Where-Object { $_ -match '^PLAN \d+ reset .*reset --hard [0-9a-f]{40}' }).Count -eq 1) 'plan shows the reset to the sha of main' ($P.Lines -join ' | ')
 $GreenLines = @($P.Lines | Where-Object { $_ -match '^PLAN \d+ green ' })
 Check ($GreenLines.Count -eq 2) 'list split at the commas: 2 green steps, not one name "g1,g2"' "count=$($GreenLines.Count)"
 Check (($GreenLines[0] -match 'g1') -and ($GreenLines[1] -match 'g2') -and -not ($GreenLines -match 'g1,g2')) 'greens merged one by one in the order given' ($GreenLines -join ' | ')
@@ -95,6 +96,24 @@ Check (@($P.Lines | Where-Object { $_ -match '^PLAN \d+ green ' -and $_ -match '
 $P = Run-Plan ($Base + @('-Reds', $RedAs, '-Greens', 'g1,nope'))
 Check ($P.Code -eq 3) 'unknown green branch: exit 3' "code=$($P.Code)"
 Check (($P.Out -join ' ') -match 'nope') 'unknown green branch: named in the message'
+
+# 6. REAL run (git only, -SkipBuildTests) : a red holds a STUB that a later commit of its own branch replaces (case integ-32, 2026-11-20).
+#    The reds only serve to see the tests fail; the greens must merge from main, without the cherry-picked reds -> PASS, no conflict.
+Git $Repo checkout -q main | Out-Null
+Git $Repo branch stubbr main | Out-Null
+$Stub1 = CommitOn $Repo 'stubbr' 'Script/stub.as' "line1`nSTUB`nline3`n"
+CommitOn $Repo 'stubbr' 'Script/stub.as' "line1`nREAL`nline3`n" | Out-Null
+Git $Repo checkout -q main | Out-Null
+$MainSha = (Git $Repo rev-parse main | Out-String).Trim()
+$Real = @(& powershell.exe -NoProfile -ExecutionPolicy Bypass -File $Tool -Root $Repo -Branch integ-real -Reds $Stub1 -Greens stubbr -SkipBuildTests 2>&1 | ForEach-Object { "$_" })
+$RealCode = $LASTEXITCODE
+Check ($RealCode -eq 0) 'stub red then its own branch: no conflict, exit 0 (was 2)' "code=$RealCode out=$($Real -join ' | ')"
+Check (($Real -join ' ') -match 'INTEGRATE integ-real : PASS') 'stub red then its own branch: summary says PASS' ($Real -join ' | ')
+Check (($Real -join ' ') -match 'verts depuis main, rouges retires') 'summary says "verts depuis main, rouges retires"' ($Real -join ' | ')
+$Content = (Git $Repo show 'integ-real:Script/stub.as' | Out-String)
+Check (($Content -match 'REAL') -and ($Content -notmatch 'STUB')) 'integration branch carries the real code, not the stub' $Content
+$Base0 = (Git $Repo merge-base main integ-real | Out-String).Trim()
+Check ($Base0 -eq $MainSha) 'integration branch still descends from the main it started from'
 
 Remove-Item -Recurse -Force $Tmp -ErrorAction SilentlyContinue
 Write-Output "integrate_test : $(if ($Fails) { "$Fails FAIL" } else { 'PASS' })"
