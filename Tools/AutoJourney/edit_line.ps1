@@ -14,8 +14,11 @@
 #   aucune pour la derniere) ; une ligne inseree prend la fin de la ligne qui la precede (sinon CRLF si le fichier en a, et la derniere ligne
 #   sans fin en recoit une : rien de colle) ; le fichier est relu juste avant l'ecriture (pas de copie perimee), en UTF-8, sans BOM ajoute
 #   (un BOM deja present est garde : aucun diff parasite).
-# Sortie : "edit_line : <fichier> ligne N" + avant / apres ; code 0 ; 1 refus (fichier absent, 0 ou plusieurs lignes, fin de ligne
-#   dans le texte neuf, -After introuvable). Test : Tools\Tests\edit_line_test.ps1. Jamais derriere "| Select-Object" (sortie coupee).
+# Sortie : "edit_line : <fichier> ligne N" + avant / apres / relu (la ligne RELUE dans le fichier apres l'ecriture) ; code 0 = ecrit et
+#   relu ; 1 refus (fichier absent, 0 ou plusieurs lignes, fin de ligne dans le texte neuf, -After introuvable, fichier change) ;
+#   2 "edit_line : ECHEC (...)" (ecriture impossible, erreur inattendue) ; 3 relecture differente (original restaure). Jamais 255.
+#   AX-3 (2026-11-20) : l'ecriture precede l'impression et une sortie coupee ("| Select-Object -First 1") ne perd plus l'edition ;
+#   le code de sortie ne depend que du resultat de l'ecriture. Test : Tools\Tests\edit_line_test.ps1.
 param(
     [Parameter(Mandatory = $true)] [string] $File,
     [string] $Match = '',
@@ -27,6 +30,8 @@ param(
     [switch] $DryRun
 )
 $ErrorActionPreference = 'Stop'
+# Erreur inattendue (avant l'ecriture) : message clair et code 2, jamais un code muet.
+trap { try { Write-Output ("edit_line : ECHEC (erreur inattendue : " + $_.Exception.Message + ")") } catch { }; exit 2 }
 function Refuse([string]$Why) { Write-Output "edit_line : REFUS ($Why) ; fichier inchange : $File"; exit 1 }
 $Hint = ' ; pour AJOUTER une ligne sans en ecraser une : -Append "<ligne>" [-After "<texte de la ligne qui precede>"]'
 $IsAppend = $PSBoundParameters.ContainsKey('Append')
@@ -93,12 +98,45 @@ foreach ($l in $Lines) { [void]$Out.Append($l.Body); [void]$Out.Append($l.Eol) }
 $NewBytes = $Utf8.GetBytes($Out.ToString())
 if ($HasBom) { $NewBytes = [byte[]](0xEF, 0xBB, 0xBF) + $NewBytes }
 
-Write-Output ("edit_line : {0} ligne {1}{2}" -f $Path, ($i + 1), $Mode)
-if (-not $IsAppend) { Write-Output ("  avant : " + $Old) }
-Write-Output ("  apres : " + $NewText)
-if ($DryRun) { Write-Output '  DryRun : rien ecrit'; exit 0 }
+# AX-3 (2026-11-20) : toute impression passe par Say (jamais fatale : une sortie coupee, p. ex. "| Select-Object -First 1", ne doit ni
+#   perdre l'edition ni changer le code de sortie) ; l'ecriture vient AVANT toute impression de resultat ; la ligne ecrite est RELUE
+#   dans le fichier et affichee ("relu : ...") ; un echec d'ecriture ou de relecture = "edit_line : ECHEC (...)" et code 2 (fichier
+#   restaure octet pour octet), jamais un code muet 255 ; succes = code 0.
+function Say([string]$Msg) { try { Write-Output $Msg } catch { } }
+function Fail([string]$Why, [int]$Code = 2) { Say "edit_line : ECHEC ($Why) ; fichier : $Path"; exit $Code }
+if ($DryRun) {
+    Say ("edit_line : {0} ligne {1}{2}" -f $Path, ($i + 1), $Mode)
+    if (-not $IsAppend) { Say ("  avant : " + $Old) }
+    Say ("  apres : " + $NewText)
+    Say '  DryRun : rien ecrit'
+    exit 0
+}
 # Relu juste avant d'ecrire : une autre session a pu ecrire entre-temps (plusieurs sessions ecrivent EtapeDefini.md en parallele).
-$Again = [IO.File]::ReadAllBytes($Path)
-if ($Again.Length -ne $Bytes.Length -or [Convert]::ToBase64String($Again) -ne [Convert]::ToBase64String($Bytes)) { Refuse 'le fichier a change pendant l edition : relancer' }
-[IO.File]::WriteAllBytes($Path, $NewBytes)
+try {
+    $Again = [IO.File]::ReadAllBytes($Path)
+    if ($Again.Length -ne $Bytes.Length -or [Convert]::ToBase64String($Again) -ne [Convert]::ToBase64String($Bytes)) { Refuse 'le fichier a change pendant l edition : relancer' }
+    [IO.File]::WriteAllBytes($Path, $NewBytes)
+} catch {
+    Fail ('ecriture impossible : ' + $_.Exception.Message)
+}
+# Relecture : les octets sont ceux attendus ET la ligne i du fichier relu est la ligne neuve ; sinon on restaure l'original.
+$Check = $null
+try { $Check = [IO.File]::ReadAllBytes($Path) } catch { }
+$Good = ($Check -ne $null -and $Check.Length -eq $NewBytes.Length -and [Convert]::ToBase64String($Check) -eq [Convert]::ToBase64String($NewBytes))
+$Read = ''
+if ($Good) {
+    $ct = if ($HasBom) { $Utf8.GetString($Check, 3, $Check.Length - 3) } else { $Utf8.GetString($Check) }
+    $rl = @([regex]::Matches($ct, "([^`r`n]*)(`r`n|`n|`r|$)") | Where-Object { $_.Length -gt 0 } | ForEach-Object { $_.Groups[1].Value })
+    if ($i -lt $rl.Count) { $Read = $rl[$i] }
+    if ($Read -cne $NewText) { $Good = $false }
+}
+if (-not $Good) {
+    $restored = $false
+    try { [IO.File]::WriteAllBytes($Path, $Bytes); $restored = $true } catch { }
+    Fail ('la relecture ne montre pas la ligne attendue ; original ' + $(if ($restored) { 'restaure' } else { 'NON restaure' })) 3
+}
+Say ("edit_line : {0} ligne {1}{2}" -f $Path, ($i + 1), $Mode)
+if (-not $IsAppend) { Say ("  avant : " + $Old) }
+Say ("  apres : " + $NewText)
+Say ("  relu : " + $Read)
 exit 0
