@@ -34,6 +34,17 @@ UCommonTextBlock HeroTalentLabel;
 // What the talent line shows (HOLTalentPanel::Make), and its texts for hol.HUD.Report.
 FHOLTalentPanelView TalentView;
 FString TalentTexts = "";
+// The faction slot (A6a, D201, GALADRIEL-1120d): the gauge's text and bar and the power boxes' lines, above the hero's block; its view
+// (HOLFactionSlot::FromGameState) and its text for hol.HUD.Report. Provisional look: a text, a bar, one line per power.
+UBorder FactionPanel;
+UOverlaySlot FactionPanelSlot;
+UProgressBar FactionBar;
+UCommonTextBlock FactionGaugeText;
+UCommonTextBlock FactionPowersText;
+FHOLFactionSlotView FactionView;
+FString FactionSlotTexts = "";
+// Provisional (Placeholders.txt): the slot's rise above the bottom left place, to clear the hero's block.
+const float FactionSlotRise = 150.0;
 // TQ4 = A: the talent tree window (5 rows x 3 cells, Guardian / Captain / Champion, names and effects on hover), opened by the reminder, the icons
 // of the talents taken or the T key; a click on a pickable cell sends RequestHeroTalent. TQ5 = A (D618): one icon per talent taken under the list, its
 // hover the talent's name and effect. The views are HOLTalentTree's.
@@ -273,6 +284,7 @@ UHOLScenarioPanelScript ScenarioPanel;
 		UOverlay Frame = Cast<UOverlay>(ConstructWidget(UOverlay, n"ScriptFrame"));
 		SetRootWidget(Frame);
 		BuildHeroBlock(Frame);
+		BuildFactionSlot(Frame);
 		BuildDiplomacyPanel(Frame);
 		BuildDuelWindow(Frame);
 		BuildAILevelLine(Frame);
@@ -1421,6 +1433,7 @@ UHOLScenarioPanelScript ScenarioPanel;
 		if (HeroPanelSlot != nullptr)
 			HeroPanelSlot.SetPadding(GetBottomLeftPlace());
 		RefreshHero();
+		RefreshFactionSlot();
 		RefreshDuel();
 		RefreshAILevel();
 		RefreshVolcano();
@@ -1534,7 +1547,13 @@ UHOLScenarioPanelScript ScenarioPanel;
 		if (!GetPopulationNow(Used, Cap, Now))
 			return;
 		if (HOLAlertRules::ShouldAlertPopulationFull(PopulationWatch, Used, Cap, Now, HOLAlertRules::PopulationRepeatSeconds))
+		{
+			// D833: the line stays HOLAlertRules::PopulationFullLineSeconds (15 s). TODO once the C++ wrapper AddThreadLine(FText, double Seconds)
+			// is in the tree (GLORFINDEL-1120c): AddThreadLine(HOLAlertRules::PopulationFullText(), HOLAlertRules::PopulationFullLineSeconds).
 			AddThreadLine(HOLAlertRules::PopulationFullText());
+			// D833 / D804 B: the short alert sound, the same one as the attacked elsewhere alert (provisional ping).
+			PlayAlertSound();
+		}
 	}
 
 	// H-2: the short message's place and the held production note (read from the C++ here, 4 times a second, the message and its journal lines at the front).
@@ -1689,10 +1708,8 @@ UHOLScenarioPanelScript ScenarioPanel;
 			TArray<FHOLReceivedSignal> Signals = SignalViewer.GetActiveSignals();
 			for (int Index = 0; Index < Signals.Num(); Index++)
 			{
-				FHOLMinimapMark SignalMark;
-				SignalMark.Position = HOLMinimap::ToPicture(MinimapFrame, FVector2D(Signals[Index].Location.X, Signals[Index].Location.Y));
-				SignalMark.Color = Signals[Index].Color;
-				SignalMark.Size = 10.0;
+				// D860 H2: the square pulses like the ground's mark, on the game's clock (the one Expire reads).
+				FHOLMinimapMark SignalMark = HOLSignalMarks::Mark(MinimapFrame, Signals[Index].Location, Signals[Index].Color, Signals[Index].ReceivedAt, Gameplay::GetTimeSeconds());
 				Marks.Add(SignalMark);
 				if (Signals.Num() != MinimapSignalsLogged)
 					Log(n"LogHOLMatch", f"Minimap signal mark at ({SignalMark.Position.X}, {SignalMark.Position.Y}) px of {MinimapSize}, received at {Signals[Index].ReceivedAt} s");
@@ -1860,6 +1877,56 @@ UHOLScenarioPanelScript ScenarioPanel;
 	void HandlePauseResumeClicked()
 	{
 		ClickPauseResume();
+	}
+
+	// The faction slot's widgets (collapsed until the slot has something to show).
+	void BuildFactionSlot(UOverlay Frame)
+	{
+		FactionPanel = MakePanel(n"FactionPanel");
+		FactionPanel.SetVisibility(ESlateVisibility::Collapsed);
+		FactionPanelSlot = Frame.AddChildToOverlay(FactionPanel);
+		FactionPanelSlot.SetHorizontalAlignment(EHorizontalAlignment::HAlign_Left);
+		FactionPanelSlot.SetVerticalAlignment(EVerticalAlignment::VAlign_Bottom);
+		FactionPanelSlot.SetPadding(FactionSlotPlace());
+		UVerticalBox Column = Cast<UVerticalBox>(ConstructWidget(UVerticalBox, n"FactionColumn"));
+		FactionPanel.SetContent(Column);
+		FactionGaugeText = MakeText(n"FactionGauge", UHOLTextStyleHUDLabel);
+		Column.AddChildToVerticalBox(FactionGaugeText);
+		FactionBar = MakeBar(n"FactionBar", FLinearColor(0.9, 0.8, 0.3, 1.0));
+		Column.AddChildToVerticalBox(SizedBar(n"FactionBarBox", FactionBar, 8.0)).SetPadding(FMargin(0.0, 3.0, 0.0, 1.0));
+		FactionPowersText = MakeText(n"FactionPowers", UHOLTextStyleHUDLabel);
+		Column.AddChildToVerticalBox(FactionPowersText);
+	}
+
+	FMargin FactionSlotPlace()
+	{
+		FMargin Place = GetBottomLeftPlace();
+		Place.Bottom += FactionSlotRise;
+		return Place;
+	}
+
+	// The slot's view (HOLFactionSlot::FromGameState: the state's gauge value, the Honor cap, the Dawn's rows; cool-downs 0 until the state
+	// keeps them) shown: text "30 / 100", bar, one line per power box. Hidden for a spectator and a faction without a gauge.
+	// The permanent specialization button is not in this slot's widgets (none found in the C++ HUD), so bHasSpecializationButton stays false.
+	void RefreshFactionSlot()
+	{
+		const int PlayerSlot = GetLocalSlot();
+		FactionView = FHOLFactionSlotView();
+		FactionSlotTexts = "";
+		if (PlayerSlot >= 0)
+			FactionView = HOLFactionSlot::FromGameState(Cast<AHOLGameState>(Gameplay::GetGameState()), PlayerSlot,
+				HOLDiplomacyRead::GetSlotFactionText(PlayerSlot), false, false);
+		FactionPanelSlot.SetPadding(FactionSlotPlace());
+		FactionPanel.SetVisibility(FactionView.bVisible ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+		if (!FactionView.bVisible)
+			return;
+		FString Lines = "";
+		for (int Index = 0; Index < FactionView.Powers.Num(); ++Index)
+			Lines += (Lines.IsEmpty() ? "" : "\n") + FactionView.Powers[Index].Describe;
+		FactionBar.SetPercent(FactionView.Fraction);
+		FactionGaugeText.SetText(FText::FromString(FactionView.GaugeText));
+		FactionPowersText.SetText(FText::FromString(Lines));
+		FactionSlotTexts = FactionView.Describe;
 	}
 
 	// The view (HOLHeroBlock::Make) from the public sheet, the slot and the return's quote for an order sent now.
@@ -2545,6 +2612,7 @@ UHOLScenarioPanelScript ScenarioPanel;
 			+ (HeroView.bVisible && TalentView.Rows.Num() > 0 ? "\nhero talents: " + TalentView.Describe + (TalentTexts.IsEmpty() ? "" : " | " + TalentTexts) + f" | next row {TalentView.NextRow}" : "")
 			+ (HeroView.bVisible && TalentSeenCount >= 0 ? "\nhero talent texts: list " + TalentListText + " | notice " + TalentNoticeText + " | icons " + TalentIconTexts : "")
 			+ (HeroView.bVisible && TalentSeenCount >= 0 ? "\ntalent window: " + (bTalentWindowOpen ? "open | " + TalentWindowTexts : "closed") : "")
+			+ (FactionSlotTexts.IsEmpty() ? "" : "\nfaction slot: " + FactionSlotTexts)
 			+ (DuelView.Kind != EHOLDuelWindowKind::None ? "\nduel window: " + DuelTexts : "")
 			+ (AILevelTexts.IsEmpty() ? "" : "\nai level: " + AILevelTexts)
 			+ (VolcanoTexts.IsEmpty() ? "" : "\nvolcano: " + VolcanoTexts)
