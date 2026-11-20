@@ -72,6 +72,8 @@ frames 2
 hol.UI.Key D 0 0.1
 waitlog Order: 1 units deploy
 waitlog (delay over)
+# L18-f (RECETTE-1120sa) : attendre l'effet serveur avant de relire le HUD (12 ms apres delay over il dit encore Mounting7), comme au 1er cycle.
+wait 2
 hol.HUD.Report
 waitlog D=Pack
 capture deploy_move_start
@@ -83,6 +85,8 @@ frames 20
 capture deploy_move_unmounting
 note 7. Clic droit au sol : l'engin commence par se demonter (1 s), sans que tu appuies sur D.
 waitlog (delay over)
+# L18-f : meme attente de l'effet serveur avant la relecture du HUD (il disait encore Dismounting6 14 ms apres delay over).
+wait 1
 hol.Select.Report
 hol.HUD.Report
 waitlog D=Deploy
@@ -99,6 +103,7 @@ frames 20
 capture deploy_attack_mounting
 note 9. D861 (a) : clic droit sur la Maison ennemie, engin demonte : il commence a se monter.
 waitlog (delay over)
+wait 2
 hol.HUD.Report
 waitlog D=Pack
 capture deploy_attack_mounted
