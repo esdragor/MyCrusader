@@ -334,7 +334,8 @@ if ($Phase -eq 'Close') {
   # commits qu'elle cite sont deja ancetres de main = doc perimee (la fusion doit la passer « dans main » dans son propre commit) : WARN par ligne.
   if (-not $EtapeFile) { $EtapeFile = "$Main\EtapeDefini.md" }
   # L19-1 (redefini le 2026-11-20 par la session principale) : commits faits DIRECTEMENT par la session principale = entrees de reflog `commit:`, `commit (amend):` ou
-  # `cherry-pick:` (ni merge, ni branch:, reset:, checkout:) de main et des branches integ-*, datees d'aujourd'hui, qui touchent Script/, Source/ ou Tools/Tests/.
+  # `cherry-pick:` (ni merge, ni branch:, reset:, checkout:) de main et des branches integ-*, datees d'aujourd'hui, qui touchent du code (Script/, Source/, Tools/) ; filtre L20-3 : MainCodeFilter.ps1.
+  . (Join-Path $PSScriptRoot 'MainCodeFilter.ps1')   # Test-MainCodeCommit (L20-3 : code Source/Script/Tools seuls ; ni Merge, ni Docs:, ni .uasset seuls)
   $mcRepo = Split-Path -Parent $EtapeFile
   $mcSince = [datetime]::ParseExact($now.ToString('yyyy-MM-dd'), 'yyyy-MM-dd', [Globalization.CultureInfo]::InvariantCulture)
   # une branche integ-* extraite dans un worktree HeroesOfLiberty-* AUTRE qu'Arwen est une branche de travail d'agent : son reflog n'est pas lu
@@ -352,7 +353,7 @@ if ($Phase -eq 'Close') {
       if ([datetime]::ParseExact($Matches[2], 'yyyy-MM-dd HH:mm:ss', [Globalization.CultureInfo]::InvariantCulture) -lt $mcSince) { break }   # reflog : du plus recent au plus ancien
       if ($mcSeen.ContainsKey($mcSha)) { continue }
       $mcSeen[$mcSha] = $true
-      if (@(git -C $mcRepo show --name-only --format= $mcSha 2>$null | Where-Object { $_ -match '^(Script|Source|Tools/Tests)/' }).Count -gt 0) { $mcMine += ("     {0} {1}" -f $mcSha.Substring(0, 7), $mcTitle) }
+      if (Test-MainCodeCommit $mcTitle @(git -C $mcRepo show --name-only --format= $mcSha 2>$null)) { $mcMine += ("     {0} {1}" -f $mcSha.Substring(0, 7), $mcTitle) }
     }
   }
   $mcStart = "reflog de main et integ-* depuis $($now.ToString('yyyy-MM-dd'))"
