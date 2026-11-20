@@ -17,6 +17,26 @@ FLinearColor UHOLSignalInputReadLibrary::ColorOf(const int32 Kind)
 	return HOLSignalInput::ColorOf(Kind);
 }
 
+double UHOLSignalInputReadLibrary::PulseScale(const double AgeSeconds)
+{
+	return HOLSignalInput::PulseScale(AgeSeconds);
+}
+
+double UHOLSignalInputReadLibrary::MarkLifetime()
+{
+	return HOLSignalInput::MarkLifetime();
+}
+
+double UHOLSignalInputReadLibrary::PulseMin()
+{
+	return HOLSignalInput::PulseMin();
+}
+
+double UHOLSignalInputReadLibrary::PulseMax()
+{
+	return HOLSignalInput::PulseMax();
+}
+
 FHOLReceivedSignal UHOLSignalInputReadLibrary::MakeSignal(const int32 Kind, const double ReceivedAt)
 {
 	FHOLReceivedSignal Signal;

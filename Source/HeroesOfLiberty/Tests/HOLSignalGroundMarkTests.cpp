@@ -1,6 +1,7 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "Components/InstancedStaticMeshComponent.h"
+#include "HAL/IConsoleManager.h"
 #include "Engine/Engine.h"
 #include "Engine/World.h"
 #include "Misc/AutomationTest.h"
@@ -79,6 +80,72 @@ bool FHOLSignalGroundMarkTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("At 17 s no mark is left"), Marks ? Marks->GetInstanceCount() : -1, 0);
 	TestEqual(TEXT("Described as none"), Markers->DescribeSignalMarks(), FString(TEXT("none")));
 
+	GEngine->DestroyWorldContext(World);
+	World->DestroyWorld(false);
+	return true;
+}
+
+// D860 H2: the mark PULSES. Same signal read at two ages: with hol.Signal.MarkStyle 1 the diamond's instance has two different sizes
+// (the ratio is the rule's PulseScale, read through the same chain: ReceiveSignal -> GetActiveSignals -> UpdateSignalMarks -> instance);
+// with style 0 (the fixed mark of before) the two sizes are equal.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLSignalGroundMarkPulseTest, "HeroesOfLiberty.Signals.GroundMarkPulse", UE::HeroesOfLiberty::Tests::SignalGroundMark::Flags)
+
+bool FHOLSignalGroundMarkPulseTest::RunTest(const FString& Parameters)
+{
+	IConsoleVariable* Style = IConsoleManager::Get().FindConsoleVariable(TEXT("hol.Signal.MarkStyle"));
+	if (!TestNotNull(TEXT("hol.Signal.MarkStyle exists"), Style))
+	{
+		return false;
+	}
+	const int32 OldStyle = Style->GetInt();
+	UWorld* World = UWorld::CreateWorld(EWorldType::Game, /*bInformEngineOfWorld*/ false);
+	FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);
+	Context.SetCurrentWorld(World);
+	World->InitializeActorsForPlay(FURL());
+	AHOLPlayerController* Controller = World->SpawnActor<AHOLPlayerController>();
+	AHOLSelectionMarkers* Markers = World->SpawnActor<AHOLSelectionMarkers>();
+	if (!TestNotNull(TEXT("The controller"), Controller) || !TestNotNull(TEXT("The markers"), Markers))
+	{
+		GEngine->DestroyWorldContext(World);
+		World->DestroyWorld(false);
+		return false;
+	}
+	Markers->Init(Controller);
+	const UInstancedStaticMeshComponent* Marks = Markers->GetSignalMarks();
+	World->TimeSeconds = 10.0;
+	Controller->ReceiveSignal(1, 1, FVector(1200.0, -3400.0, 150.0));
+	const double Quarter = HOLSignalInput::MarkLifetime() * 0.25;
+
+	// The width of the first piece (the diamond) at an age, in the world.
+	auto WidthAt = [&](const double Age) -> double
+	{
+		World->TimeSeconds = 10.0 + Age;
+		Markers->UpdateSignalMarks();
+		FTransform Piece;
+		if (!Marks || Marks->GetInstanceCount() < 1)
+		{
+			return -1.0;
+		}
+		Marks->GetInstanceTransform(0, Piece, /*bWorldSpace*/ true);
+		return Piece.GetScale3D().X;
+	};
+
+	Style->Set(1, ECVF_SetByCode);
+	const double Born = WidthAt(0.0);
+	const double Later = WidthAt(Quarter);
+	if (TestTrue(TEXT("Both ages drew the mark"), Born > 0.0 && Later > 0.0))
+	{
+		TestTrue(TEXT("Pulsing: the mark's size differs between two ages of its life"), !FMath::IsNearlyEqual(Born, Later, 0.001));
+		const double Expected = HOLSignalInput::PulseScale(Quarter) / HOLSignalInput::PulseScale(0.0);
+		TestTrue(TEXT("By the rule's factor (PulseScale), not an arbitrary one"), FMath::IsNearlyEqual(Later / Born, Expected, 0.001));
+	}
+
+	Style->Set(0, ECVF_SetByCode);
+	const double FixedBorn = WidthAt(0.0);
+	const double FixedLater = WidthAt(Quarter);
+	TestTrue(TEXT("Style 0: the fixed mark of before, the same size at both ages"), FixedBorn > 0.0 && FMath::IsNearlyEqual(FixedBorn, FixedLater, 0.001));
+
+	Style->Set(OldStyle, ECVF_SetByCode);
 	GEngine->DestroyWorldContext(World);
 	World->DestroyWorld(false);
 	return true;

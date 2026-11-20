@@ -30,6 +30,21 @@ public:
 	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Signals")
 	static FLinearColor ColorOf(int32 Kind);
 
+	/** HOLSignalInput::PulseScale: the factor a mark is drawn at AgeSeconds after its signal arrived (D860 H2; 1 when fixed, born, expired). */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Signals")
+	static double PulseScale(double AgeSeconds);
+
+	/** HOLSignalInput::MarkLifetime: how long a mark lives, seconds. */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Signals")
+	static double MarkLifetime();
+
+	/** HOLSignalInput::PulseMin / PulseMax: the bounds PulseScale stays within. */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Signals")
+	static double PulseMin();
+
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Signals")
+	static double PulseMax();
+
 	/** A received signal of this Kind that arrived at ReceivedAt (the other fields at their defaults), so that the script can fill the list Expire works on (the struct's fields are read only). */
 	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Signals")
 	static FHOLReceivedSignal MakeSignal(int32 Kind, double ReceivedAt);
