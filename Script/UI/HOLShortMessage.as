@@ -184,7 +184,8 @@ namespace HOLShortMessage
 		if (!ShouldShowPopulationHeld(Watch, bHeldNow))
 			return false;
 		ShowText(Parts, State, PopulationKey, PopulationMaxText());
-		Screen.AddThreadLine(HOLAlertRules::PopulationFullText());
+		// D833: the same line stays 15 s here too (one constant for the line).
+		Screen.AddThreadLine(HOLAlertRules::PopulationFullText(), HOLAlertRules::PopulationFullLineSeconds);
 		UHOLGameMenuScreen::MenuLog(HeldLogLine());
 		return true;
 	}
