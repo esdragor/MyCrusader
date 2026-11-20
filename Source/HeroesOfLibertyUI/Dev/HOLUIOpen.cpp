@@ -1,3 +1,4 @@
+#include "Blueprint/UserWidget.h"
 #include "Blueprint/WidgetTree.h"
 #include "Components/EditableTextBox.h"
 #include "Components/TextBlock.h"
@@ -8,6 +9,8 @@
 #include "HeroesOfLibertyUILog.h"
 #include "Kismet/KismetInternationalizationLibrary.h"
 #include "Misc/FileHelper.h"
+#include "HUD/HOLGameHUD.h"
+#include "HUD/HOLGameScreen.h"
 #include "Screens/HOLGameMenuScreen.h"
 #include "Screens/HOLMultiplayerScreen.h"
 #include "Screens/HOLNewGameScreen.h"
@@ -237,12 +240,30 @@ namespace UE::HeroesOfLiberty::UI
 		}
 	}
 
-	/** STUB (red commit): the real search of the text box comes with the fix. */
 	bool TypeIntoTree(const UWidgetTree* Tree, const FName Name, const FString& Text)
 	{
+		if (!Tree)
+		{
+			return false;
+		}
+		if (UEditableTextBox* Box = Cast<UEditableTextBox>(Tree->FindWidget(Name)))
+		{
+			Box->SetText(FText::FromString(Text));
+			return true;
+		}
+		// The game screen holds the script's screens (UHOLScriptScreen, with the chat field) as user widgets of its own tree.
+		TArray<UWidget*> Widgets;
+		Tree->GetAllWidgets(Widgets);
+		for (const UWidget* Widget : Widgets)
+		{
+			const UUserWidget* Inner = Cast<UUserWidget>(Widget);
+			if (Inner && TypeIntoTree(Inner->WidgetTree, Name, Text))
+			{
+				return true;
+			}
+		}
 		return false;
 	}
-
 	void TypeText(const TArray<FString>& Args, UWorld* World)
 	{
 		if (Args.Num() < 2)
@@ -250,18 +271,21 @@ namespace UE::HeroesOfLiberty::UI
 			UE_LOG(LogHOLUI, Warning, TEXT("Usage: hol.UI.Type <TextBoxName> <Text>"));
 			return;
 		}
+		const FString Text = FString::Join(TArrayView<const FString>(Args).RightChop(1), TEXT(" "));
+		// The open menu screen's boxes first (the Multiplayer name), then the game screen's (the chat field "ChatInputBox", D872): the hand's Enter
+		// (hol.UI.Key Enter) then sends what is typed.
 		const UHOLRootLayout* Layout = UHOLRootLayout::Get(GetPlayer(World));
 		const UCommonActivatableWidget* Screen = Layout ? Layout->GetActiveMenu() : nullptr;
-		UEditableTextBox* Box = Screen ? Cast<UEditableTextBox>(Screen->WidgetTree->FindWidget(FName(*Args[0]))) : nullptr;
-		if (!Box)
+		const UUserWidget* Roots[] = { Screen, AHOLGameHUD::FindScreen(GetPlayer(World)) };
+		for (const UUserWidget* Root : Roots)
 		{
-			UE_LOG(LogHOLUI, Warning, TEXT("hol.UI.Type: no text box '%s' on the open menu screen"), *Args[0]);
-			return;
+			if (Root && TypeIntoTree(Root->WidgetTree, FName(*Args[0]), Text))
+			{
+				UE_LOG(LogHOLUI, Display, TEXT("Typed %s: %s"), *Args[0], *Text);
+				return;
+			}
 		}
-		const FString Text = FString::Join(TArrayView<const FString>(Args).RightChop(1), TEXT(" "));
-		Box->SetText(FText::FromString(Text));
-		UE_LOG(LogHOLUI, Display, TEXT("Typed %s: %s"), *Args[0], *Text);
-	}
+		UE_LOG(LogHOLUI, Warning, TEXT("hol.UI.Type: no text box '%s' on the open menu screen or the game screen"), *Args[0]);	}
 
 	void SetLanguage(const TArray<FString>& Args)
 	{
@@ -306,7 +330,7 @@ namespace UE::HeroesOfLiberty::UI
 
 	FAutoConsoleCommandWithWorldAndArgs TypeCommand(
 		TEXT("hol.UI.Type"),
-		TEXT("hol.UI.Type <TextBoxName> <Text>: puts a text in a text box of the open menu screen, as typed (the Multiplayer name)"),
+		TEXT("hol.UI.Type <TextBoxName> <Text>: puts a text in a text box of the open menu screen or of the game screen, as typed (the Multiplayer name, the chat field ChatInputBox)"),
 		FConsoleCommandWithWorldAndArgsDelegate::CreateStatic(&TypeText));
 
 	FAutoConsoleCommand LanguageCommand(
