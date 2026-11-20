@@ -183,7 +183,8 @@ class UHOLChatInputScreen : UObject
 		++FocusReturns;
 		if (Screen != nullptr)
 		{
-			WidgetBlueprint::SetFocusToGameViewport();
+			// UWidgetBlueprintLibrary::SetFocusToGameViewport: the plugin strips the "BlueprintLibrary" suffix, so the namespace is Widget:: (WidgetBlueprint:: is only UWidgetBlueprintStatics::CreateWidget).
+			Widget::SetFocusToGameViewport();
 		}
 	}
 
