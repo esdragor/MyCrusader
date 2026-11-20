@@ -480,19 +480,22 @@ Git-C @('worktree', 'add', '-q', '-b', 'integ-1', (Join-Path $CW 'HeroesOfLibert
 function Run-C([string[]]$More = @()) { & powershell -NoProfile -ExecutionPolicy Bypass -File $Gate -Phase Close -End 23:59 -WorktreesDir $CW -RetoursDir (Join-Path $Tmp 'closeretours') -JourFile $CJour -EtapeFile (Join-Path $CR 'EtapeDefini.md') @More | Out-String }
 $c0 = Run-C
 Check ($c0 -match '(?m)^PASS .*L19-1' -and -not ($c0 -match '(?m)^(WARN|FAIL) .*L19-1')) 'L19-1 close: seul un commit d agent fusionne dans main -> PASS (0)' $c0
+Add-CodeCommit (Join-Path $CW 'HeroesOfLiberty-Arwen') 'Script\integ1.as' 'Integration: integ one'
+$ci = Run-C
+Check ($ci -match '(?m)^WARN .*L19-1.*\b1\b' -and -not ($ci -match '(?m)^FAIL .*L19-1') -and $ci -match 'Integration: integ one' -and -not ($ci -match 'Merge agent-a|agent a work')) 'L19-1 close (reflog): 1 commit direct sur integ-1 + 1 fusion d agent -> 1 compte, la fusion et le travail d agent non' $ci
 Add-CodeCommit $CR 'Script\main1.as' 'Integration: one'
 Add-CodeCommit $CR 'Source\main2.cpp' 'quick_check follows D858 two'
 Add-CodeCommit $CR 'Docs\onlydoc.md' 'doc only commit'
 $c2 = Run-C
-Check ($c2 -match '(?m)^WARN .*L19-1.*\b2\b' -and -not ($c2 -match '(?m)^FAIL .*L19-1')) 'L19-1 close: 2 commits de code directs sur main (+1 doc) -> WARN avec le compte 2' $c2
+Check ($c2 -match '(?m)^WARN .*L19-1.*\b3\b' -and -not ($c2 -match '(?m)^FAIL .*L19-1')) 'L19-1 close: 2 commits de code directs sur main (+1 doc) + 1 sur integ-1 -> WARN avec le compte 3' $c2
 Check ($c2 -match 'Integration: one' -and $c2 -match 'quick_check follows D858 two') 'L19-1 close: la liste donne sha + titre des commits' $c2
 Add-CodeCommit $CR 'Tools\Tests\main3.ps1' 'Integration: three'
 Add-CodeCommit $CR 'Script\main4.as' 'Integration: four'
 $c4 = Run-C
-Check ($c4 -match '(?m)^FAIL .*L19-1.*\b4\b') 'L19-1 close: 4 commits de code (> 3) -> FAIL avec le compte 4' $c4
+Check ($c4 -match '(?m)^FAIL .*L19-1.*\b5\b') 'L19-1 close: 5 commits de code (> 3) -> FAIL avec le compte 5' $c4
 Check ($c4 -match 'agents') 'L19-1 close: le FAIL dit de confier le code aux agents' $c4
-$c4b = Run-C @('-MaxMainCodeCommits', '5')
-Check ($c4b -match '(?m)^WARN .*L19-1' -and -not ($c4b -match '(?m)^FAIL .*L19-1')) 'L19-1 close: -MaxMainCodeCommits 5 : 4 commits -> WARN' $c4b
+$c4b = Run-C @('-MaxMainCodeCommits', '6')
+Check ($c4b -match '(?m)^WARN .*L19-1' -and -not ($c4b -match '(?m)^FAIL .*L19-1')) 'L19-1 close: -MaxMainCodeCommits 6 : 5 commits -> WARN' $c4b
 foreach ($wn in 'A', 'Arwen') { & git -C $CR worktree remove --force (Join-Path $CW "HeroesOfLiberty-$wn") 2>&1 | Out-Null }
 
 Remove-Item -Recurse -Force $Tmp -ErrorAction SilentlyContinue
