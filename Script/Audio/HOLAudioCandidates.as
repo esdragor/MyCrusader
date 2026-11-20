@@ -69,6 +69,8 @@ namespace HOLAudioCandidates
 		// D832 (2026-11-16): the round 6 lists the user chose from (Range B, Barracks A); the Range round 6 had five variants, not ten.
 		Add(List, "Select.BuildingRange", "s_shot5_bow,s_shot6_bow_full,s_shot6_bow_lp6k,s_shot6_bow_lp3k,s_shot6_bow_lp1k5");
 		Add(List, "Select.BuildingBarracks", "s_barr6_draw_a,s_barr6_draw_b,s_barr6_draw_c,s_barr6_sheath_a,s_barr6_sheath_b,s_barr6_two_blades,s_barr6_drum,s_barr6_drum_double,s_barr6_horn,s_barr6_drum_blade");
+		// D834 (2026-11-20): the Stable elected A of the cut-snort comparison (Building.CutStable); a cue of the TABLE (own event Select.BuildingStable), so it is listed here (counted by CueCount), with the two variants heard, not ten.
+		Add(List, "Select.BuildingStable", "s_horse6_snort,s_horse6_vocal_full");
 	}
 
 	// The ten candidates of each FAMILY of buildings (AudioBuildingsInProgress.md B4, the user's answer Q3 = A of 2026-11-07: one selection sound per
@@ -96,8 +98,6 @@ namespace HOLAudioCandidates
 		// D832 REGLAGE (2026-11-16): the user wants Stable B WITHOUT the neigh of its start, only the snort ("pfff") of its end. A = B cut (the snort
 		// alone, make_round6_candidates.py SNORT), B = B whole, to compare (scenario audio_compare_buildings_stable_cut).
 		Add(List, "Building.CutStable", "s_horse6_snort,s_horse6_vocal_full");
-		// D834: the Stable elected A of that comparison (the snort alone); the list the user heard is the same two.
-		Add(List, "Select.BuildingStable", "s_horse6_snort,s_horse6_vocal_full");
 	}
 
 	// The lists, built at each call (script has no mutable global).
