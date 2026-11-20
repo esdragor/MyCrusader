@@ -37,6 +37,9 @@ note 2. Le Chevalier est selectionne : note ses points de vie (panneau en bas). 
 capture virtuous_knight_before
 waitlog hits
 frames 120
+# Select within 10 frames of the camera placement (preflight 2b): re-center on the Knight's group (-1500), the enemies fought at -1100.
+hol.Camera.FocusNear 5000 -1500
+frames 2
 hol.Select.ClickUnit 0
 waitlog Selection: VirtuousKnight
 hol.HUD.Report

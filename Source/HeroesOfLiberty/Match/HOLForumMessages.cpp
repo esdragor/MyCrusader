@@ -299,11 +299,11 @@ FHOLForumMessage HOLForumMessages::GetChatMessage(const int32 SenderSlot, const 
 	FText Tag;
 	if (Channel == 1)
 	{
-		Tag = LOCTEXT("ChatAllies", "(AlliÃ©s) ");
+		Tag = LOCTEXT("ChatAllies", "(Alliés) ");
 	}
 	else if (Channel == 2)
 	{
-		Tag = LOCTEXT("ChatPrivate", "(PrivÃ©) ");
+		Tag = LOCTEXT("ChatPrivate", "(Privé) ");
 	}
 	FHOLForumMessage Message;
 	Message.Text = FText::Format(LOCTEXT("MessageChat", "{0} : {1}{2}"), GetPlayerName(Config, SenderSlot, ViewerSlot), Tag, FText::AsCultureInvariant(ChatText));
