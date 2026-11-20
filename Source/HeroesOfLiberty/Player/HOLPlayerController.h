@@ -368,6 +368,11 @@ public:
 	 * again. The player's selected units are sent to build it (J6a.4), at the end of their queue with bQueue (Shift).
 	 */
 	void RequestPlaceBuilding(FName TypeName, const FVector& Point, bool bQueue = false);
+	/** F4 drag: the press, then the release, of a wall type (HOLWallLine::WallTypes, empty until F5) lays the line's cells (ServerPlaceWallLine); the cells shown meanwhile come from the script rule through UHOLWallLineBridge. */
+	void RequestPlaceWallLine(FName TypeName, const FVector& Start, const FVector& End, bool bQueue = false);
+	bool IsWallDragging() const { return bWallDragging; }
+	const TArray<FIntPoint>& GetWallDragCells() const { return WallDragCells; }
+	double GetWallDragTile() const { return WallDragTile; }
 	/** Asks the server to have units build (help) one of the player's sites not finished (J6a.4, D312); bQueue: Shift. */
 	void RequestBuildUnits(TConstArrayView<uint32> UnitIds, AHOLBuilding* Building, bool bQueue = false);
 	/**
@@ -961,6 +966,14 @@ private:
 
 	/** Placement mode (J6a.3): the type placed, None outside the mode; the ghost under the cursor and its colour. */
 	FName PlacementType;
+	/** F4 drag of a wall type: the ground under the press, the cells shown (script rule), the tile read once at the press. */
+	bool bWallDragging = false;
+	FVector WallDragStart = FVector::ZeroVector;
+	TArray<FIntPoint> WallDragCells;
+	double WallDragTile = 400.0;
+	bool BeginWallDrag();
+	void EndWallDrag();
+	bool GetCursorGround(FVector& OutGround) const;
 	bool bGhostShown = false;
 	bool bGhostValid = false;
 	FBox2D GhostFootprint = FBox2D(ForceInit);
