@@ -96,10 +96,25 @@ namespace HOLAlertRules
 	// How long a minor line stays in the thread (the thread's own default, D446).
 	const float MinorLineSeconds = 8.0;
 
-	// STUB (red first): nothing is ever shown.
+	// What the alert of this kind does at NowSeconds, the last line of THIS kind having gone at LastShownSeconds (the caller keeps one time per
+	// kind, -1000 before the first): shown from MinorRepeatSeconds after it, with the line's time, the kind's own sound, a minimap ping.
 	FHOLMinorAlert MinorAlert(EHOLMinorAlertKind Kind, float NowSeconds, float LastShownSeconds)
 	{
-		FHOLMinorAlert None;
-		return None;
+		FHOLMinorAlert Alert;
+		if (NowSeconds - LastShownSeconds < MinorRepeatSeconds)
+			return Alert;
+		Alert.bShow = true;
+		Alert.LineSeconds = MinorLineSeconds;
+		Alert.SoundKey = Kind == EHOLMinorAlertKind::ResearchDone ? n"MinorResearchDone" : n"MinorBuildingDone";
+		Alert.bPingMinimap = true;
+		return Alert;
+	}
+
+	// The line's text for each kind (French source like the other thread lines; the translations go with Tools/Localization/fill_po.py).
+	FText MinorAlertText(EHOLMinorAlertKind Kind)
+	{
+		if (Kind == EHOLMinorAlertKind::ResearchDone)
+			return NSLOCTEXT("HOLGameScreen", "MinorResearchDone", "Recherche terminée");
+		return NSLOCTEXT("HOLGameScreen", "MinorBuildingDone", "Bâtiment achevé");
 	}
 }
