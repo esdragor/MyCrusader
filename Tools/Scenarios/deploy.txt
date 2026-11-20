@@ -25,7 +25,7 @@ capture deploy_packed
 note 1. Le Mangonneau est selectionne, demonte : la case D dit Monter. Il ne tire pas sur la Maison ennemie toute proche.
 hol.UI.Key D 0 0.1
 waitlog Order: 1 units deploy
-frames 15
+wait 0.3
 hol.HUD.Report
 capture deploy_deploying
 note 2. Tu appuies sur D : l'engin se monte (1,5 s), on le voit en cours de montage.
@@ -56,7 +56,7 @@ waitlog Selection: Mangonel
 frames 10
 hol.UI.Key D 0 0.1
 waitlog Order: 1 units pack up
-frames 15
+wait 0.3
 hol.HUD.Report
 capture deploy_packing
 note 4. Tu appuies encore sur D : l'engin se demonte (1 s), il ne tire plus et peut marcher.
