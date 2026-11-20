@@ -1072,7 +1072,7 @@ for (FString Command : Commands)
 		AHOLGameState State = Cast<AHOLGameState>(Gameplay::GetGameState());
 		if (State == nullptr)
 			return;
-		const FIntPoint Origin = HOLHero::GetHeroBannerLocation(this, Slot);
+		const FIntPoint Origin = HOLHero::GetHeroBannerLocation(Slot);
 		const int NowMs = int(Gameplay::GetTimeSeconds() * 1000.0);
 		FHOLFactionResource Gauge = HOLFactionResource::Make(State.GetFactionResource(Slot), 0, HOLDawnValues::HonorCap());
 		FHOLFactionPowerDecision Decision = HOLFactionPowerCast::Decide(State.GetSlotFaction(Slot), PowerIndex, Gauge,
