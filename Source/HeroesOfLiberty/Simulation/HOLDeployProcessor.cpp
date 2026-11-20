@@ -87,6 +87,15 @@ void UHOLDeployProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 			{
 				Movements[It].DesiredVelocity = FVector::ZeroVector;
 				MoveTargets[It].DesiredSpeed.Set(0.f);
+				// D861 (b): a march order still open is HELD, not lost: UHOLUnitOrderProcessor gives it its speed back once Packed.
+				if (!Orders.IsEmpty() && Orders[It].Phase != EHOLMovePhase::None)
+				{
+					Fragment.bWalkHeld = 1;
+				}
+			}
+			else if (State.Phase == HOLDeploy::EPhase::Packed && (Orders.IsEmpty() || Orders[It].Phase == EHOLMovePhase::None))
+			{
+				Fragment.bWalkHeld = 0; // the walk is over: nothing to give back
 			}
 			if (Fragment.PendingOrder != 0)
 			{
