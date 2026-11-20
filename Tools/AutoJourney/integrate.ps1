@@ -15,7 +15,8 @@ param(
   [string] $Reds = '',
   [string] $Greens = '',
   [string] $Parts = 'net,build',
-  [switch] $DryRun
+  [switch] $DryRun,
+  [switch] $SkipBuildTests   # RESERVE AU TEST (integrate_test.ps1) : saute build.ps1 et quick_check (etapes build / tests / parts), garde toute la partie git
 )
 $ErrorActionPreference = 'Continue'
 if (-not $Root) { $Root = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path }
@@ -52,6 +53,7 @@ $LogPath = Join-Path $Root "Docs\Integrate_$Branch.log"
 # The plan: one record per step. Kind is what the summary and the test read; Skip is the reason, or '' when the step runs.
 $Plan = New-Object System.Collections.ArrayList
 function Add-Step([string] $Kind, [string] $Text, [string] $Skip = '', [scriptblock] $Action = $null) {
+  if ($SkipBuildTests -and -not $Skip -and ($Kind -in 'build', 'tests', 'parts')) { $Skip = '-SkipBuildTests (reserve au test)' }
   [void] $Plan.Add([pscustomobject]@{ Kind = $Kind; Text = $Text; Skip = $Skip; Action = $Action })
 }
 Add-Step 'branch' "git -C $Root switch -c $Branch main"
@@ -86,6 +88,7 @@ function Log([string] $Line) { Write-Output $Line; Add-Content -Path $LogPath -V
 function Run-Native([string] $Command) {
   # Runs one command line, mirrors the output to the log, returns @{ Code; Out }.
   $Collected = New-Object System.Collections.ArrayList
+  if ($SkipBuildTests -and ($Command -match 'build\.ps1|quick_check\.ps1')) { Add-Content -Path $LogPath -Value "SKIP (-SkipBuildTests) $Command" -Encoding ASCII; return @{ Code = 0; Out = @('SKIP (-SkipBuildTests)') } }
   & cmd.exe /c "$Command 2>&1" | ForEach-Object { [void] $Collected.Add("$_"); Add-Content -Path $LogPath -Value "$_" -Encoding ASCII }
   return @{ Code = $LASTEXITCODE; Out = @($Collected) }
 }
