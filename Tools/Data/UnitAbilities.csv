@@ -1,2 +1,3 @@
 Name,DisplayName,UnitType,Faction,Effect,CooldownMs,DurationMs,HpCostPerHit,MinHp,StopHp,Description,Target,RadiusCm,RangeCm
 NecroticRage,Rage nécrotique,DamnedWarrior,Legions,NecroticRage,40000,10000,3,30,20,"Le Guerrier damné se jette dans le combat pendant 10 s : 40 % de dégâts en plus, 25 % de cadence en plus, au prix de 3 PV par coup porté. Refusée sous 30 PV, elle s'arrête à 20 PV ; recharge de 40 s.",Self,0,0
+LightSeal,Sceau de lumière,Monk,Dawn,,40000,10000,0,0,0,"Le Moine pose un sceau de lumière sur le sol, à 8 m au plus de lui : une zone de 6 m de rayon qui dure 10 s ; recharge de 40 s. (Le ralentissement des ennemis de la zone est une règle de simulation, pas encore branchée.)",Ground,600,800

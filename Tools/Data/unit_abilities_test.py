@@ -53,16 +53,27 @@ def main():
         check(bool(row.get("DisplayName")) and bool(row.get("Description")), "%s has a name and a description" % name)
         unit = units.get(row.get("UnitType"))
         check(unit is not None, "%s: UnitType %s is a row of UnitTypes.csv" % (name, row.get("UnitType")))
-        effect = effects.get(row.get("Effect"))
-        check(effect is not None, "%s: Effect %s is a row of Effects.csv" % (name, row.get("Effect")))
-        if effect is not None:
-            check(effect["Form"] == "Temporary" and number(effect["DurationMs"]) == number(row["DurationMs"]),
-                  "%s: the effect is a Temporary one of the ability's own time" % name)
         check(number(row["CooldownMs"]) > number(row["DurationMs"]) > 0, "%s: the cooldown outlasts the effect, which has a time" % name)
-        floor_gap = number(row["MinHp"]) - number(row["StopHp"])
-        check(number(row["StopHp"]) > 0 and floor_gap > 0, "%s: the refusal floor MinHp is above the stop floor StopHp, above zero" % name)
-        check(0 < number(row["HpCostPerHit"]) <= floor_gap, "%s: one blow costs hit points, not more than the gap between the floors" % name)
         check(row["Target"] in ("Self", "Ground"), "%s: Target is Self or Ground" % name)
+        # The effect and hit-point checks are those of a self ability (the rage: a morale effect on the caster, blows that cost hit points).
+        # An aimed ability (the Light Seal, D859 step 1c) lays a zone: its slow is simulation C++ (the lot), no morale row yet, so its Effect may be
+        # empty (and then its three hit-point columns are 0); if it names an effect, that effect must be a real Temporary row of its own time.
+        if row["Target"] == "Self":
+            effect = effects.get(row.get("Effect"))
+            check(effect is not None, "%s: Effect %s is a row of Effects.csv" % (name, row.get("Effect")))
+            if effect is not None:
+                check(effect["Form"] == "Temporary" and number(effect["DurationMs"]) == number(row["DurationMs"]),
+                      "%s: the effect is a Temporary one of the ability's own time" % name)
+            floor_gap = number(row["MinHp"]) - number(row["StopHp"])
+            check(number(row["StopHp"]) > 0 and floor_gap > 0, "%s: the refusal floor MinHp is above the stop floor StopHp, above zero" % name)
+            check(0 < number(row["HpCostPerHit"]) <= floor_gap, "%s: one blow costs hit points, not more than the gap between the floors" % name)
+        else:
+            effect = effects.get(row.get("Effect")) if row.get("Effect") else None
+            check(not row.get("Effect") or effect is not None, "%s: a named Effect %s is a row of Effects.csv" % (name, row.get("Effect")))
+            if effect is not None:
+                check(effect["Form"] == "Temporary" and number(effect["DurationMs"]) == number(row["DurationMs"]),
+                      "%s: the effect is a Temporary one of the ability's own time" % name)
+            check(number(row["HpCostPerHit"]) == 0 and number(row["MinHp"]) == 0 and number(row["StopHp"]) == 0, "%s: an aimed ability has no hit-point cost" % name)
         if row["Target"] == "Ground":
             check(number(row["RadiusCm"]) > 0 and number(row["RangeCm"]) > 0, "%s: an aimed ability has a zone radius and a throw range" % name)
         else:
