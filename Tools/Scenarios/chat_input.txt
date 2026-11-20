@@ -1,0 +1,60 @@
+# Chat (D807, D872) : Entree ouvre le champ sur Allies, un message aux allies s'affiche dans le fil, puis un prive ; un VRAI clic sur la ligne d'un joueur du panneau Diplomatie le choisit comme destinataire (Entree puis Tab Tab : le champ est sur Prive, avec son nom).
+# Plain, 2 joueurs en mode Diplomatie (chat_input.json) : toi (slot 0) et le joueur 2 (slot 1, sans manette, ton allie : les deux alliances sont posees par le scenario). Entree = etape suivante ; 3 minutes au plus.
+# GESTE : Entree, Tab et le clic sont de vrais evenements Slate (hol.UI.Key, hol.Mouse.Click sur le NOM du joueur : le texte laisse passer le clic a la ligne). La FRAPPE du texte ne l'est pas : aucune commande ne tape dans le champ du jeu (hol.UI.Type = menus seulement) ; le message part par hol.Chat.Say, la meme voie reseau que le champ (ServerPostChat). GESTE: interne pour la frappe.
+waitlog AI brain HOLAIBrain awake
+r.SetRes 1920x1080w
+hol.Cheat.Resources 2000
+hol.UI.DiplomacyLayout 1
+hol.Diplomacy.Force 0 1 ally
+hol.Diplomacy.Force 1 0 ally
+hol.Camera.FocusNear 3000 0
+hol.Camera.Zoom 8
+frames 5
+hol.HUD.Click DiplomacyButton
+frames 90
+hol.HUD.Report 1
+waitlog diplomacy: open layout
+panel hide
+# 1. Entree (vraie touche) : le champ s'ouvre sur Allies (tu as un allie).
+hol.UI.Key Enter 0 0.1
+waitlog Key released: Enter
+frames 10
+hol.HUD.Report 1
+waitlog chat: open
+capture chat_input_typing
+# 2. Message aux allies (la frappe du texte est interne, voir l'en-tete) : il revient dans le fil avec la marque du canal.
+hol.Chat.Say allies Bonjour les allies
+waitlog Chat message:
+frames 20
+hol.UI.Key Escape 0 0.1
+waitlog Key released: Escape
+frames 20
+capture chat_input_shown
+# 3. Message prive au joueur 2 (ce que « /w <nom> salut » envoie).
+hol.Chat.Say private 1 salut
+waitlog Chat message:
+frames 20
+panel show
+note 1. Entree ouvre le champ de saisie sur Allies, Echap le ferme ; les messages « (Allies) Bonjour les allies » puis « (Prive) salut » sont dans le fil des messages (en haut a droite).
+waitkey Entree : clic sur la ligne du joueur 2 dans le panneau Diplomatie, puis Entree et Tab Tab (le champ passe sur Prive)
+panel hide
+hol.Mouse.Click DipName_1
+frames 10
+hol.HUD.Report 1
+waitlog message to 1
+hol.UI.Key Enter 0 0.1
+waitlog Key released: Enter
+frames 10
+hol.UI.Key Tab 0 0.1
+waitlog Key released: Tab
+frames 5
+hol.UI.Key Tab 0 0.1
+waitlog Key released: Tab
+frames 10
+hol.HUD.Report 1
+waitlog chat: open
+capture chat_input_target
+hol.Test.Sanity
+panel show
+note 2. Clic sur la ligne d'un joueur (son nom, pas le bouton Message) = il devient le destinataire du prive : Entree puis Tab Tab met le champ sur Prive, avec son nom.
+quit
