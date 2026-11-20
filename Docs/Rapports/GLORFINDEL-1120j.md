@@ -1,0 +1,34 @@
+# GLORFINDEL-1120j (ability-columns) : L19-1, deux controles mecaniques dans session_gate.ps1
+
+APPELS_DECLARES: 17 (arret dur 13:33 atteint ; le temps a ete perdu sur un gate_test complet de plus de 8 min, arrete)
+HEURE_DEBUT/HEURE_FIN: 13:18:49 / ~13:34
+PREMIER_BUILD: sans C++   BUILD: NON COMPILE (aucun build)   LAUNCHCHECK_DEBUT: sans C++
+TEST_ROUGE: d7e0442 (tests seuls) + assertit l'effet : oui. Rouge VU : 13 FAIL sur 13 cas L19-1 (gate sans le parametre -AgentName / -MaxMainCodeCommits). Vert : f1fdacc, 13 PASS, `=> tout PASS`.
+COMMITS: 2 (d7e0442 tests, f1fdacc controles), merge_main_fait: oui (premier geste)
+TESTS: 13 cas L19-1 lances via une copie reduite (en-tete + bloc L19-1 de gate_test.ps1, scratchpad `l191_only.ps1`) car le `gate_test.ps1` COMPLET depasse 8 min (non termine, arrete) : le reste de gate_test.ps1 N'A PAS ete relance apres le correctif ; TESTS_TAUTOLOGIQUES: 0 (vrais depots git factices + vraie chaine session_gate)
+ESSAIS: aucun
+QUESTIONS: aucune
+
+FAIT
+- Launch : `check-list lue (L<N>)` exige dans la section `## Agents du <date du jour>` du `-JourFile` ; N = plus grand `L<N>-` NUMERIQUE de `Auto_Journey_Checklist.md` (meme dossier que le jour). Nouveau parametre `-AgentName` : `NETTOYAGE-*` / `ETAPE0-*` = WARN, sinon FAIL avec le message demande.
+- Close : commits non-merge touchant Script/Source/Tools/Tests depuis `Etat au lancement : main = <sha>` (repli : commits de la date du jour), moins ceux ancetres d'une branche de worktree HeroesOfLiberty-* (hors Arwen et hors `integ-*`) ; 0 PASS, 1..N WARN, > N FAIL avec liste `sha titre` ; parametre `-MaxMainCodeCommits 3`.
+- Ligne `[x]` ajoutee dans la section « Outils et processus » d'Auto_Journey_File.md (ligne 152 ; aucune ligne `[ ]` L19-1 n'existait).
+
+COMPTE CLOSE SUR LA SEANCE DU 2026-11-20 (-Root C:\Users\baudo\Documents\MyCrusader) : 0 = PASS (PASS L19-1 : aucun commit de code de la session principale (depuis main = 410cb7d)), alors que 110 commits de code non-merge existent depuis 410cb7d : confirme la limite ci-dessous (ability-columns == main contient tous ces commits comme ancetres). Attendu (plusieurs Integration: / quick_check follows D858) NON obtenu : controle (2) a corriger.
+
+LIMITE DE CONCEPTION A TRANCHER (anomalie) : une branche d'agent qui a fait `git merge main` (ou avance rapide, ex. ability-columns == main au lancement) contient TOUS les commits de main comme ancetres : le controle (ancetre d'une branche d'agent) les classe alors « agent » et SOUS-COMPTE les commits de la session principale. Sur la vraie seance le compte sera donc probablement 0 ou tres bas tant que ces branches sont synchronisees sur main. Pistes : ne considerer que les commits atteignables par une branche d'agent en parcours first-parent depuis un tip NON synchronise, ou comparer au sha du tip de chaque branche au moment de sa derniere fusion de main, ou attribuer par integ-* (auteur de la fusion). A decider par la session principale (pas de design tranche ici).
+
+NON VERIFIE: gate_test.ps1 complet apres correctif (seul le bloc L19-1 relance, 13 PASS) ; compte reel de la seance ; diagnostics AS sans objet (aucun .as).
+PROCESSUS_DETACHES: un `gate_test.ps1` complet arrete a la main (Stop-Process) ; 2 lancements de `session_gate -Phase Close` reels encore en tache de fond a la remise du rapport ; `stray_processes.ps1` non lance (arret dur).
+ANOMALIES_PROCESSUS: `gate_test.ps1` complet > 8 min ; copie reduite a reutiliser pour un test rapide : `C:\Users\baudo\AppData\Local\Temp\claude\82f06dab6ac779ae\d4179537-e62e-40cd-8ed6-8748e979a4d6\scratchpad\l191_only.ps1`.
+GIT_STATUS_PRINCIPALE: non relu ; seul fichier ecrit dans la copie principale : Auto_Journey_File.md (ligne 152) + ce rapport : oui.
+
+## MISE A JOUR 13:46 : controle (2) redefini par la session principale (reflog)
+- Critere : entrees de reflog commit: / commit (amend): / cherry-pick: de main et des branches integ-* (pas merge, branch:, reset:, checkout:), datees du jour, touchant Script/ Source/ Tools/Tests/ (git show --name-only). Plus d'ascendance des branches d'agents (et plus de ligne « Etat au lancement » : debut = minuit du jour). Memes seuils / parametre / message.
+- Commits : d7e0442 + 397d832 + 48dd35f (tests, rouges : 2 FAIL dont le cas integ-1 + fusion d'agent) ; f8678b4 (controle reflog). Vert : 13 PASS sur la copie reduite (l191_only.ps1, bloc L19-1 de gate_test.ps1) ; le gate_test.ps1 COMPLET (> 8 min) n'a PAS ete relance, comme demande.
+- COMPTE REEL 2026-11-20 (session_gate -Phase Close -Root C:\Users\baudo\Documents\MyCrusader, lecture seule) : FAIL, 31 commits (seuil 3). Liste : Garrison (4), Specialization (3), Siege (4), Test/Fix order line (2), Game state / slot accessors (2), Integration: (8 dont Cast renamed), quick_check follows D858 (3) + quick_check net (1), Duel rewards (2), Integration only (1)... signals_minimap_alt: NON vu dans la liste.
+- ANOMALIE : plusieurs de ces 31 sont du travail d'AGENTS (Garrison, Specialization, Siege, Duel rewards, tests rouges + stubs) dont le reflog de main/integ-* porte une entree cherry-pick: ou commit: (rejoue par l'integrateur) : le critere reflog les compte comme code de la session principale (sur-comptage). A decider : ne compter que les commit: / commit (amend): et exclure cherry-pick:, ou exclure les titres deja presents sur une branche d'agent (patch-id : git cherry).
+## MISE A JOUR 13:58 : sur-comptage corrige (decision de la session principale)
+- (a) une branche integ-* extraite dans un worktree HeroesOfLiberty-* autre qu'Arwen = branche d'agent : reflog non lu ; (b) les entrees cherry-pick: ne comptent plus (commit: et commit (amend): seulement).
+- Commits : 123fff6 (test rouge : 4 FAIL dont le cas integ-y / cherry-pick), 727f225 (correctif, 13 PASS sur la copie reduite ; gate_test.ps1 complet non relance). Le commentaire d'en-tete du bloc Close dit encore « ou cherry-pick: » (cosmetique).
+- COMPTE REEL 2026-11-20 : FAIL, 14 (seuil 3). Liste : Integration: StartLightSeal wrapper ; Integration: GetHeroBannerLocation wrapper ; Integration: duel ledger GetSlotFaction ; quick_check follows D858 x3 (tooltip, grid/production, net army/barracks) ; quick_check net Dawn barracks Halberdier ; Integration only: close test function aa1eae8 ; Integration: remove board test protected C++ event ; Integration: remaining Cast renamed Launch ; Integration: wall line plan type/refusal enum ; Integration: Cast reserved word (CastIt) ; Integration: Cast reserved word (click action Launch) ; Integration: chat input screen binds commit event. signals_minimap_alt: absent (probablement commit d'une autre branche non integ-* / ou cherry-pick).
