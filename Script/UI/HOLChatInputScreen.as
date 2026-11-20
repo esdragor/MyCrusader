@@ -71,6 +71,12 @@ namespace HOLChatInputScreen
 		return "";
 	}
 
+	// STUB (ARWEN-1120pj, red first): whether an Enter heard while the field is closed opens it. Real body in the next commit.
+	bool EnterOpensField(bool bOpen, float Now, float LastCommitTime)
+	{
+		return false;
+	}
+
 	// True when some slot other than the viewer is present and the stance is Ally both ways (D369: an alliance needs both sides).
 	// MyStances[S] = the viewer's stance toward S, TheirStances[S] = S's stance toward the viewer, Present[S] = S is in the match. A spectator (Viewer < 0) has no ally.
 	bool HasAlly(int Viewer, const TArray<int>& MyStances, const TArray<int>& TheirStances, const TArray<bool>& Present)

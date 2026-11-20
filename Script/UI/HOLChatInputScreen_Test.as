@@ -30,6 +30,27 @@ void Test_ChatInputScreenMarkFollowsTheChannel(FUnitTest& T)
 	T.AssertEquals(Line, "Bob : ", "the line shown before the text");
 }
 
+// ARWEN-1120pj (RECETTE-1120pa: after a send the 2nd Enter did not reopen the field): the closed field reopens on the next Enter, a fraction of a second
+// after the commit of the send (the scenario's 2nd Enter comes ~0.2 s later), and still refuses the polled Enter of the SAME press (same instant).
+// Red: the stub EnterOpensField returns false ; or the guard is longer than the pause of a real second press ; or the guard is gone (same instant opens).
+void Test_ChatInputScreenSecondEnterReopensAfterSend(FUnitTest& T)
+{
+	FHOLChatInputState State;
+	const int First = HOLChatInput::PressEnter(State, "", true, false);
+	T.AssertEquals(First, HOLChatInput::Opened, "first Enter opens");
+	const int Second = HOLChatInput::PressEnter(State, "salut les allies", true, false);
+	T.AssertEquals(Second, HOLChatInput::Send, "second Enter sends and closes");
+	const float CommitTime = 100.0;
+	const bool bSamePress = HOLChatInputScreen::EnterOpensField(State.bOpen, CommitTime, CommitTime);
+	T.AssertFalse(bSamePress, "the polled Enter of the same press does not reopen the field it just sent from");
+	const bool bNextPress = HOLChatInputScreen::EnterOpensField(State.bOpen, CommitTime + 0.2, CommitTime);
+	T.AssertTrue(bNextPress, "the next Enter, 0.2 s after the send, reopens the field");
+	const int Third = HOLChatInput::PressEnter(State, "", true, false);
+	T.AssertEquals(Third, HOLChatInput::Opened, "the rule opens the closed field again");
+	const bool bWhileOpen = HOLChatInputScreen::EnterOpensField(State.bOpen, CommitTime + 5.0, CommitTime);
+	T.AssertFalse(bWhileOpen, "an open field never 'reopens'");
+}
+
 // Without an ally the field opens on All: the mark says "Tous", never "Allies" (nobody would read it).
 // Red: the mark ignores the state's channel and always says Allies.
 void Test_ChatInputScreenMarkWithoutAllyIsAll(FUnitTest& T)
