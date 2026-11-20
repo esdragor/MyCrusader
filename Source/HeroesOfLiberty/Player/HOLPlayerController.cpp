@@ -2318,18 +2318,15 @@ bool AHOLPlayerController::GetDeployProgress(int32& OutPhase, int32& OutPermille
 		}
 	}
 	const double Now = GetWorld() ? GetWorld()->GetTimeSeconds() : 0.0;
-	if (Phase != DeployWatchedPhase)
-	{
-		DeployWatchedPhase = Phase;
-		DeployWatchedSince = Now;
-	}
+	// D869b: the clock starts at the player's order (HOLDeploy::NoteOrder), not at the first drawing; a phase not drawn in between no longer keeps the old one.
+	const int32 ElapsedMs = HOLDeploy::WatchElapsedMs(DeployWatch, Phase, Now);
 	if (Phase < 0)
 	{
 		return false;
 	}
 	HOLDeploy::FState State;
 	State.Phase = HOLDeploy::PhaseAt(Phase);
-	State.ElapsedMs = FMath::RoundToInt((Now - DeployWatchedSince) * 1000.0);
+	State.ElapsedMs = ElapsedMs;
 	OutPhase = Phase;
 	OutPermille = HOLDeploy::ProgressPermille(State, HOLDeploy::DefaultProfile(), 0); // Counterweight is not read by the client yet
 	return true;
@@ -2950,6 +2947,7 @@ void AHOLPlayerController::RequestToggleDeploy(const TConstArrayView<uint32> Uni
 {
 	if (UnitIds.Num() > 0)
 	{
+		HOLDeploy::NoteOrder(DeployWatch, GetWorld() ? GetWorld()->GetTimeSeconds() : 0.0); // D869b: the bar's clock starts now
 		if (!HOLRpcScriptRoute_Haldir1117n::RouteToggleDeploy(this, UnitIds)) { HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("ToggleDeploy")); }
 	}
 }
