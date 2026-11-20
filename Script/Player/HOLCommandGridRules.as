@@ -124,6 +124,13 @@ namespace HOLCommandGridRules
 	// GetCommand (cpp 55-134): what the cell of the grid on the right shows for this selection.
 	FHOLGridCommandView GetCommand(const FHOLGridContextView& Context, int Cell)
 	{
+		return GetCommandWithOptions(Context, Cell, SpecializationOptions);
+	}
+
+	// ELROND-1120e (morceau 7): the same, with the number of specialization options of the seat's faction (HOLSpecialization::OptionCountOf: 3 for the Templars).
+	// STUB of the first commit: OptionCount is ignored (always SpecializationOptions).
+	FHOLGridCommandView GetCommandWithOptions(const FHOLGridContextView& Context, int Cell, int OptionCount)
+	{
 		FHOLGridCommandView Result;
 		if (Cell < 0 || Cell >= NumCells)
 		{

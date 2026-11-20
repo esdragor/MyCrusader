@@ -7,6 +7,14 @@ class UHOLSpecializationBoardScript : UHOLSpecializationSubsystem
 {
 	TArray<FHOLSpecializationState> States;
 
+	// ELROND-1120e (morceau 7 du socle): the faction of each seat, set at the seat's initialisation (SetSeatFaction, the model of SetSeatNomad).
+	// STUB of the first commit: the faction is ignored.
+	TArray<int> SeatFactions;
+
+	void SetSeatFaction(int Slot, int Faction)
+	{
+	}
+
 	FHOLSpecializationState& StateOf(int Slot)
 	{
 		while (States.Num() <= Slot)
