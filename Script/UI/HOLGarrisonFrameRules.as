@@ -3,16 +3,20 @@
 // building gives the empty view (nothing drawn, no order). The widget is HOLGarrisonFrame.as.
 namespace HOLGarrisonFrameRules
 {
-	// STUB (red): the real rule is in the next commit.
+	// The view of the selected building: the garrison of the player's own finished building with places (HOLGarrisonView::Build), else the empty view.
 	FHOLGarrisonView ViewFor(const TArray<int>& OccupantUnitIds, int Slots, bool bOwn, bool bFinished)
 	{
-		FHOLGarrisonView View;
-		return View;
+		if (!bOwn || !bFinished)
+		{
+			FHOLGarrisonView Empty;
+			return Empty;
+		}
+		return HOLGarrisonView::Build(OccupantUnitIds, Slots);
 	}
 
 	// The widget name of the Index-th portrait button (hol.HUD.Click names it).
 	FName PortraitName(int Index)
 	{
-		return NAME_None;
+		return FName(f"GarrisonPortrait{Index}");
 	}
 }
