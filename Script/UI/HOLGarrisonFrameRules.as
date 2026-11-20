@@ -26,7 +26,15 @@ namespace HOLGarrisonFrameRules
 	// icon is drawn yet (Placeholders.txt), so the button then falls back to the label. Empty for an unknown type (empty key).
 	FString UnitIconPath(const FString& TypeKey)
 	{
-		return "";
+		if (TypeKey == "")
+			return "";
+		return f"/Game/UI/Icons/Units/T_Unit_{TypeKey}.T_Unit_{TypeKey}";
+	}
+
+	// The text of the "Sortir tous" button (the grid cell's name of the GDD).
+	FString UngarrisonAllLabel()
+	{
+		return "Sortir tous";
 	}
 
 	// The buttons of a view: one per portrait, in order. OccupantTypes is parallel to the view's occupants (FHOLBuildingSelView.GarrisonOccupantTypes);
@@ -34,6 +42,15 @@ namespace HOLGarrisonFrameRules
 	TArray<FHOLGarrisonButtonView> ButtonsFor(const FHOLGarrisonView& View, const TArray<FString>& OccupantTypes)
 	{
 		TArray<FHOLGarrisonButtonView> Buttons;
+		for (int Index = 0; Index < View.PortraitUnitIds.Num(); Index++)
+		{
+			FHOLGarrisonButtonView Button;
+			Button.UnitId = View.PortraitUnitIds[Index];
+			Button.TypeKey = Index < OccupantTypes.Num() ? OccupantTypes[Index] : "";
+			Button.IconPath = UnitIconPath(Button.TypeKey);
+			Button.Label = Button.TypeKey != "" ? Button.TypeKey : f"{Button.UnitId}";
+			Buttons.Add(Button);
+		}
 		return Buttons;
 	}
 	// The widget name of the Index-th portrait button (hol.HUD.Click names it).
