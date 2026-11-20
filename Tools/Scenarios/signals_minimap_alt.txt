@@ -13,6 +13,7 @@ frames 5
 hol.HUD.Click MinimapClickL60x60
 frames 5
 waitlog Minimap signals: 0
+capture signals_minimap_alt_before
 # 2. Alt maintenu puis clic gauche sur la minicarte : le signal neutre est pose.
 hol.UI.Key LeftAlt 0 3
 wait 0.5
@@ -22,6 +23,8 @@ waitlog Minimap signals: 1
 wait 1
 capture signals_minimap_alt
 waitlog Minimap signals: 0
+wait 0.5
+capture signals_minimap_alt_after
 hol.Test.Sanity
 note Signal : maintiens Alt et clique (gauche, bref) sur la minicarte : le meme signal neutre qu'au sol est pose a ce point (carre colore sur la minicarte, losange au sol, ligne du fil). Alt + glisser ne pose rien ; Alt + clic droit ordonne encore un deplacement.
 quit

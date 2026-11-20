@@ -1,0 +1,4 @@
+# <nom de capture> | ce que l'utilisateur doit voir
+signals_minimap_alt_before | Capture 1920x1080 apres un clic gauche SANS Alt sur la minicarte (point 60,60 de l'image, en bas a droite de l'ecran) : la camera a bouge vers ce point ; OBJET : la minicarte (en bas a droite) ne porte AUCUN carre colore de signal ; aucun losange au sol ; le fil de messages (en haut a droite) ne dit pas "Signal".
+signals_minimap_alt | Capture 1920x1080 apres Alt maintenu + clic gauche bref sur la minicarte (point 120,120 de l'image) : OBJET : un petit carre colore (10 px, blanc = signal neutre) sur la minicarte en bas a droite, au point cliqué ; le fil de messages (en haut a droite) montre "Vous : Signal". Journal exact : "Signal: received kind K from slot 0 at (X, Y)", "Minimap signals: 1".
+signals_minimap_alt_after | Meme cadre apres les 5 s DE JEU (journal "Minimap signals: 0") : le carre de signal a disparu de la minicarte ; le reste est inchange.

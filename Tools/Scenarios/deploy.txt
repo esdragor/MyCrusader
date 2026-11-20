@@ -58,6 +58,50 @@ wait 6
 hol.HUD.Report
 waitlog D=Deploy
 capture deploy_packed_again
+# D861 (ELROND-1120a/b, UNCOMPILED fix): (b) engin MONTE + clic droit au sol : il se demonte (5 s) puis PART sans second clic (avant : ordre ouvert mais vitesse restee a 0, il ne bougeait plus) ; (a) engin DEMONTE + clic droit sur la Maison ennemie a portee : il se monte (8 s) puis tire.
+# Geste reel : hol.Select.OrderNear = le clic droit du joueur sur le sol (point en cm dans le repere de ton centre) ; la Maison est au point 5300 0 (hol.Cheat.SpawnBuilding House 1 5300 0, meme repere que hol.Camera.FocusNear). Le Mangonneau est a ~3000 0, hors de la zone minimale (1200) : la Maison est a ~2300 cm, dans sa portee (3000).
+# Etape 6 : remonter l'engin (D), pour avoir un engin monte a deplacer.
+hol.Camera.FocusNear 4200 0
+frames 2
+hol.UI.Key D 0 0.1
+waitlog Order: 1 units deploy
+waitlog (delay over)
+hol.HUD.Report
+waitlog D=Pack
+capture deploy_move_start
+note 6. D861 (b) : le Mangonneau est de nouveau monte (la case D dit Demonter). Tu fais un clic droit sur le sol, plus bas.
+# Etape 7 : clic droit au sol (a ~1000 cm au sud, toujours a ~2500 cm de la Maison). Un SEUL ordre ; aucun second clic.
+hol.Select.OrderNear 3000 -1000
+waitlog Order: 1 units to (
+frames 20
+capture deploy_move_unmounting
+note 7. Clic droit au sol : l'engin commence par se demonter (5 s), sans que tu appuies sur D.
+waitlog (delay over)
+hol.Select.Report
+hol.HUD.Report
+waitlog D=Deploy
+wait 3
+hol.Select.Report
+capture deploy_move_walked
+note 8. Sans second clic, l'engin demonte part vers le point : il est visiblement plus bas qu'a deploy_move_start.
+# Etape 9 : engin DEMONTE, clic droit sur la Maison ennemie (cible a portee) : il se monte (8 s) puis tire.
+hol.Camera.FocusNear 4200 0
+frames 2
+hol.Select.OrderNear 5300 0
+waitlog units attack
+frames 20
+capture deploy_attack_mounting
+note 9. D861 (a) : clic droit sur la Maison ennemie, engin demonte : il commence a se monter.
+waitlog (delay over)
+hol.HUD.Report
+waitlog D=Pack
+capture deploy_attack_mounted
+waitlog Mangonel hits a building for 45
+hol.Select.Click 0.5 0.32
+frames 20
+hol.HUD.Report
+capture deploy_attack_hit
+note 10. Monte, l'engin tire seul sur la Maison designee (PV entames, coups de 45), sans autre ordre.
 hol.Test.Sanity
 note 5. A toi : D monte ou demonte l'engin selectionne ; un ordre de marche le demonte, un ordre d'attaque le monte s'il est a portee (delais et portees proposes, Palier3InProgress.md G5).
 # The scenario's real end: an agent's play.ps1 -Hidden closes here instead of at its -TimeoutSec; the user's own run ignores it and plays on.

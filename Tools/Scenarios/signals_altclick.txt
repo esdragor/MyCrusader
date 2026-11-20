@@ -27,6 +27,10 @@ waitlog Minimap signals: 1
 waitlog Signal ground marks: 1 |
 wait 1
 capture signals_altclick
+# 1b. La marque pulse (D860 : SignalPulse) : deux captures a 0,3 s d'ecart (horloge de l'application), la marque au sol n'a pas la meme taille.
+capture signals_altclick_pulse_a
+wait 0.3
+capture signals_altclick_pulse_b
 # 2. Temoin : le carre du signal dure 5 s DE JEU (hol.Signal.IconSeconds, D784). HALDIR-1115j (14:25) : "wait 6" compte l'horloge de
 # l'application (FApp), plus rapide ici que le temps du monde (5 s de jeu = 7,3 s d'horloge) : la 2e capture tombait 1 image avant le
 # depart de la marque. On attend donc l'effet (la marque quitte la minicarte) puis on capture.
