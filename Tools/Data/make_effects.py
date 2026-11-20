@@ -90,7 +90,7 @@ def render(rows):
         out.append("\t}")
         out.append("")
     out.append("\t// The effect a row poses on a unit: its own levers, or those of the effect it gives (the Banner gives the Dawn Aura).")
-    out.append("\tHOLMorale::FHOLMoraleEffect Effect(int Id)")
+    out.append("\tFHOLMoraleEffectData Effect(int Id)")
     out.append("\t{")
     out.append("\t\tFHOLMoraleRow R = Row(Id);")
     out.append("\t\tint EffectId = Id;")

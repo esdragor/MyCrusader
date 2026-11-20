@@ -47,7 +47,7 @@ void Test_MoraleTableCppRowsAgreeWithCsv(FUnitTest& T)
 	for (int Id = 0; Id < HOLMoraleTable::Count; Id++)
 	{
 		const FHOLMoraleEffectData Native = HOLMorale::NativeMakeEffectFromRow(Id);
-		const HOLMorale::FHOLMoraleEffect Script = HOLMoraleTable::Effect(Id);
+		const FHOLMoraleEffectData Script = HOLMoraleTable::Effect(Id);
 		T.AssertEquals(Script.Id, Native.Id, "row " + Id + ": the effect id");
 		T.AssertEquals(Script.Dealt, Native.Dealt, "row " + Id + ": damage dealt");
 		T.AssertEquals(Script.Taken, Native.Taken, "row " + Id + ": damage taken");

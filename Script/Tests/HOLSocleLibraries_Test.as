@@ -203,7 +203,7 @@ void Test_UnitAbilityReadLibraryAgreesWithTable(FUnitTest& T)
 	T.AssertTrue(MoraleId >= 0, "the rage's effect is in the morale table");
 	if (MoraleId >= 0)
 	{
-		HOLMorale::FHOLMoraleState State;
+		FHOLMoraleStateData State;
 		HOLMorale::Apply(State, HOLMoraleTable::Effect(MoraleId));
 		T.AssertEquals(100 + HOLUnitAbilityRead::GetRageDamagePercent(), HOLMorale::Multiplier(State, HOLMorale::LeverDealt), "damage dealt, in percent (Effects.csv)");
 		T.AssertEquals(100 + HOLUnitAbilityRead::GetRageRatePercent(), HOLMorale::Multiplier(State, HOLMorale::LeverRate), "attack rate, in percent (Effects.csv)");

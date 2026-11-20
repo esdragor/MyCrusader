@@ -15,7 +15,7 @@ FHOLMoraleUnit MoraleRecipientUnit(int Slot, bool bPeasant, bool bHostile, bool 
 // The total of a lever on a unit after the effect is posed on it if it is in the recipients (a unit not in the list keeps an empty state).
 int MoraleRecipientTotal(const TArray<int>& Recipients, int UnitIndex, int EffectId, int Lever)
 {
-	HOLMorale::FHOLMoraleState State;
+	FHOLMoraleStateData State;
 	if (Recipients.Contains(UnitIndex))
 	{
 		HOLMorale::Apply(State, HOLMoraleTable::Effect(EffectId));
