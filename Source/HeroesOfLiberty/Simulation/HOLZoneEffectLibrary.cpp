@@ -16,15 +16,14 @@ namespace
 	}
 }
 
-// STUB (commit a, red): the bodies below answer neutral so that the script tests that call the binding fail. The correction comes next.
 bool UHOLZoneEffectLibrary::IsInZone(const int32 CenterXCm, const int32 CenterYCm, const int32 RadiusCm, const int32 PointXCm, const int32 PointYCm)
 {
-	return false;
+	return HOLZoneEffect::IsInZone(CenterXCm, CenterYCm, RadiusCm, PointXCm, PointYCm);
 }
 
 bool UHOLZoneEffectLibrary::ZoneActive(const int32 StartMs, const int32 DurationMs, const int32 NowMs)
 {
-	return false;
+	return HOLZoneEffect::ZoneActive(StartMs, DurationMs, NowMs);
 }
 
 int32 UHOLZoneEffectLibrary::GetSpeedPercent(const bool bEnemyOfOwner, const bool bInZone, const bool bActive, const int32 SlowPercent)

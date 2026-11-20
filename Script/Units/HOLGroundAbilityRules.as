@@ -16,20 +16,7 @@ namespace HOLGroundAbility
 		return 0;
 	}
 
-	// Is the point inside the zone (centre and point in cm; the edge counts as inside). Squared distances in 64 bits: no root, no float.
-	bool IsInZone(int CenterXCm, int CenterYCm, int RadiusCm, int PointXCm, int PointYCm)
-	{
-		const int64 Dx = int64(PointXCm) - int64(CenterXCm);
-		const int64 Dy = int64(PointYCm) - int64(CenterYCm);
-		const int64 Radius = int64(RadiusCm);
-		return Dx * Dx + Dy * Dy <= Radius * Radius;
-	}
-
-	// Is a zone put down at StartMs, lasting DurationMs, still active at NowMs (over at StartMs + DurationMs, like IsRageEffectEnded).
-	bool ZoneActive(int StartMs, int DurationMs, int NowMs)
-	{
-		return NowMs >= StartMs && NowMs < StartMs + DurationMs;
-	}
+	// The zone rules (IsInZone, ZoneActive) are no longer here (D839, one source): the script reads HOLZoneEffect:: (UHOLZoneEffectLibrary, C++).
 
 	// When the cool-down of an ability cast at StartMs ends (counted from the cast, like GetRageCooldownEndMs).
 	int CooldownEndMs(int StartMs, int CooldownMs)
