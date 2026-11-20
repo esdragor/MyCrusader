@@ -87,24 +87,48 @@ namespace HOLFactionSlot
 // The faction slot of a player from the game state (CELEBORN-1120b gauge, HOLDawnValues cap, HOLDawnPowers rows; GALADRIEL-1120d/e).
 namespace HOLFactionSlot
 {
+	// The cool-down left (ms) of a power: its end time in the state (0 = ready) minus the server's time Now; 0 once over, never negative.
+	int CooldownLeft(int EndMs, int NowMs)
+	{
+		if (EndMs <= 0 || EndMs <= NowMs)
+			return 0;
+		return EndMs - NowMs;
+	}
+
+	// The cool-down left of the slot's first Count powers, from the state's end times (GetPowerCooldownEndMs), at the server's time NowMs.
+	TArray<int> CooldownsLeft(AHOLGameState State, int Slot, int Count, int NowMs)
+	{
+		TArray<int> Result;
+		for (int Index = 0; Index < Count; Index++)
+			Result.Add(CooldownLeft(State.GetPowerCooldownEndMs(Slot, Index), NowMs));
+		return Result;
+	}
+
 	// The slot's view: the gauge is the state's value for the slot held in [0, HonorCap]; the rows are the Dawn's book (the only gauge
-	// faction for now), cool-downs 0 until the state keeps PowerCooldownEndMs (ELROND-1120c), Tier 0 (no tier is read here yet).
+	// faction for now), cool-downs from the state's PowerCooldownEndMs (ELROND-1120c) minus the server's time, Tier 0 (no tier is read here yet).
 	// An unknown slot (spectator) or no state: the empty slot.
 	FHOLFactionSlotView FromGameState(AHOLGameState State, int Slot, bool bHasSpecializationButton, bool bTierOpen)
 	{
-		// STUB (red first): the faction is not read from the state yet.
-		EHOLFaction Faction = EHOLFaction::BlackLegions;
+		const int NowMs = State != nullptr ? int(State.GetServerWorldTimeSeconds() * 1000.0) : 0;
+		return FromGameStateAt(State, Slot, NowMs, bHasSpecializationButton, bTierOpen);
+	}
+
+	// The same at the server's time NowMs (ms): the cool-down of each box is the state's end time minus NowMs.
+	FHOLFactionSlotView FromGameStateAt(AHOLGameState State, int Slot, int NowMs, bool bHasSpecializationButton, bool bTierOpen)
+	{
 		if (State == nullptr || Slot < 0)
 		{
 			FHOLFactionSlotView Empty;
 			Empty.Describe = "slot empty";
 			return Empty;
 		}
+		// The faction of the slot as the state has it (GetSlotFaction, an EHOLFaction index): no more reading of the lobby's French text.
+		const EHOLFaction Faction = EHOLFaction(State.GetSlotFaction(Slot));
 		const FHOLFactionResource Gauge = HOLFactionResource::Make(State.GetFactionResource(Slot), 0, HOLDawnValues::HonorCap());
 		TArray<FHOLPowerRow> Rows;
 		if (HOLFactionResource::HasResource(Faction))
 			Rows = HOLDawnPowers::Rows();
-		TArray<int> Cooldowns;
+		TArray<int> Cooldowns = CooldownsLeft(State, Slot, Rows.Num(), NowMs);
 		return Make(Faction, Gauge, Rows, Cooldowns, 0, bHasSpecializationButton, bTierOpen);
 	}
 }

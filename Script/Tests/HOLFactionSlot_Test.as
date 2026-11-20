@@ -142,3 +142,56 @@ void Test_FactionSlotFromGameStateValue(FUnitTest& T)
 	}
 	HOLTestWorld::DestroyTestWorld(TestWorld);
 }
+
+// GALADRIEL-1120e: the cool-down left of a power is the state's end time (AHOLGameState::GetPowerCooldownEndMs, 0 = ready) minus the server's
+// time Now: a pure rule (CooldownLeft), then the chain from a REAL game state (FromGameStateAt, CooldownsLeft + the book's rule).
+void Test_FactionSlotCooldownLeftRule(FUnitTest& T)
+{
+	int Running = HOLFactionSlot::CooldownLeft(5000, 2000);
+	int AtEnd = HOLFactionSlot::CooldownLeft(5000, 5000);
+	int Over = HOLFactionSlot::CooldownLeft(5000, 6000);
+	int NeverUsed = HOLFactionSlot::CooldownLeft(0, 2000);
+	int NeverUsedAtZero = HOLFactionSlot::CooldownLeft(0, 0);
+	T.AssertEquals(3000, Running, "end 5000, now 2000: 3000 ms left");
+	T.AssertEquals(0, AtEnd, "now at the end time: ready");
+	T.AssertEquals(0, Over, "now past the end time: ready, never negative");
+	T.AssertEquals(0, NeverUsed, "end 0 means ready");
+	T.AssertEquals(0, NeverUsedAtZero, "end 0 at time 0: ready");
+}
+
+void Test_FactionSlotCooldownFromGameState(FUnitTest& T)
+{
+	UHOLTestWorldHandle TestWorld = HOLTestWorld::CreateTestWorld();
+	T.AssertTrue(TestWorld != nullptr, "a test world is created");
+	if (TestWorld == nullptr)
+		return;
+	AHOLGameState State = HOLTestWorld::SpawnGameState(TestWorld, 0, 0);
+	T.AssertTrue(State != nullptr, "game state");
+	if (State != nullptr)
+	{
+		State.SetFactionResource(0, 30);
+		State.SetPowerCooldownEndMs(0, 0, 5000);
+		// The Dawn's real book (its only power has no coded effect: the box's state is the book's, the cool-down left is the state's).
+		const FHOLFactionSlotView Running = HOLFactionSlot::FromGameStateAt(State, 0, 2000, false, false);
+		const FHOLFactionSlotView Over = HOLFactionSlot::FromGameStateAt(State, 0, 6000, false, false);
+		const FHOLFactionSlotView OtherSlot = HOLFactionSlot::FromGameStateAt(State, 1, 2000, false, false);
+		T.AssertEquals(1, Running.Powers.Num(), "one box for the Dawn's book");
+		if (Running.Powers.Num() == 1 && Over.Powers.Num() == 1 && OtherSlot.Powers.Num() == 1)
+		{
+			T.AssertEquals(3000, Running.Powers[0].CooldownLeftMs, "the box shows the state's end time minus now");
+			T.AssertEquals(0, Over.Powers[0].CooldownLeftMs, "past the end time: nothing left");
+			T.AssertEquals(0, OtherSlot.Powers[0].CooldownLeftMs, "another slot has its own (untouched) time");
+		}
+		// A coded power through the same chain (the state's times read by CooldownsLeft, then the book's rule): cooling, then ready.
+		TArray<FHOLPowerRow> Rows;
+		Rows.Add(FactionSlotRow("a", 10, 0, true));
+		TArray<int> DuringLeft = HOLFactionSlot::CooldownsLeft(State, 0, 1, 2000);
+		TArray<int> AfterLeft = HOLFactionSlot::CooldownsLeft(State, 0, 1, 6000);
+		const FHOLFactionSlotView During = HOLFactionSlot::Make(EHOLFaction::DawnOrder, HOLFactionResource::Make(30, 0, 100), Rows, DuringLeft, 0, false, false);
+		const FHOLFactionSlotView After = HOLFactionSlot::Make(EHOLFaction::DawnOrder, HOLFactionResource::Make(30, 0, 100), Rows, AfterLeft, 0, false, false);
+		T.AssertTrue(During.Powers[0].State == EHOLPowerState::Cooling, "a coded power is cooling while the end time is ahead");
+		T.AssertEquals("a cost 10 cooling 3 s", During.Powers[0].Describe, "described cooling by the book");
+		T.AssertTrue(After.Powers[0].State == EHOLPowerState::Ready, "and ready once the end time is past");
+	}
+	HOLTestWorld::DestroyTestWorld(TestWorld);
+}
