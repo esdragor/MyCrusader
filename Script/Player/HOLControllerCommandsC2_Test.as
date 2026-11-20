@@ -17,7 +17,7 @@ TArray<FString> C2Args(const FString& A = "", const FString& B = "", const FStri
 void Test_ControllerCommandsC2EachNameOnceAndRouted(FUnitTest& T)
 {
 	TArray<FString> Names = HOLControllerCommandsC2::Names();
-	T.AssertEquals(12, Names.Num(), "12 hero, duel, diplomacy, signal, chat and specialization commands (11 ported, plus hol.Cheat.Specialization)");
+	T.AssertEquals(13, Names.Num(), "13 hero, duel, diplomacy, signal, chat, specialization and cheat commands (11 ported, plus hol.Cheat.Specialization and hol.Cheat.Honor)");
 	TArray<FString> Seen;
 	for (int I = 0; I < Names.Num(); I++)
 	{
@@ -156,6 +156,24 @@ void Test_ControllerCommandsC2CheatSpecialization(FUnitTest& T)
 	FHOLCheatPlan Four = HOLControllerCommandsC2::PlanOf("hol.Cheat.Specialization", C2Args("4", "1"));
 	T.AssertFalse(Four.bValid, "tier 4 is refused");
 	T.AssertEquals(CheatUsage, Four.Usage, "tier 4 gives the usage line");
+}
+
+// CELEBORN-1120b: hol.Cheat.Honor <Value> asks ServerCheatHonor with the value; a missing word is refused with the usage line.
+// RED to see on the first commit: the plan does not know the command yet.
+void Test_ControllerCommandsC2CheatHonor(FUnitTest& T)
+{
+	const FString HonorUsage = "Usage: hol.Cheat.Honor <Value>";
+	FHOLCheatPlan Plan = HOLControllerCommandsC2::PlanOf("hol.Cheat.Honor", C2Args("50"));
+	T.AssertTrue(Plan.bValid, "Cheat.Honor 50 is accepted");
+	T.AssertEquals("ServerCheatHonor", Plan.Route, "Cheat.Honor route");
+	T.AssertEquals(1, Plan.Ints.Num(), "one integer");
+	const int Value = Plan.Ints.Num() > 0 ? Plan.Ints[0] : -99;
+	T.AssertEquals(50, Value, "the value is 50 (the bounds are the server rule: HOLFactionResource::CheatTarget)");
+	FHOLCheatPlan Hundred = HOLControllerCommandsC2::PlanOf("hol.Cheat.Honor", C2Args("250"));
+	T.AssertTrue(Hundred.bValid, "a value above the cap is still sent (the server holds it to the cap)");
+	FHOLCheatPlan Short = HOLControllerCommandsC2::PlanOf("hol.Cheat.Honor", C2Args());
+	T.AssertFalse(Short.bValid, "a missing value is refused");
+	T.AssertEquals(HonorUsage, Short.Usage, "Cheat.Honor usage line");
 }
 
 // SAURON-1119w: a pure spectator sends nothing (the C++ Request<X> returned silently), for every command but the chat; a player sends all of them.

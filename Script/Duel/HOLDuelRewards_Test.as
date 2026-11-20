@@ -1,11 +1,8 @@
 // The morale rewards of a duel's end (DuelInProgress.md D7): the orders come from a duel really played to its end (Challenge,
-// Respond, Advance), the durations from the morale table, the radius from the call; no number typed in except the two radii
-// that prove the radius is the one handed in.
+// Respond, Advance), the durations and the radius from the morale table.
 
 const int RewardChallenger = 0;
 const int RewardTarget = 1;
-const int RewardRadiusA = 1234;
-const int RewardRadiusB = 777;
 
 // A duel accepted at once: the Active state to play from.
 FHOLDuel RewardDuelActive(const FHOLDuelSettings& S)
@@ -20,7 +17,7 @@ void Test_DuelRewardsWinnerTriumphLoserDemoralised(FUnitTest& T)
 	FHOLDuelSettings S = HOLDuel::Preset();
 	FHOLDuel D = RewardDuelActive(S);
 	D = HOLDuel::Advance(S, D, 3000, 0, 40);
-	TArray<FHOLDuelMoraleOrder> Orders = HOLDuelRewards::Orders(S, D, RewardRadiusA);
+	TArray<FHOLDuelMoraleOrder> Orders = HOLDuelRewards::Orders(S, D);
 	T.AssertEquals(2, Orders.Num(), "two orders: the winner and the loser");
 	if (Orders.Num() != 2)
 		return;
@@ -54,8 +51,8 @@ void Test_DuelRewardsRefusalHesitationOnRefuserOnly(FUnitTest& T)
 	FHOLDuel Pending = HOLDuel::Challenge(S, RewardChallenger, RewardTarget);
 	FHOLDuel Refused = HOLDuel::Respond(S, Pending, false);
 	FHOLDuel Silent = HOLDuel::Advance(S, Pending, S.ResponseMs, 100, 100);
-	TArray<FHOLDuelMoraleOrder> AfterNo = HOLDuelRewards::Orders(S, Refused, RewardRadiusA);
-	TArray<FHOLDuelMoraleOrder> AfterSilence = HOLDuelRewards::Orders(S, Silent, RewardRadiusA);
+	TArray<FHOLDuelMoraleOrder> AfterNo = HOLDuelRewards::Orders(S, Refused);
+	TArray<FHOLDuelMoraleOrder> AfterSilence = HOLDuelRewards::Orders(S, Silent);
 	T.AssertEquals(1, AfterNo.Num(), "a spoken refusal: one order");
 	T.AssertEquals(1, AfterSilence.Num(), "a silent refusal: one order");
 	if (AfterNo.Num() == 1)
@@ -77,10 +74,10 @@ void Test_DuelRewardsDoubleKnockOutGivesNothing(FUnitTest& T)
 	FHOLDuelSettings S = HOLDuel::Preset();
 	FHOLDuel D = HOLDuel::Advance(S, RewardDuelActive(S), 50, 0, 0);
 	T.AssertTrue(D.End == EHOLDuelEnd::DoubleKnockOut, "both fell");
-	TArray<FHOLDuelMoraleOrder> BothFall = HOLDuelRewards::Orders(S, D, RewardRadiusA);
+	TArray<FHOLDuelMoraleOrder> BothFall = HOLDuelRewards::Orders(S, D);
 	T.AssertEquals(0, BothFall.Num(), "nothing after a double knock-out");
 	S.bDoubleKnockOutBothFall = false;
-	TArray<FHOLDuelMoraleOrder> BothLeft = HOLDuelRewards::Orders(S, D, RewardRadiusA);
+	TArray<FHOLDuelMoraleOrder> BothLeft = HOLDuelRewards::Orders(S, D);
 	T.AssertEquals(0, BothLeft.Num(), "nothing either with both left at one health");
 }
 
@@ -90,32 +87,69 @@ void Test_DuelRewardsNothingWhileNotOver(FUnitTest& T)
 	FHOLDuelSettings S = HOLDuel::Preset();
 	FHOLDuel Pending = HOLDuel::Challenge(S, RewardChallenger, RewardTarget);
 	FHOLDuel Active = RewardDuelActive(S);
-	TArray<FHOLDuelMoraleOrder> WhilePending = HOLDuelRewards::Orders(S, Pending, RewardRadiusA);
-	TArray<FHOLDuelMoraleOrder> WhileActive = HOLDuelRewards::Orders(S, Active, RewardRadiusA);
+	TArray<FHOLDuelMoraleOrder> WhilePending = HOLDuelRewards::Orders(S, Pending);
+	TArray<FHOLDuelMoraleOrder> WhileActive = HOLDuelRewards::Orders(S, Active);
 	T.AssertEquals(0, WhilePending.Num(), "nothing while the window runs");
 	T.AssertEquals(0, WhileActive.Num(), "nothing while the duel is on");
 }
 
-// Every order carries the radius handed in, for a victory and for a refusal alike.
-void Test_DuelRewardsRadiusIsTheDuelsOwn(FUnitTest& T)
+// D859 n. 8 (step 1d): the radius of the three duel effects is the morale table's (12 m in Effects.csv), read by Orders itself.
+// Triumph and Demoralised from a duel won, Hesitation from a refusal with its cost: every order carries the table's radius.
+void Test_DuelOrdersRadiusFromTable(FUnitTest& T)
 {
 	FHOLDuelSettings S = HOLDuel::Preset();
 	FHOLDuel Won = HOLDuel::Advance(S, RewardDuelActive(S), 3000, 0, 40);
 	FHOLDuel Refused = HOLDuel::Respond(S, HOLDuel::Challenge(S, RewardChallenger, RewardTarget), false);
-	TArray<FHOLDuelMoraleOrder> WonA = HOLDuelRewards::Orders(S, Won, RewardRadiusA);
-	TArray<FHOLDuelMoraleOrder> WonB = HOLDuelRewards::Orders(S, Won, RewardRadiusB);
-	TArray<FHOLDuelMoraleOrder> RefusedB = HOLDuelRewards::Orders(S, Refused, RewardRadiusB);
-	T.AssertTrue(WonA.Num() > 0 && WonB.Num() > 0 && RefusedB.Num() > 0, "orders to look at");
-	for (int Index = 0; Index < WonA.Num(); Index++)
+	TArray<FHOLDuelMoraleOrder> WonOrders = HOLDuelRewards::Orders(S, Won);
+	TArray<FHOLDuelMoraleOrder> RefusedOrders = HOLDuelRewards::Orders(S, Refused);
+	T.AssertEquals(2, WonOrders.Num(), "a victory: Triumph and Demoralised");
+	T.AssertEquals(1, RefusedOrders.Num(), "a refusal: Hesitation");
+	TArray<FHOLDuelMoraleOrder> All;
+	All.Append(WonOrders);
+	All.Append(RefusedOrders);
+	for (int Index = 0; Index < All.Num(); Index++)
 	{
-		T.AssertEquals(RewardRadiusA, WonA[Index].RadiusCm, "victory, first radius");
+		const int TableRadius = HOLMoraleTable::Row(All[Index].EffectId).RadiusCm;
+		T.AssertEquals(TableRadius, All[Index].RadiusCm, "the order's radius is the table's");
+		T.AssertEquals(1200, All[Index].RadiusCm, "12 m (D859 n. 8)");
 	}
-	for (int Index = 0; Index < WonB.Num(); Index++)
+}
+
+// Step 3a: the orders of EVERY duel that ended in one step, as the ledger's `Ended` loop collects them. Two duels over: a victory
+// (slots 0 and 1: Triumph, Demoralised) and a refusal with its cost (slots 2 and 3: Hesitation on the target) -> three orders,
+// each with the time the morale table gives (40 s, 40 s, 25 s).
+void Test_OrdersOfEndedCoversEveryEndedDuel(FUnitTest& T)
+{
+	FHOLDuelSettings S = HOLDuel::Preset();
+	FHOLDuel Won = HOLDuel::Advance(S, RewardDuelActive(S), 3000, 0, 40);
+	FHOLDuel Refused = HOLDuel::Respond(S, HOLDuel::Challenge(S, 2, 3), false);
+	TArray<FHOLDuelEnded> Ended;
+	FHOLDuelEnded First;
+	First.Duel = Won;
+	First.Effects = HOLDuel::Effects(S, Won);
+	Ended.Add(First);
+	FHOLDuelEnded Second;
+	Second.Duel = Refused;
+	Second.Effects = HOLDuel::Effects(S, Refused);
+	Ended.Add(Second);
+	TArray<FHOLDuelMoraleOrder> Orders = HOLDuelRewards::OrdersOfEnded(S, Ended);
+	T.AssertEquals(3, Orders.Num(), "three orders: Triumph, Demoralised, Hesitation");
+	int TriumphMs = -1;
+	int DemoralisedMs = -1;
+	int HesitationMs = -1;
+	for (int Index = 0; Index < Orders.Num(); Index++)
 	{
-		T.AssertEquals(RewardRadiusB, WonB[Index].RadiusCm, "victory, second radius");
+		if (Orders[Index].EffectId == HOLMoraleTable::Triumph && Orders[Index].Slot == 1)
+			TriumphMs = Orders[Index].DurationMs;
+		if (Orders[Index].EffectId == HOLMoraleTable::Demoralised && Orders[Index].Slot == 0)
+			DemoralisedMs = Orders[Index].DurationMs;
+		if (Orders[Index].EffectId == HOLMoraleTable::Hesitation && Orders[Index].Slot == 3)
+			HesitationMs = Orders[Index].DurationMs;
 	}
-	for (int Index = 0; Index < RefusedB.Num(); Index++)
-	{
-		T.AssertEquals(RewardRadiusB, RefusedB[Index].RadiusCm, "refusal, second radius");
-	}
+	T.AssertEquals(HOLMoraleTable::Row(HOLMoraleTable::Triumph).DurationMs, TriumphMs, "Triumph on the winner, the table's time");
+	T.AssertEquals(HOLMoraleTable::Row(HOLMoraleTable::Demoralised).DurationMs, DemoralisedMs, "Demoralised on the loser, the table's time");
+	T.AssertEquals(HOLMoraleTable::Row(HOLMoraleTable::Hesitation).DurationMs, HesitationMs, "Hesitation on the refuser of the second duel");
+	T.AssertEquals(40000, TriumphMs, "Triumph lasts 40 s");
+	T.AssertEquals(40000, DemoralisedMs, "Demoralised lasts 40 s");
+	T.AssertEquals(25000, HesitationMs, "Hesitation lasts 25 s");
 }

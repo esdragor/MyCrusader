@@ -57,6 +57,12 @@ namespace HOLFactionResource
 		return true;
 	}
 
+	// hol.Cheat.Honor (CELEBORN-1120b): the value a cheat may store, held between the gauge's floor and cap. STUB (red first).
+	int CheatTarget(int Requested, const FHOLFactionResource& Gauge)
+	{
+		return Gauge.Value;
+	}
+
 	// Which faction owns a gauge: today the Dawn alone (its Honor is the only resource of this model). Every other value of the
 	// enumeration has none; the Legions' corpses have their own model (HOLCorpse).
 	bool HasResource(EHOLFaction Faction)
