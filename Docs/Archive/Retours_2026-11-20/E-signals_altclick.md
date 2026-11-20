@@ -13,4 +13,4 @@ NON VÉRIFIÉ : la pulsation de la mini-carte n'a qu'une capture fixe (carré bl
 Lancer UNE commande : `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Arwen\Tools\Scenarios\play.ps1 signals_altclick -Root C:\Users\baudo\Documents\HeroesOfLiberty-Arwen`
 Gestes : quand le scénario est prêt, Alt + clic gauche au sol ailleurs : regarder la marque battre, au sol et sur la mini-carte, puis s'effacer après 5 s.
 Durée : environ 2 min. Réponse attendue : `OK`, `BUG: ...` ou `REGLAGE: ...` (amplitude, vitesse).
-Reponse:
+Reponse: REGLAGE : « divise par 3 la taille et c'est bon, pas besoin de refaire un essai pour valider » (marque du signal au sol ; 2026-11-20 ~13:05)

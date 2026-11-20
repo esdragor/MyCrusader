@@ -15,4 +15,4 @@ NON VÉRIFIÉ : provisoire visible (Placeholders.txt) : texte brut de la ligne d
 Lancer UNE commande : `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Arwen\Tools\Scenarios\play.ps1 faction_slot -Root C:\Users\baudo\Documents\HeroesOfLiberty-Arwen`
 Gestes : regarder la barre passer à 30, 100 puis 0 (trois étapes du panneau du scénario).
 Durée : environ 2 min. Réponse attendue : `OK`, `BUG: ...` ou `REGLAGE: ...` (place, taille, texte).
-Reponse:
+Reponse: OK (2026-11-20 ~13:05)

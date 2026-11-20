@@ -13,4 +13,4 @@ NON VÉRIFIÉ : aucune case « choisi » n'est dessinée (aucune décision ne le
 Lancer UNE commande : `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Arwen\Tools\Scenarios\play.ps1 specialization_cheat -Root C:\Users\baudo\Documents\HeroesOfLiberty-Arwen`
 Gestes : regarder le Forum avant puis après la triche (deux étapes du panneau du scénario).
 Durée : environ 1 min. Réponse attendue : `OK`, `BUG: ...` ou `REGLAGE: ...`.
-Reponse:
+Reponse: OK (2026-11-20 ~13:05)

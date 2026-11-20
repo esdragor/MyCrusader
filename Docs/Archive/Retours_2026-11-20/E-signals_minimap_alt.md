@@ -13,4 +13,4 @@ NON VÉRIFIÉ : Alt est tenu par une touche interne (`hol.UI.Key LeftAlt`) et le
 Lancer UNE commande : `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Arwen\Tools\Scenarios\play.ps1 signals_minimap_alt -Root C:\Users\baudo\Documents\HeroesOfLiberty-Arwen`
 Gestes : quand le scénario est prêt, garder Alt enfoncé et cliquer (gauche) sur la mini-carte : le signal apparaît au fil, sur la mini-carte et au sol à cet endroit ; sans Alt, le clic déplace seulement la caméra.
 Durée : environ 2 min. Réponse attendue : `OK`, `BUG: ...` ou `REGLAGE: ...`.
-Reponse:
+Reponse: REGLAGE : même chose : taille divisée par 3 (marque du signal sur la mini-carte), pas de nouvel essai (2026-11-20 ~13:05)
