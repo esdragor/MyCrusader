@@ -1,5 +1,7 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
+#include "Buildings/HOLBuilding.h"
+#include "Buildings/HOLBuildingTypes.h"
 #include "Commands/HOLCommandSubsystem.h"
 #include "Commands/HOLPlayerOrders.h"
 #include "Commands/HOLUnitOrderProcessor.h"
@@ -443,6 +445,236 @@ bool FHOLDeployMoveWhileDeployedKeepsOrderTest::RunTest(const FString& Parameter
 	GEngine->DestroyWorldContext(World);
 	World->DestroyWorld(false);
 	return true;
+}
+
+// D861 (a): a PACKED engine given an attack order on a target in reach must deploy, then fire (it only walked). Through the REAL queue, order
+// processor, deploy processor and combat. No movement runs in this harness: a target beyond the Mangonel's own reach (3000 cm, UnitTypes.csv
+// AttackRange / BuildingAttackRange) is never walked to, so the real chain is driven at 2500 cm (inside both the reach and HOLDeploy's aim range).
+// The band between HOLDeploy's MaxRangeCm (5000) and the combat's reach is EMPTY for the Mangonel (3000 < 5000): the case "the combat says in
+// reach but the aim range says no" is driven with the combat's own note written by hand (PendingOrder 1 + a distance), the one input the combat
+// would give. Effects measured: the phase of the fragment, then the target's health.
+namespace UE::HeroesOfLiberty::Tests::DeployButton
+{
+	enum class EAttackWhilePackedCase : uint8
+	{
+		/** The real chain: an Attack / AttackBuilding order on a target 2500 cm off, building then unit. */
+		InCombatReach,
+		/** The combat's note at a distance between MaxRangeCm and farther (the aim range must not contradict the combat), and a too-near note. */
+		BeyondDeployRange,
+	};
+
+	bool RunAttackWhilePacked(FAutomationTestBase& Test, const EAttackWhilePackedCase Case)
+	{
+		IConsoleVariable* CombatEnabled = IConsoleManager::Get().FindConsoleVariable(TEXT("hol.Combat.Enabled"));
+		IConsoleVariable* Deployable = IConsoleManager::Get().FindConsoleVariable(TEXT("hol.Siege.Deployable"));
+		if (!Test.TestNotNull(TEXT("hol.Combat.Enabled"), CombatEnabled) || !Test.TestNotNull(TEXT("hol.Siege.Deployable"), Deployable))
+		{
+			return false;
+		}
+		const int32 FormerEnabled = CombatEnabled->GetInt();
+		const int32 FormerDeployable = Deployable->GetInt();
+		CombatEnabled->Set(1, ECVF_SetByCode);
+		Deployable->Set(1, ECVF_SetByCode);
+
+		UWorld* World = UWorld::CreateWorld(EWorldType::Game, /*bInformEngineOfWorld*/ false);
+		FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);
+		Context.SetCurrentWorld(World);
+		World->InitializeActorsForPlay(FURL());
+		AHOLGameState* GameState = World->SpawnActor<AHOLGameState>();
+		World->SetGameState(GameState);
+		UHOLUnitSubsystem* Units = World->GetSubsystem<UHOLUnitSubsystem>();
+		UHOLSimulationSubsystem* Simulation = World->GetSubsystem<UHOLSimulationSubsystem>();
+		UMassEntitySubsystem* EntitySubsystem = World->GetSubsystem<UMassEntitySubsystem>();
+		if (Test.TestNotNull(TEXT("units"), Units) && Test.TestNotNull(TEXT("simulation"), Simulation) && Test.TestNotNull(TEXT("entities"), EntitySubsystem))
+		{
+			TSharedPtr<FMassEntityManager> EntityManager = EntitySubsystem->GetMutableEntityManager().AsShared();
+			UHOLUnitOrderProcessor* Orders = NewObject<UHOLUnitOrderProcessor>(Simulation);
+			Orders->CallInitialize(Simulation, EntityManager.ToSharedRef());
+			UHOLDeployProcessor* Deploy = NewObject<UHOLDeployProcessor>(Simulation);
+			Deploy->CallInitialize(Simulation, EntityManager.ToSharedRef());
+			UHOLCombatProcessor* Combat = NewObject<UHOLCombatProcessor>(Simulation);
+			Combat->CallInitialize(Simulation, EntityManager.ToSharedRef());
+			const float StepSeconds = GetDefault<UHOLSimulationSettings>()->GetStepSeconds();
+			const int32 StepMs = FMath::RoundToInt(StepSeconds * 1000.f);
+			const auto RunStep = [Simulation, Units, Orders, Deploy, Combat, &EntityManager, StepSeconds]
+			{
+				const int64 Step = Simulation->AdvanceStepIndexForTests();
+				Simulation->GetOnStepStarted().Broadcast(Step);
+				Units->ServeBirthRequests();
+				FMassProcessingContext ProcessingContext(EntityManager, StepSeconds);
+				UE::Mass::Executor::Run(*Orders, ProcessingContext);
+				UE::Mass::Executor::Run(*Deploy, ProcessingContext);
+				UE::Mass::Executor::Run(*Combat, ProcessingContext);
+				Units->FlushDestructions();
+				Simulation->GetOnStepEnded().Broadcast(Step);
+			};
+			const auto Place = [Units](const FName Type, const int32 Owner, const FVector& Location)
+			{
+				for (int32 Attempt = 0; Attempt < 8; ++Attempt)
+				{
+					TArray<uint32> Before;
+					Units->GetAllUnitIds(Before);
+					FHOLUnitSpawnRequest Request;
+					Request.TypeName = Type;
+					Request.Count = 1;
+					Request.OwnerPlayer = static_cast<uint8>(Owner);
+					Request.Center = Location;
+					Units->RequestUnits(Request);
+					Units->ServeBirthRequests();
+					TArray<uint32> After;
+					Units->GetAllUnitIds(After);
+					uint32 Born = 0;
+					for (const uint32 Id : After)
+					{
+						Born = Before.Contains(Id) ? Born : Id;
+					}
+					if (Born == 0 || Born % 4 == 0)
+					{
+						return Born;
+					}
+					const uint32 Again[] = { Born };
+					Units->RequestDestroyUnits(Again);
+					Units->FlushDestructions();
+				}
+				return 0u;
+			};
+			const auto HealthOf = [Units, &EntityManager](const uint32 Id)
+			{
+				const FMassEntityHandle Entity = Id != 0 ? Units->FindEntity(Id) : FMassEntityHandle();
+				const FHOLUnitStateFragment* State = Entity.IsSet() ? EntityManager->GetFragmentDataPtr<FHOLUnitStateFragment>(Entity) : nullptr;
+				return State ? State->CurrentHealth : -1.f;
+			};
+			const HOLDeploy::FProfile Profile = HOLDeploy::DefaultProfile();
+			const int32 DeploySteps = Profile.DeployMs / StepMs;
+			const int32 TenSeconds = FMath::CeilToInt(10.f / StepSeconds);
+			// Some steps of slack: the order is applied, the combat notes it, the deploy processor reads it, in this order, over a few steps.
+			const int32 Slack = 20;
+			const auto PhaseOfUnit = [Units, &EntityManager](const uint32 Id)
+			{
+				const FHOLDeployFragment* Fragment = Id != 0 ? EntityManager->GetFragmentDataPtr<FHOLDeployFragment>(Units->FindEntity(Id)) : nullptr;
+				return Fragment ? static_cast<int32>(Fragment->Phase) : -1;
+			};
+			const int32 Packed = static_cast<int32>(HOLDeploy::EPhase::Packed);
+			const int32 Deployed = static_cast<int32>(HOLDeploy::EPhase::Deployed);
+
+			if (Case == EAttackWhilePackedCase::InCombatReach)
+			{
+				const FVector Spot(2500.0, 0.0, 0.0);
+
+				// 1. A building (the enemy House of slot 3, team 3: the preflight's layout).
+				AHOLBuilding* House = World->SpawnActor<AHOLBuilding>(Spot, FRotator::ZeroRotator);
+				const uint32 EngineA = Place(FName(TEXT("Mangonel")), 0, FVector::ZeroVector);
+				if (Test.TestNotNull(TEXT("house"), House) && Test.TestTrue(TEXT("the deployable Mangonel born (building)"), EngineA != 0))
+				{
+					House->Setup(HOLBuildingTypeNames::House, 3, 3);
+					const TArray<uint32> Mine = { EngineA };
+					Test.TestEqual(TEXT("born packed (building)"), PhaseOfUnit(EngineA), Packed);
+					const float Start = House->GetHealth();
+					Test.TestTrue(TEXT("the attack order on the building enters the queue"), HOLPlayerOrders::AttackBuilding(*World, 0, Mine, House));
+					for (int32 Index = 0; Index < DeploySteps + Slack; ++Index)
+					{
+						RunStep();
+					}
+					Test.TestEqual(TEXT("packed, ordered on a House in reach, the engine ends deployed"), PhaseOfUnit(EngineA), Deployed);
+					bool bHit = House->GetHealth() < Start;
+					for (int32 Index = 0; Index < TenSeconds && !bHit; ++Index)
+					{
+						RunStep();
+						bHit = House->GetHealth() < Start;
+					}
+					Test.TestTrue(TEXT("deployed by the attack order, the engine fires: the House's health goes down"), bHit);
+				}
+				if (House)
+				{
+					House->Destroy();
+				}
+				const TArray<uint32> GoneA = { EngineA };
+				Units->RequestDestroyUnits(GoneA);
+				Units->FlushDestructions();
+
+				// 2. A unit (a Spearman of slot 3 on Hold, so that it stays where it stands).
+				const uint32 EngineB = Place(FName(TEXT("Mangonel")), 0, FVector::ZeroVector);
+				const uint32 Foe = Place(FName(TEXT("Spearman")), 3, Spot);
+				if (Test.TestTrue(TEXT("the deployable Mangonel born (unit)"), EngineB != 0) && Test.TestTrue(TEXT("the target born"), Foe != 0))
+				{
+					FHOLCombatFragment* FoeCombat = EntityManager->GetFragmentDataPtr<FHOLCombatFragment>(Units->FindEntity(Foe));
+					if (Test.TestNotNull(TEXT("target combat"), FoeCombat))
+					{
+						FoeCombat->Mode = EHOLCombatMode::Hold;
+						const TArray<uint32> Mine = { EngineB };
+						const float Start = HealthOf(Foe);
+						Test.TestTrue(TEXT("the attack order on the unit enters the queue"), HOLPlayerOrders::Attack(*World, 0, Mine, Foe));
+						for (int32 Index = 0; Index < DeploySteps + Slack; ++Index)
+						{
+							RunStep();
+						}
+						Test.TestEqual(TEXT("packed, ordered on a unit in reach, the engine ends deployed"), PhaseOfUnit(EngineB), Deployed);
+						bool bHit = HealthOf(Foe) < Start;
+						for (int32 Index = 0; Index < TenSeconds && !bHit; ++Index)
+						{
+							RunStep();
+							bHit = HealthOf(Foe) < Start;
+						}
+						Test.TestTrue(TEXT("deployed by the attack order, the engine fires: the unit's health goes down"), bHit);
+					}
+				}
+				const TArray<uint32> GoneB = { EngineB, Foe };
+				Units->RequestDestroyUnits(GoneB);
+				Units->FlushDestructions();
+			}
+			else
+			{
+				// The combat's note by hand: its in-reach verdict is the one input; the aim range of HOLDeploy must not turn it into a march.
+				const auto NoteAndRun = [&](const uint32 Engine, const int32 DistanceCm)
+				{
+					FHOLDeployFragment* Fragment = EntityManager->GetFragmentDataPtr<FHOLDeployFragment>(Units->FindEntity(Engine));
+					if (Fragment)
+					{
+						Fragment->PendingOrder = 1;
+						Fragment->PendingDistanceCm = DistanceCm;
+					}
+					for (int32 Index = 0; Index < DeploySteps + 4; ++Index)
+					{
+						RunStep();
+					}
+				};
+				const uint32 Far = Place(FName(TEXT("Mangonel")), 0, FVector::ZeroVector);
+				if (Test.TestTrue(TEXT("the deployable Mangonel born (far note)"), Far != 0))
+				{
+					NoteAndRun(Far, Profile.MaxRangeCm + 1000);
+					Test.TestEqual(TEXT("the combat says in reach beyond MaxRangeCm: the engine deploys (it does not just stop)"), PhaseOfUnit(Far), Deployed);
+				}
+				const uint32 Near = Place(FName(TEXT("Mangonel")), 0, FVector::ZeroVector);
+				if (Test.TestTrue(TEXT("the deployable Mangonel born (near note)"), Near != 0))
+				{
+					NoteAndRun(Near, Profile.MinRangeCm - 100);
+					Test.TestEqual(TEXT("the combat says in reach nearer than MinRangeCm: the engine stays packed (target too close)"), PhaseOfUnit(Near), Packed);
+				}
+				const TArray<uint32> Gone = { Far, Near };
+				Units->RequestDestroyUnits(Gone);
+				Units->FlushDestructions();
+			}
+		}
+		CombatEnabled->Set(FormerEnabled, ECVF_SetByCode);
+		Deployable->Set(FormerDeployable, ECVF_SetByCode);
+		GEngine->DestroyWorldContext(World);
+		World->DestroyWorld(false);
+		return true;
+	}
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLDeployAttackWhilePackedTest, "HeroesOfLiberty.Siege.Deploy.AttackWhilePackedDeploysThenFires", UE::HeroesOfLiberty::Tests::DeployButton::Flags)
+
+bool FHOLDeployAttackWhilePackedTest::RunTest(const FString& Parameters)
+{
+	return UE::HeroesOfLiberty::Tests::DeployButton::RunAttackWhilePacked(*this, UE::HeroesOfLiberty::Tests::DeployButton::EAttackWhilePackedCase::InCombatReach);
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLDeployAttackBeyondDeployRangeTest, "HeroesOfLiberty.Siege.Deploy.AtTheCombatReachButBeyondDeployRange", UE::HeroesOfLiberty::Tests::DeployButton::Flags)
+
+bool FHOLDeployAttackBeyondDeployRangeTest::RunTest(const FString& Parameters)
+{
+	return UE::HeroesOfLiberty::Tests::DeployButton::RunAttackWhilePacked(*this, UE::HeroesOfLiberty::Tests::DeployButton::EAttackWhilePackedCase::BeyondDeployRange);
 }
 
 #endif // WITH_DEV_AUTOMATION_TESTS
