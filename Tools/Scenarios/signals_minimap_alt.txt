@@ -12,7 +12,7 @@ frames 5
 # 1. Temoin : sans Alt, un clic gauche sur la minicarte deplace la camera et ne pose rien.
 hol.HUD.Click MinimapClickL60x60
 frames 5
-waitlog Minimap signals: 0
+wait 1
 capture signals_minimap_alt_before
 # 2. Alt maintenu puis clic gauche sur la minicarte : le signal neutre est pose.
 hol.UI.Key LeftAlt 0 3
