@@ -188,3 +188,29 @@ void Test_ChatInputScreenCloseAfterSendReturnsFocusToGame(FUnitTest& T)
 	const bool bNextEnter = HOLChatInputScreen::EnterOpensField(Chat.State.bOpen, Chat.LastCommitTime + 0.2, Chat.LastCommitTime);
 	T.AssertTrue(bNextEnter, "the next Enter, heard with no focus, reopens the field");
 }
+
+// GLORFINDEL-1120sc (RECETTE-1120sa chat_input: after a click on the player 2 line, Enter + Tab Tab left the field on Allies with an empty box): the player's
+// whole gesture on the real chain: the panel's chosen slot (DipMessageSlot = 1, the players the field can name = {1}) becomes the private target through
+// ChosenTarget, Enter opens on Allies, Tab Tab reaches Private, the mark is the player's name and the message is routed to that slot.
+// Red: ChosenTarget ignores the chosen slot (stub returns -1: Tab then skips Private and the field stays on Allies/All).
+void Test_ChatInputScreenClickedPlayerThenTabTabIsPrivate(FUnitTest& T)
+{
+	TArray<int> Slots;
+	Slots.Add(1);
+	const int Chosen = HOLChatInputScreen::ChosenTarget(Slots, 1);
+	T.AssertEquals(Chosen, 1, "the clicked player of the match is the private target");
+	FHOLChatInputState State;
+	HOLChatInput::PressEnter(State, "", true, Chosen >= 0);
+	T.AssertEquals(State.Channel, HOLChat::Allies, "Enter opens on Allies");
+	HOLChatInput::PressTab(State, true, Chosen >= 0);
+	HOLChatInput::PressTab(State, true, Chosen >= 0);
+	T.AssertEquals(State.Channel, HOLChat::Private, "Tab Tab: Private");
+	const FString Line = HOLChatInputScreen::MarkLine(State.Channel, "Joueur 2");
+	T.AssertEquals(Line, "Joueur 2 : ", "the mark is the player's name");
+	const int Target = HOLChatInput::TargetSlot(State, Chosen);
+	T.AssertEquals(Target, 1, "the message goes to the clicked slot");
+	TArray<int> Others;
+	Others.Add(2);
+	const int NotInMatch = HOLChatInputScreen::ChosenTarget(Others, 1);
+	T.AssertEquals(NotInMatch, -1, "a chosen player who left the match is no target");
+}

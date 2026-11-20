@@ -30,6 +30,12 @@ namespace HOLChatInputScreen
 		return "Tous";
 	}
 
+	// The slot the Private channel goes to: the Diplomacy panel's chosen slot, only while that player is one the field can name (Slots = every other player in the match); -1 otherwise.
+	int ChosenTarget(const TArray<int>& Slots, int MessageSlot)
+	{
+		return Slots.Contains(MessageSlot) ? MessageSlot : -1;
+	}
+
 	// What stands before the typed text.
 	FString MarkLine(int Channel, const FString& PlayerName)
 	{
@@ -128,10 +134,13 @@ class UHOLChatInputScreen : UObject
 		Screen = InScreen;
 		Panel = Cast<UBorder>(Screen.ConstructWidget(UBorder, n"ChatInputPanel"));
 		Panel.SetVisibility(ESlateVisibility::Collapsed);
+		// A UBorder draws a white brush: the mark (light HUD text) was white on white in RECETTE-1120sa (empty-looking box). Dark panel + the HUD label style.
+		Panel.SetBrushColor(FLinearColor(0.05, 0.05, 0.08, 0.85));
 		Host.AddChildToVerticalBox(Panel);
 		UHorizontalBox Row = Cast<UHorizontalBox>(Screen.ConstructWidget(UHorizontalBox, n"ChatInputRow"));
 		Panel.SetContent(Row);
 		MarkText = Cast<UCommonTextBlock>(Screen.ConstructWidget(UCommonTextBlock, n"ChatInputMark"));
+		MarkText.SetStyle(UHOLTextStyleHUDLabel);
 		Row.AddChildToHorizontalBox(MarkText).SetVerticalAlignment(EVerticalAlignment::VAlign_Center);
 		Box = Cast<UEditableTextBox>(Screen.ConstructWidget(UEditableTextBox, n"ChatInputBox"));
 		UHorizontalBoxSlot BoxSlot = Row.AddChildToHorizontalBox(Box);
@@ -239,7 +248,9 @@ class UHOLChatInputScreen : UObject
 
 	void HandleTab()
 	{
-		if (HOLChatInput::PressTab(State, bHasAlly, ChosenSlot >= 0))
+		const bool bTabbed = HOLChatInput::PressTab(State, bHasAlly, ChosenSlot >= 0);
+		Log(n"LogHOLMatch", f"ChatInput: Tab (open {State.bOpen}) ally {bHasAlly} chosen {ChosenSlot} -> channel {State.Channel}");
+		if (bTabbed)
 		{
 			ShowMark();
 			Box.SetKeyboardFocus();
@@ -331,6 +342,6 @@ class UHOLChatInputScreen : UObject
 		{
 			return f"chat: closed (last sent '{LastSent}')";
 		}
-		return f"chat: open {HOLChatInputScreen::ChannelMark(State.Channel, ChosenName)}";
+		return f"chat: open {HOLChatInputScreen::ChannelMark(State.Channel, ChosenName)} (ally {bHasAlly}, private target {ChosenSlot})";
 	}
 }

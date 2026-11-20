@@ -946,6 +946,7 @@ UHOLScenarioPanelScript ScenarioPanel;
 			if (Chosen < 0)
 				return false;
 			DipMessageSlot = Chosen;
+			RefreshChatInput();
 			return true;
 		}
 		return false;
@@ -1486,7 +1487,7 @@ UHOLScenarioPanelScript ScenarioPanel;
 				Slots.Add(Slot);
 			}
 		}
-		const int Chosen = Slots.Contains(DipMessageSlot) ? DipMessageSlot : -1;
+		const int Chosen = HOLChatInputScreen::ChosenTarget(Slots, DipMessageSlot);
 		ChatInput.SetWhisperDirectory(Names, Slots);
 		ChatInput.SetContext(LocalPlayerHasAlly(), Chosen, Chosen >= 0 ? HOLDiplomacyRead::GetSlotNameText(Viewer, Chosen) : "");
 	}
@@ -2540,7 +2541,10 @@ UHOLScenarioPanelScript ScenarioPanel;
 		if (KeyName == n"CtrlD")
 			ToggleDiplomacy();
 		if (ChatInput != nullptr)
+		{
+			RefreshChatInput();
 			ChatInput.KeyPressed(KeyName);
+		}
 	}
 
 	// H-11a: the cheats panel's bottom edge (0 before it is built): the AI level line and the diplomacy panel stack under it.
