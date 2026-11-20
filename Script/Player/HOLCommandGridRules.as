@@ -128,7 +128,6 @@ namespace HOLCommandGridRules
 	}
 
 	// ELROND-1120e (morceau 7): the same, with the number of specialization options of the seat's faction (HOLSpecialization::OptionCountOf: 3 for the Templars).
-	// STUB of the first commit: OptionCount is ignored (always SpecializationOptions).
 	FHOLGridCommandView GetCommandWithOptions(const FHOLGridContextView& Context, int Cell, int OptionCount)
 	{
 		FHOLGridCommandView Result;
@@ -172,9 +171,9 @@ namespace HOLCommandGridRules
 				Result.TypeName = Context.Produces[Cell];
 			}
 			else if (Context.bPrimaryForum && !Context.bBuildingGroup && Context.SpecializationTier > 0
-				&& Cell >= FirstOption && Cell < HOLCommandGridRead::GetSpecializationCell(SpecializationOptions))
+				&& Cell >= FirstOption && Cell < HOLCommandGridRead::GetSpecializationCell(OptionCount))
 			{
-				// SP3 (D332, D684, D785): the open tier's two options; the running one cancels at no cost (its time left on the cell), the
+				// SP3 (D332, D684, D785): the open tier's options (two, three for the Templars); the running one cancels at no cost (its time left on the cell), the
 				// other still starts (it replaces).
 				Result.Option = Cell - FirstOption;
 				Result.Tier = Context.SpecializationTier;
