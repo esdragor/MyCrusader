@@ -40,6 +40,58 @@ SÉANCE DE FONCTIONS DU 2026-11-20 APRÈS-MIDI (« lance une autojourney », 15:
 
 Plan de lancement (étape 0, 15:40) : 7 agents d'emblée, 3 C++ (Elrond, Glorfindel, Sauron = plafond) ; gate Launch sans FAIL sur les 7 (15:38-15:39). Vague 2 prévue : D868 (`HOLCommandGrid.cpp:63`), alertes mineures (Galadriel, script), garnison et dessin du glisser (C++), `integrate.ps1` (L19-9) ; dernier lancement C++ ~17:00 (L18-c). Exception : Palier 3 G1 (file l.111) non lancé, prévenir l'utilisateur avant.
 
+### Bilan de la séance du 2026-11-20 après-midi (15:32 -> 18:00, interactif)
+
+- **État à la fin** : main = fd41600, LOCAL, rien poussé (avances de main 16:44 = 9dc5e75, 17:04 = 2868866, docs ensuite, puis fd41600 pour amener Faramir à main). Session principale + ~45 agents Sonnet en 8 vagues ; intégration integ-30 (Arwen) en 4 passes : passe 1 = 11 rouges attendus, nom par nom (15:53) ; passe 2 = 8 attendus + 1 régression `Signals.GroundMark` (corrigée 0758482) ; passes 3-4 = 2 conflits de journaux (AubeInProgress, FortificationsInProgress, Palier3InProgress) résolus par agents. Tests 1971/1971 (16:32) puis 1972/1972 (17:03) ; `net` PASS ; `build` PASS après correction d'une regex d'infobulle (9dc5e75). Assets UnitTypes/BuildingTypes régénérés (ffff449).
+- **Entré dans main, visible** : D869 montage/démontage de l'engin avec texte et barre (partiel : voir « non vérifié »), chat privé cliquable + `/w`, ligne Diplomatie cliquable, Chevalier Vertueux dans la Caserne (D873, libellés vus en recette), clairière des neutres sans bosquet (`neutrals_clairiere`, VU À L'ÉCRAN).
+- **Entré dans main, sans effet visible** : D862 Sceau par les capacités du Moine, D864/D865 colonnes `DamageRedirectPercent` et voisines, D867 murs sans plafond de longueur, D868 en script + en jeu, D870 marque du signal ÷ 3, garnison (cadre, branchement, « Sortir tous »), moral des duels (pont `UHOLMoraleLibrary`), `integrate.ps1`, `edit_line.ps1 -Delete`, `hol.Mouse.Drag`, `hol.Decor.ClearNear Trees`, anneau de 8 m, alertes mineures, saisie du chat branchée.
+- **Ce que la séance a trouvé** : 4 erreurs de compilation rendues par des agents sans build (bouchon D869 doublé + `case` sans accolades 7a00ce2 ; paramètre `const` du script DuelRewards 1dfe929 ; include après `.generated.h` 9b189f2 ; `GetSlotFaction` privée 2f144ce) ; 1 vrai bug trouvé par diagnostic (type d'occupant de garnison, a680f3f, DIAG-1120pa) ; conflits de journaux `*InProgress.md` à presque chaque fusion (5 agents de résolution) ; 7 réponses de l'utilisateur par l'interface de choix, enregistrées en minutes (D871 à D876 + Q-decide-jauge). Recette (RECETTE-1120pa 16:44, 1120pb 17:04) : 1 essai donné (`neutrals_clairiere`), `deploy`, `chat_input` et `virtuous_knight` en échec : défauts mis en tête de file (6875503).
+- **Non vérifié** : les rouges de la dernière vague (74745b8, 58e69f7, 96a2479, ea59204, b1ccdeb, b74710e, 178bff2) n'ont pas été vus séparément (L19-8) ; D869 : la barre du montage reste à 0 dièse 0,3 s après l'ordre et le 2e cycle de montage reste sur « Montage… » (9469ade seulement partiel) ; chat : la 2e Entrée ne rouvre pas le champ (e3d1969 sans effet, focus: none) ; `virtuous_knight` : `hol.Select.ClickUnit 0` désigne le Paysan, anneau de 8 m et PV du Chevalier non vus ; aucun essai à geste réel joué (neutrals_clairiere = GESTE: interne, SON: non entendu).
+- **Gate Close 17:17** : FAIL L19-1 (23 opérations de la session principale au reflog : fusions groupées, avances de main, commits de docs et d'assets ; toutes les corrections de code et diagnostics ont été confiés à des agents), FAIL Faramir pas à main (réglé : main avancé à fd41600), FAIL tableau des leçons absent (ce tableau).
+
+### Lecons appliquees 2026-11-20
+| ID | Etat | Preuve |
+|---|---|---|
+| T2-1 | appliquee | ETAPE0-1120pm (15:36-15:40), plan de lancement écrit sous le tableau des agents, une raison par worktree |
+| T2-2 | appliquee | 7 agents d'emblée à 15:40 sur 7 worktrees, Arwen = intégrateur (raison écrite) |
+| L3-12 | appliquee | étape 0 faite (rapport `Docs\Rapports\ETAPE0-1120pm.md`), non sautée |
+| L5-7 | non appliquee | aucune question sur les dossiers non suivis dans les réponses de 15:3x ; 4 fichiers Docs non suivis encore présents à ce bilan |
+| L4-1, L4-3 | appliquee | fin 18:00 dans le titre et `Docs\SessionEnd.txt`, alarme de clôture 17:45 posée (réponses 15:3x) |
+| L3-8, L4-9, Q5, L1-14 | appliquee | ligne `intégrateur` à 15:46 (Arwen, integ-30) + RECETTE-1120pa (aeac09b7) ; réserve : l'intégrateur était la session principale (L19-1) |
+| L3-9 | non appliquee | aucun point de reprise écrit au Jour ; compte d'appels de la session principale non relevé |
+| T2-3 | appliquee | chaque énoncé ouvre par « lis agent_rules.md » + arrêt dur (ex. BILAN-1120pm : 17:40 ou 30 appels) |
+| L1-1, L3-6, L4-7, L5-3 | appliquee | arrêts à 24 (GALADRIEL-1120pa), 39 (GALADRIEL-1120pc) et 46 appels (GLORFINDEL-1120pc), fiche de reprise ; aucun dépassement de 80 signalé |
+| L5-6 | appliquee | 7 questions posées à l'interface de choix dès leur apparition (D871-D876, Q-decide-jauge), réponses en minutes |
+| L3-11, L5-5 | appliquee | aucune régénération de cartes ; assets UnitTypes/BuildingTypes régénérés par commande (ffff449), pas mêlée à un réglage de budget |
+| L3-7, L1-4 | appliquee | mode interactif, veilleur 5 min (réponse 15:3x) |
+| T2-4 | appliquee | au plus 2 Q par chantier : Elrond 2 (Q-deploy-visible, Q-garrison-portrait), Faramir 2 (Q-decide-jauge, Q-chevalier-defi-ligne), Sauron 1 (Q-chevalier-ligne) |
+| Q5, L5-4 | appliquee | RECETTE-1120pa (16:44-16:52) et 1120pb (17:04-17:12) par agents, sur main fusionné, après l'intégration ; aucune commande donnée pour les 3 essais en échec |
+| Q8 | appliquee | défauts deploy / chat_input / virtuous_knight en tête de file (6875503) |
+| Q11 | appliquee | 1 essai donné (`neutrals_clairiere`), bien sous 6 |
+| L4-11 | appliquee | sans objet : aucun essai à variantes multiples cette séance |
+| L3 / T2 | appliquee | une intégration integ-30 : build PASS, tests 1971/1971, `net,build`, avance rapide de main 9dc5e75 (16:44) |
+| L1-3 | non appliquee | champ `merge_main_fait` non relevé ; integ-30 a rejoué tests complets + `net,build` au lieu de `tests,aiserver,aiduel` seulement |
+| L17-a | appliquee | passe 1 : 11 rouges attendus lus nom par nom (15:53) ; passe 2 : régression `Signals.GroundMark` repérée et corrigée (0758482) |
+| L17-b | appliquee | archive du matin par UN agent, par section entière (NETTOYAGE-1120pm, 217b0ad) |
+| L17-c | non appliquee | `Docs\BuildQueue.state` non cité dans le tableau ; preuve absente |
+| L18-a | non appliquee | tables UnitTypes/BuildingTypes régénérées (ffff449) ; aucune relecture `git diff` des fichiers générés notée |
+| L18-b | appliquee | aucun conflit de type ni d'espace de noms à l'intégration (les 4 erreurs de compilation sont de syntaxe, d'include ou de visibilité) |
+| L18-c | appliquee | dernière vague C++ lancée à 16:12 (avant fin - 60 min = 17:00), main à jour 16:44, sync SANS -NoBuild 16:45 |
+| L18-d | appliquee | aucun test de comptage cassé (1971/1971 puis 1972/1972) malgré `hol.Mouse.Drag` et `hol.Decor.ClearNear` ajoutées |
+| L18-e | appliquee | passes rouges puis verts : 11 rouges attendus nom par nom (15:53), 8 + 1 à la passe 2, tous les verts à la passe 4c (ffaef13) |
+| L18-f | appliquee | scénarios avec `waitlog` ; les 3 échecs de recette ont une cause jeu (deploy, chat) ou index de sélection du scénario (virtuous_knight), pas une relecture trop tôt |
+| L19-1 | non appliquee | check-list lue en entier à 15:35 (oui) mais gate Close 17:17 : FAIL, 23 opérations de la session principale au reflog (seuil 3) : fusions groupées, avances de main, commits de docs et d'assets |
+| L19-2 | non appliquee | 1 erreur de script rendue par un agent sans build (DuelRewards, paramètre `const`, 1dfe929) + 3 erreurs C++ (7a00ce2, 9b189f2, 2f144ce) ; champ `DIAGNOSTICS_AS` non exigé à la réception |
+| L19-3 | appliquee | gate Close : « copie principale propre », aucun fichier de code modifié dans la copie principale |
+| L19-4 | non appliquee | l'infobulle de Caserne attendue par `quick_check` (D873) n'a été trouvée qu'au `net,build` après intégration (regex corrigée 9dc5e75) |
+| L19-5 | appliquee | fiche `E-neutrals_clairiere.md` écrite au pré-vol PASS ; capture « pendant » du `.look` de `deploy` : a prouvé la barre figée à 0 dièse ; recette indépendante par agents |
+| L19-6 | appliquee | questions posées dès leur apparition, réponses en minutes |
+| L19-7 | appliquee | étape 0 : vm libre 28,7 Gio avant le lot C++ ; en-tête central D864/D865 changé UNE fois ; builds de 128 à 181 s |
+| L19-8 | non appliquee | rouges de la dernière vague non vus séparément (74745b8, 58e69f7, 96a2479, ea59204, b1ccdeb, b74710e, 178bff2) |
+| L19-9 | non appliquee | `integrate.ps1` écrit (HALDIR-1120pb 2e29f58, DryRun 22/22) ; usage en intégration réelle non prouvé, passes 1 à 4c conduites par commandes |
+
+Total : 27 appliquees, 10 non appliquees (37 lignes). Les 10 non appliquees : L5-7, L3-9, L1-3, L17-c, L18-a, L19-1, L19-2, L19-4, L19-8, L19-9 ; nouvelles leçons L20-1 à L20-4 dans `Auto_Journey_Checklist.md`.
+
 ## Résumé de la séance de fonctions du 2026-11-20 matin
 
 - Séance autonome 08:45 -> arrêt ~13:01 à la demande de l'utilisateur, session principale + environ 50 agents Sonnet en 11 vagues ; quatre intégrations (integ-26 à integ-29), main 410cb7d -> 991a8bc, tests 1922/1922 (1817 au lancement : 105 tests neufs), `net` et `build` PASS, cinq essais donnés (VU À L'ÉCRAN), 0 question ouverte à la fin (7 réponses D862-D868 enregistrées).
