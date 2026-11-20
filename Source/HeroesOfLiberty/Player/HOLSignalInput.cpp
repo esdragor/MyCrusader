@@ -12,6 +12,36 @@ namespace UE::HeroesOfLiberty::SignalInput
 		TEXT("SG3: how long a received signal's icon stays on the minimap, seconds (D784: 5 s, the board's life)"));
 	static TAutoConsoleVariable<int32> CVarSignalIconStyle(TEXT("hol.Signal.IconStyle"), 0,
 		TEXT("SG3 (Retours/Q-signals-ui.md Q2): 0 one colour per kind (A), 1 all white"));
+	static TAutoConsoleVariable<int32> CVarSignalMarkStyle(TEXT("hol.Signal.MarkStyle"), 1,
+		TEXT("D860 H2: a received signal's mark (ground and minimap) 0 fixed size (as before), 1 pulses over its life"));
+	static TAutoConsoleVariable<float> CVarSignalPulseMin(TEXT("hol.Signal.PulseMin"), 0.8f,
+		TEXT("D860 H2: the pulse's lower bound (factor of the mark's size, at most 1)"));
+	static TAutoConsoleVariable<float> CVarSignalPulseMax(TEXT("hol.Signal.PulseMax"), 1.4f,
+		TEXT("D860 H2: the pulse's upper bound (factor of the mark's size, at least 1)"));
+	static TAutoConsoleVariable<int32> CVarSignalMarkCycles(TEXT("hol.Signal.MarkCycles"), 3,
+		TEXT("D860 H2: how many pulses (whole swings) over the mark's life"));
+}
+
+double HOLSignalInput::MarkLifetime()
+{
+	return FMath::Max(UE::HeroesOfLiberty::SignalInput::CVarSignalIconSeconds.GetValueOnGameThread(), 0.1f);
+}
+
+double HOLSignalInput::PulseMin()
+{
+	return FMath::Clamp(static_cast<double>(UE::HeroesOfLiberty::SignalInput::CVarSignalPulseMin.GetValueOnGameThread()), 0.1, 1.0);
+}
+
+double HOLSignalInput::PulseMax()
+{
+	return FMath::Max(static_cast<double>(UE::HeroesOfLiberty::SignalInput::CVarSignalPulseMax.GetValueOnGameThread()), 1.0);
+}
+
+double HOLSignalInput::PulseScale(const double AgeSeconds)
+{
+	// D860 H2 stub (compiles, red on purpose): no animation yet.
+	(void)AgeSeconds;
+	return 1.0;
 }
 
 int32 HOLSignalInput::KindOfAltClick(const FVector2D& Press, const FVector2D& Release)

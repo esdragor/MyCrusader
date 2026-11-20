@@ -44,4 +44,17 @@ namespace HOLSignalInput
 
 	/** The icon's colour of a kind (hol.Signal.IconStyle 0: one colour per kind; 1: all white). */
 	HEROESOFLIBERTY_API FLinearColor ColorOf(int32 Kind);
+
+	/** D860 H2: the factor the signal's mark (the ground's, HOLSelectionMarkers.cpp UpdateSignalMarks, and the minimap's square) is drawn
+	 * at, AgeSeconds after the signal arrived. hol.Signal.MarkStyle 0: always 1 (the fixed mark of before). Style 1 (default): a pulse,
+	 * hol.Signal.MarkCycles swings over the mark's life, growing up to PulseMax then shrinking down to PulseMin; 1 when born and 1 again at
+	 * expiry (MarkLifetime) and after. The one source of the animation: the script reads it through HOLSignalInputRead::PulseScale. */
+	HEROESOFLIBERTY_API double PulseScale(double AgeSeconds);
+
+	/** How long a mark lives, seconds (hol.Signal.IconSeconds, the life Expire uses). */
+	HEROESOFLIBERTY_API double MarkLifetime();
+
+	/** The pulse's lower bound (hol.Signal.PulseMin, at most 1) and upper bound (hol.Signal.PulseMax, at least 1): PulseScale stays within. */
+	HEROESOFLIBERTY_API double PulseMin();
+	HEROESOFLIBERTY_API double PulseMax();
 }
