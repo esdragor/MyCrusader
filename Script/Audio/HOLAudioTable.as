@@ -94,6 +94,8 @@ namespace HOLAudioEvent
 	// the user to hear its cut snort again (audio_compare_buildings_stable_cut).
 	const int SelectBuildingRange = 30;
 	const int SelectBuildingBarracks = 31;
+	// D834 (2026-11-16, the user's answer after audio_compare_buildings_stable_cut): Stable = the cut snort (Building.CutStable A).
+	const int SelectBuildingStable = 32;
 }
 
 namespace HOLAudio
@@ -176,6 +178,8 @@ namespace HOLAudio
 		// D832: round 6 files (Tools/Audio/make_round6_candidates.py, peak -2.5 dB, no _lim copy): Archery range = Range B (bow shot, no filter), Barracks = Barracks A (one blade drawn).
 		Add(Cues, HOLAudioEvent::SelectBuildingRange, "Select.BuildingRange", "soft", "s_shot6_bow_full", BuildingSelectGainPercent, 97, 103, 60, HOLAudioPriority::Order);
 		Add(Cues, HOLAudioEvent::SelectBuildingBarracks, "Select.BuildingBarracks", "soft", "s_barr6_draw_a", BuildingSelectGainPercent, 97, 103, 60, HOLAudioPriority::Order);
+		// D834: Stable = s_horse6_snort (Stable B without its neigh, only the snort of its end; make_round6_candidates.py SNORT).
+		Add(Cues, HOLAudioEvent::SelectBuildingStable, "Select.BuildingStable", "soft", "s_horse6_snort", BuildingSelectGainPercent, 97, 103, 60, HOLAudioPriority::Order);
 	}
 
 	// The table, built at each call (script has no mutable global; 24 small structs, a sound is not played 100 times a frame).

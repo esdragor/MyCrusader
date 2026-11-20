@@ -96,6 +96,8 @@ namespace HOLAudioCandidates
 		// D832 REGLAGE (2026-11-16): the user wants Stable B WITHOUT the neigh of its start, only the snort ("pfff") of its end. A = B cut (the snort
 		// alone, make_round6_candidates.py SNORT), B = B whole, to compare (scenario audio_compare_buildings_stable_cut).
 		Add(List, "Building.CutStable", "s_horse6_snort,s_horse6_vocal_full");
+		// D834: the Stable elected A of that comparison (the snort alone); the list the user heard is the same two.
+		Add(List, "Select.BuildingStable", "s_horse6_snort,s_horse6_vocal_full");
 	}
 
 	// The lists, built at each call (script has no mutable global).

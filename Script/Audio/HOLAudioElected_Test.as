@@ -55,7 +55,7 @@ void Test_AudioSilentCuesNeverPlay(FUnitTest& T)
 	Events.Add(HOLAudioEvent::AlertBuildingDone);
 	Events.Add(HOLAudioEvent::AlertTechDone);
 	Events.Add(HOLAudioEvent::AlertTrade);   // Q-audio-market-select = A (2026-11-08): the purchase sound moved to the Market's selection, buying and selling is silent
-	T.AssertEquals(32, HOLAudio::Count(), "the table has its 24 events, the 2 elected building selections, the Market's, the 3 of D798 and the 2 of D832");
+	T.AssertEquals(33, HOLAudio::Count(), "the table has its 24 events, the 2 elected building selections, the Market's, the 3 of D798, the 2 of D832 and the Stable's of D834");
 	for (int Index = 0; Index < Events.Num(); Index++)
 	{
 		FHOLAudioCue Cue = HOLAudio::CueFor(Events[Index]);
@@ -98,7 +98,7 @@ void Test_AudioElectedBuildingSelectionWoodAndSacred(FUnitTest& T)
 		}
 	}
 	TArray<FString> Silent;
-	Silent.Add("Stable");   // MainCentre, SiegeWorkshop, Forge: their own sound (D798); Barracks, ArcheryRange: their own sound (D832)
+	Silent.Add("Spaceship");   // MainCentre, SiegeWorkshop, Forge: their own sound (D798); Barracks, ArcheryRange: D832; Stable: D834 (unknown building: silent)
 	for (int Index = 0; Index < Silent.Num(); Index++)
 	{
 		T.AssertEquals(-1, HOLAudioBuildings::SelectEventFor(Silent[Index]), f"{Silent[Index]}: no election yet, no event");
@@ -163,7 +163,7 @@ void Test_AudioElectedSiegeForumForgeRingTheirLetters(FUnitTest& T)
 		}
 	}
 	TArray<FString> Silent;
-	Silent.Add("Stable");   // D832: the Stable waits for the user to hear its cut sound again; Barracks and Archery range: the test below
+	Silent.Add("Spaceship");   // D832/D834: every building answered (Barracks, Archery range, Stable: the tests below); an unknown one stays silent
 	for (int Index = 0; Index < Silent.Num(); Index++)
 		T.AssertEquals(-1, HOLAudioBuildings::SelectEventFor(Silent[Index]), f"{Silent[Index]}: not chosen yet, silent");
 }
