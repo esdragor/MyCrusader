@@ -50,6 +50,11 @@ namespace HOLGameNames
 		{
 			return LOCTEXT("Spearman", "Lancier");
 		}
+		if (TypeName == FName(TEXT("Halberdier")))
+		{
+			// D858 (the Dawn's Barracks lists the Halberdier instead of the Spearman), translated in Tools/Localization/fill_po.py (SAURON-1120d).
+			return LOCTEXT("Halberdier", "Hallebardier");
+		}
 		if (TypeName == ManAtArms)
 		{
 			return LOCTEXT("ManAtArms", "Homme d'armes");
