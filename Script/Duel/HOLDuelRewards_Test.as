@@ -114,3 +114,42 @@ void Test_DuelOrdersRadiusFromTable(FUnitTest& T)
 		T.AssertEquals(1200, All[Index].RadiusCm, "12 m (D859 n. 8)");
 	}
 }
+
+// Step 3a: the orders of EVERY duel that ended in one step, as the ledger's `Ended` loop collects them. Two duels over: a victory
+// (slots 0 and 1: Triumph, Demoralised) and a refusal with its cost (slots 2 and 3: Hesitation on the target) -> three orders,
+// each with the time the morale table gives (40 s, 40 s, 25 s).
+void Test_OrdersOfEndedCoversEveryEndedDuel(FUnitTest& T)
+{
+	FHOLDuelSettings S = HOLDuel::Preset();
+	FHOLDuel Won = HOLDuel::Advance(S, RewardDuelActive(S), 3000, 0, 40);
+	FHOLDuel Refused = HOLDuel::Respond(S, HOLDuel::Challenge(S, 2, 3), false);
+	TArray<FHOLDuelEnded> Ended;
+	FHOLDuelEnded First;
+	First.Duel = Won;
+	First.Effects = HOLDuel::Effects(S, Won);
+	Ended.Add(First);
+	FHOLDuelEnded Second;
+	Second.Duel = Refused;
+	Second.Effects = HOLDuel::Effects(S, Refused);
+	Ended.Add(Second);
+	TArray<FHOLDuelMoraleOrder> Orders = HOLDuelRewards::OrdersOfEnded(S, Ended);
+	T.AssertEquals(3, Orders.Num(), "three orders: Triumph, Demoralised, Hesitation");
+	int TriumphMs = -1;
+	int DemoralisedMs = -1;
+	int HesitationMs = -1;
+	for (int Index = 0; Index < Orders.Num(); Index++)
+	{
+		if (Orders[Index].EffectId == HOLMoraleTable::Triumph && Orders[Index].Slot == 1)
+			TriumphMs = Orders[Index].DurationMs;
+		if (Orders[Index].EffectId == HOLMoraleTable::Demoralised && Orders[Index].Slot == 0)
+			DemoralisedMs = Orders[Index].DurationMs;
+		if (Orders[Index].EffectId == HOLMoraleTable::Hesitation && Orders[Index].Slot == 3)
+			HesitationMs = Orders[Index].DurationMs;
+	}
+	T.AssertEquals(HOLMoraleTable::Row(HOLMoraleTable::Triumph).DurationMs, TriumphMs, "Triumph on the winner, the table's time");
+	T.AssertEquals(HOLMoraleTable::Row(HOLMoraleTable::Demoralised).DurationMs, DemoralisedMs, "Demoralised on the loser, the table's time");
+	T.AssertEquals(HOLMoraleTable::Row(HOLMoraleTable::Hesitation).DurationMs, HesitationMs, "Hesitation on the refuser of the second duel");
+	T.AssertEquals(40000, TriumphMs, "Triumph lasts 40 s");
+	T.AssertEquals(40000, DemoralisedMs, "Demoralised lasts 40 s");
+	T.AssertEquals(25000, HesitationMs, "Hesitation lasts 25 s");
+}

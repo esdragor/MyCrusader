@@ -40,4 +40,11 @@ namespace HOLDuelRewards
 			Result.Add(MakeOrder(E.HesitationSlot, HOLMoraleTable::Hesitation));
 		return Result;
 	}
+
+	// STUB (step 3a, red first): the orders of every duel that ended in one step; empty until the fix.
+	TArray<FHOLDuelMoraleOrder> OrdersOfEnded(const FHOLDuelSettings& S, const TArray<FHOLDuelEnded>& Ended)
+	{
+		TArray<FHOLDuelMoraleOrder> Result;
+		return Result;
+	}
 }
