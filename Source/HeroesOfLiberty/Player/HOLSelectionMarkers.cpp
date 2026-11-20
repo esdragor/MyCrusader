@@ -791,6 +791,12 @@ void AHOLSelectionMarkers::UpdateAuraRings()
 				Parts.Add(FString::Printf(TEXT("aim (%.0f, %.0f) %s"), Aim.X, Aim.Y, bInReach ? TEXT("ok") : TEXT("out of reach")));
 			}
 		}
+		// A faction power aimed (D839): its reach around the hero, as the banner's (the script gave the radius, 800 cm for the Seal).
+		else if (Hero && PlayerController->GetFactionAim() >= 0)
+		{
+			AddCircle(HeroPoint, PlayerController->GetFactionAimRangeCm(), ReachRingWidth, ReachRingColor, Hero->Location.Z);
+			Parts.Add(FString::Printf(TEXT("faction reach %.0f"), PlayerController->GetFactionAimRangeCm()));
+		}
 	}
 	AuraRingsDescription = Parts.IsEmpty() ? FString(TEXT("none")) : FString::Join(Parts, TEXT(", "));
 	SetInstances(*AuraRings, Transforms, CustomData);
