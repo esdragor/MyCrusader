@@ -374,7 +374,8 @@ void Test_SpecializationBoardSeatFactionOptions(FUnitTest& T)
 	T.AssertEquals(HOLSpecialization::Ok, HOLSpecialization::Start(Rebuilt, 1, TemplarOptions - 1, 1), "the rebuilt seat accepts the third option");
 }
 
-// ELROND-1120e, the grid's cell: the Forum's third specialization cell shows for a faction with three options only (the count is OptionCountOf's).
+// ELROND-1120e + D868, the grid's cell: the Templars' three options sit on the cells before the research row (Base - 1, Base, Base + 1 : 5 6 7 by default,
+// nothing hidden), the other factions' two stay on Base and Base + 1 (6 7). Base is the cvar-read cell of the first option for two options.
 void Test_SpecializationThirdGridCellForThreeOptions(FUnitTest& T)
 {
 	FHOLGridContextView Forum;
@@ -384,14 +385,28 @@ void Test_SpecializationThirdGridCellForThreeOptions(FUnitTest& T)
 	Forum.SpecializationTier = 1;
 	const int DawnOptions = HOLSpecialization::OptionCountOf(EHOLFaction::DawnOrder);
 	const int TemplarOptions = HOLSpecialization::OptionCountOf(EHOLFaction::Templars);
-	const int ThirdCell = HOLCommandGridRead::GetSpecializationCell(2);
-	FHOLGridCommandView TemplarThird = HOLCommandGridRules::GetCommandWithOptions(Forum, ThirdCell, TemplarOptions);
-	FHOLGridCommandView DawnThird = HOLCommandGridRules::GetCommandWithOptions(Forum, ThirdCell, DawnOptions);
-	int TemplarThirdOption = TemplarThird.Option;
-	T.AssertTrue(TemplarThird.Command == EHOLGridCommandKind::Specialize, "the Templars' Forum offers a third cell");
-	T.AssertEquals(2, TemplarThirdOption, "the third cell is option 2");
-	T.AssertTrue(DawnThird.Command != EHOLGridCommandKind::Specialize, "the Dawn's Forum has no third cell");
-	FHOLGridCommandView TemplarFirst = HOLCommandGridRules::GetCommandWithOptions(Forum, HOLCommandGridRead::GetSpecializationCell(0), TemplarOptions);
-	FHOLGridCommandView DawnFirst = HOLCommandGridRules::GetCommandWithOptions(Forum, HOLCommandGridRead::GetSpecializationCell(0), DawnOptions);
-	T.AssertTrue(TemplarFirst.Command == EHOLGridCommandKind::Specialize && DawnFirst.Command == EHOLGridCommandKind::Specialize, "the first cell stays for both");
+	const int Base = HOLCommandGridRead::GetSpecializationCell(0);
+	// The Templars: option k on cell Base - 1 + k.
+	for (int Option = 0; Option < TemplarOptions; Option++)
+	{
+		FHOLGridCommandView TemplarCell = HOLCommandGridRules::GetCommandWithOptions(Forum, Base - 1 + Option, TemplarOptions);
+		int TemplarCellOption = TemplarCell.Option;
+		T.AssertTrue(TemplarCell.Command == EHOLGridCommandKind::Specialize, "the Templars' cell Base - 1 + k offers a specialization");
+		T.AssertEquals(Option, TemplarCellOption, "the Templars' cell Base - 1 + k is option k");
+	}
+	FHOLGridCommandView TemplarPast = HOLCommandGridRules::GetCommandWithOptions(Forum, Base + TemplarOptions - 1, TemplarOptions);
+	T.AssertTrue(TemplarPast.Command != EHOLGridCommandKind::Specialize, "the Templars have no specialization on the cell after the third (the research row stays visible)");
+	// The Dawn (two options): Base, Base + 1 as before; no cell before, none after.
+	for (int Option = 0; Option < DawnOptions; Option++)
+	{
+		FHOLGridCommandView DawnCell = HOLCommandGridRules::GetCommandWithOptions(Forum, Base + Option, DawnOptions);
+		int DawnCellOption = DawnCell.Option;
+		T.AssertTrue(DawnCell.Command == EHOLGridCommandKind::Specialize, "the Dawn's cell Base + k offers a specialization");
+		T.AssertEquals(Option, DawnCellOption, "the Dawn's cell Base + k is option k");
+	}
+	FHOLGridCommandView DawnBefore = HOLCommandGridRules::GetCommandWithOptions(Forum, Base - 1, DawnOptions);
+	FHOLGridCommandView DawnPast = HOLCommandGridRules::GetCommandWithOptions(Forum, Base + DawnOptions, DawnOptions);
+	T.AssertTrue(DawnBefore.Command != EHOLGridCommandKind::Specialize, "the Dawn's Forum has nothing on the cell before its first option");
+	T.AssertTrue(DawnPast.Command != EHOLGridCommandKind::Specialize, "the Dawn's Forum has no third cell");
 }
+

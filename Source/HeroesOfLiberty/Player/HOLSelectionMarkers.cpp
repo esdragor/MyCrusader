@@ -236,9 +236,9 @@ namespace UE::HeroesOfLiberty::SelectionMarkers
 	 */
 	TAutoConsoleVariable<float> CVarSignalGroundMarkSize(
 		TEXT("hol.Signal.GroundMarkSize"),
-		500.f,
-		TEXT("D825: side (cm) of a received signal's mark on the ground (a diamond with a cross, the kind's colour), 5 s at its point."));
-	constexpr double SignalMarkStroke = 45.0;
+		500.f / 3.f,
+		TEXT("D825 + D870 (divided by 3): side (cm) of a received signal's mark on the ground (a diamond with a cross, the kind's colour), 5 s at its point."));
+	constexpr double SignalMarkStroke = 45.0 / 3.0; // D870: the strokes shrink with the mark (same shape, a third of the size)
 	constexpr double DuelRingThinWidth = 14.0;
 	constexpr double DuelRingThickWidth = 30.0;
 	const FLinearColor DuelRingWhite(0.85f, 0.85f, 0.85f);
