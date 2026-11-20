@@ -1,0 +1,23 @@
+NON COMPILÉ (aucun build, aucun quick_check, consigne de l'énoncé)
+
+APPELS_DECLARES: 17 (arrêt à 25)
+HEURE_DEBUT/HEURE_FIN: 11:38 / 11:46 (Get-Date PowerShell)
+PREMIER_BUILD: sans build   BUILD: NON COMPILÉ   LAUNCHCHECK_DEBUT: non lancé (aucun build dans ce worktree, énoncé)
+TEST_ROUGE: e65331c (stub + test) + assertit l'effet : oui (le compteur de bâtiments finis passe de 0 à 1 quand une Maison finie apparaît après la base, le lieu est celui du bâtiment, un bâtiment n'est compté qu'une fois ; recherches : 2 -> 3 donne +1). Rouge NON VU à l'exécution : lancer `quick_check -Parts tests` sur e65331c (attendu : Test_MinorEventsBuildingFinished et Test_MinorEventsResearchDone rouges) puis sur 09207f7.
+COMMITS: 2, dernier à 11:45 (e65331c test + stub, 09207f7 correctif), merge_main_fait: non (premier geste = `git merge integ-28` fait, fast-forward / fusion propre)
+TESTS: aucun lancé ; TESTS_SCRIPT_AJOUTES: 2 (Test_MinorEventsBuildingFinished, Test_MinorEventsResearchDone, Script\UI\HOLMinorEvents_Test.as) ; TESTS_TAUTOLOGIQUES: 0 (les compteurs et le lieu sont calculés par ObserveMinorEvents depuis de vrais AHOLBuilding du monde de test)
+ESSAIS: aucun
+QUESTIONS: aucune
+BUILDS_DEMANDES: 1 (lot C++ de la séance : HOLScriptScreen.cpp/.h de ce worktree, avec le reste du lot)
+TYPES_A_EXPOSER: FHOLMinorEventsWatch (USTRUCT BlueprintType, déjà déclaré dans HOLScriptScreen.h : à vérifier à la compilation que le script accepte le passage `UPARAM(ref)` d'une struct avec des membres C++ non réfléchis TSet/bool) ; UHOLScriptScreen::ObserveMinorEvents (static BlueprintCallable, `TArray<AHOLBuilding*>` : AHOLBuilding doit être visible du script, il l'est déjà par HOLTestWorld::SpawnBuilding) ; FVector2D (déjà lié)
+
+FAIT :
+- (1) Relais d'Entrée : HOLScriptScreen.cpp, NativeTick, bloc des touches (avant Ctrl+D) : `if (Controller->IsLocalController() && Controller->WasInputKeyJustPressed(EKeys::Enter)) { KeyPressed(TEXT("Enter")); }`. Pas de doublon avec le champ : même mécanisme que la touche T (état de touche du contrôleur, qui ne voit pas la touche quand un widget Slate a le focus clavier ; le champ ouvert reçoit Entrée par OnTextCommitted). Tab / Échap NON ajoutés : le rapport 1120h ne dit pas que Slate ne les livre pas (il dit « à vérifier à l'exécution ») ; Échap est aussi lié ailleurs (menu pause). Si l'essai montre qu'OnTextCommitted ne les livre pas : même bloc, `EKeys::Tab` -> "Tab", `EKeys::Escape` -> "Escape".
+- (2) GetMinorEventsNow (HOLScriptScreen.h/.cpp, signature exacte de GALADRIEL-1120g, const, BlueprintPure) : bâtiments finis du joueur montré (FHOLBuildingIterator, IsFinished, GetOwnerPlayer == PlayerState->GetPlayerIndex ; l'état de construction se réplique à tous les clients, OnRep_Construction) + techs terminées (PlayerState->GetTechnologies().Done.Num(), répliqué au propriétaire, OnRep_Technologies). Cumul par FHOLMinorEventsWatch (membre mutable MinorWatch) via la statique ObserveMinorEvents, testable en script : la 1re observation fixe la base (une partie rejointe tard ne sonne pas), ensuite +1 par bâtiment fini nouveau (lieu X, Y) et + différence des recherches.
+RESTE :
+- OutLastResearchBuildingLocation reste (0, 0) : le client n'a aucun enregistrement répliqué du bâtiment qui a terminé une recherche (le plus gros : un champ répliqué du joueur ou un RPC serveur -> client portant le lieu, côté serveur au moment de AddTechnology). À décider avant ; le script de GALADRIEL peut ignorer le lieu de recherche (ping minimap) tant que c'est (0, 0).
+- Brancher l'écran de chat dans HOLGameScreenScript.as, brancher MinorAlert sur GetMinorEventsNow, un build (lot C++), `quick_check -Parts tests`.
+NON VÉRIFIÉ : tout à l'exécution : compilation de HOLScriptScreen.h/.cpp (include "Buildings/HOLBuilding.h" ajouté, TSet<TWeakObjectPtr<const AHOLBuilding>> dans une USTRUCT, `UPARAM(ref)` sur struct), liaison script de la struct et de la statique, le test (SpawnGameState(TestWorld, 1, 1) puis SpawnBuilding House slot 1 sans InitSourceSubsystem comme MakeWorld : si SpawnBuilding exige les sous-systèmes, recopier MakeWorld de HOLAIBuildOrders_Test.as), le non-doublon d'Entrée avec un champ ouvert.
+PROCESSUS_DETACHES: aucun processus détaché (stray_processes.ps1 lancé avec le -Root du worktree ; sortie « aucun processus detache », le chemin affiché a perdu ses séparateurs par le passage Bash)
+ANOMALIES_PROCESSUS: aucune. Horloge Git Bash en avance de ~3 min sur PowerShell (11:42:56 vs 11:40).
+GIT_STATUS_PRINCIPALE: docs seulement (AlertsMinorInProgress.md, Auto_Journey_File.md, ChatInProgress.md, EtapeDefini.md par moi ; Docs/* non suivis d'autres agents) : oui. IN_USE.txt du worktree : « libre » (non commité).

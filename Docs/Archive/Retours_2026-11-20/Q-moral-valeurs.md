@@ -18,3 +18,5 @@ En jeu : A et B donnent le même cercle de 12 m aux deux camps ; C fait deux cer
 **Q4 Rage nécrotique (+40 % dégâts, +25 % cadence, 10 s, déjà dans `Effects.csv`).** A (recommandé) : ses leviers passent au moteur, coût en PV / recharge / arrêt à 20 PV restent à part. B : elle reste entièrement hors du moteur (la ligne de la table ne sert à rien). En jeu : aucun changement visible pour A ; B laisse deux chemins pour la cadence.
 
 **Q5 Cadence.** A (recommandé) : intervalle × 100 / (100 + bonus) en entiers (comme `GetRageIntervalMs`). B : intervalle × (100 − bonus) / 100 (un bonus de 50 % ferait une attaque instantanée à 100 %, plafonné à 30 % par le plafond actuel).
+
+Reponse: (2026-11-20 ~12:30, interface de choix) défaut partout : Q1 A (C++ seule source, M3), Q2 A (centre de l'arène ; Hésitation autour du héros qui refuse), Q3 A (additif), Q4 A (Rage nécrotique dans le moteur), Q5 A (intervalle × 100 / (100 + bonus)). Voir GDD D866.

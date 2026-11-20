@@ -14,4 +14,4 @@ Question de SAURON-1120d (2026-11-20). Valeur par défaut codée : A (rien n'est
 **A** pour l'instant : la ligne est cohérente avec une règle de neutres sans faction, et le Hallebardier est encore neuf (sa traduction EN/JA et son nom français ne sont pas encore dans `HOLGameNames.cpp`) ; changer les camps avant d'avoir joué le Hallebardier mélange deux réglages. À rejouer après le premier essai du Hallebardier de l'Aube.
 
 ## Réponse de l'utilisateur
-(à remplir : A / B / Autre)
+Reponse: (2026-11-20 ~12:30, interface de choix) A : les Brigands gardent le Lancier (aucun changement, `Camps.csv` garde `Spearman`). Voir GDD D863.

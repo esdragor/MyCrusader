@@ -14,3 +14,5 @@ Options :
 Recommandation : B (aucune recherche masquée, les trois voies restent groupées).
 Valeur par défaut codée : A (le plus petit changement : `GetSpecializationCell(OptionCount)` ; passer à B = une ligne dans `GetSpecializationCell`, C++, avec la cvar).
 Aussi à dire : le libellé de la 3e voie (`GetSpecializationName`, C++, ne connaît que « Voie A / B du palier N » ; la 3e donnerait « Voie B » : lot C++ à écrire).
+
+Reponse: (2026-11-20 ~12:30, interface de choix) B : cases 5, 6, 7 pour les Templiers (une ligne dans `GetSpecializationCell`, C++). Voir GDD D868.
