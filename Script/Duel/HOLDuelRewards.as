@@ -12,6 +12,15 @@ struct FHOLDuelMoraleOrder
 	int RadiusCm = 0;
 }
 
+// One change of a slot's faction gauge (the Dawn's Honor): Delta is the REAL change (the cap and the floor already applied by
+// HOLFactionResource::Gain / Lose), NewValue the gauge afterwards. Slot -1 = no order.
+struct FHOLDuelHonorOrder
+{
+	int Slot = -1;
+	int Delta = 0;
+	int NewValue = 0;
+}
+
 namespace HOLDuelRewards
 {
 	// The orders of the duel's end: Triumph for the winner and Demoralised for the loser; Hesitation on the one who refuses
@@ -38,6 +47,18 @@ namespace HOLDuelRewards
 			Result.Add(MakeOrder(E.DemoralisedSlot, HOLMoraleTable::Demoralised));
 		if (E.bRefusalCost && E.HesitationSlot >= 0)
 			Result.Add(MakeOrder(E.HesitationSlot, HOLMoraleTable::Hesitation));
+		return Result;
+	}
+
+	// STUB (red first, D859 n. 3): the Honor of the duel, nothing computed yet.
+	FHOLDuelHonorOrder HonorOfAccept(int Slot, bool bHasGauge, int Current)
+	{
+		return FHOLDuelHonorOrder();
+	}
+
+	TArray<FHOLDuelHonorOrder> HonorOfEnded(const FHOLDuelSettings& S, const TArray<FHOLDuelEnded>& Ended, const TArray<bool>& HasGauge, const TArray<int>& Current)
+	{
+		TArray<FHOLDuelHonorOrder> Result;
 		return Result;
 	}
 
