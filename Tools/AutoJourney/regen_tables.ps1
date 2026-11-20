@@ -25,13 +25,13 @@ $Steps = @(
 $Code = 0
 foreach ($s in $Steps) {
   $Log = Join-Path $LogDir ("regen_tables_" + $s.Name + ".log")
-  $EditorArgs = @($UProject.FullName, '-run=pythonscript', ('-script=' + $s.Script), '-unattended', '-nullrhi', '-nosplash', '-nosound', '-Multiprocess', '-LiveCoding=0', ('-abslog=' + $Log))
-  $Line = '"' + $Editor + '" ' + (($EditorArgs | ForEach-Object { if ($_ -match '\s') { '"' + $_ + '"' } else { $_ } }) -join ' ')
+  $EditorArgs = @($UProject.FullName, '-run=pythonscript', ('-script=' + $s.Script), '-unattended', '-nosplash', '-nosound', '-Multiprocess', '-LiveCoding=0', ('-abslog=' + $Log))
+  $Line = '"' + $Editor + '" ' + ((($EditorArgs + '-nullrhi') | ForEach-Object { if ($_ -match '\s') { '"' + $_ + '"' } else { $_ } }) -join ' ')
   if ($DryRun) { Write-Output $Line; continue }
   if (-not (Test-Path -LiteralPath $s.Script)) { Write-Output "regen_tables : script absent : $($s.Script)"; $Code = 2; break }
   New-Item -ItemType Directory -Path $LogDir -Force | Out-Null
   Write-Output "regen_tables : $($s.Name) : $Line"
-  & $Editor @Args
+  & $Editor @EditorArgs -nullrhi
   if ($LASTEXITCODE -ne 0) { Write-Output "regen_tables : $($s.Name) a echoue (code $LASTEXITCODE), journal : $Log"; $Code = 2; break }
 }
 exit $Code
