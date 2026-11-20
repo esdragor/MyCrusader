@@ -45,12 +45,12 @@ void Test_FactionSlotClickReadyBoxThenGroundCasts(FUnitTest& T)
 	T.AssertTrue(Armed.Action == EHOLFactionClickAction::Aim, "a click on a ready box enters the aim");
 	T.AssertEquals(0, Armed.AimIndex, "aiming box 0");
 	T.AssertEquals("aim 0", Armed.Describe, "aim line");
-	const FHOLFactionClickResult Cast = HOLFactionSlot::ClickPower(Slot, Armed.AimIndex, EHOLFactionClickKind::Ground, -1);
-	T.AssertTrue(Cast.Action == EHOLFactionClickAction::Cast, "a ground click while aiming casts");
-	T.AssertEquals(0, Cast.CastIndex, "the power cast is box 0");
-	T.AssertEquals(-1, Cast.AimIndex, "the aim ends with the cast");
-	T.AssertEquals("cast 0", Cast.Describe, "cast line");
-	const FHOLFactionClickResult Again = HOLFactionSlot::ClickPower(Slot, Cast.AimIndex, EHOLFactionClickKind::Ground, -1);
+	const FHOLFactionClickResult Launch = HOLFactionSlot::ClickPower(Slot, Armed.AimIndex, EHOLFactionClickKind::Ground, -1);
+	T.AssertTrue(Launch.Action == EHOLFactionClickAction::Launch, "a ground click while aiming casts");
+	T.AssertEquals(0, Launch.CastIndex, "the power cast is box 0");
+	T.AssertEquals(-1, Launch.AimIndex, "the aim ends with the cast");
+	T.AssertEquals("cast 0", Launch.Describe, "cast line");
+	const FHOLFactionClickResult Again = HOLFactionSlot::ClickPower(Slot, Launch.AimIndex, EHOLFactionClickKind::Ground, -1);
 	T.AssertTrue(Again.Action == EHOLFactionClickAction::Nothing, "a ground click without aim is not for the slot");
 	T.AssertEquals(-1, Again.CastIndex, "and casts nothing");
 }

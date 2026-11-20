@@ -154,7 +154,7 @@ enum EHOLFactionClickAction
 	// The aim mode is entered or switched to AimIndex.
 	Aim,
 	// The aim is over with a cast: send the power CastIndex at the clicked point.
-	Cast,
+	Launch,
 	// The aim is over without a cast.
 	Cancel,
 	// A box that cannot be used now was clicked.
@@ -166,7 +166,7 @@ struct FHOLFactionClickResult
 	EHOLFactionClickAction Action = EHOLFactionClickAction::Nothing;
 	// The aim after the click (-1 = none).
 	int AimIndex = -1;
-	// The power to cast when Action is Cast, else -1.
+	// The power to cast when Action is Launch, else -1.
 	int CastIndex = -1;
 	// "nothing", "aim 0", "cast 0", "cancel", "refuse cooling" (the book's state word).
 	FString Describe;
