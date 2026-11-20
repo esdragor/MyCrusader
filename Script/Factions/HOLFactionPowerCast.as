@@ -1,8 +1,8 @@
 // FARAMIR-1120c (lot du socle des factions, morceau 3, serveur script): the PURE rule of a faction power cast, "power PowerIndex of
 // the slot, on the point P". The RPC ServerCastFactionPower (Script/Net/HOLRpcPlayer.as) reads the world, asks Decide, and only on
-// an accepted decision puts the Seal of Light down (HOLZoneEffect::StartLightSeal), pays the gauge and sets the cool-down.
-// ONE source (D839): the cost is the row of HOLDawnPowers, the gauge arithmetic HOLFactionResource::TrySpend, the cool-down /
-// range test HOLGroundAbility::TargetRefusal and CooldownEndMs; only the Seal's range and cool-down are numbers kept here.
+// an accepted decision puts the Seal of Light down (HOLZoneEffect::StartLightSeal) and sets the cool-down.
+// D862: the Seal is the Monk's unit ability (no Honor cost, the gauge is never touched); ONE source (D839): its range and cool-down are
+// the HOLUnitAbilityTable LightSeal row, the cool-down / range test is HOLGroundAbility::TargetRefusal and CooldownEndMs.
 // Distances in centimetres, times in whole milliseconds. Tested in Script/Tests/HOLFactionPowerCast_Test.as.
 struct FHOLFactionPowerDecision
 {
@@ -16,15 +16,16 @@ struct FHOLFactionPowerDecision
 
 namespace HOLFactionPowerCast
 {
-	// Cast range from the caster's origin (UnitAbilities line, FARAMIR-1120b: "range 800") and the Seal's cool-down (40 s).
+	// D862: the Seal is the Monk's unit ability (UnitAbilities.csv row LightSeal), so its cast range from the caster's origin and its
+	// cool-down are that row's (one source, no copy here): range 800 cm, cool-down 40 s.
 	int64 SealRangeCm()
 	{
-		return 800;
+		return int64(HOLUnitAbilityTable::Row(HOLUnitAbilityTable::LightSeal).RangeCm);
 	}
 
 	int SealCooldownMs()
 	{
-		return 40000;
+		return HOLUnitAbilityTable::Row(HOLUnitAbilityTable::LightSeal).CooldownMs;
 	}
 
 	// The refusal reasons, in the order they are checked.
@@ -51,11 +52,6 @@ namespace HOLFactionPowerCast
 	int RefusalOutOfRange()
 	{
 		return 4;
-	}
-
-	int RefusalGaugeShort()
-	{
-		return 5;
 	}
 
 	// Faction: the EHOLFaction index of the slot (AHOLGameState::GetSlotFaction). Gauge: the slot's gauge. CooldownEndMs: the slot's
@@ -95,14 +91,9 @@ namespace HOLFactionPowerCast
 			Result.Refusal = RefusalOutOfRange();
 			return Result;
 		}
-		FHOLFactionResource Spent = Gauge;
-		if (!HOLFactionResource::TrySpend(Spent, Rows[PowerIndex].Cost))
-		{
-			Result.Refusal = RefusalGaugeShort();
-			return Result;
-		}
+		// D862: the Seal costs NO Honor, so the gauge is carried through unchanged (no TrySpend, no gauge refusal).
 		Result.bAccepted = true;
-		Result.NewGaugeValue = Spent.Value;
+		Result.NewGaugeValue = Gauge.Value;
 		Result.NewCooldownEndMs = HOLGroundAbility::CooldownEndMs(NowMs, SealCooldownMs());
 		return Result;
 	}
