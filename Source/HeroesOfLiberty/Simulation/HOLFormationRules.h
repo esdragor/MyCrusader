@@ -302,6 +302,27 @@ namespace HOLFormation
 	 */
 	HEROESOFLIBERTY_API int32 FindPackets(TConstArrayView<FVector2D> Positions, double LinkDistance, TArray<int32>& OutPacketOfUnit, TArray<int32>& OutPacketSizes);
 	/**
+	 * The centres of the blocks of a selection, for the order lines (BUG-order_lines_multi_blocs): one per packet (FindPackets, units
+	 * linked by steps of at most LinkDistance), each the mean of its units' locations, largest packet first. Units of one block share
+	 * one centre (one line); separate blocks have one each; a unit alone is a block of one. Returns their number (none for no units).
+	 * STUB (first commit of the BUG, red test): every unit in one block, the old single centre of the whole chain.
+	 */
+	inline int32 FindBlockCentres(TConstArrayView<FVector> Locations, const double LinkDistance, TArray<FVector>& OutCentres)
+	{
+		OutCentres.Reset();
+		if (Locations.IsEmpty())
+		{
+			return 0;
+		}
+		FVector Sum = FVector::ZeroVector;
+		for (const FVector& Location : Locations)
+		{
+			Sum += Location;
+		}
+		OutCentres.Add(Sum / Locations.Num());
+		return 1;
+	}
+	/**
 	 * Stragglers (playtest note 1 of J7b: five soldiers waited for a sixth 10 m away before they set off): the units alone
 	 * in their packet (FindPackets) outside the body (packet 0), when the body holds two units or more (OutIsStraggler[i]);
 	 * each walks its own path to its slot kept in the block's last row. A packet of two or more is a small block of its own

@@ -213,6 +213,11 @@ int32 UHOLFormationReadLibrary::FindPackets(const TArray<FVector2D>& Positions, 
 	return HOLFormation::FindPackets(Positions, LinkDistance, OutPacketOfUnit, OutPacketSizes);
 }
 
+int32 UHOLFormationReadLibrary::FindBlockCentres(const TArray<FVector>& Locations, const double LinkDistance, TArray<FVector>& OutCentres)
+{
+	return HOLFormation::FindBlockCentres(Locations, LinkDistance, OutCentres);
+}
+
 int32 UHOLFormationReadLibrary::FindStragglers(const TArray<FVector2D>& Positions, const double LinkDistance, TArray<bool>& OutIsStraggler)
 {
 	return HOLFormation::FindStragglers(Positions, LinkDistance, OutIsStraggler);

@@ -176,6 +176,9 @@ public:
 	static int32 FindPackets(const TArray<FVector2D>& Positions, double LinkDistance, TArray<int32>& OutPacketOfUnit, TArray<int32>& OutPacketSizes);
 
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Formation")
+	static int32 FindBlockCentres(const TArray<FVector>& Locations, double LinkDistance, TArray<FVector>& OutCentres);
+
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Formation")
 	static int32 FindStragglers(const TArray<FVector2D>& Positions, double LinkDistance, TArray<bool>& OutIsStraggler);
 
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Formation")
