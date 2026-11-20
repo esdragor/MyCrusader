@@ -22,6 +22,7 @@
 #include "Match/HOLPlayerColors.h"
 #include "Match/HOLGameState.h"
 #include "Match/HOLPlayerState.h"
+#include "Buildings/HOLBuilding.h"
 #include "Player/HOLGameMenuRulesBridge.h"
 #include "Player/HOLPlayerController.h"
 #include "Screens/HOLGameMenuScreen.h"
@@ -411,6 +412,21 @@ bool UHOLScriptScreen::GetPopulationNow(int32& OutUsed, int32& OutCap, float& Ou
 	OutCap = PlayerState ? PlayerState->GetPopulationCap() : 0;
 	OutRealSeconds = World ? static_cast<float>(World->GetRealTimeSeconds()) : 0.f;
 	return PlayerState != nullptr && World != nullptr;
+}
+
+bool UHOLScriptScreen::GetMinorEventsNow(int32& OutBuildingsFinished, int32& OutResearchesDone, FVector2D& OutLastBuildingLocation, FVector2D& OutLastResearchBuildingLocation) const
+{
+	// STUB (red first): the counters stay zero.
+	OutBuildingsFinished = 0;
+	OutResearchesDone = 0;
+	OutLastBuildingLocation = FVector2D::ZeroVector;
+	OutLastResearchBuildingLocation = FVector2D::ZeroVector;
+	return false;
+}
+
+void UHOLScriptScreen::ObserveMinorEvents(FHOLMinorEventsWatch& Watch, const TArray<AHOLBuilding*>& FinishedBuildings, const int32 ResearchesDone)
+{
+	// STUB (red first): nothing is counted.
 }
 
 bool UHOLScriptScreen::GetEconomyNow(FHOLResources& OutStock, int32& OutPopulationUsed, int32& OutPopulationCap, FHOLResources& OutGatherers, FHOLResources& OutIncome) const

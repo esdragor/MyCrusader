@@ -49,6 +49,39 @@ struct FHOLHUDNamedBox
  * panels, MakePanel, take them). The script builds its tree in OnInitialized (ConstructWidget, SetRootWidget: the names
  * are found by hol.HUD.Click), refreshes it in Refresh (RefreshSeconds) and says what it shows in Describe.
  */
+class AHOLBuilding;
+
+/**
+ * D202 / D804 B: what the minor alerts (HOLAlertRules::MinorAlert) read, accumulated by UHOLScriptScreen::ObserveMinorEvents: the finished buildings
+ * and the researches done since the first observation (the first one only takes the baseline: a match joined late is not a pile of alerts).
+ */
+USTRUCT(BlueprintType)
+struct FHOLMinorEventsWatch
+{
+	GENERATED_BODY()
+
+	/** Finished buildings that appeared since the baseline (cumulative). */
+	UPROPERTY(BlueprintReadWrite, Category = "HeroesOfLiberty|UI")
+	int32 BuildingsFinished = 0;
+
+	/** Technologies researched since the baseline (cumulative). */
+	UPROPERTY(BlueprintReadWrite, Category = "HeroesOfLiberty|UI")
+	int32 ResearchesDone = 0;
+
+	/** The ground place (X, Y) of the last building seen finished. */
+	UPROPERTY(BlueprintReadWrite, Category = "HeroesOfLiberty|UI")
+	FVector2D LastBuildingLocation = FVector2D::ZeroVector;
+
+	/** The ground place of the last research's building: not known on a client yet (no replicated record of which building researched), stays zero. */
+	UPROPERTY(BlueprintReadWrite, Category = "HeroesOfLiberty|UI")
+	FVector2D LastResearchBuildingLocation = FVector2D::ZeroVector;
+
+	/** C++ only: the finished buildings already counted, the baseline taken, the researches counted at the last observation. */
+	TSet<TWeakObjectPtr<const AHOLBuilding>> SeenFinished;
+	bool bPrimed = false;
+	int32 ResearchesSeen = 0;
+};
+
 UCLASS(Abstract)
 class HEROESOFLIBERTYUI_API UHOLScriptScreen : public UUserWidget
 {
@@ -216,6 +249,21 @@ public:
 	 */
 	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|UI")
 	bool GetPopulationNow(int32& OutUsed, int32& OutCap, float& OutRealSeconds) const;
+
+	/**
+	 * D202 / D804 B (HOLAlertRules::MinorAlert): the shown player's minor events, cumulative since the first read: finished buildings (a finished
+	 * building of the player that was not there before, a build ended or one that arrived replicated) and researches done, with the ground place of
+	 * the last building. False, all zero, for a spectator or before the player state arrives.
+	 */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|UI")
+	bool GetMinorEventsNow(int32& OutBuildingsFinished, int32& OutResearchesDone, FVector2D& OutLastBuildingLocation, FVector2D& OutLastResearchBuildingLocation) const;
+
+	/**
+	 * The rule of GetMinorEventsNow, on given data (script tests call it): Watch takes FinishedBuildings (the player's finished ones) and the number
+	 * of researches done; the first call is the baseline (counts nothing), later ones count each building not yet seen (and its place) and each research gained.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|UI")
+	static void ObserveMinorEvents(UPARAM(ref) FHOLMinorEventsWatch& Watch, const TArray<AHOLBuilding*>& FinishedBuildings, int32 ResearchesDone);
 
 	/**
 	 * The top bar's economy (H-3), of the shown player (UHOLGameScreen::GetBoundPlayerState: a spectator's followed player too): stock, places taken and
@@ -528,6 +576,9 @@ private:
 
 	/** The queue panel shows a queue: NativeTick calls QueueFrameTick (HUD H-7). */
 	bool bQueueLive = false;
+
+	/** GetMinorEventsNow's accumulation (the accessor is const, the reads are the screen's own bookkeeping). */
+	mutable FHOLMinorEventsWatch MinorWatch;
 
 	/** The selection block needs a call every image: NativeTick calls SelectionFrameTick (HUD H-9). */
 	bool bSelectionLive = false;
