@@ -85,17 +85,46 @@ namespace HOLFactionSlot
 }
 
 // The faction slot of a player from the game state (CELEBORN-1120b gauge, HOLDawnValues cap, HOLDawnPowers rows; GALADRIEL-1120d).
-// STUB (red): the real body follows in the next commit.
 namespace HOLFactionSlot
 {
-	// The faction the slot's text names (UHOLDiplomacyReadLibrary::GetSlotFactionText); false when the text names none.
+	// The faction the slot's text names (UHOLDiplomacyReadLibrary::GetSlotFactionText: the lobby's names, matched on their ASCII stems);
+	// false when the text names none. Provisional: a C++ accessor of the slot's EHOLFaction would replace the text (see the report).
 	bool FactionOfText(const FString& Text, EHOLFaction& Faction)
 	{
-		return false;
+		if (Text.Contains("Aube"))
+			Faction = EHOLFaction::DawnOrder;
+		else if (Text.Contains("gions"))
+			Faction = EHOLFaction::BlackLegions;
+		else if (Text.Contains("Dragon"))
+			Faction = EHOLFaction::DragonChildren;
+		else if (Text.Contains("Ombre"))
+			Faction = EHOLFaction::ShadowCircle;
+		else if (Text.Contains("Feu"))
+			Faction = EHOLFaction::FireHeirs;
+		else if (Text.Contains("Templiers"))
+			Faction = EHOLFaction::Templars;
+		else
+			return false;
+		return true;
 	}
 
+	// The slot's view: the gauge is the state's value for the slot held in [0, HonorCap]; the rows are the Dawn's book (the only gauge
+	// faction for now), cool-downs 0 until the state keeps PowerCooldownEndMs (ELROND-1120c), Tier 0 (no tier is read here yet).
+	// An unknown slot (spectator), no state or a text naming no faction: the empty slot.
 	FHOLFactionSlotView FromGameState(AHOLGameState State, int Slot, const FString& FactionText, bool bHasSpecializationButton, bool bTierOpen)
 	{
-		return FHOLFactionSlotView();
+		EHOLFaction Faction = EHOLFaction::DawnOrder;
+		if (State == nullptr || Slot < 0 || !FactionOfText(FactionText, Faction))
+		{
+			FHOLFactionSlotView Empty;
+			Empty.Describe = "slot empty";
+			return Empty;
+		}
+		const FHOLFactionResource Gauge = HOLFactionResource::Make(State.GetFactionResource(Slot), 0, HOLDawnValues::HonorCap());
+		TArray<FHOLPowerRow> Rows;
+		if (HOLFactionResource::HasResource(Faction))
+			Rows = HOLDawnPowers::Rows();
+		TArray<int> Cooldowns;
+		return Make(Faction, Gauge, Rows, Cooldowns, 0, bHasSpecializationButton, bTierOpen);
 	}
 }
