@@ -5,6 +5,18 @@
 // HeroesOfLiberty.AI.Nomad.* (Source/HeroesOfLiberty/Tests/HOLAINomadTests.cpp).
 namespace HOLAINomadThink
 {
+	// STUB (CELEBORN-1120pa, red first): the Peasants that join the foundation; today every idle one, no cap.
+	TArray<int> JoinersFor(FVector Foundation, const FHOLAISummary& Summary, int MaxBuilders, float Radius)
+	{
+		return Summary.IdlePeasants;
+	}
+
+	// STUB: the Peasant that places the forum; none yet.
+	int FirstBuilderFor(FVector Spot, const TArray<FHOLAIUnit>& Peasants)
+	{
+		return -1;
+	}
+
 	// One thought of the Nomad seat; the brain thinks of nothing else until the first forum is complete (no centre to produce from).
 	void Think(int PlayerIndex, int64 Step, const FHOLAISummary& Summary, int Rings)
 	{
