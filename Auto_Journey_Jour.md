@@ -12,6 +12,22 @@ Historique du test du 2026-10-30 : `Docs\Archive\Auto_Journey_Test1_2026-10-30.m
 
 SÉANCE DU 2026-11-20 SOIR (« lance une autojourney le temps de faire les choses en suspens dans les worktree », 22:38 ->). check-list lue (L20) à 22:40, en entier, par la session principale, avant tout lancement d'agent de travail. État au lancement : main = 97da243, 8 worktrees à 0 commit d'avance, IN_USE tous libres ; non suivis : Celeborn 16 scénarios `c28_*`/`c31_*`, Haldir `Content/Maps/Crown.umap`. Nettoyage 0a léger (un agent, comme l'après-midi) : CLEAN-1120s, d41c8d2. Réponses de l'utilisateur (22:4x, interface de choix) : fin = « quand ce qui est en cours sera fini » (fin provisoire 00:30 dans `Docs\SessionEnd.txt` pour le gate, prolongée par `extend_session.ps1` tant qu'il reste du travail en cours, pas de nouveau chantier) ; fusion dans main EN LOCAL si build PASS et tests verts sur le résultat exact, jamais de push ; mode AUTONOME (veilleur 30 min) ; non suivis de Celeborn/Haldir : un agent vérifie leur usage puis les commite sur la branche s'ils sont utiles, sinon les liste.
 
+Sync 22:50 : 8 worktrees à d41c8d2 (docs seulement, aucun build) ; gate Launch 22:53 sans FAIL (vm libre 27 Go). Veilleur 30 min (:13/:43), alarme 00:17. Arwen = intégrateur (aucun code).
+
+| Agent | id | Worktree | Tâche | C++ | Lancé | Fini | Résumé |
+|---|---|---|---|---|---|---|---|
+| CLEAN-1120s | a033b03e | principale | nettoyage 0a léger | non | 22:41 | 22:48 | d41c8d2, Jour archivé, Retours déjà vide |
+| ETAPE0-1120s | aeb7aee4 | lecture seule | plan de lancement du suspens | non | 22:51 | 22:55 | Docs\Rapports\ETAPE0-1120s.md ; 12 lignes de file périmées |
+| ELROND-1120sa | afe754cb | Elrond | D869b deploy (barre à 0, 2e cycle) | oui | 22:56 | 23:04 | c7affed rouge (2 tests), 5cbbf40 ; build incrémental lancé 22:59, en cours à 23:05 (37 appels) |
+| GLORFINDEL-1120sa | ad169904 | Glorfindel | chat_input : 2e Entrée | oui | 22:56 | 23:00 | script seul : 1a00e0f rouge, 3579205 (Close rend le focus au viewport), 542aa2f ; liaison AS SetFocusToGameViewport non vérifiée |
+| SAURON-1120sa | a80499f0 | Sauron | virtuous_knight ClickUnit + regen_tables.ps1 (L20-9) | non | 22:56 | 23:00 | d4a1527 rouge, 318837f, 7a56853 ; scénario non joué, regen_tables en -DryRun seulement |
+| SAURON-1120sb | — | Sauron | no_window_test FAIL : ecran_multijoueur.ps1:40 sans -WindowStyle Hidden | non | 23:01 | 23:02 | c09790a : exception documentée (essai joué par l'utilisateur), no_window_test PASS |
+| FARAMIR-1120sa | aad178df | Faramir | L20-1 merge=union + L20-3 gate L19-1 | non | 22:56 | | |
+| GALADRIEL-1120sa | a214bbbf | Galadriel | D833 Population pleine 15 s | non | 22:56 | 22:59 | 4692ec5/ae69298/fc20711 ; énoncé mal lu (délai de répétition 30->15 au lieu de durée de ligne 15 s) : erreur de l'énoncé de la session principale |
+| GALADRIEL-1120sb | — | Galadriel | correction D833 : durée de ligne 15 s, délai 30 s, HOLShortMessage, son court | non | 23:00 | 23:03 | 8ce795d rouge, fd9a795, 4f9b255 ; son déjà joué par RefreshPopulationAlert |
+| intégrateur (commande) | br8ncbjgj | Arwen | integrate.ps1 integ-31 passe 1 réelle (L20-6), vert duel-rewards | — | 22:56 | 23:08 | PASS 713 s : tests 1972/1972, net,build PASS ; L20-6 appliquée, l'outil marche du premier coup |
+| CELEBORN-1120sa | a51c9896 | Celeborn + Haldir | fichiers non suivis (c28/c31, Crown.umap) | non | 22:54 | 22:58 | 7f4296c (c28_*) ; c31_f3/4/5/8 doublons et Crown.umap régénérable : suppression à l'accord de l'utilisateur |
+
 ## Résumé de la séance du 2026-11-20 après-midi
 
 - Séance interactive 15:32 -> 18:00, session principale + ~45 agents Sonnet en 8 vagues ; intégration integ-30 (Arwen) en 4 passes ; main = fd41600 (LOCAL, rien poussé) ; tests 1971/1971 puis 1972/1972, `net` et `build` PASS.
