@@ -102,8 +102,13 @@ void UHOLDeployProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 				// The order is read once: decided, applied, then forgotten.
 				const HOLDeploy::EOrder Order = Fragment.PendingOrder == 1 ? HOLDeploy::EOrder::Attack : HOLDeploy::EOrder::Move;
 				// The Mount / Dismount button (PendingOrder 3, G6 d) is the manual toggle; an order is decided by where its target stands.
+				// D861 (a): the attack order's note (PendingOrder 1) is written by the combat only once it says the target is in ITS reach (the
+				// unit's own AttackRange / BuildingAttackRange, which the unit table sets); HOLDeploy's aim range (MaxRangeCm) must not contradict
+				// that verdict: beyond it Decide answered March, which does nothing, and the engine stood packed. The far end is clamped to
+				// MaxRangeCm; the near end (MinRangeCm: too close to aim) is untouched. The rule (Decide) is unchanged: one source (D836).
+				const int32 DecideDistanceCm = Fragment.PendingOrder == 1 ? FMath::Min(Fragment.PendingDistanceCm, Profile.MaxRangeCm) : Fragment.PendingDistanceCm;
 				const HOLDeploy::FDecision Decision = Fragment.PendingOrder == 3 ? HOLDeploy::Toggle(State)
-					: HOLDeploy::Decide(State, Order, Fragment.PendingDistanceCm, Profile);
+					: HOLDeploy::Decide(State, Order, DecideDistanceCm, Profile);
 				Fragment.LastAction = static_cast<uint8>(Decision.Action);
 				Fragment.LastReason = Decision.Reason;
 				// Retours/E-deploy.md: the decisions that change the phase, or come from the button, are written (a scenario reads them).
