@@ -36,7 +36,7 @@ namespace HOLAlertRules
 	}
 
 	// D833: how long the population full line stays in the thread, seconds (the thread's default is shorter; this one asks to be read).
-	const float PopulationFullLineSeconds = 0.0;
+	const float PopulationFullLineSeconds = 15.0;
 
 	// The line's text: the production queue's note, the same key (« Population pleine », translated in Tools/Localization/fill_po.py).
 	FText PopulationFullText()

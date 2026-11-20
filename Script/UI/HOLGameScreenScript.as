@@ -1534,7 +1534,13 @@ UHOLScenarioPanelScript ScenarioPanel;
 		if (!GetPopulationNow(Used, Cap, Now))
 			return;
 		if (HOLAlertRules::ShouldAlertPopulationFull(PopulationWatch, Used, Cap, Now, HOLAlertRules::PopulationRepeatSeconds))
+		{
+			// D833: the line stays HOLAlertRules::PopulationFullLineSeconds (15 s). TODO once the C++ wrapper AddThreadLine(FText, double Seconds)
+			// is in the tree (GLORFINDEL-1120c): AddThreadLine(HOLAlertRules::PopulationFullText(), HOLAlertRules::PopulationFullLineSeconds).
 			AddThreadLine(HOLAlertRules::PopulationFullText());
+			// D833 / D804 B: the short alert sound, the same one as the attacked elsewhere alert (provisional ping).
+			PlayAlertSound();
+		}
 	}
 
 	// H-2: the short message's place and the held production note (read from the C++ here, 4 times a second, the message and its journal lines at the front).
