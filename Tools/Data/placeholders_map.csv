@@ -4,7 +4,7 @@ LightInfantryNanite,UnitTypes,Light infantry
 Archer,UnitTypes,^- Archer Aube
 Peasant,UnitTypes,^- Paysan Aube
 Zombie,UnitTypes,^- Zombie
-Spearman,UnitTypes,^- Lancier Aube
+Spearman,UnitTypes,^- Lancier L.gion
 ManAtArms,UnitTypes,^- Garde \(Homme d.armes\) Aube
 King,UnitTypes,^- Roi
 Hero,UnitTypes,^- H.ros Paladin-Commandant
@@ -40,3 +40,4 @@ GoldVeinBig,SourceTypes,^- Filon d.or gros
 FarmField,SourceTypes,^- Champ de ferme
 Arquebusier,UnitTypes,^- Arquebusier
 DamnedWarrior,UnitTypes,^- Guerrier damn
+Halberdier,UnitTypes,^- Hallebardier Aube

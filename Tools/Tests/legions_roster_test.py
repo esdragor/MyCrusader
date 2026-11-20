@@ -20,6 +20,8 @@ import sys
 DATA = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "Data")
 ROSTER = ["Spearman", "ManAtArms", "Archer", "Crossbowman", "LightCavalry", "Ram", "Mangonel"]
 DAWN_ONLY_UNITS = ["Peasant", "Monk", "Halberdier", "Arquebusier"]
+# D858: the Spearman is the Legions' alone (the Dawn's Barracks makes the Halberdier instead); it stays in ROSTER for the Legions' own checks.
+LEGIONS_ONLY_ROSTER = ["Spearman"]
 DAWN_ONLY_BUILDINGS = ["Chapel", "Sanctuary"]
 LEGIONS_HOUSES = {"Barracks": ["Spearman", "ManAtArms", "DamnedWarrior"], "ArcheryRange": ["Archer", "Crossbowman"], "Stable": ["LightCavalry"],
                   "SiegeWorkshop": ["Ram", "Mangonel"]}
@@ -98,7 +100,10 @@ def main():
         if build_time is not None:
             check(float(build_time["Value"]) <= float(units[unit]["BuildTime"]), "%s: the Legions' BuildTime is not longer than the Dawn's" % unit)
         check(allows(units[unit]["Faction"], "Legions"), "%s is open to the Legions (Faction column)" % unit)
-        check(allows(units[unit]["Faction"], "Dawn"), "%s stays open to the Dawn" % unit)
+        if unit in LEGIONS_ONLY_ROSTER:
+            check(not allows(units[unit]["Faction"], "Dawn"), "%s is no longer open to the Dawn (D858)" % unit)
+        else:
+            check(allows(units[unit]["Faction"], "Dawn"), "%s stays open to the Dawn" % unit)
 
     # 2. The Dawn-only things are not the Legions'; the Zombie is theirs and not the Dawn's.
     for unit in DAWN_ONLY_UNITS:
@@ -120,6 +125,12 @@ def main():
         grid = [u for u in produces(buildings[house]["Produces"]) if u in units and allows(units[u]["Faction"], "Legions")]
         check(grid == expected, "%s grid for the Legions is %s, got %s" % (house, expected, grid))
         check(not any(u in DAWN_ONLY_UNITS for u in grid), "%s grid for the Legions holds no Dawn-only unit" % house)
+    # D858: the Dawn's Barracks grid is the Halberdier and the Man-at-arms, never the Spearman; the Halberdier is the Dawn's alone.
+    if "Barracks" in buildings:
+        dawn_grid = [u for u in produces(buildings["Barracks"]["Produces"]) if u in units and allows(units[u]["Faction"], "Dawn")]
+        check(dawn_grid == ["Halberdier", "ManAtArms"], "Barracks grid for the Dawn is [Halberdier, ManAtArms], got %s" % dawn_grid)
+    if "Halberdier" in units:
+        check(allows(units["Halberdier"]["Faction"], "Dawn"), "the Halberdier is open to the Dawn")
     centre = buildings.get("MainCentre")
     if centre is not None:
         grid = [u for u in produces(centre["Produces"]) if u in units and allows(units[u]["Faction"], "Legions")]
