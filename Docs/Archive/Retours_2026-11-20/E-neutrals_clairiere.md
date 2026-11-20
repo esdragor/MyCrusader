@@ -16,4 +16,4 @@ Commande complète (règle 13, 2026-11-14) :
 Lancer UNE commande : `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Arwen\Tools\Scenarios\play.ps1 neutrals_clairiere -Root C:\Users\baudo\Documents\HeroesOfLiberty-Arwen`
 Durée : environ 1 min. Gestes : aucun, regarde l'avant (bosquet), puis l'après (clairière), puis le gros plan. Réponse attendue : `OK`, `BUG: ...` ou `REGLAGE: ...`.
 
-Reponse:
+Reponse: OK
