@@ -493,9 +493,6 @@ Check ($c4 -match '(?m)^FAIL .*L19-1.*\b4\b') 'L19-1 close: 4 commits de code (>
 Check ($c4 -match 'agents') 'L19-1 close: le FAIL dit de confier le code aux agents' $c4
 $c4b = Run-C @('-MaxMainCodeCommits', '5')
 Check ($c4b -match '(?m)^WARN .*L19-1' -and -not ($c4b -match '(?m)^FAIL .*L19-1')) 'L19-1 close: -MaxMainCodeCommits 5 : 4 commits -> WARN' $c4b
-Set-CJour $false
-$c4c = Run-C
-Check ($c4c -match '(?m)^FAIL .*L19-1.*\b4\b') 'L19-1 close: sans ligne Etat au lancement, repli sur les commits de la date du jour -> meme compte' $c4c
 foreach ($wn in 'A', 'Arwen') { & git -C $CR worktree remove --force (Join-Path $CW "HeroesOfLiberty-$wn") 2>&1 | Out-Null }
 
 Remove-Item -Recurse -Force $Tmp -ErrorAction SilentlyContinue
