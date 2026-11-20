@@ -21,7 +21,7 @@ FHOLAITypeFigures PlanFigures(int Health, int Damage, float Interval, float Rang
 	return Figures;
 }
 
-FHOLAITypeFigures PlanSpearman()
+FHOLAITypeFigures PlanHalberdier()
 {
 	FHOLAITypeFigures Figures = PlanFigures(80, 8, 1.875f, 130.f, 0, 0, false, 777.f, 60, 20, 0);
 	Figures.ArmorCategories.Add(n"LightInfantry");
@@ -64,8 +64,8 @@ FHOLAIArmyData PlanHandData()
 	FHOLAIArmyData Data = HOLAIArmy::DefaultData();
 	Data.Types.Empty();
 	Data.Figures.Empty();
-	Data.Types.Add(n"Spearman");
-	Data.Figures.Add(PlanSpearman());
+	Data.Types.Add(n"Halberdier");
+	Data.Figures.Add(PlanHalberdier());
 	Data.Types.Add(n"ManAtArms");
 	Data.Figures.Add(PlanManAtArms());
 	Data.Types.Add(n"Archer");
@@ -224,10 +224,10 @@ void Test_ArmyAsksTheResourcesOfItsUnits(FUnitTest& T)
 	FHOLAIOpeningData Data = PlanData();
 	Data.PeasantTarget = 19;
 
-	// No enemy seen: the fixed mix starts with Spearman and Archer, which cost no gold and no stone.
+	// No enemy seen: the fixed mix starts with Halberdier and Archer, which cost no gold and no stone.
 	FHOLAINeeds Needs = HOLAINeeds::Compute(Summary, Data);
 	T.AssertTrue(Needs.Spend[0] > 0.f && Needs.Spend[1] > 0.f, "food and wood for Spearmen and Archers");
-	T.AssertTrue(PlanNear(Needs.Spend[3], 0.f), "no gold in the Spearman and Archer mix");
+	T.AssertTrue(PlanNear(Needs.Spend[3], 0.f), "no gold in the Halberdier and Archer mix");
 	T.AssertTrue(PlanNear(Needs.Share[3], 0.f), "so no Peasant for the gold");
 
 	// The same slot with no army share: the spending of the economy alone, smaller.
@@ -252,7 +252,7 @@ void Test_BarracksComesAfterHouseCampAndMill(FUnitTest& T)
 	FHOLAIOpeningData Data = PlanData();
 	FHOLAIBuildChoice Choice = HOLAIOpening::ChooseBuild(Summary, Data);
 	T.AssertTrue(Choice.bBuild, "a building is chosen");
-	T.AssertTrue(Choice.Type == n"Barracks", "the fixed mix starts with the Spearman: the Barracks");
+	T.AssertTrue(Choice.Type == n"Barracks", "the fixed mix starts with the Halberdier: the Barracks");
 	T.AssertTrue(Choice.Anchor.X < 0.f && Math::Abs(Choice.Anchor.Y) < 1.f, "its spot is sought on the enemy side of the centre (-X)");
 	T.AssertTrue(PlanNear(Choice.Anchor.Size(), Data.MilitaryDistance), "at the military distance from the centre");
 
@@ -341,10 +341,10 @@ void Test_ArcheryRangeWhenTheCompositionWantsArchers(FUnitTest& T)
 	PlanEnemies(Fresh, n"Archer", 5);
 	T.AssertTrue(HOLAIOpening::ChooseBuild(Fresh, Data).Type == n"Barracks", "Men-at-arms against Archers: the Barracks");
 
-	// A Range standing already when the mix calls for a Spearman: still the Barracks.
+	// A Range standing already when the mix calls for a Halberdier: still the Barracks.
 	FHOLAISummary Range = PlanSummary();
 	PlanAddBuilding(Range, n"ArcheryRange", EHOLConstructionState::Finished, FVector(-1500, 0, 0));
-	T.AssertTrue(HOLAIOpening::ChooseBuild(Range, Data).Type == n"Barracks", "the first of the mix is a Spearman: the Barracks");
+	T.AssertTrue(HOLAIOpening::ChooseBuild(Range, Data).Type == n"Barracks", "the first of the mix is a Halberdier: the Barracks");
 }
 
 void Test_NoMilitaryBuildingWhenBothStand(FUnitTest& T)
@@ -409,7 +409,7 @@ void Test_EachBuildingQueuesItsOwnUnit(FUnitTest& T)
 	const int Range = PlanOrderAt(Choice, n"ArcheryRange");
 	if (Barracks >= 0 && Range >= 0)
 	{
-		T.AssertTrue(Choice.Orders[Barracks].bQueue && Choice.Orders[Barracks].Unit == n"Spearman", "the Barracks: a Spearman (the mix's first)");
+		T.AssertTrue(Choice.Orders[Barracks].bQueue && Choice.Orders[Barracks].Unit == n"Halberdier", "the Barracks: a Halberdier (the mix's first)");
 		T.AssertTrue(Choice.Orders[Range].bQueue && Choice.Orders[Range].Unit == n"Archer", "the Archery Range: an Archer, never a unit of the Barracks");
 		T.AssertTrue(Choice.Orders[Barracks].Location.Equals(FVector(-1500, 0, 0)), "the Barracks named by its point");
 	}
@@ -435,7 +435,7 @@ void Test_ProductionRestrictedByBuilding(FUnitTest& T)
 void Test_QueueLengthLimitsProduction(FUnitTest& T)
 {
 	FHOLAISummary Summary = PlanWithBothBuildings();
-	Summary.Buildings[4].Queue.Add(n"Spearman");
+	Summary.Buildings[4].Queue.Add(n"Halberdier");
 	FHOLAIMilitaryChoice Choice = HOLAIOpening::ChooseMilitary(Summary, PlanData(), 0);
 	const int Barracks = PlanOrderAt(Choice, n"Barracks");
 	T.AssertTrue(Barracks >= 0, "the Barracks is in the orders");
@@ -443,7 +443,7 @@ void Test_QueueLengthLimitsProduction(FUnitTest& T)
 	{
 		T.AssertTrue(Choice.Orders[Barracks].bQueue, "one waiting: a second may follow (2 at most)");
 	}
-	Summary.Buildings[4].Queue.Add(n"Spearman");
+	Summary.Buildings[4].Queue.Add(n"Halberdier");
 	Choice = HOLAIOpening::ChooseMilitary(Summary, PlanData(), 0);
 	const int Full = PlanOrderAt(Choice, n"Barracks");
 	T.AssertTrue(Full < 0 || !Choice.Orders[Full].bQueue, "two waiting: no more");
@@ -458,11 +458,11 @@ void Test_ProductionNeedsStockAndRoom(FUnitTest& T)
 	Poor.Food.Stock = 59;
 	FHOLAIMilitaryChoice Choice = HOLAIOpening::ChooseMilitary(Poor, Data, 0);
 	int Barracks = PlanOrderAt(Choice, n"Barracks");
-	T.AssertTrue(Barracks < 0 || !Choice.Orders[Barracks].bQueue, "59 food: no Spearman (60)");
+	T.AssertTrue(Barracks < 0 || !Choice.Orders[Barracks].bQueue, "59 food: no Halberdier (60)");
 	const int Range = PlanOrderAt(Choice, n"ArcheryRange");
 	T.AssertTrue(Range >= 0 && Choice.Orders[Range].bQueue, "an Archer (30 food, 50 wood) still pays");
 
-	// The first order's cost is taken from the stock before the second: 100 food pays a Spearman (60) but then not an Archer (30)? it does; 80 food: not both.
+	// The first order's cost is taken from the stock before the second: 100 food pays a Halberdier (60) but then not an Archer (30)? it does; 80 food: not both.
 	FHOLAISummary Short = PlanWithBothBuildings();
 	Short.Food.Stock = 80;
 	Choice = HOLAIOpening::ChooseMilitary(Short, Data, 0);
@@ -549,7 +549,7 @@ void Test_CompositionRestrictedToABuilding(FUnitTest& T)
 	FHOLAIArmyData Data = PlanHandData();
 	FHOLAIComposition Barracks = HOLAIArmy::ChooseComposition(Summary, Data, n"Barracks");
 	FHOLAIComposition Range = HOLAIArmy::ChooseComposition(Summary, Data, n"ArcheryRange");
-	T.AssertTrue(Barracks.bValid && Barracks.Type == n"Spearman" && Barracks.Building == n"Barracks", "fixed mix at the Barracks: a Spearman");
+	T.AssertTrue(Barracks.bValid && Barracks.Type == n"Halberdier" && Barracks.Building == n"Barracks", "fixed mix at the Barracks: a Halberdier");
 	T.AssertTrue(Range.bValid && Range.Type == n"Archer" && Range.Building == n"ArcheryRange", "fixed mix at the Range: an Archer");
 	T.AssertTrue(HOLAIArmy::ChooseComposition(Summary, Data).Type == HOLAIArmy::ChooseComposition(Summary, Data, NAME_None).Type, "no filter = all");
 	PlanEnemies(Summary, n"ManAtArms", 5);
