@@ -471,12 +471,12 @@ void FHOLForumThread::AddText(const FText& Text, const double Seconds, const dou
 
 bool FHOLForumThread::Expire(const double NowSeconds)
 {
-	return Lines.RemoveAll([NowSeconds](const FHOLForumThreadLine& Line) { return NowSeconds - Line.AddedSeconds >= LineSeconds; }) > 0;
+	return Lines.RemoveAll([NowSeconds](const FHOLForumThreadLine& Line) { return NowSeconds - Line.AddedSeconds >= Line.Message.LineSeconds; }) > 0;
 }
 
 float FHOLForumThread::GetOpacity(const FHOLForumThreadLine& Line, const double NowSeconds)
 {
-	const double Left = LineSeconds - (NowSeconds - Line.AddedSeconds);
+	const double Left = Line.Message.LineSeconds - (NowSeconds - Line.AddedSeconds);
 	return static_cast<float>(FMath::Clamp(Left / FadeSeconds, 0.0, 1.0));
 }
 
