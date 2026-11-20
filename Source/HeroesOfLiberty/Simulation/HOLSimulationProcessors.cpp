@@ -1295,7 +1295,7 @@ void UHOLFullSpeedProcessor::Execute(FMassEntityManager& EntityManager, FMassExe
 			const FMassMoveTargetFragment& MoveTarget = MoveTargets[EntityIt];
 			// D581: under its hero's cry the unit is in a defensive formation: held in place, or slowed (Pas de l'Aube); the
 			// order and its path stay, the walk goes on when the cry is over.
-			const float Speed = MoveTarget.DesiredSpeed.Get() * (Combats.IsEmpty() ? 1.f : Combats[EntityIt].CloseRanksSpeedPercent / 100.f);
+			const float Speed = MoveTarget.DesiredSpeed.Get() * (Combats.IsEmpty() ? 1.f : (Combats[EntityIt].CloseRanksSpeedPercent / 100.f) * (Combats[EntityIt].ZoneSpeedPercent / 100.f)); // D859: the Seal of Light's slow beside the cry's
 			FVector& Velocity = Movements[EntityIt].DesiredVelocity;
 			if (MoveTarget.GetCurrentAction() != EMassMovementAction::Move || Speed <= 0.f || DeltaTime <= 0.f)
 			{

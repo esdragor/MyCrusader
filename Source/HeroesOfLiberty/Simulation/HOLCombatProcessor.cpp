@@ -1002,6 +1002,27 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 		Fighter.Combat->CloseRanksSpeedPercent = static_cast<uint8>(HOLHeroAbility::GetCloseRanksSpeedPercent(
 			Fighter.Combat->CloseRanksMs > 0, (DawnStepOwners & (1u << Fighter.State->OwnerPlayer)) != 0, CloseRanksSpeed));
 	}
+	// D859 (HOLZoneEffect, the Seal of Light): an enemy of a zone's owner standing in an active zone walks at 100 - the zone's slow; the
+	// movement processor multiplies it in. Where the zones live: the hero subsystem (the zones' clock counts at each step's end).
+	{
+		const UHOLHeroSubsystem* ZoneHeroes = World ? World->GetSubsystem<UHOLHeroSubsystem>() : nullptr;
+		const int32 ZoneNowMs = ZoneHeroes ? ZoneHeroes->GetZoneNowMs() : 0;
+		for (FFighter& Fighter : Fighters)
+		{
+			int32 ZoneSpeed = 100;
+			if (ZoneHeroes)
+			{
+				for (const HOLZoneEffect::FZone& Zone : ZoneHeroes->GetZones())
+				{
+					const bool bEnemy = Zone.OwnerSlot != Fighter.State->OwnerPlayer && StepCamps.AreHostile(Zone.OwnerSlot, Fighter.State->OwnerPlayer);
+					ZoneSpeed = FMath::Min(ZoneSpeed, HOLZoneEffect::GetSpeedPercent(bEnemy,
+						HOLZoneEffect::IsInZone(Zone.CenterXCm, Zone.CenterYCm, Zone.RadiusCm, FMath::RoundToInt32(Fighter.Location.X), FMath::RoundToInt32(Fighter.Location.Y)),
+						HOLZoneEffect::ZoneActive(Zone.StartMs, Zone.DurationMs, ZoneNowMs), Zone.SlowPercent));
+				}
+			}
+			Fighter.Combat->ZoneSpeedPercent = static_cast<uint8>(ZoneSpeed);
+		}
+	}
 	if (!bFighting)
 	{
 		Deaths.Reset();
