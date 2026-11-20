@@ -41,6 +41,7 @@ AHOLGameState::AHOLGameState()
 	ForumStates.Init(FHOLForumState(), FHOLMatchConfig::MaxSlots);
 	TierOverrides.Init(-1, FHOLMatchConfig::MaxSlots);
 	FactionResource.Init(0, FHOLMatchConfig::MaxSlots);
+	PowerCooldownEndMs.Init(0, FHOLMatchConfig::MaxSlots * MaxFactionPowers);
 	ForumBuilders.Init(0, FHOLMatchConfig::MaxSlots);
 	LaunchConfig = FHOLMatchConfig::MakeDefault();
 	HeroSheets.Init(FHOLHeroSheet(), FHOLMatchConfig::MaxSlots);
@@ -65,6 +66,7 @@ void AHOLGameState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLif
 	DOREPLIFETIME(AHOLGameState, ForumStates);
 	DOREPLIFETIME(AHOLGameState, TierOverrides);
 	DOREPLIFETIME(AHOLGameState, FactionResource);
+	DOREPLIFETIME(AHOLGameState, PowerCooldownEndMs);
 	DOREPLIFETIME(AHOLGameState, bWaitingForPlayers);
 	DOREPLIFETIME(AHOLGameState, MissingPlayers);
 	DOREPLIFETIME(AHOLGameState, WaitEndSeconds);
@@ -298,17 +300,24 @@ void AHOLGameState::SetFactionResource(const int32 Slot, const int32 Value)
 
 int32 AHOLGameState::GetSlotFaction(const int32 Slot) const
 {
-	return -1; // STUB (red first): the fix reads LaunchConfig.Slots[Slot].Faction
+	// As HOLFactionRules::GetSlotFactionKey: the launch configuration's slot, the Dawn's without one (a client before the replication, a spectator).
+	return LaunchConfig.Slots.IsValidIndex(Slot) ? static_cast<int32>(LaunchConfig.Slots[Slot].Faction) : static_cast<int32>(EHOLFaction::DawnOrder);
 }
 
 int32 AHOLGameState::GetPowerCooldownEndMs(const int32 Slot, const int32 PowerIndex) const
 {
-	return 0; // STUB (red first)
+	const int32 Index = (Slot >= 0 && Slot < FHOLMatchConfig::MaxSlots && PowerIndex >= 0 && PowerIndex < MaxFactionPowers) ? Slot * MaxFactionPowers + PowerIndex : INDEX_NONE;
+	return PowerCooldownEndMs.IsValidIndex(Index) ? PowerCooldownEndMs[Index] : 0;
 }
 
 void AHOLGameState::SetPowerCooldownEndMs(const int32 Slot, const int32 PowerIndex, const int32 EndMs)
 {
-	// STUB (red first)
+	// Authority only: a client's copy comes from the server.
+	const int32 Index = (Slot >= 0 && Slot < FHOLMatchConfig::MaxSlots && PowerIndex >= 0 && PowerIndex < MaxFactionPowers) ? Slot * MaxFactionPowers + PowerIndex : INDEX_NONE;
+	if (HasAuthority() && PowerCooldownEndMs.IsValidIndex(Index))
+	{
+		PowerCooldownEndMs[Index] = EndMs;
+	}
 }
 
 int32 AHOLGameState::GetTier(const int32 Slot) const
