@@ -2,15 +2,42 @@
 // FHOLSpecializationState per seat; the C++ part gives the seat's tier (AHOLGameState::GetTier), its Forum (complete: answer B of
 // Q-nomad-forum Q2; standing: Q2 answer A, paused) and the world's time; the rules are HOLSpecializationRules.as (Start, Cancel, Advance).
 // Server and solo only (AHOLPlayerController::ServerStartSpecialization calls it; a client never decides).
-// Tested by HeroesOfLiberty.Specialization.ServerBoard. Two options per tier for now (the Templars' third commandery comes with their faction).
+// Tested by HeroesOfLiberty.Specialization.ServerBoard. Options per tier: the seat faction's (OptionCountOf: 2, 3 for the Templars).
 class UHOLSpecializationBoardScript : UHOLSpecializationSubsystem
 {
 	TArray<FHOLSpecializationState> States;
 
+	// ELROND-1120e (morceau 7 du socle): the faction of each seat, set at the seat's initialisation (SetSeatFaction, the model of SetSeatNomad).
+	// An explicit SetSeatFaction wins (-1 = none); otherwise the game state's AHOLGameState::GetSlotFaction (the launch configuration; Dawn without one).
+	// The options of a seat's choice are HOLSpecialization::OptionCountOf(faction) (3 for the Templars, D131), 2 for the others.
+	TArray<int> SeatFactions;
+
+	int SeatFactionOf(int Slot)
+	{
+		if (Slot >= 0 && Slot < SeatFactions.Num() && SeatFactions[Slot] >= 0)
+			return SeatFactions[Slot];
+		if (Slot < 0 || GetWorld() == nullptr)
+			return int(EHOLFaction::DawnOrder);
+		AHOLGameState State = Cast<AHOLGameState>(Gameplay::GetGameState());
+		return State != nullptr ? State.GetSlotFaction(Slot) : int(EHOLFaction::DawnOrder);
+	}
+
+	// At the seat's initialisation: the seat's choice is rebuilt with its faction's option count (nothing was chosen yet).
+	void SetSeatFaction(int Slot, int Faction)
+	{
+		if (Slot < 0)
+			return;
+		while (SeatFactions.Num() <= Slot)
+			SeatFactions.Add(-1);
+		SeatFactions[Slot] = Faction;
+		if (Slot < States.Num())
+			States[Slot] = HOLSpecialization::NewStateFor(EHOLFaction(Faction));
+	}
+
 	FHOLSpecializationState& StateOf(int Slot)
 	{
 		while (States.Num() <= Slot)
-			States.Add(HOLSpecialization::NewState(HOLSpecialization::DefaultOptionCount));
+			States.Add(HOLSpecialization::NewStateFor(EHOLFaction(SeatFactionOf(States.Num()))));
 		return States[Slot];
 	}
 

@@ -305,7 +305,6 @@ namespace HOLFormation
 	 * The centres of the blocks of a selection, for the order lines (BUG-order_lines_multi_blocs): one per packet (FindPackets, units
 	 * linked by steps of at most LinkDistance), each the mean of its units' locations, largest packet first. Units of one block share
 	 * one centre (one line); separate blocks have one each; a unit alone is a block of one. Returns their number (none for no units).
-	 * STUB (first commit of the BUG, red test): every unit in one block, the old single centre of the whole chain.
 	 */
 	inline int32 FindBlockCentres(TConstArrayView<FVector> Locations, const double LinkDistance, TArray<FVector>& OutCentres)
 	{
@@ -314,13 +313,25 @@ namespace HOLFormation
 		{
 			return 0;
 		}
-		FVector Sum = FVector::ZeroVector;
+		TArray<FVector2D> Flat;
+		Flat.Reserve(Locations.Num());
 		for (const FVector& Location : Locations)
 		{
-			Sum += Location;
+			Flat.Emplace(Location.X, Location.Y);
 		}
-		OutCentres.Add(Sum / Locations.Num());
-		return 1;
+		TArray<int32> PacketOfUnit;
+		TArray<int32> PacketSizes;
+		const int32 NumPackets = FindPackets(Flat, LinkDistance, PacketOfUnit, PacketSizes);
+		OutCentres.Init(FVector::ZeroVector, NumPackets);
+		for (int32 Unit = 0; Unit < Locations.Num(); ++Unit)
+		{
+			OutCentres[PacketOfUnit[Unit]] += Locations[Unit];
+		}
+		for (int32 Packet = 0; Packet < NumPackets; ++Packet)
+		{
+			OutCentres[Packet] /= PacketSizes[Packet];
+		}
+		return NumPackets;
 	}
 	/**
 	 * Stragglers (playtest note 1 of J7b: five soldiers waited for a sixth 10 m away before they set off): the units alone
