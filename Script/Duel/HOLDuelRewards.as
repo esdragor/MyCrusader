@@ -59,17 +59,23 @@ namespace HOLDuelRewards
 		if (E.TriumphSlot >= 0)
 		{
 			FHOLDuelMoraleOrder Order = MakeOrder(E.TriumphSlot, HOLMoraleTable::Triumph);
-			Result.Add(Duel.bHasArena ? PlacedAt(Order, Duel.Arena.CenterX, Duel.Arena.CenterY) : Order);
+			if (Duel.bHasArena)
+				Order = PlacedAt(Order, Duel.Arena.CenterX, Duel.Arena.CenterY);
+			Result.Add(Order);
 		}
 		if (E.DemoralisedSlot >= 0)
 		{
 			FHOLDuelMoraleOrder Order = MakeOrder(E.DemoralisedSlot, HOLMoraleTable::Demoralised);
-			Result.Add(Duel.bHasArena ? PlacedAt(Order, Duel.Arena.CenterX, Duel.Arena.CenterY) : Order);
+			if (Duel.bHasArena)
+				Order = PlacedAt(Order, Duel.Arena.CenterX, Duel.Arena.CenterY);
+			Result.Add(Order);
 		}
 		if (E.bRefusalCost && E.HesitationSlot >= 0)
 		{
 			FHOLDuelMoraleOrder Order = MakeOrder(E.HesitationSlot, HOLMoraleTable::Hesitation);
-			Result.Add(bHasRefuser ? PlacedAt(Order, RefuserXCm, RefuserYCm) : Order);
+			if (bHasRefuser)
+				Order = PlacedAt(Order, RefuserXCm, RefuserYCm);
+			Result.Add(Order);
 		}
 		return Result;
 	}
