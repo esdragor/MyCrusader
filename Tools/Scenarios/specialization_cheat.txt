@@ -1,0 +1,38 @@
+# Triche de specialisation (SP3, df895b0 : hol.Cheat.Specialization <palier> <option>, D332) : le Forum principal est au palier 1, les cases D et F proposent Voie A / Voie B ; la commande hol.Cheat.Specialization 1 1 demarre la Voie B du palier 1 et fait finir le deblocage tout de suite (AdvanceNow 3600000 ms) : le palier 1 est choisi, plus aucune case de specialisation n'est offerte au palier 1. 3 minutes au plus.
+# Plain, toi (slot 0) contre une IA gelee (slot 1) ; palier 1 force (hol.Cheat.Tier 1). La commande est tapee ici comme au clavier de la console : jamais jouee en vraie partie avant ce scenario (CELEBORN-1119n3 : voir TYPES_A_EXPOSER du rapport HALDIR-1120b).
+waitlog Starting hero of slot 0 spawned at
+hol.AI.ThinkSteps 100000
+hol.Sanity.Watch 1
+hol.Cheat.Tier 1
+frames 10
+hol.Camera.FocusSlot 0
+frames 3
+hol.Select.Click 0.5 0.5
+waitlog Selection: MainCentre of slot 0 (own)
+frames 20
+# Etat avant la triche : rien en cours, rien de choisi.
+hol.Spec.Report
+waitlog Specialization state slot 0 local: pending tier 0 option
+waitlog chosen -1 -1 -1
+frames 8
+hol.HUD.Report
+waitlog HUD overlap:
+waitlog =SpecializeT1A enabled
+notereset 1/2 : ton Forum est selectionne, palier 1, rien de choisi. Dans la grille en bas a droite, la case D affiche Voie A du palier 1 et la case F Voie B du palier 1.
+capture specialization_cheat_before
+waitkey 1/2 : les deux cases ouvertes. Entree pour la suite (le scenario tape hol.Cheat.Specialization 1 1)
+# La commande de triche : demarre la Voie B du palier 1 (option 1) et termine le deblocage tout de suite.
+hol.Cheat.Specialization 1 1
+waitlog Cheat: slot 0 specialization tier 1 option 1 started and ended at once, tier applied 1
+waitlog Specialization: slot 0 tier 1 option 1 applied
+wait 2
+frames 8
+hol.Spec.Report
+waitlog Specialization state slot 0 local: pending tier 0 option
+waitlog chosen 1 -1 -1
+frames 8
+hol.HUD.Report
+waitlog HUD overlap:
+notereset 2/2 : apres hol.Cheat.Specialization 1 1 : le palier 1 est choisi (Voie B), aucun deblocage ne tourne. Les cases D et F n'offrent plus Voie A / Voie B du palier 1 : ni compte "N s" ni "Annuler".
+capture specialization_cheat_after
+hol.Test.Sanity
