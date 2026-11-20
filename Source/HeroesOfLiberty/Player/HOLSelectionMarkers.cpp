@@ -688,6 +688,12 @@ void AHOLSelectionMarkers::UpdateCryFlashes(const float DeltaSeconds)
 	}
 }
 
+void AHOLSelectionMarkers::CollectKnightRings(const TArray<FHOLUnitView>& UnitViews, const int32 OwnerSlot, const UDataTable* UnitTypes, TArray<FKnightRing>& OutRings)
+{
+	// Stub (red test HeroesOfLiberty.SelectionMarkers.KnightRing): the Virtuous Knight's ring is not drawn yet.
+	OutRings.Reset();
+}
+
 void AHOLSelectionMarkers::UpdateAuraRings()
 {
 	using namespace UE::HeroesOfLiberty::SelectionMarkers;

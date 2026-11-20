@@ -5,13 +5,15 @@
 #include "CoreMinimal.h"
 
 /**
- * NOT COMPILED (SAURON-1120f). Aube A2 (AubeInProgress.md), D19 *Defi du Chevalier* passive: part of the damage an allied unit takes near a
- * Virtuous Knight is redirected to the Knight. THE single source of the rule (D839): the combat processor (Mass, per entity and per step)
- * reads this namespace, there is no script twin. Pure: no world, no fragment, no random.
+ * NOT COMPILED (SAURON-1120f, wired by SAURON-1120pc). Aube A2 (AubeInProgress.md), D19 *Defi du Chevalier* passive: part of the damage an allied unit
+ * takes near a Virtuous Knight is redirected to the Knight. THE single source of the rule (D839): the combat processor (Mass, per entity and per step)
+ * reads this namespace (UHOLCombatProcessor::GetDamageRedirect / ApplyDamageRedirect, at the melee blow, the arrow that lands and the splash), there is
+ * no script twin. Pure: no world, no fragment, no random.
  *
- * Decided (GDD 1121-1128): heroes are neither protected nor redirected; the Knight does not redirect its own damage. NOT decided, so they are
- * PARAMETERS here and the defaults below are placeholders behind one line each (Retours/Q-aube-a2-valeurs.md, Retours/Q-aube-a2-cumul.md):
- * the passive percent, the passive radius and what several Knights in range do together.
+ * Decided: heroes are neither protected nor redirected, and the Knight does not redirect its own damage (GDD 1121-1128); D864 = several Knights in
+ * range: the Nearest mode (DefaultCumulMode); D865 = the percent (30) and the radius (800 cm) are the unit table's columns DamageRedirectPercent /
+ * DamageRedirectRadius (HOLUnitTypes.h, row VirtuousKnight). The percent, the radius and the mode stay PARAMETERS of Redirect (the processor passes
+ * the table's numbers): the CappedSum mode is kept for the test and as the alternative of D864, not used by the game.
  */
 namespace HOLDamageRedirect
 {

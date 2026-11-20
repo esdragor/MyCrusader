@@ -2,6 +2,8 @@
 
 #pragma once
 
+class UDataTable;
+
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 #include "Match/HOLForumMessages.h"
@@ -241,6 +243,15 @@ public:
 	const FString& DescribeDuelRings() const { return DuelRingsDescription; }
 	/** The player's aura circles drawn (hol.Select.Report's "Aura rings:" line). */
 	const FString& DescribeAuraRings() const { return AuraRingsDescription; }
+	/** D864 + D865: a Virtuous Knight's ring on the ground (its damage redirect, DamageRedirectRadius of the unit type table), and the part of AuraRingsDescription it adds. */
+	struct FKnightRing
+	{
+		FVector Location = FVector::ZeroVector;
+		double Radius = 0.0;
+		FString Description;
+	};
+	/** The rings of the units of OwnerSlot in UnitViews whose type row has DamageRedirectPercent > 0 (radius read from the table, never 800 in the code). */
+	static void CollectKnightRings(const TArray<FHOLUnitView>& UnitViews, int32 OwnerSlot, const UDataTable* UnitTypes, TArray<FKnightRing>& OutRings);
 	/** The relay rings drawn (hol.Select.Report's "Relay rings:" line). */
 	const FString& DescribeRelayRings() const { return RelayRingsDescription; }
 };
