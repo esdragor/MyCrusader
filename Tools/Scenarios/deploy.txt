@@ -1,4 +1,4 @@
-# Engin deployable (Palier 3, G6) : avec hol.Siege.Deployable 1, le Mangonneau (nom du GDD ; substitut du Trebuchet tant qu'il n'existe pas) nait DEMONTE ; la case D de sa grille dit Monter ; la touche D le monte (8 s, valeurs proposees), la case dit alors Demonter ; monte et sans ordre, il prend seul la Maison ennemie a portee et tire (hol.Siege.DeployedAutoFire 1 par defaut, reponse B de l'utilisateur a Retours/Q-deployed-engine-autofire.md) ; la touche D le demonte (5 s), la case redit Monter. Geste reel : la vraie touche D (hol.UI.Key D : evenement clavier Slate, le chemin d'une vraie touche), modele neutrals_qground. 3 minutes au plus.
+# Engin deployable (Palier 3, G6) : avec hol.Siege.Deployable 1, le Mangonneau (nom du GDD ; substitut du Trebuchet tant qu'il n'existe pas) nait DEMONTE ; la case D de sa grille dit Monter ; la touche D le monte (1,5 s, valeurs proposees, D869), la case dit alors Demonter ; monte et sans ordre, il prend seul la Maison ennemie a portee et tire (hol.Siege.DeployedAutoFire 1 par defaut, reponse B de l'utilisateur a Retours/Q-deployed-engine-autofire.md) ; la touche D le demonte (1 s), la case redit Monter. Geste reel : la vraie touche D (hol.UI.Key D : evenement clavier Slate, le chemin d'une vraie touche), modele neutrals_qground. 3 minutes au plus.
 # Plain, toi (slot 0) contre une IA gelee (slot 1). Le cvar doit preceder la naissance de l'engin (le fragment est pose a la naissance).
 # Tir visible (recette 2, 21:25) : le coup de siege du Mangonneau sur un batiment n'a PAS de projectile dessine (BuildingAttackType Siege : coup immediat, hol.Combat.ArrowReport 'launched 0') ; on montre donc l'effet : clic sur la Maison, ses PV a deux coups d'intervalle. notereset garde le panneau des notes court (il cachait la Maison).
 waitlog Starting hero of slot 0 spawned at
@@ -25,8 +25,11 @@ capture deploy_packed
 note 1. Le Mangonneau est selectionne, demonte : la case D dit Monter. Il ne tire pas sur la Maison ennemie toute proche.
 hol.UI.Key D 0 0.1
 waitlog Order: 1 units deploy
-note 2. Tu appuies sur D : l'engin se monte (8 s).
-wait 9
+frames 15
+hol.HUD.Report
+capture deploy_deploying
+note 2. Tu appuies sur D : l'engin se monte (1,5 s), on le voit en cours de montage.
+wait 2
 hol.HUD.Report
 waitlog D=Pack
 notereset
@@ -53,12 +56,15 @@ waitlog Selection: Mangonel
 frames 10
 hol.UI.Key D 0 0.1
 waitlog Order: 1 units pack up
-note 4. Tu appuies encore sur D : l'engin se demonte (5 s), il ne tire plus et peut marcher.
-wait 6
+frames 15
+hol.HUD.Report
+capture deploy_packing
+note 4. Tu appuies encore sur D : l'engin se demonte (1 s), il ne tire plus et peut marcher.
+wait 2
 hol.HUD.Report
 waitlog D=Deploy
 capture deploy_packed_again
-# D861 (ELROND-1120a/b, UNCOMPILED fix): (b) engin MONTE + clic droit au sol : il se demonte (5 s) puis PART sans second clic (avant : ordre ouvert mais vitesse restee a 0, il ne bougeait plus) ; (a) engin DEMONTE + clic droit sur la Maison ennemie a portee : il se monte (8 s) puis tire.
+# D861 (ELROND-1120a/b, UNCOMPILED fix): (b) engin MONTE + clic droit au sol : il se demonte (1 s) puis PART sans second clic (avant : ordre ouvert mais vitesse restee a 0, il ne bougeait plus) ; (a) engin DEMONTE + clic droit sur la Maison ennemie a portee : il se monte (1,5 s) puis tire.
 # Geste reel : hol.Select.OrderNear = le clic droit du joueur sur le sol (point en cm dans le repere de ton centre) ; la Maison est au point 5300 0 (hol.Cheat.SpawnBuilding House 1 5300 0, meme repere que hol.Camera.FocusNear). Le Mangonneau est a ~3000 0, hors de la zone minimale (1200) : la Maison est a ~2300 cm, dans sa portee (3000).
 # Etape 6 : remonter l'engin (D), pour avoir un engin monte a deplacer.
 hol.Camera.FocusNear 4200 0
@@ -75,7 +81,7 @@ hol.Select.OrderNear 3000 -1000
 waitlog Order: 1 units to (
 frames 20
 capture deploy_move_unmounting
-note 7. Clic droit au sol : l'engin commence par se demonter (5 s), sans que tu appuies sur D.
+note 7. Clic droit au sol : l'engin commence par se demonter (1 s), sans que tu appuies sur D.
 waitlog (delay over)
 hol.Select.Report
 hol.HUD.Report
@@ -84,7 +90,7 @@ wait 3
 hol.Select.Report
 capture deploy_move_walked
 note 8. Sans second clic, l'engin demonte part vers le point : il est visiblement plus bas qu'a deploy_move_start.
-# Etape 9 : engin DEMONTE, clic droit sur la Maison ennemie (cible a portee) : il se monte (8 s) puis tire.
+# Etape 9 : engin DEMONTE, clic droit sur la Maison ennemie (cible a portee) : il se monte (1,5 s) puis tire.
 hol.Camera.FocusNear 4200 0
 frames 2
 hol.Select.OrderNear 5300 0
