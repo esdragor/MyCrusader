@@ -32,6 +32,12 @@ struct HEROESOFLIBERTY_API FHOLDeployFragment : public FMassFragment
 	int32 LastReason = 0;
 	/** Counterweight (D715): the percentage by which the two delays are shortened. */
 	int32 CounterweightPercent = 0;
+	/**
+	 * D861 (b): 1 while a walk of the engine (FHOLMoveOrderFragment::Phase not None) is held by the deployment: UHOLDeployProcessor zeroed
+	 * its speed because the engine is not packed. The order stays; UHOLUnitOrderProcessor gives the walk its speed back (and does not count
+	 * the held steps as stuck) once the engine is Packed again, so the engine leaves without a second click.
+	 */
+	uint8 bWalkHeld = 0;
 };
 
 /**
