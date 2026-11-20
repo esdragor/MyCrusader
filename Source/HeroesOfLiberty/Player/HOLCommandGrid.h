@@ -47,6 +47,8 @@ enum class EHOLGridCommand : uint8
 	Specialize,
 	/** SP3 (D684): the running unlock is cancelled at no cost (ServerCancelSpecialization), the choice open again. */
 	CancelSpecialization,
+	/** D813 (Q-garrison-ui Q1 C): the selected finished building with occupants sends everyone out (RequestUngarrisonAllSelected); cell HOLCommandGridRules::GetUngarrisonAllCell. */
+	UngarrisonAll,
 };
 
 /** A cell's command and the type it names (the unit produced, the building placed). */
@@ -156,6 +158,8 @@ struct FHOLGridContext
 	/** G6 d: among the selected units, one deploys (HOLUnitView::DeployPhase >= 0); bDeployedAny: one is deploying or deployed (the button then packs up). */
 	bool bDeployables = false;
 	bool bDeployedAny = false;
+	/** D813: the selected finished building holds at least one garrisoned unit (AHOLBuilding::GetGarrisonOccupants): the Sortir tous cell shows. */
+	bool bGarrisonOccupied = false;
 	/**
 	 * The player's own hero is among the units commanded (J8c.4): his abilities on the grid on the right (HeroAbilityCell),
 	 * read from his level and the seconds left of each ability's cool-down (indexed by EHOLHeroAbility; the owner's private
@@ -178,6 +182,8 @@ struct FHOLGridContext
 	int32 SpecializationTier = 0;
 	int32 SpecializationPendingOption = INDEX_NONE;
 	int32 SpecializationRemainingMs = 0;
+	/** D868: the EHOLFaction index of the Forum owner's seat (INDEX_NONE: unknown, two lanes); the script grid draws as many lanes as the faction has (3 for the Templars). */
+	int32 SpecializationFaction = INDEX_NONE;
 };
 
 /** Where a key of the grid goes (the user's choice of 2026-10-21, AoE4's way): the grid on the right, the orders on the left. */
@@ -318,10 +324,10 @@ namespace HOLCommandGrid
 	/** L4: the cell of the necrotic rage, after the hero's two (to confirm against the AoE4 grid). */
 	HEROESOFLIBERTY_API int32 GetRageCell();
 
-	/** SP3: the options of a tier's choice (D07: 2; the Templars' 3 commanderies, D131, are not drawn yet). */
+	/** SP3: the default options of a tier's choice (D07: 2); a Templar seat has 3 commanderies (D131), drawn from FHOLGridContext::SpecializationFaction by HOLCommandGridRules.as. */
 	inline constexpr int32 SpecializationOptions = 2;
 	/**
-	 * SP3: the cell of the Forum's grid that offers Option (0 or 1): hol.UI.SpecializationCell (default 6, D then F: the middle row,
+	 * SP3: the cell of the Forum's grid that offers Option (0 or 1; the Templars' third lane shifts the row one cell left, 5 6 7, D868, HOLCommandGridRules.as): hol.UI.SpecializationCell (default 6, D then F: the middle row,
 	 * free on a Forum; Retours/Q-specialization-ui.md), Option after it.
 	 */
 	HEROESOFLIBERTY_API int32 GetSpecializationCell(int32 Option);

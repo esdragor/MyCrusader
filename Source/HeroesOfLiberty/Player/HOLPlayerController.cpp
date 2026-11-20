@@ -2230,6 +2230,7 @@ void AHOLPlayerController::GetGridCommands(TArray<FHOLGridCommand>& OutCommands)
 			if (AHOLGameState* SpecGameState = GetWorld() ? GetWorld()->GetGameState<AHOLGameState>() : nullptr)
 			{
 				HOLCommandGrid::SetSpecialization(Context, SpecGameState->GetTier(HOLPlayerState->GetPlayerIndex()), HOLPlayerState->GetSpecialization());
+				Context.SpecializationFaction = SpecGameState->GetSlotFaction(HOLPlayerState->GetPlayerIndex());
 			}
 		}
 		if (Type)

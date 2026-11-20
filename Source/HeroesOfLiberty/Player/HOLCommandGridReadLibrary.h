@@ -26,6 +26,7 @@ enum class EHOLGridCommandKind : uint8
 	Deploy,
 	Specialize,
 	CancelSpecialization,
+	UngarrisonAll,
 };
 
 /** EHOLCommandFeedback as a UENUM, same order. */
@@ -116,6 +117,8 @@ struct FHOLGridContextView
 	UPROPERTY(BlueprintReadWrite, Category = "HeroesOfLiberty|CommandGrid")
 	bool bDeployedAny = false;
 	UPROPERTY(BlueprintReadWrite, Category = "HeroesOfLiberty|CommandGrid")
+	bool bGarrisonOccupied = false;
+	UPROPERTY(BlueprintReadWrite, Category = "HeroesOfLiberty|CommandGrid")
 	bool bRageUnit = false;
 	UPROPERTY(BlueprintReadWrite, Category = "HeroesOfLiberty|CommandGrid")
 	bool bPrimaryForum = false;
@@ -128,6 +131,9 @@ struct FHOLGridContextView
 	int32 SpecializationPendingOption = -1;
 	UPROPERTY(BlueprintReadWrite, Category = "HeroesOfLiberty|CommandGrid")
 	int32 SpecializationRemainingMs = 0;
+	/** FHOLGridContext::SpecializationFaction (D868): the Forum owner's EHOLFaction index, -1 unknown. */
+	UPROPERTY(BlueprintReadWrite, Category = "HeroesOfLiberty|CommandGrid")
+	int32 SpecializationFaction = -1;
 };
 
 /** The facts of one technology asked (HOLTechnology::FFacts without bCanPay, which CheckResearch reads from the stock); the defaults are FFacts'. */
