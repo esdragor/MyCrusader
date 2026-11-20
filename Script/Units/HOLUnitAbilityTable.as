@@ -2,8 +2,9 @@
 // The table of the unit abilities, one row per ability; HOLUnitAbilityRules_Test.as checks its coherence. Ids are the CSV's row order.
 namespace HOLUnitAbilityTable
 {
-	const int Count = 1;
+	const int Count = 2;
 	const int NecroticRage = 0;
+	const int LightSeal = 1;
 
 	// What an ability is aimed at (the Target column): the caster itself, or a point on the ground (zone of RadiusCm, thrown from at most RangeCm).
 	const int TargetSelf = 0;
@@ -46,18 +47,36 @@ namespace HOLUnitAbilityTable
 			R.RangeCm = 0;
 			return R;
 		}
+		if (Id == 1)
+		{
+			R.Key = "LightSeal";
+			R.UnitType = "Monk";
+			R.Faction = "Dawn";
+			R.Effect = "";
+			R.CooldownMs = 40000;
+			R.DurationMs = 10000;
+			R.HpCostPerHit = 0;
+			R.MinHp = 0;
+			R.StopHp = 0;
+			R.Target = 1;
+			R.RadiusCm = 600;
+			R.RangeCm = 800;
+			return R;
+		}
 		return R;
 	}
 
 	FText Name(int Id)
 	{
 		if (Id == 0) return NSLOCTEXT("HOLUnitAbilityTable", "NameNecroticRage", "Rage nécrotique");
+		if (Id == 1) return NSLOCTEXT("HOLUnitAbilityTable", "NameLightSeal", "Sceau de lumière");
 		return FText();
 	}
 
 	FText Description(int Id)
 	{
 		if (Id == 0) return NSLOCTEXT("HOLUnitAbilityTable", "DescriptionNecroticRage", "Le Guerrier damné se jette dans le combat pendant 10 s : 40 % de dégâts en plus, 25 % de cadence en plus, au prix de 3 PV par coup porté. Refusée sous 30 PV, elle s'arrête à 20 PV ; recharge de 40 s.");
+		if (Id == 1) return NSLOCTEXT("HOLUnitAbilityTable", "DescriptionLightSeal", "Le Moine pose un sceau de lumière sur le sol, à 8 m au plus de lui : une zone de 6 m de rayon qui dure 10 s ; recharge de 40 s. (Le ralentissement des ennemis de la zone est une règle de simulation, pas encore branchée.)");
 		return FText();
 	}
 
