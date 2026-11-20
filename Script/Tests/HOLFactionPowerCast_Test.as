@@ -1,7 +1,6 @@
 // FARAMIR-1120c: the faction power cast rule on its chain (HOLFactionPowerCast::Decide over HOLFactionResource, HOLDawnPowers,
 // HOLGroundAbility). Every expected value is computed by those rules (the cost from the power book row, the gauge from the gauge
-// rule, the cool-down end from CooldownEndMs), never copied. D838: a script test. RED on the first commit (Decide is a stub that
-// always refuses "not Dawn"). The real placing (StartLightSeal) and the RPC need a world: not covered here.
+// rule, the cool-down end from CooldownEndMs), never copied. D838: a script test. D862: the Seal costs NO Honor (a Monk ability, not a book power). RED on the first commit (Decide still spends the book row 0 cost). The real placing (StartLightSeal) and the RPC need a world: not covered here.
 
 namespace FactionPowerCastTest
 {
@@ -20,8 +19,6 @@ namespace FactionPowerCastTest
 
 void Test_FactionPowerCastChain(FUnitTest& T)
 {
-	TArray<FHOLPowerRow> Rows = HOLDawnPowers::Rows();
-	const int Cost = Rows[0].Cost;
 	const int Cooldown = HOLFactionPowerCast::SealCooldownMs();
 	FHOLFactionResource Gauge = FactionPowerCastTest::FullGauge();
 	const int Before = Gauge.Value;
@@ -32,7 +29,7 @@ void Test_FactionPowerCastChain(FUnitTest& T)
 	FHOLFactionPowerDecision First = HOLFactionPowerCast::Decide(FactionPowerCastTest::Dawn(), 0, Gauge, 0, Now, 0, 0, Range, 0);
 	T.AssertTrue(First.bAccepted, "a ready, funded, in-range cast of the Dawn is accepted");
 	T.AssertEquals(HOLFactionPowerCast::RefusalNone(), First.Refusal, "an accepted cast has no refusal");
-	T.AssertEquals(Before - Cost, First.NewGaugeValue, "the gauge pays the power book's cost");
+	T.AssertEquals(Before, First.NewGaugeValue, "D862: the Seal costs no Honor, the gauge is unchanged after the cast");
 	T.AssertEquals(HOLGroundAbility::CooldownEndMs(Now, Cooldown), First.NewCooldownEndMs, "the cool-down ends one Seal cool-down after the cast");
 
 	// The same cast again, written back: refused while the cool-down runs, accepted the instant it ends (and pays again).
@@ -43,7 +40,7 @@ void Test_FactionPowerCastChain(FUnitTest& T)
 	T.AssertEquals(First.NewGaugeValue, Again.NewGaugeValue, "a refused cast leaves the gauge untouched");
 	FHOLFactionPowerDecision Later = HOLFactionPowerCast::Decide(FactionPowerCastTest::Dawn(), 0, After, First.NewCooldownEndMs, First.NewCooldownEndMs, 0, 0, 0, 0);
 	T.AssertTrue(Later.bAccepted, "the cast is accepted again when the cool-down has ended");
-	T.AssertEquals(First.NewGaugeValue - Cost, Later.NewGaugeValue, "and pays the cost a second time");
+	T.AssertEquals(Before, Later.NewGaugeValue, "and still costs no Honor the second time");
 }
 
 void Test_FactionPowerCastRefusals(FUnitTest& T)
@@ -58,19 +55,14 @@ void Test_FactionPowerCastRefusals(FUnitTest& T)
 
 	FHOLFactionResource Empty = HOLFactionResource::Make(0, 0, HOLDawnValues::HonorCap());
 	FHOLFactionPowerDecision Broke = HOLFactionPowerCast::Decide(FactionPowerCastTest::Dawn(), 0, Empty, 0, 0, 0, 0, 0, 0);
-	T.AssertFalse(Broke.bAccepted, "an empty gauge refuses the cast");
-	T.AssertEquals(HOLFactionPowerCast::RefusalGaugeShort(), Broke.Refusal, "the reason is the gauge");
-	T.AssertEquals(0, Broke.NewGaugeValue, "an empty gauge stays empty");
+	T.AssertTrue(Broke.bAccepted, "D862: an empty gauge does not refuse the Seal (no Honor cost)");
+	T.AssertEquals(HOLFactionPowerCast::RefusalNone(), Broke.Refusal, "an accepted cast has no refusal");
+	T.AssertEquals(Empty.Value, Broke.NewGaugeValue, "an empty gauge stays as it was");
 
-	const int Cost = HOLDawnPowers::Rows()[0].Cost;
-	FHOLFactionResource Short = HOLFactionResource::Make(Cost - 1, 0, HOLDawnValues::HonorCap());
-	FHOLFactionPowerDecision OneShort = HOLFactionPowerCast::Decide(FactionPowerCastTest::Dawn(), 0, Short, 0, 0, 0, 0, 0, 0);
-	T.AssertEquals(HOLFactionPowerCast::RefusalGaugeShort(), OneShort.Refusal, "one Honor short of the cost is refused");
-
-	FHOLFactionResource Exact = HOLFactionResource::Make(Cost, 0, HOLDawnValues::HonorCap());
-	FHOLFactionPowerDecision Just = HOLFactionPowerCast::Decide(FactionPowerCastTest::Dawn(), 0, Exact, 0, 0, 0, 0, 0, 0);
-	T.AssertTrue(Just.bAccepted, "exactly the cost is enough");
-	T.AssertEquals(0, Just.NewGaugeValue, "and empties the gauge");
+	FHOLFactionResource Part = HOLFactionResource::Make(FactionPowerCastTest::FullGauge().Value / 2, 0, HOLDawnValues::HonorCap());
+	FHOLFactionPowerDecision Half = HOLFactionPowerCast::Decide(FactionPowerCastTest::Dawn(), 0, Part, 0, 0, 0, 0, 0, 0);
+	T.AssertTrue(Half.bAccepted, "a part-filled gauge casts the Seal");
+	T.AssertEquals(Part.Value, Half.NewGaugeValue, "and keeps its Honor (D862)");
 
 	FHOLFactionPowerDecision Other = HOLFactionPowerCast::Decide(FactionPowerCastTest::Dawn() + 1, 0, Full, 0, 0, 0, 0, 0, 0);
 	T.AssertFalse(Other.bAccepted, "a slot that is not the Dawn is refused");
@@ -78,4 +70,19 @@ void Test_FactionPowerCastRefusals(FUnitTest& T)
 
 	FHOLFactionPowerDecision NoPower = HOLFactionPowerCast::Decide(FactionPowerCastTest::Dawn(), HOLDawnPowers::Rows().Num(), Full, 0, 0, 0, 0, 0, 0);
 	T.AssertEquals(HOLFactionPowerCast::RefusalNoSuchPower(), NoPower.Refusal, "a power beyond the book is refused");
+}
+
+
+// D862: the Seal is the Monk ability of the unit ability table (row LightSeal): its range and its cool-down are that row's, and the cast leaves the Honor gauge alone.
+void Test_FactionPowerCastIsTheMonkAbilityRow(FUnitTest& T)
+{
+	HOLUnitAbilityTable::FHOLUnitAbilityRow Row = HOLUnitAbilityTable::Row(HOLUnitAbilityTable::LightSeal);
+	FHOLFactionResource Full = FactionPowerCastTest::FullGauge();
+	const int Now = 5000;
+	FHOLFactionPowerDecision AtRange = HOLFactionPowerCast::Decide(FactionPowerCastTest::Dawn(), 0, Full, 0, Now, 0, 0, int(Row.RangeCm), 0);
+	T.AssertTrue(AtRange.bAccepted, "a point at the Monk row's range is accepted");
+	T.AssertEquals(Full.Value, AtRange.NewGaugeValue, "the Honor gauge is unchanged after the Seal");
+	T.AssertEquals(HOLGroundAbility::CooldownEndMs(Now, Row.CooldownMs), AtRange.NewCooldownEndMs, "the cool-down is the Monk row's");
+	FHOLFactionPowerDecision PastRange = HOLFactionPowerCast::Decide(FactionPowerCastTest::Dawn(), 0, Full, 0, Now, 0, 0, int(Row.RangeCm) + 1, 0);
+	T.AssertEquals(HOLFactionPowerCast::RefusalOutOfRange(), PastRange.Refusal, "one centimetre past the Monk row's range is refused");
 }
