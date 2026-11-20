@@ -9,6 +9,7 @@
 #include "Match/HOLVictoryRules.h"
 #include "Simulation/HOLCombatRules.h"
 #include "HOLCombatProcessor.generated.h"
+#include "Simulation/HOLDamageRedirectRules.h"
 
 struct FHOLCombatFragment;
 struct FHOLMoveOrderFragment;
@@ -180,6 +181,16 @@ protected:
 	const class UHOLTerrainSubsystem* StepTerrain = nullptr;
 	/** T4: whether Victim stands within an aura of its owner (AuraSources). */
 	bool IsInAura(const FFighter& Victim) const;
+	/**
+	 * D864 + D865 (Defi du Chevalier, passive): who takes which part of a blow of Damage on Victim. The Knights are the living units of Victim's camp
+	 * whose type has DamageRedirectPercent > 0 (HOLUnitTypes.h); the rule is HOLDamageRedirect::Redirect (HOLDamageRedirectRules.h, the one source), in
+	 * the Nearest mode. Kept = what Victim still takes; a step with no such unit (bAnyDamageRedirect false) returns Kept = Damage at once.
+	 */
+	HOLDamageRedirect::FResult GetDamageRedirect(const FFighter& Victim, float Damage) const;
+	/** Takes the shares of a GetDamageRedirect result off the Knights' health (the sequential hit loop: same order as the blows, reproducible). */
+	void ApplyDamageRedirect(const HOLDamageRedirect::FResult& Redirect);
+	/** Whether a living unit with DamageRedirectPercent > 0 exists this step (set by the gather of Execute). */
+	bool bAnyDamageRedirect = false;
 	/** T4: the armour Victim gets from its owner's talents (Boucliers levees: in the aura, HOLHeroAbility::ShieldsUpArmorBonus). */
 	int32 GetTalentArmorBonus(const FFighter& Victim) const;
 	/** T4: one bit per slot whose hero took a talent giving armour in the aura (read from the hero sheets, each step). */
