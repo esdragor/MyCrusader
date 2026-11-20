@@ -535,6 +535,13 @@ struct HEROESOFLIBERTY_API FHOLCombatFragment : public FMassFragment
 	uint8 CloseRanksSpeedPercent = 100;
 
 	/**
+	 * D859 (HOLZoneEffect, the Seal of Light): the share of its walk it takes, in percent, while an enemy of the zone's owner stands in an
+	 * active zone: 100 - the zone's slow (40 -> 60), else 100. Written by the combat processor each step beside CloseRanksSpeedPercent; the
+	 * movement processor multiplies it in. Derived each step from the zone subsystem's state: not part of the step's fingerprint.
+	 */
+	uint8 ZoneSpeedPercent = 100;
+
+	/**
 	 * The enemy building it attacks (D345.2b), with its building attack (FHOLUnitTypeConstants::BuildingAttack): by order,
 	 * on an attack-move with no enemy unit found, or at rest within its aggression radius. Only while it has no unit
 	 * target: an enemy unit it takes on makes it drop the building (one taken on by itself: an ordered one, never). Unset: none.
