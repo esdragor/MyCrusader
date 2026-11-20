@@ -167,6 +167,8 @@ public:
 	void GetUnitViews(TArray<struct FHOLUnitView>& OutUnits) const;
 	/** One unit simulated here; false when it is gone. */
 	bool GetUnitView(uint32 UnitId, struct FHOLUnitView& OutUnit) const;
+	/** The type of a unit simulated here, garrisoned or not (GetUnitView skips the garrisoned); NAME_None when the unit is gone. */
+	FName GetUnitTypeName(uint32 UnitId) const;
 
 	/**
 	 * F7 lot 2 (FortificationsInProgress.md, D693): puts a unit in a building's garrison (null Building: back on the field), server and solo,

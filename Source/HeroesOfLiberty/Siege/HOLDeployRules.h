@@ -72,9 +72,9 @@ namespace HOLDeploy
 	/** The reason of a refusal: the target is nearer than the minimum range. */
 	constexpr int32 TooClose = 1;
 
-	/** PROPOSED values (Q-trebuchet-deploy.md): deploying 8 s, packing 5 s, the target no nearer than 12 m nor farther than 50 m. */
-	constexpr int32 ProposedDeployMs = 8000;
-	constexpr int32 ProposedPackMs = 5000;
+	/** PROPOSED values: deploying 1.5 s, packing 1 s (D869: each visible, 1 to 2 s; was 8 s / 5 s from Q-trebuchet-deploy.md), the target no nearer than 12 m nor farther than 50 m. */
+	constexpr int32 ProposedDeployMs = 1500;
+	constexpr int32 ProposedPackMs = 1000;
 	constexpr int32 ProposedMinRangeCm = 1200;
 	constexpr int32 ProposedMaxRangeCm = 5000;
 
@@ -101,6 +101,12 @@ namespace HOLDeploy
 
 	HEROESOFLIBERTY_API int32 DeployDelayMs(const FProfile& Profile, int32 CounterweightPercent);
 	HEROESOFLIBERTY_API int32 PackDelayMs(const FProfile& Profile, int32 CounterweightPercent);
+
+	/** D869b: what the engine's button says in a phase: 0 Mount, 1 Dismount, 2 Mounting (deploying), 3 Dismounting (packing). */
+	HEROESOFLIBERTY_API int32 ButtonLabel(EPhase Phase);
+
+	/** D869b: how far a change of state has come, 0 to 1000 (permille of its delay, Counterweight included); -1 for a settled phase (no bar). */
+	HEROESOFLIBERTY_API int32 ProgressPermille(const FState& State, const FProfile& Profile, int32 CounterweightPercent);
 
 	/** Time passes: a change of state ends when its delay has passed (the time left over is not carried); a settled state stays. */
 	HEROESOFLIBERTY_API FState Advance(const FState& State, int32 DtMs, const FProfile& Profile, int32 CounterweightPercent);

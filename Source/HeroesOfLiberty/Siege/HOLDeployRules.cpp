@@ -74,6 +74,27 @@ namespace HOLDeploy
 		return Shortened(Profile.PackMs, CounterweightPercent);
 	}
 
+	int32 ButtonLabel(const EPhase Phase)
+	{
+		switch (Phase)
+		{
+		case EPhase::Packed: return 0;
+		case EPhase::Deployed: return 1;
+		case EPhase::Deploying: return 2;
+		default: return 3;
+		}
+	}
+
+	int32 ProgressPermille(const FState& State, const FProfile& Profile, const int32 CounterweightPercent)
+	{
+		if (State.Phase != EPhase::Deploying && State.Phase != EPhase::Packing)
+		{
+			return -1;
+		}
+		const int32 Delay = State.Phase == EPhase::Deploying ? DeployDelayMs(Profile, CounterweightPercent) : PackDelayMs(Profile, CounterweightPercent);
+		return Delay <= 0 ? 1000 : FMath::Clamp(static_cast<int32>(static_cast<int64>(FMath::Max(0, State.ElapsedMs)) * 1000 / Delay), 0, 1000);
+	}
+
 	FState Advance(const FState& State, const int32 DtMs, const FProfile& Profile, const int32 CounterweightPercent)
 	{
 		FState Next = State;

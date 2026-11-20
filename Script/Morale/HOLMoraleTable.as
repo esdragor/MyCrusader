@@ -165,7 +165,7 @@ namespace HOLMoraleTable
 	}
 
 	// The effect a row poses on a unit: its own levers, or those of the effect it gives (the Banner gives the Dawn Aura).
-	HOLMorale::FHOLMoraleEffect Effect(int Id)
+	FHOLMoraleEffectData Effect(int Id)
 	{
 		FHOLMoraleRow R = Row(Id);
 		int EffectId = Id;

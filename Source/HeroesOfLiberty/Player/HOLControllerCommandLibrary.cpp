@@ -529,6 +529,19 @@ bool UHOLControllerCommandLibrary::RequestUngarrisonAllOf(AHOLPlayerController* 
 	return Controller && Building;
 }
 
+bool UHOLControllerCommandLibrary::RequestUngarrisonUnitOf(AHOLPlayerController* Controller, const int32 UnitId)
+{
+	if (Controller && UnitId > 0) { Controller->RequestUngarrisonUnit(static_cast<uint32>(UnitId)); }
+	return Controller && UnitId > 0;
+}
+
+bool UHOLControllerCommandLibrary::RequestUngarrisonAllSelected(AHOLPlayerController* Controller)
+{
+	AHOLBuilding* Building = Controller ? Controller->GetOwnSelection() : nullptr;
+	if (Building) { Controller->RequestUngarrisonAll(Building); }
+	return Building != nullptr;
+}
+
 bool UHOLControllerCommandLibrary::RequestRallyOnSite(AHOLPlayerController* Controller, AHOLBuilding* Producer, AHOLBuilding* Site, const bool bShift)
 {
 	if (Controller && Producer && Site) { Controller->RequestSetRallyPointOf(Producer, Site->GetActorLocation(), INDEX_NONE, Site, bShift); }

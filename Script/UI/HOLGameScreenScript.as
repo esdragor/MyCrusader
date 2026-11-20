@@ -132,6 +132,8 @@ FString TalentTipTexts = "";
 	UCommonTextBlock VolcanoText;
 	UHOLTopBarPanel TopBar;
 	UHOLCheatPanelScript CheatPanel;
+	// D807: the chat field (Enter opens it), bottom left above the hero block.
+	UHOLChatInputScreen ChatInput;
 	// HUD H-4: the players' table (HOLPlayerTable.as), drawn into the C++ screen's PlayersPanel.
 	UHOLPlayerTablePanel PlayerTable;
 	// HUD H-6: the control groups' bar (HOLGroupBar.as), drawn into the C++ screen's GroupsPanel.
@@ -206,6 +208,8 @@ UHOLScenarioPanelScript ScenarioPanel;
 	const int DipKindMenu = 4;
 	const int DipKindVision = 5;
 	const int DipKindMessage = 7;
+	// D872: a click on the line itself (HOLDiplomacyPanel::KindRow).
+	const int DipKindRow = 10;
 	const int DipKindChip = 3;
 	// The tribute (E-diplomacy_locked, 2026-11-05): four buttons a line, one per resource (HOLDiplomacyPanel::TributeResource), the click's kind
 	// HOLDiplomacyPanel::TributeKind; the tax is written once in the panel's foot and, without a finished Market, why the buttons are greyed.
@@ -225,6 +229,7 @@ UHOLScenarioPanelScript ScenarioPanel;
 	UCommonTextBlock DipCloseLabel;
 	UVerticalBox DipRowsBox;
 	TArray<UVerticalBox> DipRowBoxes;
+	TArray<UButton> DipRowButtons;
 	TArray<UHorizontalBox> DipLines;
 	TArray<UHorizontalBox> DipMenuBoxes;
 	TArray<UBorder> DipSwatches;
@@ -320,6 +325,14 @@ UHOLScenarioPanelScript ScenarioPanel;
 		SelectionChipsBlock.Build(this, SelectionBlock);
 		BuildMinimap(Frame);
 		BuildTalentWindow(Frame);
+		// D807: the chat field, in a column at the bottom left (above the hero block); the pause screen and the cheats stay over it.
+		UVerticalBox ChatHost = Cast<UVerticalBox>(ConstructWidget(UVerticalBox, n"ChatInputHost"));
+		UOverlaySlot ChatSlot = Frame.AddChildToOverlay(ChatHost);
+		ChatSlot.SetHorizontalAlignment(EHorizontalAlignment::HAlign_Left);
+		ChatSlot.SetVerticalAlignment(EVerticalAlignment::VAlign_Bottom);
+		ChatSlot.SetPadding(FMargin(12.0, 0.0, 0.0, 220.0));
+		ChatInput = Cast<UHOLChatInputScreen>(NewObject(this, UHOLChatInputScreen));
+		ChatInput.Build(this, ChatHost);
 		// Last: over the other blocks.
 		BuildPauseScreen(Frame);
 		// H-11a: the cheats panel, built last so it stays over every other panel (the C++ panel was a viewport layer at z 1).
@@ -504,7 +517,14 @@ UHOLScenarioPanelScript ScenarioPanel;
 		for (int Slot = 0; Slot < DipMaxRows; ++Slot)
 		{
 			UVerticalBox RowBox = Cast<UVerticalBox>(ConstructWidget(UVerticalBox, FName(f"DipRow_{Slot}")));
-			DipRowsBox.AddChildToVerticalBox(RowBox).SetPadding(FMargin(0.0, 0.0, 0.0, 2.0));
+			// D872: the whole line is a transparent button, a click on it chooses the player as the private chat target (PanelClick, DipKindRow); the line's own buttons take their clicks first.
+			UButton RowButton = BindDipButton(MakeButton(FName(f"DipRowButton_{Slot}")), Slot, DipKindRow);
+			RowButton.SetBackgroundColor(FLinearColor(1.0, 1.0, 1.0, 0.0));
+			UButtonSlot RowButtonSlot = Cast<UButtonSlot>(RowButton.AddChild(RowBox));
+			if (RowButtonSlot != nullptr)
+				RowButtonSlot.SetPadding(FMargin(0.0, 0.0, 0.0, 0.0));
+			DipRowsBox.AddChildToVerticalBox(RowButton).SetPadding(FMargin(0.0, 0.0, 0.0, 2.0));
+			DipRowButtons.Add(RowButton);
 			DipRowBoxes.Add(RowBox);
 			// Two lines a player (the user's answer of 2026-11-05): the first holds the colour, name, faction, lives, posture, vision and message; the second the four tribute buttons, under the name. Lines 2 and 3 stay empty (no size); DescribeDipFit counts the lines drawn.
 			for (int Line = 0; Line < 4; ++Line)
@@ -717,6 +737,7 @@ UHOLScenarioPanelScript ScenarioPanel;
 		{
 			const bool bThere = HOLDiplomacyRead::IsSlotInMatch(Slot);
 			DipRowBoxes[Slot].SetVisibility(bThere ? ESlateVisibility::SelfHitTestInvisible : ESlateVisibility::Collapsed);
+			DipRowButtons[Slot].SetVisibility(bThere ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
 			if (!bThere)
 			{
 				DipRows[Slot] = FHOLDiplomacyRowView();
@@ -918,11 +939,13 @@ UHOLScenarioPanelScript ScenarioPanel;
 			Controller.RequestPanelTribute(Slot, TributeResource, 100);
 			return true;
 		}
-		if (Kind == DipKindMessage)
+		// The Message button and the whole line (D872) both choose the private chat target; greyed (an AI, a defeated player) they choose nobody.
+		if (Kind == DipKindMessage || Kind == DipKindRow)
 		{
-			if (!Row.bMessageEnabled)
+			const int Chosen = HOLDiplomacyPanel::ChatTargetOfClick(Kind, Slot, Row.bMessageEnabled);
+			if (Chosen < 0)
 				return false;
-			DipMessageSlot = Slot;
+			DipMessageSlot = Chosen;
 			return true;
 		}
 		return false;
@@ -978,6 +1001,8 @@ UHOLScenarioPanelScript ScenarioPanel;
 			}
 			if (WidgetName == FName(f"DipMessage_{Slot}"))
 				return PanelClick(Slot, DipKindMessage);
+			if (WidgetName == FName(f"DipRowButton_{Slot}"))
+				return PanelClick(Slot, DipKindRow);
 		}
 		return false;
 	}
@@ -1426,12 +1451,53 @@ UHOLScenarioPanelScript ScenarioPanel;
 		return Box;
 	}
 
+	// D807: the local player has an ally when some other slot of the match is Ally both ways (HOLChatInputScreen::HasAlly on the real stances).
+	bool LocalPlayerHasAlly()
+	{
+		const int Viewer = GetLocalSlot();
+		TArray<int> Mine;
+		TArray<int> Theirs;
+		TArray<bool> There;
+		for (int Slot = 0; Slot < DipMaxRows; ++Slot)
+		{
+			const bool bOther = Viewer >= 0 && Slot != Viewer && HOLDiplomacyRead::IsSlotInMatch(Slot);
+			There.Add(bOther);
+			Mine.Add(bOther ? HOLDiplomacyRead::GetStance(Viewer, Slot) : HOLDiplomacyRead::GetStanceEnemy());
+			Theirs.Add(bOther ? HOLDiplomacyRead::GetStance(Slot, Viewer) : HOLDiplomacyRead::GetStanceEnemy());
+		}
+		return HOLChatInputScreen::HasAlly(Viewer, Mine, Theirs, There);
+	}
+
+	// The private target (A of the 2026-11-20 answer): the player whose line was clicked in the Diplomacy panel (its Message button, DipMessageSlot), only while
+	// he is still in the match and is not the viewer; -1 and no name otherwise, so Tab skips Private. B: "/w Name message" names any other player of the match
+	// (SetWhisperDirectory, the names the panel shows).
+	void RefreshChatInput()
+	{
+		if (ChatInput == nullptr)
+			return;
+		const int Viewer = GetLocalSlot();
+		TArray<FString> Names;
+		TArray<int> Slots;
+		for (int Slot = 0; Slot < DipMaxRows; ++Slot)
+		{
+			if (Viewer >= 0 && Slot != Viewer && HOLDiplomacyRead::IsSlotInMatch(Slot))
+			{
+				Names.Add(HOLDiplomacyRead::GetSlotNameText(Viewer, Slot));
+				Slots.Add(Slot);
+			}
+		}
+		const int Chosen = Slots.Contains(DipMessageSlot) ? DipMessageSlot : -1;
+		ChatInput.SetWhisperDirectory(Names, Slots);
+		ChatInput.SetContext(LocalPlayerHasAlly(), Chosen, Chosen >= 0 ? HOLDiplomacyRead::GetSlotNameText(Viewer, Chosen) : "");
+	}
+
 	UFUNCTION(BlueprintOverride)
 	void Refresh()
 	{
 		// The block's place follows the bottom bar's scale (EtapeDefini T).
 		if (HeroPanelSlot != nullptr)
 			HeroPanelSlot.SetPadding(GetBottomLeftPlace());
+		RefreshChatInput();
 		RefreshHero();
 		RefreshFactionSlot();
 		RefreshDuel();
@@ -2474,6 +2540,8 @@ UHOLScenarioPanelScript ScenarioPanel;
 			ClickTalent();
 		if (KeyName == n"CtrlD")
 			ToggleDiplomacy();
+		if (ChatInput != nullptr)
+			ChatInput.KeyPressed(KeyName);
 	}
 
 	// H-11a: the cheats panel's bottom edge (0 before it is built): the AI level line and the diplomacy panel stack under it.
@@ -2652,6 +2720,7 @@ UHOLScenarioPanelScript ScenarioPanel;
 			+ (AILevelTexts.IsEmpty() ? "" : "\nai level: " + AILevelTexts)
 			+ (VolcanoTexts.IsEmpty() ? "" : "\nvolcano: " + VolcanoTexts)
 			+ (SiteTexts.IsEmpty() ? "" : "\nsacred: " + SiteTexts)
+			+ (ChatInput != nullptr ? "\n" + ChatInput.Describe() : "")
 			+ "\ndiplomacy: " + (bDipOpen ? f"open layout {DipLayout}" + (DipMenuSlot >= 0 ? f" menu {DipMenuSlot}" : "") + (DipMessageSlot >= 0 ? f" message to {DipMessageSlot}" : "") + " | " + DescribeDipFit() + " | " + DipTexts : "closed")
 			+ "\npause: " + PauseView.Describe + (PauseTexts.IsEmpty() ? "" : "\npause texts: " + PauseTexts);
 	}

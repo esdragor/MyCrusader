@@ -1,5 +1,5 @@
 # Camp neutre dans une clairiere (suite de Retours/Q-neutrals-camp-cache : le camp du centre est cache dans un bosquet ; defaut = scenario neutrals inchange, E-neutrals reste LOGIQUE SEULEMENT). Ici le scenario NEUF : hol.Decor.ClearNear 0 0 2500 degage 25 m autour du camp, puis on cadre le camp et ses 3 Lanciers neutres sans bosquet devant. 3 minutes au plus.
-# Chaine reelle : proprietaire neutre (8), camp passif au repos (hol.Camp.Aggro 1 : il ne bouge que si on l attaque), commande hol.Decor.ClearNear (HOLDecorClear.cpp : troncs et cimes du bosquet de Plain + instances du decor, jamais les sources de ressources). Aucune commande inventee : Camp.Add ne pose que les 3 Lanciers (pas de tente ni de feu dans le jeu a ce jour).
+# Chaine reelle : proprietaire neutre (8), camp passif au repos (hol.Camp.Aggro 1 : il ne bouge que si on l attaque), commande hol.Decor.ClearNear (HOLDecorClear.cpp : troncs et cimes du bosquet de Plain + instances du decor, les arbres-sources de bois seulement avec l argument Trees, jamais les autres sources de ressources). Aucune commande inventee : Camp.Add ne pose que les 3 Lanciers (pas de tente ni de feu dans le jeu a ce jour).
 hol.Camp.Aggro 1
 hol.Camp.Add 0 0 3 Spearman
 waitlog Camp 0: 3 Spearman at
@@ -12,13 +12,13 @@ hol.Camera.Zoom -3
 frames 20
 capture neutrals_clairiere_avant
 note 1. Avant : le camp au centre vu de la gauche, avec le decor tel que le joueur le trouve (bosquet de la carte s il y en a un autour du poste).
-hol.Decor.ClearNear 0 0 2500
+hol.Decor.ClearNear 0 0 2500 Trees
 waitlog Decor.ClearNear 0 0 2500: took
 frames 20
 hol.Camera.Focus -1700 0
 frames 5
 capture neutrals_clairiere_large
-note 2. Apres hol.Decor.ClearNear 0 0 2500 : sol nu a 25 m autour du camp ; les 3 Lanciers gris sont visibles au repos, mes 3 Hommes d armes bleus a gauche, personne ne se bat.
+note 2. Apres hol.Decor.ClearNear 0 0 2500 Trees (le bosquet ET les arbres-sources de bois du rayon, regle HOLCampClearing) : sol nu a 25 m autour du camp ; les 3 Lanciers gris sont visibles au repos, mes 3 Hommes d armes bleus a gauche, personne ne se bat.
 hol.Camp.Report
 waitlog Camp 0 at (0, 0): guarding, members 3 of 3, hits taken 0
 hol.Camera.Focus 0 0

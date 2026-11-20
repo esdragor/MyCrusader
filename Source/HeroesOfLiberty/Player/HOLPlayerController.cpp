@@ -1,7 +1,9 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "Player/HOLPlayerController.h"
+#include "Siege/HOLDeployRules.h"
 #include "Player/HOLAttackCursor.h"
+#include "Player/HOLControllerCommandLibrary.h"
 #include "Player/HOLControllerReadLibrary.h"
 
 #include "Buildings/HOLBuilding.h"
@@ -2220,6 +2222,10 @@ void AHOLPlayerController::GetGridCommands(TArray<FHOLGridCommand>& OutCommands)
 		const FHOLBuildingTypeRow* Type = Building->GetType();
 		Context.bOwnBuilding = Type != nullptr;
 		Context.bBuildingFinished = Building->IsFinished();
+		// D813: a finished building holding units shows the Sortir tous cell (HOLCommandGridRules, UngarrisonAllCell).
+		TArray<int32> GarrisonOccupants;
+		Building->GetGarrisonOccupants(GarrisonOccupants);
+		Context.bGarrisonOccupied = Context.bBuildingFinished && GarrisonOccupants.Num() > 0;
 		Context.bForumDown = Building->IsForumDown();
 		Context.bMarket = Building->GetTypeName() == HOLBuildingTypeNames::Market;
 		// SP3: the main Forum's specialization cells, read from the owner's view and the hero's tier (the server decides, D203).
@@ -2229,6 +2235,7 @@ void AHOLPlayerController::GetGridCommands(TArray<FHOLGridCommand>& OutCommands)
 			if (AHOLGameState* SpecGameState = GetWorld() ? GetWorld()->GetGameState<AHOLGameState>() : nullptr)
 			{
 				HOLCommandGrid::SetSpecialization(Context, SpecGameState->GetTier(HOLPlayerState->GetPlayerIndex()), HOLPlayerState->GetSpecialization());
+				Context.SpecializationFaction = SpecGameState->GetSlotFaction(HOLPlayerState->GetPlayerIndex());
 			}
 		}
 		if (Type)
@@ -2294,6 +2301,38 @@ void AHOLPlayerController::GetGridCommands(TArray<FHOLGridCommand>& OutCommands)
 	{
 		OutCommands[Cell] = HOLCommandGrid::GetCommand(Context, Cell);
 	}
+}
+
+bool AHOLPlayerController::GetDeployProgress(int32& OutPhase, int32& OutPermille) const
+{
+	OutPhase = -1;
+	OutPermille = -1;
+	int32 Phase = -1;
+	for (const uint32 UnitId : GetCommandUnits())
+	{
+		FHOLUnitView View;
+		if (GetWorld() && HOLUnitView::Find(*GetWorld(), UnitId, View) && (View.DeployPhase == 1 || View.DeployPhase == 3))
+		{
+			Phase = View.DeployPhase;
+			break;
+		}
+	}
+	const double Now = GetWorld() ? GetWorld()->GetTimeSeconds() : 0.0;
+	if (Phase != DeployWatchedPhase)
+	{
+		DeployWatchedPhase = Phase;
+		DeployWatchedSince = Now;
+	}
+	if (Phase < 0)
+	{
+		return false;
+	}
+	HOLDeploy::FState State;
+	State.Phase = HOLDeploy::PhaseAt(Phase);
+	State.ElapsedMs = FMath::RoundToInt((Now - DeployWatchedSince) * 1000.0);
+	OutPhase = Phase;
+	OutPermille = HOLDeploy::ProgressPermille(State, HOLDeploy::DefaultProfile(), 0); // Counterweight is not read by the client yet
+	return true;
 }
 
 void AHOLPlayerController::GetUnitsContext(FHOLGridContext& Context) const
@@ -2680,6 +2719,10 @@ void AHOLPlayerController::ExecuteGridCommand(const FHOLGridCommand& Command)
 		RequestToggleDeploy(Own);
 		return;
 	}
+	case EHOLGridCommand::UngarrisonAll:
+		// D813 (Q-garrison-ui Q1 C): the Sortir tous cell or its key sends the selected building's whole garrison out.
+		UHOLControllerCommandLibrary::RequestUngarrisonAllSelected(this);
+		return;
 	case EHOLGridCommand::CancelConstruction:
 	{
 		// The site selected alone, or a subgroup's only building.
@@ -3180,7 +3223,7 @@ void AHOLPlayerController::UpdatePlacementGhost()
 	// F4 drag of a wall type: the cells shown follow the cursor, from the script rule (one source with the server's Validate).
 	if (bWallDragging)
 	{
-		WallDragCells = UHOLWallLineBridge::NativeDragCells(WallDragStart, Ground, WallDragTile);
+		WallDragEnd = Ground; WallDragCells = UHOLWallLineBridge::NativeDragCells(WallDragStart, Ground, WallDragTile);
 	}
 	// Checked again every frame: the stock, the buildings and the sources change under a ghost that stays still.
 	FBox2D Footprint = UHOLConstructionSubsystem::SnapFootprint(*Type, Ground);
@@ -3291,9 +3334,17 @@ bool AHOLPlayerController::BeginWallDrag()
 	WallDragTile = UHOLConstructionReadLibrary::GetWallLineWorld(this, MapMin, MapMax, Occupied);
 	bWallDragging = true;
 	WallDragStart = Ground;
-	WallDragCells = UHOLWallLineBridge::NativeDragCells(WallDragStart, Ground, WallDragTile);
+	WallDragEnd = Ground; WallDragCells = UHOLWallLineBridge::NativeDragCells(WallDragStart, Ground, WallDragTile);
 	UE_LOG(LogHOLMatch, Display, TEXT("Placement: %s wall drag started at (%.0f, %.0f)"), *PlacementType.ToString(), Ground.X, Ground.Y);
 	return true;
+}
+
+bool AHOLPlayerController::GetWallDragView(FVector& OutStart, FVector& OutEnd, double& OutTile) const
+{
+	OutStart = WallDragStart;
+	OutEnd = WallDragEnd;
+	OutTile = WallDragTile;
+	return bWallDragging;
 }
 
 // F4: the release sends the line (the server validates it again: ServerPlaceWallLine), Shift keeps the mode as for a single building.

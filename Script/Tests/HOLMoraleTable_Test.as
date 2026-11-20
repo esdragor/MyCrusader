@@ -17,7 +17,7 @@ void Test_MoraleTableRowsAreWellFormed(FUnitTest& T)
 		T.AssertFalse(HOLMoraleTable::Description(Id).ToString().IsEmpty(), f"{Row.Key} has a description");
 		T.AssertFalse(Row.SourceKind.IsEmpty(), f"{Row.Key} says where it comes from");
 		T.AssertTrue(Row.RadiusCm >= 0 && Row.DurationMs >= 0, f"{Row.Key}: no negative reach or time");
-		const HOLMorale::FHOLMoraleEffect Effect = HOLMoraleTable::Effect(Id);
+		const FHOLMoraleEffectData Effect = HOLMoraleTable::Effect(Id);
 		T.AssertTrue(HOLMorale::HasIntensity(Effect), f"{Row.Key} acts on a lever");
 		T.AssertEquals(Row.bMalusSign, HOLMorale::IsMalus(Effect), f"{Row.Key}: the sign agrees with the levers");
 		if (Row.Gives < 0)
@@ -67,7 +67,7 @@ void Test_MoraleTableMigratedValues(FUnitTest& T)
 // One aura counts however many cover the unit: the hero's and the banner's are the same effect, so they never add up (the aura 15 %, the cry on top 25 %).
 void Test_MoraleTableOneAuraCounts(FUnitTest& T)
 {
-	HOLMorale::FHOLMoraleState State;
+	FHOLMoraleStateData State;
 	HOLMorale::Apply(State, HOLMoraleTable::Effect(HOLMoraleTable::DawnAura));
 	HOLMorale::Apply(State, HOLMoraleTable::Effect(HOLMoraleTable::Banner));
 	T.AssertEquals(1, HOLMorale::Count(State), "the hero's aura and a banner's are one effect");
@@ -98,7 +98,7 @@ void Test_MoraleTableDuelEffects(FUnitTest& T)
 // A malus of the table is attenuated on the real chain: Demoralised under a half attenuation lasts half as long.
 void Test_MoraleTableAttenuatesDemoralised(FUnitTest& T)
 {
-	HOLMorale::FHOLMoraleState State;
+	FHOLMoraleStateData State;
 	HOLMorale::Apply(State, HOLMoraleTable::Effect(HOLMoraleTable::Demoralised), 50);
 	T.AssertEquals(HOLMoraleTable::Row(HOLMoraleTable::Demoralised).DurationMs / 2, State.Effects[0].DurationMs, "half the time");
 	HOLMorale::RemoveMalus(State);

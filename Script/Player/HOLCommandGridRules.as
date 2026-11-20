@@ -3,7 +3,7 @@
 // same decisions. The C++ bodies are gone (lot L3): HOLCommandGrid.cpp keeps only the bridge to this rule (UHOLCommandGridBoard), no C++ twin.
 // The input is FHOLGridContextView and the output FHOLGridCommandView (the USTRUCTs of UHOLCommandGridReadLibrary): nothing else is called, except
 //   - HOLCommandGridRead::GetSpecializationCell: the cell of the first specialization option is the cvar hol.UI.SpecializationCell, registered in C++
-//     (HOLCommandGrid.cpp, default 6): a setting, not a rule; read through the library until the cvar moves (TYPES_A_EXPOSER, see the report);
+//     (HOLCommandGrid.cpp, default 6; D868: a Templar seat's 3 lanes start one cell left, 5 6 7): a setting, not a rule; read through the library until the cvar moves (TYPES_A_EXPOSER, see the report);
 //   - HOLHeroAbilityRead::IsUnlocked (the hero's rule, which stays in C++ for the server): the abilities' unlock level.
 // NOT ported (data not exposed to script): SetSpecialization / GetOpenSpecializationTier (FHOLSpecializationView). The second half (PressKey, ClickAge,
 // Check*, Describe, groups, MergeCommands) is lots G2a / G2b.
@@ -23,6 +23,8 @@ namespace HOLCommandGridRules
 	const int StopCell = 5;
 	const int HoldCell = 11;
 	const int DeployCell = 6;
+	// D813 (Q-garrison-ui Q1 C, Q-garrison-cell): the Sortir tous cell of a finished building with occupants; one line to move it (F on the AZERTY grid, second row, last column).
+	const int UngarrisonAllCell = 7;
 	const int HeroAbilityCloseRanks = 1;
 	const int HeroAbilityBanner = 2;
 	const float LockedAgePanelOpacity = 0.55f;
@@ -30,6 +32,7 @@ namespace HOLCommandGridRules
 	int GetNumCells() { return NumCells; }
 	int GetGridColumns() { return GridColumns; }
 	int GetCancelCell() { return CancelCell; }
+	int GetUngarrisonAllCell() { return UngarrisonAllCell; }
 	int GetResearchFirstCell() { return ResearchFirstCell; }
 	int GetNumAges() { return NumAges; }
 	int GetTradableGoods() { return TradableGoods; }
@@ -105,7 +108,7 @@ namespace HOLCommandGridRules
 			return FName();
 		}
 		FString Verb = Command.Command == EHOLGridCommandKind::Specialize ? "Specialize" : "CancelSpecialization";
-		FString Letter = Command.Option == 0 ? "A" : "B";
+		FString Letter = Command.Option == 0 ? "A" : (Command.Option == 1 ? "B" : "C");
 		return FName(f"{Verb}T{Command.Tier}{Letter}");
 	}
 
@@ -125,6 +128,14 @@ namespace HOLCommandGridRules
 	FHOLGridCommandView GetCommand(const FHOLGridContextView& Context, int Cell)
 	{
 		return GetCommandWithOptions(Context, Cell, SpecializationOptions);
+	}
+
+	// GLORFINDEL-1120pd (D868 follow-up): the grid of a seat of this faction (EHOLFaction index; -1 = unknown = the default two options). The game's board asks THIS
+	// entry with FHOLGridContext::SpecializationFaction, so a Templar seat shows its 3 lanes (5 6 7), the others 2 (6 7).
+	FHOLGridCommandView GetCommandForFaction(const FHOLGridContextView& Context, int Cell, int Faction)
+	{
+		int OptionCount = Faction >= 0 ? HOLSpecialization::OptionCountOf(EHOLFaction(Faction)) : SpecializationOptions;
+		return GetCommandWithOptions(Context, Cell, OptionCount);
 	}
 
 	// ELROND-1120e (morceau 7): the same, with the number of specialization options of the seat's faction (HOLSpecialization::OptionCountOf: 3 for the Templars).
@@ -164,14 +175,20 @@ namespace HOLCommandGridRules
 				return Result;
 			}
 			TArray<FName> ResearchCells = GetResearchLineCells(Context.Researches, Context.Researched);
-			int FirstOption = HOLCommandGridRead::GetSpecializationCell(0);
+			// D868: the cvar cell is the first option of a two-option choice; a third option shifts the row one cell left (Templars: 5 6 7, the research row at 8 stays visible).
+			int FirstOption = HOLCommandGridRead::GetSpecializationCell(0) - (OptionCount - SpecializationOptions);
 			if (Cell < Context.Produces.Num())
 			{
 				Result.Command = EHOLGridCommandKind::Produce;
 				Result.TypeName = Context.Produces[Cell];
 			}
+			else if (Context.bGarrisonOccupied && !Context.bBuildingGroup && Cell == UngarrisonAllCell)
+			{
+				// D813 (Q-garrison-ui Q1 C): the garrison's Sortir tous cell (HOLControllerCommand::RequestUngarrisonAllSelected).
+				Result.Command = EHOLGridCommandKind::UngarrisonAll;
+			}
 			else if (Context.bPrimaryForum && !Context.bBuildingGroup && Context.SpecializationTier > 0
-				&& Cell >= FirstOption && Cell < HOLCommandGridRead::GetSpecializationCell(OptionCount))
+				&& Cell >= FirstOption && Cell < FirstOption + OptionCount)
 			{
 				// SP3 (D332, D684, D785): the open tier's options (two, three for the Templars); the running one cancels at no cost (its time left on the cell), the
 				// other still starts (it replaces).

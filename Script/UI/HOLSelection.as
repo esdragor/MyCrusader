@@ -189,6 +189,8 @@ class UHOLSelectionPanel : UObject
 	// The two hosts of lots B and C: empty vertical boxes, collapsed until they put something in them.
 	UVerticalBox ChipsHost;
 	UVerticalBox StatsHost;
+	// The garrison row of a building alone (D813, HOLGarrisonFrame.as): built under the forum's lives, refreshed by RefreshBuilding, hidden on every other path.
+	UHOLGarrisonFrame Garrison;
 
 	UOverlay SelectionPlace;
 	UBorder SelectionPanel;
@@ -324,6 +326,10 @@ class UHOLSelectionPanel : UObject
 		AddToRow(LivesRow, LivesText, 0.0);
 		LivesRow.SetVisibility(ESlateVisibility::Collapsed);
 
+		// A garrison building's occupants (D813): the counter, one icon button per occupant, Sortir tous.
+		Garrison = Cast<UHOLGarrisonFrame>(NewObject(this, UHOLGarrisonFrame));
+		Garrison.Build(Screen, Column);
+
 		// Nothing selected yet.
 		SelectionPanel.SetVisibility(ESlateVisibility::Collapsed);
 		PushReport();
@@ -432,7 +438,11 @@ class UHOLSelectionPanel : UObject
 		ShownPathKind = HOLSelectionRead::GetSelectionKind();
 		// A main forum's lives row is for a building alone (V2.3d): every other path hides it, and a site's progress too.
 		if (ShownPathKind != 1)
+		{
 			SetShown(LivesRow, false);
+			if (Garrison != nullptr)
+				Garrison.Hide();
+		}
 		if (ShownPathKind == 1)
 			RefreshBuilding();
 		else if (ShownPathKind == 4)
@@ -498,6 +508,9 @@ class UHOLSelectionPanel : UObject
 		}
 		const FHOLSelectionDetail Detail = HOLSelectionRules::BuildingDetail(View.bFinished, View.bOwn, View.Builders, View.bForumShown, View.ForumShown, View.ForumText.ToString());
 		SetDetail(Detail);
+		// The garrison of an own finished building with places (HOLGarrisonFrameRules::ViewFor draws nothing for any other).
+		if (Garrison != nullptr)
+			Garrison.Refresh(View.GarrisonOccupants, View.GarrisonOccupantTypes, HOLGarrison::SlotsOf(FName(View.TypeKey)), View.bOwn, View.bFinished);
 		// The row follows the forum's text, each refresh, as the C++ screen's SetShown after SetDetailLine.
 		if (View.bForumShown && !(bSite && View.bOwn))
 			SetShown(ActivityText, Detail.bVisible);

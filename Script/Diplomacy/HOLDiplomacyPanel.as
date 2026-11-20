@@ -34,6 +34,25 @@ struct FHOLDiplomacyRowView
 
 namespace HOLDiplomacyPanel
 {
+	// The kinds of click a control of a line carries (HOLGameScreenScript.PanelClick): 7 the Message button, 10 the line itself (D872).
+	int KindMessage()
+	{
+		return 7;
+	}
+
+	int KindRow()
+	{
+		return 10;
+	}
+
+	// D872: the slot a click on a control of a line chooses as the private chat target: the line itself or its Message button, when the Message is not greyed (an AI, a defeated player, yourself); -1 when the click chooses nobody.
+	int ChatTargetOfClick(int Kind, int Slot, bool bMessageEnabled)
+	{
+		if ((Kind == KindMessage() || Kind == KindRow()) && bMessageEnabled)
+			return Slot;
+		return -1;
+	}
+
 	// The stance cycled by a click on the colour chip (layout 1): Ally -> Neutral -> Enemy -> Ally, the order the GDD names them.
 	int NextStance(int Stance)
 	{

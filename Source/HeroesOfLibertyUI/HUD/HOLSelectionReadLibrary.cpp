@@ -14,6 +14,9 @@
 #include "Player/HOLPlayerController.h"
 #include "Resources/HOLSourceSubsystem.h"
 #include "Resources/HOLSourceTypes.h"
+#include "Net/HOLUnitReceptionSubsystem.h"
+#include "Simulation/HOLUnitSubsystem.h"
+#include "Simulation/HOLUnitView.h"
 
 #define LOCTEXT_NAMESPACE "HOLGameScreen"
 
@@ -95,6 +98,7 @@ bool UHOLSelectionReadLibrary::GetBuildingSelectionView(const UObject* WorldCont
 	Out.ForumShown = Forum.Shown;
 	Out.ForumText = Forum.Text;
 	Out.ForumLives = Forum.Lives;
+	ReadGarrisonOccupants(WorldContextObject, Building, Out);
 	return true;
 }
 
@@ -117,6 +121,43 @@ bool UHOLSelectionReadLibrary::GetSourceSelectionView(const UObject* WorldContex
 	Out.Name = HOLGameNames::GetSourceName(TypeName, Sources->GetType(Source->TypeIndex));
 	Out.Remaining = Source->Remaining;
 	return true;
+}
+
+FString UHOLSelectionReadLibrary::GetUnitTypeKey(const UObject* WorldContextObject, const int32 UnitId)
+{
+	const UWorld* World = HOLSelectionReadPrivate::WorldOf(WorldContextObject);
+	if (!World || UnitId <= 0)
+	{
+		return FString();
+	}
+	// Not HOLUnitView::Find: it skips a garrisoned unit (off the field), and an occupant is garrisoned by definition.
+	FName TypeName = NAME_None;
+	if (World->GetNetMode() == NM_Client)
+	{
+		const UHOLUnitReceptionSubsystem* Reception = World->GetSubsystem<UHOLUnitReceptionSubsystem>();
+		TypeName = Reception ? Reception->GetUnitTypeName(static_cast<uint32>(UnitId)) : NAME_None;
+	}
+	else
+	{
+		const UHOLUnitSubsystem* Units = World->GetSubsystem<UHOLUnitSubsystem>();
+		TypeName = Units ? Units->GetUnitTypeName(static_cast<uint32>(UnitId)) : NAME_None;
+	}
+	return TypeName.IsNone() ? FString() : TypeName.ToString();
+}
+
+void UHOLSelectionReadLibrary::ReadGarrisonOccupants(const UObject* WorldContextObject, const AHOLBuilding* Building, FHOLBuildingSelView& Out)
+{
+	Out.GarrisonOccupants.Reset();
+	Out.GarrisonOccupantTypes.Reset();
+	if (!Building)
+	{
+		return;
+	}
+	Building->GetGarrisonOccupants(Out.GarrisonOccupants);
+	for (const int32 UnitId : Out.GarrisonOccupants)
+	{
+		Out.GarrisonOccupantTypes.Add(GetUnitTypeKey(WorldContextObject, UnitId));
+	}
 }
 
 FText UHOLSelectionReadLibrary::GetOwnerName(const UObject* WorldContextObject, const int32 OwnerSlot, const bool bOwn)

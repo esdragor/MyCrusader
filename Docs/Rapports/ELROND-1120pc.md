@@ -1,0 +1,16 @@
+# ELROND-1120pc : D869b, case D Montage.../Demontage... + barre pendant le changement (NON COMPILE)
+
+APPELS_DECLARES: ~24 (arret a 25)
+HEURE_DEBUT/HEURE_FIN: 15:51 / ~15:57 (Get-Date)
+PREMIER_BUILD: sans build (lot C++ de la session principale)   BUILD: NON COMPILE   LAUNCHCHECK_DEBUT: non lance (pas de build)
+TEST_ROUGE: e9ea0f5 (Test_DeployButtonShowsProgress, Script\Tests\HOLDeployRules_Test.as, avec stubs C++ qui compilent : ButtonLabel rend 0, ProgressPermille rend -1) ; assertit l'effet : oui (la fraction est calculee par la regle a partir du temps que compte le vrai Advance). Rouge ATTENDU (etiquettes Deploying/Packing 2/3, barre 0 puis ~500 a mi-delai, Counterweight, -1 stable) ; NON VU a l'execution. Correctif 8fb9db2 (regle + client + .look) en commit separe.
+COMMITS: 2 (e9ea0f5, 8fb9db2), dernier 15:5x, merge_main_fait: oui (main fusionne en dernier geste de code)
+TESTS: aucun lance ; a lancer apres compilation : quick_check -Parts tests (Test_DeployButtonShowsProgress, Test_DeployDelaysAreVisible) ; TESTS_TAUTOLOGIQUES: 0
+ESSAIS: deploy NON rejoue ; LOGIQUE SEULEMENT ; .look : deploy_deploying et deploy_packing disent texte Montage... / Demontage... et barre partielle (au moins 1 diese, pas 8)
+QUESTIONS: aucune neuve (reponse a Q-deploy-visible : A + B, C plus tard)
+FAIT : (A) libelle + (B) barre EN TEXTE dans la case D (le plus simple : pas de widget Slate neuf ; 8 caracteres # et -). Regle C++ pure HOLDeploy::ButtonLabel / ProgressPermille (HOLDeployRules.h/.cpp), exposee par UHOLDeployReadLibrary pour le test script. Client : AHOLPlayerController::GetDeployProgress (HOLPlayerController.h/.cpp) compte le temps LOCAL depuis le premier vu de la phase 1 ou 3, car seule la Phase est repliquee (HOLUnitReplicationRules.h:96-98, pas d'ElapsedMs) ; HOLGameScreen.cpp ReadDeployFace (anonyme, avant RefreshGrid) : face de la case D et cle de cache ShownOrderTypes qui change avec la barre.
+RESTE : compiler ; rejeu deploy ; (C) animation. Limites : Counterweight lu a 0 cote client ; la barre local peut deriver de la phase serveur (latence) ; si on veut la fraction exacte, repliquer ElapsedMs (C++ reseau, Q a poser).
+C++ TOUCHE (en-tetes) : Siege/HOLDeployRules.h (+ .cpp), Siege/HOLDeployReadLibrary.h (+ .cpp : 2 UFUNCTION neuves), Player/HOLPlayerController.h (+ .cpp : GetDeployProgress, 2 mutable), HUD/HOLGameScreen.cpp (+ include HOLDeployRules.h). UHT : les en-tetes ReadLibrary et PlayerController changent.
+NON VÉRIFIÉ: tout (rien compile ni lance) : compilation (lambda dans la chaine ternaire de ShownOrderTypes ; FString::ChrN ; GetOwningPlayer cast en AHOLPlayerController const), que RefreshGrid est appelee a chaque image (sinon la barre ne se remplit pas), que GetOwningPlayer() est celui du joueur, que le texte multi-ligne tient dans la case, que 0,3 s dans le scenario tombe dans les 1,5 s ; pas de DIAGNOSTICS_AS lus (DIAGNOSTICS_AS: non lu : pas d'editeur) ; PS : les .look/.as ecrits en PowerShell, EOL conserves.
+PROCESSUS_DETACHES: voir la reponse (stray_processes lance en dernier geste)
+ANOMALIES_PROCESSUS: Get-Date et date de Git Bash identiques a la minute ; 'head' absent de PowerShell (1 appel perdu)

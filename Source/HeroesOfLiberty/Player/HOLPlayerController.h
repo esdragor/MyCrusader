@@ -373,6 +373,9 @@ public:
 	bool IsWallDragging() const { return bWallDragging; }
 	const TArray<FIntPoint>& GetWallDragCells() const { return WallDragCells; }
 	double GetWallDragTile() const { return WallDragTile; }
+	/** F4 drag, read by script (the ghost drawer, Script\Buildings\HOLWallGhostDrawer.as): true while a wall line is dragged, with the press point, the cursor ground point and the tile size. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Construction")
+	bool GetWallDragView(FVector& OutStart, FVector& OutEnd, double& OutTile) const;
 	/** Asks the server to have units build (help) one of the player's sites not finished (J6a.4, D312); bQueue: Shift. */
 	void RequestBuildUnits(TConstArrayView<uint32> UnitIds, AHOLBuilding* Building, bool bQueue = false);
 	/**
@@ -477,6 +480,13 @@ public:
 	 * subgroup (Tab), all of them for « Tous » or a selection of one type.
 	 */
 	TArray<uint32> GetCommandUnits() const;
+	/**
+	 * D869b: the selected engine that is deploying (1) or packing (3): its phase and its bar (permille, HOLDeploy::ProgressPermille), from the LOCAL
+	 * time since this phase was first seen (the client receives the phase only, not the elapsed time). False when none is changing state.
+	 */
+	bool GetDeployProgress(int32& OutPhase, int32& OutPermille) const;
+	mutable int32 DeployWatchedPhase = -1;
+	mutable double DeployWatchedSince = 0.0;
 	/**
 	 * Asks the server to have units gather a resource source (J5, D298); it sends only the player's own. bQueue (Shift): at
 	 * the end of their queue, after their sites (the user's trial of J6a.4).
@@ -971,7 +981,7 @@ private:
 	FName PlacementType;
 	/** F4 drag of a wall type: the ground under the press, the cells shown (script rule), the tile read once at the press. */
 	bool bWallDragging = false;
-	FVector WallDragStart = FVector::ZeroVector;
+	FVector WallDragStart = FVector::ZeroVector; FVector WallDragEnd = FVector::ZeroVector;
 	TArray<FIntPoint> WallDragCells;
 	double WallDragTile = 400.0;
 	bool BeginWallDrag();

@@ -12,7 +12,8 @@ class UHOLCommandGridBoardScript : UHOLCommandGridBoard
 	UFUNCTION(BlueprintOverride)
 	FHOLGridCommandView GetCommandAnswer(const FHOLGridContextView& Context, int Cell)
 	{
-		return HOLCommandGridRules::GetCommand(Context, Cell);
+		// D868 follow-up: the seat's faction (FHOLGridContext::SpecializationFaction) gives the number of specialization lanes drawn (3 for the Templars).
+		return HOLCommandGridRules::GetCommandForFaction(Context, Cell, Context.SpecializationFaction);
 	}
 
 	UFUNCTION(BlueprintOverride)

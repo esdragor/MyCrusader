@@ -56,6 +56,39 @@ namespace HOLChatInputScreen
 		}
 		return Ok;
 	}
+
+	// The line shown in the field when "/w Name message" is refused (HOLChatInput::ParseWhisper): unknown player, or no text. "" for any other result.
+	FString WhisperRefusalText(int WhisperResult)
+	{
+		if (WhisperResult == HOLChatInput::WhisperUnknown)
+		{
+			return "Joueur inconnu (/w Nom message) -";
+		}
+		if (WhisperResult == HOLChatInput::WhisperEmpty)
+		{
+			return "Message vide (/w Nom message) -";
+		}
+		return "";
+	}
+
+	// True when some slot other than the viewer is present and the stance is Ally both ways (D369: an alliance needs both sides).
+	// MyStances[S] = the viewer's stance toward S, TheirStances[S] = S's stance toward the viewer, Present[S] = S is in the match. A spectator (Viewer < 0) has no ally.
+	bool HasAlly(int Viewer, const TArray<int>& MyStances, const TArray<int>& TheirStances, const TArray<bool>& Present)
+	{
+		if (Viewer < 0)
+		{
+			return false;
+		}
+		const int Ally = HOLDiplomacyRead::GetStanceAlly();
+		for (int Slot = 0; Slot < Present.Num() && Slot < MyStances.Num() && Slot < TheirStances.Num(); ++Slot)
+		{
+			if (Slot != Viewer && Present[Slot] && MyStances[Slot] == Ally && TheirStances[Slot] == Ally)
+			{
+				return true;
+			}
+		}
+		return false;
+	}
 }
 
 // The field: a border holding "<mark> : " and a UEditableTextBox, collapsed until Enter opens it. Same construction as UHOLProductionQueuePanel.
@@ -73,6 +106,10 @@ class UHOLChatInputScreen : UObject
 	// The time of the last commit by the field itself: the polled Enter of the same press must not reopen it.
 	float LastCommitTime = -10.0;
 	FString LastSent = "";
+	// "/w Name message" (B of the 2026-11-20 answer): the players a whisper can name (Names[I] is the name of Slots[I]) and the refusal line shown in the mark.
+	TArray<FString> WhisperNames;
+	TArray<int> WhisperSlots;
+	FString Refusal = "";
 
 	void Build(UHOLScriptScreen InScreen, UVerticalBox Host)
 	{
@@ -105,13 +142,22 @@ class UHOLChatInputScreen : UObject
 		}
 	}
 
+	// The players "/w Name message" can name (the screen's Diplomacy rows: everybody in the match but the local player).
+	void SetWhisperDirectory(const TArray<FString>& InNames, const TArray<int>& InSlots)
+	{
+		WhisperNames = InNames;
+		WhisperSlots = InSlots;
+	}
+
 	void ShowMark()
 	{
-		MarkText.SetText(FText::FromString(HOLChatInputScreen::MarkLine(State.Channel, ChosenName)));
+		const FString Line = HOLChatInputScreen::MarkLine(State.Channel, ChosenName);
+		MarkText.SetText(FText::FromString(Refusal.IsEmpty() ? Line : f"{Refusal} {Line}"));
 	}
 
 	void Open()
 	{
+		Refusal = "";
 		Box.SetText(FText::FromString(""));
 		ShowMark();
 		Panel.SetVisibility(ESlateVisibility::SelfHitTestInvisible);
@@ -143,6 +189,7 @@ class UHOLChatInputScreen : UObject
 	void HandleEnter()
 	{
 		const FString Text = State.bOpen ? Box.GetText().ToString() : "";
+		Refusal = "";
 		const int Result = HOLChatInput::PressEnter(State, Text, bHasAlly, ChosenSlot >= 0);
 		if (Result == HOLChatInput::Opened)
 		{
@@ -180,8 +227,28 @@ class UHOLChatInputScreen : UObject
 	}
 
 	// The field has just closed for a send (State.Channel is the channel sent on). Too long: it opens again with its text.
-	void Submit(const FString& Text)
+	void Submit(const FString& TypedText)
 	{
+		// "/w Name message": a known name sends the text privately to that slot whatever the channel of the field; an unknown name or no text is refused.
+		FString Text = TypedText;
+		int Channel = State.Channel;
+		int Target = HOLChatInput::TargetSlot(State, ChosenSlot);
+		int WhisperSlot = -1;
+		FString WhisperBody;
+		const int Whisper = HOLChatInput::ParseWhisper(TypedText, WhisperNames, WhisperSlots, WhisperSlot, WhisperBody);
+		if (Whisper == HOLChatInput::WhisperUnknown || Whisper == HOLChatInput::WhisperEmpty)
+		{
+			Refusal = HOLChatInputScreen::WhisperRefusalText(Whisper);
+			State.bOpen = true;
+			ShowMark();
+			return;
+		}
+		if (Whisper == HOLChatInput::WhisperOk)
+		{
+			Text = WhisperBody;
+			Channel = HOLChat::Private;
+			Target = WhisperSlot;
+		}
 		if (HOLChatInputScreen::SendRefusal(Text) != HOLChatInputScreen::Ok)
 		{
 			State.bOpen = true;
@@ -196,7 +263,7 @@ class UHOLChatInputScreen : UObject
 			return;
 		}
 		LastSent = HOLChatInputScreen::SendText(Text);
-		Rpc.ServerPostChat(State.Channel, LastSent, HOLChatInput::TargetSlot(State, ChosenSlot));
+		Rpc.ServerPostChat(Channel, LastSent, Target);
 		Close();
 	}
 

@@ -1,0 +1,91 @@
+// HOLGarrisonFrameRules (F7 lot 4a, D813 Q-garrison-ui Q1 = C): the frame draws a garrison for the player's own finished building with places only;
+// each value asserted is computed by HOLGarrisonView through the rule from the occupants it is given.
+
+void Test_GarrisonFrameOwnFinishedBuildingDrawsTheGarrison(FUnitTest& T)
+{
+	TArray<int> Occupants;
+	Occupants.Add(8);
+	Occupants.Add(21);
+	FHOLGarrisonView View = HOLGarrisonFrameRules::ViewFor(Occupants, 5, true, true);
+	T.AssertEquals(View.CounterText, "2 / 5", "own finished tower: the counter");
+	T.AssertEquals(View.PortraitUnitIds.Num(), 2, "one portrait per occupant");
+	T.AssertTrue(View.bShowUngarrisonAll, "Sortir tous is offered");
+	FHOLGarrisonOrder Click = HOLGarrisonView::OrderForPortraitClick(View, 1);
+	T.AssertEquals(Click.Kind, HOLGarrisonView::OrderUngarrisonUnit, "a click on the second portrait takes that unit out");
+	T.AssertEquals(Click.UnitId, 21, "the unit of the clicked portrait");
+}
+
+void Test_GarrisonFrameOtherPlayersOrUnfinishedBuildingDrawsNothing(FUnitTest& T)
+{
+	TArray<int> Occupants;
+	Occupants.Add(8);
+	FHOLGarrisonView Other = HOLGarrisonFrameRules::ViewFor(Occupants, 5, false, true);
+	T.AssertEquals(Other.CounterText, "", "another player's tower: no counter");
+	T.AssertEquals(Other.PortraitUnitIds.Num(), 0, "no portrait of an enemy's occupants");
+	T.AssertFalse(Other.bShowUngarrisonAll, "no cell");
+	FHOLGarrisonOrder OtherKey = HOLGarrisonView::OrderForUngarrisonAll(Other);
+	T.AssertEquals(OtherKey.Kind, HOLGarrisonView::OrderNone, "no order from it");
+
+	FHOLGarrisonView Site = HOLGarrisonFrameRules::ViewFor(Occupants, 5, true, false);
+	T.AssertEquals(Site.CounterText, "", "a foundation or a site holds nobody: nothing drawn");
+	FHOLGarrisonView NoPlaces = HOLGarrisonFrameRules::ViewFor(Occupants, 0, true, true);
+	T.AssertEquals(NoPlaces.CounterText, "", "a building without places: nothing drawn");
+}
+
+void Test_GarrisonFramePortraitNamesAreDistinct(FUnitTest& T)
+{
+	const FString First = HOLGarrisonFrameRules::PortraitName(0).ToString();
+	const FString Second = HOLGarrisonFrameRules::PortraitName(1).ToString();
+	T.AssertEquals(First, "GarrisonPortrait0", "the first portrait's widget name");
+	T.AssertEquals(Second, "GarrisonPortrait1", "the second portrait's widget name");
+}
+
+void Test_GarrisonFrameUnitIconPathIsTheTypesTexture(FUnitTest& T)
+{
+	T.AssertEquals(HOLGarrisonFrameRules::UnitIconPath("Spearman"), "/Game/UI/Icons/Units/T_Unit_Spearman.T_Unit_Spearman", "a known type: its texture path");
+	T.AssertEquals(HOLGarrisonFrameRules::UnitIconPath("Archer"), "/Game/UI/Icons/Units/T_Unit_Archer.T_Unit_Archer", "another type: its own path");
+	T.AssertEquals(HOLGarrisonFrameRules::UnitIconPath(""), "", "an unknown type (empty key): no icon path");
+}
+
+void Test_GarrisonFrameOccupantsBecomeButtonsWithTheirTypeIcon(FUnitTest& T)
+{
+	TArray<int> Occupants;
+	Occupants.Add(8);
+	Occupants.Add(21);
+	Occupants.Add(34);
+	TArray<FString> Types;
+	Types.Add("Spearman");
+	Types.Add("Archer");
+	Types.Add("");
+	FHOLGarrisonView View = HOLGarrisonFrameRules::ViewFor(Occupants, 5, true, true);
+	TArray<FHOLGarrisonButtonView> Buttons = HOLGarrisonFrameRules::ButtonsFor(View, Types);
+	T.AssertEquals(Buttons.Num(), 3, "one button per occupant");
+	if (Buttons.Num() != 3)
+		return;
+	T.AssertEquals(Buttons[0].UnitId, 8, "the first button is the first occupant");
+	T.AssertEquals(Buttons[1].UnitId, 21, "the second button is the second occupant");
+	T.AssertEquals(Buttons[0].TypeKey, "Spearman", "its type");
+	T.AssertEquals(Buttons[0].IconPath, HOLGarrisonFrameRules::UnitIconPath("Spearman"), "the icon of its type");
+	T.AssertEquals(Buttons[1].IconPath, HOLGarrisonFrameRules::UnitIconPath("Archer"), "the second one's own icon");
+	T.AssertTrue(Buttons[0].IconPath != Buttons[1].IconPath, "two types, two icons");
+	T.AssertEquals(Buttons[2].IconPath, "", "a unit this machine does not know: no icon");
+	T.AssertEquals(Buttons[2].Label, "34", "no icon: the unit id as label");
+	T.AssertEquals(Buttons[0].Label, "Spearman", "an icon may be missing in the content: the type's name as label");
+}
+
+void Test_GarrisonFrameButtonsTolerateAShortTypeListAndAnotherPlayersBuilding(FUnitTest& T)
+{
+	TArray<int> Occupants;
+	Occupants.Add(8);
+	Occupants.Add(21);
+	TArray<FString> OneType;
+	OneType.Add("Spearman");
+	FHOLGarrisonView Own = HOLGarrisonFrameRules::ViewFor(Occupants, 5, true, true);
+	TArray<FHOLGarrisonButtonView> Short = HOLGarrisonFrameRules::ButtonsFor(Own, OneType);
+	T.AssertEquals(Short.Num(), 2, "a types list shorter than the occupants: still one button per occupant");
+	if (Short.Num() == 2)
+		T.AssertEquals(Short[1].IconPath, "", "the occupant without a type: no icon");
+	FHOLGarrisonView Other = HOLGarrisonFrameRules::ViewFor(Occupants, 5, false, true);
+	TArray<FHOLGarrisonButtonView> None = HOLGarrisonFrameRules::ButtonsFor(Other, OneType);
+	T.AssertEquals(None.Num(), 0, "another player's building: no button");
+}

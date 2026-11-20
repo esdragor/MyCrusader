@@ -717,6 +717,53 @@ bool UHOLCombatProcessor::IsInAura(const FFighter& Victim) const
 	return bInAura;
 }
 
+HOLDamageRedirect::FResult UHOLCombatProcessor::GetDamageRedirect(const FFighter& Victim, const float Damage) const
+{
+	HOLDamageRedirect::FResult Result;
+	Result.Kept = Damage;
+	if (!bAnyDamageRedirect || Damage <= 0.f)
+	{
+		return Result;
+	}
+	// D864 (Nearest): the rule picks the nearest Knight in range; here only the candidates are gathered (allies of Victim's camp whose type redirects).
+	TArray<HOLDamageRedirect::FKnight, TInlineAllocator<8>> Knights;
+	int32 Percent = 0;
+	float Radius = 0.f;
+	for (const FFighter& Candidate : Fighters)
+	{
+		if (Candidate.Constants->DamageRedirectPercent <= 0 || Candidate.Camp != Victim.Camp)
+		{
+			continue;
+		}
+		Knights.Add(HOLDamageRedirect::FKnight{ static_cast<int32>(Candidate.UnitId), FMath::RoundToInt32(Candidate.Location.X), FMath::RoundToInt32(Candidate.Location.Y),
+			Candidate.State->CurrentHealth > 0.f && Candidate.Combat->DeathStep < 0 });
+		Percent = FMath::Max(Percent, Candidate.Constants->DamageRedirectPercent);
+		Radius = FMath::Max(Radius, Candidate.Constants->DamageRedirectRadius);
+	}
+	if (Knights.IsEmpty())
+	{
+		return Result;
+	}
+	// Heroes are neither protected nor redirected (GDD 1121-1128, in the rule); the cap is unused in the Nearest mode.
+	return HOLDamageRedirect::Redirect(Damage, HOLIsHero(Victim.Constants->ArmorCategoryMask), static_cast<int32>(Victim.UnitId), FMath::RoundToInt32(Victim.Location.X),
+		FMath::RoundToInt32(Victim.Location.Y), Knights, FMath::RoundToInt32(Radius), Percent, HOLDamageRedirect::DefaultCumulMode, 50);
+}
+
+void UHOLCombatProcessor::ApplyDamageRedirect(const HOLDamageRedirect::FResult& Redirect)
+{
+	for (const HOLDamageRedirect::FShare& Share : Redirect.Shares)
+	{
+		for (FFighter& Fighter : Fighters)
+		{
+			if (static_cast<int32>(Fighter.UnitId) == Share.KnightId)
+			{
+				Fighter.State->CurrentHealth -= Share.Damage;
+				break;
+			}
+		}
+	}
+}
+
 int32 UHOLCombatProcessor::GetDamageTakenPercent(const FFighter& Victim) const
 {
 	const int32 Percent = HOLHeroAbility::GetDamageTakenPercent(IsInAura(Victim), Victim.Combat->CloseRanksMs > 0);
@@ -859,6 +906,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 	bool bAnyTarget = false;
 	// J8c.2: the living heroes are aura sources (J8c-Q1); the cries count down on every unit, whether combat is on or not.
 	AuraSources.Reset();
+	bAnyDamageRedirect = false;
 	ShieldsUpOwners = 0;
 	// T6: each slot's attack technologies, from the player states (the server has them all; a technology is read as the gather's).
 	for (int32 Slot = 0; Slot < FHOLMatchConfig::MaxSlots; ++Slot)
@@ -919,8 +967,10 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 		const FHOLUnitTypeConstants& Constants = Context.GetConstSharedFragment<FHOLUnitTypeConstants>();
 		MaxRadius = FMath::Max(MaxRadius, Constants.Radius);
 		const bool bHeroes = HOLIsHero(Constants.ArmorCategoryMask);
+		const bool bRedirects = Constants.DamageRedirectPercent > 0;
 		for (FMassExecutionContext::FEntityIterator EntityIt = Context.CreateEntityIterator(); EntityIt; ++EntityIt)
 		{
+			bAnyDamageRedirect |= bRedirects && States[EntityIt].CurrentHealth > 0.f;
 			HOLHeroAbility::Tick(Combats[EntityIt].CloseRanksMs, StepMs);
 			HOLHeroAbility::Tick(Combats[EntityIt].RageMs, StepMs); // L4: the necrotic rage and its cool-down count down like the cry
 			HOLHeroAbility::Tick(Combats[EntityIt].RageCooldownMs, StepMs);
@@ -1413,7 +1463,10 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 		}
 		float Health = Victim != INDEX_NONE ? Fighters[Victim].State->CurrentHealth : 0.f;
 		// J8c.2: the morale effects where it lands, now (aura, cry), not where it was released.
-		const float Landed = Victim != INDEX_NONE ? HOLHeroAbility::GetReducedDamage(Arrow.Damage, GetDamageTakenPercent(Fighters[Victim])) : Arrow.Damage;
+		const float Struck = Victim != INDEX_NONE ? HOLHeroAbility::GetReducedDamage(Arrow.Damage, GetDamageTakenPercent(Fighters[Victim])) : Arrow.Damage;
+		// D864 + D865: part of it goes to a Virtuous Knight near the target (applied below, once the arrow is known to land).
+		const HOLDamageRedirect::FResult Redirected = Victim != INDEX_NONE ? GetDamageRedirect(Fighters[Victim], Struck) : HOLDamageRedirect::FResult();
+		const float Landed = Victim != INDEX_NONE ? Redirected.Kept : Struck;
 		const HOLCombat::EArrowOutcome Outcome = HOLCombat::ResolveArrow(Victim != INDEX_NONE, Health, Landed);
 		if (Outcome == HOLCombat::EArrowOutcome::Lost)
 		{
@@ -1428,6 +1481,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 		++TotalArrowsLanded;
 		FFighter& Enemy = Fighters[Victim];
 		Enemy.State->CurrentHealth = Health;
+		ApplyDamageRedirect(Redirected);
 		const int32 Shooter = FindFighter(Arrow.Shooter);
 		if (Shooter != INDEX_NONE)
 		{
@@ -1476,7 +1530,9 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 					continue;
 				}
 				const float Splash = HOLHeroAbility::GetReducedDamage(Arrow.Damage, GetDamageTakenPercent(Around));
-				Around.State->CurrentHealth -= Splash;
+				const HOLDamageRedirect::FResult RedirectedSplash = GetDamageRedirect(Around, Splash);
+				Around.State->CurrentHealth -= RedirectedSplash.Kept;
+				ApplyDamageRedirect(RedirectedSplash);
 				++NumSplashed;
 				Around.Combat->LastAttacker = Arrow.Shooter;
 				Around.Combat->LastHitStep = StepIndex;
@@ -3106,7 +3162,10 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 		// order of the subtractions matters, so applying them from a parallel loop would break the reproducibility.
 		// J8c.2: less under the morale effects of its side (aura, cry; J8c-Q1, Q2).
 		const float Dealt = HOLHeroAbility::GetReducedDamage(DuelScaled(Fighter, Damage), GetDamageTakenPercent(Enemy));
-		Enemy.State->CurrentHealth -= Dealt;
+		// D864 + D865: an ally of a Virtuous Knight within its radius keeps only part of the blow, the Knight takes the rest.
+		const HOLDamageRedirect::FResult Redirected = GetDamageRedirect(Enemy, Dealt);
+		Enemy.State->CurrentHealth -= Redirected.Kept;
+		ApplyDamageRedirect(Redirected);
 		if (Enemy.State->OwnerPlayer == FHOLMatchConfig::NeutralOwner)
 		{
 			HOLCamps::NoteHit(Enemy.UnitId, Fighter.State->OwnerPlayer, Dealt);

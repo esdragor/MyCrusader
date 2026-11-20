@@ -147,3 +147,67 @@ void Test_ChatInputLostAudienceDoesNotWidenSilently(FUnitTest& T)
 	T.AssertEquals(HOLChatInput::PressEnter(PrivateState, "for you", true, false), HOLChatInput::None, "private without a chosen player: nothing is sent");
 	T.AssertEquals(PrivateState.Channel, HOLChat::All, "private without a chosen player falls back to All, not sent");
 }
+
+
+// ---- "/w Name message" (pure rule ParseWhisper): the names and slots are the players of the match; the effect is the slot and the text that would be sent.
+TArray<FString> WhisperNames()
+{
+	TArray<FString> Names;
+	Names.Add("Aragorn");
+	Names.Add("Mary Jane");
+	Names.Add("Mary");
+	return Names;
+}
+
+TArray<int> WhisperSlots()
+{
+	TArray<int> Slots;
+	Slots.Add(1);
+	Slots.Add(2);
+	Slots.Add(3);
+	return Slots;
+}
+
+// "/w Aragorn hold the gate" -> slot 1 and the text "hold the gate"; the Private channel then reaches the sender and slot 1 only (HOLChat::Recipients).
+// Red: ParseWhisper answers WhisperNone (stub) ; or keeps "/w Aragorn" in the text ; or picks another slot.
+void Test_ChatInputWhisperSendsPrivatelyToTheNamedPlayer(FUnitTest& T)
+{
+	int Slot = -1;
+	FString Message;
+	const int Result = HOLChatInput::ParseWhisper("/w Aragorn hold the gate", WhisperNames(), WhisperSlots(), Slot, Message);
+	T.AssertEquals(Result, HOLChatInput::WhisperOk, "a known name is a whisper");
+	T.AssertEquals(Slot, 1, "the slot of Aragorn");
+	T.AssertEquals(Message, "hold the gate", "the text without the command and the name");
+	FHOLChatInputState State;
+	State.Channel = HOLChat::Private;
+	TArray<int> To = HOLChat::Recipients(State.Channel, 0, HOLChatInput::TargetSlot(State, Slot), ChatInputTeams(), ChatInputSpectators(), false);
+	T.AssertTrue(To.Contains(0) && To.Contains(1), "the sender and the named player read it");
+	T.AssertFalse(To.Contains(2) || To.Contains(3), "nobody else reads it");
+}
+
+// The name is matched without case and the longest name wins ("Mary Jane" before "Mary").
+// Red: first-name-wins (the text becomes "Jane hi" for slot 3) ; or a case-sensitive compare.
+void Test_ChatInputWhisperNameIsCaseInsensitiveAndLongestWins(FUnitTest& T)
+{
+	int Slot = -1;
+	FString Message;
+	int Result = HOLChatInput::ParseWhisper("/W mary jane hi", WhisperNames(), WhisperSlots(), Slot, Message);
+	T.AssertEquals(Result, HOLChatInput::WhisperOk, "case does not matter");
+	T.AssertEquals(Slot, 2, "Mary Jane, not Mary");
+	T.AssertEquals(Message, "hi", "the text after the full name");
+	Result = HOLChatInput::ParseWhisper("/w Mary hi", WhisperNames(), WhisperSlots(), Slot, Message);
+	T.AssertEquals(Slot, 3, "Mary alone");
+}
+
+// An unknown name refuses the message (it is never sent to everybody); a name without text is refused too; an ordinary text is no whisper.
+// Red: an unknown name falls through as WhisperNone or WhisperOk ; "/wx" is taken for a whisper.
+void Test_ChatInputWhisperRefusals(FUnitTest& T)
+{
+	int Slot = 5;
+	FString Message;
+	T.AssertEquals(HOLChatInput::ParseWhisper("/w Gimli come", WhisperNames(), WhisperSlots(), Slot, Message), HOLChatInput::WhisperUnknown, "unknown name refused");
+	T.AssertEquals(Slot, -1, "no slot for a refused whisper");
+	T.AssertEquals(HOLChatInput::ParseWhisper("/w Aragorn   ", WhisperNames(), WhisperSlots(), Slot, Message), HOLChatInput::WhisperEmpty, "no text refused");
+	T.AssertEquals(HOLChatInput::ParseWhisper("/wAragorn hi", WhisperNames(), WhisperSlots(), Slot, Message), HOLChatInput::WhisperNone, "no space after /w: not a command");
+	T.AssertEquals(HOLChatInput::ParseWhisper("attack the north gate", WhisperNames(), WhisperSlots(), Slot, Message), HOLChatInput::WhisperNone, "an ordinary text");
+}

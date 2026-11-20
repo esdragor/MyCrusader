@@ -6,6 +6,8 @@
 #include "Kismet/BlueprintFunctionLibrary.h"
 #include "HOLSelectionReadLibrary.generated.h"
 
+class AHOLBuilding;
+
 /**
  * HUD H-9, lot A (the selection block, Script\UI\HOLSelection.as; HOLSelectionRead:: in script): what the local player's controller
  * has selected, in simple types, for the script panel. In the UI module (not Match) because the names come from HOLGameNames (HUD/).
@@ -82,6 +84,14 @@ struct FHOLBuildingSelView
 
 	UPROPERTY(BlueprintReadWrite, Category = "HeroesOfLiberty|Selection")
 	int32 ForumLives = 0;
+
+	/** D813 garrison frame: the ids of the units inside (AHOLBuilding::GetGarrisonOccupants, replicated to the owner only: empty for another player's building), in order. */
+	UPROPERTY(BlueprintReadWrite, Category = "HeroesOfLiberty|Selection")
+	TArray<int32> GarrisonOccupants;
+
+	/** Parallel to GarrisonOccupants (same length, same order): each occupant's unit type key ("Spearman"), empty when this machine does not know the unit (Q-garrison-portrait A: the frame draws the type's icon). */
+	UPROPERTY(BlueprintReadWrite, Category = "HeroesOfLiberty|Selection")
+	TArray<FString> GarrisonOccupantTypes;
 };
 
 USTRUCT(BlueprintType)
@@ -126,6 +136,13 @@ public:
 	/** The source selected (tree, vein). False and Out empty when none. */
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Selection", meta = (WorldContext = "WorldContextObject"))
 	static bool GetSourceSelectionView(const UObject* WorldContextObject, FHOLSourceSelView& Out);
+
+	/** D813: the type key of the unit UnitId as this machine knows it (HOLUnitView::Find, a garrisoned unit included), empty when unknown or UnitId <= 0. For the garrison frame's icons. */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Selection", meta = (WorldContext = "WorldContextObject"))
+	static FString GetUnitTypeKey(const UObject* WorldContextObject, int32 UnitId);
+
+	/** C++ only: fills Out.GarrisonOccupants and Out.GarrisonOccupantTypes from the building (what GetBuildingSelectionView calls; the test calls it on a real building). */
+	static void ReadGarrisonOccupants(const UObject* WorldContextObject, const AHOLBuilding* Building, FHOLBuildingSelView& Out);
 
 	/** Vous when bOwn, else the slot's name as the players' table shows it (an AI's name), Joueur N without a game state. */
 	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Selection", meta = (WorldContext = "WorldContextObject"))
