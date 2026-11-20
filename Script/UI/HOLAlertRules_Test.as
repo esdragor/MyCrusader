@@ -54,6 +54,7 @@ void Test_AlertPopulationFullLineStays15s(FUnitTest& T)
 	T.AssertFalse(HOLAlertRules::ShouldAlertPopulationFull(Watch, 10, 10, 16.0, Delay), "full again 16 s after the first line (the line is gone): quiet, the delay is 30 s");
 	T.AssertFalse(HOLAlertRules::ShouldAlertPopulationFull(Watch, 9, 10, 20.0, Delay), "a place freed again");
 	T.AssertTrue(HOLAlertRules::ShouldAlertPopulationFull(Watch, 10, 10, 31.0, Delay), "full again 31 s after the first line: a new line");
+}
 
 void Test_AlertAttackedElsewhereOncePer30s(FUnitTest& T)
 {
