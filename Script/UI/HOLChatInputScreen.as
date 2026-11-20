@@ -176,9 +176,15 @@ class UHOLChatInputScreen : UObject
 		Box.SetKeyboardFocus();
 	}
 
-	// Stub (red): the focus is not handed back yet.
+	// The collapsed box keeps the Slate focus after a send and the viewport loses it: the polled Enter (UHOLScriptScreen::NativeTick, WasInputKeyJustPressed)
+	// then never fires and the 2nd Enter reopens nothing (RECETTE-1120pb: "Key pressed: Enter (focus: none)", "down not handled"). Give the keyboard back to the game.
 	void ReturnFocusToGame()
 	{
+		++FocusReturns;
+		if (Screen != nullptr)
+		{
+			WidgetBlueprint::SetFocusToGameViewport();
+		}
 	}
 
 	void Close()
@@ -187,6 +193,7 @@ class UHOLChatInputScreen : UObject
 		{
 			Panel.SetVisibility(ESlateVisibility::Collapsed);
 		}
+		ReturnFocusToGame();
 	}
 
 	// A key the screen heard (KeyPressed of UHOLScriptScreen). Enter only opens: once open, the text box's own commit carries Enter, Escape and Tab.
