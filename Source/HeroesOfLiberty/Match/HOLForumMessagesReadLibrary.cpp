@@ -120,6 +120,11 @@ void UHOLForumThreadHolder::AddEvent(const FHOLForumEventValue& Event, const FHO
 	Thread.Add(ForumMsgLibGetMessage(Event, Scenario, ViewerSlot, false), NowSeconds);
 }
 
+void UHOLForumThreadHolder::AddLine(const FString& Text, const double Seconds, const double NowSeconds)
+{
+	Thread.AddText(FText::FromString(Text), Seconds, NowSeconds);
+}
+
 FString UHOLForumThreadHolder::Describe() const
 {
 	return Thread.Describe();

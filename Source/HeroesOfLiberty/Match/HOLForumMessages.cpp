@@ -461,6 +461,14 @@ void FHOLForumThread::Add(const FHOLForumMessage& Message, const double NowSecon
 	}
 }
 
+void FHOLForumThread::AddText(const FText& Text, const double Seconds, const double NowSeconds)
+{
+	FHOLForumMessage Message;
+	Message.Text = Text;
+	Message.LineSeconds = Seconds > 0.0 ? Seconds : FHOLForumMessage::DefaultLineSeconds;
+	Add(Message, NowSeconds);
+}
+
 bool FHOLForumThread::Expire(const double NowSeconds)
 {
 	return Lines.RemoveAll([NowSeconds](const FHOLForumThreadLine& Line) { return NowSeconds - Line.AddedSeconds >= LineSeconds; }) > 0;

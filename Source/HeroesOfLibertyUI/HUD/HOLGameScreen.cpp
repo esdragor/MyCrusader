@@ -600,13 +600,11 @@ const AHOLPlayerState* UHOLGameScreen::GetBoundPlayerState() const
 	return BoundPlayerState.Get();
 }
 
-void UHOLGameScreen::AddThreadLine(const FText& Line)
+void UHOLGameScreen::AddThreadLine(const FText& Line, const double Seconds)
 {
 	if (const UWorld* World = GetWorld())
 	{
-		FHOLForumMessage Message;
-		Message.Text = Line;
-		MessageThread.Add(Message, World->GetRealTimeSeconds());
+		MessageThread.AddText(Line, Seconds, World->GetRealTimeSeconds());
 		RebuildMessages();
 	}
 }

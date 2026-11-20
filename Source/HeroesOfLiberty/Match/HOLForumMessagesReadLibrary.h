@@ -151,6 +151,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|ForumMessages")
 	void AddEvent(const FHOLForumEventValue& Event, const FHOLForumScenario& Scenario, int32 ViewerSlot, double NowSeconds);
 
+	/** D833: FHOLForumThread::AddText (the plain line a minor alert adds), staying Seconds (<= 0 = the default 8 s). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|ForumMessages")
+	void AddLine(const FString& Text, double Seconds, double NowSeconds);
+
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|ForumMessages")
 	FString Describe() const;
 
