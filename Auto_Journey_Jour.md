@@ -35,7 +35,19 @@ SÉANCE DE FONCTIONS DU 2026-11-20 (« commence un auto journée », 08:45 -> 17
 | GALADRIEL-1120c | a7d55338 | HeroesOfLiberty-Galadriel | specialization-trial | vague 3 : D860 H2 mini-carte, D833 part script | non | 09:36 |
 | CELEBORN-1120c | aab8ae76 | HeroesOfLiberty-Celeborn | duel-rewards | vague 3 : gains d'Honneur du duel (fonction pure + boucle `Ended`) | non | 09:36 |
 | HALDIR-1120e | afd3a799 | HeroesOfLiberty-Haldir | wall-line | vague 3 : scénarios `deploy` (D861) et `signals_*` (D860), `.look` | non | 09:36 |
-| SAURON-1120d | a44ecc0b | HeroesOfLiberty-Sauron | tool-known-reds | vague 3 : grille de la Caserne par faction, textes Hallebardier / LightSeal, question Brigands | non | 09:36 |
+| SAURON-1120d | a44ecc0b | HeroesOfLiberty-Sauron | tool-known-reds | vague 3 : grille de la Caserne par faction, textes Hallebardier / LightSeal, question Brigands ; FINI 09:50 (grille déjà filtrée en C++, 7e4cd6c, `Q-brigands-lancier`) | non | 09:36 |
+| (vagues 3 et 4 finies) | - | tous | tous | vague 3 FINIE 09:40-09:50 ; vague 4 (09:50) : GALADRIEL-1120d (3b emplacement de faction dans l'écran), HALDIR-1120f (son de l'Écurie D834), SAURON-1120e (nom « Hallebardier » en C++) FINIS 09:55-10:00 | oui | 09:50 |
+| intégrateur = session principale | - | HeroesOfLiberty-Arwen | integ-26 | vagues 3 et 4 : rouge 9, vert 1851/1852 puis 1857/1857 après correctifs d'intégration (appels de wrappers script, quick_check suit D858) ; `net,build` PASS 56 parties (10:21) ; `net` rejoué sur d7ae5c9 lancé 10:29 | oui | 09:57 |
+| HALDIR-1120g | afddd4ec | HeroesOfLiberty-Haldir | wall-line | vague 5 : liste de candidats audio de l'Écurie (da2d910) ; FINI 10:10 | non | 10:06 |
+| CELEBORN-1120d | ab869890 | HeroesOfLiberty-Celeborn | duel-rewards | vague 5 : RPC `ServerCheatHonor` en script (e8f53d9, 2de465d) ; FINI 10:12 | non | 10:06 |
+| FARAMIR-1120c | af25a1cf | HeroesOfLiberty-Faramir | zone-effect | vague 5 : règle `HOLFactionPowerCast` et RPC `ServerCastFactionPower` (beb093e, 7f66bbb) ; FINI 10:13 | non | 10:06 |
+| GALADRIEL-1120e | a4dd7bee | HeroesOfLiberty-Galadriel | specialization-trial | vague 5 : faction par `GetSlotFaction`, recharges lues (e00c4a4..90be4f5) ; FINI 10:15 | non | 10:06 |
+| GLORFINDEL-1120d | a8f54976 | HeroesOfLiberty-Glorfindel | ability-columns | vague 5 : outil `edit_line.ps1` (53b2f4b, 29e415a) ; FINI 10:16 | non | 10:06 |
+| CELEBORN-1120e | adac95b9 | HeroesOfLiberty-Celeborn | duel-rewards | vague 6 : scénario `faction_slot` (Honneur 30 / 100) | non | 10:30 |
+| FARAMIR-1120d | af783200 | HeroesOfLiberty-Faramir | zone-effect | vague 6 : reprise du WIP D827 / D828 de `fog` par cherry-pick, NON COMPILÉ | oui | 10:30 |
+| ELROND-1120d | a972dea0 | HeroesOfLiberty-Elrond | integ-25 | vague 6 : bug lignes de mouvement par bloc (test rouge d'abord) | oui ou non | 10:30 |
+| SAURON-1120f | ae227e52 | HeroesOfLiberty-Sauron | tool-known-reds | vague 6 : Aube A2, règle de redirection de dégâts (première sous-étape) | oui ou non | 10:30 |
+| GLORFINDEL-1120e | aac2e656 | HeroesOfLiberty-Glorfindel | ability-columns | vague 6 : question `Q-sceau-cout` (coût du Sceau, incohérence de recharge) | non | 10:30 |
 
 Plan de lancement (étape 0, 09:04) : 7 agents d'emblée (5 sans C++, 2 C++ : Elrond D861 et Faramir morceau 4, sous le plafond de 3) ; Arwen = intégrateur, ne code pas (builds, tests, éditeur, fusion par la session principale). Vague 2 prévue à la fin des agents : Haldir = D860 H2 sol (C++, `HOLSignalInput.*`, `HOLSelectionMarkers.cpp`), Sauron = D858 2b (`HOLAIArmy.as`), Elrond = D861 (a), Galadriel = morceau 6 / D833 puis `HOLFactionSlot` (3b), Glorfindel = morceau 2 (`hol.Cheat.Honor`, script si la garde de triche est lisible). Exceptions : Faramir sur une branche neuve parce que `fog` garde le WIP D827/D828 non compilé (à reprendre dans le lot C++ avec un build) ; les 16 sondes non suivies de Celeborn et `Crown.umap` de Haldir sont laissées telles quelles (ni commitées ni supprimées, à décider par l'utilisateur) ; Arwen ne reçoit pas D834 (worktree d'intégration).
 
