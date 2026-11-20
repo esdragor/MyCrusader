@@ -209,6 +209,41 @@ void Test_AudioElectedRangeAndBarracksRingTheirRound6Letters(FUnitTest& T)
 	}
 }
 
+// D834 (2026-11-16, the user's answer after audio_compare_buildings_stable_cut): Stable = Building.CutStable A, the snort alone ("pfff") of Stable B
+// without its neigh. The elected file is CALCULATED from the letter through the candidate list the user listened to (HOLAudioCandidates::ForCue +
+// IndexOfLabel), never copied; EFFECT on the real plan the game plays: selecting a Stable rings that file from /Game/Audio/Soft, at the building
+// selection gain, whatever the seed, on its own event (not a family's, not Range's nor Barracks').
+void Test_AudioElectedStableRingsTheCutSnort(FUnitTest& T)
+{
+	FHOLAudioCandidates Heard = HOLAudioCandidates::ForCue("Building.CutStable");
+	int Letter = HOLAudioCandidates::IndexOfLabel("A");
+	T.AssertTrue(Letter >= 0 && Letter < Heard.Stems.Num(), "Stable: letter A exists in Building.CutStable");
+	if (Letter < 0 || Letter >= Heard.Stems.Num()) return;
+	FString Stem = Heard.Stems[Letter];
+	T.AssertTrue(Stem.Contains("snort"), "Stable: the letter the user chose is the snort, not the whole neigh");
+	TArray<int> Others;
+	Others.Add(HOLAudioBuildings::SelectEventFor("SiegeWorkshop"));
+	Others.Add(HOLAudioBuildings::SelectEventFor("MainCentre"));
+	Others.Add(HOLAudioBuildings::SelectEventFor("Forge"));
+	Others.Add(HOLAudioBuildings::SelectEventFor("ArcheryRange"));
+	Others.Add(HOLAudioBuildings::SelectEventFor("Barracks"));
+	Others.Add(HOLAudioBuildings::SelectEventFor("House"));
+	int Event = HOLAudioBuildings::SelectEventFor("Stable");
+	T.AssertTrue(Event >= 0, "Stable: selecting rings an elected event");
+	T.AssertFalse(Others.Contains(Event), "Stable: its own event, not a family's nor another building's");
+	if (Event < 0) return;
+	FHOLAudioCue Cue = HOLAudio::CueFor(Event);
+	T.AssertEquals("soft", Cue.Pack, "Stable: the pack of the elected soft sounds");
+	T.AssertEquals(1, Cue.Stems.Num(), "Stable: only the elected file");
+	for (int Seed = -7; Seed < 20; Seed++)
+	{
+		FHOLAudioPlan Plan = HOLAudio::Plan(Event, 5000, -1, Seed, -1);
+		T.AssertTrue(Plan.bPlay, f"Stable, seed {Seed}: plays");
+		T.AssertEquals(f"/Game/Audio/Soft/SW_{Stem}.SW_{Stem}", Plan.Asset, f"Stable, seed {Seed}: Building.CutStable A");
+		T.AssertEquals(HOLAudio::BuildingSelectGainPercent, Plan.VolumePercent, f"Stable, seed {Seed}: at the building selection gain");
+	}
+}
+
 // Every cue is answered now: none is left on the spaceship console packs the user rejected.
 void Test_AudioNoSpaceshipPackIsLeft(FUnitTest& T)
 {
