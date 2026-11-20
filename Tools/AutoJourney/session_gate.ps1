@@ -28,6 +28,8 @@ param(
   [string]$Essay = '',                   # Essay : nom de l'essai (E-<nom>.md de Retours\) dont les branches citees doivent etre dans le worktree ; defaut : tous les E-*.md ouverts
   [double]$MinFreeVirtualGB = 8,           # Launch (L12-1c) : memoire virtuelle libre sous ce seuil = WARN (2026-11-12 : builds et jeux qui echouent faute de memoire)
   [string]$EngineRoot = 'C:\UE\UE_5.8_HOL', # Launch (L12-1c) : un cl.exe dont aucun ancetre ne cite ce moteur = compilation d'un AUTRE moteur (ProjectShiva sur AS_3...) = WARN
+  [int]$MaxMainCodeCommits = 3,           # Close (L19-1) : plus de N commits de code de la session principale = FAIL (1 a N = WARN)
+  [string]$AgentName = '',                # Launch (L19-1) : nom de l'agent a lancer ; NETTOYAGE-* et ETAPE0-* (lances avant la lecture de la check-list) = WARN au lieu de FAIL
   [int]$MinMinutes = 5  # 2026-11-05 : l'utilisateur prefere finir 15 min APRES l'heure que 15 min avant (sauf consigne contraire dans le prompt de lancement) ; l'ancien seuil de 20 min laissait la seance vide
 )
 $ErrorActionPreference = 'Continue'
@@ -74,6 +76,23 @@ $wts = Get-ChildItem $WorktreesDir -Directory -Filter 'HeroesOfLiberty-*' | Sele
 if ($Phase -eq 'Launch') {
   if ($left -lt $MinMinutes) { Say 'FAIL' ("il reste {0} min (< {1}) : AUCUN lancement d'agent" -f $left, $MinMinutes) }
   else { Say 'PASS' ("temps restant {0} min ; arret dur des agents = {1} (jusqu'a +15 min toleres, jamais 15 min trop tot)" -f $left, $endAt.ToString('HH:mm')) }
+
+  # L19-1 (2026-11-20) : la session principale lit Auto_Journey_Checklist.md AVANT le premier agent de travail ; preuve = la ligne 'check-list lue (L<N>)' dans la section du jour
+  # (N = plus grand numero L<N>- de la check-list). NETTOYAGE-* et ETAPE0-* sont lances avant la lecture : WARN.
+  $clFile = Join-Path (Split-Path -Parent $JourFile) 'Auto_Journey_Checklist.md'
+  $clN = 0
+  if (Test-Path $clFile) { foreach ($cm in [regex]::Matches((Get-Content $clFile -Raw -Encoding UTF8), '\bL(\d+)-\d+')) { if ([int]$cm.Groups[1].Value -gt $clN) { $clN = [int]$cm.Groups[1].Value } } }
+  if ($clN -gt 0) {
+    $clRead = $false; $clIn = $false
+    foreach ($crow in @(Get-Content $JourFile -Encoding UTF8 -ErrorAction SilentlyContinue)) {
+      if ($crow -match '^##\s') { $clIn = ($crow.Trim() -eq ('## Agents du ' + $now.ToString('yyyy-MM-dd'))); continue }
+      if ($clIn -and $crow -match ('check-list lue \(L' + $clN + '\)')) { $clRead = $true; break }
+    }
+    $clMsg = "lis Auto_Journey_Checklist.md (derni{0}re le{1}on L{2}) et {3}cris 'check-list lue (L{2})' dans Auto_Journey_Jour.md avant le premier agent de travail" -f [char]0xE8, [char]0xE7, $clN, [char]0xE9
+    if ($clRead) { Say 'PASS' "L19-1 : check-list lue (L$clN) presente dans la section du jour" }
+    elseif ($AgentName -match '^(NETTOYAGE|ETAPE0)-') { Say 'WARN' ("L19-1 : $AgentName lance avant la lecture de la check-list (exempte) ; " + $clMsg) }
+    else { Say 'FAIL' ("L19-1 : " + $clMsg) }
+  }
 
   # 2026-11-08 : aucun script d'outil ne lance un UnrealEditor visible (pop sur l'ecran de l'utilisateur, vole le focus) : no_window_test.ps1, WARN
   $nwTest = Join-Path $PSScriptRoot 'no_window_test.ps1'
@@ -314,6 +333,42 @@ if ($Phase -eq 'Close') {
   # L90 (L12-6, 2026-11-12) : une ligne d'EtapeDefini.md qui dit « pas dans main » alors que sa branche (1er mot entre parentheses) ou TOUS les
   # commits qu'elle cite sont deja ancetres de main = doc perimee (la fusion doit la passer « dans main » dans son propre commit) : WARN par ligne.
   if (-not $EtapeFile) { $EtapeFile = "$Main\EtapeDefini.md" }
+  # L19-1 (2026-11-20) : commits NON-merge de code (Script/, Source/, Tools/Tests/) depuis le debut de la seance, dont aucun n'est ancetre d'une branche d'agent
+  # (worktrees HeroesOfLiberty-* sauf la branche courante d'Arwen et toute branche integ-*) = code fait par la session principale elle-meme.
+  $mcRepo = Split-Path -Parent $EtapeFile
+  $mcStart = ''; $mcIn = $false
+  foreach ($mrow in @(Get-Content $JourFile -Encoding UTF8 -ErrorAction SilentlyContinue)) {
+    if ($mrow -match '^##\s') { $mcIn = ($mrow.Trim() -eq ('## Agents du ' + $now.ToString('yyyy-MM-dd'))); continue }
+    if ($mcIn -and $mrow -match 'tat au lancement : main = ([0-9a-f]{7,40})') { $mcStart = $Matches[1]; break }
+  }
+  if ($mcStart) { git -C $mcRepo cat-file -e "$mcStart^{commit}" 2>$null; if ($LASTEXITCODE -ne 0) { $mcStart = '' } }
+  $mcRef = 'main'; git -C $mcRepo rev-parse --verify -q refs/heads/main 2>$null | Out-Null; if ($LASTEXITCODE -ne 0) { $mcRef = 'HEAD' }
+  $mcArgs = @('log', '--no-merges', '--format=%h %H %s')
+  if ($mcStart) { $mcArgs += "$mcStart..$mcRef" } else { $mcArgs += "--since=$($now.ToString('yyyy-MM-dd')) 00:00"; $mcArgs += $mcRef }
+  $mcArgs += @('--', 'Script', 'Source', 'Tools/Tests')
+  $mcCommits = @(git -C $mcRepo @mcArgs 2>$null | Where-Object { $_ })
+  $mcBranches = @(); $mcPath = ''
+  foreach ($wl in @(git -C $mcRepo worktree list --porcelain 2>$null)) {
+    if ($wl -match '^worktree (.+)$') { $mcPath = $Matches[1] }
+    elseif ($wl -match '^branch refs/heads/(.+)$') {
+      $mcLeaf = Split-Path $mcPath -Leaf
+      if ($mcLeaf -like 'HeroesOfLiberty-*' -and $mcLeaf -ne 'HeroesOfLiberty-Arwen' -and $Matches[1] -notmatch '^integ-') { $mcBranches += $Matches[1] }
+    }
+  }
+  $mcMine = @()
+  foreach ($mc in $mcCommits) {
+    $mcParts = $mc -split ' ', 3
+    $isAgent = $false
+    foreach ($mb in $mcBranches) { git -C $mcRepo merge-base --is-ancestor $mcParts[1] "refs/heads/$mb" 2>$null; if ($LASTEXITCODE -eq 0) { $isAgent = $true; break } }
+    if (-not $isAgent) { $mcMine += ("     {0} {1}" -f $mcParts[0], $mcParts[2]) }
+  }
+  $mcWhy = if ($mcStart) { "depuis main = $mcStart" } else { "de la date du jour (pas de ligne 'Etat au lancement')" }
+  if ($mcMine.Count -eq 0) { Say 'PASS' "L19-1 : aucun commit de code de la session principale ($mcWhy)" }
+  else {
+    if ($mcMine.Count -gt $MaxMainCodeCommits) { Say 'FAIL' ("L19-1 : la session principale a cod{0} elle-m{1}me {2} fois : {3} confier {4} des agents (L19-1) (seuil {5}, {6})" -f [char]0xE9, [char]0xEA, $mcMine.Count, [char]0xE0, [char]0xE0, $MaxMainCodeCommits, $mcWhy) }
+    else { Say 'WARN' ("L19-1 : la session principale a cod{0} elle-m{1}me {2} fois (<= {3}) : {4} confier {5} des agents (L19-1) ({6})" -f [char]0xE9, [char]0xEA, $mcMine.Count, $MaxMainCodeCommits, [char]0xE0, [char]0xE0, $mcWhy) }
+    foreach ($ml in $mcMine) { Write-Output $ml }
+  }
   if (Test-Path $EtapeFile) {
     $etRepo = Split-Path -Parent $EtapeFile; $etWarn = 0
     foreach ($el in @(Get-Content $EtapeFile -Encoding UTF8 | Where-Object { $_ -match 'pas dans main' })) {
