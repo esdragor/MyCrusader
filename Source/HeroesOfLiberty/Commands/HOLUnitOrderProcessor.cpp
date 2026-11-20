@@ -3850,7 +3850,20 @@ void UHOLUnitOrderProcessor::AdvanceUnits(FMassEntityManager& EntityManager, FMa
 				float& NextSlowest = NextSlowestOfOrder.FindOrAdd(Order.OrderSerial, Constants.Speed);
 				NextSlowest = FMath::Min(NextSlowest, Constants.Speed);
 			}
-			if (MoveTarget.GetCurrentAction() == EMassMovementAction::Move && MoveTarget.DesiredSpeed.Get() > 0.f)
+			// D861 (b): a walk held by the deployment (UHOLDeployProcessor zeroed its speed while the engine was not packed) takes its speed
+			// back once the engine is Packed again; without it the 0 outlives the Packing and the engine never leaves. Looked up only for
+			// a walk at speed 0, which is rare.
+			bool bResumeHeldWalk = false;
+			if (MoveTarget.GetCurrentAction() == EMassMovementAction::Move && MoveTarget.DesiredSpeed.Get() <= 0.f)
+			{
+				FHOLDeployFragment* HeldDeploy = EntityManager.GetFragmentDataPtr<FHOLDeployFragment>(Context.GetEntity(EntityIt));
+				if (HeldDeploy && HeldDeploy->bWalkHeld != 0 && HeldDeploy->Phase == static_cast<uint8>(HOLDeploy::EPhase::Packed))
+				{
+					HeldDeploy->bWalkHeld = 0;
+					bResumeHeldWalk = true;
+				}
+			}
+			if (MoveTarget.GetCurrentAction() == EMassMovementAction::Move && (MoveTarget.DesiredSpeed.Get() > 0.f || bResumeHeldWalk))
 			{
 				// C3: and the ground under it (a marsh) takes its share of that speed, step after step as it walks in and out.
 				MoveTarget.DesiredSpeed.Set(GetOrderWalkSpeed(Constants, States[EntityIt].OwnerPlayer, Order) * GetTerrainShare(Terrain, Transform.GetTransform().GetLocation(), Constants));
@@ -4005,7 +4018,14 @@ void UHOLUnitOrderProcessor::AdvanceUnits(FMassEntityManager& EntityManager, FMa
 			// A unit that no longer gets closer near its slot (taken, or its neighbours in the way) stands where it is. Far
 			// from it, a unit pushed back by a crowd keeps going (D292): it stopped 110 m short of its slot.
 			const bool bGettingCloser = Distance < Order.LastSlotDistance - 2.f;
-			Order.StuckSteps = bGettingCloser || Distance > StuckCountDistance ? 0 : static_cast<uint16>(FMath::Min<int32>(Order.StuckSteps + 1, MAX_uint16));
+			// D861 (b): the steps an engine spends packing or deploying are held, not stalled: they do not close its march order.
+			bool bWalkHeldByDeploy = false;
+			if (!bGettingCloser && Distance <= StuckCountDistance)
+			{
+				const FHOLDeployFragment* HeldDeploy = EntityManager.GetFragmentDataPtr<FHOLDeployFragment>(Context.GetEntity(EntityIt));
+				bWalkHeldByDeploy = HeldDeploy && HeldDeploy->bWalkHeld != 0;
+			}
+			Order.StuckSteps = bGettingCloser || Distance > StuckCountDistance || bWalkHeldByDeploy ? 0 : static_cast<uint16>(FMath::Min<int32>(Order.StuckSteps + 1, MAX_uint16));
 			Order.LastSlotDistance = FMath::Min(Order.LastSlotDistance, Distance);
 			// Celeborn-12: its place inside a still enemy's body (seen by the look-ahead): no use waiting StuckLimit steps for it.
 			if (SlotBlockedStopDistance > 0.f && Distance <= SlotBlockedStopDistance)
