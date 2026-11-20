@@ -10,8 +10,8 @@ CooldownMs (from the start of the effect), DurationMs (the time of the effect, t
 for each blow dealt while the effect lasts), MinHp (the ability is refused below it), StopHp (the effect stops when the unit would go below it:
 the ability never kills).
 Last three columns (after Description, so the C++ constants test that reads the first ten fields by position is unchanged): Target (Self: the
-ability is on the caster; Ground: it is aimed at a point on the ground), RadiusCm (the zone it lays, cm; 0 for Self), RangeCm (how far from the
-caster the point may be, cm; 0 for Self). The pure rules of an aimed ability are Script/Units/HOLGroundAbilityRules.as.
+ability is on the caster; Ground: it is aimed at a point on the ground), RadiusCm (the zone it lays, cm; 0 except an aura: a Self row with a radius is a zone centred on the
+caster, D875), RangeCm (how far from the caster the point may be, cm; 0 when nothing is thrown). The pure rules of an aimed ability are Script/Units/HOLGroundAbilityRules.as.
 """
 import csv
 import sys

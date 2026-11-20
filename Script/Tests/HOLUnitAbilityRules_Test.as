@@ -13,7 +13,8 @@ void Test_UnitAbilityEffectIsAMoraleEffect(FUnitTest& T)
 		T.AssertTrue(Row.CooldownMs > Row.DurationMs && Row.DurationMs > 0, f"{Row.Key}: the cooldown outlasts the effect");
 		// The morale-lever checks below are those of a self ability (the rage lays a bonus effect on its caster). An aimed ability (Target Ground, e.g.
 		// the Light Seal) lays a zone whose slow is simulation C++ (the lot), not a morale row yet: its Effect stays empty until that row exists.
-		if (Row.Target != HOLUnitAbilityTable::TargetSelf)
+		// An aura (D875, KnightChallenge: Self with a radius) is a zone centred on its caster, no morale effect yet: skipped like an aimed ability.
+		if (Row.Target != HOLUnitAbilityTable::TargetSelf || Row.RadiusCm > 0)
 			continue;
 		int MoraleId = -1;
 		for (int M = 0; M < HOLMoraleTable::Count; M++)

@@ -4,7 +4,7 @@ Générée par `Tools/Data/make_value_sheet.py` depuis `Tools/Data/ValueSheet.cs
 
 États : *pas codé* (le GDD la nomme, aucun code), *provisoire* (codée, jamais jouée), *réglé à l'essai* (changée après un essai), *validé* (l'utilisateur l'a confirmée).
 
-**208 réglages** : 12 pas codé, 195 provisoire, 0 réglé à l'essai, 1 validé.
+**221 réglages** : 12 pas codé, 208 provisoire, 0 réglé à l'essai, 1 validé.
 
 ## Question 1 : Le héros est-il important sans être obligatoire ?
 
@@ -168,7 +168,7 @@ Générée par `Tools/Data/make_value_sheet.py` depuis `Tools/Data/ValueSheet.cs
 | `morale.bonus_cap_taken` | Moral : plafond du bonus sur les dégâts subis (%) | 50 | provisoire | D704 | HOLMoraleRules.as | À régler en test |
 | `morale.malus_cap_other` | Moral : plafond du malus sur les dégâts infligés et la cadence (%) | 30 | provisoire | D704 | HOLMoraleRules.as | À régler en test |
 | `morale.malus_cap_taken` | Moral : plafond du malus sur les dégâts subis (%) | 50 | provisoire | D704 | HOLMoraleRules.as | Symétrique du bonus ; décidé par l'utilisateur le 2026-11-05 |
-| `units.table` | Table des unités (voir UnitStats.md) | 16 lignes, 58 colonnes | provisoire | D227, D345 | UnitTypes.csv * | Détail dans UnitStats.md (make_unit_stats.py) |
+| `units.table` | Table des unités (voir UnitStats.md) | 18 lignes, 60 colonnes | provisoire | D227, D345 | UnitTypes.csv * | Détail dans UnitStats.md (make_unit_stats.py) |
 | `eco.mainfc.health` | Forum principal : points de vie | 2400 | provisoire | D345 | BuildingTypes.csv MainCentre:MaxHealth |  |
 
 ## Question 8 : Le volcan est-il une opportunité plutôt qu'une frustration ?
@@ -222,6 +222,24 @@ Générée par `Tools/Data/make_value_sheet.py` depuis `Tools/Data/ValueSheet.cs
 | `gdd.templiers` | Templiers : croisade, commanderies, talents (valeurs « à régler en test ») | — | pas codé | D96, D133, D136, D139, D147, D187, D197 | GDD | Après le prototype |
 
 ## Autres valeurs, par chantier
+
+### Aube
+
+| Id | Réglage | Valeur | État | Décision | Où | Note |
+|---|---|---|---|---|---|---|
+| `dawn.sacred_light_cooldown_ms` | Aube : Lumiere sacree : recharge (ms) | 20000 | provisoire | D859 | HOLDawnPowers.as | 20 s |
+| `dawn.sacred_light_cost` | Aube : Lumiere sacree : cout en Honneur | 25 | provisoire | D859 | HOLDawnPowers.as | 25 ; effet pas encore code (bEffectCoded faux : affichee Bientot) |
+| `honor.cap` | Aube : plafond de la jauge d'Honneur | 100 | provisoire | D859 | HOLDawnValues.as | valeur de depart de la jauge decidee en D859 ; a regler au jeu |
+| `honor.duel_accept` | Aube : Honneur gagne en acceptant un duel | 10 | provisoire | D859 | HOLDawnValues.as | +10 ; aucun appelant encore (boucle du registre des duels) |
+| `honor.duel_refuse` | Aube : Honneur perdu en refusant un duel | 5 | provisoire | D859 | HOLDawnValues.as | -5 |
+| `honor.duel_win` | Aube : Honneur gagne en gagnant un duel | 30 | provisoire | D859 | HOLDawnValues.as | +30 |
+| `honor.heal_per_point` | Aube : points de vie soignes pour 1 Honneur | 50 | provisoire | D859 | HOLDawnValues.as | 1 Honneur par 50 PV soignes |
+| `honor.kill_gain` | Aube : Honneur par mort pres d'un batiment | 1 | provisoire | D859 | HOLDawnValues.as | +1 ; l'appelant est de la simulation (C++) |
+| `honor.kill_radius_cm` | Aube : rayon autour d'un batiment pour compter une mort (cm) | 1200 | provisoire | D859 | HOLDawnValues.as | 12 m |
+| `honor.start` | Aube : Honneur au debut de la partie | 0 | provisoire | D859 | HOLDawnValues.as | 0 au depart |
+| `knight.challenge_cooldown_ms` | Defi du Chevalier : recharge (ms) | 45000 | provisoire | D859, D875 | UnitAbilities.csv KnightChallenge:CooldownMs | 45 s |
+| `knight.challenge_duration_ms` | Defi du Chevalier : duree (ms) | 8000 | provisoire | D859, D875 | UnitAbilities.csv KnightChallenge:DurationMs | 8 s ; ligne KnightChallenge de UnitAbilities.csv, lue par HOLDawnValues.as |
+| `knight.challenge_radius_cm` | Defi du Chevalier : rayon (cm) | 800 | provisoire | D859, D875 | UnitAbilities.csv KnightChallenge:RadiusCm | 8 m, zone centree sur le Chevalier |
 
 ### Brouillard
 

@@ -213,6 +213,8 @@ if ($Parts -contains "values") {
         $ValuesChecks["unit_abilities_test.py ($($UnitAbilitiesOutput | Select-Object -Last 1))"] = ($LASTEXITCODE -eq 0)
         $VirtuousKnightOutput = @(python -I (Join-Path $PSScriptRoot "virtuous_knight_test.py") 2>&1)
 $ValuesChecks["virtuous_knight_test.py ($($VirtuousKnightOutput | Select-Object -Last 1))"] = ($LASTEXITCODE -eq 0)
+$KnightChallengeOutput = @(python -I (Join-Path $PSScriptRoot "knight_challenge_row_test.py") 2>&1)
+$ValuesChecks["knight_challenge_row_test.py ($($KnightChallengeOutput | Select-Object -Last 1))"] = ($LASTEXITCODE -eq 0)
 $LegionsWarriorOutput = @(python -I (Join-Path $PSScriptRoot "legions_warrior_test.py") 2>&1)
         $ValuesChecks["legions_warrior_test.py ($($LegionsWarriorOutput | Select-Object -Last 1))"] = ($LASTEXITCODE -eq 0)
         # S7: FHOLMapInfo::NumSites (greys the box "Sites sacres") = the sites each map's file lays (Tools/Editor/maps, common.py SITE_COUNTS).
