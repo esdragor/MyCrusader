@@ -96,7 +96,7 @@ if ($Phase -eq 'Launch') {
 
   # 2026-11-08 : aucun script d'outil ne lance un UnrealEditor visible (pop sur l'ecran de l'utilisateur, vole le focus) : no_window_test.ps1, WARN
   $nwTest = Join-Path $PSScriptRoot 'no_window_test.ps1'
-  if (Test-Path $nwTest) {
+  if ((Test-Path $nwTest) -and $env:HOL_GATE_SKIP_NW -ne '1') {   # HOL_GATE_SKIP_NW=1 : gate_test.ps1 (appels en masse) ne relance pas no_window_test
     $nwOut = (& powershell -NoProfile -ExecutionPolicy Bypass -File $nwTest 2>&1 | Out-String)
     if ($LASTEXITCODE -eq 0) { Say 'PASS' 'no_window_test : aucun script d outil ne lance d editeur fenetre' }
     else { Say 'WARN' ("no_window_test ROUGE (un outil ouvre un editeur visible) : " + (($nwOut -split "`n" | Where-Object { $_ -match '^FAIL|\.ps1:\d+' } | Select-Object -First 3 | ForEach-Object { $_.Trim() }) -join ' ; ')) }

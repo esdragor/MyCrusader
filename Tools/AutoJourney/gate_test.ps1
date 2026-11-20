@@ -7,8 +7,11 @@ $Gate = Join-Path $Here 'session_gate.ps1'
 $Stray = Join-Path $Here 'stray_processes.ps1'
 $Rules = Join-Path $Here 'agent_rules.md'
 $Fails = 0
+$Passes = 0
+$T0 = Get-Date
+$env:HOL_GATE_SKIP_NW = '1'   # le test complet lance session_gate ~100 fois ; no_window_test (7 s) a son propre test
 function Check([bool]$Ok, [string]$Name, [string]$Detail = '') {
-  if ($Ok) { Write-Output "PASS $Name" } else { $script:Fails++; Write-Output "FAIL $Name $Detail" }
+  if ($Ok) { $script:Passes++; Write-Output ("PASS $Name  (t={0}s)" -f [int]((Get-Date) - $T0).TotalSeconds) } else { $script:Fails++; Write-Output ("FAIL $Name  (t={0}s) $Detail" -f [int]((Get-Date) - $T0).TotalSeconds) }
 }
 $Tmp = Join-Path ([IO.Path]::GetTempPath()) ('gatetest-' + [guid]::NewGuid().ToString('N').Substring(0, 8))
 New-Item -ItemType Directory -Path $Tmp | Out-Null
@@ -505,4 +508,5 @@ Check ($c4b -match '(?m)^WARN .*L19-1' -and -not ($c4b -match '(?m)^FAIL .*L19-1
 foreach ($wn in 'A', 'B', 'Arwen') { & git -C $CR worktree remove --force (Join-Path $CW "HeroesOfLiberty-$wn") 2>&1 | Out-Null }
 
 Remove-Item -Recurse -Force $Tmp -ErrorAction SilentlyContinue
-if ($Fails -gt 0) { Write-Output "=> $Fails FAIL"; exit 1 } else { Write-Output '=> tout PASS'; exit 0 }
+Write-Output ("=> {0} PASS, {1} FAIL ({2} s)" -f $Passes, $Fails, [int]((Get-Date) - $T0).TotalSeconds)
+if ($Fails -gt 0) { exit 1 } else { exit 0 }
