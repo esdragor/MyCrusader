@@ -99,11 +99,11 @@ void Test_UnitAbilityTableGroundColumns(FUnitTest& T)
 	T.AssertEquals(HOLUnitAbilityTable::TargetGround, Fixture.Target, "the fixture is aimed at the ground");
 	T.AssertEquals(0, HOLGroundAbility::TargetRefusal(true, int64(Fixture.RangeCm), int64(Fixture.RangeCm), 0), "a point at the range edge is accepted");
 	T.AssertEquals(3, HOLGroundAbility::TargetRefusal(true, int64(Fixture.RangeCm) + 1, int64(Fixture.RangeCm), 0), "a point past the range is refused: out of range");
-	T.AssertTrue(HOLGroundAbility::IsInZone(1000, 1000, Fixture.RadiusCm, 1000 + Fixture.RadiusCm, 1000), "the zone edge counts as inside");
-	T.AssertFalse(HOLGroundAbility::IsInZone(1000, 1000, Fixture.RadiusCm, 1000 + Fixture.RadiusCm + 1, 1000), "past the radius: outside");
+	T.AssertTrue(HOLZoneEffect::IsInZone(1000, 1000, Fixture.RadiusCm, 1000 + Fixture.RadiusCm, 1000), "the zone edge counts as inside");
+	T.AssertFalse(HOLZoneEffect::IsInZone(1000, 1000, Fixture.RadiusCm, 1000 + Fixture.RadiusCm + 1, 1000), "past the radius: outside");
 	// A self ability (radius 0) is a zone of one point.
-	T.AssertTrue(HOLGroundAbility::IsInZone(5, 5, Rage.RadiusCm, 5, 5), "a zero radius holds only its centre");
-	T.AssertFalse(HOLGroundAbility::IsInZone(5, 5, Rage.RadiusCm, 6, 5), "a zero radius holds nothing else");
+	T.AssertTrue(HOLZoneEffect::IsInZone(5, 5, Rage.RadiusCm, 5, 5), "a zero radius holds only its centre");
+	T.AssertFalse(HOLZoneEffect::IsInZone(5, 5, Rage.RadiusCm, 6, 5), "a zero radius holds nothing else");
 }
 
 // D859 step 1c: the Light Seal (Dawn) is a real row of the table, aimed at the ground, and the pure ground rules read ITS fields: the zone holds a

@@ -25,26 +25,26 @@ void Test_GroundAbilityTargetRefusalOrder(FUnitTest& T)
 // The zone edge counts as inside; one centimetre further is outside (on a straight and on a 3-4-5 diagonal).
 void Test_GroundAbilityZoneEdgeInclusive(FUnitTest& T)
 {
-	T.AssertTrue(HOLGroundAbility::IsInZone(100, 200, 300, 100, 200), "the centre is inside");
-	T.AssertTrue(HOLGroundAbility::IsInZone(100, 200, 300, 400, 200), "on the edge, east: inside");
-	T.AssertFalse(HOLGroundAbility::IsInZone(100, 200, 300, 401, 200), "one cm past the edge, east: outside");
-	T.AssertTrue(HOLGroundAbility::IsInZone(100, 200, 300, 100, -100), "on the edge, south (negative side): inside");
-	T.AssertFalse(HOLGroundAbility::IsInZone(100, 200, 300, 100, -101), "one cm past the edge, south: outside");
-	T.AssertTrue(HOLGroundAbility::IsInZone(0, 0, 500, 300, 400), "on the edge, 3-4-5 diagonal: inside");
-	T.AssertFalse(HOLGroundAbility::IsInZone(0, 0, 500, 301, 400), "past the edge on the diagonal: outside");
-	T.AssertFalse(HOLGroundAbility::IsInZone(0, 0, 0, 1, 0), "a zero radius holds only its centre");
-	T.AssertTrue(HOLGroundAbility::IsInZone(0, 0, 0, 0, 0), "a zero radius holds its centre");
+	T.AssertTrue(HOLZoneEffect::IsInZone(100, 200, 300, 100, 200), "the centre is inside");
+	T.AssertTrue(HOLZoneEffect::IsInZone(100, 200, 300, 400, 200), "on the edge, east: inside");
+	T.AssertFalse(HOLZoneEffect::IsInZone(100, 200, 300, 401, 200), "one cm past the edge, east: outside");
+	T.AssertTrue(HOLZoneEffect::IsInZone(100, 200, 300, 100, -100), "on the edge, south (negative side): inside");
+	T.AssertFalse(HOLZoneEffect::IsInZone(100, 200, 300, 100, -101), "one cm past the edge, south: outside");
+	T.AssertTrue(HOLZoneEffect::IsInZone(0, 0, 500, 300, 400), "on the edge, 3-4-5 diagonal: inside");
+	T.AssertFalse(HOLZoneEffect::IsInZone(0, 0, 500, 301, 400), "past the edge on the diagonal: outside");
+	T.AssertFalse(HOLZoneEffect::IsInZone(0, 0, 0, 1, 0), "a zero radius holds only its centre");
+	T.AssertTrue(HOLZoneEffect::IsInZone(0, 0, 0, 0, 0), "a zero radius holds its centre");
 }
 
 // The zone is active through StartMs + DurationMs - 1 and over at StartMs + DurationMs (same convention as IsRageEffectEnded); the cool-down end counts from the cast.
 void Test_GroundAbilityZoneExpires(FUnitTest& T)
 {
-	T.AssertTrue(HOLGroundAbility::ZoneActive(1000, 6000, 1000), "active the instant it is put down");
-	T.AssertTrue(HOLGroundAbility::ZoneActive(1000, 6000, 6999), "active at start + duration - 1");
-	T.AssertFalse(HOLGroundAbility::ZoneActive(1000, 6000, 7000), "over at start + duration");
-	T.AssertFalse(HOLGroundAbility::ZoneActive(1000, 6000, 9000), "over long after");
-	T.AssertFalse(HOLGroundAbility::ZoneActive(1000, 6000, 999), "not active before it is put down");
-	T.AssertFalse(HOLGroundAbility::ZoneActive(1000, 0, 1000), "a zero duration is never active");
+	T.AssertTrue(HOLZoneEffect::ZoneActive(1000, 6000, 1000), "active the instant it is put down");
+	T.AssertTrue(HOLZoneEffect::ZoneActive(1000, 6000, 6999), "active at start + duration - 1");
+	T.AssertFalse(HOLZoneEffect::ZoneActive(1000, 6000, 7000), "over at start + duration");
+	T.AssertFalse(HOLZoneEffect::ZoneActive(1000, 6000, 9000), "over long after");
+	T.AssertFalse(HOLZoneEffect::ZoneActive(1000, 6000, 999), "not active before it is put down");
+	T.AssertFalse(HOLZoneEffect::ZoneActive(1000, 0, 1000), "a zero duration is never active");
 	const int CooldownEnd = HOLGroundAbility::CooldownEndMs(1000, 40000);
 	T.AssertEquals(41000, CooldownEnd, "the cool-down ends at cast + cool-down");
 }

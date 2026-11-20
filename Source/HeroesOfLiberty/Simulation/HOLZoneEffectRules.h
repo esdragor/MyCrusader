@@ -8,8 +8,7 @@
  * Pure rules of the faction powers that put a zone on the ground (D859: the Seal of Light of the Dawn). A zone: a disc on the ground,
  * put down at a time, lasting a while, that slows the ENEMY units standing in it. Centimetres and milliseconds are integers (the
  * server runs them, the outcome is compared); no engine state: tested on their own (HeroesOfLiberty.Zone.*) and through the
- * combat processor (HeroesOfLiberty.Zone.Slow). ONE source (D839): the script (HOLGroundAbilityRules.as IsInZone / ZoneActive) reads
- * these through the zone subsystem's accessors, its copy is to be retired. The cast range (800 cm) and the cool-down (40 s) are the
+ * combat processor (HeroesOfLiberty.Zone.Slow). ONE source (D839): the script reads these through UHOLZoneEffectLibrary (HOLZoneEffect:: in script); its former copy (HOLGroundAbilityRules.as) is retired. The cast range (800 cm) and the cool-down (40 s) are the
  * UnitAbilities table's, not here.
  */
 namespace HOLZoneEffect
