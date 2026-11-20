@@ -126,6 +126,23 @@ void Test_DeployButton(FUnitTest& T)
 	T.AssertTrue(Applied.Phase == EHOLDeployPhase::Deploying && Applied.ElapsedMs == 0, "applying the button's decision starts the deploying at zero");
 }
 
+// HeroesOfLiberty.Siege.Deploy.DelaysAreVisible
+// D869 (user answer to E-deploy, 2026-11-20): mounting and dismounting each take 1 to 2 s on screen, not a blink and not 8 s / 5 s. The time
+// is MEASURED by running the rule's own Advance in 50 ms steps (the step of the simulation) from the first instant of each change of state.
+void Test_DeployDelaysAreVisible(FUnitTest& T)
+{
+	FHOLDeployProfile Profile = HOLDeployRead::DefaultProfile();
+	int MountMs = DeployMsUntilPhaseChange(DeployStateOf(EHOLDeployPhase::Deploying), Profile, 0, 50);
+	int DismountMs = DeployMsUntilPhaseChange(DeployStateOf(EHOLDeployPhase::Packing), Profile, 0, 50);
+	T.AssertTrue(MountMs >= 1000 && MountMs <= 2000, "mounting takes 1 to 2 s (D869), measured " + MountMs + " ms");
+	T.AssertTrue(DismountMs >= 1000 && DismountMs <= 2000, "dismounting takes 1 to 2 s (D869), measured " + DismountMs + " ms");
+	// Visible: halfway through, the engine is still changing state (the screen can show the change), it is not already settled.
+	FHOLDeployState HalfMount = HOLDeployRead::Advance(DeployStateOf(EHOLDeployPhase::Deploying), MountMs / 2, Profile, 0);
+	FHOLDeployState HalfDismount = HOLDeployRead::Advance(DeployStateOf(EHOLDeployPhase::Packing), DismountMs / 2, Profile, 0);
+	T.AssertTrue(HalfMount.Phase == EHOLDeployPhase::Deploying && HalfMount.ElapsedMs > 0, "halfway through mounting: still deploying, the time is counted");
+	T.AssertTrue(HalfDismount.Phase == EHOLDeployPhase::Packing && HalfDismount.ElapsedMs > 0, "halfway through dismounting: still packing, the time is counted");
+}
+
 // HeroesOfLiberty.Siege.Deploy.Counterweight
 void Test_DeployCounterweight(FUnitTest& T)
 {
