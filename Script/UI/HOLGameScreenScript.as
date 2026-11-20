@@ -1751,9 +1751,25 @@ UHOLScenarioPanelScript ScenarioPanel;
 	{
 		if (Minimap == nullptr || !bMinimapFrame || (bRight && bDrag))
 			return;
-		const int Action = HOLMinimap::ClickAction(bRight, Minimap.HasOrderableSelection(), false);
+		AHOLPlayerController Presser = Cast<AHOLPlayerController>(GetOwningPlayer());
+		const bool bAlt = Presser != nullptr && (Presser.IsInputKeyDown(EKeys::LeftAlt) || Presser.IsInputKeyDown(EKeys::RightAlt));
+		const int Action = HOLMinimap::ClickAction(bRight, Minimap.HasOrderableSelection(), bAlt);
 		const FVector2D Ground = HOLMinimap::ToWorld(MinimapFrame, Position);
-		if (Action == HOLMinimap::ClickCamera)
+		if (Action == HOLMinimap::ClickSignal)
+		{
+			// D860 H3: Alt + click places the neutral signal (the controller's Alt + click on the ground: HOLSignal::Neutral, a brief click),
+			// by the same entry as hol.Signal.Post (ServerPostSignal). Alt + drag places nothing: only the press itself does.
+			if (bDrag)
+			{
+				MinimapLastClick = "nothing";
+				return;
+			}
+			AHOLRpcPlayer SignalRpc = Cast<AHOLRpcPlayer>(HOLRpcBridge::FindPlayerActor(Presser));
+			if (SignalRpc != nullptr)
+				SignalRpc.ServerPostSignal(HOLSignal::Neutral, FVector(Ground.X, Ground.Y, 0.0));
+			MinimapLastClick = f"signal {Math::RoundToInt(Ground.X)} {Math::RoundToInt(Ground.Y)}";
+		}
+		else if (Action == HOLMinimap::ClickCamera)
 		{
 			Minimap.FocusCamera(Ground);
 			MinimapLastClick = f"camera {Math::RoundToInt(Ground.X)} {Math::RoundToInt(Ground.Y)}";

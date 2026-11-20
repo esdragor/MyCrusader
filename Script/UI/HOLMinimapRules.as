@@ -93,11 +93,12 @@ namespace HOLMinimap
 		return Picture.X >= 0.0 && Picture.Y >= 0.0 && Picture.X <= Frame.Size && Picture.Y <= Frame.Size;
 	}
 
-	// Left: the camera goes there. Right: the selected units go there, only for someone who has some to order.
+	// Left: the camera goes there; with Alt (D860 H3) the neutral signal is placed there instead (as Alt + click on the ground), selection or not.
+	// Right: the selected units go there, only for someone who has some to order (Alt changes nothing).
 	int ClickAction(bool bRight, bool bHasOrderable, bool bAlt)
 	{
 		if (!bRight)
-			return ClickCamera;
+			return bAlt ? ClickSignal : ClickCamera;
 		return bHasOrderable ? ClickMove : ClickNothing;
 	}
 
