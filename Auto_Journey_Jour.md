@@ -69,6 +69,19 @@ SÉANCE DE FONCTIONS DU 2026-11-20 (« commence un auto journée », 08:45 -> 17
 **Non vérifié.** Les gestes des essais sont internes (ordres `hol.*`), pas de vraie souris ; le rouge de D861 (a) n'a pas été prouvé distinct du vert ; la saisie du chat, la garnison, les alertes mineures et le glisser des murs ne sont PAS branchés à l'écran (pas d'essai) ; `neutrals_clairiere` : un arbre reste devant le camp, essai non donné.
 **Clôture incomplète (arrêt demandé).** `sync_worktrees.ps1` (avec builds) et `session_gate.ps1 -Phase Close` NON lancés : worktrees à rebuilder avant la prochaine séance : Celeborn, Elrond, Faramir, Galadriel, Glorfindel, Haldir, Sauron (Arwen = main 991a8bc compilé, garder tel quel pour les essais). Tableau « Lecons appliquees 2026-11-20 » non rempli.
 
+### Lecons appliquees 2026-11-20
+| Regle | Etat | Preuve |
+|---|---|---|
+| L19-1 (check-list lue ; principale = lancer seulement) | non appliquee | le reproche de l'utilisateur ; `Auto_Journey_Checklist.md` non lue au démarrage |
+| L19-2 (DIAGNOSTICS_AS, 5 pièges script) | a appliquer | 5 erreurs de compilation à l'intégration ; pièges notés dans `brief_commun.md` |
+| L19-3 (chemins absolus, gate) | a appliquer | 3 écritures relatives dans la copie principale |
+| L19-4 (identifiants de données cherchés dans quick_check et Scenarios) | a appliquer | D858 a cassé net, build, hud |
+| L19-5 (fiche E dès le pré-vol, capture « pendant ») | a appliquer | essais demandés par l'utilisateur ; montage `deploy` instantané passé |
+| L19-6 (Q posées dès qu'elles paraissent) | a appliquer | réponses en 5 min à 12:30, bloquantes depuis 9-10 h |
+| L19-7 (mémoire libre avant un lot C++, en-têtes centraux groupés) | a appliquer | builds de 13 et 21 min |
+| L19-8 (TEST_ROUGE_SEPARE) | a appliquer | test et correctif dans un même commit |
+| L19-9 (integrate.ps1) | a appliquer | boucles d'intégration à la main, erreurs de lancement |
+
 Plan de lancement (étape 0, 09:04) : 7 agents d'emblée (5 sans C++, 2 C++ : Elrond D861 et Faramir morceau 4, sous le plafond de 3) ; Arwen = intégrateur, ne code pas (builds, tests, éditeur, fusion par la session principale). Vague 2 prévue à la fin des agents : Haldir = D860 H2 sol (C++, `HOLSignalInput.*`, `HOLSelectionMarkers.cpp`), Sauron = D858 2b (`HOLAIArmy.as`), Elrond = D861 (a), Galadriel = morceau 6 / D833 puis `HOLFactionSlot` (3b), Glorfindel = morceau 2 (`hol.Cheat.Honor`, script si la garde de triche est lisible). Exceptions : Faramir sur une branche neuve parce que `fog` garde le WIP D827/D828 non compilé (à reprendre dans le lot C++ avec un build) ; les 16 sondes non suivies de Celeborn et `Crown.umap` de Haldir sont laissées telles quelles (ni commitées ni supprimées, à décider par l'utilisateur) ; Arwen ne reçoit pas D834 (worktree d'intégration).
 
 ## Résumé de la séance de fonctions du 2026-11-19 soir
