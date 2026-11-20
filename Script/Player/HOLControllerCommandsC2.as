@@ -14,7 +14,7 @@ namespace HOLControllerCommandsC2
 		Result.Add("hol.Duel.Challenge"); Result.Add("hol.Duel.Accept"); Result.Add("hol.Duel.Refuse");
 		Result.Add("hol.Diplomacy.Stance"); Result.Add("hol.Diplomacy.Vision");
 		Result.Add("hol.Signal.Post"); Result.Add("hol.Chat.Say");
-		Result.Add("hol.Spec.Start"); Result.Add("hol.Spec.Cancel"); Result.Add("hol.Cheat.Specialization");
+		Result.Add("hol.Spec.Start"); Result.Add("hol.Spec.Cancel"); Result.Add("hol.Cheat.Specialization"); Result.Add("hol.Cheat.Honor");
 		return Result;
 	}
 
@@ -157,6 +157,15 @@ namespace HOLControllerCommandsC2
 			Plan.Ints.Add(HOLControllerCommands::ParseInt(Args[1]));
 			return Plan;
 		}
+		if (Command == "hol.Cheat.Honor")
+		{
+			// <Value>: the gauge is set to it, held between the floor and the cap by the server (HOLFactionResource::CheatTarget); the Dawn only (CELEBORN-1120b).
+			if (Args.Num() < 1)
+				return Refused("Usage: hol.Cheat.Honor <Value>");
+			FHOLCheatPlan Plan = Accepted("ServerCheatHonor");
+			Plan.Ints.Add(HOLControllerCommands::ParseInt(Args[0]));
+			return Plan;
+		}
 		if (Command == "hol.Spec.Cancel")
 			return Accepted("ServerCancelSpecialization");
 		return FHOLCheatPlan();
@@ -249,6 +258,7 @@ void HOLChatSayCommand(const TArray<FString>& Args) { HOLControllerCommandsC2::R
 void HOLSpecStartCommand(const TArray<FString>& Args) { HOLControllerCommandsC2::Run("hol.Spec.Start", Args); }
 void HOLSpecCancelCommand(const TArray<FString>& Args) { HOLControllerCommandsC2::Run("hol.Spec.Cancel", Args); }
 void HOLCheatSpecializationCommand(const TArray<FString>& Args) { HOLControllerCommandsC2::Run("hol.Cheat.Specialization", Args); }
+void HOLCheatHonorCommand(const TArray<FString>& Args) { HOLControllerCommandsC2::Run("hol.Cheat.Honor", Args); }
 
 const FConsoleCommand HOLHeroReturnConsole("hol.Hero.Return", n"HOLHeroReturnCommand");
 const FConsoleCommand HOLHeroCastConsole("hol.Hero.Cast", n"HOLHeroCastCommand");
@@ -262,3 +272,4 @@ const FConsoleCommand HOLChatSayConsole("hol.Chat.Say", n"HOLChatSayCommand");
 const FConsoleCommand HOLSpecStartConsole("hol.Spec.Start", n"HOLSpecStartCommand");
 const FConsoleCommand HOLSpecCancelConsole("hol.Spec.Cancel", n"HOLSpecCancelCommand");
 const FConsoleCommand HOLCheatSpecializationConsole("hol.Cheat.Specialization", n"HOLCheatSpecializationCommand");
+const FConsoleCommand HOLCheatHonorConsole("hol.Cheat.Honor", n"HOLCheatHonorCommand");
