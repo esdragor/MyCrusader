@@ -327,7 +327,52 @@ void Test_SpecializationDawnRefusesTheThirdOption(FUnitTest& T)
 	T.AssertEquals(HOLSpecialization::Ok, HOLSpecialization::Start(State, 1, 1, 1), "the second option is still accepted");
 }
 
-// ELROND-1120e: Test_SpecializationBoardSeatFactionOptions removed from the integration (2026-11-20): the board's StartSpecialization is a protected C++ event, not callable from a script test; to rewrite on the pure rule.
+// ELROND-1120f, the server's board, rewritten without the protected C++ events (StartSpecialization, AdvanceSpecialization, ViewSpecialization
+// are not callable from a script test). Only the board's script-side members are used: SetSeatFaction, SeatFactionOf, StateOf (the seat's state the board
+// keeps); the rule is the pure HOLSpecialization::Start / Advance / ChosenOption, the very calls the board's events make. The counts are OptionCountOf's, read.
+void Test_SpecializationBoardSeatFactionOptions(FUnitTest& T)
+{
+	UHOLSpecializationBoardScript Board = NewObject(GetTransientPackage(), UHOLSpecializationBoardScript);
+	Board.SetSeatFaction(0, int(EHOLFaction::DawnOrder));
+	Board.SetSeatFaction(1, int(EHOLFaction::Templars));
+	const int DawnOptions = HOLSpecialization::OptionCountOf(EHOLFaction::DawnOrder);
+	const int TemplarOptions = HOLSpecialization::OptionCountOf(EHOLFaction::Templars);
+	int DawnSeatFaction = Board.SeatFactionOf(0);
+	int TemplarSeatFaction = Board.SeatFactionOf(1);
+	int NeverSetFaction = Board.SeatFactionOf(2);
+	T.AssertEquals(int(EHOLFaction::DawnOrder), DawnSeatFaction, "seat 0 keeps the faction set");
+	T.AssertEquals(int(EHOLFaction::Templars), TemplarSeatFaction, "seat 1 keeps the faction set");
+	T.AssertEquals(int(EHOLFaction::DawnOrder), NeverSetFaction, "a seat never set is the Dawn's");
+
+	// The Dawn's seat: the option past its count is refused, its last option runs and lands.
+	FHOLSpecializationState& DawnState = Board.StateOf(0);
+	T.AssertEquals(HOLSpecialization::BadOption, HOLSpecialization::Start(DawnState, 1, DawnOptions, 1), "a Dawn seat has no option past its count");
+	T.AssertEquals(0, DawnState.PendingTier, "the refused click leaves the bar empty");
+	T.AssertEquals(HOLSpecialization::Ok, HOLSpecialization::Start(DawnState, 1, DawnOptions - 1, 1), "a Dawn seat starts its last option");
+	HOLSpecialization::Advance(DawnState, HOLSpecialization::DelayMs(1), true);
+	int DawnChosen = HOLSpecialization::ChosenOption(Board.StateOf(0), 1);
+	T.AssertEquals(DawnOptions - 1, DawnChosen, "the board keeps the Dawn seat's chosen option");
+
+	// The Templars' seat: the option index 2 (third) is accepted; the one past it is refused.
+	FHOLSpecializationState& TemplarState = Board.StateOf(1);
+	T.AssertEquals(HOLSpecialization::BadOption, HOLSpecialization::Start(TemplarState, 1, TemplarOptions, 1), "a Templar seat has no option past its count");
+	T.AssertEquals(HOLSpecialization::Ok, HOLSpecialization::Start(TemplarState, 1, TemplarOptions - 1, 1), "a Templar seat starts its third option");
+	HOLSpecialization::Advance(TemplarState, HOLSpecialization::DelayMs(1), true);
+	int TemplarChosen = HOLSpecialization::ChosenOption(Board.StateOf(1), 1);
+	T.AssertEquals(TemplarOptions - 1, TemplarChosen, "the Templar's third option lands at the end of the delay");
+
+	// A seat never set is the Dawn's: no third option.
+	FHOLSpecializationState& NeverSetState = Board.StateOf(2);
+	T.AssertEquals(HOLSpecialization::BadOption, HOLSpecialization::Start(NeverSetState, 1, DawnOptions, 1), "a seat never set refuses the option past the Dawn's count");
+	T.AssertEquals(HOLSpecialization::Ok, HOLSpecialization::Start(NeverSetState, 1, DawnOptions - 1, 1), "a seat never set starts the Dawn's last option");
+
+	// SetSeatFaction after the state exists rebuilds the seat's choice with its faction's count (nothing chosen yet).
+	Board.SetSeatFaction(2, int(EHOLFaction::Templars));
+	FHOLSpecializationState& Rebuilt = Board.StateOf(2);
+	T.AssertEquals(TemplarOptions, Rebuilt.OptionCount, "the seat's choice is rebuilt with the Templars' count");
+	T.AssertEquals(0, Rebuilt.PendingTier, "the rebuilt choice is empty");
+	T.AssertEquals(HOLSpecialization::Ok, HOLSpecialization::Start(Rebuilt, 1, TemplarOptions - 1, 1), "the rebuilt seat accepts the third option");
+}
 
 // ELROND-1120e, the grid's cell: the Forum's third specialization cell shows for a faction with three options only (the count is OptionCountOf's).
 void Test_SpecializationThirdGridCellForThreeOptions(FUnitTest& T)
