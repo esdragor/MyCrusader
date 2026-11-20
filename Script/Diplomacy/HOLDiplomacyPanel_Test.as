@@ -185,3 +185,25 @@ void Test_DiplomacyPanelTheirStanceShown(FUnitTest& T)
 	FHOLDiplomacyStances TeamBook = HOLDiplomacyRead::NewTeamBook(Teams, NoAI);
 	T.AssertFalse(DpRow(TeamBook, 0, 1, true).bShowTheirStance, "not in the standard modes (locked teams)");
 }
+
+// D872: a click on a player's whole line in the Diplomacy panel chooses him as the private chat target, like its Message button; a greyed Message (an AI) or another control chooses nobody. The row comes from the real book and MakeRow.
+void Test_DiplomacyLineClickChoosesTheChatTarget(FUnitTest& T)
+{
+	FHOLDiplomacyStances Book = DpHumans(3);
+	FHOLDiplomacyRowView Row = DpRow(Book, 0, 1, false);
+	T.AssertTrue(Row.bMessageEnabled, "the real row of another human can be written to");
+	const int OfLine = HOLDiplomacyPanel::ChatTargetOfClick(HOLDiplomacyPanel::KindRow(), 1, Row.bMessageEnabled);
+	const int OfButton = HOLDiplomacyPanel::ChatTargetOfClick(HOLDiplomacyPanel::KindMessage(), 1, Row.bMessageEnabled);
+	const int OfStance = HOLDiplomacyPanel::ChatTargetOfClick(HOLDiplomacyRead::GetStanceAlly(), 1, Row.bMessageEnabled);
+	T.AssertEquals(OfLine, 1, "a click on the line chooses that player");
+	T.AssertEquals(OfButton, OfLine, "the Message button chooses the same player");
+	T.AssertEquals(OfStance, -1, "a stance button chooses nobody");
+	TArray<bool> OneAIOnly;
+	OneAIOnly.Add(false);
+	OneAIOnly.Add(true);
+	FHOLDiplomacyStances WithAI = HOLDiplomacyRead::NewBook(2, OneAIOnly);
+	FHOLDiplomacyRowView AIRow = DpRow(WithAI, 0, 1, false);
+	T.AssertFalse(AIRow.bMessageEnabled, "an AI cannot be written to");
+	const int OfAILine = HOLDiplomacyPanel::ChatTargetOfClick(HOLDiplomacyPanel::KindRow(), 1, AIRow.bMessageEnabled);
+	T.AssertEquals(OfAILine, -1, "a click on an AI's line chooses nobody");
+}

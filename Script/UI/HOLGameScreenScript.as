@@ -1436,7 +1436,6 @@ UHOLScenarioPanelScript ScenarioPanel;
 		return Box;
 	}
 
-	UFUNCTION(BlueprintOverride)
 	// D807: the local player has an ally when some other slot of the match is Ally both ways (HOLChatInputScreen::HasAlly on the real stances).
 	bool LocalPlayerHasAlly()
 	{
@@ -1454,13 +1453,30 @@ UHOLScenarioPanelScript ScenarioPanel;
 		return HOLChatInputScreen::HasAlly(Viewer, Mine, Theirs, There);
 	}
 
-	// The chosen private target is not known by the screen yet (no selection in the Diplomacy panel): -1 and no name, so Tab skips Private (Q-chat-private-target, default C).
+	// The private target (A of the 2026-11-20 answer): the player whose line was clicked in the Diplomacy panel (its Message button, DipMessageSlot), only while
+	// he is still in the match and is not the viewer; -1 and no name otherwise, so Tab skips Private. B: "/w Name message" names any other player of the match
+	// (SetWhisperDirectory, the names the panel shows).
 	void RefreshChatInput()
 	{
-		if (ChatInput != nullptr)
-			ChatInput.SetContext(LocalPlayerHasAlly(), -1, "");
+		if (ChatInput == nullptr)
+			return;
+		const int Viewer = GetLocalSlot();
+		TArray<FString> Names;
+		TArray<int> Slots;
+		for (int Slot = 0; Slot < DipMaxRows; ++Slot)
+		{
+			if (Viewer >= 0 && Slot != Viewer && HOLDiplomacyRead::IsSlotInMatch(Slot))
+			{
+				Names.Add(HOLDiplomacyRead::GetSlotNameText(Viewer, Slot));
+				Slots.Add(Slot);
+			}
+		}
+		const int Chosen = Slots.Contains(DipMessageSlot) ? DipMessageSlot : -1;
+		ChatInput.SetWhisperDirectory(Names, Slots);
+		ChatInput.SetContext(LocalPlayerHasAlly(), Chosen, Chosen >= 0 ? HOLDiplomacyRead::GetSlotNameText(Viewer, Chosen) : "");
 	}
 
+	UFUNCTION(BlueprintOverride)
 	void Refresh()
 	{
 		// The block's place follows the bottom bar's scale (EtapeDefini T).
