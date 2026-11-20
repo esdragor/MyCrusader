@@ -85,7 +85,11 @@ class UHOLChatInputScreen : UObject
 		MarkText = Cast<UCommonTextBlock>(Screen.ConstructWidget(UCommonTextBlock, n"ChatInputMark"));
 		Row.AddChildToHorizontalBox(MarkText).SetVerticalAlignment(EVerticalAlignment::VAlign_Center);
 		Box = Cast<UEditableTextBox>(Screen.ConstructWidget(UEditableTextBox, n"ChatInputBox"));
-		Row.AddChildToHorizontalBox(Box).SetSize(FSlateChildSize(ESlateSizeRule::Fill));
+		UHorizontalBoxSlot BoxSlot = Row.AddChildToHorizontalBox(Box);
+		FSlateChildSize FillSize;
+		FillSize.SizeRule = ESlateSizeRule::Fill;
+		FillSize.Value = 1.0;
+		BoxSlot.SetSize(FillSize);
 		Box.OnTextCommitted.AddUFunction(this, n"OnBoxCommitted");
 	}
 
@@ -197,7 +201,7 @@ class UHOLChatInputScreen : UObject
 	}
 
 	UFUNCTION()
-	void OnBoxCommitted(const FText& Text, ETextCommit CommitMethod)
+	void OnBoxCommitted(const FText&in Text, ETextCommit CommitMethod)
 	{
 		if (!State.bOpen)
 		{
