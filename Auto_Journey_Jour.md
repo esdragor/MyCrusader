@@ -10,22 +10,32 @@ Historique du test du 2026-10-30 : `Docs\Archive\Auto_Journey_Test1_2026-10-30.m
 
 ## Agents du 2026-11-20
 
-SÉANCE DE FONCTIONS DU 2026-11-20 (« commence un auto journée », 08:45 -> 17:00, AUTONOME). Réponses de l'utilisateur à 08:4x (interface de choix) : fin à 17:00 (Docs\SessionEnd.txt) ; fusion dans main EN LOCAL si build PASS et tests verts sur le résultat exact, jamais de push ; mode autonome (veilleur toutes les 30 min, alarme de clôture 16:45) ; les trois docs non suivis de Docs\ ne sont pas commités. Règles : agents Sonnet 5.5 de 15 min / 25 appels, sans build ni quick_check ; code neuf en Angelscript (D839) ; builds, tests (UN éditeur à la fois) et fusion groupée par la session principale. État au lancement : main = 410cb7d (local, rien poussé), 8 worktrees sur main (Faramir og +33 commits propres à sa branche), Celeborn 16 fichiers modifiés non commités, Haldir 1. Journée précédente archivée telle quelle : `Docs\Archive\Auto_Journey_Jour_2026-11-19_soir_archive_2026-11-20.md`.
+SÉANCE DE FONCTIONS DU 2026-11-20 (« commence un auto journée », 08:45 -> 17:00, AUTONOME). Réponses de l'utilisateur à 08:4x (interface de choix) : fin à 17:00 (`Docs\SessionEnd.txt`) ; fusion dans main EN LOCAL si build PASS et tests verts sur le résultat exact, jamais de push ; mode autonome (veilleur toutes les 30 min, alarme de clôture 16:45) ; les trois docs non suivis de `Docs\` ne sont pas commités. Règles : agents Sonnet 5.5 de 15 min / 25 appels, sans build ni quick_check ; code neuf en Angelscript (D839) ; builds, tests (UN éditeur à la fois) et fusion groupée par la session principale. État au lancement : main = 410cb7d (local, rien poussé), 8 worktrees sur main (Faramir `fog` +33 commits propres à sa branche), Celeborn 16 fichiers non suivis (sondes périmées), Haldir 1 (`Crown.umap`). Journée précédente archivée telle quelle : `Docs\Archive\Auto_Journey_Jour_2026-11-19_soir_archive_2026-11-20.md`.
 
 | Agent | id | worktree | branche | tâche | C++ | lancé |
 |---|---|---|---|---|---|---|
-| NETTOYAGE-1120-file | a69f9223 | MyCrusader (docs) | main | étape 0a : nettoyage d'Auto_Journey_File.md | non | 08:52 |
-| NETTOYAGE-1120-retours | a2e4ac6e | MyCrusader (docs) | main | étape 0a : nettoyage du dossier Retours\ | non | 08:52 |
-| NETTOYAGE-1120-procedure | ab46cfab | MyCrusader (docs) | main | étape 0a : Auto_Journey.md, check-list, rief_commun.md | non | 08:52 |
-| (session principale) | - | MyCrusader (docs) | main | étape 0a : archive d'Auto_Journey_Jour.md (copie intégrale) | non | 08:53 |
+| NETTOYAGE-1120-file | a69f9223 | MyCrusader (docs) | main | étape 0a : nettoyage d'`Auto_Journey_File.md` ; FINI 08:53, commit 927e6ae | non | 08:52 |
+| NETTOYAGE-1120-retours | a2e4ac6e | MyCrusader (docs) | main | étape 0a : nettoyage du dossier `Retours\` ; FINI 08:51, commit 61eb155 | non | 08:52 |
+| NETTOYAGE-1120-procedure | ab46cfab | MyCrusader (docs) | main | étape 0a : `Auto_Journey.md`, check-list, `brief_commun.md` ; FINI 08:56, commit d2b70be | non | 08:52 |
+| (session principale) | - | MyCrusader (docs) | main | étape 0a : archive d'`Auto_Journey_Jour.md` (copie intégrale) ; FINI 08:56 : commit 901e391, 8 worktrees synchronisés (docs seules, aucun build) | non | 08:53 |
+| ETAPE0-1120-A | a14d31af | MyCrusader (lecture seule) | main | étape 0 : D861, D860, lot C++ du socle ; FINI 09:03, rapport `Docs\Rapports\ETAPE0-1120-A.md` | non | 08:57 |
+| ETAPE0-1120-B | a3855592 | MyCrusader (lecture seule) | main | étape 0 : D859, D858, branchements, état des worktrees ; FINI 09:03, rapport `Docs\Rapports\ETAPE0-1120-B.md` | non | 08:57 |
+| HALDIR-1120a | a4aae530 | HeroesOfLiberty-Haldir | wall-line | D859 1a + 1b : `HOLDawnValues.as`, `HOLDawnPowers.as` (valeurs d'Honneur et Lumière sacrée) | non | 09:05 |
+| GLORFINDEL-1120a | a1700760 | HeroesOfLiberty-Glorfindel | ability-columns | D859 1c : ligne `LightSeal` de `UnitAbilities.csv` | non | 09:05 |
+| CELEBORN-1120a | ae80bc59 | HeroesOfLiberty-Celeborn | duel-rewards | D859 1d (rayon 12 m dans `Effects.csv`) + 3a (`OrdersOfEnded`, boucle `Ended`) | non | 09:05 |
+| SAURON-1120a | abcdb009 | HeroesOfLiberty-Sauron | tool-known-reds | D858 2a : Hallebardier (CSV, test 17 lignes, données ; PAS `HOLAIArmy.as`) | non | 09:05 |
+| GALADRIEL-1120a | a3735a6f | HeroesOfLiberty-Galadriel | specialization-trial | D860 H3 : Alt + clic sur la mini-carte (script), puis D833 | non | 09:05 |
+| ELROND-1120a | a2992dbc | HeroesOfLiberty-Elrond | integ-25 | D861 (b) : engin monté garde son ordre de déplacement, NON COMPILÉ | oui | 09:05 |
+| FARAMIR-1120a | ab4588dd | HeroesOfLiberty-Faramir | zone-effect (neuve, depuis main ; `fog` intacte) | lot C++ morceau 4 : zone de ralentissement du Sceau de lumière, NON COMPILÉ | oui | 09:05 |
+
+Plan de lancement (étape 0, 09:04) : 7 agents d'emblée (5 sans C++, 2 C++ : Elrond D861 et Faramir morceau 4, sous le plafond de 3) ; Arwen = intégrateur, ne code pas (builds, tests, éditeur, fusion par la session principale). Vague 2 prévue à la fin des agents : Haldir = D860 H2 sol (C++, `HOLSignalInput.*`, `HOLSelectionMarkers.cpp`), Sauron = D858 2b (`HOLAIArmy.as`), Elrond = D861 (a), Galadriel = morceau 6 / D833 puis `HOLFactionSlot` (3b), Glorfindel = morceau 2 (`hol.Cheat.Honor`, script si la garde de triche est lisible). Exceptions : Faramir sur une branche neuve parce que `fog` garde le WIP D827/D828 non compilé (à reprendre dans le lot C++ avec un build) ; les 16 sondes non suivies de Celeborn et `Crown.umap` de Haldir sont laissées telles quelles (ni commitées ni supprimées, à décider par l'utilisateur) ; Arwen ne reçoit pas D834 (worktree d'intégration).
 
 ## Résumé de la séance de fonctions du 2026-11-19 soir
 
-- Séance autonome 21:08 -> 23:10, session principale + 22 agents Sonnet : socle commun des factions en règles pures script (jauge de faction, livre de pouvoirs, emplacement de faction, capacité visée au sol, Templiers à 3 options, récompenses du duel, pose en ligne des murs, dépense des pouvoirs par l'IA) + petit lot C++ (jauge répliquée AHOLGameState::FactionResource, triche hol.Cheat.Specialization) ; main df895b0 puis docs, tests 1817/1817, 
-et PASS, gate Close sans FAIL ; rien branché en jeu pour le joueur.
-- Réponses du soir : D858 (Hallebardier valeurs B, remplace le Lancier), D859 (10 valeurs du socle recommandées), D860 (signal animé + Alt + clic mini-carte), D861 (engin de siège garde son ordre pendant le déploiement) ; specialization_button OK. Suite : lot C++ groupé du socle (Docs\Rapports\LOT-CPP-socle-factions-1119.md), corrections D860/D861, Aube A1.
-- Leçons : un fichier GÉNÉRÉ modifié par un agent sans exécution se relit en git diff avant le premier lancement ; l'énoncé d'une règle neuve donne le type canonique des entrées communes (faction, siège, case) ; le gate Close refuse un lot C++ resté hors de main (L15-1).
-- Détail (tableau de 22 agents, bilan, tableau « Lecons appliquees 2026-11-19 ») : Docs\Archive\Auto_Journey_Jour_2026-11-19_soir_archive_2026-11-20.md.
+- Séance autonome 21:08 -> 23:10, session principale + 22 agents Sonnet : socle commun des factions en règles pures script (jauge de faction, livre de pouvoirs, emplacement de faction, capacité visée au sol, Templiers à 3 options, récompenses du duel, pose en ligne des murs, dépense des pouvoirs par l'IA) + petit lot C++ (jauge répliquée `AHOLGameState::FactionResource`, triche `hol.Cheat.Specialization`) ; main df895b0 puis docs, tests 1817/1817, partie `net` PASS, gate Close sans FAIL ; rien branché en jeu pour le joueur.
+- Réponses du soir : D858 (Hallebardier valeurs B, remplace le Lancier), D859 (10 valeurs du socle recommandées), D860 (signal animé + Alt + clic mini-carte), D861 (engin de siège garde son ordre pendant le déploiement) ; `specialization_button` OK. Suite : lot C++ groupé du socle (`Docs\Rapports\LOT-CPP-socle-factions-1119.md`), corrections D860/D861, Aube A1.
+- Leçons : un fichier GÉNÉRÉ modifié par un agent sans exécution se relit en `git diff` avant le premier lancement ; l'énoncé d'une règle neuve donne le type canonique des entrées communes (faction, siège, case) ; le gate Close refuse un lot C++ resté hors de main (L15-1).
+- Détail (tableau de 22 agents, bilan, tableau « Lecons appliquees 2026-11-19 ») : `Docs\Archive\Auto_Journey_Jour_2026-11-19_soir_archive_2026-11-20.md`.
 
 ## Résumé des séances de migration du 2026-11-16 soir au 2026-11-19
 
