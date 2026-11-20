@@ -51,10 +51,21 @@ void Test_MinimapToWorld(FUnitTest& T)
 // Left click: the camera, whatever is selected. Right click: a move order, only for someone who has units to order.
 void Test_MinimapClickAction(FUnitTest& T)
 {
-	T.AssertEquals(HOLMinimap::ClickCamera, HOLMinimap::ClickAction(false, false), "left, nothing selected: camera");
-	T.AssertEquals(HOLMinimap::ClickCamera, HOLMinimap::ClickAction(false, true), "left, units selected: camera");
-	T.AssertEquals(HOLMinimap::ClickMove, HOLMinimap::ClickAction(true, true), "right, units selected: move");
-	T.AssertEquals(HOLMinimap::ClickNothing, HOLMinimap::ClickAction(true, false), "right, nothing to order: nothing");
+	T.AssertEquals(HOLMinimap::ClickCamera, HOLMinimap::ClickAction(false, false, false), "left, nothing selected: camera");
+	T.AssertEquals(HOLMinimap::ClickCamera, HOLMinimap::ClickAction(false, true, false), "left, units selected: camera");
+	T.AssertEquals(HOLMinimap::ClickMove, HOLMinimap::ClickAction(true, true, false), "right, units selected: move");
+	T.AssertEquals(HOLMinimap::ClickNothing, HOLMinimap::ClickAction(true, false, false), "right, nothing to order: nothing");
+}
+
+// D860 H3: Alt + left click on the picture places the same signal as Alt + click on the ground, with or without a selection;
+// Alt + right stays an order (or nothing), it is not a signal.
+void Test_MinimapClickActionAltPlacesSignal(FUnitTest& T)
+{
+	T.AssertEquals(HOLMinimap::ClickSignal, HOLMinimap::ClickAction(false, false, true), "Alt + left, nothing selected: signal");
+	T.AssertEquals(HOLMinimap::ClickSignal, HOLMinimap::ClickAction(false, true, true), "Alt + left, units selected: signal");
+	T.AssertEquals(HOLMinimap::ClickMove, HOLMinimap::ClickAction(true, true, true), "Alt + right, units selected: still a move");
+	T.AssertEquals(HOLMinimap::ClickNothing, HOLMinimap::ClickAction(true, false, true), "Alt + right, nothing to order: nothing");
+	T.AssertEquals(HOLMinimap::ClickCamera, HOLMinimap::ClickAction(false, true, false), "no Alt: the camera, as before");
 }
 
 // A unit that lost health makes an alert where it stands; a healed or untouched one does not; a new one does not.

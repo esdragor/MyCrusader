@@ -37,6 +37,7 @@ namespace HOLMinimap
 	const int ClickNothing = 0;
 	const int ClickCamera = 1;
 	const int ClickMove = 2;
+	const int ClickSignal = 3;
 
 	// An alert lives this long, then goes; lit for BlinkSeconds, dark for BlinkSeconds, and so on.
 	const float AlertSeconds = 6.0;
@@ -93,7 +94,7 @@ namespace HOLMinimap
 	}
 
 	// Left: the camera goes there. Right: the selected units go there, only for someone who has some to order.
-	int ClickAction(bool bRight, bool bHasOrderable)
+	int ClickAction(bool bRight, bool bHasOrderable, bool bAlt)
 	{
 		if (!bRight)
 			return ClickCamera;
