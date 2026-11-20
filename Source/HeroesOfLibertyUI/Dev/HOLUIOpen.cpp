@@ -2,6 +2,7 @@
 #include "Components/EditableTextBox.h"
 #include "Components/TextBlock.h"
 #include "Containers/Ticker.h"
+#include "Dev/HOLUIType.h"
 #include "Engine/World.h"
 #include "HAL/IConsoleManager.h"
 #include "HeroesOfLibertyUILog.h"
@@ -234,6 +235,12 @@ namespace UE::HeroesOfLiberty::UI
 				UE_LOG(LogHOLUI, Display, TEXT("Text %s: %s"), *Name, Widget ? TEXT("(no text)") : TEXT("(missing)"));
 			}
 		}
+	}
+
+	/** STUB (red commit): the real search of the text box comes with the fix. */
+	bool TypeIntoTree(const UWidgetTree* Tree, const FName Name, const FString& Text)
+	{
+		return false;
 	}
 
 	void TypeText(const TArray<FString>& Args, UWorld* World)
