@@ -32,6 +32,9 @@
 #include "Simulation/HOLHeroAbilityRules.h"
 #include "Simulation/HOLHeroLibrary.h"
 #include "Simulation/HOLOrderChainRules.h"
+#include "Simulation/HOLSimulationSettings.h"
+#include "Simulation/HOLUnitTypes.h"
+#include "Engine/DataTable.h"
 #include "Simulation/HOLUnitView.h"
 
 namespace UE::HeroesOfLiberty::SelectionMarkers
@@ -690,8 +693,22 @@ void AHOLSelectionMarkers::UpdateCryFlashes(const float DeltaSeconds)
 
 void AHOLSelectionMarkers::CollectKnightRings(const TArray<FHOLUnitView>& UnitViews, const int32 OwnerSlot, const UDataTable* UnitTypes, TArray<FKnightRing>& OutRings)
 {
-	// Stub (red test HeroesOfLiberty.SelectionMarkers.KnightRing): the Virtuous Knight's ring is not drawn yet.
 	OutRings.Reset();
+	if (!UnitTypes)
+	{
+		return;
+	}
+	for (const FHOLUnitView& View : UnitViews)
+	{
+		const FHOLUnitTypeRow* Row = View.OwnerPlayer == OwnerSlot ? UnitTypes->FindRow<FHOLUnitTypeRow>(View.TypeName, TEXT("Knight ring"), false) : nullptr;
+		if (Row && Row->DamageRedirectPercent > 0 && Row->DamageRedirectRadius > 0.f)
+		{
+			FKnightRing& Ring = OutRings.AddDefaulted_GetRef();
+			Ring.Location = View.Location;
+			Ring.Radius = Row->DamageRedirectRadius;
+			Ring.Description = FString::Printf(TEXT("knight (%.0f, %.0f) %.0f"), View.Location.X, View.Location.Y, Row->DamageRedirectRadius);
+		}
+	}
 }
 
 void AHOLSelectionMarkers::UpdateAuraRings()
@@ -750,6 +767,17 @@ void AHOLSelectionMarkers::UpdateAuraRings()
 				{
 					Hero = &View;
 				}
+			}
+		}
+		// D864 + D865: the 8 m of each of his Virtuous Knights' damage redirect, as the table says (DamageRedirectRadius), to him alone.
+		{
+			const FLinearColor KnightRingColor(0.45f, 0.70f, 0.95f);
+			TArray<FKnightRing> KnightRings;
+			CollectKnightRings(Views, Slot, GetDefault<UHOLSimulationSettings>()->UnitTypesTable.LoadSynchronous(), KnightRings);
+			for (const FKnightRing& Ring : KnightRings)
+			{
+				AddCircle(FVector2D(Ring.Location), Ring.Radius, AuraRingWidth, KnightRingColor, Ring.Location.Z);
+				Parts.Add(Ring.Description);
 			}
 		}
 		// L4 option B (hol.Rage.Visual 2): a necrotic ring on the ground under each Damned Warrior whose rage runs (the host's own state).
