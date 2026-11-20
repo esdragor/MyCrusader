@@ -1,5 +1,13 @@
-// D807 (Q-chat-ui = A): the chat input screen (GLORFINDEL-1120h). STUB of the pure part (red first): the bodies below do nothing yet.
-// The widget (UEditableTextBox, Enter / Tab / Escape, send by ServerPostChat) comes with the fix.
+// NOT COMPILED, NOT RUN (GLORFINDEL-1120h): D807 (Q-chat-ui = A), the chat input screen. Pure part (namespace HOLChatInputScreen, tested by
+// HOLChatInputScreen_Test.as) + the widget helper UHOLChatInputScreen (a text field built by script, the state of HOLChatInput, the send by ServerPostChat).
+//
+// WIRING (the screen that owns it, not done here: HOLGameScreenScript.as belongs to another agent):
+//   member:   UHOLChatInputScreen ChatInput;
+//   OnInitialized: ChatInput = Cast<UHOLChatInputScreen>(NewObject(this, UHOLChatInputScreen)); ChatInput.Build(this, <a UVerticalBox of the frame>);
+//   Refresh:  ChatInput.SetContext(<the local player has an ally>, <slot chosen in the Diplomacy panel, -1 none>, <its name>);
+//   KeyPressed(FName KeyName): ChatInput.KeyPressed(KeyName);   (the C++ tick must send "Enter", see the report: HOLScriptScreen.cpp ~1034)
+//   Describe: append ChatInput.Describe().
+// Inside the field Enter / Escape / Tab come as the text box's OnTextCommitted (OnEnter / OnCleared / OnUserMovedFocus): script only, to verify at run time.
 
 namespace HOLChatInputScreen
 {
@@ -8,23 +16,215 @@ namespace HOLChatInputScreen
 	const int Blank = 1;
 	const int TooLong = 2;
 
+	// The mark of the channel in the field: "Allies", "Tous", or the chosen player's name (Private; "Privé" when no name is known).
 	FString ChannelMark(int Channel, const FString& PlayerName)
 	{
-		return "";
+		if (Channel == HOLChat::Allies)
+		{
+			return "Allies";
+		}
+		if (Channel == HOLChat::Private)
+		{
+			return PlayerName.TrimStartAndEnd().IsEmpty() ? "Privé" : PlayerName;
+		}
+		return "Tous";
 	}
 
+	// What stands before the typed text.
 	FString MarkLine(int Channel, const FString& PlayerName)
 	{
-		return "";
+		return f"{ChannelMark(Channel, PlayerName)} : ";
 	}
 
+	// The text that leaves the field: trimmed.
 	FString SendText(const FString& Text)
 	{
-		return Text;
+		return Text.TrimStartAndEnd();
 	}
 
+	// Blank: nothing to send. TooLong: more than the board takes (HOLChat::MaxTextLength); the field keeps its text so the player can cut it.
 	int SendRefusal(const FString& Text)
 	{
+		const FString Trimmed = Text.TrimStartAndEnd();
+		if (Trimmed.IsEmpty())
+		{
+			return Blank;
+		}
+		if (Trimmed.Len() > HOLChat::MaxTextLength)
+		{
+			return TooLong;
+		}
 		return Ok;
+	}
+}
+
+// The field: a border holding "<mark> : " and a UEditableTextBox, collapsed until Enter opens it. Same construction as UHOLProductionQueuePanel.
+class UHOLChatInputScreen : UObject
+{
+	UHOLScriptScreen Screen;
+	UBorder Panel;
+	UCommonTextBlock MarkText;
+	UEditableTextBox Box;
+
+	FHOLChatInputState State;
+	bool bHasAlly = false;
+	int ChosenSlot = -1;
+	FString ChosenName = "";
+	// The time of the last commit by the field itself: the polled Enter of the same press must not reopen it.
+	float LastCommitTime = -10.0;
+	FString LastSent = "";
+
+	void Build(UHOLScriptScreen InScreen, UVerticalBox Host)
+	{
+		Screen = InScreen;
+		Panel = Cast<UBorder>(Screen.ConstructWidget(UBorder, n"ChatInputPanel"));
+		Panel.SetVisibility(ESlateVisibility::Collapsed);
+		Host.AddChildToVerticalBox(Panel);
+		UHorizontalBox Row = Cast<UHorizontalBox>(Screen.ConstructWidget(UHorizontalBox, n"ChatInputRow"));
+		Panel.SetContent(Row);
+		MarkText = Cast<UCommonTextBlock>(Screen.ConstructWidget(UCommonTextBlock, n"ChatInputMark"));
+		Row.AddChildToHorizontalBox(MarkText).SetVerticalAlignment(EVerticalAlignment::VAlign_Center);
+		Box = Cast<UEditableTextBox>(Screen.ConstructWidget(UEditableTextBox, n"ChatInputBox"));
+		Row.AddChildToHorizontalBox(Box).SetSize(FSlateChildSize(ESlateSizeRule::Fill));
+		Box.OnTextCommitted.AddUFunction(this, n"OnBoxCommitted");
+	}
+
+	// What the screen knows and this field does not: an ally, the player chosen in the Diplomacy panel (D387).
+	void SetContext(bool bInHasAlly, int InChosenSlot, const FString& InChosenName)
+	{
+		bHasAlly = bInHasAlly;
+		ChosenSlot = InChosenSlot;
+		ChosenName = InChosenName;
+		if (State.bOpen)
+		{
+			ShowMark();
+		}
+	}
+
+	void ShowMark()
+	{
+		MarkText.SetText(FText::FromString(HOLChatInputScreen::MarkLine(State.Channel, ChosenName)));
+	}
+
+	void Open()
+	{
+		Box.SetText(FText::FromString(""));
+		ShowMark();
+		Panel.SetVisibility(ESlateVisibility::SelfHitTestInvisible);
+		Box.SetKeyboardFocus();
+	}
+
+	void Close()
+	{
+		Panel.SetVisibility(ESlateVisibility::Collapsed);
+	}
+
+	// A key the screen heard (KeyPressed of UHOLScriptScreen). Enter only opens: once open, the text box's own commit carries Enter, Escape and Tab.
+	void KeyPressed(FName KeyName)
+	{
+		if (KeyName == n"Enter" && !State.bOpen && Gameplay::GetTimeSeconds() - LastCommitTime > 0.25)
+		{
+			HandleEnter();
+		}
+		else if (KeyName == n"Tab")
+		{
+			HandleTab();
+		}
+		else if (KeyName == n"Escape")
+		{
+			HandleEscape();
+		}
+	}
+
+	void HandleEnter()
+	{
+		const FString Text = State.bOpen ? Box.GetText().ToString() : "";
+		const int Result = HOLChatInput::PressEnter(State, Text, bHasAlly, ChosenSlot >= 0);
+		if (Result == HOLChatInput::Opened)
+		{
+			Open();
+		}
+		else if (Result == HOLChatInput::Send)
+		{
+			Submit(Text);
+		}
+		else if (Result == HOLChatInput::Dismissed)
+		{
+			Close();
+		}
+		else
+		{
+			ShowMark();
+		}
+	}
+
+	void HandleTab()
+	{
+		if (HOLChatInput::PressTab(State, bHasAlly, ChosenSlot >= 0))
+		{
+			ShowMark();
+			Box.SetKeyboardFocus();
+		}
+	}
+
+	void HandleEscape()
+	{
+		if (HOLChatInput::PressEscape(State))
+		{
+			Close();
+		}
+	}
+
+	// The field has just closed for a send (State.Channel is the channel sent on). Too long: it opens again with its text.
+	void Submit(const FString& Text)
+	{
+		if (HOLChatInputScreen::SendRefusal(Text) != HOLChatInputScreen::Ok)
+		{
+			State.bOpen = true;
+			ShowMark();
+			return;
+		}
+		AHOLRpcPlayer Rpc = Cast<AHOLRpcPlayer>(HOLRpcBridge::FindPlayerActor(Cast<AHOLPlayerController>(Screen.GetOwningPlayer())));
+		if (Rpc == nullptr)
+		{
+			Log(n"LogHOLMatch", "ChatInput: no script player actor, message not sent");
+			State.bOpen = true;
+			return;
+		}
+		LastSent = HOLChatInputScreen::SendText(Text);
+		Rpc.ServerPostChat(State.Channel, LastSent, HOLChatInput::TargetSlot(State, ChosenSlot));
+		Close();
+	}
+
+	UFUNCTION()
+	void OnBoxCommitted(const FText& Text, ETextCommit CommitMethod)
+	{
+		if (!State.bOpen)
+		{
+			return;
+		}
+		LastCommitTime = Gameplay::GetTimeSeconds();
+		if (CommitMethod == ETextCommit::OnEnter)
+		{
+			HandleEnter();
+		}
+		else if (CommitMethod == ETextCommit::OnCleared)
+		{
+			HandleEscape();
+		}
+		else if (CommitMethod == ETextCommit::OnUserMovedFocus)
+		{
+			HandleTab();
+		}
+	}
+
+	// One line for hol.HUD.Report: "chat: closed" or "chat: open <mark>".
+	FString Describe()
+	{
+		if (!State.bOpen)
+		{
+			return f"chat: closed (last sent '{LastSent}')";
+		}
+		return f"chat: open {HOLChatInputScreen::ChannelMark(State.Channel, ChosenName)}";
 	}
 }
