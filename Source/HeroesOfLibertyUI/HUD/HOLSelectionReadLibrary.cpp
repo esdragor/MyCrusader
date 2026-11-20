@@ -14,6 +14,7 @@
 #include "Player/HOLPlayerController.h"
 #include "Resources/HOLSourceSubsystem.h"
 #include "Resources/HOLSourceTypes.h"
+#include "Simulation/HOLUnitView.h"
 
 #define LOCTEXT_NAMESPACE "HOLGameScreen"
 
@@ -95,6 +96,7 @@ bool UHOLSelectionReadLibrary::GetBuildingSelectionView(const UObject* WorldCont
 	Out.ForumShown = Forum.Shown;
 	Out.ForumText = Forum.Text;
 	Out.ForumLives = Forum.Lives;
+	ReadGarrisonOccupants(WorldContextObject, Building, Out);
 	return true;
 }
 
@@ -121,12 +123,24 @@ bool UHOLSelectionReadLibrary::GetSourceSelectionView(const UObject* WorldContex
 
 FString UHOLSelectionReadLibrary::GetUnitTypeKey(const UObject* WorldContextObject, const int32 UnitId)
 {
-	return FString(); // stub (red)
+	const UWorld* World = HOLSelectionReadPrivate::WorldOf(WorldContextObject);
+	FHOLUnitView Unit;
+	return World && UnitId > 0 && HOLUnitView::Find(*World, static_cast<uint32>(UnitId), Unit) ? Unit.TypeName.ToString() : FString();
 }
 
 void UHOLSelectionReadLibrary::ReadGarrisonOccupants(const UObject* WorldContextObject, const AHOLBuilding* Building, FHOLBuildingSelView& Out)
 {
-	// stub (red): leaves the two lists empty
+	Out.GarrisonOccupants.Reset();
+	Out.GarrisonOccupantTypes.Reset();
+	if (!Building)
+	{
+		return;
+	}
+	Building->GetGarrisonOccupants(Out.GarrisonOccupants);
+	for (const int32 UnitId : Out.GarrisonOccupants)
+	{
+		Out.GarrisonOccupantTypes.Add(GetUnitTypeKey(WorldContextObject, UnitId));
+	}
 }
 
 FText UHOLSelectionReadLibrary::GetOwnerName(const UObject* WorldContextObject, const int32 OwnerSlot, const bool bOwn)

@@ -531,12 +531,15 @@ bool UHOLControllerCommandLibrary::RequestUngarrisonAllOf(AHOLPlayerController* 
 
 bool UHOLControllerCommandLibrary::RequestUngarrisonUnitOf(AHOLPlayerController* Controller, const int32 UnitId)
 {
-	return false; // stub (red): the body comes with the green commit
+	if (Controller && UnitId > 0) { Controller->RequestUngarrisonUnit(static_cast<uint32>(UnitId)); }
+	return Controller && UnitId > 0;
 }
 
 bool UHOLControllerCommandLibrary::RequestUngarrisonAllSelected(AHOLPlayerController* Controller)
 {
-	return false; // stub (red)
+	AHOLBuilding* Building = Controller ? Controller->GetOwnSelection() : nullptr;
+	if (Building) { Controller->RequestUngarrisonAll(Building); }
+	return Building != nullptr;
 }
 
 bool UHOLControllerCommandLibrary::RequestRallyOnSite(AHOLPlayerController* Controller, AHOLBuilding* Producer, AHOLBuilding* Site, const bool bShift)
