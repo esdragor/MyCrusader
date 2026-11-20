@@ -129,6 +129,7 @@ void AHOLBuilding::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLife
 	DOREPLIFETIME_CONDITION(AHOLBuilding, RallySource, COND_OwnerOnly);
 	DOREPLIFETIME_CONDITION(AHOLBuilding, RallyWaypoints, COND_OwnerOnly);
 	DOREPLIFETIME_CONDITION(AHOLBuilding, BuildersAtWork, COND_OwnerOnly);
+	DOREPLIFETIME_CONDITION(AHOLBuilding, GarrisonOccupants, COND_OwnerOnly);
 }
 
 const FHOLBuildingTypeRow* AHOLBuilding::GetType() const
@@ -264,6 +265,29 @@ void AHOLBuilding::OnRep_Construction()
 	RefreshNavObstacle();
 	MarkAppearanceDirty();
 	OnConstructionChanged.Broadcast();
+}
+
+void AHOLBuilding::AddGarrisonOccupant(const int32 UnitId)
+{
+	if (!GarrisonOccupants.Contains(UnitId))
+	{
+		GarrisonOccupants.Add(UnitId);
+		GarrisonOccupants.Sort();
+		ForceNetUpdate();
+	}
+}
+
+void AHOLBuilding::RemoveGarrisonOccupant(const int32 UnitId)
+{
+	if (GarrisonOccupants.Remove(UnitId) > 0)
+	{
+		ForceNetUpdate();
+	}
+}
+
+void AHOLBuilding::GetGarrisonOccupants(TArray<int32>& OutUnitIds) const
+{
+	OutUnitIds = GarrisonOccupants;
 }
 
 void AHOLBuilding::SetBuildersAtWork(const int32 InBuilders)

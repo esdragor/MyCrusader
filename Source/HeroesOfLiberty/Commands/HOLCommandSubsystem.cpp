@@ -153,6 +153,18 @@ void UHOLCommandSubsystem::IssueUngarrisonAllOrder(const int32 PlayerIndex, AHOL
 	PendingGarrisonOrders.Add(FHOLGarrisonOrder{ PlayerIndex, TArray<uint32>(), Building, true });
 }
 
+void UHOLCommandSubsystem::IssueUngarrisonUnitOrder(const int32 PlayerIndex, const uint32 UnitId)
+{
+	if (PlayerIndex < 0 || PlayerIndex >= FHOLMatchConfig::MaxSlots || UnitId == 0 || IsRefused(PlayerIndex))
+	{
+		return;
+	}
+	FHOLGarrisonOrder Order;
+	Order.PlayerIndex = PlayerIndex;
+	Order.ExitUnitId = UnitId;
+	PendingGarrisonOrders.Add(MoveTemp(Order));
+}
+
 void UHOLCommandSubsystem::ConsumeGarrisonOrders(TArray<FHOLGarrisonOrder>& OutOrders)
 {
 	OutOrders.Reset();

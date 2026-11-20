@@ -90,4 +90,6 @@ namespace HOLPlayerOrders
 	HEROESOFLIBERTY_API bool Garrison(UWorld& World, int32 PlayerIndex, TConstArrayView<uint32> UnitIds, AHOLBuilding* Building);
 	/** F7 lot 4a: every occupant of Building out (UHOLCommandSubsystem::IssueUngarrisonAllOrder), the building's owner only. */
 	HEROESOFLIBERTY_API bool UngarrisonAll(UWorld& World, int32 PlayerIndex, AHOLBuilding* Building);
+	/** One occupant out: UnitId, garrisoned in a building of PlayerIndex (UHOLCommandSubsystem::IssueUngarrisonUnitOrder); false when it is on the field, unknown, or in another player's building. */
+	HEROESOFLIBERTY_API bool UngarrisonUnit(UWorld& World, int32 PlayerIndex, uint32 UnitId);
 }
