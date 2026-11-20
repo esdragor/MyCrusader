@@ -333,36 +333,24 @@ if ($Phase -eq 'Close') {
   # L90 (L12-6, 2026-11-12) : une ligne d'EtapeDefini.md qui dit « pas dans main » alors que sa branche (1er mot entre parentheses) ou TOUS les
   # commits qu'elle cite sont deja ancetres de main = doc perimee (la fusion doit la passer « dans main » dans son propre commit) : WARN par ligne.
   if (-not $EtapeFile) { $EtapeFile = "$Main\EtapeDefini.md" }
-  # L19-1 (2026-11-20) : commits NON-merge de code (Script/, Source/, Tools/Tests/) depuis le debut de la seance, dont aucun n'est ancetre d'une branche d'agent
-  # (worktrees HeroesOfLiberty-* sauf la branche courante d'Arwen et toute branche integ-*) = code fait par la session principale elle-meme.
+  # L19-1 (redefini le 2026-11-20 par la session principale) : commits faits DIRECTEMENT par la session principale = entrees de reflog `commit:`, `commit (amend):` ou
+  # `cherry-pick:` (ni merge, ni branch:, reset:, checkout:) de main et des branches integ-*, datees d'aujourd'hui, qui touchent Script/, Source/ ou Tools/Tests/.
   $mcRepo = Split-Path -Parent $EtapeFile
-  $mcStart = ''; $mcIn = $false
-  foreach ($mrow in @(Get-Content $JourFile -Encoding UTF8 -ErrorAction SilentlyContinue)) {
-    if ($mrow -match '^##\s') { $mcIn = ($mrow.Trim() -eq ('## Agents du ' + $now.ToString('yyyy-MM-dd'))); continue }
-    if ($mcIn -and $mrow -match 'tat au lancement : main = ([0-9a-f]{7,40})') { $mcStart = $Matches[1]; break }
-  }
-  if ($mcStart) { git -C $mcRepo cat-file -e "$mcStart^{commit}" 2>$null; if ($LASTEXITCODE -ne 0) { $mcStart = '' } }
-  $mcRef = 'main'; git -C $mcRepo rev-parse --verify -q refs/heads/main 2>$null | Out-Null; if ($LASTEXITCODE -ne 0) { $mcRef = 'HEAD' }
-  $mcArgs = @('log', '--no-merges', '--format=%h %H %s')
-  if ($mcStart) { $mcArgs += "$mcStart..$mcRef" } else { $mcArgs += "--since=$($now.ToString('yyyy-MM-dd')) 00:00"; $mcArgs += $mcRef }
-  $mcArgs += @('--', 'Script', 'Source', 'Tools/Tests')
-  $mcCommits = @(git -C $mcRepo @mcArgs 2>$null | Where-Object { $_ })
-  $mcBranches = @(); $mcPath = ''
-  foreach ($wl in @(git -C $mcRepo worktree list --porcelain 2>$null)) {
-    if ($wl -match '^worktree (.+)$') { $mcPath = $Matches[1] }
-    elseif ($wl -match '^branch refs/heads/(.+)$') {
-      $mcLeaf = Split-Path $mcPath -Leaf
-      if ($mcLeaf -like 'HeroesOfLiberty-*' -and $mcLeaf -ne 'HeroesOfLiberty-Arwen' -and $Matches[1] -notmatch '^integ-') { $mcBranches += $Matches[1] }
+  $mcSince = [datetime]::ParseExact($now.ToString('yyyy-MM-dd'), 'yyyy-MM-dd', [Globalization.CultureInfo]::InvariantCulture)
+  $mcBranches = @('main') + @(git -C $mcRepo for-each-ref --format='%(refname:short)' 'refs/heads/integ-*' 2>$null | Where-Object { $_ })
+  $mcSeen = @{}; $mcMine = @()
+  foreach ($mb in $mcBranches) {
+    foreach ($rl in @(git -C $mcRepo reflog show --date=iso --format='%H %gd %gs' "refs/heads/$mb" 2>$null)) {
+      if ($rl -notmatch '^([0-9a-f]{40}) \S+@\{(\d{4}-\d\d-\d\d \d\d:\d\d:\d\d) [+-]\d{4}\} (commit|commit \(amend\)|cherry-pick): (.*)$') { continue }
+      $mcSha = $Matches[1]; $mcTitle = $Matches[4]
+      if ([datetime]::ParseExact($Matches[2], 'yyyy-MM-dd HH:mm:ss', [Globalization.CultureInfo]::InvariantCulture) -lt $mcSince) { break }   # reflog : du plus recent au plus ancien
+      if ($mcSeen.ContainsKey($mcSha)) { continue }
+      $mcSeen[$mcSha] = $true
+      if (@(git -C $mcRepo show --name-only --format= $mcSha 2>$null | Where-Object { $_ -match '^(Script|Source|Tools/Tests)/' }).Count -gt 0) { $mcMine += ("     {0} {1}" -f $mcSha.Substring(0, 7), $mcTitle) }
     }
   }
-  $mcMine = @()
-  foreach ($mc in $mcCommits) {
-    $mcParts = $mc -split ' ', 3
-    $isAgent = $false
-    foreach ($mb in $mcBranches) { git -C $mcRepo merge-base --is-ancestor $mcParts[1] "refs/heads/$mb" 2>$null; if ($LASTEXITCODE -eq 0) { $isAgent = $true; break } }
-    if (-not $isAgent) { $mcMine += ("     {0} {1}" -f $mcParts[0], $mcParts[2]) }
-  }
-  $mcWhy = if ($mcStart) { "depuis main = $mcStart" } else { "de la date du jour (pas de ligne 'Etat au lancement')" }
+  $mcStart = "reflog de main et integ-* depuis $($now.ToString('yyyy-MM-dd'))"
+  $mcWhy = $mcStart
   if ($mcMine.Count -eq 0) { Say 'PASS' "L19-1 : aucun commit de code de la session principale ($mcWhy)" }
   else {
     if ($mcMine.Count -gt $MaxMainCodeCommits) { Say 'FAIL' ("L19-1 : la session principale a cod{0} elle-m{1}me {2} fois : {3} confier {4} des agents (L19-1) (seuil {5}, {6})" -f [char]0xE9, [char]0xEA, $mcMine.Count, [char]0xE0, [char]0xE0, $MaxMainCodeCommits, $mcWhy) }
