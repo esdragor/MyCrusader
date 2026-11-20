@@ -18,6 +18,8 @@ Mode d'emploi 5/5 : nettoyage du 2026-11-10 (demande de l'utilisateur) : fichier
 7. Mesures S1/S2 (machine calme, seules) : `biome_decor_cost.ps1 -Rounds 3` du décor générique des Biomes.
 
 ## Socle commun des factions (séance du 2026-11-19 soir ; ordre : `Docs\Priorite_Socle_Factions_2026-11-16.md`)
+- [ ] (D869, montage et démontage du Mangonneau visibles, 1 à 2 s chacun) `HOLDeployRules.h:76-77` propose 8 s / 5 s (`DefaultProfile`, cvar `hol.Siege.Deployable`) : établir pourquoi l'essai E-deploy les montrait instantanés (durée court-circuitée par le scénario ou l'ordre, ou aucun signe visible : animation, barre), ramener chaque durée à 1-2 s et rendre le changement visible ; rejeu par l'intégrateur avant tout nouvel essai (règle 19).
+- [ ] (D870, marque du signal ÷ 3, au sol et sur la mini-carte) diviser par 3 la taille de la marque : cvar de taille `CVarSignalGroundMarkSize` et `HOLSignalMarks` (au sol et mini-carte) ; test script de la taille ; PAS de nouvel essai (validé par l'utilisateur sans essai).
 - [ ] (D862, Sceau de lumière = capacité du Moine sans Honneur) `HOLFactionPowerCast` / `ServerCastFactionPower` paient la ligne 0 du livre : faire passer la pose du Sceau par les capacités d'unité du Moine (`LightSeal`, 40 s, un bouton par Moine), sans jauge ; test : Honneur inchangé après un Sceau.
 - [ ] (D867, murs sans plafond et en fantômes à construire) `hol.Wall.MaxLineCells` 0 ou très grande valeur = sans limite (à coder) ; vérifier que `ServerPlaceWallLine` pose une fondation / fantôme par case bâtie par des Paysans, jamais un mur fini.
 - [ ] (D868, 3e case en 5-6-7) Templiers : cases 5, 6, 7 dans `GetSpecializationCell` (C++, lot C++) + libellé de la 3e voie.
