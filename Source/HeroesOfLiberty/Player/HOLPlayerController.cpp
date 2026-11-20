@@ -86,6 +86,7 @@ namespace HOLRpcScriptRoute_Haldir1117n
 	bool RouteDropOff(AHOLPlayerController* Controller, TConstArrayView<uint32> UnitIds, AHOLBuilding* Building, const FVector& Point, bool bQueue);
 	bool RouteGarrison(AHOLPlayerController* Controller, TConstArrayView<uint32> UnitIds, AHOLBuilding* Building);
 	bool RouteUngarrisonAll(AHOLPlayerController* Controller, AHOLBuilding* Building);
+	bool RouteUngarrisonUnit(AHOLPlayerController* Controller, uint32 UnitId);
 	bool RouteCancelBuilding(AHOLPlayerController* Controller, AHOLBuilding* Building);
 	bool RouteSetRally(AHOLPlayerController* Controller, AHOLBuilding* Building, const FVector& Point, int32 SourceIndex, AHOLBuilding* Site, bool bQueue);
 }
@@ -3307,6 +3308,15 @@ void AHOLPlayerController::RequestUngarrisonAll(AHOLBuilding* Building)
 	}
 }
 
+void AHOLPlayerController::RequestUngarrisonUnit(const uint32 UnitId)
+{
+	if (!IsSpectator() && UnitId != 0)
+	{
+		UE_LOG(LogHOLMatch, Display, TEXT("Exit one request: unit %u"), UnitId);
+		if (!HOLRpcScriptRoute_Haldir1117n::RouteUngarrisonUnit(this, UnitId)) { HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("UngarrisonUnit")); }
+	}
+}
+
 void AHOLPlayerController::DoGarrisonUnits(const TArray<uint32>& UnitIds, AHOLBuilding* Building)
 {
 	// The order names the player: its own units, its own building (D374); the garrison checks the kinds and the places at the step.
@@ -3321,6 +3331,14 @@ void AHOLPlayerController::DoUngarrisonAll(AHOLBuilding* Building)
 	if (const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState())
 	{
 		HOLPlayerOrders::UngarrisonAll(*GetWorld(), HOLPlayerState->GetPlayerIndex(), Building);
+	}
+}
+
+void AHOLPlayerController::DoUngarrisonUnit(const uint32 UnitId)
+{
+	if (const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState())
+	{
+		HOLPlayerOrders::UngarrisonUnit(*GetWorld(), HOLPlayerState->GetPlayerIndex(), UnitId);
 	}
 }
 
@@ -4080,6 +4098,12 @@ namespace HOLRpcScriptRoute_Haldir1117n
 	bool RouteUngarrisonAll(AHOLPlayerController* Controller, AHOLBuilding* Building)
 	{
 		return CallFull(Controller, nullptr, TEXT("ServerUngarrisonAll"), TArrayView<const int32>(), nullptr, nullptr, Building, nullptr);
+	}
+
+	bool RouteUngarrisonUnit(AHOLPlayerController* Controller, const uint32 UnitId)
+	{
+		const int32 Args[1] = { static_cast<int32>(UnitId) };
+		return CallFull(Controller, nullptr, TEXT("ServerOrderUngarrisonUnit"), TArrayView<const int32>(Args, 1), nullptr, nullptr, nullptr, nullptr);
 	}
 
 	bool RouteCancelBuilding(AHOLPlayerController* Controller, AHOLBuilding* Building)

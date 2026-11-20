@@ -1068,6 +1068,10 @@ int32 UHOLUnitSubsystem::FlushDestructions()
 		{
 			HeroUnitBySlot.Remove(Record->OwnerPlayer);
 		}
+		if (AHOLBuilding* Holding = Record->Garrison.Get())
+		{
+			Holding->RemoveGarrisonOccupant(static_cast<int32>(UnitId));
+		}
 		Units.Remove(UnitId);
 		CommandBuffer.DestroyEntity(Record->Entity);
 		++NumDestroyed;
@@ -1254,6 +1258,15 @@ bool UHOLUnitSubsystem::SetGarrison(const uint32 UnitId, AHOLBuilding* Building)
 	if (!Unit)
 	{
 		return false;
+	}
+	// The building's own list of occupants (replicated to its owner, AHOLBuilding::GetGarrisonOccupants) follows the record.
+	if (AHOLBuilding* Before = Unit->Garrison.Get())
+	{
+		Before->RemoveGarrisonOccupant(static_cast<int32>(UnitId));
+	}
+	if (Building)
+	{
+		Building->AddGarrisonOccupant(static_cast<int32>(UnitId));
 	}
 	Unit->Garrison = Building;
 	// F7 lot 3a (D693): the body off the field. Garrisoned, it stands at its building's centre (inside its body, where no other unit walks)

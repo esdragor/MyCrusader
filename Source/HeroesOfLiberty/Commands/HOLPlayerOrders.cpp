@@ -12,6 +12,7 @@
 #include "Match/HOLMatchConfig.h"
 #include "Resources/HOLSourceSubsystem.h"
 #include "Simulation/HOLGarrisonSubsystem.h"
+#include "Simulation/HOLUnitSubsystem.h"
 #include "Simulation/HOLUnitView.h"
 #include "UObject/ObjectKey.h"
 
@@ -257,6 +258,15 @@ namespace HOLPlayerOrders
 
 	bool UngarrisonUnit(UWorld& World, const int32 PlayerIndex, const uint32 UnitId)
 	{
-		return false; // STUB (red test first)
+		UHOLUnitSubsystem* Units = World.GetSubsystem<UHOLUnitSubsystem>();
+		UHOLCommandSubsystem* Commands = World.GetSubsystem<UHOLCommandSubsystem>();
+		const AHOLBuilding* Inside = Units && UnitId != 0 ? Units->GetGarrison(UnitId) : nullptr;
+		// The unit's own player, through the building it is in (D374: never an ally's, nor an enemy's); the garrison checks again at the step.
+		if (!Commands || !Inside || PlayerIndex < 0 || static_cast<int32>(Inside->GetOwnerPlayer()) != PlayerIndex)
+		{
+			return false;
+		}
+		Commands->IssueUngarrisonUnitOrder(PlayerIndex, UnitId);
+		return true;
 	}
 }

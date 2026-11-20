@@ -29,6 +29,8 @@ public:
 	 * births stand), health unchanged: exit all, and the building's fall (UHOLConstructionSubsystem::DestroyBuilding). Server only; returns how many.
 	 */
 	static int32 EjectAll(AHOLBuilding& Building);
+	/** One occupant of Building back on the field at the building's foot (ExitIndex-th birth point), health unchanged: UngarrisonUnit. Server only; false when it is not inside Building. */
+	static bool EjectUnit(AHOLBuilding& Building, uint32 UnitId, int32 ExitIndex);
 	/** The places of a building: its type's GarrisonSlots (0 for a type without a row). */
 	static int32 GetSlots(const AHOLBuilding& Building);
 
