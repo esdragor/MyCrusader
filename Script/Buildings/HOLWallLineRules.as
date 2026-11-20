@@ -76,7 +76,10 @@ namespace HOLWallLine
 		Ok,
 		TooLong,
 		OutOfMap,
-		Occupied
+		Occupied,
+		// F4 request adaptation: the sender holds no seat (spectator or out of range), a point that is not finite or not on the grid.
+		NoSeat,
+		BadPoint
 	}
 
 	struct FHOLWallLinePlan
@@ -132,4 +135,23 @@ namespace HOLWallLine
 
 		Plan.Cells = Line;
 		return Plan;
-	}}
+	}
+	// ---- Request adaptation (F4, D345): the pure part of the server RPC ServerPlaceWallLine. The cap is read from the cvar hol.Wall.MaxLineCells, its default
+	// is the recommendation of Retours\Q-mur-ligne-longueur.md (A, 16 cells): a setting, not a decision.
+	int MaxLineCells()
+	{
+		return 0;
+	}
+
+	// The world point of the centre of a cell (grid origin at the world origin, one cell = Tile, as UHOLConstructionSubsystem::SnapFootprint).
+	FVector CellToPoint(FIntPoint Cell, double Tile, double Z)
+	{
+		return FVector(0.0, 0.0, Z);
+	}
+
+	FHOLWallLinePlan PlanFromRequest(int SenderSlot, FVector Start, FVector End, double Tile, FIntPoint MapMin, FIntPoint MapMax, const TArray<FIntPoint>& Occupied, int MaxCells)
+	{
+		FHOLWallLinePlan Plan;
+		return Plan;
+	}
+}

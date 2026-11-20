@@ -187,3 +187,78 @@ void Test_WallLineValidateTooLongRefusesTheLine(FUnitTest& T)
 	HOLWallLine::FHOLWallLinePlan Zero = HOLWallLine::Validate(FIntPoint(0, 0), FIntPoint(0, 0), WallLineMapMin, WallLineMapMax, None, 0);
 	T.AssertTrue(Zero.Refusal == HOLWallLine::EHOLWallLineRefusal::TooLong && Zero.Cells.Num() == 0, "a cap of 0 refuses even one cell");
 }
+
+// ---- Request adaptation (F4): ServerPlaceWallLine's pure part, world points in, cells out.
+const double WallLineTile = 400.0;
+
+// A request from a sender with no seat is refused whatever the line; a seated sender with the same line is accepted: the refusal comes from the sender.
+void Test_WallLinePlanRefusesSenderOutOfRange(FUnitTest& T)
+{
+	TArray<FIntPoint> None;
+	FVector A = HOLWallLine::CellToPoint(FIntPoint(2, 3), WallLineTile, 0.0);
+	FVector B = HOLWallLine::CellToPoint(FIntPoint(6, 3), WallLineTile, 0.0);
+	HOLWallLine::FHOLWallLinePlan Gone = HOLWallLine::PlanFromRequest(-1, A, B, WallLineTile, WallLineMapMin, WallLineMapMax, None, 16);
+	T.AssertTrue(Gone.Refusal == HOLWallLine::EHOLWallLineRefusal::NoSeat && Gone.Cells.Num() == 0, "slot -1 (spectator): refused, no cell");
+	HOLWallLine::FHOLWallLinePlan Far = HOLWallLine::PlanFromRequest(1000, A, B, WallLineTile, WallLineMapMin, WallLineMapMax, None, 16);
+	T.AssertTrue(Far.Refusal == HOLWallLine::EHOLWallLineRefusal::NoSeat && Far.Cells.Num() == 0, "slot 1000 (out of range): refused, no cell");
+	HOLWallLine::FHOLWallLinePlan Seated = HOLWallLine::PlanFromRequest(0, A, B, WallLineTile, WallLineMapMin, WallLineMapMax, None, 16);
+	T.AssertTrue(Seated.Refusal == HOLWallLine::EHOLWallLineRefusal::Ok, "slot 0, same line: accepted");
+}
+
+// The accepted plan lays the cells Validate lays for the same two cells (computed by the rule, not copied).
+void Test_WallLinePlanAcceptedReturnsTheCells(FUnitTest& T)
+{
+	TArray<FIntPoint> None;
+	FVector A = HOLWallLine::CellToPoint(FIntPoint(2, 3), WallLineTile, 0.0);
+	FVector B = HOLWallLine::CellToPoint(FIntPoint(6, 3), WallLineTile, 0.0);
+	HOLWallLine::FHOLWallLinePlan Expected = HOLWallLine::Validate(FIntPoint(2, 3), FIntPoint(6, 3), WallLineMapMin, WallLineMapMax, None, 16);
+	HOLWallLine::FHOLWallLinePlan Plan = HOLWallLine::PlanFromRequest(0, A, B, WallLineTile, WallLineMapMin, WallLineMapMax, None, 16);
+	T.AssertTrue(Plan.Refusal == HOLWallLine::EHOLWallLineRefusal::Ok, "a free line in the map: accepted");
+	T.AssertEquals(Expected.Cells.Num(), Plan.Cells.Num(), "the plan has as many cells as Validate's");
+	T.AssertTrue(Plan.Cells.Num() == 5 && WallLineHasCell(Plan.Cells, 2, 3) && WallLineHasCell(Plan.Cells, 6, 3), "cells 2..6 on row 3, both ends included");
+}
+
+// A point is mapped to the cell it lies in (floor), not the nearest centre: 399 is still in cell 0, 1201 is in cell 3.
+void Test_WallLinePlanFloorsWorldPointsToCells(FUnitTest& T)
+{
+	TArray<FIntPoint> None;
+	HOLWallLine::FHOLWallLinePlan Plan = HOLWallLine::PlanFromRequest(0, FVector(399.0, 10.0, 0.0), FVector(1201.0, 10.0, 0.0), WallLineTile, WallLineMapMin, WallLineMapMax, None, 16);
+	T.AssertTrue(Plan.Refusal == HOLWallLine::EHOLWallLineRefusal::Ok && Plan.Cells.Num() == 4, "cell 0 to cell 3 on row 0: 4 cells");
+	T.AssertTrue(WallLineHasCell(Plan.Cells, 0, 0) && WallLineHasCell(Plan.Cells, 3, 0), "first cell 0, last cell 3");
+}
+
+// The refusals of Validate reach the player through the request: too long, out of the map, an occupied cell.
+void Test_WallLinePlanCarriesTheRefusals(FUnitTest& T)
+{
+	TArray<FIntPoint> None;
+	TArray<FIntPoint> Taken;
+	Taken.Add(FIntPoint(4, 3));
+	FVector A = HOLWallLine::CellToPoint(FIntPoint(2, 3), WallLineTile, 0.0);
+	FVector B = HOLWallLine::CellToPoint(FIntPoint(6, 3), WallLineTile, 0.0);
+	HOLWallLine::FHOLWallLinePlan Occupied = HOLWallLine::PlanFromRequest(0, A, B, WallLineTile, WallLineMapMin, WallLineMapMax, Taken, 16);
+	T.AssertTrue(Occupied.Refusal == HOLWallLine::EHOLWallLineRefusal::Occupied && Occupied.Cells.Num() == 0, "a building on the line: refused, nothing laid");
+	HOLWallLine::FHOLWallLinePlan Long = HOLWallLine::PlanFromRequest(0, A, B, WallLineTile, WallLineMapMin, WallLineMapMax, None, 3);
+	T.AssertTrue(Long.Refusal == HOLWallLine::EHOLWallLineRefusal::TooLong, "5 cells with a cap of 3: refused");
+	FVector Out = HOLWallLine::CellToPoint(FIntPoint(65, 3), WallLineTile, 0.0);
+	FVector Edge = HOLWallLine::CellToPoint(FIntPoint(62, 3), WallLineTile, 0.0);
+	HOLWallLine::FHOLWallLinePlan Off = HOLWallLine::PlanFromRequest(0, Edge, Out, WallLineTile, WallLineMapMin, WallLineMapMax, None, 16);
+	T.AssertTrue(Off.Refusal == HOLWallLine::EHOLWallLineRefusal::OutOfMap, "a line leaving the map: refused");
+	HOLWallLine::FHOLWallLinePlan NoGrid = HOLWallLine::PlanFromRequest(0, A, B, 0.0, WallLineMapMin, WallLineMapMax, None, 16);
+	T.AssertTrue(NoGrid.Refusal == HOLWallLine::EHOLWallLineRefusal::BadPoint, "a tile size of 0: refused (no division by zero)");
+}
+
+// The length cap comes from the cvar hol.Wall.MaxLineCells, and its default is the recommendation A of the sheet (16): a setting (D345), not a number in the rule.
+void Test_WallLineMaxLineCellsDefaultIsSheetRecommendation(FUnitTest& T)
+{
+	T.AssertEquals(16, HOLWallLine::MaxLineCells(), "hol.Wall.MaxLineCells defaults to 16 (Retours/Q-mur-ligne-longueur.md, A)");
+}
+
+// A cell centre mapped back lands in the same cell, for a negative cell too.
+void Test_WallLineCellPointRoundTrip(FUnitTest& T)
+{
+	TArray<FIntPoint> None;
+	FIntPoint Wide(-5, -2);
+	FVector P = HOLWallLine::CellToPoint(Wide, WallLineTile, 0.0);
+	HOLWallLine::FHOLWallLinePlan Plan = HOLWallLine::PlanFromRequest(0, P, P, WallLineTile, FIntPoint(-100, -100), FIntPoint(100, 100), None, 16);
+	T.AssertTrue(Plan.Refusal == HOLWallLine::EHOLWallLineRefusal::Ok && Plan.Cells.Num() == 1 && WallLineHasCell(Plan.Cells, -5, -2), "the centre of cell (-5,-2) is read back as (-5,-2)");
+}
