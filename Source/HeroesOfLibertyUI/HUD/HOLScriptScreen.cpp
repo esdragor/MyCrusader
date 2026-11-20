@@ -87,6 +87,7 @@ namespace HOLScriptScreenAgesPrivate
 		Out.Researches = Rule.Researches;
 		Out.bDeployables = Rule.bDeployables;
 		Out.bDeployedAny = Rule.bDeployedAny;
+		Out.bGarrisonOccupied = Rule.bGarrisonOccupied;
 		Out.bRageUnit = Rule.bRageUnit;
 		Out.bPrimaryForum = Rule.bPrimaryForum;
 		Out.SpecializationTier = Rule.SpecializationTier;

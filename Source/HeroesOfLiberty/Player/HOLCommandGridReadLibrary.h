@@ -26,6 +26,7 @@ enum class EHOLGridCommandKind : uint8
 	Deploy,
 	Specialize,
 	CancelSpecialization,
+	UngarrisonAll,
 };
 
 /** EHOLCommandFeedback as a UENUM, same order. */
@@ -115,6 +116,8 @@ struct FHOLGridContextView
 	bool bDeployables = false;
 	UPROPERTY(BlueprintReadWrite, Category = "HeroesOfLiberty|CommandGrid")
 	bool bDeployedAny = false;
+	UPROPERTY(BlueprintReadWrite, Category = "HeroesOfLiberty|CommandGrid")
+	bool bGarrisonOccupied = false;
 	UPROPERTY(BlueprintReadWrite, Category = "HeroesOfLiberty|CommandGrid")
 	bool bRageUnit = false;
 	UPROPERTY(BlueprintReadWrite, Category = "HeroesOfLiberty|CommandGrid")

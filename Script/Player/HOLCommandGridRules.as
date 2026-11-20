@@ -23,6 +23,8 @@ namespace HOLCommandGridRules
 	const int StopCell = 5;
 	const int HoldCell = 11;
 	const int DeployCell = 6;
+	// D813 (Q-garrison-ui Q1 C, Q-garrison-cell): the Sortir tous cell of a finished building with occupants; one line to move it (F on the AZERTY grid, second row, last column).
+	const int UngarrisonAllCell = 7;
 	const int HeroAbilityCloseRanks = 1;
 	const int HeroAbilityBanner = 2;
 	const float LockedAgePanelOpacity = 0.55f;
@@ -30,6 +32,7 @@ namespace HOLCommandGridRules
 	int GetNumCells() { return NumCells; }
 	int GetGridColumns() { return GridColumns; }
 	int GetCancelCell() { return CancelCell; }
+	int GetUngarrisonAllCell() { return UngarrisonAllCell; }
 	int GetResearchFirstCell() { return ResearchFirstCell; }
 	int GetNumAges() { return NumAges; }
 	int GetTradableGoods() { return TradableGoods; }

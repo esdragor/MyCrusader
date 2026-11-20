@@ -1033,3 +1033,27 @@ void Test_CGResearch(FUnitTest& T)
 		T.AssertEquals(HOLCommandGridRead::GetBlockNotImplemented(), HOLCommandGridRead::CheckResearch(SoonName, SoonFacts, CGRes(0, 0, 0, 0), 5, 5).Block, "soon even with no tier, no building, no stock");
 	}
 }
+
+// GLORFINDEL-1120pe (D813, Q-garrison-ui Q1 C): the "Sortir tous" cell of a finished own building with occupants. Red until the rule gives the cell.
+// To turn it red by hand: in HOLCommandGridRules::GetCommandWithOptions drop the bGarrisonOccupied branch.
+void Test_GridUngarrisonAllCellOfAGarrisonedBuilding(FUnitTest& T)
+{
+	FHOLGridContextView Barracks;
+	Barracks.bOwnBuilding = true;
+	Barracks.bBuildingFinished = true;
+	Barracks.Produces = HOLCommandGridRead::GetProducesOf(n"Barracks");
+	int Cell = HOLCommandGridRules::GetUngarrisonAllCell();
+	FHOLGridCommandView Empty = HOLCommandGridRules::GetCommand(Barracks, Cell);
+	T.AssertTrue(Empty.Command == EHOLGridCommandKind::None, "nobody inside: the Sortir tous cell is empty");
+	Barracks.bGarrisonOccupied = true;
+	FHOLGridCommandView Full = HOLCommandGridRules::GetCommand(Barracks, Cell);
+	T.AssertTrue(Full.Command == EHOLGridCommandKind::UngarrisonAll, "occupants inside: the cell sends everyone out");
+	T.AssertTrue(HOLCommandGridRules::GetCommand(Barracks, 0).Command == EHOLGridCommandKind::Produce, "the production cells stay (A still produces)");
+	Barracks.bBuildingFinished = false;
+	FHOLGridCommandView Site = HOLCommandGridRules::GetCommand(Barracks, Cell);
+	T.AssertTrue(Site.Command != EHOLGridCommandKind::UngarrisonAll, "a site holds nobody: no Sortir tous cell");
+	FHOLGridContextView Units;
+	Units.bOwnUnits = true;
+	Units.bGarrisonOccupied = true;
+	T.AssertTrue(HOLCommandGridRules::GetCommand(Units, Cell).Command != EHOLGridCommandKind::UngarrisonAll, "units selected, no building: no Sortir tous cell");
+}

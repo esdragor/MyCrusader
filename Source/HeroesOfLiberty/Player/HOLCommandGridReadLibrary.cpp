@@ -28,6 +28,7 @@ namespace HOLCommandGridReadLibraryPrivate
 		Out.Researched = View.Researched;
 		Out.bDeployables = View.bDeployables;
 		Out.bDeployedAny = View.bDeployedAny;
+		Out.bGarrisonOccupied = View.bGarrisonOccupied;
 		Out.bRageUnit = View.bRageUnit;
 		Out.bPrimaryForum = View.bPrimaryForum;
 		Out.SpecializationTier = View.SpecializationTier;

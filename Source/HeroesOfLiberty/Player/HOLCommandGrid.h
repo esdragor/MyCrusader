@@ -47,6 +47,8 @@ enum class EHOLGridCommand : uint8
 	Specialize,
 	/** SP3 (D684): the running unlock is cancelled at no cost (ServerCancelSpecialization), the choice open again. */
 	CancelSpecialization,
+	/** D813 (Q-garrison-ui Q1 C): the selected finished building with occupants sends everyone out (RequestUngarrisonAllSelected); cell HOLCommandGridRules::GetUngarrisonAllCell. */
+	UngarrisonAll,
 };
 
 /** A cell's command and the type it names (the unit produced, the building placed). */
@@ -156,6 +158,8 @@ struct FHOLGridContext
 	/** G6 d: among the selected units, one deploys (HOLUnitView::DeployPhase >= 0); bDeployedAny: one is deploying or deployed (the button then packs up). */
 	bool bDeployables = false;
 	bool bDeployedAny = false;
+	/** D813: the selected finished building holds at least one garrisoned unit (AHOLBuilding::GetGarrisonOccupants): the Sortir tous cell shows. */
+	bool bGarrisonOccupied = false;
 	/**
 	 * The player's own hero is among the units commanded (J8c.4): his abilities on the grid on the right (HeroAbilityCell),
 	 * read from his level and the seconds left of each ability's cool-down (indexed by EHOLHeroAbility; the owner's private
