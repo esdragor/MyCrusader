@@ -116,6 +116,8 @@ class UHOLChatInputScreen : UObject
 	// The time of the last commit by the field itself: the polled Enter of the same press must not reopen it.
 	float LastCommitTime = -10.0;
 	FString LastSent = "";
+	// How many times the field handed the keyboard focus back to the game viewport (GLORFINDEL-1120sa: after a send the collapsed box kept the Slate focus, the viewport lost it and the polled 2nd Enter never reached the player input).
+	int FocusReturns = 0;
 	// "/w Name message" (B of the 2026-11-20 answer): the players a whisper can name (Names[I] is the name of Slots[I]) and the refusal line shown in the mark.
 	TArray<FString> WhisperNames;
 	TArray<int> WhisperSlots;
@@ -174,9 +176,17 @@ class UHOLChatInputScreen : UObject
 		Box.SetKeyboardFocus();
 	}
 
+	// Stub (red): the focus is not handed back yet.
+	void ReturnFocusToGame()
+	{
+	}
+
 	void Close()
 	{
-		Panel.SetVisibility(ESlateVisibility::Collapsed);
+		if (Panel != nullptr)
+		{
+			Panel.SetVisibility(ESlateVisibility::Collapsed);
+		}
 	}
 
 	// A key the screen heard (KeyPressed of UHOLScriptScreen). Enter only opens: once open, the text box's own commit carries Enter, Escape and Tab.
