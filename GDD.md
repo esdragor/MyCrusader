@@ -3707,4 +3707,6 @@ La courbe d'XP (Q04) reste à régler en test.
 
 **D875** (Défi du Chevalier, ligne de la table, complète D859 n. 10 et D873 ; 2026-11-20 ~16:0x, réponse à `Q-chevalier-defi-ligne`, par l'interface de choix) : **A** : le Défi (8 s, rayon 8 m, recharge 45 s) vit dans une ligne `KnightChallenge` de `Tools\Data\UnitAbilities.csv`, `Target` = `Self` avec `RadiusCm` 800 (zone centrée sur le Chevalier, la règle `IsInZone` convient) ; la note du générateur « 0 pour Self » devient « 0 sauf aura » ; `HOLDawnValues.as` lit la ligne (une seule source, D839) et la ligne `knight.challenge_*` de `ValueSheet.csv` pointe vers le CSV. Pas de nouvelle valeur `Target`. Fiche : `Docs\Archive\Retours_2026-11-20\Q-chevalier-defi-ligne.md`.
 
-Prochain numéro : **D876**.
+**D876** (Garnison, case « Sortir tous » de la grille d'un bâtiment garni, complète D813 Q1 C ; 2026-11-20 ~16:1x, réponse à `Q-garrison-cell`, par l'interface de choix) : **A** : la case **« Sortir tous »** d'un bâtiment garni est la **case 7, touche F** (ligne 2, dernière colonne ; libre sur tous les bâtiments sauf le Forum Templier, qui n'a pas de garnison au GDD actuel). Valeur déjà codée par défaut sur `ability-columns` (d3fcb3e : `const int UngarrisonAllCell = 7;` dans `Script\Player\HOLCommandGridRules.as`, lue par `GetUngarrisonAllCell()`) : rien à changer dans le code. Fiche : `Docs\Archive\Retours_2026-11-20\Q-garrison-cell.md`.
+
+Prochain numéro : **D877**.
