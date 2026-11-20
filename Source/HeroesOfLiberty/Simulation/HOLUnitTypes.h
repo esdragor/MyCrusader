@@ -386,6 +386,14 @@ struct HEROESOFLIBERTY_API FHOLUnitTypeConstants : public FMassConstSharedFragme
 	/** Q-chapelle-moine = A: reach (cm, centre to centre) of its heal (the Monk's 800 = 8 m). */
 	UPROPERTY()
 	float HealRange = 0.f;
+
+	/** D865 (Defi du Chevalier, passive): percent (0 to 100) of the damage an ally takes near this unit that goes to this unit instead; 0: it redirects nothing. */
+	UPROPERTY()
+	int32 DamageRedirectPercent = 0;
+
+	/** D865: radius (cm, centre to centre) within which an ally's damage is redirected to this unit (the Knight's 800 = 8 m); with several in range only the nearest takes it (D864). */
+	UPROPERTY()
+	float DamageRedirectRadius = 0.f;
 };
 
 /**
@@ -670,6 +678,14 @@ struct HEROESOFLIBERTY_API FHOLUnitTypeRow : public FTableRowBase
 	/** Q-chapelle-moine = A: reach of its heal (cm, centre to centre; the Monk: 800 = 8 m). */
 	UPROPERTY(EditAnywhere, Category = "Combat", meta = (ClampMin = "0", ForceUnits = "cm"))
 	float HealRange = 0.f;
+
+	/** D865 (Defi du Chevalier, passive; table column DamageRedirectPercent): percent (0 to 100) of the damage an ally takes near this unit that goes to this unit instead (30); 0: it redirects nothing. */
+	UPROPERTY(EditAnywhere, Category = "Combat", meta = (ClampMin = "0", ClampMax = "100"))
+	int32 DamageRedirectPercent = 0;
+
+	/** D865 (column DamageRedirectRadius): radius (cm, centre to centre) within which an ally's damage is redirected to this unit (800 = 8 m); D864: only the nearest such unit takes it. */
+	UPROPERTY(EditAnywhere, Category = "Combat", meta = (ClampMin = "0", ForceUnits = "cm"))
+	float DamageRedirectRadius = 0.f;
 
 	/**
 	 * The projectile drawn in flight for its shots (AR9, AR-Q5): SM_Arrow for the Archer, SM_Bolt for the Crossbowman, the
