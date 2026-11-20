@@ -119,3 +119,25 @@ void Test_DuelRewardsRadiusIsTheDuelsOwn(FUnitTest& T)
 		T.AssertEquals(RewardRadiusB, RefusedB[Index].RadiusCm, "refusal, second radius");
 	}
 }
+
+// D859 n. 8 (step 1d): the radius of the three duel effects is the morale table's (12 m in Effects.csv), read by Orders itself.
+// Triumph and Demoralised from a duel won, Hesitation from a refusal with its cost: every order carries the table's radius.
+void Test_DuelOrdersRadiusFromTable(FUnitTest& T)
+{
+	FHOLDuelSettings S = HOLDuel::Preset();
+	FHOLDuel Won = HOLDuel::Advance(S, RewardDuelActive(S), 3000, 0, 40);
+	FHOLDuel Refused = HOLDuel::Respond(S, HOLDuel::Challenge(S, RewardChallenger, RewardTarget), false);
+	TArray<FHOLDuelMoraleOrder> WonOrders = HOLDuelRewards::Orders(S, Won);
+	TArray<FHOLDuelMoraleOrder> RefusedOrders = HOLDuelRewards::Orders(S, Refused);
+	T.AssertEquals(2, WonOrders.Num(), "a victory: Triumph and Demoralised");
+	T.AssertEquals(1, RefusedOrders.Num(), "a refusal: Hesitation");
+	TArray<FHOLDuelMoraleOrder> All;
+	All.Append(WonOrders);
+	All.Append(RefusedOrders);
+	for (int Index = 0; Index < All.Num(); Index++)
+	{
+		const int TableRadius = HOLMoraleTable::Row(All[Index].EffectId).RadiusCm;
+		T.AssertEquals(TableRadius, All[Index].RadiusCm, "the order's radius is the table's");
+		T.AssertEquals(1200, All[Index].RadiusCm, "12 m (D859 n. 8)");
+	}
+}

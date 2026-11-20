@@ -27,6 +27,12 @@ namespace HOLDuelRewards
 		return Order;
 	}
 
+	// STUB (D859 n. 8, step 1d, red first): the radius will come from the morale table; zero until the fix.
+	TArray<FHOLDuelMoraleOrder> Orders(const FHOLDuelSettings& S, const FHOLDuel& Duel)
+	{
+		return Orders(S, Duel, 0);
+	}
+
 	TArray<FHOLDuelMoraleOrder> Orders(const FHOLDuelSettings& S, const FHOLDuel& Duel, int RadiusCm)
 	{
 		TArray<FHOLDuelMoraleOrder> Result;
