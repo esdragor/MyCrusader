@@ -90,5 +90,46 @@ namespace HOLWallLine
 	FHOLWallLinePlan Validate(FIntPoint Start, FIntPoint End, FIntPoint MapMin, FIntPoint MapMax, const TArray<FIntPoint>& Occupied, int MaxCells)
 	{
 		FHOLWallLinePlan Plan;
+		Plan.BadCell = Start;
+		if (MaxCells <= 0)
+		{
+			Plan.Refusal = EHOLWallLineRefusal::TooLong;
+			return Plan;
+		}
+
+		// One cell more than the cap is enough to know the line is too long, and bounds the work whatever the drag the client sent.
+		TArray<FIntPoint> Line = Cells(Start, End, MaxCells + 1);
+		if (Line.Num() > MaxCells)
+		{
+			Plan.Refusal = EHOLWallLineRefusal::TooLong;
+			Plan.BadCell = Line[MaxCells];
+			return Plan;
+		}
+
+		for (int Index = 0; Index < Line.Num(); Index++)
+		{
+			const FIntPoint Cell = Line[Index];
+			if (Cell.X < MapMin.X || Cell.X > MapMax.X || Cell.Y < MapMin.Y || Cell.Y > MapMax.Y)
+			{
+				Plan.Refusal = EHOLWallLineRefusal::OutOfMap;
+				Plan.BadCell = Cell;
+				return Plan;
+			}
+		}
+
+		for (int Index = 0; Index < Line.Num(); Index++)
+		{
+			for (int Taken = 0; Taken < Occupied.Num(); Taken++)
+			{
+				if (Occupied[Taken].X == Line[Index].X && Occupied[Taken].Y == Line[Index].Y)
+				{
+					Plan.Refusal = EHOLWallLineRefusal::Occupied;
+					Plan.BadCell = Line[Index];
+					return Plan;
+				}
+			}
+		}
+
+		Plan.Cells = Line;
 		return Plan;
 	}}
