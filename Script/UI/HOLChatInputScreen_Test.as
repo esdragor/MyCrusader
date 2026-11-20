@@ -61,3 +61,71 @@ void Test_ChatInputScreenRefusesTooLong(FUnitTest& T)
 	const int Over = HOLChatInputScreen::SendRefusal(ChatScreenText(HOLChat::MaxTextLength + 1));
 	T.AssertEquals(Over, HOLChatInputScreen::TooLong, "one more is refused");
 }
+
+// The stances of a book, read both ways for every slot, as the game screen reads them (HOLDiplomacyRead::StanceOf).
+bool ChatScreenHasAlly(FHOLDiplomacyStances& Book, int Viewer, int Slots)
+{
+	TArray<int> Mine;
+	TArray<int> Theirs;
+	TArray<bool> There;
+	for (int Slot = 0; Slot < Slots; Slot++)
+	{
+		Mine.Add(Viewer >= 0 ? HOLDiplomacyRead::StanceOf(Book, Viewer, Slot) : HOLDiplomacyRead::GetStanceEnemy());
+		Theirs.Add(Viewer >= 0 ? HOLDiplomacyRead::StanceOf(Book, Slot, Viewer) : HOLDiplomacyRead::GetStanceEnemy());
+		There.Add(true);
+	}
+	return HOLChatInputScreen::HasAlly(Viewer, Mine, Theirs, There);
+}
+
+FHOLDiplomacyStances ChatScreenBook(int Slots)
+{
+	TArray<bool> NoAI;
+	for (int Slot = 0; Slot < Slots; Slot++)
+	{
+		NoAI.Add(false);
+	}
+	return HOLDiplomacyRead::NewBook(Slots, NoAI);
+}
+
+// An ally exists only when BOTH sides wrote Ally (D369): one side alone, neutrals and enemies are not allies; a spectator has none.
+// Red: the stub says false always ; or one-sided Ally counts ; or the viewer counts as its own ally ; or a spectator gets one.
+void Test_ChatInputScreenHasAllyReadsTheBook(FUnitTest& T)
+{
+	FHOLDiplomacyStances Book = ChatScreenBook(4);
+	const bool Alone = ChatScreenHasAlly(Book, 0, 4);
+	T.AssertFalse(Alone, "a fresh book: nobody is an ally");
+	HOLDiplomacyRead::SetStance(Book, 0, 1, HOLDiplomacyRead::GetStanceAlly());
+	const bool OneSided = ChatScreenHasAlly(Book, 0, 4);
+	T.AssertFalse(OneSided, "only the viewer offered: not an ally yet");
+	HOLDiplomacyRead::SetStance(Book, 1, 0, HOLDiplomacyRead::GetStanceAlly());
+	const bool Allied = ChatScreenHasAlly(Book, 0, 4);
+	T.AssertTrue(Allied, "both sides Ally: an ally");
+	const bool SeenByTheOther = ChatScreenHasAlly(Book, 1, 4);
+	T.AssertTrue(SeenByTheOther, "and the other sees one too");
+	const bool Third = ChatScreenHasAlly(Book, 2, 4);
+	T.AssertFalse(Third, "a third player outside the alliance has none");
+	const bool Spectator = ChatScreenHasAlly(Book, -1, 4);
+	T.AssertFalse(Spectator, "a spectator has no ally");
+	HOLDiplomacyRead::SetStance(Book, 1, 0, HOLDiplomacyRead::GetStanceNeutral());
+	const bool Cooled = ChatScreenHasAlly(Book, 0, 4);
+	T.AssertFalse(Cooled, "the other went Neutral: no ally");
+}
+
+// The field opens on Allies when the screen finds an ally, on All otherwise: the whole chain book -> HasAlly -> PressEnter -> mark.
+// Red: the stub's false opens on Tous even with an ally.
+void Test_ChatInputScreenOpensOnAlliesWithAnAlly(FUnitTest& T)
+{
+	FHOLDiplomacyStances Book = ChatScreenBook(3);
+	HOLDiplomacyRead::SetStance(Book, 0, 2, HOLDiplomacyRead::GetStanceAlly());
+	HOLDiplomacyRead::SetStance(Book, 2, 0, HOLDiplomacyRead::GetStanceAlly());
+	const bool bAlly = ChatScreenHasAlly(Book, 0, 3);
+	FHOLChatInputState State;
+	HOLChatInput::PressEnter(State, "", bAlly, false);
+	T.AssertEquals(State.Channel, HOLChat::Allies, "an ally: the field opens on Allies");
+	const FString Line = HOLChatInputScreen::MarkLine(State.Channel, "");
+	T.AssertEquals(Line, "Allies : ", "and says so");
+	FHOLChatInputState Lonely;
+	const bool bNone = ChatScreenHasAlly(Book, 1, 3);
+	HOLChatInput::PressEnter(Lonely, "", bNone, false);
+	T.AssertEquals(Lonely.Channel, HOLChat::All, "no ally: the field opens on All");
+}

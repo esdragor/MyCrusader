@@ -56,6 +56,13 @@ namespace HOLChatInputScreen
 		}
 		return Ok;
 	}
+
+	// STUB (red first): true when some slot other than the viewer is present and the stance is Ally both ways (D369: an alliance needs both sides).
+	// MyStances[S] = the viewer's stance toward S, TheirStances[S] = S's stance toward the viewer, Present[S] = S is in the match. A spectator (Viewer < 0) has no ally.
+	bool HasAlly(int Viewer, const TArray<int>& MyStances, const TArray<int>& TheirStances, const TArray<bool>& Present)
+	{
+		return false;
+	}
 }
 
 // The field: a border holding "<mark> : " and a UEditableTextBox, collapsed until Enter opens it. Same construction as UHOLProductionQueuePanel.
