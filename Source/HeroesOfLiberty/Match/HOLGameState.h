@@ -480,13 +480,6 @@ private:
 	/** Powers a faction slot can hold (the size of one slot's block of PowerCooldownEndMs). */
 	static constexpr int32 MaxFactionPowers = 8;
 
-	/**
-	 * The slot's faction as an EHOLFaction index (an int32: the enum is not a BlueprintType), read from the launch configuration on the server and on
-	 * the clients; the Dawn's (0) for a slot out of the table or before the configuration arrives (as HOLFactionRules::GetSlotFactionKey).
-	 */
-	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Faction")
-	int32 GetSlotFaction(int32 Slot) const;
-
 	/** The match time (ms) at which the slot's power PowerIndex is ready again, as this machine has it; 0 (ready) for a slot or power out of the table. */
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Faction")
 	int32 GetPowerCooldownEndMs(int32 Slot, int32 PowerIndex) const;
@@ -612,6 +605,13 @@ private:
 	uint8 WinnerMask = 0;
 
 public:
+	/**
+	 * The slot's faction as an EHOLFaction index (an int32: the enum is not a BlueprintType), read from the launch configuration on the server and on
+	 * the clients; the Dawn's (0) for a slot out of the table or before the configuration arrives (as HOLFactionRules::GetSlotFactionKey).
+	 */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Faction")
+	int32 GetSlotFaction(int32 Slot) const;
+
 	/**
 	 * J8a.3 (J8-Q5, J8a3-Q1 = A): the public part of each slot's hero sheet (level, exact HP, state), on every machine; a
 	 * copy of the true sheet the server keeps. The default (None) for a slot without hero, or before its replication.
