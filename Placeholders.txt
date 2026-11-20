@@ -194,3 +194,4 @@ Un chantier ne se clôt pas sans avoir relu ce fichier.
 - Japonais de ces 18 textes (シナリオ, 準備中, 準備完了, エラー, リスタート, チート, 高速建設, 全資源, ユニット速度, 採集速度) : a relire par l utilisateur [texte]
 Depart Nomade (D797 : carte entiere, ScatterRadiusCm 0) : ecart hol.Nomad.GroupSpacingCm 1500 provisoires (D207 dit 'endroits aleatoires de la carte'), HALDIR-1114c
 Specialisation (SP3) : libelles Voie A / Voie B du palier N dans la grille du Forum, provisoires (noms GDD 13 par faction a brancher)
+Slot de faction (jauge Honneur) : texte + barre jaune + une ligne par pouvoir, position = coin bas gauche + 150 px (FactionSlotRise), sans icone ni libelle de la table de textes.
