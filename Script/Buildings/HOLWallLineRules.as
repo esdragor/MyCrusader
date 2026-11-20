@@ -8,8 +8,8 @@
 // The length cap and the cost of one cell are PARAMETERS (their values are the user's choice, not decided here); the cap cuts the line
 // (the first cells from the start are kept). A cap of 0 or less keeps nothing.
 
-// The cap of a dragged line in cells (D345: a setting, not a decision; Retours\Q-mur-ligne-longueur.md recommends A = 16).
-const FConsoleVariable CVar_WallMaxLineCells("hol.Wall.MaxLineCells", 16);
+// The cap of a dragged line in cells (D345 a setting; D867: no cap by default, 0 or less = no limit; every cell of the line is a foundation to build).
+const FConsoleVariable CVar_WallMaxLineCells("hol.Wall.MaxLineCells", 0);
 
 namespace HOLWallLine
 {
@@ -139,11 +139,15 @@ namespace HOLWallLine
 		Plan.Cells = Line;
 		return Plan;
 	}
-	// ---- Request adaptation (F4, D345): the pure part of the server RPC ServerPlaceWallLine. The cap is read from the cvar hol.Wall.MaxLineCells, its default
-	// is the recommendation of Retours\Q-mur-ligne-longueur.md (A, 16 cells): a setting, not a decision.
+	// ---- Request adaptation (F4, D345, D867): the pure part of the server RPC ServerPlaceWallLine. D867: NO length cap by default. The cap is read from the cvar
+	// hol.Wall.MaxLineCells: 0 (the default) or less = no limit, any other value is a cap in cells. "No limit" is a cap no drag can reach (the request refuses a point
+	// past 100000 tiles, so a line is at most 200001 cells), which keeps Validate / DragCells (cap <= 0 = nothing) and their work bound unchanged.
+	const int UnlimitedLineCells = 1000000;
+
 	int MaxLineCells()
 	{
-		return CVar_WallMaxLineCells.GetInt();
+		const int Cap = CVar_WallMaxLineCells.GetInt();
+		return Cap <= 0 ? UnlimitedLineCells : Cap;
 	}
 
 	// The cell a world coordinate lies in: floor(Value / Tile), also for negatives.
