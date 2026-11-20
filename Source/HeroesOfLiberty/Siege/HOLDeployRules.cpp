@@ -95,6 +95,20 @@ namespace HOLDeploy
 		return Delay <= 0 ? 1000 : FMath::Clamp(static_cast<int32>(static_cast<int64>(FMath::Max(0, State.ElapsedMs)) * 1000 / Delay), 0, 1000);
 	}
 
+	void NoteOrder(FWatch& Watch, const double NowSeconds)
+	{
+	}
+
+	int32 WatchElapsedMs(FWatch& Watch, const int32 ObservedPhase, const double NowSeconds)
+	{
+		if (ObservedPhase != Watch.Phase)
+		{
+			Watch.Phase = ObservedPhase;
+			Watch.Since = NowSeconds;
+		}
+		return FMath::RoundToInt((NowSeconds - Watch.Since) * 1000.0);
+	}
+
 	FState Advance(const FState& State, const int32 DtMs, const FProfile& Profile, const int32 CounterweightPercent)
 	{
 		FState Next = State;

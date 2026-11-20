@@ -677,4 +677,56 @@ bool FHOLDeployAttackBeyondDeployRangeTest::RunTest(const FString& Parameters)
 	return UE::HeroesOfLiberty::Tests::DeployButton::RunAttackWhilePacked(*this, UE::HeroesOfLiberty::Tests::DeployButton::EAttackWhilePackedCase::BeyondDeployRange);
 }
 
+// D869b (ELROND-1120sa, recette 1120pb): the mount bar stayed at 0 dashes 0.3 s after the order and the second cycle stayed on "Montage...".
+// The client reads only the replicated phase, so its clock (HOLDeploy::FWatch) must start at the ORDER, not at the first drawing of the face.
+// The bar is computed by the real HOLDeploy::ProgressPermille (1.5 s to mount, one dash = 125 permille).
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLDeployMountBarAdvancesTest, "HeroesOfLiberty.Siege.Deploy.MountBarAdvancesFromServerPhase", UE::HeroesOfLiberty::Tests::DeployButton::Flags)
+
+bool FHOLDeployMountBarAdvancesTest::RunTest(const FString& Parameters)
+{
+	const auto PermilleAt = [](HOLDeploy::FWatch& Watch, const int32 ObservedPhase, const double NowSeconds)
+	{
+		HOLDeploy::FState State;
+		State.Phase = HOLDeploy::PhaseAt(ObservedPhase);
+		State.ElapsedMs = HOLDeploy::WatchElapsedMs(Watch, ObservedPhase, NowSeconds);
+		return HOLDeploy::ProgressPermille(State, HOLDeploy::DefaultProfile(), 0);
+	};
+	HOLDeploy::FWatch Watch;
+	HOLDeploy::NoteOrder(Watch, 0.0);
+	// The first drawing that sees the phase comes 0.3 s after the order (the refresh is four times a second): at least one dash already.
+	TestTrue(TEXT("0.3 s after the order the mount bar shows at least one dash (>= 125 permille)"), PermilleAt(Watch, 1, 0.3) >= 125);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLDeploySecondMountReturnsToPackTest, "HeroesOfLiberty.Siege.Deploy.SecondMountReturnsToPack", UE::HeroesOfLiberty::Tests::DeployButton::Flags)
+
+bool FHOLDeploySecondMountReturnsToPackTest::RunTest(const FString& Parameters)
+{
+	const auto PermilleAt = [](HOLDeploy::FWatch& Watch, const int32 ObservedPhase, const double NowSeconds)
+	{
+		HOLDeploy::FState State;
+		State.Phase = HOLDeploy::PhaseAt(ObservedPhase);
+		State.ElapsedMs = HOLDeploy::WatchElapsedMs(Watch, ObservedPhase, NowSeconds);
+		return HOLDeploy::ProgressPermille(State, HOLDeploy::DefaultProfile(), 0);
+	};
+	HOLDeploy::FWatch Watch;
+	HOLDeploy::NoteOrder(Watch, 0.0);
+	PermilleAt(Watch, 1, 0.3);
+	const int32 DuringFirst = PermilleAt(Watch, 1, 1.4);
+	TestTrue(TEXT("first cycle: the bar is nearly full at 1.4 s"), DuringFirst >= 875);
+	// The engine is deployed (phase 2): the face leaves the bar for the settled key (Pack); nothing is read until the next order.
+	TestEqual(TEXT("deployed: no bar, the face goes back to Pack"), PermilleAt(Watch, -1, 1.6), -1);
+	// Second cycle with the clock untouched in between (phase 2 and 3 never drawn): a new order restarts the bar from 0.
+	HOLDeploy::NoteOrder(Watch, 10.0);
+	const int32 SecondMount = PermilleAt(Watch, 1, 10.3);
+	TestTrue(TEXT("second cycle: 0.3 s after its order the bar is at one dash, not full (125..400 permille)"), SecondMount >= 125 && SecondMount <= 400);
+	// A mount ordered while a stale phase-1 clock was still held (the phase was never read as settled in between).
+	HOLDeploy::FWatch Stale;
+	HOLDeploy::NoteOrder(Stale, 0.0);
+	PermilleAt(Stale, 1, 0.3);
+	HOLDeploy::NoteOrder(Stale, 10.0);
+	const int32 SecondStale = PermilleAt(Stale, 1, 10.3);
+	TestTrue(TEXT("mount after a mount whose end was never read: the bar restarts (125..400 permille)"), SecondStale >= 125 && SecondStale <= 400);
+	return true;
+}
 #endif // WITH_DEV_AUTOMATION_TESTS
