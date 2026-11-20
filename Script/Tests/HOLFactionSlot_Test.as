@@ -123,7 +123,7 @@ void Test_FactionSlotFromGameStateValue(FUnitTest& T)
 		HOLFactionResource::Gain(Gauge, HOLDawnValues::HonorDuelWin());
 		State.SetFactionResource(0, Gauge.Value);
 		State.SetFactionResource(1, Gauge.Value);
-		const FHOLFactionSlotView Dawn = HOLFactionSlot::FromGameState(State, 0, "Ordre de l'Aube", false, false);
+		const FHOLFactionSlotView Dawn = HOLFactionSlot::FromGameState(State, 0, false, false);
 		const FString Expected = f"{Gauge.Value} / {Gauge.Cap}";
 		const int RowCount = HOLDawnPowers::Rows().Num();
 		T.AssertTrue(Dawn.bVisible, "the Dawn's slot is visible");
@@ -131,15 +131,14 @@ void Test_FactionSlotFromGameStateValue(FUnitTest& T)
 		T.AssertEquals(Expected, Dawn.GaugeText, "the gauge text is the state's value over the cap");
 		T.AssertEquals(Gauge.Value, Dawn.Value, "the value is the state's");
 		T.AssertEquals(RowCount, Dawn.Powers.Num(), "one box per row of the Dawn's book");
-		// The Legions (slot 1 holds a value too): no gauge, no button, the slot is empty.
-		const FHOLFactionSlotView Legions = HOLFactionSlot::FromGameState(State, 1, "Légions Noires", false, false);
-		T.AssertFalse(Legions.bVisible, "the Legions' slot is empty");
-		T.AssertEquals("slot empty", Legions.Describe, "described empty");
-		// A spectator (slot -1) and a text naming no faction: empty as well.
-		const FHOLFactionSlotView Spectator = HOLFactionSlot::FromGameState(State, -1, "Ordre de l'Aube", false, false);
+		// Slot 1 holds a value too; the test world has no launch configuration, so GetSlotFaction gives the Dawn's (the Legions' slot cannot be
+		// built from script: needs a C++ test setter, see the report): the faction comes from the state, and the slot shows ITS value.
+		const FHOLFactionSlotView DawnTwo = HOLFactionSlot::FromGameState(State, 1, false, false);
+		T.AssertTrue(DawnTwo.bVisible, "slot 1 reads the state faction (the Dawn's): visible");
+		T.AssertEquals(Expected, DawnTwo.GaugeText, "with its own gauge value");
+		// A spectator (slot -1): empty.
+		const FHOLFactionSlotView Spectator = HOLFactionSlot::FromGameState(State, -1, false, false);
 		T.AssertEquals("slot empty", Spectator.Describe, "a spectator has no slot");
-		const FHOLFactionSlotView Unknown = HOLFactionSlot::FromGameState(State, 0, "", false, false);
-		T.AssertEquals("slot empty", Unknown.Describe, "an unknown faction text shows no slot");
 	}
 	HOLTestWorld::DestroyTestWorld(TestWorld);
 }

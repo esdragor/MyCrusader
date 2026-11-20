@@ -1914,8 +1914,7 @@ UHOLScenarioPanelScript ScenarioPanel;
 		FactionView = FHOLFactionSlotView();
 		FactionSlotTexts = "";
 		if (PlayerSlot >= 0)
-			FactionView = HOLFactionSlot::FromGameState(Cast<AHOLGameState>(Gameplay::GetGameState()), PlayerSlot,
-				HOLDiplomacyRead::GetSlotFactionText(PlayerSlot), false, false);
+			FactionView = HOLFactionSlot::FromGameState(Cast<AHOLGameState>(Gameplay::GetGameState()), PlayerSlot, false, false);
 		FactionPanelSlot.SetPadding(FactionSlotPlace());
 		FactionPanel.SetVisibility(FactionView.bVisible ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
 		if (!FactionView.bVisible)
