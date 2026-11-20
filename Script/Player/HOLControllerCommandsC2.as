@@ -171,6 +171,14 @@ namespace HOLControllerCommandsC2
 		return FHOLCheatPlan();
 	}
 
+	// The routes Send below has a branch for (the others log LogNotSent); pure, so a test can see a command is SENT and not dropped (CELEBORN-1120d).
+	bool IsRouted(const FString& Route)
+	{
+		return Route == "ServerReturnHero" || Route == "ServerHeroAbility" || Route == "ServerDuelChallenge" || Route == "ServerDuelAnswer"
+			|| Route == "ServerDiplomacyStance" || Route == "ServerDiplomacyVision" || Route == "ServerPostSignal" || Route == "ServerPostChat"
+			|| Route == "ServerStartSpecialization" || Route == "ServerCancelSpecialization" || Route == "ServerCheatSpecialization";
+	}
+
 	// The line of C++ LogNotSent (UE_LOG Error "RpcRoute: %s not sent: no script RPC actor / function"); the line is Error as the C++ (HOLScriptLog::LogError), the function name is the RPC's.
 	void LogNotSent(const FString& Route)
 	{

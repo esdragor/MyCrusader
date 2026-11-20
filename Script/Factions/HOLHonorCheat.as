@@ -8,6 +8,12 @@ namespace HOLHonorCheat
 		return 100;
 	}
 
+	// STUB (CELEBORN-1120d, red first): the server side of ServerCheatHonor, nothing done yet.
+	int ServerApply(AHOLGameState State, bool bCheatsAllowed, int Sender, int Value)
+	{
+		return -9;
+	}
+
 	// Sets the slot's gauge to Requested held between the floor and the cap; returns the value stored, or -1 when nothing was written (no state, a slot below 0, or a faction without a gauge).
 	// A slot beyond the table is ignored by SetFactionResource itself.
 	int Apply(AHOLGameState State, int Slot, EHOLFaction Faction, int Requested)

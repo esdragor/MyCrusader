@@ -65,6 +65,43 @@ namespace HonorCheatTest
 	}
 }
 
+// CELEBORN-1120d: the server side of ServerCheatHonor on a real AHOLGameState: the faction is read from the state (GetSlotFaction, Dawn by default), the refusals leave the gauge alone.
+namespace HonorCheatServerTest
+{
+	void Run(FUnitTest& T, AHOLGameState State)
+	{
+		int Done = HOLHonorCheat::ServerApply(State, true, 0, 70);
+		int Read = State.GetFactionResource(0);
+		T.AssertEquals(70, Done, "a seated Dawn player with cheats on: 70 stored");
+		T.AssertEquals(70, Read, "the game state holds 70 for the sender slot");
+		int Off = HOLHonorCheat::ServerApply(State, false, 0, 10);
+		Read = State.GetFactionResource(0);
+		T.AssertEquals(-1, Off, "cheats off: refused 1");
+		T.AssertEquals(70, Read, "cheats off: the gauge is untouched");
+		int Spectator = HOLHonorCheat::ServerApply(State, true, -1, 10);
+		T.AssertEquals(-2, Spectator, "a spectator: refused 2");
+		int Capped = HOLHonorCheat::ServerApply(State, true, 0, 900);
+		Read = State.GetFactionResource(0);
+		T.AssertEquals(100, Capped, "900 is held to the cap by the server");
+		T.AssertEquals(100, Read, "and the state holds the cap");
+		int NoState = HOLHonorCheat::ServerApply(nullptr, true, 0, 5);
+		T.AssertEquals(-4, NoState, "no game state: nothing written, -4");
+	}
+}
+
+void Test_HonorCheatServerApply(FUnitTest& T)
+{
+	UHOLTestWorldHandle TestWorld = HOLTestWorld::CreateTestWorld();
+	T.AssertTrue(TestWorld != nullptr, "a test world is created");
+	if (TestWorld == nullptr)
+		return;
+	AHOLGameState State = HOLTestWorld::SpawnGameState(TestWorld, 0, 0);
+	T.AssertTrue(State != nullptr, "game state");
+	if (State != nullptr)
+		HonorCheatServerTest::Run(T, State);
+	HOLTestWorld::DestroyTestWorld(TestWorld);
+}
+
 void Test_HonorCheatEffect(FUnitTest& T)
 {
 	UHOLTestWorldHandle TestWorld = HOLTestWorld::CreateTestWorld();

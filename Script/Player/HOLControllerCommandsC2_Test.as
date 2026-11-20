@@ -28,7 +28,11 @@ void Test_ControllerCommandsC2EachNameOnceAndRouted(FUnitTest& T)
 		FHOLCheatPlan Plan = HOLControllerCommandsC2::PlanOf(Name, C2Args("all", "1", "x"));
 		T.AssertTrue(Plan.bValid || !Plan.Usage.IsEmpty(), f"{Name}: known to the planner");
 		if (Plan.bValid)
+		{
 			T.AssertTrue(Plan.Route.StartsWith("Server"), f"{Name}: routes to a Server RPC");
+			bool bRouted = HOLControllerCommandsC2::IsRouted(Plan.Route);
+			T.AssertTrue(bRouted, f"{Name}: Send has a branch for {Plan.Route} (else the command logs not sent)");
+		}
 	}
 	FHOLCheatPlan Unknown = HOLControllerCommandsC2::PlanOf("hol.Hero.Nothing", C2Args());
 	T.AssertFalse(Unknown.bValid, "an unknown name plans nothing");
@@ -166,6 +170,8 @@ void Test_ControllerCommandsC2CheatHonor(FUnitTest& T)
 	FHOLCheatPlan Plan = HOLControllerCommandsC2::PlanOf("hol.Cheat.Honor", C2Args("50"));
 	T.AssertTrue(Plan.bValid, "Cheat.Honor 50 is accepted");
 	T.AssertEquals("ServerCheatHonor", Plan.Route, "Cheat.Honor route");
+	bool bSent = HOLControllerCommandsC2::IsRouted(Plan.Route);
+	T.AssertTrue(bSent, "Cheat.Honor is SENT (CELEBORN-1120d: Send has the ServerCheatHonor branch, the command no longer logs not sent)");
 	T.AssertEquals(1, Plan.Ints.Num(), "one integer");
 	const int Value = Plan.Ints.Num() > 0 ? Plan.Ints[0] : -99;
 	T.AssertEquals(50, Value, "the value is 50 (the bounds are the server rule: HOLFactionResource::CheatTarget)");
