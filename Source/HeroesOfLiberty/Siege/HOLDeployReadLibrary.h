@@ -128,6 +128,12 @@ public:
 	static int32 PackDelayMs(const FHOLDeployProfile& Profile, int32 CounterweightPercent);
 
 	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Deploy")
+	static int32 ButtonLabel(EHOLDeployPhase Phase);
+
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Deploy")
+	static int32 ProgressPermille(const FHOLDeployState& State, const FHOLDeployProfile& Profile, int32 CounterweightPercent);
+
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Deploy")
 	static FHOLDeployState Advance(const FHOLDeployState& State, int32 DtMs, const FHOLDeployProfile& Profile, int32 CounterweightPercent);
 
 	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Deploy")

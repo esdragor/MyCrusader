@@ -102,6 +102,12 @@ namespace HOLDeploy
 	HEROESOFLIBERTY_API int32 DeployDelayMs(const FProfile& Profile, int32 CounterweightPercent);
 	HEROESOFLIBERTY_API int32 PackDelayMs(const FProfile& Profile, int32 CounterweightPercent);
 
+	/** D869b: what the engine's button says in a phase: 0 Mount, 1 Dismount, 2 Mounting (deploying), 3 Dismounting (packing). */
+	HEROESOFLIBERTY_API int32 ButtonLabel(EPhase Phase);
+
+	/** D869b: how far a change of state has come, 0 to 1000 (permille of its delay, Counterweight included); -1 for a settled phase (no bar). */
+	HEROESOFLIBERTY_API int32 ProgressPermille(const FState& State, const FProfile& Profile, int32 CounterweightPercent);
+
 	/** Time passes: a change of state ends when its delay has passed (the time left over is not carried); a settled state stays. */
 	HEROESOFLIBERTY_API FState Advance(const FState& State, int32 DtMs, const FProfile& Profile, int32 CounterweightPercent);
 

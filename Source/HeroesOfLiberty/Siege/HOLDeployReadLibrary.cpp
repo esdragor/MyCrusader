@@ -93,6 +93,16 @@ int32 UHOLDeployReadLibrary::PackDelayMs(const FHOLDeployProfile& Profile, const
 	return HOLDeploy::PackDelayMs(ToRule(Profile), CounterweightPercent);
 }
 
+int32 UHOLDeployReadLibrary::ButtonLabel(const EHOLDeployPhase Phase)
+{
+	return HOLDeploy::ButtonLabel(ToRule(Phase));
+}
+
+int32 UHOLDeployReadLibrary::ProgressPermille(const FHOLDeployState& State, const FHOLDeployProfile& Profile, const int32 CounterweightPercent)
+{
+	return HOLDeploy::ProgressPermille(ToRule(State), ToRule(Profile), CounterweightPercent);
+}
+
 FHOLDeployState UHOLDeployReadLibrary::Advance(const FHOLDeployState& State, const int32 DtMs, const FHOLDeployProfile& Profile, const int32 CounterweightPercent)
 {
 	return FromRule(HOLDeploy::Advance(ToRule(State), DtMs, ToRule(Profile), CounterweightPercent));

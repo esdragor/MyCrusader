@@ -143,6 +143,41 @@ void Test_DeployDelaysAreVisible(FUnitTest& T)
 	T.AssertTrue(HalfDismount.Phase == EHOLDeployPhase::Packing && HalfDismount.ElapsedMs > 0, "halfway through dismounting: still packing, the time is counted");
 }
 
+// HeroesOfLiberty.Siege.Deploy.ButtonShowsProgress
+// D869b (user answer to Q-deploy-visible, 2026-11-20): while mounting / dismounting the button says Montage... / Demontage... (labels 2 / 3, not the
+// settled Mount / Dismount 0 / 1) and a bar fills from 0 to 1000 permille. The fraction is COMPUTED by the rule from the time the real Advance counts.
+void Test_DeployButtonShowsProgress(FUnitTest& T)
+{
+	FHOLDeployProfile Profile = HOLDeployRead::DefaultProfile();
+	int PackedLabel = HOLDeployRead::ButtonLabel(EHOLDeployPhase::Packed);
+	int DeployedLabel = HOLDeployRead::ButtonLabel(EHOLDeployPhase::Deployed);
+	int DeployingLabel = HOLDeployRead::ButtonLabel(EHOLDeployPhase::Deploying);
+	int PackingLabel = HOLDeployRead::ButtonLabel(EHOLDeployPhase::Packing);
+	T.AssertEquals(0, PackedLabel, "packed: the button says Mount");
+	T.AssertEquals(1, DeployedLabel, "deployed: the button says Dismount");
+	T.AssertEquals(2, DeployingLabel, "deploying: the button says Mounting");
+	T.AssertEquals(3, PackingLabel, "packing: the button says Dismounting");
+	FHOLDeployState Start = DeployStateOf(EHOLDeployPhase::Deploying);
+	int AtStart = HOLDeployRead::ProgressPermille(Start, Profile, 0);
+	FHOLDeployState Half = HOLDeployRead::Advance(Start, Profile.DeployMs / 2, Profile, 0);
+	int AtHalf = HOLDeployRead::ProgressPermille(Half, Profile, 0);
+	FHOLDeployState Quarter = HOLDeployRead::Advance(Start, Profile.DeployMs / 4, Profile, 0);
+	int AtQuarter = HOLDeployRead::ProgressPermille(Quarter, Profile, 0);
+	T.AssertEquals(0, AtStart, "mounting just started: the bar is empty");
+	T.AssertTrue(AtHalf >= 490 && AtHalf <= 510, "half the mounting delay: the bar is about half full, was " + AtHalf);
+	T.AssertTrue(AtQuarter > AtStart && AtQuarter < AtHalf, "the bar only grows: " + AtQuarter);
+	FHOLDeployState PackHalf = HOLDeployRead::Advance(DeployStateOf(EHOLDeployPhase::Packing), Profile.PackMs / 2, Profile, 0);
+	int PackAtHalf = HOLDeployRead::ProgressPermille(PackHalf, Profile, 0);
+	T.AssertTrue(PackAtHalf >= 490 && PackAtHalf <= 510, "half the dismounting delay: the bar is about half full, was " + PackAtHalf);
+	FHOLDeployState Shorter = HOLDeployRead::Advance(Start, Profile.DeployMs / 4, Profile, 50);
+	int ShorterAt = HOLDeployRead::ProgressPermille(Shorter, Profile, 50);
+	T.AssertTrue(ShorterAt > AtQuarter, "Counterweight shortens the delay, so the same time fills more of the bar: " + ShorterAt);
+	int SettledMounted = HOLDeployRead::ProgressPermille(DeployStateOf(EHOLDeployPhase::Deployed), Profile, 0);
+	int SettledPacked = HOLDeployRead::ProgressPermille(DeployStateOf(EHOLDeployPhase::Packed), Profile, 0);
+	T.AssertEquals(-1, SettledMounted, "a settled engine has no bar");
+	T.AssertEquals(-1, SettledPacked, "a packed engine has no bar");
+}
+
 // HeroesOfLiberty.Siege.Deploy.Counterweight
 void Test_DeployCounterweight(FUnitTest& T)
 {
