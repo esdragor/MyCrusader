@@ -1626,6 +1626,7 @@ void AHOLPlayerController::CycleSubgroup()
 		ActiveUnitType = Subgroups[Next].bAll ? NAME_None : Subgroups[Next].TypeName;
 		bAttackMoveArmed = false;
 		bBannerArmed = false;
+		SetFactionAim(-1, 0.0);
 		UE_LOG(LogHOLMatch, Display, TEXT("Subgroup: %s (%d of %d)"), *DescribeSubgroup(), Next + 1, Subgroups.Num());
 		OnSelectionChanged.Broadcast();
 		return;
@@ -2639,6 +2640,7 @@ void AHOLPlayerController::ExecuteGridCommand(const FHOLGridCommand& Command)
 		}
 		EndPlacement();
 		bAttackMoveArmed = false;
+		SetFactionAim(-1, 0.0);
 		bBannerArmed = true;
 		UE_LOG(LogHOLMatch, Display, TEXT("Grid: hero banner, click on the ground"));
 		return;
@@ -2646,6 +2648,7 @@ void AHOLPlayerController::ExecuteGridCommand(const FHOLGridCommand& Command)
 		// AoE4's way: the key, then a left click on the ground (AttackMoveAt).
 		EndPlacement();
 		bBannerArmed = false;
+		SetFactionAim(-1, 0.0);
 		bAttackMoveArmed = true;
 		UE_LOG(LogHOLMatch, Display, TEXT("Grid: attack-move, click on the ground"));
 		return;
@@ -2971,14 +2974,32 @@ void AHOLPlayerController::AttackMoveAt(const FVector2D& ViewportFraction, const
 	OnAttackOrderGiven.Broadcast(Ground);
 }
 
-// STUB (red test first, D839): the real bodies come with the next commit.
 void AHOLPlayerController::SetFactionAim(int32 Index, double RangeCm)
 {
+	if (RangeCm > 0.0)
+	{
+		FactionAimRangeCm = RangeCm;
+	}
+	bFactionAimClicked = false;
+	if (Index < 0)
+	{
+		FactionAimIndex = -1;
+		return;
+	}
+	// One mode at a time: the aim takes over placement, a chosen age, attack-move and the banner.
+	if (IsPlacing())
+	{
+		EndPlacement();
+	}
+	SetChosenAge(INDEX_NONE);
+	bAttackMoveArmed = false;
+	bBannerArmed = false;
+	FactionAimIndex = Index;
 }
 
 int32 AHOLPlayerController::GetFactionAim() const
 {
-	return -1;
+	return FactionAimIndex;
 }
 
 double AHOLPlayerController::GetFactionAimRangeCm() const
@@ -2988,7 +3009,14 @@ double AHOLPlayerController::GetFactionAimRangeCm() const
 
 bool AHOLPlayerController::ConsumeFactionAimClick(FVector& OutPoint, int32& OutIndex)
 {
-	return false;
+	if (!bFactionAimClicked || FactionAimIndex < 0)
+	{
+		return false;
+	}
+	bFactionAimClicked = false;
+	OutPoint = FactionAimPoint;
+	OutIndex = FactionAimIndex;
+	return true;
 }
 
 void AHOLPlayerController::ScriptEscape()
@@ -4763,7 +4791,7 @@ void AHOLPlayerController::HandleSelectStarted()
 		return;
 	}
 	// D357: defeated with a mode armed, the mode is left and the click only selects (to watch).
-	if (IsSpectator() && (IsPlacing() || bAttackMoveArmed || bBannerArmed || ChosenAge != INDEX_NONE))
+	if (IsSpectator() && (IsPlacing() || bAttackMoveArmed || bBannerArmed || FactionAimIndex >= 0 || ChosenAge != INDEX_NONE))
 	{
 		if (IsPlacing())
 		{
@@ -4772,6 +4800,7 @@ void AHOLPlayerController::HandleSelectStarted()
 		SetChosenAge(INDEX_NONE);
 		bAttackMoveArmed = false;
 		bBannerArmed = false;
+		SetFactionAim(-1, 0.0);
 	}
 	// In placement mode a left click places (J6a.3): it never selects nor starts a box.
 	if (IsPlacing())
@@ -4793,6 +4822,18 @@ void AHOLPlayerController::HandleSelectStarted()
 	{
 		bSelectPressed = false;
 		PlantBannerAt(Cursor);
+		return;
+	}
+	// Faction power aiming (D839): a left click on the ground is kept for the script (ConsumeFactionAimClick), never selects.
+	if (FactionAimIndex >= 0)
+	{
+		bSelectPressed = false;
+		FVector AimGround;
+		if (GetCursorGroundPoint(AimGround))
+		{
+			FactionAimPoint = AimGround;
+			bFactionAimClicked = true;
+		}
 		return;
 	}
 	// SG3 (GDD 15, D386): Alt held, the left click places a map signal (resolved at the release), never selects.
@@ -4892,10 +4933,11 @@ void AHOLPlayerController::HandleOrder()
 		EndPlacement();
 		return;
 	}
-	if (bAttackMoveArmed || bBannerArmed)
+	if (bAttackMoveArmed || bBannerArmed || FactionAimIndex >= 0)
 	{
 		bAttackMoveArmed = false;
 		bBannerArmed = false;
+		SetFactionAim(-1, 0.0);
 		return;
 	}
 	// Resolved at the release (J7a.4): a click orders at the press, a drag along its line.
@@ -4987,7 +5029,7 @@ void AHOLPlayerController::HandleDeselect()
 	// placement mode first, the selection kept (D313), and closes the chosen age (the user's 1st trial of G.1: an age
 	// chosen without a ghost is closed alone), then the attack-move mode (J7b.3); then it deselects; with nothing
 	// selected, it opens the in-game menu.
-	switch (UHOLGameMenuRulesBridge::NativeGetEscapeAction(bGameMenuOpen, IsPlacing() || ChosenAge != INDEX_NONE || bAttackMoveArmed || bBannerArmed, HasSelection()))
+	switch (UHOLGameMenuRulesBridge::NativeGetEscapeAction(bGameMenuOpen, IsPlacing() || ChosenAge != INDEX_NONE || bAttackMoveArmed || bBannerArmed || FactionAimIndex >= 0, HasSelection()))
 	{
 	case EHOLEscapeAction::CloseMenu:
 		return;
@@ -5005,6 +5047,7 @@ void AHOLPlayerController::HandleDeselect()
 		{
 			bAttackMoveArmed = false;
 			bBannerArmed = false;
+			SetFactionAim(-1, 0.0);
 		}
 		return;
 	case EHOLEscapeAction::Deselect:
