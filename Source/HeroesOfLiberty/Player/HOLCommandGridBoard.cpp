@@ -77,6 +77,7 @@ FHOLGridContextView UHOLCommandGridBoard::MakeContextView(const FHOLGridContext&
 	Out.SpecializationTier = Context.SpecializationTier;
 	Out.SpecializationPendingOption = Context.SpecializationPendingOption;
 	Out.SpecializationRemainingMs = Context.SpecializationRemainingMs;
+	Out.SpecializationFaction = Context.SpecializationFaction;
 	Out.HeroCooldownSeconds.Append(Context.HeroCooldownSeconds, 3);
 	const int32 Count = Context.Buildable.Num();
 	Out.BuildableTypes.Reserve(Count);

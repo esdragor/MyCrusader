@@ -3,7 +3,7 @@
 // same decisions. The C++ bodies are gone (lot L3): HOLCommandGrid.cpp keeps only the bridge to this rule (UHOLCommandGridBoard), no C++ twin.
 // The input is FHOLGridContextView and the output FHOLGridCommandView (the USTRUCTs of UHOLCommandGridReadLibrary): nothing else is called, except
 //   - HOLCommandGridRead::GetSpecializationCell: the cell of the first specialization option is the cvar hol.UI.SpecializationCell, registered in C++
-//     (HOLCommandGrid.cpp, default 6): a setting, not a rule; read through the library until the cvar moves (TYPES_A_EXPOSER, see the report);
+//     (HOLCommandGrid.cpp, default 6; D868: a Templar seat's 3 lanes start one cell left, 5 6 7): a setting, not a rule; read through the library until the cvar moves (TYPES_A_EXPOSER, see the report);
 //   - HOLHeroAbilityRead::IsUnlocked (the hero's rule, which stays in C++ for the server): the abilities' unlock level.
 // NOT ported (data not exposed to script): SetSpecialization / GetOpenSpecializationTier (FHOLSpecializationView). The second half (PressKey, ClickAge,
 // Check*, Describe, groups, MergeCommands) is lots G2a / G2b.
@@ -105,7 +105,7 @@ namespace HOLCommandGridRules
 			return FName();
 		}
 		FString Verb = Command.Command == EHOLGridCommandKind::Specialize ? "Specialize" : "CancelSpecialization";
-		FString Letter = Command.Option == 0 ? "A" : "B";
+		FString Letter = Command.Option == 0 ? "A" : (Command.Option == 1 ? "B" : "C");
 		return FName(f"{Verb}T{Command.Tier}{Letter}");
 	}
 
@@ -127,10 +127,12 @@ namespace HOLCommandGridRules
 		return GetCommandWithOptions(Context, Cell, SpecializationOptions);
 	}
 
-	// GLORFINDEL-1120pd STUB (red first): the grid of a seat of this faction (EHOLFaction index, -1 none = the default two options). Not yet wired to the faction.
+	// GLORFINDEL-1120pd (D868 follow-up): the grid of a seat of this faction (EHOLFaction index; -1 = unknown = the default two options). The game's board asks THIS
+	// entry with FHOLGridContext::SpecializationFaction, so a Templar seat shows its 3 lanes (5 6 7), the others 2 (6 7).
 	FHOLGridCommandView GetCommandForFaction(const FHOLGridContextView& Context, int Cell, int Faction)
 	{
-		return GetCommand(Context, Cell);
+		int OptionCount = Faction >= 0 ? HOLSpecialization::OptionCountOf(EHOLFaction(Faction)) : SpecializationOptions;
+		return GetCommandWithOptions(Context, Cell, OptionCount);
 	}
 
 	// ELROND-1120e (morceau 7): the same, with the number of specialization options of the seat's faction (HOLSpecialization::OptionCountOf: 3 for the Templars).

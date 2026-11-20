@@ -448,6 +448,10 @@ namespace HOLGameNames
 	FText GetSpecializationName(const int32 Tier, const int32 Option)
 	{
 		const FText TierNumber = FText::AsNumber(Tier);
+		if (Option >= 2)
+		{
+			return FText::Format(LOCTEXT("SpecializationOptionC", "Voie C du palier {0}"), TierNumber);
+		}
 		return Option == 0 ? FText::Format(LOCTEXT("SpecializationOptionA", "Voie A du palier {0}"), TierNumber)
 			: FText::Format(LOCTEXT("SpecializationOptionB", "Voie B du palier {0}"), TierNumber);
 	}

@@ -178,6 +178,8 @@ struct FHOLGridContext
 	int32 SpecializationTier = 0;
 	int32 SpecializationPendingOption = INDEX_NONE;
 	int32 SpecializationRemainingMs = 0;
+	/** D868: the EHOLFaction index of the Forum owner's seat (INDEX_NONE: unknown, two lanes); the script grid draws as many lanes as the faction has (3 for the Templars). */
+	int32 SpecializationFaction = INDEX_NONE;
 };
 
 /** Where a key of the grid goes (the user's choice of 2026-10-21, AoE4's way): the grid on the right, the orders on the left. */
@@ -318,10 +320,10 @@ namespace HOLCommandGrid
 	/** L4: the cell of the necrotic rage, after the hero's two (to confirm against the AoE4 grid). */
 	HEROESOFLIBERTY_API int32 GetRageCell();
 
-	/** SP3: the options of a tier's choice (D07: 2; the Templars' 3 commanderies, D131, are not drawn yet). */
+	/** SP3: the default options of a tier's choice (D07: 2); a Templar seat has 3 commanderies (D131), drawn from FHOLGridContext::SpecializationFaction by HOLCommandGridRules.as. */
 	inline constexpr int32 SpecializationOptions = 2;
 	/**
-	 * SP3: the cell of the Forum's grid that offers Option (0 or 1): hol.UI.SpecializationCell (default 6, D then F: the middle row,
+	 * SP3: the cell of the Forum's grid that offers Option (0 or 1; the Templars' third lane shifts the row one cell left, 5 6 7, D868, HOLCommandGridRules.as): hol.UI.SpecializationCell (default 6, D then F: the middle row,
 	 * free on a Forum; Retours/Q-specialization-ui.md), Option after it.
 	 */
 	HEROESOFLIBERTY_API int32 GetSpecializationCell(int32 Option);

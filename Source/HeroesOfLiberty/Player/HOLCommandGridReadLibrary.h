@@ -128,6 +128,9 @@ struct FHOLGridContextView
 	int32 SpecializationPendingOption = -1;
 	UPROPERTY(BlueprintReadWrite, Category = "HeroesOfLiberty|CommandGrid")
 	int32 SpecializationRemainingMs = 0;
+	/** FHOLGridContext::SpecializationFaction (D868): the Forum owner's EHOLFaction index, -1 unknown. */
+	UPROPERTY(BlueprintReadWrite, Category = "HeroesOfLiberty|CommandGrid")
+	int32 SpecializationFaction = -1;
 };
 
 /** The facts of one technology asked (HOLTechnology::FFacts without bCanPay, which CheckResearch reads from the stock); the defaults are FFacts'. */
