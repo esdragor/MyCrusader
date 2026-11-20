@@ -92,14 +92,14 @@ namespace HOLFactionSlot
 	// An unknown slot (spectator) or no state: the empty slot.
 	FHOLFactionSlotView FromGameState(AHOLGameState State, int Slot, bool bHasSpecializationButton, bool bTierOpen)
 	{
-		// STUB (red first): the faction is not read from the state yet.
-		EHOLFaction Faction = EHOLFaction::BlackLegions;
 		if (State == nullptr || Slot < 0)
 		{
 			FHOLFactionSlotView Empty;
 			Empty.Describe = "slot empty";
 			return Empty;
 		}
+		// The faction of the slot as the state has it (GetSlotFaction, an EHOLFaction index): no more reading of the lobby's French text.
+		const EHOLFaction Faction = EHOLFaction(State.GetSlotFaction(Slot));
 		const FHOLFactionResource Gauge = HOLFactionResource::Make(State.GetFactionResource(Slot), 0, HOLDawnValues::HonorCap());
 		TArray<FHOLPowerRow> Rows;
 		if (HOLFactionResource::HasResource(Faction))
