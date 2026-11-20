@@ -4,7 +4,9 @@ $ErrorActionPreference = 'SilentlyContinue'
 $raw = [Console]::In.ReadToEnd()
 try { $in = $raw | ConvertFrom-Json } catch { exit 0 }
 $prompt = [string]$in.prompt
-if ($prompt -notmatch '(?i)auto[ _\-]?journ') { exit 0 }
+# Only the launch phrases ("commence ton Auto_Journey", "commence un auto journee", "continue / reprends ... auto journ..."),
+# not any message that merely names Auto_Journey_File.md (agent reports arrive as prompts too).
+if ($prompt -notmatch '(?i)\b(commence|continue|reprends|lance|relance)\b[^\r\n]{0,40}auto[ _\-]?journ') { exit 0 }
 
 $checklist = 'C:\Users\baudo\Documents\MyCrusader\Auto_Journey_Checklist.md'
 $last = 'L?'
