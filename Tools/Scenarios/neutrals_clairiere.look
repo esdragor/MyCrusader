@@ -1,0 +1,4 @@
+# <nom de capture> | ce que l'utilisateur doit voir
+neutrals_clairiere_avant | le camp neutre du centre (3 Lanciers GRIS) avec le decor non touche : un bosquet peut en cacher une partie (c'est le defaut que la clairiere corrige) ; mes 3 Hommes d'armes bleus a gauche
+neutrals_clairiere_large | le camp des neutres : 3 Lanciers gris au repos sur herbe degagee, sans arbre ni tronc devant ni autour (25 m de sol nu) ; mes 3 Hommes d'armes bleus a gauche, hors de la clairiere ; personne ne se bat
+neutrals_clairiere_camp | gros plan sur le camp : les 3 Lanciers gris groupes sur sol degage (pas de tente ni de feu : le jeu n'en pose pas), aucun arbre entre la camera et eux
