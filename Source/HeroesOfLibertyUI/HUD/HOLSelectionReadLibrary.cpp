@@ -14,6 +14,8 @@
 #include "Player/HOLPlayerController.h"
 #include "Resources/HOLSourceSubsystem.h"
 #include "Resources/HOLSourceTypes.h"
+#include "Net/HOLUnitReceptionSubsystem.h"
+#include "Simulation/HOLUnitSubsystem.h"
 #include "Simulation/HOLUnitView.h"
 
 #define LOCTEXT_NAMESPACE "HOLGameScreen"
@@ -124,8 +126,23 @@ bool UHOLSelectionReadLibrary::GetSourceSelectionView(const UObject* WorldContex
 FString UHOLSelectionReadLibrary::GetUnitTypeKey(const UObject* WorldContextObject, const int32 UnitId)
 {
 	const UWorld* World = HOLSelectionReadPrivate::WorldOf(WorldContextObject);
-	FHOLUnitView Unit;
-	return World && UnitId > 0 && HOLUnitView::Find(*World, static_cast<uint32>(UnitId), Unit) ? Unit.TypeName.ToString() : FString();
+	if (!World || UnitId <= 0)
+	{
+		return FString();
+	}
+	// Not HOLUnitView::Find: it skips a garrisoned unit (off the field), and an occupant is garrisoned by definition.
+	FName TypeName = NAME_None;
+	if (World->GetNetMode() == NM_Client)
+	{
+		const UHOLUnitReceptionSubsystem* Reception = World->GetSubsystem<UHOLUnitReceptionSubsystem>();
+		TypeName = Reception ? Reception->GetUnitTypeName(static_cast<uint32>(UnitId)) : NAME_None;
+	}
+	else
+	{
+		const UHOLUnitSubsystem* Units = World->GetSubsystem<UHOLUnitSubsystem>();
+		TypeName = Units ? Units->GetUnitTypeName(static_cast<uint32>(UnitId)) : NAME_None;
+	}
+	return TypeName.IsNone() ? FString() : TypeName.ToString();
 }
 
 void UHOLSelectionReadLibrary::ReadGarrisonOccupants(const UObject* WorldContextObject, const AHOLBuilding* Building, FHOLBuildingSelView& Out)

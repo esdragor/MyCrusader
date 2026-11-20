@@ -679,6 +679,12 @@ bool UHOLUnitReceptionSubsystem::GetDisplayedUnit(const uint32 UnitId, FHOLUnitV
 	return Slots.IsValidIndex(Drawing) && MakeView(Slots[Drawing], OutUnit);
 }
 
+FName UHOLUnitReceptionSubsystem::GetUnitTypeName(const uint32 UnitId) const
+{
+	const int32 Drawing = UnitId != 0 ? DisplayOwners.GetOwner(UnitId) : INDEX_NONE;
+	return Slots.IsValidIndex(Drawing) && TypeNames.IsValidIndex(Slots[Drawing].TypeIndex) ? TypeNames[Slots[Drawing].TypeIndex] : NAME_None;
+}
+
 void UHOLUnitReceptionSubsystem::SetWatchedLoad(const uint32 UnitId, const EHOLResource Resource, const int32 Amount)
 {
 	WatchedUnitId = UnitId;
