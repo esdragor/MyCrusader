@@ -14,13 +14,23 @@ namespace HOLCampClearing
 	// Is the point (ground distance, height ignored) inside the clearing of the post? The edge counts as inside.
 	bool IsInside(FVector Post, FVector Point)
 	{
-		return false;
+		const float Radius = RadiusCm();
+		const float DX = Point.X - Post.X;
+		const float DY = Point.Y - Post.Y;
+		return DX * DX + DY * DY <= Radius * Radius;
 	}
 
 	// The indices of the trees (their ground positions) that stand in the clearing of the post, in the list's order.
 	TArray<int> TreesToClear(FVector Post, const TArray<FVector>& Trees)
 	{
-		TArray<int> None;
-		return None;
+		TArray<int> Taken;
+		for (int Index = 0; Index < Trees.Num(); Index++)
+		{
+			if (IsInside(Post, Trees[Index]))
+			{
+				Taken.Add(Index);
+			}
+		}
+		return Taken;
 	}
 }
