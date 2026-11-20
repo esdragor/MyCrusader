@@ -1,0 +1,3 @@
+# <nom de capture> | ce que l'utilisateur doit voir
+specialization_cheat_before | Forum principal selectionne, palier 1, rien de choisi : la case D (2e rangee, 3e colonne de la grille) affiche Voie A du palier 1 et la case F Voie B du palier 1, texte entier, memes tailles que les autres cases
+specialization_cheat_after | POINT A REGARDER : apres hol.Cheat.Specialization 1 1 (palier 1 choisi, Voie B), la case D n'offre plus Voie A du palier 1 : plus de texte "Voie A", pas de compte "N s", pas de "Annuler" ; la case F n'offre plus Voie B non plus (le palier 1 est resolu, le palier 2 n'est pas atteint) ; le Forum reste selectionne
