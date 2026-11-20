@@ -11,6 +11,10 @@ const FConsoleVariable CVar_AINomadForumRule("hol.AI.NomadForumRule", 1);
 // Two Peasants this close (cm) are in the same group (7 m, the reach of a starting group in the scatter, NomadInProgress.md D797).
 const FConsoleVariable CVar_AINomadGroupRadius("hol.AI.NomadGroupRadius", 700);
 
+// The most builders the AI's first forum takes at once, the one already sent included (D817 Q-nomad-ia: the other Peasants join the
+// foundation; one line to change). The forum takes 150 s for one builder and less with more (D816).
+const FConsoleVariable CVar_AINomadMaxBuilders("hol.AI.NomadMaxBuilders", 4);
+
 // What the rule decides at one thought: found now or not, the group chosen (index in Groups) and the place of the foundation.
 struct FHOLAINomadPlan
 {
@@ -127,5 +131,18 @@ namespace HOLAINomad
 		Result.Group = Best;
 		Result.Site = Sum / float(Count);
 		return Result;
+	}
+
+	int MaxBuildersFromCVar()
+	{
+		return Math::Max(0, CVar_AINomadMaxBuilders.GetInt());
+	}
+
+	// The Peasants that join the Nomad foundation (D817 Q-nomad-ia): the idle ones, never one of Assigned (the builder already sent), the
+	// nearest to Foundation first (a tie: the lower index), as many as bring the builders up to MaxBuilders (Assigned counted).
+	TArray<int> HelpersFor(FVector Foundation, const TArray<FHOLAIUnit>& Peasants, const TArray<int>& Assigned, int MaxBuilders)
+	{
+		TArray<int> Helpers;
+		return Helpers;
 	}
 }
