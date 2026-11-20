@@ -85,3 +85,35 @@ void Test_AlertMinorOncePer30s(FUnitTest& T)
 	FHOLMinorAlert OtherKind = HOLAlertRules::MinorAlert(EHOLMinorAlertKind::ResearchDone, 105.0, -1000.0);
 	T.AssertTrue(OtherKind.bShow, "a research done 5 s after a building line goes: the kinds do not share the delay");
 }
+// D804 B, the part in script: the counters the C++ accessor gives become alerts. The first reading is the baseline; a building finished is a
+// building alert with its own place in time; a research is the other kind and has its own clock; a second event within 30 s says nothing.
+void Test_AlertMinorStepFromCounters(FUnitTest& T)
+{
+	FHOLMinorWatch Watch;
+	FHOLMinorStep Baseline = HOLAlertRules::MinorStep(Watch, 3, 2, 100.0);
+	T.AssertFalse(Baseline.Building.bShow, "the first reading is the baseline: nothing for the 3 buildings already there");
+	T.AssertFalse(Baseline.Research.bShow, "the first reading is the baseline: nothing for the 2 researches already there");
+	FHOLMinorStep Built = HOLAlertRules::MinorStep(Watch, 4, 2, 101.0);
+	T.AssertTrue(Built.Building.bShow, "a fourth building finished: the building line goes");
+	T.AssertTrue(Built.Building.bPingMinimap, "a finished building pings the minimap");
+	T.AssertFalse(Built.Research.bShow, "no research done: no research line");
+	FHOLMinorStep Again = HOLAlertRules::MinorStep(Watch, 5, 2, 110.0);
+	T.AssertFalse(Again.Building.bShow, "another building 9 s after the line: quiet (once per 30 s)");
+	FHOLMinorStep Researched = HOLAlertRules::MinorStep(Watch, 5, 3, 112.0);
+	T.AssertTrue(Researched.Research.bShow, "a research done 11 s after a building line: the research clock is its own, the line goes");
+	T.AssertFalse(Researched.Building.bShow, "no new building: no building line");
+	FHOLMinorStep Later = HOLAlertRules::MinorStep(Watch, 6, 3, 131.0);
+	T.AssertTrue(Later.Building.bShow, "a building 30 s after the last building line: it goes again");
+}
+
+// An event dropped inside the 30 s is not kept for later: the same counter read again says nothing.
+void Test_AlertMinorStepNoReplay(FUnitTest& T)
+{
+	FHOLMinorWatch Watch;
+	HOLAlertRules::MinorStep(Watch, 0, 0, 10.0);
+	FHOLMinorStep First = HOLAlertRules::MinorStep(Watch, 1, 0, 20.0);
+	T.AssertTrue(First.Building.bShow, "the first building after the baseline: the line goes");
+	HOLAlertRules::MinorStep(Watch, 2, 0, 25.0);
+	FHOLMinorStep Same = HOLAlertRules::MinorStep(Watch, 2, 0, 60.0);
+	T.AssertFalse(Same.Building.bShow, "the counter did not move since the last reading: no line, the dropped event is not replayed");
+}

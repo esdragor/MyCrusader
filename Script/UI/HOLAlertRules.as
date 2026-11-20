@@ -118,3 +118,32 @@ namespace HOLAlertRules
 		return NSLOCTEXT("HOLGameScreen", "MinorBuildingDone", "Bâtiment achevé");
 	}
 }
+
+// The game screen's bookkeeping for the minor events (D804 B, the part in script): the counters read last (UHOLScriptScreen::GetMinorEventsNow gives
+// cumulative ones) and when each kind's line last went (-1000 before the first).
+struct FHOLMinorWatch
+{
+	bool bRead = false;
+	int Buildings = 0;
+	int Researches = 0;
+	float LastBuildingShown = -1000.0;
+	float LastResearchShown = -1000.0;
+}
+
+// What the screen does for one reading of the counters: one alert per kind (bShow false = nothing for that kind).
+struct FHOLMinorStep
+{
+	FHOLMinorAlert Building;
+	FHOLMinorAlert Research;
+}
+
+namespace HOLAlertRules
+{
+	// One reading of the cumulative counters at NowSeconds: the first reading only takes the baseline; a counter that went up since the last reading
+	// is an event of that kind, which MinorAlert turns into line / sound / ping (so one line per kind per MinorRepeatSeconds, however many events).
+	FHOLMinorStep MinorStep(FHOLMinorWatch& Watch, int Buildings, int Researches, float NowSeconds)
+	{
+		FHOLMinorStep Step;
+		return Step;
+	}
+}
