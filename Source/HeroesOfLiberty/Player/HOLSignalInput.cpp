@@ -39,9 +39,17 @@ double HOLSignalInput::PulseMax()
 
 double HOLSignalInput::PulseScale(const double AgeSeconds)
 {
-	// D860 H2 stub (compiles, red on purpose): no animation yet.
-	(void)AgeSeconds;
-	return 1.0;
+	using namespace UE::HeroesOfLiberty::SignalInput;
+	const double Life = MarkLifetime();
+	if (CVarSignalMarkStyle.GetValueOnGameThread() == 0 || AgeSeconds <= 0.0 || AgeSeconds >= Life)
+	{
+		return 1.0;
+	}
+	// A whole number of swings over the life, so the wave is 0 (scale 1) when the mark is born and when it expires: no jump at either end.
+	const int32 Cycles = FMath::Max(CVarSignalMarkCycles.GetValueOnGameThread(), 1);
+	const double Wave = FMath::Sin(2.0 * UE_DOUBLE_PI * Cycles * AgeSeconds / Life);
+	// Up to PulseMax on the way up, down to PulseMin on the way down.
+	return Wave >= 0.0 ? 1.0 + Wave * (PulseMax() - 1.0) : 1.0 + Wave * (1.0 - PulseMin());
 }
 
 int32 HOLSignalInput::KindOfAltClick(const FVector2D& Press, const FVector2D& Release)

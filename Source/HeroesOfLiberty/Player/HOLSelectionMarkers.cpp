@@ -889,11 +889,14 @@ void AHOLSelectionMarkers::UpdateSignalMarks()
 	const AHOLPlayerController* PlayerController = Controller.Get();
 	// The living ones only (GetActiveSignals: hol.Signal.IconSeconds of the world's time, D784), as the minimap's squares.
 	const TArray<FHOLReceivedSignal> Signals = PlayerController ? PlayerController->GetActiveSignals() : TArray<FHOLReceivedSignal>();
-	const double Size = FMath::Max(100.0, static_cast<double>(CVarSignalGroundMarkSize.GetValueOnGameThread()));
-	const double Stroke = FMath::Min(SignalMarkStroke, Size / 4.0);
+	const double BaseSize = FMath::Max(100.0, static_cast<double>(CVarSignalGroundMarkSize.GetValueOnGameThread()));
+	const double Now = GetWorld() ? GetWorld()->GetTimeSeconds() : 0.0;
 	const FQuat Diamond(FVector::UpVector, UE_DOUBLE_PI / 4.0);
 	for (const FHOLReceivedSignal& Signal : Signals)
 	{
+		// D860 H2: the mark pulses over its life, by the one rule the minimap's square reads too (HOLSignalInput::PulseScale).
+		const double Size = BaseSize * HOLSignalInput::PulseScale(Now - Signal.ReceivedAt);
+		const double Stroke = FMath::Min(SignalMarkStroke, Size / 4.0);
 		// At the signal's point (the ground the Alt + click hit), just above it.
 		const FVector Centre = Signal.Location + FVector(0.0, 0.0, GroundOffset);
 		// The diamond: a square frame turned 45 degrees (the buildings' frames are square to the axes).
