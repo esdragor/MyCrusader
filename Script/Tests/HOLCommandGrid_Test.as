@@ -578,15 +578,16 @@ void Test_CGTables(FUnitTest& T)
 		T.AssertTrue(Context.BuildableTypes[I] != n"MainCentre", "the centre is not built");
 	}
 
-	// Barracks (J7a.2): A Spearman, Z Man-at-arms, E Damned Warrior once finished; a site produces nothing, its cancel cell cancels it.
+	// Barracks (J7a.2): A Spearman, Z Halberdier, E Man-at-arms, R Damned Warrior once finished (the table order: Spearman, Halberdier, Man-at-arms, Damned Warrior; D858); a site produces nothing, its cancel cell cancels it.
 	FHOLGridContextView Barracks;
 	Barracks.bOwnBuilding = true;
 	Barracks.bBuildingFinished = true;
 	Barracks.Produces = HOLCommandGridRead::GetProducesOf(n"Barracks");
 	T.AssertTrue(HOLCommandGridRules::GetCommand(Barracks, 0).Command == EHOLGridCommandKind::Produce && HOLCommandGridRules::GetCommand(Barracks, 0).TypeName == n"Spearman", "Barracks, A: produce a Spearman");
-	T.AssertTrue(HOLCommandGridRules::GetCommand(Barracks, 1).Command == EHOLGridCommandKind::Produce && HOLCommandGridRules::GetCommand(Barracks, 1).TypeName == n"ManAtArms", "Barracks, Z: produce a Man-at-arms");
-	T.AssertTrue(HOLCommandGridRules::GetCommand(Barracks, 2).Command == EHOLGridCommandKind::Produce && HOLCommandGridRules::GetCommand(Barracks, 2).TypeName == n"DamnedWarrior", "Barracks, E: produce a Damned Warrior (L4)");
-	for (int Cell = 3; Cell < HOLCommandGridRules::GetNumCells(); Cell++)
+	T.AssertTrue(HOLCommandGridRules::GetCommand(Barracks, 1).Command == EHOLGridCommandKind::Produce && HOLCommandGridRules::GetCommand(Barracks, 1).TypeName == n"Halberdier", "Barracks, Z: produce a Halberdier (D858)");
+	T.AssertTrue(HOLCommandGridRules::GetCommand(Barracks, 2).Command == EHOLGridCommandKind::Produce && HOLCommandGridRules::GetCommand(Barracks, 2).TypeName == n"ManAtArms", "Barracks, E: produce a Man-at-arms");
+	T.AssertTrue(HOLCommandGridRules::GetCommand(Barracks, 3).Command == EHOLGridCommandKind::Produce && HOLCommandGridRules::GetCommand(Barracks, 3).TypeName == n"DamnedWarrior", "Barracks, R: produce a Damned Warrior (L4)");
+	for (int Cell = 4; Cell < HOLCommandGridRules::GetNumCells(); Cell++)
 	{
 		T.AssertTrue(HOLCommandGridRules::GetCommand(Barracks, Cell).Command == EHOLGridCommandKind::None, "Barracks: the other cells are empty");
 	}
