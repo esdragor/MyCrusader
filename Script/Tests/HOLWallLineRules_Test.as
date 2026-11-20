@@ -120,8 +120,8 @@ const FIntPoint WallLineMapMax = FIntPoint(63, 63);
 void Test_WallLineValidateFreeDragLaysEveryCell(FUnitTest& T)
 {
 	TArray<FIntPoint> None;
-	FHOLWallLinePlan Plan = HOLWallLine::Validate(FIntPoint(2, 5), FIntPoint(8, 5), WallLineMapMin, WallLineMapMax, None, 16);
-	T.AssertTrue(Plan.Refusal == EHOLWallLineRefusal::Ok, "a free drag inside the map and the cap is accepted");
+	HOLWallLine::FHOLWallLinePlan Plan = HOLWallLine::Validate(FIntPoint(2, 5), FIntPoint(8, 5), WallLineMapMin, WallLineMapMax, None, 16);
+	T.AssertTrue(Plan.Refusal == HOLWallLine::EHOLWallLineRefusal::Ok, "a free drag inside the map and the cap is accepted");
 	T.AssertEquals(7, Plan.Cells.Num(), "(2,5) -> (8,5): seven cells laid");
 	T.AssertTrue(Plan.Cells.Num() == 7 && Plan.Cells[0].X == 2 && Plan.Cells[6].X == 8 && WallLineIsContiguous(Plan.Cells), "the cells run from the start to the end without a hole");
 	bool bAligned = Plan.Cells.Num() > 0;
@@ -135,13 +135,13 @@ void Test_WallLineValidateOffAxisDragSnaps(FUnitTest& T)
 {
 	TArray<FIntPoint> OnDragEndOnly;
 	OnDragEndOnly.Add(FIntPoint(10, 2));
-	FHOLWallLinePlan Flat = HOLWallLine::Validate(FIntPoint(0, 0), FIntPoint(10, 2), WallLineMapMin, WallLineMapMax, OnDragEndOnly, 16);
-	T.AssertTrue(Flat.Refusal == EHOLWallLineRefusal::Ok, "(10,2) is occupied but the laid line is row 0: accepted");
+	HOLWallLine::FHOLWallLinePlan Flat = HOLWallLine::Validate(FIntPoint(0, 0), FIntPoint(10, 2), WallLineMapMin, WallLineMapMax, OnDragEndOnly, 16);
+	T.AssertTrue(Flat.Refusal == HOLWallLine::EHOLWallLineRefusal::Ok, "(10,2) is occupied but the laid line is row 0: accepted");
 	T.AssertEquals(11, Flat.Cells.Num(), "(0,0) -> (10,2) snaps to the axis: eleven cells");
 	T.AssertTrue(Flat.Cells.Num() == 11 && Flat.Cells[10].X == 10 && Flat.Cells[10].Y == 0, "the snapped line ends on (10,0)");
 
 	TArray<FIntPoint> None;
-	FHOLWallLinePlan Diagonal = HOLWallLine::Validate(FIntPoint(10, 10), FIntPoint(15, 13), WallLineMapMin, WallLineMapMax, None, 16);
+	HOLWallLine::FHOLWallLinePlan Diagonal = HOLWallLine::Validate(FIntPoint(10, 10), FIntPoint(15, 13), WallLineMapMin, WallLineMapMax, None, 16);
 	T.AssertEquals(5, Diagonal.Cells.Num(), "(10,10) -> (15,13) snaps to the diagonal, 4 steps: five cells");
 	T.AssertTrue(Diagonal.Cells.Num() == 5 && Diagonal.Cells[4].X == 14 && Diagonal.Cells[4].Y == 14, "the snapped diagonal ends on (14,14)");
 }
@@ -151,39 +151,39 @@ void Test_WallLineValidateOccupiedCellRefusesTheLine(FUnitTest& T)
 {
 	TArray<FIntPoint> Taken;
 	Taken.Add(FIntPoint(5, 5));
-	FHOLWallLinePlan Plan = HOLWallLine::Validate(FIntPoint(2, 5), FIntPoint(8, 5), WallLineMapMin, WallLineMapMax, Taken, 16);
-	T.AssertTrue(Plan.Refusal == EHOLWallLineRefusal::Occupied, "a building on (5,5) refuses the line");
+	HOLWallLine::FHOLWallLinePlan Plan = HOLWallLine::Validate(FIntPoint(2, 5), FIntPoint(8, 5), WallLineMapMin, WallLineMapMax, Taken, 16);
+	T.AssertTrue(Plan.Refusal == HOLWallLine::EHOLWallLineRefusal::Occupied, "a building on (5,5) refuses the line");
 	T.AssertEquals(0, Plan.Cells.Num(), "all or nothing: no cell is laid");
 	T.AssertTrue(Plan.BadCell.X == 5 && Plan.BadCell.Y == 5, "the refusal names the occupied cell");
 
 	TArray<FIntPoint> Beside;
 	Beside.Add(FIntPoint(5, 6));
-	FHOLWallLinePlan Free = HOLWallLine::Validate(FIntPoint(2, 5), FIntPoint(8, 5), WallLineMapMin, WallLineMapMax, Beside, 16);
-	T.AssertTrue(Free.Refusal == EHOLWallLineRefusal::Ok && Free.Cells.Num() == 7, "a building on the next row does not refuse");
+	HOLWallLine::FHOLWallLinePlan Free = HOLWallLine::Validate(FIntPoint(2, 5), FIntPoint(8, 5), WallLineMapMin, WallLineMapMax, Beside, 16);
+	T.AssertTrue(Free.Refusal == HOLWallLine::EHOLWallLineRefusal::Ok && Free.Cells.Num() == 7, "a building on the next row does not refuse");
 }
 
 // A line that leaves the map is refused whole, even when only its last cell is outside.
 void Test_WallLineValidateOutOfMapRefusesTheLine(FUnitTest& T)
 {
 	TArray<FIntPoint> None;
-	FHOLWallLinePlan Plan = HOLWallLine::Validate(FIntPoint(60, 10), FIntPoint(64, 10), WallLineMapMin, WallLineMapMax, None, 16);
-	T.AssertTrue(Plan.Refusal == EHOLWallLineRefusal::OutOfMap, "(64,10) is outside 0..63: refused");
+	HOLWallLine::FHOLWallLinePlan Plan = HOLWallLine::Validate(FIntPoint(60, 10), FIntPoint(64, 10), WallLineMapMin, WallLineMapMax, None, 16);
+	T.AssertTrue(Plan.Refusal == HOLWallLine::EHOLWallLineRefusal::OutOfMap, "(64,10) is outside 0..63: refused");
 	T.AssertEquals(0, Plan.Cells.Num(), "no cell is laid");
 	T.AssertTrue(Plan.BadCell.X == 64 && Plan.BadCell.Y == 10, "the refusal names the first cell outside");
-	FHOLWallLinePlan Edge = HOLWallLine::Validate(FIntPoint(60, 10), FIntPoint(63, 10), WallLineMapMin, WallLineMapMax, None, 16);
-	T.AssertTrue(Edge.Refusal == EHOLWallLineRefusal::Ok && Edge.Cells.Num() == 4, "the last cell of the map is inside");
+	HOLWallLine::FHOLWallLinePlan Edge = HOLWallLine::Validate(FIntPoint(60, 10), FIntPoint(63, 10), WallLineMapMin, WallLineMapMax, None, 16);
+	T.AssertTrue(Edge.Refusal == HOLWallLine::EHOLWallLineRefusal::Ok && Edge.Cells.Num() == 4, "the last cell of the map is inside");
 }
 
 // Too long: a drag longer than the cap is refused (not trimmed, unlike Cells); exactly the cap is accepted; a cap of 0 refuses everything.
 void Test_WallLineValidateTooLongRefusesTheLine(FUnitTest& T)
 {
 	TArray<FIntPoint> None;
-	FHOLWallLinePlan Over = HOLWallLine::Validate(FIntPoint(0, 0), FIntPoint(5, 0), WallLineMapMin, WallLineMapMax, None, 5);
-	T.AssertTrue(Over.Refusal == EHOLWallLineRefusal::TooLong, "6 cells with a cap of 5: refused");
+	HOLWallLine::FHOLWallLinePlan Over = HOLWallLine::Validate(FIntPoint(0, 0), FIntPoint(5, 0), WallLineMapMin, WallLineMapMax, None, 5);
+	T.AssertTrue(Over.Refusal == HOLWallLine::EHOLWallLineRefusal::TooLong, "6 cells with a cap of 5: refused");
 	T.AssertEquals(0, Over.Cells.Num(), "no cell is laid, the line is not trimmed");
 	T.AssertTrue(Over.BadCell.X == 5 && Over.BadCell.Y == 0, "the refusal names the first cell past the cap");
-	FHOLWallLinePlan Exact = HOLWallLine::Validate(FIntPoint(0, 0), FIntPoint(4, 0), WallLineMapMin, WallLineMapMax, None, 5);
-	T.AssertTrue(Exact.Refusal == EHOLWallLineRefusal::Ok && Exact.Cells.Num() == 5, "5 cells with a cap of 5: accepted");
-	FHOLWallLinePlan Zero = HOLWallLine::Validate(FIntPoint(0, 0), FIntPoint(0, 0), WallLineMapMin, WallLineMapMax, None, 0);
-	T.AssertTrue(Zero.Refusal == EHOLWallLineRefusal::TooLong && Zero.Cells.Num() == 0, "a cap of 0 refuses even one cell");
+	HOLWallLine::FHOLWallLinePlan Exact = HOLWallLine::Validate(FIntPoint(0, 0), FIntPoint(4, 0), WallLineMapMin, WallLineMapMax, None, 5);
+	T.AssertTrue(Exact.Refusal == HOLWallLine::EHOLWallLineRefusal::Ok && Exact.Cells.Num() == 5, "5 cells with a cap of 5: accepted");
+	HOLWallLine::FHOLWallLinePlan Zero = HOLWallLine::Validate(FIntPoint(0, 0), FIntPoint(0, 0), WallLineMapMin, WallLineMapMax, None, 0);
+	T.AssertTrue(Zero.Refusal == HOLWallLine::EHOLWallLineRefusal::TooLong && Zero.Cells.Num() == 0, "a cap of 0 refuses even one cell");
 }
