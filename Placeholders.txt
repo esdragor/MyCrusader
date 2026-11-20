@@ -195,3 +195,6 @@ Un chantier ne se clôt pas sans avoir relu ce fichier.
 Depart Nomade (D797 : carte entiere, ScatterRadiusCm 0) : ecart hol.Nomad.GroupSpacingCm 1500 provisoires (D207 dit 'endroits aleatoires de la carte'), HALDIR-1114c
 Specialisation (SP3) : libelles Voie A / Voie B du palier N dans la grille du Forum, provisoires (noms GDD 13 par faction a brancher)
 Slot de faction (jauge Honneur) : texte + barre jaune + une ligne par pouvoir, position = coin bas gauche + 150 px (FactionSlotRise), sans icone ni libelle de la table de textes.
+Son d'alerte mineure (Population pleine, attaque ailleurs) : ping 1 kHz du moteur (/Engine/EngineSounds/1kSineTonePing), pas un son choisi, GALADRIEL-1120c [son]
+Marque du signal qui pulse (sol et mini-carte) : bornes 0,8 a 1,4 et 3 cycles (cvars hol.Signal.PulseMin/PulseMax/MarkCycles, style hol.Signal.MarkStyle) provisoires, D860, GLORFINDEL-1120b [style]
+Sceau de lumiere (zone au sol) : aucun visuel, aucun son ; le pouvoir n'a pas de bouton (visee C++ faite, boutons a brancher), valeurs D859, FARAMIR-1120a/e [rien]
