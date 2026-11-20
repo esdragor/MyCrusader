@@ -40,6 +40,52 @@ namespace UE::HeroesOfLiberty::Tests::Mouse
 		virtual void OnOpening() override { ++Openings; }
 		virtual void OnClosed() override {}
 	};
+
+	/** Records the left button's press, the moves made while it is held and the release (screen space), and captures the mouse as a drag handle does. */
+	class SDragRecorder : public SCompoundWidget
+	{
+	public:
+		SLATE_BEGIN_ARGS(SDragRecorder) {}
+		SLATE_END_ARGS()
+
+		void Construct(const FArguments&) {}
+
+		TArray<FVector2D> Presses;
+		TArray<FVector2D> HeldMoves;
+		TArray<FVector2D> Releases;
+		bool bDown = false;
+
+		virtual FReply OnMouseButtonDown(const FGeometry&, const FPointerEvent& Event) override
+		{
+			if (Event.GetEffectingButton() != EKeys::LeftMouseButton)
+			{
+				return FReply::Unhandled();
+			}
+			bDown = true;
+			Presses.Add(FVector2D(Event.GetScreenSpacePosition()));
+			return FReply::Handled().CaptureMouse(AsShared());
+		}
+
+		virtual FReply OnMouseMove(const FGeometry&, const FPointerEvent& Event) override
+		{
+			if (bDown)
+			{
+				HeldMoves.Add(FVector2D(Event.GetScreenSpacePosition()));
+			}
+			return FReply::Handled();
+		}
+
+		virtual FReply OnMouseButtonUp(const FGeometry&, const FPointerEvent& Event) override
+		{
+			if (Event.GetEffectingButton() != EKeys::LeftMouseButton)
+			{
+				return FReply::Unhandled();
+			}
+			bDown = false;
+			Releases.Add(FVector2D(Event.GetScreenSpacePosition()));
+			return FReply::Handled().ReleaseMouseCapture();
+		}
+	};
 }
 
 // L14-5 (real gestures): the scripts' mouse goes through Slate's platform entry points. In a real window (out of the desktop's
@@ -124,6 +170,74 @@ bool FHOLUIMouseClickHoverTest::RunTest(const FString& Parameters)
 	{
 		AddInfo(TEXT("application inactive: Slate opens no tooltip, the tooltip's opening is not checked"));
 	}
+	return true;
+}
+
+// hol.Mouse.Drag (FARAMIR-1120pf): the widget under the drag receives the press at the start, at least one move while the button is
+// held (strictly between the two ends: the intermediate positions of the frames) and the release at the end, in that order, through the
+// same Slate entry points as Click. The ticker is stepped by hand, as the engine's loop does each frame.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLUIMouseDragTest, "HeroesOfLiberty.UI.Mouse.Drag",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FHOLUIMouseDragTest::RunTest(const FString& Parameters)
+{
+	namespace HOLMouse = UE::HeroesOfLiberty::UI::Mouse;
+	if (!FSlateApplication::IsInitialized())
+	{
+		AddError(TEXT("no Slate application"));
+		return false;
+	}
+	FSlateApplication& Slate = FSlateApplication::Get();
+	TSharedPtr<UE::HeroesOfLiberty::Tests::Mouse::SDragRecorder> Recorder;
+	const TSharedRef<SWindow> Window = SNew(SWindow)
+		.Title(INVTEXT("HOL mouse drag test"))
+		.CreateTitleBar(false)
+		.UseOSWindowBorder(false)
+		.HasCloseButton(false)
+		.SupportsMaximize(false)
+		.SupportsMinimize(false)
+		.SizingRule(ESizingRule::FixedSize)
+		.AutoCenter(EAutoCenter::None)
+		.ScreenPosition(FVector2D(-12000.0, -12000.0))
+		.ClientSize(FVector2D(320.0, 160.0))
+		.ActivationPolicy(EWindowActivationPolicy::Never)
+		.FocusWhenFirstShown(false)
+		[
+			SAssignNew(Recorder, UE::HeroesOfLiberty::Tests::Mouse::SDragRecorder)
+		];
+	Slate.AddWindow(Window, true);
+	ON_SCOPE_EXIT
+	{
+		HOLMouse::RestorePlatformCursor();
+		FSlateApplication::Get().DestroyWindowImmediately(Window);
+	};
+	Window->SlatePrepass(Slate.GetApplicationScale() * Window->GetDPIScaleFactor());
+	{
+		FSlateWindowElementList Elements(Window);
+		Window->PaintWindow(Slate.GetCurrentTime(), 0.f, Elements, FWidgetStyle(), true);
+	}
+
+	const FVector2D Centre = HOLMouse::GetCentre(*Recorder);
+	const FVector2D Start = Centre + FVector2D(-100.0, 0.0);
+	const FVector2D End = Centre + FVector2D(100.0, 30.0);
+	HOLMouse::Drag(Start, End, 4);
+	TestEqual(TEXT("the press is made at once, before any frame"), Recorder->Presses.Num(), 1);
+	for (int32 Frame = 0; Frame < 8; ++Frame)
+	{
+		FTSTicker::GetCoreTicker().Tick(1.f / 60.f);
+	}
+	TestEqual(TEXT("the widget under the start receives exactly one press"), Recorder->Presses.Num(), 1);
+	if (Recorder->Presses.Num() == 1)
+	{
+		TestTrue(TEXT("the press is at the start of the drag"), Recorder->Presses[0].Equals(Start, 1.0));
+	}
+	TestTrue(TEXT("at least one move arrives while the button is held, between the two ends"),
+		Recorder->HeldMoves.ContainsByPredicate([&](const FVector2D& Position) { return Position.X > Start.X + 1.0 && Position.X < End.X - 1.0; }));
+	TestEqual(TEXT("the widget receives exactly one release"), Recorder->Releases.Num(), 1);
+	if (Recorder->Releases.Num() == 1)
+	{
+		TestTrue(TEXT("the release is at the end of the drag"), Recorder->Releases[0].Equals(End, 1.0));
+	}
+	TestFalse(TEXT("the button is released at the end"), Recorder->bDown);
 	return true;
 }
 

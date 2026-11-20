@@ -23,6 +23,12 @@ namespace UE::HeroesOfLiberty::UI::Mouse
 	/** A left click at Position: the move there, then the press and the release. */
 	HEROESOFLIBERTYUI_API void Click(const FVector2D& Position);
 
+	/**
+	 * A left-button drag: the press at Start now, then one move per frame over Frames frames (the cursor goes from Start to End in equal
+	 * steps), and on the last frame the move to End and the release at End. Frames is clamped to 1..600.
+	 */
+	HEROESOFLIBERTYUI_API void Drag(const FVector2D& Start, const FVector2D& End, int32 Frames);
+
 	/** Gives the cursor user back the platform's cursor (the desktop's mouse). */
 	HEROESOFLIBERTYUI_API void RestorePlatformCursor();
 

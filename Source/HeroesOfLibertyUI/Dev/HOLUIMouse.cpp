@@ -85,6 +85,11 @@ namespace UE::HeroesOfLiberty::UI::Mouse
 		Slate.ProcessMouseButtonUpEvent(MakeEvent(*User, Point, Point, EKeys::LeftMouseButton));
 	}
 
+	void Drag(const FVector2D& Start, const FVector2D& End, int32 Frames)
+	{
+		// Stub (red test first): no press, no move, no release.
+	}
+
 	void RestorePlatformCursor()
 	{
 		if (bScriptCursor && FSlateApplication::IsInitialized())
