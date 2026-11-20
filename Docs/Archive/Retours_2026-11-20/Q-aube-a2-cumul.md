@@ -9,3 +9,5 @@ Contexte : D19 redirige une part des dégâts d'un allié vers le Chevalier Vert
 
 **Recommandation : A** (lisible, pas d'empilement, cohérent avec « le héros reste quasi-intuable évité » de D19).
 **Valeur par défaut codée** : `HOLDamageRedirect::DefaultCumulMode = ECumulMode::Nearest` (`Source\HeroesOfLiberty\Simulation\HOLDamageRedirectRules.h`, une ligne ; le plafond `CapPercent` est un paramètre de l'appel, 50 dans les tests).
+
+Reponse: (2026-11-20 ~12:30, interface de choix) A : le Chevalier le plus proche seul (`ECumulMode::Nearest`, défaut codé déjà). Voir GDD D864.

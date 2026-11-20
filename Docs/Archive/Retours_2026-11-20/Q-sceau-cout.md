@@ -15,3 +15,5 @@ Aujourd'hui le code (`HOLFactionPowerCast::Decide`, FARAMIR-1120c) fait payer le
 **Recommandation : C.** D687 présente le Sceau comme une capacité du Moine (cadre de capacités, recharge de 40 s déjà posée dans `HOLUnitAbilityTable`) ; l'Honneur est déjà gagné par ce même Moine en soignant (+1 par 50 PV), et faire payer le sort de zone avec le soin de zone par la même jauge de 100 rendrait les deux pouvoirs concurrents. Si l'utilisateur veut quand même une dépense, A (25) garde le moins de surprises.
 
 Valeur par défaut codée : aucune (en pratique le code paie 25 via la ligne 0 du livre, par accident, jusqu'à la réponse).
+
+Reponse: (2026-11-20 ~12:30, interface de choix) C : le Sceau de lumière ne coûte AUCUN Honneur ; capacité du Moine seule (cadre des capacités du Moine, un bouton par Moine, recharge 40 s, ligne `LightSeal` de `HOLUnitAbilityTable`), pas un pouvoir du livre de faction. Voir GDD D862.

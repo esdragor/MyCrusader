@@ -13,3 +13,5 @@ Rayon du passif (cm) :
 
 **Recommandation : 30 % et 8 m** (l'actif à 100 % sur 8 m reste clairement plus fort ; même rayon donc un seul anneau au sol à la sélection).
 **Valeur par défaut codée** : non codée dans la règle (paramètres) ; les tests utilisent 30 % et 5 m à titre d'exemple d'appel seulement ; la valeur de table viendra avec la sous-étape « champ de table + anneau », réglable après essai (D345).
+
+Reponse: (2026-11-20 ~12:30, interface de choix) 30 % et 8 m pour le passif du Défi du Chevalier (recommandation retenue). Voir GDD D865.

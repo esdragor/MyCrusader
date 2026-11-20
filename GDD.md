@@ -3679,4 +3679,18 @@ La courbe d'XP (Q04) reste à régler en test.
 
 **D861** (Siège, engin qui se monte et se démonte, complète la règle du montage du Palier 3 ; 2026-11-19 ~22:55, réponse de l'utilisateur à l'essai `deploy` : BUG) : un ordre donné à un engin dans le mauvais état **n'est jamais perdu** : (a) engin **démonté** + ordre d'attaque sur une cible à portée : il **se monte puis attaque** (aujourd'hui il se déplace seulement) ; (b) engin **monté** + ordre de déplacement : il **se démonte puis part de lui-même**, sans second clic (aujourd'hui il se démonte et attend un nouvel ordre). `Palier3InProgress.md`.
 
-Prochain numéro : **D862**.
+**D862** (Sceau de lumière, complète D687 et D859 ; 2026-11-20 ~12:30, réponse de l'utilisateur à `Q-sceau-cout`, option C) : le Sceau de lumière du Moine Lumineux ne coûte **aucun Honneur** ; c'est une capacité du Moine seule (cadre des capacités du Moine, un bouton par Moine, recharge 40 s, ligne `LightSeal` de `HOLUnitAbilityTable`), pas un pouvoir du livre de faction ni de la jauge. À corriger : `HOLFactionPowerCast` / `ServerCastFactionPower` paient aujourd'hui la ligne 0 du livre (accident) ; la pose du Sceau passe par les capacités d'unité. Fiche archivée `Docs\Archive\Retours_2026-11-20\Q-sceau-cout.md` ; `AubeInProgress.md`.
+
+**D863** (Brigands, complète D858 ; 2026-11-20 ~12:30, réponse à `Q-brigands-lancier`, option A) : les Brigands gardent le Lancier (`Camps.csv` garde `Spearman`), aucun changement. Fiche : `Docs\Archive\Retours_2026-11-20\Q-brigands-lancier.md` ; `NeutralsInProgress.md`.
+
+**D864** (Défi du Chevalier passif, cumul, complète D19 ; 2026-11-20 ~12:30, réponse à `Q-aube-a2-cumul`, option A) : avec plusieurs Chevaliers proches du même allié, **le Chevalier le plus proche seul** prend la part redirigée (`ECumulMode::Nearest`, égalité : le plus petit identifiant), pas de cumul. Fiche : `Docs\Archive\Retours_2026-11-20\Q-aube-a2-cumul.md` ; `AubeInProgress.md`.
+
+**D865** (Défi du Chevalier passif, valeurs, complète D19 et D859 ; 2026-11-20 ~12:30, réponse à `Q-aube-a2-valeurs`) : le passif redirige **30 %** des dégâts de l'allié, dans un rayon de **8 m** (l'actif de D859 reste à 100 % sur 8 m) ; valeurs dans la table (`FHOLUnitTypeConstants`), réglables après essai (D345). Fiche : `Docs\Archive\Retours_2026-11-20\Q-aube-a2-valeurs.md` ; `AubeInProgress.md`.
+
+**D866** (Moteur de moral, complète D704-D709 ; 2026-11-20 ~12:30, réponse à `Q-moral-valeurs` : « défaut partout ») : Q1 A, le C++ est la **seule source** du moteur (M3), `HOLMoraleRules.as` devient un habillage du pont (ses 15 tests restent) ; Q2 A, centre de l'arène (Hésitation autour du héros qui refuse) ; Q3 A, bonus **additifs** ; Q4 A, la Rage nécrotique passe par le moteur (coût en PV, recharge, arrêt à 20 PV restent à part) ; Q5 A, cadence = intervalle × 100 / (100 + bonus) en entiers. Fiche : `Docs\Archive\Retours_2026-11-20\Q-moral-valeurs.md` ; `MoraleInProgress.md`.
+
+**D867** (Murs en ligne, complète D691 ; 2026-11-20 ~12:30, réponse à `Q-mur-ligne-longueur`) : **pas de plafond de longueur** pour une file posée d'un glisser (`hol.Wall.MaxLineCells` : 0 ou très grande valeur = sans limite) ; mais un mur ne se pose pas directement : **chaque case de la file est un chantier (fondation / fantôme)** que des Paysans doivent bâtir, comme tout bâtiment. À vérifier : `ServerPlaceWallLine` pose des fondations à construire, jamais des murs finis. Fiche : `Docs\Archive\Retours_2026-11-20\Q-mur-ligne-longueur.md` ; `FortificationsInProgress.md`.
+
+**D868** (Spécialisation, 3e case, complète D131 ; 2026-11-20 ~12:30, réponse à `Q-specialization-troisieme-case`, option B) : les trois voies des Templiers occupent les **cases 5, 6, 7** de la grille du Forum (aucune recherche masquée) ; une ligne dans `GetSpecializationCell` (C++). Fiche : `Docs\Archive\Retours_2026-11-20\Q-specialization-troisieme-case.md` ; `SpecializationInProgress.md`.
+
+Prochain numéro : **D869**.

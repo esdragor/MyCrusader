@@ -15,3 +15,5 @@ Aujourd'hui aucune valeur n'est codée : le paramètre `MaxCells` est obligatoir
 **Recommandation : A (16).** Le coût est payé segment par segment (FQ-3) : un plafond court limite l'erreur de geste ; Shift enchaîne déjà les fondations, donc un long mur reste faisable ; la valeur est un seul réglage, facile à relever après essai.
 
 Valeur par défaut codée (HALDIR-1120i) : cvar `hol.Wall.MaxLineCells` = 16 (option A), lu par `ServerPlaceWallLine` ; B = `hol.Wall.MaxLineCells 32`, C = une très grande valeur.
+
+Reponse: (2026-11-20 ~12:30, interface de choix) Pas de plafond, mais un mur ne se pose pas directement : c'est comme pour tout chantier, c'est un fantôme qu'il faut construire. Voir GDD D867.
