@@ -58,7 +58,9 @@ def main():
         # The effect and hit-point checks are those of a self ability (the rage: a morale effect on the caster, blows that cost hit points).
         # An aimed ability (the Light Seal, D859 step 1c) lays a zone: its slow is simulation C++ (the lot), no morale row yet, so its Effect may be
         # empty (and then its three hit-point columns are 0); if it names an effect, that effect must be a real Temporary row of its own time.
-        if row["Target"] == "Self":
+        # An aura (D875, the Knight's challenge) is a Self row with a radius: a zone centred on the caster, no morale effect and no hit-point cost yet.
+        aura = row["Target"] == "Self" and number(row["RadiusCm"]) > 0
+        if row["Target"] == "Self" and not aura:
             effect = effects.get(row.get("Effect"))
             check(effect is not None, "%s: Effect %s is a row of Effects.csv" % (name, row.get("Effect")))
             if effect is not None:
@@ -76,6 +78,8 @@ def main():
             check(number(row["HpCostPerHit"]) == 0 and number(row["MinHp"]) == 0 and number(row["StopHp"]) == 0, "%s: an aimed ability has no hit-point cost" % name)
         if row["Target"] == "Ground":
             check(number(row["RadiusCm"]) > 0 and number(row["RangeCm"]) > 0, "%s: an aimed ability has a zone radius and a throw range" % name)
+        elif aura:
+            check(number(row["RangeCm"]) == 0, "%s: an aura throws nothing (no range)" % name)
         else:
             check(number(row["RadiusCm"]) == 0 and number(row["RangeCm"]) == 0, "%s: a self ability has no zone and no range" % name)
         if unit is not None:

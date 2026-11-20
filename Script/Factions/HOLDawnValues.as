@@ -47,19 +47,20 @@ namespace HOLDawnValues
 		return 50;
 	}
 
-	// The Knight's challenge (provisional, no Knight unit type yet): duration (ms), zone radius (cm) centred on the Knight, cool-down (ms).
+	// The Knight's challenge (D875): the row KnightChallenge of Tools/Data/UnitAbilities.csv is the ONE source (D839); duration (ms), zone radius (cm)
+	// centred on the Knight, cool-down (ms).
 	int KnightChallengeDurationMs()
 	{
-		return 8000;
+		return HOLUnitAbilityTable::Row(HOLUnitAbilityTable::KnightChallenge).DurationMs;
 	}
 
 	int RadiusCm()
 	{
-		return 800;
+		return HOLUnitAbilityTable::Row(HOLUnitAbilityTable::KnightChallenge).RadiusCm;
 	}
 
 	int CooldownMs()
 	{
-		return 45000;
+		return HOLUnitAbilityTable::Row(HOLUnitAbilityTable::KnightChallenge).CooldownMs;
 	}
 }

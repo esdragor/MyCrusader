@@ -2,9 +2,10 @@
 // The table of the unit abilities, one row per ability; HOLUnitAbilityRules_Test.as checks its coherence. Ids are the CSV's row order.
 namespace HOLUnitAbilityTable
 {
-	const int Count = 2;
+	const int Count = 3;
 	const int NecroticRage = 0;
 	const int LightSeal = 1;
+	const int KnightChallenge = 2;
 
 	// What an ability is aimed at (the Target column): the caster itself, or a point on the ground (zone of RadiusCm, thrown from at most RangeCm).
 	const int TargetSelf = 0;
@@ -63,6 +64,22 @@ namespace HOLUnitAbilityTable
 			R.RangeCm = 800;
 			return R;
 		}
+		if (Id == 2)
+		{
+			R.Key = "KnightChallenge";
+			R.UnitType = "VirtuousKnight";
+			R.Faction = "Dawn";
+			R.Effect = "";
+			R.CooldownMs = 45000;
+			R.DurationMs = 8000;
+			R.HpCostPerHit = 0;
+			R.MinHp = 0;
+			R.StopHp = 0;
+			R.Target = 0;
+			R.RadiusCm = 800;
+			R.RangeCm = 0;
+			return R;
+		}
 		return R;
 	}
 
@@ -70,6 +87,7 @@ namespace HOLUnitAbilityTable
 	{
 		if (Id == 0) return NSLOCTEXT("HOLUnitAbilityTable", "NameNecroticRage", "Rage nécrotique");
 		if (Id == 1) return NSLOCTEXT("HOLUnitAbilityTable", "NameLightSeal", "Sceau de lumière");
+		if (Id == 2) return NSLOCTEXT("HOLUnitAbilityTable", "NameKnightChallenge", "Défi du Chevalier");
 		return FText();
 	}
 
@@ -77,6 +95,7 @@ namespace HOLUnitAbilityTable
 	{
 		if (Id == 0) return NSLOCTEXT("HOLUnitAbilityTable", "DescriptionNecroticRage", "Le Guerrier damné se jette dans le combat pendant 10 s : 40 % de dégâts en plus, 25 % de cadence en plus, au prix de 3 PV par coup porté. Refusée sous 30 PV, elle s'arrête à 20 PV ; recharge de 40 s.");
 		if (Id == 1) return NSLOCTEXT("HOLUnitAbilityTable", "DescriptionLightSeal", "Le Moine pose un sceau de lumière sur le sol, à 8 m au plus de lui : une zone de 6 m de rayon qui dure 10 s ; recharge de 40 s. (Le ralentissement des ennemis de la zone est une règle de simulation, pas encore branchée.)");
+		if (Id == 2) return NSLOCTEXT("HOLUnitAbilityTable", "DescriptionKnightChallenge", "Le Chevalier vertueux lance un défi : pendant 8 s, les ennemis à 8 m ou moins de lui sont défiés ; recharge de 45 s. (Le ralentissement, la provocation sont des règles de simulation, pas encore branchées.)");
 		return FText();
 	}
 

@@ -1,0 +1,47 @@
+# Chevalier Vertueux (D873 : ligne E de la grille de la Caserne Aube ; D864 / D865 : un allie dans le rayon d'un Chevalier ne garde qu'une part du coup, le Chevalier encaisse le reste). Toi (slot 0, Aube) contre une IA gelee (slot 1). 3 minutes au plus.
+# branches: tool-known-reds (HOLCombatProcessor.cpp : GetDamageRedirect / ApplyDamageRedirect, lignes 728-770 et 3165-3170 de cette branche) ; la ligne E de la Caserne (D873) est sur la branche qui porte BuildingTypes.csv avec VirtuousKnight dans Produces (c'est le cas sur tool-known-reds).
+# Journal attendu EXACT (HOLCombatProcessor.cpp, branche tool-known-reds, LogHits 1) : "Combat: step <N> #<id allie> <Type allie> hits ..." n'est PAS la ligne utile ; la ligne utile est celle du coup SUR l'allie : "Combat: step <N> #<id ennemi> Spearman hits #<id allie> <Type allie> for <Dealt>, <PV allie apres> HP left" ou <PV allie apres> = PV avant - Kept (Kept = Dealt - parts redirigees). Le Chevalier n'a AUCUNE ligne de journal pour la part qu'il encaisse (ApplyDamageRedirect retire les PV sans UE_LOG) : sa baisse ne se voit qu'au panneau (hol.HUD.Report apres clic sur lui). Le pourcentage et le rayon sont lus au lancement dans UnitTypes.csv (DamageRedirectPercent / DamageRedirectRadius) : non recopies ici.
+waitlog Starting hero of slot 0 spawned at
+hol.AI.ThinkSteps 100000
+hol.Cheat.Resources 5000
+hol.Cheat.Population 60
+hol.Combat.LogHits 1
+hol.Prod.BuildTime 2
+frames 2
+hol.Camera.FocusNear 2500 2500
+hol.Cheat.SpawnBuilding Barracks 0 2500 2500
+waitlog Cheat: spawned Barracks of slot 0
+hol.Camera.Zoom -2
+frames 40
+hol.Select.Category Military
+waitlog Selection: Barracks
+frames 20
+hol.HUD.Report
+waitlog E=VirtuousKnight
+note 1. La Caserne Aube est selectionnee : la ligne E de sa grille est le Chevalier Vertueux (touche E).
+capture virtuous_knight_grid
+waitkey Entree : je mets un Chevalier Vertueux et un Lancier allie face a trois ennemis
+# Un Chevalier et un allie cote a cote (rayon du Chevalier), les ennemis a portee de l'allie. Spawn direct : la grille est montree au-dessus ; le geste reel de la touche E est le modele neutrals_qground (hol.UI.Key E 0 0.1) a ajouter quand la case est vue.
+hol.Camera.FocusNear 5000 -1500
+frames 2
+hol.Units.SpawnHere 1 VirtuousKnight 0 120
+hol.Units.SpawnHere 1 Spearman 0 120
+hol.Camera.FocusNear 5000 -1100
+frames 2
+hol.Units.SpawnHere 3 Spearman 1 120
+waitunits 5
+hol.Select.ClickUnit 0
+waitlog Selection: VirtuousKnight
+hol.HUD.Report
+note 2. Le Chevalier est selectionne : note ses points de vie (panneau en bas). Les ennemis attaquent l'allie, pas lui.
+capture virtuous_knight_before
+waitlog hits
+frames 120
+hol.Select.ClickUnit 0
+waitlog Selection: VirtuousKnight
+hol.HUD.Report
+note 3. Apres quelques coups sur l'allie : les PV du Chevalier ont BAISSE (il encaisse une part des coups), alors qu'aucun ennemi ne l'a vise.
+capture virtuous_knight_hp
+hol.Test.Sanity
+note 4. A toi : fais reculer l'allie hors du rayon du Chevalier, les PV du Chevalier cessent de baisser.
+quit
