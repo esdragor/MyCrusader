@@ -83,6 +83,7 @@ Legions_Spearman_Health,Legions,Spearman,MaxHealth,777
 	const FName Dawn(TEXT("Dawn"));
 	const FName Legions(TEXT("Legions"));
 	const FName Spearman(TEXT("Spearman"));
+	const FName Halberdier(TEXT("Halberdier"));
 	const FName Peasant(TEXT("Peasant"));
 	const FName Monk(TEXT("Monk"));
 	const FName Chapel(TEXT("Chapel"));
@@ -422,8 +423,11 @@ bool FHOLZombieWorkerTest::RunTest(const FString& Parameters)
 }
 
 // L2 (LegionsInProgress.md, LQ-7): the effect of a faction's overrides, through the real chain: a Spearman ordered at a Barracks costs
-// its payer's faction's price (the Legions' 45 food 15 wood, the Dawn's own), takes its faction's time and places, and is BORN with its
-// faction's health (a made-up 777 in the fixture; the Dawn's stays the table's), and the Legions' own template is built for it only.
+// its payer's faction's price (the Legions' 45 food 15 wood), takes its faction's time and places, and is BORN with its
+// faction's health (a made-up 777 in the fixture), and the Legions' own template is built for it only.
+// D858: the Spearman is the Legions' alone (Faction column of UnitTypes.csv) and the Dawn's Barracks makes the Halberdier in its place:
+// each slot orders the spear unit its faction is open to (the test first checks that against the rules, FilterProduces on the
+// Barracks' own Produces list, then orders it), and the Dawn's price and health are the Halberdier row's.
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLFactionRosterTest, "HeroesOfLiberty.Match.Factions.Roster", UE::HeroesOfLiberty::Tests::Factions::Flags)
 bool FHOLFactionRosterTest::RunTest(const FString& Parameters)
 {
@@ -435,10 +439,25 @@ bool FHOLFactionRosterTest::RunTest(const FString& Parameters)
 	}
 	const FName Barracks(TEXT("Barracks"));
 	const FHOLUnitTypeRow* BaseSpearman = Test.Units->FindTypeRow(Spearman);
-	if (!TestNotNull(TEXT("the Spearman row"), BaseSpearman))
+	const FHOLUnitTypeRow* BaseHalberdier = Test.Units->FindTypeRow(Halberdier);
+	if (!TestNotNull(TEXT("the Spearman row"), BaseSpearman) || !TestNotNull(TEXT("the Halberdier row"), BaseHalberdier))
 	{
 		return false;
 	}
+
+	// D858 through the rules: the Barracks' grid shows the Halberdier to the Dawn (slot 0) and the Spearman to the Legions (slot 1), never the other.
+	const FHOLBuildingTypeRow* BarracksRow = UHOLBuildingSettings::FindType(Barracks);
+	if (!TestNotNull(TEXT("the Barracks row"), BarracksRow))
+	{
+		return false;
+	}
+	const TArray<FName> DawnGrid = HOLFactionRules::FilterProduces(Test.World, BarracksRow->Produces, 0);
+	const TArray<FName> LegionsGrid = HOLFactionRules::FilterProduces(Test.World, BarracksRow->Produces, 1);
+	TestTrue(TEXT("the Dawn's Barracks grid shows the Halberdier"), DawnGrid.Contains(Halberdier));
+	TestFalse(TEXT("the Dawn's Barracks grid does not show the Spearman (the Legions' alone)"), DawnGrid.Contains(Spearman));
+	TestTrue(TEXT("the Legions' Barracks grid shows the Spearman"), LegionsGrid.Contains(Spearman));
+	TestFalse(TEXT("the Legions' Barracks grid does not show the Halberdier (the Dawn's alone)"), LegionsGrid.Contains(Halberdier));
+	const FName SlotSpear[2] = { Halberdier, Spearman };
 
 	AHOLBuilding* Houses[2] = { nullptr, nullptr };
 	AHOLPlayerState* Payers[2] = { nullptr, nullptr };
@@ -455,7 +474,7 @@ bool FHOLFactionRosterTest::RunTest(const FString& Parameters)
 		FHOLProductionCommand Command;
 		Command.PlayerIndex = Slot;
 		Command.Building = Houses[Slot];
-		Command.TypeName = Spearman;
+		Command.TypeName = SlotSpear[Slot];
 		Test.Commands->IssueProductionOrder(Command);
 	}
 
@@ -463,13 +482,13 @@ bool FHOLFactionRosterTest::RunTest(const FString& Parameters)
 	Test.RunStep(1);
 	const FHOLResources Dawn0 = Payers[0]->GetResources();
 	const FHOLResources Legions1 = Payers[1]->GetResources();
-	TestEqual(TEXT("the Dawn's Barracks queued the Spearman"), Houses[0]->GetProductionQueue().Num(), 1);
+	TestEqual(TEXT("the Dawn's Barracks queued the Halberdier"), Houses[0]->GetProductionQueue().Num(), 1);
 	TestEqual(TEXT("the Legions' Barracks queued the Spearman"), Houses[1]->GetProductionQueue().Num(), 1);
-	TestEqual(TEXT("the Dawn paid the table's food"), 5000 - Dawn0.Food, BaseSpearman->Cost.Food);
-	TestEqual(TEXT("the Dawn paid the table's wood"), 5000 - Dawn0.Wood, BaseSpearman->Cost.Wood);
-	TestEqual(TEXT("the Legions paid 45 food (-25 %, Q-Legions-RosterValues = A)"), 5000 - Legions1.Food, 45);
+	TestEqual(TEXT("the Dawn paid the Halberdier table's food"), 5000 - Dawn0.Food, BaseHalberdier->Cost.Food);
+	TestEqual(TEXT("the Dawn paid the Halberdier table's wood"), 5000 - Dawn0.Wood, BaseHalberdier->Cost.Wood);
+	TestEqual(TEXT("the Legions paid 45 food (-25 % of the table's Spearman, Q-Legions-RosterValues = A)"), 5000 - Legions1.Food, 45);
 	TestEqual(TEXT("the Legions paid 15 wood"), 5000 - Legions1.Wood, 15);
-	TestTrue(TEXT("... under what the Dawn paid"), 5000 - Legions1.Food < 5000 - Dawn0.Food);
+	TestTrue(TEXT("... under what the table's Spearman costs"), 5000 - Legions1.Food < BaseSpearman->Cost.Food);
 
 	// With a fixture that gives the Legions' Spearman a health of 777: ordered, built, born with it.
 	{
@@ -489,7 +508,7 @@ bool FHOLFactionRosterTest::RunTest(const FString& Parameters)
 		TestEqual(TEXT("the Dawn's Spearman keeps the table's key"), Test.Units->GetTemplateKey(Spearman, Dawn), Spearman);
 
 		// Both queues run to their end (the time of an item is its payer's faction's), the births are served.
-		const int32 Steps = FMath::Max(Test.Production->GetCost(Spearman, 0).BuildSteps, Test.Production->GetCost(Spearman, 1).BuildSteps) + 3;
+		const int32 Steps = FMath::Max(Test.Production->GetCost(Halberdier, 0).BuildSteps, Test.Production->GetCost(Spearman, 1).BuildSteps) + 3;
 		for (int32 Step = 2; Step < Steps + 2; ++Step)
 		{
 			Test.RunStep(Step);
@@ -502,15 +521,15 @@ bool FHOLFactionRosterTest::RunTest(const FString& Parameters)
 		for (const uint32 Id : Ids)
 		{
 			FHOLUnitView View;
-			if (Test.Units->GetUnitView(Id, View) && View.TypeName == Spearman && View.OwnerPlayer >= 0 && View.OwnerPlayer < 2)
+			if (Test.Units->GetUnitView(Id, View) && View.OwnerPlayer >= 0 && View.OwnerPlayer < 2 && View.TypeName == SlotSpear[View.OwnerPlayer])
 			{
 				++NumBorn[View.OwnerPlayer];
 				Health[View.OwnerPlayer] = View.MaxHealth;
 			}
 		}
-		TestEqual(TEXT("the Dawn's Spearman was born"), NumBorn[0], 1);
+		TestEqual(TEXT("the Dawn's Halberdier was born"), NumBorn[0], 1);
 		TestEqual(TEXT("the Legions' Spearman was born"), NumBorn[1], 1);
-		TestEqual(TEXT("the Dawn's Spearman is born with the table's health"), Health[0], BaseSpearman->MaxHealth);
+		TestEqual(TEXT("the Dawn's Halberdier is born with the table's health"), Health[0], BaseHalberdier->MaxHealth);
 		TestEqual(TEXT("the Legions' Spearman is born with the Legions' health (777)"), Health[1], 777);
 	}
 	return true;
