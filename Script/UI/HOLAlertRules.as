@@ -13,8 +13,8 @@ struct FHOLPopulationAlertWatch
 
 namespace HOLAlertRules
 {
-	// D833: no new population full line sooner than this after the last one (at most one every 15 s; Q-alerts-minor's 30 s default is replaced).
-	const float PopulationRepeatSeconds = 15.0;
+	// Q-alerts-minor default A: no new population full line sooner than this after the last one (30 s). D833 is NOT a repeat delay: it is the line's display duration, PopulationFullLineSeconds (15 s) below.
+	const float PopulationRepeatSeconds = 30.0;
 
 	// Used counts the units in production too (D282); Cap the places the buildings give (175 at most, D03, D83).
 	bool IsPopulationFull(int Used, int Cap)
