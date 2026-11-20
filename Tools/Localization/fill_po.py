@@ -499,6 +499,9 @@ TRANSLATIONS = {
     # Galadriel L4 (2026-11-11): 17 keys imported by the GatherText without a translation. PROVISIONAL, EN and JA both are proposals for the user to read again ("Sacred Sites" and "Sacred Victory" are literal renderings: the GDD gives no English name).
     "HOLMoraleTable,NameNecroticRage": ("Necrotic Rage", "死霊の怒り"),
     "HOLMoraleTable,DescriptionNecroticRage": ("The Damned Warrior strikes 40% harder and 25% faster for 10 s (rage cast on demand, see UnitAbilities.csv).", "呪われた戦士は10秒間、40%強く、25%速く攻撃する（任意で発動する怒り。UnitAbilities.csv を参照）。"),
+    # Sauron 1120d (D859 step 1c): the Monk's Light Seal. EN and JA are proposals, to be read again by the user (JA: 光の封印).
+    "HOLUnitAbilityTable,NameLightSeal": ("Seal of Light", "光の封印"),
+    "HOLUnitAbilityTable,DescriptionLightSeal": ("The Monk lays a seal of light on the ground, at most 8 m from him: a zone of 6 m radius that lasts 10 s; 40 s cooldown. (Slowing the enemies in the zone is a simulation rule, not wired yet.)", "修道士は自身から8m以内の地面に光の封印を刻む：半径6mの領域が10秒間持続する。再使用まで40秒。（領域内の敵を減速させる効果はシミュレーション規則であり、まだ接続されていない。）"),
     "HOLUnitAbilityTable,NameNecroticRage": ("Necrotic Rage", "死霊の怒り"),
     "HOLUnitAbilityTable,DescriptionNecroticRage": ("The Damned Warrior throws itself into the fight for 10 s: 40% more damage, 25% more attack rate, at the cost of 3 HP per blow dealt. Refused under 30 HP, it stops at 20 HP; 40 s cooldown.", "呪われた戦士は10秒間、戦いに身を投じる：ダメージ+40%、攻撃速度+25%、攻撃1回ごとにHP3を失う。HPが30未満では使用不可、HP20で終了。再使用まで40秒。"),
     "HOLSiteBanner,Countdown": ("Sacred Victory: {0} in {1}", "聖なる勝利：{1}後に{0}"),
@@ -515,6 +518,8 @@ TRANSLATIONS = {
     "HOLGameScreen,TipHeroArmor": ("Hero armor: -{0} per hero blow taken\nSiege armor: -{1} per siege blow", "英雄防御：英雄の攻撃1回につき -{0}\n攻城防御：攻城兵器の攻撃1回につき -{1}"),
     "HOLGameScreen,TipSpeed": ("Speed: {0} m/s", "速度：{0} m/s"),
     "HOLGameNames,Spearman": ("Spearman", "槍兵"),
+    # Sauron 1120d (D859): the Dawn Halberdier. JA 戟兵 = the word already used by the tech stat keys below. JA is a proposal, to be read again by the user.
+    "HOLGameNames,Halberdier": ("Halberdier", "戟兵"),
     "HOLGameNames,ManAtArms": ("Man-at-Arms", "重装歩兵"),
     "HOLGameNames,Archer": ("Archer", "弓兵"),
     "HOLGameNames,Crossbowman": ("Crossbowman", "弩兵"),
