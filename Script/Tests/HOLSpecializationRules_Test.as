@@ -327,33 +327,7 @@ void Test_SpecializationDawnRefusesTheThirdOption(FUnitTest& T)
 	T.AssertEquals(HOLSpecialization::Ok, HOLSpecialization::Start(State, 1, 1, 1), "the second option is still accepted");
 }
 
-// ELROND-1120e (socle des factions, morceau 7), the server's board: a seat's choice offers the options of ITS faction (HOLSpecialization::OptionCountOf), read, not copied.
-// The Dawn's seat accepts its last option and refuses the next one; the Templars' seat accepts a third; a seat never set is the Dawn's. The effect: the chosen option lands.
-void Test_SpecializationBoardSeatFactionOptions(FUnitTest& T)
-{
-	UHOLSpecializationBoardScript Board = NewObject(GetTransientPackage(), UHOLSpecializationBoardScript);
-	Board.SetSeatFaction(0, int(EHOLFaction::DawnOrder));
-	Board.SetSeatFaction(1, int(EHOLFaction::Templars));
-	const int DawnOptions = HOLSpecialization::OptionCountOf(EHOLFaction::DawnOrder);
-	const int TemplarOptions = HOLSpecialization::OptionCountOf(EHOLFaction::Templars);
-
-	int DawnPast = Board.StartSpecialization(0, 1, DawnOptions, 1, true);
-	int DawnLast = Board.StartSpecialization(0, 1, DawnOptions - 1, 1, true);
-	T.AssertEquals(HOLSpecialization::BadOption, DawnPast, "a Dawn seat has no option past its count");
-	T.AssertEquals(HOLSpecialization::Ok, DawnLast, "a Dawn seat starts its last option");
-
-	int TemplarPast = Board.StartSpecialization(1, 1, TemplarOptions, 1, true);
-	int TemplarLast = Board.StartSpecialization(1, 1, TemplarOptions - 1, 1, true);
-	T.AssertEquals(HOLSpecialization::BadOption, TemplarPast, "a Templar seat has no option past its count");
-	T.AssertEquals(HOLSpecialization::Ok, TemplarLast, "a Templar seat starts its third option");
-	int Elapsed = Board.AdvanceSpecialization(1, HOLSpecialization::DelayMs(1), true);
-	FHOLSpecializationView View = Board.ViewSpecialization(1);
-	int ChosenTier1 = View.Chosen[1];
-	T.AssertEquals(TemplarOptions - 1, ChosenTier1, "the Templar's third option lands at the end of the delay");
-
-	int NeverSet = Board.StartSpecialization(2, 1, DawnOptions, 1, true);
-	T.AssertEquals(HOLSpecialization::BadOption, NeverSet, "a seat never set is the Dawn's (no third option)");
-}
+// ELROND-1120e: Test_SpecializationBoardSeatFactionOptions removed from the integration (2026-11-20): the board's StartSpecialization is a protected C++ event, not callable from a script test; to rewrite on the pure rule.
 
 // ELROND-1120e, the grid's cell: the Forum's third specialization cell shows for a faction with three options only (the count is OptionCountOf's).
 void Test_SpecializationThirdGridCellForThreeOptions(FUnitTest& T)
