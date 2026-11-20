@@ -41,10 +41,15 @@ namespace HOLDuelRewards
 		return Result;
 	}
 
-	// STUB (step 3a, red first): the orders of every duel that ended in one step; empty until the fix.
+	// The orders of every duel that ended in one step (what HOLDuel::Tick hands back), in the order of the list: the ledger keeps
+	// them in PendingMorale until the bridge to the simulation's morale applies them (MoraleInProgress.md M7).
 	TArray<FHOLDuelMoraleOrder> OrdersOfEnded(const FHOLDuelSettings& S, const TArray<FHOLDuelEnded>& Ended)
 	{
 		TArray<FHOLDuelMoraleOrder> Result;
+		for (int Index = 0; Index < Ended.Num(); Index++)
+		{
+			Result.Append(Orders(S, Ended[Index].Duel));
+		}
 		return Result;
 	}
 }

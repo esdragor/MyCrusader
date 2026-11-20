@@ -11,6 +11,10 @@ class UHOLDuelLedger : UHOLDuelSubsystem
 	FHOLDuelKitSettings KitSettings;
 	TArray<FHOLDuelKit> Kits;
 
+	// D7: the morale orders of the duels that ended, kept for the bridge to the simulation's morale (MoraleInProgress.md M7, not
+	// built yet: nothing applies them to the troops today).
+	TArray<FHOLDuelMoraleOrder> PendingMorale;
+
 	void EnsureBook()
 	{
 		if (bReady)
@@ -192,6 +196,7 @@ class UHOLDuelLedger : UHOLDuelSubsystem
 			Kits[Slot] = HOLDuelKit::Tick(Kits[Slot], DeltaMs);
 		}
 		TArray<FHOLDuelEnded> Ended = HOLDuel::Tick(Settings, Book, DeltaMs, Health);
+		PendingMorale.Append(HOLDuelRewards::OrdersOfEnded(Settings, Ended));
 		for (int Index = 0; Index < Ended.Num(); Index++)
 		{
 			Log("Duel ended: slots " + Ended[Index].Duel.Challenger + " and " + Ended[Index].Duel.Target + ", end " + int(Ended[Index].Duel.End) + ", winner " + Ended[Index].Duel.Winner);
