@@ -19,8 +19,7 @@ class UHOLDuelLedger : UHOLDuelSubsystem
 		AHOLGameState State = Cast<AHOLGameState>(Gameplay::GetGameState());
 		for (int Slot = 0; Slot < Kits.Num(); Slot++)
 		{
-			const FString FactionText = UHOLDiplomacyReadLibrary::GetSlotFactionText(this, Slot);
-			HasGauge.Add(State != nullptr && HOLFactionResource::HasResource(HOLDuelRewards::FactionOfText(FactionText)));
+			HasGauge.Add(State != nullptr && HOLFactionResource::HasResource(EHOLFaction(State.GetSlotFaction(Slot))));
 			Current.Add(State != nullptr ? State.GetFactionResource(Slot) : 0);
 		}
 	}
