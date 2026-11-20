@@ -174,12 +174,76 @@ struct FHOLFactionClickResult
 
 namespace HOLFactionSlot
 {
-	// STUB (red first): never does anything.
+	// The book's state as the word of a refusal line.
+	FString StateWord(EHOLPowerState State)
+	{
+		if (State == EHOLPowerState::Cooling)
+			return "cooling";
+		if (State == EHOLPowerState::ShortOfResource)
+			return "short";
+		if (State == EHOLPowerState::TierLocked)
+			return "tier";
+		if (State == EHOLPowerState::Soon)
+			return "soon";
+		return "ready";
+	}
+
+	// The click on the slot (see EHOLFactionClickKind): AimIndex is the box being aimed (-1 = none), BoxIndex the box clicked (Box only).
+	// Box: ready -> aim (the aimed box again cancels), not ready -> refuse with the aim unchanged, outside the book or empty slot -> nothing.
+	// Ground: aiming a box that is still ready -> cast and the aim ends; aiming one that stopped being ready -> cancel, no cast; no aim -> nothing.
+	// Escape: aiming -> cancel; else nothing.
 	FHOLFactionClickResult ClickPower(FHOLFactionSlotView View, int AimIndex, EHOLFactionClickKind Kind, int BoxIndex)
 	{
 		FHOLFactionClickResult Result;
 		Result.AimIndex = AimIndex;
 		Result.Describe = "nothing";
+		if (Kind == EHOLFactionClickKind::Escape)
+		{
+			if (AimIndex >= 0)
+			{
+				Result.Action = EHOLFactionClickAction::Cancel;
+				Result.AimIndex = -1;
+				Result.Describe = "cancel";
+			}
+			return Result;
+		}
+		if (Kind == EHOLFactionClickKind::Ground)
+		{
+			if (AimIndex < 0)
+				return Result;
+			Result.AimIndex = -1;
+			if (View.bVisible && AimIndex < View.Powers.Num() && View.Powers[AimIndex].State == EHOLPowerState::Ready)
+			{
+				Result.Action = EHOLFactionClickAction::Cast;
+				Result.CastIndex = AimIndex;
+				Result.Describe = f"cast {AimIndex}";
+			}
+			else
+			{
+				Result.Action = EHOLFactionClickAction::Cancel;
+				Result.Describe = "cancel";
+			}
+			return Result;
+		}
+		if (!View.bVisible || BoxIndex < 0 || BoxIndex >= View.Powers.Num())
+			return Result;
+		const EHOLPowerState State = View.Powers[BoxIndex].State;
+		if (State != EHOLPowerState::Ready)
+		{
+			Result.Action = EHOLFactionClickAction::Refuse;
+			Result.Describe = f"refuse {StateWord(State)}";
+			return Result;
+		}
+		if (BoxIndex == AimIndex)
+		{
+			Result.Action = EHOLFactionClickAction::Cancel;
+			Result.AimIndex = -1;
+			Result.Describe = "cancel";
+			return Result;
+		}
+		Result.Action = EHOLFactionClickAction::Aim;
+		Result.AimIndex = BoxIndex;
+		Result.Describe = f"aim {BoxIndex}";
 		return Result;
 	}
 }
