@@ -132,3 +132,54 @@ namespace HOLFactionSlot
 		return Make(Faction, Gauge, Rows, Cooldowns, 0, bHasSpecializationButton, bTierOpen);
 	}
 }
+
+// The click on the faction slot's power boxes (GALADRIEL-1120f). A click on a ready box enters the aim mode (AimIndex = the box); a click
+// on the ground while aiming casts that power there (the caller sends ServerCastFactionPower(Slot, CastIndex, Point), the server decides
+// again, HOLFactionPowerCast::Decide); Escape or the same box again cancels; a box that is not ready (cooling, short of gauge, tier,
+// soon = no coded effect) refuses and the aim does not change. Pure: the view in, the next aim and the action out.
+enum EHOLFactionClickKind
+{
+	// A click on the box number BoxIndex of the slot.
+	Box,
+	// A left click on the ground (the caller has the point).
+	Ground,
+	// The Escape key.
+	Escape,
+}
+
+enum EHOLFactionClickAction
+{
+	// Not for the slot (no aim, no box): the click goes on to the game as it did.
+	Nothing,
+	// The aim mode is entered or switched to AimIndex.
+	Aim,
+	// The aim is over with a cast: send the power CastIndex at the clicked point.
+	Cast,
+	// The aim is over without a cast.
+	Cancel,
+	// A box that cannot be used now was clicked.
+	Refuse,
+}
+
+struct FHOLFactionClickResult
+{
+	EHOLFactionClickAction Action = EHOLFactionClickAction::Nothing;
+	// The aim after the click (-1 = none).
+	int AimIndex = -1;
+	// The power to cast when Action is Cast, else -1.
+	int CastIndex = -1;
+	// "nothing", "aim 0", "cast 0", "cancel", "refuse cooling" (the book's state word).
+	FString Describe;
+}
+
+namespace HOLFactionSlot
+{
+	// STUB (red first): never does anything.
+	FHOLFactionClickResult ClickPower(FHOLFactionSlotView View, int AimIndex, EHOLFactionClickKind Kind, int BoxIndex)
+	{
+		FHOLFactionClickResult Result;
+		Result.AimIndex = AimIndex;
+		Result.Describe = "nothing";
+		return Result;
+	}
+}
