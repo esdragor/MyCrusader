@@ -90,8 +90,9 @@ namespace HOLFactionSlot
 	// The cool-down left (ms) of a power: its end time in the state (0 = ready) minus the server's time Now; 0 once over, never negative.
 	int CooldownLeft(int EndMs, int NowMs)
 	{
-		// STUB (red first): the end time is not read yet.
-		return 0;
+		if (EndMs <= 0 || EndMs <= NowMs)
+			return 0;
+		return EndMs - NowMs;
 	}
 
 	// The cool-down left of the slot's first Count powers, from the state's end times (GetPowerCooldownEndMs), at the server's time NowMs.
