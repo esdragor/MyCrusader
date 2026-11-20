@@ -8,6 +8,15 @@ Historique du test du 2026-10-30 : `Docs\Archive\Auto_Journey_Test1_2026-10-30.m
 
 **Relevé du 2026-11-15** : voir Docs\ReleveGDD_2026-11-15.md (état réel de A1-A4 et B1-B6, branchements C++ à faire, questions en attente). L'ancien relevé du 2026-11-12 est archivé dans Docs\Archive\Auto_Journey_Jour_Chapitres_GDD_releve_2026-11-12_archive_2026-11-15.md.
 
+## Agents du 2026-11-20
+
+SÉANCE DE FONCTIONS DU 2026-11-20 APRÈS-MIDI (« lance une autojourney », 15:32 -> 18:00, INTERACTIF). Réponses de l'utilisateur à 15:3x (interface de choix) : fin 18:00 (`Docs\SessionEnd.txt`) ; fusion dans main EN LOCAL si build PASS et tests verts sur le résultat exact, jamais de push ; mode interactif (veilleur 5 min, alarme de clôture 17:45) ; nettoyage 0a léger (un agent). check-list lue (L19) à 15:35, en entier, par la session principale, avant tout lancement d'agent de travail. État au lancement : main = a831674 (poussé), 8 worktrees à jour et compilés (rattrapage 14:30-15:31), tous IN_USE libres. Arwen = intégrateur (worktree d'intégration, ne code pas ; builds, tests, fusion par la session principale).
+
+| Agent | id | worktree | branche | tâche | C++ | lancé |
+|---|---|---|---|---|---|---|
+| NETTOYAGE-1120pm | a16f9e6f | MyCrusader (docs) | main | étape 0a légère : archive du matin, 4 lignes de file [x] ; FINI 15:36, commit 217b0ad | non | 15:34 |
+| ETAPE0-1120pm | a3551754 | MyCrusader (lecture seule) | main | étape 0 : plan de lancement, charge machine, integrate.ps1 ; rapport `Docs\Rapports\ETAPE0-1120pm.md` | non | 15:36 |
+
 ## Résumé de la séance de fonctions du 2026-11-20 matin
 
 - Séance autonome 08:45 -> arrêt ~13:01 à la demande de l'utilisateur, session principale + environ 50 agents Sonnet en 11 vagues ; quatre intégrations (integ-26 à integ-29), main 410cb7d -> 991a8bc, tests 1922/1922 (1817 au lancement : 105 tests neufs), `net` et `build` PASS, cinq essais donnés (VU À L'ÉCRAN), 0 question ouverte à la fin (7 réponses D862-D868 enregistrées).
