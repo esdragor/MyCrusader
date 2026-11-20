@@ -2971,8 +2971,37 @@ void AHOLPlayerController::AttackMoveAt(const FVector2D& ViewportFraction, const
 	OnAttackOrderGiven.Broadcast(Ground);
 }
 
-bool AHOLPlayerController::GetCursorGroundPoint(FVector& OutPoint) const
+// STUB (red test first, D839): the real bodies come with the next commit.
+void AHOLPlayerController::SetFactionAim(int32 Index, double RangeCm)
 {
+}
+
+int32 AHOLPlayerController::GetFactionAim() const
+{
+	return -1;
+}
+
+double AHOLPlayerController::GetFactionAimRangeCm() const
+{
+	return FactionAimRangeCm;
+}
+
+bool AHOLPlayerController::ConsumeFactionAimClick(FVector& OutPoint, int32& OutIndex)
+{
+	return false;
+}
+
+void AHOLPlayerController::ScriptEscape()
+{
+	HandleDeselect();
+}
+
+void AHOLPlayerController::ScriptRightClick()
+{
+	HandleOrder();
+}
+
+bool AHOLPlayerController::GetCursorGroundPoint(FVector& OutPoint) const{
 	FVector2D Fraction;
 	FVector Origin, Direction;
 	if (!RTSCamera || !GetCursorFraction(Fraction))

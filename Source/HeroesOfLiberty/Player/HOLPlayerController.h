@@ -438,7 +438,24 @@ public:
 	 * server checks the reach); a right click or Escape leaves it.
 	 */
 	bool IsBannerArmed() const { return bBannerArmed; }
-	/** The banner of the mode planted at a viewport point (a left click, or hol.Select.Banner). */
+	/**
+	 * Faction power aiming (D839, GALADRIEL-1120f): the aim of the faction power Index (-1: none). While it is armed a left click on
+	 * the ground never selects: it is kept for the script (ConsumeFactionAimClick), which casts or cancels. Escape, a right click
+	 * and any other order arming (banner, attack-move, placement) leave it. RangeCm: the reach drawn around the hero.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Faction")
+	void SetFactionAim(int32 Index, double RangeCm);
+	/** The faction power being aimed (-1: none). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Faction")
+	int32 GetFactionAim() const;
+	/** The reach given to the last SetFactionAim (cm), drawn by the selection markers while the aim is armed. */
+	double GetFactionAimRangeCm() const;
+	/** The ground click the aim kept (point and aimed power); true once, then it is emptied. The aim itself stays armed. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Faction")
+	bool ConsumeFactionAimClick(FVector& OutPoint, int32& OutIndex);
+	/** Scripted checks: the Escape key (HandleDeselect), and a right click press (HandleOrder). */
+	void ScriptEscape();
+	void ScriptRightClick();	/** The banner of the mode planted at a viewport point (a left click, or hol.Select.Banner). */
 	void PlantBannerAt(const FVector2D& ViewportFraction);
 	/** The player's own hero among the units commanded (the active subgroup's, J8c.4); 0 when he is not. */
 	uint32 GetCommandHero() const;
@@ -901,7 +918,11 @@ private:
 	bool bAttackMoveArmed = false;
 	/** Banner aiming (J8c.4): the next left click on the ground plants the hero's banner. */
 	bool bBannerArmed = false;
-	/** The builders' age chosen to the keys (the user's 1st trial of G.1; INDEX_NONE: none). */
+	/** Faction power aiming (D839): the aimed power (-1: none), the reach to draw, and the ground click kept for the script. */
+	int32 FactionAimIndex = -1;
+	double FactionAimRangeCm = 800.0;
+	bool bFactionAimClicked = false;
+	FVector FactionAimPoint = FVector::ZeroVector;	/** The builders' age chosen to the keys (the user's 1st trial of G.1; INDEX_NONE: none). */
 	int32 ChosenAge = INDEX_NONE;
 	void SetChosenAge(int32 Age);
 	/** Does what a key or a click of the builders' panels gives (HOLCommandGrid::PressKey, ClickAge), the chosen age after it. */
