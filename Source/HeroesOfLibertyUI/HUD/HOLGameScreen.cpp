@@ -1272,6 +1272,7 @@ void UHOLGameScreen::RefreshGrid(const AHOLBuilding* OwnBuilding, const bool bOw
 				LOCTEXT("HoldEffect", "N'attaque qu'à portée, ne poursuit pas"));
 			break;
 		case EHOLGridCommand::Deploy:
+		{
 			// G6 d: PROPOSED labels (Retours/Q-palier3-deploy-button.md); no icon yet, the cell shows its text (Placeholders.txt).
 			FText DeployFace; FName DeployKey; // D869b: the face while mounting / dismounting (label + bar), the settled label otherwise
 			const bool bChanging = ReadDeployFace(GetOwningPlayer(), DeployFace, DeployKey);
@@ -1281,6 +1282,7 @@ void UHOLGameScreen::RefreshGrid(const AHOLBuilding* OwnBuilding, const bool bOw
 				Command.bPack ? LOCTEXT("PackEffect", "Replie l'engin : il ne tire plus, il peut marcher")
 					: LOCTEXT("DeployEffect", "Installe l'engin : il tire, il ne marche plus"));
 			break;
+		}
 		case EHOLGridCommand::HeroAbility:
 		{
 			// J8c.4 (J8c-Q4): the hero's cry (A) and banner (Z). Greyed below its level (the level in its tooltip) or cooling

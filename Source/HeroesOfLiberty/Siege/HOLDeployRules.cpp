@@ -74,10 +74,6 @@ namespace HOLDeploy
 		return Shortened(Profile.PackMs, CounterweightPercent);
 	}
 
-	// D869b STUB (red test first): the real rule comes in the next commit.
-	int32 ButtonLabel(const EPhase Phase) { return 0; }
-
-	int32 ProgressPermille(const FState& State, const FProfile& Profile, const int32 CounterweightPercent) { return -1; }
 	int32 ButtonLabel(const EPhase Phase)
 	{
 		switch (Phase)
