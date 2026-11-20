@@ -10,6 +10,11 @@ struct FHOLDuelMoraleOrder
 	int EffectId = -1;
 	int DurationMs = 0;
 	int RadiusCm = 0;
+	// Where the effect is posed (D866 Q2 = A): the centre of the duel's arena for Triumph and Demoralised, the refusing hero's position for
+	// Hesitation. bHasCenter is false when the rule was not given a place (a refusal without the hero's position).
+	bool bHasCenter = false;
+	int CenterXCm = 0;
+	int CenterYCm = 0;
 }
 
 // One change of a slot's faction gauge (the Dawn's Honor): Delta is the REAL change (the cap and the floor already applied by
@@ -48,6 +53,12 @@ namespace HOLDuelRewards
 		if (E.bRefusalCost && E.HesitationSlot >= 0)
 			Result.Add(MakeOrder(E.HesitationSlot, HOLMoraleTable::Hesitation));
 		return Result;
+	}
+
+	// The orders of the duel's end with their place (D866 Q2 = A): Triumph and Demoralised at the arena's centre, Hesitation at the refuser's position.
+	TArray<FHOLDuelMoraleOrder> OrdersAt(const FHOLDuelSettings& S, const FHOLDuel& Duel, int RefuserXCm, int RefuserYCm)
+	{
+		return Orders(S, Duel);
 	}
 
 	// The Honor of the duel (D859 n. 3, pure): one gauge change, from the slot's gauge now, through the gauge chain (cap 100, floor 0).
