@@ -55,3 +55,33 @@ void Test_AlertAttackedInViewQuiet(FUnitTest& T)
 	T.AssertFalse(HOLAlertRules::ShouldAlertAttackedElsewhere(Watch, true, 100.0, 30.0), "a hit in view: the player sees it, no line");
 	T.AssertTrue(HOLAlertRules::ShouldAlertAttackedElsewhere(Watch, false, 101.0, 30.0), "a hit out of view right after: the line goes (the hit in view did not count)");
 }
+
+// D804 B: the first research done (nothing shown before) goes with its line, its own sound and a minimap ping; the effect is what MinorAlert
+// computes from the kind and the two times.
+void Test_AlertMinorFirstGoes(FUnitTest& T)
+{
+	FHOLMinorAlert Research = HOLAlertRules::MinorAlert(EHOLMinorAlertKind::ResearchDone, 100.0, -1000.0);
+	T.AssertTrue(Research.bShow, "a research done with nothing shown before: the line goes");
+	T.AssertTrue(Research.LineSeconds > 0.0, f"the line stays some time ({Research.LineSeconds} s)");
+	T.AssertTrue(Research.bPingMinimap, "a research done pings the minimap");
+	T.AssertTrue(Research.SoundKey != NAME_None, "a research done has a sound");
+	FHOLMinorAlert Building = HOLAlertRules::MinorAlert(EHOLMinorAlertKind::BuildingDone, 100.0, -1000.0);
+	T.AssertTrue(Building.bShow, "a building finished with nothing shown before: the line goes");
+	T.AssertTrue(Building.bPingMinimap, "a building finished pings the minimap");
+	T.AssertTrue(Building.SoundKey != NAME_None, "a building finished has a sound");
+	T.AssertTrue(Building.SoundKey != Research.SoundKey, "each type has its own sound (GDD 15)");
+}
+
+// D804 B: once per 30 s per kind: 29 s after the last line nothing, 30 s after it goes again.
+void Test_AlertMinorOncePer30s(FUnitTest& T)
+{
+	FHOLMinorAlert Soon = HOLAlertRules::MinorAlert(EHOLMinorAlertKind::BuildingDone, 129.0, 100.0);
+	T.AssertFalse(Soon.bShow, "29 s after the last building line: quiet");
+	T.AssertFalse(Soon.bPingMinimap, "a quiet alert pings nothing");
+	T.AssertTrue(Soon.SoundKey == NAME_None, "a quiet alert plays nothing");
+	FHOLMinorAlert Later = HOLAlertRules::MinorAlert(EHOLMinorAlertKind::BuildingDone, 130.0, 100.0);
+	T.AssertTrue(Later.bShow, "30 s after the last building line: it goes again");
+	// The delay is the same for the research kind and each kind keeps its own clock: the caller passes the kind's last time.
+	FHOLMinorAlert OtherKind = HOLAlertRules::MinorAlert(EHOLMinorAlertKind::ResearchDone, 105.0, -1000.0);
+	T.AssertTrue(OtherKind.bShow, "a research done 5 s after a building line goes: the kinds do not share the delay");
+}

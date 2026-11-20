@@ -68,3 +68,38 @@ namespace HOLAlertRules
 		return true;
 	}
 }
+
+// D804 B (Q-alerts-minor = B): the two minor alerts that come from an event, "research done" and "building finished": a line in the thread,
+// a short sound of their own, a ping on the minimap (not for the population full line), once per MinorRepeatSeconds PER KIND.
+enum EHOLMinorAlertKind
+{
+	ResearchDone,
+	BuildingDone
+}
+
+// What a minor alert does when it goes: the caller (the game screen) adds the line, plays the sound, pings the minimap.
+struct FHOLMinorAlert
+{
+	bool bShow = false;
+	// How long the line stays in the thread, seconds.
+	float LineSeconds = 0.0;
+	// The short sound's key, one per kind (the screen maps it to an asset; PlayAlertSound's ping stands in until D804 B's sounds exist).
+	FName SoundKey = NAME_None;
+	// A ping on the minimap at the place of the event.
+	bool bPingMinimap = false;
+}
+
+namespace HOLAlertRules
+{
+	// D804 B: one line per kind every 30 s, however many researches or buildings end meanwhile.
+	const float MinorRepeatSeconds = 30.0;
+	// How long a minor line stays in the thread (the thread's own default, D446).
+	const float MinorLineSeconds = 8.0;
+
+	// STUB (red first): nothing is ever shown.
+	FHOLMinorAlert MinorAlert(EHOLMinorAlertKind Kind, float NowSeconds, float LastShownSeconds)
+	{
+		FHOLMinorAlert None;
+		return None;
+	}
+}
