@@ -10,7 +10,7 @@ Historique du test du 2026-10-30 : `Docs\Archive\Auto_Journey_Test1_2026-10-30.m
 
 ## Agents du 2026-11-20
 
-SÉANCE DU 2026-11-20 SOIR (« lance une autojourney le temps de faire les choses en suspens dans les worktree », 22:38 ->). check-list lue (L20) à 22:40, en entier, par la session principale, avant tout lancement d'agent de travail. État au lancement : main = 97da243, 8 worktrees à 0 commit d'avance, IN_USE tous libres ; non suivis : Celeborn 16 scénarios `c28_*`/`c31_*`, Haldir `Content/Maps/Crown.umap`. Nettoyage 0a léger (un agent, comme l'après-midi).
+SÉANCE DU 2026-11-20 SOIR (« lance une autojourney le temps de faire les choses en suspens dans les worktree », 22:38 ->). check-list lue (L20) à 22:40, en entier, par la session principale, avant tout lancement d'agent de travail. État au lancement : main = 97da243, 8 worktrees à 0 commit d'avance, IN_USE tous libres ; non suivis : Celeborn 16 scénarios `c28_*`/`c31_*`, Haldir `Content/Maps/Crown.umap`. Nettoyage 0a léger (un agent, comme l'après-midi) : CLEAN-1120s, d41c8d2. Réponses de l'utilisateur (22:4x, interface de choix) : fin = « quand ce qui est en cours sera fini » (fin provisoire 00:30 dans `Docs\SessionEnd.txt` pour le gate, prolongée par `extend_session.ps1` tant qu'il reste du travail en cours, pas de nouveau chantier) ; fusion dans main EN LOCAL si build PASS et tests verts sur le résultat exact, jamais de push ; mode AUTONOME (veilleur 30 min) ; non suivis de Celeborn/Haldir : un agent vérifie leur usage puis les commite sur la branche s'ils sont utiles, sinon les liste.
 
 ## Résumé de la séance du 2026-11-20 après-midi
 
