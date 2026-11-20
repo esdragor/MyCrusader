@@ -12,6 +12,7 @@
 #include "Engine/Engine.h"
 #include "Engine/World.h"
 #include "HeroesOfLibertyGameModeBase.h"
+#include "Match/HOLFactionRules.h"
 #include "Match/HOLGameState.h"
 #include "Match/HOLMatchConfig.h"
 #include "Match/HOLMatchSettings.h"
@@ -338,7 +339,7 @@ bool FHOLAIBuildingsFarmBlockTest::RunTest(const FString& Parameters)
 /**
  * IA2.4, the army's production on the real chain: 20 Peasants (the economy stands), a Barracks and an Archery Range finished, the
  * stock in plenty. The thought queues one unit per building, of a type that building makes (the composition restricted to the
- * building: a Spearman at the Barracks, an Archer at the Range, the mix's first), sets both buildings' rally on a point 1500 cm
+ * building: a Halberdier at the Barracks (D858: the Dawn's, the Spearman being the Legions' alone), an Archer at the Range, the mix's first), sets both buildings' rally on a point 1500 cm
  * from the centre toward the enemy centre (a point, not a source), and the next thought queues a second unit per building but
  * not a third. Red while the brain queues no soldier and sets no military rally.
  */
@@ -374,7 +375,14 @@ bool FHOLAIArmyProductionTest::RunTest(const FString& Parameters)
 	Test.RunStep();
 	if (TestEqual(TEXT("one unit in the Barracks' queue"), Barracks->GetProductionQueue().Num(), 1))
 	{
-		TestEqual(TEXT("a Spearman (the mix's first, a unit of the Barracks)"), Barracks->GetProductionQueue()[0].TypeName, FName(TEXT("Spearman")));
+		// D858: slot 1 is the Dawn here; the Spearman is the Legions' alone, so the first type of the mix that the Dawn's Barracks may make
+		// is the Halberdier (read from the rules: the first of the Barracks' Produces open to slot 1).
+		const FHOLBuildingTypeRow* BarracksRow = UHOLBuildingSettings::FindType(HOLBuildingTypeNames::Barracks);
+		const TArray<FName> Open = BarracksRow ? HOLFactionRules::FilterProduces(Test.World, BarracksRow->Produces, 1) : TArray<FName>();
+		const FName Queued = Barracks->GetProductionQueue()[0].TypeName;
+		TestTrue(TEXT("a unit the Dawn's Barracks is open to"), Open.Contains(Queued));
+		TestNotEqual(TEXT("never the Spearman (the Legions' alone)"), Queued, FName(TEXT("Spearman")));
+		TestEqual(TEXT("a Halberdier (the mix's first, a unit of the Barracks open to the Dawn)"), Queued, FName(TEXT("Halberdier")));
 	}
 	if (TestEqual(TEXT("one unit in the Range's queue"), Range->GetProductionQueue().Num(), 1))
 	{
