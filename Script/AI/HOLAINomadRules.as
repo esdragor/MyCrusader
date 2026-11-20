@@ -143,6 +143,31 @@ namespace HOLAINomad
 	TArray<int> HelpersFor(FVector Foundation, const TArray<FHOLAIUnit>& Peasants, const TArray<int>& Assigned, int MaxBuilders)
 	{
 		TArray<int> Helpers;
+		int Room = MaxBuilders - Assigned.Num();
+		TArray<bool> Taken;
+		for (int Index = 0; Index < Peasants.Num(); Index++)
+			Taken.Add(!Peasants[Index].bIdle || Assigned.Contains(Peasants[Index].Id));
+		while (Room > 0)
+		{
+			int Best = HOLNomad::None;
+			float BestDistance = 0.f;
+			for (int Index = 0; Index < Peasants.Num(); Index++)
+			{
+				if (Taken[Index])
+					continue;
+				const float Distance = FlatDistance(Foundation, Peasants[Index].Location);
+				if (Best == HOLNomad::None || Distance < BestDistance)
+				{
+					Best = Index;
+					BestDistance = Distance;
+				}
+			}
+			if (Best == HOLNomad::None)
+				break;
+			Taken[Best] = true;
+			Helpers.Add(Peasants[Best].Id);
+			Room--;
+		}
 		return Helpers;
 	}
 }
