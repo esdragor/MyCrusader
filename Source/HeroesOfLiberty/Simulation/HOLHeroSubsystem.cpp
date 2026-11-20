@@ -27,6 +27,7 @@
 #include "Simulation/HOLSimulationSubsystem.h"
 #include "Simulation/HOLUnitSubsystem.h"
 #include "Simulation/HOLUnitTypes.h"
+#include "Simulation/HOLZoneEffectRules.h"
 #include "Simulation/HOLUnitView.h"
 
 namespace UE::HeroesOfLiberty::Hero
@@ -719,6 +720,28 @@ bool UHOLHeroSubsystem::PlantBanner(const int32 Slot, const FVector& Location)
 	return true;
 }
 
+bool UHOLHeroSubsystem::StartLightSeal(const int32 Slot, const FVector& Center)
+{
+	if (!Sheets.IsValidIndex(Slot) || !GetWorld() || GetWorld()->GetNetMode() == NM_Client)
+	{
+		return false;
+	}
+	const int32 NowMs = ZoneClockMs;
+	// One per slot: the slot's former zone goes, and any zone already over.
+	Zones.RemoveAll([Slot, NowMs](const HOLZoneEffect::FZone& Zone) { return Zone.OwnerSlot == Slot || NowMs >= Zone.StartMs + Zone.DurationMs; });
+	HOLZoneEffect::FZone Zone;
+	Zone.OwnerSlot = Slot;
+	Zone.CenterXCm = FMath::RoundToInt32(Center.X);
+	Zone.CenterYCm = FMath::RoundToInt32(Center.Y);
+	Zone.RadiusCm = HOLZoneEffect::LightSealRadiusCm;
+	Zone.StartMs = NowMs;
+	Zone.DurationMs = HOLZoneEffect::LightSealDurationMs;
+	Zone.SlowPercent = HOLZoneEffect::LightSealSlowPercent;
+	Zones.Add(Zone);
+	UE_LOG(LogHOLMatch, Display, TEXT("Zone effect: slot %d puts a Seal of Light at (%.0f, %.0f)"), Slot, Center.X, Center.Y);
+	return true;
+}
+
 bool UHOLHeroSubsystem::GetBanner(const int32 Slot, FVector& OutLocation) const
 {
 	if (!Abilities.IsValidIndex(Slot) || Abilities[Slot].BannerMs <= 0)
@@ -750,6 +773,7 @@ bool UHOLHeroSubsystem::ResetAbilities(const int32 Slot)
 		return false;
 	}
 	Abilities[Slot] = FAbilities();
+	Zones.RemoveAll([Slot](const HOLZoneEffect::FZone& Zone) { return Zone.OwnerSlot == Slot; });
 	Sheets[Slot].Private.CooldownEndSteps.Reset();
 	Sheets[Slot].Public.BannerEndStep = Sheets[Slot].Public.BannerEndStep >= 0 ? GetStepsFromNow(0) : -1;
 	WriteCopies(Slot);
@@ -777,6 +801,7 @@ void UHOLHeroSubsystem::SetReadyStep(const int32 Slot, const EHOLHeroAbility Abi
 void UHOLHeroSubsystem::TickAbilities()
 {
 	const int32 StepMs = HOLCombat::ToMilliseconds(GetDefault<UHOLSimulationSettings>()->GetStepSeconds());
+	ZoneClockMs += StepMs; // D859: the zones' clock, counted with the cool-downs at each step's end
 	for (int32 Slot = 0; Slot < Abilities.Num(); ++Slot)
 	{
 		FAbilities& Slots = Abilities[Slot];

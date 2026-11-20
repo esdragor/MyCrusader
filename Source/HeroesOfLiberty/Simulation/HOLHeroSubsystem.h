@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Simulation/HOLZoneEffectRules.h"
 #include "Simulation/HOLHeroSheet.h"
 #include "Subsystems/WorldSubsystem.h"
 #include "HOLHeroSubsystem.generated.h"
@@ -110,6 +111,19 @@ public:
 	/** J8c.2: where the slot's banner stands; false when it has none standing. */
 	bool GetBanner(int32 Slot, FVector& OutLocation) const;
 
+	/**
+	 * D859: the slot puts a Seal of Light at Center: a zone (HOLZoneEffect::LightSeal*) that slows the units hostile to the slot while it
+	 * lasts; one per slot at a time (a new one replaces it). Where the simulation runs: false on a client or out of range of the slots.
+	 * The cast range (800 cm) and the cool-down (40 s) are the caller's (the UnitAbilities line), not checked here.
+	 */
+	bool StartLightSeal(int32 Slot, const FVector& Center);
+
+	/** D859: the zones put down (expired ones are dropped when another starts; HOLZoneEffect::ZoneActive says which are active now). */
+	const TArray<HOLZoneEffect::FZone>& GetZones() const { return Zones; }
+
+	/** D859: the zones' clock in milliseconds (counted at each step's end like the cool-downs): the NowMs of HOLZoneEffect::ZoneActive. */
+	int32 GetZoneNowMs() const { return ZoneClockMs; }
+
 	/** J8c.2: milliseconds before the slot's hero can cast Ability again (0: ready; the aura: 0). */
 	int32 GetCooldownMs(int32 Slot, EHOLHeroAbility Ability) const;
 
@@ -158,6 +172,9 @@ private:
 	};
 	/** One per slot, as Sheets. */
 	TArray<FAbilities> Abilities;
+	/** D859: the zones standing (at most one per slot). */
+	TArray<HOLZoneEffect::FZone> Zones;
+	int32 ZoneClockMs = 0;
 	/** J8c.2: the cool-downs and the banners counted down by a step (OnStepEnded). */
 	void TickAbilities();
 	/** J8c.3: the step Milliseconds from now (the simulation's step, rounded up to whole steps). */
