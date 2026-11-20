@@ -1,0 +1,7 @@
+# branches: wall-line
+# STATUT : LOGIQUE SEULEMENT, NON JOUE, NON JOUABLE aujourd'hui (aucun type de mur dans les donnees, pas de hol.Mouse.Drag : voir l'en-tete du .txt)
+# OBJET attendu : une ligne de boites vertes plates (une par case de 4 m ; cote = 92 % d'une case, soit 368 cm : HOLWallGhostDrawer.as:100, Side = Tile/100*0.92 en echelle d'un cube de 100 cm), puis les fondations des murs sur les memes cases.
+# TAILLE en pixels : NON MESUREE (zoom -> pixels inconnu sans lancement). A relever sur la capture : largeur d'une boite verte en pixels = (368 / 400) x pas entre deux centres voisins ; la ligne doit compter PLUS de 16 boites et ne montrer aucune coupure ni boite rouge sur terrain libre.
+# <nom de capture> | ce que l'utilisateur doit voir
+wall_line_long_during | pendant le glisser (bouton tenu) : plus de 16 boites vertes plates alignees, une par case, du point d'appui au curseur ; aucune boite rouge ; le joueur Aube et son centre visibles hors du panneau des notes
+wall_line_long_after | apres le relache : des fondations de mur sur toute la ligne (autant que de boites vertes), plus aucune boite verte ; la barre de ressources a baisse du cout de toutes les cases
