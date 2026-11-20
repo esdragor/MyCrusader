@@ -230,6 +230,9 @@ public:
 	static bool OrderUngarrisonAll(AActor* RpcActor, AHOLBuilding* Building);
 
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Rpc")
+	static bool OrderUngarrisonUnit(AActor* RpcActor, int32 UnitId);
+
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Rpc")
 	static bool OrderCancelBuilding(AActor* RpcActor, AHOLBuilding* Building);
 
 	/** Site is the optional second building (may be null). */

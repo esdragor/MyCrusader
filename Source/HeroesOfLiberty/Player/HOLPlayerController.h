@@ -379,6 +379,8 @@ public:
 	void RequestGarrisonUnits(TConstArrayView<uint32> UnitIds, AHOLBuilding* Building);
 	/** F7 lot 4a: asks the server to take every occupant out of Building (HOLPlayerOrders::UngarrisonAll), for the coming button (Retours/Q-garrison-ui.md Q1). */
 	void RequestUngarrisonAll(AHOLBuilding* Building);
+	/** F7 lot 4a: asks the server to take this one unit out of the building it is garrisoned in (HOLPlayerOrders::UngarrisonUnit), for the frame's portrait click. */
+	void RequestUngarrisonUnit(uint32 UnitId);
 	/** Asks the server to cancel one of the player's buildings not yet finished (refunded, D311). */
 	void RequestCancelBuilding(AHOLBuilding* Building);
 
@@ -785,6 +787,7 @@ private:
 	void DoDropOffUnits(const TArray<uint32>& UnitIds, AHOLBuilding* Building, FVector_NetQuantize Point, bool bQueue);
 	void DoGarrisonUnits(const TArray<uint32>& UnitIds, AHOLBuilding* Building);
 	void DoUngarrisonAll(AHOLBuilding* Building);
+	void DoUngarrisonUnit(uint32 UnitId);
 	void DoCancelBuilding(AHOLBuilding* Building);
 	void DoSetRallyPoint(AHOLBuilding* Building, FVector_NetQuantize Point, int32 SourceIndex, AHOLBuilding* Site, bool bQueue);
 	/** D845: the RPC is in the script RPC actor; this is the body its bridge calls on the server. */

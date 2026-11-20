@@ -484,6 +484,13 @@ bool UHOLRpcBridgeLibrary::OrderUngarrisonAll(AActor* RpcActor, AHOLBuilding* Bu
 	return Controller != nullptr;
 }
 
+bool UHOLRpcBridgeLibrary::OrderUngarrisonUnit(AActor* RpcActor, const int32 UnitId)
+{
+	AHOLPlayerController* Controller = HOLRpcBridgeL1_Haldir1117o::OwnerController(RpcActor);
+	if (Controller) { Controller->DoUngarrisonUnit(static_cast<uint32>(UnitId)); }
+	return Controller != nullptr;
+}
+
 bool UHOLRpcBridgeLibrary::OrderCancelBuilding(AActor* RpcActor, AHOLBuilding* Building)
 {
 	AHOLPlayerController* Controller = HOLRpcBridgeL1_Haldir1117o::OwnerController(RpcActor);

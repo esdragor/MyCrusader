@@ -68,36 +68,46 @@ int32 UHOLGarrisonSubsystem::GetSlots(const AHOLBuilding& Building)
 	return FMath::Max(FMath::Max(0, Row.GarrisonSlots), FMath::Max(0, CVarHOLGarrisonProofSlots.GetValueOnAnyThread()));
 }
 
-int32 UHOLGarrisonSubsystem::EjectAll(AHOLBuilding& Building)
+bool UHOLGarrisonSubsystem::EjectUnit(AHOLBuilding& Building, const uint32 UnitId, const int32 ExitIndex)
 {
 	UWorld* World = Building.GetWorld();
 	UHOLUnitSubsystem* Units = World ? World->GetSubsystem<UHOLUnitSubsystem>() : nullptr;
 	UMassEntitySubsystem* EntitySubsystem = World ? World->GetSubsystem<UMassEntitySubsystem>() : nullptr;
-	if (!Units || !EntitySubsystem || World->GetNetMode() == NM_Client)
+	if (!Units || !EntitySubsystem || World->GetNetMode() == NM_Client || Units->GetGarrison(UnitId) != &Building || !Units->SetGarrison(UnitId, nullptr))
+	{
+		return false;
+	}
+	// On its own free point at the building's foot, where its births stand (on the side of its rally point, else below it on the screen), not at its
+	// centre for the keep-out to push them all out the same way (lot 3b); the same when it falls (lot 3c).
+	const UHOLProductionSubsystem* Production = World->GetSubsystem<UHOLProductionSubsystem>();
+	FMassEntityManager& Entities = EntitySubsystem->GetMutableEntityManager();
+	const FMassEntityHandle Entity = Units->FindEntity(UnitId);
+	if (FTransformFragment* Transform = Production && Entity.IsSet() ? Entities.GetFragmentDataPtr<FTransformFragment>(Entity) : nullptr)
+	{
+		FVector Exit = Production->GetBirthLocation(Building, ExitIndex);
+		Exit.Z = Transform->GetTransform().GetLocation().Z;
+		Transform->GetMutableTransform().SetLocation(Exit);
+	}
+	return true;
+}
+
+int32 UHOLGarrisonSubsystem::EjectAll(AHOLBuilding& Building)
+{
+	UWorld* World = Building.GetWorld();
+	UHOLUnitSubsystem* Units = World ? World->GetSubsystem<UHOLUnitSubsystem>() : nullptr;
+	if (!Units || World->GetNetMode() == NM_Client)
 	{
 		return 0;
 	}
 	TArray<uint32> Inside;
 	Units->GetGarrisonUnitIds(&Building, Inside);
-	// Each one out on its own free point at the building's foot, where its births stand (on the side of its rally point, else below it on the
-	// screen), not at its centre for the keep-out to push them all out the same way (lot 3b); the same when it falls (lot 3c).
-	const UHOLProductionSubsystem* Production = World->GetSubsystem<UHOLProductionSubsystem>();
-	FMassEntityManager& Entities = EntitySubsystem->GetMutableEntityManager();
 	int32 Moved = 0;
 	for (const uint32 UnitId : Inside)
 	{
-		if (!Units->SetGarrison(UnitId, nullptr))
+		if (EjectUnit(Building, UnitId, Moved))
 		{
-			continue;
+			++Moved;
 		}
-		const FMassEntityHandle Entity = Units->FindEntity(UnitId);
-		if (FTransformFragment* Transform = Production && Entity.IsSet() ? Entities.GetFragmentDataPtr<FTransformFragment>(Entity) : nullptr)
-		{
-			FVector Exit = Production->GetBirthLocation(Building, Moved);
-			Exit.Z = Transform->GetTransform().GetLocation().Z;
-			Transform->GetMutableTransform().SetLocation(Exit);
-		}
-		++Moved;
 	}
 	return Moved;
 }
@@ -118,6 +128,17 @@ int32 UHOLGarrisonSubsystem::ApplyOrders()
 	int32 Moved = 0;
 	for (const FHOLGarrisonOrder& Order : Orders)
 	{
+		// One unit out: its own garrison at the step, the building's owner only (D374).
+		if (Order.ExitUnitId != 0)
+		{
+			AHOLBuilding* Holding = Units->GetGarrison(Order.ExitUnitId);
+			if (Holding && static_cast<int32>(Holding->GetOwnerPlayer()) == Order.PlayerIndex && EjectUnit(*Holding, Order.ExitUnitId, 0))
+			{
+				++Moved;
+				UE_LOG(LogHOLSimulation, Display, TEXT("Garrison: slot %d takes unit %u out of %s"), Order.PlayerIndex, Order.ExitUnitId, *Holding->GetTypeName().ToString());
+			}
+			continue;
+		}
 		AHOLBuilding* Building = Order.Building.Get();
 		// Only the building's owner orders its garrison (D374: never an ally's, nor an enemy's).
 		if (!Building || static_cast<int32>(Building->GetOwnerPlayer()) != Order.PlayerIndex)

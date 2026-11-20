@@ -1577,6 +1577,21 @@ for (FString Command : Commands)
 		HOLRpcBridge::OrderUngarrisonAll(this, Building);
 	}
 
+	// One unit out of its garrison (the frame's portrait click): the server finds its building and checks that it is the sender's.
+	UFUNCTION(Server)
+	void ServerOrderUngarrisonUnit(int UnitId)
+	{
+		const int Slot = HOLRpcBridge::GetSenderSlot(this);
+		Log(n"LogHOLMatch", f"RpcOrder: ungarrison unit received by the server: slot {Slot} unit {UnitId}");
+		const int Refusal = HOLRpc::UnitOrderRefusal(Slot, UnitId > 0 ? 1 : 0);
+		if (Refusal != 0)
+		{
+			Log(n"LogHOLMatch", f"RpcOrder: ungarrison unit refused ({Refusal}) for sender slot {Slot}");
+			return;
+		}
+		HOLRpcBridge::OrderUngarrisonUnit(this, UnitId);
+	}
+
 	UFUNCTION(Server)
 	void ServerCancelBuilding(AHOLBuilding Building)
 	{
