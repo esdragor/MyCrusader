@@ -11,7 +11,7 @@ class UWorld;
  * that a scenario can show what stands there (the neutral camp of `neutrals`, in a clearing). Two kinds of scenery:
  *  - the trunks and crowns of Plain's grove: static mesh actors whose first material is MI_Trunk or MI_Crown (Tools/Editor/maps/plain.py);
  *  - the instances of the instanced meshes of the map's scenery (maps/common.py spawn_decor), but never those of the source field
- *    (AHOLSourceField draws the registry's sources: the game's trees, which this tool leaves alone).
+ *    (AHOLSourceField draws the registry's sources: the game's trees, which this tool leaves alone unless the argument Trees asks for the standing wood sources of the radius too).
  * Nothing of the rules changes: sources, ground, ridges and buildings stay.
  */
 namespace UE::HeroesOfLiberty::Decor

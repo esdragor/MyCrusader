@@ -2,6 +2,8 @@
 // Pure rule, tested alone in script (HOLCampClearing_Test.as). The scenario's tree that stayed in front of the camp was a WOOD SOURCE
 // (the game's own trees, AHOLSourceField), which hol.Decor.ClearNear leaves alone by design (HOLDecorClear.cpp, the `continue` on AHOLSourceField in CountNear and in ClearNear);
 // this rule says which trees must go, whoever draws them. Nothing here touches the world.
+// Since HALDIR-1120pf the console command takes them with its argument: hol.Decor.ClearNear X Y R Trees (HOLDecorClear.cpp, RemoveSource of the registry). The C++ cannot call this
+// script rule, so the radius is the R the scenario passes: it must stay equal to RadiusCm() below (neutrals_clairiere passes 2500).
 
 namespace HOLCampClearing
 {
