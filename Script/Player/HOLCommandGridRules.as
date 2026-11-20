@@ -182,6 +182,11 @@ namespace HOLCommandGridRules
 				Result.Command = EHOLGridCommandKind::Produce;
 				Result.TypeName = Context.Produces[Cell];
 			}
+			else if (Context.bGarrisonOccupied && !Context.bBuildingGroup && Cell == UngarrisonAllCell)
+			{
+				// D813 (Q-garrison-ui Q1 C): the garrison's Sortir tous cell (HOLControllerCommand::RequestUngarrisonAllSelected).
+				Result.Command = EHOLGridCommandKind::UngarrisonAll;
+			}
 			else if (Context.bPrimaryForum && !Context.bBuildingGroup && Context.SpecializationTier > 0
 				&& Cell >= FirstOption && Cell < FirstOption + OptionCount)
 			{

@@ -1227,6 +1227,10 @@ void UHOLGameScreen::RefreshGrid(const AHOLBuilding* OwnBuilding, const bool bOw
 			GridCell->bTrade = true;
 			break;
 		}
+		case EHOLGridCommand::UngarrisonAll:
+			GridCell->SetCommand(LOCTEXT("UngarrisonAll", "Sortir"), EHOLGridCellState::Ready);
+			GridCell->SetTooltip(LOCTEXT("UngarrisonAllName", "Sortir tous"), FHOLResources(), FHOLResources(), LOCTEXT("UngarrisonAllEffect", "Toute la garnison sort du b\u00e2timent"));
+			break;
 		case EHOLGridCommand::CancelConstruction:
 		{
 			// The tooltip is its name alone: no amount, no effect line (the user's choice; the cancel refunds the share of

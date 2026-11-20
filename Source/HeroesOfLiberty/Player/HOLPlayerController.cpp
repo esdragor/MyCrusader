@@ -2,6 +2,7 @@
 
 #include "Player/HOLPlayerController.h"
 #include "Player/HOLAttackCursor.h"
+#include "Player/HOLControllerCommandLibrary.h"
 #include "Player/HOLControllerReadLibrary.h"
 
 #include "Buildings/HOLBuilding.h"
@@ -2220,6 +2221,10 @@ void AHOLPlayerController::GetGridCommands(TArray<FHOLGridCommand>& OutCommands)
 		const FHOLBuildingTypeRow* Type = Building->GetType();
 		Context.bOwnBuilding = Type != nullptr;
 		Context.bBuildingFinished = Building->IsFinished();
+		// D813: a finished building holding units shows the Sortir tous cell (HOLCommandGridRules, UngarrisonAllCell).
+		TArray<int32> GarrisonOccupants;
+		Building->GetGarrisonOccupants(GarrisonOccupants);
+		Context.bGarrisonOccupied = Context.bBuildingFinished && GarrisonOccupants.Num() > 0;
 		Context.bForumDown = Building->IsForumDown();
 		Context.bMarket = Building->GetTypeName() == HOLBuildingTypeNames::Market;
 		// SP3: the main Forum's specialization cells, read from the owner's view and the hero's tier (the server decides, D203).
@@ -2681,6 +2686,10 @@ void AHOLPlayerController::ExecuteGridCommand(const FHOLGridCommand& Command)
 		RequestToggleDeploy(Own);
 		return;
 	}
+	case EHOLGridCommand::UngarrisonAll:
+		// D813 (Q-garrison-ui Q1 C): the Sortir tous cell or its key sends the selected building's whole garrison out.
+		UHOLControllerCommandLibrary::RequestUngarrisonAllSelected(this);
+		return;
 	case EHOLGridCommand::CancelConstruction:
 	{
 		// The site selected alone, or a subgroup's only building.
