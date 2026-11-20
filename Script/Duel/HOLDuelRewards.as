@@ -120,14 +120,6 @@ namespace HOLDuelRewards
 		return Orders.Num();
 	}
 
-	// The faction of a slot from its display text (UHOLDiplomacyReadLibrary::GetSlotFactionText: "Ordre de l'Aube" in French, "Order of the
-	// Dawn" in English). A C++ UFUNCTION giving the EHOLFaction itself would replace this (TYPES_A_EXPOSER).
-	EHOLFaction FactionOfText(const FString& Text)
-	{
-		if (Text.Contains("Aube") || Text.Contains("Dawn"))
-			return EHOLFaction::DawnOrder;
-		return EHOLFaction::BlackLegions;
-	}
 	// The orders of every duel that ended in one step (what HOLDuel::Tick hands back), in the order of the list: the ledger keeps
 	// them in PendingMorale until the bridge to the simulation's morale applies them (MoraleInProgress.md M7).
 	TArray<FHOLDuelMoraleOrder> OrdersOfEnded(const FHOLDuelSettings& S, const TArray<FHOLDuelEnded>& Ended)

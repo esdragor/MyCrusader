@@ -176,7 +176,7 @@ namespace HOLControllerCommandsC2
 	{
 		return Route == "ServerReturnHero" || Route == "ServerHeroAbility" || Route == "ServerDuelChallenge" || Route == "ServerDuelAnswer"
 			|| Route == "ServerDiplomacyStance" || Route == "ServerDiplomacyVision" || Route == "ServerPostSignal" || Route == "ServerPostChat"
-			|| Route == "ServerStartSpecialization" || Route == "ServerCancelSpecialization" || Route == "ServerCheatSpecialization";
+			|| Route == "ServerStartSpecialization" || Route == "ServerCancelSpecialization" || Route == "ServerCheatSpecialization" || Route == "ServerCheatHonor";
 	}
 
 	// The line of C++ LogNotSent (UE_LOG Error "RpcRoute: %s not sent: no script RPC actor / function"); the line is Error as the C++ (HOLScriptLog::LogError), the function name is the RPC's.
@@ -221,6 +221,8 @@ namespace HOLControllerCommandsC2
 			Rpc.ServerCancelSpecialization();
 		else if (Plan.Route == "ServerCheatSpecialization")
 			Rpc.ServerCheatSpecialization(Plan.Ints[0], Plan.Ints[1]);
+		else if (Plan.Route == "ServerCheatHonor")
+			Rpc.ServerCheatHonor(Plan.Ints[0]);
 		else
 			LogNotSent(Plan.Route);
 	}
