@@ -1,0 +1,24 @@
+NON COMPILÉ : un accesseur C++ (UHOLConstructionReadLibrary::GetWallLineWorld) est écrit sans build ; le script n'a pas été lancé non plus.
+
+# HALDIR-1120i : F4 suite, RPC ServerPlaceWallLine
+
+APPELS_DECLARES: 15 (arrêt à 45 vus par toi)
+HEURE_DEBUT/HEURE_FIN: 11:24 / 11:30 (Get-Date PowerShell ; arrêt dur 11:45)
+PREMIER_BUILD: sans build (accesseur C++ NON COMPILÉ)   BUILD: NON COMPILÉ   LAUNCHCHECK_DEBUT: sans build
+TEST_ROUGE: 6d6fb2b (test + stubs, avant le correctif 4722aa4) + assertit l'effet : oui (cases du plan comparées à celles de Validate, refus du siège / longueur / carte / case occupée). ROUGE NON VU À L'EXÉCUTION : aucun test lancé ; les stubs rendent un plan vide et Ok, MaxLineCells 0, CellToPoint nul.
+COMMITS: 2 (6d6fb2b, 4722aa4), dernier à 11:28, merge_main_fait: oui (git merge main au premier geste, main = ff668a9)
+TESTS: aucun lancé ; 6 tests script ajoutés à Script\Tests\HOLWallLineRules_Test.as ; TESTS_TAUTOLOGIQUES: 0 (les cases viennent de Validate/Cells, la conversion monde -> case est calculée). Commande : quick_check -Parts tests (après compilation du lot C++).
+BUILDS_DEMANDES: 1 (Tools\build.ps1 -LiveCoding=0 -Wait, worktree Haldir, pour GetWallLineWorld ; les scripts qui l'appellent ne compilent pas sans lui)
+TESTS_SCRIPT_AJOUTES: 6 (Test_WallLinePlanRefusesSenderOutOfRange, Test_WallLinePlanAcceptedReturnsTheCells, Test_WallLinePlanFloorsWorldPointsToCells, Test_WallLinePlanCarriesTheRefusals, Test_WallLineMaxLineCellsDefaultIsSheetRecommendation, Test_WallLineCellPointRoundTrip)
+TYPES_A_EXPOSER: aucun type ; une fonction : UHOLConstructionReadLibrary::GetWallLineWorld(WorldContextObject, FIntPoint& OutMapMin, FIntPoint& OutMapMax, TArray<FIntPoint>& OutOccupied) -> double (taille de case), BlueprintCallable, appelée du script HOLConstructionRead::GetWallLineWorld(MapMin, MapMax, Occupied).
+ESSAIS: aucun (aucun geste client).
+QUESTIONS: Retours\Q-mur-ligne-longueur.md (existante, [À RÉPONDRE]) : valeur par défaut maintenant codée derrière le cvar hol.Wall.MaxLineCells = 16 (option A) ; B = 32, C = grande valeur.
+FAIT / RESTE:
+- Fait : ServerPlaceWallLine(FName TypeName, FVector_NetQuantize Start, FVector_NetQuantize End, bool bQueue) dans HOLRpcPlayer.as (avant ServerBuildUnits) : lit le monde, appelle HOLWallLine::PlanFromRequest, refuse (journal) ou pose une fondation par case par HOLRpcBridge::OrderPlaceBuilding (sans bâtisseur, comme ServerPlaceBuilding). Le TypeName est ajouté à la signature demandée (Start, End) : sans lui, rien à poser, et aucun type Mur n'existe encore (F5).
+- PlanFromRequest(SenderSlot, Start, End, Tile, MapMin, MapMax, Occupied, MaxCells) : « hors portée du joueur » lu comme « siège absent ou hors plage » (même test que tous les RPC d'ordre, HOLRpc::UnitOrderRefusal), refus NoSeat ; points non finis, case de taille <= 0 ou à plus de 100000 cases : BadPoint ; le reste = Validate. Enums NoSeat, BadPoint ajoutés. Si l'utilisateur voulait une portée en distance (p. ex. au plus N mètres d'un bâtisseur ou du héros), à préciser : non codée.
+- Cvar hol.Wall.MaxLineCells (défaut 16) dans HOLWallLineRules.as.
+- Reste : compiler GetWallLineWorld ; geste de glisser client (C++ HOLPlayerController.cpp:4198-4324) ; type Palissade (F5) ; coût partiel : une pose par case, donc si le stock manque en cours de file les premières cases sont posées (pas tout ou rien sur le prix) ; pas de rotation d'empreinte ; une case de la file que CheckPlacement refuse (terrain, rayon anti-rush) est refusée seule.
+NON VÉRIFIÉ: rien compilé ni lancé. Syntaxe Angelscript : const FConsoleVariable à portée globale lue depuis un namespace d'un autre bloc du même fichier, HOLRpc::UnitOrderRefusal et HOLRpc::IsFiniteNumber appelés depuis HOLWallLine (fichier différent, namespace HOLRpc : visibles par règle des namespaces), sortie par référence FIntPoint& d'un wrapper statique, Math::Abs sur double, f-strings avec variables locales. Hypothèses C++ : GEngine->GetWorldFromContextObject, AHOLMapBounds::GetArea (FBox2D, bIsValid), FHOLBuildingIterator construit sur const UWorld*, include de Buildings/HOLBuilding.h ; grille à l'origine du monde et cases de 1 tuile (le centre de case peut différer du SnapToGrid d'un type dont l'empreinte n'est pas 1 x 1 : CheckPlacement tranche).
+PROCESSUS_DETACHES: aucun processus détaché pour C:\Users\baudo\Documents\HeroesOfLiberty-Haldir
+ANOMALIES_PROCESSUS: aucune ; edit_line -After avait refusé une première fois (texte introuvable), refait sans -After.
+GIT_STATUS_PRINCIPALE: docs modifiés par d'autres sessions + les miens (EtapeDefini, Auto_Journey_File, FortificationsInProgress, Q-mur-ligne-longueur) ; aucun fichier de code : oui
