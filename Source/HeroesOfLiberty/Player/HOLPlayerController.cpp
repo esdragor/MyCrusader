@@ -43,6 +43,8 @@
 #include "Match/HOLChatSubsystem.h"
 #include "Match/HOLSpecializationSubsystem.h"
 #include "Player/HOLGameMenuRulesBridge.h"
+#include "Player/HOLWallLineBridge.h"
+#include "Buildings/HOLConstructionReadLibrary.h"
 #include "Player/HOLRTSCamera.h"
 #include "Player/HOLSelectionMarkers.h"
 #include "Player/HOLUnitPicking.h"
@@ -82,6 +84,7 @@ namespace HOLRpcScriptRoute_Haldir1117n
 	bool RouteMoveInLine(AHOLPlayerController* Controller, TConstArrayView<uint32> UnitIds, const FVector& Start, const FVector& End, bool bWidth, bool bQueue);
 	bool RouteGather(AHOLPlayerController* Controller, TConstArrayView<uint32> UnitIds, int32 SourceIndex, bool bQueue);
 	bool RoutePlaceBuilding(AHOLPlayerController* Controller, FName TypeName, const FVector& Point, TConstArrayView<uint32> UnitIds, bool bQueue);
+	bool RoutePlaceWallLine(AHOLPlayerController* Controller, FName TypeName, const FVector& Start, const FVector& End, bool bQueue);
 	bool RouteBuildUnits(AHOLPlayerController* Controller, TConstArrayView<uint32> UnitIds, AHOLBuilding* Building, bool bQueue);
 	bool RouteDropOff(AHOLPlayerController* Controller, TConstArrayView<uint32> UnitIds, AHOLBuilding* Building, const FVector& Point, bool bQueue);
 	bool RouteGarrison(AHOLPlayerController* Controller, TConstArrayView<uint32> UnitIds, AHOLBuilding* Building);
@@ -3106,6 +3109,8 @@ void AHOLPlayerController::EndPlacement()
 	UE_LOG(LogHOLMatch, Display, TEXT("Placement: ended"));
 	PlacementType = NAME_None;
 	bGhostShown = false;
+	bWallDragging = false;
+	WallDragCells.Reset();
 }
 
 bool AHOLPlayerController::GetPlacementGhost(FName& OutType, FBox2D& OutFootprint, double& OutGroundZ, bool& bOutValid) const
@@ -3171,6 +3176,11 @@ void AHOLPlayerController::UpdatePlacementGhost()
 	{
 		bGhostShown = false;
 		return;
+	}
+	// F4 drag of a wall type: the cells shown follow the cursor, from the script rule (one source with the server's Validate).
+	if (bWallDragging)
+	{
+		WallDragCells = UHOLWallLineBridge::NativeDragCells(WallDragStart, Ground, WallDragTile);
 	}
 	// Checked again every frame: the stock, the buildings and the sources change under a ghost that stays still.
 	FBox2D Footprint = UHOLConstructionSubsystem::SnapFootprint(*Type, Ground);
@@ -3253,6 +3263,66 @@ void AHOLPlayerController::RequestPlaceBuilding(const FName TypeName, const FVec
 			OnOrderGiven.Broadcast(Point);
 		}
 		if (!HOLRpcScriptRoute_Haldir1117n::RoutePlaceBuilding(this, TypeName, Point, Builders, bQueue)) { HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("PlaceBuilding")); }
+	}
+}
+
+bool AHOLPlayerController::GetCursorGround(FVector& OutGround) const
+{
+	FVector2D Cursor;
+	FVector Origin, Direction;
+	if (!RTSCamera || !GetCursorFraction(Cursor))
+	{
+		return false;
+	}
+	const FVector2D Pixels = ToPixels(Cursor);
+	return DeprojectScreenPositionToWorld(Pixels.X, Pixels.Y, Origin, Direction) && RTSCamera->GetGroundPoint(Origin, Direction, OutGround);
+}
+
+// F4: the press of a wall type's placement starts the drag (true: the click is taken); another type places as before. The tile is read once here.
+bool AHOLPlayerController::BeginWallDrag()
+{
+	FVector Ground;
+	if (!IsPlacing() || !UHOLWallLineBridge::NativeIsWallType(PlacementType) || !GetCursorGround(Ground))
+	{
+		return false;
+	}
+	FIntPoint MapMin, MapMax;
+	TArray<FIntPoint> Occupied;
+	WallDragTile = UHOLConstructionReadLibrary::GetWallLineWorld(this, MapMin, MapMax, Occupied);
+	bWallDragging = true;
+	WallDragStart = Ground;
+	WallDragCells = UHOLWallLineBridge::NativeDragCells(WallDragStart, Ground, WallDragTile);
+	UE_LOG(LogHOLMatch, Display, TEXT("Placement: %s wall drag started at (%.0f, %.0f)"), *PlacementType.ToString(), Ground.X, Ground.Y);
+	return true;
+}
+
+// F4: the release sends the line (the server validates it again: ServerPlaceWallLine), Shift keeps the mode as for a single building.
+void AHOLPlayerController::EndWallDrag()
+{
+	FVector Ground = WallDragStart;
+	GetCursorGround(Ground);
+	const FVector Start = WallDragStart;
+	bWallDragging = false;
+	WallDragCells.Reset();
+	if (!IsPlacing())
+	{
+		return;
+	}
+	const bool bKeep = bSelectAddHeld;
+	UE_LOG(LogHOLMatch, Display, TEXT("Placement: %s wall line (%.0f, %.0f) to (%.0f, %.0f)%s"), *PlacementType.ToString(), Start.X, Start.Y, Ground.X, Ground.Y, bKeep ? TEXT(", Shift: next one") : TEXT(""));
+	RequestPlaceWallLine(PlacementType, Start, Ground, bKeep);
+	SetChosenAge(HOLCommandGrid::GetChosenAgeAfter(ChosenAge, bKeep ? EHOLAgeEvent::PlacedKept : EHOLAgeEvent::Placed));
+	if (!bKeep)
+	{
+		EndPlacement();
+	}
+}
+
+void AHOLPlayerController::RequestPlaceWallLine(const FName TypeName, const FVector& Start, const FVector& End, const bool bQueue)
+{
+	if (!TypeName.IsNone() && !IsSpectator())
+	{
+		if (!HOLRpcScriptRoute_Haldir1117n::RoutePlaceWallLine(this, TypeName, Start, End, bQueue)) { HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("PlaceWallLine")); }
 	}
 }
 
@@ -4075,6 +4145,12 @@ namespace HOLRpcScriptRoute_Haldir1117n
 		return CallFull(Controller, nullptr, TEXT("ServerPlaceBuilding"), TArrayView<const int32>(Args, 1), nullptr, &Point, nullptr, &TypeName, &Ids);
 	}
 
+	bool RoutePlaceWallLine(AHOLPlayerController* Controller, const FName TypeName, const FVector& Start, const FVector& End, const bool bQueue)
+	{
+		const int32 Args[1] = { bQueue ? 1 : 0 };
+		return CallFull(Controller, nullptr, TEXT("ServerPlaceWallLine"), TArrayView<const int32>(Args, 1), nullptr, &Start, nullptr, &TypeName, nullptr, &End);
+	}
+
 	bool RouteBuildUnits(AHOLPlayerController* Controller, const TConstArrayView<uint32> UnitIds, AHOLBuilding* Building, const bool bQueue)
 	{
 		const TArray<int32> Ids = ToIds(UnitIds);
@@ -4830,7 +4906,10 @@ void AHOLPlayerController::HandleSelectStarted()
 	if (IsPlacing())
 	{
 		bSelectPressed = false;
-		ClickPlacement(bSelectAddHeld);
+		if (!BeginWallDrag())
+		{
+			ClickPlacement(bSelectAddHeld);
+		}
 		return;
 	}
 	// In attack-move mode a left click gives the order (J7b.3), never selects.
@@ -4884,6 +4963,12 @@ void AHOLPlayerController::ScriptLeftClick(const FVector2D& ViewportFraction)
 
 void AHOLPlayerController::HandleSelectCompleted()
 {
+	// F4: the release of a wall type's drag lays the line.
+	if (bWallDragging)
+	{
+		EndWallDrag();
+		return;
+	}
 	// SG3: an Alt + click's signal, at the ground under the press; its kind from the release (brief: neutral, a drag: the wheel's).
 	if (bSignalPressed)
 	{

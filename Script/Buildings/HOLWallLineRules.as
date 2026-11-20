@@ -104,7 +104,7 @@ namespace HOLWallLine
 		}
 
 		// One cell more than the cap is enough to know the line is too long, and bounds the work whatever the drag the client sent.
-		TArray<FIntPoint> Line = Cells(Start, End, MaxCells + 1);
+		TArray<FIntPoint> Line = DragCells(Start, End, MaxCells);
 		if (Line.Num() > MaxCells)
 		{
 			Plan.Refusal = EHOLWallLineRefusal::TooLong;
@@ -203,15 +203,26 @@ namespace HOLWallLine
 		return false;
 	}
 
+	// The line BEFORE the cap cut, bounded to one cell past the cap (the drag of a too long line shows its refused cell, and the work stays bounded
+	// whatever the drag): exactly the list Validate checks, and lays when it accepts.
 	TArray<FIntPoint> DragCells(FIntPoint Start, FIntPoint End, int MaxCells)
 	{
-		TArray<FIntPoint> Shown;
-		return Shown;
+		if (MaxCells <= 0)
+		{
+			TArray<FIntPoint> Nothing;
+			return Nothing;
+		}
+		return Cells(Start, End, MaxCells + 1);
 	}
 
+	// The same from the two world points the client holds (the ground under the press and under the cursor), as PlanFromRequest reads them.
 	TArray<FIntPoint> DragCellsFromPoints(FVector Start, FVector End, double Tile, int MaxCells)
 	{
-		TArray<FIntPoint> Shown;
-		return Shown;
+		if (Tile <= 0.0)
+		{
+			TArray<FIntPoint> Nothing;
+			return Nothing;
+		}
+		return DragCells(FIntPoint(CellOfCoordinate(Start.X, Tile), CellOfCoordinate(Start.Y, Tile)), FIntPoint(CellOfCoordinate(End.X, Tile), CellOfCoordinate(End.Y, Tile)), MaxCells);
 	}
 }
