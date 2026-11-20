@@ -60,8 +60,9 @@ namespace HOLTestHooks
 
 	/**
 	 * The back key was pressed in game (Backspace, the player controller), rule 15 of « Qualité des essais »: in a <name>_compare scenario
-	 * waiting on a waitkey, the previous option runs again (an option ends at its waitkey and starts at its first notereset, else right after
-	 * the waitkey before it). False when nothing went back (no waitkey waiting, not a compare scenario, or the first option).
+	 * waiting on a waitkey, the previous option runs again (D828: an option ends at its waitkey and starts right after the waitkey before it;
+	 * the first option at its first notereset). The waitkey text then ends with « · Backspace : option précédente » (D827). False when nothing
+	 * went back (no waitkey waiting, not a compare scenario, or the first option).
 	 */
 	HEROESOFLIBERTY_API bool PressBackKey();
 

@@ -124,6 +124,8 @@ namespace UE::HeroesOfLiberty::Dev
 	/** A waitkey that nobody will answer (scripted check, unattended, auto-continue) goes on after this. */
 	constexpr double AutoContinueSeconds = 1.0;
 	const TCHAR* const DefaultWaitKeyText = TEXT("Entrée : étape suivante");
+	/** D827: added to a compare scenario's waitkey text when an option before it exists (Backspace runs it again). */
+	const TCHAR* const BackKeyWaitText = TEXT(" · Backspace : option précédente");
 	/**
 	 * On a fixed time step (quick_check's -UseFixedTimeStep -FPS=n, Docs/Archive/TestSpeedInProgress.md), a frame's game time while the
 	 * sequence gives commands, takes captures or counts frames: as short as a frame in real time off screen (~200 a
@@ -432,6 +434,11 @@ namespace UE::HeroesOfLiberty::Dev
 					bWaitingForKey = true;
 						bBackPressed = false;
 					Display.WaitingForKey = Rest.IsEmpty() ? FString(DefaultWaitKeyText) : Rest;
+					// D827: in a compare scenario, the panel says Backspace goes back when there is an option before this one (not at the first).
+					if (FindPreviousOptionStart() != INDEX_NONE)
+					{
+						Display.WaitingForKey += BackKeyWaitText;
+					}
 					// The scenario is set up once its first waitkey waits: the user plays now, not only after the last step.
 					if (Display.State == HOLTestHooks::FScenarioDisplay::EState::Preparing)
 					{
@@ -707,8 +714,9 @@ namespace UE::HeroesOfLiberty::Dev
 
 		/**
 		 * In a <name>_compare scenario waiting on a waitkey (Next), the first step of the option before the one this waitkey closes: an option
-		 * ends at its waitkey and starts at its first notereset, else right after the waitkey before it. INDEX_NONE when this is the first
-		 * option (no waitkey before, or the steps before it are the set-up with no notereset) or not a compare scenario.
+		 * ends at its waitkey and starts right after the waitkey before it (D828: the command that sets the option, often before its
+		 * notereset, runs again). The first option has no waitkey before it: it starts at its first notereset, the set-up before it is not run
+		 * again. INDEX_NONE when this is the first option (no waitkey before, or a first option with no notereset) or not a compare scenario.
 		 */
 		int32 FindPreviousOptionStart() const
 		{
@@ -722,14 +730,18 @@ namespace UE::HeroesOfLiberty::Dev
 				return INDEX_NONE;
 			}
 			const int32 PreviousBegin = FindWaitKeyBefore(PreviousEnd);
-			for (int32 Index = PreviousBegin + 1; Index < PreviousEnd; ++Index)
+			if (PreviousBegin != INDEX_NONE)
+			{
+				return PreviousBegin + 1;
+			}
+			for (int32 Index = 0; Index < PreviousEnd; ++Index)
 			{
 				if (StepVerb(Steps[Index]) == TEXT("notereset"))
 				{
 					return Index;
 				}
 			}
-			return PreviousBegin == INDEX_NONE ? INDEX_NONE : PreviousBegin + 1;
+			return INDEX_NONE;
 		}
 
 		/** The back key was pressed during the current waitkey. */
