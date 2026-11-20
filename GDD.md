@@ -3705,4 +3705,6 @@ La courbe d'XP (Q04) reste à régler en test.
 
 **D874** (Garnison, portrait d'un occupant dans le cadre du bâtiment, complète D813 ; 2026-11-20 ~15:5x, réponse à `Q-garrison-portrait`, par l'interface de choix) : **A** : le bouton d'un occupant de garnison montre l'**icône du type d'unité** (comme la file de production) ; clic = « cette unité sort ». Une icône manquante est une ligne de `Placeholders.txt`. Demande une lecture client du type par identifiant (lot C++ de Glorfindel), puis le branchement dans `HOLGarrisonFrame.as` (Elrond). Fiche : `Docs\Archive\Retours_2026-11-20\Q-garrison-portrait.md`.
 
-Prochain numéro : **D875**.
+**D875** (Défi du Chevalier, ligne de la table, complète D859 n. 10 et D873 ; 2026-11-20 ~16:0x, réponse à `Q-chevalier-defi-ligne`, par l'interface de choix) : **A** : le Défi (8 s, rayon 8 m, recharge 45 s) vit dans une ligne `KnightChallenge` de `Tools\Data\UnitAbilities.csv`, `Target` = `Self` avec `RadiusCm` 800 (zone centrée sur le Chevalier, la règle `IsInZone` convient) ; la note du générateur « 0 pour Self » devient « 0 sauf aura » ; `HOLDawnValues.as` lit la ligne (une seule source, D839) et la ligne `knight.challenge_*` de `ValueSheet.csv` pointe vers le CSV. Pas de nouvelle valeur `Target`. Fiche : `Docs\Archive\Retours_2026-11-20\Q-chevalier-defi-ligne.md`.
+
+Prochain numéro : **D876**.
