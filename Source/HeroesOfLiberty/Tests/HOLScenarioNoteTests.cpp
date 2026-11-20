@@ -72,8 +72,8 @@ bool FHOLScenarioReadyAtWaitKeyTest::RunTest(const FString& Parameters)
 }
 
 // Rule 15 of « Qualité des essais » (the user, 2026-11-14): in a <name>_compare scenario, Enter = next option and Backspace = previous
-// option. An option ends at its waitkey and starts at its first notereset (else right after the waitkey before it): Backspace at option B's
-// waitkey runs option A again, from its notereset to its own waitkey; at the first option there is none before (the key does nothing).
+// option. An option ends at its waitkey and starts right after the waitkey before it (D828; the first option at its first notereset):
+// Backspace at option B's waitkey runs option A again, from its notereset to its own waitkey; at the first option there is none before (the key does nothing).
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLScenarioBackKeyTest, "HeroesOfLiberty.Dev.Scenario.BackKeyPreviousOption",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 bool FHOLScenarioBackKeyTest::RunTest(const FString& Parameters)
