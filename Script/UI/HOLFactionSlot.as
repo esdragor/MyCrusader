@@ -83,3 +83,19 @@ namespace HOLFactionSlot
 		return View;
 	}
 }
+
+// The faction slot of a player from the game state (CELEBORN-1120b gauge, HOLDawnValues cap, HOLDawnPowers rows; GALADRIEL-1120d).
+// STUB (red): the real body follows in the next commit.
+namespace HOLFactionSlot
+{
+	// The faction the slot's text names (UHOLDiplomacyReadLibrary::GetSlotFactionText); false when the text names none.
+	bool FactionOfText(const FString& Text, EHOLFaction& Faction)
+	{
+		return false;
+	}
+
+	FHOLFactionSlotView FromGameState(AHOLGameState State, int Slot, const FString& FactionText, bool bHasSpecializationButton, bool bTierOpen)
+	{
+		return FHOLFactionSlotView();
+	}
+}

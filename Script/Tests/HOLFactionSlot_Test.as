@@ -106,3 +106,40 @@ void Test_FactionSlotSpecializationButtonSharesTheSlot(FUnitTest& T)
 	const FHOLFactionSlotView NoButton = HOLFactionSlot::Make(EHOLFaction::DawnOrder, HOLFactionResource::Make(30, 0, 100), Rows, Cooldowns, 0, false, true);
 	T.AssertFalse(NoButton.bSpecializationLit, "no button, nothing lit");
 }
+
+// GALADRIEL-1120d (ETAPE0-1120-B 3b i): the slot's view built from a REAL game state. The gauge is made by the chain Make + Gain
+// (a duel win, D859), written in the state, read back by FromGameState; the expected text is computed from that gauge.
+void Test_FactionSlotFromGameStateValue(FUnitTest& T)
+{
+	UHOLTestWorldHandle TestWorld = HOLTestWorld::CreateTestWorld();
+	T.AssertTrue(TestWorld != nullptr, "a test world is created");
+	if (TestWorld == nullptr)
+		return;
+	AHOLGameState State = HOLTestWorld::SpawnGameState(TestWorld, 0, 0);
+	T.AssertTrue(State != nullptr, "game state");
+	if (State != nullptr)
+	{
+		FHOLFactionResource Gauge = HOLFactionResource::Make(HOLDawnValues::HonorStart(), 0, HOLDawnValues::HonorCap());
+		HOLFactionResource::Gain(Gauge, HOLDawnValues::HonorDuelWin());
+		State.SetFactionResource(0, Gauge.Value);
+		State.SetFactionResource(1, Gauge.Value);
+		const FHOLFactionSlotView Dawn = HOLFactionSlot::FromGameState(State, 0, "Ordre de l'Aube", false, false);
+		const FString Expected = f"{Gauge.Value} / {Gauge.Cap}";
+		const int RowCount = HOLDawnPowers::Rows().Num();
+		T.AssertTrue(Dawn.bVisible, "the Dawn's slot is visible");
+		T.AssertTrue(Dawn.bHasGauge, "with a gauge");
+		T.AssertEquals(Expected, Dawn.GaugeText, "the gauge text is the state's value over the cap");
+		T.AssertEquals(Gauge.Value, Dawn.Value, "the value is the state's");
+		T.AssertEquals(RowCount, Dawn.Powers.Num(), "one box per row of the Dawn's book");
+		// The Legions (slot 1 holds a value too): no gauge, no button, the slot is empty.
+		const FHOLFactionSlotView Legions = HOLFactionSlot::FromGameState(State, 1, "Légions Noires", false, false);
+		T.AssertFalse(Legions.bVisible, "the Legions' slot is empty");
+		T.AssertEquals("slot empty", Legions.Describe, "described empty");
+		// A spectator (slot -1) and a text naming no faction: empty as well.
+		const FHOLFactionSlotView Spectator = HOLFactionSlot::FromGameState(State, -1, "Ordre de l'Aube", false, false);
+		T.AssertEquals("slot empty", Spectator.Describe, "a spectator has no slot");
+		const FHOLFactionSlotView Unknown = HOLFactionSlot::FromGameState(State, 0, "", false, false);
+		T.AssertEquals("slot empty", Unknown.Describe, "an unknown faction text shows no slot");
+	}
+	HOLTestWorld::DestroyTestWorld(TestWorld);
+}
