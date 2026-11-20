@@ -1,0 +1,41 @@
+# Emplacement de faction du HUD de l'Aube (A6a, D201, GALADRIEL-1120d/e : HOLFactionSlot.as, RefreshFactionSlot de HOLGameScreenScript.as) : la barre d'Honneur de l'Aube, le texte "30 / 100" et la ligne du pouvoir, au-dessus du bloc du heros, coin bas gauche. 3 minutes au plus.
+# Aube (slot 0, humain) contre une IA gelee (slot 1, Legions). La commande de triche hol.Cheat.Honor (CELEBORN-1120b/d, HOLControllerCommandsC2.as -> ServerCheatHonor) est tapee ici comme au clavier de la console, les cheats etant actifs comme dans specialization_cheat. Ligne attendue de hol.HUD.Report : "faction slot: slot gauge 30 / 100 powers SacredLight cost 25 <etat>" (l'etat, soon / short / ready, depend de bEffectCoded : il n'est pas attendu ici).
+waitlog Starting hero of slot 0 spawned at
+hol.AI.ThinkSteps 100000
+hol.Sanity.Watch 1
+frames 10
+hol.Camera.FocusSlot 0
+frames 8
+# Honneur a 30 : la barre est au tiers.
+hol.Cheat.Honor 30
+waitlog RpcCheat: honor set to 30 for sender slot 0
+wait 2
+frames 8
+hol.HUD.Report
+waitlog faction slot: slot gauge 30 / 100 powers SacredLight cost 25
+frames 4
+notereset 1/3 : Aube, hol.Cheat.Honor 30. Coin bas gauche, au-dessus du bloc du heros : la barre d'Honneur de l'Aube, 30 sur 100 (texte "30 / 100"), la ligne SacredLight cost 25 dessous.
+capture faction_slot_30
+waitkey 1/3 : barre a 30 sur 100. Entree pour la suite (le scenario tape hol.Cheat.Honor 100)
+# Honneur a 100 : la barre est pleine (le plafond de l'Honneur).
+hol.Cheat.Honor 100
+waitlog RpcCheat: honor set to 100 for sender slot 0
+wait 2
+frames 8
+hol.HUD.Report
+waitlog faction slot: slot gauge 100 / 100 powers SacredLight cost 25
+frames 4
+notereset 2/3 : apres hol.Cheat.Honor 100 : la barre d'Honneur est pleine, texte "100 / 100".
+capture faction_slot_100
+waitkey 2/3 : barre pleine. Entree pour la suite (le scenario tape hol.Cheat.Honor 0)
+# Honneur a 0 : la barre est vide.
+hol.Cheat.Honor 0
+waitlog RpcCheat: honor set to 0 for sender slot 0
+wait 2
+frames 8
+hol.HUD.Report
+waitlog faction slot: slot gauge 0 / 100 powers SacredLight cost 25
+frames 4
+notereset 3/3 : apres hol.Cheat.Honor 0 : la barre d'Honneur est vide, texte "0 / 100" ; l'emplacement reste affiche (l'Aube a une jauge).
+capture faction_slot_0
+hol.Test.Sanity
