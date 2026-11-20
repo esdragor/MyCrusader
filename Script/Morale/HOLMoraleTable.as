@@ -86,7 +86,7 @@ namespace HOLMoraleTable
 			R.Rate = 0;
 			R.bAura = false;
 			R.DurationMs = 40000;
-			R.RadiusCm = 0;
+			R.RadiusCm = 1200;
 			R.SourceKind = "Duel";
 			R.Gives = -1;
 			R.bAttenuable = false;
@@ -101,7 +101,7 @@ namespace HOLMoraleTable
 			R.Rate = 0;
 			R.bAura = false;
 			R.DurationMs = 40000;
-			R.RadiusCm = 0;
+			R.RadiusCm = 1200;
 			R.SourceKind = "Duel";
 			R.Gives = -1;
 			R.bAttenuable = true;
@@ -116,7 +116,7 @@ namespace HOLMoraleTable
 			R.Rate = 0;
 			R.bAura = false;
 			R.DurationMs = 25000;
-			R.RadiusCm = 0;
+			R.RadiusCm = 1200;
 			R.SourceKind = "Duel";
 			R.Gives = -1;
 			R.bAttenuable = true;
