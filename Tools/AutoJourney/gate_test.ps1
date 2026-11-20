@@ -427,5 +427,76 @@ $Tpl = Get-Content (Join-Path $Here 'E_template.md') -Raw -Encoding UTF8
 Check ($Tpl -match '(?m)^branches\s*:') 'E_template: ligne branches:'
 Check ($r -match 'branches\s*:') 'agent_rules: ligne branches: des essais'
 
+# --- L19-1 (2026-11-20) : (1) Launch exige 'check-list lue (L<N>)' dans la section du jour d'Auto_Journey_Jour.md ; (2) Close compte les commits de code de la session principale
+$NoBom = New-Object Text.UTF8Encoding($false)
+$LDate = (Get-Date).ToString('yyyy-MM-dd')
+$LDir = Join-Path $Tmp 'l191'; New-Item -ItemType Directory -Path $LDir | Out-Null
+$LJour = Join-Path $LDir 'Auto_Journey_Jour.md'
+[IO.File]::WriteAllText((Join-Path $LDir 'Auto_Journey_Checklist.md'), "| L3-1 | a |`r`n| L19-2 | b |`r`n| L7-9 | c |`r`n", $NoBom)
+function Set-LJour([string]$Body) { [IO.File]::WriteAllText($LJour, "# Jour`r`n`r`n## Agents du $LDate`r`n$Body`r`n`r`n## Autre section`r`n", $NoBom) }
+function Run-L([string[]]$More = @()) { & powershell -NoProfile -ExecutionPolicy Bypass -File $Gate -Phase Launch -End 23:59 -JourFile $LJour @More | Out-String }
+Set-LJour 'aucune lecture'
+$l1 = Run-L
+Check ($l1 -match '(?m)^FAIL .*check-list.*L19\b') 'L19-1 launch: pas de ligne check-list lue -> FAIL (derniere lecon = plus grand N numerique, L19)' $l1
+Set-LJour 'check-list lue (L3)'
+$l2 = Run-L
+Check ($l2 -match '(?m)^FAIL .*check-list') 'L19-1 launch: ligne check-list lue (L3) alors que la derniere lecon est L19 -> FAIL' $l2
+Set-LJour 'check-list lue (L19) a 08:50'
+$l3 = Run-L
+Check ($l3 -match '(?m)^PASS .*check-list' -and -not ($l3 -match '(?m)^FAIL .*check-list')) 'L19-1 launch: check-list lue (L19) -> PASS' $l3
+Set-LJour 'aucune lecture'
+$l4 = Run-L @('-AgentName', 'NETTOYAGE-1120a')
+Check ($l4 -match '(?m)^WARN .*check-list' -and -not ($l4 -match '(?m)^FAIL .*check-list')) 'L19-1 launch: agent NETTOYAGE-* sans lecture -> WARN seulement' $l4
+$l5 = Run-L @('-AgentName', 'ETAPE0-1120b')
+Check ($l5 -match '(?m)^WARN .*check-list' -and -not ($l5 -match '(?m)^FAIL .*check-list')) 'L19-1 launch: agent ETAPE0-* sans lecture -> WARN seulement' $l5
+$l6 = Run-L @('-AgentName', 'GLORFINDEL-1120j')
+Check ($l6 -match '(?m)^FAIL .*check-list') 'L19-1 launch: agent de travail sans lecture -> FAIL' $l6
+
+# (2) Close : commits de code de la session principale
+$CR = Join-Path $Tmp 'closerepo'; $CW = Join-Path $Tmp 'closewts'
+New-Item -ItemType Directory -Path $CR, $CW | Out-Null
+function Git-C([string[]]$GitArgs) { & git -C $CR @GitArgs 2>&1 | Out-Null }
+function Add-CodeCommit([string]$Dir, [string]$Rel, [string]$Msg) {
+  $fp = Join-Path $Dir $Rel; New-Item -ItemType Directory -Path (Split-Path $fp) -Force | Out-Null
+  [IO.File]::WriteAllText($fp, [guid]::NewGuid().ToString(), $NoBom)
+  & git -C $Dir add -- $Rel 2>&1 | Out-Null; & git -C $Dir commit -q -m $Msg 2>&1 | Out-Null
+}
+Git-C @('init', '-q', '-b', 'main'); Git-C @('config', 'user.email', 'a@b.c'); Git-C @('config', 'user.name', 'T'); Git-C @('config', 'core.autocrlf', 'false')
+Add-CodeCommit $CR 'Docs\base.md' 'base'
+$cSha0 = (& git -C $CR rev-parse --short HEAD).Trim()
+[IO.File]::WriteAllText((Join-Path $CR 'EtapeDefini.md'), "x`r`n", $NoBom)
+$CJour = Join-Path $CR 'Auto_Journey_Jour.md'
+function Set-CJour([bool]$WithSha) {
+  $sl = if ($WithSha) { "Etat au lancement : main = $cSha0 (local)`r`n" } else { '' }
+  [IO.File]::WriteAllText($CJour, "# Jour`r`n`r`n## Agents du $LDate`r`n$sl`r`n## Autre`r`n", $NoBom)
+}
+Set-CJour $true
+# travail d'agent : branche d'un worktree HeroesOfLiberty-*, fusionnee dans main (ne compte pas)
+Git-C @('worktree', 'add', '-q', '-b', 'agent-a', (Join-Path $CW 'HeroesOfLiberty-A'), 'main')
+Add-CodeCommit (Join-Path $CW 'HeroesOfLiberty-A') 'Script\agent_a.as' 'agent a work'
+Git-C @('merge', '-q', '--no-ff', 'agent-a', '-m', 'Merge agent-a')
+# travail de l'integrateur (branche integ-*, worktree Arwen) : compte comme code de la session principale
+Git-C @('worktree', 'add', '-q', '-b', 'integ-1', (Join-Path $CW 'HeroesOfLiberty-Arwen'), 'main')
+function Run-C([string[]]$More = @()) { & powershell -NoProfile -ExecutionPolicy Bypass -File $Gate -Phase Close -End 23:59 -WorktreesDir $CW -RetoursDir (Join-Path $Tmp 'closeretours') -JourFile $CJour -EtapeFile (Join-Path $CR 'EtapeDefini.md') @More | Out-String }
+$c0 = Run-C
+Check ($c0 -match '(?m)^PASS .*L19-1' -and -not ($c0 -match '(?m)^(WARN|FAIL) .*L19-1')) 'L19-1 close: seul un commit d agent fusionne dans main -> PASS (0)' $c0
+Add-CodeCommit $CR 'Script\main1.as' 'Integration: one'
+Add-CodeCommit $CR 'Source\main2.cpp' 'quick_check follows D858 two'
+Add-CodeCommit $CR 'Docs\onlydoc.md' 'doc only commit'
+$c2 = Run-C
+Check ($c2 -match '(?m)^WARN .*L19-1.*\b2\b' -and -not ($c2 -match '(?m)^FAIL .*L19-1')) 'L19-1 close: 2 commits de code directs sur main (+1 doc) -> WARN avec le compte 2' $c2
+Check ($c2 -match 'Integration: one' -and $c2 -match 'quick_check follows D858 two') 'L19-1 close: la liste donne sha + titre des commits' $c2
+Add-CodeCommit $CR 'Tools\Tests\main3.ps1' 'Integration: three'
+Add-CodeCommit $CR 'Script\main4.as' 'Integration: four'
+$c4 = Run-C
+Check ($c4 -match '(?m)^FAIL .*L19-1.*\b4\b') 'L19-1 close: 4 commits de code (> 3) -> FAIL avec le compte 4' $c4
+Check ($c4 -match 'agents') 'L19-1 close: le FAIL dit de confier le code aux agents' $c4
+$c4b = Run-C @('-MaxMainCodeCommits', '5')
+Check ($c4b -match '(?m)^WARN .*L19-1' -and -not ($c4b -match '(?m)^FAIL .*L19-1')) 'L19-1 close: -MaxMainCodeCommits 5 : 4 commits -> WARN' $c4b
+Set-CJour $false
+$c4c = Run-C
+Check ($c4c -match '(?m)^FAIL .*L19-1.*\b4\b') 'L19-1 close: sans ligne Etat au lancement, repli sur les commits de la date du jour -> meme compte' $c4c
+foreach ($wn in 'A', 'Arwen') { & git -C $CR worktree remove --force (Join-Path $CW "HeroesOfLiberty-$wn") 2>&1 | Out-Null }
+
 Remove-Item -Recurse -Force $Tmp -ErrorAction SilentlyContinue
 if ($Fails -gt 0) { Write-Output "=> $Fails FAIL"; exit 1 } else { Write-Output '=> tout PASS'; exit 0 }
