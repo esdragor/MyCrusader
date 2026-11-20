@@ -111,6 +111,38 @@ try {
     $failCode = $Code
     Set-ItemProperty -LiteralPath $f -Name IsReadOnly -Value $false
     Check ($failCode -ne 0 -and $o -match 'edit_line : ECHEC' -and (Same $before (Bytes $f))) 'AX-3f write failure (read-only file): non-zero code, message "edit_line : ECHEC", file unchanged' ($o + ' / code ' + $failCode)
+    Write-Output '--- 8. HALDIR-1120pd : empty -NewLine never erases a line (only an explicit -Delete), multi-line -Match is named, -After tolerates accents (NFC/NFD) and odd spaces'
+    $f = Put 'Pd1.md' ("# Etapes`r`n- SAURON-1120pb : file$e`r`n- ARWEN : fini`r`n")
+    $before = Bytes $f
+    $o = Run @('-File', $f, '-Match', 'SAURON-1120pb', '-NewLine', '""')
+    Check ($Code -ne 0 -and $o -match '-Delete' -and (Same $before (Bytes $f))) 'PD-1 an EMPTY -NewLine is refused (message names -Delete), non-zero code, file unchanged' ($o + ' / code ' + $Code)
+    $o = Run @('-File', $f, '-Match', 'SAURON-1120pb', '-NewLine', '" "')
+    Check ($Code -ne 0 -and (Same $before (Bytes $f))) 'PD-1b a blank (spaces only) -NewLine is refused too, file unchanged' ($o + ' / code ' + $Code)
+    $o = Run @('-File', $f, '-Match', 'SAURON-1120pb', '-Delete')
+    Check ($Code -eq 0 -and (Text $f) -eq "# Etapes`r`n- ARWEN : fini`r`n") 'PD-2 explicit -Delete removes exactly that line, the other lines and their CRLF kept' $o
+    $f = Put 'Pd2.md' ("# Etapes`r`n- A : un`r`n- B : deux`r`n")
+    $before = Bytes $f
+    $o = Run @('-File', $f, '-Match', "A : un`nB : deux", '-NewLine', 'zz')
+    Check ($Code -ne 0 -and $o -match 'multi' -and (Same $before (Bytes $f))) 'PD-3 a multi-line -Match is refused with a message that says it is multi-line (one line at a time), file unchanged' ($o + ' / code ' + $Code)
+    # -After with an accent: the file holds the DECOMPOSED form (e + U+0301), the argument the composed one (and the reverse)
+    $nfd = 'e' + [string][char]0x0301
+    $f = Put 'Pd3.md' ("# Etapes`r`n- fin d${nfd}j${a} vu`r`n- ARWEN : fini`r`n")
+    $o = Run @('-File', $f, '-Append', '- apres accent', '-After', "d${e}j")
+    Check ($Code -eq 0 -and (Text $f) -eq "# Etapes`r`n- fin d${nfd}j${a} vu`r`n- apres accent`r`n- ARWEN : fini`r`n") 'PD-4 -After "d(e acute)j" finds a line holding the decomposed accent (Unicode NFC/NFD tolerated)' $o
+    $f = Put 'Pd4.md' ("# Etapes`r`n- fin d${e}j${a} vu`r`n- ARWEN : fini`r`n")
+    $o = Run @('-File', $f, '-Append', '- apres accent', '-After', "d${nfd}j")
+    Check ($Code -eq 0 -and (Text $f) -eq "# Etapes`r`n- fin d${e}j${a} vu`r`n- apres accent`r`n- ARWEN : fini`r`n") 'PD-4b the reverse: composed accent in the file, decomposed in -After' $o
+    # -After ASCII exact text, file line holds a no-break space and a double space where the argument has one plain space
+    $nb = [string][char]0x00A0
+    $f = Put 'Pd5.md' ("# Etapes`r`n- E-specialization_cheat${nb}=${nb}OK (abc)`r`n- ARWEN : fini`r`n")
+    $o = Run @('-File', $f, '-Append', '- apres cheat', '-After', 'E-specialization_cheat = OK')
+    Check ($Code -eq 0 -and (Text $f) -eq "# Etapes`r`n- E-specialization_cheat${nb}=${nb}OK (abc)`r`n- apres cheat`r`n- ARWEN : fini`r`n") 'PD-5 an ASCII -After "E-specialization_cheat = OK" finds the line even when it holds no-break spaces' $o
+    $f = Put 'Pd6.md' ("# Etapes`r`n- E-specialization_cheat  =  OK (abc)`r`n- ARWEN : fini`r`n")
+    $o = Run @('-File', $f, '-Append', '- apres cheat', '-After', 'E-specialization_cheat = OK')
+    Check ($Code -eq 0 -and (Text $f) -eq "# Etapes`r`n- E-specialization_cheat  =  OK (abc)`r`n- apres cheat`r`n- ARWEN : fini`r`n") 'PD-5b an ASCII -After finds a line holding doubled spaces' $o
+    # a refusal for an absent -After says what was tried (exact, then normalised) so the agent does not guess
+    $o = Run @('-File', $f, '-Append', 'x', '-After', 'texte absent du fichier')
+    Check ($Code -ne 0 -and $o -match 'normalis') 'PD-6 an absent -After is refused and the message says the comparison was also tried after Unicode / space normalisation' $o
 } catch {
     $Fails++; Write-Output ('FAIL exception : ' + $_)
 } finally {
