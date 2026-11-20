@@ -1887,11 +1887,11 @@ if ($Parts -contains "camera") {
                 "waitlog Rally: slot 0 set the rally point of Barracks at (", "hol.Prod.BuildTime 2", "hol.Prod.Report"
             Key A
             # The Man-at-arms opens at tier 1 (G1, D711): the tier opened by the cheat before the key Z (the barracks' grid redrawn).
-            Step "waitlog Production: Spearman of slot 0 done", "hol.Cheat.Tier 1", "frames 20"
+            Step "waitlog Production: Halberdier of slot 0 done", "hol.Cheat.Tier 1", "frames 20"
             Key Z
             Step "waitlog Production: ManAtArms of slot 0 done"
             Key A
-            Step "waitlog Production: Spearman of slot 0 done", "hol.Prod.BuildTime 0", "wait 9", "hol.Units.Where 0", "hol.Prod.Report", "frames 3", "capture build_barracks_soldiers"
+            Step "waitlog Production: Halberdier of slot 0 done", "hol.Prod.BuildTime 0", "wait 9", "hol.Units.Where 0", "hol.Prod.Report", "frames 3", "capture build_barracks_soldiers"
             Key Escape
             Step "mark build barracks orders", "waitlog Selection: none",
                 "hol.Select.BoxGround $($BarracksRally[0] - 500) $($BarracksRally[1] - 500) $($BarracksRally[0] + 500) $($BarracksRally[1] + 500)", "waitlog Selection: 3 units (own)",
@@ -6515,14 +6515,14 @@ if ($Parts -contains "net") {
             $Checks["client 2 : then its own chain alone ($(Format-ChainReport $NetChains[-1]))"] = ($NetChains.Count -eq 2) -and (& $OwnChain $NetChains[1])
         }
         $ArmyShown = $ArmyLines | Select-String -Pattern "Units report: (.*)$" | Select-Object -Last 1 | ForEach-Object { $_.Matches[0].Groups[1].Value }
-        $Checks["client $N : both armies shown with their types ($ArmyShown)"] = $ArmyShown -eq "client, 10 displayed: ManAtArms of slot 0 x2, ManAtArms of slot 1 x2, Peasant of slot 0 x1, Peasant of slot 1 x1, Spearman of slot 0 x2, Spearman of slot 1 x2"
+        $Checks["client $N : both armies shown with their types ($ArmyShown)"] = $ArmyShown -eq "client, 10 displayed: Halberdier of slot 0 x2, Halberdier of slot 1 x2, ManAtArms of slot 0 x2, ManAtArms of slot 1 x2, Peasant of slot 0 x1, Peasant of slot 1 x1"
         $Looks = $ArmyLines | Select-String -Pattern "Units looks: client, (.*)$" | Select-Object -Last 1 | ForEach-Object { $_.Matches[0].Groups[1].Value }
-        $OtherLooks = @(foreach ($Type in "Spearman", "ManAtArms") { [regex]::Match("$Looks", "$Type of slot $Other skinned (\w+) colour (\d+) x2") })
+        $OtherLooks = @(foreach ($Type in "Halberdier", "ManAtArms") { [regex]::Match("$Looks", "$Type of slot $Other skinned (\w+) colour (\d+) x2") })
         $Checks["client $N : the other's soldiers drawn, their meshes, the other's colour ($Looks)"] = (@($OtherLooks | Where-Object { $_.Success -and $_.Groups[2].Value -eq "$Other" }).Count -eq 2) -and
             ($OtherLooks[0].Groups[1].Value -ne $OtherLooks[1].Groups[1].Value)
         $Checks["client $N : control group 1 made of its 5 units, its digit selects them"] = [bool]($ArmyLines | Select-String -Pattern "Group 1: created" -Quiet) -and
             [bool]($ArmyLines | Select-String -Pattern "Group 1: selected, 5 units" -Quiet) -and
-            [bool]($ArmyLines | Select-String -Pattern "Selection report: selected 5 units \(own\): ManAtArms x2, Peasant x1, Spearman x2" -Quiet)
+            [bool]($ArmyLines | Select-String -Pattern "Selection report: selected 5 units \(own\): Halberdier x2, ManAtArms x2, Peasant x1" -Quiet)
         $Missing = @("qcnet_${N}_army_other", "net_army_c$N" | Where-Object { -not (Test-Path (Join-Path $NetClient.Shots "$_.png")) })
         $Checks["client $N : army captures (missing: $($Missing -join ', '))"] = $Missing.Count -eq 0
         $ClientErrors = @($ClientLines | Select-String -Pattern "LogHOLMatch: (Error|Warning)|LogHOLNet: (Error|Warning)|LogHOLTest: Error")
