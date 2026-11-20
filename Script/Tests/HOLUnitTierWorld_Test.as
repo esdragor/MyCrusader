@@ -45,7 +45,7 @@ namespace UnitTierWorldTest
 	void OrderAll(UHOLTestWorldHandle TestWorld, TArray<AHOLBuilding> Buildings, int Slot)
 	{
 		int Base = Slot * 5;
-		HOLTestWorld::IssueProductionOrder(TestWorld, Slot, Buildings[Base + 0], n"Spearman");
+		HOLTestWorld::IssueProductionOrder(TestWorld, Slot, Buildings[Base + 0], n"Halberdier");
 		HOLTestWorld::IssueProductionOrder(TestWorld, Slot, Buildings[Base + 0], n"ManAtArms");
 		HOLTestWorld::IssueProductionOrder(TestWorld, Slot, Buildings[Base + 1], n"Archer");
 		HOLTestWorld::IssueProductionOrder(TestWorld, Slot, Buildings[Base + 1], n"Crossbowman");
@@ -63,7 +63,7 @@ namespace UnitTierWorldTest
 	// The price of the tier 1 roster minus the Mangonel (what slot 1 queues, and what slot 0 adds at tier 1 on top of its first lot).
 	int Tier1Lot(UHOLTestWorldHandle TestWorld)
 	{
-		return Cost(TestWorld, n"Spearman") + Cost(TestWorld, n"ManAtArms") + Cost(TestWorld, n"Archer") + Cost(TestWorld, n"Crossbowman")
+		return Cost(TestWorld, n"Halberdier") + Cost(TestWorld, n"ManAtArms") + Cost(TestWorld, n"Archer") + Cost(TestWorld, n"Crossbowman")
 			+ Cost(TestWorld, n"LightCavalry") + Cost(TestWorld, n"Monk") + Cost(TestWorld, n"Ram");
 	}
 }
@@ -109,20 +109,20 @@ void Test_UnitTierProductionWorld(FUnitTest& T)
 	T.AssertEquals(1, HOLTestWorld::GetSlotTier(TestWorld, 1), "slot 1 is at tier 1");
 
 	// 1. Tier 0, the same orders for both: the server refuses the Man-at-arms, the Crossbowman, the Light cavalry, the Monk, the Ram and the Mangonel
-	// of slot 0, and queues what tier 0 opens (Spearman, Archer). Slot 1 (tier 1) queues all but the Mangonel (tier 2). The stock moves by exactly the
+	// of slot 0, and queues what tier 0 opens (Halberdier, Archer). Slot 1 (tier 1) queues all but the Mangonel (tier 2). The stock moves by exactly the
 	// price of what was queued.
 	UnitTierWorldTest::OrderAll(TestWorld, Buildings, 0);
 	UnitTierWorldTest::OrderAll(TestWorld, Buildings, 1);
 	HOLTestWorld::AdvanceSteps(TestWorld, 1);
 	FString Queues0 = UnitTierWorldTest::Queues(Buildings, 0);
 	FString Queues1 = UnitTierWorldTest::Queues(Buildings, 1);
-	T.AssertTrue(Queues0 == "1/1/0/0/0", f"tier 0: Barracks / range / stable / chapel / workshop queues: the Spearman and the Archer only (got {Queues0})");
+	T.AssertTrue(Queues0 == "1/1/0/0/0", f"tier 0: Barracks / range / stable / chapel / workshop queues: the Halberdier and the Archer only (got {Queues0})");
 	T.AssertTrue(Queues1 == "2/2/1/1/1", f"tier 1: the Man-at-arms, the Crossbowman, the Light cavalry, the Monk and the Ram come out too, not the Mangonel (got {Queues1})");
 	int Spent0 = 20000 - UnitTierWorldTest::Total(HOLTestWorld::GetSlotResources(TestWorld, 0));
 	int Spent1 = 20000 - UnitTierWorldTest::Total(HOLTestWorld::GetSlotResources(TestWorld, 1));
-	int PriceLow = UnitTierWorldTest::Cost(TestWorld, n"Spearman") + UnitTierWorldTest::Cost(TestWorld, n"Archer");
-	T.AssertTrue(PriceLow > 0, "a Spearman and an Archer cost something (the unit rows are read)");
-	T.AssertEquals(PriceLow, Spent0, "tier 0 paid the Spearman and the Archer only");
+	int PriceLow = UnitTierWorldTest::Cost(TestWorld, n"Halberdier") + UnitTierWorldTest::Cost(TestWorld, n"Archer");
+	T.AssertTrue(PriceLow > 0, "a Halberdier and an Archer cost something (the unit rows are read)");
+	T.AssertEquals(PriceLow, Spent0, "tier 0 paid the Halberdier and the Archer only");
 	T.AssertEquals(UnitTierWorldTest::Tier1Lot(TestWorld), Spent1, "tier 1 paid all its queued units");
 
 	// 2. The hero reaches tier 1 (the forced tier lifted to 1): the same orders now pass for slot 0, the Mangonel still waits for tier 2.
@@ -133,7 +133,7 @@ void Test_UnitTierProductionWorld(FUnitTest& T)
 	FString QueuesLater = UnitTierWorldTest::Queues(Buildings, 0);
 	T.AssertTrue(QueuesLater == "3/3/1/1/1", f"tier 1 for slot 0: what tier 1 opens is queued on top of the first lot; the workshop holds the Ram only (got {QueuesLater})");
 	int SpentLater = Before - UnitTierWorldTest::Total(HOLTestWorld::GetSlotResources(TestWorld, 0));
-	T.AssertEquals(UnitTierWorldTest::Tier1Lot(TestWorld), SpentLater, "slot 0 paid the Man-at-arms, the Crossbowman, the Light cavalry, the Monk, the Ram and one more Spearman and Archer");
+	T.AssertEquals(UnitTierWorldTest::Tier1Lot(TestWorld), SpentLater, "slot 0 paid the Man-at-arms, the Crossbowman, the Light cavalry, the Monk, the Ram and one more Halberdier and Archer");
 
 	// 3. Tier 2: the Mangonel is queued at the workshop.
 	HOLTestWorld::SetSlotTierOverride(TestWorld, 0, 2);

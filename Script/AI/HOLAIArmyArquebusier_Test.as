@@ -102,7 +102,7 @@ void Test_ArmyArquebusierIsMadeAtTheArcheryRange(FUnitTest& T)
 		FHOLAIUnit Unit;
 		Unit.Id = 100 + Index;
 		Unit.Health = 60;
-		Unit.Type = Index < 4 ? n"Spearman" : Index < 6 ? n"ManAtArms" : Index < 10 ? n"Archer" : n"Crossbowman";
+		Unit.Type = Index < 4 ? n"Halberdier" : Index < 6 ? n"ManAtArms" : Index < 10 ? n"Archer" : n"Crossbowman";
 		Summary.Army.Add(Unit);
 	}
 	const FHOLAIComposition Choice = HOLAIArmy::ChooseComposition(Summary, Data);

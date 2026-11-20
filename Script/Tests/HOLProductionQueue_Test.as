@@ -151,7 +151,7 @@ void Test_Production_Tables(FUnitTest& T)
 	if (bBarracks)
 	{
 		T.AssertEquals(1, Barracks.Category, "Barracks: military (F1, D30)");
-		T.AssertTrue(Barracks.Produces.Num() == 3 && Barracks.Produces[0] == n"Spearman" && Barracks.Produces[1] == n"ManAtArms" && Barracks.Produces[2] == n"DamnedWarrior", "Barracks: produces the Spearman, the Man-at-arms then the Damned Warrior");
+		T.AssertTrue(Barracks.Produces.Num() == 4 && Barracks.Produces[0] == n"Spearman" && Barracks.Produces[1] == n"Halberdier" && Barracks.Produces[2] == n"ManAtArms" && Barracks.Produces[3] == n"DamnedWarrior", "Barracks: produces the Spearman (Legions), the Halberdier (Dawn, D858), the Man-at-arms then the Damned Warrior");
 		T.AssertEquals(0, Barracks.PopulationProvided, "Barracks: gives no population");
 		T.AssertEquals(0, Barracks.AcceptsCount, "Barracks: not a deposit");
 	}
