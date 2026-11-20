@@ -1056,8 +1056,8 @@ for (FString Command : Commands)
 	}
 
 	// FARAMIR-1120c (NOT COMPILED): the Dawn's Seal of Light put down from the server. The rule is HOLFactionPowerCast::Decide (faction,
-	// book row, cool-down, range 800 from the origin, gauge); on an accepted decision the Seal is started FIRST (a failed start costs
-	// nothing), then the gauge is paid and the cool-down written. The slot is the sender's (another slot is refused). Stand-ins to
+	// book row, cool-down, range of the Monk's LightSeal row from the origin); on an accepted decision the Seal is started FIRST (a failed
+	// start costs nothing), then the cool-down is written (D862: no Honor is paid, the gauge is not touched). The slot is the sender's (another slot is refused). Stand-ins to
 	// replace (TYPES_A_EXPOSER): the cast origin is the hero banner location (no caster-position accessor), and NowMs is the world
 	// clock (the zones keep their own ZoneClockMs, not exposed to script).
 	UFUNCTION(Server)
@@ -1087,9 +1087,9 @@ for (FString Command : Commands)
 			Log(n"LogHOLMatch", f"RpcPower: Seal of Light not started for slot {Slot} (no world, subsystem or slot)");
 			return;
 		}
-		State.SetFactionResource(Slot, Decision.NewGaugeValue);
+		// D862: no Honor is paid (the Seal is the Monk's unit ability): the gauge is not written, only the cool-down.
 		State.SetPowerCooldownEndMs(Slot, PowerIndex, Decision.NewCooldownEndMs);
-		Log(n"LogHOLMatch", f"RpcPower: Seal of Light put down by slot {Slot}, gauge {Decision.NewGaugeValue}");
+		Log(n"LogHOLMatch", f"RpcPower: Seal of Light put down by slot {Slot}, Honor unchanged");
 	}
 
 	// Morceau 8 (NOT COMPILED): hol.Cheat.Specialization; the bridge calls AHOLPlayerController::DoCheatSpecialization (cheat guard, the board's rules, start then end at once).
