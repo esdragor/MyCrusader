@@ -210,9 +210,11 @@ namespace HOLAudioBuildings
 		if (Building == "SiegeWorkshop") return HOLAudioEvent::SelectBuildingSiege;
 		if (Building == "MainCentre") return HOLAudioEvent::SelectBuildingForum;
 		if (Building == "Forge") return HOLAudioEvent::SelectBuildingForge;
-		// D832 (2026-11-16): round 6, their own sound too (the Stable stays silent until the user hears its cut snort again).
+		// D832 (2026-11-16): round 6, their own sound too (the Stable followed with D834).
 		if (Building == "ArcheryRange") return HOLAudioEvent::SelectBuildingRange;
 		if (Building == "Barracks") return HOLAudioEvent::SelectBuildingBarracks;
+		// D834 (2026-11-16): the Stable too, the cut snort the user chose.
+		if (Building == "Stable") return HOLAudioEvent::SelectBuildingStable;
 		return SelectEventOfFamily(FamilyOf(Building));
 	}
 
