@@ -529,6 +529,16 @@ bool UHOLControllerCommandLibrary::RequestUngarrisonAllOf(AHOLPlayerController* 
 	return Controller && Building;
 }
 
+bool UHOLControllerCommandLibrary::RequestUngarrisonUnitOf(AHOLPlayerController* Controller, const int32 UnitId)
+{
+	return false; // stub (red): the body comes with the green commit
+}
+
+bool UHOLControllerCommandLibrary::RequestUngarrisonAllSelected(AHOLPlayerController* Controller)
+{
+	return false; // stub (red)
+}
+
 bool UHOLControllerCommandLibrary::RequestRallyOnSite(AHOLPlayerController* Controller, AHOLBuilding* Producer, AHOLBuilding* Site, const bool bShift)
 {
 	if (Controller && Producer && Site) { Controller->RequestSetRallyPointOf(Producer, Site->GetActorLocation(), INDEX_NONE, Site, bShift); }
