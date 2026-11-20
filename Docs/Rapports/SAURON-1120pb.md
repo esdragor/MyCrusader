@@ -1,0 +1,23 @@
+# SAURON-1120pb (tool-known-reds, worktree C:\Users\baudo\Documents\HeroesOfLiberty-Sauron)
+
+APPELES_DECLARES: ~22 (arret a 25 vus)
+HEURE_DEBUT/HEURE_FIN: 15:51 / 15:56
+PREMIER_BUILD: sans C++   BUILD: NON COMPILE   LAUNCHCHECK_DEBUT: sans C++
+TEST_ROUGE: d236755, assertit l'effet : oui (le test lit les lignes de UnitTypes.csv / BuildingTypes.csv comme le jeu : ligne VirtuousKnight, 30 / 800, palier 1, faction Dawn, stats copiees de ManAtArms lues de la ligne, grille Aube calculee par le filtre de faction). Rouge vu a 15:53 : virtuous_knight_test.py 3 FAIL sur 5 checks (pas de ligne, Produces sans VirtuousKnight, grille Aube [Halberdier, ManAtArms]), legions_roster_test.py 1 FAIL sur 132 (grille Aube attendue avec le Chevalier).
+COMMITS: 3 (d236755 test, 889a1cc donnees, dba00c9 merge main), dernier 15:54, merge_main_fait: oui (sans conflit)
+TESTS: python pur : virtuous_knight_test.py 27 checks PASS ; legions_roster_test.py PASS ; legions_warrior_test.py PASS ; camp_table_test.py PASS ; unit_columns_declared_test.py PASS ; unit_stats_test.py PASS ; unit_abilities_test.py PASS. TESTS_TAUTOLOGIQUES: 0. Non lances (pas de build) : HOLCommandGrid_Test.as, HOLProductionQueue_Test.as, HOLGameNames_Test.as, quick_check.ps1.
+ESSAIS: aucun
+QUESTIONS: aucune (reponse A de Q-chevalier-ligne appliquee ; la ligne se regle dans le CSV)
+FAIT / RESTE :
+- Tools\Data\UnitTypes.csv : ligne VirtuousKnight en fin de fichier (DisplayName "Virtuous Knight", Faction Dawn, MinTier 1, tout le reste copie de ManAtArms, DamageRedirectPercent 30, DamageRedirectRadius 800). 17 -> 18 lignes de donnees.
+- Tools\Data\BuildingTypes.csv : "VirtuousKnight" AJOUTE EN FIN de la liste Produces de la Caserne (Spearman, Halberdier, ManAtArms, DamnedWarrior, VirtuousKnight) : grille Aube = A Hallebardier, Z Homme d'armes, E Chevalier Vertueux ; grille Legions inchangee ; la grille brute (non filtree) a une cellule de plus (T).
+- Nom "Chevalier Vertueux" (GDD) : ligne LOCTEXT dans Source\HeroesOfLibertyUI\HUD\HOLGameNames.cpp (C++ d'une ligne, copie du modele Hallebardier, NON COMPILE : a mettre dans le lot C++ groupe), EN/JA dans Tools\Localization\fill_po.py (JA = proposition). Test script Test_GameNamesVirtuousKnightName dans Script\UI\HOLGameNames_Test.as (rouge tant que non compile).
+- Tests adaptes : HOLCommandGrid_Test.as (cellule 4 = VirtuousKnight, boucle des cellules vides des 5), HOLProductionQueue_Test.as (5 Produces), legions_roster_test.py (grille Aube + VirtuousKnight dans DAWN_ONLY_UNITS), quick_check.ps1 (regex de la grille Caserne selectionnee : E Chevalier Vertueux ; nouvelle ligne virtuous_knight_test.py ; analyse sans erreur). Aucun test ne comptait 17 lignes de UnitTypes.csv (grep Tools, Script, Source/Tests).
+- UnitStats.md regenere par unit_stats_test.py (ligne du Chevalier ; la matrice d'attaque gagne une colonne).
+- Placeholders.txt : la ligne "Chevalier Vertueux Aube [a venir]" devient "(stats provisoires = Homme d'armes ... redirection 30 % / 8 m reelle) [mannequin]" ; ligne ajoutee a Tools\Data\placeholders_map.csv.
+- A REGENERER PAR L'EDITEUR : Content\Units\UnitTypes.uasset ET Content\Buildings\BuildingTypes.uasset (le Produces de la Caserne a change aussi), depuis les CSV fusionnes. Pas fait ici (pas d'editeur).
+- RESTE : compiler (HOLGameNames.cpp + le C++ de 1120pa), lancer quick_check -Parts tests, regenerer les deux uasset ; branchement HOLCombatProcessor et anneau de 8 m (hors tache).
+NON VERIFIE: tout ce qui demande le jeu ou l'editeur : les tests script et C++ (CommandGrid, ProductionQueue, GameNames, FactionRules), quick_check (regex de la grille Caserne Aube "E: Chevalier Vertueux" suppose la ligne GameNames compilee), le comportement en jeu de la redirection (Redirect n'est branche nulle part), l'IA de l'Aube (HOLAIArmy prend le premier type ouvert au palier : suppose inchange, Halberdier d'abord), UnitStats.md (diff de 41 lignes, generateur seul). Accident reparable : un appel edit_line.ps1 a vide ma ligne d'Auto_Journey_File.md (variable absente apres une exception) ; ligne restauree (texte d'origine + mise a jour) ; relire le diff de ce fichier par precaution.
+PROCESSUS_DETACHES: aucun processus detache pour C:\Users\baudo\Documents\HeroesOfLiberty-Sauron
+ANOMALIES_PROCESSUS: edit_line.ps1 -NewLine avec valeur vide a remplace la ligne trouvee par une ligne vide au lieu de refuser (outil a durcir : refuser -NewLine vide). Rien d'autre.
+GIT_STATUS_PRINCIPALE: modifs de docs seulement (AubeInProgress.md, Auto_Journey_File.md, EtapeDefini.md, Placeholders.txt, rapports) ; aucun fichier de code touche dans la copie principale : oui

@@ -37,7 +37,7 @@ Un chantier ne se clôt pas sans avoir relu ce fichier.
 - Héros Légions (même corps que l'Aube) [mannequin]
 - Light infantry / Nanite (unités d'essai) [mannequin]
 - Hallebardier Aube [mannequin]
-- Chevalier Vertueux Aube [à venir]
+- Chevalier Vertueux Aube (stats provisoires = Homme d'armes, corps de l'Homme d'armes ; redirection 30 % / 8 m réelle, D864) [mannequin]
 - Moine Lumineux Aube [à venir]
 - Squelette (levé d'un cadavre) Légions [à venir]
 - Nécromancien Légions [à venir]
@@ -192,6 +192,7 @@ Un chantier ne se clôt pas sans avoir relu ce fichier.
 - Enfants du Dragon, Cercle de l Ombre, Heritiers du Feu : factions grisees dans Nouvelle partie, sans contenu (jouent comme l Aube si elles etaient prises) [rien]
 - Textes EN/JA du panneau du scenario (Scenario {0}, preparing, ready, error, Restart) et des triches (Cheats +/-, Fast build on/off, +1000 Food/Wood/Stone/Gold, +1000 of everything, Population +165, Unit speed, Gather speed, {0}: x{1}), 18 textes de fill_po.py : traduction provisoire de l agent [texte]
 - Japonais de ces 18 textes (シナリオ, 準備中, 準備完了, エラー, リスタート, チート, 高速建設, 全資源, ユニット速度, 採集速度) : a relire par l utilisateur [texte]
+- Case D du Mangonneau pendant le montage : texte Montage... / Demontage... et barre en caracteres [###-----] (pas de widget, pas d'animation, durees locales) : a remplacer par une vraie barre et l'animation (D869b) [texte]
 Depart Nomade (D797 : carte entiere, ScatterRadiusCm 0) : ecart hol.Nomad.GroupSpacingCm 1500 provisoires (D207 dit 'endroits aleatoires de la carte'), HALDIR-1114c
 Specialisation (SP3) : libelles Voie A / Voie B du palier N dans la grille du Forum, provisoires (noms GDD 13 par faction a brancher)
 Slot de faction (jauge Honneur) : texte + barre jaune + une ligne par pouvoir, position = coin bas gauche + 150 px (FactionSlotRise), sans icone ni libelle de la table de textes.
@@ -199,3 +200,4 @@ Son d'alerte mineure (Population pleine, attaque ailleurs) : ping 1 kHz du moteu
 Marque du signal qui pulse (sol et mini-carte) : bornes 0,8 a 1,4 et 3 cycles (cvars hol.Signal.PulseMin/PulseMax/MarkCycles, style hol.Signal.MarkStyle) provisoires, D860, GLORFINDEL-1120b [style]
 Sceau de lumiere (zone au sol) : aucun visuel, aucun son ; le pouvoir n'a pas de bouton (visee C++ faite, boutons a brancher), valeurs D859, FARAMIR-1120a/e [rien]
 Champ de saisie du chat (Entree) : sans style (bordure et texte par defaut du moteur), non branche a l'ecran, GLORFINDEL-1120h [style]
+- Icones des unites dans le cadre de garnison (bouton d'un occupant : /Game/UI/Icons/Units/T_Unit_<Type>, aucune texture ; le nom du type s'affiche a la place) [rien]
