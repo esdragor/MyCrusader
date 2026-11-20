@@ -409,4 +409,39 @@ void Test_SpecializationThirdGridCellForThreeOptions(FUnitTest& T)
 	T.AssertTrue(DawnBefore.Command != EHOLGridCommandKind::Specialize, "the Dawn's Forum has nothing on the cell before its first option");
 	T.AssertTrue(DawnPast.Command != EHOLGridCommandKind::Specialize, "the Dawn's Forum has no third cell");
 }
+// GLORFINDEL-1120pd, the grid as the player SEES it: the cells of a Forum's grid asked through the faction rule (the entry the game's board uses), counted over the whole
+// grid. A Templar seat shows 3 specialization cells (options 0 1 2), the Dawn and an unknown faction 2. Red before the rule reads the faction (it answered 2 for everyone).
+int SpecGridCountSpecializeCells(const FHOLGridContextView& Forum, int Faction, TArray<int>& Options)
+{
+	int Count = 0;
+	for (int Cell = 0; Cell < HOLCommandGridRules::NumCells; Cell++)
+	{
+		FHOLGridCommandView Shown = HOLCommandGridRules::GetCommandForFaction(Forum, Cell, Faction);
+		if (Shown.Command == EHOLGridCommandKind::Specialize)
+		{
+			Count++;
+			Options.Add(Shown.Option);
+		}
+	}
+	return Count;
+}
 
+void Test_SpecializationGridShowsThreeLanesForTheTemplars(FUnitTest& T)
+{
+	FHOLGridContextView Forum;
+	Forum.bOwnBuilding = true;
+	Forum.bBuildingFinished = true;
+	Forum.bPrimaryForum = true;
+	Forum.SpecializationTier = 1;
+	TArray<int> TemplarOptions;
+	TArray<int> DawnOptions;
+	TArray<int> NoneOptions;
+	int TemplarCount = SpecGridCountSpecializeCells(Forum, int(EHOLFaction::Templars), TemplarOptions);
+	int DawnCount = SpecGridCountSpecializeCells(Forum, int(EHOLFaction::DawnOrder), DawnOptions);
+	int NoneCount = SpecGridCountSpecializeCells(Forum, -1, NoneOptions);
+	T.AssertEquals(HOLSpecialization::OptionCountOf(EHOLFaction::Templars), TemplarCount, "a Templar seat's grid shows one specialization cell per lane (3)");
+	T.AssertEquals(HOLSpecialization::OptionCountOf(EHOLFaction::DawnOrder), DawnCount, "the Dawn's grid shows its 2 lanes");
+	T.AssertEquals(2, NoneCount, "no faction known: the default 2 lanes");
+	T.AssertTrue(TemplarOptions.Contains(2), "the Templars' third lane (option 2) is on the grid");
+	T.AssertTrue(!DawnOptions.Contains(2), "the Dawn has no third lane");
+}
