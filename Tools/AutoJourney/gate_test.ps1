@@ -481,8 +481,14 @@ function Run-C([string[]]$More = @()) { & powershell -NoProfile -ExecutionPolicy
 $c0 = Run-C
 Check ($c0 -match '(?m)^PASS .*L19-1' -and -not ($c0 -match '(?m)^(WARN|FAIL) .*L19-1')) 'L19-1 close: seul un commit d agent fusionne dans main -> PASS (0)' $c0
 Add-CodeCommit (Join-Path $CW 'HeroesOfLiberty-Arwen') 'Script\integ1.as' 'Integration: integ one'
+# (a) integ-y extraite dans un AUTRE worktree qu'Arwen = branche de travail d'un agent : non comptee ; (b) cherry-pick sur integ-1 : non compte
+Git-C @('worktree', 'add', '-q', '-b', 'integ-y', (Join-Path $CW 'HeroesOfLiberty-B'), 'main')
+Add-CodeCommit (Join-Path $CW 'HeroesOfLiberty-B') 'Script\integy.as' 'Integration: agent owned integ y'
+Add-CodeCommit (Join-Path $CW 'HeroesOfLiberty-A') 'Script\cpsrc.as' 'cherry source from agent'
+$cpSha = (& git -C (Join-Path $CW 'HeroesOfLiberty-A') rev-parse HEAD).Trim()
+& git -C (Join-Path $CW 'HeroesOfLiberty-Arwen') cherry-pick $cpSha 2>&1 | Out-Null
 $ci = Run-C
-Check ($ci -match '(?m)^WARN .*L19-1.*\b1\b' -and -not ($ci -match '(?m)^FAIL .*L19-1') -and $ci -match 'Integration: integ one' -and -not ($ci -match 'Merge agent-a|agent a work')) 'L19-1 close (reflog): 1 commit direct sur integ-1 + 1 fusion d agent -> 1 compte, la fusion et le travail d agent non' $ci
+Check ($ci -match '(?m)^WARN .*L19-1.*\b1\b' -and -not ($ci -match '(?m)^FAIL .*L19-1') -and $ci -match 'Integration: integ one' -and -not ($ci -match 'Merge agent-a|agent a work|agent owned integ y|cherry source from agent')) 'L19-1 close (reflog): 1 commit direct sur integ-1 compte ; fusion, cherry-pick et commit sur integ-y (worktree d agent) non' $ci
 Add-CodeCommit $CR 'Script\main1.as' 'Integration: one'
 Add-CodeCommit $CR 'Source\main2.cpp' 'quick_check follows D858 two'
 Add-CodeCommit $CR 'Docs\onlydoc.md' 'doc only commit'
@@ -496,7 +502,7 @@ Check ($c4 -match '(?m)^FAIL .*L19-1.*\b5\b') 'L19-1 close: 5 commits de code (>
 Check ($c4 -match 'agents') 'L19-1 close: le FAIL dit de confier le code aux agents' $c4
 $c4b = Run-C @('-MaxMainCodeCommits', '6')
 Check ($c4b -match '(?m)^WARN .*L19-1' -and -not ($c4b -match '(?m)^FAIL .*L19-1')) 'L19-1 close: -MaxMainCodeCommits 6 : 5 commits -> WARN' $c4b
-foreach ($wn in 'A', 'Arwen') { & git -C $CR worktree remove --force (Join-Path $CW "HeroesOfLiberty-$wn") 2>&1 | Out-Null }
+foreach ($wn in 'A', 'B', 'Arwen') { & git -C $CR worktree remove --force (Join-Path $CW "HeroesOfLiberty-$wn") 2>&1 | Out-Null }
 
 Remove-Item -Recurse -Force $Tmp -ErrorAction SilentlyContinue
 if ($Fails -gt 0) { Write-Output "=> $Fails FAIL"; exit 1 } else { Write-Output '=> tout PASS'; exit 0 }
