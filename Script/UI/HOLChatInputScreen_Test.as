@@ -129,3 +129,23 @@ void Test_ChatInputScreenOpensOnAlliesWithAnAlly(FUnitTest& T)
 	HOLChatInput::PressEnter(Lonely, "", bNone, false);
 	T.AssertEquals(Lonely.Channel, HOLChat::All, "no ally: the field opens on All");
 }
+
+
+// A refused whisper (unknown name / no text) shows a line, and the parse result is the one computed by ParseWhisper on a real text, not typed by hand.
+// Red: both refusals share one text, or an accepted whisper shows a refusal.
+void Test_ChatInputScreenWhisperRefusalTexts(FUnitTest& T)
+{
+	TArray<FString> Names;
+	Names.Add("Aragorn");
+	TArray<int> Slots;
+	Slots.Add(1);
+	int Slot = -1;
+	FString Body;
+	const FString Unknown = HOLChatInputScreen::WhisperRefusalText(HOLChatInput::ParseWhisper("/w Gimli hi", Names, Slots, Slot, Body));
+	const FString Empty = HOLChatInputScreen::WhisperRefusalText(HOLChatInput::ParseWhisper("/w Aragorn", Names, Slots, Slot, Body));
+	const FString Fine = HOLChatInputScreen::WhisperRefusalText(HOLChatInput::ParseWhisper("/w Aragorn hi", Names, Slots, Slot, Body));
+	T.AssertFalse(Unknown.IsEmpty(), "an unknown name shows a refusal");
+	T.AssertFalse(Empty.IsEmpty(), "no text shows a refusal");
+	T.AssertTrue(Unknown != Empty, "the two refusals say different things");
+	T.AssertTrue(Fine.IsEmpty(), "an accepted whisper shows no refusal");
+}
