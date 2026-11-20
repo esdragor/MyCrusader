@@ -207,6 +207,8 @@ if ($Parts -contains "values") {
         $ValuesChecks["value_consumers.py --check ($($ConsumersOutput | Select-Object -Last 1))"] = ($LASTEXITCODE -eq 0)
         $UnitStatsOutput = @(python -I (Join-Path $PSScriptRoot "..\Data\unit_stats_test.py") 2>&1)
         $ValuesChecks["unit_stats_test.py ($($UnitStatsOutput | Select-Object -Last 1))"] = ($LASTEXITCODE -eq 0)
+        $UnitColumnsOutput = @(python -I (Join-Path $PSScriptRoot "..\Data\unit_columns_declared_test.py") 2>&1)
+        $ValuesChecks["unit_columns_declared_test.py ($($UnitColumnsOutput | Select-Object -Last 1))"] = ($LASTEXITCODE -eq 0)
         $UnitAbilitiesOutput = @(python -I (Join-Path $PSScriptRoot "..\Data\unit_abilities_test.py") 2>&1)
         $ValuesChecks["unit_abilities_test.py ($($UnitAbilitiesOutput | Select-Object -Last 1))"] = ($LASTEXITCODE -eq 0)
         $LegionsWarriorOutput = @(python -I (Join-Path $PSScriptRoot "legions_warrior_test.py") 2>&1)

@@ -157,7 +157,8 @@ def load():
             for k in ("Radius", "Speed", "MaxHealth", "AvoidanceDistance", "BuildTime", "Population",
                       "CarryCapacity", "Attack", "AttackInterval", "AttackWindUpPercent", "AttackRange",
                       "MeleeArmor", "RangedArmor", "SiegeArmor", "HeroArmor", "AggressionRadius",
-                      "BuildingAttack", "BuildingAttackInterval", "BuildingAttackRange", "SightRadius", "AreaRadius"):
+                      "BuildingAttack", "BuildingAttackInterval", "BuildingAttackRange", "SightRadius", "AreaRadius",
+                      "DamageRedirectPercent", "DamageRedirectRadius"):
                 u[k] = float(row[k])
             u["ArmorCategories"] = parse_list(row["ArmorCategories"])
             u["Bonuses"] = parse_bonuses(row["Bonuses"])
