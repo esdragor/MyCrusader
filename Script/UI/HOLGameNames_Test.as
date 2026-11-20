@@ -44,3 +44,20 @@ void Test_GameNamesForgeName(FUnitTest& T)
 {
 	T.AssertTrue(HOLGameNamesRead::GetBuildingName(n"Forge").ToString() == "Forge", "the Forge's name");
 }
+// SAURON-1120e (D858): the Dawn's Halberdier replaced the Spearman in the Barracks grid, but HOLGameNames::GetUnitName had no line for it:
+// the grid and the tooltips showed the type key. In any language the name of each Dawn Barracks unit is non-empty and differs from the other
+// units'; in French (the source text) the Halberdier reads "Hallebardier", never the raw type key.
+// C++: none yet (HeroesOfLiberty.UI.GameNames has no Halberdier vector).
+void Test_GameNamesHalberdierName(FUnitTest& T)
+{
+	FString Halberdier = HOLGameNamesRead::GetUnitName(n"Halberdier").ToString();
+	T.AssertFalse(Halberdier.IsEmpty(), "the Halberdier's name is not empty");
+	T.AssertFalse(Halberdier == HOLGameNamesRead::GetUnitName(n"Spearman").ToString(), "the Halberdier's name is not the Spearman's");
+	T.AssertFalse(Halberdier == HOLGameNamesRead::GetUnitName(n"ManAtArms").ToString(), "the Halberdier's name is not the Man-at-arms'");
+
+	// French only: the script cannot switch the language (see the header of this file).
+	if (HOLGameNamesRead::GetUnitName(n"Spearman").ToString() == "Lancier")
+	{
+		T.AssertTrue(Halberdier == "Hallebardier", "the Halberdier reads Hallebardier in French, not the raw key");
+	}
+}
