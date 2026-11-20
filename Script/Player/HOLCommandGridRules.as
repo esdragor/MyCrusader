@@ -127,6 +127,12 @@ namespace HOLCommandGridRules
 		return GetCommandWithOptions(Context, Cell, SpecializationOptions);
 	}
 
+	// GLORFINDEL-1120pd STUB (red first): the grid of a seat of this faction (EHOLFaction index, -1 none = the default two options). Not yet wired to the faction.
+	FHOLGridCommandView GetCommandForFaction(const FHOLGridContextView& Context, int Cell, int Faction)
+	{
+		return GetCommand(Context, Cell);
+	}
+
 	// ELROND-1120e (morceau 7): the same, with the number of specialization options of the seat's faction (HOLSpecialization::OptionCountOf: 3 for the Templars).
 	FHOLGridCommandView GetCommandWithOptions(const FHOLGridContextView& Context, int Cell, int OptionCount)
 	{
