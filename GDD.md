@@ -3693,4 +3693,8 @@ La courbe d'XP (Q04) reste à régler en test.
 
 **D868** (Spécialisation, 3e case, complète D131 ; 2026-11-20 ~12:30, réponse à `Q-specialization-troisieme-case`, option B) : les trois voies des Templiers occupent les **cases 5, 6, 7** de la grille du Forum (aucune recherche masquée) ; une ligne dans `GetSpecializationCell` (C++). Fiche : `Docs\Archive\Retours_2026-11-20\Q-specialization-troisieme-case.md` ; `SpecializationInProgress.md`.
 
-Prochain numéro : **D869**.
+**D869** (Montage et démontage du Mangonneau, complète D712 et D861 ; 2026-11-20 ~13:05, réponse à `E-deploy`, BUG/REGLAGE : « le démontage est instantané, comme le montage ; ça doit prendre du temps (1-2 s à chaque fois) ») : le **montage** et le **démontage** de l'engin déployable prennent chacun **1 à 2 s** et se **voient** à l'écran (le changement d'état n'est pas instantané) ; durées réglables après essai (D345). À corriger par une séance de fonctions (cause à établir : `HOLDeployRules.h:76-77` propose 8 s de montage et 5 s de démontage, donc soit la durée de l'essai était court-circuitée, soit rien ne montre le changement). Fiche : `Docs\Archive\Retours_2026-11-20\E-deploy.md` ; `Palier3InProgress.md` (G6).
+
+**D870** (Marque du signal, taille, complète D860 ; 2026-11-20 ~13:05, réponses à `E-signals_altclick` et `E-signals_minimap_alt`, REGLAGE : « divise par 3 la taille et c'est bon, pas besoin de refaire un essai pour valider ») : la marque du signal est **trois fois plus petite** (taille ÷ 3), au sol et sur la mini-carte ; **validée sans nouvel essai**. Fiches : `Docs\Archive\Retours_2026-11-20\E-signals_altclick.md` et `E-signals_minimap_alt.md` ; `SignalsInProgress.md` (H2, H3).
+
+Prochain numéro : **D871**.
