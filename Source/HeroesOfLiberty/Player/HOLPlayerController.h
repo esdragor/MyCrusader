@@ -373,6 +373,9 @@ public:
 	bool IsWallDragging() const { return bWallDragging; }
 	const TArray<FIntPoint>& GetWallDragCells() const { return WallDragCells; }
 	double GetWallDragTile() const { return WallDragTile; }
+	/** F4 drag, read by script (the ghost drawer, Script\Buildings\HOLWallGhostDrawer.as): true while a wall line is dragged, with the press point, the cursor ground point and the tile size. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Construction")
+	bool GetWallDragView(FVector& OutStart, FVector& OutEnd, double& OutTile) const;
 	/** Asks the server to have units build (help) one of the player's sites not finished (J6a.4, D312); bQueue: Shift. */
 	void RequestBuildUnits(TConstArrayView<uint32> UnitIds, AHOLBuilding* Building, bool bQueue = false);
 	/**
@@ -971,7 +974,7 @@ private:
 	FName PlacementType;
 	/** F4 drag of a wall type: the ground under the press, the cells shown (script rule), the tile read once at the press. */
 	bool bWallDragging = false;
-	FVector WallDragStart = FVector::ZeroVector;
+	FVector WallDragStart = FVector::ZeroVector; FVector WallDragEnd = FVector::ZeroVector;
 	TArray<FIntPoint> WallDragCells;
 	double WallDragTile = 400.0;
 	bool BeginWallDrag();

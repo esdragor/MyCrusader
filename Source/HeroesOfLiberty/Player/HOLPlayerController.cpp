@@ -3180,7 +3180,7 @@ void AHOLPlayerController::UpdatePlacementGhost()
 	// F4 drag of a wall type: the cells shown follow the cursor, from the script rule (one source with the server's Validate).
 	if (bWallDragging)
 	{
-		WallDragCells = UHOLWallLineBridge::NativeDragCells(WallDragStart, Ground, WallDragTile);
+		WallDragEnd = Ground; WallDragCells = UHOLWallLineBridge::NativeDragCells(WallDragStart, Ground, WallDragTile);
 	}
 	// Checked again every frame: the stock, the buildings and the sources change under a ghost that stays still.
 	FBox2D Footprint = UHOLConstructionSubsystem::SnapFootprint(*Type, Ground);
@@ -3291,9 +3291,17 @@ bool AHOLPlayerController::BeginWallDrag()
 	WallDragTile = UHOLConstructionReadLibrary::GetWallLineWorld(this, MapMin, MapMax, Occupied);
 	bWallDragging = true;
 	WallDragStart = Ground;
-	WallDragCells = UHOLWallLineBridge::NativeDragCells(WallDragStart, Ground, WallDragTile);
+	WallDragEnd = Ground; WallDragCells = UHOLWallLineBridge::NativeDragCells(WallDragStart, Ground, WallDragTile);
 	UE_LOG(LogHOLMatch, Display, TEXT("Placement: %s wall drag started at (%.0f, %.0f)"), *PlacementType.ToString(), Ground.X, Ground.Y);
 	return true;
+}
+
+bool AHOLPlayerController::GetWallDragView(FVector& OutStart, FVector& OutEnd, double& OutTile) const
+{
+	OutStart = WallDragStart;
+	OutEnd = WallDragEnd;
+	OutTile = WallDragTile;
+	return bWallDragging;
 }
 
 // F4: the release sends the line (the server validates it again: ServerPlaceWallLine), Shift keeps the mode as for a single building.
