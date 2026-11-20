@@ -1339,6 +1339,12 @@ bool UHOLUnitSubsystem::GetUnitView(const uint32 UnitId, FHOLUnitView& OutUnit) 
 		Simulation ? Simulation->GetInterpolationAlpha() : 1.f, OutUnit, this);
 }
 
+FName UHOLUnitSubsystem::GetUnitTypeName(const uint32 UnitId) const
+{
+	const FHOLUnitRecord* Unit = Units.Find(UnitId);
+	return Unit ? Unit->TypeName : NAME_None;
+}
+
 int32 UHOLUnitSubsystem::GetTechnologyHealthPercent(const FHOLUnitTypeConstants& Constants, const int32 Slot) const
 {
 	if (!TechnologyHealthPercent.IsValidIndex(Slot) || HOLSiege::GetHealthStat(Constants.TypeName).IsNone())

@@ -55,6 +55,8 @@ public:
 	FMassEntityHandle GetTargetEntity(const FHOLNetUnitState& State) const;
 	/** One displayed unit; false when it is not displayed. */
 	bool GetDisplayedUnit(uint32 UnitId, struct FHOLUnitView& OutUnit) const;
+	/** The type of a received unit, garrisoned or not (GetDisplayedUnit skips the garrisoned); NAME_None when no slot holds it. */
+	FName GetUnitTypeName(uint32 UnitId) const;
 	/**
 	 * The amount the player's own unit selected alone carries (D303), as the server last sent it to this player
 	 * (AHOLPlayerController): the states sent to everyone only say whether a unit carries. UnitId 0: none.
