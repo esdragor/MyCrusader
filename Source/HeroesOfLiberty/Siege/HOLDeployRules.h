@@ -108,6 +108,24 @@ namespace HOLDeploy
 	/** D869b: how far a change of state has come, 0 to 1000 (permille of its delay, Counterweight included); -1 for a settled phase (no bar). */
 	HEROESOFLIBERTY_API int32 ProgressPermille(const FState& State, const FProfile& Profile, int32 CounterweightPercent);
 
+	/**
+	 * D869b (ELROND-1120sa): what a client knows of a change of state it cannot read the elapsed time of (only the phase is replicated).
+	 * Phase: 1 (deploying) or 3 (packing) while watched, -1 otherwise; Since: when that phase was first watched (s); OrderedAt: when the
+	 * player's order left (s), -1 for none.
+	 */
+	struct FWatch
+	{
+		int32 Phase = -1;
+		double Since = 0.0;
+		double OrderedAt = -1.0;
+	};
+
+	/** The player has just ordered a mount / dismount: the next change of state is measured from this instant. */
+	HEROESOFLIBERTY_API void NoteOrder(FWatch& Watch, double NowSeconds);
+
+	/** The ms the watched change of state has lasted at NowSeconds, ObservedPhase being the engine's replicated phase (1, 3, or -1 when it is not changing). */
+	HEROESOFLIBERTY_API int32 WatchElapsedMs(FWatch& Watch, int32 ObservedPhase, double NowSeconds);
+
 	/** Time passes: a change of state ends when its delay has passed (the time left over is not carried); a settled state stays. */
 	HEROESOFLIBERTY_API FState Advance(const FState& State, int32 DtMs, const FProfile& Profile, int32 CounterweightPercent);
 
