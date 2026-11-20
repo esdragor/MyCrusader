@@ -85,9 +85,61 @@ namespace UE::HeroesOfLiberty::UI::Mouse
 		Slate.ProcessMouseButtonUpEvent(MakeEvent(*User, Point, Point, EKeys::LeftMouseButton));
 	}
 
+	namespace
+	{
+		/** The move to Position, then the left button's press there (the entry points Click uses). */
+		void PressAt(const FVector2D& Position)
+		{
+			MoveTo(Position);
+			const TSharedPtr<FSlateUser> User = bScriptCursor ? FSlateApplication::Get().GetCursorUser() : nullptr;
+			if (User.IsValid())
+			{
+				const FVector2D Point(User->GetCursorPosition());
+				FSlateApplication::Get().ProcessMouseButtonDownEvent(nullptr, MakeEvent(*User, Point, Point, EKeys::LeftMouseButton));
+			}
+		}
+
+		/** The move to Position, then the left button's release there. */
+		void ReleaseAt(const FVector2D& Position)
+		{
+			MoveTo(Position);
+			const TSharedPtr<FSlateUser> User = bScriptCursor ? FSlateApplication::Get().GetCursorUser() : nullptr;
+			if (User.IsValid())
+			{
+				const FVector2D Point(User->GetCursorPosition());
+				FSlateApplication::Get().ProcessMouseButtonUpEvent(MakeEvent(*User, Point, Point, EKeys::LeftMouseButton));
+			}
+		}
+	}
+
 	void Drag(const FVector2D& Start, const FVector2D& End, int32 Frames)
 	{
-		// Stub (red test first): no press, no move, no release.
+		if (!FSlateApplication::IsInitialized())
+		{
+			return;
+		}
+		const int32 Count = FMath::Clamp(Frames, 1, 600);
+		PressAt(Start);
+		if (!bScriptCursor)
+		{
+			return;
+		}
+		// One move per frame (the engine's ticker), the move to End and the release on the last one.
+		FTSTicker::GetCoreTicker().AddTicker(FTickerDelegate::CreateLambda(
+			[Start, End, Count, Step = 0](float) mutable
+			{
+				if (!FSlateApplication::IsInitialized())
+				{
+					return false;
+				}
+				if (++Step < Count)
+				{
+					MoveTo(FMath::Lerp(Start, End, static_cast<double>(Step) / Count));
+					return true;
+				}
+				ReleaseAt(End);
+				return false;
+			}));
 	}
 
 	void RestorePlatformCursor()
@@ -261,10 +313,37 @@ namespace UE::HeroesOfLiberty::UI::Mouse
 			}));
 	}
 
+	void DragVerb(const TArray<FString>& Args, UWorld* World)
+	{
+		const bool bNumeric = Args.Num() >= 4 && Args[0].IsNumeric() && Args[1].IsNumeric() && Args[2].IsNumeric() && Args[3].IsNumeric();
+		FVector2D From;
+		FVector2D To;
+		FString LabelFrom;
+		FString LabelTo;
+		UWidget* Widget = nullptr;
+		int32 Next = 0;
+		if (!FSlateApplication::IsInitialized() || !bNumeric || !ResolveTarget(TArray<FString>(Args.GetData(), 2), World, From, LabelFrom, Widget, Next)
+			|| !ResolveTarget(TArray<FString>(Args.GetData() + 2, 2), World, To, LabelTo, Widget, Next))
+		{
+			UE_LOG(LogHOLUI, Warning, TEXT("hol.Mouse.Drag <X1> <Y1> <X2> <Y2> [Frames=10]: four viewport pixels needed, or no viewport (%s)"), *FString::Join(Args, TEXT(" ")));
+			return;
+		}
+		const int32 Frames = Args.IsValidIndex(4) ? FMath::Clamp(FCString::Atoi(*Args[4]), 1, 600) : 10;
+		const FString Under = DescribePoint(From);
+		Drag(From, To, Frames);
+		UE_LOG(LogHOLUI, Display, TEXT("Mouse drag %s -> %s over %d frames: pressed at %.0f,%.0f on %s, release at %.0f,%.0f on the last frame"), *LabelFrom, *LabelTo, Frames,
+			From.X, From.Y, *Under, To.X, To.Y);
+	}
+
 	FAutoConsoleCommandWithWorldAndArgs ClickCommand(
 		TEXT("hol.Mouse.Click"),
 		TEXT("hol.Mouse.Click <WidgetName | X Y> [Count=1]: a real left click (Slate's platform entry points: move, press, release) at the centre of a widget of the open menu screen or of the game HUD, or at X,Y in the viewport's pixels; the desktop's cursor is not moved"),
 		FConsoleCommandWithWorldAndArgsDelegate::CreateStatic(&ClickVerb));
+
+	FAutoConsoleCommandWithWorldAndArgs DragCommand(
+		TEXT("hol.Mouse.Drag"),
+		TEXT("hol.Mouse.Drag <X1> <Y1> <X2> <Y2> [Frames=10]: a real left drag (Slate's platform entry points): the press at X1,Y1 (the viewport's pixels), one move per frame over Frames frames, the release at X2,Y2 on the last frame; the command returns at once, the drag goes on with the frames"),
+		FConsoleCommandWithWorldAndArgsDelegate::CreateStatic(&DragVerb));
 
 	FAutoConsoleCommandWithWorldAndArgs HoverCommand(
 		TEXT("hol.Mouse.Hover"),

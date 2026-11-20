@@ -12,6 +12,8 @@ class SWidget;
  * the script left it, as a still mouse does.
  *   hol.Mouse.Click <WidgetName | X Y> [Count=1]   a left click at the centre of a widget of the open menu screen or of the game HUD
  *                                                  (found by its name), or at X,Y in the viewport's pixels (the world: a click on the ground)
+ *   hol.Mouse.Drag X1 Y1 X2 Y2 [Frames=10]        a left drag in the viewport's pixels: press at X1,Y1, one move per frame, release at X2,Y2
+ *                                                  on the last frame (returns at once; the frames carry it: a scenario's "frames N" waits)
  *   hol.Mouse.Hover <WidgetName | X Y> [Frames=30] the mouse moved there and kept still Frames frames; logs "Mouse hover <target>: ..."
  *                                                  with the tooltip Slate shows (income_tooltip: the top bar's FoodAmount...GoldAmount)
  */
