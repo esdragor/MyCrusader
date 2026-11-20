@@ -27,6 +27,8 @@ Origines : T2 = test 2 du 2026-10-30 ; Q = « Qualité des essais » du 2026-11-
 
 **Nettoyage du 2026-11-16 soir** (lignes archivées dans `Docs\Archive\Auto_Journey_Procedure_Checklist_nettoyage_2026-11-16_soir.md`, preuves dans l'archive, règles toujours en vigueur, cochées au bilan comme les autres). Devenues des règles d'`agent_rules.md` / `brief_commun.md` : L7-5 et L15-5 (règle 7 : stub qui compile + test, rouge VU à l'exécution, `TEST_ROUGE: vu a <HH:MM>`, un commit vert test + correctif), L12-4 (« Binaire d'abord », champ `LAUNCHCHECK_DEBUT`), L12-5 (règle 7, `TESTS_TAUTOLOGIQUES: 0`), L13-8 (brief point 1 : 8 derniers appels réservés), L14-1 (brief points 2 et 6 : lecture en un appel groupé, `edit_line.ps1` ; compte vu : règle 2).
 
+**Nettoyage du 2026-11-20** (copie intégrale avant nettoyage dans `Docs\Archive\Auto_Journey_Procedure_Checklist_nettoyage_2026-11-20.md`, règles toujours en vigueur, cochées au bilan comme les autres). Lignes devenues des règles d'`agent_rules.md` (redites du tableau) : L1-2 (règle 14, `RAPPORT COMMITS`), L1-3 première ligne (règle 15, `merge_main_fait` ; la ligne « agent de fusion ne rejoue que tests,aiserver,aiduel » reste dans « Fusion et fin de séance »), L3-2 et L4-5 (règle 11, `PREMIER_BUILD`, `BUILD`), L3-5 (règle 11, un seul lot), L1-8 (règle 5), L1-9 et L4-8 (règles 4 et 17), L1-7 (règle 17, `QUESTIONS`), T2-5 (règle 8, `TESTS`), T2-6 et L5-8 (règles 8 et 9), T2-7 et L1-5 (règles 4 et 17, et « Règles de conduite » de `Auto_Journey.md`), L4-12 (règle 9, `ANOMALIES_PROCESSUS`), L4-13 (règle 12), Q1 à Q4, Q6, Q7 et Q9 (règle 18 et champ `ESSAIS`), L1-13 (règle 7, `TEST_ROUGE`). L12-1b condensée en une ligne (fait ; reste l'avis ProjectShiva).
+
 ## Avant le lancement
 | ID | Règle | Contrôle | Où |
 |---|---|---|---|
@@ -43,19 +45,7 @@ Origines : T2 = test 2 du 2026-10-30 ; Q = « Qualité des essais » du 2026-11-
 | ID | Règle | Contrôle | Où |
 |---|---|---|---|
 | L1-1, L3-6, L4-7, L5-3 | Un agent est remplacé à 200k tokens, jamais plus tard ; bug dur = agent neuf | **80 appels d'outils** max (jugés sur `tool_uses`), arrêt à **45 appels VUS PAR L'AGENT** dans l'énoncé (L9-2 du 2026-11-07 ; avant : 60 déclarés) ; `tool_uses` de la notification > 100 = hors règle, tâche suivante sur un agent NEUF (jamais `SendMessage` pour reprendre) | AGENT 2 + RAPPORT `APPELS_DECLARES` |
-| L1-2 | Commit par lot vert, au plus 30 min sans commit, fichiers par nom | `RAPPORT COMMITS` (dernier commit à HH:MM) ; `status.ps1` à chaque tour signale 45 min sans commit | AGENT 14 |
-| L1-3 | `git merge main` avant le rapport | `RAPPORT merge_main_fait` | AGENT 15 |
-| L3-2, L4-5 | Build C++ lancé dans les 15 premières minutes, en `run_in_background`, agent vivant jusqu'à sa fin ; jamais de code non compilé rendu comme fini | `RAPPORT PREMIER_BUILD`, `BUILD` ; « NON COMPILÉ » en tête sinon | AGENT 11 |
-| L3-5 | Un seul lot de headers par agent avant le premier build | `RAPPORT PREMIER_BUILD` | AGENT 11 |
-| L1-8 | Un seul enregistrement de statut par agent | `RAPPORT` : `*InProgress.md` + ligne d'`EtapeDefini.md` | AGENT 5 |
-| L1-9, L4-8 | Numéros D réservés ; question sans réponse = valeur par défaut déjà codée | agents n'écrivent pas `GDD.md` ; fichier `Q-*.md` porte « valeur par défaut codée » | AGENT 4, 17 |
-| L1-7 | Toute question : option « Autre », recommandation, valeurs par défaut, au plus 2 par chantier | `RAPPORT QUESTIONS` | AGENT 17 |
 | L5-6 | Questions groupées dans UN tableau (question, recommandée, effet), raccourci « recommandées partout » | message de la session principale | SESSION |
-| T2-5 | `quick_check` ne compile pas : `build.ps1` d'abord | `RAPPORT TESTS` après `BUILD: PASS` | AGENT 8 |
-| T2-6, L5-8 | Un script n'est prêt qu'après un passage de bout en bout ; `net` rouge sans changement = relancer deux fois | sortie collée au rapport | AGENT 8, 9 |
-| T2-7, L1-5 | `Auto_Journey_Retours.md` seulement par `Edit` de lignes précises (un fichier par item dans `Retours\`) | agents écrivent `Retours\Q-*.md` / `E-*.md` | AGENT 17 |
-| L4-12, T2 | Outil partagé corrigé au lieu d'un contournement privé | `RAPPORT ANOMALIES_PROCESSUS` cite l'outil corrigé | AGENT 9 |
-| L4-13 | `Intermediate` périmé : supprimer UHT de CE worktree | AGENT 12 | AGENT |
 | L3-11, L5-5 | Régénération des cartes seule, éditeur seul, `-Multiprocess`, mesure de perf, jamais mêlée à un réglage de budget | tâche dédiée dans le tableau des agents ; AGENT 13 | AGENT + SESSION |
 | L3-7, L1-4 | Veilleur : état déjà vu persisté, silencieux si rien n'a changé | ignorer le premier tour | SESSION |
 | T2-4 | Au plus 2 questions par chantier et par séance | compte des `Q-*.md` par chantier | SESSION |
@@ -63,14 +53,8 @@ Origines : T2 = test 2 du 2026-10-30 ; Q = « Qualité des essais » du 2026-11-
 ## Essais
 | ID | Règle | Contrôle | Où |
 |---|---|---|---|
-| Q1 | Pré-vol `preflight.ps1` PASS, `.look` présent, chaque PNG ouvert et vu | `RAPPORT ESSAIS` : « preflight PASS, PNG ouverts » | AGENT 18 + RAPPORT |
-| Q2 | Deux statuts jamais mélangés : `VU À L'ÉCRAN` / `LOGIQUE SEULEMENT` | `RAPPORT ESSAIS` | AGENT 18 |
-| Q3 | 3 minutes max, pas d'attente morte (`waitkey`) | durée mesurée par le pré-vol | AGENT 18 |
-| Q4 | Un essai d'IA/système = au moins une partie naturelle | `RAPPORT ESSAIS` | AGENT 18 |
 | Q5, L5-4 | **Recette indépendante, geste RÉEL, effet mesuré** pour tout essai ; REGLAGE/BUG rejoué par un autre agent avant la commande | ligne `intégrateur` + `RAPPORT TEST_ROUGE assertit l'effet : oui` ; `Essay` avant la commande | GATE + AGENT 7, 19 |
-| Q6, Q7 | Réglage à l'œil = balayage ; défaut persistant après 2 réglages = remonter à la cause | `RAPPORT ESSAIS` (nombre de réglages tentés) | AGENT 18 |
 | Q8 | Défaut commun = ligne `[ ]` en tête de file avant de relancer les essais concernés | `Auto_Journey_File.md` | SESSION |
-| Q9 | Libellés et touches du GDD / grille AoE4 ; effet de gameplay visible sinon `LOGIQUE SEULEMENT` | AGENT 18 | AGENT |
 | Q11 | ~6 essais de 3 min par jour au plus ; le reste « prêt mais non donné » | compte des `[À ESSAYER]` | SESSION |
 | L4-11 | Plusieurs cartes/variantes = un scénario de revue (Entrée = suivante) | AGENT 18 | AGENT |
 
@@ -79,7 +63,6 @@ Origines : T2 = test 2 du 2026-10-30 ; Q = « Qualité des essais » du 2026-11-
 |---|---|---|---|
 | L3 / T2 | Fusion groupée : toutes les branches prêtes, UN build `-Priority merge`, UN `quick_check`, avance rapide de `main` | énoncé de fusion de `Auto_Journey.md` | SESSION |
 | L1-3 | Les agents ont fusionné `main` avant le rapport : l'agent de fusion ne rejoue que `tests,aiserver,aiduel` | `RAPPORT merge_main_fait` | RAPPORT |
-| L1-13 | Test rouge vérifiable par l'ordre des commits | `RAPPORT TEST_ROUGE` : SHA du test antérieur au correctif | RAPPORT |
 
 ## Leçons du 2026-11-06 (séance d'1 h du 2026-11-05 après-midi) : contrôles ajoutés
 | ID | Règle | Contrôle | Où |
@@ -136,7 +119,7 @@ Origines : T2 = test 2 du 2026-10-30 ; Q = « Qualité des essais » du 2026-11-
 | ID | Regle | Controle | Ou |
 |---|---|---|---|
 | L12-1 | La file de build est le goulot (2026-11-12 : ~1 build / 17 min) : chaque PREMIER build du jour recompile la fusion de main et des agents « sans C++ » compilent aussi (releve date archive le 2026-11-15) | PROPOSE, `build.ps1` inchange : (a) au debut de seance, `sync_worktrees.ps1` SANS `-NoBuild`, en serie, machine calme, AVANT le premier lancement ; `session_gate -Phase Launch` FAIL (et non WARN) au premier lancement si un worktree a plus de N = 5 commits `Source` de retard ou une DLL plus vieille que le dernier commit `Source` de main (le calcul existe deja : `Say-StaleBySource`) ; (b) plafond EFFECTIF : `session_gate -Phase Launch` compte les tickets en attente + compilant (pas seulement les agents declares C++) et dit FAIL a plus de 3 tickets pour tout agent qui va compiler ou jouer un scenario ; (c) `build.ps1 -Wait` : un 2e ticket du meme worktree derriere un ticket en attente = WARN (Elrond 10:43 + 11:00) ; (d) l'enonce de chaque agent qui compile donne l'attente estimee (tickets devant x duree mediane du jour) pour qu'il prepare le travail sans C++ pendant l'attente au lieu de sonder | OUTIL + SESSION |
-| L12-1b | Complement : la lenteur vient de la machine (memoire virtuelle, autre moteur ProjectShiva), pas du volume a compiler (diagnostic date archive le 2026-11-15) | (1) seance : demander a l'utilisateur de mettre ProjectShiva en pause (ou de fermer les jeux) tant que la file HoL tourne ; sinon compter 10 a 20 min par build, soit 1 h 30 a 2 h pour les 6 en attente. (2) `build.ps1`, juste avant `$StartedAt = Get-Date` (ligne 288) : relever `Win32_OperatingSystem.FreeVirtualMemory` et les `cl.exe`/UBT HORS `$EngineRoot` ; ecrire `build : machine chargee (N compilations d'un autre moteur, M Go virtuels libres)` et ajouter une colonne `load` a `BuildQueue.csv` ; attendre (poll) tant que memoire virtuelle libre < 8 Go. (3) controle : `session_gate -Phase Launch` WARN si un cl.exe d'un autre moteur tourne ou si la memoire virtuelle libre < 8 Go ; `build_queue_report.ps1` signale toute duree > 3 x la mediane de la veille pour le meme nombre d'actions | OUTIL + UTILISATEUR |
+| L12-1b | La lenteur vient de la machine (mémoire virtuelle, autre moteur ProjectShiva), pas du volume à compiler (diagnostic daté archivé le 2026-11-15) | Fait : `build.ps1` attend et écrit la colonne `load`, `Launch` WARN (vm < 8 Go, `cl.exe` d'un autre moteur : L12-1c), `build_queue_report.ps1` ; reste SESSION : demander à l'utilisateur de mettre ProjectShiva en pause tant que la file HoL tourne, sinon compter 10 à 20 min par build | OUTIL + UTILISATEUR |
 | L13-1 | 2026-11-13 11:12 : 6 agents sur 8 coupes par des 403 Cloudflare ; la reprise avec 3 puis 5 agents simultanes n a plus rien donne | un lancement de reprise commence par 2-3 agents et monte par paliers ; le bilan note le nombre d agents simultanes au moment d une erreur d API | PRINCIPALE |
 | L13-3 | Fast-forward de main refuse a 13:39 : `Auto_Journey_File.md` non commite dans la copie principale et touche par 3 branches ; deblocage manuel par la session principale | avant l agent de fusion, la session principale commite les docs de seance (par nom de fichier) ; `preflight_merge.ps1` signale tout fichier modifie des deux cotes | PRINCIPALE + OUTIL |
 | L13-4 | `quick_check -Parts net` rouge 3/3 chez Elrond et 15/15 chez Arwen sous charge (Maj relache avant « & »), vert 17/17 a la fusion | un net rouge « valeurs vides » est refait une fois machine calme avant d etre note REGRESSION ; le maintien de Maj (27d91a4) est verifie par un rejeu net a la fusion | OUTIL + AGENT |
