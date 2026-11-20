@@ -4,7 +4,7 @@
 // alone. The tiers are the column MinTier of Tools\Data\UnitTypes.csv, read by HOLUnitTierRules::GetUnitMinTier (Peasant, Spearman, Archer 0;
 // Man-at-arms, Crossbowman, Light cavalry, Monk, Ram 1; Mangonel 2; Arquebusier 3; the Trebuchet and the Cannon have no row: NotListed), the
 // siege agreement is checked against HOLSiege's own function, never against typed copies. There is no C++ twin of the rule any more (the
-// agreement tests are gone); Test_UnitTierColumnOfEveryRow fixes the 16 rows of the column in literals.
+// agreement tests are gone); Test_UnitTierColumnOfEveryRow fixes the 17 rows of the column in literals (the Halberdier, D858, tier 0).
 
 TArray<FString> UnitTierTypes()
 {
@@ -139,7 +139,7 @@ void Test_UnitTierMonotone(FUnitTest& T)
 	T.AssertEquals(0, Violations, "tiers in range, and never closing when the tier rises");
 }
 
-// The column MinTier of every row of Tools\Data\UnitTypes.csv (the 16 rows), in literals, as the script rule reads it (MinTierOf asks
+// The column MinTier of every row of Tools\Data\UnitTypes.csv (the 17 rows), in literals, as the script rule reads it (MinTierOf asks
 // HOLUnitTierRules::GetUnitMinTier, the column itself; no typed copy of the table). To see this test red, change one literal below (for example
 // Mangonel 2 -> 3) or one MinTier cell of UnitTypes.csv. A type outside the table has no tier.
 void Test_UnitTierColumnOfEveryRow(FUnitTest& T)
@@ -178,7 +178,9 @@ void Test_UnitTierColumnOfEveryRow(FUnitTest& T)
 	Expected.Add(1);
 	Rows.Add("Arquebusier");
 	Expected.Add(3);
-	T.AssertEquals(16, Rows.Num(), "the 16 rows of the unit type table");
+	Rows.Add("Halberdier");
+	Expected.Add(0);
+	T.AssertEquals(17, Rows.Num(), "the 17 rows of the unit type table");
 	T.AssertEquals(Rows.Num(), Expected.Num(), "one expected tier per row");
 	for (int Row = 0; Row < Rows.Num(); Row++)
 	{
