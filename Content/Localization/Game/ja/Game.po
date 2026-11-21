@@ -4521,3 +4521,45 @@ msgctxt "HOLTitleScreen,Quit"
 msgid "Quitter"
 msgstr "終了"
 
+
+#. Key:	PowerReady
+#. SourceLocation:	Script/Factions/HOLPowerDisplay.as
+#: Script/Factions/HOLPowerDisplay.as
+msgctxt "HOLFactionSlot,PowerReady"
+msgid "{0} : coût {1}, prêt"
+msgstr "{0}：コスト {1}、使用可能"
+
+#. Key:	PowerCooling
+#. SourceLocation:	Script/Factions/HOLPowerDisplay.as
+#: Script/Factions/HOLPowerDisplay.as
+msgctxt "HOLFactionSlot,PowerCooling"
+msgid "{0} : coût {1}, recharge {2} s"
+msgstr "{0}：コスト {1}、再使用まで {2} 秒"
+
+#. Key:	PowerShort
+#. SourceLocation:	Script/Factions/HOLPowerDisplay.as
+#: Script/Factions/HOLPowerDisplay.as
+msgctxt "HOLFactionSlot,PowerShort"
+msgid "{0} : coût {1}, ressource insuffisante"
+msgstr "{0}：コスト {1}、資源不足"
+
+#. Key:	PowerTier
+#. SourceLocation:	Script/Factions/HOLPowerDisplay.as
+#: Script/Factions/HOLPowerDisplay.as
+msgctxt "HOLFactionSlot,PowerTier"
+msgid "{0} : coût {1}, palier {2} requis"
+msgstr "{0}：コスト {1}、ティア {2} が必要"
+
+#. Key:	PowerSoon
+#. SourceLocation:	Script/Factions/HOLPowerDisplay.as
+#: Script/Factions/HOLPowerDisplay.as
+msgctxt "HOLFactionSlot,PowerSoon"
+msgid "{0} : coût {1}, bientôt"
+msgstr "{0}：コスト {1}、近日実装"
+
+#. Key:	PowerNameSacredLight
+#. SourceLocation:	Script/Factions/HOLPowerDisplay.as
+#: Script/Factions/HOLPowerDisplay.as
+msgctxt "HOLFactionSlot,PowerNameSacredLight"
+msgid "Lumière sacrée"
+msgstr "聖なる光"
