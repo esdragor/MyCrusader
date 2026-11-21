@@ -280,3 +280,16 @@ namespace HOLMorale
 		State.ImmunityMs = FMath::Max(State.ImmunityMs, DurationMs);
 	}
 }
+
+namespace HOLMorale
+{
+	bool IsEmpty(const FHOLMoraleState& State)
+	{
+		return State.Num == 0 && State.ImmunityMs == 0;
+	}
+
+	uint64 FingerprintKey(const FHOLMoraleState& State)
+	{
+		return 0; // stub (red): the real hash comes with the fix
+	}
+}

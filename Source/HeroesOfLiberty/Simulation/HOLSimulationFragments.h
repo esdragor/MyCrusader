@@ -6,6 +6,7 @@
 #include "Mass/EntityHandle.h"
 #include "MassEntityTypes.h"
 #include "Simulation/HOLFormationRules.h"
+#include "Simulation/HOLMoraleRules.h"
 #include "Simulation/HOLGatherRules.h"
 #include "HOLSimulationFragments.generated.h"
 
@@ -456,6 +457,18 @@ struct FHOLFrontLine
 	double Min = 0.;
 	double Max = 0.;
 	int32 Count = 0;
+};
+
+/**
+ * D866 (PLAN-MORAL-1120 step 3): the morale effects a unit carries (four fixed slots and the immunity time, HOLMorale::FHOLMoraleState). Written by the
+ * morale processor (step 4), read by the combat; empty = nothing mixed into the step's fingerprint (HOLMorale::FingerprintKey).
+ */
+USTRUCT()
+struct HEROESOFLIBERTY_API FHOLMoraleFragment : public FMassFragment
+{
+	GENERATED_BODY()
+
+	HOLMorale::FHOLMoraleState State;
 };
 
 /**
