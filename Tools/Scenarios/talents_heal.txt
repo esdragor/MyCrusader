@@ -30,6 +30,11 @@ waitlog heals #
 frames 20
 hol.Heal.Report
 capture talents_heal_base
+# The world mark of the heal ("++") is drawn over the HUD window (layer defect, Auto_Journey_File talents_heal_cell): no unit is wounded
+# while the Talent window is open, so no heal is drawn over the cell; the wound comes back after the window closes.
+hol.Cheat.Wound 100
+waitlog Cheat: slot 0 wound to 100 %
+frames 40
 hol.HUD.Click TalentKey
 wait 1
 frames 8
