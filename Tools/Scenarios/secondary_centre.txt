@@ -34,6 +34,7 @@ frames 10
 hol.HUD.Report
 capture sc_grille_infobulle
 hol.Camera.FocusNear 0 -4500
+hol.Mouse.Hover GridCell01 5
 frames 5
 hol.Select.Grid 1
 waitlog Placement ghost: SecondaryCentre at
