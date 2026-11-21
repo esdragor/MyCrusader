@@ -1,0 +1,20 @@
+# DIAG-1121si : regression "sequence" de integ-47 (Glorfindel 43d5866)
+
+Impact joueur : aucun clic droit sur un allie ni ordre manuel n'est casse en soi, mais le pont Follow lance une erreur script a CHAQUE tick de la manette (19727 lignes dans quick_game.log) : le Suivre ne peut pas marcher et la passe "sequence" est rouge.
+
+## Cause (certaine, lue dans le journal)
+- `Saved_Tests\Logs\quick_game.log` (run 20:25-20:28 UTC = 21:25-21:28 local) : `Angelscript: Error: Calling a function that requires WorldContext, but the current object is not in a world.` suivi de `Orders.HOLFollowOrders / UHOLFollowBookHolder Get() | Line 205 | Col 53 / void UHOLFollowBridgeScript::Step_Implementation(AHOLPlayerController, int) | Line 30 | Col 3`. Premiere occurrence a l'image 9 (menu, avant toute partie), derniere a l'image 678 ; 19727 occurrences.
+- Meme erreur par le chemin `OrderAtFraction -> OrderAt` (pile de `HOLSelectOrderSourceC10bCommand`, la ou le test clique droit) : le pont est appele aussi au clic droit.
+- Mecanisme : `UHOLFollowBridge::Get()` (Source\HeroesOfLiberty\Player\HOLFollowBridge.cpp:6-25) renvoie le CLASS DEFAULT OBJECT de la classe script. Les trois surcharges de `Script\Orders\HOLFollowBridge.as` (RightClickOnUnit l.10, ManualOrder l.19, Step l.30) appellent d'abord `UHOLFollowBookHolder::Get()` (UScriptWorldSubsystem, `Script\Orders\HOLFollowOrders.as:25`) : cette statique prend son contexte monde de `this`, ici le CDO, qui n'est dans aucun monde. Le `if (Holder == nullptr) return` suivant ne sert a rien : l'erreur est levee dans `Get()`. Step est appele par `HOLPlayerController::Tick -> NativeStep` : donc a chaque tick, meme sans aucun ordre Follow.
+- Pourquoi la passe tombe : le tableau "sequence" contient la ligne `scripts compiled (<3 premieres Angelscript: Error>)` (quick_check.ps1:3167-3168, `Get-ScriptErrors` ramasse tout `Angelscript: Error:` hors `Assert failed`). `Test mark: end` est bien present (log l.87720) : la sequence n'a PAS expire, aucune etape ne bloque, aucun ordre manuel ne "ne part plus", aucun ordre detourne en Suivre. La regression est cette seule ligne de controle. (Les 558 s sont la duree normale.)
+- Rien d'autre dans le journal (aucune autre erreur Angelscript hors cette pile).
+
+## Pourquoi pas corrige ici
+Le correctif n'est pas local au script : `ManualOrder(TArray<int>)` n'a aucun objet de monde (ni Controller) ; il faut soit (a) donner au pont un monde : dans le C++ ne plus appeler le CDO mais une instance `NewObject<UHOLFollowBridge>(Controller, Classe)` (outer = controleur, donc `GetWorld()` valide pour `UHOLFollowBookHolder::Get()`), soit (b) ajouter un parametre `AHOLPlayerController Controller` a BP_ManualOrder (appels : HOLPlayerController.cpp, six sites) et passer `Controller.GetWorld()` au script (API d'acces a un UScriptWorldSubsystem par monde explicite non verifiee ici). Les deux demandent du C++ + un build (~9 min) apres l'arret dur de 21:52 ; pas d'edition faite, aucun quick_check lance.
+
+## Reponse a la question
+Retirer 43d5866 (et avec lui l'appel de `NativeStep`/`NativeManualOrder`/`NativeRightClickOnUnit` du controleur) suffit : main c9ac21c passe, et l'erreur ne vient que de l'appel de `UHOLFollowBridgeScript` par la manette. Attention : `Script\Orders\HOLFollowBridge.as` (+ `_Test.as`) et `HOLFollowBridge.cpp/.h` sont dans la plage c9ac21c..ad9fc7e (f92b072, 5508632 etc., avec 43d5866 qui est le fix de compilation de Tick) ; il faut retirer la serie du pont entiere, pas seulement ce dernier commit. Alternative sans retrait : garder le pont mais sortir le script de la passe (renommer `HOLFollowBridge.as` hors Script) tant que l'instance n'a pas de monde.
+
+## Appels / etat
+- Appels vus : ~17 (arret 20). Debut 21:35, fin ~21:40. Aucun commit, aucun build, aucun quick_check, aucun fichier de integ-47 modifie, aucun autre worktree touche.
+- Processus detaches : aucun lance par cet agent. GIT_STATUS_PRINCIPALE : seul ce rapport ajoute (hors docs voulus : non, docs seulement).
