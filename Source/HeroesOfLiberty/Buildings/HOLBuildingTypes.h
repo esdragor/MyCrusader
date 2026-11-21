@@ -313,7 +313,7 @@ namespace HOLBuildingTypeNames
 	 */
 	inline bool IsCentre(const FName TypeName)
 	{
-		return TypeName == MainCentre;
+		return TypeName == MainCentre || TypeName == SecondaryCentre;
 	}
 	/** +10 population (D83, D310). */
 	inline const FName House(TEXT("House"));
