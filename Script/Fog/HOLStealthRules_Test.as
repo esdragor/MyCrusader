@@ -56,3 +56,30 @@ void Test_StealthNothingHiddenOutsideZones(FUnitTest& T)
 	T.AssertFalse(HOLStealth::IsHiddenFrom(StealthOneZone(), FVector2D(5000.0, 0.0), TArray<FVector2D>(), N),
 		"unit outside the zone: not hidden by stealth");
 }
+
+// Per-camp view (D824 Q1 A, line 61): the enemy camp sees a unit in a zone only at N cm or less; allies see it at any distance.
+// N is read from hol.Stealth.RevealDistance by the rule. Camp 0 owns the hidden unit, camp 1 is the enemy.
+void Test_StealthCampViewEnemyBeyondRevealDistanceDoesNotSee(FUnitTest& T)
+{
+	float N = HOLStealth::RevealDistance();
+	bool bSeen = HOLStealth::IsVisibleToCamp(StealthOneZone(), 0, FVector2D(0.0, 0.0), 1, StealthViewers(FVector2D(N + 1.0, 0.0)), N);
+	T.AssertFalse(bSeen, "enemy camp at N + 1 cm: the unit in the zone is not seen");
+	bool bSeenByNobody = HOLStealth::IsVisibleToCamp(StealthOneZone(), 0, FVector2D(0.0, 0.0), 1, TArray<FVector2D>(), N);
+	T.AssertFalse(bSeenByNobody, "enemy camp without any unit: not seen");
+}
+
+void Test_StealthCampViewEnemyAtRevealDistanceSees(FUnitTest& T)
+{
+	float N = HOLStealth::RevealDistance();
+	bool bSeen = HOLStealth::IsVisibleToCamp(StealthOneZone(), 0, FVector2D(0.0, 0.0), 1, StealthViewers(FVector2D(N, 0.0)), N);
+	T.AssertTrue(bSeen, "enemy camp at exactly N cm: the unit in the zone is seen");
+}
+
+void Test_StealthCampViewAllyAlwaysSees(FUnitTest& T)
+{
+	float N = HOLStealth::RevealDistance();
+	bool bSeenFar = HOLStealth::IsVisibleToCamp(StealthOneZone(), 0, FVector2D(0.0, 0.0), 0, StealthViewers(FVector2D(N * 50.0, 0.0)), N);
+	T.AssertTrue(bSeenFar, "ally at 50 N: the unit in the zone is seen");
+	bool bSeenNoViewer = HOLStealth::IsVisibleToCamp(StealthOneZone(), 0, FVector2D(0.0, 0.0), 0, TArray<FVector2D>(), N);
+	T.AssertTrue(bSeenNoViewer, "own camp: seen even with no listed viewer");
+}

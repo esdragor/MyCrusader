@@ -61,4 +61,10 @@ namespace HOLStealth
 		}
 		return true;
 	}
-}
+
+	// Per-camp view (D824 Q1 A): is the unit of UnitCamp at UnitPosition visible, as far as stealth goes, to the camp ViewerCamp whose units stand at ViewerPositions?
+	// STUB (red test first): always visible.
+	bool IsVisibleToCamp(const TArray<FHOLStealthZone>& Zones, int UnitCamp, const FVector2D& UnitPosition, int ViewerCamp, const TArray<FVector2D>& ViewerPositions, float Distance)
+	{
+		return true;
+	}}
