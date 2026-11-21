@@ -31,6 +31,7 @@
 #include "Simulation/HOLDuelSubsystem.h"
 #include "Simulation/HOLHeroAbilityRules.h"
 #include "Simulation/HOLMoraleRules.h"
+#include "Simulation/HOLMoraleTableRows.h"
 #include "Simulation/HOLHeroSubsystem.h"
 #include "Simulation/HOLHeroXPRules.h"
 #include "Simulation/HOLOrderChainRules.h"
@@ -772,12 +773,12 @@ void UHOLCombatProcessor::ApplyDamageRedirect(const HOLDamageRedirect::FResult& 
 int32 UHOLCombatProcessor::GetDamageTakenPercent(const FFighter& Victim) const
 {
 	// The aura (the Dawn's of a living hero AND the banner's, both laid by the morale processor) reaches the damage through the morale lever alone
-	// (HOLMorale::TakenPercent: the rows of Effects.csv, one source of truth); the cry is still posed apart (CloseRanksMs) and adds to it under the cap.
+	// (HOLMorale::TakenPercent: the rows of Effects.csv, one source of truth); the cry is laid by the same processor (row CloseRanks): the fragment is the one source.
 	// IsInAura stays for the heal and the talent's armor, no longer read here.
 	static const HOLMorale::FHOLMoraleState NoMorale;
 	const HOLMorale::FHOLMoraleState& MoraleState = Victim.Morale ? Victim.Morale->State : NoMorale;
-	const int32 CryPercent = Victim.Combat->CloseRanksMs > 0 ? HOLHeroAbility::CloseRanksReductionPercent : 0;
-	const int32 Percent = HOLMorale::TakenPercent(MoraleState, CryPercent);
+
+	const int32 Percent = HOLMorale::TakenPercent(MoraleState, 0);
 	// D810 (F5): a ford weakens the defence (120 %); off a ford, or with no terrain zones, the percent is untouched.
 	return StepTerrain ? Percent * StepTerrain->GetFordDamageTakenPercentAt(Victim.Location) / 100 : Percent;
 }
@@ -983,7 +984,6 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 		for (FMassExecutionContext::FEntityIterator EntityIt = Context.CreateEntityIterator(); EntityIt; ++EntityIt)
 		{
 			bAnyDamageRedirect |= bRedirects && States[EntityIt].CurrentHealth > 0.f;
-			HOLHeroAbility::Tick(Combats[EntityIt].CloseRanksMs, StepMs);
 			HOLHeroAbility::Tick(Combats[EntityIt].RageMs, StepMs); // L4: the necrotic rage and its cool-down count down like the cry
 			HOLHeroAbility::Tick(Combats[EntityIt].RageCooldownMs, StepMs);
 			if (bHeroes && States[EntityIt].CurrentHealth > 0.f && Combats[EntityIt].DeathStep < 0)
@@ -1024,7 +1024,6 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 	// each crying hero's living units within his aura's reach now are under it for its whole duration (refreshed).
 	if (UHOLHeroSubsystem* Heroes = World->GetSubsystem<UHOLHeroSubsystem>())
 	{
-		const int32 HeroSources = AuraSources.Num();
 		for (int32 Slot = 0; Slot < FHOLMatchConfig::MaxSlots; ++Slot)
 		{
 			// T4: the talents that change a hit (Boucliers levees), from the hero sheets of this step.
@@ -1035,35 +1034,13 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 			{
 				AuraSources.Add(FAuraSource{ FVector2D(BannerLocation), static_cast<uint8>(Slot), false });
 			}
-			if (!Heroes->ConsumeCloseRanks(Slot))
-			{
-				continue;
-			}
-			for (int32 Source = 0; Source < HeroSources; ++Source)
-			{
-				if (AuraSources[Source].Owner != Slot)
-				{
-					continue;
-				}
-				int32 Cried = 0;
-				for (FFighter& Fighter : Fighters)
-				{
-					if (Fighter.State->OwnerPlayer == Slot && Fighter.State->CurrentHealth > 0.f
-						&& HOLHeroAbility::IsWithinAura(static_cast<float>(FVector2D::Distance(AuraSources[Source].Location, FVector2D(Fighter.Location)))))
-					{
-						Fighter.Combat->CloseRanksMs = HOLHeroAbility::CloseRanksDurationMs;
-						++Cried;
-					}
-				}
-				UE_LOG(LogHOLSimulation, Display, TEXT("Combat: step %lld slot %d cries Serrez les rangs, %d unit(s) under it"), StepIndex, Slot, Cried);
-			}
 		}
 	}
 	// D581: the speed of each unit under a cry, for the movement processor (a formation held in place, or slowed with Pas de l'Aube).
 	for (FFighter& Fighter : Fighters)
 	{
 		Fighter.Combat->CloseRanksSpeedPercent = static_cast<uint8>(HOLHeroAbility::GetCloseRanksSpeedPercent(
-			Fighter.Combat->CloseRanksMs > 0, (DawnStepOwners & (1u << Fighter.State->OwnerPlayer)) != 0, CloseRanksSpeed));
+			(Fighter.Morale != nullptr && HOLMorale::Has(Fighter.Morale->State, HOLMoraleTableRows::HOLMoraleCloseRanks)), (DawnStepOwners & (1u << Fighter.State->OwnerPlayer)) != 0, CloseRanksSpeed));
 	}
 	// D859 (HOLZoneEffect, the Seal of Light): an enemy of a zone's owner standing in an active zone walks at 100 - the zone's slow; the
 	// movement processor multiplies it in. Where the zones live: the hero subsystem (the zones' clock counts at each step's end).

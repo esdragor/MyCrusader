@@ -208,14 +208,18 @@ bool FHOLHeroTalentDawnStepTest::RunTest(const FString& Parameters)
 		TSharedPtr<FMassEntityManager> EntityManager = EntitySubsystem->GetMutableEntityManager().AsShared();
 		UHOLCombatProcessor* Combat = NewObject<UHOLCombatProcessor>(Simulation);
 		Combat->CallInitialize(Simulation, EntityManager.ToSharedRef());
+		// The morale processor runs before the combat as in a match: it lays the cry on the fragment, the only place the combat reads it.
+		UHOLMoraleProcessor* Morale = NewObject<UHOLMoraleProcessor>(Simulation);
+		Morale->CallInitialize(Simulation, EntityManager.ToSharedRef());
 		const float StepSeconds = GetDefault<UHOLSimulationSettings>()->GetStepSeconds();
 		int64 Step = 0;
-		const auto RunStep = [Simulation, Units, Combat, &EntityManager, StepSeconds, &Step]
+		const auto RunStep = [Simulation, Units, Morale, Combat, &EntityManager, StepSeconds, &Step]
 		{
 			++Step;
 			Simulation->GetOnStepStarted().Broadcast(Step);
 			Units->ServeBirthRequests();
 			FMassProcessingContext ProcessingContext(EntityManager, StepSeconds);
+			UE::Mass::Executor::Run(*Morale, ProcessingContext);
 			UE::Mass::Executor::Run(*Combat, ProcessingContext);
 			Units->FlushDestructions();
 			Simulation->GetOnStepEnded().Broadcast(Step);
