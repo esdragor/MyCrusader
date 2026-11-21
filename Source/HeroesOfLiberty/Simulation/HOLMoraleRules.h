@@ -119,6 +119,12 @@ namespace HOLMorale
 	// Takes off every malus (Lumiere sacree); the count removed. The bonus stay; the immunity is granted apart.
 	int32 RemoveMalus(FHOLMoraleState& State);
 
+	// A unit with no effect and no immunity: its fragment is left out of the step's fingerprint (D190, as RageMs).
+	bool IsEmpty(const FHOLMoraleState& State);
+
+	// What the step's fingerprint mixes for a unit: 0 when IsEmpty, else a non-zero hash of every effect (id, three levers, time, aura) and of the immunity time.
+	uint64 FingerprintKey(const FHOLMoraleState& State);
+
 	// The immunity to the malus for this long; a shorter grant never cuts a longer one.
 	void GrantImmunity(FHOLMoraleState& State, int32 DurationMs);
 }
