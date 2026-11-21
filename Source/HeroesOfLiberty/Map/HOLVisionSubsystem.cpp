@@ -604,6 +604,17 @@ int32 UHOLVisionSubsystem::GetCampIndex(const int32 Slot) const
 	return CampOfSlot.IsValidIndex(Slot) ? CampOfSlot[Slot] : INDEX_NONE;
 }
 
+TArray<FVector2D> UHOLVisionSubsystem::GetCampUnitPositions(const int32 Camp) const
+{
+	// Stub (red first): the real reading comes in the next commit.
+	return TArray<FVector2D>();
+}
+
+TArray<FVector2D> UHOLVisionSubsystem::FilterPositionsByCamp(const TArray<int32>& OwnerCamps, const TArray<FVector2D>& Positions, const int32 Camp)
+{
+	// Stub (red first): the real filter comes in the next commit.
+	return TArray<FVector2D>();
+}
 int32 UHOLVisionSubsystem::GetViewerCamp(const int32 Slot) const
 {
 	const UWorld* World = GetWorld();

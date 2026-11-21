@@ -84,6 +84,21 @@ public:
 	int32 GetCampIndex(int32 Slot) const;
 
 	/**
+	 * Stealth binding (D824 Q1 A, HOLStealth::IsVisibleToCamp): the positions (X, Y) of the living units of the camp Camp (an index of
+	 * GetMap, as GetCampIndex), read from UHOLUnitSubsystem; empty without a unit subsystem, for no camp, or for a camp with no unit.
+	 * The script rule takes them as ViewerPositions.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Fog")
+	TArray<FVector2D> GetCampUnitPositions(int32 Camp) const;
+
+	/**
+	 * The pure core of GetCampUnitPositions, callable from a script test: the Positions[i] whose owner camp OwnerCamps[i] (GetCampIndex of
+	 * the owner slot) is Camp, in order; empty when the two arrays differ in length.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Fog")
+	static TArray<FVector2D> FilterPositionsByCamp(const TArray<int32>& OwnerCamps, const TArray<FVector2D>& Positions, int32 Camp);
+
+	/**
 	 * D357, D376: the camp whose sight the machine of Slot's player shows (HOLVisionRules::GetViewerCamp): its own, the team's when
 	 * it is defeated while a teammate stands (D646), INDEX_NONE (no fog, everything in sight) for no camp, defeated alone or defeated
 	 * with its whole team fallen. bDefeated: told by the caller, else read from the game state (IsSlotDefeated).
