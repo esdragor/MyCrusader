@@ -771,15 +771,13 @@ void UHOLCombatProcessor::ApplyDamageRedirect(const HOLDamageRedirect::FResult& 
 
 int32 UHOLCombatProcessor::GetDamageTakenPercent(const FFighter& Victim) const
 {
-	// The aura of the Dawn reaches the damage through the morale lever (HOLMorale::TakenPercent: the row of Effects.csv, one source); the cry is still
-	// posed apart (CloseRanksMs) and adds to it under the cap. Migration: the processor lays the aura of a living hero only; the banner's aura is still
-	// read by IsInAura, so it counts here ONLY while the lever does not carry the aura already (never twice), at the row's own percent (no constant).
+	// The aura (the Dawn's of a living hero AND the banner's, both laid by the morale processor) reaches the damage through the morale lever alone
+	// (HOLMorale::TakenPercent: the rows of Effects.csv, one source of truth); the cry is still posed apart (CloseRanksMs) and adds to it under the cap.
+	// IsInAura stays for the heal and the talent's armor, no longer read here.
 	static const HOLMorale::FHOLMoraleState NoMorale;
 	const HOLMorale::FHOLMoraleState& MoraleState = Victim.Morale ? Victim.Morale->State : NoMorale;
-	const int32 AuraId = static_cast<int32>(HOLMoraleTableRows::HOLMoraleDawnAura);
-	const int32 AuraOutsideLever = IsInAura(Victim) && !HOLMorale::Has(MoraleState, AuraId) ? HOLMorale::MakeEffectFromRow(AuraId).Taken : 0;
 	const int32 CryPercent = Victim.Combat->CloseRanksMs > 0 ? HOLHeroAbility::CloseRanksReductionPercent : 0;
-	const int32 Percent = HOLMorale::TakenPercent(MoraleState, CryPercent + AuraOutsideLever);
+	const int32 Percent = HOLMorale::TakenPercent(MoraleState, CryPercent);
 	// D810 (F5): a ford weakens the defence (120 %); off a ford, or with no terrain zones, the percent is untouched.
 	return StepTerrain ? Percent * StepTerrain->GetFordDamageTakenPercentAt(Victim.Location) / 100 : Percent;
 }
