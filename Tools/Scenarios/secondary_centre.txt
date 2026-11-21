@@ -24,8 +24,9 @@ hol.HUD.Click ScenarioClose
 frames 10
 hol.HUD.Report
 capture sc_grille_age2
-hol.Mouse.Hover GridCell01
-wait 1
+hol.Mouse.Hover AgeCell101 40
+waitlog Mouse hover AgeCell101
+waitlog tooltip shown
 note Etape 2 : la souris est sur la case Z : l'infobulle du Centre secondaire (nom, 150 bois, 400 pierre).
 waitkey Entree : etape 2, l'infobulle de la case Z
 hol.HUD.Click ScenarioClose
