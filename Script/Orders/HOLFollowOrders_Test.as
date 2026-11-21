@@ -231,3 +231,70 @@ void Test_FollowOrdersStepUnitUnknownUnitQueuesNothing(FUnitTest& T)
 	T.AssertFalse(bIssued, "an unknown unit gets no order");
 	T.AssertEquals(0, Orders.Num(), "nothing queued");
 }
+
+// Right click classification (D818 Q1 C: right click on an ALLY = Follow, on an ENEMY = Attack, on the ground = Move). The target in the selection is no follow target.
+void Test_RightClickOnAllyUnitIsFollow(FUnitTest& T)
+{
+	TArray<int> Selected;
+	Selected.Add(3);
+	Selected.Add(4);
+	const EHOLRightClickOrder Order = HOLFollowOrders::ClassifyRightClick(true, 9, true, Selected);
+	T.AssertTrue(Order == EHOLRightClickOrder::Follow, "right click on an ally outside the selection is Follow");
+}
+
+void Test_RightClickOnEnemyUnitIsAttack(FUnitTest& T)
+{
+	TArray<int> Selected;
+	Selected.Add(3);
+	const EHOLRightClickOrder Order = HOLFollowOrders::ClassifyRightClick(true, 50, false, Selected);
+	T.AssertTrue(Order == EHOLRightClickOrder::Attack, "right click on an enemy stays an attack (focus)");
+}
+
+void Test_RightClickOnGroundIsMove(FUnitTest& T)
+{
+	TArray<int> Selected;
+	Selected.Add(3);
+	const EHOLRightClickOrder Order = HOLFollowOrders::ClassifyRightClick(false, -1, true, Selected);
+	T.AssertTrue(Order == EHOLRightClickOrder::Move, "right click on the ground is Move");
+}
+
+void Test_RightClickOnSelectedAllyIsNotFollow(FUnitTest& T)
+{
+	TArray<int> Selected;
+	Selected.Add(3);
+	Selected.Add(9);
+	const EHOLRightClickOrder Order = HOLFollowOrders::ClassifyRightClick(true, 9, true, Selected);
+	T.AssertTrue(Order == EHOLRightClickOrder::Move, "a unit of the selection does not follow itself: ordinary Move");
+}
+
+// EFFECT on the real book: every selected unit but the target becomes a bodyguard of the ally; an enemy click starts no follow.
+void Test_ApplyRightClickOnAllyStartsFollowForTheOthers(FUnitTest& T)
+{
+	FHOLFollowBook Book;
+	TArray<int> Selected;
+	Selected.Add(3);
+	Selected.Add(9);
+	Selected.Add(4);
+	const EHOLRightClickOrder Order = HOLFollowOrders::ApplyRightClick(Book, Selected, true, 9, true);
+	T.AssertTrue(Order == EHOLRightClickOrder::Follow, "an ally click is Follow");
+	const int Index3 = HOLFollowOrders::IndexOf(Book, 3);
+	const int Index9 = HOLFollowOrders::IndexOf(Book, 9);
+	T.AssertEquals(2, Book.UnitIds.Num(), "two followers: the target itself is left out");
+	T.AssertTrue(Index3 >= 0, "unit 3 follows");
+	T.AssertEquals(-1, Index9, "the followed unit does not follow itself");
+	if (Index3 >= 0)
+	{
+		T.AssertEquals(9, Book.TargetIds[Index3], "unit 3 follows the ally 9");
+		T.AssertTrue(Book.States[Index3].bActive && Book.States[Index3].bTargetIsAlly, "bodyguard state");
+	}
+}
+
+void Test_ApplyRightClickOnEnemyStartsNoFollow(FUnitTest& T)
+{
+	FHOLFollowBook Book;
+	TArray<int> Selected;
+	Selected.Add(3);
+	const EHOLRightClickOrder Order = HOLFollowOrders::ApplyRightClick(Book, Selected, true, 50, false);
+	T.AssertTrue(Order == EHOLRightClickOrder::Attack, "an enemy click is an attack");
+	T.AssertEquals(0, Book.UnitIds.Num(), "no follower: the attack goes through the normal order path");
+}

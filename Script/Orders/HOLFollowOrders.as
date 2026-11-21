@@ -3,6 +3,14 @@
 // HOLFollowRules.as decides (pure); Step sends the Move / Attack through HOLPlayerOrders:: on the command queue (the same gate and chain as a click).
 // Not wired to the game yet: the C++ must call Begin on a right click on a unit and Step at each order step (TYPES_A_EXPOSER in the report). NOT COMPILED.
 
+// What a right click with units selected means (GDD § 7.3, D818 Q1 C: no grid case for Follow or focus): ground = Move, ally unit = Follow, enemy unit = Attack.
+enum EHOLRightClickOrder
+{
+	Move,
+	Attack,
+	Follow
+}
+
 struct FHOLFollowBook
 {
 	TArray<int> UnitIds;
@@ -148,5 +156,17 @@ namespace HOLFollowOrders
 			return false;
 		const int EnemyId = bPlayerOrderActive ? -1 : PickEnemyForUnit(WorldContext, UnitId, UnitLocation);
 		return StepBodyguard(Commands, PlayerIndex, Book, UnitId, UnitLocation, TargetLocation, bPlayerOrderActive, EnemyId);
+	}
+
+	// STUB (red): the right click classification is not written yet, every click is a Move.
+	EHOLRightClickOrder ClassifyRightClick(bool bOnUnit, int TargetId, bool bTargetIsAlly, const TArray<int>& SelectedIds)
+	{
+		return EHOLRightClickOrder::Move;
+	}
+
+	// STUB (red): no follower is started.
+	EHOLRightClickOrder ApplyRightClick(FHOLFollowBook& Book, const TArray<int>& SelectedIds, bool bOnUnit, int TargetId, bool bTargetIsAlly)
+	{
+		return EHOLRightClickOrder::Move;
 	}
 }
