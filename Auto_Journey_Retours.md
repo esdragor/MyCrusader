@@ -31,4 +31,4 @@ Essais prêts, classés (4). Gate Essay relancé à 21:38 : FAIL partout (worktr
 - Commiter GDD.md ? D877-D879 sont non commités depuis 14:11 et chaque fusion de ce soir (gate Merge) s'est faite par exception à cause de lui : A oui / B non (réponse : Reponse: A ou B).
 
 ## 3. État de main
-- main = <à compléter par la session principale>
+- main = 1276d54 (local, rien poussé ; séance du 2026-11-21 soir : 6fe9d84 -> 1276d54, 5 avances par integrate.ps1, build + tests 2061/2061 + net,build PASS à chaque avance). Non intégré : série Glorfindel du pont de Suivre (ability-columns, erreurs de script à l'exécution). deploy (D877) : moitié A encore en échec à la recette de 22:1x, en tête de la file Elrond.

@@ -1,0 +1,12 @@
+APPELS_DECLARES: 14 (arret a 25)
+HEURE_DEBUT/HEURE_FIN: 19:18 / 19:21
+PREMIER_BUILD: sans C++   BUILD: NON COMPILE   LAUNCHCHECK_DEBUT: sans C++
+TEST_ROUGE: sans objet (fusion + mise a jour d'un test existant au nouveau compte) ; assertit l'effet : oui (compte de BuildableTypes lu de la table fusionnee, case II-1 lue par GetAgeBuilding)
+COMMITS: 3 (69e534c docs journal sa, 5a62867 merge fc901f7, ed2566e test + placeholders_map), dernier a 19:2x, merge_main_fait: non (fusion de integ-25 fc901f7 demandee a la place)
+TESTS: aucun lance (brief) ; a lancer : quick_check -Parts tests apres build ; TESTS_TAUTOLOGIQUES: 0
+ESSAIS: aucun
+QUESTIONS: aucune
+FAIT: merge fc901f7 dans wall-line (5a62867). Conflit CSV : marqueurs retires a la main, TowerWood (Military slot 7 age 0) et SecondaryCentre (Economic slot 1 age 1) gardes ; fichier relu en Latin1 pour garder les octets. uasset : conflit pris cote fc901f7 puis REGENERE par regen_tables.ps1 -Root <Haldir> (editeur lance masque, "Success - 0 error(s)", uasset 23106 octets, deja ecrit 19:20 ; les deux lignes sont dans le CSV). Test_CGTables : 14 -> 15, assertion SecondaryCentre page II (index 1) case 1 (Age 1, grise), case 1 retiree de EmptyII (ed2566e). placeholders_map.csv : SecondaryCentre,BuildingTypes,^- Centre secondaire \(SecondaryCentre\). Placeholders.txt (copie principale, relu avant) : ligne "- Centre secondaire (SecondaryCentre) : modele SM_Forum du Forum, provisoire [kit]" apres la ligne Forum Legions. Journal SecondaryCentersInProgress.md commite en premier (69e534c).
+RESTE: quick_check -Parts tests (a lancer par la session principale ; attendu vert : Test_CGTables 15 types + SecondaryCentre II-1, HOLSecondaryCentreAll_Test, TowerWood) ; lot C++ SC3 (HOLConstructionRules.cpp:466, HOLBuildProcessor.cpp:978, HOLGameNames.cpp:123) ; 0d477b4 (rouge D877) volontairement non fusionne.
+NON VERIFIE: rien compile ni lance ; la regeneration a ete faite avec les scripts AS de wall-line (non compiles en C++) : le binaire de Haldir peut etre perime (l'editeur a tourne quand meme, 0 erreur AS) ; verifier que le uasset contient bien 16 lignes (15 + MainCentre... le CSV en compte 16 : 14 anciens + SecondaryCentre + TowerWood) ; placeholders_map.csv/ Placeholders.txt : formes de pattern non rejouees par un test placeholders.
+ANOMALIES_PROCESSUS: Placeholders.txt a un melange de fins de ligne (git avertit LF->CRLF) ; ma ligne suit les fins de ligne dominantes. Aucune autre.
