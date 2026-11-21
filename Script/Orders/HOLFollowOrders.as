@@ -124,4 +124,19 @@ namespace HOLFollowOrders
 			return -1;
 		return PickEnemyInRange(UnitLocation, Reach, EnemyIds, EnemyLocations);
 	}
+
+	// STUB (red commit): the decision rule of a bodyguard step, see the real code in the next commit.
+	// One order step of a bodyguard (GDD D818 Q2 = B): a bodyguard WITHOUT an order of the player attacks the enemy picked for it, then follows again once the enemy is gone;
+	// one that holds a player order is never interrupted. bPlayerOrderActive: the unit executes an order the player gave it (the caller reads it).
+	bool StepBodyguard(UHOLCommandSubsystem Commands, int PlayerIndex, FHOLFollowBook& Book, int UnitId, const FVector& UnitLocation, const FVector& TargetLocation, bool bPlayerOrderActive, int EnemyId)
+	{
+		return false;
+	}
+
+	// The step the game calls for a follower: reads the unit, the followed unit and the enemy picked for the unit (ReadUnit, PickEnemyForUnit), then StepBodyguard.
+	// False when the unit or its target is gone (the caller ends the follow).
+	bool StepUnit(UObject WorldContext, UHOLCommandSubsystem Commands, int PlayerIndex, FHOLFollowBook& Book, int UnitId, bool bPlayerOrderActive)
+	{
+		return false;
+	}
 }

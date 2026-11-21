@@ -182,3 +182,52 @@ void Test_FollowOrdersPickEnemyForUnknownUnitPicksNobody(FUnitTest& T)
 	const int Picked = HOLFollowOrders::PickEnemyForUnit(nullptr, 987654, FVector(0.f, 0.f, 0.f));
 	T.AssertEquals(-1, Picked, "a unit the game does not know picks no enemy");
 }
+
+// D818 Q2 = B, decision rule on the real chain (StepBodyguard -> Step -> Decide -> HOLPlayerOrders:: -> queue). EFFECT: a bodyguard WITHOUT an order of the player attacks the
+// enemy in range, then walks to its ally again once the enemy is gone.
+void Test_FollowOrdersBodyguardWithoutPlayerOrderAttacksThenFollowsAgain(FUnitTest& T)
+{
+	UHOLCommandSubsystem Commands = HOLCommandScript::MakeDetachedForTest();
+	FHOLFollowBook Book;
+	HOLFollowOrders::Begin(Book, HOLFollowOrdersTest::UnitId, HOLFollowOrdersTest::AllyId, true);
+	const FVector UnitLocation = FVector(0.f, 0.f, 0.f);
+	const FVector AllyLocation = FVector(1500.f, 0.f, 0.f);
+	const bool bAttackIssued = HOLFollowOrders::StepBodyguard(Commands, 0, Book, HOLFollowOrdersTest::UnitId, UnitLocation, AllyLocation, false, 42);
+	TArray<FHOLScriptOrderRead> Attack = HOLCommandScript::ConsumeMoves(Commands);
+	T.AssertTrue(bAttackIssued, "the step reports an order");
+	T.AssertEquals(1, Attack.Num(), "one order queued while an enemy is in range");
+	if (Attack.Num() == 1)
+	{
+		T.AssertTrue(Attack[0].Kind == n"Attack", "it is an Attack, not a Move toward the far ally");
+		T.AssertEquals(42, Attack[0].TargetUnitId, "on the enemy picked for the bodyguard");
+	}
+	HOLFollowOrders::StepBodyguard(Commands, 0, Book, HOLFollowOrdersTest::UnitId, UnitLocation, AllyLocation, false, -1);
+	TArray<FHOLScriptOrderRead> Resume = HOLCommandScript::ConsumeMoves(Commands);
+	T.AssertEquals(1, Resume.Num(), "the enemy gone: one order queued");
+	if (Resume.Num() == 1)
+		T.AssertTrue(Resume[0].Kind == n"Move", "the bodyguard follows its ally again (Move)");
+}
+
+// EFFECT: a bodyguard that holds an order of the player is not interrupted: nothing is queued, whatever enemy is in range.
+void Test_FollowOrdersBodyguardWithPlayerOrderIsNotInterrupted(FUnitTest& T)
+{
+	UHOLCommandSubsystem Commands = HOLCommandScript::MakeDetachedForTest();
+	FHOLFollowBook Book;
+	HOLFollowOrders::Begin(Book, HOLFollowOrdersTest::UnitId, HOLFollowOrdersTest::AllyId, true);
+	const bool bIssued = HOLFollowOrders::StepBodyguard(Commands, 0, Book, HOLFollowOrdersTest::UnitId, FVector(0.f, 0.f, 0.f), FVector(1500.f, 0.f, 0.f), true, 42);
+	TArray<FHOLScriptOrderRead> Orders = HOLCommandScript::ConsumeMoves(Commands);
+	T.AssertFalse(bIssued, "the step reports no order");
+	T.AssertEquals(0, Orders.Num(), "nothing queued: neither the Attack on the enemy nor the Move toward the ally");
+}
+
+// StepUnit reads the game: a unit (or target) the game does not know gets no order (false), nothing queued.
+void Test_FollowOrdersStepUnitUnknownUnitQueuesNothing(FUnitTest& T)
+{
+	UHOLCommandSubsystem Commands = HOLCommandScript::MakeDetachedForTest();
+	FHOLFollowBook Book;
+	HOLFollowOrders::Begin(Book, 987654, 987655, true);
+	const bool bIssued = HOLFollowOrders::StepUnit(nullptr, Commands, 0, Book, 987654, false);
+	TArray<FHOLScriptOrderRead> Orders = HOLCommandScript::ConsumeMoves(Commands);
+	T.AssertFalse(bIssued, "an unknown unit gets no order");
+	T.AssertEquals(0, Orders.Num(), "nothing queued");
+}
