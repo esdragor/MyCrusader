@@ -56,7 +56,7 @@ waitlog Selection: SecondaryCentre of slot 0 (own)
 frames 30
 hol.Select.Report
 hol.HUD.Report
-note Etape 4 : le Centre secondaire est FINI et SEUL dans son groupe de selection (un seul batiment, comme le forum) ; sa grille propose les memes commandes que le forum : case A Paysan, etc.
+note Etape 4 : le Centre secondaire est FINI et SEUL dans son groupe de selection (un seul batiment, comme le forum) ; sa grille propose la case A Paysan (le forum, a l etape 5, ajoute en plus les voies de palier et la cloche).
 waitkey Entree : etape 4, le centre secondaire fini, selectionne
 hol.HUD.Click ScenarioClose
 frames 10
