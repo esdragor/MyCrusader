@@ -2,17 +2,42 @@
 
 #include "Presentation/HOLUnitOpacity.h"
 
-// STUB (commit 1, red test): compiles, stores nothing, so Test_UnitOpacitySetterCarriesTheStealthRuleValue fails at run time.
+#include "Misc/ScopeLock.h"
+
+namespace
+{
+	/** Opacity per unit id (only the units below 1; 1 is the default and is not stored). Local to the machine, guarded: the drawing pass may read it off the game thread. */
+	FCriticalSection OpacityLock;
+	TMap<int32, float>& GetOpacities()
+	{
+		static TMap<int32, float> Opacities;
+		return Opacities;
+	}
+}
 
 void UHOLUnitOpacityLibrary::SetStealthOpacity(const int32 UnitId, const float Opacity)
 {
+	const float Clamped = FMath::Clamp(Opacity, 0.f, 1.f);
+	FScopeLock Lock(&OpacityLock);
+	if (Clamped >= 1.f)
+	{
+		GetOpacities().Remove(UnitId);
+	}
+	else
+	{
+		GetOpacities().Add(UnitId, Clamped);
+	}
 }
 
 float UHOLUnitOpacityLibrary::GetStealthOpacity(const int32 UnitId)
 {
-	return 1.f;
+	FScopeLock Lock(&OpacityLock);
+	const float* Found = GetOpacities().Find(UnitId);
+	return Found ? *Found : 1.f;
 }
 
 void UHOLUnitOpacityLibrary::ClearStealthOpacities()
 {
+	FScopeLock Lock(&OpacityLock);
+	GetOpacities().Empty();
 }
