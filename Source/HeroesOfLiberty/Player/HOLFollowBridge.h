@@ -33,11 +33,11 @@ public:
 
 	// The script overrides (Angelscript drops the BP_ prefix).
 	UFUNCTION(BlueprintImplementableEvent, Category = "HOL|Orders")
-	bool BP_RightClickOnUnit(AHOLPlayerController* Controller, TArray<int32> Selected, int32 TargetId, bool bTargetIsAlly);
+	bool BP_RightClickOnUnit(AHOLPlayerController* Controller, const TArray<int32>& Selected, int32 TargetId, bool bTargetIsAlly);
 
 	UFUNCTION(BlueprintImplementableEvent, Category = "HOL|Orders")
 	void BP_Step(AHOLPlayerController* Controller, int32 PlayerIndex);
 
 	UFUNCTION(BlueprintImplementableEvent, Category = "HOL|Orders")
-	void BP_ManualOrder(TArray<int32> UnitIds);
+	void BP_ManualOrder(const TArray<int32>& UnitIds);
 };
