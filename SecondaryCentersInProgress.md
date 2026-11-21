@@ -77,3 +77,22 @@ réapparition, ni territoire) ; « contrôlé » = **à soi** (le centre d'un al
 
 ## 2026-11-13 11:10 HALDIR-1113 (agent, maps)
 - D783 applique : CostWood 150, CostStone 400 (population 10 inchangee) ; rouge 8c12950 (Test_SecondaryCentreCostsMostlyStone durci aux valeurs 150/400, pierre >= 2x bois et >= 70 %, + Test_SecondaryCentreGivesTenPopulation via PopulationOf), vert 8d028ff ; quick_check -Parts tests 1203/1203 PASS (11:10). Toujours aucun appelant en jeu (C++ SC2/SG2/SP2/N2 a faire). Reprise : etape C++ suivante du journal.
+
+## 2026-11-21 10:58 HALDIR-1121b (agent, maps, sans C++)
+- Ligne Haldir SC3 prise (CELEBORN-1116a deja faite par 1121a bd900a5, stealth/regen/bSites = editeur ou interdit). SC3 = C++ + SC2 (table .uasset, editeur) : non faisable ici. Travail : classer les emplois de MainCentre (lecture seule). Appels vus: 8 (traits: ||||||||)
+
+
+### SC3 classement des emplois de MainCentre (HALDIR-1121b 11:0x, lecture seule, git grep hors tests : ~100 lignes de production sur 287 ; les ~190 autres sont des tests)
+Convention : le centre secondaire aura son propre type (nom propose : SecondaryCentre, ligne SC2 du CSV) ; un emploi de MainCentre = == sur le nom.
+- FORUM PRINCIPAL SEUL (le comparer au nom suffit, le centre secondaire ne doit pas y entrer) :
+  - Buildings/HOLConstructionSubsystem.cpp:102 : liste EnemyCentres de la zone anti-rush (D22) : seul le principal compte (point central de SC3).
+  - Buildings/HOLBuildingTypes.cpp:80,92,103,114 : ouverture du premier forum, IsFirstForumOpen, IsForumComplete, bAlwaysOpen (le secondaire se debloque a l'age 1, CanOrder, pas ici).
+  - Map/HOLStartSlot.cpp:23-32, HOLGameState.cpp:1274, HeroesOfLibertyGameModeBase.cpp:664-839, HOLPlayerController.cpp:479,967,3851 : place de depart, camera, spawn (le principal).
+  - Match/HOLFactionRules.cpp:25-29,155,289,387, HOLStartRules.cpp:22, HOLFactionRulesReadLibrary.cpp:245 : role MainCentre de la faction (Factions.csv).
+  - Player/HOLControllerReadLibrary.cpp:13-28, HOLControllerCommandLibrary.cpp:430-813, Script/Player/HOLControllerCommandsC9a.as:171-234, HOLControllerCommands.as:353 : cible/point de ralliement = le centre principal (a revoir : FindMainCentre du joueur peut rester le principal, mais la selection 'tous les centres' du SC5 passera par une autre fonction).
+  - AI/HOLAISummary.cpp:225-269,553-557, HOLAIOrders.cpp:173, Net/HOLCheatRules.cpp:64, Script/AI/HOLAINomadThink.as:51-92, HOLAIOpening.as:431,655,1178 : IA, Nomade (premier forum), prix du premier forum. A relire quand SC6 (boom de l'IA) sera ouvert.
+- TOUT CENTRE (le centre secondaire doit se comporter comme le forum) :
+  - Buildings/HOLConstructionRules.cpp:466 (regle d'acceptation/depot : Accepts non vide ET type != MainCentre : A VERIFIER, lu en une ligne seulement) ;
+  - Script/Player/HOLCommandGridGroups.as:126 (jamais regroupe avec un autre batiment) ; Script/Audio/HOLAudioBuildings.as:55,189,211 (son de fin de production, sons de selection, pierre) ; HOLControllerCommandsC2b.as:183,191 (EnsureOwnSelection d'un batiment producteur de Paysans) ; HOLGameNames.cpp:123 (nom affiche : un nom propre « Centre secondaire » a ajouter, provisoire) ; Simulation/HOLBuildProcessor.cpp:978 (A VERIFIER : non lu).
+- NON VERIFIE : les lignes marquees A VERIFIER et les appels cites par plage n'ont pas ete lus ligne a ligne ; le classement est un relevé de grep, pas une decision de design.
+- Reste (C++, lot de la seance) : (1) ligne SecondaryCentre de BuildingTypes.csv + regeneration de la table (editeur) ; (2) HOLConstructionSubsystem.cpp:102 inchange (il compare deja au nom MainCentre : le secondaire n'entre pas), donc le vrai travail SC3 = lecture du type, deblocage CanOrder, garnison/tir et les emplois 'tout centre' ci-dessus ; (3) test d'accord script/table (SC2). Aucun test rouge en cours, aucun code touche.
