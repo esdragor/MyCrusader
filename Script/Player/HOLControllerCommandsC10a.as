@@ -252,7 +252,9 @@ namespace HOLControllerCommandsC10a
 				return;
 			}
 			HOLScriptLog::LogDisplay(n"LogHOLMatch", UnitClickText(Plan.bOrder, UnitId, Fx, Fy));
-			if (Plan.bOrder)
+			if (Plan.bOrder && RightClickStartsFollow(Controller, UnitId, Plan))
+				HOLScriptLog::LogDisplay(n"LogHOLMatch", f"Right click on unit #{UnitId}: the selected units follow it");
+			else if (Plan.bOrder)
 				HOLControllerCommand::OrderAtFraction(Controller, Fx, Fy, false);
 			else
 				HOLControllerCommand::SelectAtFraction(Controller, Fx, Fy, Plan.bAdd, Plan.bDouble);
