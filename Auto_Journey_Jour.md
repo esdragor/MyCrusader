@@ -8,6 +8,23 @@ Historique du test du 2026-10-30 : `Docs\Archive\Auto_Journey_Test1_2026-10-30.m
 
 **Relevé du 2026-11-15** : voir Docs\ReleveGDD_2026-11-15.md (état réel de A1-A4 et B1-B6, branchements C++ à faire, questions en attente). L'ancien relevé du 2026-11-12 est archivé dans Docs\Archive\Auto_Journey_Jour_Chapitres_GDD_releve_2026-11-12_archive_2026-11-15.md.
 
+## Agents du 2026-11-21
+
+SÉANCE DU 2026-11-21 (« lance une autojourney », 10:40 -> 14:40, autonome). Réponses de l'utilisateur (10:4x, interface de choix) : fin 14:40 (`Docs\SessionEnd.txt`) ; fusion dans main EN LOCAL si build PASS et tests verts sur le résultat exact, jamais de push ; mode AUTONOME (veilleur 30 min à :13/:43, alarme 14:25). main = 61a60e8 au lancement. Nettoyage 0a (4 agents) : 932b820, 4be2ce4, 7a46e54, bce2d69. check-list lue (L20) à 10:43, en entier, par la session principale, après 0a et avant tout lancement d'agent de travail. Intégrateur : Arwen (commandes `integrate.ps1` de la session principale, recette par agent).
+
+| Agent | id | Worktree | Tâche | C++ | Lancé | Fini | Résumé |
+|---|---|---|---|---|---|---|---|
+| CLEAN-1121a | a8cd8c63 | principale | 0a : Jour + Retours | non | 10:41 | 10:42 | 932b820 |
+| CLEAN-1121b | af5f7e8e | principale | 0a : file | non | 10:41 | 10:43 | 7a46e54, 48 [x] archivées, 6 [~] déjà dans main |
+| CLEAN-1121c | ab288c8a | principale | 0a : Retours\ | non | 10:41 | 10:42 | 4be2ce4, 3 BUG-* gardés |
+| CLEAN-1121d | a547ff5b | principale | 0a : procédure + check-list | non | 10:41 | 10:43 | bce2d69, 6 lignes retirées |
+| sync (commande) | — | 8 worktrees | sync_worktrees.ps1 -WaitBuilds | non | 10:44 | 10:44 | 8 à bce2d69 (+4 docs), aucun build |
+
+Plan de lancement 10:5x : voir `Docs\Rapports\ETAPE0-1121.md`. Plafond C++ proposé 3 (vm 46 Go libres, aucun cl.exe, `BuildQueue.state` illisible : accès refusé) : Glorfindel (chat Tab), Haldir (test MainCentre 150 s), Celeborn (moral D866 3), dernier lancement C++ 13:40.
+Sans C++ : Arwen (vérifie BUG-order_lines_multi_blocs à l'écran), Elrond (deploy.txt:83-85), Faramir (session_gate L19-3), Galadriel (marque « (Alliés) » HOLChatInputScreen.as:24), Sauron (virtuous_knight Hold). 6 lignes [~] de la file : 4 périmées ou quasi, 2 gardées (MatchConfig, garnison UI).
+
+EXCEPTION AU GATE 10:4x : `-Phase Essay -Root Arwen` (deploy, virtuous_knight) = 2 FAIL « branche 'f46dc2d' inconnue » : faux positif, la ligne `branches:` des 2 fiches E cite un sha (ancêtre de main, vérifié par merge-base) que le gate lit comme une branche ; autres contrôles PASS (aucun écart de code avec main bce2d69, worktree propre, binaire 23:39 >= code 23:32). Commandes redonnées à l'utilisateur. À faire par un agent : fiches E ou gate (sha accepté).
+
 ## Résumé de la séance du 2026-11-20 soir
 
 - Séance autonome « choses en suspens » 22:38 -> ~01:00 (fin prolongée une fois), session principale + ~25 agents Sonnet ; 7 passes d'`integrate.ps1` (integ-31 à 37, 36 et 37 vertes) ; main = f46dc2d (code) + docs, LOCAL, rien poussé ; tests 1977/1977, `net` et `build` PASS, gate Close 00:22 sans FAIL.
