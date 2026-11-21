@@ -56,3 +56,105 @@ void Test_StealthNothingHiddenOutsideZones(FUnitTest& T)
 	T.AssertFalse(HOLStealth::IsHiddenFrom(StealthOneZone(), FVector2D(5000.0, 0.0), TArray<FVector2D>(), N),
 		"unit outside the zone: not hidden by stealth");
 }
+
+// Per-camp view (D824 Q1 A, line 61): the enemy camp sees a unit in a zone only at N cm or less; allies see it at any distance.
+// N is read from hol.Stealth.RevealDistance by the rule. Camp 0 owns the hidden unit, camp 1 is the enemy.
+void Test_StealthCampViewEnemyBeyondRevealDistanceDoesNotSee(FUnitTest& T)
+{
+	float N = HOLStealth::RevealDistance();
+	bool bSeen = HOLStealth::IsVisibleToCamp(StealthOneZone(), 0, FVector2D(0.0, 0.0), 1, StealthViewers(FVector2D(N + 1.0, 0.0)), N);
+	T.AssertFalse(bSeen, "enemy camp at N + 1 cm: the unit in the zone is not seen");
+	bool bSeenByNobody = HOLStealth::IsVisibleToCamp(StealthOneZone(), 0, FVector2D(0.0, 0.0), 1, TArray<FVector2D>(), N);
+	T.AssertFalse(bSeenByNobody, "enemy camp without any unit: not seen");
+}
+
+void Test_StealthCampViewEnemyAtRevealDistanceSees(FUnitTest& T)
+{
+	float N = HOLStealth::RevealDistance();
+	bool bSeen = HOLStealth::IsVisibleToCamp(StealthOneZone(), 0, FVector2D(0.0, 0.0), 1, StealthViewers(FVector2D(N, 0.0)), N);
+	T.AssertTrue(bSeen, "enemy camp at exactly N cm: the unit in the zone is seen");
+}
+
+void Test_StealthCampViewAllyAlwaysSees(FUnitTest& T)
+{
+	float N = HOLStealth::RevealDistance();
+	bool bSeenFar = HOLStealth::IsVisibleToCamp(StealthOneZone(), 0, FVector2D(0.0, 0.0), 0, StealthViewers(FVector2D(N * 50.0, 0.0)), N);
+	T.AssertTrue(bSeenFar, "ally at 50 N: the unit in the zone is seen");
+	bool bSeenNoViewer = HOLStealth::IsVisibleToCamp(StealthOneZone(), 0, FVector2D(0.0, 0.0), 0, TArray<FVector2D>(), N);
+	T.AssertTrue(bSeenNoViewer, "own camp: seen even with no listed viewer");
+}
+
+// Look (D824 Q3 B): the zone outline shows on hover or when an own unit stands in the zone; never otherwise.
+void Test_StealthOutlineShownOnHover(FUnitTest& T)
+{
+	TArray<FHOLStealthZone> Zones = StealthOneZone();
+	FHOLStealthZone Zone = Zones[0];
+	bool bShown = HOLStealth::ShowsOutline(Zone, true, TArray<FVector2D>());
+	T.AssertTrue(bShown, "hovered zone, no own unit: the outline shows");
+}
+
+void Test_StealthOutlineShownWhenOwnUnitEnters(FUnitTest& T)
+{
+	TArray<FHOLStealthZone> Zones = StealthOneZone();
+	FHOLStealthZone Zone = Zones[0];
+	bool bShown = HOLStealth::ShowsOutline(Zone, false, StealthViewers(FVector2D(100.0, -50.0)));
+	T.AssertTrue(bShown, "own unit inside the zone, not hovered: the outline shows");
+}
+
+void Test_StealthOutlineHiddenOtherwise(FUnitTest& T)
+{
+	TArray<FHOLStealthZone> Zones = StealthOneZone();
+	FHOLStealthZone Zone = Zones[0];
+	bool bNone = HOLStealth::ShowsOutline(Zone, false, TArray<FVector2D>());
+	T.AssertFalse(bNone, "not hovered, no own unit: no outline");
+	float N = HOLStealth::RevealDistance();
+	bool bOutside = HOLStealth::ShowsOutline(Zone, false, StealthViewers(FVector2D(N * 10.0, 0.0)));
+	T.AssertFalse(bOutside, "own unit far outside the zone, not hovered: no outline");
+}
+
+// Binding (D824 Q1 A): the positions of one camp are picked out of the owners' camps and fed to the per-camp rule (HOLStealth::IsVisibleToCamp).
+// Camps 0 and 1 own two units each; camp 1's positions (read by UHOLVisionSubsystem::FilterPositionsByCamp) are the viewers of the enemy camp 0's hidden unit.
+void Test_StealthBindingPicksCampPositions(FUnitTest& T)
+{
+	TArray<int> OwnerCamps;
+	TArray<FVector2D> Positions;
+	OwnerCamps.Add(0);
+	Positions.Add(FVector2D(0.0, 0.0));
+	OwnerCamps.Add(1);
+	Positions.Add(FVector2D(100.0, 0.0));
+	OwnerCamps.Add(0);
+	Positions.Add(FVector2D(5000.0, 0.0));
+	OwnerCamps.Add(1);
+	Positions.Add(FVector2D(6000.0, 0.0));
+	TArray<FVector2D> CampOne = UHOLVisionSubsystem::FilterPositionsByCamp(OwnerCamps, Positions, 1);
+	T.AssertEquals(2, CampOne.Num(), "camp 1 owns two of the four units");
+	TArray<FHOLStealthZone> Zones = StealthOneZone();
+	bool bSeen = HOLStealth::IsVisibleToCamp(Zones, 0, FVector2D(0.0, 0.0), 1, CampOne, HOLStealth::RevealDistance());
+	T.AssertTrue(bSeen, "the unit of camp 0 in the zone is seen by camp 1, whose unit read from the binding stands inside the zone");
+	TArray<FVector2D> CampTwo = UHOLVisionSubsystem::FilterPositionsByCamp(OwnerCamps, Positions, 2);
+	T.AssertEquals(0, CampTwo.Num(), "no unit in camp 2");
+}
+
+// Network filter (D824 Q1 A): the C++ hook UHOLStealthFilter calls the script rule; MaskCamps removes the enemy camps the rule hides the unit from.
+// Camp 0's unit stands in the zone; camp 1's only unit is far away (beyond RevealDistance and outside the zone): camp 1 must not receive it, camp 0 keeps it.
+class UHOLStealthTestFilter : UHOLStealthFilter
+{
+	UFUNCTION(BlueprintOverride)
+	bool IsVisibleToCamp(int ViewerCamp, int UnitCamp, FVector2D UnitPosition) const
+	{
+		TArray<FHOLStealthZone> Zones = StealthOneZone();
+		TArray<FVector2D> Viewers = StealthViewers(FVector2D(HOLStealth::RevealDistance() * 10.0, 0.0));
+		return HOLStealth::IsVisibleToCamp(Zones, UnitCamp, UnitPosition, ViewerCamp, Viewers, HOLStealth::RevealDistance());
+	}
+}
+
+void Test_StealthNetFilterMasksHiddenEnemyCamp(FUnitTest& T)
+{
+	UHOLStealthTestFilter Filter = Cast<UHOLStealthTestFilter>(NewObject(GetTransientPackage(), UHOLStealthTestFilter::StaticClass()));
+	int InZone = UHOLStealthFilter::MaskCamps(Filter, 3, 2, 0, FVector2D(0.0, 0.0));
+	T.AssertEquals(1, InZone, "hidden unit of camp 0, enemy camp 1 far away: only camp 0 (bit 1) receives it");
+	int Outside = UHOLStealthFilter::MaskCamps(Filter, 3, 2, 0, FVector2D(HOLStealth::RevealDistance() * 50.0, 900.0));
+	T.AssertEquals(3, Outside, "the same unit outside every zone: both camps keep receiving it");
+	int NoFilter = UHOLStealthFilter::MaskCamps(nullptr, 3, 2, 0, FVector2D(0.0, 0.0));
+	T.AssertEquals(3, NoFilter, "no filter set: nothing is hidden");
+}

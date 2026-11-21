@@ -29,6 +29,29 @@ struct FHOLFogGhostNet
 };
 
 /**
+ * Stealth network filter hook (D824 Q1 A, D836: one source). The rule HOLStealth::IsVisibleToCamp stays in script (Script\Fog\HOLStealthRules.as); a script
+ * subclass overrides BP_IsVisibleToCamp and calls it, the C++ only applies the answer to the camps that would receive a unit (MaskCamps). Without a
+ * filter (none set) nothing is hidden.
+ */
+UCLASS(Blueprintable)
+class HEROESOFLIBERTY_API UHOLStealthFilter : public UObject
+{
+	GENERATED_BODY()
+
+public:
+	/** Is the unit of UnitCamp standing at UnitPosition (X, Y) visible, as far as stealth goes, to ViewerCamp? Default: yes (no zone). */
+	UFUNCTION(BlueprintNativeEvent, Category = "HeroesOfLiberty|Fog")
+	bool BP_IsVisibleToCamp(int32 ViewerCamp, int32 UnitCamp, FVector2D UnitPosition) const;
+
+	/**
+	 * Camps (a bit per camp, HOLVisionRules) minus the enemy camps (not UnitCamp, below NumCamps) the filter hides the unit from. A null filter
+	 * leaves Camps as it is. The unit's own camp keeps its bit.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Fog")
+	static int32 MaskCamps(const UHOLStealthFilter* Filter, int32 Camps, int32 NumCamps, int32 UnitCamp, FVector2D UnitPosition);
+};
+
+/**
  * F3 (FogInProgress.md, D381-D383, D521): the fog of every camp of the match, on the server and in a solo game (a client
  * computes its own from what it receives, F6e). Its observers are the living units (UHOLUnitSubsystem) and, later (F3.2),
  * the buildings; a camp is a team, or a slot alone (HOLVictoryRules::GetCamp). Each fixed step, only the observers that
@@ -83,6 +106,33 @@ public:
 	/** The fog's camp of a slot (an index of GetMap), INDEX_NONE for a closed slot or none. */
 	int32 GetCampIndex(int32 Slot) const;
 
+	/**
+	 * Stealth binding (D824 Q1 A, HOLStealth::IsVisibleToCamp): the positions (X, Y) of the living units of the camp Camp (an index of
+	 * GetMap, as GetCampIndex), read from UHOLUnitSubsystem; empty without a unit subsystem, for no camp, or for a camp with no unit.
+	 * The script rule takes them as ViewerPositions.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Fog")
+	TArray<FVector2D> GetCampUnitPositions(int32 Camp) const;
+
+	/**
+	 * The pure core of GetCampUnitPositions, callable from a script test: the Positions[i] whose owner camp OwnerCamps[i] (GetCampIndex of
+	 * the owner slot) is Camp, in order; empty when the two arrays differ in length.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Fog")
+	static TArray<FVector2D> FilterPositionsByCamp(const TArray<int32>& OwnerCamps, const TArray<FVector2D>& Positions, int32 Camp);
+
+	/** Stealth network filter (set from script once; null = nothing hidden). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Fog")
+	void SetStealthFilter(UHOLStealthFilter* Filter) { StealthFilter = Filter; }
+
+	/**
+	 * GetCampsSeeing for a unit: the camps whose cell holds it (Position), minus the enemy camps the stealth filter hides it from (UHOLStealthFilter::MaskCamps).
+	 * The unit's owner camp (OwnerCamp) is never removed here, the caller still adds it. Disabled fog: every camp (no stealth either).
+	 */
+	uint32 GetCampsSeeingUnit(const FVector& Position, int32 OwnerCamp) const;
+
+	UPROPERTY()
+	TObjectPtr<UHOLStealthFilter> StealthFilter;
 	/**
 	 * D357, D376: the camp whose sight the machine of Slot's player shows (HOLVisionRules::GetViewerCamp): its own, the team's when
 	 * it is defeated while a teammate stands (D646), INDEX_NONE (no fog, everything in sight) for no camp, defeated alone or defeated

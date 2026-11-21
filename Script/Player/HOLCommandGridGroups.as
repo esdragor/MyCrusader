@@ -11,6 +11,37 @@
 //   - GetCycleRank / IsSelectedByCategory read a FHOLBuildingTypeRow in C++, a struct not exposed to script: here the values read are the parameters.
 // NOT ported: nothing of the range 402-557 (see the report's TYPES_A_EXPOSER: only the row-based call sites are left to the bridge).
 
+namespace HOLCentreKind
+{
+	// D879: "any centre" = the main centre AND the secondary centre (a real forum more, GDD 5.4). ONE source for the script rules that ask it (grid, audio).
+	bool IsCentre(FName TypeName)
+	{
+		return TypeName == n"MainCentre" || TypeName == n"SecondaryCentre";
+	}
+
+	// Which centre a console command falls back on when nothing is selected: the main centre first, else the secondary centre (a real forum more, D879), else the main centre (historical default).
+	FName OwnedCentreType(bool bOwnsMain, bool bOwnsSecondary)
+	{
+		if (!bOwnsMain && bOwnsSecondary)
+			return n"SecondaryCentre";
+		return n"MainCentre";
+	}
+
+	// The same from the player's own buildings.
+	FName OwnedCentreTypeOf(AHOLPlayerController Controller)
+	{
+		bool bMain = HOLControllerCommand::FindOwnBuildingByType(Controller, n"MainCentre") != nullptr;
+		bool bSecondary = HOLControllerCommand::FindOwnBuildingByType(Controller, n"SecondaryCentre") != nullptr;
+		return OwnedCentreType(bMain, bSecondary);
+	}
+
+	// The same by the building's name as the audio table writes it.
+	bool IsCentreName(FString TypeName)
+	{
+		return TypeName == "MainCentre" || TypeName == "SecondaryCentre";
+	}
+}
+
 namespace HOLCommandGridGroups
 {
 	// HOLCommandGrid.h:278 (a constant of a file is not seen by another file, hence the accessor).
@@ -120,10 +151,10 @@ namespace HOLCommandGridGroups
 		return Order[Last == None ? 0 : (Last + 1) % Order.Num()];
 	}
 
-	// IsAloneInGroup (cpp 455-458): a main centre is never joined by another building in a subgroup (HOLBuildingTypeNames::MainCentre).
+	// IsAloneInGroup (cpp 455-458): a centre (main or secondary, D879) is never joined by another building in a subgroup (HOLCentreKind::IsCentre).
 	bool IsAloneInGroup(FName TypeName)
 	{
-		return TypeName == n"MainCentre";
+		return HOLCentreKind::IsCentre(TypeName);
 	}
 
 	// SplitSubgroups (cpp 460-491): first "All" (every building), then one subgroup per type in the order of first appearance; a building that is alone

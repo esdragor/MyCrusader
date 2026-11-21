@@ -192,6 +192,12 @@ namespace HOLTopBar
 		return "HUD: idle workers clicked";
 	}
 
+	// The tooltip text in the current language ("+0 bois/min", "+0 wood/min"...): it changes with a live language switch, so the tooltips are re-set then too.
+	FString TipLanguageKey()
+	{
+		return IncomeTip(0, ResourceWord(0));
+	}
+
 	// The income is set again on the tooltips only when it changes.
 	bool IncomeChanged(FHOLResources Shown, FHOLResources Income)
 	{
@@ -233,6 +239,7 @@ class UHOLTopBarPanel : UObject
 	int ShownPopulationCap = 0;
 	int ShownIdleWorkers = -1;
 	bool bIncomeKnown = false;
+	FString ShownTipKey;
 	bool bStatsShown = false;
 
 	UCommonTextBlock AmountOf(int Resource)
@@ -498,9 +505,10 @@ class UHOLTopBarPanel : UObject
 				AmountOf(Resource).SetText(FText::FromString(HOLTopBar::FormatAmount(HOLTopBar::AmountOf(Stock, Resource))));
 				GatherersOf(Resource).SetText(FText::FromString(HOLTopBar::GatherersText(HOLTopBar::AmountOf(Gatherers, Resource))));
 			}
-			if (!bIncomeKnown || HOLTopBar::IncomeChanged(ShownIncome, Income))
+			if (!bIncomeKnown || HOLTopBar::IncomeChanged(ShownIncome, Income) || ShownTipKey != HOLTopBar::TipLanguageKey())
 			{
 				bIncomeKnown = true;
+				ShownTipKey = HOLTopBar::TipLanguageKey();
 				ShownIncome = Income;
 				SetIncomeTips(Income);
 			}

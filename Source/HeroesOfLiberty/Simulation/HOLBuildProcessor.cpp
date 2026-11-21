@@ -975,7 +975,7 @@ void UHOLBuildProcessor::ApplyWork(const FStepContext& Step)
 		Site->SetBuildersAtWork(0);
 		// N2 step 2e (D354, answer B of Q-nomad-forum Q2): a Nomad seat's first Forum finished gives it a complete Forum. Only a
 		// Nomad seat without one reads false here: a standard seat always has one, nothing is written for it.
-		if (Site->GetTypeName() == HOLBuildingTypeNames::MainCentre && Site->GetOwnerPlayer() >= 0
+		if (HOLBuildingTypeNames::IsCentre(Site->GetTypeName()) && Site->GetOwnerPlayer() >= 0
 			&& !UHOLSpecializationSubsystem::IsForumComplete(World, Site->GetOwnerPlayer()))
 		{
 			// Through the game state (D799): its replicated bit tells every client's board too (HALDIR-1115b).

@@ -82,6 +82,32 @@ struct FHOLMinorEventsWatch
 	int32 ResearchesSeen = 0;
 };
 
+/**
+ * D804 B ("attaque ailleurs", HOLAlertRules::ShouldAlertAttackedElsewhere): the hits the shown player's buildings took, accumulated by
+ * UHOLScriptScreen::ObserveHitsReceived: the number of hits seen since the first observation (which only takes the baseline), the ground place
+ * and the world time of the latest one.
+ */
+USTRUCT(BlueprintType)
+struct FHOLHitsWatch
+{
+	GENERATED_BODY()
+
+	/** Hits seen since the baseline (cumulative; one per hit time later than the one already seen). */
+	UPROPERTY(BlueprintReadWrite, Category = "HeroesOfLiberty|UI")
+	int32 HitsReceived = 0;
+
+	/** The ground place (X, Y) of the latest hit. */
+	UPROPERTY(BlueprintReadWrite, Category = "HeroesOfLiberty|UI")
+	FVector2D LastHitLocation = FVector2D::ZeroVector;
+
+	/** This machine's world time (s) of the latest hit, negative before the first. */
+	UPROPERTY(BlueprintReadWrite, Category = "HeroesOfLiberty|UI")
+	double LastHitSeconds = -1.0;
+
+	/** C++ only: the baseline taken. */
+	bool bPrimed = false;
+};
+
 UCLASS(Abstract)
 class HEROESOFLIBERTYUI_API UHOLScriptScreen : public UUserWidget
 {
@@ -271,6 +297,23 @@ public:
 	 */
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|UI")
 	static void ObserveMinorEvents(UPARAM(ref) FHOLMinorEventsWatch& Watch, const TArray<AHOLBuilding*>& FinishedBuildings, int32 ResearchesDone);
+
+	/**
+	 * D804 B ("attaque ailleurs"): the hits the shown player's buildings took, cumulative since the first read, with the ground place and the world
+	 * time (seconds, this machine's) of the latest one: the script rule compares the place with the camera's view and the time with its own clock.
+	 * Buildings only for now (their last hit time is replicated state); a unit's hits have no record on a client yet. False, all zero, for a spectator
+	 * or before the player state arrives.
+	 */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|UI")
+	bool GetHitsReceivedNow(int32& OutHits, FVector2D& OutLastHitLocation, double& OutLastHitSeconds) const;
+
+	/**
+	 * The rule of GetHitsReceivedNow, on given data (script tests call it): HitPlaces[i] / HitSeconds[i] are the place and the world time of the last
+	 * hit of one thing of the player (a negative time = never hit). The first call is the baseline (counts nothing, takes the latest time); later
+	 * ones count each entry whose time is later than the latest seen and keep the place and time of the newest.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|UI")
+	static void ObserveHitsReceived(UPARAM(ref) FHOLHitsWatch& Watch, const TArray<FVector2D>& HitPlaces, const TArray<double>& HitSeconds);
 
 	/**
 	 * The top bar's economy (H-3), of the shown player (UHOLGameScreen::GetBoundPlayerState: a spectator's followed player too): stock, places taken and
@@ -587,6 +630,9 @@ private:
 
 	/** GetMinorEventsNow's accumulation (the accessor is const, the reads are the screen's own bookkeeping). */
 	mutable FHOLMinorEventsWatch MinorWatch;
+
+	/** GetHitsReceivedNow's accumulation (same reason). */
+	mutable FHOLHitsWatch HitsWatch;
 
 	/** The selection block needs a call every image: NativeTick calls SelectionFrameTick (HUD H-9). */
 	bool bSelectionLive = false;
