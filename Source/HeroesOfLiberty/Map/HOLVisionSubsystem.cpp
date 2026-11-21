@@ -606,15 +606,39 @@ int32 UHOLVisionSubsystem::GetCampIndex(const int32 Slot) const
 
 TArray<FVector2D> UHOLVisionSubsystem::GetCampUnitPositions(const int32 Camp) const
 {
-	// Stub (red first): the real reading comes in the next commit.
-	return TArray<FVector2D>();
+	TArray<FVector2D> Result;
+	const UHOLUnitSubsystem* Units = GetWorld() ? GetWorld()->GetSubsystem<UHOLUnitSubsystem>() : nullptr;
+	if (!Units || Camp == INDEX_NONE)
+	{
+		return Result;
+	}
+	Units->ForEachLivingUnit([this, Camp, &Result](const uint8 Owner, const FVector& Location)
+	{
+		if (GetCampIndex(Owner) == Camp)
+		{
+			Result.Add(FVector2D(Location));
+		}
+	});
+	return Result;
 }
 
 TArray<FVector2D> UHOLVisionSubsystem::FilterPositionsByCamp(const TArray<int32>& OwnerCamps, const TArray<FVector2D>& Positions, const int32 Camp)
 {
-	// Stub (red first): the real filter comes in the next commit.
-	return TArray<FVector2D>();
+	TArray<FVector2D> Result;
+	if (OwnerCamps.Num() != Positions.Num())
+	{
+		return Result;
+	}
+	for (int32 Index = 0; Index < Positions.Num(); ++Index)
+	{
+		if (OwnerCamps[Index] == Camp)
+		{
+			Result.Add(Positions[Index]);
+		}
+	}
+	return Result;
 }
+
 int32 UHOLVisionSubsystem::GetViewerCamp(const int32 Slot) const
 {
 	const UWorld* World = GetWorld();
