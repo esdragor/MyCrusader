@@ -1,0 +1,17 @@
+# [À ESSAYER] E-talents_heal : prendre des talents avec le Paladin-Commandant et voir la jauge de faction (SacredLight) rester AU-DESSUS du bloc héros, sans le recouvrir, puis le trait de soin du Moine doré (« ++ ») après le talent « Mains du guérisseur »
+
+STATUT : LOGIQUE SEULEMENT   (captures vues ; le trait « doré » du talent n'est pas net sur talents_heal_boosted : le trait y paraît vert)
+GESTE: interne
+SON: non entendu
+branches: zone-effect
+
+Pré-vol (2026-11-21 19:36, agent FARAMIR-1121se, worktree C:\Users\baudo\Documents\HeroesOfLiberty-Faramir, tip 64a212a) : `preflight.ps1 talents_heal -Root C:\Users\baudo\Documents\HeroesOfLiberty-Faramir` PASS (40 s, 3 PNG, plus de FAIL « HUD overlap HeroPanel x FactionPanel »).
+PNG OUVERTS et vus :
+- talents_heal_base : bloc héros avec 1 talent pris (rangée d'icônes + « Talents pris (1) »), la jauge « 0 / 100 SacredLight » est au-dessus du bloc, sans recouvrement ; trait de soin vert + « + » du Moine vers un Homme d'armes visible.
+- talents_heal_cell : fenêtre « Arbre de talents », cases Boucliers levés et Mains du guérisseur dorées (prises), bloc héros plus haut (2 talents pris), la jauge remonte avec lui et ne le recouvre pas.
+- talents_heal_boosted : mêmes blessés, 2 talents pris, jauge au-dessus du bloc ; le trait de soin du Moine est vert sur la capture (doré attendu : à regarder en jeu, hors de ce correctif).
+NON VÉRIFIÉ : le doré du trait après le talent ; le suivi de la hauteur au tick exact où la rangée change (relue au rafraîchissement suivant) ; jeu au clavier/souris réel ; son.
+
+Commande complète (règle 13, 2026-11-14) :
+`powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Faramir\Tools\Scenarios\play.ps1 talents_heal -Root C:\Users\baudo\Documents\HeroesOfLiberty-Faramir`
+Durée : environ 1 min. Réponse attendue : `OK`, `BUG: ...` ou `REGLAGE: ...`.

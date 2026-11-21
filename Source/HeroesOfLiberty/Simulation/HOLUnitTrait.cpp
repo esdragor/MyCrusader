@@ -34,6 +34,8 @@ void UHOLUnitTrait::BuildTemplate(FMassEntityTemplateBuildContext& BuildContext,
 	BuildContext.AddFragment<FHOLBuildFragment>();
 	// Its fight (J7b.2): target, cool-down, riposte.
 	BuildContext.AddFragment<FHOLCombatFragment>();
+	// Its morale effects (D866, PLAN-MORAL-1120 step 4): four slots and the immunity time, written by the morale processor, read by the combat.
+	BuildContext.AddFragment<FHOLMoraleFragment>();
 	// Memory of the last avoidance impulse (D230): without it a throttled avoidance has no effect at all.
 	BuildContext.AddFragment<FHOLAvoidanceHoldFragment>();
 	// Memory of the look-ahead's detour (D293, MV.2): without it the heading flipped every 2 steps.

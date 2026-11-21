@@ -13,3 +13,5 @@ SiegeWorkshop,Atelier de siège,"(X=1200.0,Y=1200.0)",600,1500,40,,0,"(""Ram"","
 Chapel,Chapelle,"(X=1200.0,Y=1200.0)",600,1500,40,,0,"(""Monk"")",5,,"(Food=0,Wood=200,Stone=0,Gold=0)",30,5,1,Military,False,,BlockAndTower,3200,Dawn,0
 Stable,Écurie,"(X=1200.0,Y=1200.0)",600,1500,40,,0,"(""LightCavalry"")",5,,"(Food=0,Wood=150,Stone=0,Gold=0)",20,6,1,Military,False,,BlockAndTower,3200,Common,0
 Forge,Forge,"(X=1200.0,Y=1200.0)",600,1500,40,,0,,5,,"(Food=0,Wood=150,Stone=0,Gold=0)",25,8,1,Technological,False,,BlockAndTower,3200,Common,0
+SecondaryCentre,Centre secondaire,"(X=1600.0,Y=1600.0)",1000,2400,40,/Game/Buildings/Forum/SM_Forum.SM_Forum,10,"(""Peasant"")",5,"(Food,Wood,Stone,Gold)","(Food=0,Wood=150,Stone=400,Gold=0)",150,1,1,Economic,False,,BlockAndTower,6400,Common,0
+TowerWood,Tour de guet en bois,"(X=800.0,Y=800.0)",800,800,40,,0,,1,,"(Food=0,Wood=100,Stone=0,Gold=0)",20,7,0,Military,False,,BlockAndTower,4800,Common,3

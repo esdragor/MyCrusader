@@ -758,6 +758,9 @@ void UHOLCombatProcessor::ApplyDamageRedirect(const HOLDamageRedirect::FResult& 
 			if (static_cast<int32>(Fighter.UnitId) == Share.KnightId)
 			{
 				Fighter.State->CurrentHealth -= Share.Damage;
+				// D864/D865: one line per share, so a waitlog sees the redirect (the struck ally's own hit line keeps its 70 %).
+				UE_LOG(LogHOLSimulation, Display, TEXT("Combat: redirect to #%u %s takes %g, %g HP left (D864)"), Fighter.UnitId, *Fighter.Constants->TypeName.ToString(),
+					Share.Damage, Fighter.State->CurrentHealth);
 				break;
 			}
 		}

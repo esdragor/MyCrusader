@@ -53,6 +53,7 @@ namespace HOLAudioBuildings
 	void Build(TArray<FHOLBuildingSounds>& Rows)
 	{
 		Add(Rows, "MainCentre", HOLAudioEvent::AlertTrainingDone);
+		Add(Rows, "SecondaryCentre", HOLAudioEvent::AlertTrainingDone);
 		Add(Rows, "House", -1);
 		Add(Rows, "LumberCamp", -1);
 		Add(Rows, "MiningCamp", -1);
@@ -186,7 +187,7 @@ namespace HOLAudioBuildings
 	FString FamilyOf(FString Building)
 	{
 		if (Building == "House" || Building == "LumberCamp" || Building == "MiningCamp" || Building == "Mill" || Building == "Farm") return "Wood";
-		if (Building == "MainCentre" || Building == "Barracks" || Building == "ArcheryRange" || Building == "Stable" || Building == "SiegeWorkshop") return "Stone";
+		if (HOLCentreKind::IsCentreName(Building) || Building == "Barracks" || Building == "ArcheryRange" || Building == "Stable" || Building == "SiegeWorkshop") return "Stone";
 		if (Building == "Chapel" || Building == "Sanctuary") return "Sacred";
 		if (Building == "Forge") return "Metal";
 		if (Building == "Market") return "Coins";
@@ -208,7 +209,7 @@ namespace HOLAudioBuildings
 	{
 		// D798 (2026-11-14): these three have their OWN sound, before their family's (Stone and Metal have no family sound).
 		if (Building == "SiegeWorkshop") return HOLAudioEvent::SelectBuildingSiege;
-		if (Building == "MainCentre") return HOLAudioEvent::SelectBuildingForum;
+		if (HOLCentreKind::IsCentreName(Building)) return HOLAudioEvent::SelectBuildingForum;
 		if (Building == "Forge") return HOLAudioEvent::SelectBuildingForge;
 		// D832 (2026-11-16): round 6, their own sound too (the Stable followed with D834).
 		if (Building == "ArcheryRange") return HOLAudioEvent::SelectBuildingRange;

@@ -20,7 +20,7 @@ class HEROESOFLIBERTY_API UHOLControllerReadLibrary : public UBlueprintFunctionL
 	GENERATED_BODY()
 
 public:
-	/** The main centre of the controller's player (or, with bEnemy, of the first other player known here), or null (the single source, also used by the C++ console commands). */
+	/** The centre of the controller's player: the main centre first, else the secondary centre when no main one is owned (D879, HOLBuildingTypeNames::FindCentreIndex); with bEnemy, the main centre only of the first other player known here (attack target, SC6). Null when none (the single source, also used by the C++ console commands). */
 	static const AHOLBuilding* FindMainCentre(const AHOLPlayerController& Controller, bool bEnemy);
 
 	/** A ground point (Z = 0) at (Dx, Dy) cm in the frame of the player's main centre (or an enemy's): false when no such centre is known here. */

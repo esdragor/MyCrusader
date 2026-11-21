@@ -60,7 +60,7 @@ namespace HOLFollowOrders
 	// A follower whose target is gone gets no Step (the caller ends the follow). WorldContext: any object of the game world.
 	bool ReadUnit(UObject WorldContext, int UnitId, FVector& OutLocation)
 	{
-		return HOLUnitScript::GetUnitLocation(WorldContext, UnitId, OutLocation);
+		return HOLUnitScript::GetUnitLocation(UnitId, OutLocation);
 	}
 
 	// One order step of a follower. TargetLocation is the followed unit's position, bEnemyInRange / EnemyId an enemy in the follower's attack range (read by the

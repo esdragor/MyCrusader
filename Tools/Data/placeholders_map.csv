@@ -27,6 +27,7 @@ SiegeWorkshop,BuildingTypes,^- Atelier de si.ge
 Chapel,BuildingTypes,^- Chapelle \(Aube\)
 Stable,BuildingTypes,^- .curie
 Forge,BuildingTypes,^- Forge
+TowerWood,BuildingTypes,^- Tour de guet en bois
 Tree,SourceTypes,^- Arbre \[
 BerryBush,SourceTypes,^- Buisson de baies
 StoneVein,SourceTypes,^- Filon de pierre normal
@@ -42,3 +43,4 @@ Arquebusier,UnitTypes,^- Arquebusier
 DamnedWarrior,UnitTypes,^- Guerrier damn
 Halberdier,UnitTypes,^- Hallebardier Aube
 VirtuousKnight,UnitTypes,^- Chevalier Vertueux Aube
+SecondaryCentre,BuildingTypes,^- Centre secondaire \(SecondaryCentre\)

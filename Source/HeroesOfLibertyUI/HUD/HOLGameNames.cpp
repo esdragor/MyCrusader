@@ -124,6 +124,10 @@ namespace HOLGameNames
 		{
 			return LOCTEXT("MainCentre", "Centre principal");
 		}
+		if (TypeName == HOLBuildingTypeNames::SecondaryCentre)
+		{
+			return LOCTEXT("SecondaryCentre", "Centre secondaire");
+		}
 		if (TypeName == HOLBuildingTypeNames::House)
 		{
 			return LOCTEXT("House", "Maison");

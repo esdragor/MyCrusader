@@ -463,7 +463,7 @@ int32 HOLConstruction::FindNextSite(const FBox2D& Finished, const TConstArrayVie
 
 bool HOLConstruction::SendsBuildersToGather(const FName TypeName, const TConstArrayView<EHOLResource> Accepts)
 {
-	return !Accepts.IsEmpty() && TypeName != HOLBuildingTypeNames::MainCentre;
+	return !Accepts.IsEmpty() && !HOLBuildingTypeNames::IsCentre(TypeName);
 }
 
 double HOLConstruction::GetSourceGap(const FBox2D& Footprint, const FVector2D& Centre, const double Radius)

@@ -90,7 +90,7 @@ void Test_FollowOrdersReadUnitUnknownIdIsGone(FUnitTest& T)
 	const bool bFound = HOLFollowOrders::ReadUnit(nullptr, 987654, Location);
 	T.AssertFalse(bFound, "an unknown unit id is not read as alive");
 	T.AssertTrue(Location.Size() < 0.01f, f"and its position is cleared, not left at the caller's value (X {Location.X} Y {Location.Y} Z {Location.Z})");
-	T.AssertFalse(HOLUnitScript::IsUnitAlive(nullptr, 987654), "IsUnitAlive is false for it");
+	T.AssertFalse(HOLUnitScript::IsUnitAlive(987654), "IsUnitAlive is false for it");
 }
 
 // EFFECT: after a manual order the follow queues nothing.

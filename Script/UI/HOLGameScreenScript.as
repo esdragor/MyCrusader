@@ -2004,8 +2004,12 @@ UHOLScenarioPanelScript ScenarioPanel;
 
 	FMargin FactionSlotPlace()
 	{
+		// Over the hero's block, whose height grows with the talent icons row: its real top edge (as the diplomacy panel does), the rise as a floor.
 		FMargin Place = GetBottomLeftPlace();
-		Place.Bottom += FactionSlotRise;
+		FVector2D HeroLow;
+		FVector2D HeroHigh;
+		const bool bHeroKnown = GetWidgetBox(HeroPanel, HeroLow, HeroHigh) && HeroHigh.Y > HeroLow.Y;
+		Place.Bottom = HOLFactionSlotRule::BottomPadding(Place.Bottom, FactionSlotRise, GetViewportSlateSize().Y, HeroLow.Y, bHeroKnown);
 		return Place;
 	}
 
@@ -2054,6 +2058,8 @@ UHOLScenarioPanelScript ScenarioPanel;
 		}
 		ShowHero(View);
 		ShowTalents(PlayerSlot, View);
+		// The talent row changes the hero block's height: the faction slot follows it (its geometry is read again on the next refresh).
+		RefreshFactionSlot();
 	}
 
 	// T5: the talent point's reminder (HOLTalentPanel::Make from the level and the picks the sheet knows: -1 picks, unknown here, shows
@@ -2728,5 +2734,17 @@ UHOLScenarioPanelScript ScenarioPanel;
 			+ (ChatInput != nullptr ? "\n" + ChatInput.Describe() : "")
 			+ "\ndiplomacy: " + (bDipOpen ? f"open layout {DipLayout}" + (DipMenuSlot >= 0 ? f" menu {DipMenuSlot}" : "") + (DipMessageSlot >= 0 ? f" message to {DipMessageSlot}" : "") + " | " + DescribeDipFit() + " | " + DipTexts : "closed")
 			+ "\npause: " + PauseView.Describe + (PauseTexts.IsEmpty() ? "" : "\npause texts: " + PauseTexts);
+	}
+}
+
+// The faction slot's bottom padding (FARAMIR-1121se): the bottom left place plus the rise, and never under the hero block's top edge (plus 8 px).
+namespace HOLFactionSlotRule
+{
+	float BottomPadding(float BaseBottom, float Rise, float RoomHeight, float HeroTop, bool bHeroKnown)
+	{
+		float Bottom = BaseBottom + Rise;
+		if (bHeroKnown)
+			Bottom = Math::Max(Bottom, RoomHeight - HeroTop + 8.0);
+		return Bottom;
 	}
 }

@@ -604,6 +604,41 @@ int32 UHOLVisionSubsystem::GetCampIndex(const int32 Slot) const
 	return CampOfSlot.IsValidIndex(Slot) ? CampOfSlot[Slot] : INDEX_NONE;
 }
 
+TArray<FVector2D> UHOLVisionSubsystem::GetCampUnitPositions(const int32 Camp) const
+{
+	TArray<FVector2D> Result;
+	const UHOLUnitSubsystem* Units = GetWorld() ? GetWorld()->GetSubsystem<UHOLUnitSubsystem>() : nullptr;
+	if (!Units || Camp == INDEX_NONE)
+	{
+		return Result;
+	}
+	Units->ForEachLivingUnit([this, Camp, &Result](const uint8 Owner, const FVector& Location)
+	{
+		if (GetCampIndex(Owner) == Camp)
+		{
+			Result.Add(FVector2D(Location));
+		}
+	});
+	return Result;
+}
+
+TArray<FVector2D> UHOLVisionSubsystem::FilterPositionsByCamp(const TArray<int32>& OwnerCamps, const TArray<FVector2D>& Positions, const int32 Camp)
+{
+	TArray<FVector2D> Result;
+	if (OwnerCamps.Num() != Positions.Num())
+	{
+		return Result;
+	}
+	for (int32 Index = 0; Index < Positions.Num(); ++Index)
+	{
+		if (OwnerCamps[Index] == Camp)
+		{
+			Result.Add(Positions[Index]);
+		}
+	}
+	return Result;
+}
+
 int32 UHOLVisionSubsystem::GetViewerCamp(const int32 Slot) const
 {
 	const UWorld* World = GetWorld();
@@ -1006,4 +1041,37 @@ double UHOLVisionSubsystem::GetUnitSight(const FName TypeName)
 	const UHOLUnitSubsystem* Units = GetWorld() ? GetWorld()->GetSubsystem<UHOLUnitSubsystem>() : nullptr;
 	const FHOLUnitTypeRow* Row = Units ? Units->FindTypeRow(TypeName) : nullptr;
 	return UnitSights.Add(TypeName, Row ? HOLVisionRules::GetSightRadius(Row->SightRadius, 0., FHOLVisionTuning()) : 0.);
+}
+
+// Stealth network filter: the rule stays in script (BP_IsVisibleToCamp override); here only the camps' bits are applied.
+bool UHOLStealthFilter::BP_IsVisibleToCamp_Implementation(int32 ViewerCamp, int32 UnitCamp, FVector2D UnitPosition) const
+{
+	return true;
+}
+
+int32 UHOLStealthFilter::MaskCamps(const UHOLStealthFilter* Filter, const int32 Camps, const int32 NumCamps, const int32 UnitCamp, const FVector2D UnitPosition)
+{
+	if (!IsValid(Filter))
+	{
+		return Camps;
+	}
+	int32 Result = Camps;
+	for (int32 Camp = 0; Camp < NumCamps && Camp < 31; ++Camp)
+	{
+		if (Camp != UnitCamp && (Result & (1 << Camp)) && !Filter->BP_IsVisibleToCamp(Camp, UnitCamp, UnitPosition))
+		{
+			Result &= ~(1 << Camp);
+		}
+	}
+	return Result;
+}
+
+uint32 UHOLVisionSubsystem::GetCampsSeeingUnit(const FVector& Position, const int32 OwnerCamp) const
+{
+	const uint32 Camps = GetCampsSeeing(Position, FVector2D::ZeroVector);
+	if (Mode == EHOLFogMode::Disabled)
+	{
+		return Camps;
+	}
+	return static_cast<uint32>(UHOLStealthFilter::MaskCamps(StealthFilter, static_cast<int32>(Camps), Map.GetNumCamps(), OwnerCamp, FVector2D(Position)));
 }
