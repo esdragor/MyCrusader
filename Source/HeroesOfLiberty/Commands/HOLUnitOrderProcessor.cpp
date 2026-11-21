@@ -3220,6 +3220,11 @@ void UHOLUnitOrderProcessor::ApplyCombatOrder(FMassEntityManager& EntityManager,
 		EntityManager.GetFragmentDataChecked<FMassDesiredMovementFragment>(Entity).DesiredVelocity = FVector::ZeroVector;
 		FHOLMoveOrderFragment& MoveOrder = EntityManager.GetFragmentDataChecked<FHOLMoveOrderFragment>(Entity);
 		MoveOrder.Phase = EHOLMovePhase::None;
+		// ELROND-1121se: a combat order CUTS the player's march without finishing it; the engine's march note goes with it, or UHOLDeployProcessor reads "march ended" and mounts it on the spot (Toggle) while the target is out of reach.
+		if (FHOLDeployFragment* CutDeploy = EntityManager.GetFragmentDataPtr<FHOLDeployFragment>(Entity))
+		{
+			CutDeploy->bMarching = 0;
+		}
 		MoveOrder.OrderSerial = 0;
 		MoveOrder.bFormation = false;
 		MoveOrder.MarchSpeed = 0.f;
