@@ -16,12 +16,12 @@ namespace HOLChatInputScreen
 	const int Blank = 1;
 	const int TooLong = 2;
 
-	// The mark of the channel in the field: "Allies", "Tous", or the chosen player's name (Private; "Privé" when no name is known).
+	// The mark of the channel in the field: "(Alliés)" (the thread's own tag, HOLForumMessages.cpp:302 LOCTEXT ChatAllies, minus its trailing space; keep the two in step), "Tous", or the chosen player's name (Private; "Privé" when no name is known).
 	FString ChannelMark(int Channel, const FString& PlayerName)
 	{
 		if (Channel == HOLChat::Allies)
 		{
-			return "Allies";
+			return "(Alliés)";
 		}
 		if (Channel == HOLChat::Private)
 		{
