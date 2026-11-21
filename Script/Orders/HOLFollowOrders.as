@@ -96,6 +96,18 @@ namespace HOLFollowOrders
 	// Range is the attack range in cm measured between the two positions (the C++ binding gives the type's range, TYPES_A_EXPOSER).
 	int PickEnemyInRange(const FVector& UnitLocation, float Range, const TArray<int>& EnemyIds, const TArray<FVector>& EnemyLocations)
 	{
-		return -1;
+		int Picked = -1;
+		float BestDistance = Range;
+		const int Count = Math::Min(EnemyIds.Num(), EnemyLocations.Num());
+		for (int Index = 0; Index < Count; Index++)
+		{
+			const float Distance = (EnemyLocations[Index] - UnitLocation).Size();
+			if (Distance <= BestDistance)
+			{
+				BestDistance = Distance;
+				Picked = EnemyIds[Index];
+			}
+		}
+		return Picked;
 	}
 }
