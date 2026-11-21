@@ -290,6 +290,31 @@ namespace HOLMorale
 
 	uint64 FingerprintKey(const FHOLMoraleState& State)
 	{
-		return 0; // stub (red): the real hash comes with the fix
+		if (IsEmpty(State))
+		{
+			return 0;
+		}
+		uint64 Hash = 14695981039346656037ull;
+		const auto Mix = [&Hash](const int32 Value)
+		{
+			const uint32 Bits = static_cast<uint32>(Value);
+			for (int32 Byte = 0; Byte < 4; ++Byte)
+			{
+				Hash = (Hash ^ ((Bits >> (Byte * 8)) & 0xFFu)) * 1099511628211ull;
+			}
+		};
+		Mix(State.Num);
+		Mix(State.ImmunityMs);
+		for (int32 Slot = 0; Slot < State.Num && Slot < MaxEffects; ++Slot)
+		{
+			const FHOLMoraleEffect& Effect = State.Effects[Slot];
+			Mix(Effect.Id);
+			Mix(Effect.Dealt);
+			Mix(Effect.Taken);
+			Mix(Effect.Rate);
+			Mix(Effect.DurationMs);
+			Mix(Effect.bAura ? 1 : 0);
+		}
+		return Hash != 0 ? Hash : 1;
 	}
 }
