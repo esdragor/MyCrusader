@@ -61,4 +61,32 @@ namespace HOLStealth
 		}
 		return true;
 	}
+
+	// Per-camp view (D824 Q1 A): is the unit of UnitCamp at UnitPosition visible, as far as stealth goes, to the camp ViewerCamp whose units stand at ViewerPositions?
+	// Allies (same camp) always see it; an enemy camp sees it only through IsHiddenFrom (within Distance, inclusive, or inside the zone).
+	bool IsVisibleToCamp(const TArray<FHOLStealthZone>& Zones, int UnitCamp, const FVector2D& UnitPosition, int ViewerCamp, const TArray<FVector2D>& ViewerPositions, float Distance)
+	{
+		if (ViewerCamp == UnitCamp)
+		{
+			return true;
+		}
+		return !IsHiddenFrom(Zones, UnitPosition, ViewerPositions, Distance);
+	}
+
+	// Look (D824 Q3 B): the discreet ground outline of a zone shows when the player hovers it or when one of the player's own units stands in it.
+	bool ShowsOutline(const FHOLStealthZone& Zone, bool bHovered, const TArray<FVector2D>& OwnPositions)
+	{
+		if (bHovered)
+		{
+			return true;
+		}
+		for (const FVector2D& Own : OwnPositions)
+		{
+			if (IsInZone(Zone, Own))
+			{
+				return true;
+			}
+		}
+		return false;
+	}
 }
