@@ -46,6 +46,7 @@
 #include "Match/HOLSpecializationSubsystem.h"
 #include "Player/HOLGameMenuRulesBridge.h"
 #include "Player/HOLWallLineBridge.h"
+#include "Player/HOLFollowBridge.h"
 #include "Buildings/HOLConstructionReadLibrary.h"
 #include "Player/HOLRTSCamera.h"
 #include "Player/HOLSelectionMarkers.h"
@@ -1448,6 +1449,23 @@ void AHOLPlayerController::OrderAt(const FVector2D& ViewportFraction, const bool
 			OnOrderGiven.Broadcast(Under.Location);
 			return;
 		}
+		// Follow (GDD 7.3, D818 Q1 C, GLORFINDEL-1121sk): an ally's unit under the cursor, outside the selection: the selected units become its bodyguards (the script rule,
+		// Script/Orders/HOLFollowOrders.as, through UHOLFollowBridge; the Move / Attack orders are then sent by its Step from Tick). Not a unit of the selection: the ground path.
+		if (UnderId != 0 && (bDirect || (!Source && !EnemyBuilding)) && HOLPlayerState && HOLUnitView::Find(*GetWorld(), UnderId, Under)
+			&& !Camps.AreHostile(Under.OwnerPlayer, HOLPlayerState->GetPlayerIndex()) && Under.OwnerPlayer != FHOLMatchConfig::NeutralOwner)
+		{
+			TArray<int32> SelectedIds;
+			for (const uint32 UnitId : Own)
+			{
+				SelectedIds.Add(static_cast<int32>(UnitId));
+			}
+			if (UHOLFollowBridge::NativeRightClickOnUnit(this, SelectedIds, static_cast<int32>(UnderId), true))
+			{
+				UE_LOG(LogHOLMatch, Display, TEXT("Order: %d units follow #%u %s of slot %d"), Own.Num(), UnderId, *Under.TypeName.ToString(), Under.OwnerPlayer);
+				OnOrderGiven.Broadcast(Under.Location);
+				return;
+			}
+		}
 		if (EnemyBuilding)
 		{
 			UE_LOG(LogHOLMatch, Display, TEXT("Order: %d units attack %s%s"), Own.Num(), *DescribeBuilding(EnemyBuilding), bShift ? TEXT(", queued") : TEXT(""));
@@ -2099,6 +2117,11 @@ void AHOLPlayerController::Tick(const float DeltaSeconds)
 	if (WatchedUnitId != 0 && GetNetMode() < NM_Client && !IsLocalController())
 	{
 		SendWatchedLoad();
+	}
+	// The order step of the Follow bodyguards of the local player (Script/Orders/HOLFollowBridge.as): a no-op without a follower.
+	if (IsLocalController() && HOLPlayerState)
+	{
+		UHOLFollowBridge::NativeStep(this, HOLPlayerState->GetPlayerIndex());
 	}
 }
 
