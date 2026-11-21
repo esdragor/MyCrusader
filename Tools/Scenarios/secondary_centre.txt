@@ -1,0 +1,76 @@
+# Centre secondaire (D879) : age II (hol.Cheat.Tier 1), 5000 de chaque ressource, 5 Paysans selectionnes. Page II de la grille de construction : case Z = Centre secondaire (150 bois + 400 pierre). Geste reel : touche Z (age II) puis touche Z (le centre secondaire, fantome sous le curseur) puis clic gauche au sol (hol.Build.Click). Les Paysans le batissent (hol.Build.Speed 6 pour tenir dans 3 minutes). Capture PENDANT la construction, puis APRES : selection du centre, seul dans son groupe, grille = celle du forum. Modele provisoire SM_Forum (Placeholders.txt). 3 minutes au plus.
+# Etat fixe : IA figee, combat coupe, langue fr, curseur immobile. Le panneau de notes du scenario est ferme avant chaque capture.
+waitlog Camera above the start of slot 0
+r.SetRes 1920x1080w
+hol.UI.Language fr
+hol.AI.ThinkSteps 100000
+hol.Combat.Enabled 0
+hol.Cheat.Resources 5000
+hol.Cheat.Population 200
+hol.Cheat.Tier 1 0
+waitlog Cheat: slot 0 tier forced to 1
+hol.Build.Speed 6
+hol.Camera.FocusSlot own
+frames 5
+hol.Select.Own
+waitlog Select own:
+hol.Select.Grid 1
+waitlog Grid: age 1 chosen
+frames 30
+hol.HUD.Report
+notereset Etape 1 : age II atteint, Paysans selectionnes, touche Z (age II) : la page II de la grille de construction montre en case Z (premiere case) le CENTRE SECONDAIRE (150 bois + 400 pierre), allume (ressources suffisantes).
+waitkey Entree : etape 1, la page II de la grille avec la case Z Centre secondaire
+hol.HUD.Click ScenarioClose
+frames 10
+hol.HUD.Report
+capture sc_grille_age2
+hol.Mouse.Hover GridCell01
+wait 1
+note Etape 2 : la souris est sur la case Z : l'infobulle du Centre secondaire (nom, 150 bois, 400 pierre).
+waitkey Entree : etape 2, l'infobulle de la case Z
+hol.HUD.Click ScenarioClose
+frames 10
+hol.HUD.Report
+capture sc_grille_infobulle
+hol.Camera.FocusNear 0 -4500
+frames 5
+hol.Select.Grid 1
+waitlog Placement ghost: SecondaryCentre at
+frames 10
+hol.Build.Click
+waitlog Build order of slot 0
+waitlog Construction: slot 0 placed SecondaryCentre
+hol.Mouse.Hover 1700 150 5
+wait 1.5
+note Etape 3 : le Centre secondaire est PLACE (touche Z puis clic au sol) : les Paysans arrivent et le batissent (barre de construction qui avance).
+waitkey Entree : etape 3, la construction en cours
+hol.HUD.Click ScenarioClose
+frames 5
+capture sc_pendant
+waitlog Construction: slot 0 finished SecondaryCentre
+frames 30
+hol.Camera.FocusNear 0 -4500
+frames 5
+hol.Select.Click 0.5 0.5
+waitlog Selection: SecondaryCentre of slot 0 (own)
+frames 30
+hol.Select.Report
+hol.HUD.Report
+note Etape 4 : le Centre secondaire est FINI et SEUL dans son groupe de selection (un seul batiment, comme le forum) ; sa grille propose les memes commandes que le forum : case A Paysan, etc.
+waitkey Entree : etape 4, le centre secondaire fini, selectionne
+hol.HUD.Click ScenarioClose
+frames 10
+hol.HUD.Report
+capture sc_apres
+hol.Camera.FocusSlot 0
+frames 5
+hol.Select.Click 0.5 0.5
+waitlog Selection: MainCentre of slot 0 (own)
+frames 30
+hol.HUD.Report
+note Etape 5 : pour comparer, le forum (centre principal) selectionne : la meme grille de commandes.
+waitkey Entree : etape 5, la grille du forum pour comparer
+hol.HUD.Click ScenarioClose
+frames 10
+capture sc_forum
+hol.Test.Sanity
