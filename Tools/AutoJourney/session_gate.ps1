@@ -319,7 +319,11 @@ if ($Phase -eq 'Essay') {
       if ($cited.Count -eq 0 -and $bm.Success -and $listText.Trim() -eq 'aucune') { Say 'PASS' ("{0} : branches: aucune (seul main compte)" -f $ef.Name); continue }
       if ($cited.Count -eq 0) { Say 'WARN' ("{0} : aucune branche citee : ajouter la ligne 'branches: a, b' (les branches dont le correctif est joue ; gabarit E_template.md)" -f $ef.Name); continue }
       foreach ($cb in $cited) {
-        if ($localBranches -notcontains $cb) { Say 'FAIL' ("{0} : branche '{1}' citee mais inconnue de git (faute de frappe ?)" -f $ef.Name, $cb); continue }
+        # FARAMIR-1121a : un mot qui n'est pas une branche locale mais se resout en commit (sha) est accepte, puis controle comme ancetre de HEAD
+        if ($localBranches -notcontains $cb) {
+          git -C $Root rev-parse --verify --quiet "${cb}^{commit}" 2>$null | Out-Null
+          if ($LASTEXITCODE -ne 0) { Say 'FAIL' ("{0} : branche '{1}' citee mais inconnue de git (ni branche ni commit ; faute de frappe ?)" -f $ef.Name, $cb); continue }
+        }
         git -C $Root merge-base --is-ancestor $cb HEAD 2>$null
         if ($LASTEXITCODE -eq 0) { Say 'PASS' ("{0} : le worktree contient le tip de la branche {1}" -f $ef.Name, $cb) }
         else { Say 'FAIL' ("{0} : branche '{1}' ABSENTE du worktree (son tip n'est pas ancetre de HEAD){2} : la fusionner ici (git merge {1}) puis build.ps1, ou jouer l'essai dans un worktree qui la contient" -f $ef.Name, $cb, $(if ($named) { '' } else { ' [deduite du texte, pas d une ligne branches:]' })) }

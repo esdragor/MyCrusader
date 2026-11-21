@@ -87,6 +87,8 @@ struct FHOLMinorAlert
 	FName SoundKey = NAME_None;
 	// A ping on the minimap at the place of the event.
 	bool bPingMinimap = false;
+	// The kind's own sound in the audio table (HOLAudioEvent::AlertBuildingDone / AlertTechDone), -1 = none (D804 B: one short sound per kind).
+	int AudioEvent = -1;
 }
 
 namespace HOLAlertRules
@@ -107,6 +109,7 @@ namespace HOLAlertRules
 		Alert.LineSeconds = MinorLineSeconds;
 		Alert.SoundKey = Kind == EHOLMinorAlertKind::ResearchDone ? n"MinorResearchDone" : n"MinorBuildingDone";
 		Alert.bPingMinimap = true;
+		Alert.AudioEvent = Kind == EHOLMinorAlertKind::ResearchDone ? HOLAudioEvent::AlertTechDone : HOLAudioEvent::AlertBuildingDone;
 		return Alert;
 	}
 

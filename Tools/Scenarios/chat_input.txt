@@ -56,9 +56,11 @@ waitlog Key released: Enter
 frames 10
 hol.UI.Key Tab 0 0.1
 waitlog Key released: Tab
+waitlog ChatInput: Tab (open true)
 frames 5
 hol.UI.Key Tab 0 0.1
 waitlog Key released: Tab
+waitlog ChatInput: Tab (open true)
 frames 10
 hol.HUD.Report 1
 waitlog chat: open

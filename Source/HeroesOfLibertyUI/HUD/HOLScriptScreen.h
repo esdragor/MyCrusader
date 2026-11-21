@@ -119,6 +119,13 @@ public:
 	void KeyPressed(FName KeyName);
 
 	/**
+	 * The script asks for the Tab key: while a descendant (the chat's text box) has the keyboard focus, NativeOnPreviewKeyDown hands the Tab to KeyPressed("Tab")
+	 * BEFORE Slate's own navigation eats it (the polled path of the tick never sees a key while a field has the focus). Off by default: other screens keep Tab navigation.
+	 */
+	UPROPERTY(BlueprintReadWrite, Category = "HeroesOfLiberty|UI")
+	bool bRelayTabToScript = false;
+
+	/**
 	 * The player selected one finished building alone (a click, not a unit, a source or a group): TypeName as BuildingTypes.csv writes it
 	 * ("House"). The script rings the selection sound of its family (Audio B5, HOLAudioBuildings::SelectEventFor).
 	 */
@@ -553,6 +560,7 @@ protected:
 	virtual void NativeOnInitialized() override;
 	virtual void NativeConstruct() override;
 	virtual void NativeTick(const FGeometry& MyGeometry, float InDeltaTime) override;
+	virtual FReply NativeOnPreviewKeyDown(const FGeometry& InGeometry, const FKeyEvent& InKeyEvent) override;
 
 private:
 	/** H-11a: the cheats panel line of the report (SetCheatsReport). */
