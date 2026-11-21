@@ -802,14 +802,14 @@ msgstr "Tier not reached"
 #: Script/UI/HOLAlertRules.as(120)
 msgctxt "HOLGameScreen,MinorResearchDone"
 msgid "Recherche terminée"
-msgstr ""
+msgstr "Research complete"
 
 #. Key:	MinorBuildingDone
 #. SourceLocation:	Script/UI/HOLAlertRules.as(121)
 #: Script/UI/HOLAlertRules.as(121)
 msgctxt "HOLGameScreen,MinorBuildingDone"
 msgid "Bâtiment achevé"
-msgstr ""
+msgstr "Building complete"
 
 #. Key:	PopulationFull
 #. SourceLocation:	Script/UI/HOLAlertRules.as(44)
@@ -1460,14 +1460,14 @@ msgstr "{0} walking"
 #: Script/UI/HOLSelectionUnit.as(71)
 msgctxt "HOLGameScreen,GroupIdleOne"
 msgid "{0} inactif"
-msgstr ""
+msgstr "{0} idle"
 
 #. Key:	GroupIdleOther
 #. SourceLocation:	Script/UI/HOLSelectionUnit.as(72)
 #: Script/UI/HOLSelectionUnit.as(72)
 msgctxt "HOLGameScreen,GroupIdleOther"
 msgid "{0} inactifs"
-msgstr ""
+msgstr "{0} idle"
 
 #. Key:	PopulationMax
 #. SourceLocation:	Script/UI/HOLShortMessage.as(108)
@@ -1684,7 +1684,7 @@ msgstr "Seal of Light"
 #: Script/Units/HOLUnitAbilityTable.as(90)
 msgctxt "HOLUnitAbilityTable,NameKnightChallenge"
 msgid "Défi du Chevalier"
-msgstr ""
+msgstr "Knight's Challenge"
 
 #. Key:	DescriptionNecroticRage
 #. SourceLocation:	Script/Units/HOLUnitAbilityTable.as(96)
@@ -1705,7 +1705,7 @@ msgstr "The Monk lays a seal of light on the ground, at most 8 m from him: a zon
 #: Script/Units/HOLUnitAbilityTable.as(98)
 msgctxt "HOLUnitAbilityTable,DescriptionKnightChallenge"
 msgid "Le Chevalier vertueux lance un défi : pendant 8 s, les ennemis à 8 m ou moins de lui sont défiés ; recharge de 45 s. (Le ralentissement, la provocation sont des règles de simulation, pas encore branchées.)"
-msgstr ""
+msgstr "The Virtuous Knight issues a challenge: for 8 s, enemies within 8 m of the Knight are challenged; 45 s cooldown. (The slowdown and the taunt are simulation rules, not wired yet.)"
 
 #. Key:	ReplacedByNewConnection
 #. SourceLocation:	Source/HeroesOfLiberty/HeroesOfLibertyGameModeBase.cpp(342)
@@ -1957,70 +1957,70 @@ msgstr "You"
 #: Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(272)
 msgctxt "HOLGameScreen,SignalAttack"
 msgid "Attaque ici"
-msgstr ""
+msgstr "Attack here"
 
 #. Key:	SignalDefend
 #. SourceLocation:	Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(275)
 #: Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(275)
 msgctxt "HOLGameScreen,SignalDefend"
 msgid "Défends ici"
-msgstr ""
+msgstr "Defend here"
 
 #. Key:	SignalNeedHelp
 #. SourceLocation:	Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(278)
 #: Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(278)
 msgctxt "HOLGameScreen,SignalNeedHelp"
 msgid "Besoin d'aide"
-msgstr ""
+msgstr "Need help"
 
 #. Key:	SignalRally
 #. SourceLocation:	Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(281)
 #: Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(281)
 msgctxt "HOLGameScreen,SignalRally"
 msgid "Regroupement"
-msgstr ""
+msgstr "Rally"
 
 #. Key:	SignalScout
 #. SourceLocation:	Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(284)
 #: Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(284)
 msgctxt "HOLGameScreen,SignalScout"
 msgid "Éclaire ici"
-msgstr ""
+msgstr "Scout here"
 
 #. Key:	SignalNeutral
 #. SourceLocation:	Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(287)
 #: Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(287)
 msgctxt "HOLGameScreen,SignalNeutral"
 msgid "Signal"
-msgstr ""
+msgstr "Signal"
 
 #. Key:	MessageSignal
 #. SourceLocation:	Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(291)
 #: Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(291)
 msgctxt "HOLGameScreen,MessageSignal"
 msgid "{0} : {1}"
-msgstr ""
+msgstr "{0}: {1}"
 
 #. Key:	ChatAllies
 #. SourceLocation:	Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(302)
 #: Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(302)
 msgctxt "HOLGameScreen,ChatAllies"
 msgid "(Alliés) "
-msgstr ""
+msgstr "(Allies) "
 
 #. Key:	ChatPrivate
 #. SourceLocation:	Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(306)
 #: Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(306)
 msgctxt "HOLGameScreen,ChatPrivate"
 msgid "(Privé) "
-msgstr ""
+msgstr "(Private) "
 
 #. Key:	MessageChat
 #. SourceLocation:	Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(309)
 #: Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(309)
 msgctxt "HOLGameScreen,MessageChat"
 msgid "{0} : {1}{2}"
-msgstr ""
+msgstr "{0}: {1}{2}"
 
 #. Key:	MessageHeroReady
 #. SourceLocation:	Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(318)
@@ -2307,7 +2307,7 @@ msgstr "Main Center"
 #: Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(129)
 msgctxt "HOLGameNames,SecondaryCentre"
 msgid "Centre secondaire"
-msgstr ""
+msgstr "Secondary Center"
 
 #. Key:	House
 #. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(133)
@@ -2832,21 +2832,21 @@ msgstr "{0} +{1}%"
 #: Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(462)
 msgctxt "HOLGameNames,SpecializationOptionC"
 msgid "Voie C du palier {0}"
-msgstr ""
+msgstr "Path C of tier {0}"
 
 #. Key:	SpecializationOptionA
 #. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(464)
 #: Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(464)
 msgctxt "HOLGameNames,SpecializationOptionA"
 msgid "Voie A du palier {0}"
-msgstr ""
+msgstr "Path A of tier {0}"
 
 #. Key:	SpecializationOptionB
 #. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(465)
 #: Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(465)
 msgctxt "HOLGameNames,SpecializationOptionB"
 msgid "Voie B du palier {0}"
-msgstr ""
+msgstr "Path B of tier {0}"
 
 #. Key:	Peasant
 #. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(47)
@@ -2860,7 +2860,7 @@ msgstr "Peasant"
 #: Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(474)
 msgctxt "HOLGameNames,SpecializationRunningCell"
 msgid "{0} s\nAnnuler"
-msgstr ""
+msgstr "{0} s\nCancel"
 
 #. Key:	Spearman
 #. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(51)
@@ -2958,14 +2958,14 @@ msgstr ", "
 #: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1181)
 msgctxt "HOLGameScreen,SpecializationRunningEffect"
 msgid "Déblocage en cours au Forum. Cliquer annule sans coût ; le choix reste ouvert."
-msgstr ""
+msgstr "Unlock in progress at the Forum. Clicking cancels at no cost; the choice stays open."
 
 #. Key:	SpecializationEffect
 #. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1182)
 #: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1182)
 msgctxt "HOLGameScreen,SpecializationEffect"
 msgid "Gratuit. Se débloque au Forum en 30 / 45 / 60 s (palier I / II / III), en parallèle de sa file. Définitif une fois appliqué."
-msgstr ""
+msgstr "Free. Unlocks at the Forum in 30 / 45 / 60 s (tier I / II / III), in parallel with its queue. Final once applied."
 
 #. Key:	MarketBuyName
 #. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1210)
@@ -3007,21 +3007,21 @@ msgstr "100 {0} for {1} gold, tax deducted; the price falls to {2}. Shift: 500 {
 #: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1258)
 msgctxt "HOLGameScreen,UngarrisonAll"
 msgid "Sortir"
-msgstr ""
+msgstr "Unload"
 
 #. Key:	UngarrisonAllEffect
 #. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1259)
 #: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1259)
 msgctxt "HOLGameScreen,UngarrisonAllEffect"
 msgid "Toute la garnison sort du bâtiment"
-msgstr ""
+msgstr "The whole garrison leaves the building"
 
 #. Key:	UngarrisonAllName
 #. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1259)
 #: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1259)
 msgctxt "HOLGameScreen,UngarrisonAllName"
 msgid "Sortir tous"
-msgstr ""
+msgstr "Unload all"
 
 #. Key:	Cancel
 #. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1265)

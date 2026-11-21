@@ -744,6 +744,35 @@ TRANSLATIONS = {
     "HOLFactionSlot,PowerTier": ("{0}: cost {1}, tier {2} required", "{0}：コスト {1}、ティア {2} が必要"),
     "HOLFactionSlot,PowerSoon": ("{0}: cost {1}, coming soon", "{0}：コスト {1}、近日実装"),
     "HOLFactionSlot,PowerNameSacredLight": ("Sacred Light", "聖なる光"),
+    # Other chantiers' texts (1121sj): notifications, idle groups, Knight's Challenge, pings, chat, Secondary Center, specialization, ungarrison.
+    # Terms follow the AoE4 grid and the existing table (Center, Tier/段階, Idle/待機中, Challenge/挑戦, Garrison/駐留, Forum/町の中心).
+    # Provisional literal translations (no established equivalent), listed in Placeholders.txt: Path (Voie), the ping labels, Unload, Secondary Center.
+    "HOLGameScreen,MinorResearchDone": ("Research complete", "研究完了"),
+    "HOLGameScreen,MinorBuildingDone": ("Building complete", "建設完了"),
+    "HOLGameScreen,GroupIdleOne": ("{0} idle", "{0}が待機中"),
+    "HOLGameScreen,GroupIdleOther": ("{0} idle", "{0}が待機中"),
+    "HOLUnitAbilityTable,NameKnightChallenge": ("Knight's Challenge", "騎士の挑戦"),
+    "HOLUnitAbilityTable,DescriptionKnightChallenge": ("The Virtuous Knight issues a challenge: for 8 s, enemies within 8 m of the Knight are challenged; 45 s cooldown. (The slowdown and the taunt are simulation rules, not wired yet.)", "高潔の騎士が挑戦を宣言する：8秒間、騎士から8m以内の敵が挑戦を受ける。再使用まで45秒。（減速と挑発はシミュレーションの規則で、まだ接続されていない。）"),
+    "HOLGameScreen,SignalAttack": ("Attack here", "ここを攻撃"),
+    "HOLGameScreen,SignalDefend": ("Defend here", "ここを防衛"),
+    "HOLGameScreen,SignalNeedHelp": ("Need help", "救援が必要"),
+    "HOLGameScreen,SignalRally": ("Rally", "集合"),
+    "HOLGameScreen,SignalScout": ("Scout here", "ここを偵察"),
+    "HOLGameScreen,SignalNeutral": ("Signal", "シグナル"),
+    "HOLGameScreen,MessageSignal": ("{0}: {1}", "{0}：{1}"),
+    "HOLGameScreen,ChatAllies": ("(Allies) ", "(同盟) "),
+    "HOLGameScreen,ChatPrivate": ("(Private) ", "(個人) "),
+    "HOLGameScreen,MessageChat": ("{0}: {1}{2}", "{0}：{1}{2}"),
+    "HOLGameNames,SecondaryCentre": ("Secondary Center", "第二の本拠地"),
+    "HOLGameNames,SpecializationOptionA": ("Path A of tier {0}", "段階{0}のルートA"),
+    "HOLGameNames,SpecializationOptionB": ("Path B of tier {0}", "段階{0}のルートB"),
+    "HOLGameNames,SpecializationOptionC": ("Path C of tier {0}", "段階{0}のルートC"),
+    "HOLGameNames,SpecializationRunningCell": ("{0} s\nCancel", "{0}秒\nキャンセル"),
+    "HOLGameScreen,SpecializationRunningEffect": ("Unlock in progress at the Forum. Clicking cancels at no cost; the choice stays open.", "町の中心で解放中。クリックすると費用なしでキャンセルされ、選択は保留のままになる。"),
+    "HOLGameScreen,SpecializationEffect": ("Free. Unlocks at the Forum in 30 / 45 / 60 s (tier I / II / III), in parallel with its queue. Final once applied.", "無料。町の中心で30 / 45 / 60秒（段階I / II / III）かけて解放され、生産待ち行列と並行して進む。適用後は確定。"),
+    "HOLGameScreen,UngarrisonAll": ("Unload", "退出"),
+    "HOLGameScreen,UngarrisonAllEffect": ("The whole garrison leaves the building", "駐留中の全員が建物から出る"),
+    "HOLGameScreen,UngarrisonAllName": ("Unload all", "全員退出"),
 }
 
 CULTURES = {"en": 0, "ja": 1}
