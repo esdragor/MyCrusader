@@ -171,39 +171,3 @@ namespace HOLAlertRules
 		return Step;
 	}
 }
-
-// D202 (minor alert "population full", D804 B: a line and a short sound, no minimap ping because it has no place): the watch of the game screen.
-// bRead false = the first reading only takes the baseline; bWasFull = the last reading was full; LastShown = when the line last went (-1000 before the first).
-struct FHOLPopulationWatch
-{
-	bool bRead = false;
-	bool bWasFull = false;
-	float LastShown = -1000.0;
-}
-
-namespace HOLAlertRules
-{
-	// One reading of the player's population (used / cap) at NowSeconds. The line goes when the population BECOMES full (a rising edge, after the
-	// baseline), at most once per MinorRepeatSeconds; staying full says nothing more. A cap of 0 is never full (no house yet is not "full").
-	FHOLMinorAlert PopulationFullStep(FHOLPopulationWatch& Watch, int Used, int Cap, float NowSeconds)
-	{
-		FHOLMinorAlert Alert;
-		bool bFull = Cap > 0 && Used >= Cap;
-		bool bFirst = !Watch.bRead;
-		bool bRising = bFull && !Watch.bWasFull;
-		Watch.bRead = true;
-		Watch.bWasFull = bFull;
-		if (bFirst || !bRising || NowSeconds - Watch.LastShown < MinorRepeatSeconds)
-			return Alert;
-		Watch.LastShown = NowSeconds;
-		Alert.bShow = true;
-		Alert.LineSeconds = MinorLineSeconds;
-		Alert.SoundKey = n"MinorPopulationFull";
-		return Alert;
-	}
-
-	FText PopulationFullText()
-	{
-		return NSLOCTEXT("HOLGameScreen", "MinorPopulationFull", "Population pleine");
-	}
-}
