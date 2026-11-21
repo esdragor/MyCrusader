@@ -123,4 +123,5 @@ namespace HOLFollowOrders
 		if (!HOLUnitScript::GetEnemiesNear(WorldContext, UnitId, Reach, EnemyIds, EnemyLocations))
 			return -1;
 		return PickEnemyInRange(UnitLocation, Reach, EnemyIds, EnemyLocations);
-	}}
+	}
+}
