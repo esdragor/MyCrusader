@@ -10,8 +10,7 @@
 /**
  * The morale processor (PLAN-MORAL-1120 step 4, D866), on the server and in solo: each fixed step, every unit that carries a
  * FHOLMoraleFragment sees time pass on its morale effects (HOLMorale::Tick: temporary effects run down and end at 0, auras do not run down,
- * the immunity runs down). This is the first rule only; the auras cleared and posed again each step, the recipients and the combat's read of
- * the levers come in the next slices. Units are independent, so the outcome does not depend on the chunks. Runs before the combat of the
+ * the immunity runs down). The auras are taken off each step and the Dawn aura (the first row of the table, SourceKind Hero) is laid again by every living hero on the units of his own camp within the row radius (D705: military and heroes, never a Peasant; once, never doubled); the other auras, the combat's read of the levers come in the next slices. Units are independent, so the outcome does not depend on the chunks. Runs before the combat of the
  * step so the combat reads the levers of the step that just began.
  */
 UCLASS()
