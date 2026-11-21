@@ -216,6 +216,13 @@ namespace HOLControllerCommandsC10a
 		return Box;
 	}
 
+	// A right click on a unit of hol.Select.ClickUnit (the one place the script knows the unit under the cursor): ally or own = Follow, enemy = Attack.
+	// STUB (red test first): always Move, the Book untouched.
+	EHOLRightClickOrder RightClickUnitOrder(FHOLFollowBook& Book, const TArray<int>& SelectedIds, int TargetId, bool bEnemy, int Slot)
+	{
+		return EHOLRightClickOrder::Move;
+	}
+
 	void DoForController(AHOLPlayerController Controller, const FString& Command, const FHOLConsolePlanC10a& Plan)
 	{
 		double Fx = 0.0;
