@@ -25,5 +25,14 @@ void UHOLMoraleProcessor::ConfigureQueries(const TSharedRef<FMassEntityManager>&
 
 void UHOLMoraleProcessor::Execute(FMassEntityManager& EntityManager, FMassExecutionContext& Context)
 {
-	// Stub (red test first): the rule is not applied yet.
+	// The one rule of this slice: the time of the step passes on every unit's effects (HOLMorale::Tick, integers only).
+	const int32 StepMs = HOLCombat::ToMilliseconds(Context.GetDeltaTimeSeconds());
+	EntityQuery.ForEachEntityChunk(Context, [StepMs](FMassExecutionContext& Chunk)
+	{
+		const TArrayView<FHOLMoraleFragment> Fragments = Chunk.GetMutableFragmentView<FHOLMoraleFragment>();
+		for (FHOLMoraleFragment& Fragment : Fragments)
+		{
+			HOLMorale::Tick(Fragment.State, StepMs);
+		}
+	});
 }
