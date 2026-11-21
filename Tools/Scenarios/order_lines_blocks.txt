@@ -1,0 +1,26 @@
+# Lignes d'ordre MULTI-BLOCS (BUG-order_lines_multi_blocs, correctif 904bd5e) : 6 Lanciers et 6 Hommes d'armes en DEUX blocs separes de 30 m (> BlockJoinDistance 450 cm), un seul ordre de deplacement : attendu = UNE ligne par bloc (2 lignes), chacune partant de son bloc, pas une seule ligne partant du milieu.
+# Plain, deux joueurs (order_lines.json, copie de order_lines.txt sans Paysans ni caserne). Positions dans le repere du centre du joueur (X vers le milieu de la carte).
+hol.Cheat.Population 165
+# Bloc 1 : 6 Lanciers au nord (Y -1500) ; bloc 2 : 6 Hommes d'armes au sud (Y +1500), 30 m entre les centres, des ennemis loin (6800, 0), hors du rayon d'agression (16 m).
+hol.Camera.FocusNear 4000 -1500
+frames 2
+hol.Units.SpawnHere 6 Spearman 0 300
+hol.Camera.FocusNear 4000 1500
+frames 2
+hol.Units.SpawnHere 6 ManAtArms 0 300
+hol.Camera.FocusNear 6800 0
+frames 2
+hol.Units.SpawnHere 8 Spearman 1 400
+waitunits 20
+# Camera entre les deux blocs, un cran de plus en arriere : les deux blocs tiennent a l'ecran.
+hol.Camera.FocusNear 3500 0
+hol.Camera.Zoom -2
+frames 5
+hol.Select.Army
+frames 3
+# Un seul ordre de deplacement sur la selection entiere (hol.Select.OrderGround : coordonnees du MONDE, le centre du joueur est vers (-15000, 0) ; ici le point est a 20 m devant le centre, donc les deux blocs marchent plusieurs secondes et les lignes restent affichees).
+hol.Select.OrderGround -13000 0
+frames 20
+capture order_lines_blocks_pendant
+note Deux blocs d'unites (nord et sud), un clic droit sur le sol : deux lignes de mouvement, une par bloc, chacune partant de son bloc.
+note Avant le correctif : une seule ligne, partant du milieu des deux blocs.
