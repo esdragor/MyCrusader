@@ -56,6 +56,13 @@ namespace HOLFollowOrders
 		Book.LastAttackIds[Index] = -1;
 	}
 
+	// The read the caller does before a Step (Auto_Journey_File.md l.118): the position of a unit by id, false when it is gone (dead, garrisoned, unknown).
+	// A follower whose target is gone gets no Step (the caller ends the follow). WorldContext: any object of the game world.
+	bool ReadUnit(UObject WorldContext, int UnitId, FVector& OutLocation)
+	{
+		return HOLUnitScript::GetUnitLocation(WorldContext, UnitId, OutLocation);
+	}
+
 	// One order step of a follower. TargetLocation is the followed unit's position, bEnemyInRange / EnemyId an enemy in the follower's attack range (read by the
 	// caller). Returns true when an order entered the queue.
 	bool Step(UHOLCommandSubsystem Commands, int PlayerIndex, FHOLFollowBook& Book, int UnitId, const FVector& UnitLocation, const FVector& TargetLocation, bool bEnemyInRange, int EnemyId)
