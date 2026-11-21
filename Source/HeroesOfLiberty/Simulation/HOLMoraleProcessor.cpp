@@ -25,13 +25,15 @@ void UHOLMoraleProcessor::ConfigureQueries(const TSharedRef<FMassEntityManager>&
 
 void UHOLMoraleProcessor::Execute(FMassEntityManager& EntityManager, FMassExecutionContext& Context)
 {
-	// The one rule of this slice: the time of the step passes on every unit's effects (HOLMorale::Tick, integers only).
+	// The rules of this step, integers only: the auras are taken off (HOLMorale::ClearAuras; the engine lays the ones in range again, a later
+	// slice), then the time of the step passes on every unit's effects (HOLMorale::Tick).
 	const int32 StepMs = HOLCombat::ToMilliseconds(Context.GetDeltaTimeSeconds());
 	EntityQuery.ForEachEntityChunk(Context, [StepMs](FMassExecutionContext& Chunk)
 	{
 		const TArrayView<FHOLMoraleFragment> Fragments = Chunk.GetMutableFragmentView<FHOLMoraleFragment>();
 		for (FHOLMoraleFragment& Fragment : Fragments)
 		{
+			HOLMorale::ClearAuras(Fragment.State);
 			HOLMorale::Tick(Fragment.State, StepMs);
 		}
 	});

@@ -368,6 +368,7 @@ bool FHOLMoraleProcessorTest::RunTest(const FString& Parameters)
 			HOLMorale::Apply(Fragment->State, HOLMorale::MakeEffect(IdB, 10, 0, 0, 0, true));
 			// What the rule leaves after ONE step, calculated on a copy.
 			HOLMorale::FHOLMoraleState Expected = Fragment->State;
+			HOLMorale::ClearAuras(Expected);
 			HOLMorale::Tick(Expected, StepMs);
 
 			const auto RunStep = [&EntityManager, &Morale, StepSeconds]
@@ -379,17 +380,16 @@ bool FHOLMoraleProcessorTest::RunTest(const FString& Parameters)
 			const FHOLMoraleFragment* Now = EntityManager->GetFragmentDataPtr<FHOLMoraleFragment>(Entity);
 			TestTrue(TEXT("one step: the temporary effect lost one step of time"), Now && Now->State.Effects[0].DurationMs == Expected.Effects[0].DurationMs);
 			TestTrue(TEXT("one step: the time left is less than it was"), Now && Now->State.Effects[0].DurationMs < 1000);
-			TestEqual(TEXT("one step: the aura did not run down"), Now ? Now->State.Effects[1].DurationMs : -1, Expected.Effects[1].DurationMs);
 
-			// Enough steps for the temporary effect to end: it leaves, the aura stays (the unit is not empty, the dealt lever still reads 10).
+			// Enough steps for the temporary effect to end: it leaves, and the aura nobody lays again is already gone (the unit is empty).
 			for (int32 Steps = 1; Steps <= 1000 / FMath::Max(StepMs, 1) + 1; ++Steps)
 			{
 				RunStep();
 			}
 			Now = EntityManager->GetFragmentDataPtr<FHOLMoraleFragment>(Entity);
 			TestFalse(TEXT("the temporary effect has ended"), Now && HOLMorale::Has(Now->State, IdA));
-			TestTrue(TEXT("the aura stays"), Now && HOLMorale::Has(Now->State, IdB));
-			TestEqual(TEXT("the aura still acts on the damage dealt"), Now ? HOLMorale::Total(Now->State, HOLMorale::LeverDealt) : -1, 10);
+			TestFalse(TEXT("the aura is gone"), Now && HOLMorale::Has(Now->State, IdB));
+			TestTrue(TEXT("the unit is empty again"), Now && HOLMorale::IsEmpty(Now->State));
 		}
 	}
 
