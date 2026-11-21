@@ -81,6 +81,18 @@ void Test_FollowOrdersAllyBodyguardAttacksEnemyInRange(FUnitTest& T)
 	}
 }
 
+// EFFECT: the position read by unit id says "gone" for an id the machine does not know (the followed unit died, was garrisoned, or no world): no Step is
+// made from a made-up position. Red against the stub of UHOLUnitScriptLibrary (alive at the origin for any id). The living unit's position needs a Mass
+// world (a unit is born by Mass): scenario, not this test.
+void Test_FollowOrdersReadUnitUnknownIdIsGone(FUnitTest& T)
+{
+	FVector Location = FVector(123.f, 456.f, 789.f);
+	const bool bFound = HOLFollowOrders::ReadUnit(nullptr, 987654, Location);
+	T.AssertFalse(bFound, "an unknown unit id is not read as alive");
+	T.AssertTrue(Location.Size() < 0.01f, f"and its position is cleared, not left at the caller's value (X {Location.X} Y {Location.Y} Z {Location.Z})");
+	T.AssertFalse(HOLUnitScript::IsUnitAlive(nullptr, 987654), "IsUnitAlive is false for it");
+}
+
 // EFFECT: after a manual order the follow queues nothing.
 void Test_FollowOrdersManualOrderEndsIt(FUnitTest& T)
 {
