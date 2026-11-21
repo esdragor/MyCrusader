@@ -2029,7 +2029,7 @@ UHOLScenarioPanelScript ScenarioPanel;
 			return;
 		FString Lines = "";
 		for (int Index = 0; Index < FactionView.Powers.Num(); ++Index)
-			Lines += (Lines.IsEmpty() ? "" : "\n") + FactionView.Powers[Index].Describe;
+			Lines += (Lines.IsEmpty() ? "" : "\n") + HOLPowerDisplay::LineOf(FactionView.Powers[Index]);
 		FactionBar.SetPercent(FactionView.Fraction);
 		FactionGaugeText.SetText(FText::FromString(FactionView.GaugeText));
 		FactionPowersText.SetText(FText::FromString(Lines));

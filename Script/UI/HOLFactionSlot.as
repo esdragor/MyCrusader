@@ -5,6 +5,9 @@ struct FHOLFactionPowerBox
 	FString Key;
 	EHOLPowerState State = EHOLPowerState::Soon;
 	int CooldownLeftMs = 0;
+	// The row's cost and tier, for the display line (HOLPowerDisplay::LineOf).
+	int Cost = 0;
+	int MinTier = 0;
 	// The book's line: "<key> cost <n> ready|cooling <s> s|short|tier <n>|soon" (HOLPowerBook::Describe).
 	FString Describe;
 }
@@ -63,6 +66,8 @@ namespace HOLFactionSlot
 				const int Left = Index < CooldownLeftMs.Num() ? CooldownLeftMs[Index] : 0;
 				FHOLFactionPowerBox Box;
 				Box.Key = Rows[Index].Key;
+				Box.Cost = Rows[Index].Cost;
+				Box.MinTier = Rows[Index].MinTier;
 				Box.CooldownLeftMs = Left;
 				Box.State = HOLPowerBook::StateOf(Rows[Index], Resource.Value, Left, Tier);
 				Box.Describe = HOLPowerBook::Describe(Rows[Index], Box.State, Left);

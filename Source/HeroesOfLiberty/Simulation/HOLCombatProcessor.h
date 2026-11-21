@@ -177,7 +177,7 @@ protected:
 	TArray<FAuraSource> AuraSources;
 	/**
 	 * J8c.2: the share of a hit Victim takes (HOLHeroAbility::GetDamageTakenPercent): within an aura of its owner
-	 * (AuraSources), under its hero's cry (FHOLCombatFragment::CloseRanksMs).
+	 * (AuraSources), under its hero's cry (the CloseRanks effect of its morale fragment).
 	 */
 	int32 GetDamageTakenPercent(const FFighter& Victim) const;
 	/** D810 (F5): the match's terrain zones of the step (set at the top of Execute; null on a map without zones): a victim in a painted ford takes 120 % of a hit. */
