@@ -202,3 +202,4 @@ Marque du signal qui pulse (sol et mini-carte) : bornes 0,8 a 1,4 et 3 cycles (c
 Sceau de lumiere (zone au sol) : aucun visuel, aucun son ; le pouvoir n'a pas de bouton (visee C++ faite, boutons a brancher), valeurs D859, FARAMIR-1120a/e [rien]
 Champ de saisie du chat (Entree) : sans style (bordure et texte par defaut du moteur), non branche a l'ecran, GLORFINDEL-1120h [style]
 - Icones des unites dans le cadre de garnison (bouton d'un occupant : /Game/UI/Icons/Units/T_Unit_<Type>, aucune texture ; le nom du type s'affiche a la place) [rien]
+Furtivite : opacite des unites du joueur dans une zone = 50 % (cvar hol.Stealth.OwnOpacityPercent, valeur du GDD D824 Q3 B) ; stockee par UHOLUnitOpacityLibrary mais PAS encore dessinee (materiau unite sans entree d opacite, ARWEN-1121sg)

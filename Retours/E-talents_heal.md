@@ -1,6 +1,7 @@
 # [À ESSAYER] E-talents_heal : prendre des talents avec le Paladin-Commandant et voir la jauge de faction (SacredLight) rester AU-DESSUS du bloc héros, sans le recouvrir, puis le trait de soin du Moine doré (« ++ ») après le talent « Mains du guérisseur »
 
 STATUT : LOGIQUE SEULEMENT   (captures vues ; le trait « doré » du talent n'est pas net sur talents_heal_boosted : le trait y paraît vert)
+recette: RECETTE-1121sb FAIL sur main a7833ea (Sauron) : jauge SacredLight au-dessus du bloc heros OK (base, cell, boosted), aucun ++ sur l'Arbre de talents OK, MAIS talents_heal_boosted : trait de soin VERT (pixels or 255,215,60 = 0, verts 414 contre 431 en base), pas de ++ : le talent Mains du guerisseur (pris, 2 talents) ne dore pas le trait. Statut reste LOGIQUE SEULEMENT (geste interne).
 GESTE: interne
 SON: non entendu
 branches: zone-effect
@@ -13,5 +14,7 @@ PNG OUVERTS et vus :
 NON VÉRIFIÉ : le doré du trait après le talent ; le suivi de la hauteur au tick exact où la rangée change (relue au rafraîchissement suivant) ; jeu au clavier/souris réel ; son.
 
 Commande complète (règle 13, 2026-11-14) :
-`powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Faramir\Tools\Scenarios\play.ps1 talents_heal -Root C:\Users\baudo\Documents\HeroesOfLiberty-Faramir`
+`powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Sauron\Tools\Scenarios\play.ps1 talents_heal -Root C:\Users\baudo\Documents\HeroesOfLiberty-Sauron`
 Durée : environ 1 min. Réponse attendue : `OK`, `BUG: ...` ou `REGLAGE: ...`.
+
+Correctif FARAMIR-1121sg (2026-11-21 20:21) : cause (c) scenario, pas le code : le Moine etait a ~1741 du heros (-17535 300), hors aura (rayon 1200), donc bBoosted=false (HOLHealProcessor.cpp:314) et trait vert. Scenario deplace en -17000 450 (~550 du heros) ; preflight PASS, talents_heal_boosted.png ouvert : '++' dore visible (76 px or, 0 vert), base : vert. branche zone-effect, commit du scenario seulement. Statut reste LOGIQUE SEULEMENT (GESTE interne).
