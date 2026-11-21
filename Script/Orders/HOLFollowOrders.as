@@ -90,4 +90,12 @@ namespace HOLFollowOrders
 		Book.LastAttackIds[Index] = -1;
 		return false;
 	}
+
+	// The enemy an order step hands to Step as EnemyId (GDD D818 Q2 = B: a bodyguard attacks the enemies in the range of the unit). Pure: the caller reads the candidates
+	// (ids and positions of the living enemies near the unit) and the attack range of the unit's type; the nearest enemy within Range wins, -1 when none.
+	// Range is the attack range in cm measured between the two positions (the C++ binding gives the type's range, TYPES_A_EXPOSER).
+	int PickEnemyInRange(const FVector& UnitLocation, float Range, const TArray<int>& EnemyIds, const TArray<FVector>& EnemyLocations)
+	{
+		return -1;
+	}
 }

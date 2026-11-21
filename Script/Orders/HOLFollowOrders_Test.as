@@ -105,3 +105,57 @@ void Test_FollowOrdersManualOrderEndsIt(FUnitTest& T)
 	T.AssertFalse(bIssued, "Step reports no order");
 	T.AssertEquals(0, Orders.Num(), "nothing queued after a manual order");
 }
+
+// EFFECT: of the enemies around the unit, the NEAREST one within the attack range is picked; one out of range is never picked. Positions come from the
+// calling code (the unit at the origin), the nearest is NOT the first of the list.
+void Test_FollowOrdersPickEnemyInRangeTakesTheNearest(FUnitTest& T)
+{
+	TArray<int> Ids;
+	TArray<FVector> Locations;
+	Ids.Add(31); Locations.Add(FVector(900.f, 0.f, 0.f));
+	Ids.Add(32); Locations.Add(FVector(0.f, 400.f, 0.f));
+	Ids.Add(33); Locations.Add(FVector(0.f, 0.f, 250.f));
+	Ids.Add(34); Locations.Add(FVector(200.f, 0.f, 0.f));
+	const int Picked = HOLFollowOrders::PickEnemyInRange(FVector(0.f, 0.f, 0.f), 500.f, Ids, Locations);
+	T.AssertEquals(34, Picked, "the nearest enemy within 500 cm is picked (200 cm), not the first in range of the list (400 cm) nor the one out of range (900 cm)");
+}
+
+// EFFECT: no enemy within range = no pick (-1), also for an empty list.
+void Test_FollowOrdersPickEnemyInRangeNoneInRange(FUnitTest& T)
+{
+	TArray<int> Ids;
+	TArray<FVector> Locations;
+	const int PickedEmpty = HOLFollowOrders::PickEnemyInRange(FVector(0.f, 0.f, 0.f), 500.f, Ids, Locations);
+	T.AssertEquals(-1, PickedEmpty, "an empty list picks nothing");
+	Ids.Add(31); Locations.Add(FVector(900.f, 0.f, 0.f));
+	Ids.Add(32); Locations.Add(FVector(0.f, 0.f, 501.f));
+	const int PickedFar = HOLFollowOrders::PickEnemyInRange(FVector(0.f, 0.f, 0.f), 500.f, Ids, Locations);
+	T.AssertEquals(-1, PickedFar, "enemies beyond the range pick nothing");
+}
+
+// EFFECT (real chain): the enemy PickEnemyInRange finds is the one the bodyguard's Step queues an Attack on, and with none in range the bodyguard queues nothing.
+void Test_FollowOrdersBodyguardAttacksThePickedEnemy(FUnitTest& T)
+{
+	UHOLCommandSubsystem Commands = HOLCommandScript::MakeDetachedForTest();
+	FHOLFollowBook Book;
+	HOLFollowOrders::Begin(Book, HOLFollowOrdersTest::UnitId, HOLFollowOrdersTest::AllyId, true);
+	TArray<int> Ids;
+	TArray<FVector> Locations;
+	Ids.Add(41); Locations.Add(FVector(700.f, 0.f, 0.f));
+	Ids.Add(42); Locations.Add(FVector(300.f, 0.f, 0.f));
+	const FVector UnitLocation = FVector(0.f, 0.f, 0.f);
+	const FVector AllyLocation = FVector(100.f, 0.f, 0.f);
+	int Enemy = HOLFollowOrders::PickEnemyInRange(UnitLocation, 500.f, Ids, Locations);
+	HOLFollowOrders::Step(Commands, 0, Book, HOLFollowOrdersTest::UnitId, UnitLocation, AllyLocation, Enemy >= 0, Enemy);
+	TArray<FHOLScriptOrderRead> Orders = HOLCommandScript::ConsumeMoves(Commands);
+	T.AssertEquals(1, Orders.Num(), "one order queued for the enemy in range");
+	if (Orders.Num() == 1)
+	{
+		T.AssertTrue(Orders[0].Kind == n"Attack", "it is an Attack");
+		T.AssertEquals(42, Orders[0].TargetUnitId, "on the picked enemy (300 cm), not the one out of range (700 cm)");
+	}
+	Enemy = HOLFollowOrders::PickEnemyInRange(UnitLocation, 200.f, Ids, Locations);
+	HOLFollowOrders::Step(Commands, 0, Book, HOLFollowOrdersTest::UnitId, UnitLocation, AllyLocation, Enemy >= 0, Enemy);
+	TArray<FHOLScriptOrderRead> After = HOLCommandScript::ConsumeMoves(Commands);
+	T.AssertEquals(0, After.Num(), "no enemy within 200 cm: the bodyguard (already near its ally) queues nothing");
+}
