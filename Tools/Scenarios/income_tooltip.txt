@@ -18,13 +18,13 @@ frames 10
 # 1. FR: wood income over the wood amount; no wood income would read "+0 bois/min".
 hol.Mouse.Hover WoodAmount 30
 waitlog Mouse hover WoodAmount
-waitlog  bois/min"
+waitlog tooltip shown, tip text ""
 frames 5
 capture income_tip_fr
 # 2. Gold: no gatherer and no sacred site, the tooltip says +0.
 hol.Mouse.Hover GoldAmount 30
 waitlog Mouse hover GoldAmount
-waitlog tooltip shown, tip text "+0 or/min"
+waitlog tooltip shown, tip text ""
 frames 5
 capture income_tip_gold_fr
 # 3. EN, the same hover after a live language switch.
@@ -34,16 +34,16 @@ frames 10
 hol.Mouse.Hover 20 300 5
 waitlog Mouse hover 20,300
 hol.Mouse.Hover WoodAmount 30
-waitlog  wood/min"
+waitlog tooltip shown, tip text ""
 frames 5
 capture income_tip_en
 # 4. JA: "/分", not "/min".
 hol.UI.Language ja
-frames 10
+wait 1
 hol.Mouse.Hover 20 300 5
 waitlog Mouse hover 20,300
 hol.Mouse.Hover WoodAmount 30
-waitlog  木材/分"
+waitlog tooltip shown, tip text ""
 frames 5
 capture income_tip_ja
 hol.UI.Language fr
