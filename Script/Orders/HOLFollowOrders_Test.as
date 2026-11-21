@@ -175,3 +175,10 @@ void Test_FollowOrdersUnitScriptBindingsAnswerEmptyForUnknownUnit(FUnitTest& T)
 	const float Range = HOLUnitScript::GetAttackRange(nullptr, 987654);
 	T.AssertTrue(Range < 0.01f, f"an unknown unit has no attack range (got {Range})");
 }
+
+// PickEnemyForUnit reads the game through the bindings: an unknown unit id picks nobody (-1). The positive case needs a Mass world (simulation test).
+void Test_FollowOrdersPickEnemyForUnknownUnitPicksNobody(FUnitTest& T)
+{
+	const int Picked = HOLFollowOrders::PickEnemyForUnit(nullptr, 987654, FVector(0.f, 0.f, 0.f));
+	T.AssertEquals(-1, Picked, "a unit the game does not know picks no enemy");
+}

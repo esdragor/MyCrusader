@@ -110,4 +110,17 @@ namespace HOLFollowOrders
 		}
 		return Picked;
 	}
-}
+
+	// The enemy Step gets as EnemyId, read from the game (HOLUnitScript, TYPES_A_EXPOSER of 1121se): the living enemies within the unit's reach, then PickEnemyInRange.
+	// The type's attack range is edge to edge, PickEnemyInRange measures centres: BodiesReach (two bodies of about 60 cm) is added to it (approximation, the C++ combat
+	// uses the real radii). -1 when the unit is gone or nobody is in reach.
+	int PickEnemyForUnit(UObject WorldContext, int UnitId, const FVector& UnitLocation)
+	{
+		const float BodiesReach = 120.0;
+		const float Reach = HOLUnitScript::GetAttackRange(WorldContext, UnitId) + BodiesReach;
+		TArray<int> EnemyIds;
+		TArray<FVector> EnemyLocations;
+		if (!HOLUnitScript::GetEnemiesNear(WorldContext, UnitId, Reach, EnemyIds, EnemyLocations))
+			return -1;
+		return PickEnemyInRange(UnitLocation, Reach, EnemyIds, EnemyLocations);
+	}}
