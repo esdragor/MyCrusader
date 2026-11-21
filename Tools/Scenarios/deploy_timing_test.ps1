@@ -37,8 +37,37 @@ function Test-Capture([string]$Capture, [int]$DurationMs) {
     if ($Ok) { return 0 } else { return 1 }
 }
 
+# ELROND-1121a (ETAPE0-1121) : deploy_move_unmounting suit un clic droit au sol (pas la touche D) ; `frames 20` y donnait 125 ms
+# (la case disait encore Demonter). Il faut un `wait >= 0.3` (temps du jeu, exact) apres l'ordre et rester sous la duree du demontage.
+function Test-OrderCapture([string]$Capture, [double]$MinWaitS, [int]$DurationMs) {
+    $Index = [array]::IndexOf($Lines, ($Lines | Where-Object { $_ -match ("^capture\s+{0}\s*$" -f $Capture) } | Select-Object -First 1))
+    if ($Index -lt 0) { Write-Host "FAIL $Capture : capture absente de deploy.txt"; return 1 }
+    $Order = -1
+    for ($i = $Index; $i -ge 0; $i--) { if ($Lines[$i] -match '^waitlog\s+Order: 1 units to \(') { $Order = $i; break } }
+    if ($Order -lt 0) { Write-Host "FAIL $Capture : pas d'ordre de deplacement avant la capture"; return 1 }
+    $WaitS = 0.0; $FramesMax = 0.0
+    for ($i = $Order + 1; $i -lt $Index; $i++) {
+        if ($Lines[$i] -match '^wait\s+([\d.]+)') { $WaitS += [double]$Matches[1] }
+        elseif ($Lines[$i] -match '^frames\s+(\d+)') { $FramesMax += [int]$Matches[1] / 30.0 }
+    }
+    $Ok = ($WaitS -ge $MinWaitS) -and (($WaitS + $FramesMax) -lt ($DurationMs / 1000.0))
+    Write-Host ("{0} {1} : {2:N2} s d'attente exacte apres l'ordre (min {3:N2} s), au plus {4:N2} s en tout (duree {5:N2} s)" -f $(if ($Ok) { "PASS" } else { "FAIL" }), $Capture, $WaitS, $MinWaitS, ($WaitS + $FramesMax), ($DurationMs / 1000.0))
+    if ($Ok) { return 0 } else { return 1 }
+}
+
+# SAURON-1116d : le Mangonneau nait SUR la crete ; la camera de depart doit viser le point 1500 (pas 0) pour qu'il soit dans le cadre.
+function Test-FocusRidge() {
+    $Bad = @($Lines | Where-Object { $_ -match '^hol\.Camera\.FocusNear\s+3000\s+(-?\d+)\s*$' -and [int]$Matches[1] -ne 1500 })
+    $Count = @($Lines | Where-Object { $_ -match '^hol\.Camera\.FocusNear\s+3000\s' }).Count
+    $Ok = ($Count -ge 2) -and ($Bad.Count -eq 0)
+    Write-Host ("{0} FocusNear 3000 : {1} ligne(s), {2} qui ne visent pas la crete (1500)" -f $(if ($Ok) { "PASS" } else { "FAIL" }), $Count, $Bad.Count)
+    if ($Ok) { return 0 } else { return 1 }
+}
+
 $Fail += Test-Capture "deploy_deploying" $DeployMs
 $Fail += Test-Capture "deploy_packing" $PackMs
+$Fail += Test-OrderCapture "deploy_move_unmounting" 0.3 $PackMs
+$Fail += Test-FocusRidge
 if ($Fail -gt 0) { Write-Host "deploy_timing_test : FAIL ($Fail)"; exit 1 }
 Write-Host "deploy_timing_test : PASS"
 exit 0

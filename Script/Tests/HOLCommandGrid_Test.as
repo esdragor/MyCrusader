@@ -521,7 +521,7 @@ void Test_CGTables(FUnitTest& T)
 	FHOLGridContextView Context;
 	Context.bBuilders = true;
 	Context = HOLCommandGridRead::WithTableBuildables(Context);
-	T.AssertEquals(13, Context.BuildableTypes.Num(), "thirteen buildable types");
+	T.AssertEquals(14, Context.BuildableTypes.Num(), "fourteen buildable types (TowerWood added)");
 	T.AssertTrue(HOLCommandGridRules::GetAgeBuilding(Context, 0, 0).TypeName == n"House", "A: house");
 	T.AssertTrue(HOLCommandGridRules::GetAgeBuilding(Context, 0, 1).TypeName == n"LumberCamp", "Z: lumber camp");
 	T.AssertTrue(HOLCommandGridRules::GetAgeBuilding(Context, 0, 2).TypeName == n"MiningCamp", "E: mining camp");
@@ -529,6 +529,8 @@ void Test_CGTables(FUnitTest& T)
 	T.AssertTrue(HOLCommandGridRules::GetAgeBuilding(Context, 0, 4).TypeName == n"Barracks", "Q: barracks");
 	T.AssertTrue(HOLCommandGridRules::GetAgeBuilding(Context, 0, 4).Command == EHOLGridCommandKind::Build, "Q: a build command");
 	T.AssertTrue(HOLCommandGridRules::GetAgeBuilding(Context, 0, 5).TypeName == n"ArcheryRange", "S: archery range (AR-Q2a)");
+	T.AssertTrue(HOLCommandGridRules::GetAgeBuilding(Context, 0, 7).TypeName == n"TowerWood", "F: Watch tower (TowerWood, Military slot 7 age I)");
+	T.AssertTrue(HOLCommandGridRules::GetAgeBuilding(Context, 0, 7).Command == EHOLGridCommandKind::Build, "F: a build command");
 	int FarmCell = 8;
 	T.AssertEquals(2, FarmCell / HOLCommandGridRules::GetGridColumns(), "W: row 3");
 	T.AssertEquals(0, FarmCell % HOLCommandGridRules::GetGridColumns(), "W: column 1");
@@ -559,7 +561,6 @@ void Test_CGTables(FUnitTest& T)
 	}
 	TArray<int> EmptyI;
 	EmptyI.Add(6);
-	EmptyI.Add(7);
 	EmptyI.Add(10);
 	EmptyI.Add(11);
 	for (int I = 0; I < EmptyI.Num(); I++)

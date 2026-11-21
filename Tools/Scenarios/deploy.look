@@ -7,7 +7,7 @@ deploy_fire_hit | apres le coup suivant (5 s) : les PV de la Maison ont baisse d
 deploy_packing | 0,3 s environ apres la seconde touche D, PENDANT le demontage (D869b) : la case D dit Demontage... avec une barre [###-----] partiellement remplie (environ 30 % a 0,3 s sur 1 s : au moins 1 diese, pas 8) ; le Mangonneau est en cours de demontage, pas encore demonte ; la Maison visible
 deploy_packed_again | Mangonneau reselectionne, apres la seconde touche D et 2 s : la case D redit Monter (engin demonte) ; Maison visible
 deploy_move_start | Mangonneau selectionne, de nouveau monte (apres D et 1,5 s) : la case D dit Demonter ; la Maison ennemie visible plus haut dans le cadre
-deploy_move_unmounting | 1 s apres le clic droit au sol (cadre inchange) : le Mangonneau est en cours de demontage (la case D dit Monter ou l'engin est en animation de pliage) ; il n'a pas encore bouge
+deploy_move_unmounting | 0,3 s environ apres le clic droit au sol (wait 0.3, ELROND-1121a ; camera sur la crete, FocusNear 3000 1500) : le Mangonneau est en cours de demontage (la case D dit Monter ou l'engin est en animation de pliage) ; il n'a pas encore bouge
 deploy_move_walked | apres le demontage (1 s) puis 3 s de marche, SANS second clic : le Mangonneau est visiblement plus bas (au sud) qu'a deploy_move_start ; la case D dit Monter ; la Maison ennemie est restee en place
 deploy_attack_mounting | clic droit sur la Maison ennemie, Mangonneau demonte : il commence a se monter (la case D ne dit pas encore Demonter) ; la Maison ennemie visible a l'ecran, intacte
 deploy_attack_mounted | 1,5 s apres : le Mangonneau est monte, la case D dit Demonter ; la Maison ennemie visible
