@@ -2725,7 +2725,6 @@ void AHOLPlayerController::ExecuteGridCommand(const FHOLGridCommand& Command)
 		const TArray<uint32> Own = GetCommandUnits();
 		UE_LOG(LogHOLMatch, Display, TEXT("Order: %d units %s"), Own.Num(), Command.Command == EHOLGridCommand::Hold ? TEXT("hold position") : TEXT("stop"));
 		bAttackMoveArmed = false;
-		UHOLFollowBridge::NativeManualOrder(Own); // Stop / Hold ends the Follow (GLORFINDEL-1121sl)
 		RequestStopUnits(Own, Command.Command == EHOLGridCommand::Hold);
 		return;
 	}
@@ -2892,6 +2891,7 @@ void AHOLPlayerController::RequestMoveUnits(const TConstArrayView<uint32> UnitId
 {
 	if (UnitIds.Num() > 0)
 	{
+		UHOLFollowBridge::NativeManualOrder(UnitIds); // a manual order ends the Follow of these units (GLORFINDEL-1121sm)
 		if (!HOLRpcScriptRoute_Haldir1117n::RouteMove(this, UnitIds, Target, bQueue)) { HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("Move")); }
 	}
 }
@@ -2900,6 +2900,7 @@ void AHOLPlayerController::RequestAttackUnit(const TConstArrayView<uint32> UnitI
 {
 	if (UnitIds.Num() > 0 && TargetUnitId != 0)
 	{
+		UHOLFollowBridge::NativeManualOrder(UnitIds); // a manual order ends the Follow of these units (GLORFINDEL-1121sm)
 		if (!HOLRpcScriptRoute_Haldir1117n::RouteAttackUnit(this, UnitIds, TargetUnitId, bQueue)) { HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("AttackUnit")); }
 	}
 }
@@ -2908,6 +2909,7 @@ void AHOLPlayerController::RequestHealUnit(const TConstArrayView<uint32> UnitIds
 {
 	if (UnitIds.Num() > 0 && TargetUnitId != 0)
 	{
+		UHOLFollowBridge::NativeManualOrder(UnitIds); // a manual order ends the Follow of these units (GLORFINDEL-1121sm)
 		if (!HOLRpcScriptRoute_Haldir1117n::RouteHealUnit(this, UnitIds, TargetUnitId, bQueue)) { HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("HealUnit")); }
 	}
 }
@@ -2958,6 +2960,7 @@ void AHOLPlayerController::RequestAttackMove(const TConstArrayView<uint32> UnitI
 {
 	if (UnitIds.Num() > 0)
 	{
+		UHOLFollowBridge::NativeManualOrder(UnitIds); // a manual order ends the Follow of these units (GLORFINDEL-1121sm)
 		if (!HOLRpcScriptRoute_Haldir1117n::RouteAttackMove(this, UnitIds, Target, bQueue)) { HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("AttackMove")); }
 	}
 }
@@ -2966,6 +2969,7 @@ void AHOLPlayerController::RequestStopUnits(const TConstArrayView<uint32> UnitId
 {
 	if (UnitIds.Num() > 0)
 	{
+		UHOLFollowBridge::NativeManualOrder(UnitIds); // a manual order ends the Follow of these units (GLORFINDEL-1121sm)
 		if (!HOLRpcScriptRoute_Haldir1117n::RouteStop(this, UnitIds, bHold)) { HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("Stop")); }
 	}
 }
@@ -2984,6 +2988,7 @@ void AHOLPlayerController::RequestMoveUnitsInLine(const TConstArrayView<uint32> 
 {
 	if (UnitIds.Num() > 0)
 	{
+		UHOLFollowBridge::NativeManualOrder(UnitIds); // a manual order ends the Follow of these units (GLORFINDEL-1121sm)
 		if (!HOLRpcScriptRoute_Haldir1117n::RouteMoveInLine(this, UnitIds, Start, End, bWidth, bQueue)) { HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("MoveInLine")); }
 	}
 }
