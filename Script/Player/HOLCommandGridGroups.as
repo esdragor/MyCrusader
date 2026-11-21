@@ -19,6 +19,12 @@ namespace HOLCentreKind
 		return TypeName == n"MainCentre" || TypeName == n"SecondaryCentre";
 	}
 
+	// STUB (red): answers the main centre whatever is owned.
+	FName OwnedCentreType(bool bOwnsMain, bool bOwnsSecondary)
+	{
+		return n"MainCentre";
+	}
+
 	// The same by the building's name as the audio table writes it.
 	bool IsCentreName(FString TypeName)
 	{
