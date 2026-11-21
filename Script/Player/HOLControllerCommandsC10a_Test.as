@@ -106,15 +106,15 @@ void Test_ControllerCommandsC10aRightClickOnAllyStartsFollow(FUnitTest& T)
 {
 	FHOLFollowBook Book;
 	TArray<int> Selected;
-	Selected.Add(1); Selected.Add(2); Selected.Add(9);
+	Selected.Add(1); Selected.Add(2);
 	const EHOLRightClickOrder Order = HOLControllerCommandsC10a::RightClickUnitOrder(Book, Selected, 9, false, -1);
 	T.AssertTrue(Order == EHOLRightClickOrder::Follow, "an ally under the right click is Follow");
-	T.AssertEquals(2, Book.UnitIds.Num(), "the two other selected units follow (not the target itself)");
+	T.AssertEquals(2, Book.UnitIds.Num(), "the two selected units follow the ally outside the selection");
 	const int FirstIndex = HOLFollowOrders::IndexOf(Book, 1);
 	T.AssertTrue(FirstIndex >= 0, "unit 1 is in the book");
 	if (FirstIndex >= 0)
 		T.AssertEquals(9, Book.TargetIds[FirstIndex], "unit 1 follows unit 9");
-	T.AssertEquals(-1, HOLFollowOrders::IndexOf(Book, 9), "the target does not follow itself");
+	T.AssertEquals(-1, HOLFollowOrders::IndexOf(Book, 9), "the followed ally is not in the book");
 }
 
 void Test_ControllerCommandsC10aRightClickOnEnemyKeepsAttack(FUnitTest& T)

@@ -267,21 +267,20 @@ void Test_RightClickOnSelectedAllyIsNotFollow(FUnitTest& T)
 	T.AssertTrue(Order == EHOLRightClickOrder::Move, "a unit of the selection does not follow itself: ordinary Move");
 }
 
-// EFFECT on the real book: every selected unit but the target becomes a bodyguard of the ally; an enemy click starts no follow.
+// EFFECT on the real book: every selected unit becomes a bodyguard of the ally (D818 Q1 C: the ally is OUTSIDE the selection); an enemy click starts no follow.
 void Test_ApplyRightClickOnAllyStartsFollowForTheOthers(FUnitTest& T)
 {
 	FHOLFollowBook Book;
 	TArray<int> Selected;
 	Selected.Add(3);
-	Selected.Add(9);
 	Selected.Add(4);
 	const EHOLRightClickOrder Order = HOLFollowOrders::ApplyRightClick(Book, Selected, true, 9, true);
 	T.AssertTrue(Order == EHOLRightClickOrder::Follow, "an ally click is Follow");
 	const int Index3 = HOLFollowOrders::IndexOf(Book, 3);
 	const int Index9 = HOLFollowOrders::IndexOf(Book, 9);
-	T.AssertEquals(2, Book.UnitIds.Num(), "two followers: the target itself is left out");
+	T.AssertEquals(2, Book.UnitIds.Num(), "two followers: the whole selection follows the ally outside it");
 	T.AssertTrue(Index3 >= 0, "unit 3 follows");
-	T.AssertEquals(-1, Index9, "the followed unit does not follow itself");
+	T.AssertEquals(-1, Index9, "the followed ally is not in the book");
 	if (Index3 >= 0)
 	{
 		T.AssertEquals(9, Book.TargetIds[Index3], "unit 3 follows the ally 9");
