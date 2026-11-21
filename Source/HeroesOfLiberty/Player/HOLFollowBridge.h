@@ -28,10 +28,16 @@ public:
 	/** One order step of the followers of the local player (called from the controller's Tick). Nothing without a script class. */
 	static void NativeStep(AHOLPlayerController* Controller, int32 PlayerIndex);
 
+	/** Any manual order of the units (right click on the ground or an enemy, Stop, Hold) ends their Follow. Nothing without a script class. */
+	static void NativeManualOrder(const TConstArrayView<uint32> UnitIds);
+
 	// The script overrides (Angelscript drops the BP_ prefix).
 	UFUNCTION(BlueprintImplementableEvent, Category = "HOL|Orders")
 	bool BP_RightClickOnUnit(AHOLPlayerController* Controller, TArray<int32> Selected, int32 TargetId, bool bTargetIsAlly);
 
 	UFUNCTION(BlueprintImplementableEvent, Category = "HOL|Orders")
 	void BP_Step(AHOLPlayerController* Controller, int32 PlayerIndex);
+
+	UFUNCTION(BlueprintImplementableEvent, Category = "HOL|Orders")
+	void BP_ManualOrder(TArray<int32> UnitIds);
 };

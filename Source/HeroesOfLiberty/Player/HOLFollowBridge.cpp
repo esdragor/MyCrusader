@@ -36,3 +36,20 @@ void UHOLFollowBridge::NativeStep(AHOLPlayerController* Controller, const int32 
 		Bridge->BP_Step(Controller, PlayerIndex);
 	}
 }
+
+void UHOLFollowBridge::NativeManualOrder(const TConstArrayView<uint32> UnitIds)
+{
+	if (UnitIds.IsEmpty())
+	{
+		return;
+	}
+	if (UHOLFollowBridge* Bridge = Get())
+	{
+		TArray<int32> Ids;
+		for (const uint32 UnitId : UnitIds)
+		{
+			Ids.Add(static_cast<int32>(UnitId));
+		}
+		Bridge->BP_ManualOrder(Ids);
+	}
+}

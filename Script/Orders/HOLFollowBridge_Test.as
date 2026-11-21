@@ -43,3 +43,33 @@ void Test_FollowBridgeEnemyOrOwnSelectionIsNotFollow(FUnitTest& T)
 	T.AssertTrue(!Bridge.RightClickOnUnit(nullptr, Selected, 2, true), "a unit of the selection is not a Follow");
 	T.AssertTrue(Holder.Book.UnitIds.Num() == 0, "the book is untouched");
 }
+
+// EFFECT: after Follow, a manual order of some of the followers (right click on the ground or an enemy, Stop, a grid order: the controller calls the bridge's
+// ManualOrder with its units) ends THEIR follow (the state is no longer active, so the Step stops re-issuing Move), the others keep following.
+void Test_FollowBridgeManualOrderEndsFollowOfThoseUnits(FUnitTest& T)
+{
+	UHOLFollowBridge Bridge = UHOLFollowBridge::Get();
+	UHOLFollowBookHolder Holder = UHOLFollowBookHolder::Get();
+	T.AssertTrue(Bridge != nullptr && Holder != nullptr, "bridge and holder exist");
+	if (Bridge == nullptr || Holder == nullptr)
+		return;
+	Holder.Book = FHOLFollowBook();
+	TArray<int> Selected;
+	Selected.Add(1);
+	Selected.Add(2);
+	const bool bStarted = Bridge.RightClickOnUnit(nullptr, Selected, HOLFollowBridgeTest::AllyId, true);
+	T.AssertTrue(bStarted, "Follow started for units 1 and 2");
+	const int FirstIndex = HOLFollowOrders::IndexOf(Holder.Book, 1);
+	const int SecondIndex = HOLFollowOrders::IndexOf(Holder.Book, 2);
+	if (FirstIndex < 0 || SecondIndex < 0)
+	{
+		T.AssertTrue(false, "both units are in the book");
+		return;
+	}
+	T.AssertTrue(Holder.Book.States[FirstIndex].bActive, "unit 1 follows before the manual order");
+	TArray<int> Ordered;
+	Ordered.Add(1);
+	Bridge.ManualOrder(Ordered);
+	T.AssertTrue(!Holder.Book.States[FirstIndex].bActive, "unit 1 no longer follows after its manual order");
+	T.AssertTrue(Holder.Book.States[SecondIndex].bActive, "unit 2, not ordered, keeps following");
+}
