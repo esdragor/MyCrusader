@@ -11,3 +11,5 @@ Geste pour reproduire : sélectionner (cadre ou Maj+clic) des unités à deux en
 Test à écrire d'abord (rouge) : deux groupes boîtés à 30 m l'un de l'autre, sélection des deux, ordre de déplacement ; contrôle = nombre de lignes affichées et leurs points de départ (près de chaque groupe).
 
 Contrainte : le tracé est en C++ ; D830 (2026-11-16) arrête les nouvelles tâches C++ en attendant le plan de migration Angelscript (Docs\Rapports\ANALYSE-1116a.md). Correction à placer selon ce plan (le calcul des points de départ peut passer en Angelscript).
+
+VU A L ECRAN (2026-11-21, FARAMIR-1121sa) : le correctif (5658626 test + 904bd5e) est vu a l ecran avec le scenario order_lines_blocks (zone-effect c399c87) : deux blocs separes de 30 m, un ordre de deplacement = DEUX lignes jaunes, une par bloc, chacune partant de son bloc (capture order_lines_blocks_pendant). Fiche E-order_lines_blocks.md [A ESSAYER] (geste interne, a refaire a la main par l utilisateur).

@@ -18,6 +18,55 @@ SÉANCE DU 2026-11-21 SOIR (« lance une autojourney », 19:00 -> 23:00, autonom
 | CLEAN-1121f | af35e5bd | principale | 0a : file | non | 19:00 | 19:03 | d5667a7, 1 [x] archivée, 10 [~] traitées |
 | CLEAN-1121g | aabd91f5 | principale | 0a : Retours\ | non | 19:00 | 19:01 | 9243427, LISEZ-MOI seul |
 | CLEAN-1121h | aa0e20d3 | principale | 0a : procédure + check-list | non | 19:00 | 19:03 | 5d812ee, 4 lignes retirées |
+| sync (commande) | — | 8 worktrees | sync_worktrees.ps1 -WaitBuilds | non | 19:04 | 19:04 | 8 à 6b226f8 (+6), aucun build |
+| ETAPE0-1121s | ae87928e | lecture seule | plan de lancement | non | 19:05 | 19:10 | Docs\Rapports\ETAPE0-1121s.md ; plafond C++ 3 ; gate : seule la DLL de Celeborn est périmée (l'étape 0 les disait toutes en retard) |
+| ARWEN-1121sa | acb211df | Arwen | L61 furtivité « vue par camp » (script) | non | 19:11 | | pris : Script\Fog\HOLStealthRules* |
+| CELEBORN-1121sa | ad828dd0 | Celeborn | L29 D866 FHOLMoraleFragment sur archétypes | oui | 19:11 | | pris : Simulation\HOLSimulationFragments.h, HOLSimulationSubsystem.cpp, HOLMoraleRules*, HOLMoraleRulesTests.cpp ; build par la session après |
+| ELROND-1121sa | ab28191f | Elrond | L70 Test_CGTables (TowerWood) puis rouge L69 D877 | non (L69 oui, sans build) | 19:11 | | pris : HOLCommandGrid_Test.as, HOLDeployButtonTests.cpp |
+| FARAMIR-1121sa | ac1fa015 | Faramir | scénario order_lines_blocks + preflight | non | 19:11 | | pris : Tools\Scenarios\order_lines_blocks.*, Retours\E/BUG-order_lines* |
+| GALADRIEL-1121sa | a89d2997 | Galadriel | L104 income_tooltip preflight | non | 19:11 | | pris : Script\UI\HOLTopBar.as, income_tooltip.* |
+| GLORFINDEL-1121sa | a0386acd | Glorfindel | L11 chat_input Tab (rejouer sur binaire à jour) | oui si rouge | 19:11 | | pris : UI\HOLScriptScreen.*, HOLChatInputScreen.as, chat_input.* |
+| HALDIR-1121sa | a8f5f07a | Haldir | L129-131 SC3 « tout centre » script | non | 19:11 | | pris : HOLCommandGridGroups.as, HOLAudioBuildings.as, HOLSecondaryCentreAll_Test.as (neuf) |
+| SAURON-1121sa | a3a76a9c | Sauron | neutrals_clairiere (vérifier d'abord : déjà OK ?) sinon ligne suivante | non | 19:11 | 19:12 | déjà joué OK (archive Retours_2026-11-20) ; l.147 périmée ; rien sans C++ |
+| SAURON-1121sb | abf83c40 | Sauron | L28 UE_LOG ApplyDamageRedirect (lot C++, sans build) + l.139/140 en [x] | oui, sans build | 19:13 | 19:15 | 28048ce NON COMPILÉ ; l.140/141 [x] |
+| ARWEN-1121sa fin | acb211df | Arwen | (voir plus haut) | non | 19:11 | 19:14 | 990a147 rouge, d886e79 règle, e2e8c5c ; 1 rouge attendu Test_StealthCampViewEnemyBeyondRevealDistanceDoesNotSee |
+| ARWEN-1121sb | a600f8fa | Arwen | 1re [ ] sans C++ de sa section, sinon furtivité étape suivante (script) | non | 19:14 | | |
+| HALDIR-1121sa fin | a8f5f07a | Haldir | (voir plus haut) | non | 19:11 | 19:15 | 0516682 rouge (5 tests), 7393200 règle |
+| HALDIR-1121sb | (voir notif) | Haldir | lot C++ « tout centre » (3 emplois), sans build | oui, sans build | 19:16 | | pris : HOLConstructionRules.*, HOLBuildProcessor.cpp, HOLGameNames.cpp, HOLBuildingTypes.* |
+| intégrateur | — | Sauron | worktree d'intégration (integrate.ps1, commandes de la session principale) dès la fin de la vague | — | | | |
+| fins vague 1 | — | — | CELEBORN-1121sa 19:15 fd6027d rouge + 7a7172b ; FARAMIR-1121sa 19:15 c399c87/0e8771f preflight order_lines_blocks PASS, E-order_lines_blocks.md ; ARWEN-1121sb 19:16 c68a4ba rouge (2) + c674622 contour ; ELROND-1121sa 19:16 fc901f7 Test_CGTables 14, 0d477b4 rouge D877 ; GLORFINDEL-1121sa 19:16 chat_input VERT (Tab), E-chat_input.md, aucun commit | | | | |
+| ELROND-1121sb | a13bb260 | Elrond | correctif D877 (rouge 0d477b4), sans build | oui, sans build | 19:17 | | pris : HOLUnitOrderProcessor.cpp, Siege\HOLDeployRules.*, HOLDeployProcessor.*, HOLDeployButtonTests.cpp |
+| CELEBORN-1121sb | ab07e228 | Celeborn | L30 UHOLMoraleProcessor, sans build | oui, sans build | 19:17 | | pris : HOLMoraleProcessor.* (neuf), HOLMoraleRules*, HOLMoraleRulesTests.cpp |
+| ARWEN-1121sc | af31bbae | Arwen | liaison C++ vue par camp (UHOLVisionSubsystem), sans build | oui, sans build | 19:17 | | pris : HOLVisionSubsystem.*, HOLStealthRules*.as |
+| FARAMIR-1121sb | a49efe0e | Faramir | 1re [ ] sans C++ de sa section | non | 19:17 | | |
+| GLORFINDEL-1121sb | a719179d | Glorfindel | 1re [ ] sans C++ de sa section | non | 19:17 | | |
+| HALDIR-1121sb fin | aec35b60 | Haldir | (voir plus haut) | oui, sans build | 19:16 | 19:19 | 8c3ea36 rouge Buildings.AnyCentre, 33b8563 IsCentre (2 emplois + nom) |
+| HALDIR-1121sc | (voir notif) | Haldir | merge fc901f7 + regen BuildingTypes + Test_CGTables 15 + placeholders | non | 19:19 | | pris : BuildingTypes.csv/.uasset, HOLCommandGrid_Test.as, placeholders_map.csv |
+| fins 19:2x | — | — | GLORFINDEL-1121sb d5a5527 rouge + 78f17c4 alerte Population pleine (règle) ; FARAMIR-1121sb 4146ec1 talents_heal (preflight FAIL 2 WARN) ; ELROND-1121sb 212ff44 D877 moitié 1 (NON COMPILÉ) | | | | |
+| ELROND-1121sc | (notif) | Elrond | D877 moitié 2 (clic sur cible démonté) | oui, sans build | 19:22 | | pris : HOLUnitOrderProcessor.cpp, HOLDeploy*, HOLDeployButtonTests.cpp, HOLCombatProcessor.cpp (ordres d'engin) |
+| FARAMIR-1121sc | (notif) | Faramir | talents_heal : 2 WARN + PNG + fiche E | non | 19:22 | | pris : talents_heal.* |
+| GLORFINDEL-1121sc | (notif) | Glorfindel | brancher Population pleine dans HOLGameScreenScript.as | non | 19:22 | | pris : HOLGameScreenScript.as, HOLAlertRules.as |
+| fins 19:2x (2) | — | — | HALDIR-1121sc 5a62867 merge fc901f7, regen uasset, ed2566e Test_CGTables 15, placeholders : wall-line prête ; CELEBORN-1121sb 9757c95 rouge + 9c2145b UHOLMoraleProcessor (NON COMPILÉ, non inscrit dans DefaultGame.ini) | | | | |
+| CELEBORN-1121sc | (notif) | Celeborn | inscription DefaultGame.ini + ClearAuras | oui, sans build | 19:24 | | pris : DefaultGame.ini (SimulationProcessors), HOLMorale* |
+| HALDIR-1121sd | (notif) | Haldir | 1re [ ] sans C++ ou autres emplois MainCentre en script | non | 19:24 | | |
+| GALADRIEL-1121sa fin | a89d2997 | Galadriel | (voir plus haut) | non | 19:11 | 19:25 | income_tooltip PASS (4 PNG), 59334c6 scénario, 116bf29 retraduction JA SANS rouge (L19-8 non) ; E-income_tooltip.md ; 30 appels |
+| GALADRIEL-1121sb | (notif) | Galadriel | test rouge séparé de 116bf29 + docs | non | 19:25 | | pris : test de HOLTopBar |
+| fins 19:23 | — | — | ARWEN-1121sc 537c6ec rouge + 2b0c986 GetCampUnitPositions (NON COMPILÉ), 26 appels ; GLORFINDEL-1121sc : Population pleine déjà dans main (D833), doublon d5a5527/78f17c4 retiré par d6d5270 (branche nette = rien à fusionner) ; leçon : tâche « trouvée » par l'agent = doublon | | | | |
+| HALDIR-1121sd fin | a16b4522 | Haldir | (voir plus haut) | non | 19:24 | 19:27 | 1a1b459 rouge HOLCentreFallback_Test, b4628e4 OwnedCentreType (Rally/Queue/RallySite), 0251e52 |
+| CELEBORN-1121sc fin | abea607b | Celeborn | (voir plus haut) | oui, sans build | 19:24 | 19:27 | 456c1dc DefaultGame.ini, 6e98882 rouge ProcessorClearsAurasEachStep, 0895ac7 (NON COMPILÉ) |
+| fins 19:25 | — | — | FARAMIR-1121sc 2a11ec2 talents_heal : « ++ » contourné, preflight FAIL (HUD overlap HeroPanel x FactionPanel, vrai défaut) = LOGIQUE SEULEMENT ; ELROND-1121sc 6baa6ba rouge ClickOnFarTarget (peut-être vert : cause non diagnostiquée) + 49363b6 bMarching à l'émission ; GALADRIEL-1121sb c945861 test seul (rouge = erreur de compilation, pas une assertion : exception L19-8, entre en vert) | | | | |
+| integ-42 (commande) | — | Sauron | integrate.ps1 rouges 990a147,fd6027d,0d477b4 ; verts a7bf803,7a7172b,28048ce,0e8771f,fc901f7 ; parts net,build | oui | 19:17 | 19:31 | FAIL (parts) 832 s : 3 rouges VUS (noms attendus), verts 2000/2000, net PASS, build hud + build barracks REGRESSION ; c68a4ba hors passe (conflit de cherry-pick) |
+| vague 3 (19:33) | — | — | tips figés à 19:32 pour la passe 2 : integ-37 b4ded14, integ-41 0895ac7, wall-line 0251e52, specialization-trial 83f7304, zone-effect 2a11ec2, integ-25 807a0b9 ; Glorfindel d6d5270 = net nul, hors passe | | | | |
+| FARAMIR-1121sd | (notif) | Faramir | HUD overlap HeroPanel x FactionPanel (script) + talents_heal | non | 19:33 | | pris : HeroPanel/FactionPanel script, talents_heal.* |
+| ARWEN-1121sd | (notif) | Arwen | filtre réseau UHOLFogNetSubsystem | oui, sans build | 19:33 | | pris : HOLFogNetSubsystem.*, HOLVisionSubsystem.* |
+| CELEBORN-1121sd | (notif) | Celeborn | repose des auras D705 (une source) | oui, sans build | 19:33 | | pris : HOLMoraleProcessor.*, HOLMoraleRules* |
+| HALDIR-1121se | (notif) | Haldir | FindMainCentreOf / PointNearMainCentre (D879) | oui, sans build | 19:33 | | pris : leurs fichiers C++, HOLBuildingTypes.* |
+| GALADRIEL-1121sc | (notif) | Galadriel | accesseur des coups reçus (UHOLScriptScreen) | oui, sans build | 19:33 | | pris : UI\HOLScriptScreen.* |
+| GLORFINDEL-1121sd | (notif) | Glorfindel | liaison position d'unité par id (Suivre) | oui, sans build | 19:33 | | pris : liaison HOLUnitSubsystem, HOLFollowOrders.as |
+| DIAG-1121sa | a894f3ec | Sauron | cause et correctif build hud / barracks dans integ-42, quick_check -Parts build | non | 19:32 | 19:35 | attentes de quick_check.ps1 périmées (TowerWood case F, D878) : 9e7a324, quick_check -Parts build PASS 115 s (37 étapes) ; jeu correct |
+| fusion main | — | principale | preflight_merge OK ; gate Merge 1 FAIL = GDD.md non commité (D877-D879, autre session, 14:11, aucun recoupement) : EXCEPTION écrite ici, comme ce matin ; question du commit de GDD.md au bilan (Retours) | — | 19:35 | 19:35 | main 6b226f8 -> 9e7a324 (ff local, rien poussé) : build PASS, tests 2000/2000, net PASS, build PASS |
+| fins 19:35 | — | — | HALDIR-1121se 3bd682e rouge Buildings.CentrePick, a1360b1 FindCentreIndex (joueur : principal puis secondaire ; ennemi : principal seul, choix de l'agent) ; ARWEN-1121sd 9049921 rouge, 28dddc1 UHOLStealthFilter, 480873b appel dans HOLUnitReplicationSubsystem.cpp ; GALADRIEL-1121sc 9659c97 rouge (2), c6060a0 GetHitsReceivedNow ; tous NON COMPILÉS | | | | |
+| RECETTE-1121sa | (notif) | Sauron | recette chat_input + order_lines_blocks sur main 9e7a324 | non | 19:37 | | |
 
 ## Résumé de la séance du 2026-11-21 matin
 Séance autonome 10:40 -> 14:40 (clôture 14:53) : 23 agents Sonnet, main 61a60e8 -> a987f58 en local (integ-38 PASS 957 s, integ-41 tests 1990/1990), rien poussé. Livré : chat (Tab, marque « (Alliés) »), alertes mineures par type, infobulle de revenu, règle Suivre, scénarios deploy et virtuous_knight, gate Essay acceptant un sha.
