@@ -305,6 +305,31 @@ public:
 namespace HOLBuildingTypeNames
 {
 	inline const FName MainCentre(TEXT("MainCentre"));
+	/** The secondary centre (D879, SC3): a forum more, without the anti-rush zone of the main centre (D22). */
+	inline const FName SecondaryCentre(TEXT("SecondaryCentre"));
+	/**
+	 * "Any centre" (D879): the main centre or a secondary one. The one source of every C++ use of a centre that is not "main forum only"
+	 * (HOLConstruction::SendsBuildersToGather, the Nomad first-forum bit of HOLBuildProcessor); the script twin is HOLCentreKind::IsCentre.
+	 */
+	inline bool IsCentre(const FName TypeName)
+	{
+		return TypeName == MainCentre || TypeName == SecondaryCentre;
+	}
+	/**
+	 * Which of these building types a "the player's centre" read takes (D879 option A, SC3): the index of the first MainCentre, else of the
+	 * first other centre (a player whose forum is lost or not yet placed still has its secondary one), else INDEX_NONE. Used by
+	 * UHOLControllerReadLibrary::FindMainCentre, the single source of the console commands and the script RPC reads. The enemy / AI / Nomad
+	 * rules stay "main forum only" (SC6).
+	 */
+	inline int32 FindCentreIndex(const TArray<FName>& Types)
+	{
+		const int32 Main = Types.IndexOfByKey(MainCentre);
+		if (Main != INDEX_NONE)
+		{
+			return Main;
+		}
+		return Types.IndexOfByPredicate([](const FName Type) { return IsCentre(Type); });
+	}
 	/** +10 population (D83, D310). */
 	inline const FName House(TEXT("House"));
 	/** Wood deposit (D310); S7 places some by code. */

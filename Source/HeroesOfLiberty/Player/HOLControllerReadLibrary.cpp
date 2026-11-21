@@ -13,14 +13,24 @@
 const AHOLBuilding* UHOLControllerReadLibrary::FindMainCentre(const AHOLPlayerController& Controller, const bool bEnemy)
 {
 	const AHOLPlayerState* PlayerState = Controller.GetHOLPlayerState();
-	for (FHOLBuildingIterator It(Controller.GetWorld()); PlayerState && It; ++It)
+	if (!PlayerState)
 	{
-		if (It->GetTypeName() == HOLBuildingTypeNames::MainCentre && (It->GetOwnerPlayer() == PlayerState->GetPlayerIndex()) != bEnemy)
+		return nullptr;
+	}
+	// The enemy side stays "main forum only" (attack target, SC6); the player's own side takes the secondary centre when no main one is owned (D879 option A).
+	TArray<FName> Types;
+	TArray<const AHOLBuilding*> Candidates;
+	for (FHOLBuildingIterator It(Controller.GetWorld()); It; ++It)
+	{
+		const bool bWanted = bEnemy ? It->GetTypeName() == HOLBuildingTypeNames::MainCentre : HOLBuildingTypeNames::IsCentre(It->GetTypeName());
+		if (bWanted && (It->GetOwnerPlayer() == PlayerState->GetPlayerIndex()) != bEnemy)
 		{
-			return *It;
+			Types.Add(It->GetTypeName());
+			Candidates.Add(*It);
 		}
 	}
-	return nullptr;
+	const int32 Index = HOLBuildingTypeNames::FindCentreIndex(Types);
+	return Index != INDEX_NONE ? Candidates[Index] : nullptr;
 }
 
 bool UHOLControllerReadLibrary::PointNearMainCentre(AHOLPlayerController* Controller, const double Dx, const double Dy, const bool bEnemy, FVector& OutPoint)

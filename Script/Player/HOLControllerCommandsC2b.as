@@ -180,7 +180,7 @@ namespace HOLControllerCommandsC2b
 		}
 		else if (Plan.Route == "Rally")
 		{
-			HOLControllerCommand::EnsureOwnSelection(Controller, n"MainCentre");
+			HOLControllerCommand::EnsureOwnSelection(Controller, HOLCentreKind::OwnedCentreTypeOf(Controller));
 			HOLControllerCommand::RequestRallyPointAt(Controller, Plan.X, Plan.Y);
 		}
 		else if (Plan.Route == "Queue")
@@ -188,7 +188,7 @@ namespace HOLControllerCommandsC2b
 			// J7a.6: [Building], its own building of that type selected first (the net part's barracks).
 			if (!Plan.Building.IsEmpty())
 				HOLControllerCommand::SelectOwnBuilding(Controller, FName(Plan.Building));
-			HOLControllerCommand::EnsureOwnSelection(Controller, n"MainCentre");
+			HOLControllerCommand::EnsureOwnSelection(Controller, HOLCentreKind::OwnedCentreTypeOf(Controller));
 			HOLControllerCommand::RequestProduction(Controller, FName(Plan.Name));
 		}
 		else if (Plan.Route == "Cancel")

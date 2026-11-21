@@ -168,7 +168,7 @@ namespace HOLControllerCommandsC9a
 		// hol.Prod.RallySite: the producer and the site first (both lines are Warning when one is missing).
 		if (Command == "hol.Prod.RallySite")
 		{
-			AHOLBuilding Producer = HOLControllerCommand::FindOwnBuildingByType(Controller, n"MainCentre");
+			AHOLBuilding Producer = HOLControllerCommand::FindOwnBuildingByType(Controller, HOLCentreKind::OwnedCentreTypeOf(Controller));
 			AHOLBuilding Site = HOLControllerCommand::FindOwnSite(Controller);
 			if (Producer == nullptr || Site == nullptr)
 			{
