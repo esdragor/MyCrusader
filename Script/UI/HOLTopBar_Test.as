@@ -58,6 +58,19 @@ void Test_TopBarIdleCounterLabelEnabledAndChange(FUnitTest& T)
 	T.AssertEquals(HOLTopBar::IdleClickLine(), "HUD: idle workers clicked", "the journal line of a click");
 }
 
+// GALADRIEL-1121se (RECETTE-1121sb): "Inactifs : 0" stayed French after a live switch to EN/JA, because Refresh re-applied the idle label only when the COUNT
+// changed (the income tips already follow the language via TipLanguageKey). The label must be applied again when the text shown differs from the text the
+// current language gives for the same count. Pure, so it does not depend on the editor applying the game localization: the "shown" text is the label of
+// ANOTHER language than the current one (a stale one), built here from the real IdleLabel for the "same" case.
+void Test_TopBarIdleLabelIsSetAgainOnALanguageSwitchWithTheCountUnchanged(FUnitTest& T)
+{
+	const FString Current = HOLTopBar::IdleLabel(0);
+	T.AssertFalse(HOLTopBar::IdleChanged(0, 0), "the count did not change: the count gate alone keeps the old text");
+	T.AssertFalse(HOLTopBar::IdleLabelChanged(Current, 0), "the label shown is the current language one: nothing to redraw");
+	T.AssertTrue(HOLTopBar::IdleLabelChanged("stale other-language label : 0", 0), "the label shown is another language one: the label is set again");
+	T.AssertTrue(HOLTopBar::IdleLabelChanged("", 0), "never shown: set");
+}
+
 void Test_TopBarIncomeIsSetAgainOnlyWhenItChanges(FUnitTest& T)
 {
 	FHOLResources Shown = TopBarRes(0, 90, 0, 10);

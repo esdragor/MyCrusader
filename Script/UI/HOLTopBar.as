@@ -175,6 +175,12 @@ namespace HOLTopBar
 		return HOLTopBarText::Replace1(HOLTopBarText::IdleWorkers(), f"{Count}");
 	}
 
+	// The label shown differs from the one the current language gives for this count (a live language switch with the count unchanged).
+	bool IdleLabelChanged(FString ShownLabel, int Count)
+	{
+		return false;
+	}
+
 	bool IdleEnabled(int Count)
 	{
 		return Count > 0;
