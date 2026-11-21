@@ -27,6 +27,7 @@ SiegeWorkshop,BuildingTypes,^- Atelier de si.ge
 Chapel,BuildingTypes,^- Chapelle \(Aube\)
 Stable,BuildingTypes,^- .curie
 Forge,BuildingTypes,^- Forge
+TowerWood,BuildingTypes,^- Tour de guet en bois
 Tree,SourceTypes,^- Arbre \[
 BerryBush,SourceTypes,^- Buisson de baies
 StoneVein,SourceTypes,^- Filon de pierre normal

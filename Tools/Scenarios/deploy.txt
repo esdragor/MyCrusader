@@ -81,7 +81,9 @@ note 6. D861 (b) : le Mangonneau est de nouveau monte (la case D dit Demonter). 
 # Etape 7 : clic droit au sol (a ~1000 cm au sud, toujours a ~2500 cm de la Maison). Un SEUL ordre ; aucun second clic.
 hol.Select.OrderNear 3000 -1000
 waitlog Order: 1 units to (
-frames 20
+wait 0.3
+# ELROND-1121a : wait (temps du jeu) et non frames : 20 images = 125 ms a ~150 images/s, la case disait encore Demonter ; a 0.3 s le demontage (1 s) est commence.
+hol.HUD.Report
 capture deploy_move_unmounting
 note 7. Clic droit au sol : l'engin commence par se demonter (1 s), sans que tu appuies sur D.
 waitlog (delay over)
