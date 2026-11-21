@@ -19,10 +19,20 @@ namespace HOLCentreKind
 		return TypeName == n"MainCentre" || TypeName == n"SecondaryCentre";
 	}
 
-	// STUB (red): answers the main centre whatever is owned.
+	// Which centre a console command falls back on when nothing is selected: the main centre first, else the secondary centre (a real forum more, D879), else the main centre (historical default).
 	FName OwnedCentreType(bool bOwnsMain, bool bOwnsSecondary)
 	{
+		if (!bOwnsMain && bOwnsSecondary)
+			return n"SecondaryCentre";
 		return n"MainCentre";
+	}
+
+	// The same from the player's own buildings.
+	FName OwnedCentreTypeOf(AHOLPlayerController Controller)
+	{
+		bool bMain = HOLControllerCommand::FindOwnBuildingByType(Controller, n"MainCentre") != nullptr;
+		bool bSecondary = HOLControllerCommand::FindOwnBuildingByType(Controller, n"SecondaryCentre") != nullptr;
+		return OwnedCentreType(bMain, bSecondary);
 	}
 
 	// The same by the building's name as the audio table writes it.
