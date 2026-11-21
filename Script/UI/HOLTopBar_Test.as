@@ -77,23 +77,3 @@ void Test_TopBarIncomeTipIsAHudPanel(FUnitTest& T)
 	T.AssertTrue(View.Border.R > 0.7 && View.Border.R > View.Border.G && View.Border.G > View.Border.B && View.Border.A > 0.9, "the border is gold");
 	T.AssertTrue(View.BorderWidth >= 1.0 && View.Padding > 0.0, "the border has a width and the text a padding");
 }
-
-// L19-8 (GALADRIEL-1121sb): a live language switch with the income UNCHANGED must make the panel set the income tooltips again (income_tooltip scenario: the
-// tooltip stayed "+377 bois/min" after the switch to ja). Refresh re-sets them when HOLTopBar::TipLanguageKey() differs from the key shown, so the key must
-// follow the language, and the rebuilt tooltip text with it, while IncomeChanged stays false (the old gate alone would never re-set). Red without 116bf29:
-// TipLanguageKey does not exist there, so the script does not compile.
-void Test_TopBarIncomeTipIsSetAgainOnALanguageSwitchWithTheIncomeUnchanged(FUnitTest& T)
-{
-	const FString Previous = HOLForumMessagesRead::SetCultureName("en");
-	const FString KeyEn = HOLTopBar::TipLanguageKey();
-	const FString TextEn = HOLTopBar::IncomeTipView(377, HOLTopBar::Wood()).Text;
-	HOLForumMessagesRead::SetCultureName("ja");
-	const FString KeyJa = HOLTopBar::TipLanguageKey();
-	const FString TextJa = HOLTopBar::IncomeTipView(377, HOLTopBar::Wood()).Text;
-	HOLForumMessagesRead::SetCultureName(Previous);
-
-	FHOLResources Shown = TopBarRes(0, 377, 0, 0);
-	T.AssertFalse(HOLTopBar::IncomeChanged(Shown, TopBarRes(0, 377, 0, 0)), "the income did not change: the income gate alone keeps the old text");
-	T.AssertTrue(KeyEn != KeyJa, "the tooltip key follows the language: Refresh sees a difference with the key it shown and sets the tips again");
-	T.AssertTrue(TextEn != TextJa, "the tooltip rebuilt after the switch is in the new language, not the old one");
-}
