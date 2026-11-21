@@ -1,0 +1,17 @@
+NON COMPILE (C++ : rien construit, rien lance)
+APPELS_DECLARES: 12 (arret a 25 vus ; 45 pour agent_rules)
+HEURE_DEBUT/HEURE_FIN: 19:18 / 19:20 (Get-Date)
+PREMIER_BUILD: sans build (consigne : la session principale compile)   BUILD: NON COMPILE   LAUNCHCHECK_DEBUT: non lance (pas de build par l'agent)
+TEST_ROUGE: 0d477b4 (FHOLDeployArrivalMountsByItselfTest, "HeroesOfLiberty.Siege.Deploy.PackedEngineMountsByItselfAtTheEndOfAMarch", assertit l'effet : oui, phase Deployed sans appui bouton) ; rouge non VU a l'execution (rien compile) ; correctif 212ff44 en commit separe, apres.
+COMMITS: 2 (212ff44 correctif C++, ce70311 docs Palier3InProgress), dernier 19:20, merge_main_fait: non
+TESTS: aucun lance ; TESTS_TAUTOLOGIQUES: 0
+BUILDS_DEMANDES: 1 (HOLDeployProcessor.h/.cpp + HOLDeployButtonTests.cpp ; lot C++ de la seance)   TESTS_SCRIPT_AJOUTES: 0   TYPES_A_EXPOSER: aucun
+ESSAIS: aucun
+QUESTIONS: aucune
+FAIT: moitie 1 de D877. FHOLDeployFragment::bMarching (HOLDeployProcessor.h) : UHOLDeployProcessor::Execute (HOLDeployProcessor.cpp:85-106) note par pas qu'une marche du joueur est ouverte (FHOLMoveOrderFragment::Phase != None et pas FHOLCombatFragment::bApproaching) ; quand la marche est finie (Phase None) et l'engin Packed sans ordre en attente (PendingOrder == 0), PendingOrder = 3 : meme decision que le bouton (HOLDeploy::Toggle : Packed -> Deploying), donc une seule source de regle (D836), aucune modification de HOLDeployRules ni de HOLUnitOrderProcessor.cpp. Marche retenue (bWalkHeld, D861 b) : la note survit jusqu'a la vraie fin. Bouton Mount presse sur un engin Packed qui marche : ToggleDeploy efface l'ordre, bMarching retombe, PendingOrder 3 non ecrase : pas de double decision.
+RELECTURE_CPP (L20-2) : diff relu apres commit ; gardes Orders.IsEmpty()/Combats.IsEmpty() (vues optionnelles) ; pas de nouvelle UPROPERTY (fragment non replique) ; aucune erreur vue a la lecture, non compile.
+RESTE: (1) build `Tools\build.ps1 -LiveCoding=0 -Wait` dans C:\Users\baudo\Documents\HeroesOfLiberty-Elrond puis le test C++ ci-dessus (attendu rouge sur 0d477b4 seul, vert sur 212ff44) ; Test_CGTables (fc901f7) doit etre vert. (2) moitie 2 NON FAITE : 2e test rouge « clic sur cible demonte = se met a portee, se monte, tire ». Cause non diagnostiquee : HOLCombatProcessor.cpp:2559 et :3091 n'ecrivent PendingOrder=1 qu'une fois la cible a portee de COMBAT ; a regarder avec les logs « Deploy: #id phase ... » apres le build.
+NON VERIFIE: tout (rien compile). Risque 1 : si l'ordre de 10 cm est ferme par le processeur d'ordres dans le MEME pas que son emission, UHOLDeployProcessor ne voit jamais Phase != None et bMarching n'est jamais pose : le test restera rouge, la parade est de poser bMarching a l'emission de l'ordre (HOLUnitOrderProcessor.cpp, branche Move) ou de memoriser OrderSerial. Risque 2 : un Stop donne a un engin Packed qui marche le monte aussi (la marche se termine) ; a trancher avec l'utilisateur si cela gene.
+PROCESSUS_DETACHES: aucun processus detache pour C:\Users\baudo\Documents\HeroesOfLiberty-Elrond
+ANOMALIES_PROCESSUS: aucune. EDITS_REFUSES: 0 (edits par PowerShell sur chaine exacte).
+GIT_STATUS_PRINCIPALE: M Auto_Journey_File.md, Auto_Journey_Jour.md, EtapeDefini.md, GDD.md, MoraleInProgress.md, Placeholders.txt, Retours/BUG-order_lines_multi_blocs.md + ?? Docs/Retours/Rapports ; hors docs voulus : non touche par moi sauf EtapeDefini.md et Auto_Journey_File.md (mes lignes).

@@ -5,6 +5,7 @@ GESTE: réel
 SON: non entendu
 branches: wall-line
 recette: RECETTE-1121sc PASS sur wall-line (main 204f769 + scenario) ; reserves traitees par HALDIR-1121sj (voir Mise a jour 1121sj) : sc_pendant recadre apres le debut reel du chantier ; Population 5/175 = plafond de partie atteint par la triche du scenario (pas un defaut) ; rapport Docs\Rapports\RECETTE-1121sc.md
+recette: RECETTE-1121se PASS sur main 1276d54 (HeroesOfLiberty-Haldir, wall-line) : preflight PASS, 5 PNG ouverts, infobulle Centre secondaire 150 bois 400 pierre vue, centre fini seul selectionne 2400/2400, Population 5/20 ; rapport Docs\Rapports\RECETTE-1121se.md
 
 Pré-vol (2026-11-21 20:28, agent HALDIR-1121sh, worktree C:\Users\baudo\Documents\HeroesOfLiberty-Haldir, main 204f769) : `preflight.ps1 secondary_centre -Root C:\Users\baudo\Documents\HeroesOfLiberty-Haldir` PASS (43 s, 5 PNG).
 PNG OUVERTS et vus :
