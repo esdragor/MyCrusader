@@ -87,21 +87,24 @@ void Test_StealthCampViewAllyAlwaysSees(FUnitTest& T)
 // Look (D824 Q3 B): the zone outline shows on hover or when an own unit stands in the zone; never otherwise.
 void Test_StealthOutlineShownOnHover(FUnitTest& T)
 {
-	FHOLStealthZone Zone = StealthOneZone()[0];
+	TArray<FHOLStealthZone> Zones = StealthOneZone();
+	FHOLStealthZone Zone = Zones[0];
 	bool bShown = HOLStealth::ShowsOutline(Zone, true, TArray<FVector2D>());
 	T.AssertTrue(bShown, "hovered zone, no own unit: the outline shows");
 }
 
 void Test_StealthOutlineShownWhenOwnUnitEnters(FUnitTest& T)
 {
-	FHOLStealthZone Zone = StealthOneZone()[0];
+	TArray<FHOLStealthZone> Zones = StealthOneZone();
+	FHOLStealthZone Zone = Zones[0];
 	bool bShown = HOLStealth::ShowsOutline(Zone, false, StealthViewers(FVector2D(100.0, -50.0)));
 	T.AssertTrue(bShown, "own unit inside the zone, not hovered: the outline shows");
 }
 
 void Test_StealthOutlineHiddenOtherwise(FUnitTest& T)
 {
-	FHOLStealthZone Zone = StealthOneZone()[0];
+	TArray<FHOLStealthZone> Zones = StealthOneZone();
+	FHOLStealthZone Zone = Zones[0];
 	bool bNone = HOLStealth::ShowsOutline(Zone, false, TArray<FVector2D>());
 	T.AssertFalse(bNone, "not hovered, no own unit: no outline");
 	float N = HOLStealth::RevealDistance();
