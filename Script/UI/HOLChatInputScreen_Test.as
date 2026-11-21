@@ -19,7 +19,8 @@ void Test_ChatInputScreenMarkFollowsTheChannel(FUnitTest& T)
 	FHOLChatInputState State;
 	HOLChatInput::PressEnter(State, "", true, true);
 	const FString OnAllies = HOLChatInputScreen::ChannelMark(State.Channel, "Bob");
-	T.AssertEquals(OnAllies, "Allies", "opened on Allies");
+	// The same tag as the thread's own line (HOLForumMessages.cpp:302, LOCTEXT ChatAllies "(Alliés) " minus its trailing space): RECETTE-1120sa saw "Allies".
+	T.AssertEquals(OnAllies, "(Alliés)", "opened on Allies: the mark reads (Alliés), as the thread does");
 	HOLChatInput::PressTab(State, true, true);
 	const FString OnAll = HOLChatInputScreen::ChannelMark(State.Channel, "Bob");
 	T.AssertEquals(OnAll, "Tous", "Tab: All");
@@ -144,7 +145,7 @@ void Test_ChatInputScreenOpensOnAlliesWithAnAlly(FUnitTest& T)
 	HOLChatInput::PressEnter(State, "", bAlly, false);
 	T.AssertEquals(State.Channel, HOLChat::Allies, "an ally: the field opens on Allies");
 	const FString Line = HOLChatInputScreen::MarkLine(State.Channel, "");
-	T.AssertEquals(Line, "Allies : ", "and says so");
+	T.AssertEquals(Line, "(Alliés) : ", "and says so");
 	FHOLChatInputState Lonely;
 	const bool bNone = ChatScreenHasAlly(Book, 1, 3);
 	HOLChatInput::PressEnter(Lonely, "", bNone, false);
