@@ -8,6 +8,17 @@ Historique du test du 2026-10-30 : `Docs\Archive\Auto_Journey_Test1_2026-10-30.m
 
 **Relevé du 2026-11-15** : voir Docs\ReleveGDD_2026-11-15.md (état réel de A1-A4 et B1-B6, branchements C++ à faire, questions en attente). L'ancien relevé du 2026-11-12 est archivé dans Docs\Archive\Auto_Journey_Jour_Chapitres_GDD_releve_2026-11-12_archive_2026-11-15.md.
 
+## Agents du 2026-11-21
+
+SÉANCE DU 2026-11-21 SOIR (« lance une autojourney », 19:00 -> 23:00, autonome). Réponses de lancement (19:00, interface de choix) : fin 23:00 (`Docs\SessionEnd.txt`) ; fusion dans main EN LOCAL si build PASS et tests verts sur le résultat exact, jamais de push ; mode AUTONOME (veilleur 30 min à :13/:43, alarme 22:45 ; L21-1 : aucune AskUserQuestion en cours de séance). main = 6fe9d84 au lancement. Nettoyage 0a (4 agents) : 9243427, 0a4fa29, d5667a7, 5d812ee. check-list lue (L21) à 19:03, en entier, par la session principale, après 0a et avant tout lancement d'agent de travail.
+
+| Agent | id | Worktree | Tâche | C++ | Lancé | Fini | Résumé |
+|---|---|---|---|---|---|---|---|
+| CLEAN-1121e | a7e43872 | principale | 0a : Jour + Retours | non | 19:00 | 19:02 | 0a4fa29 |
+| CLEAN-1121f | af35e5bd | principale | 0a : file | non | 19:00 | 19:03 | d5667a7, 1 [x] archivée, 10 [~] traitées |
+| CLEAN-1121g | aabd91f5 | principale | 0a : Retours\ | non | 19:00 | 19:01 | 9243427, LISEZ-MOI seul |
+| CLEAN-1121h | aa0e20d3 | principale | 0a : procédure + check-list | non | 19:00 | 19:03 | 5d812ee, 4 lignes retirées |
+
 ## Résumé de la séance du 2026-11-21 matin
 Séance autonome 10:40 -> 14:40 (clôture 14:53) : 23 agents Sonnet, main 61a60e8 -> a987f58 en local (integ-38 PASS 957 s, integ-41 tests 1990/1990), rien poussé. Livré : chat (Tab, marque « (Alliés) »), alertes mineures par type, infobulle de revenu, règle Suivre, scénarios deploy et virtuous_knight, gate Essay acceptant un sha.
 Arrêt 11:10 -> 14:09 : AskUserQuestion posé en séance autonome (L21-1). Réponses : deploy BUG D877, TowerWood A (D878), centre secondaire A (D879), virtuous_knight OK.
