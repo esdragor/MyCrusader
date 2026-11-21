@@ -7,14 +7,14 @@ hol.Cheat.Resources 5000
 hol.Cheat.Population 40
 hol.Combat.LogHits 1
 hol.Siege.Deployable 1
-hol.Camera.FocusNear 3000 0
+hol.Camera.FocusNear 3000 1500
 frames 2
 hol.Cheat.SpawnBuilding House 1 5300 0
 waitlog Cheat: spawned House of slot 1
 hol.Units.SpawnHere 1 Mangonel 0 50
 waitunits 7
 frames 20
-hol.Camera.FocusNear 3000 0
+hol.Camera.FocusNear 3000 1500
 frames 2
 hol.Select.ClickUnit -1
 waitlog Selection: Mangonel
@@ -65,7 +65,7 @@ hol.HUD.Report
 waitlog D=Deploy
 capture deploy_packed_again
 # D861 (ELROND-1120a/b, UNCOMPILED fix): (b) engin MONTE + clic droit au sol : il se demonte (1 s) puis PART sans second clic (avant : ordre ouvert mais vitesse restee a 0, il ne bougeait plus) ; (a) engin DEMONTE + clic droit sur la Maison ennemie a portee : il se monte (1,5 s) puis tire.
-# Geste reel : hol.Select.OrderNear = le clic droit du joueur sur le sol (point en cm dans le repere de ton centre) ; la Maison est au point 5300 0 (hol.Cheat.SpawnBuilding House 1 5300 0, meme repere que hol.Camera.FocusNear). Le Mangonneau est a ~3000 0, hors de la zone minimale (1200) : la Maison est a ~2300 cm, dans sa portee (3000).
+# Geste reel : hol.Select.OrderNear = le clic droit du joueur sur le sol (point en cm dans le repere de ton centre) ; la Maison est au point 5300 0 (hol.Cheat.SpawnBuilding House 1 5300 0, meme repere que hol.Camera.FocusNear). Le Mangonneau est a ~3000 1500 (hors de la crete de 3 rochers qui est a 3000 0 +-1050 : il ne nait plus SUR un rocher), hors de la zone minimale (1200) : la Maison est a ~2750 cm, dans sa portee (3000).
 # Etape 6 : remonter l'engin (D), pour avoir un engin monte a deplacer.
 hol.Camera.FocusNear 4200 0
 frames 2
