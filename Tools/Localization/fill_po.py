@@ -737,6 +737,13 @@ TRANSLATIONS = {
     "HOLCheatPanel,UnitSpeed": ("Unit speed", "ユニット速度"),
     "HOLCheatPanel,GatherSpeed": ("Gather speed", "採集速度"),
     "HOLCheatPanel,SpeedLabel": ("{0}: x{1}", "{0}：x{1}"),
+    # Faction slot power line (HOLPowerDisplay.as): {0} name, {1} cost, {2} seconds or tier. Power names are provisional.
+    "HOLFactionSlot,PowerReady": ("{0}: cost {1}, ready", "{0}：コスト {1}、使用可能"),
+    "HOLFactionSlot,PowerCooling": ("{0}: cost {1}, cooldown {2} s", "{0}：コスト {1}、再使用まで {2} 秒"),
+    "HOLFactionSlot,PowerShort": ("{0}: cost {1}, not enough resource", "{0}：コスト {1}、資源不足"),
+    "HOLFactionSlot,PowerTier": ("{0}: cost {1}, tier {2} required", "{0}：コスト {1}、ティア {2} が必要"),
+    "HOLFactionSlot,PowerSoon": ("{0}: cost {1}, coming soon", "{0}：コスト {1}、近日実装"),
+    "HOLFactionSlot,PowerNameSacredLight": ("Sacred Light", "聖なる光"),
 }
 
 CULTURES = {"en": 0, "ja": 1}
