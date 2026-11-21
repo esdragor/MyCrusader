@@ -2122,9 +2122,10 @@ void AHOLPlayerController::Tick(const float DeltaSeconds)
 		SendWatchedLoad();
 	}
 	// The order step of the Follow bodyguards of the local player (Script/Orders/HOLFollowBridge.as): a no-op without a follower.
-	if (IsLocalController() && HOLPlayerState)
+	const AHOLPlayerState* FollowPlayerState = GetHOLPlayerState();
+	if (IsLocalController() && FollowPlayerState)
 	{
-		UHOLFollowBridge::NativeStep(this, HOLPlayerState->GetPlayerIndex());
+		UHOLFollowBridge::NativeStep(this, FollowPlayerState->GetPlayerIndex());
 	}
 }
 
