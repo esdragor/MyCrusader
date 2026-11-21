@@ -63,8 +63,13 @@ namespace HOLStealth
 	}
 
 	// Per-camp view (D824 Q1 A): is the unit of UnitCamp at UnitPosition visible, as far as stealth goes, to the camp ViewerCamp whose units stand at ViewerPositions?
-	// STUB (red test first): always visible.
+	// Allies (same camp) always see it; an enemy camp sees it only through IsHiddenFrom (within Distance, inclusive, or inside the zone).
 	bool IsVisibleToCamp(const TArray<FHOLStealthZone>& Zones, int UnitCamp, const FVector2D& UnitPosition, int ViewerCamp, const TArray<FVector2D>& ViewerPositions, float Distance)
 	{
-		return true;
-	}}
+		if (ViewerCamp == UnitCamp)
+		{
+			return true;
+		}
+		return !IsHiddenFrom(Zones, UnitPosition, ViewerPositions, Distance);
+	}
+}
