@@ -2730,3 +2730,12 @@ UHOLScenarioPanelScript ScenarioPanel;
 			+ "\npause: " + PauseView.Describe + (PauseTexts.IsEmpty() ? "" : "\npause texts: " + PauseTexts);
 	}
 }
+
+// The faction slot's bottom padding (FARAMIR-1121se): the bottom left place plus the rise, and never under the hero block's top edge (plus 8 px).
+namespace HOLFactionSlotRule
+{
+	float BottomPadding(float BaseBottom, float Rise, float RoomHeight, float HeroTop, bool bHeroKnown)
+	{
+		return BaseBottom + Rise;
+	}
+}
