@@ -72,4 +72,11 @@ namespace HOLStealth
 		}
 		return !IsHiddenFrom(Zones, UnitPosition, ViewerPositions, Distance);
 	}
+
+	// Look (D824 Q3 B): the discreet ground outline of a zone shows when the player hovers it or when one of the player's own units stands in it.
+	// STUB (red test first): never shows.
+	bool ShowsOutline(const FHOLStealthZone& Zone, bool bHovered, const TArray<FVector2D>& OwnPositions)
+	{
+		return false;
+	}
 }
