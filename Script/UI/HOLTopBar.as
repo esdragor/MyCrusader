@@ -87,6 +87,11 @@ namespace HOLTopBar
 	FIncomeTipView IncomeTipView(int PerMinute, int Resource)
 	{
 		FIncomeTipView View;
+		View.Text = IncomeTip(PerMinute, ResourceWord(Resource));
+		View.Fill = FLinearColor(0.03, 0.035, 0.045, 0.96);
+		View.Border = FLinearColor(0.85, 0.6, 0.08, 1.0);
+		View.BorderWidth = 1.0;
+		View.Padding = 6.0;
 		return View;
 	}
 
@@ -209,6 +214,9 @@ class UHOLTopBarPanel : UObject
 	UCommonTextBlock StoneGatherers;
 	UCommonTextBlock GoldGatherers;
 	UCommonTextBlock PopulationAmount;
+	// D814 (B): the income tooltips, 8 HUD panels (the amount's and the gatherers' of each resource: a Slate widget has one parent), built at the first SetIncomeTips.
+	TArray<UBorder> IncomeTipPanels;
+	TArray<UCommonTextBlock> IncomeTipTexts;
 	UHOLQueueItem IdleWorkers;
 	UBorder MenuPanel;
 	UHOLQueueItem MenuButton;
@@ -423,16 +431,49 @@ class UHOLTopBarPanel : UObject
 		return HOLTopBar::WorkersLine(bEconomyShown, ShownGatherers, ShownIdleWorkers);
 	}
 
-	void SetIncomeTips(FHOLResources Income)
+	void EnsureIncomeTipPanels()
 	{
-		for (int Resource = 0; Resource < 4; Resource++)
+		if (IncomeTipPanels.Num() > 0)
+			return;
+		for (int Index = 0; Index < 8; Index++)
 		{
-			const FText Tip = FText::FromString(HOLTopBar::IncomeTip(HOLTopBar::AmountOf(Income, Resource), HOLTopBar::ResourceWord(Resource)));
-			AmountOf(Resource).SetToolTipText(Tip);
-			GatherersOf(Resource).SetToolTipText(Tip);
+			UBorder Panel = Screen.MakePanel(FName(f"IncomeTipPanel{Index}"));
+			UCommonTextBlock Text = Screen.MakeText(FName(f"IncomeTipText{Index}"), UHOLTextStyleHUD);
+			Text.SetVisibility(ESlateVisibility::HitTestInvisible);
+			Panel.SetContent(Text);
+			Panel.SetVisibility(ESlateVisibility::HitTestInvisible);
+			IncomeTipPanels.Add(Panel);
+			IncomeTipTexts.Add(Text);
+			if (Index % 2 == 0)
+				AmountOf(Index / 2).SetToolTip(Panel);
+			else
+				GatherersOf(Index / 2).SetToolTip(Panel);
 		}
 	}
 
+	void SetIncomeTips(FHOLResources Income)
+	{
+		EnsureIncomeTipPanels();
+		for (int Resource = 0; Resource < 4; Resource++)
+		{
+			const HOLTopBar::FIncomeTipView View = HOLTopBar::IncomeTipView(HOLTopBar::AmountOf(Income, Resource), Resource);
+			for (int Side = 0; Side < 2; Side++)
+			{
+				const int Index = Resource * 2 + Side;
+				FSlateBrush Brush;
+				Brush.DrawAs = ESlateBrushDrawType::RoundedBox;
+				Brush.TintColor = FSlateColor(View.Fill);
+				Brush.OutlineSettings.RoundingType = ESlateBrushRoundingType::FixedRadius;
+				Brush.OutlineSettings.CornerRadii = FVector4(4.0, 4.0, 4.0, 4.0);
+				Brush.OutlineSettings.Color = FSlateColor(View.Border);
+				Brush.OutlineSettings.Width = View.BorderWidth;
+				IncomeTipPanels[Index].SetBrush(Brush);
+				IncomeTipPanels[Index].SetBrushColor(FLinearColor(1.0, 1.0, 1.0, 1.0));
+				IncomeTipPanels[Index].SetPadding(FMargin(View.Padding));
+				IncomeTipTexts[Index].SetText(FText::FromString(View.Text));
+			}
+		}
+	}
 	// RefreshTopBar + RefreshIdleWorkers + RefreshStatsButton of the C++ screen, in one: the bar from the economy of the player the screen shows (its
 	// BoundPlayerState: a spectator's followed player), the idle counter from the controller, « Statistiques » from the match's state.
 	void Refresh()
