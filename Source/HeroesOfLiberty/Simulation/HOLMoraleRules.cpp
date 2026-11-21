@@ -229,7 +229,8 @@ namespace HOLMorale
 
 	int32 TakenPercent(const FHOLMoraleState& State, int32 OtherReductionPercent)
 	{
-		return 100; // STUB (red first): the real net lands with the next commit.
+		const int32 Net = Total(State, LeverTaken) + OtherReductionPercent;
+		return 100 - FMath::Min(Net, BonusCap(LeverTaken));
 	}
 
 	int32 Multiplier(const FHOLMoraleState& State, int32 Lever)
