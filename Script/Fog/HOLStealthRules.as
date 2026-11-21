@@ -89,4 +89,10 @@ namespace HOLStealth
 		}
 		return false;
 	}
+
+	// Look (D824 Q3 B): a unit of the player standing in a stealth zone is drawn half transparent. Render opacity 0..1 (1 = opaque). STUB (red first).
+	float OwnUnitOpacity(const TArray<FHOLStealthZone>& Zones, const FVector2D& UnitPosition)
+	{
+		return 1.0;
+	}
 }
