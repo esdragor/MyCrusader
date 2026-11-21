@@ -109,6 +109,7 @@ namespace HOLAlertRules
 		Alert.LineSeconds = MinorLineSeconds;
 		Alert.SoundKey = Kind == EHOLMinorAlertKind::ResearchDone ? n"MinorResearchDone" : n"MinorBuildingDone";
 		Alert.bPingMinimap = true;
+		Alert.AudioEvent = Kind == EHOLMinorAlertKind::ResearchDone ? HOLAudioEvent::AlertTechDone : HOLAudioEvent::AlertBuildingDone;
 		return Alert;
 	}
 
