@@ -18,3 +18,5 @@ Commande complète (règle 13, 2026-11-14) :
 Durée : environ 1 min. Réponse attendue : `OK`, `BUG: ...` ou `REGLAGE: ...`.
 
 Correctif FARAMIR-1121sg (2026-11-21 20:21) : cause (c) scenario, pas le code : le Moine etait a ~1741 du heros (-17535 300), hors aura (rayon 1200), donc bBoosted=false (HOLHealProcessor.cpp:314) et trait vert. Scenario deplace en -17000 450 (~550 du heros) ; preflight PASS, talents_heal_boosted.png ouvert : '++' dore visible (76 px or, 0 vert), base : vert. branche zone-effect, commit du scenario seulement. Statut reste LOGIQUE SEULEMENT (GESTE interne).
+recette: RECETTE-1121sd PASS sur main a4f3531 (Sauron) : preflight PASS, 3 PNG ouverts : jauge SacredLight au-dessus du bloc heros (base, cell, boosted), aucun ++ sur l Arbre de talents, boosted : ++ dore visible a cote du trait de soin (Mains du guerisseur pris) ; base : + vert. Statut reste LOGIQUE SEULEMENT (GESTE interne).
+Commande play.ps1 (RECETTE-1121sd) : powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Sauron\Tools\Scenarios\play.ps1 talents_heal -Root C:\Users\baudo\Documents\HeroesOfLiberty-Sauron
