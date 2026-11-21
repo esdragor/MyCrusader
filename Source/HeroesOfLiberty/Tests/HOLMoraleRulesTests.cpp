@@ -5,7 +5,13 @@
 #include "MassEntitySubsystem.h"
 #include "Misc/AutomationTest.h"
 #include "Simulation/HOLSimulationFragments.h"
+#include "MassExecutor.h"
+#include "MassProcessingContext.h"
+#include "Simulation/HOLCombatRules.h"
+#include "Simulation/HOLMoraleProcessor.h"
 #include "Simulation/HOLMoraleRules.h"
+#include "Simulation/HOLSimulationSettings.h"
+#include "Simulation/HOLSimulationSubsystem.h"
 #include "Simulation/HOLMoraleTableRows.h"
 #include "Simulation/HOLUnitSubsystem.h"
 
@@ -312,5 +318,84 @@ bool FHOLMoraleUnitArchetypeTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+// PLAN-MORAL-1120 step 4 (D866), the processor's first rule: each fixed step UHOLMoraleProcessor lets the time pass on the fragment of every unit
+// (HOLMorale::Tick). A unit born through the real chain carries a temporary effect and an aura; the processor runs on the entity manager as a
+// match runs it; the entity's own fragment is read back. The expected values are CALCULATED by the rule on a copy (never typed). RED until the
+// processor's Execute applies the rule (its stub does nothing).
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLMoraleProcessorTest, "HeroesOfLiberty.Morale.ProcessorTicksTheFragment", UE::HeroesOfLiberty::Tests::MoraleRules::Flags)
+
+bool FHOLMoraleProcessorTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::MoraleRules;
+	UWorld* World = UWorld::CreateWorld(EWorldType::Game, /*bInformEngineOfWorld*/ false);
+	FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);
+	Context.SetCurrentWorld(World);
+	World->InitializeActorsForPlay(FURL());
+
+	UHOLUnitSubsystem* Units = World->GetSubsystem<UHOLUnitSubsystem>();
+	UHOLSimulationSubsystem* Simulation = World->GetSubsystem<UHOLSimulationSubsystem>();
+	UMassEntitySubsystem* EntitySubsystem = World->GetSubsystem<UMassEntitySubsystem>();
+	if (TestNotNull(TEXT("units"), Units) && TestNotNull(TEXT("simulation"), Simulation) && TestNotNull(TEXT("entities"), EntitySubsystem))
+	{
+		TSharedPtr<FMassEntityManager> EntityManager = EntitySubsystem->GetMutableEntityManager().AsShared();
+		UHOLMoraleProcessor* Morale = NewObject<UHOLMoraleProcessor>(Simulation);
+		Morale->CallInitialize(Simulation, EntityManager.ToSharedRef());
+		const float StepSeconds = GetDefault<UHOLSimulationSettings>()->GetStepSeconds();
+		const int32 StepMs = HOLCombat::ToMilliseconds(StepSeconds);
+
+		TArray<uint32> Before;
+		Units->GetAllUnitIds(Before);
+		FHOLUnitSpawnRequest Request;
+		Request.TypeName = FName(TEXT("ManAtArms"));
+		Request.Count = 1;
+		Request.OwnerPlayer = 0;
+		Request.Center = FVector(0.0, 0.0, 0.0);
+		Units->RequestUnits(Request);
+		Units->ServeBirthRequests();
+		TArray<uint32> After;
+		Units->GetAllUnitIds(After);
+		uint32 Born = 0;
+		for (const uint32 Id : After)
+		{
+			Born = Before.Contains(Id) ? Born : Id;
+		}
+		const FMassEntityHandle Entity = TestTrue(TEXT("a unit was born"), Born != 0) ? Units->FindEntity(Born) : FMassEntityHandle();
+		FHOLMoraleFragment* Fragment = Entity.IsSet() ? EntityManager->GetFragmentDataPtr<FHOLMoraleFragment>(Entity) : nullptr;
+		if (TestNotNull(TEXT("the unit carries FHOLMoraleFragment"), Fragment))
+		{
+			// A temporary effect (1000 ms, 25 % less damage taken) and an aura (10 % more damage dealt, does not run down).
+			HOLMorale::Apply(Fragment->State, HOLMorale::MakeEffect(IdA, 0, 25, 0, 1000, false));
+			HOLMorale::Apply(Fragment->State, HOLMorale::MakeEffect(IdB, 10, 0, 0, 0, true));
+			// What the rule leaves after ONE step, calculated on a copy.
+			HOLMorale::FHOLMoraleState Expected = Fragment->State;
+			HOLMorale::Tick(Expected, StepMs);
+
+			const auto RunStep = [&EntityManager, &Morale, StepSeconds]
+			{
+				FMassProcessingContext ProcessingContext(*EntityManager, StepSeconds);
+				UE::Mass::Executor::Run(*Morale, ProcessingContext);
+			};
+			RunStep();
+			const FHOLMoraleFragment* Now = EntityManager->GetFragmentDataPtr<FHOLMoraleFragment>(Entity);
+			TestTrue(TEXT("one step: the temporary effect lost one step of time"), Now && Now->State.Effects[0].DurationMs == Expected.Effects[0].DurationMs);
+			TestTrue(TEXT("one step: the time left is less than it was"), Now && Now->State.Effects[0].DurationMs < 1000);
+			TestEqual(TEXT("one step: the aura did not run down"), Now ? Now->State.Effects[1].DurationMs : -1, Expected.Effects[1].DurationMs);
+
+			// Enough steps for the temporary effect to end: it leaves, the aura stays (the unit is not empty, the dealt lever still reads 10).
+			for (int32 Steps = 1; Steps <= 1000 / FMath::Max(StepMs, 1) + 1; ++Steps)
+			{
+				RunStep();
+			}
+			Now = EntityManager->GetFragmentDataPtr<FHOLMoraleFragment>(Entity);
+			TestFalse(TEXT("the temporary effect has ended"), Now && HOLMorale::Has(Now->State, IdA));
+			TestTrue(TEXT("the aura stays"), Now && HOLMorale::Has(Now->State, IdB));
+			TestEqual(TEXT("the aura still acts on the damage dealt"), Now ? HOLMorale::Total(Now->State, HOLMorale::LeverDealt) : -1, 10);
+		}
+	}
+
+	GEngine->DestroyWorldContext(World);
+	World->DestroyWorld(false);
+	return true;
+}
 #endif // WITH_DEV_AUTOMATION_TESTS
 
