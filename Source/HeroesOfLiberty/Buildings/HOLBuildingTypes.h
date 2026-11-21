@@ -315,6 +315,17 @@ namespace HOLBuildingTypeNames
 	{
 		return TypeName == MainCentre || TypeName == SecondaryCentre;
 	}
+	/**
+	 * Which of these building types a "the player's centre" read takes (D879 option A, SC3): the index of the first MainCentre, else of the
+	 * first other centre (a player whose forum is lost or not yet placed still has its secondary one), else INDEX_NONE. Used by
+	 * UHOLControllerReadLibrary::FindMainCentre, the single source of the console commands and the script RPC reads. The enemy / AI / Nomad
+	 * rules stay "main forum only" (SC6).
+	 */
+	inline int32 FindCentreIndex(const TArray<FName>& Types)
+	{
+		// STUB (red): only the main centre, the secondary centre is not taken yet.
+		return Types.IndexOfByKey(MainCentre);
+	}
 	/** +10 population (D83, D310). */
 	inline const FName House(TEXT("House"));
 	/** Wood deposit (D310); S7 places some by code. */

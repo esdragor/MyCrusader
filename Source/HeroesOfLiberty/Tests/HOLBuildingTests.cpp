@@ -1035,4 +1035,20 @@ bool FHOLBuildingAnyCentreTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+// D879 (SC3): the player's centre read (FindMainCentre, console Rally / Queue / RallySite / DropOff / PointNear) falls back to the secondary
+// centre when no main centre is owned; the main centre still wins when both are owned.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLBuildingCentrePickTest, "HeroesOfLiberty.Buildings.CentrePick", UE::HeroesOfLiberty::Tests::Buildings::Flags)
+bool FHOLBuildingCentrePickTest::RunTest(const FString& Parameters)
+{
+	const FName Main = HOLBuildingTypeNames::MainCentre;
+	const FName Second = HOLBuildingTypeNames::SecondaryCentre;
+	const FName House = HOLBuildingTypeNames::House;
+	TestEqual(TEXT("a secondary centre alone is picked"), HOLBuildingTypeNames::FindCentreIndex({ House, Second }), 1);
+	TestEqual(TEXT("the main centre wins over a secondary one listed first"), HOLBuildingTypeNames::FindCentreIndex({ Second, House, Main }), 2);
+	TestEqual(TEXT("the main centre alone is picked"), HOLBuildingTypeNames::FindCentreIndex({ Main }), 0);
+	TestEqual(TEXT("no centre gives INDEX_NONE"), HOLBuildingTypeNames::FindCentreIndex({ House }), static_cast<int32>(INDEX_NONE));
+	TestEqual(TEXT("nothing gives INDEX_NONE"), HOLBuildingTypeNames::FindCentreIndex({}), static_cast<int32>(INDEX_NONE));
+	return true;
+}
+
 #endif
