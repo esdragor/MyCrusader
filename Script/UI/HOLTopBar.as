@@ -175,6 +175,12 @@ namespace HOLTopBar
 		return HOLTopBarText::Replace1(HOLTopBarText::IdleWorkers(), f"{Count}");
 	}
 
+	// The label shown differs from the one the current language gives for this count (a live language switch with the count unchanged).
+	bool IdleLabelChanged(FString ShownLabel, int Count)
+	{
+		return ShownLabel != IdleLabel(Count);
+	}
+
 	bool IdleEnabled(int Count)
 	{
 		return Count > 0;
@@ -238,6 +244,7 @@ class UHOLTopBarPanel : UObject
 	int ShownPopulationUsed = 0;
 	int ShownPopulationCap = 0;
 	int ShownIdleWorkers = -1;
+	FString ShownIdleLabel;
 	bool bIncomeKnown = false;
 	FString ShownTipKey;
 	bool bStatsShown = false;
@@ -516,10 +523,11 @@ class UHOLTopBarPanel : UObject
 		}
 
 		const int Count = Screen.GetIdleWorkerCount();
-		if (HOLTopBar::IdleChanged(ShownIdleWorkers, Count))
+		if (HOLTopBar::IdleChanged(ShownIdleWorkers, Count) || HOLTopBar::IdleLabelChanged(ShownIdleLabel, Count))
 		{
 			ShownIdleWorkers = Count;
-			IdleWorkers.SetLabel(FText::FromString(HOLTopBar::IdleLabel(Count)));
+			ShownIdleLabel = HOLTopBar::IdleLabel(Count);
+			IdleWorkers.SetLabel(FText::FromString(ShownIdleLabel));
 			IdleWorkers.SetIsEnabled(HOLTopBar::IdleEnabled(Count));
 		}
 

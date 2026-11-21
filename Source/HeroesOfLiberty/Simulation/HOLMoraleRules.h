@@ -110,6 +110,11 @@ namespace HOLMorale
 	// What combat reads: the percent of the damage dealt, of the damage taken, of the attack rate. The damage taken falls when the benefit rises.
 	int32 Multiplier(const FHOLMoraleState& State, int32 Lever);
 
+	// The percent of a strike the unit takes: 100 less the benefit of its damage-taken lever plus OtherReductionPercent (the cry, still posed apart),
+	// together at most BonusCap(LeverTaken); a malus (negative net) takes more than 100. The combat reads this: the Dawn aura reaches the damage here
+	// only, through the lever (one source: the row of Effects.csv), never again through a constant of the combat.
+	int32 TakenPercent(const FHOLMoraleState& State, int32 OtherReductionPercent);
+
 	// The time passes on the fixed step: temporary effects run down and end at 0, auras do not run down, the immunity runs down to 0.
 	void Tick(FHOLMoraleState& State, int32 ElapsedMs);
 

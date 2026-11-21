@@ -167,6 +167,18 @@ namespace HOLCheatPanelRules
 		return HOLCheatPanelText::SpeedLabel().ToString().Replace("{0}", Name.ToString()).Replace("{1}", OneDecimal(Scale));
 	}
 
+	// The texts the panel's toggle, fast build and two speed labels show, joined: a text rewritten only on a click kept its language after a live switch,
+	// so the panel compares what it shows with what the current language would show (the texts are passed in: the rule does not read the language).
+	FString LabelsSignature(const FString& Toggle, const FString& FastBuild, const FString& Unit, const FString& Gather)
+	{
+		return Toggle + "~" + FastBuild + "~" + Unit + "~" + Gather;
+	}
+
+	bool LabelsStale(const FString& Shown, const FString& Toggle, const FString& FastBuild, const FString& Unit, const FString& Gather)
+	{
+		return Shown != LabelsSignature(Toggle, FastBuild, Unit, Gather);
+	}
+
 	// A cheat button (not the toggle) is refused while the panel is folded (ClickWidget of the C++ returns false); the toggle always answers.
 	bool ButtonClickable(bool bOpen) { return bOpen; }
 
@@ -407,8 +419,27 @@ class UHOLCheatPanelScript : UObject
 			HOLControllerCommands::Send(Controller, Plan, FVector::ZeroVector); // The panel's commands (resources, population, fast build, speeds) need no point.
 	}
 
+	// The signature of the labels last written (empty before the first write), see HOLCheatPanelRules::LabelsStale.
+	FString LabelsShown;
+
+	FString LabelsNow()
+	{
+		return HOLCheatPanelRules::LabelsSignature(HOLCheatPanelRules::ToggleLabel(bOpen).ToString(), HOLCheatPanelRules::FastBuildLabel(bFastBuild).ToString(),
+			HOLCheatPanelRules::SpeedLabelText(0, UnitScale), HOLCheatPanelRules::SpeedLabelText(1, GatherScale));
+	}
+
+	// Called each Refresh: rewrites the labels when only the language changed (the stale rule), nothing otherwise.
+	void RelabelOnLanguageChange()
+	{
+		if (Toggle == nullptr || UnitSpeedLabel == nullptr || GatherSpeedLabel == nullptr)
+			return;
+		if (LabelsShown != LabelsNow())
+			RefreshLabels();
+	}
+
 	void RefreshLabels()
 	{
+		LabelsShown = LabelsNow();
 		Toggle.SetLabel(HOLCheatPanelRules::ToggleLabel(bOpen));
 		CheatButtons[HOLCheatPanelRules::FastBuildIndex()].SetLabel(HOLCheatPanelRules::FastBuildLabel(bFastBuild));
 		UnitSpeedLabel.SetText(FText::FromString(HOLCheatPanelRules::SpeedLabelText(0, UnitScale)));
@@ -454,6 +485,7 @@ class UHOLCheatPanelScript : UObject
 			return;
 		bHeroBlockShown = bInHeroBlockShown;
 		FollowServerSettings();
+		RelabelOnLanguageChange();
 		const float Height = HOLCheatSettings::GetWindowHeight();
 		FHOLHUDFoldState Previous;
 		Previous.bWasLow = bWasLowWindow;

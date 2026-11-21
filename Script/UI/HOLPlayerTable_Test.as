@@ -131,3 +131,32 @@ void Test_PlayersTablePlanRedrawsAndLogsOnlyOnChange(FUnitTest& T)
 	T.AssertFalse(Left.bPanelVisible, "the panel hides without a row");
 	T.AssertEquals(Left.NamesLog, "Players table: ", "the names line with an empty list, as the C++");
 }
+
+// GALADRIEL-1121sf: the language-neutral report (Shown) does not change on a live language switch; the names / lives / states the rows DISPLAY do
+// (« 2 vies » -> « 2 lives »). The table must redraw on the displayed text, not only on the report (same trap as the idle label and the income tips).
+void Test_PlayersTableRedrawsWhenOnlyTheDisplayedTextChanges(FUnitTest& T)
+{
+	TArray<FHOLPlayerRow> French;
+	French.Add(PT_Row(0, "Vous", "slot 0 you colour 1 lives 2 standing"));
+	French.Add(PT_Row(1, "IA Normal 2", "slot 1 enemy colour 3 lives 2 standing"));
+	French[0].Lives = "2 vies";
+	French[1].Lives = "2 vies";
+
+	TArray<FHOLPlayerRow> English;
+	English.Add(PT_Row(0, "You", "slot 0 you colour 1 lives 2 standing"));
+	English.Add(PT_Row(1, "AI Normal 2", "slot 1 enemy colour 3 lives 2 standing"));
+	English[0].Lives = "2 lives";
+	English[1].Lives = "2 lives";
+
+	FHOLPlayerTableMemory Memory;
+	FHOLPlayerTablePlan First = HOLPlayerTable::Plan(Memory, French);
+	Memory = First.Memory;
+	FHOLPlayerTablePlan Same = HOLPlayerTable::Plan(Memory, French);
+	T.AssertFalse(Same.bRedraw, "same report, same texts: not redrawn");
+
+	FHOLPlayerTablePlan Switched = HOLPlayerTable::Plan(Memory, English);
+	T.AssertTrue(Switched.bRedraw, "same report, the displayed names / lives changed with the language: redrawn");
+	Memory = Switched.Memory;
+	FHOLPlayerTablePlan Settled = HOLPlayerTable::Plan(Memory, English);
+	T.AssertFalse(Settled.bRedraw, "after the redraw in English: stable again");
+}

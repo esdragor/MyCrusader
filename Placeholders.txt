@@ -196,9 +196,11 @@ Un chantier ne se clôt pas sans avoir relu ce fichier.
 - Case D du Mangonneau pendant le montage : texte Montage... / Demontage... et barre en caracteres [###-----] (pas de widget, pas d'animation, durees locales) : a remplacer par une vraie barre et l'animation (D869b) [texte]
 Depart Nomade (D797 : carte entiere, ScatterRadiusCm 0) : ecart hol.Nomad.GroupSpacingCm 1500 provisoires (D207 dit 'endroits aleatoires de la carte'), HALDIR-1114c
 Specialisation (SP3) : libelles Voie A / Voie B du palier N dans la grille du Forum, provisoires (noms GDD 13 par faction a brancher)
-Slot de faction (jauge Honneur) : texte + barre jaune + une ligne par pouvoir, position = coin bas gauche + 150 px (FactionSlotRise), sans icone ni libelle de la table de textes.
+Slot de faction (jauge Honneur) : texte + barre jaune + une ligne par pouvoir (HOLPowerDisplay.as, GALADRIEL-1121sh : libelles FR/EN/JA dans Game.po), position = coin bas gauche + 150 px (FactionSlotRise), sans icone ; nom du pouvoir "Lumiere sacree" / "Sacred Light" / "聖なる光" provisoire, seule SacredLight a un nom, les autres cles s affichent telles quelles [nom]
 Son d'alerte mineure (Population pleine, attaque ailleurs) : ping 1 kHz du moteur (/Engine/EngineSounds/1kSineTonePing), pas un son choisi, GALADRIEL-1120c [son]
 Marque du signal qui pulse (sol et mini-carte) : bornes 0,8 a 1,4 et 3 cycles (cvars hol.Signal.PulseMin/PulseMax/MarkCycles, style hol.Signal.MarkStyle) provisoires, D860, GLORFINDEL-1120b [style]
 Sceau de lumiere (zone au sol) : aucun visuel, aucun son ; le pouvoir n'a pas de bouton (visee C++ faite, boutons a brancher), valeurs D859, FARAMIR-1120a/e [rien]
 Champ de saisie du chat (Entree) : sans style (bordure et texte par defaut du moteur), non branche a l'ecran, GLORFINDEL-1120h [style]
 - Icones des unites dans le cadre de garnison (bouton d'un occupant : /Game/UI/Icons/Units/T_Unit_<Type>, aucune texture ; le nom du type s'affiche a la place) [rien]
+Furtivite : opacite des unites du joueur dans une zone = 50 % (cvar hol.Stealth.OwnOpacityPercent, valeur du GDD D824 Q3 B) ; stockee par UHOLUnitOpacityLibrary mais PAS encore dessinee (materiau unite sans entree d opacite, ARWEN-1121sg)
+Traductions EN/JA provisoires (litterales, sans equivalent etabli dans la grille AoE4 ni le vocabulaire du jeu) : Voie A/B/C du palier (Path / ルート), signaux de ping (Attack here, Defend here, Need help, Rally, Scout here), Sortir / Sortir tous (Unload / 退出), Centre secondaire (Secondary Center / 第二の本拠地), GALADRIEL-1121sj [texte]

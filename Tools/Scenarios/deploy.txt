@@ -115,6 +115,31 @@ frames 20
 hol.HUD.Report
 capture deploy_attack_hit
 note 10. Monte, l'engin tire seul sur la Maison designee (PV entames, coups de 45), sans autre ordre.
+# Etape 11 (ELROND-1121sd, D877) : engin DEMONTE LOIN de la cible, clic droit sur la Maison : il doit marcher jusqu a portee, se monter, tirer.
+hol.Camera.FocusNear 3000 -2500
+hol.Cheat.SpawnBuilding House 1 3000 -5500
+waitlog Cheat: spawned House of slot 1
+hol.Select.ClickUnit -1
+waitlog Selection: Mangonel
+hol.UI.Key D 0 0.1
+waitlog Order: 1 units pack up
+wait 2
+hol.Select.Report
+capture deploy_far_start
+note 11. Engin demonte loin de la 2e Maison (hors portee 3000).
+hol.Select.OrderNear 3000 -5500
+waitlog units attack
+wait 1
+hol.Select.Report
+capture deploy_far_walking
+wait 4
+hol.Select.Report
+capture deploy_far_midway
+wait 10
+hol.Select.Report
+hol.HUD.Report
+capture deploy_far_end
+note 12. Attendu : a portee, monte, tire sur la Maison (pas de marche jusqu au mur).
 hol.Test.Sanity
 note 5. A toi : D monte ou demonte l'engin selectionne ; un ordre de marche le demonte, un ordre d'attaque le monte s'il est a portee (delais et portees proposes, Palier3InProgress.md G5).
 # The scenario's real end: an agent's play.ps1 -Hidden closes here instead of at its -TimeoutSec; the user's own run ignores it and plays on.

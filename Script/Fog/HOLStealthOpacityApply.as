@@ -8,7 +8,7 @@ namespace HOLStealthApply
 {
 	void ApplyOwnUnit(const TArray<FHOLStealthZone>& Zones, int UnitId, const FVector2D& UnitPosition)
 	{
-		UHOLUnitOpacityLibrary::SetStealthOpacity(UnitId, HOLStealth::OwnUnitOpacity(Zones, UnitPosition));
+		HOLUnitOpacity::SetStealthOpacity(UnitId, HOLStealth::OwnUnitOpacity(Zones, UnitPosition));
 	}
 
 	void ApplyOwnUnits(const TArray<FHOLStealthZone>& Zones, const TArray<int>& UnitIds, const TArray<FVector2D>& Positions)

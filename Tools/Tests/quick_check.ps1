@@ -2056,7 +2056,7 @@ if ($Parts -contains "camera") {
                 "hol.Units.Spawn 1 $($AuraSpot -join ' ') 0 Spearman 10", "hol.Units.Spawn 1 $($AuraSpot[0] + 150) $($AuraSpot[1]) 1 ManAtArms 10",
                 "hol.Units.Spawn 1 $($AuraSpot[0]) $($AuraSpot[1] + 1500) 1 Archer 10", "waitlog ManAtArms hits #", "wait 3",
                 "hol.Units.Remove $($AuraHero -join ' ') 4000 1", "hol.Units.Remove $($AuraHero -join ' ') 4000 0 Spearman", "wait 0.3",
-                "hol.Units.Spawn 1 $($AuraSpot -join ' ') 0 Spearman 10", "wait 0.3", "hol.Hero.CloseRanks 0", "waitlog cries Serrez les rangs,",
+                "hol.Units.Spawn 1 $($AuraSpot -join ' ') 0 Spearman 10", "wait 0.3", "hol.Hero.CloseRanks 0", "waitlog Hero ability: slot 0 cries Serrez les rangs", "wait 0.3",
                 "hol.Hero.CloseRanks 0", "hol.Units.Spawn 1 $($AuraSpot[0] + 150) $($AuraSpot[1]) 1 ManAtArms 10",
                 "hol.Units.Spawn 1 $($AuraSpot[0]) $($AuraSpot[1] + 1500) 1 Archer 10", "waitlog ManAtArms hits #", "wait 3",
                 "hol.Units.Remove $($AuraHero -join ' ') 4000 1", "hol.Units.Remove $($AuraHero -join ' ') 4000 0 Spearman", "wait 0.3",
@@ -2078,7 +2078,7 @@ if ($Parts -contains "camera") {
             Step "mark build hero hold", "hol.Camera.Focus $($AuraHero -join ' ')", "frames 3",
                 "hol.Units.Spawn 1 $($AuraHero -join ' ') 0 Hero 100", "wait 0.5",
                 "hol.Units.Spawn 1 $($HoldSpot -join ' ') 0 Spearman 10", "hol.Units.Spawn 1 $($HoldFar -join ' ') 0 Spearman 10", "wait 0.5",
-                "hol.Hero.ResetAbilities 0", "hol.Hero.CloseRanks 0", "waitlog cries Serrez les rangs,", "wait 0.3", "hol.Units.Report 500",
+                "hol.Hero.ResetAbilities 0", "hol.Hero.CloseRanks 0", "waitlog Hero ability: slot 0 cries Serrez les rangs", "wait 0.3", "hol.Units.Report 500",
                 "hol.Units.Move $($AuraHero[0] + 1500) $($AuraHero[1]) 0", "wait 5", "hol.Units.Report 500", "wait 12", "hol.Units.Report 500",
                 "hol.Units.Remove $($AuraHero -join ' ') 6000 0 Spearman", "hol.Units.Remove 0 0 60000 0 Hero", "hol.Hero.ResetAbilities 0", "hol.Hero.SetXP 0 0", "wait 0.3",
                 "hol.Camera.FocusSlot 0", "frames 3", "hol.Select.Click 0.5 0.5", "waitlog Selection: MainCentre of slot 0 (own)"
@@ -2094,7 +2094,7 @@ if ($Parts -contains "camera") {
                 "hol.Hero.SetXP 0 3300", "waitlog Hero level: slot 0 level 4 -> 6", "wait 0.5", "hol.HUD.Report", "frames 8", "capture build_hero_family",
                 "hol.HUD.Click TalentWindowAdvised", "waitlog Hero talent order: slot 0 family 1 at step", "wait 0.5", "hol.HUD.Report", "hol.HUD.Click TalentKey", "hol.HUD.Report",
                 "hol.Units.Spawn 1 $($HoldSpot -join ' ') 0 Spearman 10", "hol.Units.Spawn 1 $($HoldFar -join ' ') 0 Spearman 10", "wait 0.5",
-                "hol.Hero.ResetAbilities 0", "hol.Hero.CloseRanks 0", "waitlog cries Serrez les rangs,", "wait 0.3", "hol.Units.Report 500",
+                "hol.Hero.ResetAbilities 0", "hol.Hero.CloseRanks 0", "waitlog Hero ability: slot 0 cries Serrez les rangs", "wait 0.3", "hol.Units.Report 500",
                 "hol.Units.Move $($AuraHero[0] + 1500) $($AuraHero[1]) 0", "wait 5", "hol.Units.Report 500",
                 "hol.Units.Remove $($AuraHero -join ' ') 6000 0 Spearman", "hol.Units.Remove 0 0 60000 0 Hero", "hol.Hero.ResetAbilities 0", "hol.Hero.ResetTalents 0", "hol.Hero.SetXP 0 0", "wait 0.3",
                 "hol.Camera.FocusSlot 0", "frames 3", "hol.Select.Click 0.5 0.5", "waitlog Selection: MainCentre of slot 0 (own)"
@@ -4748,7 +4748,7 @@ if (($Parts -contains "build") -and ($Parts -contains "camera")) {
     $Checks = [ordered]@{}
     $CryAt = -1; $BannerAt = -1
     for ($i = 0; $i -lt $Aura.Count; $i++) {
-        if ($CryAt -lt 0 -and $Aura[$i] -match "slot 0 cries Serrez les rangs, ") { $CryAt = $i }
+        if ($CryAt -lt 0 -and $Aura[$i] -match "Hero ability: slot 0 cries Serrez les rangs") { $CryAt = $i }
         if ($BannerAt -lt 0 -and $Aura[$i] -match "Hero level: slot 0 level 1 -> 4") { $BannerAt = $i }
     }
     $AuraPhases = @(
@@ -4760,9 +4760,9 @@ if (($Parts -contains "build") -and ($Parts -contains "camera")) {
     $Checks["in his aura: the Man-at-arms' hits Spearman 10.2 or Hero 3.06, the arrows 8.5 (hits $($AuraHits[0] -join ', '); arrows $($AuraArrows[0] -join ', '))"] =
         ($AuraHits[0].Count -ge 1) -and (@($AuraHits[0] | Where-Object { $_ -notin @("Spearman 10.2", "Hero 3.06") }).Count -eq 0) -and
         ($AuraArrows[0].Count -ge 1) -and (@($AuraArrows[0] | Where-Object { $_ -ne "8.5" }).Count -eq 0)
-    $Cried = if ($CryAt -ge 0 -and $Aura[$CryAt] -match "cries Serrez les rangs, (\d+) unit") { [int]$Matches[1] } else { -1 }
-    $Checks["the cry: him and the Spearman under it ($Cried units), refused again during its cool-down"] =
-        ($Cried -ge 2) -and (@($Aura | Select-String -SimpleMatch "Hero ability: slot 0 cries Serrez les rangs").Count -eq 1) -and
+    # The cry is laid by the morale processor (no "N units under it" line any more): its effect is the hits of the next phase (7.2, 2.16, 6).
+    $Checks["the cry cast once, refused again during its cool-down"] =
+        (@($Aura | Select-String -SimpleMatch "Hero ability: slot 0 cries Serrez les rangs").Count -eq 1) -and
         [bool]($Aura | Select-String -SimpleMatch "hol.Hero.CloseRanks: slot 0 refused" -Quiet)
     $Checks["under aura and cry: hits Spearman 7.2 or Hero 2.16, arrows 6 (hits $($AuraHits[1] -join ', '); arrows $($AuraArrows[1] -join ', '))"] =
         ($AuraHits[1].Count -ge 1) -and (@($AuraHits[1] | Where-Object { $_ -notin @("Spearman 7.2", "Hero 2.16") }).Count -eq 0) -and
