@@ -22,6 +22,9 @@ struct FHOLFollowBook
 
 namespace HOLFollowOrders
 {
+	// The follows of the local player, filled by a right click on an ally (HOLControllerCommandsC10a::RightClickUnitOrder); the step caller (C++, TYPES_A_EXPOSER) reads it.
+	FHOLFollowBook PlayerBook;
+
 	int IndexOf(const FHOLFollowBook& Book, int UnitId)
 	{
 		for (int Index = 0; Index < Book.UnitIds.Num(); Index++)
