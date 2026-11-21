@@ -74,6 +74,22 @@ namespace HOLTopBar
 		return HOLTopBarText::IncomeTip().ToString().Replace("{0}", FormatAmount(PerMinute)).Replace("{1}", ResourceWord);
 	}
 
+	// D814 (Q-income-tooltip-taille = B): the income tooltip as a HUD panel (dark fill, gold border), not the engine's plain tooltip.
+	struct FIncomeTipView
+	{
+		FString Text;
+		FLinearColor Fill;
+		FLinearColor Border;
+		float BorderWidth = 0.0;
+		float Padding = 0.0;
+	}
+
+	FIncomeTipView IncomeTipView(int PerMinute, int Resource)
+	{
+		FIncomeTipView View;
+		return View;
+	}
+
 	FString ResourceWord(int Resource)
 	{
 		if (Resource == Food())
