@@ -1,5 +1,4 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
-
 #include "Simulation/HOLMoraleProcessor.h"
 
 #include "Engine/World.h"
@@ -60,7 +59,8 @@ void UHOLMoraleProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 	const HOLMorale::FHOLMoraleEffect Dawn = HOLMorale::MakeEffectFromRow(HOLMoraleTableRows::HOLMoraleDawnAura);
 	const HOLMorale::FHOLMoraleEffect Banner = HOLMorale::MakeEffectFromRow(HOLMoraleTableRows::HOLMoraleBanner);
 	const double DawnRadiusSquared = DawnRow ? static_cast<double>(DawnRow->RadiusCm) * static_cast<double>(DawnRow->RadiusCm) : 0.0;
-	EntityQuery.ForEachEntityChunk(Context, [StepMs, DawnRow, DawnRadiusSquared, &Dawn, &Sources](FMassExecutionContext& Chunk)
+	TArray<FAuraSource> HeroPlaces; // where each living hero stands: the cry is laid from there (one source with the Dawn aura's, kept apart)
+	EntityQuery.ForEachEntityChunk(Context, [StepMs, DawnRow, DawnRadiusSquared, &Dawn, &Sources, &HeroPlaces](FMassExecutionContext& Chunk)
 	{
 		const TArrayView<FHOLMoraleFragment> Fragments = Chunk.GetMutableFragmentView<FHOLMoraleFragment>();
 		const TConstArrayView<FHOLUnitStateFragment> States = Chunk.GetFragmentView<FHOLUnitStateFragment>();
@@ -71,6 +71,11 @@ void UHOLMoraleProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 		{
 			HOLMorale::ClearAuras(Fragments[Index].State);
 			HOLMorale::Tick(Fragments[Index].State, StepMs);
+			if (bHero && States[Index].CurrentHealth > 0.f)
+			{
+				const FVector Location = Transforms[Index].GetTransform().GetLocation();
+				HeroPlaces.Add({ FVector2D(Location.X, Location.Y), States[Index].OwnerPlayer, 0.0, Dawn });
+			}
 			if (DawnRow != nullptr && bHero && States[Index].CurrentHealth > 0.f)
 			{
 				const FVector Location = Transforms[Index].GetTransform().GetLocation();
@@ -80,7 +85,28 @@ void UHOLMoraleProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 	});
 	// The banners standing, even once their hero is dead (J8c-Q3).
 	const UWorld* World = GetWorld();
-	const UHOLHeroSubsystem* Heroes = World ? World->GetSubsystem<UHOLHeroSubsystem>() : nullptr;
+	UHOLHeroSubsystem* Heroes = World ? World->GetSubsystem<UHOLHeroSubsystem>() : nullptr;
+	// The cries cast since the last step (J8c-Q2; the cry is consumed here, the combat no longer reads it): from each crying hero's place, the row CloseRanks
+	// effect (a timed effect: it stays its whole duration, then the Tick takes it off) is laid on the units of his camp within the row's radius.
+	const HOLMoraleTableRows::FHOLMoraleTableRow* CryRow = HOLMoraleTableRows::Find(HOLMoraleTableRows::HOLMoraleCloseRanks);
+	if (Heroes != nullptr && CryRow != nullptr)
+	{
+		const HOLMorale::FHOLMoraleEffect Cry = HOLMorale::MakeEffectFromRow(HOLMoraleTableRows::HOLMoraleCloseRanks);
+		const double CryRadiusSquared = static_cast<double>(CryRow->RadiusCm) * static_cast<double>(CryRow->RadiusCm);
+		for (int32 Slot = 0; Slot < FHOLMatchConfig::MaxSlots; ++Slot)
+		{
+			if (Heroes->ConsumeCloseRanks(Slot))
+			{
+				for (const FAuraSource& Place : HeroPlaces)
+				{
+					if (Place.Owner == Slot)
+					{
+						Sources.Add({ Place.Location, static_cast<uint8>(Slot), CryRadiusSquared, Cry });
+					}
+				}
+			}
+		}
+	}
 	if (Heroes != nullptr && BannerRow != nullptr)
 	{
 		const double BannerRadiusSquared = static_cast<double>(BannerRow->RadiusCm) * static_cast<double>(BannerRow->RadiusCm);

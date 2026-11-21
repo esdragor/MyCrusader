@@ -15,6 +15,8 @@
 #include "Simulation/HOLHeroAbilityRules.h"
 #include "Simulation/HOLHeroSubsystem.h"
 #include "Simulation/HOLMoraleProcessor.h"
+#include "Simulation/HOLMoraleRules.h"
+#include "Simulation/HOLMoraleTableRows.h"
 #include "Simulation/HOLHeroXPRules.h"
 #include "Simulation/HOLSimulationFragments.h"
 #include "Simulation/HOLSimulationSettings.h"
@@ -163,12 +165,12 @@ bool FHOLHeroAbilityInMatchTest::RunTest(const FString& Parameters)
 			TestTrue(TEXT("the cry cast"), Heroes->CastCloseRanks(0));
 			TestFalse(TEXT("... not again during its cool-down"), Heroes->CastCloseRanks(0));
 			RunStep();
-			const FHOLCombatFragment* NearCombat = Near != 0 ? EntityManager->GetFragmentDataPtr<FHOLCombatFragment>(Units->FindEntity(Near)) : nullptr;
-			const FHOLCombatFragment* FarCombat = Far != 0 ? EntityManager->GetFragmentDataPtr<FHOLCombatFragment>(Units->FindEntity(Far)) : nullptr;
+			const FHOLMoraleFragment* NearCombat = Near != 0 ? EntityManager->GetFragmentDataPtr<FHOLMoraleFragment>(Units->FindEntity(Near)) : nullptr;
+			const FHOLMoraleFragment* FarCombat = Far != 0 ? EntityManager->GetFragmentDataPtr<FHOLMoraleFragment>(Units->FindEntity(Far)) : nullptr;
 			if (TestTrue(TEXT("two Spearmen 11 m and 13 m from the hero"), NearCombat && FarCombat))
 			{
-				TestEqual(TEXT("the one at 11 m under the cry for 15 s"), NearCombat->CloseRanksMs, HOLHeroAbility::CloseRanksDurationMs);
-				TestEqual(TEXT("the one at 13 m not"), FarCombat->CloseRanksMs, 0);
+				TestTrue(TEXT("the one at 11 m under the cry (the fragment carries the CloseRanks row)"), HOLMorale::Has(NearCombat->State, HOLMoraleTableRows::HOLMoraleCloseRanks));
+				TestFalse(TEXT("the one at 13 m not"), HOLMorale::Has(FarCombat->State, HOLMoraleTableRows::HOLMoraleCloseRanks));
 			}
 			const uint32 Cried[] = { Near, Far };
 			Units->RequestDestroyUnits(Cried);
