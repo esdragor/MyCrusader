@@ -1043,18 +1043,35 @@ double UHOLVisionSubsystem::GetUnitSight(const FName TypeName)
 	return UnitSights.Add(TypeName, Row ? HOLVisionRules::GetSightRadius(Row->SightRadius, 0., FHOLVisionTuning()) : 0.);
 }
 
-// Stealth network filter. Rouge stub (ARWEN-1121sd): hides nothing yet.
+// Stealth network filter: the rule stays in script (BP_IsVisibleToCamp override); here only the camps' bits are applied.
 bool UHOLStealthFilter::BP_IsVisibleToCamp_Implementation(int32 ViewerCamp, int32 UnitCamp, FVector2D UnitPosition) const
 {
 	return true;
 }
 
-int32 UHOLStealthFilter::MaskCamps(const UHOLStealthFilter* Filter, int32 Camps, int32 NumCamps, int32 UnitCamp, FVector2D UnitPosition)
+int32 UHOLStealthFilter::MaskCamps(const UHOLStealthFilter* Filter, const int32 Camps, const int32 NumCamps, const int32 UnitCamp, const FVector2D UnitPosition)
 {
-	return Camps;
+	if (!IsValid(Filter))
+	{
+		return Camps;
+	}
+	int32 Result = Camps;
+	for (int32 Camp = 0; Camp < NumCamps && Camp < 31; ++Camp)
+	{
+		if (Camp != UnitCamp && (Result & (1 << Camp)) && !Filter->BP_IsVisibleToCamp(Camp, UnitCamp, UnitPosition))
+		{
+			Result &= ~(1 << Camp);
+		}
+	}
+	return Result;
 }
 
 uint32 UHOLVisionSubsystem::GetCampsSeeingUnit(const FVector& Position, const int32 OwnerCamp) const
 {
-	return GetCampsSeeing(Position, FVector2D::ZeroVector);
+	const uint32 Camps = GetCampsSeeing(Position, FVector2D::ZeroVector);
+	if (Mode == EHOLFogMode::Disabled)
+	{
+		return Camps;
+	}
+	return static_cast<uint32>(UHOLStealthFilter::MaskCamps(StealthFilter, static_cast<int32>(Camps), Map.GetNumCamps(), OwnerCamp, FVector2D(Position)));
 }
