@@ -125,18 +125,28 @@ namespace HOLFollowOrders
 		return PickEnemyInRange(UnitLocation, Reach, EnemyIds, EnemyLocations);
 	}
 
-	// STUB (red commit): the decision rule of a bodyguard step, see the real code in the next commit.
-	// One order step of a bodyguard (GDD D818 Q2 = B): a bodyguard WITHOUT an order of the player attacks the enemy picked for it, then follows again once the enemy is gone;
-	// one that holds a player order is never interrupted. bPlayerOrderActive: the unit executes an order the player gave it (the caller reads it).
+	// One order step of a bodyguard (GDD D818 Q2 = B): a bodyguard WITHOUT an order of the player attacks the enemy picked for it (EnemyId, -1 none), then follows again once the
+	// enemy is gone (Step: Decide gives Move again and the Attack memory is reset); one that holds a player order is never interrupted (nothing queued).
+	// bPlayerOrderActive: the unit executes an order the player gave it (the caller reads it).
 	bool StepBodyguard(UHOLCommandSubsystem Commands, int PlayerIndex, FHOLFollowBook& Book, int UnitId, const FVector& UnitLocation, const FVector& TargetLocation, bool bPlayerOrderActive, int EnemyId)
 	{
-		return false;
+		if (bPlayerOrderActive)
+			return false;
+		return Step(Commands, PlayerIndex, Book, UnitId, UnitLocation, TargetLocation, EnemyId >= 0, EnemyId);
 	}
 
 	// The step the game calls for a follower: reads the unit, the followed unit and the enemy picked for the unit (ReadUnit, PickEnemyForUnit), then StepBodyguard.
-	// False when the unit or its target is gone (the caller ends the follow).
+	// False when the unit or its target is gone (the caller ends the follow with OnManualOrder). An enemy is only looked for when the unit holds no player order.
 	bool StepUnit(UObject WorldContext, UHOLCommandSubsystem Commands, int PlayerIndex, FHOLFollowBook& Book, int UnitId, bool bPlayerOrderActive)
 	{
-		return false;
+		const int Index = IndexOf(Book, UnitId);
+		if (Index < 0)
+			return false;
+		FVector UnitLocation;
+		FVector TargetLocation;
+		if (!ReadUnit(WorldContext, UnitId, UnitLocation) || !ReadUnit(WorldContext, Book.TargetIds[Index], TargetLocation))
+			return false;
+		const int EnemyId = bPlayerOrderActive ? -1 : PickEnemyForUnit(WorldContext, UnitId, UnitLocation);
+		return StepBodyguard(Commands, PlayerIndex, Book, UnitId, UnitLocation, TargetLocation, bPlayerOrderActive, EnemyId);
 	}
 }
