@@ -528,12 +528,6 @@ struct HEROESOFLIBERTY_API FHOLCombatFragment : public FMassFragment
 	int64 DeathStep = -1;
 
 	/**
-	 * J8c.2: milliseconds it stays under its hero's cry (Serrez les rangs, J8c-Q2): HOLHeroAbility::CloseRanksDurationMs when
-	 * the cry reaches it, counted down each step by the combat processor; 0: not under it.
-	 */
-	int32 CloseRanksMs = 0;
-
-	/**
 	 * L4 step 5 (HOLUnitAbility, the Damned Warrior's necrotic rage): milliseconds the rage lasts (counted down each step by the
 	 * combat processor; 0: not enraged) and milliseconds before it can be cast again (counted from the start of the effect). Set by
 	 * UHOLUnitSubsystem::CastRage; part of the step's fingerprint.
