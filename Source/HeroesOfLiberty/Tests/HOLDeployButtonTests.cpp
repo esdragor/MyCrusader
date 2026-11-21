@@ -677,6 +677,115 @@ bool FHOLDeployAttackBeyondDeployRangeTest::RunTest(const FString& Parameters)
 	return UE::HeroesOfLiberty::Tests::DeployButton::RunAttackWhilePacked(*this, UE::HeroesOfLiberty::Tests::DeployButton::EAttackWhilePackedCase::BeyondDeployRange);
 }
 
+// D877 (user answer 2026-11-21, Auto_Journey_File line 69): a packed ("demonte") engine that FINISHES a march mounts by itself, every engine.
+// RED until the fix: today the engine stays packed at the goal. Real chain (queue, order processor, deploy processor, combat); no movement runs in
+// this harness, so the goal is 10 cm from where the engine stands (the order processor's arrival closes the order). Effects measured: the march order
+// is over (not walking), then the phase of the fragment reaches Deployed with no press on the button.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLDeployArrivalMountsByItselfTest, "HeroesOfLiberty.Siege.Deploy.PackedEngineMountsByItselfAtTheEndOfAMarch", UE::HeroesOfLiberty::Tests::DeployButton::Flags)
+
+bool FHOLDeployArrivalMountsByItselfTest::RunTest(const FString& Parameters)
+{
+	IConsoleVariable* CombatEnabled = IConsoleManager::Get().FindConsoleVariable(TEXT("hol.Combat.Enabled"));
+	IConsoleVariable* Deployable = IConsoleManager::Get().FindConsoleVariable(TEXT("hol.Siege.Deployable"));
+	if (!TestNotNull(TEXT("hol.Combat.Enabled"), CombatEnabled) || !TestNotNull(TEXT("hol.Siege.Deployable"), Deployable))
+	{
+		return false;
+	}
+	const int32 FormerEnabled = CombatEnabled->GetInt();
+	const int32 FormerDeployable = Deployable->GetInt();
+	CombatEnabled->Set(1, ECVF_SetByCode);
+	Deployable->Set(1, ECVF_SetByCode);
+
+	UWorld* World = UWorld::CreateWorld(EWorldType::Game, /*bInformEngineOfWorld*/ false);
+	FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);
+	Context.SetCurrentWorld(World);
+	World->InitializeActorsForPlay(FURL());
+	AHOLGameState* GameState = World->SpawnActor<AHOLGameState>();
+	World->SetGameState(GameState);
+	UHOLUnitSubsystem* Units = World->GetSubsystem<UHOLUnitSubsystem>();
+	UHOLSimulationSubsystem* Simulation = World->GetSubsystem<UHOLSimulationSubsystem>();
+	UMassEntitySubsystem* EntitySubsystem = World->GetSubsystem<UMassEntitySubsystem>();
+	if (TestNotNull(TEXT("units"), Units) && TestNotNull(TEXT("simulation"), Simulation) && TestNotNull(TEXT("entities"), EntitySubsystem))
+	{
+		TSharedPtr<FMassEntityManager> EntityManager = EntitySubsystem->GetMutableEntityManager().AsShared();
+		UHOLUnitOrderProcessor* Orders = NewObject<UHOLUnitOrderProcessor>(Simulation);
+		Orders->CallInitialize(Simulation, EntityManager.ToSharedRef());
+		UHOLDeployProcessor* Deploy = NewObject<UHOLDeployProcessor>(Simulation);
+		Deploy->CallInitialize(Simulation, EntityManager.ToSharedRef());
+		UHOLCombatProcessor* Combat = NewObject<UHOLCombatProcessor>(Simulation);
+		Combat->CallInitialize(Simulation, EntityManager.ToSharedRef());
+		const float StepSeconds = GetDefault<UHOLSimulationSettings>()->GetStepSeconds();
+		const int32 StepMs = FMath::RoundToInt(StepSeconds * 1000.f);
+		const auto RunStep = [Simulation, Units, Orders, Deploy, Combat, &EntityManager, StepSeconds]
+		{
+			const int64 Step = Simulation->AdvanceStepIndexForTests();
+			Simulation->GetOnStepStarted().Broadcast(Step);
+			Units->ServeBirthRequests();
+			FMassProcessingContext ProcessingContext(EntityManager, StepSeconds);
+			UE::Mass::Executor::Run(*Orders, ProcessingContext);
+			UE::Mass::Executor::Run(*Deploy, ProcessingContext);
+			UE::Mass::Executor::Run(*Combat, ProcessingContext);
+			Units->FlushDestructions();
+			Simulation->GetOnStepEnded().Broadcast(Step);
+		};
+		TArray<uint32> Before;
+		Units->GetAllUnitIds(Before);
+		FHOLUnitSpawnRequest Request;
+		Request.TypeName = FName(TEXT("Mangonel"));
+		Request.Count = 1;
+		Request.OwnerPlayer = 0;
+		Request.Center = FVector::ZeroVector;
+		Units->RequestUnits(Request);
+		Units->ServeBirthRequests();
+		TArray<uint32> After;
+		Units->GetAllUnitIds(After);
+		uint32 Engine = 0;
+		for (const uint32 Id : After)
+		{
+			Engine = Before.Contains(Id) ? Engine : Id;
+		}
+		if (TestTrue(TEXT("the deployable Mangonel born"), Engine != 0))
+		{
+			const FMassEntityHandle Entity = Units->FindEntity(Engine);
+			const auto PhaseOf = [&EntityManager, Entity]
+			{
+				const FHOLDeployFragment* Fragment = EntityManager->GetFragmentDataPtr<FHOLDeployFragment>(Entity);
+				return Fragment ? static_cast<int32>(Fragment->Phase) : -1;
+			};
+			const auto Walking = [&EntityManager, Entity]
+			{
+				const FHOLMoveOrderFragment* Order = EntityManager->GetFragmentDataPtr<FHOLMoveOrderFragment>(Entity);
+				return Order && Order->Phase != EHOLMovePhase::None;
+			};
+			const TArray<uint32> Mine = { Engine };
+			TestEqual(TEXT("precondition: the engine is born packed"), PhaseOf(), static_cast<int32>(HOLDeploy::EPhase::Packed));
+			TestTrue(TEXT("the march order enters the queue"), HOLPlayerOrders::Move(*World, 0, Mine, FVector(10.0, 0.0, 0.0)));
+			int32 Steps = 0;
+			RunStep();
+			RunStep();
+			while (Walking() && Steps < 400)
+			{
+				RunStep();
+				++Steps;
+			}
+			TestFalse(TEXT("precondition: the march is over (the engine arrived)"), Walking());
+			const int32 DeploySteps = HOLDeploy::DefaultProfile().DeployMs / StepMs;
+			for (int32 Index = 0; Index < DeploySteps + 20; ++Index)
+			{
+				RunStep();
+			}
+			TestEqual(TEXT("packed engine, march finished: it mounts by itself (Deployed, no press on the button)"), PhaseOf(), static_cast<int32>(HOLDeploy::EPhase::Deployed));
+			const TArray<uint32> Gone = { Engine };
+			Units->RequestDestroyUnits(Gone);
+			Units->FlushDestructions();
+		}
+	}
+	CombatEnabled->Set(FormerEnabled, ECVF_SetByCode);
+	Deployable->Set(FormerDeployable, ECVF_SetByCode);
+	GEngine->DestroyWorldContext(World);
+	World->DestroyWorld(false);
+	return true;
+}
 // D869b (ELROND-1120sa, recette 1120pb): the mount bar stayed at 0 dashes 0.3 s after the order and the second cycle stayed on "Montage...".
 // The client reads only the replicated phase, so its clock (HOLDeploy::FWatch) must start at the ORDER, not at the first drawing of the face.
 // The bar is computed by the real HOLDeploy::ProgressPermille (1.5 s to mount, one dash = 125 permille).
