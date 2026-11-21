@@ -30,6 +30,7 @@
 #include "Simulation/HOLCampSubsystem.h"
 #include "Simulation/HOLDuelSubsystem.h"
 #include "Simulation/HOLHeroAbilityRules.h"
+#include "Simulation/HOLMoraleRules.h"
 #include "Simulation/HOLHeroSubsystem.h"
 #include "Simulation/HOLHeroXPRules.h"
 #include "Simulation/HOLOrderChainRules.h"
@@ -263,6 +264,7 @@ void UHOLCombatProcessor::ConfigureQueries(const TSharedRef<FMassEntityManager>&
 	EntityQuery.AddRequirement<FMassMoveTargetFragment>(EMassFragmentAccess::ReadWrite);
 	EntityQuery.AddRequirement<FMassDesiredMovementFragment>(EMassFragmentAccess::ReadWrite);
 	EntityQuery.AddRequirement<FHOLDeployFragment>(EMassFragmentAccess::ReadWrite, EMassFragmentPresence::Optional);
+	EntityQuery.AddRequirement<FHOLMoraleFragment>(EMassFragmentAccess::ReadOnly, EMassFragmentPresence::Optional);
 	EntityQuery.AddConstSharedRequirement<FHOLUnitTypeConstants>(EMassFragmentPresence::All);
 	EntityQuery.AddTagRequirement<FHOLLightUnitTag>(EMassFragmentPresence::All);
 	// F7 lot 3a: a garrisoned unit is no fighter: it strikes nobody and nobody finds it (a target that leaves the list is let go).
@@ -769,7 +771,13 @@ void UHOLCombatProcessor::ApplyDamageRedirect(const HOLDamageRedirect::FResult& 
 
 int32 UHOLCombatProcessor::GetDamageTakenPercent(const FFighter& Victim) const
 {
-	const int32 Percent = HOLHeroAbility::GetDamageTakenPercent(IsInAura(Victim), Victim.Combat->CloseRanksMs > 0);
+	// The aura (the Dawn's of a living hero AND the banner's, both laid by the morale processor) reaches the damage through the morale lever alone
+	// (HOLMorale::TakenPercent: the rows of Effects.csv, one source of truth); the cry is still posed apart (CloseRanksMs) and adds to it under the cap.
+	// IsInAura stays for the heal and the talent's armor, no longer read here.
+	static const HOLMorale::FHOLMoraleState NoMorale;
+	const HOLMorale::FHOLMoraleState& MoraleState = Victim.Morale ? Victim.Morale->State : NoMorale;
+	const int32 CryPercent = Victim.Combat->CloseRanksMs > 0 ? HOLHeroAbility::CloseRanksReductionPercent : 0;
+	const int32 Percent = HOLMorale::TakenPercent(MoraleState, CryPercent);
 	// D810 (F5): a ford weakens the defence (120 %); off a ford, or with no terrain zones, the percent is untouched.
 	return StepTerrain ? Percent * StepTerrain->GetFordDamageTakenPercentAt(Victim.Location) / 100 : Percent;
 }
@@ -967,6 +975,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 		const TArrayView<FMassMoveTargetFragment> MoveTargets = Context.GetMutableFragmentView<FMassMoveTargetFragment>();
 		const TArrayView<FMassDesiredMovementFragment> Movements = Context.GetMutableFragmentView<FMassDesiredMovementFragment>();
 		const TArrayView<FHOLDeployFragment> Deploys = Context.GetMutableFragmentView<FHOLDeployFragment>();
+		const TConstArrayView<FHOLMoraleFragment> Morales = Context.GetFragmentView<FHOLMoraleFragment>();
 		const FHOLUnitTypeConstants& Constants = Context.GetConstSharedFragment<FHOLUnitTypeConstants>();
 		MaxRadius = FMath::Max(MaxRadius, Constants.Radius);
 		const bool bHeroes = HOLIsHero(Constants.ArmorCategoryMask);
@@ -988,6 +997,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 			Fighter.Location = Transforms[EntityIt].GetTransform().GetLocation();
 			Fighter.Combat = &Combats[EntityIt];
 			Fighter.State = &States[EntityIt];
+			Fighter.Morale = Morales.IsEmpty() ? nullptr : &Morales[EntityIt];
 			Fighter.Camp = CampTable.Get(States[EntityIt].OwnerPlayer);
 			Fighter.Order = &Orders[EntityIt];
 			Fighter.MoveTarget = &MoveTargets[EntityIt];

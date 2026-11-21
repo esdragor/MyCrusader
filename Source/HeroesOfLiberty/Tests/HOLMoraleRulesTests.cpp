@@ -8,6 +8,9 @@
 #include "MassExecutor.h"
 #include "MassProcessingContext.h"
 #include "Simulation/HOLCombatRules.h"
+#include "Simulation/HOLHeroAbilityRules.h"
+#include "Simulation/HOLHeroSubsystem.h"
+#include "Simulation/HOLHeroXPRules.h"
 #include "Simulation/HOLMoraleProcessor.h"
 #include "Simulation/HOLMoraleRules.h"
 #include "Simulation/HOLSimulationSettings.h"
@@ -545,5 +548,134 @@ bool FHOLMoraleProcessorLaysDawnAuraTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+// The combat reads the damage-taken lever of the morale fragment (PLAN-MORAL-1120 step 4, last slice): one strike on a unit under the Dawn aura does
+// the row's percent less than the same strike on a bare unit, the cry adds to it under the cap, and the old constants of the combat agree with the row.
+// Every expected value is CALCULATED (the row of the table, the rule's own GetReducedDamage), never typed. RED while TakenPercent is a stub (100).
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLMoraleTakenLeverTest, "HeroesOfLiberty.Morale.CombatReadsTheTakenLever", UE::HeroesOfLiberty::Tests::MoraleRules::Flags)
+
+bool FHOLMoraleTakenLeverTest::RunTest(const FString& Parameters)
+{
+	const HOLMoraleTableRows::FHOLMoraleTableRow* Row = HOLMoraleTableRows::Find(HOLMoraleTableRows::HOLMoraleDawnAura);
+	if (!TestNotNull(TEXT("the Dawn aura row exists"), Row))
+	{
+		return true;
+	}
+	HOLMorale::FHOLMoraleState Bare;
+	HOLMorale::FHOLMoraleState UnderAura;
+	HOLMorale::Apply(UnderAura, HOLMorale::MakeEffectFromRow(HOLMoraleTableRows::HOLMoraleDawnAura));
+
+	const float Strike = 200.f;
+	const float OnBare = HOLHeroAbility::GetReducedDamage(Strike, HOLMorale::TakenPercent(Bare, 0));
+	const float OnAura = HOLHeroAbility::GetReducedDamage(Strike, HOLMorale::TakenPercent(UnderAura, 0));
+	TestEqual(TEXT("a bare unit takes the whole strike"), OnBare, Strike);
+	TestEqual(TEXT("the same strike does the row's percent less under the aura"), OnAura, OnBare * static_cast<float>(100 - Row->Taken) / 100.f);
+
+	// The cry (posed apart) adds to the aura, under the cap: the lever replaces the aura term of the old constants, so the two agree on every case.
+	for (int32 Cry = 0; Cry < 2; Cry++)
+	{
+		const int32 Other = Cry ? HOLHeroAbility::CloseRanksReductionPercent : 0;
+		TestEqual(*FString::Printf(TEXT("aura %d, cry %d: the lever reads as the old rule"), 1, Cry), HOLMorale::TakenPercent(UnderAura, Other), HOLHeroAbility::GetDamageTakenPercent(true, Cry != 0));
+		TestEqual(*FString::Printf(TEXT("aura %d, cry %d: the lever reads as the old rule"), 0, Cry), HOLMorale::TakenPercent(Bare, Other), HOLHeroAbility::GetDamageTakenPercent(false, Cry != 0));
+	}
+	return true;
+}
 #endif // WITH_DEV_AUTOMATION_TESTS
 
+// The banner (PLAN-MORAL-1120 step 4, the aura's second source): a banner PLANTED by a hero is a point, not a unit. The morale processor lays the levers of
+// the Banner row (it gives the Dawn aura's, one effect) on the allies of its owner within the row radius of the point, once however many sources cover them
+// (a unit near both the hero and the banner carries ONE effect), and nothing on an enemy or out of range. Born through the real chain, the banner planted by
+// the real hero subsystem; the expected effect is CALCULATED (MakeEffectFromRow(Banner) posed on an empty state). RED while the processor knows heroes only.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLMoraleProcessorLaysBannerAuraTest, "HeroesOfLiberty.Morale.ProcessorLaysBannerAuraInRange", UE::HeroesOfLiberty::Tests::MoraleRules::Flags)
+
+bool FHOLMoraleProcessorLaysBannerAuraTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::MoraleRules;
+	UWorld* World = UWorld::CreateWorld(EWorldType::Game, /*bInformEngineOfWorld*/ false);
+	FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);
+	Context.SetCurrentWorld(World);
+	World->InitializeActorsForPlay(FURL());
+
+	UHOLUnitSubsystem* Units = World->GetSubsystem<UHOLUnitSubsystem>();
+	UHOLSimulationSubsystem* Simulation = World->GetSubsystem<UHOLSimulationSubsystem>();
+	UHOLHeroSubsystem* Heroes = World->GetSubsystem<UHOLHeroSubsystem>();
+	UMassEntitySubsystem* EntitySubsystem = World->GetSubsystem<UMassEntitySubsystem>();
+	if (TestNotNull(TEXT("units"), Units) && TestNotNull(TEXT("simulation"), Simulation) && TestNotNull(TEXT("heroes"), Heroes) && TestNotNull(TEXT("entities"), EntitySubsystem))
+	{
+		Heroes->BindSteps();
+		TSharedPtr<FMassEntityManager> EntityManager = EntitySubsystem->GetMutableEntityManager().AsShared();
+		UHOLMoraleProcessor* Morale = NewObject<UHOLMoraleProcessor>(Simulation);
+		Morale->CallInitialize(Simulation, EntityManager.ToSharedRef());
+		const float StepSeconds = GetDefault<UHOLSimulationSettings>()->GetStepSeconds();
+		int64 Step = 0;
+		const auto RunStep = [Simulation, Units, Morale, &EntityManager, StepSeconds, &Step]
+		{
+			++Step;
+			Simulation->GetOnStepStarted().Broadcast(Step);
+			Units->ServeBirthRequests();
+			FMassProcessingContext ProcessingContext(*EntityManager, StepSeconds);
+			UE::Mass::Executor::Run(*Morale, ProcessingContext);
+			Simulation->GetOnStepEnded().Broadcast(Step);
+		};
+		const auto Spawn = [this, Units](const TCHAR* TypeName, const uint8 Owner, const double X, const double Y) -> FMassEntityHandle
+		{
+			TArray<uint32> Before;
+			Units->GetAllUnitIds(Before);
+			FHOLUnitSpawnRequest Request;
+			Request.TypeName = FName(TypeName);
+			Request.Count = 1;
+			Request.OwnerPlayer = Owner;
+			Request.Center = FVector(X, Y, 0.0);
+			Units->RequestUnits(Request);
+			Units->ServeBirthRequests();
+			TArray<uint32> After;
+			Units->GetAllUnitIds(After);
+			uint32 Born = 0;
+			for (const uint32 Id : After)
+			{
+				Born = Before.Contains(Id) ? Born : Id;
+			}
+			return TestTrue(TEXT("a unit was born"), Born != 0) ? Units->FindEntity(Born) : FMassEntityHandle();
+		};
+		// The hero at the origin (his own aura reaches 12 m): the banner planted 16 m away at (1600, 0). AllyBanner is 10 m from the banner and 26 m from the
+		// hero; AllyBoth is 11.3 m from both; AllyFar is out of both; the enemy and the Peasant stand where AllyBanner does.
+		Spawn(TEXT("Hero"), 0, 0.0, 0.0);
+		const FMassEntityHandle AllyBanner = Spawn(TEXT("ManAtArms"), 0, 2600.0, 0.0);
+		const FMassEntityHandle AllyBoth = Spawn(TEXT("ManAtArms"), 0, 800.0, 800.0);
+		const FMassEntityHandle AllyFar = Spawn(TEXT("ManAtArms"), 0, 9000.0, 0.0);
+		const FMassEntityHandle EnemyBanner = Spawn(TEXT("ManAtArms"), 1, 2600.0, 0.0);
+		const FMassEntityHandle PeasantBanner = Spawn(TEXT("Peasant"), 0, 2600.0, 0.0);
+
+		// What the rule leaves on a unit the banner covers after ONE step: the Banner row's effect (the Dawn aura's levers) posed on an empty state.
+		HOLMorale::FHOLMoraleState Expected;
+		HOLMorale::Apply(Expected, HOLMorale::MakeEffectFromRow(HOLMoraleTableRows::HOLMoraleBanner));
+		TestTrue(TEXT("the Banner row gives a real lever"), HOLMorale::Total(Expected, HOLMorale::LeverTaken) > 0);
+
+		const auto Read = [&EntityManager](const FMassEntityHandle Entity) -> const FHOLMoraleFragment*
+		{
+			return Entity.IsSet() ? EntityManager->GetFragmentDataPtr<FHOLMoraleFragment>(Entity) : nullptr;
+		};
+		Heroes->SetXP(0, HOLHeroXP::GetLevelXP(4));
+		RunStep();
+		if (TestTrue(TEXT("the banner planted 16 m from the hero"), Heroes->PlantBanner(0, FVector(1600.0, 0.0, 0.0)))
+			&& TestTrue(TEXT("every unit carries the fragment"), Read(AllyBanner) && Read(AllyBoth) && Read(AllyFar) && Read(EnemyBanner) && Read(PeasantBanner)))
+		{
+			for (int32 Index = 0; Index < 2; ++Index)
+			{
+				RunStep(); // laid again each step, never doubled
+			}
+			const FHOLMoraleFragment* Covered = Read(AllyBanner);
+			TestEqual(TEXT("the ally 10 m from the banner reads the Banner row's damage taken lever"), HOLMorale::Total(Covered->State, HOLMorale::LeverTaken),
+				HOLMorale::Total(Expected, HOLMorale::LeverTaken));
+			TestEqual(TEXT("... laid once"), Covered->State.Num, Expected.Num);
+			TestEqual(TEXT("the ally near the hero AND the banner carries one effect, not two"), Read(AllyBoth)->State.Num, Expected.Num);
+			TestEqual(TEXT("... and the same lever"), HOLMorale::Total(Read(AllyBoth)->State, HOLMorale::LeverTaken), HOLMorale::Total(Expected, HOLMorale::LeverTaken));
+			TestTrue(TEXT("the ally out of range of both has nothing"), HOLMorale::IsEmpty(Read(AllyFar)->State));
+			TestTrue(TEXT("the enemy by the banner has nothing (a bonus goes to the owner alone, D705)"), HOLMorale::IsEmpty(Read(EnemyBanner)->State));
+			TestTrue(TEXT("the Peasant by the banner has nothing (never a Peasant, D705)"), HOLMorale::IsEmpty(Read(PeasantBanner)->State));
+		}
+	}
+
+	GEngine->DestroyWorldContext(World);
+	World->DestroyWorld(false);
+	return true;
+}

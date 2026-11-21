@@ -12,6 +12,7 @@
 #include "HOLCombatProcessor.generated.h"
 
 struct FHOLCombatFragment;
+struct FHOLMoraleFragment;
 struct FHOLMoveOrderFragment;
 struct FHOLUnitStateFragment;
 struct FHOLUnitTypeConstants;
@@ -71,6 +72,8 @@ protected:
 		FVector Location = FVector::ZeroVector;
 		FHOLCombatFragment* Combat = nullptr;
 		FHOLUnitStateFragment* State = nullptr;
+		/** Its morale effects (null when the entity has none): the damage-taken lever is read from here (GetDamageTakenPercent). */
+		const FHOLMoraleFragment* Morale = nullptr;
 		FHOLMoveOrderFragment* Order = nullptr;
 		FMassMoveTargetFragment* MoveTarget = nullptr;
 		FMassDesiredMovementFragment* Movement = nullptr;
