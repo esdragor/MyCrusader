@@ -1105,3 +1105,16 @@ void UHOLScriptScreen::NativeTick(const FGeometry& MyGeometry, const float InDel
 		RefreshNow();
 	}
 }
+
+FReply UHOLScriptScreen::NativeOnPreviewKeyDown(const FGeometry& InGeometry, const FKeyEvent& InKeyEvent)
+{
+	// The Tab of the chat's field (RECETTE-1120sa: Tab Tab never gave "(Prive) <name>"): a text box with the keyboard focus gets the Tab through Slate's focus
+	// navigation, which neither OnTextCommitted(OnUserMovedFocus) nor the tick's WasInputKeyJustPressed ever reports. The preview key goes down the focus path
+	// from this widget BEFORE the text box and its navigation: the script gets the Tab here, once per press (no auto-repeat), and the Tab is consumed.
+	if (bRelayTabToScript && InKeyEvent.GetKey() == EKeys::Tab && !InKeyEvent.IsRepeat() && HasFocusedDescendants())
+	{
+		KeyPressed(TEXT("Tab"));
+		return FReply::Handled();
+	}
+	return Super::NativeOnPreviewKeyDown(InGeometry, InKeyEvent);
+}
