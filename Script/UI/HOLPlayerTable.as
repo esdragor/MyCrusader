@@ -52,6 +52,8 @@ struct FHOLPlayerRowView
 struct FHOLPlayerTableMemory
 {
 	FString Shown = "";
+	// The names, lives and states the rows DISPLAY (language-dependent: Shown is not), so a live language switch redraws the table.
+	FString Display = "";
 	FString Names = "";
 	FString States = "";
 }
@@ -142,6 +144,15 @@ namespace HOLPlayerTable
 		return Result;
 	}
 
+	// The texts the rows display (name, lives, state), joined: changes with the language while the report (Signature) does not.
+	FString DisplaySignature(TArray<FHOLPlayerRow> Rows)
+	{
+		FString Result = "";
+		for (int Index = 0; Index < Rows.Num(); ++Index)
+			Result += (Index > 0 ? " | " : "") + Rows[Index].Name + "~" + Rows[Index].Lives + "~" + Rows[Index].State;
+		return Result;
+	}
+
 	// M6-Q12: the names shown, joined by ", ".
 	FString NamesLine(TArray<FHOLPlayerRow> Rows)
 	{
@@ -182,7 +193,8 @@ namespace HOLPlayerTable
 		FHOLPlayerTablePlan Result;
 		Result.Memory = Memory;
 		const FString Shown = Signature(Rows);
-		if (Shown == Memory.Shown)
+		const FString Display = DisplaySignature(Rows);
+		if (Shown == Memory.Shown && Display == Memory.Display)
 			return Result;
 		Result.bRedraw = true;
 		Result.bPanelVisible = Rows.Num() > 0;
@@ -194,6 +206,7 @@ namespace HOLPlayerTable
 			Result.Memory.Names = Names;
 		}
 		Result.Memory.Shown = Shown;
+		Result.Memory.Display = Display;
 		const FString States = StatesLine(Rows);
 		if (States != Memory.States)
 		{
