@@ -56,6 +56,8 @@ Sans C++ : Arwen (vérifie BUG-order_lines_multi_blocs à l'écran), Elrond (dep
 
 EXCEPTION AU GATE 10:4x : `-Phase Essay -Root Arwen` (deploy, virtuous_knight) = 2 FAIL « branche 'f46dc2d' inconnue » : faux positif, la ligne `branches:` des 2 fiches E cite un sha (ancêtre de main, vérifié par merge-base) que le gate lit comme une branche ; autres contrôles PASS (aucun écart de code avec main bce2d69, worktree propre, binaire 23:39 >= code 23:32). Commandes redonnées à l'utilisateur. À faire par un agent : fiches E ou gate (sha accepté).
 
+FIN DE SÉANCE 14:53 (dépassement 13 min, règle de durée) : integ-40 FAIL Test_CGTables (Elrond retiré) ; integ-41 (Galadriel fef7e1f, Glorfindel b5e9e29, Sauron 58b7a69, Faramir 6b382c8) tests 1990/1990, net,build FAIL « valeurs vides » sous charge puis net rejoué seul PASS 361 s (L13-4) ; main 753b81b -> a987f58 (ff local, rien poussé). sync_worktrees -WaitBuilds 14:35 : 8 worktrees à jour (Elrond 78b533a, Haldir 2c5cadf, Galadriel c5ac151 gardent leurs commits non intégrés), 8 builds PASS (118-149 s). `-Phase Close` 14:53 : 1 FAIL = GDD.md non commité (D877-D879, accord de l'utilisateur nécessaire). Non intégrés : Elrond integ-25 (deploy scénario + TowerWood, Test_CGTables), Haldir wall-line (SecondaryCentre).
+
 ### Bilan 2026-11-21
 
 - **Agents** : 23 agents Sonnet (4 nettoyage 0a, ETAPE0-1121, 3 Glorfindel, 3 Galadriel, 3 Haldir, 1 Celeborn, 3 Elrond, 2 Sauron, 1 Faramir, 2 RECORD) + commandes `integrate.ps1` (integ-38, 39, 40) et un sync ; séance autonome 10:40 -> 14:40, chiffres tirés du tableau ci-dessus (commits : un rouge + un correctif par tâche, voir la colonne Résumé).
