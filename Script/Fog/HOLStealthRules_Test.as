@@ -140,7 +140,7 @@ void Test_StealthBindingPicksCampPositions(FUnitTest& T)
 class UHOLStealthTestFilter : UHOLStealthFilter
 {
 	UFUNCTION(BlueprintOverride)
-	bool BP_IsVisibleToCamp(int ViewerCamp, int UnitCamp, FVector2D UnitPosition) const
+	bool IsVisibleToCamp(int ViewerCamp, int UnitCamp, FVector2D UnitPosition) const
 	{
 		TArray<FHOLStealthZone> Zones = StealthOneZone();
 		TArray<FVector2D> Viewers = StealthViewers(FVector2D(HOLStealth::RevealDistance() * 10.0, 0.0));

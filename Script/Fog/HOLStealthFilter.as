@@ -12,7 +12,7 @@ class UHOLStealthRuleFilter : UHOLStealthFilter
 	UHOLVisionSubsystem Vision;
 
 	UFUNCTION(BlueprintOverride)
-	bool BP_IsVisibleToCamp(int ViewerCamp, int UnitCamp, FVector2D UnitPosition) const
+	bool IsVisibleToCamp(int ViewerCamp, int UnitCamp, FVector2D UnitPosition) const
 	{
 		if (Zones.Num() == 0)
 			return true;

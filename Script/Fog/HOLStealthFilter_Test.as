@@ -5,7 +5,11 @@
 void Test_StealthRuleFilterMasksEnemyCampForHiddenUnit(FUnitTest& T)
 {
 	UHOLStealthRuleFilter Filter = Cast<UHOLStealthRuleFilter>(NewObject(GetTransientPackage(), UHOLStealthRuleFilter::StaticClass()));
-	Filter.Zones = StealthOneZone();
+	// StealthOneZone (HOLStealthRules_Test.as) is a global of another file, not visible here: the same zone built locally.
+	FHOLStealthZone Zone;
+	Zone.Center = FVector2D(0.0, 0.0);
+	Zone.HalfExtent = FVector2D(400.0, 400.0);
+	Filter.Zones.Add(Zone);
 	int Mask = UHOLStealthFilter::MaskCamps(Filter, 3, 2, 0, FVector2D(0.0, 0.0));
 	T.AssertEquals(1, Mask, "unit of camp 0 hidden in the zone: enemy camp 1 does not receive it, camp 0 does");
 }

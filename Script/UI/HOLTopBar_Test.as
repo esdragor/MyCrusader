@@ -84,14 +84,13 @@ void Test_TopBarIncomeTipIsAHudPanel(FUnitTest& T)
 // TipLanguageKey does not exist there, so the script does not compile.
 void Test_TopBarIncomeTipIsSetAgainOnALanguageSwitchWithTheIncomeUnchanged(FUnitTest& T)
 {
-	const FString Previous = UKismetInternationalizationLibrary::GetCurrentLanguage();
-	UKismetInternationalizationLibrary::SetCurrentLanguage("en", false);
+	const FString Previous = HOLForumMessagesRead::SetCultureName("en");
 	const FString KeyEn = HOLTopBar::TipLanguageKey();
 	const FString TextEn = HOLTopBar::IncomeTipView(377, HOLTopBar::Wood()).Text;
-	UKismetInternationalizationLibrary::SetCurrentLanguage("ja", false);
+	HOLForumMessagesRead::SetCultureName("ja");
 	const FString KeyJa = HOLTopBar::TipLanguageKey();
 	const FString TextJa = HOLTopBar::IncomeTipView(377, HOLTopBar::Wood()).Text;
-	UKismetInternationalizationLibrary::SetCurrentLanguage(Previous, false);
+	HOLForumMessagesRead::SetCultureName(Previous);
 
 	FHOLResources Shown = TopBarRes(0, 377, 0, 0);
 	T.AssertFalse(HOLTopBar::IncomeChanged(Shown, TopBarRes(0, 377, 0, 0)), "the income did not change: the income gate alone keeps the old text");
