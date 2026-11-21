@@ -396,8 +396,9 @@ void UHOLUnitReplicationSubsystem::OnStepEnded(const int64 Step)
 			uint32 Families = 1u;
 			if (bFog && Vision)
 			{
-				Families = Vision->GetCampsSeeing(FVector(Position), FVector2D::ZeroVector);
 				const int32 OwnerCamp = Vision->GetCampIndex(State.OwnerPlayer);
+				// Stealth (D824): a hidden unit is not sent to the enemy camps whose cell holds it (the owner's camp is added below).
+				Families = Vision->GetCampsSeeingUnit(FVector(Position), OwnerCamp);
 				Families |= OwnerCamp == INDEX_NONE ? 0u : 1u << OwnerCamp;
 			}
 			const bool bConverted = Record->OwnerPlayer != State.OwnerPlayer;
