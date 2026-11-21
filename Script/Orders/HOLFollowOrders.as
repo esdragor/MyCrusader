@@ -20,11 +20,16 @@ struct FHOLFollowBook
 	TArray<int> LastAttackIds;
 }
 
+// The follows of the local player, filled by a right click on an ally (HOLControllerCommandsC10a::RightClickUnitOrder); the step caller (C++, TYPES_A_EXPOSER) reads it.
+// A script global cannot be mutable: the book lives in a world subsystem (UHOLFollowBookHolder::Get().Book).
+class UHOLFollowBookHolder : UScriptWorldSubsystem
+{
+	UPROPERTY()
+	FHOLFollowBook Book;
+}
+
 namespace HOLFollowOrders
 {
-	// The follows of the local player, filled by a right click on an ally (HOLControllerCommandsC10a::RightClickUnitOrder); the step caller (C++, TYPES_A_EXPOSER) reads it.
-	FHOLFollowBook PlayerBook;
-
 	int IndexOf(const FHOLFollowBook& Book, int UnitId)
 	{
 		for (int Index = 0; Index < Book.UnitIds.Num(); Index++)
@@ -128,10 +133,10 @@ namespace HOLFollowOrders
 	int PickEnemyForUnit(UObject WorldContext, int UnitId, const FVector& UnitLocation)
 	{
 		const float BodiesReach = 120.0;
-		const float Reach = HOLUnitScript::GetAttackRange(WorldContext, UnitId) + BodiesReach;
+		const float Reach = HOLUnitScript::GetAttackRange(UnitId) + BodiesReach;
 		TArray<int> EnemyIds;
 		TArray<FVector> EnemyLocations;
-		if (!HOLUnitScript::GetEnemiesNear(WorldContext, UnitId, Reach, EnemyIds, EnemyLocations))
+		if (!HOLUnitScript::GetEnemiesNear(UnitId, Reach, EnemyIds, EnemyLocations))
 			return -1;
 		return PickEnemyInRange(UnitLocation, Reach, EnemyIds, EnemyLocations);
 	}

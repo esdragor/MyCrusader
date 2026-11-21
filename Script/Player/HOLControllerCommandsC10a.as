@@ -230,7 +230,10 @@ namespace HOLControllerCommandsC10a
 	{
 		TArray<int> SelectedIds;
 		HOLControllerCommand::OwnSelectedUnitIds(Controller, SelectedIds);
-		const EHOLRightClickOrder RightClick = RightClickUnitOrder(HOLFollowOrders::PlayerBook, SelectedIds, UnitId, Plan.bEnemy, Plan.Slot);
+		UHOLFollowBookHolder Holder = UHOLFollowBookHolder::Get();
+		if (Holder == nullptr)
+			return false;
+		const EHOLRightClickOrder RightClick = RightClickUnitOrder(Holder.Book, SelectedIds, UnitId, Plan.bEnemy, Plan.Slot);
 		return RightClick == EHOLRightClickOrder::Follow;
 	}
 

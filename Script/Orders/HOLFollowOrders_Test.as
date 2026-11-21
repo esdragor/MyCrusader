@@ -168,11 +168,11 @@ void Test_FollowOrdersUnitScriptBindingsAnswerEmptyForUnknownUnit(FUnitTest& T)
 	Ids.Add(5);
 	TArray<FVector> Locations;
 	Locations.Add(FVector(1.f, 2.f, 3.f));
-	const bool bFound = HOLUnitScript::GetEnemiesNear(nullptr, 987654, 1500.f, Ids, Locations);
+	const bool bFound = HOLUnitScript::GetEnemiesNear(987654, 1500.f, Ids, Locations);
 	T.AssertFalse(bFound, "an unknown unit has no enemies near it");
 	T.AssertEquals(0, Ids.Num(), "and the id list is cleared, not left as the caller filled it");
 	T.AssertEquals(0, Locations.Num(), "and the location list is cleared");
-	const float Range = HOLUnitScript::GetAttackRange(nullptr, 987654);
+	const float Range = HOLUnitScript::GetAttackRange(987654);
 	T.AssertTrue(Range < 0.01f, f"an unknown unit has no attack range (got {Range})");
 }
 
