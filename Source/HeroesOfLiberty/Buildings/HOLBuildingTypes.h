@@ -323,8 +323,12 @@ namespace HOLBuildingTypeNames
 	 */
 	inline int32 FindCentreIndex(const TArray<FName>& Types)
 	{
-		// STUB (red): only the main centre, the secondary centre is not taken yet.
-		return Types.IndexOfByKey(MainCentre);
+		const int32 Main = Types.IndexOfByKey(MainCentre);
+		if (Main != INDEX_NONE)
+		{
+			return Main;
+		}
+		return Types.IndexOfByPredicate([](const FName Type) { return IsCentre(Type); });
 	}
 	/** +10 population (D83, D310). */
 	inline const FName House(TEXT("House"));
