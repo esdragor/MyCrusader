@@ -5,7 +5,13 @@
 #include "MassEntitySubsystem.h"
 #include "Misc/AutomationTest.h"
 #include "Simulation/HOLSimulationFragments.h"
+#include "MassExecutor.h"
+#include "MassProcessingContext.h"
+#include "Simulation/HOLCombatRules.h"
+#include "Simulation/HOLMoraleProcessor.h"
 #include "Simulation/HOLMoraleRules.h"
+#include "Simulation/HOLSimulationSettings.h"
+#include "Simulation/HOLSimulationSubsystem.h"
 #include "Simulation/HOLMoraleTableRows.h"
 #include "Simulation/HOLUnitSubsystem.h"
 
@@ -304,6 +310,233 @@ bool FHOLMoraleUnitArchetypeTest::RunTest(const FString& Parameters)
 			const FHOLMoraleFragment* Again = EntityManager.GetFragmentDataPtr<FHOLMoraleFragment>(Entity);
 			TestEqual(TEXT("the entity's total rises"), Again ? HOLMorale::Total(Again->State, HOLMorale::LeverTaken) : -1, 25);
 			TestTrue(TEXT("the entity now has a fingerprint key"), Again && HOLMorale::FingerprintKey(Again->State) != 0);
+		}
+	}
+
+	GEngine->DestroyWorldContext(World);
+	World->DestroyWorld(false);
+	return true;
+}
+
+// PLAN-MORAL-1120 step 4 (D866), the processor's first rule: each fixed step UHOLMoraleProcessor lets the time pass on the fragment of every unit
+// (HOLMorale::Tick). A unit born through the real chain carries a temporary effect and an aura; the processor runs on the entity manager as a
+// match runs it; the entity's own fragment is read back. The expected values are CALCULATED by the rule on a copy (never typed). RED until the
+// processor's Execute applies the rule (its stub does nothing).
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLMoraleProcessorTest, "HeroesOfLiberty.Morale.ProcessorTicksTheFragment", UE::HeroesOfLiberty::Tests::MoraleRules::Flags)
+
+bool FHOLMoraleProcessorTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::MoraleRules;
+	UWorld* World = UWorld::CreateWorld(EWorldType::Game, /*bInformEngineOfWorld*/ false);
+	FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);
+	Context.SetCurrentWorld(World);
+	World->InitializeActorsForPlay(FURL());
+
+	UHOLUnitSubsystem* Units = World->GetSubsystem<UHOLUnitSubsystem>();
+	UHOLSimulationSubsystem* Simulation = World->GetSubsystem<UHOLSimulationSubsystem>();
+	UMassEntitySubsystem* EntitySubsystem = World->GetSubsystem<UMassEntitySubsystem>();
+	if (TestNotNull(TEXT("units"), Units) && TestNotNull(TEXT("simulation"), Simulation) && TestNotNull(TEXT("entities"), EntitySubsystem))
+	{
+		TSharedPtr<FMassEntityManager> EntityManager = EntitySubsystem->GetMutableEntityManager().AsShared();
+		UHOLMoraleProcessor* Morale = NewObject<UHOLMoraleProcessor>(Simulation);
+		Morale->CallInitialize(Simulation, EntityManager.ToSharedRef());
+		const float StepSeconds = GetDefault<UHOLSimulationSettings>()->GetStepSeconds();
+		const int32 StepMs = HOLCombat::ToMilliseconds(StepSeconds);
+
+		TArray<uint32> Before;
+		Units->GetAllUnitIds(Before);
+		FHOLUnitSpawnRequest Request;
+		Request.TypeName = FName(TEXT("ManAtArms"));
+		Request.Count = 1;
+		Request.OwnerPlayer = 0;
+		Request.Center = FVector(0.0, 0.0, 0.0);
+		Units->RequestUnits(Request);
+		Units->ServeBirthRequests();
+		TArray<uint32> After;
+		Units->GetAllUnitIds(After);
+		uint32 Born = 0;
+		for (const uint32 Id : After)
+		{
+			Born = Before.Contains(Id) ? Born : Id;
+		}
+		const FMassEntityHandle Entity = TestTrue(TEXT("a unit was born"), Born != 0) ? Units->FindEntity(Born) : FMassEntityHandle();
+		FHOLMoraleFragment* Fragment = Entity.IsSet() ? EntityManager->GetFragmentDataPtr<FHOLMoraleFragment>(Entity) : nullptr;
+		if (TestNotNull(TEXT("the unit carries FHOLMoraleFragment"), Fragment))
+		{
+			// A temporary effect (1000 ms, 25 % less damage taken) and an aura (10 % more damage dealt, does not run down).
+			HOLMorale::Apply(Fragment->State, HOLMorale::MakeEffect(IdA, 0, 25, 0, 1000, false));
+			HOLMorale::Apply(Fragment->State, HOLMorale::MakeEffect(IdB, 10, 0, 0, 0, true));
+			// What the rule leaves after ONE step, calculated on a copy.
+			HOLMorale::FHOLMoraleState Expected = Fragment->State;
+			HOLMorale::ClearAuras(Expected);
+			HOLMorale::Tick(Expected, StepMs);
+
+			const auto RunStep = [&EntityManager, &Morale, StepSeconds]
+			{
+				FMassProcessingContext ProcessingContext(*EntityManager, StepSeconds);
+				UE::Mass::Executor::Run(*Morale, ProcessingContext);
+			};
+			RunStep();
+			const FHOLMoraleFragment* Now = EntityManager->GetFragmentDataPtr<FHOLMoraleFragment>(Entity);
+			TestTrue(TEXT("one step: the temporary effect lost one step of time"), Now && Now->State.Effects[0].DurationMs == Expected.Effects[0].DurationMs);
+			TestTrue(TEXT("one step: the time left is less than it was"), Now && Now->State.Effects[0].DurationMs < 1000);
+
+			// Enough steps for the temporary effect to end: it leaves, and the aura nobody lays again is already gone (the unit is empty).
+			for (int32 Steps = 1; Steps <= 1000 / FMath::Max(StepMs, 1) + 1; ++Steps)
+			{
+				RunStep();
+			}
+			Now = EntityManager->GetFragmentDataPtr<FHOLMoraleFragment>(Entity);
+			TestFalse(TEXT("the temporary effect has ended"), Now && HOLMorale::Has(Now->State, IdA));
+			TestFalse(TEXT("the aura is gone"), Now && HOLMorale::Has(Now->State, IdB));
+			TestTrue(TEXT("the unit is empty again"), Now && HOLMorale::IsEmpty(Now->State));
+		}
+	}
+
+	GEngine->DestroyWorldContext(World);
+	World->DestroyWorld(false);
+	return true;
+}
+// Slice 2 of the processor (plan step 4): every step the unit's auras are taken off (HOLMorale::ClearAuras) before the engine lays
+// the ones in range again, so an aura nobody lays again ends; the temporary effects are not touched by it. Red while Execute only ticks.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLMoraleProcessorClearsAurasTest, "HeroesOfLiberty.Morale.ProcessorClearsAurasEachStep", UE::HeroesOfLiberty::Tests::MoraleRules::Flags)
+
+bool FHOLMoraleProcessorClearsAurasTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::MoraleRules;
+	UWorld* World = UWorld::CreateWorld(EWorldType::Game, /*bInformEngineOfWorld*/ false);
+	FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);
+	Context.SetCurrentWorld(World);
+	World->InitializeActorsForPlay(FURL());
+
+	UHOLUnitSubsystem* Units = World->GetSubsystem<UHOLUnitSubsystem>();
+	UHOLSimulationSubsystem* Simulation = World->GetSubsystem<UHOLSimulationSubsystem>();
+	UMassEntitySubsystem* EntitySubsystem = World->GetSubsystem<UMassEntitySubsystem>();
+	if (TestNotNull(TEXT("units"), Units) && TestNotNull(TEXT("simulation"), Simulation) && TestNotNull(TEXT("entities"), EntitySubsystem))
+	{
+		TSharedPtr<FMassEntityManager> EntityManager = EntitySubsystem->GetMutableEntityManager().AsShared();
+		UHOLMoraleProcessor* Morale = NewObject<UHOLMoraleProcessor>(Simulation);
+		Morale->CallInitialize(Simulation, EntityManager.ToSharedRef());
+		const float StepSeconds = GetDefault<UHOLSimulationSettings>()->GetStepSeconds();
+		const int32 StepMs = HOLCombat::ToMilliseconds(StepSeconds);
+
+		TArray<uint32> Before;
+		Units->GetAllUnitIds(Before);
+		FHOLUnitSpawnRequest Request;
+		Request.TypeName = FName(TEXT("ManAtArms"));
+		Request.Count = 1;
+		Request.OwnerPlayer = 0;
+		Request.Center = FVector(0.0, 0.0, 0.0);
+		Units->RequestUnits(Request);
+		Units->ServeBirthRequests();
+		TArray<uint32> After;
+		Units->GetAllUnitIds(After);
+		uint32 Born = 0;
+		for (const uint32 Id : After)
+		{
+			Born = Before.Contains(Id) ? Born : Id;
+		}
+		const FMassEntityHandle Entity = TestTrue(TEXT("a unit was born"), Born != 0) ? Units->FindEntity(Born) : FMassEntityHandle();
+		FHOLMoraleFragment* Fragment = Entity.IsSet() ? EntityManager->GetFragmentDataPtr<FHOLMoraleFragment>(Entity) : nullptr;
+		if (TestNotNull(TEXT("the unit carries FHOLMoraleFragment"), Fragment))
+		{
+			HOLMorale::Apply(Fragment->State, HOLMorale::MakeEffect(IdA, 0, 25, 0, 1000, false));
+			HOLMorale::Apply(Fragment->State, HOLMorale::MakeEffect(IdB, 10, 0, 0, 0, true));
+			// What the rule leaves after ONE step (auras off, then the time passes), calculated on a copy.
+			HOLMorale::FHOLMoraleState Expected = Fragment->State;
+			HOLMorale::ClearAuras(Expected);
+			HOLMorale::Tick(Expected, StepMs);
+
+			FMassProcessingContext ProcessingContext(*EntityManager, StepSeconds);
+			UE::Mass::Executor::Run(*Morale, ProcessingContext);
+			const FHOLMoraleFragment* Now = EntityManager->GetFragmentDataPtr<FHOLMoraleFragment>(Entity);
+			TestFalse(TEXT("one step: the aura nobody laid again has ended"), Now && HOLMorale::Has(Now->State, IdB));
+			TestEqual(TEXT("one step: the dealt lever no longer reads the aura"), Now ? HOLMorale::Total(Now->State, HOLMorale::LeverDealt) : -1, HOLMorale::Total(Expected, HOLMorale::LeverDealt));
+			TestTrue(TEXT("one step: the temporary effect stays, one step older"), Now && HOLMorale::Has(Now->State, IdA) && Now->State.Num == Expected.Num);
+		}
+	}
+
+	GEngine->DestroyWorldContext(World);
+	World->DestroyWorld(false);
+	return true;
+}
+
+
+// Slice 3 of the processor (plan step 4, D705, row DawnAura of Effects.csv, SourceKind Hero): every step, after the auras were taken off
+// (ClearAuras), a living hero lays the Dawn aura on the units of HIS OWN camp within the row's radius (a bonus goes to the owner alone, never to
+// an enemy, never to a Peasant). Born through the real chain; the processor runs as a match runs it; the expected effect is CALCULATED by the rule
+// (MakeEffectFromRow + Apply on an empty state, never typed). RED while Execute only clears and ticks.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLMoraleProcessorLaysDawnAuraTest, "HeroesOfLiberty.Morale.ProcessorLaysDawnAuraInRange", UE::HeroesOfLiberty::Tests::MoraleRules::Flags)
+
+bool FHOLMoraleProcessorLaysDawnAuraTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::MoraleRules;
+	UWorld* World = UWorld::CreateWorld(EWorldType::Game, /*bInformEngineOfWorld*/ false);
+	FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);
+	Context.SetCurrentWorld(World);
+	World->InitializeActorsForPlay(FURL());
+
+	UHOLUnitSubsystem* Units = World->GetSubsystem<UHOLUnitSubsystem>();
+	UHOLSimulationSubsystem* Simulation = World->GetSubsystem<UHOLSimulationSubsystem>();
+	UMassEntitySubsystem* EntitySubsystem = World->GetSubsystem<UMassEntitySubsystem>();
+	if (TestNotNull(TEXT("units"), Units) && TestNotNull(TEXT("simulation"), Simulation) && TestNotNull(TEXT("entities"), EntitySubsystem))
+	{
+		TSharedPtr<FMassEntityManager> EntityManager = EntitySubsystem->GetMutableEntityManager().AsShared();
+		UHOLMoraleProcessor* Morale = NewObject<UHOLMoraleProcessor>(Simulation);
+		Morale->CallInitialize(Simulation, EntityManager.ToSharedRef());
+		const float StepSeconds = GetDefault<UHOLSimulationSettings>()->GetStepSeconds();
+
+		// One unit born through the real chain at (X, 0): its entity.
+		const auto Spawn = [this, Units](const TCHAR* TypeName, const uint8 Owner, const double X) -> FMassEntityHandle
+		{
+			TArray<uint32> Before;
+			Units->GetAllUnitIds(Before);
+			FHOLUnitSpawnRequest Request;
+			Request.TypeName = FName(TypeName);
+			Request.Count = 1;
+			Request.OwnerPlayer = Owner;
+			Request.Center = FVector(X, 0.0, 0.0);
+			Units->RequestUnits(Request);
+			Units->ServeBirthRequests();
+			TArray<uint32> After;
+			Units->GetAllUnitIds(After);
+			uint32 Born = 0;
+			for (const uint32 Id : After)
+			{
+				Born = Before.Contains(Id) ? Born : Id;
+			}
+			return TestTrue(TEXT("a unit was born"), Born != 0) ? Units->FindEntity(Born) : FMassEntityHandle();
+		};
+		const FMassEntityHandle Hero = Spawn(TEXT("Hero"), 0, 0.0);
+		const FMassEntityHandle AllyNear = Spawn(TEXT("ManAtArms"), 0, 500.0);
+		const FMassEntityHandle AllyFar = Spawn(TEXT("ManAtArms"), 0, 9000.0);
+		const FMassEntityHandle EnemyNear = Spawn(TEXT("ManAtArms"), 1, 500.0);
+		const FMassEntityHandle PeasantNear = Spawn(TEXT("Peasant"), 0, 500.0);
+
+		// What the rule leaves on a unit that stands in the aura after ONE step: the row's effect posed on an empty state.
+		HOLMorale::FHOLMoraleState Expected;
+		HOLMorale::Apply(Expected, HOLMorale::MakeEffectFromRow(HOLMoraleTableRows::HOLMoraleDawnAura));
+		TestTrue(TEXT("the Dawn aura row gives a real lever"), HOLMorale::Total(Expected, HOLMorale::LeverTaken) > 0);
+
+		const auto Read = [&EntityManager](const FMassEntityHandle Entity) -> const FHOLMoraleFragment*
+		{
+			return Entity.IsSet() ? EntityManager->GetFragmentDataPtr<FHOLMoraleFragment>(Entity) : nullptr;
+		};
+		if (TestTrue(TEXT("every unit carries the fragment"), Read(Hero) && Read(AllyNear) && Read(AllyFar) && Read(EnemyNear) && Read(PeasantNear)))
+		{
+			// Two steps: the aura is taken off then laid again each step, so it is there and never doubled.
+			for (int32 Step = 0; Step < 2; ++Step)
+			{
+				FMassProcessingContext ProcessingContext(*EntityManager, StepSeconds);
+				UE::Mass::Executor::Run(*Morale, ProcessingContext);
+			}
+			const FHOLMoraleFragment* Near = Read(AllyNear);
+			TestTrue(TEXT("the ally in range carries the Dawn aura"), HOLMorale::Has(Near->State, HOLMoraleTableRows::HOLMoraleDawnAura));
+			TestEqual(TEXT("it reads the row's damage taken lever"), HOLMorale::Total(Near->State, HOLMorale::LeverTaken), HOLMorale::Total(Expected, HOLMorale::LeverTaken));
+			TestEqual(TEXT("the aura is laid once, never doubled"), Near->State.Num, Expected.Num);
+			TestTrue(TEXT("the ally out of range has nothing"), HOLMorale::IsEmpty(Read(AllyFar)->State));
+			TestTrue(TEXT("the enemy in range has nothing (a bonus goes to the owner alone, D705)"), HOLMorale::IsEmpty(Read(EnemyNear)->State));
+			TestTrue(TEXT("the Peasant in range has nothing (never a Peasant, D705)"), HOLMorale::IsEmpty(Read(PeasantNear)->State));
 		}
 	}
 
