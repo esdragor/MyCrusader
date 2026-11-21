@@ -1018,4 +1018,21 @@ bool FHOLBuildingFarmShapeTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+// D879 (SecondaryCentersInProgress.md, SC3): the C++ uses of MainCentre that mean "any centre" take the secondary centre too. A centre
+// (main or secondary) accepts the four resources but sends no builders to gather (they would walk off a forum); a camp does.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLBuildingAnyCentreTest, "HeroesOfLiberty.Buildings.AnyCentre", UE::HeroesOfLiberty::Tests::Buildings::Flags)
+bool FHOLBuildingAnyCentreTest::RunTest(const FString& Parameters)
+{
+	const TArray<EHOLResource> AllFour = { EHOLResource::Food, EHOLResource::Wood, EHOLResource::Stone, EHOLResource::Gold };
+	const TArray<EHOLResource> WoodOnly = { EHOLResource::Wood };
+	TestTrue(TEXT("the main centre is a centre"), HOLBuildingTypeNames::IsCentre(HOLBuildingTypeNames::MainCentre));
+	TestTrue(TEXT("the secondary centre is a centre"), HOLBuildingTypeNames::IsCentre(HOLBuildingTypeNames::SecondaryCentre));
+	TestFalse(TEXT("a house is not a centre"), HOLBuildingTypeNames::IsCentre(HOLBuildingTypeNames::House));
+	TestFalse(TEXT("no name is not a centre"), HOLBuildingTypeNames::IsCentre(NAME_None));
+	TestFalse(TEXT("the main centre sends no builders to gather"), HOLConstruction::SendsBuildersToGather(HOLBuildingTypeNames::MainCentre, AllFour));
+	TestFalse(TEXT("the secondary centre sends no builders to gather"), HOLConstruction::SendsBuildersToGather(HOLBuildingTypeNames::SecondaryCentre, AllFour));
+	TestTrue(TEXT("a lumber camp sends its builders to gather"), HOLConstruction::SendsBuildersToGather(HOLBuildingTypeNames::LumberCamp, WoodOnly));
+	return true;
+}
+
 #endif

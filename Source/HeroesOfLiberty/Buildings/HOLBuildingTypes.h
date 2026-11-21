@@ -305,6 +305,16 @@ public:
 namespace HOLBuildingTypeNames
 {
 	inline const FName MainCentre(TEXT("MainCentre"));
+	/** The secondary centre (D879, SC3): a forum more, without the anti-rush zone of the main centre (D22). */
+	inline const FName SecondaryCentre(TEXT("SecondaryCentre"));
+	/**
+	 * "Any centre" (D879): the main centre or a secondary one. The one source of every C++ use of a centre that is not "main forum only"
+	 * (HOLConstruction::SendsBuildersToGather, the Nomad first-forum bit of HOLBuildProcessor); the script twin is HOLCentreKind::IsCentre.
+	 */
+	inline bool IsCentre(const FName TypeName)
+	{
+		return TypeName == MainCentre;
+	}
 	/** +10 population (D83, D310). */
 	inline const FName House(TEXT("House"));
 	/** Wood deposit (D310); S7 places some by code. */
