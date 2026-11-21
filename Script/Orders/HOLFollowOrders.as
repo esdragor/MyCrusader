@@ -158,15 +158,32 @@ namespace HOLFollowOrders
 		return StepBodyguard(Commands, PlayerIndex, Book, UnitId, UnitLocation, TargetLocation, bPlayerOrderActive, EnemyId);
 	}
 
-	// STUB (red): the right click classification is not written yet, every click is a Move.
+	// The meaning of a right click with units selected (D818 Q1 C). Ground, or a unit of the selection itself = Move; an enemy unit = Attack (focus);
+	// an ally unit outside the selection = Follow. bTargetIsAlly: same camp or allied by Diplomacy, decided by the caller.
 	EHOLRightClickOrder ClassifyRightClick(bool bOnUnit, int TargetId, bool bTargetIsAlly, const TArray<int>& SelectedIds)
 	{
-		return EHOLRightClickOrder::Move;
+		if (!bOnUnit)
+			return EHOLRightClickOrder::Move;
+		if (!bTargetIsAlly)
+			return EHOLRightClickOrder::Attack;
+		if (SelectedIds.Contains(TargetId))
+			return EHOLRightClickOrder::Move;
+		return EHOLRightClickOrder::Follow;
 	}
 
-	// STUB (red): no follower is started.
+	// The right click of the player: classifies it and, for Follow, makes every selected unit (but the target) a bodyguard of the ally (Begin).
+	// Move / Attack: the book is untouched, the caller sends the ordinary order. A new order of a follower ends its follow through OnManualOrder (caller).
 	EHOLRightClickOrder ApplyRightClick(FHOLFollowBook& Book, const TArray<int>& SelectedIds, bool bOnUnit, int TargetId, bool bTargetIsAlly)
 	{
-		return EHOLRightClickOrder::Move;
+		const EHOLRightClickOrder Order = ClassifyRightClick(bOnUnit, TargetId, bTargetIsAlly, SelectedIds);
+		if (Order == EHOLRightClickOrder::Follow)
+		{
+			for (int UnitId : SelectedIds)
+			{
+				if (UnitId != TargetId)
+					Begin(Book, UnitId, TargetId, true);
+			}
+		}
+		return Order;
 	}
 }
