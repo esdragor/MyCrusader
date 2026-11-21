@@ -16,12 +16,12 @@ namespace HOLChatInputScreen
 	const int Blank = 1;
 	const int TooLong = 2;
 
-	// The mark of the channel in the field: "Allies", "Tous", or the chosen player's name (Private; "Privé" when no name is known).
+	// The mark of the channel in the field: "(Alliés)" (the thread's own tag, HOLForumMessages.cpp:302 LOCTEXT ChatAllies, minus its trailing space; keep the two in step), "Tous", or the chosen player's name (Private; "Privé" when no name is known).
 	FString ChannelMark(int Channel, const FString& PlayerName)
 	{
 		if (Channel == HOLChat::Allies)
 		{
-			return "Allies";
+			return "(Alliés)";
 		}
 		if (Channel == HOLChat::Private)
 		{
@@ -132,6 +132,8 @@ class UHOLChatInputScreen : UObject
 	void Build(UHOLScriptScreen InScreen, UVerticalBox Host)
 	{
 		Screen = InScreen;
+		// The Tab of the open field reaches KeyPressed through the host's preview key (C++ NativeOnPreviewKeyDown): OnUserMovedFocus never fires for it.
+		Screen.bRelayTabToScript = true;
 		Panel = Cast<UBorder>(Screen.ConstructWidget(UBorder, n"ChatInputPanel"));
 		Panel.SetVisibility(ESlateVisibility::Collapsed);
 		// A UBorder draws a white brush: the mark (light HUD text) was white on white in RECETTE-1120sa (empty-looking box). Dark panel + the HUD label style.

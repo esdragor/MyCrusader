@@ -65,3 +65,15 @@ void Test_TopBarIncomeIsSetAgainOnlyWhenItChanges(FUnitTest& T)
 	T.AssertTrue(HOLTopBar::IncomeChanged(Shown, TopBarRes(0, 90, 0, 20)), "gold changes: set again");
 	T.AssertTrue(HOLTopBar::IncomeChanged(Shown, TopBarRes(5, 90, 0, 10)), "food changes: set again");
 }
+
+// D814 (Q-income-tooltip-taille = B): the income tooltip is a HUD panel, computed by the rule from the income and the resource: the text names the income and
+// the resource, the fill is dark and near-opaque (the HUD's), the border is gold with a width.
+void Test_TopBarIncomeTipIsAHudPanel(FUnitTest& T)
+{
+	HOLTopBar::FIncomeTipView View = HOLTopBar::IncomeTipView(90, HOLTopBar::Wood());
+	T.AssertTrue(View.Text.Contains(HOLTopBar::FormatAmount(90)), "the tooltip text carries the income");
+	T.AssertTrue(View.Text.Contains(HOLTopBar::ResourceWord(HOLTopBar::Wood())), "the tooltip text names the resource");
+	T.AssertTrue(View.Fill.A >= 0.9 && View.Fill.R < 0.15 && View.Fill.G < 0.15 && View.Fill.B < 0.15, "the fill is the HUD's dark, near-opaque one");
+	T.AssertTrue(View.Border.R > 0.7 && View.Border.R > View.Border.G && View.Border.G > View.Border.B && View.Border.A > 0.9, "the border is gold");
+	T.AssertTrue(View.BorderWidth >= 1.0 && View.Padding > 0.0, "the border has a width and the text a padding");
+}
