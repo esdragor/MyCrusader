@@ -405,6 +405,18 @@ $eScn = & powershell -NoProfile -ExecutionPolicy Bypass -File $Gate -Phase Essay
 Check ($eScn -match "(?m)^FAIL .*fixb" -and -not ($eScn -match "(?m)^FAIL .*introuvable")) 'essay: -Essay <nom du scenario> retrouve la fiche par play.ps1 <scenario> (FAIL fixb)' $eScn
 $eNone = & powershell -NoProfile -ExecutionPolicy Bypass -File $Gate -Phase Essay -Root $G -RetoursDir $RetE -Essay E-none | Out-String
 Check ($eNone -match "(?m)^WARN .*branches:") 'essay: aucune branche citee -> WARN (ajouter la ligne branches:)' $eNone
+# FARAMIR-1121a : un mot de 'branches:' qui se resout en commit (sha) est accepte et controle comme ancetre du -Root ; le texte entre parentheses est ignore
+$shaA = (git -C $G rev-parse --short fixa).Trim()
+$shaB = (git -C $G rev-parse --short fixb).Trim()
+Set-Content -Path (Join-Path $RetE 'E-shaok.md') -Encoding UTF8 -Value "# [$A ESSAYER] E-shaok : essai`nGESTE: r$($E)el`nbranches: work $shaA (integ-37, contient integ-25 $shaB)"
+Set-Content -Path (Join-Path $RetE 'E-shabad.md') -Encoding UTF8 -Value "# [$A ESSAYER] E-shabad : essai`nGESTE: r$($E)el`nbranches: work $shaB (integ-37)"
+Set-Content -Path (Join-Path $RetE 'E-typo.md') -Encoding UTF8 -Value "# [$A ESSAYER] E-typo : essai`nGESTE: r$($E)el`nbranches: nexistepas"
+$eShaOk = & powershell -NoProfile -ExecutionPolicy Bypass -File $Gate -Phase Essay -Root $G -RetoursDir $RetE -Essay E-shaok | Out-String
+Check ($eShaOk -match "(?m)^PASS .*$shaA" -and -not ($eShaOk -match "(?m)^FAIL ")) 'essay: un sha dans branches: (texte entre parentheses ignore) -> PASS, aucun FAIL' $eShaOk
+$eShaBad = & powershell -NoProfile -ExecutionPolicy Bypass -File $Gate -Phase Essay -Root $G -RetoursDir $RetE -Essay E-shabad | Out-String
+Check ($eShaBad -match "(?m)^FAIL .*$shaB.*ABSENTE" -and -not ($eShaBad -match "(?m)^FAIL .*inconnue")) 'essay: un sha non ancetre du Root -> FAIL ABSENTE (pas inconnue)' $eShaBad
+$eTypo = & powershell -NoProfile -ExecutionPolicy Bypass -File $Gate -Phase Essay -Root $G -RetoursDir $RetE -Essay E-typo | Out-String
+Check ($eTypo -match "(?m)^FAIL .*nexistepas.*inconnue") 'essay: un mot qui n est ni branche ni commit -> FAIL inconnue' $eTypo
 
 # --- L12-1c (2026-11-12) : session_gate Launch : WARN si la memoire virtuelle libre < seuil (8 Go) ou si un cl.exe d'un AUTRE moteur compile
 $VmRoot = Join-Path $Tmp 'HeroesOfLiberty-FakeVm'

@@ -1,6 +1,7 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "Misc/AutomationTest.h"
+#include "Simulation/HOLSimulationFragments.h"
 #include "Simulation/HOLMoraleRules.h"
 #include "Simulation/HOLMoraleTableRows.h"
 
@@ -209,4 +210,40 @@ bool FHOLMoraleTickTest::RunTest(const FString& Parameters)
 	return true;
 }
 
-#endif // WITH_DEV_AUTOMATION_TESTS
+// PLAN-MORAL-1120 step 3: the morale fragment of a unit through the rule: pose, refresh (no doubling), expiry, removal of the malus; the fingerprint
+// key is 0 for an empty unit (left out of the hash) and follows what the unit carries.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLMoraleFragmentTest, "HeroesOfLiberty.Morale.FragmentPosesRefreshesExpiresRemoves", UE::HeroesOfLiberty::Tests::MoraleRules::Flags)
+
+bool FHOLMoraleFragmentTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::MoraleRules;
+	FHOLMoraleFragment Fragment;
+	TestTrue(TEXT("a new fragment is empty"), HOLMorale::IsEmpty(Fragment.State));
+	TestEqual(TEXT("an empty unit mixes nothing into the fingerprint"), HOLMorale::FingerprintKey(Fragment.State), static_cast<uint64>(0));
+
+	// A temporary taken bonus of 25 for one second: Total(Taken) rises, a second pose of the same effect refreshes it and does not double it.
+	TestEqual(TEXT("first pose"), HOLMorale::Apply(Fragment.State, HOLMorale::MakeEffect(IdA, 0, 25, 0, 1000, false)), HOLMorale::ApplyPosed);
+	TestEqual(TEXT("Total(Taken) rises"), HOLMorale::Total(Fragment.State, HOLMorale::LeverTaken), 25);
+	const uint64 KeyWithBonus = HOLMorale::FingerprintKey(Fragment.State);
+	TestTrue(TEXT("a unit under an effect has a key"), KeyWithBonus != 0);
+	TestEqual(TEXT("second pose refreshes"), HOLMorale::Apply(Fragment.State, HOLMorale::MakeEffect(IdA, 0, 25, 0, 1000, false)), HOLMorale::ApplyRefreshed);
+	TestEqual(TEXT("the refresh does not double"), HOLMorale::Total(Fragment.State, HOLMorale::LeverTaken), 25);
+	TestEqual(TEXT("the key does not change with a refresh"), HOLMorale::FingerprintKey(Fragment.State), KeyWithBonus);
+
+	// A malus beside the bonus: the removal takes the malus and leaves the bonus; the key follows.
+	HOLMorale::Apply(Fragment.State, HOLMorale::MakeEffect(IdB, 0, -20, 0, 500, false));
+	TestEqual(TEXT("bonus and malus offset"), HOLMorale::Total(Fragment.State, HOLMorale::LeverTaken), 5);
+	const uint64 KeyWithBoth = HOLMorale::FingerprintKey(Fragment.State);
+	TestTrue(TEXT("a different state has a different key"), KeyWithBoth != KeyWithBonus);
+	TestEqual(TEXT("RemoveMalus counts one"), HOLMorale::RemoveMalus(Fragment.State), 1);
+	TestEqual(TEXT("the bonus stays"), HOLMorale::Total(Fragment.State, HOLMorale::LeverTaken), 25);
+	TestEqual(TEXT("the key is back to the bonus alone"), HOLMorale::FingerprintKey(Fragment.State), KeyWithBonus);
+
+	// After the time, the total falls to 0 and the unit leaves the fingerprint again.
+	HOLMorale::Tick(Fragment.State, 1000);
+	TestEqual(TEXT("expired: Total(Taken) is 0"), HOLMorale::Total(Fragment.State, HOLMorale::LeverTaken), 0);
+	TestTrue(TEXT("expired: the fragment is empty"), HOLMorale::IsEmpty(Fragment.State));
+	TestEqual(TEXT("expired: the key is 0"), HOLMorale::FingerprintKey(Fragment.State), static_cast<uint64>(0));
+	return true;
+}
+#endif#endif // WITH_DEV_AUTOMATION_TESTS

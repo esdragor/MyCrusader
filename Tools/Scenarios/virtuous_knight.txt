@@ -50,7 +50,8 @@ frames 2
 hol.Select.Type VirtuousKnight
 waitlog Select type VirtuousKnight: 1 units
 hol.HUD.Report
-note 3. Apres quelques coups sur l'allie : les PV du Chevalier ont BAISSE alors qu'il n'a pas bouge et qu'aucun ennemi ne l'a frappe (les coups visent l'allie) : la baisse vient de la redirection D864/D865.
+hol.Units.Where 0
+note 3. Apres quelques coups sur l'allie : les PV du Chevalier ont BAISSE (journal : l allie garde 70 % de chaque coup de 8, 5.6, et le Chevalier recoit 30 %, 2.4 par coup) alors qu'il n'a pas bouge et qu'aucun ennemi ne l'a frappe (les coups visent l'allie) : la baisse vient de la redirection D864/D865.
 capture virtuous_knight_hp
 hol.Test.Sanity
 note 4. A toi : fais reculer l'allie hors du rayon du Chevalier, les PV du Chevalier cessent de baisser.

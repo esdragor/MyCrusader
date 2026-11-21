@@ -164,6 +164,14 @@ namespace UE::HeroesOfLiberty::Simulation
 			{
 				MixInto(Parts->Combat, static_cast<uint64>(BitCast<uint32>(State->CurrentHealth)));
 			}
+			if (const FHOLMoraleFragment* Morale = EntityManager.GetFragmentDataPtr<FHOLMoraleFragment>(Entity))
+			{
+				const uint64 MoraleKey = HOLMorale::FingerprintKey(Morale->State);
+				if (MoraleKey != 0) // D866: only a unit under an effect (or an immunity) changes the hash, as RageMs
+				{
+					MixInto(Parts->Combat, MoraleKey);
+				}
+			}
 			MixInto(Parts->Handles, ((uint64(uint32(Entity.Index)) << 32) | uint32(Entity.SerialNumber)));
 			if (const FMassGhostLocationFragment* Ghost = EntityManager.GetFragmentDataPtr<FMassGhostLocationFragment>(Entity))
 			{

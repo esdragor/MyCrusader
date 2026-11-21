@@ -77,3 +77,4 @@ réapparition, ni territoire) ; « contrôlé » = **à soi** (le centre d'un al
 
 ## 2026-11-13 11:10 HALDIR-1113 (agent, maps)
 - D783 applique : CostWood 150, CostStone 400 (population 10 inchangee) ; rouge 8c12950 (Test_SecondaryCentreCostsMostlyStone durci aux valeurs 150/400, pierre >= 2x bois et >= 70 %, + Test_SecondaryCentreGivesTenPopulation via PopulationOf), vert 8d028ff ; quick_check -Parts tests 1203/1203 PASS (11:10). Toujours aucun appelant en jeu (C++ SC2/SG2/SP2/N2 a faire). Reprise : etape C++ suivante du journal.
+- 2026-11-21 14:09 (RECORD-1121b, réponse de l'utilisateur, aucun code) : Q-secondary-centre = A (GDD D879) : 150 s, 2400 PV ; valeurs déjà codées (4599ab8, wall-line), rien à changer ; fiche archivée dans Docs\Archive\Retours_2026-11-21\.
