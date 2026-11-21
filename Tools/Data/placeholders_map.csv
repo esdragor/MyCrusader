@@ -43,3 +43,4 @@ Arquebusier,UnitTypes,^- Arquebusier
 DamnedWarrior,UnitTypes,^- Guerrier damn
 Halberdier,UnitTypes,^- Hallebardier Aube
 VirtuousKnight,UnitTypes,^- Chevalier Vertueux Aube
+SecondaryCentre,BuildingTypes,^- Centre secondaire \(SecondaryCentre\)

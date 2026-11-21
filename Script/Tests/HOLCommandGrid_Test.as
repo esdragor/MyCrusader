@@ -521,7 +521,7 @@ void Test_CGTables(FUnitTest& T)
 	FHOLGridContextView Context;
 	Context.bBuilders = true;
 	Context = HOLCommandGridRead::WithTableBuildables(Context);
-	T.AssertEquals(14, Context.BuildableTypes.Num(), "fourteen buildable types (TowerWood added)");
+	T.AssertEquals(15, Context.BuildableTypes.Num(), "fifteen buildable types (TowerWood and SecondaryCentre added)");
 	T.AssertTrue(HOLCommandGridRules::GetAgeBuilding(Context, 0, 0).TypeName == n"House", "A: house");
 	T.AssertTrue(HOLCommandGridRules::GetAgeBuilding(Context, 0, 1).TypeName == n"LumberCamp", "Z: lumber camp");
 	T.AssertTrue(HOLCommandGridRules::GetAgeBuilding(Context, 0, 2).TypeName == n"MiningCamp", "E: mining camp");
@@ -547,8 +547,9 @@ void Test_CGTables(FUnitTest& T)
 	T.AssertTrue(StableCell.TypeName == n"Stable" && StableCell.Command == EHOLGridCommandKind::Build && StableCell.Age == 1 && StableCell.bGreyed, "II D: the Stable, greyed");
 	FHOLGridCommandView ForgeCell = HOLCommandGridRules::GetAgeBuilding(Context, 1, 8);
 	T.AssertTrue(ForgeCell.TypeName == n"Forge" && ForgeCell.Command == EHOLGridCommandKind::Build && ForgeCell.Age == 1 && ForgeCell.bGreyed, "II W: the Forge, greyed");
+	FHOLGridCommandView SecondaryCentreCell = HOLCommandGridRules::GetAgeBuilding(Context, 1, 1);
+	T.AssertTrue(SecondaryCentreCell.TypeName == n"SecondaryCentre" && SecondaryCentreCell.Command == EHOLGridCommandKind::Build && SecondaryCentreCell.Age == 1 && SecondaryCentreCell.bGreyed, "II Z: the Secondary centre, greyed");
 	TArray<int> EmptyII;
-	EmptyII.Add(1);
 	EmptyII.Add(2);
 	EmptyII.Add(3);
 	EmptyII.Add(7);
