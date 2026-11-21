@@ -1649,7 +1649,9 @@ UHOLScenarioPanelScript ScenarioPanel;
 	void ShowMinorAlert(EHOLMinorAlertKind Kind, const FHOLMinorAlert& Alert, const FVector2D& Place)
 	{
 		AddThreadLine(HOLAlertRules::MinorAlertText(Kind), Alert.LineSeconds);
-		PlayAlertSound();
+		// The kind's own sound of the audio table (D804 B); the provisional ping when it cannot play (no player, cooldown, sound missing).
+		if (Audio == nullptr || !Audio.Play(Alert.AudioEvent))
+			PlayAlertSound();
 		if (Alert.bPingMinimap && (Math::Abs(Place.X) > 1.0 || Math::Abs(Place.Y) > 1.0))
 		{
 			FHOLMinimapAlert Ping;

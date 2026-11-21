@@ -122,6 +122,24 @@ void Test_AlertMinorStepFromCounters(FUnitTest& T)
 	T.AssertTrue(Later.Building.bShow, "a building 30 s after the last building line: it goes again");
 }
 
+// D804 B "son court par type": each minor kind has its OWN sound in the audio table (not the shared ping), the one the real table resolves
+// to a cue of its own: the building's and the research's cues differ, both valid, both named.
+void Test_AlertMinorStepSoundPerKind(FUnitTest& T)
+{
+	FHOLMinorWatch Watch;
+	HOLAlertRules::MinorStep(Watch, 0, 0, 10.0);
+	FHOLMinorStep Step = HOLAlertRules::MinorStep(Watch, 1, 1, 50.0);
+	T.AssertTrue(Step.Building.bShow && Step.Research.bShow, "both kinds go");
+	T.AssertTrue(HOLAudio::IsValid(Step.Building.AudioEvent), "the building alert has a sound event of the audio table");
+	T.AssertTrue(HOLAudio::IsValid(Step.Research.AudioEvent), "the research alert has a sound event of the audio table");
+	T.AssertTrue(Step.Building.AudioEvent != Step.Research.AudioEvent, "each kind has its own sound event");
+	FHOLAudioCue BuildingCue = HOLAudio::CueFor(Step.Building.AudioEvent);
+	FHOLAudioCue ResearchCue = HOLAudio::CueFor(Step.Research.AudioEvent);
+	T.AssertTrue(BuildingCue.Name != ResearchCue.Name, "the two events resolve to two different cues");
+	T.AssertEquals(HOLAudio::CueFor(HOLAudioEvent::AlertBuildingDone).Name, BuildingCue.Name, "a finished building plays the building-done alert cue");
+	T.AssertEquals(HOLAudio::CueFor(HOLAudioEvent::AlertTechDone).Name, ResearchCue.Name, "a finished research plays the tech-done alert cue");
+}
+
 // An event dropped inside the 30 s is not kept for later: the same counter read again says nothing.
 void Test_AlertMinorStepNoReplay(FUnitTest& T)
 {
