@@ -1042,3 +1042,19 @@ double UHOLVisionSubsystem::GetUnitSight(const FName TypeName)
 	const FHOLUnitTypeRow* Row = Units ? Units->FindTypeRow(TypeName) : nullptr;
 	return UnitSights.Add(TypeName, Row ? HOLVisionRules::GetSightRadius(Row->SightRadius, 0., FHOLVisionTuning()) : 0.);
 }
+
+// Stealth network filter. Rouge stub (ARWEN-1121sd): hides nothing yet.
+bool UHOLStealthFilter::BP_IsVisibleToCamp_Implementation(int32 ViewerCamp, int32 UnitCamp, FVector2D UnitPosition) const
+{
+	return true;
+}
+
+int32 UHOLStealthFilter::MaskCamps(const UHOLStealthFilter* Filter, int32 Camps, int32 NumCamps, int32 UnitCamp, FVector2D UnitPosition)
+{
+	return Camps;
+}
+
+uint32 UHOLVisionSubsystem::GetCampsSeeingUnit(const FVector& Position, const int32 OwnerCamp) const
+{
+	return GetCampsSeeing(Position, FVector2D::ZeroVector);
+}

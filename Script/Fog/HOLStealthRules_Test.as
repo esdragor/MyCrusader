@@ -134,3 +134,27 @@ void Test_StealthBindingPicksCampPositions(FUnitTest& T)
 	TArray<FVector2D> CampTwo = UHOLVisionSubsystem::FilterPositionsByCamp(OwnerCamps, Positions, 2);
 	T.AssertEquals(0, CampTwo.Num(), "no unit in camp 2");
 }
+
+// Network filter (D824 Q1 A): the C++ hook UHOLStealthFilter calls the script rule; MaskCamps removes the enemy camps the rule hides the unit from.
+// Camp 0's unit stands in the zone; camp 1's only unit is far away (beyond RevealDistance and outside the zone): camp 1 must not receive it, camp 0 keeps it.
+class UHOLStealthTestFilter : UHOLStealthFilter
+{
+	UFUNCTION(BlueprintOverride)
+	bool BP_IsVisibleToCamp(int ViewerCamp, int UnitCamp, FVector2D UnitPosition) const
+	{
+		TArray<FHOLStealthZone> Zones = StealthOneZone();
+		TArray<FVector2D> Viewers = StealthViewers(FVector2D(HOLStealth::RevealDistance() * 10.0, 0.0));
+		return HOLStealth::IsVisibleToCamp(Zones, UnitCamp, UnitPosition, ViewerCamp, Viewers, HOLStealth::RevealDistance());
+	}
+}
+
+void Test_StealthNetFilterMasksHiddenEnemyCamp(FUnitTest& T)
+{
+	UHOLStealthTestFilter Filter = Cast<UHOLStealthTestFilter>(NewObject(GetTransientPackage(), UHOLStealthTestFilter::StaticClass()));
+	int InZone = UHOLStealthFilter::MaskCamps(Filter, 3, 2, 0, FVector2D(0.0, 0.0));
+	T.AssertEquals(1, InZone, "hidden unit of camp 0, enemy camp 1 far away: only camp 0 (bit 1) receives it");
+	int Outside = UHOLStealthFilter::MaskCamps(Filter, 3, 2, 0, FVector2D(HOLStealth::RevealDistance() * 50.0, 900.0));
+	T.AssertEquals(3, Outside, "the same unit outside every zone: both camps keep receiving it");
+	int NoFilter = UHOLStealthFilter::MaskCamps(nullptr, 3, 2, 0, FVector2D(0.0, 0.0));
+	T.AssertEquals(3, NoFilter, "no filter set: nothing is hidden");
+}
