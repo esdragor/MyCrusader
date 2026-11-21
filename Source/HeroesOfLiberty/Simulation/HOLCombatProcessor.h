@@ -12,6 +12,7 @@
 #include "HOLCombatProcessor.generated.h"
 
 struct FHOLCombatFragment;
+struct FHOLMoraleFragment;
 struct FHOLMoveOrderFragment;
 struct FHOLUnitStateFragment;
 struct FHOLUnitTypeConstants;
