@@ -227,6 +227,11 @@ namespace HOLMorale
 		return FMath::Min(Bonus, BonusCap(Lever)) - FMath::Min(Malus, MalusCap(Lever));
 	}
 
+	int32 TakenPercent(const FHOLMoraleState& State, int32 OtherReductionPercent)
+	{
+		return 100; // STUB (red first): the real net lands with the next commit.
+	}
+
 	int32 Multiplier(const FHOLMoraleState& State, int32 Lever)
 	{
 		const int32 Net = Total(State, Lever);

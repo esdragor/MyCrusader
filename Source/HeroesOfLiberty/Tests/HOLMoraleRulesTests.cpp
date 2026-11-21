@@ -8,6 +8,7 @@
 #include "MassExecutor.h"
 #include "MassProcessingContext.h"
 #include "Simulation/HOLCombatRules.h"
+#include "Simulation/HOLHeroAbilityRules.h"
 #include "Simulation/HOLMoraleProcessor.h"
 #include "Simulation/HOLMoraleRules.h"
 #include "Simulation/HOLSimulationSettings.h"
@@ -545,5 +546,35 @@ bool FHOLMoraleProcessorLaysDawnAuraTest::RunTest(const FString& Parameters)
 	return true;
 }
 
-#endif // WITH_DEV_AUTOMATION_TESTS
+// The combat reads the damage-taken lever of the morale fragment (PLAN-MORAL-1120 step 4, last slice): one strike on a unit under the Dawn aura does
+// the row's percent less than the same strike on a bare unit, the cry adds to it under the cap, and the old constants of the combat agree with the row.
+// Every expected value is CALCULATED (the row of the table, the rule's own GetReducedDamage), never typed. RED while TakenPercent is a stub (100).
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLMoraleTakenLeverTest, "HeroesOfLiberty.Morale.CombatReadsTheTakenLever", UE::HeroesOfLiberty::Tests::MoraleRules::Flags)
 
+bool FHOLMoraleTakenLeverTest::RunTest(const FString& Parameters)
+{
+	const HOLMoraleTableRows::FHOLMoraleTableRow* Row = HOLMoraleTableRows::Find(HOLMoraleTableRows::HOLMoraleDawnAura);
+	if (!TestNotNull(TEXT("the Dawn aura row exists"), Row))
+	{
+		return true;
+	}
+	HOLMorale::FHOLMoraleState Bare;
+	HOLMorale::FHOLMoraleState UnderAura;
+	HOLMorale::Apply(UnderAura, HOLMorale::MakeEffectFromRow(HOLMoraleTableRows::HOLMoraleDawnAura));
+
+	const float Strike = 200.f;
+	const float OnBare = HOLHeroAbility::GetReducedDamage(Strike, HOLMorale::TakenPercent(Bare, 0));
+	const float OnAura = HOLHeroAbility::GetReducedDamage(Strike, HOLMorale::TakenPercent(UnderAura, 0));
+	TestEqual(TEXT("a bare unit takes the whole strike"), OnBare, Strike);
+	TestEqual(TEXT("the same strike does the row's percent less under the aura"), OnAura, OnBare * static_cast<float>(100 - Row->Taken) / 100.f);
+
+	// The cry (posed apart) adds to the aura, under the cap: the lever replaces the aura term of the old constants, so the two agree on every case.
+	for (int32 Cry = 0; Cry < 2; Cry++)
+	{
+		const int32 Other = Cry ? HOLHeroAbility::CloseRanksReductionPercent : 0;
+		TestEqual(*FString::Printf(TEXT("aura %d, cry %d: the lever reads as the old rule"), 1, Cry), HOLMorale::TakenPercent(UnderAura, Other), HOLHeroAbility::GetDamageTakenPercent(true, Cry != 0));
+		TestEqual(*FString::Printf(TEXT("aura %d, cry %d: the lever reads as the old rule"), 0, Cry), HOLMorale::TakenPercent(Bare, Other), HOLHeroAbility::GetDamageTakenPercent(false, Cry != 0));
+	}
+	return true;
+}
+#endif // WITH_DEV_AUTOMATION_TESTS
