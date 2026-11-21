@@ -82,6 +82,28 @@ void UHOLDeployProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 			{
 				Fragment.PendingOrder = 2;
 			}
+			// D877 (user answer 2026-11-21): a march that ends while the engine is packed mounts it by itself (the button's decision, Toggle: a packed
+			// engine deploys). The march is the player's walk (not the combat's approach, whose target deploys it by the attack order); a pending
+			// order (the button, a march, an attack) is not overwritten. The note is dropped whatever the phase, so a held walk keeps it until its end.
+			if (!Orders.IsEmpty())
+			{
+				const bool bWalking = Orders[It].Phase != EHOLMovePhase::None;
+				if (bWalking)
+				{
+					if (Combats.IsEmpty() || !Combats[It].bApproaching)
+					{
+						Fragment.bMarching = 1;
+					}
+				}
+				else if (Fragment.bMarching != 0)
+				{
+					Fragment.bMarching = 0;
+					if (State.Phase == HOLDeploy::EPhase::Packed && Fragment.PendingOrder == 0)
+					{
+						Fragment.PendingOrder = 3;
+					}
+				}
+			}
 			// A deployed, deploying or packing engine does not walk: only a packed one has a speed.
 			if (!HOLDeploy::CanMove(State) && !Movements.IsEmpty() && !MoveTargets.IsEmpty())
 			{

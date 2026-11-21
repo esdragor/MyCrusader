@@ -38,6 +38,11 @@ struct HEROESOFLIBERTY_API FHOLDeployFragment : public FMassFragment
 	 * the held steps as stuck) once the engine is Packed again, so the engine leaves without a second click.
 	 */
 	uint8 bWalkHeld = 0;
+	/**
+	 * D877: 1 while the engine walks on a march the player ordered (a walk that is not the combat's own approach), noted by UHOLDeployProcessor
+	 * step after step; when the walk is over while the engine is Packed, the engine mounts by itself (the Mount button's decision) and the note is dropped.
+	 */
+	uint8 bMarching = 0;
 };
 
 /**
