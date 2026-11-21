@@ -25,4 +25,12 @@ public:
 	/** True when the unit is known to this machine and alive (not dying, not garrisoned). */
 	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Units", meta = (WorldContext = "WorldContextObject"))
 	static bool IsUnitAlive(const UObject* WorldContextObject, int32 UnitId);
+
+	/** The living enemies of the unit within Radius (cm) of it: ids in OutIds, positions in OutLocations (same order). True when the unit itself is known (alive); false and both arrays empty otherwise. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Units", meta = (WorldContext = "WorldContextObject"))
+	static bool GetEnemiesNear(const UObject* WorldContextObject, int32 UnitId, float Radius, TArray<int32>& OutIds, TArray<FVector>& OutLocations);
+
+	/** The attack range (cm, between the two bodies' edges) of the unit's type; 0 when the unit is unknown, dying or the type table is not there. */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Units", meta = (WorldContext = "WorldContextObject"))
+	static float GetAttackRange(const UObject* WorldContextObject, int32 UnitId);
 };

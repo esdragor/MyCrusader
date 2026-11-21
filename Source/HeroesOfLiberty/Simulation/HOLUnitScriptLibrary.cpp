@@ -25,3 +25,16 @@ bool UHOLUnitScriptLibrary::IsUnitAlive(const UObject* WorldContextObject, const
 	FVector Unused;
 	return GetUnitLocation(WorldContextObject, UnitId, Unused);
 }
+
+// STUB (red): compiles, answers empty / 0 for every unit; the real code is the next commit.
+bool UHOLUnitScriptLibrary::GetEnemiesNear(const UObject* WorldContextObject, const int32 UnitId, const float Radius, TArray<int32>& OutIds, TArray<FVector>& OutLocations)
+{
+	OutIds.Reset();
+	OutLocations.Reset();
+	return false;
+}
+
+float UHOLUnitScriptLibrary::GetAttackRange(const UObject* WorldContextObject, const int32 UnitId)
+{
+	return 0.f;
+}
