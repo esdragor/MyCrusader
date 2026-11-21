@@ -1,9 +1,13 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
+#include "Engine/Engine.h"
+#include "Engine/World.h"
+#include "MassEntitySubsystem.h"
 #include "Misc/AutomationTest.h"
 #include "Simulation/HOLSimulationFragments.h"
 #include "Simulation/HOLMoraleRules.h"
 #include "Simulation/HOLMoraleTableRows.h"
+#include "Simulation/HOLUnitSubsystem.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
 
@@ -246,4 +250,67 @@ bool FHOLMoraleFragmentTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("expired: the key is 0"), HOLMorale::FingerprintKey(Fragment.State), static_cast<uint64>(0));
 	return true;
 }
-#endif#endif // WITH_DEV_AUTOMATION_TESTS
+// PLAN-MORAL-1120 step 4 (D866): the fragment is on the unit ARCHETYPE (UHOLUnitTrait::BuildTemplate), not only a struct the rule can use. A unit born
+// through the real chain (RequestUnits -> ServeBirthRequests -> the type's template) carries FHOLMoraleFragment, empty at birth, and the morale rule
+// writes into the entity's own fragment: a pose is read back from the entity. RED until the trait adds the fragment.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLMoraleUnitArchetypeTest, "HeroesOfLiberty.Morale.UnitEntityCarriesTheFragment", UE::HeroesOfLiberty::Tests::MoraleRules::Flags)
+
+bool FHOLMoraleUnitArchetypeTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::MoraleRules;
+	UWorld* World = UWorld::CreateWorld(EWorldType::Game, /*bInformEngineOfWorld*/ false);
+	FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);
+	Context.SetCurrentWorld(World);
+	World->InitializeActorsForPlay(FURL());
+
+	UHOLUnitSubsystem* Units = World->GetSubsystem<UHOLUnitSubsystem>();
+	UMassEntitySubsystem* EntitySubsystem = World->GetSubsystem<UMassEntitySubsystem>();
+	if (TestNotNull(TEXT("units"), Units) && TestNotNull(TEXT("entities"), EntitySubsystem))
+	{
+		FMassEntityManager& EntityManager = EntitySubsystem->GetMutableEntityManager();
+		// A fighter (ManAtArms) and a Peasant: every unit type shares UHOLUnitTrait, so the fragment is on all of them (the rule leaves the Peasants
+		// out by the recipients, D705, not by the archetype).
+		for (const TCHAR* TypeName : { TEXT("ManAtArms"), TEXT("Peasant") })
+		{
+			TArray<uint32> Before;
+			Units->GetAllUnitIds(Before);
+			FHOLUnitSpawnRequest Request;
+			Request.TypeName = FName(TypeName);
+			Request.Count = 1;
+			Request.OwnerPlayer = 0;
+			Request.Center = FVector(0.0, 0.0, 0.0);
+			Units->RequestUnits(Request);
+			Units->ServeBirthRequests();
+			TArray<uint32> After;
+			Units->GetAllUnitIds(After);
+			uint32 Born = 0;
+			for (const uint32 Id : After)
+			{
+				Born = Before.Contains(Id) ? Born : Id;
+			}
+			if (!TestTrue(*FString::Printf(TEXT("%s was born"), TypeName), Born != 0))
+			{
+				continue;
+			}
+			const FMassEntityHandle Entity = Units->FindEntity(Born);
+			FHOLMoraleFragment* Morale = Entity.IsSet() ? EntityManager.GetFragmentDataPtr<FHOLMoraleFragment>(Entity) : nullptr;
+			if (!TestNotNull(*FString::Printf(TEXT("%s carries FHOLMoraleFragment"), TypeName), Morale))
+			{
+				continue;
+			}
+			TestTrue(*FString::Printf(TEXT("%s: empty at birth"), TypeName), HOLMorale::IsEmpty(Morale->State));
+			// The effect: a pose through the rule is read back from the entity's own fragment, and the fingerprint key follows.
+			TestEqual(TEXT("pose on the entity"), HOLMorale::Apply(Morale->State, HOLMorale::MakeEffect(IdA, 0, 25, 0, 1000, false)), HOLMorale::ApplyPosed);
+			const FHOLMoraleFragment* Again = EntityManager.GetFragmentDataPtr<FHOLMoraleFragment>(Entity);
+			TestEqual(TEXT("the entity's total rises"), Again ? HOLMorale::Total(Again->State, HOLMorale::LeverTaken) : -1, 25);
+			TestTrue(TEXT("the entity now has a fingerprint key"), Again && HOLMorale::FingerprintKey(Again->State) != 0);
+		}
+	}
+
+	GEngine->DestroyWorldContext(World);
+	World->DestroyWorld(false);
+	return true;
+}
+
+#endif // WITH_DEV_AUTOMATION_TESTS
+
