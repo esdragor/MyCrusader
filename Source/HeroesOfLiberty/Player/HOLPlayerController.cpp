@@ -1410,6 +1410,9 @@ void AHOLPlayerController::OrderAt(const FVector2D& ViewportFraction, const bool
 	}
 	if (!Own.IsEmpty())
 	{
+		// A right click is a manual order: it ends the Follow of the selected units (GLORFINDEL-1121sl, HOLFollowOrders::OnManualOrder through the bridge). Before the
+		// Follow branch below, which starts a new one.
+		UHOLFollowBridge::NativeManualOrder(Own);
 		// An enemy unit under the cursor (J7b.3): attacked, its place marked in red. A unit before a source (D288). Near
 		// the cursor within the target margin (J7c, retour d'essai 8, loop 3: FindTargetAt), unless a source is drawn
 		// under it: a click on a body always wins.
@@ -2722,6 +2725,7 @@ void AHOLPlayerController::ExecuteGridCommand(const FHOLGridCommand& Command)
 		const TArray<uint32> Own = GetCommandUnits();
 		UE_LOG(LogHOLMatch, Display, TEXT("Order: %d units %s"), Own.Num(), Command.Command == EHOLGridCommand::Hold ? TEXT("hold position") : TEXT("stop"));
 		bAttackMoveArmed = false;
+		UHOLFollowBridge::NativeManualOrder(Own); // Stop / Hold ends the Follow (GLORFINDEL-1121sl)
 		RequestStopUnits(Own, Command.Command == EHOLGridCommand::Hold);
 		return;
 	}

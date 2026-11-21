@@ -13,6 +13,18 @@ class UHOLFollowBridgeScript : UHOLFollowBridge
 	}
 
 	UFUNCTION(BlueprintOverride)
+	void ManualOrder(TArray<int> UnitIds)
+	{
+		UHOLFollowBookHolder Holder = UHOLFollowBookHolder::Get();
+		if (Holder == nullptr)
+			return;
+		for (int UnitId : UnitIds)
+		{
+			HOLFollowOrders::OnManualOrder(Holder.Book, UnitId);
+		}
+	}
+
+	UFUNCTION(BlueprintOverride)
 	void Step(AHOLPlayerController Controller, int PlayerIndex)
 	{
 		UHOLFollowBookHolder Holder = UHOLFollowBookHolder::Get();
