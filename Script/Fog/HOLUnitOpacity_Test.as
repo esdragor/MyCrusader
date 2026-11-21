@@ -28,3 +28,25 @@ void Test_UnitOpacityUnsetUnitIsOpaqueAndOthersAreUntouched(FUnitTest& T)
 	T.AssertTrue(Math::Abs(Back - 1.0) < 0.001, "setting 1 gives the unit back its full opacity");
 	UHOLUnitOpacityLibrary::ClearStealthOpacities();
 }
+
+void Test_StealthApplyOwnUnitsSetsOpacityFromTheRule(FUnitTest& T)
+{
+	UHOLUnitOpacityLibrary::ClearStealthOpacities();
+	TArray<FHOLStealthZone> Zones;
+	FHOLStealthZone Zone;
+	Zone.Center = FVector2D(0.0, 0.0);
+	Zone.HalfExtent = FVector2D(400.0, 400.0);
+	Zones.Add(Zone);
+	TArray<int> Ids;
+	Ids.Add(7);
+	Ids.Add(9);
+	TArray<FVector2D> Positions;
+	Positions.Add(FVector2D(0.0, 0.0));
+	Positions.Add(FVector2D(HOLStealth::RevealDistance() * 50.0, 900.0));
+	HOLStealthApply::ApplyOwnUnits(Zones, Ids, Positions);
+	float InZone = UHOLUnitOpacityLibrary::GetStealthOpacity(7);
+	float OutZone = UHOLUnitOpacityLibrary::GetStealthOpacity(9);
+	T.AssertTrue(InZone < 0.99, "the own unit in the zone is drawn translucent");
+	T.AssertTrue(Math::Abs(OutZone - 1.0) < 0.001, "the own unit outside every zone stays opaque");
+	UHOLUnitOpacityLibrary::ClearStealthOpacities();
+}
