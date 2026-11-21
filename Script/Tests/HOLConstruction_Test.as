@@ -1403,3 +1403,44 @@ void Test_Construction_RefundDestroyVerdict(FUnitTest& T)
 	T.AssertTrue(ConResEq(HOLConstructionBoard::CancelRefund(true, Cost, 0, 0, 1000), Cost), "destroyed foundation: the site's share is all of it");
 	T.AssertTrue(ConResEq(HOLConstructionBoard::CancelRefund(true, Cost, 2, 0, 1000), ConRes(0, 0, 0, 0)), "destroyed finished building: no site share");
 }
+
+// MainCentre: 150 s for one builder (D816 Q-nomad-forum-duree = B; HALDIR-1121a, port of the C++ test planned on the Barracks 20 s model of Test_Construction_Builders).
+// The real chain, no value typed by hand: the table row's BuildTime -> GetBuildSteps -> AddWork one step at a time with one builder, then with 4.
+// Effect asserted: the forum foundation stays in work (not finished, health below the full) until step N, finishes exactly at step N (N = 150 s / 0.05 s);
+// four builders finish in N / 4^0.63 steps (the table's diminishing returns).
+void Test_Construction_MainCentreOneBuilder(FUnitTest& T)
+{
+	FHOLBuildingTypeRow Forum;
+	bool bForum = HOLConstructionRead::FindBuildingType(n"MainCentre", Forum);
+	T.AssertTrue(bForum, "MainCentre in the building type table");
+	if (!bForum)
+	{
+		return;
+	}
+	int BuildSteps = HOLConstructionRead::GetBuildSteps(Forum.BuildTime, 0.05f);
+	T.AssertEquals(3000, BuildSteps, "MainCentre: 150 s = 3000 steps of 0.05 s for one builder (the table's BuildTime, not 0)");
+	T.AssertEquals(BuildSteps, HOLConstructionRead::GetStepsToFinish(BuildSteps, 1, ConTestExponent), "one builder: the table's time");
+
+	int64 Total = HOLConstructionRead::GetTotalWork(BuildSteps);
+	int64 Work = 0;
+	int Steps = 0;
+	int Finishes = 0;
+	bool bFinishedEarly = false;
+	while (Steps < BuildSteps + 10 && Work < Total)
+	{
+		if (HOLConstructionRead::AddWork(Work, Total, 1, ConTestExponent))
+			Finishes += 1;
+		++Steps;
+		if (Steps == BuildSteps - 1 && (Work >= Total || HOLConstructionRead::GetHealth(Forum.MaxHealth, Work, Total) >= Forum.MaxHealth))
+			bFinishedEarly = true;
+	}
+	T.AssertFalse(bFinishedEarly, "one builder: the foundation is still in work at step N - 1 (health below the full)");
+	T.AssertEquals(BuildSteps, Steps, "one builder step by step: finished at step N (150 s), not before");
+	T.AssertEquals(1, Finishes, "finished once");
+	T.AssertEquals(Forum.MaxHealth, HOLConstructionRead::GetHealth(Forum.MaxHealth, Work, Total), "finished: the full health");
+
+	int Four = HOLConstructionRead::GetStepsToFinish(BuildSteps, 4, ConTestExponent);
+	double Expected = double(BuildSteps) / Math::Pow(4.0, double(ConTestExponent));
+	T.AssertTrue(Math::Abs(double(Four) - Expected) < Expected * 0.02, "4 builders: N / 4^0.63 steps (about 1 / 2.4 of 150 s)");
+	T.AssertTrue(Four < BuildSteps && Four > BuildSteps / 4, "4 builders: faster than one, slower than 4x");
+}
