@@ -465,6 +465,20 @@ void UHOLScriptScreen::ObserveMinorEvents(FHOLMinorEventsWatch& Watch, const TAr
 	Watch.bPrimed = true;
 }
 
+bool UHOLScriptScreen::GetHitsReceivedNow(int32& OutHits, FVector2D& OutLastHitLocation, double& OutLastHitSeconds) const
+{
+	// STUB (red test first, D838): reports nothing.
+	OutHits = 0;
+	OutLastHitLocation = FVector2D::ZeroVector;
+	OutLastHitSeconds = -1.0;
+	return false;
+}
+
+void UHOLScriptScreen::ObserveHitsReceived(FHOLHitsWatch& Watch, const TArray<FVector2D>& HitPlaces, const TArray<double>& HitSeconds)
+{
+	// STUB: counts nothing.
+}
+
 bool UHOLScriptScreen::GetEconomyNow(FHOLResources& OutStock, int32& OutPopulationUsed, int32& OutPopulationCap, FHOLResources& OutGatherers, FHOLResources& OutIncome) const
 {
 	const UHOLGameScreen* GameScreen = GetTypedOuter<UHOLGameScreen>();
