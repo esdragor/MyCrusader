@@ -216,6 +216,24 @@ namespace HOLControllerCommandsC10a
 		return Box;
 	}
 
+	// A right click on a unit of hol.Select.ClickUnit (the one place the script knows the unit under the cursor): ally or own = Follow, enemy = Attack.
+	// With slot= the camp of the unit is not known to the script: the ordinary path (Move) is kept. Own and ally units both count as ally.
+	EHOLRightClickOrder RightClickUnitOrder(FHOLFollowBook& Book, const TArray<int>& SelectedIds, int TargetId, bool bEnemy, int Slot)
+	{
+		if (Slot != -1)
+			return EHOLRightClickOrder::Move;
+		return HOLFollowOrders::ApplyRightClick(Book, SelectedIds, true, TargetId, !bEnemy);
+	}
+
+	// True when the right click on the unit started a Follow (ally or own unit): no ordinary order then (the step caller sends the moves). Enemy: false, the attack goes out as before.
+	bool RightClickStartsFollow(AHOLPlayerController Controller, int UnitId, const FHOLConsolePlanC10a& Plan)
+	{
+		TArray<int> SelectedIds;
+		HOLControllerCommand::OwnSelectedUnitIds(Controller, SelectedIds);
+		const EHOLRightClickOrder RightClick = RightClickUnitOrder(HOLFollowOrders::PlayerBook, SelectedIds, UnitId, Plan.bEnemy, Plan.Slot);
+		return RightClick == EHOLRightClickOrder::Follow;
+	}
+
 	void DoForController(AHOLPlayerController Controller, const FString& Command, const FHOLConsolePlanC10a& Plan)
 	{
 		double Fx = 0.0;
@@ -234,7 +252,9 @@ namespace HOLControllerCommandsC10a
 				return;
 			}
 			HOLScriptLog::LogDisplay(n"LogHOLMatch", UnitClickText(Plan.bOrder, UnitId, Fx, Fy));
-			if (Plan.bOrder)
+			if (Plan.bOrder && RightClickStartsFollow(Controller, UnitId, Plan))
+				HOLScriptLog::LogDisplay(n"LogHOLMatch", f"Right click on unit #{UnitId}: the selected units follow it");
+			else if (Plan.bOrder)
 				HOLControllerCommand::OrderAtFraction(Controller, Fx, Fy, false);
 			else
 				HOLControllerCommand::SelectAtFraction(Controller, Fx, Fy, Plan.bAdd, Plan.bDouble);

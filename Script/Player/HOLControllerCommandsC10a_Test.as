@@ -100,6 +100,43 @@ void Test_ControllerCommandsC10aTexts(FUnitTest& T)
 	T.AssertEquals("Right click near the centre at (-300, 1200)", HOLControllerCommandsC10a::NearText(-300.0, 1200.0), "OrderNear line");
 }
 
+// A right click on a unit (D818 Q1 C): the path of hol.Select.ClickUnit ... order on an ALLY starts Follow for the other selected units; on an ENEMY it stays the attack
+// (no follow, the ordinary order goes out); with slot= the camp is unknown, so the existing path is kept.
+void Test_ControllerCommandsC10aRightClickOnAllyStartsFollow(FUnitTest& T)
+{
+	FHOLFollowBook Book;
+	TArray<int> Selected;
+	Selected.Add(1); Selected.Add(2); Selected.Add(9);
+	const EHOLRightClickOrder Order = HOLControllerCommandsC10a::RightClickUnitOrder(Book, Selected, 9, false, -1);
+	T.AssertTrue(Order == EHOLRightClickOrder::Follow, "an ally under the right click is Follow");
+	T.AssertEquals(2, Book.UnitIds.Num(), "the two other selected units follow (not the target itself)");
+	const int FirstIndex = HOLFollowOrders::IndexOf(Book, 1);
+	T.AssertTrue(FirstIndex >= 0, "unit 1 is in the book");
+	if (FirstIndex >= 0)
+		T.AssertEquals(9, Book.TargetIds[FirstIndex], "unit 1 follows unit 9");
+	T.AssertEquals(-1, HOLFollowOrders::IndexOf(Book, 9), "the target does not follow itself");
+}
+
+void Test_ControllerCommandsC10aRightClickOnEnemyKeepsAttack(FUnitTest& T)
+{
+	FHOLFollowBook Book;
+	TArray<int> Selected;
+	Selected.Add(1); Selected.Add(2);
+	const EHOLRightClickOrder Order = HOLControllerCommandsC10a::RightClickUnitOrder(Book, Selected, 30, true, -1);
+	T.AssertTrue(Order == EHOLRightClickOrder::Attack, "an enemy under the right click stays Attack");
+	T.AssertEquals(0, Book.UnitIds.Num(), "no follow is started on an enemy");
+}
+
+void Test_ControllerCommandsC10aRightClickSlotKeepsOrdinaryPath(FUnitTest& T)
+{
+	FHOLFollowBook Book;
+	TArray<int> Selected;
+	Selected.Add(1); Selected.Add(2);
+	const EHOLRightClickOrder Order = HOLControllerCommandsC10a::RightClickUnitOrder(Book, Selected, 30, false, 2);
+	T.AssertTrue(Order == EHOLRightClickOrder::Move, "with slot= the camp is unknown: ordinary path");
+	T.AssertEquals(0, Book.UnitIds.Num(), "no follow with slot=");
+}
+
 void Test_ControllerCommandsC10aBoxOfCorners(FUnitTest& T)
 {
 	// Projected corners of a ground rectangle come in any order (a camera looking along a diagonal swaps min and max).
