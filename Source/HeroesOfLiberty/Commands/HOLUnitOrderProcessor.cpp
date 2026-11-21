@@ -1768,6 +1768,14 @@ void UHOLUnitOrderProcessor::ApplyQueuedOrders(FMassEntityManager& EntityManager
 			}
 			MoveOrder.Lateral = static_cast<float>(FMath::Clamp(Lateral, -(double)CorridorHalfWidth + Radius, (double)CorridorHalfWidth - Radius));
 			MoveOrder.Phase = EHOLMovePhase::WaitingPath;
+			// D877 (ELROND-1121sb risk): a player's walk (not the server's tasks, not the combat's approach) is noted on the engine's deploy fragment at the order's EMISSION, so that a very short march, closed in the same step, still ends in the auto-mount (UHOLDeployProcessor reads bMarching).
+			if (Combat && Order.Kind == EHOLOrderKind::Move)
+			{
+				if (FHOLDeployFragment* MarchDeploy = EntityManager.GetFragmentDataPtr<FHOLDeployFragment>(Entity))
+				{
+					MarchDeploy->bMarching = 1;
+				}
+			}
 			MoveOrder.bShortOfSlot = false;
 			// A new order lets its formation place go; a group's formation move gives it a new one (J7a.4).
 			MoveOrder.bFormation = bFormation;
