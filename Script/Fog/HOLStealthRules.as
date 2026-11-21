@@ -6,6 +6,9 @@
 // The "very close" distance in cm (D383; default 800 = 2 cells, waiting for Retours\Q-stealth.md).
 const FConsoleVariable CVar_StealthRevealDistance("hol.Stealth.RevealDistance", 800);
 
+// Opacity of the player's own units inside a stealth zone, in percent (D824 Q3 B: "half transparent" = 50; the exact value is tunable here).
+const FConsoleVariable CVar_StealthOwnOpacityPercent("hol.Stealth.OwnOpacityPercent", 50);
+
 // A stealth zone, provisional shape: an axis-aligned rectangle (centre, half extent), like a blocker cell; the real shape comes with the maps.
 struct FHOLStealthZone
 {
@@ -90,9 +93,16 @@ namespace HOLStealth
 		return false;
 	}
 
-	// Look (D824 Q3 B): a unit of the player standing in a stealth zone is drawn half transparent. Render opacity 0..1 (1 = opaque). STUB (red first).
+	// Look (D824 Q3 B): a unit of the player standing in a stealth zone is drawn half transparent. Render opacity 0..1 (1 = opaque).
 	float OwnUnitOpacity(const TArray<FHOLStealthZone>& Zones, const FVector2D& UnitPosition)
 	{
+		for (const FHOLStealthZone& Zone : Zones)
+		{
+			if (IsInZone(Zone, UnitPosition))
+			{
+				return Math::Clamp(CVar_StealthOwnOpacityPercent.GetInt(), 1, 100) / 100.0;
+			}
+		}
 		return 1.0;
 	}
 }
