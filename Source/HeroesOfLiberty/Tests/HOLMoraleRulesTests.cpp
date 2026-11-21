@@ -679,3 +679,107 @@ bool FHOLMoraleProcessorLaysBannerAuraTest::RunTest(const FString& Parameters)
 	World->DestroyWorld(false);
 	return true;
 }
+
+// The cry (Serrez les rangs, row CloseRanks of the CSV) is laid by the morale processor as a timed effect (not an aura: it stays its whole duration), on
+// the owner's military within the row's radius of the crying hero, the step after the cast; an enemy, a Peasant and a unit out of range carry nothing; once
+// the row's duration has passed it is gone. Born through the real chain, the cry cast by the real hero subsystem; the expected levers are CALCULATED
+// (MakeEffectFromRow(CloseRanks) posed on an empty state). RED while the cry is still posed apart by the combat processor (the fragment never carries it).
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLMoraleProcessorLaysCryTest, "HeroesOfLiberty.Morale.ProcessorLaysCryInRange", UE::HeroesOfLiberty::Tests::MoraleRules::Flags)
+
+bool FHOLMoraleProcessorLaysCryTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::MoraleRules;
+	UWorld* World = UWorld::CreateWorld(EWorldType::Game, /*bInformEngineOfWorld*/ false);
+	FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);
+	Context.SetCurrentWorld(World);
+	World->InitializeActorsForPlay(FURL());
+
+	UHOLUnitSubsystem* Units = World->GetSubsystem<UHOLUnitSubsystem>();
+	UHOLSimulationSubsystem* Simulation = World->GetSubsystem<UHOLSimulationSubsystem>();
+	UHOLHeroSubsystem* Heroes = World->GetSubsystem<UHOLHeroSubsystem>();
+	UMassEntitySubsystem* EntitySubsystem = World->GetSubsystem<UMassEntitySubsystem>();
+	if (TestNotNull(TEXT("units"), Units) && TestNotNull(TEXT("simulation"), Simulation) && TestNotNull(TEXT("heroes"), Heroes) && TestNotNull(TEXT("entities"), EntitySubsystem))
+	{
+		Heroes->BindSteps();
+		TSharedPtr<FMassEntityManager> EntityManager = EntitySubsystem->GetMutableEntityManager().AsShared();
+		UHOLMoraleProcessor* Morale = NewObject<UHOLMoraleProcessor>(Simulation);
+		Morale->CallInitialize(Simulation, EntityManager.ToSharedRef());
+		const float StepSeconds = GetDefault<UHOLSimulationSettings>()->GetStepSeconds();
+		int64 Step = 0;
+		const auto RunStep = [Simulation, Units, Morale, &EntityManager, StepSeconds, &Step]
+		{
+			++Step;
+			Simulation->GetOnStepStarted().Broadcast(Step);
+			Units->ServeBirthRequests();
+			FMassProcessingContext ProcessingContext(*EntityManager, StepSeconds);
+			UE::Mass::Executor::Run(*Morale, ProcessingContext);
+			Simulation->GetOnStepEnded().Broadcast(Step);
+		};
+		const auto Spawn = [this, Units](const TCHAR* TypeName, const uint8 Owner, const double X, const double Y) -> FMassEntityHandle
+		{
+			TArray<uint32> Before;
+			Units->GetAllUnitIds(Before);
+			FHOLUnitSpawnRequest Request;
+			Request.TypeName = FName(TypeName);
+			Request.Count = 1;
+			Request.OwnerPlayer = Owner;
+			Request.Center = FVector(X, Y, 0.0);
+			Units->RequestUnits(Request);
+			Units->ServeBirthRequests();
+			TArray<uint32> After;
+			Units->GetAllUnitIds(After);
+			uint32 Born = 0;
+			for (const uint32 Id : After)
+			{
+				Born = Before.Contains(Id) ? Born : Id;
+			}
+			return TestTrue(TEXT("a unit was born"), Born != 0) ? Units->FindEntity(Born) : FMassEntityHandle();
+		};
+		// The hero at the origin; the cry reaches 12 m: AllyNear at 11 m is under it, AllyFar at 13 m not, the enemy and the Peasant stand where AllyNear does.
+		Spawn(TEXT("Hero"), 0, 0.0, 0.0);
+		const FMassEntityHandle AllyNear = Spawn(TEXT("ManAtArms"), 0, 1100.0, 0.0);
+		const FMassEntityHandle AllyFar = Spawn(TEXT("ManAtArms"), 0, 1300.0, 0.0);
+		const FMassEntityHandle EnemyNear = Spawn(TEXT("ManAtArms"), 1, 1100.0, 0.0);
+		const FMassEntityHandle PeasantNear = Spawn(TEXT("Peasant"), 0, 1100.0, 0.0);
+
+		const HOLMoraleTableRows::FHOLMoraleTableRow* CryRow = HOLMoraleTableRows::Find(HOLMoraleTableRows::HOLMoraleCloseRanks);
+		HOLMorale::FHOLMoraleState Expected;
+		HOLMorale::Apply(Expected, HOLMorale::MakeEffectFromRow(HOLMoraleTableRows::HOLMoraleCloseRanks));
+		TestTrue(TEXT("the CloseRanks row gives a real lever"), HOLMorale::Total(Expected, HOLMorale::LeverTaken) > 0);
+
+		const auto Read = [&EntityManager](const FMassEntityHandle Entity) -> const FHOLMoraleFragment*
+		{
+			return Entity.IsSet() ? EntityManager->GetFragmentDataPtr<FHOLMoraleFragment>(Entity) : nullptr;
+		};
+		Heroes->SetXP(0, HOLHeroXP::GetLevelXP(4));
+		RunStep();
+		if (TestNotNull(TEXT("the CloseRanks row"), CryRow) && TestTrue(TEXT("the cry cast"), Heroes->CastCloseRanks(0))
+			&& TestTrue(TEXT("every unit carries the fragment"), Read(AllyNear) && Read(AllyFar) && Read(EnemyNear) && Read(PeasantNear)))
+		{
+			RunStep(); // the cry is laid on the step after the cast
+			TestTrue(TEXT("the ally at 11 m carries the cry"), HOLMorale::Has(Read(AllyNear)->State, HOLMoraleTableRows::HOLMoraleCloseRanks));
+			TestTrue(TEXT("... its damage taken lever is at least the row's (the Dawn aura may add to it)"),
+				HOLMorale::Total(Read(AllyNear)->State, HOLMorale::LeverTaken) >= HOLMorale::Total(Expected, HOLMorale::LeverTaken));
+			TestFalse(TEXT("the ally at 13 m does not"), HOLMorale::Has(Read(AllyFar)->State, HOLMoraleTableRows::HOLMoraleCloseRanks));
+			TestFalse(TEXT("the enemy at 11 m does not (a bonus goes to the owner alone, D705)"), HOLMorale::Has(Read(EnemyNear)->State, HOLMoraleTableRows::HOLMoraleCloseRanks));
+			TestFalse(TEXT("the Peasant at 11 m does not (never a Peasant, D705)"), HOLMorale::Has(Read(PeasantNear)->State, HOLMoraleTableRows::HOLMoraleCloseRanks));
+			// It stays for the row's duration (an aura would be taken off at once), then it goes.
+			const int32 StepMs = HOLCombat::ToMilliseconds(StepSeconds);
+			const int32 HalfSteps = CryRow->DurationMs / 2 / StepMs;
+			for (int32 Index = 0; Index < HalfSteps; ++Index)
+			{
+				RunStep();
+			}
+			TestTrue(TEXT("half the duration later the cry is still there"), HOLMorale::Has(Read(AllyNear)->State, HOLMoraleTableRows::HOLMoraleCloseRanks));
+			for (int32 Index = 0; Index < HalfSteps + 2; ++Index)
+			{
+				RunStep();
+			}
+			TestFalse(TEXT("past the row's duration the cry is gone"), HOLMorale::Has(Read(AllyNear)->State, HOLMoraleTableRows::HOLMoraleCloseRanks));
+		}
+	}
+
+	GEngine->DestroyWorldContext(World);
+	World->DestroyWorld(false);
+	return true;
+}
