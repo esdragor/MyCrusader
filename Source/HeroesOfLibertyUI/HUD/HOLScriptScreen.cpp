@@ -467,16 +467,60 @@ void UHOLScriptScreen::ObserveMinorEvents(FHOLMinorEventsWatch& Watch, const TAr
 
 bool UHOLScriptScreen::GetHitsReceivedNow(int32& OutHits, FVector2D& OutLastHitLocation, double& OutLastHitSeconds) const
 {
-	// STUB (red test first, D838): reports nothing.
-	OutHits = 0;
-	OutLastHitLocation = FVector2D::ZeroVector;
-	OutLastHitSeconds = -1.0;
-	return false;
+	// The shown player's buildings (every machine keeps each one's last hit time, set where DamageTaken grows, server or replicated); the
+	// accumulation is ObserveHitsReceived's. A unit's hits are not read yet (no record of them on a client).
+	const UHOLGameScreen* GameScreen = GetTypedOuter<UHOLGameScreen>();
+	const AHOLPlayerState* PlayerState = GameScreen ? GameScreen->GetBoundPlayerState() : nullptr;
+	const UWorld* World = GetWorld();
+	if (PlayerState && World)
+	{
+		TArray<FVector2D> Places;
+		TArray<double> Seconds;
+		for (FHOLBuildingIterator It(World); It; ++It)
+		{
+			if (It->GetOwnerPlayer() == PlayerState->GetPlayerIndex())
+			{
+				Places.Add(FVector2D(It->GetActorLocation().X, It->GetActorLocation().Y));
+				Seconds.Add(It->GetLastHitTime());
+			}
+		}
+		ObserveHitsReceived(HitsWatch, Places, Seconds);
+	}
+	OutHits = HitsWatch.HitsReceived;
+	OutLastHitLocation = HitsWatch.LastHitLocation;
+	OutLastHitSeconds = HitsWatch.LastHitSeconds;
+	return PlayerState != nullptr && World != nullptr;
 }
 
 void UHOLScriptScreen::ObserveHitsReceived(FHOLHitsWatch& Watch, const TArray<FVector2D>& HitPlaces, const TArray<double>& HitSeconds)
 {
-	// STUB: counts nothing.
+	const int32 Count = FMath::Min(HitPlaces.Num(), HitSeconds.Num());
+	// The baseline (the first observation) takes the newest time there without counting it.
+	const double Threshold = Watch.LastHitSeconds;
+	double Newest = Threshold;
+	FVector2D NewestPlace = Watch.LastHitLocation;
+	for (int32 Index = 0; Index < Count; ++Index)
+	{
+		if (HitSeconds[Index] < 0.0 || HitSeconds[Index] <= Threshold)
+		{
+			continue;
+		}
+		if (Watch.bPrimed)
+		{
+			++Watch.HitsReceived;
+		}
+		if (HitSeconds[Index] >= Newest)
+		{
+			Newest = HitSeconds[Index];
+			NewestPlace = HitPlaces[Index];
+		}
+	}
+	Watch.LastHitSeconds = Newest;
+	if (Watch.bPrimed)
+	{
+		Watch.LastHitLocation = NewestPlace;
+	}
+	Watch.bPrimed = true;
 }
 
 bool UHOLScriptScreen::GetEconomyNow(FHOLResources& OutStock, int32& OutPopulationUsed, int32& OutPopulationCap, FHOLResources& OutGatherers, FHOLResources& OutIncome) const
