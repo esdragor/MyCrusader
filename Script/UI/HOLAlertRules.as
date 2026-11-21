@@ -185,10 +185,20 @@ namespace HOLAlertRules
 {
 	// One reading of the player's population (used / cap) at NowSeconds. The line goes when the population BECOMES full (a rising edge, after the
 	// baseline), at most once per MinorRepeatSeconds; staying full says nothing more. A cap of 0 is never full (no house yet is not "full").
-	// Not written yet (GLORFINDEL-1121sb): the stub never shows, the tests are red.
 	FHOLMinorAlert PopulationFullStep(FHOLPopulationWatch& Watch, int Used, int Cap, float NowSeconds)
 	{
 		FHOLMinorAlert Alert;
+		bool bFull = Cap > 0 && Used >= Cap;
+		bool bFirst = !Watch.bRead;
+		bool bRising = bFull && !Watch.bWasFull;
+		Watch.bRead = true;
+		Watch.bWasFull = bFull;
+		if (bFirst || !bRising || NowSeconds - Watch.LastShown < MinorRepeatSeconds)
+			return Alert;
+		Watch.LastShown = NowSeconds;
+		Alert.bShow = true;
+		Alert.LineSeconds = MinorLineSeconds;
+		Alert.SoundKey = n"MinorPopulationFull";
 		return Alert;
 	}
 
