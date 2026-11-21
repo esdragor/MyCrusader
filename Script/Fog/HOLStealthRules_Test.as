@@ -158,3 +158,30 @@ void Test_StealthNetFilterMasksHiddenEnemyCamp(FUnitTest& T)
 	int NoFilter = UHOLStealthFilter::MaskCamps(nullptr, 3, 2, 0, FVector2D(0.0, 0.0));
 	T.AssertEquals(3, NoFilter, "no filter set: nothing is hidden");
 }
+
+// Own units in a zone (D824 Q3 B): half transparent. The opacity is computed by HOLStealth::OwnUnitOpacity on the real zone (IsInZone), not copied.
+void Test_StealthOwnUnitInZoneIsHalfTransparent(FUnitTest& T)
+{
+	TArray<FHOLStealthZone> Zones = StealthOneZone();
+	float Opacity = HOLStealth::OwnUnitOpacity(Zones, FVector2D(0.0, 0.0));
+	T.AssertTrue(Math::Abs(Opacity - 0.5) < 0.001, "an own unit inside the zone is drawn at half opacity (0.5)");
+}
+
+void Test_StealthOwnUnitOutsideZoneIsOpaque(FUnitTest& T)
+{
+	TArray<FHOLStealthZone> Zones = StealthOneZone();
+	float Opacity = HOLStealth::OwnUnitOpacity(Zones, FVector2D(HOLStealth::RevealDistance() * 50.0, 900.0));
+	T.AssertTrue(Math::Abs(Opacity - 1.0) < 0.001, "an own unit outside every zone stays fully opaque");
+}
+
+void Test_StealthOwnUnitInZoneLessOpaqueThanOutside(FUnitTest& T)
+{
+	TArray<FHOLStealthZone> Zones = StealthOneZone();
+	float Inside = HOLStealth::OwnUnitOpacity(Zones, FVector2D(0.0, 0.0));
+	float Outside = HOLStealth::OwnUnitOpacity(Zones, FVector2D(HOLStealth::RevealDistance() * 50.0, 900.0));
+	T.AssertTrue(Inside < Outside, "entering the zone lowers the opacity");
+	T.AssertTrue(Inside > 0.0, "but never to invisible: the owner must still see the unit");
+	TArray<FHOLStealthZone> NoZones;
+	float Free = HOLStealth::OwnUnitOpacity(NoZones, FVector2D(0.0, 0.0));
+	T.AssertTrue(Math::Abs(Free - 1.0) < 0.001, "no zone on the map: nothing is transparent");
+}
