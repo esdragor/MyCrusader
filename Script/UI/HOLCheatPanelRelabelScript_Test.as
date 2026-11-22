@@ -23,6 +23,21 @@ void Test_CheatPanelLabelsAreStaleWhenTheScaleChanged(FUnitTest& T)
 	T.AssertTrue(bStale, "a changed value is stale too");
 }
 
+// The six +1000 buttons (resources and population) kept their old language after a live switch: ONLY their labels differ here, toggle / fast build / speeds are the same.
+void Test_CheatPanelLabelsAreStaleWhenOnlyAResourceButtonLabelChanged(FUnitTest& T)
+{
+	const FString Shown = HOLCheatPanelRules::LabelsSignature("Cheats  +", "Fast build: off", "Unit speed: x1.0", "Gather speed: x1.0", "+1000 Nourriture|+1000 Bois|");
+	const bool bStale = HOLCheatPanelRules::LabelsStale(Shown, "Cheats  +", "Fast build: off", "Unit speed: x1.0", "Gather speed: x1.0", "+1000 Food|+1000 Wood|");
+	T.AssertTrue(bStale, "only the +1000 labels changed: stale");
+}
+
+void Test_CheatPanelLabelsAreNotStaleWhenNoResourceButtonLabelChanged(FUnitTest& T)
+{
+	const FString Shown = HOLCheatPanelRules::LabelsSignature("Cheats  +", "Fast build: off", "Unit speed: x1.0", "Gather speed: x1.0", "+1000 Food|+1000 Wood|");
+	const bool bStale = HOLCheatPanelRules::LabelsStale(Shown, "Cheats  +", "Fast build: off", "Unit speed: x1.0", "Gather speed: x1.0", "+1000 Food|+1000 Wood|");
+	T.AssertFalse(bStale, "nothing changed: no rewrite");
+}
+
 // The real chain: the panel's own texts (HOLCheatPanelRules::SpeedLabelText) joined by the rule give a signature that moves when the scale moves.
 void Test_CheatPanelSignatureFollowsTheRealSpeedLabel(FUnitTest& T)
 {

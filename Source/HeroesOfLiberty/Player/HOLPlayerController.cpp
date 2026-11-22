@@ -46,6 +46,7 @@
 #include "Match/HOLSpecializationSubsystem.h"
 #include "Player/HOLGameMenuRulesBridge.h"
 #include "Player/HOLWallLineBridge.h"
+#include "Player/HOLFollowBridge.h"
 #include "Buildings/HOLConstructionReadLibrary.h"
 #include "Player/HOLRTSCamera.h"
 #include "Player/HOLSelectionMarkers.h"
@@ -140,6 +141,11 @@ namespace UE::HeroesOfLiberty::Player
 		TEXT("hol.Camera.TestCursor"),
 		TEXT(""),
 		TEXT("Cursor position seen by the RTS camera's edge scrolling, \"X Y\" in 0..1 of the viewport (empty or off: the real cursor). For scripted checks (D257), never the desktop's cursor."));
+
+	TAutoConsoleVariable<int32> CVarFollowOwnUnits(
+		TEXT("hol.Follow.OwnUnits"),
+		0,
+		TEXT("0 (default): a unit of the local player is never a Follow target of the right click (it stays a move); a teammate's unit is. 1: any unit of the player outside the selection can be followed (the coded behaviour of 6494b40). Heal is not affected: an own or allied unit stays healable (Q-follow-own-units, GLORFINDEL-1122g)."));
 
 	const UInputAction* LoadAction(const TCHAR* Name)
 	{
@@ -277,6 +283,32 @@ namespace UE::HeroesOfLiberty::Player
 					continue;
 				}
 				Controller->ScriptLeftClick(Fraction);
+			}
+		}));
+	/**
+	 * The REAL right click (ELROND-1122h): the cursor put where that ground point (cm) is drawn, then the press and the release as the input does
+	 * (HandleOrder then HandleOrderCompleted). Same behaviour as the mouse: a right click also leaves placement, the attack-move, the banner or a
+	 * faction aim without ordering. A test of a gesture goes through it, not through OrderAt.
+	 */
+	FAutoConsoleCommand RightClickGroundCommand(
+		TEXT("hol.Select.RightClickGround"),
+		TEXT("hol.Select.RightClickGround <X> <Y>: a real right click (press and release, through the input's handlers) where that ground point (cm) is drawn; it orders the selection there, or leaves the armed mode (placement, attack-move, banner) as the mouse does"),
+		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
+		{
+			if (Args.Num() < 2)
+			{
+				UE_LOG(LogHOLMatch, Warning, TEXT("Usage: hol.Select.RightClickGround <X> <Y>"));
+				return;
+			}
+			for (AHOLPlayerController* Controller : GetLocalControllers())
+			{
+				FVector2D Fraction;
+				if (!ProjectGroundPoint(*Controller, FCString::Atod(*Args[0]), FCString::Atod(*Args[1]), Fraction))
+				{
+					UE_LOG(LogHOLMatch, Warning, TEXT("hol.Select.RightClickGround: the point is not on the screen"));
+					continue;
+				}
+				Controller->ScriptRightClickAt(Fraction);
 			}
 		}));
 
@@ -1188,6 +1220,35 @@ uint32 AHOLPlayerController::FindTargetAt(const FVector2D& ViewportFraction, boo
 	return UnitIds.IsValidIndex(Index) ? UnitIds[Index] : 0;
 }
 
+uint32 AHOLPlayerController::FindAllyAt(const FVector2D& ViewportFraction, TConstArrayView<uint32> Excluded, const bool bSkipOwn) const
+{
+	const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
+	if (!HOLPlayerState)
+	{
+		return 0;
+	}
+	TArray<FHOLPickCandidate> Candidates;
+	TArray<uint32> UnitIds;
+	GatherPickCandidates(/*bOwnOnly*/ false, Candidates, UnitIds);
+	const FHOLCampTable Camps = FHOLCampTable::FromWorld(GetWorld());
+	TArray<FHOLAllyCandidate> Allies;
+	for (int32 Index = 0; Index < Candidates.Num(); ++Index)
+	{
+		// A unit that cannot be read counts as hostile: never taken (the indices stay those of UnitIds).
+		FHOLUnitView View;
+		FHOLAllyCandidate Ally;
+		Ally.Pick = Candidates[Index];
+		Ally.UnitId = UnitIds[Index];
+		Ally.bHostile = !HOLUnitView::Find(*GetWorld(), UnitIds[Index], View) || Camps.AreHostile(View.OwnerPlayer, HOLPlayerState->GetPlayerIndex());
+		Ally.bNeutral = View.OwnerPlayer == FHOLMatchConfig::NeutralOwner;
+		Ally.bOwn = View.OwnerPlayer == HOLPlayerState->GetPlayerIndex();
+		Allies.Add(Ally);
+	}
+	// A heal takes any ally or own unit; a follow with hol.Follow.OwnUnits 0 skips the own ones (bSkipOwn, HOLUnitPicking::PickFollowAt).
+	const int32 Index = HOLUnitPicking::PickFollowAt(Allies, Excluded, ToPixels(ViewportFraction), !bSkipOwn);
+	return UnitIds.IsValidIndex(Index) ? UnitIds[Index] : 0;
+}
+
 TArray<uint32> AHOLPlayerController::GetOwnSelectedUnits() const
 {
 	TArray<uint32> Own;
@@ -1409,6 +1470,9 @@ void AHOLPlayerController::OrderAt(const FVector2D& ViewportFraction, const bool
 	}
 	if (!Own.IsEmpty())
 	{
+		// A right click is a manual order: it ends the Follow of the selected units (GLORFINDEL-1121sl, HOLFollowOrders::OnManualOrder through the bridge). Before the
+		// Follow branch below, which starts a new one.
+		UHOLFollowBridge::NativeManualOrder(this, Own);
 		// An enemy unit under the cursor (J7b.3): attacked, its place marked in red. A unit before a source (D288). Near
 		// the cursor within the target margin (J7c, retour d'essai 8, loop 3: FindTargetAt), unless a source is drawn
 		// under it: a click on a body always wins.
@@ -1430,10 +1494,12 @@ void AHOLPlayerController::OrderAt(const FVector2D& ViewportFraction, const bool
 			OnAttackOrderGiven.Broadcast(Under.Location);
 			return;
 		}
+		// GLORFINDEL-1122e: FindTargetAt only gathers the hostile units, so an ally's body is looked for on its own (FindAllyAt: the
+		// body under the cursor, no margin), after the attack failed and only when no source nor enemy building is drawn there.
+		const uint32 AllyId = (!Source && !EnemyBuilding) ? FindAllyAt(ViewportFraction, TConstArrayView<uint32>()) : 0;
 		// Q-chapelle-moine = A: an ally's unit under the cursor (or one of the player's own) and a healer among the selected units
 		// (a Monk): the heal order (the healers walk to it and heal it first), the others walk there.
-		if (UnderId != 0 && (bDirect || (!Source && !EnemyBuilding)) && HOLPlayerState && HOLUnitView::Find(*GetWorld(), UnderId, Under)
-			&& !Camps.AreHostile(Under.OwnerPlayer, HOLPlayerState->GetPlayerIndex()) && Under.OwnerPlayer != FHOLMatchConfig::NeutralOwner
+		if (AllyId != 0 && HOLUnitView::Find(*GetWorld(), AllyId, Under)
 			&& Own.ContainsByPredicate([this](const uint32 UnitId)
 			{
 				FHOLUnitView Selected;
@@ -1442,11 +1508,30 @@ void AHOLPlayerController::OrderAt(const FVector2D& ViewportFraction, const bool
 				return Row && Row->HealRate > 0.f;
 			}))
 		{
-			UE_LOG(LogHOLMatch, Display, TEXT("Order: %d units heal #%u %s of slot %d%s"), Own.Num(), UnderId, *Under.TypeName.ToString(), Under.OwnerPlayer,
+			UE_LOG(LogHOLMatch, Display, TEXT("Order: %d units heal #%u %s of slot %d%s"), Own.Num(), AllyId, *Under.TypeName.ToString(), Under.OwnerPlayer,
 				bShift ? TEXT(", queued") : TEXT(""));
-			RequestHealUnit(Own, UnderId, bShift);
+			RequestHealUnit(Own, AllyId, bShift);
 			OnOrderGiven.Broadcast(Under.Location);
 			return;
+		}
+		// Follow (GDD 7.3, D818 Q1 C, GLORFINDEL-1121sk): an ally's unit under the cursor, outside the selection: the selected units become its bodyguards (the script rule,
+		// Script/Orders/HOLFollowOrders.as, through UHOLFollowBridge; the Move / Attack orders are then sent by its Step from Tick). Not a unit of the selection: the ground path.
+		// The ally is looked for again without the selection: a unit of the selection drawn there is skipped (FindAllyAt).
+		// hol.Follow.OwnUnits 0 (default): an own unit is not a follow target either, the click stays a move (Q-follow-own-units); a teammate's is.
+		const uint32 FollowId = (!Source && !EnemyBuilding) ? FindAllyAt(ViewportFraction, Own, UE::HeroesOfLiberty::Player::CVarFollowOwnUnits.GetValueOnGameThread() == 0) : 0;
+		if (FollowId != 0 && HOLUnitView::Find(*GetWorld(), FollowId, Under))
+		{
+			TArray<int32> SelectedIds;
+			for (const uint32 UnitId : Own)
+			{
+				SelectedIds.Add(static_cast<int32>(UnitId));
+			}
+			if (UHOLFollowBridge::NativeRightClickOnUnit(this, SelectedIds, static_cast<int32>(FollowId), true))
+			{
+				UE_LOG(LogHOLMatch, Display, TEXT("Order: %d units follow #%u %s of slot %d"), Own.Num(), FollowId, *Under.TypeName.ToString(), Under.OwnerPlayer);
+				OnOrderGiven.Broadcast(Under.Location);
+				return;
+			}
 		}
 		if (EnemyBuilding)
 		{
@@ -2099,6 +2184,12 @@ void AHOLPlayerController::Tick(const float DeltaSeconds)
 	if (WatchedUnitId != 0 && GetNetMode() < NM_Client && !IsLocalController())
 	{
 		SendWatchedLoad();
+	}
+	// The order step of the Follow bodyguards of the local player (Script/Orders/HOLFollowBridge.as): a no-op without a follower.
+	const AHOLPlayerState* FollowPlayerState = GetHOLPlayerState();
+	if (IsLocalController() && FollowPlayerState)
+	{
+		UHOLFollowBridge::NativeStep(this, FollowPlayerState->GetPlayerIndex());
 	}
 }
 
@@ -2865,6 +2956,7 @@ void AHOLPlayerController::RequestMoveUnits(const TConstArrayView<uint32> UnitId
 {
 	if (UnitIds.Num() > 0)
 	{
+		UHOLFollowBridge::NativeManualOrder(this, UnitIds); // a manual order ends the Follow of these units (GLORFINDEL-1121sm)
 		if (!HOLRpcScriptRoute_Haldir1117n::RouteMove(this, UnitIds, Target, bQueue)) { HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("Move")); }
 	}
 }
@@ -2873,6 +2965,7 @@ void AHOLPlayerController::RequestAttackUnit(const TConstArrayView<uint32> UnitI
 {
 	if (UnitIds.Num() > 0 && TargetUnitId != 0)
 	{
+		UHOLFollowBridge::NativeManualOrder(this, UnitIds); // a manual order ends the Follow of these units (GLORFINDEL-1121sm)
 		if (!HOLRpcScriptRoute_Haldir1117n::RouteAttackUnit(this, UnitIds, TargetUnitId, bQueue)) { HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("AttackUnit")); }
 	}
 }
@@ -2881,6 +2974,7 @@ void AHOLPlayerController::RequestHealUnit(const TConstArrayView<uint32> UnitIds
 {
 	if (UnitIds.Num() > 0 && TargetUnitId != 0)
 	{
+		UHOLFollowBridge::NativeManualOrder(this, UnitIds); // a manual order ends the Follow of these units (GLORFINDEL-1121sm)
 		if (!HOLRpcScriptRoute_Haldir1117n::RouteHealUnit(this, UnitIds, TargetUnitId, bQueue)) { HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("HealUnit")); }
 	}
 }
@@ -2931,6 +3025,7 @@ void AHOLPlayerController::RequestAttackMove(const TConstArrayView<uint32> UnitI
 {
 	if (UnitIds.Num() > 0)
 	{
+		UHOLFollowBridge::NativeManualOrder(this, UnitIds); // a manual order ends the Follow of these units (GLORFINDEL-1121sm)
 		if (!HOLRpcScriptRoute_Haldir1117n::RouteAttackMove(this, UnitIds, Target, bQueue)) { HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("AttackMove")); }
 	}
 }
@@ -2939,6 +3034,7 @@ void AHOLPlayerController::RequestStopUnits(const TConstArrayView<uint32> UnitId
 {
 	if (UnitIds.Num() > 0)
 	{
+		UHOLFollowBridge::NativeManualOrder(this, UnitIds); // a manual order ends the Follow of these units (GLORFINDEL-1121sm)
 		if (!HOLRpcScriptRoute_Haldir1117n::RouteStop(this, UnitIds, bHold)) { HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("Stop")); }
 	}
 }
@@ -2947,6 +3043,7 @@ void AHOLPlayerController::RequestToggleDeploy(const TConstArrayView<uint32> Uni
 {
 	if (UnitIds.Num() > 0)
 	{
+		UHOLFollowBridge::NativeManualOrder(this, UnitIds); // a manual order ends the Follow of these units (GLORFINDEL-1122m, D818)
 		HOLDeploy::NoteOrder(DeployWatch, GetWorld() ? GetWorld()->GetTimeSeconds() : 0.0); // D869b: the bar's clock starts now
 		if (!HOLRpcScriptRoute_Haldir1117n::RouteToggleDeploy(this, UnitIds)) { HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("ToggleDeploy")); }
 	}
@@ -2957,6 +3054,7 @@ void AHOLPlayerController::RequestMoveUnitsInLine(const TConstArrayView<uint32> 
 {
 	if (UnitIds.Num() > 0)
 	{
+		UHOLFollowBridge::NativeManualOrder(this, UnitIds); // a manual order ends the Follow of these units (GLORFINDEL-1121sm)
 		if (!HOLRpcScriptRoute_Haldir1117n::RouteMoveInLine(this, UnitIds, Start, End, bWidth, bQueue)) { HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("MoveInLine")); }
 	}
 }
@@ -3102,6 +3200,7 @@ void AHOLPlayerController::RequestGatherUnits(const TConstArrayView<uint32> Unit
 {
 	if (UnitIds.Num() > 0 && SourceIndex != INDEX_NONE)
 	{
+		UHOLFollowBridge::NativeManualOrder(this, UnitIds); // a manual order ends the Follow of these units (GLORFINDEL-1122m, D818)
 		if (!HOLRpcScriptRoute_Haldir1117n::RouteGather(this, UnitIds, SourceIndex, bQueue)) { HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("Gather")); }
 	}
 }
@@ -3299,6 +3398,7 @@ void AHOLPlayerController::RequestPlaceBuilding(const FName TypeName, const FVec
 		const TArray<uint32> Builders = GetCommandUnits();
 		if (!Builders.IsEmpty())
 		{
+			UHOLFollowBridge::NativeManualOrder(this, Builders); // a manual order ends the Follow of these units (GLORFINDEL-1122m, D818)
 			UE_LOG(LogHOLMatch, Display, TEXT("Placement: %d units sent to build it%s"), Builders.Num(), bQueue ? TEXT(", queued") : TEXT(""));
 			// The brief mark of an order (J4.6) on the foundation they go to (D313).
 			OnOrderGiven.Broadcast(Point);
@@ -3371,6 +3471,7 @@ void AHOLPlayerController::RequestPlaceWallLine(const FName TypeName, const FVec
 {
 	if (!TypeName.IsNone() && !IsSpectator())
 	{
+		UHOLFollowBridge::NativeManualOrder(this, GetCommandUnits()); // the builders of the line: a manual order ends their Follow (GLORFINDEL-1122m, D818)
 		if (!HOLRpcScriptRoute_Haldir1117n::RoutePlaceWallLine(this, TypeName, Start, End, bQueue)) { HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("PlaceWallLine")); }
 	}
 }
@@ -3379,6 +3480,7 @@ void AHOLPlayerController::RequestBuildUnits(const TConstArrayView<uint32> UnitI
 {
 	if (UnitIds.Num() > 0 && Building)
 	{
+		UHOLFollowBridge::NativeManualOrder(this, UnitIds); // a manual order ends the Follow of these units (GLORFINDEL-1122m, D818)
 		if (!HOLRpcScriptRoute_Haldir1117n::RouteBuildUnits(this, UnitIds, Building, bQueue)) { HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("BuildUnits")); }
 	}
 }
@@ -3397,6 +3499,7 @@ void AHOLPlayerController::RequestDropOffUnits(const TConstArrayView<uint32> Uni
 {
 	if (UnitIds.Num() > 0 && Building)
 	{
+		UHOLFollowBridge::NativeManualOrder(this, UnitIds); // a manual order ends the Follow of these units (GLORFINDEL-1122m, D818)
 		if (!HOLRpcScriptRoute_Haldir1117n::RouteDropOff(this, UnitIds, Building, Point, bQueue)) { HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("DropOff")); }
 	}
 }
@@ -3414,6 +3517,7 @@ void AHOLPlayerController::RequestGarrisonUnits(const TConstArrayView<uint32> Un
 {
 	if (!IsSpectator() && UnitIds.Num() > 0 && Building)
 	{
+		UHOLFollowBridge::NativeManualOrder(this, UnitIds); // a manual order ends the Follow of these units (GLORFINDEL-1122m, D818)
 		if (!HOLRpcScriptRoute_Haldir1117n::RouteGarrison(this, UnitIds, Building)) { HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("Garrison")); }
 	}
 }
@@ -4715,6 +4819,7 @@ void AHOLPlayerController::RequestAttackBuilding(const TConstArrayView<uint32> U
 {
 	if (UnitIds.Num() > 0 && Building)
 	{
+		UHOLFollowBridge::NativeManualOrder(this, UnitIds); // a manual order ends the Follow of these units (GLORFINDEL-1122m, D818)
 		if (!HOLRpcScriptRoute_Haldir1117n::RouteAttackBuilding(this, UnitIds, Building, bQueue)) { HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("AttackBuilding")); }
 	}
 }
@@ -5007,6 +5112,18 @@ void AHOLPlayerController::ScriptLeftClick(const FVector2D& ViewportFraction)
 	UE_LOG(LogHOLMatch, Display, TEXT("Scripted left click at (%.3f, %.3f), armed attack-move: %s"), ViewportFraction.X, ViewportFraction.Y, bAttackMoveArmed ? TEXT("yes") : TEXT("no"));
 	HandleSelectStarted();
 	HandleSelectCompleted();
+	TestCursor->Set(*Former, ECVF_SetByConsole);
+}
+
+void AHOLPlayerController::ScriptRightClickAt(const FVector2D& ViewportFraction)
+{
+	IConsoleVariable* const TestCursor = UE::HeroesOfLiberty::Player::CVarTestCursor.AsVariable();
+	const FString Former = TestCursor->GetString();
+	TestCursor->Set(*FString::Printf(TEXT("%.4f %.4f"), ViewportFraction.X, ViewportFraction.Y), ECVF_SetByConsole);
+	UE_LOG(LogHOLMatch, Display, TEXT("Scripted right click at (%.3f, %.3f), armed attack-move: %s, placing: %s"), ViewportFraction.X, ViewportFraction.Y, bAttackMoveArmed ? TEXT("yes") : TEXT("no"), IsPlacing() ? TEXT("yes") : TEXT("no"));
+	// The mouse's two handlers, in order: the press leaves an armed mode (placement, attack-move, banner, faction aim) or arms the order, the release gives it.
+	HandleOrder();
+	HandleOrderCompleted();
 	TestCursor->Set(*Former, ECVF_SetByConsole);
 }
 
