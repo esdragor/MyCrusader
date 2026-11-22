@@ -40,6 +40,8 @@ struct FHOLAllyCandidate
 	bool bHostile = false;
 	/** Of the neutral owner (never healed nor followed). */
 	bool bNeutral = false;
+	/** One of the local player's own units (a teammate's is not: hol.Follow.OwnUnits 0 never follows an own unit, GLORFINDEL-1122g). */
+	bool bOwn = false;
 };
 
 /**
@@ -93,6 +95,12 @@ namespace HOLUnitPicking
 	 * ground stays a move).
 	 */
 	HEROESOFLIBERTY_API int32 PickAllyAt(TConstArrayView<FHOLAllyCandidate> Candidates, TConstArrayView<uint32> Excluded, const FVector2D& Cursor);
+
+	/**
+	 * The unit a right click takes to FOLLOW: PickAllyAt, but with bOwnUnitsFollowable false (hol.Follow.OwnUnits 0, the default) a unit of the
+	 * local player (bOwn) is skipped like an excluded one, so the click on it stays a move; a teammate's unit is still taken. Heal uses PickAllyAt.
+	 */
+	HEROESOFLIBERTY_API int32 PickFollowAt(TConstArrayView<FHOLAllyCandidate> Candidates, TConstArrayView<uint32> Excluded, const FVector2D& Cursor, bool bOwnUnitsFollowable);
 
 	/** Indices of the candidates whose body's middle is inside the box between two corners (any order). */
 	HEROESOFLIBERTY_API void PickInBox(TConstArrayView<FHOLPickCandidate> Candidates, const FVector2D& CornerA, const FVector2D& CornerB, TArray<int32>& OutIndices);

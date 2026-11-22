@@ -99,6 +99,12 @@ namespace HOLUnitPicking
 		return Indices.IsValidIndex(Picked) ? Indices[Picked] : INDEX_NONE;
 	}
 
+	// RED STUB (GLORFINDEL-1122g): compiles, ignores bOwnUnitsFollowable; the green commit applies it.
+	int32 PickFollowAt(TConstArrayView<FHOLAllyCandidate> Candidates, TConstArrayView<uint32> Excluded, const FVector2D& Cursor, const bool bOwnUnitsFollowable)
+	{
+		return PickAllyAt(Candidates, Excluded, Cursor);
+	}
+
 	void PickInBox(TConstArrayView<FHOLPickCandidate> Candidates, const FVector2D& CornerA, const FVector2D& CornerB, TArray<int32>& OutIndices)
 	{
 		OutIndices.Reset();
