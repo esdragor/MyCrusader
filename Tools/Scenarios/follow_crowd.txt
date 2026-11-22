@@ -79,6 +79,9 @@ hol.Select.OrderNear 300 3300
 # 1122k : hol.Cheat.Wound 50 blesse TOUTES les unites (22 a ce moment) : le Moine #21 soigne aussi d'autres unites. L unite visee par le clic est #22 (Homme d armes) : on attend la ligne du processeur de soin qui dit qu elle est revenue a 155, PUIS on la selectionne (ClickUnit 21 = #22) pour que sa barre de vie soit sur la capture.
 waitlog #22 (slot 0) is healed to 155
 hol.Units.Where
+# 1122l : camera replacee juste avant le clic (preflight pan exposure : max 10 images apres la camera)
+hol.Camera.FocusNear 180 3100
+frames 2
 hol.Select.ClickUnit 21
 frames 10
 capture follow_crowd_heal_done
