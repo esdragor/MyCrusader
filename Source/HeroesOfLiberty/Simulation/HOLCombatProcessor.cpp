@@ -1162,6 +1162,8 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 	if (!bFighting)
 	{
 		Deaths.Reset();
+		// F8 T5b: no building looses an arrow while the combat is off, and no countdown is kept (a building destroyed meanwhile leaves none; on return each is met afresh).
+		BuildingCooldownMs.Reset();
 		for (FFighter& Fighter : Fighters)
 		{
 			// Nobody strikes (EtapeDefini I): a unit caught striking is no longer Attacking (its gesture, the HUD, the clients),
