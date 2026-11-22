@@ -41,3 +41,14 @@ void UHOLUnitOpacityLibrary::ClearStealthOpacities()
 	FScopeLock Lock(&OpacityLock);
 	GetOpacities().Empty();
 }
+
+HOLUnitDraw::FInstanceCustomData HOLUnitDraw::MakeInstanceCustomData(const FVector3f& Color, const uint8 Prop, const float Opacity)
+{
+	return { Color, static_cast<float>(Prop), Opacity };
+}
+
+HOLUnitDraw::FInstanceCustomData HOLUnitDraw::MakeUnitInstanceCustomData(const FVector3f& Color, const uint8 Prop, const int32 UnitId)
+{
+	// STUB (red commit): always opaque. The real value is UHOLUnitOpacityLibrary::GetStealthOpacity(UnitId).
+	return MakeInstanceCustomData(Color, Prop, 1.f);
+}

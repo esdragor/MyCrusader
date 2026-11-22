@@ -30,3 +30,28 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Units")
 	static void ClearStealthOpacities();
 };
+
+/**
+ * The per-instance custom data of a drawn unit (what UHOLInterpolatedInstancesProcessor hands to Mass, one float per component and the same count
+ * for every unit and corpse of a component): colour in 0-2 (M_UnitPlayerColor), the prop shown in 3 (M_UnitPlayerColorProps), the stealth opacity
+ * in 4 (D824 Q3: 0.5 for a unit in a zone, 1 otherwise). Indexes 0-3 never move: the material reads them. Plain floats (Mass copies the struct at any
+ * float offset).
+ */
+namespace HOLUnitDraw
+{
+	constexpr int32 NumInstanceCustomFloats = 5;
+
+	struct FInstanceCustomData
+	{
+		FVector3f Color;
+		float Prop;
+		float Opacity;
+	};
+	static_assert(sizeof(FInstanceCustomData) == NumInstanceCustomFloats * sizeof(float));
+
+	/** The custom data with an explicit opacity (the bodies: 1). */
+	HEROESOFLIBERTY_API FInstanceCustomData MakeInstanceCustomData(const FVector3f& Color, uint8 Prop, float Opacity);
+
+	/** The custom data of a living unit: its opacity is UHOLUnitOpacityLibrary::GetStealthOpacity(UnitId). Called once per unit and frame by the drawing pass. */
+	HEROESOFLIBERTY_API FInstanceCustomData MakeUnitInstanceCustomData(const FVector3f& Color, uint8 Prop, int32 UnitId);
+}
