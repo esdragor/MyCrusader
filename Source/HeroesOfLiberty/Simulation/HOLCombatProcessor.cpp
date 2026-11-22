@@ -836,9 +836,11 @@ int32 UHOLCombatProcessor::GetBuildingAttackWithTechnology(const FFighter& Attac
 	return HOLTechnology::ScaleByPercent(Attacker.Constants->BuildingAttack, MangonelDamagePercent[Slot]);
 }
 
-void UHOLCombatProcessor::ReleaseBuildingArrows(const UWorld& World, const int64 StepIndex, const int32 StepMs)
+void UHOLCombatProcessor::ReleaseBuildingArrows(const UWorld& World, const int64 StepIndex, const int32 StepMs, const UHOLVisionSubsystem* Vision)
 {
 	(void)World;
+	// F8 T5 stub (red): the owner's vision (null = no fog to honour) is not read yet.
+	(void)Vision;
 	// No standing building this step: no countdown can be alive (a no-op on an empty map), and nothing else costs anything.
 	if (StepBuildings.IsEmpty())
 	{
@@ -1498,7 +1500,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 	};
 
 	// F8 T2 / T4 (D884): the buildings' arrows (one countdown per building) are released before the arrows land.
-	ReleaseBuildingArrows(*World, StepIndex, StepMs);
+	ReleaseBuildingArrows(*World, StepIndex, StepMs, Vision);
 
 	// The arrows that land this step (J7c.2), in release order, before the units are taken: a unit killed by one dies as
 	// one killed in melee, its attackers look for another this step.

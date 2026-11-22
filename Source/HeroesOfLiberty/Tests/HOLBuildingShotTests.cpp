@@ -6,6 +6,9 @@
 #include "Engine/Engine.h"
 #include "Engine/World.h"
 #include "HAL/IConsoleManager.h"
+#include "Map/HOLFogMode.h"
+#include "Map/HOLVisionSubsystem.h"
+#include "Match/HOLMatchConfig.h"
 #include "MassCommonFragments.h"
 #include "MassEntitySubsystem.h"
 #include "MassExecutor.h"
@@ -64,6 +67,12 @@ namespace UE::HeroesOfLiberty::Tests::BuildingShot
 		int32 Towers = 1;
 		float Seconds = 10.f;
 		bool bDestroyAtEnd = false;
+		/** F8 T5: the type of the towers (a row copied with another SightRadius), and the fog: 0 never started, 1 Normal, 2 Disabled (started, no fog). */
+		FName TowerType = TestShotTowerType;
+		int32 Fog = 0;
+		/** F8 T5b: hol.Combat.Enabled 0 for the whole window (bCombatOff), or only from the end of the window on, before the towers are destroyed (bCombatOffAtEnd). */
+		bool bCombatOff = false;
+		bool bCombatOffAtEnd = false;
 	};
 
 	/** The step at which the K-th arrow (K = 0 first) leaves a countdown that fires on the first step at which the elapsed time covers K intervals. */
@@ -104,14 +113,42 @@ namespace UE::HeroesOfLiberty::Tests::BuildingShot
 		if (Test.TestNotNull(TEXT("units"), Units) && Test.TestNotNull(TEXT("simulation"), Simulation) && Test.TestNotNull(TEXT("entities"), EntitySubsystem)
 			&& Test.TestNotNull(TEXT("tower"), Tower) && (Options.Towers <= 1 || Test.TestNotNull(TEXT("second tower"), SecondTower)))
 		{
-			Tower->Setup(TestShotTowerType, 0, 0, State);
+			Tower->Setup(Options.TowerType, 0, 0, State);
 			if (SecondTower)
 			{
-				SecondTower->Setup(TestShotTowerType, 0, 0, State);
+				SecondTower->Setup(Options.TowerType, 0, 0, State);
 			}
 			const TSharedRef<FMassEntityManager> EntityManager = EntitySubsystem->GetMutableEntityManager().AsShared();
 			UHOLCombatProcessor* Combat = NewObject<UHOLCombatProcessor>(Simulation);
 			Combat->CallInitialize(Simulation, EntityManager);
+			if (Options.Fog != 0)
+			{
+				// Owner 0 (the towers) and owner 3 (the target) in two teams; the fog of the last step end is what the towers' owner sees.
+				FHOLMatchConfig Teams = FHOLMatchConfig::MakeDefault();
+				for (FHOLMatchSlot& Slot : Teams.Slots)
+				{
+					Slot.State = EHOLSlotState::Closed;
+					Slot.Team = 0;
+				}
+				Teams.Slots[0].State = EHOLSlotState::Human;
+				Teams.Slots[0].Team = 1;
+				if (Teams.Slots.IsValidIndex(3))
+				{
+					Teams.Slots[3].State = EHOLSlotState::AI;
+					Teams.Slots[3].Team = 2;
+				}
+				UHOLVisionSubsystem* Vision = World->GetSubsystem<UHOLVisionSubsystem>();
+				if (Test.TestNotNull(TEXT("the vision subsystem"), Vision))
+				{
+					Vision->Start(Teams, Options.Fog == 1 ? EHOLFogMode::Normal : EHOLFogMode::Disabled);
+					Vision->Update();
+				}
+			}
+			IConsoleVariable* CombatEnabledVar = IConsoleManager::Get().FindConsoleVariable(TEXT("hol.Combat.Enabled"));
+			if (Options.bCombatOff && CombatEnabledVar)
+			{
+				CombatEnabledVar->Set(0, ECVF_SetByCode);
+			}
 			const float StepSeconds = GetDefault<UHOLSimulationSettings>()->GetStepSeconds();
 			Result.StepMs = HOLCombat::ToMilliseconds(StepSeconds);
 			const auto RunStep = [Simulation, Units, Combat, EntityManager, StepSeconds]
@@ -210,6 +247,10 @@ namespace UE::HeroesOfLiberty::Tests::BuildingShot
 				Result.HealthLost = Start - HealthOf(Victim);
 				Result.Released = UHOLCombatProcessor::GetTotalArrowsReleased() - ReleasedBefore;
 				Result.EntriesAlive = Combat->GetBuildingCooldownCount();
+				if (Options.bCombatOffAtEnd && CombatEnabledVar)
+				{
+					CombatEnabledVar->Set(0, ECVF_SetByCode);
+				}
 				if (Options.bDestroyAtEnd)
 				{
 					if (IsValid(Tower))
@@ -223,6 +264,10 @@ namespace UE::HeroesOfLiberty::Tests::BuildingShot
 					RunStep();
 					RunStep();
 					Result.EntriesAfterDeath = Combat->GetBuildingCooldownCount();
+				}
+				if (CombatEnabledVar && (Options.bCombatOff || Options.bCombatOffAtEnd))
+				{
+					CombatEnabledVar->Set(1, ECVF_SetByCode);
 				}
 			}
 		}
@@ -409,6 +454,123 @@ bool FHOLBuildingShotDamageTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("the minimum of 1 applies (a hit always hurts)"), HOLCombat::GetBuildingShotDamage(5.f, Victim), 1.f);
 	Victim.RangedArmor = 0;
 	TestEqual(TEXT("no armour: the base damage as is, no bonus invented (the melee armour does not count)"), HOLCombat::GetBuildingShotDamage(5.f, Victim), 5.f);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLBuildingShotFogTest, "HeroesOfLiberty.Combat.BuildingShotFog", UE::HeroesOfLiberty::Tests::BuildingShot::Flags)
+
+// F8 T5: a tower only aims at what its OWNER sees (the same vision test as the units' shots: UHOLVisionSubsystem::IsVisible of the last step end).
+// Three copies of the tower row differ by SightRadius only: 6000 (it sees its whole reach), 0 (blind: its owner sees nothing there), 1500 (sees the near
+// target, not the one at the far end of its 3000 reach). No fog started, or the fog Disabled (hol.Fog.Mode 0): everything is seen, as for the units.
+bool FHOLBuildingShotFogTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::BuildingShot;
+	UDataTable* Table = const_cast<UDataTable*>(GetDefault<UHOLBuildingSettings>()->BuildingTypesTable.LoadSynchronous());
+	const FHOLBuildingTypeRow* HouseRow = Table ? Table->FindRow<FHOLBuildingTypeRow>(HOLBuildingTypeNames::House, TEXT("building shot fog test")) : nullptr;
+	IConsoleVariable* CombatEnabled = IConsoleManager::Get().FindConsoleVariable(TEXT("hol.Combat.Enabled"));
+	if (!TestNotNull(TEXT("the building type table and its House row"), HouseRow) || !TestNotNull(TEXT("hol.Combat.Enabled"), CombatEnabled))
+	{
+		return false;
+	}
+	const int32 FormerCombat = CombatEnabled->GetInt();
+	CombatEnabled->Set(1, ECVF_SetByCode);
+	const FName SightedType(TEXT("BuildingShotTestSighted"));
+	const FName BlindType(TEXT("BuildingShotTestBlind"));
+	const FName ShortType(TEXT("BuildingShotTestShortSight"));
+	const TPair<FName, float> Kinds[] = { { SightedType, 6000.f }, { BlindType, 0.f }, { ShortType, 1500.f } };
+	for (const TPair<FName, float>& Kind : Kinds)
+	{
+		FHOLBuildingTypeRow Row = *HouseRow;
+		Row.BuildingAttack = 5;
+		Row.BuildingAttackInterval = 1.625f;
+		Row.BuildingAttackRange = 3000.f;
+		Row.BuildingFiresEmpty = true;
+		Row.SightRadius = Kind.Value;
+		Table->AddRow(Kind.Key, Row);
+	}
+	FShotOptions Fog;
+	Fog.VictimHealth = 100000.f;
+	Fog.Seconds = 6.f;
+	Fog.Fog = 1;
+
+	Fog.TowerType = SightedType;
+	const FShotResult Sighted = RunScenario(*this, EHOLConstructionState::Finished, 3, 1000.0, Fog);
+	TestTrue(TEXT("a tower that sees its reach shoots (the fog pipeline is live)"), Sighted.bRan && Sighted.Released >= 1 && Sighted.HealthLost > 0.f);
+
+	Fog.TowerType = BlindType;
+	const FShotResult Blind = RunScenario(*this, EHOLConstructionState::Finished, 3, 1000.0, Fog);
+	TestTrue(TEXT("the blind scenario ran"), Blind.bRan);
+	TestEqual(TEXT("a tower whose owner does not see the enemy looses no arrow"), Blind.Released, static_cast<int64>(0));
+	TestEqual(TEXT("an enemy the owner does not see loses nothing"), Blind.HealthLost, 0.f);
+
+	Fog.Fog = 2;
+	const FShotResult NoFog = RunScenario(*this, EHOLConstructionState::Finished, 3, 1000.0, Fog);
+	TestTrue(TEXT("with the fog Disabled everything is seen: the blind tower shoots"), NoFog.bRan && NoFog.Released >= 1 && NoFog.HealthLost > 0.f);
+	Fog.Fog = 0;
+	const FShotResult NotStarted = RunScenario(*this, EHOLConstructionState::Finished, 3, 1000.0, Fog);
+	TestTrue(TEXT("with no fog started everything is seen: the blind tower shoots"), NotStarted.bRan && NotStarted.Released >= 1);
+
+	// Out of sight is not chosen: the same tower (sight 1500, reach 3000) shoots the near enemy and ignores the one at the far end of its reach.
+	Fog.Fog = 1;
+	Fog.TowerType = ShortType;
+	const FShotResult Near = RunScenario(*this, EHOLConstructionState::Finished, 3, 200.0, Fog);
+	const FShotResult Far = RunScenario(*this, EHOLConstructionState::Finished, 3, 2500.0, Fog);
+	TestTrue(TEXT("the near enemy, inside the tower's sight, is shot"), Near.bRan && Near.Released >= 1);
+	TestEqual(TEXT("the enemy in reach but beyond the sight is not shot"), Far.Released, static_cast<int64>(0));
+
+	for (const TPair<FName, float>& Kind : Kinds)
+	{
+		Table->RemoveRow(Kind.Key);
+	}
+	CombatEnabled->Set(FormerCombat, ECVF_SetByCode);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLBuildingShotGuardTest, "HeroesOfLiberty.Combat.BuildingShotGuard", UE::HeroesOfLiberty::Tests::BuildingShot::Flags)
+
+// F8 T5b: with hol.Combat.Enabled 0 (bFighting false) no building looses an arrow and no countdown is held; combat turned off after the towers
+// were met, then the towers destroyed: their countdowns are dropped all the same (no leak while the combat is off).
+bool FHOLBuildingShotGuardTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::BuildingShot;
+	UDataTable* Table = const_cast<UDataTable*>(GetDefault<UHOLBuildingSettings>()->BuildingTypesTable.LoadSynchronous());
+	const FHOLBuildingTypeRow* HouseRow = Table ? Table->FindRow<FHOLBuildingTypeRow>(HOLBuildingTypeNames::House, TEXT("building shot guard test")) : nullptr;
+	IConsoleVariable* CombatEnabled = IConsoleManager::Get().FindConsoleVariable(TEXT("hol.Combat.Enabled"));
+	if (!TestNotNull(TEXT("the building type table and its House row"), HouseRow) || !TestNotNull(TEXT("hol.Combat.Enabled"), CombatEnabled))
+	{
+		return false;
+	}
+	const int32 FormerCombat = CombatEnabled->GetInt();
+	CombatEnabled->Set(1, ECVF_SetByCode);
+	FHOLBuildingTypeRow TowerRow = *HouseRow;
+	TowerRow.BuildingAttack = 5;
+	TowerRow.BuildingAttackInterval = 1.625f;
+	TowerRow.BuildingAttackRange = 3000.f;
+	TowerRow.BuildingFiresEmpty = true;
+	Table->AddRow(TestShotTowerType, TowerRow);
+
+	FShotOptions Off;
+	Off.VictimHealth = 100000.f;
+	Off.Seconds = 6.f;
+	Off.bCombatOff = true;
+	const FShotResult Idle = RunScenario(*this, EHOLConstructionState::Finished, 3, 1000.0, Off);
+	TestTrue(TEXT("the combat-off scenario ran"), Idle.bRan);
+	TestEqual(TEXT("with hol.Combat.Enabled 0 no building looses an arrow"), Idle.Released, static_cast<int64>(0));
+	TestEqual(TEXT("with hol.Combat.Enabled 0 the enemy in reach loses nothing"), Idle.HealthLost, 0.f);
+	TestEqual(TEXT("with hol.Combat.Enabled 0 no countdown is held"), Idle.EntriesAlive, 0);
+
+	FShotOptions Leak;
+	Leak.VictimHealth = 100000.f;
+	Leak.Seconds = 4.f;
+	Leak.Towers = 2;
+	Leak.bDestroyAtEnd = true;
+	Leak.bCombatOffAtEnd = true;
+	const FShotResult Left = RunScenario(*this, EHOLConstructionState::Finished, 3, 1000.0, Leak);
+	TestEqual(TEXT("two countdowns while the combat is on and the towers stand"), Left.EntriesAlive, 2);
+	TestEqual(TEXT("the combat off and the towers destroyed: no countdown left behind"), Left.EntriesAfterDeath, 0);
+
+	Table->RemoveRow(TestShotTowerType);
+	CombatEnabled->Set(FormerCombat, ECVF_SetByCode);
 	return true;
 }
 

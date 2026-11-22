@@ -148,7 +148,7 @@ protected:
 	 * (BuildingAttackInterval, the carry kept so it is exact), none piled up while no enemy is in reach. A building looses at most one arrow a step;
 	 * several buildings each loose theirs in the same step. The countdown of a building that is gone is dropped.
 	 */
-	void ReleaseBuildingArrows(const UWorld& World, int64 StepIndex, int32 StepMs);
+	void ReleaseBuildingArrows(const UWorld& World, int64 StepIndex, int32 StepMs, const class UHOLVisionSubsystem* Vision);
 	/** F8 T4: the firing countdown of one standing armed building. RemainingMs: time left before its next arrow (<= 0 = ready; below zero = the carry kept so the interval holds exactly). SeenStep: the last step the building was met (a stale entry is dropped). */
 	struct FBuildingCooldown
 	{
