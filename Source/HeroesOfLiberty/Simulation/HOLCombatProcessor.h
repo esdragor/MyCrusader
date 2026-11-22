@@ -141,19 +141,22 @@ protected:
 	TArray<FArrow> Arrows;
 
 	/**
-	 * F8 T2 (D884): the finished buildings of the step whose row has BuildingAttack > 0 and BuildingFiresEmpty loose one first arrow at the nearest
+	 * F8 T2 (D884): the finished buildings of the step whose row has BuildingAttack > 0 and BuildingFiresEmpty loose arrows at the nearest
 	 * enemy within HOLCombat::IsInBuildingShotRange (StepCamps.FiresAtOnce). Called once a step before the arrows land.
-	 * The arrow is a FArrow with no shooter entity and the flat BuildingAttack (the armour and the credit: T3). No cadence yet (T4): each building looses
-	 * ONE arrow in all (BuildingsShot), the cadence will replace that set. Nothing looses twice in a step.
+	 * The arrow is a FArrow with no shooter entity (T3: the ranged armour of the target, the kill credited to the owner slot).
+	 * F8 T4: the cadence is one countdown per building (BuildingCooldownMs, simulation milliseconds): the first arrow at once, then one every row interval
+	 * (BuildingAttackInterval, the carry kept so it is exact), none piled up while no enemy is in reach. A building looses at most one arrow a step;
+	 * several buildings each loose theirs in the same step. The countdown of a building that is gone is dropped.
 	 */
 	void ReleaseBuildingArrows(const UWorld& World, int64 StepIndex, int32 StepMs);
-	/** F8 T2: the identifiers of the buildings that have loosed their first arrow (until the cadence of T4). */
-	TSet<uint32> BuildingsShot;
-	/**
-	 * F8 T4: the firing countdown of each standing armed building, in simulation milliseconds (building identifier -> time left before its next arrow;
-	 * negative = the carry of the last step, kept so the interval holds exactly over many arrows). STUB (red commit): nothing writes it yet.
-	 */
-	TMap<uint32, int32> BuildingCooldownMs;
+	/** F8 T4: the firing countdown of one standing armed building. RemainingMs: time left before its next arrow (<= 0 = ready; below zero = the carry kept so the interval holds exactly). SeenStep: the last step the building was met (a stale entry is dropped). */
+	struct FBuildingCooldown
+	{
+		int32 RemainingMs = 0;
+		int64 SeenStep = INDEX_NONE;
+	};
+	/** Building identifier -> countdown; an entry only for a standing, finished, armed building (none otherwise: nothing to pay for). */
+	TMap<uint32, FBuildingCooldown> BuildingCooldownMs;
 
 	FMassEntityQuery EntityQuery;
 

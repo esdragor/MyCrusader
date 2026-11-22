@@ -839,17 +839,36 @@ int32 UHOLCombatProcessor::GetBuildingAttackWithTechnology(const FFighter& Attac
 void UHOLCombatProcessor::ReleaseBuildingArrows(const UWorld& World, const int64 StepIndex, const int32 StepMs)
 {
 	(void)World;
-	// Early out: no standing building this step, or no unit to shoot at, costs nothing; a step where no building has BuildingAttack > 0 only reads
-	// that integer of each building's row (a handful of actors), and never walks the units.
-	if (StepBuildings.IsEmpty() || Fighters.IsEmpty())
+	// No standing building this step: no countdown can be alive (a no-op on an empty map), and nothing else costs anything.
+	if (StepBuildings.IsEmpty())
 	{
+		BuildingCooldownMs.Reset();
 		return;
 	}
 	for (const FStepBuilding& Step : StepBuildings)
 	{
 		const FHOLBuildingTypeRow* Row = Step.Building ? Step.Building->GetType() : nullptr;
 		// The step's list holds standing buildings and drops the bare foundations; a building under construction is a foundation or a site: IsFinished only.
-		if (!Row || Row->BuildingAttack <= 0 || !Row->BuildingFiresEmpty || Step.bGone || !Step.Building->IsFinished() || BuildingsShot.Contains(Step.Id))
+		// An unarmed building (BuildingAttack 0, the 16 other rows) holds no countdown and costs one integer read.
+		if (!Row || Row->BuildingAttack <= 0 || !Row->BuildingFiresEmpty || Step.bGone || !Step.Building->IsFinished())
+		{
+			continue;
+		}
+		// F8 T4: the countdown of this building, in simulation milliseconds (the step's own length, never the wall clock). A building met for the first time
+		// is ready at once (its first arrow leaves the first step an enemy is in reach); after that the step's length is taken off. The carry below zero
+		// is kept after a shot so the interval holds exactly over many arrows (1.625 s is not a whole number of steps).
+		FBuildingCooldown* Cooldown = BuildingCooldownMs.Find(Step.Id);
+		if (Cooldown)
+		{
+			Cooldown->RemainingMs -= StepMs;
+		}
+		else
+		{
+			Cooldown = &BuildingCooldownMs.Add(Step.Id);
+			Cooldown->RemainingMs = 0;
+		}
+		Cooldown->SeenStep = StepIndex;
+		if (Cooldown->RemainingMs > 0)
 		{
 			continue;
 		}
@@ -877,6 +896,8 @@ void UHOLCombatProcessor::ReleaseBuildingArrows(const UWorld& World, const int64
 		}
 		if (Best == INDEX_NONE)
 		{
+			// No target: the building waits ready, the time does not pile up (no burst of arrows when an enemy steps in after a pause).
+			Cooldown->RemainingMs = 0;
 			continue;
 		}
 		const FFighter& Enemy = Fighters[Best];
@@ -895,7 +916,16 @@ void UHOLCombatProcessor::ReleaseBuildingArrows(const UWorld& World, const int64
 		Arrow.ReleaseStep = StepIndex;
 		Arrow.ArrivalStep = StepIndex + HOLCombat::GetArrowFlightSteps(FlightMs, StepMs);
 		++TotalArrowsReleased;
-		BuildingsShot.Add(Step.Id);
+		// The next arrow in one interval of the row (BuildingAttackInterval), counted from the time this one was due (the carry below zero stays).
+		Cooldown->RemainingMs += FMath::Max(1, HOLCombat::ToMilliseconds(Row->BuildingAttackInterval));
+	}
+	// A building that is gone (destroyed, no longer standing or armed) was not met this step: its countdown goes, nothing leaks.
+	for (auto It = BuildingCooldownMs.CreateIterator(); It; ++It)
+	{
+		if (It.Value().SeenStep != StepIndex)
+		{
+			It.RemoveCurrent();
+		}
 	}
 }
 
@@ -1467,7 +1497,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 		return false;
 	};
 
-	// F8 T2 (D884): the buildings' first arrows are released before the arrows land.
+	// F8 T2 / T4 (D884): the buildings' arrows (one countdown per building) are released before the arrows land.
 	ReleaseBuildingArrows(*World, StepIndex, StepMs);
 
 	// The arrows that land this step (J7c.2), in release order, before the units are taken: a unit killed by one dies as
