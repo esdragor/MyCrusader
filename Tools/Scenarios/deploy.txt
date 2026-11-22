@@ -79,6 +79,8 @@ waitlog D=Pack
 capture deploy_move_start
 note 6. D861 (b) : le Mangonneau est de nouveau monte (la case D dit Demonter). Tu fais un clic droit sur le sol, plus bas.
 # Etape 7 : clic droit au sol (a ~1000 cm au sud, toujours a ~2500 cm de la Maison). Un SEUL ordre ; aucun second clic.
+hol.Camera.FocusNear 3000 1500
+frames 2
 hol.Select.OrderGround -13400 -1000
 waitlog Order: 1 units to (
 wait 0.3
@@ -138,10 +140,10 @@ hol.HUD.Report
 capture deploy_attack_hit
 note 10. Monte, l'engin tire seul sur la Maison designee (PV entames, coups de 45), sans autre ordre.
 # Etape 11 (ELROND-1121sd, D877) : engin DEMONTE LOIN de la cible, clic droit sur la Maison : il doit marcher jusqu a portee, se monter, tirer.
-# ELROND-1122b : notereset pour que le panneau des notes (5 lignes) ne cache plus le champ entre l engin (a droite) et la 2e Maison (a gauche) ; FocusNear 3000 -2500 les garde tous deux a l ecran (X vertical, Y horizontal, ~6,6 cm par pixel).
+# ELROND-1122b : notereset pour que le panneau des notes (5 lignes) ne cache plus le champ entre l engin (a droite) et la 2e Maison (a gauche) ; FocusNear 3000 -3700 (ELROND-1122d, recale pour une Maison a -6500) les garde tous deux a l ecran (X vertical, Y horizontal, ~6,6 cm par pixel).
 notereset
-hol.Camera.FocusNear 3000 -2500
-hol.Cheat.SpawnBuilding House 1 3000 -5500
+hol.Camera.FocusNear 3000 -3700
+hol.Cheat.SpawnBuilding House 1 3000 -6500
 waitlog Cheat: spawned House of slot 1
 hol.Select.ClickUnit -1
 waitlog Selection: Mangonel
@@ -151,9 +153,11 @@ wait 2
 hol.Select.Report
 capture deploy_far_start
 note 11. Engin demonte loin de la 2e Maison (hors portee 3000).
-hol.Select.OrderGround -13400 -5500
+hol.Camera.FocusNear 3000 -3700
+frames 2
+hol.Select.OrderGround -13400 -6500
 waitlog units attack
-# ELROND-1122c : far_walking et far_midway PRECEDENT les deux waitlog (avant, ils les suivaient : l engin etait deja monte et a portee sur les deux captures). Demontage 1 s puis marche : a 3 s l engin est demonte et en route, a 9 s il est encore en marche (montage mesure a 16 s par ELROND-1122a).
+# ELROND-1122d : la 2e Maison est a (3000,-6500), soit ~5500 cm de l engin (en (3000,-1000) apres l etape 7) : montage a ~3170 cm, donc ~2300 cm de marche (~13 s a 1,8 m/s) ; avec -5500 la marche n etait que ~1300 cm (rejeu 15.55 : ordre 26.94, phase 0 -> 1 a 34.04, distance 3172 cm). Camera -3700 : engin (droite) et Maison (gauche) a l ecran.`r`n# ELROND-1122c : far_walking et far_midway PRECEDENT les deux waitlog (avant, ils les suivaient : l engin etait deja monte et a portee sur les deux captures). Demontage 1 s puis marche : a 3 s l engin est demonte et en route, a 9 s il est encore en marche (montage mesure a 16 s par ELROND-1122a).
 wait 3
 hol.Select.Report
 capture deploy_far_walking
