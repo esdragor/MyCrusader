@@ -27,7 +27,7 @@ Ce fichier est la **procédure** (elle change rarement). L'état du jour est dan
 - **Un agent par worktree, tous les chantiers du tableau lancés dès le départ, en parallèle.**
 - **« Pris » dans `IN_USE.txt` n'est pas un interdit.** Un worktree « Pris » avec du travail non commité se **reprend sans l'écraser** : `git status`, vérifier que ça compile et que les tests passent, commiter par lots cohérents, jamais `git checkout`/`reset` sur du travail non commité. Seul cas où on ne touche pas : le chantier n'a rien d'ouvert (ex. réseau avant l'essai E5).
 - **Quand « À faire » d'`EtapeDefini.md` est vide ou ne convient pas** : prendre un **chapitre du GDD non commencé** dont les décisions sont tranchées (Volcan/Catastrophe, Technologies, Arbre de talents...), ouvrir son `*InProgress.md` (plan en étapes de 15 min, premier test rouge), coder la première étape. « Après le prototype » exclut seulement ce que le GDD marque ainsi. Le relevé est dans la section « Chapitres du GDD non commencés » de `Auto_Journey_Jour.md`.
-- **Le GDD (`GDD.md`) est éditable même s'il est modifié et non commité par d'autres sessions** : éditions ciblées après relecture, ne pas commiter le fichier entier (il mêle plusieurs sessions). Avant d'utiliser un numéro de décision, relire § 22.
+- **Le GDD (`GDD.md`) est éditable même s'il est modifié et non commité par d'autres sessions** : éditions ciblées après relecture, commit selon l'accord permanent de « Les docs de la copie principale » (seulement si le diff ne contient que ses propres lignes). Avant d'utiliser un numéro de décision, relire § 22.
 - Jamais de nouveau worktree. Les agents ne **tranchent jamais** une décision de design : ils la posent, **en début de session** (pas au bilan), et si les deux options sont peu coûteuses ils préparent les deux derrière un réglage (cvar/option) au lieu de s'arrêter.
 
 ### Comment écrire l'énoncé d'un agent
@@ -144,7 +144,7 @@ Un premier build après un header prend ~200 s et la file de `Tools\build.ps1` e
 
 ## Fusions dans `main` (agent dédié)
 
-**Test 2, leçon : les fusions sont le goulot de fin de séance.** `main` bouge pendant les tests (3 refusions + rebuilds chez plusieurs agents) et le `GDD.md` non commité de la copie principale bloque tout fast-forward d'une branche qui le touche (3 branches sur 7 non fusionnées). Donc : (1) **avant la journée, commiter `GDD.md` avec l'accord de l'utilisateur** (ou lui demander de le mettre à l'abri) ; (2) les agents **ne fusionnent pas eux-mêmes** : ils commitent sur leur branche et le disent ; (3) **un seul agent de fusion** en fin de créneau (ou toutes les heures), dans l'ordre fixe, qui refusionne `main` en dernier juste avant chaque fast-forward ; (4) un chantier qui change des chemins/cartes ne se fusionne qu'après ses vérifications (chemins, `crossings.ps1`, `aiduel` pour les cartes).
+**Test 2, leçon : les fusions sont le goulot de fin de séance.** `main` bouge pendant les tests (3 refusions + rebuilds chez plusieurs agents) et le `GDD.md` non commité de la copie principale bloque tout fast-forward d'une branche qui le touche (3 branches sur 7 non fusionnées). Donc : (1) **avant la journée, commiter `GDD.md`** (accord permanent pour les décisions dictées, « Les docs de la copie principale » ; lignes d'une autre session : demander à l'utilisateur) ; (2) les agents **ne fusionnent pas eux-mêmes** : ils commitent sur leur branche et le disent ; (3) **un seul agent de fusion** en fin de créneau (ou toutes les heures), dans l'ordre fixe, qui refusionne `main` en dernier juste avant chaque fast-forward ; (4) un chantier qui change des chemins/cartes ne se fusionne qu'après ses vérifications (chemins, `crossings.ps1`, `aiduel` pour les cartes).
 
 **Docs dans le commit de fusion (L12-6)** : l'agent de fusion (ou l'agent de docs qui le suit) met à jour l'index de `Retours\`, le `LISEZ-MOI` et les lignes d'`EtapeDefini.md` des branches fusionnées (« pas dans main » -> « dans main <sha> ») dans le MÊME commit que la fusion ; `session_gate.ps1 -Phase Close` signale (WARN) toute ligne d'`EtapeDefini.md` qui dit « pas dans main » alors que sa branche (1er mot entre parenthèses) ou tous les commits qu'elle cite sont déjà ancêtres de `main`.
 
@@ -154,7 +154,7 @@ Procédure branche par branche du test 2 archivée : `Docs/Archive/Auto_Journey_
 
 ## Les docs de la copie principale
 
-`GDD.md`, `EtapeDefini.md` et les journaux mêlent plusieurs sessions. La session principale commite en fin de boucle **seulement les fichiers qu'elle a elle-même touchés** (`git add <fichier>` précis, jamais `-A`) ; `GDD.md` ne se commite qu'avec l'accord de l'utilisateur (il contient le travail d'autres sessions).
+`GDD.md`, `EtapeDefini.md` et les journaux mêlent plusieurs sessions. La session principale commite en fin de boucle **seulement les fichiers qu'elle a elle-même touchés** (`git add <fichier>` précis, jamais `-A`) ; `GDD.md` : **accord PERMANENT de l'utilisateur (2026-11-22)** pour commiter les décisions qu'il vient de dicter, sans redemander, dès qu'elles sont écrites ; relire `git diff GDD.md` avant : si le diff contient des lignes d'une autre session, ne pas commiter et le demander.
 
 ## Mode interactif (demandé par l'utilisateur le 2026-11-01, essayé depuis ; jamais par défaut)
 
