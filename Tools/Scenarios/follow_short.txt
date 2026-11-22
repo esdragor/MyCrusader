@@ -1,0 +1,22 @@
+# L22-5 / GLORFINDEL-1122b : le pont de Suivre (UHOLFollowBridge) est une INSTANCE de la classe script, plus le CDO : le jeu ne doit plus etre noye d'erreurs "requires WorldContext". 4 Hommes d'armes (selection par hol.Select.Army) suivent un Paysan allie hors selection (hol.Select.ClickUnit -1 order : le clic droit sur une unite sous la camera, dont la regle est HOLFollowOrders::ApplyRightClick), marchent quelques secondes (le pas part du Tick du controleur par UHOLFollowBridge::NativeStep), puis un ordre manuel (hol.Select.OrderNear : clic droit au sol, UHOLFollowBridge::NativeManualOrder) annule le suivi. Plain, un joueur (follow_short.json). 1 minute.
+hol.Cheat.Resources 5000
+hol.Cheat.Population 200
+hol.Camera.FocusNear 0 0
+frames 2
+hol.Units.SpawnHere 4 ManAtArms 0 600
+waitunits 4
+hol.Units.SpawnHere 1 Peasant 0 -900
+waitunits 5
+frames 30
+hol.Select.Army
+waitlog Selection: 4 units
+capture follow_short_start
+hol.Select.ClickUnit -1 order
+waitlog the selected units follow it
+frames 240
+capture follow_short_walk
+hol.Select.OrderNear 1500 0
+waitlog Order: 4 units
+frames 180
+capture follow_short_cancelled
+note 4 Hommes d'armes (groupe du bas) suivent le Paysan allie (en haut) : ils marchent vers lui et se placent a son contact ; un clic droit au sol annule le suivi : ils partent vers le point du sol (droite) et ne reviennent pas vers le Paysan.
