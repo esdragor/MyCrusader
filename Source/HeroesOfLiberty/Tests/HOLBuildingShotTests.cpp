@@ -150,19 +150,10 @@ namespace UE::HeroesOfLiberty::Tests::BuildingShot
 				CombatEnabledVar->Set(0, ECVF_SetByCode);
 			}
 			const float StepSeconds = GetDefault<UHOLSimulationSettings>()->GetStepSeconds();
-			// BSHOT diag (CELEBORN-1122k, REMOVABLE): the processor logs one line per countdown read; here the count of Execute calls (one per RunStep).
-			IConsoleVariable* ShotDebugVar = IConsoleManager::Get().FindConsoleVariable(TEXT("hol.Combat.BuildingShotDebug"));
-			if (ShotDebugVar)
-			{
-				ShotDebugVar->Set(1, ECVF_SetByCode);
-			}
-			int32 RunStepCalls = 0;
 			Result.StepMs = HOLCombat::ToMilliseconds(StepSeconds);
-			const auto RunStep = [Simulation, Units, Combat, EntityManager, StepSeconds, &RunStepCalls]
+			const auto RunStep = [Simulation, Units, Combat, EntityManager, StepSeconds]
 			{
 				const int64 Step = Simulation->AdvanceStepIndexForTests();
-				++RunStepCalls;
-				UE_LOG(LogTemp, Display, TEXT("BSHOT test runstep=%d step=%d"), RunStepCalls, static_cast<int32>(Step));
 				Simulation->GetOnStepStarted().Broadcast(Step);
 				Units->ServeBirthRequests();
 				FMassProcessingContext CombatContext(EntityManager, StepSeconds);
@@ -256,7 +247,6 @@ namespace UE::HeroesOfLiberty::Tests::BuildingShot
 				Result.HealthLost = Start - HealthOf(Victim);
 				Result.Released = UHOLCombatProcessor::GetTotalArrowsReleased() - ReleasedBefore;
 				Result.EntriesAlive = Combat->GetBuildingCooldownCount();
-				UE_LOG(LogTemp, Display, TEXT("BSHOT test end execute_calls=%d steps=%d released=%d entries=%d"), RunStepCalls, Result.Steps, static_cast<int32>(Result.Released), Result.EntriesAlive);
 				if (Options.bCombatOffAtEnd && CombatEnabledVar)
 				{
 					CombatEnabledVar->Set(0, ECVF_SetByCode);
@@ -282,10 +272,6 @@ namespace UE::HeroesOfLiberty::Tests::BuildingShot
 			}
 		}
 		GEngine->DestroyWorldContext(World);
-		if (IConsoleVariable* ShotDebugOff = IConsoleManager::Get().FindConsoleVariable(TEXT("hol.Combat.BuildingShotDebug")))
-		{
-			ShotDebugOff->Set(0, ECVF_SetByCode);
-		}
 		return Result;
 	}
 

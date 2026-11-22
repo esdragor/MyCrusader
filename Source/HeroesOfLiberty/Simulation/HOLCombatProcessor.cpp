@@ -78,9 +78,6 @@ namespace UE::HeroesOfLiberty::Combat
 	FAutoConsoleVariableRef CVarLogHits(TEXT("hol.Combat.LogHits"), LogHits, TEXT("1: logs every hit of the melee and every arrow released, landed or lost (server or solo)"));
 	int32 Enabled = 1;
 	FAutoConsoleVariableRef CVarEnabled(TEXT("hol.Combat.Enabled"), Enabled, TEXT("0: no unit fights (server or solo)"));
-	/** BSHOT diag (CELEBORN-1122k, REMOVABLE): 1 logs one BSHOT line per step where a building's countdown is read, plus where Execute is entered / leaves early. 0 default; the cadence test sets it. */
-	int32 BuildingShotDebug = 0;
-	FAutoConsoleVariableRef CVarBuildingShotDebug(TEXT("hol.Combat.BuildingShotDebug"), BuildingShotDebug, TEXT("1: logs BSHOT lines (the building countdown read each step) for the cadence diagnosis; 0 default"));
 	/** D733: a unit on an attack-move takes on the Neutrals it meets (a Neutral player's units, in Diplomacy). 0: it leaves them alone, as before. */
 	int32 AttackMoveEngagesNeutral = 1;
 	FAutoConsoleVariableRef CVarAttackMoveEngagesNeutral(TEXT("hol.Combat.AttackMoveEngagesNeutral"), AttackMoveEngagesNeutral,
@@ -841,7 +838,6 @@ int32 UHOLCombatProcessor::GetBuildingAttackWithTechnology(const FFighter& Attac
 
 void UHOLCombatProcessor::ReleaseBuildingArrows(const UWorld& World, const int64 StepIndex, const int32 StepMs, const UHOLVisionSubsystem* Vision)
 {
-	using namespace UE::HeroesOfLiberty::Combat; // BuildingShotDebug (BSHOT diag cvar) lives there
 	(void)World;
 	// F8 T5: Vision is what the units' shots use (null: no fog started or the fog Disabled, hol.Fog.Mode 0): a tower aims only at what its OWNER sees.
 	// No standing building this step: no countdown can be alive (a no-op on an empty map), and nothing else costs anything.
@@ -873,10 +869,6 @@ void UHOLCombatProcessor::ReleaseBuildingArrows(const UWorld& World, const int64
 			Cooldown->RemainingMs = 0;
 		}
 		Cooldown->SeenStep = StepIndex;
-		if (BuildingShotDebug != 0 && Cooldown->RemainingMs > 0)
-		{
-			UE_LOG(LogTemp, Display, TEXT("BSHOT step=%d StepMs=%d entries=%d remaining=%d arrows=%d units=%d target=%d"), static_cast<int32>(StepIndex), StepMs, BuildingCooldownMs.Num(), Cooldown->RemainingMs, Arrows.Num(), Fighters.Num(), -1); // -1: waiting, no search
-		}
 		if (Cooldown->RemainingMs > 0)
 		{
 			continue;
@@ -903,10 +895,6 @@ void UHOLCombatProcessor::ReleaseBuildingArrows(const UWorld& World, const int64
 				Best = Index;
 				BestGapSquared = GapSquared;
 			}
-		}
-		if (BuildingShotDebug != 0)
-		{
-			UE_LOG(LogTemp, Display, TEXT("BSHOT step=%d StepMs=%d entries=%d remaining=%d arrows=%d units=%d target=%d"), static_cast<int32>(StepIndex), StepMs, BuildingCooldownMs.Num(), Cooldown->RemainingMs, Arrows.Num(), Fighters.Num(), Best == INDEX_NONE ? 0 : static_cast<int32>(Fighters[Best].UnitId)); // 0: ready, nobody in reach
 		}
 		if (Best == INDEX_NONE)
 		{
@@ -959,10 +947,6 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 	const bool bFighting = Enabled != 0;
 	const int64 StepIndex = Simulation ? Simulation->GetStepIndex() : 0;
 	const int32 StepMs = HOLCombat::ToMilliseconds(Context.GetDeltaTimeSeconds());
-	if (BuildingShotDebug != 0)
-	{
-		UE_LOG(LogTemp, Display, TEXT("BSHOT execute step=%d StepMs=%d entries=%d fighting=%d"), static_cast<int32>(StepIndex), StepMs, BuildingCooldownMs.Num(), bFighting ? 1 : 0);
-	}
 	// F5 (FogInProgress.md point 3): a unit takes on by itself only what its camp sees (the fog of the last step's end).
 	const UHOLVisionSubsystem* Vision = World ? World->GetSubsystem<UHOLVisionSubsystem>() : nullptr;
 	if (Vision && (!Vision->IsStarted() || Vision->GetMode() == EHOLFogMode::Disabled))
@@ -1131,10 +1115,6 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 		TotalArrowsLost += Arrows.Num(); // no target left for any
 		// F8 T5c: no unit alive, no building is met this step (ReleaseBuildingArrows is not reached): the countdowns are purged here, nothing leaks.
 		BuildingCooldownMs.Reset();
-		if (BuildingShotDebug != 0)
-		{
-			UE_LOG(LogTemp, Display, TEXT("BSHOT execute early exit (no fighter) step=%d entries=%d"), static_cast<int32>(StepIndex), BuildingCooldownMs.Num());
-		}
 		Arrows.Reset();
 		return;
 	}
@@ -1209,7 +1189,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 	// With no arrow in flight, the pass below then only sets AttackerCount 0 and, for each unit: busy, TickIdle; else the
 	// branch without target (bFlanking false, FlankWaitSeconds 0, TickIdle). Checked first, then applied: no unit changes
 	// another, so the order does not matter.
-	// F8 T4 (D884; CELEBORN-1122l, measured: BSHOT execute without call on three steps of four): ReleaseBuildingArrows lies below the return of this skip, so
+	// F8 T4 (D884; CELEBORN-1122l, measured: the combat log showed Execute without the call below on three steps of four): ReleaseBuildingArrows lies below the return of this skip, so
 	// a skipped step took nothing off a tower's countdown (the cadence became four times the interval) and purged none. A standing armed building, or a
 	// countdown still held (to be purged), bars the skip.
 	bool bBuildingsLive = BuildingCooldownMs.Num() > 0;
@@ -1537,10 +1517,6 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 	};
 
 	// F8 T2 / T4 (D884): the buildings' arrows (one countdown per building) are released before the arrows land.
-	if (BuildingShotDebug != 0)
-	{
-		UE_LOG(LogTemp, Display, TEXT("BSHOT call step=%d entries=%d units=%d buildings=%d"), static_cast<int32>(StepIndex), BuildingCooldownMs.Num(), Fighters.Num(), StepBuildings.Num());
-	}
 	ReleaseBuildingArrows(*World, StepIndex, StepMs, Vision);
 
 	// The arrows that land this step (J7c.2), in release order, before the units are taken: a unit killed by one dies as
