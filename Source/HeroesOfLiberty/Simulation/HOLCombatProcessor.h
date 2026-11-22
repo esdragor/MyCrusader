@@ -59,6 +59,8 @@ public:
 	int32 GetArrowsInFlight() const { return Arrows.Num(); }
 	/** FNV-1a over the arrows in flight, in list order (J7c.4, determinism probe, hol.Simulation.StepHashes). */
 	uint64 HashArrows() const;
+	/** F8 T4: the buildings that hold a firing countdown right now (the tests: an entry per standing armed building, none after it is gone). */
+	int32 GetBuildingCooldownCount() const { return BuildingCooldownMs.Num(); }
 
 protected:
 	virtual void ConfigureQueries(const TSharedRef<FMassEntityManager>& EntityManager) override;
@@ -147,6 +149,11 @@ protected:
 	void ReleaseBuildingArrows(const UWorld& World, int64 StepIndex, int32 StepMs);
 	/** F8 T2: the identifiers of the buildings that have loosed their first arrow (until the cadence of T4). */
 	TSet<uint32> BuildingsShot;
+	/**
+	 * F8 T4: the firing countdown of each standing armed building, in simulation milliseconds (building identifier -> time left before its next arrow;
+	 * negative = the carry of the last step, kept so the interval holds exactly over many arrows). STUB (red commit): nothing writes it yet.
+	 */
+	TMap<uint32, int32> BuildingCooldownMs;
 
 	FMassEntityQuery EntityQuery;
 
