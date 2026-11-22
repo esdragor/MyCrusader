@@ -18,3 +18,5 @@ Conséquence en jeu valable pour B et C (vérifiée dans le moteur 5.8 HOL) : da
 Recommandation : A (même mécanisme que les popups de dépôt, règle de couche unique pour tout ce qui se dessine dans le monde ; le fond opaque de D881 reste un choix de lisibilité indépendant, à garder ou non).
 
 Valeur par défaut codée : rien de changé (C ; `DrawDebugString` en place, fond de l'Arbre de talents inchangé à alpha 0,88). Conséquence sur D881 : le fond opaque seul NE corrige PAS ce défaut ; D881 reste décidable séparément (cause « fenêtre translucide » non confirmée pour la marque).
+
+Reponse: A, comme recommandé (2026-11-22 ~22:05, dans la conversation ; GDD D886)
