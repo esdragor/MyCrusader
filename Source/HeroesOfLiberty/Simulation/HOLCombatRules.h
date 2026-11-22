@@ -45,6 +45,20 @@ namespace HOLCombat
 	HEROESOFLIBERTY_API float GetDamage(const FHOLUnitTypeConstants& Attacker, const FHOLUnitTypeConstants& Defender, int32 AttackerLevel = 1, int32 DefenderArmorBonus = 0, int32 AttackerAttackPercent = 0, int32 DefenderArmorPercent = 0);
 
 	/**
+	 * F8 T3 (D884): the damage of a building's arrow on a unit: Base (the row's BuildingAttack) less the Victim's RANGED armour (a talent's bonus
+	 * VictimArmorBonus included), then the Forge percent the victim's player took off (VictimArmorPercent), 1 at least, and HeroTroopDamageFactor on a
+	 * hero: the formula of an archer's arrow (GetDamage) without the shooter's level, penetration, bonuses or technology (a building has none: nothing invented).
+	 * RED STUB (commit 1): returns Base as is, no armour.
+	 */
+	inline float GetBuildingShotDamage(const float Base, const FHOLUnitTypeConstants& Victim, const int32 VictimArmorBonus = 0, const int32 VictimArmorPercent = 0)
+	{
+		(void)Victim;
+		(void)VictimArmorBonus;
+		(void)VictimArmorPercent;
+		return Base;
+	}
+
+	/**
 	 * J8b.2: a unit's maximum health at its level (the hero's grows +8 % a level, J8b-Q3), rounded to nearest. S5: HealthPercent
 	 * is the percent its player's technologies add to it (Reinforced Ram: +10 % for the Ram), applied after the level; 0 by default.
 	 */

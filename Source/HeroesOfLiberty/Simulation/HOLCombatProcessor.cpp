@@ -888,7 +888,9 @@ void UHOLCombatProcessor::ReleaseBuildingArrows(const UWorld& World, const int64
 		Arrow.TargetId = Enemy.UnitId;
 		Arrow.ShooterType = NAME_None;
 		Arrow.ShooterSlot = Step.OwnerPlayer;
-		Arrow.Damage = static_cast<float>(Row->BuildingAttack);
+		// F8 T3: the row's BuildingAttack through the ranged armour of the target (and its talent / Forge modifiers), as an archer's arrow; the morale
+		// lever is read where the arrow lands, as for every arrow.
+		Arrow.Damage = HOLCombat::GetBuildingShotDamage(static_cast<float>(Row->BuildingAttack), *Enemy.Constants, GetTalentArmorBonus(Enemy), GetTechnologyArmorPercent(Enemy, EHOLAttackType::Ranged));
 		Arrow.ShooterCamp = Step.Camp;
 		Arrow.ReleaseStep = StepIndex;
 		Arrow.ArrivalStep = StepIndex + HOLCombat::GetArrowFlightSteps(FlightMs, StepMs);

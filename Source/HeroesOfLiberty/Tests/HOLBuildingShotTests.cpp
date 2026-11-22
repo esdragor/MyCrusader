@@ -14,6 +14,8 @@
 #include "Match/HOLGameState.h"
 #include "Misc/AutomationTest.h"
 #include "Simulation/HOLCombatProcessor.h"
+#include "Simulation/HOLCombatRules.h"
+#include "Simulation/HOLUnitTypes.h"
 #include "Simulation/HOLSimulationFragments.h"
 #include "Simulation/HOLSimulationProcessors.h"
 #include "Simulation/HOLSimulationSettings.h"
@@ -37,13 +39,15 @@ namespace UE::HeroesOfLiberty::Tests::BuildingShot
 		bool bRan = false;
 		float HealthLost = 0.f;
 		int64 Released = 0;
+		bool bVictimDown = false;
+		bool bTowerGone = false;
 	};
 
 	/**
 	 * One fresh world: a building of TestShotTowerType of owner 0 in State, one Spearman of VictimOwner standing VictimGapCm beyond the building's
 	 * body edge (on the X axis), holding its ground; ten seconds of combat steps. The result: the Spearman's lost health, the arrows released.
 	 */
-	static FShotResult RunScenario(FAutomationTestBase& Test, const EHOLConstructionState State, const int32 VictimOwner, const double VictimGapCm)
+	static FShotResult RunScenario(FAutomationTestBase& Test, const EHOLConstructionState State, const int32 VictimOwner, const double VictimGapCm, const float VictimHealth = 0.f, const bool bDestroyAfterShot = false)
 	{
 		FShotResult Result;
 		UWorld* World = UWorld::CreateWorld(EWorldType::Game, /*bInformEngineOfWorld*/ false);
@@ -116,6 +120,11 @@ namespace UE::HeroesOfLiberty::Tests::BuildingShot
 			if (Test.TestNotNull(TEXT("the target's combat fragment"), VictimCombat))
 			{
 				VictimCombat->Mode = EHOLCombatMode::Hold;
+				if (VictimHealth > 0.f)
+				{
+					// A frail target: the first arrow kills it (the kill goes through the arrow's landing, shooter absent).
+					EntityManager->GetFragmentDataPtr<FHOLUnitStateFragment>(Units->FindEntity(Victim))->CurrentHealth = VictimHealth;
+				}
 				RunStep();
 				const float Start = HealthOf(Victim);
 				const int64 ReleasedBefore = UHOLCombatProcessor::GetTotalArrowsReleased();
@@ -123,7 +132,14 @@ namespace UE::HeroesOfLiberty::Tests::BuildingShot
 				for (int32 Index = 0; Index < TenSeconds; ++Index)
 				{
 					RunStep();
+					if (bDestroyAfterShot && IsValid(Tower) && UHOLCombatProcessor::GetTotalArrowsReleased() > ReleasedBefore)
+					{
+						// The building dies while its arrow flies: the arrow lands all the same (as an archer's whatever the shooter does meanwhile).
+						Tower->Destroy();
+						Result.bTowerGone = true;
+					}
 				}
+				Result.bVictimDown = HealthOf(Victim) <= 0.f;
 				Result.bRan = true;
 				Result.HealthLost = Start - HealthOf(Victim);
 				Result.Released = UHOLCombatProcessor::GetTotalArrowsReleased() - ReleasedBefore;
@@ -174,8 +190,40 @@ bool FHOLBuildingShotTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("a foundation (under construction) looses nothing"), Site.Released, static_cast<int64>(0));
 	TestEqual(TEXT("an enemy near a foundation loses nothing"), Site.HealthLost, 0.f);
 
+	// F8 T3: the arrow of a building has no shooter entity; a frail target dies of it (no crash, the one arrow lands), and a building that dies in flight changes nothing.
+	const FShotResult Kill = RunScenario(*this, EHOLConstructionState::Finished, 3, 1000.0, 1.f);
+	TestEqual(TEXT("the frail enemy is shot once"), Kill.Released, static_cast<int64>(1));
+	TestTrue(TEXT("the frail enemy dies of the arrow of a building without a shooter"), Kill.bVictimDown);
+	const FShotResult Gone = RunScenario(*this, EHOLConstructionState::Finished, 3, 1000.0, 0.f, true);
+	TestTrue(TEXT("the tower was destroyed in flight"), Gone.bTowerGone);
+	TestTrue(TEXT("the arrow of a building destroyed in flight still hurts the enemy"), Gone.HealthLost > 0.f);
+
 	Table->RemoveRow(TestShotTowerType);
 	CombatEnabled->Set(FormerCombat, ECVF_SetByCode);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLBuildingShotDamageTest, "HeroesOfLiberty.Combat.BuildingShotDamage", UE::HeroesOfLiberty::Tests::BuildingShot::Flags)
+
+// F8 T3: the building's arrow takes the ranged armour like an archer's arrow (the value is what HOLCombat::GetDamage computes for a plain ranged attacker
+// of the same attack, not a copied number), 1 at least, the Forge percent and the talent's armour bonus count, a melee armour does not, no bonus is invented.
+bool FHOLBuildingShotDamageTest::RunTest(const FString& Parameters)
+{
+	FHOLUnitTypeConstants Archer;
+	Archer.Attack = 5;
+	Archer.AttackType = EHOLAttackType::Ranged;
+	FHOLUnitTypeConstants Victim;
+	Victim.RangedArmor = 2;
+	Victim.MeleeArmor = 40;
+	const float Armoured = HOLCombat::GetBuildingShotDamage(5.f, Victim);
+	TestEqual(TEXT("a building's arrow takes the ranged armour as an archer's arrow"), Armoured, HOLCombat::GetDamage(Archer, Victim));
+	TestTrue(TEXT("the ranged armour reduces the base damage"), Armoured < 5.f);
+	TestEqual(TEXT("the Forge percent counts as for an archer's arrow"), HOLCombat::GetBuildingShotDamage(5.f, Victim, 0, 50), HOLCombat::GetDamage(Archer, Victim, 1, 0, 0, 50));
+	TestEqual(TEXT("the talent's armour bonus counts as for an archer's arrow"), HOLCombat::GetBuildingShotDamage(5.f, Victim, 3, 0), HOLCombat::GetDamage(Archer, Victim, 1, 3, 0, 0));
+	Victim.RangedArmor = 99;
+	TestEqual(TEXT("the minimum of 1 applies (a hit always hurts)"), HOLCombat::GetBuildingShotDamage(5.f, Victim), 1.f);
+	Victim.RangedArmor = 0;
+	TestEqual(TEXT("no armour: the base damage as is, no bonus invented (the melee armour does not count)"), HOLCombat::GetBuildingShotDamage(5.f, Victim), 5.f);
 	return true;
 }
 
