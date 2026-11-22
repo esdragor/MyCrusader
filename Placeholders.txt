@@ -133,7 +133,7 @@ Un chantier ne se clôt pas sans avoir relu ce fichier.
 - Projectile du Mangonneau (aucun mesh : tir non dessiné) [rien]
 - Bannière de l'Aube (SM_Banner, mesh fait par script, étendard planté) [style]
 - Marqueurs de sélection (anneaux, plaques) [forme]
-- Effet de soin (Moine : ligne de debug + texte « + ») [style]
+- Effet de soin (Moine : ligne de debug + texte « + » / « ++ » dessines avec DrawDebugLine/DrawDebugString : ABSENT en Shipping/Test, et au-dessus de toute l'interface) [style]
 - Aura de l'Aube (anneau au sol) [style]
 - Cri « Serrez les rangs » (anneau au sol) [style]
 - Impacts, coups, sang, poussière [rien]
@@ -204,3 +204,4 @@ Champ de saisie du chat (Entree) : sans style (bordure et texte par defaut du mo
 - Icones des unites dans le cadre de garnison (bouton d'un occupant : /Game/UI/Icons/Units/T_Unit_<Type>, aucune texture ; le nom du type s'affiche a la place) [rien]
 Furtivite : opacite des unites du joueur dans une zone = 50 % (cvar hol.Stealth.OwnOpacityPercent, valeur du GDD D824 Q3 B) ; stockee par UHOLUnitOpacityLibrary mais PAS encore dessinee (materiau unite sans entree d opacite, ARWEN-1121sg)
 Traductions EN/JA provisoires (litterales, sans equivalent etabli dans la grille AoE4 ni le vocabulaire du jeu) : Voie A/B/C du palier (Path / ルート), signaux de ping (Attack here, Defend here, Need help, Rally, Scout here), Sortir / Sortir tous (Unload / 退出), Centre secondaire (Secondary Center / 第二の本拠地), GALADRIEL-1121sj [texte]
+Tir de tour de bois (D884, integ-41 CELEBORN-1122e a n : regles T1-T6 en logique et en tests seulement, aucune fleche dessinee, pas de reseau ; T7 affichage manquant ; branche integ-41, pas dans main) [rien]
