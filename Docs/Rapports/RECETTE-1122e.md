@@ -1,0 +1,14 @@
+# RECETTE-1122e : recette independante de GLORFINDEL-1122m (integ-53, 5a920a1), 19:24 a 19:33
+
+(1) SUIVI PUIS RECOLTE : PASS (VU AU JOURNAL, pas a l'ecran : PNG non captures, run hidden sans capture)
+Scenario d'essai recette1122e_gather (copie de follow_short, ordre final = clic droit sur un arbre via hol.Select.OrderNear apres hol.Camera.FocusNear sur la source ; retire a la fin, jamais commite). Premier jet FAIL de MON scenario (point hors ecran), corrige.
+Journal : "FollowBridge: manual order ended the follow of 4 units" (1 seule ligne dans le journal), puis "Order: 4 units gather source 2 (Tree) at (-14684, -1806)" et "RpcOrder: gather received by the server: slot 0 units 4 source 2". Releves : les 4 hommes etaient a y 5400-5600 au contact du Paysan #5 (-11811, 5479, Idle), 1 s apres l'ordre ils sont a y 4700-5000, puis a y -148..-552 (x -13866..-14027) en marche vers l'arbre ; le Paysan #5 reste Idle en place : les suiveurs ne reviennent pas vers lui. 0 erreur Angelscript, 0 "requires WorldContext".
+Limite : le clic droit passe par OrderAt, qui appelle deja NativeManualOrder au debut : ce run prouve la chaine clic droit -> RequestGatherUnits + fin unique du suivi, pas que l'appel ajoute dans RequestGatherUnits seul (bouton / bibliotheque de commandes) fonctionne. Garnison non jouee (aucun batiment dans follow_short) : LOGIQUE SEULEMENT. Les hommes d'armes ont recu l'ordre de recolte (4 units gather) : le filtre de capacite n'a pas ecarte les soldats.
+
+(2) stealth_zones : PASS. "StealthOwn opacity unit 11 = 0.5" puis "StealthOwn opacity unit 11 = 1.0" (2 lignes), jeu quitte seul apres 23,8 s. 0 erreur Angelscript, 0 "requires WorldContext".
+
+(3) preflight deploy : PASS (deploy_far_walking/midway/end etc., Mangonneau monte et attaque). preflight order_lines_blocks : PASS (OK pas d'erreur au journal ; 2 WARN : pas de ligne HUD overlap, pas de ligne Sanity). 0 erreur Angelscript, 0 "requires WorldContext" aux deux. Les PNG listes par preflight n'ont PAS ete ouverts (temps) : verdict = journal/logique seulement, pas VU A L'ECRAN.
+
+SIGNALE : une commande PowerShell (Stop-Process de python + ecriture du scenario dans le worktree) a ete REFUSEE par le classifieur ; je n'ai pas contourne (les ecritures ont ete refaites avec l'outil Write et un process python3 oublie d'un heredoc fautif de ma part a hang 120 s). Appels hors cadre : un heredoc python3 vide a bloque (tache de fond ba7dm37lu) : verifier qu'aucun python3 ne traine.
+NON VERIFIE : garnison et ordres de construction/pose/depot/attaque de batiment/deploiement via bouton ; PNG ; rouge/vert du test d'effet C++ (aucun).
+Fiches E-* : non touchees.
