@@ -17,4 +17,4 @@ Recommandation : B (le seul qui garde le contrôle L19-1 entier tout en supprima
 
 Valeur par défaut : C (rien d'intégré ; `integ-48` (756cf78, fc6230a) reste de côté, non fusionné ; exception écrite au Jour à chaque clôture).
 
-Reponse:
+Reponse: B, comme recommandé (2026-11-22 ~22:05, dans la conversation ; file, ligne [ ] OUTIL L22-6)

@@ -1,5 +1,6 @@
 # <nom de capture> | ce que l'utilisateur doit voir
 follow_short_start | 4 Hommes d'armes groupes (selectionnes, cercles) dans le bas de l'image, un Paysan seul plus haut, a distance des Hommes d'armes : le suivi n'a pas encore ete ordonne
 follow_short_walk | Quelques secondes apres le clic droit sur le Paysan : les Hommes d'armes se sont rapproches du Paysan (plus pres que sur follow_short_start)
-follow_short_walk2 | Encore quelques secondes plus tard : les Hommes d'armes sont groupes au contact du Paysan (plus pres que sur follow_short_walk)
+follow_short_second_leg | 2e trajet du Paysan (camera recentree) : les Hommes d'armes sont repartis avec lui et sont de nouveau groupes a son contact (le suivi dure d'un trajet a l'autre)
 follow_short_cancelled | Apres le clic droit au sol : les 4 Hommes d'armes sont partis vers le point du sol (a droite), ils ne sont plus autour du Paysan
+# GESTE: interne (1122k) : les clics sont des hol.Select.OrderNear / ClickUnit (ordre direct, pas d'evenement souris). La bascule au vrai clic (hol.Select.RightClickGround) se fera apres la fusion d'integ-52. Noms verifies : les 4 captures du .txt (start, walk, second_leg, cancelled) = les 4 lignes du .look.

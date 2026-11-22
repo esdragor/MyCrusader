@@ -19,6 +19,9 @@ hol.Select.OrderNear 0 4500
 waitlog FollowBridge: follow started
 waitlog Order: 4 units follow
 hol.Units.Where
+# 1122l : camera replacee juste avant le clic (preflight pan exposure : max 10 images apres la camera)
+hol.Camera.FocusNear 0 3500
+frames 2
 hol.Select.ClickUnit -1
 hol.Select.OrderNear 3000 5500
 wait 2

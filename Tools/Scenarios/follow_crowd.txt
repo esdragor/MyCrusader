@@ -58,6 +58,9 @@ hol.Units.Spawn 1 -14800 3300 0 Monk 0
 hol.Units.Spawn 1 -14500 3300 0 ManAtArms 0
 waitunits 22
 frames 30
+# 1122l : camera replacee juste avant le clic (preflight pan exposure, ligne 61 de la 1re version)
+hol.Camera.FocusNear 180 3100
+frames 2
 hol.Select.ClickUnit 21
 hol.Cheat.Wound 50
 frames 10
@@ -76,10 +79,16 @@ hol.Units.Where
 hol.Select.ClickUnit 20
 frames 10
 hol.Select.OrderNear 300 3300
-wait 6
+# 1122k : hol.Cheat.Wound 50 blesse TOUTES les unites (22 a ce moment) : le Moine #21 soigne aussi d'autres unites. L unite visee par le clic est #22 (Homme d armes) : on attend la ligne du processeur de soin qui dit qu elle est revenue a 155, PUIS on la selectionne (ClickUnit 21 = #22) pour que sa barre de vie soit sur la capture.
+waitlog #22 (slot 0) is healed to 155
 hol.Units.Where
+# 1122l : camera replacee juste avant le clic (preflight pan exposure : max 10 images apres la camera)
+hol.Camera.FocusNear 180 3100
+frames 2
+hol.Select.ClickUnit 21
+frames 10
 capture follow_crowd_heal_done
-wait 6
+wait 2
 hol.Units.Where
 note 20 unites en damier serre (10 Hommes d'armes selectionnes, 10 Paysans a soi hors selection), hol.Follow.OwnUnits 0 : les trois clics droits (sur le corps d'un Paysan, sur un homme selectionne, au sol a gauche de la masse) sont des DEPLACEMENTS (journal "Order: 10 units to", jamais "follow started"), puis le Moine soigne son blesse.
 quit
