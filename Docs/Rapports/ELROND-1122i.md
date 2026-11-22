@@ -1,0 +1,16 @@
+# ELROND-1122i : deploy et order_lines_blocks en clic droit reel (hol.Select.RightClickGround)
+
+APPELS_DECLARES: ~22 (arret a 25)
+HEURE_DEBUT/HEURE_FIN: 17:59 / 18:04 (Get-Date)
+PREMIER_BUILD: sans C++   BUILD: sans objet (aucun build, dll de 0c8d5eb a jour)   LAUNCHCHECK_DEBUT: sans C++
+TEST_ROUGE: sans objet (scenarios, pas de code) ; assertit l'effet : oui (ordre atteint la cible : journal Order: ... to / attack House, deplacement, phases de deploiement)   TEST_ROUGE_SEPARE: sans objet
+COMMITS: 1 (0e4b0c5, integ-25, 18:03), merge_main_fait: non (non demande)
+TESTS: preflight deploy PASS 83 s (1 passage), preflight order_lines_blocks PASS 18 s (1 passage) ; TESTS_TAUTOLOGIQUES: 0
+ESSAIS: deploy : preflight PASS, 4 PNG ouverts (move_walked, attack_mounting, far_walking, far_end), les 15 autres non rouverts dans cette seance (non modifies, vus par 1122d) ; order_lines_blocks : preflight PASS, PNG pendant ouvert (2 lignes jaunes, une par bloc) ; statut LOGIQUE SEULEMENT pour deploy (E-deploy PAS PRET, GESTE interne), order_lines_blocks GESTE reel ; play.ps1 order_lines_blocks -Hidden -Root C:\Users\baudo\Documents\HeroesOfLiberty-Elrond
+QUESTIONS: aucune
+FAIT: (1) deploy.txt : 3 OrderGround -> RightClickGround (deplacement -13400 -1000 ; attaque Maison proche -11100 0 ; attaque Maison lointaine -13400 -6500), camera deja posee avant chaque clic, `waitlog Scripted right click at` ajoute juste apres, toutes les assertions (waitlog Order: 1 units to, units attack, phase 0 -> 1, coups de 45) gardees ; commentaire de tete mis a jour. (2) order_lines_blocks.txt : OrderGround -13000 0 -> RightClickGround + waitlog. (3) Journal : deplacement `Scripted right click at (0.207, 0.500)` puis `Order: 1 units to (-13400, -1008)` ; Maison proche `(0.500, 0.337)` puis `Order: 1 units attack House of slot 1 (other)` ; Maison lointaine `(0.172, 0.500)` idem ; blocs `(0.500, 0.513)` puis `Order: 12 units to (-13000, 0)`. Aucun clic n'a rate sa cible ni declenche autre chose ; aucun ordre interne conserve. (4) 0 'Angelscript ... rror', 0 'requires WorldContext' dans les deux journaux. (5) E-deploy / E-order_lines_blocks : GESTE et recette mis a jour ; Palier3InProgress, EtapeDefini, Auto_Journey_File.
+RESTE: deploy : selection (hol.Select.ClickUnit -1), lecture des PV (hol.Select.Click 0.5 0.32) et camera restent internes, donc GESTE interne et PAS PRET (recette independante). order_lines_blocks : le glisser (ordre en ligne) et Maj + clic droit non couverts.
+NON VERIFIE: les 15 autres PNG de deploy non rouverts (non touches par le changement) ; deploy_attack_mounting montre encore D=Monter 20 frames apres le clic (HUD non relu a cet instant, comportement d'avant, le montage est prouve par `phase 0 -> 1 (order 1 ... distance 1849 cm)` dans le journal) ; hol.Select.Click non classe comme reel ou interne par moi ; Y du point -1008 au lieu de -1000 (projection ecran puis retour sol, ~8 cm).
+PROCESSUS_DETACHES: aucun processus detache pour C:\Users\baudo\Documents\HeroesOfLiberty-Elrond
+ANOMALIES_PROCESSUS: aucune ; preflight a affiche en WARN un fichier non commite (deploy.txt) avant le commit, lance avec -AllowUncommitted.
+GIT_STATUS_PRINCIPALE: docs seulement (EtapeDefini, Auto_Journey_File, Palier3InProgress, Retours E-deploy / E-order_lines_blocks, rapports) : oui

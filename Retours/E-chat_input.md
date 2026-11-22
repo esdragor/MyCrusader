@@ -5,6 +5,7 @@ GESTE: réel      (vraie chaîne Slate : `hol.UI.Key` envoie des événements cl
 SON: sans objet
 branches: ability-columns (= main 6b226f8 ; contient f804471 UHOLScriptScreen::NativeOnPreviewKeyDown, relais de Tab vers le champ)
 recette: RECETTE-1121sa PASS sur main 9e7a324 (Sauron) : preflight PASS (31 s), 4 PNG ouverts et vus ; Tab Tab met le champ sur le prive. Marque du prive = « Joueur 2 : » (nom du destinataire), conforme au design : D807 (GDD.md:3572) ne fixe « (Prive) » que pour la LIGNE RECUE, le code ChannelMark prend le nom du joueur (ChatInProgress.md:37) ; D833 (alerte population) et D871 (Mangonneau) ne concernent pas le chat. Le .look (« (Prive) » dans le champ) est a corriger, pas le jeu.
+recette: RECETTE-1122b PASS VU A L ECRAN sur integ-50 7053828 : preflight PASS (34 s), 0 FAIL, 0 WARN, 0 erreur Angelscript, 0 WorldContext ; 4 PNG ouverts : champ (Allies) vide, ligne recue (Allies) salut les allies, champ Joueur 2 : apres Tab Tab (nom du destinataire, conforme D807, le .look dit encore (Prive) : a corriger), texte tape salut les allies dans la boite. Rapport Docs\Rapports\RECETTE-1122b.md
 
 Règle (L7-6) : un essai de GESTE ou de SON reste LOGIQUE SEULEMENT tant que la ligne dit `interne` ou `non entendu`.
 
@@ -18,5 +19,5 @@ PNG OUVERTS et vus :
 NON VÉRIFIÉ : une vraie touche Tab physique du clavier (le relais passe par un événement Slate synthétique `hol.UI.Key`) ; le texte exact du `.look` annonce « (Privé) » alors que le champ affiche « Joueur 2 : » (à confirmer comme voulu) ; le son (sans objet).
 
 Commande complète (règle 13, 2026-11-14) : chaque commande est écrite en entier, copiable telle quelle.
-Lancer UNE commande : `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Sauron\Tools\Scenarios\play.ps1 chat_input -Root C:\Users\baudo\Documents\HeroesOfLiberty-Sauron`
+Lancer UNE commande : `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Haldir\Tools\Scenarios\play.ps1 chat_input -Root C:\Users\baudo\Documents\HeroesOfLiberty-Haldir`
 Durée : environ 2 min (86 s). Réponse attendue : `OK`, `BUG: ...` ou `REGLAGE: ...`.
