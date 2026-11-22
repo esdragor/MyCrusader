@@ -9,9 +9,25 @@ class UBorder;
 class UCommonTextBlock;
 class UHorizontalBox;
 class UImage;
+class UOverlaySlot;
+class USizeBox;
 class UVerticalBox;
 struct FHOLTradeGain;
 class UHOLGridCell;
+
+/**
+ * The zone of a cell's face (GALADRIEL-1122g): a status line of its own at the bottom of the cell (Â« Bientot Â», always visible) and,
+ * above it, the zone of the name bounded to whole lines, so that a name of 3 to 4 lines no longer pushes the status out of the cell.
+ */
+struct FHOLGridCellNameZone
+{
+	/** Height of the name's zone, a whole number of lines; 0: not bounded (a cell without a status). */
+	float NameHeight = 0.f;
+	/** The lines of the name that fit in that zone (at least 1); 0 without a status. */
+	int32 NameLines = 0;
+	/** Height kept at the bottom of the cell for the status line; 0 without a status. */
+	float StatusHeight = 0.f;
+};
 
 /** How a cell of the grid takes a click. */
 UENUM(BlueprintType)
@@ -69,6 +85,25 @@ public:
 	/** Shows the key only, greyed. */
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|UI")
 	void ClearUnit();
+
+	/**
+	 * A status under the name (Â« Bientot Â», the technologies without an effect, D601): a line of its own at the bottom of the cell,
+	 * the name's zone bounded above it. Empty: none, the name is not bounded. SetCommand clears it: set it after SetCommand.
+	 */
+	void SetStatus(const FText& InStatus);
+	/** The height the name's zone is bounded to while a status is shown (0: not bounded), for the checks. */
+	float GetNameZoneHeight() const;
+	/**
+	 * The zone of the name and of the status in a square cell of side CellSize: TopBand is the band under the key's line, LineHeight the
+	 * height of a text line. With a status: the status line takes one line at the bottom, the name keeps the whole lines left (at least 1).
+	 * Without: nothing is bounded, the cell is as before.
+	 */
+	static FHOLGridCellNameZone ComputeNameZone(float CellSize, float TopBand, float LineHeight, bool bHasStatus);
+
+	/** The side of a cell of the grid (the script's size box, HOLCommandGridPanel.as CellSize, and HOLGameScreen.cpp CellSize). */
+	static constexpr float DefaultCellSize = 76.f;
+	/** The band under the key's line, above the name. */
+	static constexpr float NameTopBand = 12.f;
 
 	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|UI")
 	EHOLGridCellState GetState() const { return State; }
@@ -129,6 +164,16 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<UImage> GainMarker;
+
+	/** The name's box (bounded to whole lines while a status is shown), the name's slot of the cell and the status line. */
+	UPROPERTY(Transient)
+	TObjectPtr<USizeBox> NameBox;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UOverlaySlot> UnitSlot;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UCommonTextBlock> StatusText;
 
 	/** The button's native click, broadcast as OnCellClicked. */
 	void BroadcastCellClicked();

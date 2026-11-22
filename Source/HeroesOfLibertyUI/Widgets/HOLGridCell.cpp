@@ -304,3 +304,21 @@ void UHOLGridCell::ClearUnit()
 	SetIsEnabled(false);
 	SetTooltip(FText::GetEmpty(), FHOLResources(), FHOLResources(), FText::GetEmpty());
 }
+
+// Stub of the red commit (the layout is built in the green one).
+void UHOLGridCell::SetStatus(const FText&)
+{
+}
+
+float UHOLGridCell::GetNameZoneHeight() const
+{
+	return 0.f;
+}
+
+FHOLGridCellNameZone UHOLGridCell::ComputeNameZone(float CellSize, float, float, bool)
+{
+	FHOLGridCellNameZone Zone;
+	Zone.NameHeight = CellSize;
+	Zone.NameLines = 99;
+	return Zone;
+}
