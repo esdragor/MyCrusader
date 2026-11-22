@@ -65,7 +65,7 @@ hol.HUD.Report
 waitlog D=Deploy
 capture deploy_packed_again
 # D861 (ELROND-1120a/b, UNCOMPILED fix): (b) engin MONTE + clic droit au sol : il se demonte (1 s) puis PART sans second clic (avant : ordre ouvert mais vitesse restee a 0, il ne bougeait plus) ; (a) engin DEMONTE + clic droit sur la Maison ennemie a portee : il se monte (1,5 s) puis tire.
-# Geste reel : hol.Select.OrderNear = le clic droit du joueur sur le sol (point en cm dans le repere de ton centre) ; la Maison est au point 5300 0 (hol.Cheat.SpawnBuilding House 1 5300 0, meme repere que hol.Camera.FocusNear). Le Mangonneau est a ~3000 1500 (hors de la crete de 3 rochers qui est a 3000 0 +-1050 : il ne nait plus SUR un rocher), hors de la zone minimale (1200) : la Maison est a ~2750 cm, dans sa portee (3000).
+# Geste reel : hol.Select.OrderGround = le clic droit du joueur sur le sol (ELROND-1122c : meme fonction Controller->OrderAt que le clic de souris ; point absolu en cm = point FocusNear - 16400 en X, soit 3000 -1000 -> -13400 -1000 ; remplace OrderNear, qui appelait la meme fonction) ; la Maison est au point 5300 0 (hol.Cheat.SpawnBuilding House 1 5300 0, meme repere que hol.Camera.FocusNear). Le Mangonneau est a ~3000 1500 (hors de la crete de 3 rochers qui est a 3000 0 +-1050 : il ne nait plus SUR un rocher), hors de la zone minimale (1200) : la Maison est a ~2750 cm, dans sa portee (3000).
 # Etape 6 : remonter l'engin (D), pour avoir un engin monte a deplacer.
 hol.Camera.FocusNear 4200 0
 frames 2
@@ -79,7 +79,9 @@ waitlog D=Pack
 capture deploy_move_start
 note 6. D861 (b) : le Mangonneau est de nouveau monte (la case D dit Demonter). Tu fais un clic droit sur le sol, plus bas.
 # Etape 7 : clic droit au sol (a ~1000 cm au sud, toujours a ~2500 cm de la Maison). Un SEUL ordre ; aucun second clic.
-hol.Select.OrderNear 3000 -1000
+hol.Camera.FocusNear 3000 1500
+frames 2
+hol.Select.OrderGround -13400 -1000
 waitlog Order: 1 units to (
 wait 0.3
 # ELROND-1121a : wait (temps du jeu) et non frames : 20 images = 125 ms a ~150 images/s, la case disait encore Demonter ; a 0.3 s le demontage (1 s) est commence.
@@ -96,10 +98,32 @@ wait 3
 hol.Select.Report
 capture deploy_move_walked
 note 8. Sans second clic, l'engin demonte part vers le point : il est visiblement plus bas qu'a deploy_move_start.
+# ELROND-1122b (D877 moitie B) : le deplacement n est pas fini (order lines 1 a deploy_move_walked) ; on attend son ARRIVEE sans nouvel ordre : l engin demonte, a portee de la Maison (2500 cm < 3000), doit se monter TOUT SEUL (texte exact du journal : Deploy: #N phase 0 -> 1 (order ...), HOLDeployProcessor.cpp:139). Expire (60 s) tant que ce n est pas le cas : ROUGE.
+notereset
+hol.Camera.FocusNear 4200 -500
+frames 2
+waitlog phase 0 -> 1 (order 3
+wait 0.3
+hol.HUD.Report
+capture deploy_arrive_mounting
+note 9a. Arrive au point sans nouvel ordre : l'engin se monte tout seul (la case D ne dit pas encore Demonter).
+waitlog (delay over)
+wait 1
+hol.HUD.Report
+waitlog D=Pack
+hol.Select.Report
+capture deploy_arrive_mounted
+note 9b. Monte tout seul a l'arrivee : la case D dit Demonter. On le demonte (D) puis on donne l'ordre d'attaque.
+hol.UI.Key D 0 0.1
+waitlog Order: 1 units pack up
+waitlog (delay over)
+wait 1
+hol.HUD.Report
+waitlog D=Deploy
 # Etape 9 : engin DEMONTE, clic droit sur la Maison ennemie (cible a portee) : il se monte (1,5 s) puis tire.
 hol.Camera.FocusNear 4200 0
 frames 2
-hol.Select.OrderNear 5300 0
+hol.Select.OrderGround -11100 0
 waitlog units attack
 frames 20
 capture deploy_attack_mounting
@@ -116,8 +140,10 @@ hol.HUD.Report
 capture deploy_attack_hit
 note 10. Monte, l'engin tire seul sur la Maison designee (PV entames, coups de 45), sans autre ordre.
 # Etape 11 (ELROND-1121sd, D877) : engin DEMONTE LOIN de la cible, clic droit sur la Maison : il doit marcher jusqu a portee, se monter, tirer.
-hol.Camera.FocusNear 3000 -2500
-hol.Cheat.SpawnBuilding House 1 3000 -5500
+# ELROND-1122b : notereset pour que le panneau des notes (5 lignes) ne cache plus le champ entre l engin (a droite) et la 2e Maison (a gauche) ; FocusNear 3000 -3700 (ELROND-1122d, recale pour une Maison a -6500) les garde tous deux a l ecran (X vertical, Y horizontal, ~6,6 cm par pixel).
+notereset
+hol.Camera.FocusNear 3000 -3700
+hol.Cheat.SpawnBuilding House 1 3000 -6500
 waitlog Cheat: spawned House of slot 1
 hol.Select.ClickUnit -1
 waitlog Selection: Mangonel
@@ -127,15 +153,20 @@ wait 2
 hol.Select.Report
 capture deploy_far_start
 note 11. Engin demonte loin de la 2e Maison (hors portee 3000).
-hol.Select.OrderNear 3000 -5500
+hol.Camera.FocusNear 3000 -3700
+frames 2
+hol.Select.OrderGround -13400 -6500
 waitlog units attack
-wait 1
+# ELROND-1122d : la 2e Maison est a (3000,-6500), soit ~5500 cm de l engin (en (3000,-1000) apres l etape 7) : montage a ~3170 cm, donc ~2300 cm de marche (~13 s a 1,8 m/s) ; avec -5500 la marche n etait que ~1300 cm (rejeu 15.55 : ordre 26.94, phase 0 -> 1 a 34.04, distance 3172 cm). Camera -3700 : engin (droite) et Maison (gauche) a l ecran.`r`n# ELROND-1122c : far_walking et far_midway PRECEDENT les deux waitlog (avant, ils les suivaient : l engin etait deja monte et a portee sur les deux captures). Demontage 1 s puis marche : a 3 s l engin est demonte et en route, a 9 s il est encore en marche (montage mesure a 16 s par ELROND-1122a).
+wait 3
 hol.Select.Report
 capture deploy_far_walking
-wait 4
+# ELROND-1122a (D877 moitie A, rouge attendu) : l engin demonte loin doit marcher jusqu a portee, se monter (phase 0 -> 1) puis tirer. waitlog = texte litteral (pas de regex) ; ces deux lignes expirent tant que le defaut existe.
+waitlog phase 0 -> 1 (order
+waitlog Mangonel hits a building
 hol.Select.Report
 capture deploy_far_midway
-wait 10
+wait 5
 hol.Select.Report
 hol.HUD.Report
 capture deploy_far_end
