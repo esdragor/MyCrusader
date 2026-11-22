@@ -113,6 +113,13 @@ namespace HOLTopBar
 		return Math::Max(0.0, BannerBottom + IncomeTipGap() - TipTop);
 	}
 
+	// STUB (red): the drop of the tooltip raised from a cell whose cursor point is CellCentre (its left edge) and whose width is TipWidth. Still the old rule
+	// (the banner's own left edge): every tooltip drops.
+	float IncomeTipDropForCell(float CellCentre, float TipWidth, float BannerLeft, float BannerRight, float BannerBottom)
+	{
+		return IncomeTipDrop(BannerLeft, IncomeTipNaturalTop(), BannerRight - BannerLeft, BannerLeft, BannerRight, BannerBottom);
+	}
+
 	// The tooltip's width in the HUD font (a rule without a renderer: an average glyph width plus the two paddings).
 	float IncomeTipWidth(FString Text, float Padding)
 	{
