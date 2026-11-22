@@ -49,6 +49,6 @@ HOLUnitDraw::FInstanceCustomData HOLUnitDraw::MakeInstanceCustomData(const FVect
 
 HOLUnitDraw::FInstanceCustomData HOLUnitDraw::MakeUnitInstanceCustomData(const FVector3f& Color, const uint8 Prop, const int32 UnitId)
 {
-	// STUB (red commit): always opaque. The real value is UHOLUnitOpacityLibrary::GetStealthOpacity(UnitId).
-	return MakeInstanceCustomData(Color, Prop, 1.f);
+	// D824 Q3: the opacity the stealth rule set for this unit (0.5 in a zone, 1 when none was set).
+	return MakeInstanceCustomData(Color, Prop, UHOLUnitOpacityLibrary::GetStealthOpacity(UnitId));
 }
