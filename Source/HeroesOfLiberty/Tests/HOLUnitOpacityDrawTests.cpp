@@ -70,4 +70,65 @@ bool FHOLUnitDrawLayoutTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+// The drawing pass reads the table ONCE per run (a snapshot, no lock per unit). The values are computed by the real chain: SetStealthOpacity ->
+// TakeOpacitySnapshot -> MakeUnitInstanceCustomData(..., Snapshot).
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLUnitDrawSnapshotInZoneTest, "HeroesOfLiberty.Presentation.UnitDrawOpacity.SnapshotInZone",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FHOLUnitDrawSnapshotInZoneTest::RunTest(const FString& Parameters)
+{
+	UHOLUnitOpacityLibrary::ClearStealthOpacities();
+	UHOLUnitOpacityLibrary::SetStealthOpacity(7, 0.5f);
+
+	const HOLUnitDraw::FOpacitySnapshot Snapshot = HOLUnitDraw::TakeOpacitySnapshot();
+	const HOLUnitDraw::FInstanceCustomData InZone = HOLUnitDraw::MakeUnitInstanceCustomData(FVector3f(0.2f, 0.4f, 0.6f), 2, 7, Snapshot);
+	const HOLUnitDraw::FInstanceCustomData Outside = HOLUnitDraw::MakeUnitInstanceCustomData(FVector3f(0.2f, 0.4f, 0.6f), 2, 8, Snapshot);
+	TestEqual(TEXT("a unit in a zone is drawn at half opacity through the snapshot"), InZone.Opacity, 0.5f);
+	TestEqual(TEXT("a unit outside any zone is opaque through the snapshot"), Outside.Opacity, 1.f);
+	TestEqual(TEXT("colour kept"), InZone.Color.Y, 0.4f);
+	TestEqual(TEXT("prop kept"), InZone.Prop, 2.f);
+
+	UHOLUnitOpacityLibrary::ClearStealthOpacities();
+	return true;
+}
+
+// The normal case (no zone): the snapshot is empty and every unit is opaque.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLUnitDrawSnapshotEmptyTest, "HeroesOfLiberty.Presentation.UnitDrawOpacity.SnapshotEmpty",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FHOLUnitDrawSnapshotEmptyTest::RunTest(const FString& Parameters)
+{
+	UHOLUnitOpacityLibrary::ClearStealthOpacities();
+
+	const HOLUnitDraw::FOpacitySnapshot Snapshot = HOLUnitDraw::TakeOpacitySnapshot();
+	TestTrue(TEXT("no zone: the snapshot is empty"), Snapshot.IsEmpty());
+	const HOLUnitDraw::FInstanceCustomData Data = HOLUnitDraw::MakeUnitInstanceCustomData(FVector3f(1.f, 0.f, 0.f), 0, 7, Snapshot);
+	TestEqual(TEXT("an empty table draws every unit opaque"), Data.Opacity, 1.f);
+	return true;
+}
+
+// A change made during the pass (script writes between two units) never alters a snapshot already taken; the next snapshot sees it.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLUnitDrawSnapshotStableTest, "HeroesOfLiberty.Presentation.UnitDrawOpacity.SnapshotStable",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FHOLUnitDrawSnapshotStableTest::RunTest(const FString& Parameters)
+{
+	UHOLUnitOpacityLibrary::ClearStealthOpacities();
+	UHOLUnitOpacityLibrary::SetStealthOpacity(7, 0.5f);
+
+	const HOLUnitDraw::FOpacitySnapshot Taken = HOLUnitDraw::TakeOpacitySnapshot();
+	UHOLUnitOpacityLibrary::SetStealthOpacity(7, 1.f);
+	UHOLUnitOpacityLibrary::SetStealthOpacity(8, 0.25f);
+
+	TestEqual(TEXT("unit 7 keeps 0.5 in the snapshot already taken"), HOLUnitDraw::MakeUnitInstanceCustomData(FVector3f::ZeroVector, 0, 7, Taken).Opacity, 0.5f);
+	TestEqual(TEXT("unit 8 (set after) stays opaque in the snapshot already taken"), HOLUnitDraw::MakeUnitInstanceCustomData(FVector3f::ZeroVector, 0, 8, Taken).Opacity, 1.f);
+
+	const HOLUnitDraw::FOpacitySnapshot Next = HOLUnitDraw::TakeOpacitySnapshot();
+	TestEqual(TEXT("the next snapshot sees unit 7 opaque again"), HOLUnitDraw::MakeUnitInstanceCustomData(FVector3f::ZeroVector, 0, 7, Next).Opacity, 1.f);
+	TestEqual(TEXT("the next snapshot sees unit 8 at 0.25"), HOLUnitDraw::MakeUnitInstanceCustomData(FVector3f::ZeroVector, 0, 8, Next).Opacity, 0.25f);
+
+	UHOLUnitOpacityLibrary::ClearStealthOpacities();
+	return true;
+}
+
 #endif // WITH_DEV_AUTOMATION_TESTS

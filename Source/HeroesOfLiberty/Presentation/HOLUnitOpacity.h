@@ -52,6 +52,40 @@ namespace HOLUnitDraw
 	/** The custom data with an explicit opacity (the bodies: 1). */
 	HEROESOFLIBERTY_API FInstanceCustomData MakeInstanceCustomData(const FVector3f& Color, uint8 Prop, float Opacity);
 
-	/** The custom data of a living unit: its opacity is UHOLUnitOpacityLibrary::GetStealthOpacity(UnitId). Called once per unit and frame by the drawing pass. */
+	/** The custom data of a living unit: its opacity is UHOLUnitOpacityLibrary::GetStealthOpacity(UnitId) (one lock per call: for one-off callers and tests; the drawing pass uses the snapshot overload). */
 	HEROESOFLIBERTY_API FInstanceCustomData MakeUnitInstanceCustomData(const FVector3f& Color, uint8 Prop, int32 UnitId);
+
+	/**
+	 * An immutable copy of the opacity table, taken ONCE per run of the drawing pass (TakeOpacitySnapshot, one lock): the per-unit lookups then take no
+	 * lock, and a write made during the pass (script, game thread) never alters a snapshot already taken. An empty table (the normal case: no stealth zone)
+	 * answers 1 without any search.
+	 */
+	class FOpacitySnapshot
+	{
+	public:
+		FOpacitySnapshot() = default;
+		explicit FOpacitySnapshot(TMap<int32, float>&& InTable) : Table(MoveTemp(InTable)) {}
+
+		bool IsEmpty() const { return Table.IsEmpty(); }
+
+		/** The opacity of a unit in this snapshot: 1 when none was set (and no search when the table is empty). */
+		float Get(const int32 UnitId) const
+		{
+			if (Table.IsEmpty())
+			{
+				return 1.f;
+			}
+			const float* Found = Table.Find(UnitId);
+			return Found ? *Found : 1.f;
+		}
+
+	private:
+		TMap<int32, float> Table;
+	};
+
+	/** Copies the opacity table under the lock, once (nothing is copied when the table is empty). */
+	HEROESOFLIBERTY_API FOpacitySnapshot TakeOpacitySnapshot();
+
+	/** The custom data of a living unit, its opacity read from the snapshot (no lock). Called once per unit and frame by the drawing pass. */
+	HEROESOFLIBERTY_API FInstanceCustomData MakeUnitInstanceCustomData(const FVector3f& Color, uint8 Prop, int32 UnitId, const FOpacitySnapshot& Snapshot);
 }
