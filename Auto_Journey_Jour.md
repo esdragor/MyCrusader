@@ -13,6 +13,7 @@ Historique du test du 2026-10-30 : `Docs\Archive\Auto_Journey_Test1_2026-10-30.m
 Séance autonome (« lance une auto journey ») 16:17 -> 20:20 (fin choisie par la session principale, aucune heure donnée ; `Docs\SessionEnd.txt`). 0 `AskUserQuestion` (L21-1, L23-1). Modèles : la session principale reste sur Opus (utilisateur, 2026-11-22 : « on reste sur opus ») ; sous-agents Sonnet 5.5, 15 min au plus (consigne du 2026-11-16, inchangée).
 
 check-list lue (L23) : 16:23, en entier, apres 0a (5d40153, 1447448) et avant le premier agent de travail. Alarme fin - 15 min posee (20:05), veilleur 30 min. Integrateur : agent de recette a nommer a la premiere avance de main, au plus tard 19:05 (L20-4) ; dernier lancement de code 19:20 (L18-c).
+check-list lue (L24) : 19:06, section L24 ecrite en cours de seance par BILAN-1122 ; anomalie : ARWEN-1122g et GLORFINDEL-1122m lances a 19:06 dans le meme envoi que le gate, avant de voir son FAIL (L24 non lue), relance du gate ensuite.
 
 | Agent | id | Worktree | Tâche | C++ | Lancé | Fini | Résumé |
 |---|---|---|---|---|---|---|---|
@@ -72,8 +73,144 @@ check-list lue (L23) : 16:23, en entier, apres 0a (5d40153, 1447448) et avant le
 | ELROND-1122h | v12 | Elrond integ-25 | verbe hol.Select.RightClickGround (vrai chemin du clic droit, modele LeftClickGround) + test | non | 17:55 | 17:57 | 7152ed8 (merge integ-51), 70f77dd bouchon, 0c8d5eb ; C++ (colonne C++ du tableau fausse), NON COMPILE, build lance |
 | CELEBORN-1122g | v12 | Celeborn integ-41 | D884 T3 : atterrissage, armure, credit sans entite tireuse (HOLCombatProcessor.cpp) | oui | 17:55 | 17:59 | bbaac86 rouge, 14585e2 vert ; NON COMPILE (build avec T4) ; credit au bon slot non assertit |
 | ELROND-1122i | v13 | Elrond integ-25 | deploy et order_lines_blocks au vrai clic droit (scenarios, preflight, PNG) | non | 17:59 | 18:03 | 0e4b0c5 ; deploy et order_lines_blocks au vrai clic droit, preflights PASS 83 s / 18 s, 0 erreur ; E-order_lines_blocks GESTE reel, E-deploy PAS PRET |
-| CELEBORN-1122h | v13 | Celeborn integ-41 | D884 T4 : cadence par tour (HOLCombatProcessor.cpp) | oui | 17:59 | en cours | |
-| integ-52 | passe | Sauron | verts integ-51, ability-columns (731c931), integ-25 (0e4b0c5) ; rouges deja vus (725873c : 2066/2068) | oui | 18:03 | en cours | |
+| CELEBORN-1122h | v13 | Celeborn integ-41 | D884 T4 : cadence par tour (HOLCombatProcessor.cpp) | oui | 17:59 | 18:04 | e76adf9 rouge, ba0fef9 vert ; NON COMPILE, build lance ; defaut signale : hol.Combat.Enabled 0 laisse tirer |
+| integ-52 | passe | Sauron | verts integ-51, ability-columns (731c931), integ-25 (0e4b0c5) ; rouges deja vus (725873c : 2066/2068) | oui | 18:03 | 18:19 | tests 2096/2096 ; net rouge (16) pendant le build de Celeborn, rejoue seul : tout PASS 355 s (L13-4) ; build rejoue ensuite |
+| CELEBORN-1122i | v14 | Celeborn integ-41 | D884 T5 : cible vue par le proprietaire (brouillard) + garde hol.Combat.Enabled | oui | 18:04 | 18:09 | 9fa0842 (includes, build rouge de ba0fef9), 6fdbaea rouge, 7d9870b et 5d3b09f verts ; build relance ; rouge commun aux deux paires |
+| GALADRIEL-1122f | v14 | Galadriel specialization-trial | chat_input.look (D807) ; texte Bientot tronque case W : cause et correctif script | non | 18:06 | 18:08 | 5c3a7ce chat_input.look (D807) ; Bientot tronque = C++ (HOLGridCell.cpp:89-99, case 76 px), ligne [ ] ajoutee, rien ecrit |
+| CELEBORN-1122j | DIAG | Celeborn integ-41 | BuildingShotCadence rouge (T4) : diagnostic et correctif | oui | 18:25 | 18:29 | regle ou appel fautif : 3 fleches au lieu de 10, periode 96-108 pas au lieu de 33 ; aucun correctif ; mesure par pas a ajouter |
+| RECETTE-1122c | recette | Sauron integ-52 | deploy, order_lines_blocks, follow_short, follow_crowd, stealth_zones sur integ-52 | non | 18:25 | 18:33 | integ-52 : deploy et order_lines_blocks PASS VU (PV 600 -> 465), follow_crowd et follow_short LOGIQUE SEULEMENT ; stealth_zones NON lance ; look follow_short faux |
+| CELEBORN-1122k | DIAG | Celeborn integ-41 | T4 : instrumentation par pas (journal de test) + purge sans unite, cause de la periode | oui | 18:29 | 18:32 | b6fa4f0 journal BSHOT (diag), b52d356 rouge, b0d089d purge ; mesure a lire |
+| GLORFINDEL-1122k | v15 | Glorfindel ability-columns | scenarios follow : look, vrai clic droit, Wound cible une seule unite ; merge integ-52 | non | 18:33 | 18:35 | 8463f9f : look et heal_done corriges, NON REJOUE ; bascule au vrai clic apres integ-52 |
+| GALADRIEL-1122g | v16 | Galadriel specialization-trial | Bientot rogne : ligne d'etat bornee dans UHOLGridCell (HOLGridCell.cpp, test) ; merge integ-52 | oui | 18:36 | 18:41 | 0577971 rouge, 564db8d vert, add470d ; NON COMPILE, build lance ; PNG tech_soon a voir |
+| GLORFINDEL-1122l | v16 | Glorfindel ability-columns | rejeu follow_short / follow_crowd (preflight, PNG) | non | 18:36 | 18:42 | 67d6bf7, 8f359e7, 716a751 ; scenarios PASS, preflight formel FAIL (controles statiques, non rejoue) ; LOGIQUE SEULEMENT |
+| CELEBORN-1122l | DIAG | Celeborn integ-41 | T4 : lecture de la mesure BSHOT, cause de la periode, correctif si prouve | oui | 18:39 | 18:43 | cause PROUVEE : FastIdle saute 3 pas sur 4 ; f85a2b4 rouge, 5b4cc49 correctif, 3b5ed92 diag retire ; build et tests lances |
+| RECETTE-1122d | recette | Galadriel specialization-trial | tech_soon : case Bientot vue en FR, EN, JA (preflight, PNG) | non | 18:45 | 18:50 | FR et JA PASS VU, EN FAIL (Coming soon deborde la case de 51 px en 1280x720), badge W chevauche le nom : branche NON prete |
+| CELEBORN-1122m | DIAG | Celeborn integ-41 | T4 : derniere assertion (apres une pause, pas 32 contre 33 ; 32,5 pas par intervalle) | oui | 18:46 | 18:49 | cf65174 : regle fausse apres pause (report fantome de 50 ms), test inchange ; build et tests lances |
+| GALADRIEL-1122h | v17 | Galadriel specialization-trial | Bientot : EN a 51 px, chevauchement du badge W (etait-il avant ?), scenario tech_soon 1080p | oui | 18:50 | 18:55 | 2653519 rouge, e079482 vert, abe97e7 ; badge W preexistant (ligne [ ]) ; build et tests lances |
+| CELEBORN-1122n | v17 | Celeborn integ-41 | D884 T6 : tire vide ou garnie (FiresEmpty, GetGarrisonUnitIds), 1 fleche tant que le nombre par occupant n'est pas tranche | oui | 18:52 | 18:56 | ff94f7a rouge, 73f1760 vert ; build et tests lances apres Galadriel |
+| BILAN-1122 | docs | copie principale | bilan, lecons appliquees, retours, file, EtapeDefini, Placeholders | non | 19:01 | 19:07 | Bilan et Lecons appliquees ecrits ; L24, Retours, EtapeDefini, Placeholders |
+| REVUE-1122 | revue | lecture seule | relecture independante du diff main..integ-52 (bugs, CLAUDE.md) | non | 19:02 | 19:05 | aucun bloquant ; 5 genants : opacite non remise a zero entre parties, cout du suivi, ordres qui n'arretent pas le suivi, suivi sans RPC (suppose), soin sur la selection |
+| ARWEN-1122g | v18 | Arwen integ-37 | REVUE 1 : table d'opacite videe au debut d'une partie (HOLUnitOpacity.*), test | oui | 19:06 | 19:08 | b0c7f81 rouge, 3efc630 vert, 06909fb ; build et tests lances |
+| GLORFINDEL-1122m | v18 | Glorfindel ability-columns | REVUE 3 : les ordres manuels restants arretent le suivi (NativeManualOrder dans les autres Request*) | oui | 19:06 | 19:12 | 2e2e0d5 : 8 NativeManualOrder ajoutes, aucun test rouge (TEST_ROUGE_SEPARE non), NON COMPILE ; a prouver par la recette |
+| integ-53 | passe | Sauron | verts integ-52, integ-37 (06909fb), ability-columns (2e2e0d5) ; correctifs REVUE 1 et 3 ; aucun rouge separable | oui | 19:12 | 19:23 | PASS 5a920a1 : tests 2097/2097, net et build PASS ; main NON avance ; rouges des correctifs REVUE non vus (non separables) |
+| RECETTE-1122e | recette | Sauron integ-53 | suivi arrete par un ordre de recolte, stealth_zones, deploy, order_lines_blocks sur integ-53 | non | 19:23 | 19:33 | stealth_zones PASS, deploy et order_lines_blocks PASS (journal), recolte arrete le suivi (mais appel deja dans OrderAt : 2e2e0d5 non prouve) ; 0 erreur AS |
+| DOCS-1122d | docs | copie principale | cloture : integ-53, retours, file, EtapeDefini, anomalies | non | 19:34 | 19:39 | Jour (bilan integ-53, anomalies python3.13 PID 40180 non tue + refus stray_processes -Stop), Retours + Q-accord-fusion + LISEZ-MOI, File (REVUE 1 [x], 3 [ ] non prouve, Bientot EN [?], Celeborn T7/T8, 2 OUTIL), EtapeDefini : faits ; ligne 102 du Jour reecrite apres un remplacement fautif de ma part (relue) |
+
+### Bilan 2026-11-22
+
+- Passes d'integration (integrate.ps1, worktree Haldir puis Sauron) : integ-49 d65a6df (16:40-16:57) : 6 rouges vus, tests 2068/2068, net et build PASS, gate Merge sans FAIL ; integ-50 7053828 (17:07-17:24) : verts PASS (build, tests 2083/2083, net et build PASS), rouges NON vus (0/0, a1b7e0b appelle IncomeTipNaturalTop absent de main), rejoues a part (integ-50r : 7 rouges vus, 2063/2070) ; integ-51 4587d8f (17:32-17:47) : rouges vus (2062/2064 : OnlyThePlayersUnits, mutation D882), tests 2092/2092, net et build PASS ; integ-52 edc631a (18:03-18:19) : tests 2096/2096, premier verdict de l'outil FAIL (parts net,build, 280 s, Integrate_integ-52.txt de 18:13) pendant le build de Celeborn, net rejoue seul au calme (L13-4) : tout PASS 355 s, build rejoue ensuite (journal du rejeu non relu par BILAN-1122) ; integ-53 5a920a1 (19:12-19:23) : PASS du premier coup (build, tests 2097/2097, net, build), contient integ-52 + REVUE 1 (3efc630, opacite videe entre parties, tests Arwen 2097/2097) + REVUE 3 (2e2e0d5, 8 appels NativeManualOrder, AUCUN test rouge) ; rouges b0c7f81 (opacite) jamais vus a l'execution, 2e2e0d5 NON PROUVE seul (RECETTE-1122e : la recolte passait deja par OrderAt) ; CINQ passes en tout, la derniere = integ-53.
+- `main` = 4b6b573 : 13 commits depuis le dernier code (1276d54), tous des docs (+ deux fichiers de regles, Tools\AutoJourney\agent_rules.md et brief_commun.md) ; AUCUN code (git rev-list --count 1276d54..main = 13, 19:3x). Cause : aucun accord de fusion donne au lancement (Q-accord-fusion, D838 = seance de migration ; Auto_Journey.md l. 75 et l. 188 se contredisent). Effet : le gate Essay est FAIL pour les 4 essais prets (19 fichiers de code differents de main, mesure du gate sur integ-50), rien ne reste donne.
+- Livre pour le joueur, dans integ-53 (qui contient integ-52) seulement (pas dans main) : PROUVE VU A L'ECRAN : deploy et order_lines_blocks au vrai clic droit (RECETTE-1122c, PV 600 -> 465), secondary_centre, chat_input, order_lines_blocks, income_tooltip (RECETTE-1122b sur integ-50), bandeau Scenario degage FR/EN/JA (GALADRIEL-1122d). LOGIQUE SEULEMENT : suivi (follow_short, follow_crowd), soin par clic (PV 79 -> 139, 1122h), aura de l'Aube D880, D882 Stop pendant la marche (824693a, mutation 8c1e094), zones de furtivite (0.5 puis 1.0 sur Forest_Small, RIEN de rendu : Q-stealth-rendu), tir de tour T1-T6. Sur integ-53 (RECETTE-1122e) : stealth_zones, deploy et order_lines_blocks PASS au journal, 0 erreur AS.
+- Non integre : integ-41 (Celeborn, T1 a T6 verts 2073/2073, T7 (affichage, reseau) et T8 a faire, hors passes) ; specialization-trial (« Bientot » : EN : StatusFit rouge (55,8 px pour 47), branche hors passes, decision visuelle a prendre (couper / deux lignes / abreger), badge W preexistant) ; integ-48 (gate Close L22-6, 756cf78 / fc6230a, Q-gate-close-l22-6).
+- Questions ouvertes (5, Retours\Q-*.md, aucune posee par AskUserQuestion) : Q-accord-fusion (reco B, defaut C), Q-heal-mark-couche-2 (reco A, defaut C), Q-gate-close-l22-6 (reco B, defaut C), Q-stealth-rendu (reco A, defaut rien), Q-follow-own-units (reco B, defaut B).
+- Builds rouges d'agents C++ (lots ecrits sans build, compiles a l'integration) : TROIS : Celeborn ba0fef9 (include manquant, corrige par 9fa0842), Celeborn b0d089d (BuildingShotDebug : using namespace manquant, C2065, corrige par 611638a), Galadriel add470d (SetStatus / StatusBottomPad, corrige par 7687af6) : L20-5 non appliquee. Un refus du classifieur a ete contourne par Write (GLORFINDEL-1122g, Remove-Item de Q-follow-own-units.md) : a ne pas refaire, un refus se signale.
+- Autres defauts de la seance : la session principale a lance ARWEN-1122g et GLORFINDEL-1122m dans le meme envoi que le gate Launch, avant son FAIL (L24 non lue), gate repasse ensuite (controle : L24-4) ; 0/0 tests declare PASS par integrate.ps1 (corrige par ELROND-1122g, d68173a) ; `1540e94` lu comme nombre par PowerShell (sha toujours entre guillemets) ; stray_processes -Stop refuse par le classifieur, non relance (RECETTE-1122b).
+- Anomalies de seance (a relever a la cloture) : 1 python3.13 PID 40180 (demarre 19:24:49, script bloque de RECETTE-1122e) : arret REFUSE par le classifieur, NON tue, a arreter a la main ; 2 refus de stray_processes -Stop par le classifieur (RECETTE-1122b), non relance.
+- Relecture independante REVUE-1122 (Docs\Rapports\REVUE-1122.md, `git diff main...integ-52`, 35 fichiers, rien compile ni lance) : AUCUN bloquant pour fusionner ; 5 genants dont 1 (3efc630, teste, tests Arwen 2097/2097) et 3 (2e2e0d5, NON PROUVE seul) corriges dans integ-53 ; 2, 4 et 5 NON corriges, lignes [ ] en tete des sections Arwen (1) et Glorfindel (2 a 5) de Auto_Journey_File.md : 1 opacite de furtivite jamais remise a 1.0 d'une partie a l'autre (HOLUnitOpacity.cpp:9-13), 2 suivi : un Move par image et par suiveur plus un Gather complet par suiveur (HOLUnitScriptLibrary.cpp:34-62), 3 suivi non interrompu par les ordres hors des cinq Request* (HOLPlayerController.cpp:3202 et suivantes), 4 suivi sur client reseau sans RPC, 5 clic droit sur la selection avec un Moine = soin (HOLPlayerController.cpp:~1497-1508).
+- Du meme rapport : le defaut 4 est SUPPOSE, a verifier en reseau (file de commandes cote client non lue) ; 7 mineurs (6 a 12) dans une ligne [ ] unique ; Q-accord-fusion porte une option D (fusionner apres correction des 5 genants, seance suivante), recommandation B inchangee.
+
+### Lecons appliquees 2026-11-22
+
+Une ligne par regle de Auto_Journey_Checklist.md. « non verifie » = BILAN-1122 n'a pas trouve de preuve ecrite (a compter par la session principale ou REVUE-1122).
+- T2-1 : appliquee : ETAPE0-1122 (16:23-16:30, Docs\Rapports\ETAPE0-1122.md), 2 vagues.
+- T2-2 : appliquee : les 8 worktrees lances a 16:31 (Elrond, Glorfindel, Celeborn, Arwen, Faramir, Galadriel, Haldir, Sauron).
+- L3-12 : appliquee : etape 0 faite (ETAPE0-1122), file datee du jour.
+- L5-7 : non appliquee : l'accord de fusion (et de commit des non suivis) n'a pas ete demande au lancement ; ligne : Q-accord-fusion (Retours\), pas de ligne [ ] de file propre.
+- L4-1, L4-3 : appliquee : fin 20:20 dans Docs\SessionEnd.txt, alarme fin - 15 min posee (20:05), veilleur 30 min (ligne 15 du tableau).
+- L3-8, L4-9, Q5, L1-14 : appliquee : RECETTE-1122a, b, c, d nommes ; premiere recette 17:01.
+- L3-9 : non verifie : compte des appels de la principale non releve.
+- T2-3 : appliquee : brief_commun.md + rapports a 13 champs (ex. ELROND-1122g, GLORFINDEL-1122g).
+- L1-1, L3-6, L4-7, L5-3 : appliquee : APPELS_DECLARES 16 a 25 dans les rapports lus (ELROND-1122g 16, GLORFINDEL-1122g 17, GALADRIEL-1122a 25).
+- L5-6 : appliquee : 5 questions groupees en section 2 de Auto_Journey_Retours.md, recommandation et defaut chacune.
+- L3-11, L5-5 : appliquee : regeneration seule, tache dediee (CELEBORN-1122c regen_tables, BuildingTypes.uasset seul).
+- L3-7, L1-4 : non verifie : etat du veilleur non relu.
+- T2-4 : appliquee : 5 Q-*.md sur 5 chantiers differents, au plus 1 par chantier.
+- Q5, L5-4 : appliquee en partie : 4 recettes independantes ; gestes internes sur plusieurs (deploy, income_tooltip, order_lines_blocks), voir L14-5.
+- Q8 : non verifie : pas de defaut commun releve cette seance.
+- Q11 : appliquee : 5 [A ESSAYER], aucun donne (gate Essay FAIL).
+- L3 / T2 : sans objet : aucune fusion dans main ; 5 passes groupees integ-49 a 53.
+- L1-3 : sans objet : pas d'agent de fusion, les passes lancent integrate.ps1 (tests puis net,build).
+- L6-2 : appliquee : extrait de la file seulement (ETAPE0-1122 section 3).
+- L6-4 : appliquee : follow_short et deploy rejoues au vrai clic droit (hol.Select.RightClickGround, 7152ed8).
+- L6-6 : sans objet : aucune mesure repetee.
+- L7-7 : non appliquee : 5 passes (integ-49 a 53), mais aucune avance de main (pas d'accord de fusion) ; ligne : Q-accord-fusion.
+- L8-4, L9-10 : sans objet : aucun essai sonore (E-audio_panel NE PAS JOUER).
+- L8-8 : sans objet : aucune fusion de main.
+- L9-1 : non verifie : pas de notification repetee relevee.
+- L9-6 : non verifie : tips figes avant chaque passe non relus.
+- L9-8 : appliquee : file avec taches sans C++ (ETAPE0 section 3) ; aucun agent sans tache releve.
+- L9-9 : sans objet : utilisateur absent.
+- L10-2 : appliquee : net rouge d'integ-52 rejoue sur le worktree Sauron seul avant de toucher aux branches.
+- L10-3 : non verifie.
+- L11-3 : non verifie.
+- L11-4 : appliquee : DOCS-1122c a coche D882 et 1122h dans la file (17:33-17:41).
+- L11-8 : appliquee : listes de branches ecrites dans le tableau (lignes integ-50 a 52) avant les passes.
+- L11-9 : appliquee : RECETTE-1122b sur le build integ-50 ; ESSAIS-A-JOUER.md recompte par DOCS-1122c.
+- L11-10, L10-5, L9-7 : sans objet : aucune mesure de melee.
+- L11-11 : non verifie.
+- L11-12 : appliquee : CLEAN-1122c, Retours\ nettoye au debut (0 fiche archivable, 2 index reecrits).
+- L11-13 : appliquee : Get-Date de BILAN-1122 (19:02).
+- L12-1 : non verifie.
+- L12-1b : non verifie : demande a l'utilisateur de mettre ProjectShiva en pause non relevee.
+- L13-1 : sans objet : aucune erreur d'API relevee.
+- L13-4 : appliquee : integ-52, net rouge (16) pendant le build de Celeborn, rejoue seul : tout PASS 355 s.
+- L13-5 : non verifie.
+- L13-6 : appliquee en partie : look follow_short faux releve par RECETTE-1122c et corrige (8463f9f).
+- L13-7 : sans objet : aucun balayage.
+- L14-2 : non verifie : plafond C++ non recalcule sur la charge.
+- L14-4 : sans objet : utilisateur absent.
+- L14-5 : non appliquee : geste interne sur plusieurs essais (RECETTE-1122b, c) ; progres : deploy et order_lines_blocks passes au vrai clic droit (0e4b0c5) ; ligne [ ] : lot « gestes reels » de la file.
+- L14-6 : non appliquee : rouges C++ NON VUS a l'execution (CELEBORN-1122a, e, g, i, n ; GLORFINDEL-1122g ; GALADRIEL-1122g, h : NON COMPILE) ; scripts : rouges vus (integ-49 : 6).
+- L14-9 : non verifie.
+- L14-10 : sans objet : aucun essai audio.
+- L14-11 : sans objet : pas de fusion de main.
+- L15-4 : appliquee : agents_table.ps1 employe sur le vrai Jour (FARAMIR-1122d, 1540e94 vert 37/37).
+- L15-6 : non appliquee : agents C++ sans build_wait (consigne « NE COMPILE PAS ») ; voir L20-5.
+- L15-7 : appliquee : releve ETAPE0-1122 + D877-D884 recoupes dans GDD.md ; FARAMIR-1122d a signale D860 deja fait.
+- L15-8 : non verifie.
+- L15-9 : appliquee : rapports de 16 a 25 appels, taches « un rouge + un correctif » ; exception : GLORFINDEL-1122b a d (4 agents sur follow_short).
+- L15-10 : appliquee : rapports dans Docs\Rapports\<AGENT>.md (61 fichiers *-1122*.md).
+- L16-1 : sans objet : discussion C++ / Angelscript tranchee (CLAUDE.md : Angelscript par defaut).
+- L16-2 : appliquee : le gate Essay a bloque les 4 essais (FAIL), aucune commande donnee.
+- L16-3 : sans objet : aucune avance de main par la principale.
+- L16-4 : appliquee : reponses en francais dans les fichiers de la seance.
+- L16-5 : appliquee : chiffres de ce bilan relus par commande (git rev-parse, git log, Integrate_integ-52.txt).
+- L16-6 : non verifie.
+- L16-7 : non verifie.
+- L16-8 : appliquee : gate Essay lu tel quel, FAIL non contourne.
+- L17-a : appliquee : « 0/0 » lu comme rouge, corrige par ELROND-1122g (d68173a), aucun rouge conclu avant lecture.
+- L17-b : sans objet : aucune archive de file par Edit cette seance.
+- L17-c : non verifie : etat de Docs\BuildQueue.state non releve.
+- L18-a : non verifie : aucune table generee modifiee relevee (BuildingTypes.uasset par regen_tables, relu par CELEBORN-1122c).
+- L18-b : non verifie.
+- L18-c : appliquee : dernier lancement de code 19:20 annonce ; aucun lancement de C++ apres 18:56 releve.
+- L18-d : non verifie.
+- L18-e : appliquee : rouges d'abord, verts ensuite (integ-49, integ-50r).
+- L18-f : appliquee : follow_* attendent l'effet (waitlog), 1122h/1122i.
+- L19-1 : non appliquee (en partie) : diagnostics et corrections faits par des agents (CELEBORN-1122j a m, DIAG), MAIS cause confirmee par la session principale elle-meme (GLORFINDEL-1122d, FARAMIR-1122b : « confirme en 5.8 par la session principale ») et D877-D884 recoupes dans GDD.md ; le gate Close L22-6 compte aussi des commits d'agents (Q-gate-close-l22-6) ; ligne [ ] : section Sauron de Auto_Journey_File.md.
+- L19-4 : non verifie.
+- L19-5 : appliquee : fiches E des 4 essais ecrites au pre-vol PASS (RECETTE-1122b).
+- L19-6 : sans objet : autonome.
+- L19-7 : non verifie.
+- L19-8 : appliquee : TEST_ROUGE_SEPARE oui dans les rapports lus (ELROND-1122g, GLORFINDEL-1122g) ; exception : c69b0e4 non separable.
+- L20-2 : non appliquee : RELECTURE_CPP faite dans les rapports (GLORFINDEL-1122g) mais 3 builds rouges quand meme (voir L22-1).
+- L20-4 : appliquee : RECETTE-1122a a d (17:01, 17:24, 18:25, 18:45) ; mais deploy et follow_* pas tous rejoues apres correctif.
+- L20-5 : non appliquee : agents C++ « NE COMPILE PAS » (CELEBORN-1122f, h, k, m, n ; GALADRIEL-1122g, h) ; 3 builds rouges (Celeborn ba0fef9 et b0d089d, Galadriel add470d) ; ligne [ ] : « (sans C++, enonce, L20-5) brief_commun.md » de Auto_Journey_File.md.
+- L20-7 : appliquee : rouges script dans la meme passe (integ-49 : 6 rouges vus, 2068/2068).
+- L20-8 : appliquee : premier Edit au 6e appel (GLORFINDEL-1122g).
+- L21-1 : appliquee : AskUserQuestion de la seance = 0 depuis le lancement 16:17 (ligne 13 du tableau) ; les 2 appels de L23-1 datent d'avant 16:14.
+- L21-2 : appliquee : deploy.txt et deploy.look sont restes a Elrond (a a i) ; follow_* a Glorfindel ; furtivite : Arwen sur base integ-49 (925ed88) qui contient la regle de Haldir.
+- L21-3 : non verifie : placeholders_map.csv de la ligne TowerWood (010dddd) non relu.
+- L22-1 : appliquee en partie : .as charges, 0 erreur AS (GALADRIEL-1122b, ARWEN-1122e, HALDIR-1122a, GLORFINDEL-1122j, FARAMIR-1122c) ; non appliquee pour les builds : 3 builds C++ rouges malgre la relecture (voir L20-5).
+- L22-2 : appliquee en partie : 6 rouges vus integ-49, 7 integ-50r, 2062/2064 integ-51 ; exception L19-8 : c69b0e4 non separable.
+- L22-3 : appliquee : net,build PASS sur integ-49, 50, 51 et 52 (rejoue) ; attentes de quick_check non reprises par les agents de la seance (non relu).
+- L22-4 : appliquee : tache donnee par l'etape 0 ; FARAMIR-1122d et SAURON-1122a ont signale « deja fait » / « pas de doublon ».
+- L22-5 : appliquee : GLORFINDEL-1122a et b : pont en instance, 0 erreur WorldContext (19 727 avant).
+- L22-6 : non appliquee : correctif SAURON-1122b (756cf78, fc6230a) NON integre, Q-accord-fusion/Q-gate-close-l22-6 ouvertes ; ligne [ ] OUTIL dans la section Sauron de Auto_Journey_File.md.
+- L22-7 : appliquee : GDD.md absent du git status de depart (D877-D884 commites).
+- L23-1 : appliquee : AskUserQuestion de la seance = 0 ; hook PreToolUse toujours en ligne [ ] OUTIL (non pose, Auto_Journey_File.md l. 196).
+- L23 (lecture de la check-list) : appliquee : check-list lue a 16:23, en entier, apres 0a et avant le premier agent de travail (ligne 15 du tableau).
+- Regles devenues controles du gate : `session_gate.ps1 -Phase Close` lance par BILAN-1122 a 19:06 : 6 FAIL (L19-1 « la session principale a code elle-meme 12 fois », seuil 3, probablement le faux positif L22-6 ; L8-9 worktrees Celeborn 4, Elrond 2, Faramir 6, Haldir 3 commits de retard sur main, faute de fusion ; fichiers suivis non commites dans la copie principale) ; PASS « bilan des lecons present » ; L8-9 : non appliquee (retard des worktrees, cause Q-accord-fusion).
 
 ## Résumé de la séance du 2026-11-21 soir
 
