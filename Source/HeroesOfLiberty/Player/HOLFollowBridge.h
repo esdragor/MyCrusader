@@ -23,6 +23,9 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "HOL|Orders")
 	static UHOLFollowBridge* Get();
 
+	/** The bridge of this controller: an INSTANCE owned by it (GetOuter() == Controller), never the CDO. nullptr without a script class or a controller. */
+	static UHOLFollowBridge* GetFor(AHOLPlayerController* Controller);
+
 	/** True when the right click on the unit TargetId started a Follow of the selected units (no ordinary order then). False without a script class. */
 	static bool NativeRightClickOnUnit(AHOLPlayerController* Controller, const TArray<int32>& Selected, int32 TargetId, bool bTargetIsAlly);
 	/** One order step of the followers of the local player (called from the controller's Tick). Nothing without a script class. */

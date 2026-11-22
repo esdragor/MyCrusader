@@ -23,6 +23,11 @@ UHOLFollowBridge* UHOLFollowBridge::Get()
 	return Cached.IsValid() ? Cast<UHOLFollowBridge>(Cached->GetDefaultObject()) : nullptr;
 }
 
+UHOLFollowBridge* UHOLFollowBridge::GetFor(AHOLPlayerController* Controller)
+{
+	return Get(); // STUB (red commit, L22-2): still the CDO; the fix creates the instance.
+}
+
 bool UHOLFollowBridge::NativeRightClickOnUnit(AHOLPlayerController* Controller, const TArray<int32>& Selected, const int32 TargetId, const bool bTargetIsAlly)
 {
 	UHOLFollowBridge* Bridge = Get();
