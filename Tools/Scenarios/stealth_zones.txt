@@ -1,0 +1,15 @@
+# Furtivite (D824 Q3 B) sur Forest_Small : une unite du joueur local (slot 0) nait hors zone, entre dans une zone puis en sort. LOGIQUE SEULEMENT (zone non peinte, materiau sans opacite).
+# Zones lues au journal (ARWEN-1122e, niveau reel "Forest_Small", centre de la carte (0,0)) : zone 0 centre (6600, 7700) demi-cote 2640, soit X 3960 a 9240, Y 5060 a 10340.
+# L'unite neuve du slot 0 prend l'id 11 (5 paysans 1-5, 5 de l'ennemi 6-10). Une ligne StealthOwn par CHANGEMENT d'opacite : 0.5 a l'entree, 1 a la sortie.
+hol.Camera.FocusNear 4000 5000
+frames 5
+hol.Units.Spawn 1 3000 4200 0 ManAtArms 1
+wait 2
+hol.Units.Where 0
+hol.Units.Move 4800 6200 0
+waitlog StealthOwn opacity unit 11 = 0.5
+hol.Units.Where 0
+hol.Units.Move 3000 4200 0
+waitlog StealthOwn opacity unit 11 = 1
+hol.Units.Where 0
+quit

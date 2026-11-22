@@ -3,6 +3,10 @@
 // of the map and the positions of the viewing camp (UHOLVisionSubsystem::GetCampUnitPositions). The rule stays here (D836); the C++ copies nothing.
 // UHOLStealthInstaller (below) sets it on the vision subsystem once the world runs.
 
+// Seconds between two passes over the local player's own units' opacity: 4 a second (ARWEN-1122d; the first version ran at 20 Hz and cost 1 to
+// 3 ms of script per read for 2000 units). THE ONLY place to change the cadence.
+const float OwnOpacityPeriodSeconds = 0.25;
+
 class UHOLStealthRuleFilter : UHOLStealthFilter
 {
 	// The stealth zones of the map (empty: the rule hides nothing, so the filter answers at once, without reading any unit).
@@ -114,15 +118,50 @@ class UHOLStealthInstaller : UScriptWorldSubsystem
 		return HOLStealthInstall::ZonesForMap(MapName, FVector2D(Origin.X, Origin.Y), Math::Max(Extent.X, Extent.Y));
 	}
 
+	// The zones kept once installed (the same list the filter holds): the opacity of the local player's own units is posed from them.
+	TArray<FHOLStealthZone> Zones;
+
+	float ApplySeconds = 0.0;
+
+	// D824 Q3 B: the local player's own units are drawn half transparent inside a zone, opaque outside. One pass (UHOLStealthOwnApplier,
+	// HOLStealthOpacityApply.as: reads the units only with a zone, writes only the changes) per OwnOpacityPeriodSeconds, not per frame.
+	UHOLStealthOwnApplier Applier;
+
+	void ApplyOwnUnitOpacity()
+	{
+		if (Applier == nullptr)
+		{
+			Applier = Cast<UHOLStealthOwnApplier>(NewObject(this, UHOLStealthOwnApplier::StaticClass()));
+			Applier.WorldObject = this;
+			Applier.SetZones(Zones);
+		}
+		Applier.Pass();
+	}
+
 	UFUNCTION(BlueprintOverride)
 	void Tick(float DeltaTime)
 	{
 		if (bInstalled)
+		{
+			// No zone on the map: no work at all (no read of any unit).
+			if (Zones.Num() == 0)
+				return;
+			ApplySeconds += DeltaTime;
+			if (ApplySeconds < OwnOpacityPeriodSeconds)
+				return;
+			ApplySeconds = 0.0;
+			ApplyOwnUnitOpacity();
 			return;
+		}
 		UHOLVisionSubsystem Vision = UHOLVisionSubsystem::Get();
 		if (Vision == nullptr)
 			return;
-		Vision.SetStealthFilter(HOLStealthInstall::MakeFilter(this, Vision, ZonesOfMap()));
+		Zones = ZonesOfMap();
+		// One line per zone at install (the scenario stealth_zones reads the real level name and the real zone positions here).
+		Log(n"LogHOLMatch", f"StealthZones level {Gameplay::GetCurrentLevelName(true)} zones {Zones.Num()}");
+		for (int ZoneIndex = 0; ZoneIndex < Zones.Num(); ZoneIndex++)
+			Log(n"LogHOLMatch", f"StealthZone {ZoneIndex} center {Zones[ZoneIndex].Center.X} {Zones[ZoneIndex].Center.Y} half {Zones[ZoneIndex].HalfExtent.X} {Zones[ZoneIndex].HalfExtent.Y}");
+		Vision.SetStealthFilter(HOLStealthInstall::MakeFilter(this, Vision, Zones));
 		bInstalled = true;
 	}
 }
