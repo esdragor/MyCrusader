@@ -117,4 +117,71 @@ bool FHOLGridCellFillStatusTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+// GALADRIEL-1122h (recette 1122d): at 1280x720 a cell is about 51 px wide and "Coming soon" (about 60 px) overflowed onto the next cell. The status
+// line is reduced to the width of the cell (bounded below), in the 3 languages, and a cell without a status is not touched.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLGridCellStatusFitTest, "HeroesOfLiberty.UI.GridCell.StatusFit",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FHOLGridCellStatusFitTest::RunTest(const FString& Parameters)
+{
+	UWorld* World = UWorld::CreateWorld(EWorldType::Game, /*bInformEngineOfWorld*/ false);
+	FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);
+	Context.SetCurrentWorld(World);
+	World->InitializeActorsForPlay(FURL());
+	ULocalPlayer* Player = NewObject<ULocalPlayer>(GEngine);
+	APlayerController* Controller = World->SpawnActor<APlayerController>();
+	Controller->Player = Player;
+	Player->PlayerController = Controller;
+	if (!World->GetPlayerControllerIterator())
+	{
+		World->AddController(Controller);
+	}
+	ON_SCOPE_EXIT
+	{
+		GEngine->DestroyWorldContext(World);
+		World->DestroyWorld(false);
+	};
+
+	UHOLGridCell* Cell = CreateWidget<UHOLGridCell>(Controller);
+	if (!TestNotNull(TEXT("the cell is built"), Cell))
+	{
+		return false;
+	}
+	const FText Name = FText::FromString(TEXT("Hallebardes trempees"));
+	const float CellWidth = 51.f;
+	const float Available = CellWidth - 2.f * UHOLGridCell::StatusSidePad;
+
+	// The 3 languages of the status (FR, EN, JA), measured by the cell on its own font; the line, once fitted, is not wider than the cell.
+	const TCHAR* const Statuses[] = { TEXT("Bientot"), TEXT("Coming soon"), TEXT("近日公開") };
+	bool bAnyReduced = false;
+	for (const TCHAR* const Text : Statuses)
+	{
+		Cell->SetCommand(Name, EHOLGridCellState::Greyed);
+		Cell->SetStatus(FText::FromString(Text));
+		const float Width = Cell->MeasureStatusWidth();
+		TestTrue(*FString::Printf(TEXT("'%s' has a measured width"), Text), Width > 0.f);
+		const FHOLGridCellStatusFit Fit = UHOLGridCell::ComputeStatusFit(Width, Available);
+		TestTrue(*FString::Printf(TEXT("'%s' fits in a 51 px cell (%.1f <= %.1f)"), Text, Fit.Width, Available), Fit.Width <= Available + KINDA_SMALL_NUMBER);
+		TestTrue(*FString::Printf(TEXT("'%s': the scale stays in [min, 1]"), Text), Fit.Scale >= UHOLGridCell::MinStatusScale && Fit.Scale <= 1.f);
+		if (Width <= Available)
+		{
+			TestEqual(*FString::Printf(TEXT("'%s' already fits: not reduced"), Text), Fit.Scale, 1.f);
+		}
+		else
+		{
+			bAnyReduced = true;
+		}
+	}
+	TestTrue(TEXT("at least one language is wider than the cell (the reduction is exercised)"), bAnyReduced);
+
+	// A cell too narrow for the bound keeps the bound (the text is cut by the clip, never made unreadable).
+	TestEqual(TEXT("the reduction is bounded"), UHOLGridCell::ComputeStatusFit(100.f, 5.f).Scale, UHOLGridCell::MinStatusScale);
+
+	// A cell without a status is not touched: no width, the name alone, no bound.
+	Cell->SetCommand(Name, EHOLGridCellState::Ready);
+	TestEqual(TEXT("no status: no width"), Cell->MeasureStatusWidth(), 0.f);
+	TestEqual(TEXT("no status: the name alone"), Cell->DescribeContent(), Name.ToString());
+	TestEqual(TEXT("no status: the name is not bounded"), Cell->GetNameZoneHeight(), 0.f);
+	return true;
+}
+
 #endif

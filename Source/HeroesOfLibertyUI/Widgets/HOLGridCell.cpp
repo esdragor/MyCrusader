@@ -399,3 +399,15 @@ float UHOLGridCell::GetNameZoneHeight() const
 {
 	return NameZoneHeight;
 }
+// STUB (GALADRIEL-1122h, red commit): the fit is not computed yet.
+float UHOLGridCell::MeasureStatusWidth() const
+{
+	return 0.f;
+}
+
+FHOLGridCellStatusFit UHOLGridCell::ComputeStatusFit(const float TextWidth, const float /*AvailableWidth*/)
+{
+	FHOLGridCellStatusFit Fit;
+	Fit.Width = TextWidth;
+	return Fit;
+}

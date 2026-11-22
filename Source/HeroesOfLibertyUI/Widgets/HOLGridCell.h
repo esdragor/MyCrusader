@@ -29,6 +29,13 @@ struct FHOLGridCellNameZone
 	float StatusHeight = 0.f;
 };
 
+/** The status line's text once reduced to fit a width (GALADRIEL-1122h): Scale in [MinStatusScale, 1], Width the text's width after it. */
+struct FHOLGridCellStatusFit
+{
+	float Scale = 1.f;
+	float Width = 0.f;
+};
+
 /** How a cell of the grid takes a click. */
 UENUM(BlueprintType)
 enum class EHOLGridCellState : uint8
@@ -104,6 +111,17 @@ public:
 	static constexpr float DefaultCellSize = 76.f;
 	/** The band under the key's line, above the name. */
 	static constexpr float NameTopBand = 12.f;
+	/** The room left on each side of the status line's text in the cell. */
+	static constexpr float StatusSidePad = 2.f;
+	/** The status line's smallest scale (the text stays readable); a narrower cell cuts it (the scale box clips). */
+	static constexpr float MinStatusScale = 0.6f;
+	/** The width of the status line's text at its natural size, in Slate units (0: no status); estimated when there is no renderer. */
+	float MeasureStatusWidth() const;
+	/**
+	 * The reduction of the status line so that its text fits in AvailableWidth (a cell at 1280x720 is about 51 px wide, "Coming soon" is wider):
+	 * Scale is 1 when it fits, else AvailableWidth / TextWidth bounded below by MinStatusScale; Width is the text's width once reduced.
+	 */
+	static FHOLGridCellStatusFit ComputeStatusFit(float TextWidth, float AvailableWidth);
 
 	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|UI")
 	EHOLGridCellState GetState() const { return State; }
