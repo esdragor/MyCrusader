@@ -1,5 +1,5 @@
 # agents_table_test.ps1 (L15-4) : teste agents_table.ps1 sur une COPIE TEMPORAIRE synthetique, jamais sur le vrai Auto_Journey_Jour.md
-# (le test verifie meme que le vrai fichier n'a pas change d'un octet).
+# (le test passe toujours -Jour ; le vrai fichier, edite en parallele par d'autres sessions, ne se compare pas).
 # Usage : powershell -ExecutionPolicy Bypass -File <worktree>\Tools\AutoJourney\agents_table_test.ps1   (code 0 = vert, 1 = rouge)
 # Fichier ASCII seul (pas de BOM necessaire) ; les accents sont fabriques avec [char]0xE9.
 $ErrorActionPreference = 'Stop'
@@ -24,10 +24,11 @@ function New-Fixture([string]$Name, [string]$Body) {
 function Get-Bytes([string]$P) { return , [IO.File]::ReadAllBytes($P) }
 function Same-Bytes($A, $B) { return ([Convert]::ToBase64String($A) -eq [Convert]::ToBase64String($B)) }
 function Run-Tool([string[]]$ToolArgs) {
+    $ErrorActionPreference = 'Continue'
     $out = & powershell -NoProfile -ExecutionPolicy Bypass -File $tool @ToolArgs 2>&1 | Out-String
     return @{ Code = $LASTEXITCODE; Out = $out }
 }
-function Cells([string]$Line) { return , @([regex]::Split($Line, '(?<!\\)\|') | Select-Object -Skip 1 | ForEach-Object { $_.Trim() }) }
+function Cells([string]$Line) { $p = [regex]::Split($Line, '(?<!\\)\|'); return , @($p[1..($p.Count - 2)] | ForEach-Object { $_.Trim() }) }
 function Now-Candidates { return @((Get-Date).ToString('HH:mm'), (Get-Date).AddMinutes(-1).ToString('HH:mm'), (Get-Date).AddMinutes(1).ToString('HH:mm')) }
 
 $hdr = '| Agent | id | Worktree | T' + $eacute + 'che | C++ | Lanc' + $eacute + ' | Fini | R' + $eacute + 'sum' + $eacute + ' |'
@@ -134,9 +135,6 @@ Check 'derniere ligne sans CRLF : code 0' ($r.Code -eq 0) "code=$($r.Code) out=$
 $t8 = $enc.GetString((Get-Bytes $f8))
 $l8 = [regex]::Split($t8, "`r`n")
 Check 'derniere ligne sans CRLF : AAA-1 puis GGG-1 sur deux lignes' (($l8[-2] -eq $rowA) -and $l8[-1].StartsWith('| GGG-1 |'))
-
-# 8. le vrai Jour n'a pas bouge
-if ($realHash) { Check 'vrai Auto_Journey_Jour.md intact' ((Get-FileHash -LiteralPath $realJour -Algorithm SHA256).Hash -eq $realHash) }
 
 Remove-Item -LiteralPath $tmp -Recurse -Force -ErrorAction SilentlyContinue
 Write-Output "agents_table_test : $ok ok, $fail rouge(s)"
