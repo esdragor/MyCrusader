@@ -9,6 +9,12 @@ deploy_packed_again | Mangonneau reselectionne, apres la seconde touche D et 2 s
 deploy_move_start | Mangonneau selectionne, de nouveau monte (apres D et 1,5 s) : la case D dit Demonter ; la Maison ennemie visible plus haut dans le cadre
 deploy_move_unmounting | 0,3 s environ apres le clic droit au sol (wait 0.3, ELROND-1121a ; camera sur la crete, FocusNear 3000 1500) : le Mangonneau est en cours de demontage (la case D dit Monter ou l'engin est en animation de pliage) ; il n'a pas encore bouge
 deploy_move_walked | apres le demontage (1 s) puis 3 s de marche, SANS second clic : le Mangonneau est visiblement plus bas (au sud) qu'a deploy_move_start ; la case D dit Monter ; la Maison ennemie est restee en place
+deploy_arrive_mounting | D877 moitie B : le deplacement vient de finir, SANS nouvel ordre ; environ 0,3 s apres le journal "Deploy: phase 0 -> 1 (order 3" : le Mangonneau se monte tout seul (la case D ne dit pas encore Demonter, barre Montage...) ; la Maison ennemie visible, intacte
+deploy_arrive_mounted | 1,5 s apres, toujours sans ordre : le Mangonneau est monte tout seul a l arrivee, la case D dit Demonter ; la Maison visible
 deploy_attack_mounting | clic droit sur la Maison ennemie, Mangonneau demonte : il commence a se monter (la case D ne dit pas encore Demonter) ; la Maison ennemie visible a l'ecran, intacte
 deploy_attack_mounted | 1,5 s apres : le Mangonneau est monte, la case D dit Demonter ; la Maison ennemie visible
 deploy_attack_hit | la Maison ennemie selectionnee (clic) : son panneau donne ses PV entames d'un coup de 45 au moins ; le Mangonneau monte a cote ; aucun projectile dessine (manque connu)
+deploy_far_start | VU (ELROND-1122d) : Mangonneau demonte (case D = Monter) a DROITE de l ecran, la 2e Maison (grande, rouge) a GAUCHE, ~5500 cm plus loin (hors portee 3000, marche attendue ~2300 cm) ; aucun ordre encore donne
+deploy_far_walking | VU (ELROND-1122d) : 3 s apres le clic droit sur la 2e Maison : Mangonneau DEMONTE et en marche (case D = Monter, pas d activite Attaque), a ~530 cm de son depart, encore ~4 fois la portee de la Maison a gauche
+deploy_far_midway | VU (ELROND-1122d) : APRES phase 0 -> 1 puis le 1er coup de siege : Mangonneau MONTE (case D = Demonter, activite Attaque, ligne rouge vers la 2e Maison) ~1650 cm plus a gauche que far_walking, a portee (3000) de la Maison
+deploy_far_end | VU (ELROND-1122d) : 5 s plus tard, meme position, monte, Attaque ; les PV de la Maison ne sont pas lisibles (non selectionnee) : seul le journal hits a building les prouve

@@ -1508,6 +1508,16 @@ UHOLScenarioPanelScript ScenarioPanel;
 			TopBar.Refresh();
 		if (ScenarioPanel != nullptr)
 			ScenarioPanel.Refresh();
+		// RECETTE-1121sd: the top bar drops its income tooltips under the "Scenario" banner (no banner shown = empty rectangle).
+		if (TopBar != nullptr)
+		{
+			FVector2D BannerLow;
+			FVector2D BannerHigh;
+			if (ScenarioPanel != nullptr && ScenarioPanel.bShown && GetWidgetBox(ScenarioPanel.ScenarioPanel, BannerLow, BannerHigh))
+				TopBar.SetBannerRect(BannerLow.X, BannerHigh.X, BannerHigh.Y);
+			else
+				TopBar.SetBannerRect(0.0, 0.0, 0.0);
+		}
 		if (WaitBanner != nullptr)
 			WaitBanner.Refresh();
 		if (PlayerTable != nullptr)
