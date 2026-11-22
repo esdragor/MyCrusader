@@ -1392,6 +1392,11 @@ bool UHOLGameScreen::ApplyGridCell(const int32 Cell, UHOLGridCell* Target)
 	}
 	const FHOLGridCellFill& Fill = GridFrameFill[Cell];
 	Target->SetCommand(Fill.Name, Fill.State);
+	if (!Fill.Status.IsEmpty())
+	{
+		// After SetCommand, which clears the status (the cell is reused for the next command).
+		Target->SetStatus(Fill.Status);
+	}
 	if (Fill.bGain)
 	{
 		Target->SetGain(Fill.Gain);

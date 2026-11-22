@@ -119,7 +119,7 @@ void UHOLGridCell::NativeOnInitialized()
 		UOverlaySlot* StatusSlot = CellContent->AddChildToOverlay(StatusText);
 		StatusSlot->SetHorizontalAlignment(HAlign_Fill);
 		StatusSlot->SetVerticalAlignment(VAlign_Bottom);
-		StatusSlot->SetPadding(FMargin(0.f, 0.f, 0.f, StatusBottomPad));
+		StatusSlot->SetPadding(FMargin(0.f, 0.f, 0.f, UE::HeroesOfLiberty::UI::GridCell::StatusBottomPad));
 	}
 
 	// A key given before the widget was initialized (a script panel builds the cell and keys it at once, H-8).

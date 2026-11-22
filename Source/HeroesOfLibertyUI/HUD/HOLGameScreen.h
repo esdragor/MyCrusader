@@ -35,6 +35,8 @@ struct FHOLGridCellFill
 	bool bCommand = false;
 	FText Name;
 	EHOLGridCellState State = EHOLGridCellState::Disabled;
+	/** GALADRIEL-1122g: the status line of the cell (Bientot), empty: none; ApplyGridCell gives it to the cell after the name (SetStatus). */
+	FText Status;
 	FText TooltipName;
 	FHOLResources Cost;
 	FHOLResources Missing;
@@ -44,7 +46,8 @@ struct FHOLGridCellFill
 	/** A Market's trade cell: ApplyGridCell reads the cell's drawn content back into ShownTradeLabels. */
 	bool bTrade = false;
 
-	void SetCommand(const FText& InName, const EHOLGridCellState InState) { bCommand = true; Name = InName; State = InState; }
+	void SetCommand(const FText& InName, const EHOLGridCellState InState) { bCommand = true; Name = InName; State = InState; Status = FText(); }
+	void SetStatus(const FText& InStatus) { Status = InStatus; }
 	void SetGain(const FHOLTradeGain& InGain) { bGain = true; Gain = InGain; }
 	void SetTooltip(const FText& InName, const FHOLResources& InCost, const FHOLResources& InMissing, const FText& InEffect)
 	{

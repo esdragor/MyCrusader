@@ -5,6 +5,7 @@
 #include "GameFramework/PlayerController.h"
 #include "Misc/AutomationTest.h"
 #include "Misc/ScopeExit.h"
+#include "HUD/HOLGameScreen.h"
 #include "Widgets/HOLGridCell.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
@@ -92,6 +93,27 @@ bool FHOLGridCellStatusTest::RunTest(const FString& Parameters)
 	Soon->SetCommand(Name, EHOLGridCellState::Ready);
 	TestEqual(TEXT("a new command clears the status"), Soon->DescribeContent(), Name.ToString());
 	TestEqual(TEXT("a new command unbounds the name"), Soon->GetNameZoneHeight(), 0.f);
+	return true;
+}
+
+// The cache the script's grid panel applies to the cell (HUD H-10, FHOLGridCellFill, ApplyGridCell): RefreshGrid writes the status there
+// after the command, SetCommand of a new command drops it, ClearUnit drops it too (the cell is rebuilt each frame).
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLGridCellFillStatusTest, "HeroesOfLiberty.UI.GridCell.FillStatus",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FHOLGridCellFillStatusTest::RunTest(const FString& Parameters)
+{
+	const FText Status = FText::FromString(TEXT("Bientot"));
+	FHOLGridCellFill Fill;
+	Fill.SetCommand(FText::FromString(TEXT("Hallebardes trempees")), EHOLGridCellState::Greyed);
+	TestTrue(TEXT("a command alone has no status"), Fill.Status.IsEmpty());
+	Fill.SetStatus(Status);
+	TestEqual(TEXT("the fill keeps the status for the cell"), Fill.Status.ToString(), Status.ToString());
+	TestEqual(TEXT("the name stays the name alone"), Fill.Name.ToString(), FString(TEXT("Hallebardes trempees")));
+	Fill.SetCommand(FText::FromString(TEXT("Maison")), EHOLGridCellState::Ready);
+	TestTrue(TEXT("a new command drops the status"), Fill.Status.IsEmpty());
+	Fill.SetStatus(Status);
+	Fill.ClearUnit();
+	TestTrue(TEXT("a cleared fill has no status"), Fill.Status.IsEmpty());
 	return true;
 }
 
