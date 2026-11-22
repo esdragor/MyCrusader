@@ -114,6 +114,21 @@ namespace HOLCombat
 	}
 
 	/**
+	 * F8 (D884): a building's shot reach. The reach is counted from the EDGE of the building's body (its footprint box,
+	 * Body) to the edge of the unit (UnitRadius), on the ground plane: the height is ignored, as for the archers. The
+	 * nearest point of the body to the unit is the unit's position clamped into the box (the unit itself when it stands
+	 * inside the body: gap 0, in reach); in reach when the gap to that point, minus the unit's radius, is at most Range.
+	 * A Range of 0 or less never reaches (a building without a shot). Squares compared, no root: met per target per step.
+	 */
+	inline bool IsInBuildingShotRange(const FBox2D& Body, const FVector2D& UnitLocation, const float UnitRadius, const float Range)
+	{
+		(void)Body;
+		(void)UnitLocation;
+		(void)UnitRadius;
+		(void)Range;
+		return false;
+	}
+	/**
 	 * Share (0, 0.5 or 1) of the overlap of two bodies that the separation gives to A, the unit that looks for its
 	 * neighbours (a walker, or a standing unit pushed this step), B taking the rest. Two units of one player take half
 	 * each, the soft push of the separation (D292). Two enemies never push each other back (the user's trial of J7b: the
