@@ -130,6 +130,7 @@ namespace HOLCombat
 		const double Reach = static_cast<double>(FMath::Max(UnitRadius, 0.f)) + static_cast<double>(Range);
 		return FVector2D::DistSquared(UnitLocation, Nearest) <= Reach * Reach;
 	}
+
 	/**
 	 * Share (0, 0.5 or 1) of the overlap of two bodies that the separation gives to A, the unit that looks for its
 	 * neighbours (a walker, or a standing unit pushed this step), B taking the rest. Two units of one player take half
