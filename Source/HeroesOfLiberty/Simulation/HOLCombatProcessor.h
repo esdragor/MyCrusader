@@ -146,7 +146,7 @@ protected:
 	TArray<FArrow> Arrows;
 
 	/**
-	 * F8 T2 (D884): the finished buildings of the step whose row has BuildingAttack > 0 and BuildingFiresEmpty loose arrows at the nearest
+	 * F8 T2 (D884): the finished buildings of the step whose row has BuildingAttack > 0 and BuildingFiresEmpty (or, F8 T6, at least one occupant) loose arrows at the nearest
 	 * enemy within HOLCombat::IsInBuildingShotRange (StepCamps.FiresAtOnce). Called once a step before the arrows land.
 	 * The arrow is a FArrow with no shooter entity (T3: the ranged armour of the target, the kill credited to the owner slot).
 	 * F8 T4: the cadence is one countdown per building (BuildingCooldownMs, simulation milliseconds): the first arrow at once, then one every row interval
