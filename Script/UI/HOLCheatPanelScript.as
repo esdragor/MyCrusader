@@ -179,6 +179,26 @@ namespace HOLCheatPanelRules
 		return Shown != LabelsSignature(Toggle, FastBuild, Unit, Gather);
 	}
 
+	// The labels of the six resource / population buttons (everything before the fast build), joined, in the current language.
+	FString CheatLabelsText()
+	{
+		FString Joined = "";
+		for (int Index = 0; Index < FastBuildIndex(); Index++)
+			Joined += HOLCheatPanelText::CheatLabel(Index).ToString() + "|";
+		return Joined;
+	}
+
+	// STUB (red): the six +1000 button labels (Cheats, joined) are not compared yet.
+	FString LabelsSignature(const FString& Toggle, const FString& FastBuild, const FString& Unit, const FString& Gather, const FString& Cheats)
+	{
+		return LabelsSignature(Toggle, FastBuild, Unit, Gather);
+	}
+
+	bool LabelsStale(const FString& Shown, const FString& Toggle, const FString& FastBuild, const FString& Unit, const FString& Gather, const FString& Cheats)
+	{
+		return Shown != LabelsSignature(Toggle, FastBuild, Unit, Gather, Cheats);
+	}
+
 	// A cheat button (not the toggle) is refused while the panel is folded (ClickWidget of the C++ returns false); the toggle always answers.
 	bool ButtonClickable(bool bOpen) { return bOpen; }
 
