@@ -58,6 +58,9 @@ hol.Units.Spawn 1 -14800 3300 0 Monk 0
 hol.Units.Spawn 1 -14500 3300 0 ManAtArms 0
 waitunits 22
 frames 30
+# 1122l : camera replacee juste avant le clic (preflight pan exposure, ligne 61 de la 1re version)
+hol.Camera.FocusNear 180 3100
+frames 2
 hol.Select.ClickUnit 21
 hol.Cheat.Wound 50
 frames 10
