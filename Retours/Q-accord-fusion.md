@@ -13,4 +13,15 @@ Recommandation : B (supprime la contradiction et évite de bloquer chaque séanc
 
 Valeur par défaut : C (`main` n'avance pas ; integ-49 d65a6df reste prête).
 
+## Relecture indépendante d'integ-52 (REVUE-1122) : aucun bloquant, 5 gênants
+Lecture seule de `git diff main...integ-52` (35 fichiers), rien compilé ni lancé (Docs\Rapports\REVUE-1122.md). Les gênants 1 à 5 ne sont PAS corrigés.
+1. Opacité de furtivité jamais remise à 1.0 d'une partie à l'autre (HOLUnitOpacity.cpp:9-13).
+2. Suivi : un Move par image et par suiveur, un Gather complet par suiveur (HOLFollowBridge.as, HOLUnitScriptLibrary.cpp:34-62), coût non mesuré.
+3. Suivi : les ordres hors des cinq `Request*` accrochés ne mettent pas fin au suivi (HOLPlayerController.cpp:3202, 3479, 3403, 3497, 3514, 4815).
+4. Suivi sur un client réseau sans RPC : SUPPOSÉ, à vérifier en réseau (HOLFollowBridge.as `Step`).
+5. Soin : le clic droit sur une unité de la sélection avec un Moine devient un ordre de soin (HOLPlayerController.cpp:~1497-1508).
+
+- D. Fusionner `main` après correction des 5 gênants (séance suivante). Effet : `main` n'avance pas dans cette séance (comme C) ; la fusion se fait en début de séance suivante, avec les 5 correctifs d'abord.
+La recommandation reste B (les gênants ne sont pas des bloquants : le C++ est neutre sans classe script) ; D est à préférer si vous voulez que main ne reçoive aucun de ces défauts.
+
 Reponse:
