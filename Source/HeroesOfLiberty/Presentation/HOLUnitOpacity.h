@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Kismet/BlueprintFunctionLibrary.h"
+#include "Subsystems/WorldSubsystem.h"
 #include "HOLUnitOpacity.generated.h"
 
 /**
@@ -29,6 +30,25 @@ public:
 	/** Forgets every unit's opacity (end of match, tests). */
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Units")
 	static void ClearStealthOpacities();
+};
+
+/**
+ * Forgets the opacity table at the start of a game world (ARWEN-1122g, REVUE-1122 defect 1: the table is a process static, unit ids restart at 1 in
+ * every world, and the script only writes CHANGES, so a unit left at 0.5 by the previous match stayed translucent in the next one). Safe for two
+ * PIE worlds in one process: the table is cleared when a game world starts or ends ONLY if no other game world is alive, so a second world never
+ * wipes the first one's values. A match without stealth zone pays nothing (clearing an empty table). Values and cadence are untouched.
+ */
+UCLASS()
+class HEROESOFLIBERTY_API UHOLStealthOpacityResetSubsystem : public UWorldSubsystem
+{
+	GENERATED_BODY()
+
+public:
+	virtual void Initialize(FSubsystemCollectionBase& Collection) override;
+	virtual void Deinitialize() override;
+
+	/** The number of game worlds (Game / PIE) currently holding this subsystem (game thread). */
+	static int32 GetLiveGameWorlds();
 };
 
 /**
