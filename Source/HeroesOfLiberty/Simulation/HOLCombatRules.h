@@ -48,14 +48,13 @@ namespace HOLCombat
 	 * F8 T3 (D884): the damage of a building's arrow on a unit: Base (the row's BuildingAttack) less the Victim's RANGED armour (a talent's bonus
 	 * VictimArmorBonus included), then the Forge percent the victim's player took off (VictimArmorPercent), 1 at least, and HeroTroopDamageFactor on a
 	 * hero: the formula of an archer's arrow (GetDamage) without the shooter's level, penetration, bonuses or technology (a building has none: nothing invented).
-	 * RED STUB (commit 1): returns Base as is, no armour.
 	 */
 	inline float GetBuildingShotDamage(const float Base, const FHOLUnitTypeConstants& Victim, const int32 VictimArmorBonus = 0, const int32 VictimArmorPercent = 0)
 	{
-		(void)Victim;
-		(void)VictimArmorBonus;
-		(void)VictimArmorPercent;
-		return Base;
+			const float ArmorKept = static_cast<float>(GetArmor(Victim, EHOLAttackType::Ranged) + VictimArmorBonus);
+		const float Gross = (Base - ArmorKept) * static_cast<float>(100 - FMath::Clamp(VictimArmorPercent, 0, 90)) / 100.f;
+		const float Hit = FMath::Max(Gross, 1.f);
+		return Victim.HasArmorCategory(EHOLArmorCategory::Hero) ? Hit * HeroTroopDamageFactor : Hit;
 	}
 
 	/**

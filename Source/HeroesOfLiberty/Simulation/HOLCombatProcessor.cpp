@@ -1564,7 +1564,9 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 			{
 				++Fighters[Shooter].Combat->Kills;
 			}
-			Kill(Enemy, Arrow.ShooterSlot, Arrow.ShooterId);
+			// F8 T3: an arrow of a building has no shooter entity (Arrow.Shooter unset): the kill is credited to the owner's slot (ShooterSlot) and no unit id is passed,
+				// so AwardKillXP never mistakes a building's object id for the hero's unit id.
+				Kill(Enemy, Arrow.ShooterSlot, Arrow.Shooter.IsSet() ? Arrow.ShooterId : 0u);
 			UE_LOG(LogHOLSimulation, Display, TEXT("Combat: step %lld #%u %s of slot %d killed by #%u %s of slot %d (%d hits struck, by arrow)"), StepIndex, Enemy.UnitId,
 				*Enemy.Constants->TypeName.ToString(), Enemy.State->OwnerPlayer, Arrow.ShooterId, *Arrow.ShooterType.ToString(), Arrow.ShooterSlot,
 				Shooter != INDEX_NONE ? Fighters[Shooter].Combat->Hits : 0);
