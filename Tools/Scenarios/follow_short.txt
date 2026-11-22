@@ -21,17 +21,18 @@ waitlog Order: 4 units follow
 hol.Units.Where
 hol.Select.ClickUnit -1
 hol.Select.OrderNear 3000 5500
-wait 4
+wait 1
+hol.Units.Where
+wait 1
 hol.Units.Where
 capture follow_short_walk
-wait 5
-hol.Units.Where
-capture follow_short_walk2
+# GLORFINDEL-1122h : le suivi s arrete au contact (vu au 2e passage : les hommes ne suivent pas un 2e trajet du Paysan) ; l annulation se prouve donc PENDANT la marche du Paysan : ordre manuel des hommes a t+2 s, le Paysan marche encore ; les hommes ne reviennent pas vers lui.
 hol.Select.Army
 frames 10
 hol.Select.OrderNear 1500 3500
-waitlog FollowBridge: manual order ended
-wait 4
+wait 1
+hol.Units.Where
+wait 5
 hol.Units.Where
 capture follow_short_cancelled
 note 4 Hommes d'armes (groupe du bas) suivent le Paysan allie (en haut) qui marche vers la droite : ils marchent derriere lui et se placent a son contact ; un clic droit au sol des hommes annule le suivi : ils partent vers le point du sol (droite) et ne reviennent pas vers le Paysan.
