@@ -899,7 +899,9 @@ void UHOLCombatProcessor::ReleaseBuildingArrows(const UWorld& World, const int64
 		if (Best == INDEX_NONE)
 		{
 			// No target: the building waits ready, the time does not pile up (no burst of arrows when an enemy steps in after a pause).
-			Cooldown->RemainingMs = 0;
+			// StepMs and not 0 (CELEBORN-1122m): the next step takes StepMs off before the test, so 0 would read -StepMs there, a carry of one step that never elapsed
+			// (after a pause the 2nd arrow left at p0+32 instead of p0+33 = p0 + ceil(1.625 s / 50 ms)). StepMs brings the countdown to exactly 0 = ready now.
+			Cooldown->RemainingMs = StepMs;
 			continue;
 		}
 		const FFighter& Enemy = Fighters[Best];
