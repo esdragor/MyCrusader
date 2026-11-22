@@ -2,8 +2,9 @@
 // (UHOLUnitOpacityLibrary::SetStealthOpacity, Source/HeroesOfLiberty/Presentation/HOLUnitOpacity.h). No WorldContext: the setter is local to the machine
 // and takes no world. The rule stays in HOLStealthRules.as; this only carries it.
 //
-// CALL POINT (not wired yet): UHOLStealthInstaller::Tick (HOLStealthFilter.as), once installed, calls ApplyOwnUnits each tick with the local player's units.
-// It needs a C++ binding that lists a player's unit ids with their positions (none exists in Script yet: TYPES_A_EXPOSER in ARWEN-1121sg.md).
+// CALL POINT (wired, ARWEN-1122c): UHOLStealthInstaller::ApplyOwnUnitOpacity (HOLStealthFilter.as), called from its Tick 20 times a second once installed
+// and only when the map has zones, calls ApplyOwnUnits with the local player's units listed by HOLStealthOwnUnits::GetPlayerUnits (UHOLStealthOwnUnitsLibrary) (C++ binding,
+// Source/HeroesOfLiberty/Presentation/HOLStealthOwnUnits.h): the ids are the simulation's State.UnitId.
 namespace HOLStealthApply
 {
 	void ApplyOwnUnit(const TArray<FHOLStealthZone>& Zones, int UnitId, const FVector2D& UnitPosition)

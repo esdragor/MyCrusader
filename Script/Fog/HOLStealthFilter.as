@@ -114,15 +114,47 @@ class UHOLStealthInstaller : UScriptWorldSubsystem
 		return HOLStealthInstall::ZonesForMap(MapName, FVector2D(Origin.X, Origin.Y), Math::Max(Extent.X, Extent.Y));
 	}
 
+	// The zones kept once installed (the same list the filter holds): the opacity of the local player's own units is posed from them.
+	TArray<FHOLStealthZone> Zones;
+
+	// Seconds between two poses of the own units' opacity: the fog's client cadence (UHOLVisionSubsystem::Tick, 20 a second), not every frame.
+	float ApplyPeriod = 0.05;
+	float ApplySeconds = 0.0;
+
+	// D824 Q3 B: the local player's own units are drawn half transparent inside a zone, opaque outside (HOLStealthApply::ApplyOwnUnits). One read of
+	// the player's units per call (HOLStealthOwnUnits, C++ binding: ids = State.UnitId, positions), nothing without a zone or before the
+	// local slot is known.
+	void ApplyOwnUnitOpacity()
+	{
+		int Slot = HOLStealthOwnUnits::GetLocalPlayerSlot(this);
+		if (Slot < 0)
+			return;
+		TArray<int> UnitIds;
+		TArray<FVector2D> Positions;
+		HOLStealthOwnUnits::GetPlayerUnits(this, Slot, UnitIds, Positions);
+		HOLStealthApply::ApplyOwnUnits(Zones, UnitIds, Positions);
+	}
+
 	UFUNCTION(BlueprintOverride)
 	void Tick(float DeltaTime)
 	{
 		if (bInstalled)
+		{
+			// No zone on the map: no work at all (no read of any unit).
+			if (Zones.Num() == 0)
+				return;
+			ApplySeconds += DeltaTime;
+			if (ApplySeconds < ApplyPeriod)
+				return;
+			ApplySeconds = 0.0;
+			ApplyOwnUnitOpacity();
 			return;
+		}
 		UHOLVisionSubsystem Vision = UHOLVisionSubsystem::Get();
 		if (Vision == nullptr)
 			return;
-		Vision.SetStealthFilter(HOLStealthInstall::MakeFilter(this, Vision, ZonesOfMap()));
+		Zones = ZonesOfMap();
+		Vision.SetStealthFilter(HOLStealthInstall::MakeFilter(this, Vision, Zones));
 		bInstalled = true;
 	}
 }
