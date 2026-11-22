@@ -79,6 +79,45 @@ namespace HOLUnitPicking
 		return ViewportHeight > 0. ? MarginAt1080 * ViewportHeight / 1080. : MarginAt1080;
 	}
 
+	int32 PickAllyAt(TConstArrayView<FHOLAllyCandidate> Candidates, TConstArrayView<uint32> Excluded, const FVector2D& Cursor)
+	{
+		// Only the candidates a heal or a follow can take (neither an enemy, a neutral unit nor an excluded one), then the direct
+		// hit of PickAt (no margin): the index of the pick in Candidates.
+		TArray<FHOLPickCandidate> Kept;
+		TArray<int32> Indices;
+		for (int32 Index = 0; Index < Candidates.Num(); ++Index)
+		{
+			const FHOLAllyCandidate& Candidate = Candidates[Index];
+			if (Candidate.bHostile || Candidate.bNeutral || Excluded.Contains(Candidate.UnitId))
+			{
+				continue;
+			}
+			Kept.Add(Candidate.Pick);
+			Indices.Add(Index);
+		}
+		const int32 Picked = PickAt(Kept, Cursor);
+		return Indices.IsValidIndex(Picked) ? Indices[Picked] : INDEX_NONE;
+	}
+
+	int32 PickFollowAt(TConstArrayView<FHOLAllyCandidate> Candidates, TConstArrayView<uint32> Excluded, const FVector2D& Cursor, const bool bOwnUnitsFollowable)
+	{
+		// hol.Follow.OwnUnits 1: the plain ally pick. 0: an own unit is marked neutral in a copy (never taken, the indices stay those of Candidates),
+		// exactly as the selection is skipped through Excluded: the unit behind it, a teammate's, can still be taken.
+		if (bOwnUnitsFollowable)
+		{
+			return PickAllyAt(Candidates, Excluded, Cursor);
+		}
+		TArray<FHOLAllyCandidate> Followable(Candidates.GetData(), Candidates.Num());
+		for (FHOLAllyCandidate& Candidate : Followable)
+		{
+			if (Candidate.bOwn)
+			{
+				Candidate.bNeutral = true;
+			}
+		}
+		return PickAllyAt(Followable, Excluded, Cursor);
+	}
+
 	void PickInBox(TConstArrayView<FHOLPickCandidate> Candidates, const FVector2D& CornerA, const FVector2D& CornerB, TArray<int32>& OutIndices)
 	{
 		OutIndices.Reset();

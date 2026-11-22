@@ -72,6 +72,21 @@ namespace HOLFollowOrders
 		Book.LastAttackIds[Index] = -1;
 	}
 
+	// A manual order of these units (HOLFollowBridgeScript::ManualOrder): ends their follows, returns how many follows REALLY ended (an unknown or already ended one counts 0).
+	// (1122i: the C++ controller calls the bridge twice for one right click, HOLPlayerController.cpp:1449 then the order path; the second call must stay silent.)
+	int EndFollows(FHOLFollowBook& Book, const TArray<int>& UnitIds)
+	{
+		int Ended = 0;
+		for (int UnitId : UnitIds)
+		{
+			const int Index = IndexOf(Book, UnitId);
+			if (Index >= 0 && Book.States[Index].bActive)
+				Ended++;
+			OnManualOrder(Book, UnitId);
+		}
+		return Ended;
+	}
+
 	// The read the caller does before a Step (Auto_Journey_File.md l.118): the position of a unit by id, false when it is gone (dead, garrisoned, unknown).
 	// A follower whose target is gone gets no Step (the caller ends the follow). WorldContext: any object of the game world.
 	bool ReadUnit(UObject WorldContext, int UnitId, FVector& OutLocation)
@@ -151,8 +166,18 @@ namespace HOLFollowOrders
 		return Step(Commands, PlayerIndex, Book, UnitId, UnitLocation, TargetLocation, EnemyId >= 0, EnemyId);
 	}
 
+	// One step of a follower whose unit and target positions are already read. Returns true while the follow LASTS (the book keeps the entry), false once it is over.
+	// 1122i: no order this step (at contact, a player order, an enemy already attacked) is NOT the end: the ally may walk again. Only a manual order (State.bActive false) ends it;
+	// the position reads (unit or target gone) end it in StepUnit.
+	bool StepFollower(UHOLCommandSubsystem Commands, int PlayerIndex, FHOLFollowBook& Book, int UnitId, const FVector& UnitLocation, const FVector& TargetLocation, bool bPlayerOrderActive, int EnemyId)
+	{
+		StepBodyguard(Commands, PlayerIndex, Book, UnitId, UnitLocation, TargetLocation, bPlayerOrderActive, EnemyId);
+		const int Index = IndexOf(Book, UnitId);
+		return Index >= 0 && Book.States[Index].bActive;
+	}
+
 	// The step the game calls for a follower: reads the unit, the followed unit and the enemy picked for the unit (ReadUnit, PickEnemyForUnit), then StepBodyguard.
-	// False when the unit or its target is gone (the caller ends the follow with OnManualOrder). An enemy is only looked for when the unit holds no player order.
+	// False when the unit or its target is gone, or the follow was ended by a manual order (the caller removes the entry); true while it lasts, even when no order was queued this step. An enemy is only looked for when the unit holds no player order.
 	bool StepUnit(UObject WorldContext, UHOLCommandSubsystem Commands, int PlayerIndex, FHOLFollowBook& Book, int UnitId, bool bPlayerOrderActive)
 	{
 		const int Index = IndexOf(Book, UnitId);
@@ -163,7 +188,7 @@ namespace HOLFollowOrders
 		if (!ReadUnit(WorldContext, UnitId, UnitLocation) || !ReadUnit(WorldContext, Book.TargetIds[Index], TargetLocation))
 			return false;
 		const int EnemyId = bPlayerOrderActive ? -1 : PickEnemyForUnit(WorldContext, UnitId, UnitLocation);
-		return StepBodyguard(Commands, PlayerIndex, Book, UnitId, UnitLocation, TargetLocation, bPlayerOrderActive, EnemyId);
+		return StepFollower(Commands, PlayerIndex, Book, UnitId, UnitLocation, TargetLocation, bPlayerOrderActive, EnemyId);
 	}
 
 	// The meaning of a right click with units selected (D818 Q1 C). Ground, or a unit of the selection itself = Move; an enemy unit = Attack (focus);

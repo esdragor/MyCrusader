@@ -41,3 +41,62 @@ void UHOLUnitOpacityLibrary::ClearStealthOpacities()
 	FScopeLock Lock(&OpacityLock);
 	GetOpacities().Empty();
 }
+
+namespace
+{
+	/** Game worlds alive in this process holding the reset subsystem (game thread only: world init and cleanup). */
+	int32 LiveGameWorlds = 0;
+}
+
+void UHOLStealthOpacityResetSubsystem::Initialize(FSubsystemCollectionBase& Collection)
+{
+	Super::Initialize(Collection);
+	// The first game world of the process (or the first after all others ended): nothing of an older match may survive. A world joining a live one keeps the table.
+	if (++LiveGameWorlds == 1)
+	{
+		UHOLUnitOpacityLibrary::ClearStealthOpacities();
+	}
+}
+
+void UHOLStealthOpacityResetSubsystem::Deinitialize()
+{
+	// The last game world ends: the match is over, its opacities go with it (a world ending while another lives leaves the table alone).
+	if (--LiveGameWorlds == 0)
+	{
+		UHOLUnitOpacityLibrary::ClearStealthOpacities();
+	}
+	Super::Deinitialize();
+}
+
+int32 UHOLStealthOpacityResetSubsystem::GetLiveGameWorlds()
+{
+	return LiveGameWorlds;
+}
+
+HOLUnitDraw::FInstanceCustomData HOLUnitDraw::MakeInstanceCustomData(const FVector3f& Color, const uint8 Prop, const float Opacity)
+{
+	return { Color, static_cast<float>(Prop), Opacity };
+}
+
+HOLUnitDraw::FInstanceCustomData HOLUnitDraw::MakeUnitInstanceCustomData(const FVector3f& Color, const uint8 Prop, const int32 UnitId)
+{
+	// D824 Q3: the opacity the stealth rule set for this unit (0.5 in a zone, 1 when none was set).
+	return MakeInstanceCustomData(Color, Prop, UHOLUnitOpacityLibrary::GetStealthOpacity(UnitId));
+}
+
+HOLUnitDraw::FOpacitySnapshot HOLUnitDraw::TakeOpacitySnapshot()
+{
+	// One lock for the whole pass. Nothing is copied when the table is empty (the normal case: no stealth zone); otherwise the (small) table is copied.
+	FScopeLock Lock(&OpacityLock);
+	const TMap<int32, float>& Table = GetOpacities();
+	if (Table.IsEmpty())
+	{
+		return FOpacitySnapshot();
+	}
+	return FOpacitySnapshot(TMap<int32, float>(Table));
+}
+
+HOLUnitDraw::FInstanceCustomData HOLUnitDraw::MakeUnitInstanceCustomData(const FVector3f& Color, const uint8 Prop, const int32 UnitId, const FOpacitySnapshot& Snapshot)
+{
+	return MakeInstanceCustomData(Color, Prop, Snapshot.Get(UnitId));
+}

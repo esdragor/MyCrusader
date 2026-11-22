@@ -12,3 +12,5 @@ Les matériaux à modifier sont trois (pas un) : `M_UnitPlayerColorProps` (paysa
 Recommandation : A (seule option qui tient « à demi transparentes » sans le tri ni le surdessin de B), à condition que la mesure de charge à 2000 unités soit acceptable ; sinon C.
 
 Valeur par défaut si pas de réponse : rien de rendu (matériaux inchangés ; la règle et l'index 4 restent en place, sans effet visible).
+
+Reponse: A si la mesure à 2000 unités est acceptable, sinon C, comme recommandé (2026-11-22 ~22:05, dans la conversation ; GDD D887)

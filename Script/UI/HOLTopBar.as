@@ -95,6 +95,37 @@ namespace HOLTopBar
 		return View;
 	}
 
+	// RECETTE-1121sd: in French the gold's income tooltip covered the "Scénario" banner (centred under the bar). The tooltip's window is placed by the engine at
+	// the cursor, so only a transparent drop above the visible panel moves it: the drop that puts the tooltip's top under the banner's bottom when the two share
+	// some width (no banner: 0, the position is unchanged).
+	float IncomeTipGap() { return 6.0; }
+
+	// Where the engine puts a tooltip raised from the bar's amounts (under the cursor, in the bar): its top.
+	float IncomeTipNaturalTop() { return ScreenMargin() + QueueItemHeight() + 4.0; }
+
+	// BannerBottom <= 0: no banner shown, no drop. A tooltip wholly left or right of the banner is not moved either.
+	float IncomeTipDrop(float TipLeft, float TipTop, float TipWidth, float BannerLeft, float BannerRight, float BannerBottom)
+	{
+		if (BannerBottom <= 0.0)
+			return 0.0;
+		if (TipLeft + TipWidth <= BannerLeft || TipLeft >= BannerRight)
+			return 0.0;
+		return Math::Max(0.0, BannerBottom + IncomeTipGap() - TipTop);
+	}
+
+	// GALADRIEL-1122d: the drop of the tooltip raised from a cell whose cursor point is CellCentre (the tooltip's left edge, the engine puts it at the cursor)
+	// and whose width is TipWidth: its OWN rectangle against the banner, so only a tooltip crossing the banner horizontally goes under it.
+	float IncomeTipDropForCell(float CellCentre, float TipWidth, float BannerLeft, float BannerRight, float BannerBottom)
+	{
+		return IncomeTipDrop(CellCentre, IncomeTipNaturalTop(), TipWidth, BannerLeft, BannerRight, BannerBottom);
+	}
+
+	// The tooltip's width in the HUD font (a rule without a renderer: an average glyph width plus the two paddings).
+	float IncomeTipWidth(FString Text, float Padding)
+	{
+		return float(Text.Len()) * 8.0 + Padding * 2.0;
+	}
+
 	FString ResourceWord(int Resource)
 	{
 		if (Resource == Food())
@@ -228,6 +259,7 @@ class UHOLTopBarPanel : UObject
 	UCommonTextBlock PopulationAmount;
 	// D814 (B): the income tooltips, 8 HUD panels (the amount's and the gatherers' of each resource: a Slate widget has one parent), built at the first SetIncomeTips.
 	TArray<UBorder> IncomeTipPanels;
+	TArray<UBorder> IncomeTipHosts;
 	TArray<UCommonTextBlock> IncomeTipTexts;
 	UHOLQueueItem IdleWorkers;
 	UBorder MenuPanel;
@@ -458,10 +490,39 @@ class UHOLTopBarPanel : UObject
 			Panel.SetVisibility(ESlateVisibility::HitTestInvisible);
 			IncomeTipPanels.Add(Panel);
 			IncomeTipTexts.Add(Text);
+			// RECETTE-1121sd: a transparent host around the panel, whose top padding is the drop under the "Scénario" banner (0 without a banner: same look).
+			UBorder Host = Cast<UBorder>(Screen.ConstructWidget(UBorder, FName(f"IncomeTipHost{Index}")));
+			Host.SetBrushColor(FLinearColor(0.0, 0.0, 0.0, 0.0));
+			Host.SetPadding(FMargin(0.0));
+			Host.SetVisibility(ESlateVisibility::HitTestInvisible);
+			Host.SetContent(Panel);
+			IncomeTipHosts.Add(Host);
 			if (Index % 2 == 0)
-				AmountOf(Index / 2).SetToolTip(Panel);
+				AmountOf(Index / 2).SetToolTip(Host);
 			else
-				GatherersOf(Index / 2).SetToolTip(Panel);
+				GatherersOf(Index / 2).SetToolTip(Host);
+		}
+	}
+
+	// The game screen tells the bar where the "Scénario" banner is (its left, right and bottom edge on the screen, Bottom 0 when it is not shown): the income
+	// tooltips are dropped under it. Called by HOLGameScreenScript.as (not wired by this commit: the screen file is not this chantier's).
+	void SetBannerRect(float Left, float Right, float Bottom)
+	{
+		EnsureIncomeTipPanels();
+		// One drop per tooltip, from ITS cell's position (the cursor point is the cell's centre) and the width of its text: only the tooltip that crosses the
+		// banner goes under it; a cell whose box is not known yet keeps the natural place.
+		for (int Index = 0; Index < IncomeTipHosts.Num(); Index++)
+		{
+			UWidget Cell = Index % 2 == 0 ? Cast<UWidget>(AmountOf(Index / 2)) : Cast<UWidget>(GatherersOf(Index / 2));
+			FVector2D CellLow;
+			FVector2D CellHigh;
+			float Drop = 0.0;
+			if (Screen.GetWidgetBox(Cell, CellLow, CellHigh))
+			{
+				const float TipWidth = HOLTopBar::IncomeTipWidth(IncomeTipTexts[Index].GetText().ToString(), HOLTopBar::IncomeTipView(0, Index / 2).Padding);
+				Drop = HOLTopBar::IncomeTipDropForCell((CellLow.X + CellHigh.X) * 0.5, TipWidth, Left, Right, Bottom);
+			}
+			IncomeTipHosts[Index].SetPadding(FMargin(0.0, Drop, 0.0, 0.0));
 		}
 	}
 
