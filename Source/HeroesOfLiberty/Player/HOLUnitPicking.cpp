@@ -81,8 +81,22 @@ namespace HOLUnitPicking
 
 	int32 PickAllyAt(TConstArrayView<FHOLAllyCandidate> Candidates, TConstArrayView<uint32> Excluded, const FVector2D& Cursor)
 	{
-		// Red stub (GLORFINDEL-1122e): the filter and the pick come with the fix.
-		return INDEX_NONE;
+		// Only the candidates a heal or a follow can take (neither an enemy, a neutral unit nor an excluded one), then the direct
+		// hit of PickAt (no margin): the index of the pick in Candidates.
+		TArray<FHOLPickCandidate> Kept;
+		TArray<int32> Indices;
+		for (int32 Index = 0; Index < Candidates.Num(); ++Index)
+		{
+			const FHOLAllyCandidate& Candidate = Candidates[Index];
+			if (Candidate.bHostile || Candidate.bNeutral || Excluded.Contains(Candidate.UnitId))
+			{
+				continue;
+			}
+			Kept.Add(Candidate.Pick);
+			Indices.Add(Index);
+		}
+		const int32 Picked = PickAt(Kept, Cursor);
+		return Indices.IsValidIndex(Picked) ? Indices[Picked] : INDEX_NONE;
 	}
 
 	void PickInBox(TConstArrayView<FHOLPickCandidate> Candidates, const FVector2D& CornerA, const FVector2D& CornerB, TArray<int32>& OutIndices)

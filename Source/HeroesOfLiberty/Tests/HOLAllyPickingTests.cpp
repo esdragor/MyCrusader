@@ -33,10 +33,10 @@ bool FHOLAllyPickingTest::RunTest(const FString& Parameters)
 
 	TestEqual(TEXT("an ally's body under the cursor is taken"), PickAllyAt(Units, NoneExcluded, FVector2D(95., 170.)), 0);
 	TestEqual(TEXT("an enemy in front of the ally is skipped, the ally behind it is taken"), PickAllyAt(Units, NoneExcluded, FVector2D(102., 195.)), 0);
-	TestEqual(TEXT("an enemy alone is not taken"), PickAllyAt(Units, NoneExcluded, FVector2D(114., 210.)), INDEX_NONE);
+	TestEqual(TEXT("an enemy alone is not taken"), PickAllyAt(Units, NoneExcluded, FVector2D(112., 200.)), INDEX_NONE);
 	TestEqual(TEXT("a neutral unit is not taken"), PickAllyAt(Units, NoneExcluded, FVector2D(300., 180.)), INDEX_NONE);
 	TestEqual(TEXT("two allies overlapping: the one in front"), PickAllyAt(Units, NoneExcluded, FVector2D(504., 195.)), 4);
-	TestEqual(TEXT("the ground, 15 px beside a body: nothing (no margin, the click stays a move)"), PickAllyAt(Units, NoneExcluded, FVector2D(515., 190.)), INDEX_NONE);
+	TestEqual(TEXT("the ground, 11 px beside a body: nothing (no margin, the click stays a move)"), PickAllyAt(Units, NoneExcluded, FVector2D(515., 190.)), INDEX_NONE);
 
 	// A follow excludes the selection.
 	const TArray<uint32> Selected = { 14 };

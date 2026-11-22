@@ -1189,6 +1189,33 @@ uint32 AHOLPlayerController::FindTargetAt(const FVector2D& ViewportFraction, boo
 	return UnitIds.IsValidIndex(Index) ? UnitIds[Index] : 0;
 }
 
+uint32 AHOLPlayerController::FindAllyAt(const FVector2D& ViewportFraction, TConstArrayView<uint32> Excluded) const
+{
+	const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
+	if (!HOLPlayerState)
+	{
+		return 0;
+	}
+	TArray<FHOLPickCandidate> Candidates;
+	TArray<uint32> UnitIds;
+	GatherPickCandidates(/*bOwnOnly*/ false, Candidates, UnitIds);
+	const FHOLCampTable Camps = FHOLCampTable::FromWorld(GetWorld());
+	TArray<FHOLAllyCandidate> Allies;
+	for (int32 Index = 0; Index < Candidates.Num(); ++Index)
+	{
+		// A unit that cannot be read counts as hostile: never taken (the indices stay those of UnitIds).
+		FHOLUnitView View;
+		FHOLAllyCandidate Ally;
+		Ally.Pick = Candidates[Index];
+		Ally.UnitId = UnitIds[Index];
+		Ally.bHostile = !HOLUnitView::Find(*GetWorld(), UnitIds[Index], View) || Camps.AreHostile(View.OwnerPlayer, HOLPlayerState->GetPlayerIndex());
+		Ally.bNeutral = View.OwnerPlayer == FHOLMatchConfig::NeutralOwner;
+		Allies.Add(Ally);
+	}
+	const int32 Index = HOLUnitPicking::PickAllyAt(Allies, Excluded, ToPixels(ViewportFraction));
+	return UnitIds.IsValidIndex(Index) ? UnitIds[Index] : 0;
+}
+
 TArray<uint32> AHOLPlayerController::GetOwnSelectedUnits() const
 {
 	TArray<uint32> Own;
@@ -1434,10 +1461,12 @@ void AHOLPlayerController::OrderAt(const FVector2D& ViewportFraction, const bool
 			OnAttackOrderGiven.Broadcast(Under.Location);
 			return;
 		}
+		// GLORFINDEL-1122e: FindTargetAt only gathers the hostile units, so an ally's body is looked for on its own (FindAllyAt: the
+		// body under the cursor, no margin), after the attack failed and only when no source nor enemy building is drawn there.
+		const uint32 AllyId = (!Source && !EnemyBuilding) ? FindAllyAt(ViewportFraction, TConstArrayView<uint32>()) : 0;
 		// Q-chapelle-moine = A: an ally's unit under the cursor (or one of the player's own) and a healer among the selected units
 		// (a Monk): the heal order (the healers walk to it and heal it first), the others walk there.
-		if (UnderId != 0 && (bDirect || (!Source && !EnemyBuilding)) && HOLPlayerState && HOLUnitView::Find(*GetWorld(), UnderId, Under)
-			&& !Camps.AreHostile(Under.OwnerPlayer, HOLPlayerState->GetPlayerIndex()) && Under.OwnerPlayer != FHOLMatchConfig::NeutralOwner
+		if (AllyId != 0 && HOLUnitView::Find(*GetWorld(), AllyId, Under)
 			&& Own.ContainsByPredicate([this](const uint32 UnitId)
 			{
 				FHOLUnitView Selected;
@@ -1446,25 +1475,26 @@ void AHOLPlayerController::OrderAt(const FVector2D& ViewportFraction, const bool
 				return Row && Row->HealRate > 0.f;
 			}))
 		{
-			UE_LOG(LogHOLMatch, Display, TEXT("Order: %d units heal #%u %s of slot %d%s"), Own.Num(), UnderId, *Under.TypeName.ToString(), Under.OwnerPlayer,
+			UE_LOG(LogHOLMatch, Display, TEXT("Order: %d units heal #%u %s of slot %d%s"), Own.Num(), AllyId, *Under.TypeName.ToString(), Under.OwnerPlayer,
 				bShift ? TEXT(", queued") : TEXT(""));
-			RequestHealUnit(Own, UnderId, bShift);
+			RequestHealUnit(Own, AllyId, bShift);
 			OnOrderGiven.Broadcast(Under.Location);
 			return;
 		}
 		// Follow (GDD 7.3, D818 Q1 C, GLORFINDEL-1121sk): an ally's unit under the cursor, outside the selection: the selected units become its bodyguards (the script rule,
 		// Script/Orders/HOLFollowOrders.as, through UHOLFollowBridge; the Move / Attack orders are then sent by its Step from Tick). Not a unit of the selection: the ground path.
-		if (UnderId != 0 && (bDirect || (!Source && !EnemyBuilding)) && HOLPlayerState && HOLUnitView::Find(*GetWorld(), UnderId, Under)
-			&& !Camps.AreHostile(Under.OwnerPlayer, HOLPlayerState->GetPlayerIndex()) && Under.OwnerPlayer != FHOLMatchConfig::NeutralOwner)
+		// The ally is looked for again without the selection: a unit of the selection drawn there is skipped (FindAllyAt).
+		const uint32 FollowId = (!Source && !EnemyBuilding) ? FindAllyAt(ViewportFraction, Own) : 0;
+		if (FollowId != 0 && HOLUnitView::Find(*GetWorld(), FollowId, Under))
 		{
 			TArray<int32> SelectedIds;
 			for (const uint32 UnitId : Own)
 			{
 				SelectedIds.Add(static_cast<int32>(UnitId));
 			}
-			if (UHOLFollowBridge::NativeRightClickOnUnit(this, SelectedIds, static_cast<int32>(UnderId), true))
+			if (UHOLFollowBridge::NativeRightClickOnUnit(this, SelectedIds, static_cast<int32>(FollowId), true))
 			{
-				UE_LOG(LogHOLMatch, Display, TEXT("Order: %d units follow #%u %s of slot %d"), Own.Num(), UnderId, *Under.TypeName.ToString(), Under.OwnerPlayer);
+				UE_LOG(LogHOLMatch, Display, TEXT("Order: %d units follow #%u %s of slot %d"), Own.Num(), FollowId, *Under.TypeName.ToString(), Under.OwnerPlayer);
 				OnOrderGiven.Broadcast(Under.Location);
 				return;
 			}
