@@ -51,12 +51,20 @@ namespace
 void UHOLStealthOpacityResetSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
 	Super::Initialize(Collection);
-	++LiveGameWorlds;
+	// The first game world of the process (or the first after all others ended): nothing of an older match may survive. A world joining a live one keeps the table.
+	if (++LiveGameWorlds == 1)
+	{
+		UHOLUnitOpacityLibrary::ClearStealthOpacities();
+	}
 }
 
 void UHOLStealthOpacityResetSubsystem::Deinitialize()
 {
-	--LiveGameWorlds;
+	// The last game world ends: the match is over, its opacities go with it (a world ending while another lives leaves the table alone).
+	if (--LiveGameWorlds == 0)
+	{
+		UHOLUnitOpacityLibrary::ClearStealthOpacities();
+	}
 	Super::Deinitialize();
 }
 
