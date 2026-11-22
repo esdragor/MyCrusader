@@ -3,9 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-
-struct FHOLUnitTypeConstants;
-enum class EHOLAttackType : uint8;
+#include "Simulation/HOLUnitTypes.h"
 
 /**
  * Pure rules of the melee (J7b.1, J7-Q4: home-made processor, AoE4-like rules): the damage of a hit, the cadence of the
