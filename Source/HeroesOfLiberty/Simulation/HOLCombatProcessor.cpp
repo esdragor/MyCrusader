@@ -1209,7 +1209,20 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 	// With no arrow in flight, the pass below then only sets AttackerCount 0 and, for each unit: busy, TickIdle; else the
 	// branch without target (bFlanking false, FlankWaitSeconds 0, TickIdle). Checked first, then applied: no unit changes
 	// another, so the order does not matter.
-	if (FastIdle != 0 && Arrows.Num() == 0)
+	// F8 T4 (D884; CELEBORN-1122l, measured: BSHOT execute without call on three steps of four): ReleaseBuildingArrows lies below the return of this skip, so
+	// a skipped step took nothing off a tower's countdown (the cadence became four times the interval) and purged none. A standing armed building, or a
+	// countdown still held (to be purged), bars the skip.
+	bool bBuildingsLive = BuildingCooldownMs.Num() > 0;
+	if (FastIdle != 0 && Arrows.Num() == 0 && !bBuildingsLive)
+	{
+		for (FHOLBuildingIterator It(World); It && !bBuildingsLive; ++It)
+		{
+			AHOLBuilding* Building = *It;
+			const FHOLBuildingTypeRow* Row = IsValid(Building) ? Building->GetType() : nullptr;
+			bBuildingsLive = Row && Row->BuildingAttack > 0 && Row->BuildingFiresEmpty && Building->IsFinished() && Building->GetHealth() > 0;
+		}
+	}
+	if (FastIdle != 0 && Arrows.Num() == 0 && !bBuildingsLive)
 	{
 		bool bIdle = true;
 		for (int32 Index = 0; Index < Fighters.Num() && bIdle; ++Index)
