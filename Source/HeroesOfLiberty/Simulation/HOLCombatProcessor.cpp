@@ -1128,6 +1128,8 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 	if (Fighters.Num() == 0)
 	{
 		TotalArrowsLost += Arrows.Num(); // no target left for any
+		// F8 T5c: no unit alive, no building is met this step (ReleaseBuildingArrows is not reached): the countdowns are purged here, nothing leaks.
+		BuildingCooldownMs.Reset();
 		if (BuildingShotDebug != 0)
 		{
 			UE_LOG(LogTemp, Display, TEXT("BSHOT execute early exit (no fighter) step=%d entries=%d"), static_cast<int32>(StepIndex), BuildingCooldownMs.Num());
