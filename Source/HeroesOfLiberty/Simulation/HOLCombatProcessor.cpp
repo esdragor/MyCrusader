@@ -835,6 +835,14 @@ int32 UHOLCombatProcessor::GetBuildingAttackWithTechnology(const FFighter& Attac
 	return HOLTechnology::ScaleByPercent(Attacker.Constants->BuildingAttack, MangonelDamagePercent[Slot]);
 }
 
+void UHOLCombatProcessor::ReleaseBuildingArrows(const UWorld& World, const int64 StepIndex, const int32 StepMs)
+{
+	// STUB (red, F8 T2): no building looses an arrow yet.
+	(void)World;
+	(void)StepIndex;
+	(void)StepMs;
+}
+
 void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecutionContext& Context)
 {
 	using namespace UE::HeroesOfLiberty::Combat;
@@ -1402,6 +1410,9 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 		}
 		return false;
 	};
+
+	// F8 T2 (D884): the buildings' first arrows are released before the arrows land.
+	ReleaseBuildingArrows(*World, StepIndex, StepMs);
 
 	// The arrows that land this step (J7c.2), in release order, before the units are taken: a unit killed by one dies as
 	// one killed in melee, its attackers look for another this step.

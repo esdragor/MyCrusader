@@ -138,6 +138,12 @@ protected:
 	/** In release order (the outcome does not depend on the chunks). */
 	TArray<FArrow> Arrows;
 
+	/**
+	 * F8 T2 (D884): the finished buildings of the step whose row has BuildingAttack > 0 and BuildingFiresEmpty loose one first arrow at the nearest
+	 * enemy within HOLCombat::IsInBuildingShotRange (StepCamps.FiresAtOnce). Called once a step before the arrows land. STUB (red): looses nothing.
+	 */
+	void ReleaseBuildingArrows(const UWorld& World, int64 StepIndex, int32 StepMs);
+
 	FMassEntityQuery EntityQuery;
 
 	/**
