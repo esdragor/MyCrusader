@@ -3,10 +3,11 @@
 STATUT : VU À L'ÉCRAN (page II de la grille, construction, centre fini sélectionné seul) ; l'infobulle de la case Z n'est PAS visible sur la capture (voir NON VÉRIFIÉ)
 GESTE: réel
 SON: non entendu
-branches: wall-line
+branches: main 96cff65 (wall-line fusionnée)
 recette: RECETTE-1121sc PASS sur wall-line (main 204f769 + scenario) ; reserves traitees par HALDIR-1121sj (voir Mise a jour 1121sj) : sc_pendant recadre apres le debut reel du chantier ; Population 5/175 = plafond de partie atteint par la triche du scenario (pas un defaut) ; rapport Docs\Rapports\RECETTE-1121sc.md
 recette: RECETTE-1121se PASS sur main 1276d54 (HeroesOfLiberty-Haldir, wall-line) : preflight PASS, 5 PNG ouverts, infobulle Centre secondaire 150 bois 400 pierre vue, centre fini seul selectionne 2400/2400, Population 5/20 ; rapport Docs\Rapports\RECETTE-1121se.md
 recette: RECETTE-1122b PASS VU A L ECRAN sur integ-50 7053828 : preflight PASS (40 s), 0 FAIL, 0 WARN, 0 erreur Angelscript, 0 WorldContext ; 5 PNG ouverts : case Z Centre secondaire en age II, infobulle 150 bois 400 pierre +10 population, chantier avec 5 Paysans, centre fini seul selectionne 2400/2400 Population 5/20, forum principal (D/F voies, W cloche) pour comparer. Reserve cosmetique : texte W Cloche d alarme amelioree Bientot coupe en bas de case. Rapport Docs\Rapports\RECETTE-1122b.md
+recette: pré-vol de la session principale 2026-11-22 22:0x sur main 96cff65 (worktree Sauron, code identique à main, binaire du 19:14) : preflight PASS (79 s), 5 PNG ouverts et vus : case Z, infobulle 150 bois / 400 pierre, chantier à 5 Paysans, centre fini seul sélectionné 2400 / 2400 Population 5 / 20, forum ; réserve connue : « Bientôt » coupé sous la case W du forum
 
 Pré-vol (2026-11-21 20:28, agent HALDIR-1121sh, worktree C:\Users\baudo\Documents\HeroesOfLiberty-Haldir, main 204f769) : `preflight.ps1 secondary_centre -Root C:\Users\baudo\Documents\HeroesOfLiberty-Haldir` PASS (43 s, 5 PNG).
 PNG OUVERTS et vus :
@@ -19,7 +20,7 @@ Journal : « Grid: age 1 chosen » (touche Z), « Placement: SecondaryCentre (co
 NON VÉRIFIÉ : l'infobulle de la case Z (nom, 150 bois, 400 pierre) n'apparaît pas en capture ; la barre de construction en cours ; le son ; le modèle SM_Forum est provisoire (Placeholders.txt) ; la grille du centre secondaire n'est PAS identique à celle du forum (seul A Paysan, pas de voies de palier ni de cloche) : à trancher si voulu.
 
 Commande complète (règle 13, 2026-11-14) : chaque commande est écrite en entier, copiable telle quelle.
-Lancer UNE commande : `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Haldir\Tools\Scenarios\play.ps1 secondary_centre -Root C:\Users\baudo\Documents\HeroesOfLiberty-Haldir`
+Lancer UNE commande : `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Sauron\Tools\Scenarios\play.ps1 secondary_centre -Root C:\Users\baudo\Documents\HeroesOfLiberty-Sauron`
 Durée : environ 3 min (Entrée à chaque étape). Réponse attendue : `OK`, `BUG: ...` ou `REGLAGE: ...`.
 
 ## Mise à jour HALDIR-1121si (20:35)
@@ -30,4 +31,4 @@ Durée : environ 3 min (Entrée à chaque étape). Réponse attendue : `OK`, `BU
 ## Mise à jour HALDIR-1121sj (20:43)
 - Population 5 / 175 : PAS UN DÉFAUT. Plafond d'un joueur = somme des PopulationProvided des bâtiments finis (HOLProductionSubsystem.cpp:584, C++) + triche, bornée à 175 par HOLProduction::GetPopulationCap (HOLProductionRules.cpp:5, MaxPopulation = 175 en HOLProductionRules.h:61) : GDD D03 (population maximale 175 par joueur), D83. Le scénario faisait hol.Cheat.Population 200 : forum 10 + 200 = 210, borné à 175, donc le +10 ne se voyait pas. Triche retirée : Population 5 / 10 pendant le chantier, 5 / 20 une fois fini (PNG vus). Aucun code touché, pas de test rouge.
 - sc_pendant : le scénario attend « Construction: slot 0 first work on SecondaryCentre » (HOLBuildProcessor.cpp:942), ramène hol.Build.Speed à 1, attend 2 s, capture, puis remet 20 pour finir. Le PNG montre les 5 Paysans au pied de la fondation, « 5 en construction ». Commit c2cdee6 sur wall-line. Préflight PASS (sanity ok).
-- Rejouer : `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Haldir\Tools\Scenarios\play.ps1 secondary_centre -Root C:\Users\baudo\Documents\HeroesOfLiberty-Haldir`
+- Rejouer : `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Sauron\Tools\Scenarios\play.ps1 secondary_centre -Root C:\Users\baudo\Documents\HeroesOfLiberty-Sauron`
