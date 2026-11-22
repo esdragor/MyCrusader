@@ -79,6 +79,12 @@ namespace HOLUnitPicking
 		return ViewportHeight > 0. ? MarginAt1080 * ViewportHeight / 1080. : MarginAt1080;
 	}
 
+	int32 PickAllyAt(TConstArrayView<FHOLAllyCandidate> Candidates, TConstArrayView<uint32> Excluded, const FVector2D& Cursor)
+	{
+		// Red stub (GLORFINDEL-1122e): the filter and the pick come with the fix.
+		return INDEX_NONE;
+	}
+
 	void PickInBox(TConstArrayView<FHOLPickCandidate> Candidates, const FVector2D& CornerA, const FVector2D& CornerB, TArray<int32>& OutIndices)
 	{
 		OutIndices.Reset();

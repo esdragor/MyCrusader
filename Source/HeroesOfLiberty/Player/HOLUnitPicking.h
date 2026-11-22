@@ -29,6 +29,20 @@ struct FHOLTypedPickCandidate
 };
 
 /**
+ * A unit as drawn, with its camp relation to the local player, for the right click that heals or follows (an ally, not an
+ * enemy: FindTargetAt only gathers the hostile ones, so an ally's body was never found).
+ */
+struct FHOLAllyCandidate
+{
+	FHOLPickCandidate Pick;
+	uint32 UnitId = 0;
+	/** Of a camp hostile to the local player (attacked, never healed nor followed). */
+	bool bHostile = false;
+	/** Of the neutral owner (never healed nor followed). */
+	bool bNeutral = false;
+};
+
+/**
  * The side of a unit for the local player, in the order a selection keeps them (D.1, AoE4's way): a box that takes
  * several sides keeps only the first present, the player's own, then an ally's, then an enemy's, then a neutral one.
  * Allies are the slots of the player's team (D.3, GetSide); no neutral unit exists yet.
@@ -71,6 +85,14 @@ namespace HOLUnitPicking
 
 	/** A margin given at 1080 pixels high, in pixels on a viewport ViewportHeight pixels high (as is when unknown). */
 	HEROESOFLIBERTY_API double GetScaledMargin(double MarginAt1080, double ViewportHeight);
+
+	/**
+	 * The unit a right click takes to heal or follow: the candidate whose drawn body holds Cursor DIRECTLY (no margin, the
+	 * one in front when bodies overlap) among those neither hostile, nor neutral, nor in Excluded (a follow excludes the
+	 * selection: a unit does not follow itself; a heal passes none). Index in Candidates, or INDEX_NONE (a click on the
+	 * ground stays a move).
+	 */
+	HEROESOFLIBERTY_API int32 PickAllyAt(TConstArrayView<FHOLAllyCandidate> Candidates, TConstArrayView<uint32> Excluded, const FVector2D& Cursor);
 
 	/** Indices of the candidates whose body's middle is inside the box between two corners (any order). */
 	HEROESOFLIBERTY_API void PickInBox(TConstArrayView<FHOLPickCandidate> Candidates, const FVector2D& CornerA, const FVector2D& CornerB, TArray<int32>& OutIndices);
