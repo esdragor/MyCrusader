@@ -96,6 +96,27 @@ wait 3
 hol.Select.Report
 capture deploy_move_walked
 note 8. Sans second clic, l'engin demonte part vers le point : il est visiblement plus bas qu'a deploy_move_start.
+# ELROND-1122b (D877 moitie B) : le deplacement n est pas fini (order lines 1 a deploy_move_walked) ; on attend son ARRIVEE sans nouvel ordre : l engin demonte, a portee de la Maison (2500 cm < 3000), doit se monter TOUT SEUL (texte exact du journal : Deploy: #N phase 0 -> 1 (order ...), HOLDeployProcessor.cpp:139). Expire (60 s) tant que ce n est pas le cas : ROUGE.
+hol.Camera.FocusNear 4200 -500
+frames 2
+waitlog phase 0 -> 1 (order 3
+wait 0.3
+hol.HUD.Report
+capture deploy_arrive_mounting
+note 9a. Arrive au point sans nouvel ordre : l'engin se monte tout seul (la case D ne dit pas encore Demonter).
+waitlog (delay over)
+wait 1
+hol.HUD.Report
+waitlog D=Pack
+hol.Select.Report
+capture deploy_arrive_mounted
+note 9b. Monte tout seul a l'arrivee : la case D dit Demonter. On le demonte (D) puis on donne l'ordre d'attaque.
+hol.UI.Key D 0 0.1
+waitlog Order: 1 units pack up
+waitlog (delay over)
+wait 1
+hol.HUD.Report
+waitlog D=Deploy
 # Etape 9 : engin DEMONTE, clic droit sur la Maison ennemie (cible a portee) : il se monte (1,5 s) puis tire.
 hol.Camera.FocusNear 4200 0
 frames 2
