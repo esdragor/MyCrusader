@@ -19,5 +19,5 @@ PNG OUVERTS et vus :
 NON VÉRIFIÉ : une vraie touche Tab physique du clavier (le relais passe par un événement Slate synthétique `hol.UI.Key`) ; le texte exact du `.look` annonce « (Privé) » alors que le champ affiche « Joueur 2 : » (à confirmer comme voulu) ; le son (sans objet).
 
 Commande complète (règle 13, 2026-11-14) : chaque commande est écrite en entier, copiable telle quelle.
-Lancer UNE commande : `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Sauron\Tools\Scenarios\play.ps1 chat_input -Root C:\Users\baudo\Documents\HeroesOfLiberty-Sauron`
+Lancer UNE commande : `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Haldir\Tools\Scenarios\play.ps1 chat_input -Root C:\Users\baudo\Documents\HeroesOfLiberty-Haldir`
 Durée : environ 2 min (86 s). Réponse attendue : `OK`, `BUG: ...` ou `REGLAGE: ...`.

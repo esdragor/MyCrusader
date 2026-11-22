@@ -13,5 +13,5 @@ PNG OUVERTS et vus :
 NON VÉRIFIÉ : un vrai clic droit (geste réel) ; le cas d'un seul bloc (une seule ligne, couvert par HOLOrderLines_Test.as) ; le tracé en file (Maj + clic droit) avec deux blocs ; le comportement ligne par ligne pendant la marche (une seule image, 20 frames après l'ordre).
 
 Commande complète (règle 13, 2026-11-14) : chaque commande est écrite en entier, copiable telle quelle, jamais « même commande avec… ».
-Lancer UNE commande : `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Sauron\Tools\Scenarios\play.ps1 order_lines_blocks -Root C:\Users\baudo\Documents\HeroesOfLiberty-Sauron`
+Lancer UNE commande : `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Haldir\Tools\Scenarios\play.ps1 order_lines_blocks -Root C:\Users\baudo\Documents\HeroesOfLiberty-Haldir`
 Durée : environ 1 min. Réponse attendue : `OK`, `BUG: ...` ou `REGLAGE: ...`. Geste à refaire : les 12 unités sont choisies, un clic droit sur le sol : deux lignes, une par bloc.
