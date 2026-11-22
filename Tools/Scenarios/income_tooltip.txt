@@ -39,7 +39,8 @@ frames 5
 capture income_tip_en
 # 4. JA: "/分", not "/min".
 hol.UI.Language ja
-wait 1
+# GALADRIEL-1122c: 10 frames like the EN switch (a 1 s game wait lasted ~1 frame: the hover read the cell's centre before the JA layout, 192,27 on an SBorder).
+frames 10
 hol.Mouse.Hover 20 300 5
 waitlog Mouse hover 20,300
 hol.Mouse.Hover WoodAmount 30
