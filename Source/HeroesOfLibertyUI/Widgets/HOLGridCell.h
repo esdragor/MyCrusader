@@ -135,6 +135,8 @@ public:
 
 protected:
 	virtual void NativeOnInitialized() override;
+	/** Fits the status line's text to the cell's width (ComputeStatusFit): the cell's width is known only once laid out. */
+	virtual void NativeTick(const FGeometry& MyGeometry, float InDeltaTime) override;
 
 	UPROPERTY(meta = (BindWidgetOptional))
 	TObjectPtr<UCommonTextBlock> Key;
@@ -192,6 +194,12 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<UCommonTextBlock> StatusText;
+
+	/** The status line's clipping box (the text, reduced to the cell's width, never spills onto the next cell) and the scale applied to the text. */
+	UPROPERTY(Transient)
+	TObjectPtr<USizeBox> StatusClip;
+
+	float AppliedStatusScale = 1.f;
 
 	/** The height the name's zone is bounded to (GetNameZoneHeight); 0: not bounded. */
 	float NameZoneHeight = 0.f;

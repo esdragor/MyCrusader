@@ -34,6 +34,9 @@ namespace UE::HeroesOfLiberty::UI::GridCell
 	constexpr float StatusBottomPad = 2.f;
 	/** A text line of the Tiny style when it cannot be measured (no renderer, as in a commandlet): 11 pt = 14.7 px, about 1.2 lines. */
 	constexpr float FallbackLineHeight = 18.f;
+	/** Width of a character of the Tiny style when it cannot be measured (no renderer): 11 pt, half a line for a Latin letter, a line for a CJK one. */
+	constexpr float FallbackCharWidth = 5.5f;
+	constexpr float FallbackWideCharWidth = 11.f;
 
 	FLinearColor GetResourceColor(const EHOLResource Resource)
 	{
@@ -116,7 +119,12 @@ void UHOLGridCell::NativeOnInitialized()
 		StatusText->SetStyle(UHOLTextStyleHUDTiny::StaticClass());
 		StatusText->SetJustification(ETextJustify::Center);
 		StatusText->SetVisibility(ESlateVisibility::Collapsed);
-		UOverlaySlot* StatusSlot = CellContent->AddChildToOverlay(StatusText);
+		// The status sits in a clipping box: reduced to the cell's width (NativeTick), a text still too wide is cut, never drawn on the next cell.
+		StatusClip = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass(), TEXT("StatusClip"));
+		StatusClip->SetClipping(EWidgetClipping::ClipToBounds);
+		StatusClip->SetVisibility(ESlateVisibility::HitTestInvisible);
+		StatusClip->SetContent(StatusText);
+		UOverlaySlot* StatusSlot = CellContent->AddChildToOverlay(StatusClip);
 		StatusSlot->SetHorizontalAlignment(HAlign_Fill);
 		StatusSlot->SetVerticalAlignment(VAlign_Bottom);
 		StatusSlot->SetPadding(FMargin(0.f, 0.f, 0.f, UE::HeroesOfLiberty::UI::GridCell::StatusBottomPad));
@@ -399,15 +407,66 @@ float UHOLGridCell::GetNameZoneHeight() const
 {
 	return NameZoneHeight;
 }
-// STUB (GALADRIEL-1122h, red commit): the fit is not computed yet.
 float UHOLGridCell::MeasureStatusWidth() const
 {
-	return 0.f;
+	using namespace UE::HeroesOfLiberty::UI::GridCell;
+
+	if (!StatusText || StatusText->GetVisibility() == ESlateVisibility::Collapsed)
+	{
+		return 0.f;
+	}
+	const FString Text = StatusText->GetText().ToString();
+	if (Text.IsEmpty())
+	{
+		return 0.f;
+	}
+	if (FSlateApplication::IsInitialized() && FSlateApplication::Get().GetRenderer())
+	{
+		const TSharedRef<FSlateFontMeasure> Measure = FSlateApplication::Get().GetRenderer()->GetFontMeasureService();
+		const FVector2D TextSize = Measure->Measure(Text, StatusText->GetFont());
+		const float Measured = static_cast<float>(TextSize.X);
+		if (Measured > 0.f)
+		{
+			return Measured;
+		}
+	}
+	float Estimate = 0.f;
+	for (const TCHAR Character : Text)
+	{
+		Estimate += Character >= 0x2E80 ? FallbackWideCharWidth : FallbackCharWidth;
+	}
+	return Estimate;
 }
 
-FHOLGridCellStatusFit UHOLGridCell::ComputeStatusFit(const float TextWidth, const float /*AvailableWidth*/)
+FHOLGridCellStatusFit UHOLGridCell::ComputeStatusFit(const float TextWidth, const float AvailableWidth)
 {
+	// A text that fits (or an empty one) is not reduced; a wider one shrinks to the room, never below the readable bound.
 	FHOLGridCellStatusFit Fit;
 	Fit.Width = TextWidth;
+	if (TextWidth <= 0.f || AvailableWidth >= TextWidth)
+	{
+		return Fit;
+	}
+	Fit.Scale = FMath::Clamp(AvailableWidth / TextWidth, MinStatusScale, 1.f);
+	Fit.Width = TextWidth * Fit.Scale;
 	return Fit;
+}
+
+void UHOLGridCell::NativeTick(const FGeometry& MyGeometry, const float InDeltaTime)
+{
+	Super::NativeTick(MyGeometry, InDeltaTime);
+
+	// Only a cell showing a status is measured; the others are not touched.
+	if (!StatusText || StatusText->GetVisibility() == ESlateVisibility::Collapsed)
+	{
+		return;
+	}
+	const FVector2D LocalSize = MyGeometry.GetLocalSize();
+	const float Available = static_cast<float>(LocalSize.X) - 2.f * StatusSidePad;
+	const float Scale = ComputeStatusFit(MeasureStatusWidth(), Available).Scale;
+	if (!FMath::IsNearlyEqual(Scale, AppliedStatusScale))
+	{
+		AppliedStatusScale = Scale;
+		StatusText->SetRenderScale(FVector2D(Scale, Scale));
+	}
 }
