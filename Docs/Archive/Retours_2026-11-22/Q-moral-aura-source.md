@@ -10,3 +10,4 @@ Contexte : `Effects.csv` donne à DawnAura la source « Hero », 12 m, 15 % de d
 Conséquence visible : A = un camp de Légions avec son héros reçoit aussi 15 % de dégâts en moins près de lui ; B = seul le camp de l'Aube.
 Recommandation : B si l'aura est un trait de l'Aube (la section Aube du GDD la lie au « Paladin-Commandant »), sinon A.
 Valeur par défaut codée : A (une ligne à changer dans `UHOLMoraleProcessor::Execute`, le test `bHero` de la première passe).
+Reponse: B (2026-11-22, interface de choix ; GDD D880)

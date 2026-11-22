@@ -21,3 +21,4 @@ D877 : un engin démonté se monte seul en fin de déplacement (ou à portée de
 **A, de fait** (non voulue explicitement : effet de bord de `bMarching` non remis à 0 à l'arrêt). Pas encore de réglage. Si B ou C est choisi : une ligne dans `UHOLUnitOrderProcessor::ApplyQueuedOrders` (~1542) remet `FHOLDeployFragment::bMarching = 0` (même geste que le correctif ef6cbf2 d'`ApplyCombatOrder`) ; C ajoute un test de portée. Un cvar `hol.Deploy.StopMounts` (0/1) peut porter A/B sans recompiler les tests.
 
 Chantier : Palier3InProgress.md (Elrond, integ-25), rapport `Docs\Rapports\ELROND-1121se.md`.
+Reponse: B (2026-11-22, interface de choix ; GDD D882)

@@ -23,7 +23,7 @@ Durée : environ 3 min (Entrée à chaque étape). Réponse attendue : `OK`, `BU
 
 ## Mise à jour HALDIR-1121si (20:35)
 - Infobulle de la case Z : cause = le scénario survolait GridCell01 (case de la grille de commandes) au lieu de AgeCell101 (case Z de la page II du panneau des bâtisseurs) ; ce n'était pas un défaut de données. Corrigé dans le scénario (commit sur wall-line : `hol.Mouse.Hover AgeCell101 40`, puis waitlog "Mouse hover AgeCell101" et "tooltip shown"). PNG sc_grille_infobulle ouvert : « Centre secondaire, bois 150, pierre 400, +10 population, Dépôt : nourriture, bois, pierre, or, Produit : Paysan ». Préflight secondary_centre PASS (40 s), sanity ok.
-- Grille du Centre secondaire (A Paysan seul) : le GDD (D384, D879) ne tranche pas D/F/W ; question Retours\Q-secondary-centre-grid.md [À RÉPONDRE], valeur actuelle = Paysan seul.
+- Grille du Centre secondaire (A Paysan seul) : le GDD (D384, D879) ne tranchait pas D/F/W ; question Q-secondary-centre-grid répondue, D883 (A pour le prototype : Paysan seul, B ensuite), fiche archivée : Docs\Archive\Retours_2026-11-22\Q-secondary-centre-grid.md ; valeur actuelle = Paysan seul.
 - Correction de la note de l'étape 2 : le scénario déplace le curseur avant la pose pour que le centre tombe où le clic de sélection regarde (curseur garé sur GridCell01).
 
 ## Mise à jour HALDIR-1121sj (20:43)

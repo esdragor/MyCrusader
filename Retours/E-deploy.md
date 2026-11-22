@@ -1,4 +1,4 @@
-# [À ESSAYER] E-deploy : D monte puis démonte le Mangonneau (la case D change de libellé avec une barre de progression), un clic droit au sol le démonte puis le fait marcher, un clic droit sur la Maison ennemie le monte puis il tire
+# [PAS PRÊT, BUG EN FILE D877] E-deploy : D monte puis démonte le Mangonneau (la case D change de libellé avec une barre de progression), un clic droit au sol le démonte puis le fait marcher, un clic droit sur la Maison ennemie le monte puis il tire ; recette 1121se FAIL : Docs\Rapports\RECETTE-1121se.md
 
 STATUT : VU À L'ÉCRAN
 GESTE: interne      (hol.UI.Key D = événement clavier Slate, le chemin d'une vraie touche D ; mais les clics droits sont `hol.Select.OrderNear`, un appel interne : l'essai reste LOGIQUE SEULEMENT pour le geste tant que la ligne dit interne)
@@ -28,3 +28,4 @@ NON VÉRIFIÉ : le son (-nosound) ; une vraie touche D puis un vrai clic droit �
 Commande complète (règle 13, 2026-11-14) :
 Lancer UNE commande : `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Arwen\Tools\Scenarios\play.ps1 deploy -Root C:\Users\baudo\Documents\HeroesOfLiberty-Arwen`
 Durée : environ 2 min. Réponse attendue : `OK`, `BUG: ...` ou `REGLAGE: ...`.
+(Nettoyage 1122c) La commande ci-dessus est à refaire au prochain pré-vol (worktree et main à choisir alors) ; ne pas la donner avant la correction D877.

@@ -11,3 +11,4 @@ Options :
 - **Autre** : à préciser.
 
 Recommandation : **A** pour le prototype (le boom est déjà un pari fort, D384), ajouter **B** quand les garnisons du centre secondaire sont jouables ; C seulement si les essais montrent que la montée de palier au forum principal est trop fragile.
+Reponse: A pour le prototype, B ensuite (2026-11-22, interface de choix ; GDD D883)

@@ -12,3 +12,4 @@ Valeurs de départ proposées, par rapport à l'Archer (UnitTypes.csv : dégâts
 Conséquences en jeu : A donne à une tour vide un rôle de défense légère (lancier seul qui s'en approche perd des PV) ; B oblige à garnir (plus de micro) ; C punit plus les petits groupes mais se contourne en restant hors de portée.
 
 Recommandation : A. Valeur par défaut à coder : colonnes d'attaque de `Tools\Data\BuildingTypes.csv` (`BuildingAttack`, `BuildingAttackInterval`, `BuildingAttackRange`, noms à fixer dans le lot C++), ligne `TowerWood` seulement : une ligne à changer, aucun code.
+Reponse: A (2026-11-22, interface de choix ; GDD D884)

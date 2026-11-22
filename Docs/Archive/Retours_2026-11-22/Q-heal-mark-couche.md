@@ -10,3 +10,4 @@ Options :
 
 Recommandation : A (cause probable = translucidité, correctif sans C++), après un PNG qui le confirme (talents_heal_cell sans le contournement).
 Valeur par défaut codée : C (rien modifié).
+Reponse: A (2026-11-22, interface de choix ; GDD D881)
