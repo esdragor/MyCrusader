@@ -5109,7 +5109,14 @@ void AHOLPlayerController::ScriptLeftClick(const FVector2D& ViewportFraction)
 
 void AHOLPlayerController::ScriptRightClickAt(const FVector2D& ViewportFraction)
 {
-	// STUB (red commit): nothing is clicked and nothing is logged.
+	IConsoleVariable* const TestCursor = UE::HeroesOfLiberty::Player::CVarTestCursor.AsVariable();
+	const FString Former = TestCursor->GetString();
+	TestCursor->Set(*FString::Printf(TEXT("%.4f %.4f"), ViewportFraction.X, ViewportFraction.Y), ECVF_SetByConsole);
+	UE_LOG(LogHOLMatch, Display, TEXT("Scripted right click at (%.3f, %.3f), armed attack-move: %s, placing: %s"), ViewportFraction.X, ViewportFraction.Y, bAttackMoveArmed ? TEXT("yes") : TEXT("no"), IsPlacing() ? TEXT("yes") : TEXT("no"));
+	// The mouse's two handlers, in order: the press leaves an armed mode (placement, attack-move, banner, faction aim) or arms the order, the release gives it.
+	HandleOrder();
+	HandleOrderCompleted();
+	TestCursor->Set(*Former, ECVF_SetByConsole);
 }
 
 void AHOLPlayerController::HandleSelectCompleted()
