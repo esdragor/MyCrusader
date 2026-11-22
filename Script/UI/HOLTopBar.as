@@ -113,11 +113,11 @@ namespace HOLTopBar
 		return Math::Max(0.0, BannerBottom + IncomeTipGap() - TipTop);
 	}
 
-	// STUB (red): the drop of the tooltip raised from a cell whose cursor point is CellCentre (its left edge) and whose width is TipWidth. Still the old rule
-	// (the banner's own left edge): every tooltip drops.
+	// GALADRIEL-1122d: the drop of the tooltip raised from a cell whose cursor point is CellCentre (the tooltip's left edge, the engine puts it at the cursor)
+	// and whose width is TipWidth: its OWN rectangle against the banner, so only a tooltip crossing the banner horizontally goes under it.
 	float IncomeTipDropForCell(float CellCentre, float TipWidth, float BannerLeft, float BannerRight, float BannerBottom)
 	{
-		return IncomeTipDrop(BannerLeft, IncomeTipNaturalTop(), BannerRight - BannerLeft, BannerLeft, BannerRight, BannerBottom);
+		return IncomeTipDrop(CellCentre, IncomeTipNaturalTop(), TipWidth, BannerLeft, BannerRight, BannerBottom);
 	}
 
 	// The tooltip's width in the HUD font (a rule without a renderer: an average glyph width plus the two paddings).
@@ -509,9 +509,21 @@ class UHOLTopBarPanel : UObject
 	void SetBannerRect(float Left, float Right, float Bottom)
 	{
 		EnsureIncomeTipPanels();
-		const float Drop = HOLTopBar::IncomeTipDrop(Left, HOLTopBar::IncomeTipNaturalTop(), Right - Left, Left, Right, Bottom);
+		// One drop per tooltip, from ITS cell's position (the cursor point is the cell's centre) and the width of its text: only the tooltip that crosses the
+		// banner goes under it; a cell whose box is not known yet keeps the natural place.
 		for (int Index = 0; Index < IncomeTipHosts.Num(); Index++)
+		{
+			UWidget Cell = Index % 2 == 0 ? Cast<UWidget>(AmountOf(Index / 2)) : Cast<UWidget>(GatherersOf(Index / 2));
+			FVector2D CellLow;
+			FVector2D CellHigh;
+			float Drop = 0.0;
+			if (Screen.GetWidgetBox(Cell, CellLow, CellHigh))
+			{
+				const float TipWidth = HOLTopBar::IncomeTipWidth(IncomeTipTexts[Index].GetText().ToString(), HOLTopBar::IncomeTipView(0, Index / 2).Padding);
+				Drop = HOLTopBar::IncomeTipDropForCell((CellLow.X + CellHigh.X) * 0.5, TipWidth, Left, Right, Bottom);
+			}
 			IncomeTipHosts[Index].SetPadding(FMargin(0.0, Drop, 0.0, 0.0));
+		}
 	}
 
 	void SetIncomeTips(FHOLResources Income)
