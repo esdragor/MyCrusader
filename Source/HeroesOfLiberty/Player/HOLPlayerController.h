@@ -19,6 +19,7 @@ class AHOLPlayerState;
 class AHOLRTSCamera;
 class AHOLSelectionMarkers;
 class UInputAction;
+class UHOLFollowBridge;
 struct FHOLPickCandidate;
 struct FHOLSourceTypeRow;
 struct FHOLUnitView;
@@ -118,6 +119,12 @@ public:
 	 * high, HOLUnitPicking::PickNear); 0 when none.
 	 */
 	uint32 FindTargetAt(const FVector2D& ViewportFraction, bool& bOutDirect) const;
+	/**
+	 * An ally's (or the player's own) unit a right click there takes to heal or follow (GLORFINDEL-1122e): the one whose
+	 * drawn body holds the point (no margin, HOLUnitPicking::PickAllyAt), never an enemy, a neutral unit nor one of
+	 * Excluded (a follow passes the selection) and, with bSkipOwn (a follow with hol.Follow.OwnUnits 0), none of the player's own; 0 when none. FindTargetAt only gathers the hostile units.
+	 */
+	uint32 FindAllyAt(const FVector2D& ViewportFraction, TConstArrayView<uint32> Excluded, bool bSkipOwn = false) const;
 	/**
 	 * The standing resource source drawn under a point of the viewport, the one in front (J5, D298), or INDEX_NONE. A
 	 * linked source (a farm field, IA1.2 F7) is never taken: the click falls on its building.
@@ -618,6 +625,10 @@ public:
 
 	/** SP2 (GDD 13, D07): the player starts the unlock of Option (0, 1, or 2 for the Templars) at Tier at his Forum; the server decides. */
 	void RequestSpecialization(int32 Tier, int32 Option);
+
+	/** The Follow bridge of this controller (UHOLFollowBridge::GetFor creates it from the script class): an instance owned by the controller, never the CDO (GLORFINDEL-1122a). */
+	UPROPERTY(Transient)
+	TObjectPtr<UHOLFollowBridge> FollowBridge;
 
 	/** SP2: the player cancels his running unlock (the option is free again, its delay starts over). */
 	void RequestCancelSpecialization();

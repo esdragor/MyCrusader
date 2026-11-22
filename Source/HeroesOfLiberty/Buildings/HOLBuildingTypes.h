@@ -165,6 +165,25 @@ struct HEROESOFLIBERTY_API FHOLBuildingTypeRow : public FTableRowBase
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Vision", meta = (ClampMin = "0", ForceUnits = "cm"))
 	float SightRadius = 0.f;
+
+	/**
+	 * F8 (D884): damage of ONE arrow shot by this building, 0 = the building does not shoot (every row but TowerWood). DATA ONLY: no
+	 * processor reads it yet (the building fire is a later C++ lot); the number of arrows per occupant is not decided here.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Attack", meta = (ClampMin = "0"))
+	int32 BuildingAttack = 0;
+
+	/** F8 (D884): seconds between two shots of the building (1.625 for TowerWood), 0 with no attack. Data only, read by nothing yet. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Attack", meta = (ClampMin = "0", ForceUnits = "s"))
+	float BuildingAttackInterval = 0.f;
+
+	/** F8 (D884): reach (cm) of its shots (3000 for TowerWood), 0 with no attack. Data only, read by nothing yet. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Attack", meta = (ClampMin = "0", ForceUnits = "cm"))
+	float BuildingAttackRange = 0.f;
+
+	/** F8 (D884): true = it shoots even with nobody inside (TowerWood), false = it shoots only when garrisoned. Data only, read by nothing yet. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Attack")
+	bool BuildingFiresEmpty = false;
 };
 
 class UWorld;

@@ -3,6 +3,10 @@
 // of the map and the positions of the viewing camp (UHOLVisionSubsystem::GetCampUnitPositions). The rule stays here (D836); the C++ copies nothing.
 // UHOLStealthInstaller (below) sets it on the vision subsystem once the world runs.
 
+// Seconds between two passes over the local player's own units' opacity: 4 a second (ARWEN-1122d; the first version ran at 20 Hz and cost 1 to
+// 3 ms of script per read for 2000 units). THE ONLY place to change the cadence.
+const float OwnOpacityPeriodSeconds = 0.25;
+
 class UHOLStealthRuleFilter : UHOLStealthFilter
 {
 	// The stealth zones of the map (empty: the rule hides nothing, so the filter answers at once, without reading any unit).
@@ -25,14 +29,60 @@ class UHOLStealthRuleFilter : UHOLStealthFilter
 
 namespace HOLStealthInstall
 {
-	// The stealth zones of the current map. NO MAP LAYS ZONES YET (MapsInProgress.md): the list is empty, so the installed filter hides nothing
-	// and the game plays as before. When a map carries its zones, read them here (one source, FHOLStealthZone list).
-	TArray<FHOLStealthZone> ZonesOfMap()
+	// THE TABLE (level design, TO VALIDATE, D824 Q2 B): the groves of the Forest map, one half only; the other half is the point mirror. Each line =
+	// centre offset from the map centre and half extent, as a FRACTION of the map half side (so it follows the map size). Edit only here.
+	TArray<FHOLStealthZone> ForestGroveHalf()
+	{
+		TArray<FHOLStealthZone> Half;
+		FHOLStealthZone North;
+		North.Center = FVector2D(0.30, 0.35);
+		North.HalfExtent = FVector2D(0.12, 0.12);
+		Half.Add(North);
+		FHOLStealthZone East;
+		East.Center = FVector2D(0.35, -0.25);
+		East.HalfExtent = FVector2D(0.10, 0.10);
+		Half.Add(East);
+		return Half;
+	}
+
+	// Does this map carry groves? Only the maps listed here do (Tools\Data\Maps.csv Name, compared without case; a level name "Forest_..." counts).
+	bool MapHasGroves(const FString& MapName)
+	{
+		FString Lower = MapName.ToLower();
+		return Lower == "forest" || Lower.StartsWith("forest_");
+	}
+
+	// The zones of a map by its name (D824 Q2 B: only the maps with groves; an open map has none). Centre = point of symmetry (CenterOfCamps),
+	// MapHalfExtent = half side of the playable square, in cm. Each grove and its mirror through Center: 2 to 4 zones, all inside the square.
+	TArray<FHOLStealthZone> ZonesForMap(const FString& MapName, const FVector2D& Center, float MapHalfExtent)
 	{
 		TArray<FHOLStealthZone> Zones;
+		if (!MapHasGroves(MapName) || MapHalfExtent <= 0.0)
+			return Zones;
+		for (const FHOLStealthZone& Grove : ForestGroveHalf())
+		{
+			FHOLStealthZone Zone;
+			Zone.Center = Center + Grove.Center * MapHalfExtent;
+			Zone.HalfExtent = Grove.HalfExtent * MapHalfExtent;
+			Zones.Add(Zone);
+			FHOLStealthZone Mirror;
+			Mirror.Center = Center - Grove.Center * MapHalfExtent;
+			Mirror.HalfExtent = Zone.HalfExtent;
+			Zones.Add(Mirror);
+		}
 		return Zones;
 	}
 
+	// The symmetry centre = mean of the camps' start positions; no position known = the centre of the map.
+	FVector2D CenterOfCamps(const TArray<FVector2D>& CampPositions, const FVector2D& MapCenter)
+	{
+		if (CampPositions.Num() == 0)
+			return MapCenter;
+		FVector2D Sum = FVector2D(0.0, 0.0);
+		for (const FVector2D& Position : CampPositions)
+			Sum += Position;
+		return Sum / CampPositions.Num();
+	}
 	UHOLStealthRuleFilter MakeFilter(UObject Outer, UHOLVisionSubsystem Vision, const TArray<FHOLStealthZone>& Zones)
 	{
 		UHOLStealthRuleFilter Filter = Cast<UHOLStealthRuleFilter>(NewObject(Outer, UHOLStealthRuleFilter::StaticClass()));
@@ -49,15 +99,69 @@ class UHOLStealthInstaller : UScriptWorldSubsystem
 {
 	bool bInstalled = false;
 
+	// The stealth zones of the current map: the level name (Gameplay::GetCurrentLevelName) and the bounds of the map (AHOLMapBounds, as the biome
+	// applier reads them) feed the rule HOLStealthInstall::ZonesForMap. The centre is the middle of the map bounds (the camps' start positions are
+	// not readable from the script yet: CenterOfCamps is ready for them). No bounds or an open map: empty list, the game plays as before.
+	TArray<FHOLStealthZone> ZonesOfMap()
+	{
+		TArray<AHOLMapBounds> Bounds;
+		GetAllActorsOfClass(Bounds);
+		if (Bounds.Num() == 0)
+		{
+			TArray<FHOLStealthZone> None;
+			return None;
+		}
+		FVector Origin;
+		FVector Extent;
+		Bounds[0].GetActorBounds(false, Origin, Extent);
+		FString MapName = Gameplay::GetCurrentLevelName(true);
+		return HOLStealthInstall::ZonesForMap(MapName, FVector2D(Origin.X, Origin.Y), Math::Max(Extent.X, Extent.Y));
+	}
+
+	// The zones kept once installed (the same list the filter holds): the opacity of the local player's own units is posed from them.
+	TArray<FHOLStealthZone> Zones;
+
+	float ApplySeconds = 0.0;
+
+	// D824 Q3 B: the local player's own units are drawn half transparent inside a zone, opaque outside. One pass (UHOLStealthOwnApplier,
+	// HOLStealthOpacityApply.as: reads the units only with a zone, writes only the changes) per OwnOpacityPeriodSeconds, not per frame.
+	UHOLStealthOwnApplier Applier;
+
+	void ApplyOwnUnitOpacity()
+	{
+		if (Applier == nullptr)
+		{
+			Applier = Cast<UHOLStealthOwnApplier>(NewObject(this, UHOLStealthOwnApplier::StaticClass()));
+			Applier.WorldObject = this;
+			Applier.SetZones(Zones);
+		}
+		Applier.Pass();
+	}
+
 	UFUNCTION(BlueprintOverride)
 	void Tick(float DeltaTime)
 	{
 		if (bInstalled)
+		{
+			// No zone on the map: no work at all (no read of any unit).
+			if (Zones.Num() == 0)
+				return;
+			ApplySeconds += DeltaTime;
+			if (ApplySeconds < OwnOpacityPeriodSeconds)
+				return;
+			ApplySeconds = 0.0;
+			ApplyOwnUnitOpacity();
 			return;
+		}
 		UHOLVisionSubsystem Vision = UHOLVisionSubsystem::Get();
 		if (Vision == nullptr)
 			return;
-		Vision.SetStealthFilter(HOLStealthInstall::MakeFilter(this, Vision, HOLStealthInstall::ZonesOfMap()));
+		Zones = ZonesOfMap();
+		// One line per zone at install (the scenario stealth_zones reads the real level name and the real zone positions here).
+		Log(n"LogHOLMatch", f"StealthZones level {Gameplay::GetCurrentLevelName(true)} zones {Zones.Num()}");
+		for (int ZoneIndex = 0; ZoneIndex < Zones.Num(); ZoneIndex++)
+			Log(n"LogHOLMatch", f"StealthZone {ZoneIndex} center {Zones[ZoneIndex].Center.X} {Zones[ZoneIndex].Center.Y} half {Zones[ZoneIndex].HalfExtent.X} {Zones[ZoneIndex].HalfExtent.Y}");
+		Vision.SetStealthFilter(HOLStealthInstall::MakeFilter(this, Vision, Zones));
 		bInstalled = true;
 	}
 }

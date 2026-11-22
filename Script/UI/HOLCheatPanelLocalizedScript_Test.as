@@ -53,6 +53,30 @@ void Test_CheatPanelSpeedLabelsAreTranslated(FUnitTest& T)
 	T.AssertEquals("採集速度：x1.0", CheatSpeedLocalized("ja", 1), "ja: CheatGatherSpeedLabel");
 }
 
+// The six +1000 buttons' texts in a culture, joined like HOLCheatPanelRules::CheatLabelsText (which reads the CURRENT language).
+FString CheatButtonsLocalized(const FString& Culture)
+{
+	FString Joined = "";
+	for (int Index = 0; Index < HOLCheatPanelRules::FastBuildIndex(); Index++)
+		Joined += CheatLocalized(Culture, HOLCheatPanelText::CheatLabel(Index)) + "|";
+	return Joined;
+}
+
+// Real chain, independent of the editor's language: the panel shows the Japanese buttons, the language switches to English, only the six labels differ.
+void Test_CheatPanelSignatureSeesAResourceLabelLanguageSwitch(FUnitTest& T)
+{
+	const FString Ja = CheatButtonsLocalized("ja");
+	const FString En = CheatButtonsLocalized("en");
+	T.AssertTrue(Ja != En, "the two languages give different labels");
+	const FString Shown = HOLCheatPanelRules::LabelsSignature("t", "f", "u", "g", Ja);
+	const bool bStaleAfterSwitch = HOLCheatPanelRules::LabelsStale(Shown, "t", "f", "u", "g", En);
+	const bool bStaleSame = HOLCheatPanelRules::LabelsStale(Shown, "t", "f", "u", "g", Ja);
+	T.AssertTrue(bStaleAfterSwitch, "ja -> en on the six labels alone: stale");
+	T.AssertFalse(bStaleSame, "same language: not stale");
+	// The panel's own joined text (current language) is what the six labels give through the rule's helper.
+	T.AssertTrue(HOLCheatPanelRules::CheatLabelsText().Contains("1000") || HOLCheatPanelRules::CheatLabelsText().Contains("+165"), "the panel's joined labels carry the six buttons");
+}
+
 void Test_CheatPanelWoodStoneGoldLabelsInFrench(FUnitTest& T)
 {
 	// The three buttons HOLCheatPanelScript_Test.as does not cover in French (the C++ test loops on the seven): the source literals of the panel's own texts.

@@ -1,0 +1,1 @@
+# stealth_zones : aucune capture (essai LOGIQUE SEULEMENT : zone non peinte, materiau sans opacite). Objet attendu : l'unite #11 (Homme d'armes, slot 0) ; preuve = deux lignes du journal "StealthOwn opacity unit 11 = 0.5" puis "= 1.0".
