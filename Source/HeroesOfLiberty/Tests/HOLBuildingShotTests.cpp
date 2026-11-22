@@ -626,4 +626,45 @@ bool FHOLBuildingShotNoUnitTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLBuildingShotIdleVictimTest, "HeroesOfLiberty.Combat.BuildingShotIdleVictim", UE::HeroesOfLiberty::Tests::BuildingShot::Flags)
+
+// F8 T4 (CELEBORN-1122l): the only unit is an idle tough victim of the tower (no arrow in flight between two shots, nobody to search or to strike): the combat
+// processor's idle step skip (hol.Combat.FastIdle) must not hide those steps from the tower's countdown. The gap of the first two arrows is computed here from the
+// interval and the step; the measured fault was the countdown read one step in four (about four times the interval).
+bool FHOLBuildingShotIdleVictimTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::BuildingShot;
+	UDataTable* Table = const_cast<UDataTable*>(GetDefault<UHOLBuildingSettings>()->BuildingTypesTable.LoadSynchronous());
+	const FHOLBuildingTypeRow* HouseRow = Table ? Table->FindRow<FHOLBuildingTypeRow>(HOLBuildingTypeNames::House, TEXT("building shot idle victim test")) : nullptr;
+	IConsoleVariable* CombatEnabled = IConsoleManager::Get().FindConsoleVariable(TEXT("hol.Combat.Enabled"));
+	if (!TestNotNull(TEXT("the building type table and its House row"), HouseRow) || !TestNotNull(TEXT("hol.Combat.Enabled"), CombatEnabled))
+	{
+		return false;
+	}
+	const int32 FormerCombat = CombatEnabled->GetInt();
+	CombatEnabled->Set(1, ECVF_SetByCode);
+	FHOLBuildingTypeRow TowerRow = *HouseRow;
+	TowerRow.BuildingAttack = 5;
+	TowerRow.BuildingAttackInterval = 1.625f;
+	TowerRow.BuildingAttackRange = 3000.f;
+	TowerRow.BuildingFiresEmpty = true;
+	Table->AddRow(TestShotTowerType, TowerRow);
+	const int32 IntervalMs = HOLCombat::ToMilliseconds(TowerRow.BuildingAttackInterval);
+
+	FShotOptions Tough;
+	Tough.VictimHealth = 100000.f;
+	Tough.Seconds = 6.f;
+	const FShotResult Result = RunScenario(*this, EHOLConstructionState::Finished, 3, 1000.0, Tough);
+	if (TestTrue(TEXT("the scenario ran and released two arrows at least"), Result.bRan && Result.ReleaseSteps.Num() >= 2))
+	{
+		const int64 GapMs = static_cast<int64>(Result.ReleaseSteps[1] - Result.ReleaseSteps[0]) * Result.StepMs;
+		TestTrue(TEXT("the second arrow is one interval after the first (not earlier)"), GapMs >= IntervalMs);
+		TestTrue(TEXT("the second arrow is one interval after the first (not later than one step)"), GapMs < static_cast<int64>(IntervalMs) + Result.StepMs);
+		TestEqual(TEXT("the arrows of six seconds follow the cadence"), Result.ReleaseSteps.Num(), ExpectedArrows(Result.ReleaseSteps[0], IntervalMs, Result.StepMs, Result.Steps));
+	}
+
+	Table->RemoveRow(TestShotTowerType);
+	CombatEnabled->Set(FormerCombat, ECVF_SetByCode);
+	return true;
+}
 #endif // WITH_DEV_AUTOMATION_TESTS
