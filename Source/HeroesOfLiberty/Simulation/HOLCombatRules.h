@@ -122,11 +122,13 @@ namespace HOLCombat
 	 */
 	inline bool IsInBuildingShotRange(const FBox2D& Body, const FVector2D& UnitLocation, const float UnitRadius, const float Range)
 	{
-		(void)Body;
-		(void)UnitLocation;
-		(void)UnitRadius;
-		(void)Range;
-		return false;
+		if (Range <= 0.f)
+		{
+			return false;
+		}
+		const FVector2D Nearest(FMath::Clamp(UnitLocation.X, Body.Min.X, Body.Max.X), FMath::Clamp(UnitLocation.Y, Body.Min.Y, Body.Max.Y));
+		const double Reach = static_cast<double>(FMath::Max(UnitRadius, 0.f)) + static_cast<double>(Range);
+		return FVector2D::DistSquared(UnitLocation, Nearest) <= Reach * Reach;
 	}
 	/**
 	 * Share (0, 0.5 or 1) of the overlap of two bodies that the separation gives to A, the unit that looks for its
