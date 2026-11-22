@@ -588,4 +588,42 @@ bool FHOLBuildingShotGuardTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLBuildingShotNoUnitTest, "HeroesOfLiberty.Combat.BuildingShotNoUnit", UE::HeroesOfLiberty::Tests::BuildingShot::Flags)
+
+// F8 T5c (CELEBORN-1122k): the one unit alive is killed by the first arrow, so every following step has NO unit at all and Execute leaves at its
+// `Fighters.Num() == 0` return, before the buildings are met. The towers are then destroyed: their countdowns must be purged all the same (no leak without unit).
+bool FHOLBuildingShotNoUnitTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::BuildingShot;
+	UDataTable* Table = const_cast<UDataTable*>(GetDefault<UHOLBuildingSettings>()->BuildingTypesTable.LoadSynchronous());
+	const FHOLBuildingTypeRow* HouseRow = Table ? Table->FindRow<FHOLBuildingTypeRow>(HOLBuildingTypeNames::House, TEXT("building shot no unit test")) : nullptr;
+	IConsoleVariable* CombatEnabled = IConsoleManager::Get().FindConsoleVariable(TEXT("hol.Combat.Enabled"));
+	if (!TestNotNull(TEXT("the building type table and its House row"), HouseRow) || !TestNotNull(TEXT("hol.Combat.Enabled"), CombatEnabled))
+	{
+		return false;
+	}
+	const int32 FormerCombat = CombatEnabled->GetInt();
+	CombatEnabled->Set(1, ECVF_SetByCode);
+	FHOLBuildingTypeRow TowerRow = *HouseRow;
+	TowerRow.BuildingAttack = 5;
+	TowerRow.BuildingAttackInterval = 1.625f;
+	TowerRow.BuildingAttackRange = 3000.f;
+	TowerRow.BuildingFiresEmpty = true;
+	Table->AddRow(TestShotTowerType, TowerRow);
+
+	FShotOptions Alone;
+	Alone.VictimHealth = 1.f; // the first arrow kills it: no unit left afterwards
+	Alone.Seconds = 4.f;
+	Alone.Towers = 2;
+	Alone.bDestroyAtEnd = true;
+	const FShotResult Result = RunScenario(*this, EHOLConstructionState::Finished, 3, 1000.0, Alone);
+	TestTrue(TEXT("the scenario ran"), Result.bRan);
+	TestTrue(TEXT("the only unit was killed by an arrow (no unit left to gather)"), Result.bVictimDown);
+	TestEqual(TEXT("the towers destroyed with no unit alive: no countdown left behind"), Result.EntriesAfterDeath, 0);
+
+	Table->RemoveRow(TestShotTowerType);
+	CombatEnabled->Set(FormerCombat, ECVF_SetByCode);
+	return true;
+}
+
 #endif // WITH_DEV_AUTOMATION_TESTS
