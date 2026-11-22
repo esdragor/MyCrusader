@@ -115,6 +115,62 @@ Check (($Content -match 'REAL') -and ($Content -notmatch 'STUB')) 'integration b
 $Base0 = (Git $Repo merge-base main integ-real | Out-String).Trim()
 Check ($Base0 -eq $MainSha) 'integration branch still descends from the main it started from'
 
+# 7. A count of 0/0 (or no count at all) from quick_check -Parts tests is a FAIL, never a PASS (integ-50, 2026-11-22: a script did not compile,
+#    the tests of the reds gave 0/0, the tool wrote "FAIL attendu 0/0" + "rouges vus : aucun" and concluded PASS).
+#    quick_check is SIMULATED by an untracked fake Tools\Tests\quick_check.ps1 in the temp repo (the run is real, git included, no -SkipBuildTests):
+#    each "-Parts tests" call n prints $QcDir\tests<n>.txt (line 1 = exit code, the rest = output); any other -Parts prints "parts ok" and exits 0.
+$QcDir = Join-Path $Tmp 'qc'
+New-Item -ItemType Directory -Path $QcDir -Force | Out-Null
+Put $Repo 'Tools/Tests/quick_check.ps1' ("param([string]`$Parts = '')`r`n`$d = `$env:HOL_FAKE_QC_DIR`r`nif (`$Parts -ne 'tests') { 'parts ok'; exit 0 }`r`n`$nf = Join-Path `$d 'n.txt'`r`n`$n = 1 + [int](@(Get-Content `$nf -ErrorAction SilentlyContinue)[0])`r`nSet-Content -Path `$nf -Value `$n`r`n`$f = Join-Path `$d ('tests' + `$n + '.txt')`r`n`$lines = @(Get-Content `$f)`r`n`$lines | Select-Object -Skip 1`r`nexit ([int]`$lines[0])`r`n")
+$KoLine1 = "  [KO] scripts compiled (C:/x/Script/Fake/Broken_Test.as: (12:5): No matching signatures to 'Foo()')"
+$KoLine2 = 'red summary : 1 regression(s) : tests 0/0 ; 0 rouge(s) connu(s)'
+$script:CaseNo = 0
+function Run-Fake([string]$Reds, [string]$Greens, [string[]]$TestsFiles) {
+  $script:CaseNo++
+  Remove-Item (Join-Path $QcDir '*') -Force -ErrorAction SilentlyContinue
+  for ($i = 0; $i -lt $TestsFiles.Count; $i++) { [IO.File]::WriteAllText((Join-Path $QcDir ('tests' + ($i + 1) + '.txt')), $TestsFiles[$i]) }
+  Git $Repo checkout -q -f main | Out-Null
+  $env:HOL_FAKE_QC_DIR = $QcDir
+  $ToolArgs = @('-Root', $Repo, '-Branch', "integ-fake$($script:CaseNo)")
+  if ($Reds) { $ToolArgs += @('-Reds', $Reds) }
+  if ($Greens) { $ToolArgs += @('-Greens', $Greens) }
+  $Out = @(& powershell.exe -NoProfile -ExecutionPolicy Bypass -File $Tool @ToolArgs 2>&1 | ForEach-Object { "$_" })
+  return @{ Code = $LASTEXITCODE; Text = ($Out -join "`n") }
+}
+$RedOk = "1`ntests 1/2 : FAIL`nall green (failed: Fake.Case)`n"
+$GreenOk = "0`ntests 2/2 : PASS`n"
+
+# 7a. Reds give 0/0 and a script KO: FAIL, exact lines, "rouges vus : aucun (0/0)", the greens are never run.
+$R = Run-Fake $RedAs 'g1' @("1`ntests 0/0 : FAIL`n$KoLine1`n$KoLine2`n", $GreenOk)
+Check ($R.Code -eq 1) '0/0 in the red tests: exit 1 (was a PASS)' "code=$($R.Code) out=$($R.Text)"
+Check ($R.Text -match 'INTEGRATE integ-fake1 : FAIL') '0/0 in the red tests: summary says FAIL' $R.Text
+Check ($R.Text -match 'rouges vus : aucun \(0/0\)') '0/0 in the red tests: "rouges vus : aucun (0/0)"' $R.Text
+Check (($R.Text -match 'scripts compiled') -and ($R.Text -match 'Broken_Test\.as: \(12:5\)')) '0/0 in the red tests: the "scripts compiled" KO and the .as error line are in the summary' $R.Text
+Check ($R.Text -match 'tests verts : NON LANCE') '0/0 in the red tests: the greens are not run' $R.Text
+
+# 7b. Reds give no count at all (the tool crashed / printed nothing usable): same FAIL.
+$R = Run-Fake $RedAs 'g1' @("1`nsomething went wrong`n", $GreenOk)
+Check ($R.Code -eq 1) 'no count in the red tests: exit 1' "code=$($R.Code) out=$($R.Text)"
+Check ($R.Text -match 'rouges vus : aucun \(0/0\)') 'no count in the red tests: "rouges vus : aucun (0/0)"' $R.Text
+
+# 7c. Reds seen red (1/2, a failed name), greens 2/2: still a PASS, the red is named.
+$R = Run-Fake $RedAs 'g1' @($RedOk, $GreenOk)
+Check ($R.Code -eq 0) 'reds 1/2 then greens 2/2: exit 0 (rule untouched)' "code=$($R.Code) out=$($R.Text)"
+Check ($R.Text -match 'rouges vus : Fake\.Case') 'reds 1/2: the red seen is named' $R.Text
+
+# 7d. Greens give 0/0 (exit 0 or not): FAIL.
+$R = Run-Fake $RedAs 'g1' @($RedOk, "0`ntests 0/0 : PASS`n$KoLine1`n$KoLine2`n")
+Check ($R.Code -eq 1) '0/0 in the green tests: exit 1' "code=$($R.Code) out=$($R.Text)"
+Check (($R.Text -match 'INTEGRATE integ-fake4 : FAIL') -and ($R.Text -match 'tests verts : FAIL') -and ($R.Text -match 'Broken_Test\.as: \(12:5\)')) '0/0 in the green tests: summary FAIL with the .as error line' $R.Text
+
+# 7e. No reds (-Reds empty): the red stage is untouched (skipped), greens 2/2 -> PASS ; greens 0/0 -> FAIL.
+$R = Run-Fake '' 'g1' @($GreenOk)
+Check ($R.Code -eq 0) 'no reds, greens 2/2: exit 0' "code=$($R.Code) out=$($R.Text)"
+Check (($R.Text -match 'tests rouges : SKIP \(pas de rouge\)') -and ($R.Text -notmatch 'rouges vus : aucun \(0/0\)')) 'no reds: tests rouges SKIP, no 0/0 verdict on the red stage' $R.Text
+$R = Run-Fake '' 'g1' @("0`ntests 0/0 : PASS`n")
+Check ($R.Code -eq 1) 'no reds, greens 0/0: exit 1' "code=$($R.Code) out=$($R.Text)"
+Git $Repo checkout -q -f main | Out-Null
+
 Remove-Item -Recurse -Force $Tmp -ErrorAction SilentlyContinue
 Write-Output "integrate_test : $(if ($Fails) { "$Fails FAIL" } else { 'PASS' })"
 if ($Fails) { exit 1 } else { exit 0 }

@@ -9,7 +9,7 @@
 # -DryRun : imprime le plan (lignes "PLAN <n> <genre> : <commande>" ou "... : SKIP (<raison>)") sans rien creer ni lancer (lit seulement git).
 # `powershell -File` passe une liste en UN SEUL argument ("a,b") : -Reds, -Greens et -Parts sont des chaines coupees aux virgules ici
 # (piege du 2026-11-20 : "liste lue comme un seul nom"). -Parts est transmis tel quel a quick_check (qui coupe lui aussi).
-# Codes : 0 PASS ; 1 FAIL (build, tests) ; 2 conflit (etat laisse tel quel, fichiers en conflit imprimes) ; 3 usage / reference inconnue.
+# Codes : 0 PASS ; 1 FAIL (build, tests, ou compte 0/0 / aucun compte de tests lu, rouges comme verts) ; 2 conflit (etat laisse tel quel, fichiers en conflit imprimes) ; 3 usage / reference inconnue.
 param(
   [string] $Root = '',
   [string] $Branch = '',
@@ -89,6 +89,7 @@ Set-Content -Path $LogPath -Value "integrate $Branch $(Get-Date -Format 'yyyy-MM
 $Started = Get-Date
 $Rows = [ordered]@{}        # stage -> text of the summary line
 $RedsSeen = @()
+$RedsNote = ''
 function Log([string] $Line) { Write-Output $Line; Add-Content -Path $LogPath -Value $Line -Encoding ASCII }
 function Run-Native([string] $Command) {
   # Runs one command line, mirrors the output to the log, returns @{ Code; Out }.
@@ -102,7 +103,7 @@ function Write-Summary([string] $Verdict) {
   foreach ($Key in 'branche+rouges', 'build rouges', 'tests rouges', 'remise a main', 'merge verts', 'build verts', 'tests verts', "parts $PartsText") {
     $Lines += "  $Key : $(if ($Rows.Contains($Key)) { $Rows[$Key] } else { 'NON LANCE' })"
   }
-  $Lines += "  rouges vus : $(if ($RedsSeen.Count) { $RedsSeen -join ', ' } else { 'aucun' }) ; sortie complete : Docs\Integrate_$Branch.log"
+  $Lines += "  rouges vus : $(if ($RedsSeen.Count) { $RedsSeen -join ', ' } else { if ($RedsNote) { $RedsNote } else { 'aucun' } }) ; sortie complete : Docs\Integrate_$Branch.log"
   Set-Content -Path $SummaryPath -Value $Lines -Encoding ASCII
   $Lines | ForEach-Object { Write-Output $_ }
 }
@@ -122,7 +123,12 @@ function Qc-Result($Run) {
   $Names = @()
   if ($Text -match 'all green \(failed: ([^)]*)\)') { $Names = @($Matches[1] -split ',\s*' | Where-Object { $_ }) }
   $Known = ($Text -match 'rouge connu') -and ($Text -notmatch 'REGRESSION')
-  return @{ Ok = ($Run.Code -eq 0) -or $Known; Count = $Count; Names = $Names }
+  # 0/0 (a script did not compile: "scripts compiled" KO) or no count read at all = no test ran: never a verdict (integ-50, 2026-11-22).
+  $NoTests = $true
+  if ($Text -match 'tests (\d+)/(\d+) : (PASS|FAIL)') { $NoTests = ([int]$Matches[2] -eq 0) }
+  $KoLines = @($Run.Out | Where-Object { ($_ -match 'scripts compiled') -or (($_ -match '\.as') -and ($_ -match '\[KO\]|error')) } | ForEach-Object { $_.Trim() } | Select-Object -First 3)
+  $Ko = ($KoLines | ForEach-Object { if ($_.Length -gt 400) { $_.Substring(0, 400) } else { $_ } }) -join ' | '
+  return @{ Ok = ($Run.Code -eq 0) -or $Known; Count = $Count; Names = $Names; NoTests = ($NoTests -and -not $SkipBuildTests); Ko = $Ko }
 }
 
 # 1. Branch + reds.
@@ -156,6 +162,12 @@ if ($RedList.Count) {
   $Run = Run-Native "$QcCmd -Parts tests"
   $Result = Qc-Result $Run
   $RedsSeen = $Result.Names
+  if ($Result.NoTests) {
+    $RedsNote = 'aucun (0/0)'
+    $Rows['tests rouges'] = "FAIL $(if ($Result.Count) { $Result.Count } else { 'aucun nombre de tests lu' }) : aucun test lance, les rouges ne sont pas vus ($(Stage-Time $Since))$(if ($Result.Ko) { ' : ' + $Result.Ko })"
+    Write-Summary 'FAIL (tests rouges 0/0)'
+    exit 1
+  }
   $Rows['tests rouges'] = "$(if ($Result.Ok) { 'PASS : AUCUN rouge vu (les rouges sont-ils de vrais rouges ?)' } else { 'FAIL attendu' }) $($Result.Count) ($(Stage-Time $Since))"
 } else { $Rows['build rouges'] = 'SKIP (pas de rouge)'; $Rows['tests rouges'] = 'SKIP (pas de rouge)' }
 
@@ -186,6 +198,7 @@ $Since = Get-Date
 Log 'integrate : tests (apres les verts) ...'
 $Run = Run-Native "$QcCmd -Parts tests"
 $Result = Qc-Result $Run
+if ($Result.NoTests) { $Rows['tests verts'] = "FAIL $(if ($Result.Count) { $Result.Count } else { 'aucun nombre de tests lu' }) : aucun test lance ($(Stage-Time $Since))$(if ($Result.Ko) { ' : ' + $Result.Ko })"; Write-Summary 'FAIL (tests verts 0/0)'; exit 1 }
 if (-not $Result.Ok) { $Rows['tests verts'] = "FAIL $($Result.Count) ($(Stage-Time $Since)) : $($Result.Names -join ', ')"; Write-Summary 'FAIL (tests)'; exit 1 }
 $Rows['tests verts'] = "PASS $($Result.Count) ($(Stage-Time $Since))"
 $Since = Get-Date

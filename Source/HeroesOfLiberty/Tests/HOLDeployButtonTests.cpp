@@ -1136,4 +1136,177 @@ bool FHOLDeployAttackCutsOpenMarchTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+// ELROND-1122e (D882, option B; D877 unchanged): a Stop during the player's march CUTS it and the engine STAYS packed ("demonte"); it mounts only by
+// the button D, an attack, or the NORMAL end of a walk. Real chain (queue, order processor, deploy processor, combat); no movement system runs in
+// this harness, so a stand-in mover advances the engine 50 cm a step while its walk is open, and closes the walk (Phase None) on arrival as the
+// Mass movement does. Effect measured: the engine's phase (Packed all along after the Stop; Deploying or Deployed after a normal arrival).
+namespace HOLDeployStopMarch
+{
+	void Run(FAutomationTestBase& Test, const bool bStop)
+	{
+		IConsoleVariable* CombatEnabled = IConsoleManager::Get().FindConsoleVariable(TEXT("hol.Combat.Enabled"));
+		IConsoleVariable* Deployable = IConsoleManager::Get().FindConsoleVariable(TEXT("hol.Siege.Deployable"));
+		if (!Test.TestNotNull(TEXT("hol.Combat.Enabled"), CombatEnabled) || !Test.TestNotNull(TEXT("hol.Siege.Deployable"), Deployable))
+		{
+			return;
+		}
+		const int32 FormerEnabled = CombatEnabled->GetInt();
+		const int32 FormerDeployable = Deployable->GetInt();
+		CombatEnabled->Set(1, ECVF_SetByCode);
+		Deployable->Set(1, ECVF_SetByCode);
+
+		UWorld* World = UWorld::CreateWorld(EWorldType::Game, /*bInformEngineOfWorld*/ false);
+		FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);
+		Context.SetCurrentWorld(World);
+		World->InitializeActorsForPlay(FURL());
+		AHOLGameState* GameState = World->SpawnActor<AHOLGameState>();
+		World->SetGameState(GameState);
+		UHOLUnitSubsystem* Units = World->GetSubsystem<UHOLUnitSubsystem>();
+		UHOLSimulationSubsystem* Simulation = World->GetSubsystem<UHOLSimulationSubsystem>();
+		UMassEntitySubsystem* EntitySubsystem = World->GetSubsystem<UMassEntitySubsystem>();
+		if (Test.TestNotNull(TEXT("units"), Units) && Test.TestNotNull(TEXT("simulation"), Simulation) && Test.TestNotNull(TEXT("entities"), EntitySubsystem))
+		{
+			TSharedPtr<FMassEntityManager> EntityManager = EntitySubsystem->GetMutableEntityManager().AsShared();
+			UHOLUnitOrderProcessor* Orders = NewObject<UHOLUnitOrderProcessor>(Simulation);
+			Orders->CallInitialize(Simulation, EntityManager.ToSharedRef());
+			UHOLDeployProcessor* Deploy = NewObject<UHOLDeployProcessor>(Simulation);
+			Deploy->CallInitialize(Simulation, EntityManager.ToSharedRef());
+			UHOLCombatProcessor* Combat = NewObject<UHOLCombatProcessor>(Simulation);
+			Combat->CallInitialize(Simulation, EntityManager.ToSharedRef());
+			const float StepSeconds = GetDefault<UHOLSimulationSettings>()->GetStepSeconds();
+			const auto RunStep = [Simulation, Units, Orders, Deploy, Combat, &EntityManager, StepSeconds]
+			{
+				const int64 Step = Simulation->AdvanceStepIndexForTests();
+				Simulation->GetOnStepStarted().Broadcast(Step);
+				Units->ServeBirthRequests();
+				FMassProcessingContext ProcessingContext(EntityManager, StepSeconds);
+				UE::Mass::Executor::Run(*Orders, ProcessingContext);
+				UE::Mass::Executor::Run(*Deploy, ProcessingContext);
+				UE::Mass::Executor::Run(*Combat, ProcessingContext);
+				Units->FlushDestructions();
+				Simulation->GetOnStepEnded().Broadcast(Step);
+			};
+			TArray<uint32> Before;
+			Units->GetAllUnitIds(Before);
+			FHOLUnitSpawnRequest Request;
+			Request.TypeName = FName(TEXT("Mangonel"));
+			Request.Count = 1;
+			Request.OwnerPlayer = 0;
+			Request.Center = FVector::ZeroVector;
+			Units->RequestUnits(Request);
+			Units->ServeBirthRequests();
+			TArray<uint32> After;
+			Units->GetAllUnitIds(After);
+			uint32 Engine = 0;
+			for (const uint32 Id : After)
+			{
+				Engine = Before.Contains(Id) ? Engine : Id;
+			}
+			if (Test.TestTrue(TEXT("the deployable Mangonel born"), Engine != 0))
+			{
+				const FMassEntityHandle EngineEntity = Units->FindEntity(Engine);
+				const double GoalX = 1000.0;
+				const auto PhaseOf = [&EntityManager, EngineEntity]
+				{
+					const FHOLDeployFragment* Fragment = EntityManager->GetFragmentDataPtr<FHOLDeployFragment>(EngineEntity);
+					return Fragment ? static_cast<int32>(Fragment->Phase) : -1;
+				};
+				const auto XOf = [&EntityManager, EngineEntity]
+				{
+					const FTransformFragment* At = EntityManager->GetFragmentDataPtr<FTransformFragment>(EngineEntity);
+					return At ? At->GetTransform().GetLocation().X : -1.0;
+				};
+				// The stand-in mover: 50 cm a step while the walk is open and the engine packed; the walk closes on arrival (as Mass does).
+				const auto MoveIfWalking = [&EntityManager, EngineEntity, GoalX]
+				{
+					FHOLMoveOrderFragment* Order = EntityManager->GetFragmentDataPtr<FHOLMoveOrderFragment>(EngineEntity);
+					FTransformFragment* Transform = EntityManager->GetFragmentDataPtr<FTransformFragment>(EngineEntity);
+					const FHOLDeployFragment* Fragment = EntityManager->GetFragmentDataPtr<FHOLDeployFragment>(EngineEntity);
+					if (Order && Transform && Fragment && Order->Phase != EHOLMovePhase::None && Fragment->Phase == static_cast<uint8>(HOLDeploy::EPhase::Packed))
+					{
+						FVector Location = Transform->GetTransform().GetLocation();
+						Location.X = FMath::Min(Location.X + 50.0, GoalX);
+						Transform->GetMutableTransform().SetLocation(Location);
+						if (Location.X >= GoalX)
+						{
+							Order->Phase = EHOLMovePhase::None;
+						}
+					}
+				};
+				const TArray<uint32> Mine = { Engine };
+				Test.TestTrue(TEXT("a player march order enters the queue"), HOLPlayerOrders::Move(*World, 0, Mine, FVector(GoalX, 0.0, 0.0)));
+				RunStep();
+				{
+					const FHOLDeployFragment* Marching = EntityManager->GetFragmentDataPtr<FHOLDeployFragment>(EngineEntity);
+					Test.TestTrue(TEXT("precondition: the march is open and noted (bMarching = 1)"), Marching && Marching->bMarching == 1);
+				}
+				Test.TestEqual(TEXT("precondition: the engine is born packed"), PhaseOf(), static_cast<int32>(HOLDeploy::EPhase::Packed));
+				for (int32 Index = 0; Index < 5; ++Index)
+				{
+					MoveIfWalking();
+					RunStep();
+				}
+				Test.TestTrue(TEXT("precondition: the march is under way, not over (250 cm of 1000)"), XOf() > 0.0 && XOf() < GoalX);
+				if (bStop)
+				{
+					const double StopX = XOf();
+					Test.TestTrue(TEXT("the Stop order enters the queue"), HOLPlayerOrders::Stop(*World, 0, Mine, false));
+					RunStep();
+					const FHOLDeployFragment* Cut = EntityManager->GetFragmentDataPtr<FHOLDeployFragment>(EngineEntity);
+					const FHOLMoveOrderFragment* CutOrder = EntityManager->GetFragmentDataPtr<FHOLMoveOrderFragment>(EngineEntity);
+					Test.TestTrue(TEXT("the Stop cut the march note (bMarching = 0)"), Cut && Cut->bMarching == 0);
+					Test.TestTrue(TEXT("the Stop closed the walk"), CutOrder && CutOrder->Phase == EHOLMovePhase::None);
+					// N seconds: the engine must not mount by itself (no "march ended" read from the cut walk).
+					const int32 HoldSteps = FMath::CeilToInt(10.f / StepSeconds);
+					bool bLeftPacked = false;
+					for (int32 Index = 0; Index < HoldSteps; ++Index)
+					{
+						MoveIfWalking();
+						RunStep();
+						bLeftPacked |= PhaseOf() != static_cast<int32>(HOLDeploy::EPhase::Packed);
+					}
+					Test.TestFalse(TEXT("after a Stop during the march the engine never leaves Packed by itself (D882 B)"), bLeftPacked);
+					Test.TestEqual(TEXT("after a Stop during the march the engine is still packed 10 s later"), PhaseOf(), static_cast<int32>(HOLDeploy::EPhase::Packed));
+					Test.TestTrue(TEXT("the engine did not walk on after the Stop"), XOf() <= StopX + 1.0);
+				}
+				else
+				{
+					// D877 counter-case: the march ends NORMALLY (the walk closes on arrival) while packed: the engine mounts by itself.
+					bool bMounted = false;
+					for (int32 Index = 0; Index < 200 && !bMounted; ++Index)
+					{
+						MoveIfWalking();
+						RunStep();
+						bMounted = PhaseOf() != static_cast<int32>(HOLDeploy::EPhase::Packed);
+					}
+					Test.TestTrue(TEXT("the engine reached the end of its march"), XOf() >= GoalX);
+					Test.TestTrue(TEXT("D877: a march that ends normally while packed mounts the engine (Deploying or Deployed)"), bMounted);
+				}
+				const TArray<uint32> Gone = { Engine };
+				Units->RequestDestroyUnits(Gone);
+				Units->FlushDestructions();
+			}
+		}
+		CombatEnabled->Set(FormerEnabled, ECVF_SetByCode);
+		Deployable->Set(FormerDeployable, ECVF_SetByCode);
+		GEngine->DestroyWorldContext(World);
+		World->DestroyWorld(false);
+	}
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLDeployStopCutsMarchStaysPackedTest, "HeroesOfLiberty.Siege.Deploy.StopDuringMarchStaysPackedAndDoesNotMountByItself", UE::HeroesOfLiberty::Tests::DeployButton::Flags)
+
+bool FHOLDeployStopCutsMarchStaysPackedTest::RunTest(const FString& Parameters)
+{
+	HOLDeployStopMarch::Run(*this, true);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLDeployNormalMarchEndMountsTest, "HeroesOfLiberty.Siege.Deploy.NormalMarchEndWhilePackedMountsTheEngine", UE::HeroesOfLiberty::Tests::DeployButton::Flags)
+
+bool FHOLDeployNormalMarchEndMountsTest::RunTest(const FString& Parameters)
+{
+	HOLDeployStopMarch::Run(*this, false);
+	return true;
+}
 #endif // WITH_DEV_AUTOMATION_TESTS
