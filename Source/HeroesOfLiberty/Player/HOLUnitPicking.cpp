@@ -99,10 +99,23 @@ namespace HOLUnitPicking
 		return Indices.IsValidIndex(Picked) ? Indices[Picked] : INDEX_NONE;
 	}
 
-	// RED STUB (GLORFINDEL-1122g): compiles, ignores bOwnUnitsFollowable; the green commit applies it.
 	int32 PickFollowAt(TConstArrayView<FHOLAllyCandidate> Candidates, TConstArrayView<uint32> Excluded, const FVector2D& Cursor, const bool bOwnUnitsFollowable)
 	{
-		return PickAllyAt(Candidates, Excluded, Cursor);
+		// hol.Follow.OwnUnits 1: the plain ally pick. 0: an own unit is marked neutral in a copy (never taken, the indices stay those of Candidates),
+		// exactly as the selection is skipped through Excluded: the unit behind it, a teammate's, can still be taken.
+		if (bOwnUnitsFollowable)
+		{
+			return PickAllyAt(Candidates, Excluded, Cursor);
+		}
+		TArray<FHOLAllyCandidate> Followable(Candidates.GetData(), Candidates.Num());
+		for (FHOLAllyCandidate& Candidate : Followable)
+		{
+			if (Candidate.bOwn)
+			{
+				Candidate.bNeutral = true;
+			}
+		}
+		return PickAllyAt(Followable, Excluded, Cursor);
 	}
 
 	void PickInBox(TConstArrayView<FHOLPickCandidate> Candidates, const FVector2D& CornerA, const FVector2D& CornerB, TArray<int32>& OutIndices)

@@ -142,6 +142,11 @@ namespace UE::HeroesOfLiberty::Player
 		TEXT(""),
 		TEXT("Cursor position seen by the RTS camera's edge scrolling, \"X Y\" in 0..1 of the viewport (empty or off: the real cursor). For scripted checks (D257), never the desktop's cursor."));
 
+	TAutoConsoleVariable<int32> CVarFollowOwnUnits(
+		TEXT("hol.Follow.OwnUnits"),
+		0,
+		TEXT("0 (default): a unit of the local player is never a Follow target of the right click (it stays a move); a teammate's unit is. 1: any unit of the player outside the selection can be followed (the coded behaviour of 6494b40). Heal is not affected: an own or allied unit stays healable (Q-follow-own-units, GLORFINDEL-1122g)."));
+
 	const UInputAction* LoadAction(const TCHAR* Name)
 	{
 		return LoadObject<UInputAction>(nullptr, *FString::Printf(TEXT("%s%s.%s"), ActionFolder, Name, Name));
@@ -1189,7 +1194,7 @@ uint32 AHOLPlayerController::FindTargetAt(const FVector2D& ViewportFraction, boo
 	return UnitIds.IsValidIndex(Index) ? UnitIds[Index] : 0;
 }
 
-uint32 AHOLPlayerController::FindAllyAt(const FVector2D& ViewportFraction, TConstArrayView<uint32> Excluded) const
+uint32 AHOLPlayerController::FindAllyAt(const FVector2D& ViewportFraction, TConstArrayView<uint32> Excluded, const bool bSkipOwn) const
 {
 	const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
 	if (!HOLPlayerState)
@@ -1210,9 +1215,11 @@ uint32 AHOLPlayerController::FindAllyAt(const FVector2D& ViewportFraction, TCons
 		Ally.UnitId = UnitIds[Index];
 		Ally.bHostile = !HOLUnitView::Find(*GetWorld(), UnitIds[Index], View) || Camps.AreHostile(View.OwnerPlayer, HOLPlayerState->GetPlayerIndex());
 		Ally.bNeutral = View.OwnerPlayer == FHOLMatchConfig::NeutralOwner;
+		Ally.bOwn = View.OwnerPlayer == HOLPlayerState->GetPlayerIndex();
 		Allies.Add(Ally);
 	}
-	const int32 Index = HOLUnitPicking::PickAllyAt(Allies, Excluded, ToPixels(ViewportFraction));
+	// A heal takes any ally or own unit; a follow with hol.Follow.OwnUnits 0 skips the own ones (bSkipOwn, HOLUnitPicking::PickFollowAt).
+	const int32 Index = HOLUnitPicking::PickFollowAt(Allies, Excluded, ToPixels(ViewportFraction), !bSkipOwn);
 	return UnitIds.IsValidIndex(Index) ? UnitIds[Index] : 0;
 }
 
@@ -1484,7 +1491,8 @@ void AHOLPlayerController::OrderAt(const FVector2D& ViewportFraction, const bool
 		// Follow (GDD 7.3, D818 Q1 C, GLORFINDEL-1121sk): an ally's unit under the cursor, outside the selection: the selected units become its bodyguards (the script rule,
 		// Script/Orders/HOLFollowOrders.as, through UHOLFollowBridge; the Move / Attack orders are then sent by its Step from Tick). Not a unit of the selection: the ground path.
 		// The ally is looked for again without the selection: a unit of the selection drawn there is skipped (FindAllyAt).
-		const uint32 FollowId = (!Source && !EnemyBuilding) ? FindAllyAt(ViewportFraction, Own) : 0;
+		// hol.Follow.OwnUnits 0 (default): an own unit is not a follow target either, the click stays a move (Q-follow-own-units); a teammate's is.
+		const uint32 FollowId = (!Source && !EnemyBuilding) ? FindAllyAt(ViewportFraction, Own, UE::HeroesOfLiberty::Player::CVarFollowOwnUnits.GetValueOnGameThread() == 0) : 0;
 		if (FollowId != 0 && HOLUnitView::Find(*GetWorld(), FollowId, Under))
 		{
 			TArray<int32> SelectedIds;

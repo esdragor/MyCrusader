@@ -122,9 +122,9 @@ public:
 	/**
 	 * An ally's (or the player's own) unit a right click there takes to heal or follow (GLORFINDEL-1122e): the one whose
 	 * drawn body holds the point (no margin, HOLUnitPicking::PickAllyAt), never an enemy, a neutral unit nor one of
-	 * Excluded (a follow passes the selection); 0 when none. FindTargetAt only gathers the hostile units.
+	 * Excluded (a follow passes the selection) and, with bSkipOwn (a follow with hol.Follow.OwnUnits 0), none of the player's own; 0 when none. FindTargetAt only gathers the hostile units.
 	 */
-	uint32 FindAllyAt(const FVector2D& ViewportFraction, TConstArrayView<uint32> Excluded) const;
+	uint32 FindAllyAt(const FVector2D& ViewportFraction, TConstArrayView<uint32> Excluded, bool bSkipOwn = false) const;
 	/**
 	 * The standing resource source drawn under a point of the viewport, the one in front (J5, D298), or INDEX_NONE. A
 	 * linked source (a farm field, IA1.2 F7) is never taken: the click falls on its building.

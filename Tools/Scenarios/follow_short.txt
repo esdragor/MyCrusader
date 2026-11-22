@@ -1,6 +1,8 @@
 # L22-5 / GLORFINDEL-1122d : le pont de Suivre (UHOLFollowBridge, instance du controleur) s'EXECUTE : 4 Hommes d'armes (hol.Select.Army) font un vrai clic droit sur un Paysan allie hors selection (hol.Select.OrderNear vise le Paysan : chemin AHOLPlayerController -> UHOLFollowBridge::NativeRightClickOnUnit -> script RightClickOnUnit, ligne "FollowBridge: follow started"), puis le Paysan marche (clic droit au sol, selection du Paysan seul) et les hommes le suivent (releves hol.Units.Where espaces de plusieurs secondes : #1-#4 hommes, #5 Paysan), puis un clic droit au sol des hommes passe par NativeManualOrder : ligne "FollowBridge: manual order ended". Plain, un joueur (follow_short.json). Moins de 60 s.
 # 1122d : positions ABSOLUES (hol.Units.Spawn n x y slot Type rayon, HOLUnitSubsystem.cpp:88) : SpawnHere dispersait les unites autour du focus camera (1122c : le Paysan a (-17032, 1185), clic a (-14800, 4500) dans le vide). Centre principal slot 0 = (-14800, 0) : OrderNear dx dy = (-14800 + dx, dy).
 hol.Cheat.Resources 5000
+# GLORFINDEL-1122g : le defaut de hol.Follow.OwnUnits est 0 (une unite a SOI n'est jamais cible de Suivre) ; le Paysan de ce scenario est a soi (slot 0, un seul joueur : pas de coequipier), donc le scenario pose 1 explicitement pour prouver le pont de Suivre.
+hol.Follow.OwnUnits 1
 hol.Cheat.Population 200
 hol.Camera.FocusNear 0 3500
 frames 2
