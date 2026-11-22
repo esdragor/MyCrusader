@@ -2,6 +2,7 @@
 #include "Simulation/HOLMoraleProcessor.h"
 
 #include "Engine/World.h"
+#include "Match/HOLFactionRules.h"
 #include "Match/HOLMatchConfig.h"
 #include "MassCommonFragments.h"
 #include "MassCommonTypes.h"
@@ -60,7 +61,15 @@ void UHOLMoraleProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 	const HOLMorale::FHOLMoraleEffect Banner = HOLMorale::MakeEffectFromRow(HOLMoraleTableRows::HOLMoraleBanner);
 	const double DawnRadiusSquared = DawnRow ? static_cast<double>(DawnRow->RadiusCm) * static_cast<double>(DawnRow->RadiusCm) : 0.0;
 	TArray<FAuraSource> HeroPlaces; // where each living hero stands: the cry is laid from there (one source with the Dawn aura's, kept apart)
-	EntityQuery.ForEachEntityChunk(Context, [StepMs, DawnRow, DawnRadiusSquared, &Dawn, &Sources, &HeroPlaces](FMassExecutionContext& Chunk)
+	// D880: the passive Dawn aura is laid by the heroes of a player of the DAWN faction only (the faction of the PLAYER, not the unit type). The cry
+	// and the banner are not concerned (HeroPlaces keeps every hero). The faction is read once per slot per step here, never per entity.
+	const UWorld* World = GetWorld();
+	bool bSlotLaysDawnAura[FHOLMatchConfig::MaxSlots];
+	for (int32 Slot = 0; Slot < FHOLMatchConfig::MaxSlots; ++Slot)
+	{
+		bSlotLaysDawnAura[Slot] = HOLFactionRules::GetSlotFactionKey(World, Slot) == FName(TEXT("Dawn"));
+	}
+	EntityQuery.ForEachEntityChunk(Context, [StepMs, DawnRow, DawnRadiusSquared, &Dawn, &Sources, &HeroPlaces, &bSlotLaysDawnAura](FMassExecutionContext& Chunk)
 	{
 		const TArrayView<FHOLMoraleFragment> Fragments = Chunk.GetMutableFragmentView<FHOLMoraleFragment>();
 		const TConstArrayView<FHOLUnitStateFragment> States = Chunk.GetFragmentView<FHOLUnitStateFragment>();
@@ -76,7 +85,8 @@ void UHOLMoraleProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 				const FVector Location = Transforms[Index].GetTransform().GetLocation();
 				HeroPlaces.Add({ FVector2D(Location.X, Location.Y), States[Index].OwnerPlayer, 0.0, Dawn });
 			}
-			if (DawnRow != nullptr && bHero && States[Index].CurrentHealth > 0.f)
+			if (DawnRow != nullptr && bHero && States[Index].CurrentHealth > 0.f
+				&& (States[Index].OwnerPlayer >= FHOLMatchConfig::MaxSlots || bSlotLaysDawnAura[States[Index].OwnerPlayer])) // a slot out of the table reads as the Dawn's, like GetSlotFactionKey
 			{
 				const FVector Location = Transforms[Index].GetTransform().GetLocation();
 				Sources.Add({ FVector2D(Location.X, Location.Y), States[Index].OwnerPlayer, DawnRadiusSquared, Dawn });
@@ -84,7 +94,6 @@ void UHOLMoraleProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 		}
 	});
 	// The banners standing, even once their hero is dead (J8c-Q3).
-	const UWorld* World = GetWorld();
 	UHOLHeroSubsystem* Heroes = World ? World->GetSubsystem<UHOLHeroSubsystem>() : nullptr;
 	// The cries cast since the last step (J8c-Q2; the cry is consumed here, the combat no longer reads it): from each crying hero's place, the row CloseRanks
 	// effect (a timed effect: it stays its whole duration, then the Tick takes it off) is laid on the units of his camp within the row's radius.

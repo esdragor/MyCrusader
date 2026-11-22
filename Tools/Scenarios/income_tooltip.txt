@@ -39,7 +39,8 @@ frames 5
 capture income_tip_en
 # 4. JA: "/分", not "/min".
 hol.UI.Language ja
-wait 1
+# GALADRIEL-1122c: 10 frames like the EN switch (a 1 s game wait lasted ~1 frame: the hover read the cell's centre before the JA layout, 192,27 on an SBorder).
+frames 10
 hol.Mouse.Hover 20 300 5
 waitlog Mouse hover 20,300
 hol.Mouse.Hover WoodAmount 30
@@ -47,6 +48,15 @@ waitlog tooltip shown, tip text ""
 frames 5
 capture income_tip_ja
 hol.UI.Language fr
+# 5. GALADRIEL-1122c: no banner (panel hide: SetBannerRect(0,0,0)): the gold tooltip stays at its natural place under the bar.
+panel hide
+frames 10
+hol.Mouse.Hover 20 300 5
+waitlog Mouse hover 20,300
+hol.Mouse.Hover GoldAmount 30
+waitlog tooltip shown, tip text ""
+frames 5
+capture income_tip_gold_nobanner
 note Survole un montant de la barre du haut (bois, or...) : l'infobulle donne le revenu par minute de cette ressource, trajets compris.
 # The scenario's real end: an agent's play.ps1 -Hidden closes here instead of at its -TimeoutSec; the user's own run ignores it and plays on.
 quit

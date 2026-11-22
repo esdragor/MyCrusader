@@ -1,0 +1,7 @@
+# <nom de capture> | ce que l'utilisateur doit voir
+follow_crowd_start | Une masse serree de 20 unites en damier : 10 Hommes d'armes selectionnes (cercles) et 10 Paysans non selectionnes entre eux, en haut de l'image
+follow_crowd_body_peasant | Apres le clic droit sur le corps d'un Paysan dans la masse : l'etat de la masse (les Hommes d'armes suivent le Paysan ou se deplacent vers le point)
+follow_crowd_body_selected | Apres le clic droit sur le corps d'un Homme d'armes selectionne : l'etat de la masse
+follow_crowd_ground | Apres le clic droit au sol a gauche de la masse : les Hommes d'armes marchent vers la gauche
+follow_crowd_heal_start | Un Moine selectionne et deux Hommes d'armes (un blesse) alignes sous la masse
+follow_crowd_heal_done | Apres le clic droit du Moine sur l'Homme d'armes blesse : le Moine est a son contact (barre de vie du blesse plus pleine qu'au depart)

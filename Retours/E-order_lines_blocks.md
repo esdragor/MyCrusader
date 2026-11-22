@@ -5,6 +5,7 @@ GESTE: interne (commande `hol.Select.OrderGround`, pas un vrai clic droit : à r
 SON: sans objet
 branches: zone-effect (scénario c399c87 ; le correctif 5658626 + 904bd5e est déjà dans main 6b226f8, zone-effect = main + le scénario)
 recette: RECETTE-1121sa PASS sur main 9e7a324 (Sauron) : preflight PASS (21 s, WARN HUD overlap / Sanity absents, preexistants), PNG order_lines_blocks_pendant vu : 12 unites en 2 blocs, DEUX lignes jaunes, chacune de son bloc vers le point d ordre. Geste reste interne (hol.Select.OrderGround).
+recette: RECETTE-1122b PASS VU A L ECRAN sur integ-50 7053828 : preflight PASS (28 s), 0 FAIL, 2 WARN (HUD overlap / Sanity, preexistants), 0 erreur Angelscript, 0 WorldContext ; PNG pendant ouvert : 12 unites en 2 blocs (6 + 6), DEUX lignes jaunes, chacune de son bloc vers le point d ordre, pas de ligne du milieu. Geste reste interne ; rapport Docs\Rapports\RECETTE-1122b.md
 
 Pré-vol (2026-11-21 19:15, agent FARAMIR-1121sa, worktree C:\Users\baudo\Documents\HeroesOfLiberty-Faramir, main 6b226f8) : `preflight.ps1 order_lines_blocks -Root C:\Users\baudo\Documents\HeroesOfLiberty-Faramir` PASS (22 s, 1 PNG).
 PNG OUVERTS et vus :

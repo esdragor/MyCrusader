@@ -133,7 +133,7 @@ Un chantier ne se clôt pas sans avoir relu ce fichier.
 - Projectile du Mangonneau (aucun mesh : tir non dessiné) [rien]
 - Bannière de l'Aube (SM_Banner, mesh fait par script, étendard planté) [style]
 - Marqueurs de sélection (anneaux, plaques) [forme]
-- Effet de soin (Moine : ligne de debug + texte « + ») [style]
+- Effet de soin (Moine : ligne de debug + texte « + » / « ++ » dessines avec DrawDebugLine/DrawDebugString : ABSENT en Shipping/Test, et au-dessus de toute l'interface) [style]
 - Aura de l'Aube (anneau au sol) [style]
 - Cri « Serrez les rangs » (anneau au sol) [style]
 - Impacts, coups, sang, poussière [rien]
