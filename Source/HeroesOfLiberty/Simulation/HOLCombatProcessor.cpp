@@ -837,10 +837,63 @@ int32 UHOLCombatProcessor::GetBuildingAttackWithTechnology(const FFighter& Attac
 
 void UHOLCombatProcessor::ReleaseBuildingArrows(const UWorld& World, const int64 StepIndex, const int32 StepMs)
 {
-	// STUB (red, F8 T2): no building looses an arrow yet.
 	(void)World;
-	(void)StepIndex;
-	(void)StepMs;
+	// Early out: no standing building this step, or no unit to shoot at, costs nothing; a step where no building has BuildingAttack > 0 only reads
+	// that integer of each building's row (a handful of actors), and never walks the units.
+	if (StepBuildings.IsEmpty() || Fighters.IsEmpty())
+	{
+		return;
+	}
+	for (const FStepBuilding& Step : StepBuildings)
+	{
+		const FHOLBuildingTypeRow* Row = Step.Building ? Step.Building->GetType() : nullptr;
+		// The step's list holds standing buildings and drops the bare foundations; a building under construction is a foundation or a site: IsFinished only.
+		if (!Row || Row->BuildingAttack <= 0 || !Row->BuildingFiresEmpty || Step.bGone || !Step.Building->IsFinished() || BuildingsShot.Contains(Step.Id))
+		{
+			continue;
+		}
+		// The nearest enemy within the reach counted from the body's edge: the same hostility as the archers (another camp, and at war in Diplomacy:
+		// an ally, a Neutral and one's own are never shot). Ties go to the smallest unit identifier (deterministic).
+		int32 Best = INDEX_NONE;
+		double BestGapSquared = 0.;
+		for (int32 Index = 0; Index < Fighters.Num(); ++Index)
+		{
+			const FFighter& Candidate = Fighters[Index];
+			if (Candidate.State->CurrentHealth <= 0.f || Candidate.Camp == Step.Camp || !Candidate.Constants
+				|| (StepCamps.IsDiplomacy() && !StepCamps.FiresAtOnce(Step.OwnerPlayer, Candidate.State->OwnerPlayer))
+				|| !HOLCombat::IsInBuildingShotRange(Step.Box, FVector2D(Candidate.Location), Candidate.Constants->Radius, Row->BuildingAttackRange))
+			{
+				continue;
+			}
+			const FVector2D Location(Candidate.Location);
+			const FVector2D Nearest(FMath::Clamp(Location.X, Step.Box.Min.X, Step.Box.Max.X), FMath::Clamp(Location.Y, Step.Box.Min.Y, Step.Box.Max.Y));
+			const double GapSquared = FVector2D::DistSquared(Location, Nearest);
+			if (Best == INDEX_NONE || GapSquared < BestGapSquared || (GapSquared == BestGapSquared && Candidate.UnitId < Fighters[Best].UnitId))
+			{
+				Best = Index;
+				BestGapSquared = GapSquared;
+			}
+		}
+		if (Best == INDEX_NONE)
+		{
+			continue;
+		}
+		const FFighter& Enemy = Fighters[Best];
+		// The arrow leaves the centre of the body and lands after its flight, through the projectiles' own landing (the target loses the flat BuildingAttack).
+		const int32 FlightMs = HOLCombat::GetArrowFlightMilliseconds(Step.Box.GetCenter(), FVector2D(Enemy.Location), HOLCombat::GetArrowSpeed());
+		FArrow& Arrow = Arrows.AddDefaulted_GetRef();
+		Arrow.Target = Enemy.Entity;
+		Arrow.ShooterId = Step.Id;
+		Arrow.TargetId = Enemy.UnitId;
+		Arrow.ShooterType = NAME_None;
+		Arrow.ShooterSlot = Step.OwnerPlayer;
+		Arrow.Damage = static_cast<float>(Row->BuildingAttack);
+		Arrow.ShooterCamp = Step.Camp;
+		Arrow.ReleaseStep = StepIndex;
+		Arrow.ArrivalStep = StepIndex + HOLCombat::GetArrowFlightSteps(FlightMs, StepMs);
+		++TotalArrowsReleased;
+		BuildingsShot.Add(Step.Id);
+	}
 }
 
 void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecutionContext& Context)

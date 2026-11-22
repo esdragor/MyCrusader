@@ -140,9 +140,13 @@ protected:
 
 	/**
 	 * F8 T2 (D884): the finished buildings of the step whose row has BuildingAttack > 0 and BuildingFiresEmpty loose one first arrow at the nearest
-	 * enemy within HOLCombat::IsInBuildingShotRange (StepCamps.FiresAtOnce). Called once a step before the arrows land. STUB (red): looses nothing.
+	 * enemy within HOLCombat::IsInBuildingShotRange (StepCamps.FiresAtOnce). Called once a step before the arrows land.
+	 * The arrow is a FArrow with no shooter entity and the flat BuildingAttack (the armour and the credit: T3). No cadence yet (T4): each building looses
+	 * ONE arrow in all (BuildingsShot), the cadence will replace that set. Nothing looses twice in a step.
 	 */
 	void ReleaseBuildingArrows(const UWorld& World, int64 StepIndex, int32 StepMs);
+	/** F8 T2: the identifiers of the buildings that have loosed their first arrow (until the cadence of T4). */
+	TSet<uint32> BuildingsShot;
 
 	FMassEntityQuery EntityQuery;
 
