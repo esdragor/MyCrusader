@@ -285,6 +285,32 @@ namespace UE::HeroesOfLiberty::Player
 				Controller->ScriptLeftClick(Fraction);
 			}
 		}));
+	/**
+	 * The REAL right click (ELROND-1122h): the cursor put where that ground point (cm) is drawn, then the press and the release as the input does
+	 * (HandleOrder then HandleOrderCompleted). Same behaviour as the mouse: a right click also leaves placement, the attack-move, the banner or a
+	 * faction aim without ordering. A test of a gesture goes through it, not through OrderAt.
+	 */
+	FAutoConsoleCommand RightClickGroundCommand(
+		TEXT("hol.Select.RightClickGround"),
+		TEXT("hol.Select.RightClickGround <X> <Y>: a real right click (press and release, through the input's handlers) where that ground point (cm) is drawn; it orders the selection there, or leaves the armed mode (placement, attack-move, banner) as the mouse does"),
+		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
+		{
+			if (Args.Num() < 2)
+			{
+				UE_LOG(LogHOLMatch, Warning, TEXT("Usage: hol.Select.RightClickGround <X> <Y>"));
+				return;
+			}
+			for (AHOLPlayerController* Controller : GetLocalControllers())
+			{
+				FVector2D Fraction;
+				if (!ProjectGroundPoint(*Controller, FCString::Atod(*Args[0]), FCString::Atod(*Args[1]), Fraction))
+				{
+					UE_LOG(LogHOLMatch, Warning, TEXT("hol.Select.RightClickGround: the point is not on the screen"));
+					continue;
+				}
+				Controller->ScriptRightClickAt(Fraction);
+			}
+		}));
 
 	FAutoConsoleCommand AttackMoveCommand(
 		TEXT("hol.Select.AttackMove"),
@@ -5079,6 +5105,11 @@ void AHOLPlayerController::ScriptLeftClick(const FVector2D& ViewportFraction)
 	HandleSelectStarted();
 	HandleSelectCompleted();
 	TestCursor->Set(*Former, ECVF_SetByConsole);
+}
+
+void AHOLPlayerController::ScriptRightClickAt(const FVector2D& ViewportFraction)
+{
+	// STUB (red commit): nothing is clicked and nothing is logged.
 }
 
 void AHOLPlayerController::HandleSelectCompleted()
