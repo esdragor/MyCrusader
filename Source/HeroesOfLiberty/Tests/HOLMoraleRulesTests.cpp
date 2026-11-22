@@ -4,6 +4,9 @@
 #include "Engine/World.h"
 #include "MassEntitySubsystem.h"
 #include "Misc/AutomationTest.h"
+#include "Match/HOLFactionRules.h"
+#include "Match/HOLGameState.h"
+#include "Match/HOLMatchConfig.h"
 #include "Simulation/HOLSimulationFragments.h"
 #include "MassExecutor.h"
 #include "MassProcessingContext.h"
@@ -540,6 +543,91 @@ bool FHOLMoraleProcessorLaysDawnAuraTest::RunTest(const FString& Parameters)
 			TestTrue(TEXT("the ally out of range has nothing"), HOLMorale::IsEmpty(Read(AllyFar)->State));
 			TestTrue(TEXT("the enemy in range has nothing (a bonus goes to the owner alone, D705)"), HOLMorale::IsEmpty(Read(EnemyNear)->State));
 			TestTrue(TEXT("the Peasant in range has nothing (never a Peasant, D705)"), HOLMorale::IsEmpty(Read(PeasantNear)->State));
+		}
+	}
+
+	GEngine->DestroyWorldContext(World);
+	World->DestroyWorld(false);
+	return true;
+}
+
+// D880: the passive Dawn aura is laid by the heroes of a player of the DAWN faction only (the faction of the PLAYER, not the unit type). The cry and the
+// banner are not touched by this rule (HeroPlaces keeps every hero). A launch configuration (game state) gives slot 0 the Dawn and slot 1 the Legions;
+// each slot has a hero and a soldier 500 cm from it. The expected effect is CALCULATED by the rule (never typed). RED while every living hero lays the aura.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLMoraleNoDawnAuraFromLegionsHeroTest, "HeroesOfLiberty.Morale.ProcessorDoesNotLayDawnAuraFromALegionsHero", UE::HeroesOfLiberty::Tests::MoraleRules::Flags)
+
+bool FHOLMoraleNoDawnAuraFromLegionsHeroTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::MoraleRules;
+	UWorld* World = UWorld::CreateWorld(EWorldType::Game, /*bInformEngineOfWorld*/ false);
+	FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);
+	Context.SetCurrentWorld(World);
+	World->InitializeActorsForPlay(FURL());
+
+	AHOLGameState* State = World->SpawnActor<AHOLGameState>();
+	UHOLUnitSubsystem* Units = World->GetSubsystem<UHOLUnitSubsystem>();
+	UHOLSimulationSubsystem* Simulation = World->GetSubsystem<UHOLSimulationSubsystem>();
+	UMassEntitySubsystem* EntitySubsystem = World->GetSubsystem<UMassEntitySubsystem>();
+	if (TestNotNull(TEXT("game state"), State) && TestNotNull(TEXT("units"), Units) && TestNotNull(TEXT("simulation"), Simulation) && TestNotNull(TEXT("entities"), EntitySubsystem))
+	{
+		FHOLMatchConfig Config = FHOLMatchConfig::MakeDefault();
+		Config.Slots[0].Faction = EHOLFaction::DawnOrder;
+		Config.Slots[1].Faction = EHOLFaction::BlackLegions;
+		State->InitVictory(Config);
+		TestEqual(TEXT("slot 0 plays the Dawn"), HOLFactionRules::GetSlotFactionKey(World, 0), FName(TEXT("Dawn")));
+		TestEqual(TEXT("slot 1 plays the Legions"), HOLFactionRules::GetSlotFactionKey(World, 1), FName(TEXT("Legions")));
+
+		TSharedPtr<FMassEntityManager> EntityManager = EntitySubsystem->GetMutableEntityManager().AsShared();
+		UHOLMoraleProcessor* Morale = NewObject<UHOLMoraleProcessor>(Simulation);
+		Morale->CallInitialize(Simulation, EntityManager.ToSharedRef());
+		const float StepSeconds = GetDefault<UHOLSimulationSettings>()->GetStepSeconds();
+
+		const auto Spawn = [this, Units](const TCHAR* TypeName, const uint8 Owner, const double X) -> FMassEntityHandle
+		{
+			TArray<uint32> Before;
+			Units->GetAllUnitIds(Before);
+			FHOLUnitSpawnRequest Request;
+			Request.TypeName = FName(TypeName);
+			Request.Count = 1;
+			Request.OwnerPlayer = Owner;
+			Request.Center = FVector(X, 0.0, 0.0);
+			Units->RequestUnits(Request);
+			Units->ServeBirthRequests();
+			TArray<uint32> After;
+			Units->GetAllUnitIds(After);
+			uint32 Born = 0;
+			for (const uint32 Id : After)
+			{
+				Born = Before.Contains(Id) ? Born : Id;
+			}
+			return TestTrue(TEXT("a unit was born"), Born != 0) ? Units->FindEntity(Born) : FMassEntityHandle();
+		};
+		const FMassEntityHandle DawnHero = Spawn(TEXT("Hero"), 0, 20000.0);
+		const FMassEntityHandle DawnSoldier = Spawn(TEXT("ManAtArms"), 0, 20500.0);
+		const FMassEntityHandle LegionsHero = Spawn(TEXT("Hero"), 1, 0.0);
+		const FMassEntityHandle LegionsSoldier = Spawn(TEXT("ManAtArms"), 1, 500.0);
+
+		HOLMorale::FHOLMoraleState Expected;
+		HOLMorale::Apply(Expected, HOLMorale::MakeEffectFromRow(HOLMoraleTableRows::HOLMoraleDawnAura));
+		TestTrue(TEXT("the Dawn aura row gives a real lever"), HOLMorale::Total(Expected, HOLMorale::LeverTaken) > 0);
+
+		const auto Read = [&EntityManager](const FMassEntityHandle Entity) -> const FHOLMoraleFragment*
+		{
+			return Entity.IsSet() ? EntityManager->GetFragmentDataPtr<FHOLMoraleFragment>(Entity) : nullptr;
+		};
+		if (TestTrue(TEXT("every unit carries the fragment"), Read(DawnHero) && Read(DawnSoldier) && Read(LegionsHero) && Read(LegionsSoldier)))
+		{
+			for (int32 Step = 0; Step < 2; ++Step)
+			{
+				FMassProcessingContext ProcessingContext(*EntityManager, StepSeconds);
+				UE::Mass::Executor::Run(*Morale, ProcessingContext);
+			}
+			const FHOLMoraleFragment* DawnNear = Read(DawnSoldier);
+			TestTrue(TEXT("the soldier of a Dawn player near his hero carries the Dawn aura"), HOLMorale::Has(DawnNear->State, HOLMoraleTableRows::HOLMoraleDawnAura));
+			TestEqual(TEXT("it reads the row's damage taken lever"), HOLMorale::Total(DawnNear->State, HOLMorale::LeverTaken), HOLMorale::Total(Expected, HOLMorale::LeverTaken));
+			const FHOLMoraleFragment* LegionsNear = Read(LegionsSoldier);
+			TestFalse(TEXT("the soldier of a Legions player near his hero has NO Dawn aura (D880: the aura is the Dawn's)"), HOLMorale::Has(LegionsNear->State, HOLMoraleTableRows::HOLMoraleDawnAura));
+			TestTrue(TEXT("nothing else is laid on him either (no cry, no banner here)"), HOLMorale::IsEmpty(LegionsNear->State));
 		}
 	}
 
