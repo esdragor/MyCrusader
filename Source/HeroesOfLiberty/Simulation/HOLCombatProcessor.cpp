@@ -839,8 +839,7 @@ int32 UHOLCombatProcessor::GetBuildingAttackWithTechnology(const FFighter& Attac
 void UHOLCombatProcessor::ReleaseBuildingArrows(const UWorld& World, const int64 StepIndex, const int32 StepMs, const UHOLVisionSubsystem* Vision)
 {
 	(void)World;
-	// F8 T5 stub (red): the owner's vision (null = no fog to honour) is not read yet.
-	(void)Vision;
+	// F8 T5: Vision is what the units' shots use (null: no fog started or the fog Disabled, hol.Fog.Mode 0): a tower aims only at what its OWNER sees.
 	// No standing building this step: no countdown can be alive (a no-op on an empty map), and nothing else costs anything.
 	if (StepBuildings.IsEmpty())
 	{
@@ -883,6 +882,7 @@ void UHOLCombatProcessor::ReleaseBuildingArrows(const UWorld& World, const int64
 			const FFighter& Candidate = Fighters[Index];
 			if (Candidate.State->CurrentHealth <= 0.f || Candidate.Camp == Step.Camp || !Candidate.Constants
 				|| (StepCamps.IsDiplomacy() && !StepCamps.FiresAtOnce(Step.OwnerPlayer, Candidate.State->OwnerPlayer))
+			|| (Vision && !Vision->IsVisible(Step.OwnerPlayer, Candidate.Location)) // F8 T5: the same test as IsSeenBy in Execute; out of sight, never chosen
 				|| !HOLCombat::IsInBuildingShotRange(Step.Box, FVector2D(Candidate.Location), Candidate.Constants->Radius, Row->BuildingAttackRange))
 			{
 				continue;
