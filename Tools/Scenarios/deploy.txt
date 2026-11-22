@@ -130,6 +130,9 @@ note 11. Engin demonte loin de la 2e Maison (hors portee 3000).
 hol.Select.OrderNear 3000 -5500
 waitlog units attack
 wait 1
+# ELROND-1122a (D877 moitie A, rouge attendu) : l engin demonte loin doit marcher jusqu a portee, se monter (phase 0 -> 1) puis tirer. waitlog = texte litteral (pas de regex) ; ces deux lignes expirent tant que le defaut existe.
+waitlog phase 0 -> 1 (order
+waitlog Mangonel hits a building
 hol.Select.Report
 capture deploy_far_walking
 wait 4

@@ -12,3 +12,7 @@ deploy_move_walked | apres le demontage (1 s) puis 3 s de marche, SANS second cl
 deploy_attack_mounting | clic droit sur la Maison ennemie, Mangonneau demonte : il commence a se monter (la case D ne dit pas encore Demonter) ; la Maison ennemie visible a l'ecran, intacte
 deploy_attack_mounted | 1,5 s apres : le Mangonneau est monte, la case D dit Demonter ; la Maison ennemie visible
 deploy_attack_hit | la Maison ennemie selectionnee (clic) : son panneau donne ses PV entames d'un coup de 45 au moins ; le Mangonneau monte a cote ; aucun projectile dessine (manque connu)
+deploy_far_start | Mangonneau demonte (case D = Monter), seul, loin au sud de la 2e Maison (a 3000 cm de x, la Maison a y -5500) : la Maison est hors portee (3000), visible ou non selon la camera ; aucun ordre encore donne
+deploy_far_walking | 1 s apres le clic droit sur la 2e Maison : le Mangonneau a commence a marcher vers elle (plus pres de la Maison qu a deploy_far_start) ; il est encore demonte
+deploy_far_midway | 4 s plus tard : le Mangonneau est nettement plus pres de la Maison, toujours en marche ou en cours de montage (case D = Monter ou Montage...)
+deploy_far_end | 10 s plus tard (D877 moitie A) : le Mangonneau est A PORTEE de la Maison (3000 cm), MONTE (case D = Demonter) et la Maison a perdu des PV (coups de 45) ; tant que le defaut existe : il a marche vers le mur, case D = Monter, Maison intacte
