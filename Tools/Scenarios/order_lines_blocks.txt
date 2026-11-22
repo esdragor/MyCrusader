@@ -18,8 +18,9 @@ hol.Camera.Zoom -2
 frames 5
 hol.Select.Army
 frames 3
-# Un seul ordre de deplacement sur la selection entiere (hol.Select.OrderGround : coordonnees du MONDE, le centre du joueur est vers (-15000, 0) ; ici le point est a 20 m devant le centre, donc les deux blocs marchent plusieurs secondes et les lignes restent affichees).
-hol.Select.OrderGround -13000 0
+# Un seul ordre de deplacement sur la selection entiere (hol.Select.RightClickGround, le vrai clic droit, ELROND-1122i : point du MONDE, le centre du joueur est vers (-15000, 0) ; ici le point est a 20 m devant le centre, donc les deux blocs marchent plusieurs secondes et les lignes restent affichees).
+hol.Select.RightClickGround -13000 0
+waitlog Scripted right click at
 frames 20
 capture order_lines_blocks_pendant
 note Deux blocs d'unites (nord et sud), un clic droit sur le sol : deux lignes de mouvement, une par bloc, chacune partant de son bloc.
