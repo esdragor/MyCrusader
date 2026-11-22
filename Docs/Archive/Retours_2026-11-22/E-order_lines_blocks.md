@@ -18,3 +18,5 @@ NON VÉRIFIÉ : un vrai clic droit (geste réel) ; le cas d'un seul bloc (une se
 Commande complète (règle 13, 2026-11-14) : chaque commande est écrite en entier, copiable telle quelle, jamais « même commande avec… ».
 Lancer UNE commande : `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Sauron\Tools\Scenarios\play.ps1 order_lines_blocks -Root C:\Users\baudo\Documents\HeroesOfLiberty-Sauron`
 Durée : environ 1 min. Réponse attendue : `OK`, `BUG: ...` ou `REGLAGE: ...`. Geste à refaire : les 12 unités sont choisies, un clic droit sur le sol : deux lignes, une par bloc.
+
+Reponse: OK (2026-11-22 soir, joué par l'utilisateur, dans la conversation)

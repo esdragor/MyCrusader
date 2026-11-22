@@ -11,3 +11,5 @@ recette: pré-vol de la session principale 2026-11-22 22:0x sur main 96cff65 (wo
 Commande play.ps1 (RECETTE-1121sd) : powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Sauron\Tools\Scenarios\play.ps1 income_tooltip -Root C:\Users\baudo\Documents\HeroesOfLiberty-Sauron
 Ce que tu dois voir : survole le montant de bois / d'or de la barre du haut : panneau HUD fond sombre, bord doré, police ~14 px : "+N bois/min", "+0 or/min", puis "+N wood/min" (EN) et "+N 木材/分" (JA) après changement de langue en direct.
 Commande : powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Sauron\Tools\Scenarios\play.ps1 income_tooltip -Root C:\Users\baudo\Documents\HeroesOfLiberty-Sauron
+
+Reponse: OK (2026-11-22 soir, joué par l'utilisateur, dans la conversation)

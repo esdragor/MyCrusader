@@ -1,15 +1,11 @@
 # ESSAIS A JOUER (nettoyage CLEAN-1122c du 2026-11-22, etape 0a de l'Auto_Journey)
 
-**A JOUER MAINTENANT : 4 (secondary_centre, chat_input, order_lines_blocks, income_tooltip) : pre-vols PASS et PNG vus sur main 96cff65 (worktree Sauron, 2026-11-22 22:0x), gate Essay sans FAIL ; commandes dans Auto_Journey_Retours.md section 1. Questions sans reponse : 0. BUG en file : 1 (E-deploy.md, D877, pas pret).** Etat d'apres les fiches elles-memes.
+**A JOUER MAINTENANT : 0 (secondary_centre, chat_input, order_lines_blocks, income_tooltip joues OK le 2026-11-22 soir sur main 96cff65, fiches archivees dans Docs\Archive\Retours_2026-11-22\). Questions sans reponse : 0. BUG en file : 1 (E-deploy.md, D877, pas pret).** Etat d'apres les fiches elles-memes.
 Les essais precedents (13:00 du 2026-11-20 et avant) sont repondus et archives dans `Docs\Archive\Retours_2026-11-20\` et `Docs\Archive\Retours_2026-11-19\` ; E-virtuous_knight (joue OK le 2026-11-21) dans `Docs\Archive\Retours_2026-11-21\`.
 
-## Fiches E-* [A ESSAYER] pretes a donner apres pre-vol (4)
-- `E-chat_input.md` : VU A L'ECRAN ; GESTE reel ; SON sans objet ; recette 1121sa PASS (main 9e7a324) ; environ 2 min. ; RECETTE-1122b PASS sur integ-50 ; PRET sur main 96cff65 (22:0x).
-- `E-income_tooltip.md` : VU A L'ECRAN ; GESTE reel ; SON non entendu ; recette 1121sd PASS (main a4f3531) ; reste cosmetique : en FR l'infobulle or recouvre le debut du bandeau Scenario. ; RECETTE-1122b PASS sur integ-50 ; PRET sur main 96cff65 (22:0x).
-- `E-order_lines_blocks.md` : VU A L'ECRAN ; GESTE interne (OrderGround, a refaire a la main) ; SON sans objet ; recette 1121sa PASS ; environ 1 min. Sa reponse ferme BUG-order_lines_multi_blocs.md. ; RECETTE-1122b PASS sur integ-50 ; PRET sur main 96cff65 (22:0x).
-- `E-secondary_centre.md` : VU A L'ECRAN ; GESTE reel ; SON non entendu ; recette 1121se PASS (branche wall-line) ; environ 3 min. ; RECETTE-1122b PASS sur integ-50 ; PRET sur main 96cff65 (22:0x).
+## Fiches E-* [A ESSAYER] pretes a donner apres pre-vol (0)
 
-## Fiches E-* qui restent dans Retours\ sans etre a donner (4 : 1 [A ESSAYER] LOGIQUE SEULEMENT, 1 [PAS PRET], 2 hors liste ; total [A ESSAYER] du dossier = 5)
+## Fiches E-* qui restent dans Retours\ sans etre a donner (4 : 1 [A ESSAYER] LOGIQUE SEULEMENT, 1 [PAS PRET], 2 hors liste ; total [A ESSAYER] du dossier = 1)
 - `E-talents_heal.md` : LOGIQUE SEULEMENT (geste interne, SON non entendu) ; recette 1121sd PASS : jauge au-dessus du bloc heros, ++ dore visible apres Mains du guerisseur ; a donner seulement si l'utilisateur accepte un essai de logique.
 - `E-deploy.md` : [PAS PRET, BUG EN FILE D877] (plus [A ESSAYER]), recette 1121se FAIL (`Docs\Rapports\RECETTE-1121se.md`) ; ne pas redonner avant la correction (clic sur cible demonte, montage auto en fin de deplacement) ; D882 : un Stop laisse l'engin demonte ; commande play.ps1 a refaire au prochain pre-vol.
 - `E-playtest_hero_army.md` : LOGIQUE SEULEMENT (audit Sanity, D641) ; ne pas jouer ; voir BUG-playtest_hero_army-spin.md.

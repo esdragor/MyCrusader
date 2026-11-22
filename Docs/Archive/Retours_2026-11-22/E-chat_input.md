@@ -22,3 +22,5 @@ NON VÉRIFIÉ : une vraie touche Tab physique du clavier (le relais passe par un
 Commande complète (règle 13, 2026-11-14) : chaque commande est écrite en entier, copiable telle quelle.
 Lancer UNE commande : `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Sauron\Tools\Scenarios\play.ps1 chat_input -Root C:\Users\baudo\Documents\HeroesOfLiberty-Sauron`
 Durée : environ 2 min (86 s). Réponse attendue : `OK`, `BUG: ...` ou `REGLAGE: ...`.
+
+Reponse: OK (2026-11-22 soir, joué par l'utilisateur, dans la conversation)
