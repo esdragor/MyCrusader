@@ -9,7 +9,11 @@ class UHOLFollowBridgeScript : UHOLFollowBridge
 		UHOLFollowBookHolder Holder = UHOLFollowBookHolder::Get();
 		if (Holder == nullptr)
 			return false;
-		return HOLFollowOrders::ApplyRightClick(Holder.Book, Selected, true, TargetId, bTargetIsAlly) == EHOLRightClickOrder::Follow;
+		const bool bFollow = HOLFollowOrders::ApplyRightClick(Holder.Book, Selected, true, TargetId, bTargetIsAlly) == EHOLRightClickOrder::Follow;
+		// One line per EVENT (never per Step): a literal text for waitlog.
+		if (bFollow)
+			HOLScriptLog::LogDisplay(n"LogHOLMatch", f"FollowBridge: follow started, {Selected.Num()} units follow #{TargetId}");
+		return bFollow;
 	}
 
 	UFUNCTION(BlueprintOverride)
@@ -18,10 +22,16 @@ class UHOLFollowBridgeScript : UHOLFollowBridge
 		UHOLFollowBookHolder Holder = UHOLFollowBookHolder::Get();
 		if (Holder == nullptr)
 			return;
+		int Ended = 0;
 		for (int UnitId : UnitIds)
 		{
+			if (HOLFollowOrders::IndexOf(Holder.Book, UnitId) >= 0)
+				Ended++;
 			HOLFollowOrders::OnManualOrder(Holder.Book, UnitId);
 		}
+		// Only when a follow really ended (the manual order of a unit that follows nobody stays silent).
+		if (Ended > 0)
+			HOLScriptLog::LogDisplay(n"LogHOLMatch", f"FollowBridge: manual order ended the follow of {Ended} units");
 	}
 
 	UFUNCTION(BlueprintOverride)
