@@ -1,6 +1,7 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "Presentation/HOLInterpolatedInstancesProcessor.h"
+#include "Presentation/HOLUnitOpacity.h"
 
 #include "Animation/AnimSequence.h"
 #include "Animation/AnimSequenceTransformProviderData.h"
@@ -52,12 +53,9 @@ namespace UE::HeroesOfLiberty::Presentation
 	 * without props). Every type writes the four: the float count is one per component, and Mass ensures it.
 	 * Plain floats: Mass copies the struct into its float array at any float offset (FVector4f is 16-byte aligned).
 	 */
-	struct FUnitCustomData
-	{
-		FVector3f Color;
-		float Prop;
-	};
-	static_assert(sizeof(FUnitCustomData) == 4 * sizeof(float));
+	// The fifth float (index 4) is the stealth opacity (D824 Q3), see HOLUnitDraw::FInstanceCustomData (HOLUnitOpacity.h): units and bodies both write
+	// the five, so the float count of a component stays one value.
+	using FUnitCustomData = HOLUnitDraw::FInstanceCustomData;
 
 	/**
 	 * The colour each slot chose (D244), as this machine knows it, gathered once per frame: OwnerPlayer is a slot, not a
@@ -112,7 +110,7 @@ namespace UE::HeroesOfLiberty::Presentation
 
 	FUnitCustomData GetCustomData(const FVector3f& Color, const uint8 Prop)
 	{
-		return { Color, static_cast<float>(Prop) };
+		return HOLUnitDraw::MakeInstanceCustomData(Color, Prop, 1.f); // a body is drawn opaque
 	}
 
 	/** Start offset (s) of a unit in a sequence: stable per unit and sequence, so 2 000 units do not step in time. */
@@ -393,7 +391,10 @@ void UHOLInterpolatedInstancesProcessor::Execute(FMassEntityManager& EntityManag
 	const double WorldSeconds = World ? World->GetTimeSeconds() : 0.;
 
 	const FFogView Fog(World);
-	EntityQuery.ForEachEntityChunk(Context, [Alpha, StepSeconds, Sources, &Sites, &SlotColors, SpeedScale, WorldSeconds, &Fog](FMassExecutionContext& Context)
+	// D824 Q3: the units' stealth opacities, copied ONCE for this run (one lock; empty and no copy when no zone), then read without a lock per unit.
+	// The processor runs on the game thread (bRequiresGameThreadExecution) and the query below is sequential, so the copy is private to this call.
+	const HOLUnitDraw::FOpacitySnapshot OpacitySnapshot = HOLUnitDraw::TakeOpacitySnapshot();
+	EntityQuery.ForEachEntityChunk(Context, [Alpha, StepSeconds, Sources, &Sites, &SlotColors, SpeedScale, WorldSeconds, &Fog, &OpacitySnapshot](FMassExecutionContext& Context)
 	{
 		UMassRepresentationSubsystem* RepresentationSubsystem = Context.GetSharedFragment<FMassRepresentationSubsystemSharedFragment>().RepresentationSubsystem;
 		check(RepresentationSubsystem);
@@ -579,8 +580,8 @@ void UHOLInterpolatedInstancesProcessor::Execute(FMassEntityManager& EntityManag
 						RepresentationLOD.LODSignificance, Representation.PrevLODSignificance);
 					MeshInfo.AddBatchedAnimationData(Entity, AnimData, RepresentationLOD.LODSignificance, Representation.PrevLODSignificance);
 					// L4 (hol.Rage.Visual, default 0 = unchanged): a warrior in necrotic rage is tinted dark red in modes 1 and 4.
-					MeshInfo.AddBatchedCustomData(GetCustomData(HOLRageVisual::GetDrawColor(HOLRageVisual::GetMode(), Combat ? Combat->RageMs : 0,
-						SlotColors.GetLinear(State.OwnerPlayer)), Choice.Prop), RepresentationLOD.LODSignificance,
+					MeshInfo.AddBatchedCustomData(HOLUnitDraw::MakeUnitInstanceCustomData(HOLRageVisual::GetDrawColor(HOLRageVisual::GetMode(), Combat ? Combat->RageMs : 0,
+						SlotColors.GetLinear(State.OwnerPlayer)), Choice.Prop, static_cast<int32>(State.UnitId), OpacitySnapshot), RepresentationLOD.LODSignificance,
 						Representation.PrevLODSignificance);
 				}
 			}

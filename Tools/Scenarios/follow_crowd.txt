@@ -1,0 +1,85 @@
+# GLORFINDEL-1122f (B) : un clic droit "au sol" qui tombe sur le CORPS d'une unite a soi non selectionnee dans une masse serree : Suivre ou deplacement ? 20 unites en damier (pas de 90 uu, positions absolues hol.Units.Spawn n x y slot Type rayon) : cases paires = 10 Hommes d'armes (ids 1-10, SELECTIONNES par hol.Select.Army), cases impaires = 10 Paysans a soi (ids 11-20, hors selection). Centre (-14800, 2500) : OrderNear dx dy = (-14800 + dx, dy). Cas 1 : clic droit sur le corps d'un Paysan (dx 90, dy 2500) ; cas 2 : clic droit sur le corps d'un HOMME selectionne (dx 0, dy 2500) ; cas 3 : clic droit au sol a cote de la masse (dx -700, dy 2500). Chaque cas : releve hol.Units.Where avant/apres + journal (Order: ... follow / move, FollowBridge: ...). Plain, un joueur.
+hol.Cheat.Resources 5000
+# GLORFINDEL-1122g : defaut hol.Follow.OwnUnits 0 (explicite ici) : un clic droit sur le corps d'une unite a SOI n'est plus un Suivre mais un deplacement (cas 1, 2, 3 : journal "Order: 10 units to"). Le soin (partie C) n'est pas touche par le reglage.
+hol.Follow.OwnUnits 0
+hol.Cheat.Population 200
+hol.Camera.FocusNear 180 2640
+frames 2
+hol.Units.Spawn 1 -14800 2500 0 ManAtArms 0
+hol.Units.Spawn 1 -14620 2500 0 ManAtArms 0
+hol.Units.Spawn 1 -14440 2500 0 ManAtArms 0
+hol.Units.Spawn 1 -14710 2590 0 ManAtArms 0
+hol.Units.Spawn 1 -14530 2590 0 ManAtArms 0
+hol.Units.Spawn 1 -14800 2680 0 ManAtArms 0
+hol.Units.Spawn 1 -14620 2680 0 ManAtArms 0
+hol.Units.Spawn 1 -14440 2680 0 ManAtArms 0
+hol.Units.Spawn 1 -14710 2770 0 ManAtArms 0
+hol.Units.Spawn 1 -14530 2770 0 ManAtArms 0
+waitunits 10
+hol.Units.Spawn 1 -14710 2500 0 Peasant 0
+hol.Units.Spawn 1 -14530 2500 0 Peasant 0
+hol.Units.Spawn 1 -14800 2590 0 Peasant 0
+hol.Units.Spawn 1 -14620 2590 0 Peasant 0
+hol.Units.Spawn 1 -14440 2590 0 Peasant 0
+hol.Units.Spawn 1 -14710 2680 0 Peasant 0
+hol.Units.Spawn 1 -14530 2680 0 Peasant 0
+hol.Units.Spawn 1 -14800 2770 0 Peasant 0
+hol.Units.Spawn 1 -14620 2770 0 Peasant 0
+hol.Units.Spawn 1 -14440 2770 0 Peasant 0
+waitunits 20
+frames 30
+hol.Select.Army
+waitlog Selection: 10 units
+hol.Units.Where
+capture follow_crowd_start
+hol.Select.OrderNear 90 2500
+waitlog Order: 10 units to
+wait 3
+hol.Units.Where
+capture follow_crowd_body_peasant
+hol.Select.Army
+frames 10
+hol.Select.OrderNear 0 2500
+waitlog Order: 10 units to
+wait 3
+hol.Units.Where
+capture follow_crowd_body_selected
+hol.Select.Army
+frames 10
+hol.Select.OrderNear -700 2500
+waitlog Order: 10 units to
+wait 3
+hol.Units.Where
+capture follow_crowd_ground
+# (C) Soigner : Moine #21 (selectionne seul), Homme d'armes #22 BLESSE (hol.Cheat.Wound 50 sur la selection #22), Homme d'armes #23 INDEMNE. Cas 4 : clic droit du Moine sur #23 (aucun blesse) ; cas 5 : clic droit du Moine sur #22 blesse (journal "heal", PV qui remontent ?).
+hol.Camera.FocusNear 180 3100
+frames 2
+hol.Units.Spawn 1 -14800 3300 0 Monk 0
+hol.Units.Spawn 1 -14500 3300 0 ManAtArms 0
+waitunits 22
+frames 30
+hol.Select.ClickUnit 21
+hol.Cheat.Wound 50
+frames 10
+hol.Units.Where
+# 1122j : l unite saine #23 est creee APRES la blessure
+hol.Units.Spawn 1 -14200 3300 0 ManAtArms 0
+waitunits 23
+frames 10
+hol.Units.Where
+hol.Select.ClickUnit 20
+frames 10
+capture follow_crowd_heal_start
+hol.Select.OrderNear 600 3300
+wait 4
+hol.Units.Where
+hol.Select.ClickUnit 20
+frames 10
+hol.Select.OrderNear 300 3300
+wait 6
+hol.Units.Where
+capture follow_crowd_heal_done
+wait 6
+hol.Units.Where
+note 20 unites en damier serre (10 Hommes d'armes selectionnes, 10 Paysans a soi hors selection), hol.Follow.OwnUnits 0 : les trois clics droits (sur le corps d'un Paysan, sur un homme selectionne, au sol a gauche de la masse) sont des DEPLACEMENTS (journal "Order: 10 units to", jamais "follow started"), puis le Moine soigne son blesse.
+quit
