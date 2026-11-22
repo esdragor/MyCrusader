@@ -3,6 +3,10 @@
 // of the map and the positions of the viewing camp (UHOLVisionSubsystem::GetCampUnitPositions). The rule stays here (D836); the C++ copies nothing.
 // UHOLStealthInstaller (below) sets it on the vision subsystem once the world runs.
 
+// Seconds between two passes over the local player's own units' opacity: 4 a second (ARWEN-1122d; the first version ran at 20 Hz and cost 1 to
+// 3 ms of script per read for 2000 units). THE ONLY place to change the cadence.
+const float OwnOpacityPeriodSeconds = 0.25;
+
 class UHOLStealthRuleFilter : UHOLStealthFilter
 {
 	// The stealth zones of the map (empty: the rule hides nothing, so the filter answers at once, without reading any unit).
@@ -117,22 +121,21 @@ class UHOLStealthInstaller : UScriptWorldSubsystem
 	// The zones kept once installed (the same list the filter holds): the opacity of the local player's own units is posed from them.
 	TArray<FHOLStealthZone> Zones;
 
-	// Seconds between two poses of the own units' opacity: the fog's client cadence (UHOLVisionSubsystem::Tick, 20 a second), not every frame.
-	float ApplyPeriod = 0.05;
 	float ApplySeconds = 0.0;
 
-	// D824 Q3 B: the local player's own units are drawn half transparent inside a zone, opaque outside (HOLStealthApply::ApplyOwnUnits). One read of
-	// the player's units per call (HOLStealthOwnUnits, C++ binding: ids = State.UnitId, positions), nothing without a zone or before the
-	// local slot is known.
+	// D824 Q3 B: the local player's own units are drawn half transparent inside a zone, opaque outside. One pass (UHOLStealthOwnApplier,
+	// HOLStealthOpacityApply.as: reads the units only with a zone, writes only the changes) per OwnOpacityPeriodSeconds, not per frame.
+	UHOLStealthOwnApplier Applier;
+
 	void ApplyOwnUnitOpacity()
 	{
-		int Slot = HOLStealthOwnUnits::GetLocalPlayerSlot(this);
-		if (Slot < 0)
-			return;
-		TArray<int> UnitIds;
-		TArray<FVector2D> Positions;
-		HOLStealthOwnUnits::GetPlayerUnits(this, Slot, UnitIds, Positions);
-		HOLStealthApply::ApplyOwnUnits(Zones, UnitIds, Positions);
+		if (Applier == nullptr)
+		{
+			Applier = Cast<UHOLStealthOwnApplier>(NewObject(this, UHOLStealthOwnApplier::StaticClass()));
+			Applier.WorldObject = this;
+			Applier.SetZones(Zones);
+		}
+		Applier.Pass();
 	}
 
 	UFUNCTION(BlueprintOverride)
@@ -144,7 +147,7 @@ class UHOLStealthInstaller : UScriptWorldSubsystem
 			if (Zones.Num() == 0)
 				return;
 			ApplySeconds += DeltaTime;
-			if (ApplySeconds < ApplyPeriod)
+			if (ApplySeconds < OwnOpacityPeriodSeconds)
 				return;
 			ApplySeconds = 0.0;
 			ApplyOwnUnitOpacity();

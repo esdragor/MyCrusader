@@ -19,10 +19,18 @@ namespace HOLStealthApply
 	}
 }
 
-// One pass over the local player's own units (ARWEN-1122d). STUB (red commit): reads even without a zone and writes every unit at every pass.
+// One pass over the local player's own units (ARWEN-1122d): cheap by construction. No zone = no read of any unit. A unit farther than the
+// bounding circle of every zone (squared distance, no allocation) is opaque without asking the rule. An opacity is written ONLY when it changes
+// from the last one written (a unit never written is opaque: 1.0 is the default, so a unit that never enters a zone costs no write at all).
 class UHOLStealthOwnApplier : UObject
 {
 	TArray<FHOLStealthZone> Zones;
+
+	// Per zone: the squared radius of its bounding circle (half extent X squared + half extent Y squared), computed once by SetZones.
+	TArray<float> ReachSquared;
+
+	// The last opacity written per unit id, only for the units NOT opaque (1.0 = absent).
+	TMap<int, float> Last;
 
 	// The object the binding takes the world from (the installer).
 	UObject WorldObject;
@@ -30,6 +38,22 @@ class UHOLStealthOwnApplier : UObject
 	void SetZones(const TArray<FHOLStealthZone>& NewZones)
 	{
 		Zones = NewZones;
+		ReachSquared.Empty();
+		for (const FHOLStealthZone& Zone : Zones)
+			ReachSquared.Add(Zone.HalfExtent.X * Zone.HalfExtent.X + Zone.HalfExtent.Y * Zone.HalfExtent.Y);
+	}
+
+	// Could this position be inside a zone? Conservative (bounding circle): false means surely outside every zone.
+	bool NearAZone(const FVector2D& Position) const
+	{
+		for (int Index = 0; Index < Zones.Num(); Index++)
+		{
+			double DeltaX = Position.X - Zones[Index].Center.X;
+			double DeltaY = Position.Y - Zones[Index].Center.Y;
+			if (DeltaX * DeltaX + DeltaY * DeltaY <= ReachSquared[Index])
+				return true;
+		}
+		return false;
 	}
 
 	// Overridden by the test: where the own units come from.
@@ -44,20 +68,35 @@ class UHOLStealthOwnApplier : UObject
 	// Overridden by the test: where the opacity is written.
 	void WriteOpacity(int UnitId, float Opacity)
 	{
+		// One journal line per CHANGE of opacity (the pass writes only changes).
+		Log(n"LogHOLMatch", f"StealthOwn opacity unit {UnitId} = {Opacity}");
 		HOLUnitOpacity::SetStealthOpacity(UnitId, Opacity);
 	}
 
 	// Returns the number of opacities written.
 	int Pass()
 	{
+		if (Zones.Num() == 0)
+			return 0;
 		TArray<int> UnitIds;
 		TArray<FVector2D> Positions;
 		ReadOwnUnits(UnitIds, Positions);
 		int Writes = 0;
 		for (int Index = 0; Index < UnitIds.Num() && Index < Positions.Num(); Index++)
 		{
-			WriteOpacity(UnitIds[Index], HOLStealth::OwnUnitOpacity(Zones, Positions[Index]));
+			float Now = 1.0;
+			if (NearAZone(Positions[Index]))
+				Now = HOLStealth::OwnUnitOpacity(Zones, Positions[Index]);
+			float Before = 1.0;
+			Last.Find(UnitIds[Index], Before);
+			if (Math::Abs(Now - Before) < 0.0001)
+				continue;
+			WriteOpacity(UnitIds[Index], Now);
 			Writes++;
+			if (Now >= 0.9999)
+				Last.Remove(UnitIds[Index]);
+			else
+				Last.Add(UnitIds[Index], Now);
 		}
 		return Writes;
 	}
