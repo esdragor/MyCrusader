@@ -836,6 +836,12 @@ int32 UHOLCombatProcessor::GetBuildingAttackWithTechnology(const FFighter& Attac
 	return HOLTechnology::ScaleByPercent(Attacker.Constants->BuildingAttack, MangonelDamagePercent[Slot]);
 }
 
+int32 UHOLCombatProcessor::GetBuildingArrowCount(const int32 Occupants)
+{
+	(void)Occupants;
+	// D884 : nombre par occupant à confirmer, 1 tant que non tranché.
+	return 1;
+}
 void UHOLCombatProcessor::ReleaseBuildingArrows(const UWorld& World, const int64 StepIndex, const int32 StepMs, const UHOLVisionSubsystem* Vision)
 {
 	(void)World;

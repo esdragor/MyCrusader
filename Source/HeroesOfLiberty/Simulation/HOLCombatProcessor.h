@@ -61,6 +61,11 @@ public:
 	uint64 HashArrows() const;
 	/** F8 T4: the buildings that hold a firing countdown right now (the tests: an entry per standing armed building, none after it is gone). */
 	int32 GetBuildingCooldownCount() const { return BuildingCooldownMs.Num(); }
+	/**
+	 * F8 T6 (D884): the arrows a building looses at each shot, given the occupants of its garrison. D884 : nombre par occupant à confirmer, 1 tant que non tranché.
+	 * The ONE place the number lives: no test pins another number than 1.
+	 */
+	static int32 GetBuildingArrowCount(int32 Occupants);
 
 protected:
 	virtual void ConfigureQueries(const TSharedRef<FMassEntityManager>& EntityManager) override;

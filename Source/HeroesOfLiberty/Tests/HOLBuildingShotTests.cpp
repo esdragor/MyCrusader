@@ -38,6 +38,8 @@ namespace UE::HeroesOfLiberty::Tests::BuildingShot
 {
 	constexpr EAutomationTestFlags Flags = EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter;
 	const FName TestShotTowerType(TEXT("BuildingShotTestTower"));
+	/** F8 T6: the same row with BuildingFiresEmpty false (a building that looses arrows only with an occupant). */
+	const FName TestShotNoEmptyTowerType(TEXT("BuildingShotTestTowerNoEmpty"));
 
 	struct FShotResult
 	{
@@ -54,6 +56,9 @@ namespace UE::HeroesOfLiberty::Tests::BuildingShot
 		/** The countdown entries the processor holds at the end of the window, and two steps after the towers were destroyed (bDestroyAtEnd). */
 		int32 EntriesAlive = -1;
 		int32 EntriesAfterDeath = -1;
+		/** F8 T6: the arrows released up to the step the occupants left (LeaveAtStep), and after it. */
+		int64 ReleasedAtLeave = 0;
+		int64 ReleasedAfterLeave = 0;
 	};
 
 	struct FShotOptions
@@ -73,6 +78,9 @@ namespace UE::HeroesOfLiberty::Tests::BuildingShot
 		/** F8 T5b: hol.Combat.Enabled 0 for the whole window (bCombatOff), or only from the end of the window on, before the towers are destroyed (bCombatOffAtEnd). */
 		bool bCombatOff = false;
 		bool bCombatOffAtEnd = false;
+		/** F8 T6: occupants (allied Spearmen set in the tower's garrison before the first step); they all leave after the step LeaveAtStep (-1: they stay). */
+		int32 Occupants = 0;
+		int32 LeaveAtStep = -1;
 	};
 
 	/** The step at which the K-th arrow (K = 0 first) leaves a countdown that fires on the first step at which the elapsed time covers K intervals. */
@@ -209,7 +217,29 @@ namespace UE::HeroesOfLiberty::Tests::BuildingShot
 					// A frail target: the first arrow kills it (the kill goes through the arrow's landing, shooter absent). A tough one: it outlives the run.
 					EntityManager->GetFragmentDataPtr<FHOLUnitStateFragment>(Units->FindEntity(Victim))->CurrentHealth = Options.VictimHealth;
 				}
-				const FVector Home = VictimTransform->GetTransform().GetLocation();
+				// F8 T6: allied occupants, set in the garrison of the first tower (the garrison rule is not applied: UHOLUnitSubsystem::SetGarrison checks nothing).
+				TArray<uint32> OccupantIds;
+				for (int32 Index = 0; Index < Options.Occupants; ++Index)
+				{
+					TArray<uint32> Before;
+					Units->GetAllUnitIds(Before);
+					FHOLUnitSpawnRequest OccupantRequest;
+					OccupantRequest.TypeName = FName(TEXT("Spearman"));
+					OccupantRequest.Count = 1;
+					OccupantRequest.OwnerPlayer = 0;
+					OccupantRequest.Center = Tower->GetActorLocation();
+					Units->RequestUnits(OccupantRequest);
+					Units->ServeBirthRequests();
+					TArray<uint32> After;
+					Units->GetAllUnitIds(After);
+					for (const uint32 Id : After)
+					{
+						if (!Before.Contains(Id) && Units->SetGarrison(Id, Tower))
+						{
+							OccupantIds.Add(Id);
+						}
+					}
+				}				const FVector Home = VictimTransform->GetTransform().GetLocation();
 				int64 ReleasedBefore = UHOLCombatProcessor::GetTotalArrowsReleased();
 				if (Options.PauseSteps > 0)
 				{
@@ -235,6 +265,15 @@ namespace UE::HeroesOfLiberty::Tests::BuildingShot
 						Result.ReleaseSteps.Add(Index);
 					}
 					Seen = Now;
+					if (Index == Options.LeaveAtStep)
+					{
+						// F8 T6: the occupants leave (the unit goes back to the field); what the tower looses from the next step on is counted apart.
+						for (const uint32 Id : OccupantIds)
+						{
+							Units->SetGarrison(Id, nullptr);
+						}
+						Result.ReleasedAtLeave = Now - ReleasedBefore;
+					}
 					if (Options.bDestroyAfterShot && IsValid(Tower) && Now > ReleasedBefore)
 					{
 						// The building dies while its arrow flies: the arrow lands all the same (as an archer's whatever the shooter does meanwhile).
@@ -246,6 +285,7 @@ namespace UE::HeroesOfLiberty::Tests::BuildingShot
 				Result.bRan = true;
 				Result.HealthLost = Start - HealthOf(Victim);
 				Result.Released = UHOLCombatProcessor::GetTotalArrowsReleased() - ReleasedBefore;
+				Result.ReleasedAfterLeave = Result.Released - Result.ReleasedAtLeave;
 				Result.EntriesAlive = Combat->GetBuildingCooldownCount();
 				if (Options.bCombatOffAtEnd && CombatEnabledVar)
 				{
@@ -358,6 +398,78 @@ bool FHOLBuildingShotTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLBuildingShotFiresEmptyTest, "HeroesOfLiberty.Combat.BuildingShotFiresEmpty", UE::HeroesOfLiberty::Tests::BuildingShot::Flags)
+
+// F8 T6 (D884): BuildingFiresEmpty true: the tower looses arrows with no occupant; false: only with at least one occupant (the garrison list of the
+// unit subsystem), and it stops when the last one leaves. The number of arrows per shot is ONE in every case (UHOLCombatProcessor::GetBuildingArrowCount,
+// D884 : nombre par occupant à confirmer, 1 tant que non tranché): the test pins no other number. The rows are test rows (no row of the game is false today).
+bool FHOLBuildingShotFiresEmptyTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::BuildingShot;
+	UDataTable* Table = const_cast<UDataTable*>(GetDefault<UHOLBuildingSettings>()->BuildingTypesTable.LoadSynchronous());
+	const FHOLBuildingTypeRow* HouseRow = Table ? Table->FindRow<FHOLBuildingTypeRow>(HOLBuildingTypeNames::House, TEXT("building shot fires empty test")) : nullptr;
+	IConsoleVariable* CombatEnabled = IConsoleManager::Get().FindConsoleVariable(TEXT("hol.Combat.Enabled"));
+	if (!TestNotNull(TEXT("the building type table and its House row"), HouseRow) || !TestNotNull(TEXT("hol.Combat.Enabled"), CombatEnabled))
+	{
+		return false;
+	}
+	const int32 FormerCombat = CombatEnabled->GetInt();
+	CombatEnabled->Set(1, ECVF_SetByCode);
+	FHOLBuildingTypeRow TowerRow = *HouseRow;
+	TowerRow.BuildingAttack = 5;
+	TowerRow.BuildingAttackInterval = 1.625f;
+	TowerRow.BuildingAttackRange = 3000.f;
+	TowerRow.BuildingFiresEmpty = true;
+	Table->AddRow(TestShotTowerType, TowerRow);
+	TowerRow.BuildingFiresEmpty = false;
+	Table->AddRow(TestShotNoEmptyTowerType, TowerRow);
+
+	// FiresEmpty true, no occupant: it looses arrows and hurts the enemy in reach.
+	FShotOptions Short;
+	Short.Seconds = 3.f;
+	const FShotResult EmptyTrue = RunScenario(*this, EHOLConstructionState::Finished, 3, 1000.0, Short);
+	if (TestTrue(TEXT("the FiresEmpty true scenario ran"), EmptyTrue.bRan))
+	{
+		TestTrue(TEXT("FiresEmpty true: an empty tower looses arrows"), EmptyTrue.Released >= 1);
+		TestTrue(TEXT("FiresEmpty true: an empty tower hurts the enemy in reach"), EmptyTrue.HealthLost > 0.f);
+	}
+	// FiresEmpty false, no occupant: nothing is released, nothing is hurt, no countdown is held.
+	FShotOptions NoEmptyEmpty = Short;
+	NoEmptyEmpty.TowerType = TestShotNoEmptyTowerType;
+	const FShotResult EmptyFalse = RunScenario(*this, EHOLConstructionState::Finished, 3, 1000.0, NoEmptyEmpty);
+	if (TestTrue(TEXT("the FiresEmpty false empty scenario ran"), EmptyFalse.bRan))
+	{
+		TestEqual(TEXT("FiresEmpty false: an empty tower looses no arrow"), EmptyFalse.Released, static_cast<int64>(0));
+		TestEqual(TEXT("FiresEmpty false: an empty tower hurts nobody"), EmptyFalse.HealthLost, 0.f);
+		TestEqual(TEXT("FiresEmpty false: an empty tower holds no countdown"), EmptyFalse.EntriesAlive, 0);
+	}
+	// FiresEmpty false, one occupant: it looses arrows, ONE arrow per step at most (one shot = one arrow in every case).
+	FShotOptions Garrisoned = NoEmptyEmpty;
+	Garrisoned.Occupants = 1;
+	const FShotResult Occupied = RunScenario(*this, EHOLConstructionState::Finished, 3, 1000.0, Garrisoned);
+	if (TestTrue(TEXT("the garrisoned scenario ran"), Occupied.bRan))
+	{
+		TestTrue(TEXT("FiresEmpty false: a garrisoned tower looses arrows"), Occupied.Released >= 1);
+		TestTrue(TEXT("FiresEmpty false: a garrisoned tower hurts the enemy in reach"), Occupied.HealthLost > 0.f);
+		TestEqual(TEXT("one arrow per shot: the arrows released match the distinct steps they left on"), TSet<int32>(Occupied.ReleaseSteps).Num(), Occupied.ReleaseSteps.Num());
+	}
+	// The occupant leaves after step 5 (the first arrow left at once): the tower stops.
+	FShotOptions Leaving = Garrisoned;
+	Leaving.Seconds = 6.f;
+	Leaving.LeaveAtStep = 5;
+	const FShotResult Left = RunScenario(*this, EHOLConstructionState::Finished, 3, 1000.0, Leaving);
+	if (TestTrue(TEXT("the leaving scenario ran"), Left.bRan))
+	{
+		TestTrue(TEXT("the garrisoned tower had loosed an arrow before the occupant left"), Left.ReleasedAtLeave >= 1);
+		TestEqual(TEXT("an occupant who leaves stops a FiresEmpty false tower"), Left.ReleasedAfterLeave, static_cast<int64>(0));
+		TestEqual(TEXT("a tower that stopped holds no countdown"), Left.EntriesAlive, 0);
+	}
+
+	Table->RemoveRow(TestShotNoEmptyTowerType);
+	Table->RemoveRow(TestShotTowerType);
+	CombatEnabled->Set(FormerCombat, ECVF_SetByCode);
+	return true;
+}
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLBuildingShotCadenceTest, "HeroesOfLiberty.Combat.BuildingShotCadence", UE::HeroesOfLiberty::Tests::BuildingShot::Flags)
 
 // F8 T4: the cadence BuildingAttackInterval (1.625 s on the TowerWood row), counted in SIMULATION time (the fixed step of the processor, never the wall clock):
