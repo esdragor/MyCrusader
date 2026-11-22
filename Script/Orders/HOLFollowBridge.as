@@ -22,13 +22,7 @@ class UHOLFollowBridgeScript : UHOLFollowBridge
 		UHOLFollowBookHolder Holder = UHOLFollowBookHolder::Get();
 		if (Holder == nullptr)
 			return;
-		int Ended = 0;
-		for (int UnitId : UnitIds)
-		{
-			if (HOLFollowOrders::IndexOf(Holder.Book, UnitId) >= 0)
-				Ended++;
-			HOLFollowOrders::OnManualOrder(Holder.Book, UnitId);
-		}
+		const int Ended = HOLFollowOrders::EndFollows(Holder.Book, UnitIds);
 		// Only when a follow really ended (the manual order of a unit that follows nobody stays silent).
 		if (Ended > 0)
 			HOLScriptLog::LogDisplay(n"LogHOLMatch", f"FollowBridge: manual order ended the follow of {Ended} units");
