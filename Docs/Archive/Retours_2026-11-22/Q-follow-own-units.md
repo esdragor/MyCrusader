@@ -19,3 +19,5 @@ Valeur à changer : la valeur par défaut `0` du cvar `hol.Follow.OwnUnits` (`CV
 Note de comportement (par construction, comme la sélection déjà écartée) : avec 0, une unité à soi dessinée DEVANT un coéquipier est sautée, le coéquipier derrière est pris ; sur le seul corps d'une unité à soi, rien n'est pris (déplacement).
 
 Scénarios : `follow_short` pose `hol.Follow.OwnUnits 1` (un seul joueur : son Paysan est à soi, pas de coéquipier) pour prouver le pont de Suivre ; `follow_crowd` pose 0 et vérifie le déplacement (journal « Order: 10 units to », jamais « follow started »). Un scénario à 2 joueurs ciblant un coéquipier reste à écrire.
+
+Reponse: B, comme recommandé (réserve : escorte du héros de D818) (2026-11-22 ~22:05, dans la conversation ; GDD D885)

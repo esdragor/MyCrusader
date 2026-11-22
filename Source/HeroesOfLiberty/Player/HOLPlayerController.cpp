@@ -3043,6 +3043,7 @@ void AHOLPlayerController::RequestToggleDeploy(const TConstArrayView<uint32> Uni
 {
 	if (UnitIds.Num() > 0)
 	{
+		UHOLFollowBridge::NativeManualOrder(this, UnitIds); // a manual order ends the Follow of these units (GLORFINDEL-1122m, D818)
 		HOLDeploy::NoteOrder(DeployWatch, GetWorld() ? GetWorld()->GetTimeSeconds() : 0.0); // D869b: the bar's clock starts now
 		if (!HOLRpcScriptRoute_Haldir1117n::RouteToggleDeploy(this, UnitIds)) { HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("ToggleDeploy")); }
 	}
@@ -3199,6 +3200,7 @@ void AHOLPlayerController::RequestGatherUnits(const TConstArrayView<uint32> Unit
 {
 	if (UnitIds.Num() > 0 && SourceIndex != INDEX_NONE)
 	{
+		UHOLFollowBridge::NativeManualOrder(this, UnitIds); // a manual order ends the Follow of these units (GLORFINDEL-1122m, D818)
 		if (!HOLRpcScriptRoute_Haldir1117n::RouteGather(this, UnitIds, SourceIndex, bQueue)) { HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("Gather")); }
 	}
 }
@@ -3396,6 +3398,7 @@ void AHOLPlayerController::RequestPlaceBuilding(const FName TypeName, const FVec
 		const TArray<uint32> Builders = GetCommandUnits();
 		if (!Builders.IsEmpty())
 		{
+			UHOLFollowBridge::NativeManualOrder(this, Builders); // a manual order ends the Follow of these units (GLORFINDEL-1122m, D818)
 			UE_LOG(LogHOLMatch, Display, TEXT("Placement: %d units sent to build it%s"), Builders.Num(), bQueue ? TEXT(", queued") : TEXT(""));
 			// The brief mark of an order (J4.6) on the foundation they go to (D313).
 			OnOrderGiven.Broadcast(Point);
@@ -3468,6 +3471,7 @@ void AHOLPlayerController::RequestPlaceWallLine(const FName TypeName, const FVec
 {
 	if (!TypeName.IsNone() && !IsSpectator())
 	{
+		UHOLFollowBridge::NativeManualOrder(this, GetCommandUnits()); // the builders of the line: a manual order ends their Follow (GLORFINDEL-1122m, D818)
 		if (!HOLRpcScriptRoute_Haldir1117n::RoutePlaceWallLine(this, TypeName, Start, End, bQueue)) { HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("PlaceWallLine")); }
 	}
 }
@@ -3476,6 +3480,7 @@ void AHOLPlayerController::RequestBuildUnits(const TConstArrayView<uint32> UnitI
 {
 	if (UnitIds.Num() > 0 && Building)
 	{
+		UHOLFollowBridge::NativeManualOrder(this, UnitIds); // a manual order ends the Follow of these units (GLORFINDEL-1122m, D818)
 		if (!HOLRpcScriptRoute_Haldir1117n::RouteBuildUnits(this, UnitIds, Building, bQueue)) { HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("BuildUnits")); }
 	}
 }
@@ -3494,6 +3499,7 @@ void AHOLPlayerController::RequestDropOffUnits(const TConstArrayView<uint32> Uni
 {
 	if (UnitIds.Num() > 0 && Building)
 	{
+		UHOLFollowBridge::NativeManualOrder(this, UnitIds); // a manual order ends the Follow of these units (GLORFINDEL-1122m, D818)
 		if (!HOLRpcScriptRoute_Haldir1117n::RouteDropOff(this, UnitIds, Building, Point, bQueue)) { HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("DropOff")); }
 	}
 }
@@ -3511,6 +3517,7 @@ void AHOLPlayerController::RequestGarrisonUnits(const TConstArrayView<uint32> Un
 {
 	if (!IsSpectator() && UnitIds.Num() > 0 && Building)
 	{
+		UHOLFollowBridge::NativeManualOrder(this, UnitIds); // a manual order ends the Follow of these units (GLORFINDEL-1122m, D818)
 		if (!HOLRpcScriptRoute_Haldir1117n::RouteGarrison(this, UnitIds, Building)) { HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("Garrison")); }
 	}
 }
@@ -4812,6 +4819,7 @@ void AHOLPlayerController::RequestAttackBuilding(const TConstArrayView<uint32> U
 {
 	if (UnitIds.Num() > 0 && Building)
 	{
+		UHOLFollowBridge::NativeManualOrder(this, UnitIds); // a manual order ends the Follow of these units (GLORFINDEL-1122m, D818)
 		if (!HOLRpcScriptRoute_Haldir1117n::RouteAttackBuilding(this, UnitIds, Building, bQueue)) { HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("AttackBuilding")); }
 	}
 }

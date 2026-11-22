@@ -4,4 +4,5 @@ follow_crowd_body_peasant | Apres le clic droit sur le corps d'un Paysan dans la
 follow_crowd_body_selected | Apres le clic droit sur le corps d'un Homme d'armes selectionne : l'etat de la masse
 follow_crowd_ground | Apres le clic droit au sol a gauche de la masse : les Hommes d'armes marchent vers la gauche
 follow_crowd_heal_start | Un Moine selectionne et deux Hommes d'armes (un blesse) alignes sous la masse
-follow_crowd_heal_done | Apres le clic droit du Moine sur l'Homme d'armes blesse : le Moine est a son contact (barre de vie du blesse plus pleine qu'au depart)
+follow_crowd_heal_done | Prise APRES la ligne de journal '#22 (slot 0) is healed to 155' : l'Homme d'armes #22 (celui vise par le clic, selectionne pour la capture, a droite du Moine) a sa barre de vie PLEINE alors qu'il etait blesse a 77/155 sur follow_crowd_heal_start. hol.Cheat.Wound 50 blesse TOUTES les unites (22 alors) : le Moine soigne aussi d'autres unites, mais #22 est la cible du clic.
+# GESTE: interne (1122k) : les clics de ce scenario sont des hol.Select.OrderNear (ordre direct, pas d'evenement souris). La bascule au vrai clic (hol.Select.RightClickGround) se fera apres la fusion d'integ-52.
