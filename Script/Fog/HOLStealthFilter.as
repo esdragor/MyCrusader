@@ -27,6 +27,19 @@ namespace HOLStealthInstall
 {
 	// The stealth zones of the current map. NO MAP LAYS ZONES YET (MapsInProgress.md): the list is empty, so the installed filter hides nothing
 	// and the game plays as before. When a map carries its zones, read them here (one source, FHOLStealthZone list).
+	// STUB (red commit): the zones of a map by its name (D824 Q2 B: only the maps with groves; an open map has none). Centre = point of symmetry
+	// (the centre of the camps' start positions, CenterOfCamps), MapHalfExtent = half side of the playable square, in cm.
+	TArray<FHOLStealthZone> ZonesForMap(const FString& MapName, const FVector2D& Center, float MapHalfExtent)
+	{
+		TArray<FHOLStealthZone> Zones;
+		return Zones;
+	}
+
+	// STUB (red commit): the symmetry centre = mean of the camps' start positions; no position known = the centre of the map.
+	FVector2D CenterOfCamps(const TArray<FVector2D>& CampPositions, const FVector2D& MapCenter)
+	{
+		return MapCenter;
+	}
 	TArray<FHOLStealthZone> ZonesOfMap()
 	{
 		TArray<FHOLStealthZone> Zones;
