@@ -26,10 +26,11 @@ hol.Units.Where
 wait 1
 hol.Units.Where
 capture follow_short_walk
-# GLORFINDEL-1122h : le suivi s arrete au contact (vu au 2e passage : les hommes ne suivent pas un 2e trajet du Paysan) ; l annulation se prouve donc PENDANT la marche du Paysan : ordre manuel des hommes a t+2 s, le Paysan marche encore ; les hommes ne reviennent pas vers lui.
+# GLORFINDEL-1122h : le suivi s arrete au contact (vu au 2e passage : les hommes ne suivent pas un 2e trajet du Paysan) ; (corrige en 1122i : le suivi dure au contact et repart, non rejoue) l annulation se prouve donc PENDANT la marche du Paysan : ordre manuel des hommes a t+2 s, le Paysan marche encore ; les hommes ne reviennent pas vers lui.
 hol.Select.Army
 frames 10
 hol.Select.OrderNear 1500 3500
+waitlog FollowBridge: manual order ended
 wait 1
 hol.Units.Where
 wait 5

@@ -33,21 +33,21 @@ waitlog Selection: 10 units
 hol.Units.Where
 capture follow_crowd_start
 hol.Select.OrderNear 90 2500
-wait 1
+waitlog Order: 10 units to
 wait 3
 hol.Units.Where
 capture follow_crowd_body_peasant
 hol.Select.Army
 frames 10
 hol.Select.OrderNear 0 2500
-wait 1
+waitlog Order: 10 units to
 wait 3
 hol.Units.Where
 capture follow_crowd_body_selected
 hol.Select.Army
 frames 10
 hol.Select.OrderNear -700 2500
-wait 1
+waitlog Order: 10 units to
 wait 3
 hol.Units.Where
 capture follow_crowd_ground
