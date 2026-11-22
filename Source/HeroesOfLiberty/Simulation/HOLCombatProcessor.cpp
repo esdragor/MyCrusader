@@ -841,6 +841,7 @@ int32 UHOLCombatProcessor::GetBuildingAttackWithTechnology(const FFighter& Attac
 
 void UHOLCombatProcessor::ReleaseBuildingArrows(const UWorld& World, const int64 StepIndex, const int32 StepMs, const UHOLVisionSubsystem* Vision)
 {
+	using namespace UE::HeroesOfLiberty::Combat; // BuildingShotDebug (BSHOT diag cvar) lives there
 	(void)World;
 	// F8 T5: Vision is what the units' shots use (null: no fog started or the fog Disabled, hol.Fog.Mode 0): a tower aims only at what its OWNER sees.
 	// No standing building this step: no countdown can be alive (a no-op on an empty map), and nothing else costs anything.
