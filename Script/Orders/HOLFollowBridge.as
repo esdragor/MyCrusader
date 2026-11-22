@@ -22,13 +22,7 @@ class UHOLFollowBridgeScript : UHOLFollowBridge
 		UHOLFollowBookHolder Holder = UHOLFollowBookHolder::Get();
 		if (Holder == nullptr)
 			return;
-		int Ended = 0;
-		for (int UnitId : UnitIds)
-		{
-			if (HOLFollowOrders::IndexOf(Holder.Book, UnitId) >= 0)
-				Ended++;
-			HOLFollowOrders::OnManualOrder(Holder.Book, UnitId);
-		}
+		const int Ended = HOLFollowOrders::EndFollows(Holder.Book, UnitIds);
 		// Only when a follow really ended (the manual order of a unit that follows nobody stays silent).
 		if (Ended > 0)
 			HOLScriptLog::LogDisplay(n"LogHOLMatch", f"FollowBridge: manual order ended the follow of {Ended} units");
@@ -43,7 +37,7 @@ class UHOLFollowBridgeScript : UHOLFollowBridge
 		UHOLCommandSubsystem Commands = HOLCommandScript::GetCommands();
 		if (Commands == nullptr)
 			return;
-		// Backwards: a finished follow (unit or target gone) is removed from the book while iterating.
+		// Backwards: a finished follow (unit or target gone, or ended by a manual order; StepUnit true = it lasts, even with no order this step) is removed from the book while iterating.
 		for (int Index = Holder.Book.UnitIds.Num() - 1; Index >= 0; Index--)
 		{
 			const int UnitId = Holder.Book.UnitIds[Index];

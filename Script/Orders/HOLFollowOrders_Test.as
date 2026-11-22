@@ -297,3 +297,92 @@ void Test_ApplyRightClickOnEnemyStartsNoFollow(FUnitTest& T)
 	T.AssertTrue(Order == EHOLRightClickOrder::Attack, "an enemy click is an attack");
 	T.AssertEquals(0, Book.UnitIds.Num(), "no follower: the attack goes through the normal order path");
 }
+
+// ---- 1122i: the follow does not end at contact (defect seen in follow_short, 1122h) ----
+// EFFECT on the real chain (StepFollower -> Step -> Decide -> HOLPlayerOrders:: -> queue, the follower obeys the Move orders): the ally walks, stops (the follower arrives, no
+// order is needed, the follow LASTS), walks again on another axis: Move orders are queued again and the follower catches up. The step must never report the follow as over.
+void Test_FollowOrdersFollowerStaysAtContactThenWalksAgainWithTheAlly(FUnitTest& T)
+{
+	UHOLCommandSubsystem Commands = HOLCommandScript::MakeDetachedForTest();
+	FHOLFollowBook Book;
+	HOLFollowOrders::Begin(Book, HOLFollowOrdersTest::UnitId, HOLFollowOrdersTest::AllyId, true);
+	FVector Position = FVector(0.f, 0.f, 0.f);
+	FVector Ally = FVector(500.f, 0.f, 0.f);
+	bool bEnded = false;
+	int MovesAtContact = 0;
+	int MovesSecondLeg = 0;
+	for (int Tick = 0; Tick < 100; Tick++)
+	{
+		if (Tick < 30)
+			Ally.X += 80.f;
+		else if (Tick >= 60)
+			Ally.Y += 80.f;
+		const bool bLasts = HOLFollowOrders::StepFollower(Commands, 0, Book, HOLFollowOrdersTest::UnitId, Position, Ally, false, -1);
+		TArray<FHOLScriptOrderRead> Orders = HOLCommandScript::ConsumeMoves(Commands);
+		for (int Index = 0; Index < Orders.Num(); Index++)
+		{
+			if (Orders[Index].Kind == n"Move" && Orders[Index].UnitIds.Contains(HOLFollowOrdersTest::UnitId))
+			{
+				if (Tick >= 50 && Tick < 60)
+					MovesAtContact++;
+				if (Tick >= 60)
+					MovesSecondLeg++;
+				Position = HOLFollowOrdersTest::WalkToward(Position, Orders[Index].Target, 120.f);
+			}
+		}
+		if (!bLasts)
+		{
+			// What the bridge does: the entry leaves the book, the follower is never stepped again.
+			bEnded = true;
+			break;
+		}
+	}
+	const float Gap = (Ally - Position).Size();
+	T.AssertFalse(bEnded, "the step never reports the follow as over while the ally lives and no manual order was given");
+	T.AssertEquals(0, MovesAtContact, "at contact (ally standing still, follower arrived) no Move is queued");
+	T.AssertTrue(MovesSecondLeg > 0, "the ally walks again: Move orders are queued again");
+	T.AssertTrue(Gap <= HOLFollowRules::FollowDistance + 130.f, f"the follower caught up with the second leg (gap {Gap} cm, ally at ({Ally.X}, {Ally.Y}), follower at ({Position.X}, {Position.Y}))");
+}
+
+// EFFECT: a manual order always ends the follow for good: the step reports it over and queues nothing, however far the ally walks afterwards.
+void Test_FollowOrdersManualOrderEndsTheFollowForGood(FUnitTest& T)
+{
+	UHOLCommandSubsystem Commands = HOLCommandScript::MakeDetachedForTest();
+	FHOLFollowBook Book;
+	HOLFollowOrders::Begin(Book, HOLFollowOrdersTest::UnitId, HOLFollowOrdersTest::AllyId, true);
+	TArray<int> Ended;
+	Ended.Add(HOLFollowOrdersTest::UnitId);
+	HOLFollowOrders::EndFollows(Book, Ended);
+	const bool bLasts = HOLFollowOrders::StepFollower(Commands, 0, Book, HOLFollowOrdersTest::UnitId, FVector(0.f, 0.f, 0.f), FVector(5000.f, 0.f, 0.f), false, -1);
+	TArray<FHOLScriptOrderRead> Orders = HOLCommandScript::ConsumeMoves(Commands);
+	T.AssertFalse(bLasts, "after a manual order the step reports the follow over");
+	T.AssertEquals(0, Orders.Num(), "and no Move is queued toward the far ally");
+}
+
+// EFFECT: the dead (or unknown) target ends the follow: StepUnit reports it over, nothing queued (the unknown ids stand for a unit the game no longer has).
+void Test_FollowOrdersStepUnitTargetGoneEndsTheFollow(FUnitTest& T)
+{
+	UHOLCommandSubsystem Commands = HOLCommandScript::MakeDetachedForTest();
+	FHOLFollowBook Book;
+	HOLFollowOrders::Begin(Book, 987654, 987655, true);
+	const bool bLasts = HOLFollowOrders::StepUnit(nullptr, Commands, 0, Book, 987654, false);
+	T.AssertFalse(bLasts, "a target the game does not know ends the follow");
+	T.AssertEquals(0, HOLCommandScript::ConsumeMoves(Commands).Num(), "nothing queued");
+}
+
+// The manual order reaches the bridge twice for one right click (HOLPlayerController.cpp:1449 then the order path, 1122h: "manual order ended" written twice).
+// EFFECT: the second call ends nothing, so the bridge stays silent the second time.
+void Test_FollowOrdersEndFollowsCountsOnlyFollowsThatReallyEnded(FUnitTest& T)
+{
+	FHOLFollowBook Book;
+	HOLFollowOrders::Begin(Book, HOLFollowOrdersTest::UnitId, HOLFollowOrdersTest::AllyId, true);
+	HOLFollowOrders::Begin(Book, HOLFollowOrdersTest::UnitId + 1, HOLFollowOrdersTest::AllyId, true);
+	TArray<int> Units;
+	Units.Add(HOLFollowOrdersTest::UnitId);
+	Units.Add(HOLFollowOrdersTest::UnitId + 1);
+	Units.Add(HOLFollowOrdersTest::UnitId + 2);
+	const int First = HOLFollowOrders::EndFollows(Book, Units);
+	const int Second = HOLFollowOrders::EndFollows(Book, Units);
+	T.AssertEquals(2, First, "the first manual order ends the two follows (the third unit follows nobody)");
+	T.AssertEquals(0, Second, "the same manual order again ends nothing");
+}

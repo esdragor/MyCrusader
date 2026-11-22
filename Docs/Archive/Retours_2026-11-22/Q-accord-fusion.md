@@ -24,4 +24,4 @@ Lecture seule de `git diff main...integ-52` (35 fichiers), rien compilé ni lanc
 - D. Fusionner `main` après correction des gênants restants (2, 4 et 5 ; 1 et 3 sont déjà dans integ-53) (séance suivante). Effet : `main` n'avance pas dans cette séance (comme C) ; la fusion se fait en début de séance suivante, avec ces correctifs d'abord.
 La recommandation reste B (les gênants ne sont pas des bloquants : le C++ est neutre sans classe script) ; D est à préférer si vous voulez que main ne reçoive aucun de ces défauts.
 
-Reponse:
+Reponse: B, accord permanent, jamais de push (2026-11-22 ~22:05, dans la conversation ; GDD D888)

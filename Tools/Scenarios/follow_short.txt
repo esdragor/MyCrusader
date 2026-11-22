@@ -19,17 +19,35 @@ hol.Select.OrderNear 0 4500
 waitlog FollowBridge: follow started
 waitlog Order: 4 units follow
 hol.Units.Where
+# 1122l : camera replacee juste avant le clic (preflight pan exposure : max 10 images apres la camera)
+hol.Camera.FocusNear 0 3500
+frames 2
 hol.Select.ClickUnit -1
 hol.Select.OrderNear 3000 5500
-wait 1
+wait 2
 hol.Units.Where
-wait 1
+wait 12
+hol.Units.Where
+wait 3
 hol.Units.Where
 capture follow_short_walk
-# GLORFINDEL-1122h : le suivi s arrete au contact (vu au 2e passage : les hommes ne suivent pas un 2e trajet du Paysan) ; l annulation se prouve donc PENDANT la marche du Paysan : ordre manuel des hommes a t+2 s, le Paysan marche encore ; les hommes ne reviennent pas vers lui.
+# GLORFINDEL-1122j : 2e trajet. Releves : pendant le 1er trajet, Paysan arrete et hommes au contact (avant), pendant le 2e trajet, apres (arrives). Les hommes doivent repartir avec le Paysan.
+hol.Camera.FocusNear 1500 4500
+frames 10
+hol.Select.ClickUnit -1
+hol.Select.OrderNear 1500 5500
+wait 3
+hol.Units.Where
+wait 12
+hol.Units.Where
+capture follow_short_second_leg
+# ordre manuel pendant un 3e trajet du Paysan : UNE ligne de fin, les hommes ne reviennent pas
+hol.Select.OrderNear 3000 3500
+wait 2
 hol.Select.Army
 frames 10
 hol.Select.OrderNear 1500 3500
+waitlog FollowBridge: manual order ended
 wait 1
 hol.Units.Where
 wait 5
