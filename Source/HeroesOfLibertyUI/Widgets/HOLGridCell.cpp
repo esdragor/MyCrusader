@@ -8,6 +8,10 @@
 #include "Components/HorizontalBoxSlot.h"
 #include "Components/Image.h"
 #include "Components/Overlay.h"
+#include "Components/SizeBox.h"
+#include "Fonts/FontMeasure.h"
+#include "Framework/Application/SlateApplication.h"
+#include "Rendering/SlateRenderer.h"
 #include "Components/OverlaySlot.h"
 #include "Components/VerticalBox.h"
 #include "Components/VerticalBoxSlot.h"
@@ -26,6 +30,10 @@ namespace UE::HeroesOfLiberty::UI::GridCell
 	const TCHAR* const ResourceWords[NumResources] = { TEXT("Food"), TEXT("Wood"), TEXT("Stone"), TEXT("Gold") };
 	/** The gain's logo on the cell (D781): the resource's marker, larger than the tooltip's, until the resource icons exist. */
 	constexpr float GainMarkerSize = 10.f;
+	/** The room under the status line's text, at the bottom of the cell. */
+	constexpr float StatusBottomPad = 2.f;
+	/** A text line of the Tiny style when it cannot be measured (no renderer, as in a commandlet): 11 pt = 14.7 px, about 1.2 lines. */
+	constexpr float FallbackLineHeight = 18.f;
 
 	FLinearColor GetResourceColor(const EHOLResource Resource)
 	{
@@ -87,7 +95,7 @@ void UHOLGridCell::NativeOnInitialized()
 		// The name alone (no icon yet, no cost: the tooltip's), in the middle under the key's line. The box fills the
 		// cell's width so that the name wraps on it (« Camp de » / « bûcherons »), each line centred.
 		UnitBox = WidgetTree->ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass(), TEXT("UnitBox"));
-		UOverlaySlot* UnitSlot = CellContent->AddChildToOverlay(UnitBox);
+		UnitSlot = CellContent->AddChildToOverlay(UnitBox);
 		UnitSlot->SetHorizontalAlignment(HAlign_Fill);
 		UnitSlot->SetVerticalAlignment(VAlign_Center);
 		UnitSlot->SetPadding(FMargin(0.f, 12.f, 0.f, 0.f));
@@ -96,7 +104,22 @@ void UHOLGridCell::NativeOnInitialized()
 		UnitName->SetStyle(UHOLTextStyleHUDTiny::StaticClass());
 		UnitName->SetJustification(ETextJustify::Center);
 		UnitName->SetAutoWrapText(true);
-		UnitBox->AddChildToVerticalBox(UnitName)->SetHorizontalAlignment(HAlign_Fill);
+		// The name sits in a box that SetStatus bounds to whole lines (clipped to its bounds: a name too long is cut at a line, not in the
+		// middle of one); not bounded on a cell without a status.
+		NameBox = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass(), TEXT("NameBox"));
+		NameBox->SetClipping(EWidgetClipping::ClipToBounds);
+		NameBox->SetContent(UnitName);
+		UnitBox->AddChildToVerticalBox(NameBox)->SetHorizontalAlignment(HAlign_Fill);
+
+		// The status (Bientot): a line of its own at the bottom of the cell, outside the name's box, hidden until SetStatus gives one.
+		StatusText = WidgetTree->ConstructWidget<UCommonTextBlock>(UCommonTextBlock::StaticClass(), TEXT("StatusText"));
+		StatusText->SetStyle(UHOLTextStyleHUDTiny::StaticClass());
+		StatusText->SetJustification(ETextJustify::Center);
+		StatusText->SetVisibility(ESlateVisibility::Collapsed);
+		UOverlaySlot* StatusSlot = CellContent->AddChildToOverlay(StatusText);
+		StatusSlot->SetHorizontalAlignment(HAlign_Fill);
+		StatusSlot->SetVerticalAlignment(VAlign_Bottom);
+		StatusSlot->SetPadding(FMargin(0.f, 0.f, 0.f, StatusBottomPad));
 	}
 
 	// A key given before the widget was initialized (a script panel builds the cell and keys it at once, H-8).
@@ -188,6 +211,9 @@ void UHOLGridCell::ShowCost(const TConstArrayView<TObjectPtr<UImage>> Markers, c
 void UHOLGridCell::SetCommand(const FText& InName, const EHOLGridCellState InState)
 {
 	using namespace UE::HeroesOfLiberty::UI::GridCell;
+
+	// A command's status (SetStatus) is given after it: the cell reused for a new command shows none.
+	SetStatus(FText::GetEmpty());
 
 	// No icon yet: the name (the user's trial of J6a.5); the cost only in the tooltip.
 	const FHOLGridCellFace Face = HOLCommandGrid::GetCellFace(/*bHasIcon*/ false);
@@ -281,6 +307,11 @@ FString UHOLGridCell::DescribeContent() const
 		return FString();
 	}
 	FString Content = UnitName && UnitName->GetVisibility() != ESlateVisibility::Collapsed ? UnitName->GetText().ToString() : FString();
+	if (StatusText && StatusText->GetVisibility() != ESlateVisibility::Collapsed)
+	{
+		// The status is a line of its own under the name (the text the scripted checks read is the one the glued text gave).
+		Content += TEXT("\n") + StatusText->GetText().ToString();
+	}
 	if (GainLine && GainLine->GetVisibility() != ESlateVisibility::Collapsed && GainAmount && GainMarker
 		&& GainMarker->GetVisibility() != ESlateVisibility::Collapsed)
 	{
@@ -292,6 +323,7 @@ FString UHOLGridCell::DescribeContent() const
 
 void UHOLGridCell::ClearUnit()
 {
+	SetStatus(FText::GetEmpty());
 	if (UnitBox)
 	{
 		UnitBox->SetVisibility(ESlateVisibility::Collapsed);
@@ -305,20 +337,65 @@ void UHOLGridCell::ClearUnit()
 	SetTooltip(FText::GetEmpty(), FHOLResources(), FHOLResources(), FText::GetEmpty());
 }
 
-// Stub of the red commit (the layout is built in the green one).
-void UHOLGridCell::SetStatus(const FText&)
+FHOLGridCellNameZone UHOLGridCell::ComputeNameZone(const float CellSize, const float TopBand, const float LineHeight, const bool bHasStatus)
 {
+	using namespace UE::HeroesOfLiberty::UI::GridCell;
+
+	// Without a status the cell is as before: nothing bounded, no line kept.
+	FHOLGridCellNameZone Zone;
+	if (!bHasStatus || LineHeight <= 0.f)
+	{
+		return Zone;
+	}
+	// The status takes one line at the bottom; the name keeps the whole lines left under the top band, at least one.
+	Zone.StatusHeight = LineHeight + StatusBottomPad;
+	const float Room = FMath::Max(0.f, CellSize - TopBand - Zone.StatusHeight);
+	Zone.NameLines = FMath::Max(1, FMath::FloorToInt(Room / LineHeight));
+	Zone.NameHeight = Zone.NameLines * LineHeight;
+	return Zone;
+}
+
+void UHOLGridCell::SetStatus(const FText& InStatus)
+{
+	using namespace UE::HeroesOfLiberty::UI::GridCell;
+
+	const bool bHasStatus = !InStatus.IsEmpty();
+	if (StatusText)
+	{
+		StatusText->SetText(InStatus);
+		StatusText->SetVisibility(bHasStatus ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+		StatusText->SetRenderOpacity(State == EHOLGridCellState::Ready ? 1.f : GreyedOpacity);
+	}
+
+	// The height of a name line: measured on the name's font when a renderer exists, a constant otherwise.
+	float LineHeight = FallbackLineHeight;
+	if (bHasStatus && UnitName && FSlateApplication::IsInitialized() && FSlateApplication::Get().GetRenderer())
+	{
+		const TSharedRef<FSlateFontMeasure> Measure = FSlateApplication::Get().GetRenderer()->GetFontMeasureService();
+		const float Measured = Measure->GetMaxCharacterHeight(UnitName->GetFont());
+		LineHeight = Measured > 0.f ? Measured : FallbackLineHeight;
+	}
+	const FHOLGridCellNameZone Zone = ComputeNameZone(DefaultCellSize, NameTopBand, LineHeight, bHasStatus);
+	NameZoneHeight = Zone.NameHeight;
+	if (NameBox)
+	{
+		if (bHasStatus)
+		{
+			NameBox->SetMaxDesiredHeight(Zone.NameHeight);
+		}
+		else
+		{
+			NameBox->ClearMaxDesiredHeight();
+		}
+	}
+	if (UnitSlot)
+	{
+		// The status line's room is taken from the bottom of the name's slot: the name and the gain line never reach it.
+		UnitSlot->SetPadding(FMargin(0.f, NameTopBand, 0.f, Zone.StatusHeight));
+	}
 }
 
 float UHOLGridCell::GetNameZoneHeight() const
 {
-	return 0.f;
-}
-
-FHOLGridCellNameZone UHOLGridCell::ComputeNameZone(float CellSize, float, float, bool)
-{
-	FHOLGridCellNameZone Zone;
-	Zone.NameHeight = CellSize;
-	Zone.NameLines = 99;
-	return Zone;
+	return NameZoneHeight;
 }

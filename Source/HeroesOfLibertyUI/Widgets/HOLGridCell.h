@@ -16,7 +16,7 @@ struct FHOLTradeGain;
 class UHOLGridCell;
 
 /**
- * The zone of a cell's face (GALADRIEL-1122g): a status line of its own at the bottom of the cell (Â« Bientot Â», always visible) and,
+ * The zone of a cell's face (GALADRIEL-1122g): a status line of its own at the bottom of the cell (Bientot, always visible) and,
  * above it, the zone of the name bounded to whole lines, so that a name of 3 to 4 lines no longer pushes the status out of the cell.
  */
 struct FHOLGridCellNameZone
@@ -87,7 +87,7 @@ public:
 	void ClearUnit();
 
 	/**
-	 * A status under the name (Â« Bientot Â», the technologies without an effect, D601): a line of its own at the bottom of the cell,
+	 * A status under the name (Bientot, the technologies without an effect, D601): a line of its own at the bottom of the cell,
 	 * the name's zone bounded above it. Empty: none, the name is not bounded. SetCommand clears it: set it after SetCommand.
 	 */
 	void SetStatus(const FText& InStatus);
@@ -174,6 +174,9 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<UCommonTextBlock> StatusText;
+
+	/** The height the name's zone is bounded to (GetNameZoneHeight); 0: not bounded. */
+	float NameZoneHeight = 0.f;
 
 	/** The button's native click, broadcast as OnCellClicked. */
 	void BroadcastCellClicked();

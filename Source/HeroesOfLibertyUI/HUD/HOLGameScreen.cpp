@@ -1162,9 +1162,12 @@ void UHOLGameScreen::RefreshGrid(const AHOLBuilding* OwnBuilding, const bool bOw
 			}
 			const FText Effect = Feedback.Kind == EHOLCommandFeedback::ResearchRefused ? GetResearchBlockText(Feedback.Block)
 				: Technology ? HOLGameNames::GetTechnologyEffect(*Technology) : FText();
-			const FText CellName = Feedback.Kind == EHOLCommandFeedback::ResearchRefused && Feedback.Block == HOLTechnology::EBlock::NotImplemented
-				? FText::Format(LOCTEXT("ResearchSoonCell", "{0}\nBientôt"), Name) : Name;
-			GridCell->SetCommand(CellName, Feedback.IsNone() ? EHOLGridCellState::Ready : EHOLGridCellState::Greyed);
+			GridCell->SetCommand(Name, Feedback.IsNone() ? EHOLGridCellState::Ready : EHOLGridCellState::Greyed);
+			if (Feedback.Kind == EHOLCommandFeedback::ResearchRefused && Feedback.Block == HOLTechnology::EBlock::NotImplemented)
+			{
+				// GALADRIEL-1122g: the status is a line of its own at the bottom of the cell (same text as the tooltip's, three languages), the name keeps a bounded zone.
+				GridCell->SetStatus(GetResearchBlockText(HOLTechnology::EBlock::NotImplemented));
+			}
 			GridCell->SetTooltip(Name, Cost, Missing, Effect);
 			break;
 		}
