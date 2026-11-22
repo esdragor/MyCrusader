@@ -41,3 +41,31 @@ void UHOLUnitOpacityLibrary::ClearStealthOpacities()
 	FScopeLock Lock(&OpacityLock);
 	GetOpacities().Empty();
 }
+
+HOLUnitDraw::FInstanceCustomData HOLUnitDraw::MakeInstanceCustomData(const FVector3f& Color, const uint8 Prop, const float Opacity)
+{
+	return { Color, static_cast<float>(Prop), Opacity };
+}
+
+HOLUnitDraw::FInstanceCustomData HOLUnitDraw::MakeUnitInstanceCustomData(const FVector3f& Color, const uint8 Prop, const int32 UnitId)
+{
+	// D824 Q3: the opacity the stealth rule set for this unit (0.5 in a zone, 1 when none was set).
+	return MakeInstanceCustomData(Color, Prop, UHOLUnitOpacityLibrary::GetStealthOpacity(UnitId));
+}
+
+HOLUnitDraw::FOpacitySnapshot HOLUnitDraw::TakeOpacitySnapshot()
+{
+	// One lock for the whole pass. Nothing is copied when the table is empty (the normal case: no stealth zone); otherwise the (small) table is copied.
+	FScopeLock Lock(&OpacityLock);
+	const TMap<int32, float>& Table = GetOpacities();
+	if (Table.IsEmpty())
+	{
+		return FOpacitySnapshot();
+	}
+	return FOpacitySnapshot(TMap<int32, float>(Table));
+}
+
+HOLUnitDraw::FInstanceCustomData HOLUnitDraw::MakeUnitInstanceCustomData(const FVector3f& Color, const uint8 Prop, const int32 UnitId, const FOpacitySnapshot& Snapshot)
+{
+	return MakeInstanceCustomData(Color, Prop, Snapshot.Get(UnitId));
+}
