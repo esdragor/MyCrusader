@@ -17,7 +17,7 @@ hol.Select.OrderNear 0 4500
 waitlog FollowBridge: follow started
 waitlog Order: 4 units follow
 hol.Units.Where
-hol.Select.ClickUnit 5
+hol.Select.ClickUnit -1
 hol.Select.OrderNear 3000 5500
 wait 4
 hol.Units.Where
