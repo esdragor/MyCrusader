@@ -19,11 +19,8 @@ class HEROESOFLIBERTY_API UHOLFollowBridge : public UObject
 	GENERATED_BODY()
 
 public:
-	/** The script's instance (its class's default object), nullptr without a script class. Hot reload keeps older classes: the newest is looked up again. */
-	UFUNCTION(BlueprintCallable, Category = "HOL|Orders")
-	static UHOLFollowBridge* Get();
-
-	/** The bridge of this controller: an INSTANCE owned by it (GetOuter() == Controller), never the CDO. nullptr without a script class or a controller. */
+	/** The bridge of this controller: an INSTANCE owned by it (GetOuter() == Controller, kept in its FollowBridge), never the CDO (a script call on the CDO has no
+	 *  WorldContext: 19 727 errors, L22-5). nullptr without a script class or a controller. Hot reload keeps older classes: the newest is looked up again, and a bridge of an older class is replaced. */
 	static UHOLFollowBridge* GetFor(AHOLPlayerController* Controller);
 
 	/** True when the right click on the unit TargetId started a Follow of the selected units (no ordinary order then). False without a script class. */
@@ -32,7 +29,7 @@ public:
 	static void NativeStep(AHOLPlayerController* Controller, int32 PlayerIndex);
 
 	/** Any manual order of the units (right click on the ground or an enemy, Stop, Hold) ends their Follow. Nothing without a script class. */
-	static void NativeManualOrder(const TConstArrayView<uint32> UnitIds);
+	static void NativeManualOrder(AHOLPlayerController* Controller, const TConstArrayView<uint32> UnitIds);
 
 	// The script overrides (Angelscript drops the BP_ prefix).
 	UFUNCTION(BlueprintImplementableEvent, Category = "HOL|Orders")

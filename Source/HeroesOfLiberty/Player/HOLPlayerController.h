@@ -19,6 +19,7 @@ class AHOLPlayerState;
 class AHOLRTSCamera;
 class AHOLSelectionMarkers;
 class UInputAction;
+class UHOLFollowBridge;
 struct FHOLPickCandidate;
 struct FHOLSourceTypeRow;
 struct FHOLUnitView;
@@ -618,6 +619,10 @@ public:
 
 	/** SP2 (GDD 13, D07): the player starts the unlock of Option (0, 1, or 2 for the Templars) at Tier at his Forum; the server decides. */
 	void RequestSpecialization(int32 Tier, int32 Option);
+
+	/** The Follow bridge of this controller (UHOLFollowBridge::GetFor creates it from the script class): an instance owned by the controller, never the CDO (GLORFINDEL-1122a). */
+	UPROPERTY(Transient)
+	TObjectPtr<UHOLFollowBridge> FollowBridge;
 
 	/** SP2: the player cancels his running unlock (the option is free again, its delay starts over). */
 	void RequestCancelSpecialization();
