@@ -67,8 +67,13 @@ check-list lue (L23) : 16:23, en entier, apres 0a (5d40153, 1447448) et avant le
 | GLORFINDEL-1122i | v9 | Glorfindel ability-columns | Suivre reste pres de la cible qui repart (HOLFollowOrders.as / HOLFollowRules.as, tests) ; waitlogs de follow_* | non | 17:36 | 17:40 | 725873c rouge, 7f2bdee vert (suivi retire au contact = defaut, doublon corrige), ece3ce2 waitlogs ; rien charge ni joue, rejeu apres integ-51 |
 | CELEBORN-1122d | v9 | lecture seule | plan du tir de batiment D884 (F8), decoupe en taches de 15 min | non | 17:36 | 17:41 | plan T1 a T8 (tous C++), 10 questions de design listees, Docs\Rapports\CELEBORN-1122d.md |
 | CELEBORN-1122e | v10 | Celeborn integ-41 | D884 T1 : portee depuis le bord du corps, regle pure + tests (HOLCombatRules.h) | oui | 17:41 | 17:45 | 548cf14 rouge, 73d7571 vert, b986b94 ; NON COMPILE ; build groupe avec T2 |
-| CELEBORN-1122f | v11 | Celeborn integ-41 | D884 T2 : premiere fleche sur l'ennemi le plus proche (HOLCombatProcessor.cpp, test Mass) | oui | 17:45 | en cours | |
-| GLORFINDEL-1122j | v11 | Glorfindel ability-columns | rejeu follow_short avec 2e trajet, chargement des .as (725873c, 7f2bdee) | non | 17:47 | en cours | |
+| CELEBORN-1122f | v11 | Celeborn integ-41 | D884 T2 : premiere fleche sur l'ennemi le plus proche (HOLCombatProcessor.cpp, test Mass) | oui | 17:45 | 17:50 | 999abc5 rouge, d9e41cc vert, 5d6a6de ; NON COMPILE, build lance ; hors passes tant que T7 et reseau manquent |
+| GLORFINDEL-1122j | v11 | Glorfindel ability-columns | rejeu follow_short avec 2e trajet, chargement des .as (725873c, 7f2bdee) | non | 17:47 | 17:54 | 731c931 ; 2e trajet suivi, une seule ligne de fin, soin d'une unite saine OK, 0 erreur ; cible morte NON FAIT ; branche prete |
+| ELROND-1122h | v12 | Elrond integ-25 | verbe hol.Select.RightClickGround (vrai chemin du clic droit, modele LeftClickGround) + test | non | 17:55 | 17:57 | 7152ed8 (merge integ-51), 70f77dd bouchon, 0c8d5eb ; C++ (colonne C++ du tableau fausse), NON COMPILE, build lance |
+| CELEBORN-1122g | v12 | Celeborn integ-41 | D884 T3 : atterrissage, armure, credit sans entite tireuse (HOLCombatProcessor.cpp) | oui | 17:55 | 17:59 | bbaac86 rouge, 14585e2 vert ; NON COMPILE (build avec T4) ; credit au bon slot non assertit |
+| ELROND-1122i | v13 | Elrond integ-25 | deploy et order_lines_blocks au vrai clic droit (scenarios, preflight, PNG) | non | 17:59 | 18:03 | 0e4b0c5 ; deploy et order_lines_blocks au vrai clic droit, preflights PASS 83 s / 18 s, 0 erreur ; E-order_lines_blocks GESTE reel, E-deploy PAS PRET |
+| CELEBORN-1122h | v13 | Celeborn integ-41 | D884 T4 : cadence par tour (HOLCombatProcessor.cpp) | oui | 17:59 | en cours | |
+| integ-52 | passe | Sauron | verts integ-51, ability-columns (731c931), integ-25 (0e4b0c5) ; rouges deja vus (725873c : 2066/2068) | oui | 18:03 | en cours | |
 
 ## Résumé de la séance du 2026-11-21 soir
 
