@@ -42,6 +42,29 @@ void UHOLUnitOpacityLibrary::ClearStealthOpacities()
 	GetOpacities().Empty();
 }
 
+namespace
+{
+	/** Game worlds alive in this process holding the reset subsystem (game thread only: world init and cleanup). */
+	int32 LiveGameWorlds = 0;
+}
+
+void UHOLStealthOpacityResetSubsystem::Initialize(FSubsystemCollectionBase& Collection)
+{
+	Super::Initialize(Collection);
+	++LiveGameWorlds;
+}
+
+void UHOLStealthOpacityResetSubsystem::Deinitialize()
+{
+	--LiveGameWorlds;
+	Super::Deinitialize();
+}
+
+int32 UHOLStealthOpacityResetSubsystem::GetLiveGameWorlds()
+{
+	return LiveGameWorlds;
+}
+
 HOLUnitDraw::FInstanceCustomData HOLUnitDraw::MakeInstanceCustomData(const FVector3f& Color, const uint8 Prop, const float Opacity)
 {
 	return { Color, static_cast<float>(Prop), Opacity };
