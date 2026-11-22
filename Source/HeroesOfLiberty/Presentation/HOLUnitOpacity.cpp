@@ -55,8 +55,14 @@ HOLUnitDraw::FInstanceCustomData HOLUnitDraw::MakeUnitInstanceCustomData(const F
 
 HOLUnitDraw::FOpacitySnapshot HOLUnitDraw::TakeOpacitySnapshot()
 {
-	// STUB (red): an empty snapshot, every unit opaque. The real copy of the table comes in the next commit.
-	return FOpacitySnapshot();
+	// One lock for the whole pass. Nothing is copied when the table is empty (the normal case: no stealth zone); otherwise the (small) table is copied.
+	FScopeLock Lock(&OpacityLock);
+	const TMap<int32, float>& Table = GetOpacities();
+	if (Table.IsEmpty())
+	{
+		return FOpacitySnapshot();
+	}
+	return FOpacitySnapshot(TMap<int32, float>(Table));
 }
 
 HOLUnitDraw::FInstanceCustomData HOLUnitDraw::MakeUnitInstanceCustomData(const FVector3f& Color, const uint8 Prop, const int32 UnitId, const FOpacitySnapshot& Snapshot)

@@ -391,7 +391,10 @@ void UHOLInterpolatedInstancesProcessor::Execute(FMassEntityManager& EntityManag
 	const double WorldSeconds = World ? World->GetTimeSeconds() : 0.;
 
 	const FFogView Fog(World);
-	EntityQuery.ForEachEntityChunk(Context, [Alpha, StepSeconds, Sources, &Sites, &SlotColors, SpeedScale, WorldSeconds, &Fog](FMassExecutionContext& Context)
+	// D824 Q3: the units' stealth opacities, copied ONCE for this run (one lock; empty and no copy when no zone), then read without a lock per unit.
+	// The processor runs on the game thread (bRequiresGameThreadExecution) and the query below is sequential, so the copy is private to this call.
+	const HOLUnitDraw::FOpacitySnapshot OpacitySnapshot = HOLUnitDraw::TakeOpacitySnapshot();
+	EntityQuery.ForEachEntityChunk(Context, [Alpha, StepSeconds, Sources, &Sites, &SlotColors, SpeedScale, WorldSeconds, &Fog, &OpacitySnapshot](FMassExecutionContext& Context)
 	{
 		UMassRepresentationSubsystem* RepresentationSubsystem = Context.GetSharedFragment<FMassRepresentationSubsystemSharedFragment>().RepresentationSubsystem;
 		check(RepresentationSubsystem);
@@ -578,7 +581,7 @@ void UHOLInterpolatedInstancesProcessor::Execute(FMassEntityManager& EntityManag
 					MeshInfo.AddBatchedAnimationData(Entity, AnimData, RepresentationLOD.LODSignificance, Representation.PrevLODSignificance);
 					// L4 (hol.Rage.Visual, default 0 = unchanged): a warrior in necrotic rage is tinted dark red in modes 1 and 4.
 					MeshInfo.AddBatchedCustomData(HOLUnitDraw::MakeUnitInstanceCustomData(HOLRageVisual::GetDrawColor(HOLRageVisual::GetMode(), Combat ? Combat->RageMs : 0,
-						SlotColors.GetLinear(State.OwnerPlayer)), Choice.Prop, static_cast<int32>(State.UnitId)), RepresentationLOD.LODSignificance,
+						SlotColors.GetLinear(State.OwnerPlayer)), Choice.Prop, static_cast<int32>(State.UnitId), OpacitySnapshot), RepresentationLOD.LODSignificance,
 						Representation.PrevLODSignificance);
 				}
 			}
