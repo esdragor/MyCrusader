@@ -95,6 +95,21 @@ namespace HOLTopBar
 		return View;
 	}
 
+	// RECETTE-1121sd: in French the gold's income tooltip covered the "Scénario" banner (centred under the bar). The tooltip's window is placed by the engine at
+	// the cursor, so only a transparent drop above the visible panel moves it: the drop that puts the tooltip's top under the banner's bottom when the two share
+	// some width (no banner: 0, the position is unchanged).
+	// STUB (red commit): no drop yet.
+	float IncomeTipDrop(float TipLeft, float TipTop, float TipWidth, float BannerLeft, float BannerRight, float BannerBottom)
+	{
+		return 0.0;
+	}
+
+	// The tooltip's width in the HUD font (a rule without a renderer: an average glyph width plus the two paddings).
+	float IncomeTipWidth(FString Text, float Padding)
+	{
+		return float(Text.Len()) * 8.0 + Padding * 2.0;
+	}
+
 	FString ResourceWord(int Resource)
 	{
 		if (Resource == Food())

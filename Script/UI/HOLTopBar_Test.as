@@ -81,6 +81,33 @@ void Test_TopBarIncomeIsSetAgainOnlyWhenItChanges(FUnitTest& T)
 
 // D814 (Q-income-tooltip-taille = B): the income tooltip is a HUD panel, computed by the rule from the income and the resource: the text names the income and
 // the resource, the fill is dark and near-opaque (the HUD's), the border is gold with a width.
+// RECETTE-1121sd: the French gold tooltip must not cover the "Scénario" banner. The banner's top comes from the real HOLScenarioPanelRules::PanelTop, the
+// tooltip's width from the real FR text through the view, the drop from the real rule; the tooltip's rectangle (left, top + drop, width) is then checked
+// against the banner's rectangle. A banner is 860 wide, centred on a 1920 screen (left 530, right 1390), 70 high.
+bool TopBarTipOverlapsBanner(float TipLeft, float TipTop, float TipWidth, float TipHeight, float BannerLeft, float BannerRight, float BannerTop, float BannerBottom)
+{
+	return TipLeft < BannerRight && TipLeft + TipWidth > BannerLeft && TipTop < BannerBottom && TipTop + TipHeight > BannerTop;
+}
+
+void Test_TopBarGoldTipDoesNotCoverTheScenarioBanner(FUnitTest& T)
+{
+	HOLTopBar::FIncomeTipView View = HOLTopBar::IncomeTipView(0, HOLTopBar::Gold());
+	const float TipWidth = HOLTopBar::IncomeTipWidth(View.Text, View.Padding);
+	const float TipHeight = 28.0;
+	const float BannerTop = HOLScenarioPanelRules::PanelTop(40.0);
+	const float BannerBottom = BannerTop + 70.0;
+	const float TipLeft = 650.0;
+	const float TipTop = 56.0;
+	const float Drop = HOLTopBar::IncomeTipDrop(TipLeft, TipTop, TipWidth, 530.0, 1390.0, BannerBottom);
+	T.AssertTrue(TopBarTipOverlapsBanner(TipLeft, TipTop, TipWidth, TipHeight, 530.0, 1390.0, BannerTop, BannerBottom), "without the drop the FR gold tooltip is on the banner (the bug)");
+	T.AssertFalse(TopBarTipOverlapsBanner(TipLeft, TipTop + Drop, TipWidth, TipHeight, 530.0, 1390.0, BannerTop, BannerBottom), "with the drop the tooltip is clear of the banner");
+	T.AssertTrue(Drop > 0.0, "the tooltip is moved");
+	const float NoBanner = HOLTopBar::IncomeTipDrop(TipLeft, TipTop, TipWidth, 0.0, 0.0, 0.0);
+	T.AssertEquals(NoBanner, 0.0, "no banner: the tooltip's position is unchanged");
+	const float Left = HOLTopBar::IncomeTipDrop(100.0, TipTop, 80.0, 530.0, 1390.0, BannerBottom);
+	T.AssertEquals(Left, 0.0, "a tooltip wholly left of the banner is not moved");
+}
+
 void Test_TopBarIncomeTipIsAHudPanel(FUnitTest& T)
 {
 	HOLTopBar::FIncomeTipView View = HOLTopBar::IncomeTipView(90, HOLTopBar::Wood());
