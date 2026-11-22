@@ -157,6 +157,10 @@ class UHOLStealthInstaller : UScriptWorldSubsystem
 		if (Vision == nullptr)
 			return;
 		Zones = ZonesOfMap();
+		// One line per zone at install (the scenario stealth_zones reads the real level name and the real zone positions here).
+		Log(n"LogHOLMatch", f"StealthZones level {Gameplay::GetCurrentLevelName(true)} zones {Zones.Num()}");
+		for (int ZoneIndex = 0; ZoneIndex < Zones.Num(); ZoneIndex++)
+			Log(n"LogHOLMatch", f"StealthZone {ZoneIndex} center {Zones[ZoneIndex].Center.X} {Zones[ZoneIndex].Center.Y} half {Zones[ZoneIndex].HalfExtent.X} {Zones[ZoneIndex].HalfExtent.Y}");
 		Vision.SetStealthFilter(HOLStealthInstall::MakeFilter(this, Vision, Zones));
 		bInstalled = true;
 	}
