@@ -1,22 +1,30 @@
-# L22-5 / GLORFINDEL-1122b : le pont de Suivre (UHOLFollowBridge) est une INSTANCE de la classe script, plus le CDO : le jeu ne doit plus etre noye d'erreurs "requires WorldContext". 4 Hommes d'armes (selection par hol.Select.Army) suivent un Paysan allie hors selection (hol.Select.ClickUnit -1 order : le clic droit sur une unite sous la camera, dont la regle est HOLFollowOrders::ApplyRightClick), marchent quelques secondes (le pas part du Tick du controleur par UHOLFollowBridge::NativeStep), puis un ordre manuel (hol.Select.OrderNear : clic droit au sol, UHOLFollowBridge::NativeManualOrder) annule le suivi. Plain, un joueur (follow_short.json). 1 minute.
+# L22-5 / GLORFINDEL-1122c : le pont de Suivre (UHOLFollowBridge, instance du controleur) s'EXECUTE : 4 Hommes d'armes (hol.Select.Army) font un vrai clic droit sur un Paysan allie hors selection (hol.Select.OrderNear vise le Paysan : chemin AHOLPlayerController -> UHOLFollowBridge::NativeRightClickOnUnit -> script RightClickOnUnit, ligne "FollowBridge: follow started"), marchent vers lui (3 releves hol.Units.Where espaces de plusieurs secondes : #1-#4 hommes, #5 Paysan), puis un clic droit au sol (hol.Select.OrderNear) passe par NativeManualOrder : ligne "FollowBridge: manual order ended". Plain, un joueur (follow_short.json). Moins de 60 s.
 hol.Cheat.Resources 5000
 hol.Cheat.Population 200
-hol.Camera.FocusNear 0 0
+hol.Camera.FocusNear 0 3500
 frames 2
-hol.Units.SpawnHere 4 ManAtArms 0 600
+hol.Units.SpawnHere 4 ManAtArms 0 2500
 waitunits 4
-hol.Units.SpawnHere 1 Peasant 0 -900
+hol.Units.SpawnHere 1 Peasant 0 4500
 waitunits 5
 frames 30
 hol.Select.Army
 waitlog Selection: 4 units
+hol.Units.Where
 capture follow_short_start
-hol.Select.ClickUnit -1 order
-waitlog the selected units follow it
-frames 240
+hol.Select.OrderNear 0 4500
+waitlog FollowBridge: follow started
+waitlog Order: 4 units follow
+wait 4
+hol.Units.Where
 capture follow_short_walk
-hol.Select.OrderNear 1500 0
-waitlog Order: 4 units
-frames 180
+wait 5
+hol.Units.Where
+capture follow_short_walk2
+hol.Select.OrderNear 1500 3500
+waitlog FollowBridge: manual order ended
+wait 4
+hol.Units.Where
 capture follow_short_cancelled
 note 4 Hommes d'armes (groupe du bas) suivent le Paysan allie (en haut) : ils marchent vers lui et se placent a son contact ; un clic droit au sol annule le suivi : ils partent vers le point du sol (droite) et ne reviennent pas vers le Paysan.
+quit

@@ -1,4 +1,5 @@
 # <nom de capture> | ce que l'utilisateur doit voir
-follow_short_start | 4 Hommes d'armes groupes (selectionnes, cercles) d'un cote du centre, un Paysan seul loin d'eux : le suivi n'a pas encore ete ordonne
-follow_short_walk | Apres l'ordre Suivre : les 4 Hommes d'armes se sont rapproches du Paysan (ils sont groupes autour de lui, plus pres que sur follow_short_start)
-follow_short_cancelled | Apres le clic droit au sol : les 4 Hommes d'armes sont partis vers le point du sol (cote oppose au Paysan), ils ne sont plus autour du Paysan
+follow_short_start | 4 Hommes d'armes groupes (selectionnes, cercles) dans le bas de l'image, un Paysan seul plus haut, a distance des Hommes d'armes : le suivi n'a pas encore ete ordonne
+follow_short_walk | Quelques secondes apres le clic droit sur le Paysan : les Hommes d'armes se sont rapproches du Paysan (plus pres que sur follow_short_start)
+follow_short_walk2 | Encore quelques secondes plus tard : les Hommes d'armes sont groupes au contact du Paysan (plus pres que sur follow_short_walk)
+follow_short_cancelled | Apres le clic droit au sol : les 4 Hommes d'armes sont partis vers le point du sol (a droite), ils ne sont plus autour du Paysan
