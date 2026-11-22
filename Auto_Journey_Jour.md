@@ -12,12 +12,23 @@ Historique du test du 2026-10-30 : `Docs\Archive\Auto_Journey_Test1_2026-10-30.m
 
 Séance autonome (« lance une auto journey ») 16:17 -> 20:20 (fin choisie par la session principale, aucune heure donnée ; `Docs\SessionEnd.txt`). 0 `AskUserQuestion` (L21-1, L23-1). Modèles : la session principale reste sur Opus (utilisateur, 2026-11-22 : « on reste sur opus ») ; sous-agents Sonnet 5.5, 15 min au plus (consigne du 2026-11-16, inchangée).
 
+check-list lue (L23) : 16:23, en entier, apres 0a (5d40153, 1447448) et avant le premier agent de travail. Alarme fin - 15 min posee (20:05), veilleur 30 min. Integrateur : agent de recette a nommer a la premiere avance de main, au plus tard 19:05 (L20-4) ; dernier lancement de code 19:20 (L18-c).
+
 | Agent | id | Worktree | Tâche | C++ | Lancé | Fini | Résumé |
 |---|---|---|---|---|---|---|---|
 | CLEAN-1122a | 0a | copie principale | nettoyage Jour + Retours.md | non | 16:19 | fini | Jour 353 -> 84 l., 2 archives créées ; doute E-secondary_centre.md:26 |
 | CLEAN-1122b | 0a | copie principale | nettoyage Auto_Journey_File.md | non | 16:19 | 16:22 | 13 lignes archivees (controle mecanique : rien de perdu), 89 [ ] dont 26 sans C++ |
 | CLEAN-1122c | 0a | copie principale | nettoyage Retours\ | non | 16:19 | 16:23 (2 passes) | 0 fiche archivable, 2 index réécrits ; relancé pour 4 références périmées (E-secondary_centre, E-deploy, EtapeDefini l.162, compte) |
 | CLEAN-1122d | 0a | copie principale | nettoyage procédure + check-list | non | 16:19 | 16:21 | L20-6 retirée, règle 14 / 0a / L19-6 « interactif seulement » ; puis brief_commun.md 4 et agent_rules.md 7 alignes sur L19-8/L22-2 (deux commits) |
+| ETAPE0-1122 | 0 | lecture seule | plan de lancement (Docs\Rapports\ETAPE0-1122.md) | non | 16:23 | 16:30 | 2 vagues ; 0 conflit, 0 dll perimee ; D877-D884 et D824 recoupes dans GDD.md par la session principale |
+| ELROND-1122a | v1 | Elrond integ-25 | D877 moitie A : rouge dans deploy.txt (deploy.txt, deploy.look, E-deploy.md) | non | 16:31 | en cours | |
+| GLORFINDEL-1122a | v1 | Glorfindel ability-columns | pont de Suivre en instance (HOLFollowBridge.*, HOLPlayerController.*, HOLFollowBridgeTests.cpp) | oui | 16:31 | en cours | |
+| CELEBORN-1122a | v1 | Celeborn integ-41 | D880 aura de l'Aube (HOLMoraleProcessor.cpp, HOLMoraleRulesTests.cpp) | oui | 16:31 | en cours | |
+| ARWEN-1122a | v1 | Arwen integ-37 | opacite de furtivite en donnee d'instance (HOLInterpolatedInstancesProcessor.cpp, HOLUnitOpacity.*), sans uasset | oui | 16:31 | en cours | |
+| FARAMIR-1122a | v1 | Faramir zone-effect | D881 fond opaque Arbre de talents (fenetre, talents_heal_nocheat.*) | non | 16:31 | en cours | |
+| GALADRIEL-1122a | v1 | Galadriel specialization-trial | infobulle or et bandeau Scenario (HOLTopBar.as, HOLTopBar_Test.as) | non | 16:31 | en cours | |
+| HALDIR-1122a | v1 | Haldir wall-line | D824 zones de furtivite sur Forest (HOLStealthFilter.as + test) | non | 16:31 | en cours | |
+| SAURON-1122a | v1 | Sauron integ-48 | neutrals_clairiere : pre-vol, PNG, fiche E | non | 16:31 | en cours | |
 
 ## Résumé de la séance du 2026-11-21 soir
 
