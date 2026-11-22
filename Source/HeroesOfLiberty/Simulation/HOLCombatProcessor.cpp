@@ -4,6 +4,7 @@
 
 #include "Async/ParallelFor.h"
 #include "Buildings/HOLBuilding.h"
+#include "Buildings/HOLBuildingTypes.h"
 #include "Buildings/HOLConstructionSubsystem.h"
 #include "Commands/HOLCommandSubsystem.h"
 #include "Engine/World.h"
