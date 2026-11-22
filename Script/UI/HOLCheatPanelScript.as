@@ -188,10 +188,10 @@ namespace HOLCheatPanelRules
 		return Joined;
 	}
 
-	// STUB (red): the six +1000 button labels (Cheats, joined) are not compared yet.
+	// The same with the six +1000 / population buttons' labels (Cheats = CheatLabelsText()): a button label is part of what the language changes.
 	FString LabelsSignature(const FString& Toggle, const FString& FastBuild, const FString& Unit, const FString& Gather, const FString& Cheats)
 	{
-		return LabelsSignature(Toggle, FastBuild, Unit, Gather);
+		return LabelsSignature(Toggle, FastBuild, Unit, Gather) + "~" + Cheats;
 	}
 
 	bool LabelsStale(const FString& Shown, const FString& Toggle, const FString& FastBuild, const FString& Unit, const FString& Gather, const FString& Cheats)
@@ -445,7 +445,7 @@ class UHOLCheatPanelScript : UObject
 	FString LabelsNow()
 	{
 		return HOLCheatPanelRules::LabelsSignature(HOLCheatPanelRules::ToggleLabel(bOpen).ToString(), HOLCheatPanelRules::FastBuildLabel(bFastBuild).ToString(),
-			HOLCheatPanelRules::SpeedLabelText(0, UnitScale), HOLCheatPanelRules::SpeedLabelText(1, GatherScale));
+			HOLCheatPanelRules::SpeedLabelText(0, UnitScale), HOLCheatPanelRules::SpeedLabelText(1, GatherScale), HOLCheatPanelRules::CheatLabelsText());
 	}
 
 	// Called each Refresh: rewrites the labels when only the language changed (the stale rule), nothing otherwise.
@@ -461,6 +461,8 @@ class UHOLCheatPanelScript : UObject
 	{
 		LabelsShown = LabelsNow();
 		Toggle.SetLabel(HOLCheatPanelRules::ToggleLabel(bOpen));
+		for (int Index = 0; Index < HOLCheatPanelRules::FastBuildIndex(); Index++)
+			CheatButtons[Index].SetLabel(HOLCheatPanelText::CheatLabel(Index)); // the six +1000 / population buttons, in the current language
 		CheatButtons[HOLCheatPanelRules::FastBuildIndex()].SetLabel(HOLCheatPanelRules::FastBuildLabel(bFastBuild));
 		UnitSpeedLabel.SetText(FText::FromString(HOLCheatPanelRules::SpeedLabelText(0, UnitScale)));
 		GatherSpeedLabel.SetText(FText::FromString(HOLCheatPanelRules::SpeedLabelText(1, GatherScale)));
