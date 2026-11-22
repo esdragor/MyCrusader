@@ -25,27 +25,6 @@ class UHOLStealthRuleFilter : UHOLStealthFilter
 
 namespace HOLStealthInstall
 {
-	// The stealth zones of the current map. NO MAP LAYS ZONES YET (MapsInProgress.md): the list is empty, so the installed filter hides nothing
-	// and the game plays as before. When a map carries its zones, read them here (one source, FHOLStealthZone list).
-	// STUB (red commit): the zones of a map by its name (D824 Q2 B: only the maps with groves; an open map has none). Centre = point of symmetry
-	// (the centre of the camps' start positions, CenterOfCamps), MapHalfExtent = half side of the playable square, in cm.
-	TArray<FHOLStealthZone> ZonesForMap(const FString& MapName, const FVector2D& Center, float MapHalfExtent)
-	{
-		TArray<FHOLStealthZone> Zones;
-		return Zones;
-	}
-
-	// STUB (red commit): the symmetry centre = mean of the camps' start positions; no position known = the centre of the map.
-	FVector2D CenterOfCamps(const TArray<FVector2D>& CampPositions, const FVector2D& MapCenter)
-	{
-		return MapCenter;
-	}
-	TArray<FHOLStealthZone> ZonesOfMap()
-	{
-		TArray<FHOLStealthZone> Zones;
-		return Zones;
-	}
-
 	UHOLStealthRuleFilter MakeFilter(UObject Outer, UHOLVisionSubsystem Vision, const TArray<FHOLStealthZone>& Zones)
 	{
 		UHOLStealthRuleFilter Filter = Cast<UHOLStealthRuleFilter>(NewObject(Outer, UHOLStealthRuleFilter::StaticClass()));
@@ -62,6 +41,24 @@ class UHOLStealthInstaller : UScriptWorldSubsystem
 {
 	bool bInstalled = false;
 
+	// The stealth zones of the current map: the level name (Gameplay::GetCurrentLevelName) and the bounds of the map (AHOLMapBounds, as the biome
+	// applier reads them) feed the rule HOLStealthInstall::ZonesForMap. The centre is the middle of the map bounds (the camps' start positions are
+	// not readable from the script yet: CenterOfCamps is ready for them). No bounds or an open map: empty list, the game plays as before.
+	TArray<FHOLStealthZone> ZonesOfMap()
+	{
+		TArray<AHOLMapBounds> Bounds;
+		GetAllActorsOfClass(Bounds);
+		if (Bounds.Num() == 0)
+		{
+			TArray<FHOLStealthZone> None;
+			return None;
+		}
+		FVector Origin;
+		FVector Extent;
+		Bounds[0].GetActorBounds(false, Origin, Extent);
+		FString MapName = Gameplay::GetCurrentLevelName(this, true);
+		return HOLStealthInstall::ZonesForMap(MapName, FVector2D(Origin.X, Origin.Y), Math::Max(Extent.X, Extent.Y));
+	}
 	UFUNCTION(BlueprintOverride)
 	void Tick(float DeltaTime)
 	{
@@ -70,7 +67,7 @@ class UHOLStealthInstaller : UScriptWorldSubsystem
 		UHOLVisionSubsystem Vision = UHOLVisionSubsystem::Get();
 		if (Vision == nullptr)
 			return;
-		Vision.SetStealthFilter(HOLStealthInstall::MakeFilter(this, Vision, HOLStealthInstall::ZonesOfMap()));
+		Vision.SetStealthFilter(HOLStealthInstall::MakeFilter(this, Vision, ZonesOfMap()));
 		bInstalled = true;
 	}
 }
