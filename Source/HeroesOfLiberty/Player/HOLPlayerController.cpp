@@ -142,6 +142,11 @@ namespace UE::HeroesOfLiberty::Player
 		TEXT(""),
 		TEXT("Cursor position seen by the RTS camera's edge scrolling, \"X Y\" in 0..1 of the viewport (empty or off: the real cursor). For scripted checks (D257), never the desktop's cursor."));
 
+	TAutoConsoleVariable<int32> CVarLogDragEnd(
+		TEXT("hol.Mouse.LogDragEnd"),
+		0,
+		TEXT("1: at the release of a wall line's drag, one line \"Drag end: foreground=...\" logs what GetCursorFraction sees (IsForegroundWindow, GetMousePosition, viewport size, the test cursor, the ground found). A measure only (SAURON-1123pa, S3-b), off by default."));
+
 	TAutoConsoleVariable<int32> CVarFollowOwnUnits(
 		TEXT("hol.Follow.OwnUnits"),
 		0,
@@ -3454,7 +3459,22 @@ void AHOLPlayerController::EndWallDrag()
 	// ARWEN-1123f: when the cursor has no ground at the release (the real cursor lost, or the ray misses), the line ends at the last
 	// ground the drag showed (WallDragEnd), not at its own start: before, the release laid ONE foundation (wall_line_long, 2026-11-23).
 	FVector Ground = WallDragEnd;
-	GetCursorGround(Ground);
+	const bool bGroundFound = GetCursorGround(Ground);
+	if (UE::HeroesOfLiberty::Player::CVarLogDragEnd.GetValueOnGameThread() != 0)
+	{
+		// SAURON-1123pa (S3-b): what GetCursorFraction sees at this release, read one by one to name the test that fails.
+		const ULocalPlayer* TraceLocalPlayer = GetLocalPlayer();
+		const FViewport* TraceViewport = TraceLocalPlayer && TraceLocalPlayer->ViewportClient ? TraceLocalPlayer->ViewportClient->Viewport : nullptr;
+		int32 TraceSizeX = 0, TraceSizeY = 0;
+		float TraceMouseX = 0.f, TraceMouseY = 0.f;
+		GetViewportSize(TraceSizeX, TraceSizeY);
+		const bool bTraceMouse = GetMousePosition(TraceMouseX, TraceMouseY);
+		FVector2D TraceFraction = FVector2D::ZeroVector;
+		const bool bTraceFraction = GetCursorFraction(TraceFraction);
+		UE_LOG(LogHOLMatch, Display, TEXT("Drag end: foreground=%d viewport=%d size=%dx%d mouse=%d (%.1f, %.1f) testCursor='%s' fraction=%d (%.4f, %.4f) ground=%d (%.0f, %.0f) lastShown=(%.0f, %.0f)"),
+			TraceViewport && TraceViewport->IsForegroundWindow() ? 1 : 0, TraceViewport ? 1 : 0, TraceSizeX, TraceSizeY, bTraceMouse ? 1 : 0, TraceMouseX, TraceMouseY,
+			*UE::HeroesOfLiberty::Player::CVarTestCursor.GetValueOnGameThread(), bTraceFraction ? 1 : 0, TraceFraction.X, TraceFraction.Y, bGroundFound ? 1 : 0, Ground.X, Ground.Y, WallDragEnd.X, WallDragEnd.Y);
+	}
 	const FVector Start = WallDragStart;
 	bWallDragging = false;
 	WallDragCells.Reset();
