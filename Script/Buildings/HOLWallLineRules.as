@@ -231,4 +231,27 @@ namespace HOLWallLine
 		}
 		return DragCells(FIntPoint(CellOfCoordinate(Start.X, Tile), CellOfCoordinate(Start.Y, Tile)), FIntPoint(CellOfCoordinate(End.X, Tile), CellOfCoordinate(End.Y, Tile)), MaxCells);
 	}
-}
+
+	// F9 (S3-b, FortificationsInProgress.md): the palisade GATE. PROVISIONAL, no GDD value (D867 neighbours only say: gates are solid, units climb stone walls
+	// by towers and gates); the figures live in Tools\Data\BuildingTypes.csv, the open points in Retours\Q-porte-palissade.md (default A).
+	FName GateTypeName()
+	{
+	    return n"PalisadeGate";
+	}
+
+	bool IsGateType(FName TypeName)
+	{
+	    return TypeName == GateTypeName();
+	}
+
+	// A gate is placed ON a section of palisade already standing and replaces it: the section is a wall type of the same seat, and not a gate already.
+	bool GateReplaces(FName ExistingType, int ExistingOwner, int GateOwner)
+	{
+	    return false;
+	}
+
+	// A gate lets its owner's units through (other seats meet a solid building, D691 / D867 neighbours: walls and gates are solid for the enemy).
+	bool GatePassesUnit(FName GateType, int GateOwner, int UnitOwner)
+	{
+	    return false;
+	}}
