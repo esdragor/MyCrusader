@@ -63,6 +63,11 @@ void UHOLMoraleProcessor::QueueEffectAround(const UWorld* World, const int32 Eff
 	Order.RadiusCm = RadiusCm;
 }
 
+void UHOLMoraleProcessor::SetSlotAttenuation(const int32 Slot, const int32 Percent)
+{
+	// STUB (red test first, step 7): the percent is not kept yet, the processor lays every effect at full strength.
+}
+
 UHOLMoraleProcessor::UHOLMoraleProcessor()
 	: EntityQuery(*this)
 {
