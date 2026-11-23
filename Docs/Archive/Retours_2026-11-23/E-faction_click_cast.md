@@ -1,9 +1,10 @@
-# [À ESSAYER] E-faction_click_cast : cliquer la case Lumière sacrée du panneau de faction, puis le sol : l'anneau doré apparaît et l'Honneur passe de 100 à 75
+# [RÉPONDU : REGLAGE, à rejouer après correction] E-faction_click_cast : cliquer la case Lumière sacrée du panneau de faction, puis le sol : l'anneau doré apparaît et l'Honneur passe de 100 à 75
 
 STATUT : VU À L'ÉCRAN
 GESTE: réel (clic de la case par hol.Mouse.Click FactionBox0 ; le clic sol est hol.Select.LeftClickGround, interne)
 SON: non entendu
 branches: main
+Reponse: REGLAGE: actuellement, ca se met auto au milieu de l'armée, je devrai pouvoir choisir avec la position de ma souris (utilisateur, 2026-11-23 15:59, D897)
 
 Règle (L7-6) : un essai de GESTE ou de SON reste LOGIQUE SEULEMENT tant que la ligne dit `interne` ou `non entendu`.
 

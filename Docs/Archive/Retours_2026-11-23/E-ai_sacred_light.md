@@ -1,9 +1,10 @@
-# [À ESSAYER] E-ai_sacred_light : l'IA de l'Aube lance elle-même la Lumière sacrée sur ses soldats blessés (anneau doré, Honneur 100 -> 75)
+# [RÉPONDU : OK] E-ai_sacred_light : l'IA de l'Aube lance elle-même la Lumière sacrée sur ses soldats blessés (anneau doré, Honneur 100 -> 75)
 
 STATUT : VU À L'ÉCRAN
 GESTE: interne (c'est l'IA qui joue ; le scénario pose les armées et remplit la jauge de l'IA par hol.AI.HonorSet)
 SON: non entendu
 branches: main
+Reponse: OK (utilisateur, 2026-11-23 15:59)
 
 Règle (L7-6) : un essai de GESTE ou de SON reste LOGIQUE SEULEMENT tant que la ligne dit `interne` ou `non entendu`.
 
