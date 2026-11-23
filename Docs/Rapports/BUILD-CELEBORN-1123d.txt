@@ -1,0 +1,4 @@
+﻿build : LaunchCheck debut (Get-StaleBinaryProblem) : the binary UnrealEditor-HeroesOfLiberty.dll of C:\Users\baudo\Documents\HeroesOfLiberty-Celeborn (2026-11-23T09:41:14) is older than its C++ source Source\HeroesOfLiberty\Tests\HOLNetTests.cpp (2026-11-23T09:46:22): Tools\build.ps1 in that copy first
+queued behind the build of: HeroesOfLiberty-Faramir, HeroesOfLiberty-Elrond (position 2 of 2 waiting; one build at a time on this engine; normal)
+queued behind the build of: HeroesOfLiberty-Elrond (position 1 of 1 waiting; one build at a time on this engine; normal)
+queued behind the build of: HeroesOfLiberty-Elrond (position 1 of 2 waiting; one build at a time on this engine; normal)
