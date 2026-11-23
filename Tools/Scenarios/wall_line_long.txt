@@ -1,5 +1,5 @@
 # Ligne de palissade au GESTE REEL (D867 : pas de plafond de longueur, hol.Wall.MaxLineCells 0 = illimite ; dessin du glisser : un fantome vert plat par case, rouge si refuse). Toi (slot 0, Aube) contre une IA gelee (slot 1). 3 minutes au plus.
-# branches: integ-55
+# branches: main
 # Geste : un Paysan est selectionne (hol.Select.ClickUnit), A (age I) puis D (hol.Select.Grid 0 puis 6 = la touche de la Palissade dans la grille du Paysan), puis un vrai glisser de souris hol.Mouse.Drag (appui, un deplacement par image, relache). Une ligne = une fondation de 5 bois par case (D892), les Paysans les bâtissent ensuite.
 # play.ps1 -Hidden ne pose PAS hol.Camera.TestCursor 0.5 0.5 pour un scenario a hol.Mouse.Drag (SAURON-1123pb) : la souris reelle est lue. Le viewport cache fait 1280x720 : le glisser est en pixels de ce viewport.
 # Camera centree sur (-17400, 0) : le glisser (y ecran 360) tombe sur x monde ~ -17400, a 10 m a l'ouest du MainCentre (-16400, 0), sur du sol libre : une case bloquee refuse TOUTE la ligne (refused (3), Occupied : HOLWallLineRules.as Validate).
@@ -29,9 +29,9 @@ waitlog Placement: Palisade (cost
 hol.Camera.Focus -17400 0
 frames 40
 hol.Mouse.LogDragEnd 1
-# Glisser : appui en (200, 360), relache en (1000, 360), 90 images (pixels du viewport cache 1280x720) ; a ~3,8 cm par pixel : ~3000 cm, soit 7 a 8 cases de 4 m. La capture pendant (apres 30 images) tombe au milieu du glisser.
+# Glisser : appui en (200, 360), relache en (1000, 360), 90 images (pixels du viewport cache 1280x720) ; a ~3,8 cm par pixel : ~3000 cm, soit 7 a 8 cases de 4 m. La capture pendant (apres 70 images sur 90) tombe aux trois quarts du glisser (6 a 7 boites ; a 30 images elle n'en montrait que 4).
 hol.Mouse.Drag 200 360 1000 360 90
-frames 30
+frames 70
 note 2. PENDANT le glisser : une file de boites vertes plates, une par case, de ton point d'appui au curseur, sur du sol libre (aucune boite rouge).
 capture wall_line_long_during
 waitlog Drag end: foreground=
