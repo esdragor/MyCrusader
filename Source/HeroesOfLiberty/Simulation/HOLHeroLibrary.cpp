@@ -393,9 +393,7 @@ void UHOLHeroLibrary::PlayTalentTakenSound(const UObject* WorldContextObject)
 
 bool UHOLHeroLibrary::PlantHeroBanner(const UObject* WorldContextObject, const int32 Slot, const FVector& Location)
 {
-	// STUB (GLORFINDEL-1123pb, commit 1): plants nothing; the real binding is the next commit.
-	(void)WorldContextObject;
-	(void)Slot;
-	(void)Location;
-	return false;
+	// D891: the player's own function, so the same refusals (hero dead, level, cool-down, reach; false on a client).
+	UHOLHeroSubsystem* Heroes = GetAuthorityHeroes(GetWorldOf(WorldContextObject));
+	return Heroes && Heroes->PlantBanner(Slot, Location);
 }
