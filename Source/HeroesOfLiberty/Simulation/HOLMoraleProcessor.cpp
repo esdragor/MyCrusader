@@ -124,7 +124,21 @@ int32 UHOLMoraleProcessor::NumPendingOrders()
 
 void UHOLMoraleProcessor::ResetForWorld(const UWorld* World)
 {
-	// STUB (red test first, REVUE-1123pm G1): does nothing yet.
+	FScopeLock Lock(&PendingAroundLock);
+	for (int32 Slot = 0; Slot < FHOLMatchConfig::MaxSlots; ++Slot)
+	{
+		SlotAttenuationPercent[Slot] = 0;
+	}
+	// The orders of this world and of worlds already gone; an order of another live world keeps waiting for its own step.
+	PendingAround.RemoveAll([World](const FPendingAround& Order) { return !Order.World.IsValid() || Order.World.Get() == World; });
+	PendingClear.RemoveAll([World](const FPendingClear& Order) { return !Order.World.IsValid() || Order.World.Get() == World; });
+}
+
+void UHOLMoraleProcessor::InitializeInternal(UObject& Owner, const TSharedRef<FMassEntityManager>& EntityManager)
+{
+	Super::InitializeInternal(Owner, EntityManager);
+	// The beginning of a world (UHOLSimulationSubsystem::OnWorldBeginPlay creates and initialises the processors): nothing of a previous match stays (G1).
+	ResetForWorld(Owner.GetWorld());
 }
 
 UHOLMoraleProcessor::UHOLMoraleProcessor()
