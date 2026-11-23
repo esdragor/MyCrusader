@@ -3735,4 +3735,16 @@ La courbe d'XP (Q04) reste à régler en test.
 
 **D889** (Interface, état « Bientôt » d'une case de la grille de commandes, texte anglais ; 2026-11-22 soir, réponse de l'utilisateur dans la conversation) : **deux lignes** : « Coming soon » (55,8 px pour 47 px) passe sur deux lignes dans la case au lieu d'être coupé ou abrégé. Code : branche specialization-trial (`HOLGridCell`, test UI.GridCell.StatusFit). Écartés : couper ; abréger.
 
-Prochain numéro : **D890**.
+**D890** (Aube, Lumière sacrée, portée ; 2026-11-23 ~12:05, réponse à `Q-sacred-light-values` Q2, par l'interface de choix, puis valeur donnée par l'utilisateur) : **C** : la portée de *Lumière sacrée* est une **valeur PROPRE**, une ligne à part dans la table des pouvoirs (plus celle du Sceau, qui valait 800 cm). **Valeur donnée : 1200 cm.** Le code la pose par la tâche de la file (socle commun, `Auto_Journey_File.md`) ; journal `AubeInProgress.md`. Fiche archivée : `Docs\Archive\Retours_2026-11-23\Q-sacred-light-values.md`.
+
+**D891** (Aube, Lumière sacrée, origine de lancer de l'IA, complète D890 ; 2026-11-23 ~12:05, réponse à `Q-sacred-light-values` Q1 + origine, par l'interface de choix) : **C** : **l'IA plante une bannière** (comportement neuf de l'IA) ; le joueur garde la bannière comme origine. Le repli actuel (centre de l'armée, `OriginOf`, GLORFINDEL-1123h) **reste jusqu'à ce que l'IA plante sa bannière**. Journal `AubeInProgress.md`, ligne de file du socle commun.
+
+**D892** (Fortifications, Palissade, Porte de palissade et Mur de pierre, S3-b, précise D691 et D867 ; 2026-11-23 ~12:05, réponses à `Q-palissade`, `Q-porte-palissade` et `Q-mur`, par l'interface de choix) : **A pour les trois, valeurs codées par défaut confirmées telles quelles** : Palissade **400 PV, 5 bois, 5 s par case** ; Porte de palissade **1 case, 400 PV, 10 bois, 8 s, touche C, passage pour le propriétaire seul** ; Mur de pierre **1200 PV, 10 pierre, 8 s, palier 1, touche F, non praticable**. Aucun code à changer ; les lignes de question de S3-b sont marquées tranchées. Journal `FortificationsInProgress.md`. Fiches archivées dans `Docs\Archive\Retours_2026-11-23\`.
+
+**D893** (Spécialisation, premier effet des voies de commanderie des Templiers, précise D133, D683 et D868 ; 2026-11-23 ~12:05, réponse à `Q-spec-voies`, par l'interface de choix) : **d'abord créer les 3 unités du palier 1** des voies Fer / Foi / Pierre (**provisoires** : données, mannequin, coût ; chaque ajout inscrit sa ligne dans `Placeholders.txt`), **puis leur déblocage dans leur bâtiment quand la voie est choisie** ; le **contingent de croisade plus tard**. Journal `SpecializationInProgress.md`, ligne de file du socle commun.
+
+**D894** (Simulation, empreinte et jauge d'Honneur / recharges de pouvoirs ; 2026-11-23 ~12:05, réponse à `Q-empreinte-jauge`, par l'interface de choix) : **B** : une **colonne « faction » séparée** dans `FPartHashes` (journal à `StepHashes >= 2`) ; l'**empreinte principale (`HashUnits`) est inchangée**. Ligne de file du socle commun.
+
+**D895** (Suivre, suivi mutuel A suit B et B suit A, précise D818 et D885, cohérent avec D30 / D340 ; 2026-11-23 ~12:05, réponse à `Q-suivi-mutuel`, par l'interface de choix) : **C** : **le dernier ordre donné gagne** : donner « suivre B » à A annule le suivi de B sur A (le joueur voit B s'arrêter de suivre). Derrière `hol.Follow.MutualCancels` si besoin. Journal `OrdersPatrolInProgress.md`, ligne de file de Glorfindel (REVUE-1122 mineur 12).
+
+Prochain numéro : **D896**.

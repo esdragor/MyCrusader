@@ -1,0 +1,283 @@
+# Archive : Auto_Journey_Jour.md, séance autonome du 2026-11-23 matin (archivée le 2026-11-23, nettoyage NETTOYAGE-1123e, étape 0a)
+
+Copie TELLE QUELLE du texte retiré du fichier vivant : (1) toute la section « ## Agents du 2026-11-23 » de la séance du matin (08:47 -> 12:00 : lignes de séance, check-list lue, exceptions de gate, tableau des agents, clôtures, anomalies, point de reprise, « ### Bilan 2026-11-23 », « ### Lecons appliquees 2026-11-23 », « ### Plan de lancement 2026-11-23 ») ; (2) plus bas, les résumés antérieurs au 2026-11-22 (2026-11-21 soir, 2026-11-21 matin, 2026-11-20 soir).
+
+---
+
+## Agents du 2026-11-23
+
+**Séance close à 12:0x** (fin ramenée à 12:00 par l'utilisateur ; main = ca4220a pour le code, 3 passes intégrées, integ-57 abandonnée ; bilan et leçons ci-dessous).
+
+Séance autonome (« lance une autojourney en prenant en prio Priorite_Socle_Factions_2026-11-16.md ») 08:47 -> 16:50 (fin choisie par la session principale, objectif ~8 h ; `Docs\SessionEnd.txt`). Priorité : `Docs\Priorite_Socle_Factions_2026-11-16.md` (lignes S1 à S4 d'`Auto_Journey_File.md`). 0 `AskUserQuestion` (L21-1, L23-1). Session principale sur Opus, sous-agents Sonnet 5.5, 15 min au plus.
+check-list lue (L24) : 08:55, en entier (238 l.), après 0a de la procédure et de la check-list (387d0c8) et avant le premier agent de travail. Veilleur 30 min (:13/:43), alarme fin - 15 min posée (16:35). Dernier lancement de code 15:50 (L18-c) ; première recette dès la première avance de main (L20-4) ; gate Launch seul, lancement au tour suivant (L24-4) ; L20-5 : build incrémental de l'agent C++ si la file est vide et vm >= 16 Go.
+check-list lue (L25) : 10:06, section L25 écrite en séance par GALADRIEL-1123f (e8e859c), relue en entier ; L25-5 appliquée dès 10:06 (au plus 2 agents C++ tant qu'un build dépasse 5 min).
+Exception de gate : CLEAN-1123a-d (0a) lancés avec le FAIL L19-1 (check-list lue après le nettoyage 0a, qui la modifie, et avant le premier agent de travail, comme le 2026-11-22).
+
+| Agent | id | Worktree | Tâche | C++ | Lancé | Fini | Résumé |
+|---|---|---|---|---|---|---|---|
+| CLEAN-1123a | 0a | copie principale | nettoyage Jour + Retours.md | non | 08:50 | 08:50 | 0b1617b : Jour 295 -> 53 l. (2026-11-22 + 6 résumés archivés), Retours en-tête recalculé ; doute : item deploy « pas prêt » contre RECETTE-1122c |
+| CLEAN-1123b | 0a | copie principale | nettoyage Auto_Journey_File.md | non | 08:50 | 08:52 | d601023 : 26 lignes archivées (218 = 192 + 26), 91 [ ] dont 27 « sans C++ » ; socle non touché ; doutes : Bientôt (564db8d hors main), suivi 145-149/166 |
+| CLEAN-1123c | 0a | copie principale | nettoyage Retours\ | non | 08:50 | 08:50 | 6d5af16 : E-audio_panel archivée (report vérifié), index recomptés (1 [À ESSAYER] LOGIQUE SEULEMENT, 0 [À RÉPONDRE]) ; doutes : E-deploy (PAS PRÊT périmé ?), E-playtest_hero_army, BUG-*-spin ; AudioInProgress.md l.116 périmée |
+| CLEAN-1123d | 0a | copie principale | nettoyage procédure + check-list | non | 08:50 | 08:51 | 387d0c8 : copie intégrale archivée, 6 lignes retirées (T2-3, L3/T2, L9-10, L19-8 + 2 redites), D838/D888 alignés ; doutes : modèle d'énoncé « 45 appels » gardé (gate_test l.279-291), rapport 10 ou 6 lignes |
+| SYNC-debut | sync | 8 worktrees | sync_worktrees.ps1 sans -NoBuild | non | 08:52 | 08:53 | 8 mis à jour (+7 de main 6b18a0d), 0 conflit, 0 saut, aucun build nécessaire (docs seules) |
+| ETAPE0-1123 | 0 | lecture seule | plan de lancement (Docs\Rapports\ETAPE0-1123.md) | non | 08:53 | 08:55 | aucune ligne du socle déjà faite dans main ; 6 lancés, Haldir recette, Sauron intégration ; recoupé : non commités = journaux Integrate_*.txt seulement ; specialization-trial +17 hors main -> Galadriel sur branche neuve socle-ai |
+| intégrateur | passes | Sauron integ-53 | integrate.ps1 par la session principale (commande d'arrière-plan) ; recette = agent RECETTE sur Haldir | - | - | - | - |
+| FARAMIR-1123a | v1 | Faramir zone-effect | S1-a soin de zone Lumière sacrée (HOLZoneEffectRules.h, HOLHeroSubsystem, HOLZoneEffectLibrary, HOLHealProcessor.cpp) | oui | 08:57 | 09:11 | 8a63439 rouge VU 09:06, d0c24eb vert (Zone.* 3/3) ; BUILD PASS ; valeurs provisoires Q-sacred-light-values (défaut A) ; hors périmètre : HoldSeconds -> RelayHoldSeconds (HOLRelaySubsystem.cpp, collision unity) ; AubeInProgress.md non commité ; ~28 appels |
+| CELEBORN-1123a | v1 | Celeborn integ-41 | S3-a T7/T8 tir de tour (fichiers de tir de integ-41, tower_wood) | oui | 08:57 | 09:08 | 7fa5b77 rouge T7 BuildingShotDisplay VU 09:06 (7 attendu, 0) ; T1-T6 verts après merge main (9/10) ; BUILD PASS 38 s ; correctif dans HOLCombatProcessor.cpp l.956 : fichier donné à CELEBORN-1123b (T7 seul) avant S1-e ; docs non mises à jour (budget) |
+| ELROND-1123a | v1 | Elrond integ-25 | XP du duel 150 (HOLHeroXPRules, HOLSmallRulesReadLibrary, HOLHeroXPTests, HOLDuelRewards.as) | oui | 08:57 | 09:06 | 9d7f538 rouge + bouchon, da0dc68 correctif (+ AwardDuelXP UFUNCTION), 8fb6e5e test script ; NON COMPILÉ (build en file derrière Faramir/Celeborn, arrêté 09:06) ; build + tests lancés par la principale 09:08 (Docs\Rapports\BUILD-ELROND-1123a.txt) |
+| ARWEN-1123a | v1 | Arwen integ-37 | S1-c panneau de faction cliquable (HOLGameScreenScript.as, HOLFactionSlot.as, HOLFactionAim.as neuf) | non | 08:57 | 09:13 | ebdd211 rouge VU 09:05 (2097/2099), 53e0fec vert 2099/2099 ; liaisons déjà UFUNCTION ; scénario faction_click écrit NON joué (attend « refuse soon » tant que bEffectCoded faux) ; 47 appels, 1er Edit ~10e |
+| GLORFINDEL-1123a | v1 | Glorfindel ability-columns | S1-d Sceau du Moine + texte LightSeal (HOLUnitAbilityTable.as, UnitAbilities.csv, grille du Moine, HOLRpcPlayer.as) | non | 08:57 | 09:02 | 8a1d2cf..6f04018 : texte LightSeal corrigé (py check PASS), HOLMonkSeal.as + ServerCastUnitAbility ; rouges NON vus (aucun test script lancé) ; bouton = lot C++ (EHOLGridCommandKind::LightSeal, visée) + TYPES_A_EXPOSER UnitId ; L20-8 dépassée (1er Edit ~9e appel) |
+| GLORFINDEL-1123b | v2 | Glorfindel ability-columns | S3-b palissade : WallTypes(), table des bâtiments, placeholders (HOLWallLineRules.as + test) | non | 09:04 | 09:08 | 8e6281d rouge (par construction, NON vu), a31953b attentes (grille 16 types, quick_check D=Palisade, wall_line_long), 61d0fdc WallTypes, 3b795d6 ; valeurs provisoires + Q-palissade (défaut A) ; regen BuildingTypes.uasset à faire (integrate.ps1) |
+| CELEBORN-1123b | v2 | Celeborn integ-41 | T7 correctif : HOLCombatProcessor.cpp ~l.956 (fichier donné jusqu'à son rapport) + docs S3-a | oui | 09:08 | 09:16 | 998788b vert (BuildingShot* 10/10 à 09:15, rouge 7fa5b77), f602459 docs ; BUILD PASS 49 s ; integ-41 PRÊTE ; HOLCombatProcessor.cpp rendu ; reste T7b (réplication), T8 |
+| GALADRIEL-1123b | v2 | Galadriel socle-ai | voie de spécialisation = déblocage de l'unité de commanderie, défaut A derrière hol.Spec.UnlockUnit (HOLSpecUnlock neuf) | non | 09:10 | 09:11 | NON CODÉ : les 9 unités de commanderie n'existent pas (UnitTypes.csv : 18 unités) ; a915a1f docs ; constat ajouté à Q-spec-voies (décision utilisateur : créer les unités du palier 1 ?) |
+| FARAMIR-1123b | v2 | Faramir zone-effect | S1-e partie soin : Honneur au soin dans HOLHealProcessor.cpp (mort au combat après Celeborn) | oui | 09:12 | 09:27 | df2d01e (journal seul) ; code écrit NON COMMITÉ, NON COMPILÉ (1er build FAIL corrigé, 2e en cours) ; rouge non vu ; arrêté par TaskStop 09:28 (attendait son build) |
+| FARAMIR-1123c | v3 | Faramir zone-effect | S1-e soin : reprise (rouge propre, vert, appel ConfigureHealHonor au démarrage serveur) | oui | 09:28 | 09:33 | 0 commit ; bouchon rouge dans l'arbre (HOLHealProcessor.cpp ~l.74) + HOLDawnHealHonorInstaller.as (non commités) ; build jamais démarré (file derrière Celeborn) ; ~30 appels ; build + tests lancés par la principale 09:34 (Docs\Rapports\BUILD-FARAMIR-1123c.txt) |
+| GLORFINDEL-1123c | v3 | Glorfindel ability-columns (+ merge d0c24eb) | S1-b : ServerCastFactionPower lance Lumière sacrée, 25 Honneur, recharge 20 s, bEffectCoded (HOLRpcPlayer.as, HOLFactionPowerCast, HOLDawnPowers) | non (build du merge) | 09:12 | 09:26 | merge d0c24eb, BUILD PASS 314 s ; b2ea3aa rouge VU 09:24 (2099/2102) ; correctif NON appliqué (25 appels) ; ANOMALIE : a lancé le fix.ps1 du scratchpad partagé écrit par Faramir -> HOLHealProcessor.h/.cpp de Faramir retouchés (Faramir prévenu 09:27) |
+| GLORFINDEL-1123d | v4 | Glorfindel ability-columns | S1-b correctif (Decide, RPC StartSacredLight, bEffectCoded, 4 tests du Sceau) | non | 09:27 | 09:39 | b2a698c vert : 2100/2102 (Test_CastPaysHonorAndHealsNotSeal vert ; rouges restants = uasset palissade) ; net partiel (arrêté) ; 1er Edit 11e appel, 2 refus du classifieur (edit_line) |
+| CELEBORN-1123d | v4 | Celeborn integ-41 | tests T7b (BuildingShot*, Net.BuildingArrow) sur le build PASS de 09:41 (789 s), puis T8 | oui | 09:42 | 09:5x | BuildingShot* 10/10 ; Net.BuildingArrow plante (assert push-based : test sans pilote réseau) -> 31a67fd correctif du test NON COMPILÉ, f9f90bb ; T8 non commencé ; build + tests lancés par la principale (Docs\Rapports\BUILD-CELEBORN-1123d.txt) |
+| GLORFINDEL-1123e | v5 | Glorfindel ability-columns (+ merge a915a1f) | S4-a branché : HOLAIBrain lance Lumière sacrée par le chemin serveur commun du RPC | non | 09:41 | 09:55 | ThinkPowers + HOLFactionPowerServer::TryCastPower (RPC et IA, une source) ; 738ed02 rouge VU 09:47, 9f43ed8 vert 2103/2105 (2 rouges uasset) ; valeurs provisoires 70 % / 0-25-50-75 ; aiserver/aiduel non rejoués |
+| GLORFINDEL-1123f | v6 | Glorfindel ability-columns | quick_check aiserver puis aiduel pour S4-a (L22-3), lancer vu en partie | non | 09:56 | | |
+| FARAMIR-1123d | v4 | Faramir zone-effect | build rouge (FactionResource privé dans HOLZoneEffectTests.cpp) -> test corrigé, rouge propre, vert, installeur | oui | 09:55 | 10:02 | 8dec639 WIP NON COMPILÉ (bouchon + test corrigé via GetFactionResource) ; build en file derrière Elrond ; agent vivant (attend son build) |
+| GALADRIEL-1123e | v5 | Galadriel socle-ai | S2-d partie script : HOLMoraleBlock branché par HOLMoraleView::Read (vue vide jusqu'au masque répliqué) ; tests non joués (DLL périmée) | non | 09:55 | 10:01 | 04a233f : HOLMoraleView.as (Read vide, Present, Refresh) + 1 ligne HUD ; 4 tests NON joués ; rouge non séparé |
+| GALADRIEL-1123f | v6 | copie principale | brief_commun.md : 4 consignes (scripts nommés, quick_check du worktree, pas de boucle d'attente, ne pas tuer un build) + section L25 de la check-list | non | 10:03 | | |
+| ARWEN-1123b | v2 | Arwen integ-37 | jouer faction_click (preflight, vrai clic, PNG), variante après S1-b préparée | non | 09:15 | 09:21 | preflight PASS (hol.Mouse.Click FactionBox0, « refuse soon », 0 erreur AS), 2 PNG vus ; f1af73f, 37ae304, 99a9826 ; LOGIQUE SEULEMENT jusqu'à S1-b |
+| GALADRIEL-1123d | v4 | Galadriel socle-ai | OUTIL L22-6 (gate Close : trailer « Agent: ») + faux FAIL -Scenarios (session_gate.ps1, gate_test.ps1) | non | 09:24 | 09:39 | 151ff1e rouge (-Scenarios VU 09:25 ; L22-6 NON vu), b265309 vert ; gate_test.ps1 entier non fini (> 10 min sous charge) : lancé par la principale 09:40 : gate_test 109 PASS / 0 FAIL (803 s), dont « L22-6 close » ; socle-ai PRÊTE (b265309) |
+| ARWEN-1123c | v3 | Arwen integ-37 | ClickWidget route FactionBox* + SP3 bouton permanent de spécialisation (script) | non | 09:25 | | |
+| GALADRIEL-1123c | v3 | copie principale (lecture seule) | question jauge de faction dans l'empreinte (Q-empreinte-jauge) ; gate global sans -Root (binaire Galadriel périmé : socle-ai sur une DLL de specialization-trial, aucun test) | non | 09:15 | 09:17 | ff5c76c : Q-empreinte-jauge [À RÉPONDRE] (reco B colonne faction séparée, défaut C rien) ; HashUnits lu seulement par StepHashes et aiduel ; commit a emporté 18 lignes de la file d'autres agents |
+| integ-54 | passe | Sauron | 1er essai 09:17 : CONFLIT au cherry-pick de 7fa5b77 (HOLBuildingShotTests.cpp n'existe que sur integ-41 : rouge non séparable, L22-2 ; vu rouge par l'agent à 09:06), annulé ; 2e essai 09:20 : rouges 8a63439 (S1-a), 4c412cb (S4-a), ebdd211 (S1-c), 9d7f538 (XP duel) ; verts d0c24eb, f602459, a915a1f, 53e0fec, a830a59 (integ-25) | oui | 09:20 | 10:00 | PASS 2430 s : 5 rouges VUS (AIPowerCall, FactionAim x2, Duel150, Zone.SacredLight ; 2098/2103), verts 2114/2114, net et build PASS ; merge main (docs) 47f6fe4 ; gate Merge sans FAIL, preflight_merge OK ; MAIN = 47f6fe4 (10:01, D888, local, rien poussé) |
+| GALADRIEL-1123g | v7 | copie principale | mise à jour de Docs\Priorite_Socle_Factions_2026-11-16.md (dans main / en intégration / sur branche), archive de l'ancienne version | non | 10:11 | 10:12 | 3864d4a : document remis à jour (dans main / en intégration / sur branche), questions du jour, archive de la version du 22 |
+| CELEBORN-1123e | v5 (fin) | Celeborn integ-41 | T8 | oui | 10:10 | 10:22 | b5bf92a rouge VU 10:18 (BuildingShotCost), 0d1c150 vert, 8e47ff6 ; 12/12 ; banc : 69 candidats/pas en moyenne, pire 2000 ; budget 200/pas à valider ; integ-41 PRÊTE (8e47ff6) ; tower_wood non fait |
+| FARAMIR-1123f | v6 | Faramir zone-effect | S1-e partie mort : HonorKillGain dans HOLCombatProcessor.cpp (donné), même chemin de crédit | oui | 10:23 | 10:38 | 9442b74 bouchon + test Zone.KillHonor + AwardKillHonor, 385bdf4, 87ab285 ; B1 et G5 (REVUE-1123) intégrés ; NON COMPILÉ (1er build FAIL privé, 2e en file orphelin) ; « près d'une unité » codé, HOLDawnValues.as:34 dit « près d'un bâtiment » : à trancher par le GDD ; build + tests par la principale 10:39 (Docs\Rapports\BUILD-FARAMIR-1123f.txt) |
+| CELEBORN-1123f | v6 | Celeborn integ-41 | scénario tower_wood + preflight + fiche E si vu | non | 10:23 | 10:31 | tower_wood preflight PASS (waitlog impact) mais AUCUNE flèche sur 4 PNG (caméra loin, ennemis sous le bandeau) : LOGIQUE SEULEMENT ; aa14dec |
+| GALADRIEL-1123i | v9 | Galadriel specialization-trial | tests D889 sur le build PASS de 10:35 (StatusFit), tech_soon FR/EN/JA, PNG | non | 10:36 | 10:46 | tests 2118/2118 (StatusFit vert) MAIS PNG EN : « Coming soon » sur UNE ligne (1920 touche le bord, 1280 illisible) : D889 NON effectif ; cause probable seuil fixe 72 (HOLGridCell.cpp:404) ; branche PAS prête ; correctif C++ en attente d'une place (L25-5) |
+| CELEBORN-1123g | v7 | Celeborn integ-41 | recadrage tower_wood (caméra, vitesse 0.2, capture au tir), fiche E si flèche vue | non | 10:33 | 10:44 | 4176e88 ; 2e cadrage sans flèche : trajet de 30 m hors de la bande utile, aucun log au lancer des flèches de tour (seulement « lands on ») |
+| CELEBORN-1123h | v8 | Celeborn integ-41 | règle 7 : cause de la flèche invisible (rendu des archers en capture ?), ennemis à 12-15 m, preflight | non | 10:45 | 10:50 | ArrowReport prouve le rendu hors écran (launched/landed) ; à 12 m flèche VUE (~20 px) mais plantée (capture sur l'impact) ; 4d61f5d ; E-tower_wood.md écrite LOGIQUE SEULEMENT |
+| CELEBORN-1123i | v9 | Celeborn integ-41 | capture « during » sur ArrowReport « in flight 1 », fiche E VU À L'ÉCRAN si flèche en vol | non | 10:51 | 10:58 | af8ff83 ; 3e tentative sans flèche en vol (ArrowReport = instantané, flèche ~0,3 s) : règle 7, arrêt des recadrages ; E-tower_wood LOGIQUE SEULEMENT (-Root Celeborn) ; lot C++ « log au tir + ArrowScale » en file |
+| CELEBORN-1123j | v10 | Celeborn integ-41 (+ merge main) | F9 portes de palissade (données + script, regen table) | non (build du merge) | 10:59 | 11:03 | merge main OK ; eeba85e rouge + d9ec2f0 (PalisadeGate provisoire, GateReplaces/GatePassesUnit, attentes grille/quick_check) ; NON compilé, rouge non vu, .uasset non régénéré ; Q-porte-palissade (défaut A) ; build + regen + tests par la principale 11:04 (Docs\Rapports\BUILD-CELEBORN-1123j.txt) |
+| ELROND-1123g (fin) | v7 | Elrond integ-25 | B2, G1, lecteur | oui | 10:28 | 10:44 | B2 1cc0fc2 rouge / e166452 vert (NoteSelectedUnitType, test monde réel) ; G1 e8aa0ac / a1cddb2 ; lecteur : LastHitTime existait, SecondsSinceHit dans le résumé IA df27846 / 476b896 ; build en cours (agent vivant), tests non lancés |
+| ELROND-1123h | v8 | Elrond integ-25 | tests du lot B2/G1/SecondsSinceHit (build PASS 10:45, 635 s) + règle de garnison sur coup reçu + aiserver | non | 10:47 | | |
+| GALADRIEL-1123j | v10 | Galadriel specialization-trial | D889 : coupe de « Bientôt » à la largeur réelle de la case (test 51/76 px), build, tech_soon EN PNG | oui | 10:48 | 10:57 | 5a98bf3 (FitStatusToWidth au tick) ; BUILD PASS 61 s ; 2118/2118 ; rouge non séparé ; PNG « EN » : statut encore en FRANÇAIS (« Bientôt »), « Coming soon » jamais vu ; « Halberdie » rogné en EN (non traité) |
+| GALADRIEL-1123k | v11 | Galadriel specialization-trial | pourquoi « Bientôt » reste en FR en anglais (culture du scénario ou texte en dur), correctif, PNG EN | non | 10:58 | 11:13 | cause : son propre code D889 (FString périmé remis à chaque tick) ; 15abcb8 (FText source gardée) ; BUILD PASS 74 s ; PNG EN VU : « Coming / soon » sur 2 lignes à 1920 et 1280 ; tests non rejoués (2118/2118 avant) ; « W » recouvre « Tempered », « Halberdie » rogné (non traités) |
+| integ-56 | passe | Haldir | (voir ligne de lancement) | oui | 11:02 | 11:10 | 4 rouges VUS (GarrisonCall, AIBrainCastsWithoutAPlantedBanner, GarrisonKind, BuildingShotCost) ; CONFLIT à la fusion du vert 10db129 : Script/AI/HOLAIBrain.as (ThinkGarrison contre ThinkPowers) |
+| DIAG-1123d | diag | Haldir integ-56 | résoudre HOLAIBrain.as (garder les deux), fusionner 2943ff1 et af8ff83 | non | 11:13 | 11:14 | ThinkRage + ThinkPowers + ThinkGarrison gardés (7905f99), 77e7a66, ffbb934 ; build + tests + net,build lancés par la principale 11:15 (Docs\Rapports\INTEG-56-verts.txt) |
+| integ-56 (fin) | passe | Haldir | build verts + tests + net,build (principale) | oui | 11:15 | 11:32 | BUILD PASS 240 s, tests 2143/2143, net et build PASS ; merge main (docs) ; gate Merge sans FAIL ; MAIN = ca4220a (11:33, D888, local) : liaisons C++, B2, G1, S4-b + garnison sur coup, origine IA sans bannière, rendus provisoires, T8, tower_wood |
+| GLORFINDEL-1123o | v15 | Glorfindel ability-columns (+ merge main ca4220a) | S1-d bouton du Moine : cellule Sceau (bMonkUnit), visée au sol, ServerCastUnitAbility | non (build du merge) | 11:34 | | |
+| integ-57 | passe | Haldir | rouges 065a643 (origine joueur), eeba85e (F9), aeb8abc (F10) ; verts cdb1b3d (ability-columns), tip integ-55 (EndWallDrag + scénarios de recette), fefe033 (specialization-trial D889), a2b4208 (integ-41 F9/F10) | oui | 11:34 | | |
+| CELEBORN-1123l | v12 (fin) | Celeborn | F10 | non | 11:18 | 11:31 | aeb8abc rouge VU 11:23, a2b4208 vert 2138/2138 ; StoneWall provisoire (Q-mur, défaut A) ; .uasset régénéré ; integ-41 PRÊTE |
+| GALADRIEL-1123m | v13 (fin) | Galadriel socle-ai | S2-a | oui | 11:23 | 11:31 | 05f4465 test, 9c515ca correctif (IntervalMs / Multiplier(Rate), dégâts x Multiplier(Dealt)), NON COMPILÉ (build en file, agent vivant) ; moral lu avec un pas de retard (ordre Morale après Combat) |
+| GLORFINDEL-1123m | v13 (fin) | Glorfindel | portée joueur | non | 11:06 | 11:12 | GDD ne tranche pas ; 065a643 rouge (bouchon CastOriginOf) VU 11:12 (2105/2108) ; correctif non fait |
+| GLORFINDEL-1123n | v14 | Glorfindel ability-columns | CastOriginOf commune joueur/IA, vert, Q-sacred-light-values, faction_click_cast PNG | non | 11:15 | 11:22 | cdb1b3d : CastOriginOf = bannière plantée sinon centre des unités (joueur ET IA, doublon supprimé) ; Test_PlayerCastsSacredLight... VERT (2106/2108, 2 rouges palissade) ; faction_click_cast FAIL ici (branche sans S1-c : FactionBox0 absent) -> à rejouer après integ-57 ; TYPES_A_EXPOSER GetHeroLocation |
+| GALADRIEL-1123l | v12 | Galadriel specialization-trial | merge main, build, tests D889 | non | 11:14 | 11:21 | fefe033 (merge main) ; BUILD PASS 199 s ; 2136/2136 ; specialization-trial PRÊTE (D889 vu sur PNG) |
+| GALADRIEL-1123m | v13 | Galadriel socle-ai (+ merge main) | S2-a : le combat lit Dealt et Rate du moral (HOLCombatProcessor.cpp donné) | oui | 11:23 | | |
+| build-CELEBORN | principale | Celeborn | build + regen + tests F9 | - | 11:04 | 11:11 | BUILD PASS, REGEN PASS (.uasset non commité), tests FAIL |
+| CELEBORN-1123k | v11 | Celeborn integ-41 | tests rouges F9 (cause), correctif, commit .uasset | non | 11:13 | | |
+| integ-55 net,build | passe | Sauron | quick_check net,build | - | 10:37 | 10:45 | net PASS ; build hud et build barracks FAIL (REGRESSION) |
+| DIAG-1123c | diag | Sauron integ-55 | cause build hud / barracks (attente périmée ou défaut), correctif, -Parts build | non | 10:45 | 10:51 | attentes périmées de quick_check.ps1 (« I D: Palissade », l.4271/4273/4513), pas un défaut du jeu ; 9a8a4e8 ; -Parts build PASS (36 parties) |
+| integ-55 -> main | avance | Sauron | merge main (docs) 3f7d89e ; gate Merge sans FAIL ; preflight_merge OK | - | 10:51 | 10:52 | MAIN = 3f7d89e (D888, local, rien poussé) : S1-b, Sceau script, palissade, S4-a branché (SANS le correctif bannière ffd0325 ni les rendus 6a4b2c8/2943ff1 ni ai_sacred_light : ability-columns pris à b83c0d1 ; corrigé 11:01, recette prévenue), T7b, SP3 widget, S2-d script, mineur 11, outil gate L22-6 |
+| ELROND-1123h | v8 (fin) | Elrond integ-25 | tests + garnison sur coup | non | 10:47 | 11:00 | 2107/2107 ; 880373a rouge VU 10:55, 10db129 vert 2108/2108 (seuil hol.AI.GarrisonAttackedSeconds 5 s) ; integ-25 PRÊTE (10db129) ; aiserver non lancé ; Hard ne réagit pas plus tôt que Normal (pas de lecteur du 1er coup) |
+| build-HALDIR | principale | Haldir | merge main 3f7d89e + build | - | 10:54 | 11:00 | BUILD PASS 357 s |
+| integ-56 | passe | Haldir | rouges 4e15858 (S4-b), 48525f2 (liaisons), 9e89831 (IA sans bannière), b5bf92a (T8) ; verts 10db129 (integ-25), 2943ff1 (ability-columns), af8ff83 (integ-41) ; zone-effect attend Faramir | oui | 11:02 | | |
+| RECETTE-1123a | recette | Sauron (= main 3f7d89e) | recette indépendante : faction_click (tir au sol), ai_sacred_light, wall_line_long ; fiches E si VU À L'ÉCRAN | non | 10:53 | 11:05 | 2 DÉFAUTS RÉELS : (1) faction_click_cast FAIL : vrai clic arme la visée, clic sol refusé « cast refused (4) » hors portée même au pied du héros (origine bannière (0,0)) ; (2) wall_line_long FAIL : une seule fondation, aucune ligne ; ai_sacred_light sauté ; 0 fiche E ; 3e9ebce/697bfe6/b68cc78 (scénario faction_click_cast) |
+| FARAMIR-1123h | v8 | Faramir zone-effect | tests de dd7b3ed (build PASS 11:08), relecture C++, merge main | non | 11:09 | 11:18 | 2099/2100 : Zone.KillHonor rouge = aucun mort en 200 pas (combat du test, pas la jauge) ; relecture ProcessEvent : fil de jeu, coût négligeable ; merge main a302195, build en file (agent vivant) ; branche PAS prête |
+| ARWEN-1123h | v9 | Sauron integ-55 | wall_line_long au geste réel (touche D + glisser), fiche E VU À L'ÉCRAN si vu | non | 11:19 | 11:23 | ÉCHEC : la sélection des Paysans par hol.Select.* n'atteint pas la grille (aucun « Grid: »), preflight FAIL au waitlog placement ; scénario restauré ; 0 commit ; fiche reste LOGIQUE SEULEMENT |
+| ARWEN-1123i | v10 | Sauron integ-55 | wall_line_long au geste réel, 2e et dernière tentative (vrai clic de sélection, Select.Report, touche D) | non | 11:25 | | |
+| ELROND-1123i | v9 | Elrond integ-25 | aiserver + aiduel : garnison de l'IA vue en partie ? commentaire HOLAIBrain.as:80 | non | 11:24 | 11:30 | aiserver PASS 72 s, aiduel PASS 110 s ; aucune tour attaquée -> garnison non prouvée (pas un défaut) ; 37040fe commentaire |
+| ELROND-1123j | v10 | Elrond integ-25 | scénario ai_garrison (tour de l'IA attaquée, ordre de garnison au journal, PNG) | non | 11:31 | | |
+| GLORFINDEL-1123m | v13 | Glorfindel ability-columns | défaut recette (1) : portée du lancer joueur (règle GDD, OriginOf commune joueur/IA), rouge, vert, faction_click_cast PNG | non | 11:06 | | |
+| ARWEN-1123f | diag | Sauron integ-55 | défaut recette (2) : pose en ligne de la palissade (jeu ou scénario), correctif, preflight PNG | non | 11:06 | 11:09 | DÉFAUT DU JEU : EndWallDrag (HOLPlayerController.cpp:3451) retombe sur WallDragStart quand GetCursorGround échoue au relâché (« wall line A to A ») ; 68c86d0 repli sur WallDragEnd NON COMPILÉ ; pas de rouge ; cause du sol perdu inconnue |
+| ARWEN-1123g | diag | Sauron integ-55 | EndWallDrag : rouge, cause racine du sol perdu, build, wall_line_long PNG, fiche E si vu | oui | 11:11 | 11:17 | BUILD PASS 29 s (68c86d0), tests 2132/2132 ; wall_line_long : 8 fondations, Bois 20200 -> 20160 VU (PNG) ; E-wall_line_long LOGIQUE SEULEMENT (geste interne) ; cause racine probable GetCursorFraction (fenêtre non au premier plan), ligne [ ] S3-b ; rouge non séparé |
+| CELEBORN-1123k | v11 (fin) | Celeborn integ-41 | tests F9 | non | 11:13 | 11:16 | 2136/2136 (b26332d grille, 74b215d .uasset) ; integ-41 PRÊTE (b26332d) ; rouge des tests de porte jamais vu |
+| CELEBORN-1123l | v12 | Celeborn integ-41 | F10 murs (données + script + table), modèle F9 | non | 11:18 | | |
+| build-FARAMIR | principale | Faramir | build + tests du lot mort | - | 10:39 | 10:52 | BUILD PASS ; Zone.KillHonor ROUGE VU (bouchon, 2099/2100) |
+| FARAMIR-1123g | v7 | Faramir zone-effect | S1-e mort : règle du GDD (unité ou bâtiment), corps réel, vert, merge main | oui | 10:54 | 11:02 | GDD D859/D76 : ennemi tué à < 12 m d'un BÂTIMENT de l'Aube (pas d'une unité) ; dd7b3ed corps réel + AwardKillHonor sur StepBuildings, NON COMPILÉ (build en cours depuis 10:56, agent vivant) |
+| REVUE-1123 | relecture | lecture seule (main) | diffs C++ de 6b90b54 (Honneur au soin, réflexion), 1c9571f (lot de liaisons), f9f90bb (T7b réplication) contre main | non | 10:23 | 10:26 | 2 BLOQUANTS : B1 test HealHonor hors #if WITH_DEV_AUTOMATION_TESTS (Shipping casse) -> FARAMIR-1123f (message 10:27) ; B2 bMonkUnit jamais vrai -> ELROND-1123g ; 6 gênants (G1 bCavalry false, G2-G3 tests « sans monde », G4, G5 CreditHonor fait baisser une jauge > plafond -> Faramir, G6) ; 7 mineurs |
+| ELROND-1123g | v7 | Elrond integ-25 | B2 bMonkUnit rempli par le contrôleur, G1 bCavalry, puis lecteur « dernier coup reçu » (S4-b) | oui | 10:28 | | |
+| GALADRIEL-1123h | v8 | Galadriel specialization-trial (+ merge main) | D889 : « Bientôt » EN sur deux lignes (StatusFit rouge puis vert, tech_soon FR/EN/JA) | oui | 10:28 | 10:35 | merge main OK ; c1ba30b code + test (rouge non séparé), NON COMPILÉ (build en cours 10:31, agent laissé vivant) ; risque : coupe en 2 lignes seulement avec un renderer ; MoraleInProgress.md non commité trouvé dans le worktree |
+| integ-55 | passe | Sauron | rouges 8a1d2cf, 72db148, 8e6281d, b2ea3aa, 738ed02 (ability-columns), 331b87e, bca056d (integ-37), 2c0a76b (T7b C++) ; verts b83c0d1 (ability-columns : S1-b, Sceau, palissade, S4-a branché), f9f90bb (integ-41 T7b), 4665852 (integ-37 SP3, mineur 11), 04a233f (socle-ai : gate L22-6, S2-d) ; main 84c72d0+ | oui | 10:11 | 10:23 | FAIL tests 2130/2132 : Test_CGTables et Test_WallTypesListsPalisade (BuildingTypes.uasset non régénéré : integrate.ps1 ne l'a pas fait) ; 14 rouges vus ; builds PASS ; net,build NON lancé |
+| DIAG-1123a | diag | Sauron integ-55 | regen_tables + tests + commit .uasset ; pourquoi integrate.ps1 n'a pas régénéré | non | 10:24 | 10:30 | regen OK (BuildingTypes.uasset) -> WallTypes vert ; 2131/2132 : Test_CGTables périmé (case 6 attendue vide, c'est la Palissade) ; integrate.ps1 ne lance JAMAIS regen_tables (L20-9 « fait » était faux) ; rien commité |
+| DIAG-1123b | diag | Sauron integ-55 | test grille périmé (EmptyI.Add(6)) + commit .uasset + ligne OUTIL regen dans integrate.ps1 | non | 10:32 | | |
+| recette | - | Haldir | reportée à integ-55 (S1-b : premier pouvoir jouable) : integ-54 n'apporte rien de jouable sans S1-b (panneau « bientôt »), L20-4 notée | - | - | - | - |
+| ELROND-1123c | v3 | Elrond integ-25 | S4-b : HOLAIGarrison branché dans le cerveau de l'IA (script d'abord) | non | 09:20 | 09:32 | HOLAIGarrisonCall.as (Plan) : 4e15858 rouge VU 09:27 (2099/2100), 33bcecc vert NON VU (sortie vide) ; PAS branché au cerveau : liaisons C++ manquantes (FHOLAIBuilding garnison, ordre IA) ; ~28-41 appels |
+| ARWEN-1123d | v4 | Arwen integ-37 | vert de dca9df1 + widget SP3 (vue injectable, liaison au lot C++ groupé) + scénario specialization_slot | non | 09:35 | 09:44 | 57486bf : widget SP3 (ReadView vide jusqu'à la liaison) ; 2106/2106 ; rouge du test widget non séparé ; scénario non fait (LOGIQUE SEULEMENT) |
+| ARWEN-1123e | v5 | Arwen integ-37 | REVUE-1122 mineurs 11 et 12 (sans C++) | non | 09:45 | 09:58 | mineur 11 : bca056d rouge VU 09:51, 4665852 vert 2107/2107 ; mineur 12 = choix de design -> Q-suivi-mutuel (reco C : dernier ordre gagne) |
+| ELROND-1123d | v4 | Elrond integ-25 | vert de 33bcecc, docs, ligne « lot C++ de liaisons groupé » (S4-b, SP3, Sceau) préparée ; gate C++ FAIL (plafond 3) -> sans C++ | non | 09:35 | 09:43 | vert 2100/2100 (Test_AIGarrisonsAttackedTower) ; ligne 30 de la file = lot C++ groupé ; 4ef733c journaux |
+| ELROND-1123e | v5 | Elrond integ-25 | lot C++ de liaisons groupé (S4-b garnison IA, SP3 GetSpecialization, Sceau UnitId + grille LightSeal) | oui | 09:44 | 10:04 | 48525f2 rouge (GarrisonKind), 0344e09 vert ; BUILD PASS 705 s (BUILD LENT) ; tests non lancés ; manque palier/Forum client |
+| GLORFINDEL-1123f | v6 | Glorfindel | aiserver/aiduel | non | 09:56 | 10:05 | aiserver PASS 73 s, aiduel PASS 146 s ; lancer IA NON vu (Paysans seuls, aucun blessé) |
+| GALADRIEL-1123f | v6 | copie principale | brief + L25 | non | 10:03 | 10:04 | e8e859c : brief 3b-3e, check-list L25-1 à L25-5 |
+| build-CELEBORN | principale | Celeborn integ-41 | build + tests de 31a67fd | - | 09:46 | 10:08 | BUILD PASS 29 s, tests 2108/2108 (Net.BuildingArrow vert) ; integ-41 PRÊTE à f9f90bb |
+| CELEBORN-1123e | v5 | Celeborn integ-41 | T8 : coût par pas + banc 200 u / 10 tours (HOLCombatProcessor.cpp donné), scénario tower_wood | oui | 10:10 | | |
+| FARAMIR-1123e | v5 | Faramir zone-effect | build rouge 10:06 (GetFactionResource privé aussi) -> lecture publique, rouge, vert, installeur | oui | 10:08 | 10:21 | 12dd617 rouge VU 10:14, 6b90b54 vert (Zone.* 4/4, 2099/2099) ; zone-effect PRÊTE ; À RELIRE : aucun accesseur public de la jauge -> test et CreditHonor passent par réflexion (FindFunction + ProcessEvent) ; RELECTURE_CPP non faite |
+| GLORFINDEL-1123g | v7 | Glorfindel ability-columns | scénario ai_sacred_light (armée de l'Aube blessée, Honneur, log ThinkPowers derrière hol.AI.LogPowers), preflight | non | 10:06 | 10:11 | 446d8d3 ; DÉFAUT RÉEL : 255 décisions « Honor 100, wounded 3 of 7, cast=false » : l'IA ne lance jamais ; preflight FAIL (waitlog) ; cvar de test hol.AI.HonorSet ajoutée ; LOGIQUE SEULEMENT |
+| GLORFINDEL-1123h | v8 | Glorfindel ability-columns | diagnostic cast=false de l'IA (Plan), test rouge sur les entrées de la partie, correctif, preflight ai_sacred_light | non | 10:12 | 10:27 | CAUSE : l'IA ne plante jamais de bannière -> origine (0,0), blessé à 14709 cm pour 800 cm ; 9e89831 rouge VU 10:19, ffd0325 vert (origine = centre de l'armée sans bannière, TryCastPowerFrom) 2104/2106 ; preflight non rejoué ; défaut dans Q-sacred-light-values |
+| GLORFINDEL-1123i | v9 | Glorfindel ability-columns | rejeu preflight ai_sacred_light après ffd0325 (lancer et effet vus ?) | non | 10:28 | 10:30 | preflight PASS : LANCER DE L'IA VU au journal (pas 44 : cast=true, Honor 100 -> 75, blessé à 253 cm ; pas 49 : 0 blessé) ; zone NON visible sur PNG (0,4 s après) : LOGIQUE SEULEMENT |
+| GLORFINDEL-1123j | v10 | Glorfindel ability-columns | rendu de la zone de Lumière sacrée (existe ? sinon cercle provisoire + Placeholders), capture plus tardive, PNG | non | 10:31 | 10:36 | aucun rendu de zone n'existait (Sceau compris) ; 6a4b2c8 : 2 cercles dorés provisoires (draw debug, solo/hôte), Placeholders.txt ; ai_sacred_light preflight PASS, PNG « after » : anneau doré sur la mêlée = VU À L'ÉCRAN ; client/dédié ne le voient pas (C++) |
+| GLORFINDEL-1123k | v11 | Glorfindel ability-columns | rendu provisoire du Sceau (fonction de cercle commune), preflight, PNG | non | 10:37 | 10:40 | 2943ff1 : anneau bleu pâle (DrawZoneCircles commune), Placeholders.txt ; aucun lanceur du Sceau (bouton = C++) -> scripts non compilés, LOGIQUE SEULEMENT |
+| GLORFINDEL-1123l | v12 | Glorfindel ability-columns | quick_check tests : compilation des scripts du Sceau, 0 erreur AS | non | 10:42 | 10:48 | 2104/2106 (2 rouges palissade connus), 0 erreur AS ; ability-columns PRÊTE à 2943ff1 |
+| DIAG-1123b (fin) | diag | Sauron integ-55 | test grille + uasset | non | 10:32 | 10:36 | 7e327c8 : EmptyI.Add(6) retiré + BuildingTypes.uasset ; tests 2132/2132 ; ligne OUTIL regen (File l.182) ; net,build lancés par la principale 10:37 (Docs\Rapports\PARTS-integ-55.txt) |
+| ELROND-1123f | v6 | Elrond integ-25 | tests du lot de liaisons + S4-b branché (IssueAIGarrisonOrder, Plan dans HOLAIBrain) | non | 10:06 | 10:19 | liaisons 2103/2103 ; S4-b : 64972bb rouge VU 10:14, 1c9571f vert 2104/2104 ; integ-25 PRÊTE (1c9571f) ; l'IA ne garnisonne pas encore : pas de lecteur « dernier coup reçu » sur AHOLBuilding (lot C++ à venir, en-tête central) |
+| ARWEN-1123c | v3 | Arwen integ-37 | ClickWidget route FactionBox* + SP3 (script) | non | 09:25 | 09:33 | routage FactionBox fait ; HOLSpecializationSlot.as (règles) : 331b87e rouge VU 09:32 (2099/2105), dca9df1 vert NON lancé ; widget non fait ; TYPES_A_EXPOSER GetSpecialization |
+| CELEBORN-1123c | v3 | Celeborn integ-41 | T7b : flèche de tour répliquée (AHOLBuilding + OnRep, HOLNetTests.cpp) ; HOLCombatProcessor.cpp ~l.956 minimal si nécessaire, rendu avant ~09:30 | oui | 09:20 | 09:36 | 2c0a76b test+bouchon (+ RecordArrowShot dans HOLCombatProcessor.cpp ~l.970, rendu 09:27), 19b0687 correctif, c6d1a15 ; NON COMPILÉ (build 09:28 en cours, en-tête central) ; rouge NON VU ; agent laissé vivant pour ne pas tuer son build |
+| ELROND-1123b | v2 | Elrond integ-25 | build rouge HOLHeroSubsystem.cpp:509 (SetXP), relecture, build, tests | oui | 09:09 | 09:17 | 05f2ec0 (bool mangé), a830a59 ; BUILD PASS 47 s ; tests 2099/2099 dont Duel150 ; rouge 9d7f538 non vu (passe) ; integ-25 PRÊTE |
+| GALADRIEL-1123a | v1 | Galadriel socle-ai (neuve, de main) | relevé des voies de spécialisation puis S4-a préparé (Q-spec-*.md, HOLAIPowerCall.as neuf, HOLAIBrain.as 1 l.) | non | 08:57 | 09:09 | SPEC-VOIES-1123.md + Q-spec-voies (défaut A : déblocage d'unité) ; 4c412cb rouge VU 09:04, 3550041 vert (2102/2103, reste StatusFit = DLL de specialization-trial), caf0684 ; appel dans HOLAIBrain NON fait (attend S1-b) ; ~27 appels, Wait-Process x2 |
+
+Clôture finale (11:51) : 2e sync_worktrees : 8 worktrees à main c8fa73f (Celeborn après DIAG-1123e 4c64ffe) ; gate Close : 1 FAIL restant = L19-1 faux positif (commits d'agents sans « Agent: », exception écrite ici) ; aucune DLL périmée signalée ; veilleur et alarme supprimés ; 0 push.
+Clôture (11:48) : sync_worktrees fin (Docs\Rapports\SYNC-1123-fin.txt) : 7 mis à jour, builds lancés en priorité basse ; Celeborn CONFLIT Placeholders.txt -> DIAG-1123e ; gate Close 9 FAIL : 8 retards = commit du bilan pendant la synchro (resync docs), 1 = L19-1 « principale a codé 9 fois » : faux positif du contrôle L22-6 entré dans main ce jour (les commits d'agents n'ont pas de ligne « Agent: <nom> » : la consigne manque au brief -> ligne de file).
+Anomalies de séance : (1) 09:13 `session_gate -Phase Launch -NoCpp -Root <wt> -Scenarios faction_click` : « il reste -1065517033 min » (FAIL faux : -Scenarios casse la lecture de la fin) -> ligne OUTIL à ouvrir ; (2) builds de 3 agents C++ en file : ELROND-1123a n'a pas compilé dans ses 15 min (build lancé par la principale, rouge SetXP) ; (3) 09:2x GLORFINDEL-1123c a lancé un fix.ps1 du scratchpad partagé écrit par FARAMIR-1123b (fichiers de Faramir retouchés) : règle à ajouter au brief (scripts temporaires nommés par agent, jamais lancer un script d'un autre) ; (4) TaskStop de FARAMIR-1123b à 09:28 a tué son build EN COMPILATION (BuildQueue.csv : FAIL « owner process died ») : ne jamais arrêter un agent dont le build compile ; (5) T7b (CELEBORN-1123c) touche AHOLBuilding (en-tête central) : build de 09:28 encore en cours à 09:37, intégration et Faramir derrière (L19-7) ; agents de 15 min incapables de finir un lot C++ quand la file a plus d'un build.
+
+Point de reprise (L3-9, ~150 appels de la principale, 10:24) : main = 47f6fe4 + docs (integ-54 : S1-a, T7, S4-a règle, S1-c, XP duel). integ-55 (Sauron) FAIL sur la seule table Palissade : DIAG-1123a régénère, puis parts net,build et avance de main. Prêtes pour integ-56 : zone-effect 6b90b54 (S1-e soin) + suite FARAMIR-1123f (mort), integ-25 1c9571f (liaisons C++, S4-b branché), integ-41 8e47ff6 (T8), ability-columns après GLORFINDEL-1123h (défaut : l'IA ne lance jamais Lumière sacrée). Recette (Haldir ou Sauron) après integ-55 : faction_click_cast (tir au sol), tower_wood, ai_sacred_light. Rouges à prendre dans integ-56 : 12dd617 (HealHonor), 48525f2, 64972bb (integ-25), b5bf92a (T8).
+
+### Bilan 2026-11-23 (BILAN-1123, 11:4x ; fin fixée à 12:00 par l'utilisateur)
+- Passes : integ-54 -> main 47f6fe4 (10:01), integ-55 -> main 3f7d89e (10:52), integ-56 -> main ca4220a (11:33) ; main ensuite = docs seulement (a79c329). integ-57 ABANDONNÉE au conflit de Placeholders.txt faute de temps, 6 rouges vus (065a643, eeba85e, aeb8abc et 3 autres) ; rien de ses verts n'est dans main.
+- DANS MAIN pour le joueur (socle des factions) : S1-a soin de zone Lumière sacrée, S1-b lancer par le serveur (25 Honneur, recharge 20 s), S1-c panneau de faction cliquable, S1-d en script (texte LightSeal, HOLMonkSeal.as ; le bouton du Moine reste sur branche), S4-a l'IA lance Lumière sacrée, S4-b garnison de l'IA sur coup reçu, T7 / T7b / T8 tir de tour (répliqué, coût mesuré), palissade (WallTypes), XP du duel 150, lot de liaisons C++, B2 / G1, rendus provisoires de la zone (anneau doré, Sceau bleu pâle), tower_wood (logique).
+- SUR BRANCHE, non intégré : ability-columns cdb1b3d + e269a1c (lancer du joueur sans bannière + cellule du Moine partielle) ; integ-55 (Sauron) EndWallDrag 68c86d0 + scénarios de recette ; specialization-trial fefe033 (D889 vu sur PNG, FR/EN) ; integ-41 a2b4208 (F9 portes, F10 murs) ; zone-effect a302195 (Honneur à la mort : Zone.KillHonor rouge, aucun mort dans le test) ; socle-ai 4afd2cc (S2-a NON COMPILÉ) ; integ-25 37040fe + scénario ai_garrison.
+- Défauts trouvés par la recette (RECETTE-1123a) : lancer du joueur refusé « cast refused (4) » (origine bannière (0,0)) -> corrigé sur branche (cdb1b3d), pose en ligne de la palissade = une seule fondation -> EndWallDrag 68c86d0 sur branche (8 fondations vues). Par REVUE-1123 : B1 (test HealHonor hors WITH_DEV_AUTOMATION_TESTS) et B2 (bMonkUnit jamais vrai) CORRIGÉS ; G1 corrigé, G5 pris par Faramir ; autres gênants et mineurs ouverts.
+- Essais : AUCUN VU À L'ÉCRAN donné. E-tower_wood et E-wall_line_long LOGIQUE SEULEMENT (geste interne, flèche jamais vue en vol) ; E-talents_heal LOGIQUE SEULEMENT (ancien) ; ai_sacred_light vu sur PNG (anneau doré) mais pas dans main (rendu 6a4b2c8 intégré à ca4220a, mais fiche E non écrite) ; faction_click_cast à rejouer après integ-57.
+- Questions ouvertes (7 [À RÉPONDRE], Retours\Q-*.md, défaut codé derrière un réglage) : Q-empreinte-jauge, Q-mur, Q-palissade, Q-porte-palissade, Q-sacred-light-values, Q-spec-voies (unités de commanderie absentes : décision de créer le palier 1), Q-suivi-mutuel. T2-4 dépassé : 3 questions S3-b (palissade, porte, mur).
+- AskUserQuestion : 0 en autonome, sauf la question de lancement (fin 12:00, mode autonome) posée à 11:3x à la demande de l'utilisateur : fin 16:50 choisie seule par la principale au lancement (L21-1 / L23-1 récidive, voir leçons).
+- Anomalies de séance : script du scratchpad d'un autre agent lancé (L25-1), TaskStop d'un agent en build (L25-4), builds en file trop longs (705 s, 13 min), 6 agents C++ NON COMPILÉS à leur rapport, integrate.ps1 ne lance pas regen_tables (BuildingTypes.uasset), gate Launch -Scenarios faux FAIL (corrigé L22-6 / b265309), attentes quick_check périmées (palissade).
+- Reste à faire en priorité (séance suivante) : relancer integ-57 (résoudre Placeholders.txt), compiler et intégrer socle-ai S2-a, rejouer faction_click_cast et wall_line_long au geste réel, répondre aux 7 questions, bouton du Moine (lot C++).
+
+### Lecons appliquees 2026-11-23
+- T2-1 : appliquee : ETAPE0-1123 (08:53-08:55) et plan de lancement ci-dessous
+- T2-2 : appliquee : une ligne par worktree libre, raison écrite pour Haldir et Sauron (plan l.136-137)
+- L3-12 : appliquee : étape 0 faite, non sautée
+- L5-7 : non vérifié : aucune trace écrite de la question « dossiers non suivis »
+- L4-1, L4-3 : appliquee : alarme fin - 15 min (16:35) et fin dans le titre ; la fin a ensuite été ramenée à 12:00 par l'utilisateur
+- L3-8, L4-9, Q5, L1-14 : appliquee : ligne `intégrateur` du tableau, recette Haldir/Sauron
+- L3-9 : appliquee : point de reprise écrit à 10:24 (~150 appels)
+- L1-1, L3-6, L4-7, L5-3 : non appliquee : ARWEN-1123a 47 appels vus (> 45), GLORFINDEL-1123c 25 appels sans correctif
+- L5-6 : non vérifié : aucun tableau de questions groupées écrit
+- L3-11, L5-5 : non vérifié : regen BuildingTypes.uasset par DIAG-1123a/b, pas de preuve « éditeur seul »
+- L3-7, L1-4 : appliquee : veilleur 30 min (:13/:43) posé (plan du jour)
+- T2-4 : non appliquee : 3 questions S3-b (Q-palissade, Q-porte-palissade, Q-mur)
+- Q5, L5-4 : non appliquee : recette indépendante faite (RECETTE-1123a) mais gestes internes, 3 fiches E LOGIQUE SEULEMENT
+- Q8 : non vérifié : pas de ligne `[ ]` de défaut commun relevée
+- Q11 : appliquee : 0 essai prêt donné
+- L1-3 : non vérifié : champ merge_main_fait non relevé ici (FARAMIR-1123h et CELEBORN-1123j ont fusionné main)
+- L6-2 : non vérifié : pas de relevé de la lecture de la file par la principale
+- L6-4 : non vérifié : faction_click_cast rejoue le clic mais le correctif n'est pas rejoué
+- L6-6 : non vérifié : aucune mesure répétée du jour
+- L7-7 : appliquee : integ-54 lancée à 09:20 dès 4 branches vertes
+- L8-4 : non vérifié : aucun essai sonore du jour
+- L8-8 : appliquee : integ-54 (C++) lancée avant les autres branches
+- L9-1 : non vérifié : pas de relevé de re-notifications en boucle
+- L9-6 : non vérifié : liste figée d'integ-57 non écrite avant lancement (conflit Placeholders.txt)
+- L9-8 : non vérifié : tâches des agents inactifs non relevées
+- L9-9 : non vérifié : mode choisi par la principale sans relevé de présence
+- L10-2 : non vérifié : net PASS à integ-55, pas de net rouge sur main du jour
+- L10-3 : non vérifié : session_gate Report non relevé
+- L11-3 : non vérifié : pas de verdict de 5 min noté
+- L11-4 : non vérifié : gate Close non lancé avant ce bilan
+- L11-8 : non vérifié : liste figée integ-56 non écrite
+- L11-9 : appliquee : intégrateur de recette nommé (Haldir) et RECETTE-1123a
+- L11-10, L10-5, L9-7 : non vérifié : aucune mesure de mêlée du jour
+- L11-11 : non vérifié : lecture de Retours\REPONSES non tracée
+- L11-12 : appliquee : CLEAN-1123c (6d5af16) a purgé Retours
+- L11-13 : non vérifié : heures annoncées sans trace de Get-Date
+- L12-1 : appliquee : SYNC-debut sans -NoBuild (08:52)
+- L12-1b : non vérifié : charge machine non relevée (builds de 705 s notés BUILD LENT)
+- L13-1 : non vérifié : pas de 403 constaté, 6 agents lancés d'emblée
+- L13-4 : non vérifié : pas de net rouge sous charge
+- L13-5 : non vérifié : dossiers non suivis > 50 fichiers non relevés
+- L13-6 : non appliquee : tower_wood 4 PNG sans flèche (caméra loin, ennemis sous le bandeau)
+- L13-7 : non vérifié : aucun balayage du jour
+- L14-2 : appliquee : gate C++ FAIL (plafond 3) -> ELROND-1123d sans C++ (09:35)
+- L14-4 : non vérifié : 0 AskUserQuestion en séance
+- L14-5 : non appliquee : E-tower_wood, E-wall_line_long, E-talents_heal en geste interne
+- L14-6 : non appliquee : rouges jamais vus (GLORFINDEL-1123a, CELEBORN-1123j, ELROND-1123c vert non vu)
+- L14-9 : non vérifié : pas de vérification 1080p du jour
+- L14-10 : non vérifié : pas d'essai audio
+- L14-11 : appliquee : integ-56 faite en 30 min (11:02-11:32)
+- L15-4 : non vérifié : usage d'agents_table.ps1 non tracé
+- L15-6 : non vérifié : build_wait.ps1 non tracé (agents recompilent après merge main)
+- L15-7 : appliquee : ETAPE0-1123 a recoupé la file contre main (aucune ligne du socle déjà faite)
+- L15-8 : non vérifié : `.look` non relus
+- L15-9 : non appliquee : ELROND-1123a et FARAMIR-1123b arrêtés sans livrer, ARWEN-1123a 47 appels
+- L15-10 : appliquee : rapports dans Docs\Rapports\<AGENT>.md
+- L16-1 : non vérifié : discussion de la file de build non tracée
+- L16-2 : non vérifié : aucune commande play.ps1 donnée à l'utilisateur
+- L16-3 : appliquee : tests verts avant chaque avance (2114/2114, 2132/2132, 2143/2143)
+- L16-4 : non vérifié : langue des messages non relevée
+- L16-5 : non vérifié : chiffres annoncés non recoupés
+- L16-6 : non vérifié : builds de confort non relevés
+- L16-7 : non vérifié : sorties tronquées non relevées
+- L16-8 : non vérifié : aucun essai donné
+- L17-a : non vérifié : pas de test porté sans build relevé
+- L17-b : non vérifié : archives de la file par section non relevées
+- L17-c : non vérifié : BuildQueue.state non relu à la reprise
+- L18-a : non vérifié : git diff du .uasset régénéré non tracé
+- L18-b : non vérifié : types canoniques non relevés
+- L18-c : non appliquee : GALADRIEL-1123m (S2-a, C++) lancé à 11:23 pour une fin à 12:00, NON COMPILÉ
+- L18-d : non vérifié : Grep des listes non tracé
+- L18-e : appliquee : 8a63439 rouge puis d0c24eb vert (deux commits)
+- L18-f : non vérifié : scénarios avec attente d'effet non relus
+- L19-1 : non appliquee : lancement avec FAIL L19-1 (check-list lue après 0a), exception écrite
+- L19-4 : non appliquee : build hud / barracks FAIL d'integ-55 (attentes quick_check périmées, DIAG-1123c)
+- L19-5 : non appliquee : tower_wood 3 captures sans flèche en vol (CELEBORN-1123i)
+- L19-6 : non vérifié : séance autonome, questions dans Retours\
+- L19-7 : non appliquee : T7b sur AHOLBuilding, build de 13 min (anomalie 5)
+- L20-2 : non appliquee : builds FAIL d'agents (FARAMIR-1123b, d, f ; accesseur privé)
+- L20-4 : non appliquee : 1re recette à 10:53, 52 min après main 47f6fe4 (report écrit l.101)
+- L20-5 : non appliquee : builds en file derrière d'autres (ELROND-1123a, FARAMIR-1123c/f)
+- L20-7 : non vérifié : rouges script dans le même build non tracés
+- L20-8 : non appliquee : 1er Edit au 9e (GLORFINDEL-1123a), 11e (1123d) appel
+- L21-1 : non appliquee : fin (16:50) et mode choisis par la principale, non demandés au lancement par l'interface de choix ; relevé par l'utilisateur à 11:3x
+- L21-2 : non vérifié : pas de double modification de lignes relevée
+- L21-3 : non vérifié : placeholders_map.csv non relu pour les lignes F9/F10
+- L22-1 : appliquee : 0 erreur AS (GLORFINDEL-1123l, ARWEN-1123b)
+- L22-2 : non appliquee : conflit de cherry-pick du rouge 7fa5b77 (integ-54) et conflit d'integ-56
+- L22-3 : non appliquee : même cause que L19-4 (attentes « I D: Palissade » périmées)
+- L22-4 : non vérifié : pas de doublon relevé
+- L22-5 : non vérifié : scénario court d'un pont C++ non tracé
+- L22-6 : appliquee : outil gate Close corrigé (b265309), gate_test 109 PASS dont « L22-6 close »
+- L22-7 : non vérifié : GDD.md non commité non relevé
+- L23-1 : non appliquee : RÉCIDIVE de la question de lancement (fin, mode) non posée au lancement ; seule question posée à 11:3x à la demande de l'utilisateur
+- L24-1 : non vérifié : accord de fusion locale (D888) sans trace de la question de lancement
+- L24-2 : non vérifié : aucune passe à 0/0 relevée
+- L24-3 : non appliquee : agents C++ NON COMPILÉS (ELROND-1123a, FARAMIR-1123b/f, CELEBORN-1123j, GALADRIEL-1123m)
+- L24-4 : non vérifié : gate Launch seul posé au plan mais exécution non tracée
+- L24-5 : appliquee : refus du classifieur signalé (GLORFINDEL-1123d, edit_line)
+- L25-1 : non vérifié : règle posée à 10:03, aucune récidive relevée ensuite
+- L25-2 : non vérifié : pas de récidive relevée
+- L25-3 : non appliquee : GALADRIEL-1123m et ELROND agents vivants en attente de build (« agent vivant »)
+- L25-4 : non vérifié : pas de TaskStop depuis 09:28
+- L25-5 : appliquee : au plus 2 agents C++ tant qu'un build dépasse 5 min, appliquée dès 10:06
+- Bilan des leçons : 104 lignes = 23 appliquées, 22 non appliquées, 59 non vérifiées (pas de preuve écrite). Leçon neuve de la séance : L25-6 (fin et mode demandés au lancement par l'interface de choix, même en autonome ; récidive de L21-1 / L23-1) ajoutée à la section L25 de la check-list.
+
+### Plan de lancement 2026-11-23 (ETAPE0-1123, detail : Docs\Rapports\ETAPE0-1123.md)
+- Faramir (zone-effect) : lancer S1-a (C++ Mass, soin de zone Lumiere sainte ; chaine combat : S1-e, S2-a, S2-b ensuite ici)
+- Celeborn (integ-41) : lancer S3-a (C++, T7/T8, tower_wood)
+- Elrond (integ-25) : lancer Reste XP duel 150 (C++ petit lot, hors combat)
+- Arwen (integ-37) : lancer S1-c (panneau de faction cliquable, script, scenario au vrai clic)
+- Glorfindel (ability-columns) : lancer S1-d (bouton Sceau du Moine) + texte LightSeal (script)
+- Galadriel (specialization-trial) : lancer releve des voies de specialisation (lecture seule) puis S4-a prepare (script)
+- Haldir (integ-50) : ne pas lancer : worktree de recette (essais sur le build de main fusionne), aucune tache de code
+- Sauron (integ-53) : ne pas lancer : worktree d'integration (integrate.ps1, passes), integ-53 = main exactement
+
+
+---
+
+(Suite : résumés de séances antérieures au 2026-11-22, retirés du fichier vivant le 2026-11-23.)
+
+## Résumé de la séance du 2026-11-21 soir
+
+- Séance autonome 19:00 -> 23:00 (« lance une autojourney »), session principale + 85 identifiants d'agents Sonnet ; main 6fe9d84 -> 1276d54 en LOCAL, rien poussé, 5 avances par `integrate.ps1` (integ-42, 43, 44, 46, 48) ; integ-45 (build rouge UHT du pont de Suivre) et integ-47 (tests 0/0) abandonnées ; tests 2061/2061 et `net`/`build` PASS à chaque avance.
+- Livré pour le joueur : furtivité (règle « vue par camp », filtre réseau), moral (fragment D866, processeur, aura de l'Aube, bannière, cri), centre secondaire « tout centre », D877 deploy en 2 moitiés, infobulle de revenu et traductions EN/JA, jauge de faction sous le bloc héros, lignes d'ordre multi-blocs, chat Tab.
+- NON intégré : série Glorfindel du pont de Suivre (`UHOLFollowBridge::Get()` renvoie le CDO, 19 727 erreurs AS ; reste sur ability-columns) ; dessin de l'opacité de furtivité ; tir de la tour de bois (Q-towerwood-tir).
+- Essais en fin de séance : 6 [À ESSAYER] dont 4 prêts VU À L'ÉCRAN (secondary_centre, chat_input, order_lines_blocks, income_tooltip) ; deploy PAS prêt (rejeu après D877), talents_heal LOGIQUE SEULEMENT. Les 5 questions et le commit de GDD.md ont été répondus le 2026-11-22 (D880 à D884).
+- Rouges : L19-8 non appliquée pour les passes 2, 3 et 5 ; exceptions de gate Merge (GDD.md non commité, 4 avances) ; leçons L22-1 à L22-7 dans `Auto_Journey_Checklist.md`.
+- Détail (tableau d'agents, bilan, tableau « Lecons appliquees 2026-11-21 », exceptions de gate) : `Docs\Archive\Auto_Journey_Jour_2026-11-21_soir_archive_2026-11-22.md`.
+
+## Résumé de la séance du 2026-11-21 matin
+Séance autonome 10:40 -> 14:40 (clôture 14:53) : 23 agents Sonnet, main 61a60e8 -> a987f58 en local (integ-38 PASS 957 s, integ-41 tests 1990/1990), rien poussé. Livré : chat (Tab, marque « (Alliés) »), alertes mineures par type, infobulle de revenu, règle Suivre, scénarios deploy et virtuous_knight, gate Essay acceptant un sha.
+Arrêt 11:10 -> 14:09 : AskUserQuestion posé en séance autonome (L21-1). Réponses : deploy BUG D877, TowerWood A (D878), centre secondaire A (D879), virtuous_knight OK.
+Non intégrés : Elrond integ-25 (Test_CGTables rouge, case de grille 7 de TowerWood), Haldir SecondaryCentre (conflit uasset). Lot C++ à faire : UE_LOG ApplyDamageRedirect, position d'unité par id (Suivre), accesseur des coups reçus, « tout centre », colonnes d'attaque de TowerWood, FHOLMoraleFragment sur les archétypes.
+Détail complet (tableau d'agents, bilan, leçons L21-1 à L21-3 appliquées ou non) : archive ci-dessus.
+
+
+## Résumé de la séance du 2026-11-20 soir
+
+- Séance autonome « choses en suspens » 22:38 -> ~01:00 (fin prolongée une fois), session principale + ~25 agents Sonnet ; 7 passes d'`integrate.ps1` (integ-31 à 37, 36 et 37 vertes) ; main = f46dc2d (code) + docs, LOCAL, rien poussé ; tests 1977/1977, `net` et `build` PASS, gate Close 00:22 sans FAIL.
+- Entré dans main, visible : D869b montage de l'engin (barre dès l'ordre, 2e cycle « Démonter »), chat (2e Entrée rouvre le champ, marque de canal lisible), `virtuous_knight` (redirection prouvée, case E active), « Population pleine » 15 s ; outils : `merge=union` des journaux (L20-1), gate Close L19-1 (L20-3), `regen_tables.ps1` (L20-9), `integrate.ps1` repart de main (37ee2c0).
+- Trouvé : 2 erreurs de compilation script à l'intégration (accolade manquante, `WidgetBlueprint::` au lieu de `Widget::`), 1 test faux (SecondMountReturnsToPack), 1 énoncé qui lisait mal D833. Reste en tête de file : chat Tab perdu (C++ probable, reporté), « Allies » sans accent, capture deploy_move_unmounting trop tôt, `hol.Select.Hold` en scénario.
+- Détail (tableaux d'agents, bilan, tableau « Lecons appliquees 2026-11-21 », exceptions de gate) : `Docs\Archive\Auto_Journey_Jour_2026-11-20_soir_archive_2026-11-21.md` ; 2 essais [À ESSAYER] (deploy, virtuous_knight) dans `Auto_Journey_Retours.md`.
