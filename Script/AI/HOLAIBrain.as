@@ -158,25 +158,30 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 				ArmyPoints.Add(Summary.Army[Each].Location);
 			}
 		}
-		// GLORFINDEL-1123pa (D891): the AI wants a banner before it casts. The decision is HOLAIPowerCall::PlanBanner; the order itself needs a script-callable
-		// plant (TYPES_A_EXPOSER: HOLHero::PlantBanner(Slot, Location)), until then only logged, and the army-centre origin below stays the fallback.
+			// GLORFINDEL-1123pb (D891): the AI wants a banner before it casts. The decision is HOLAIPowerCall::PlanBanner; the order is HOLHero::PlantHeroBanner (server only,
+			// UHOLHeroSubsystem::PlantBanner: the player's own refusals). The cast origin below is read AFTER the plant, so a planted banner is the origin at once;
+			// the army-centre origin stays the fallback when planting is refused.
+		// GLORFINDEL-1123pd: the hero is NOT in Summary.Army (HOLAISummary leaves him out), so his place is read where he stands (HOLFactionPowerServer::HeroPlaceOf, the player's reader too).
 		FVector HeroPlace = FVector(0.0, 0.0, 0.0);
-		for (int Each = 0; Each < Summary.Army.Num(); Each++)
-		{
-			if (Summary.Army[Each].Type == n"Hero" && Summary.Army[Each].Health > 0)
-			{
-				HeroPlace = Summary.Army[Each].Location;
-			}
-		}
-		const int BannerCooldownMs = Math::Max(0, HOLHero::GetHeroAbilityReadyStep(PlayerIndex, EHOLHeroAbility::Banner) - HOLHero::GetServerStep()) * 1000
-			/ Math::Max(1, HOLHero::GetSimulationRateHz());
+		const bool bHeroKnown = HOLFactionPowerServer::HeroPlaceOf(PlayerIndex, HeroPlace);
+		const int BannerCooldownMs = int(double(Math::Max(0, HOLHero::GetHeroAbilityReadyStep(PlayerIndex, EHOLHeroAbility::Banner) - HOLHero::GetServerStep())) * 1000.0
+			/ double(Math::Max(1, HOLHero::GetSimulationRateHz())));
 		const bool bHeroCanPlant = HOLHeroAbilityRead::CanCast(EHOLHeroAbility::Banner, HOLHero::GetHeroLevel(PlayerIndex), HOLHero::GetHeroState(PlayerIndex) == EHOLHeroState::Alive, BannerCooldownMs);
-		const FHOLAIBannerOrder BannerOrder = HOLAIPowerCall::PlanBanner(Wounded, HeroPlace, bHeroCanPlant, HOLHero::GetHeroBannerEndStep(PlayerIndex) > HOLHero::GetServerStep());
-		if (BannerOrder.bPlant && CVar_AILogPowers.GetInt() != 0)
-		{
-			Log(n"LogHOLMatch", f"AI slot {PlayerIndex} step {Step}: banner wanted at ({int(BannerOrder.Point.X)}, {int(BannerOrder.Point.Y)}), no script plant yet (TYPES_A_EXPOSER)");
-		}
-		const FVector CastOrigin = HOLFactionPowerServer::CastOriginOf(HOLHero::GetHeroBannerLocation(PlayerIndex), ArmyPoints);
+		const FHOLAIBannerOrder BannerOrder = HOLAIPowerCall::PlanBannerOf(Wounded, bHeroKnown, HeroPlace, bHeroCanPlant, HOLHero::GetHeroBannerEndStep(PlayerIndex) > HOLHero::GetServerStep());
+			if (BannerOrder.bPlant)
+			{
+				const bool bPlanted = HOLHero::PlantHeroBanner(PlayerIndex, BannerOrder.Point);
+				if (CVar_AILogPowers.GetInt() != 0)
+				{
+					FString PlantedText = "refused";
+					if (bPlanted)
+					{
+						PlantedText = "planted";
+					}
+					Log(n"LogHOLMatch", f"AI slot {PlayerIndex} step {Step}: banner at ({int(BannerOrder.Point.X)}, {int(BannerOrder.Point.Y)}) {PlantedText}");
+				}
+			}
+		const FVector CastOrigin = HOLFactionPowerServer::CastOriginOf(HOLHero::GetHeroBannerLocation(PlayerIndex), ArmyPoints, bHeroKnown, HeroPlace);
 		const FIntPoint Banner = FIntPoint(int(CastOrigin.X), int(CastOrigin.Y));
 		const int Level = int(HOLAILives::Played(Summary.Level, Data.GameSeconds, HOLAIArmy::DefaultData().Lives));
 		const FHOLAIPowerOrder Order = HOLAIPowerCall::Plan(Rows, CooldownLeft, State.GetFactionResource(PlayerIndex), Summary.Tier, Level, HOLAIPowerCall::DefaultData(),

@@ -25,6 +25,7 @@
 #include "Simulation/HOLSimulationSettings.h"
 #include "Simulation/HOLSimulationSubsystem.h"
 #include "Simulation/HOLUnitSubsystem.h"
+#include "Simulation/HOLUnitView.h"
 
 namespace
 {
@@ -389,4 +390,26 @@ void UHOLHeroLibrary::PlayTalentTakenSound(const UObject* WorldContextObject)
 	{
 		UGameplayStatics::PlaySound2D(WorldContextObject, Sound);
 	}
+}
+
+bool UHOLHeroLibrary::PlantHeroBanner(const UObject* WorldContextObject, const int32 Slot, const FVector& Location)
+{
+	// D891: the player's own function, so the same refusals (hero dead, level, cool-down, reach; false on a client).
+	UHOLHeroSubsystem* Heroes = GetAuthorityHeroes(GetWorldOf(WorldContextObject));
+	return Heroes && Heroes->PlantBanner(Slot, Location);
+}
+
+bool UHOLHeroLibrary::GetHeroLocation(const UObject* WorldContextObject, const int32 Slot, FVector& OutLocation)
+{
+	// D891: the unit's own place (its view), the same hero the sheets follow (FindHeroUnit); a garrisoned or dead hero has no view: false.
+	OutLocation = FVector::ZeroVector;
+	const UWorld* World = GetWorldOf(WorldContextObject);
+	const UHOLUnitSubsystem* Units = World ? World->GetSubsystem<UHOLUnitSubsystem>() : nullptr;
+	FHOLUnitView View;
+	if (!Units || !Units->GetUnitView(Units->FindHeroUnit(Slot), View) || View.Health <= 0)
+	{
+		return false;
+	}
+	OutLocation = View.Location;
+	return true;
 }
