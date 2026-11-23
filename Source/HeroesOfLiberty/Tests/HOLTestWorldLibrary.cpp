@@ -1179,3 +1179,19 @@ UHOLVictoryEventCounter* UHOLTestWorldLibrary::CountVictoryEvents(AHOLGameState*
 	Counter->Bind(State);
 	return Counter;
 }
+int32 UHOLTestWorldLibrary::SpawnTestHero(UHOLTestWorldHandle* TestWorld, const int32 Slot, const FVector Location)
+{
+	// STUB (ELROND-1123pf commit 1, red tests): the real body follows in commit 2.
+	(void)TestWorld;
+	(void)Slot;
+	(void)Location;
+	return 0;
+}
+
+bool UHOLTestWorldLibrary::SetPlayerSpecialization(AHOLPlayerState* Player, const FHOLSpecializationView& View)
+{
+	// STUB (ELROND-1123pf commit 1, red tests): the real body follows in commit 2.
+	(void)Player;
+	(void)View;
+	return false;
+}

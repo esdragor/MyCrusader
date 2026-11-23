@@ -87,13 +87,13 @@ namespace HOLSpecializationSlot
 		AHOLGameState State = Cast<AHOLGameState>(Gameplay::GetGameState());
 		if (Player == nullptr || State == nullptr)
 			return Empty;
-		return ReadOf(Player.GetSpecialization(), State.GetTier(Slot), EHOLFaction(State.GetSlotFaction(Slot)));
+		return ReadOf(Player.GetSpecialization(), State.GetTier(Slot), EHOLFaction(State.GetSlotFaction(Slot)), true);
 	}
 
 	// What the slot reads from the owner's specialization view, the faction tier and the faction (pure; ReadView feeds it from the live state).
 	// bForumComplete stays true (PROVISIONAL, Placeholders.txt): "Forum present" is not readable from the script (IsSeatNomad, GetNomadForumSeats,
 	// UHOLSpecializationSubsystem::Find are not UFUNCTIONs); the server still refuses an unlock without a complete Forum (NoForumComplete).
-	FHOLSpecializationRead ReadOf(FHOLSpecializationView View, int PlayerTier, EHOLFaction Faction)
+	FHOLSpecializationRead ReadOf(FHOLSpecializationView View, int PlayerTier, EHOLFaction Faction, bool bForumComplete)
 	{
 		FHOLSpecializationRead Read;
 		Read.View = View;
