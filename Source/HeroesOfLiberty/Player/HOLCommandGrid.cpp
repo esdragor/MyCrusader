@@ -113,6 +113,11 @@ namespace HOLCommandGrid
 	{
 		return 2;
 	}
+
+	void NoteSelectedUnitType(FHOLGridContext& Context, const FName TypeName)
+	{
+		Context.bRageUnit |= TypeName == FName(TEXT("DamnedWarrior"));
+	}
 	int32 GetHeroAbilityCell(const EHOLHeroAbility Ability)
 	{
 		return Ability == EHOLHeroAbility::CloseRanks ? 0 : Ability == EHOLHeroAbility::Banner ? 1 : INDEX_NONE;

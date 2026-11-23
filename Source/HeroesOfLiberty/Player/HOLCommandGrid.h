@@ -327,6 +327,8 @@ namespace HOLCommandGrid
 	HEROESOFLIBERTY_API int32 GetHeroAbilityCell(EHOLHeroAbility Ability);
 	/** L4: the cell of the necrotic rage, after the hero's two (to confirm against the AoE4 grid). */
 	HEROESOFLIBERTY_API int32 GetRageCell();
+	/** B2: reads one selected unit's type into the grid context: a Damned Warrior sets bRageUnit, a Monk sets bMonkUnit (what the player controller calls per selected unit). */
+	HEROESOFLIBERTY_API void NoteSelectedUnitType(FHOLGridContext& Context, FName TypeName);
 
 	/** SP3: the default options of a tier's choice (D07: 2); a Templar seat has 3 commanderies (D131), drawn from FHOLGridContext::SpecializationFaction by HOLCommandGridRules.as. */
 	inline constexpr int32 SpecializationOptions = 2;

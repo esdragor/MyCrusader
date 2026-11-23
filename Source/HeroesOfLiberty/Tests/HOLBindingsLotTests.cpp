@@ -1,6 +1,10 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "AI/HOLAIGarrisonOrders.h"
+#include "Engine/Engine.h"
+#include "Engine/World.h"
+#include "Match/HOLGameState.h"
+#include "Simulation/HOLUnitSubsystem.h"
 #include "AI/HOLAISummary.h"
 #include "Misc/AutomationTest.h"
 #include "Player/HOLCommandGrid.h"
@@ -27,6 +31,24 @@ namespace UE::HeroesOfLiberty::Tests::BindingsLot
 		Unit.bHero = bHero;
 		Unit.Activity = EHOLUnitActivity::Idle;
 		return Unit;
+	}
+
+	/** A unit of Type born for slot 0 in the world through the real unit table, its identifier (0 if none). */
+	uint32 Place(UHOLUnitSubsystem* Units, const FName Type, const FVector& Location)
+	{
+		TArray<uint32> Before;
+		Units->GetAllUnitIds(Before);
+		FHOLUnitSpawnRequest Request;
+		Request.TypeName = Type;
+		Request.Count = 1;
+		Request.OwnerPlayer = 0;
+		Request.Center = Location;
+		Units->RequestUnits(Request);
+		Units->ServeBirthRequests();
+		TArray<uint32> After;
+		Units->GetAllUnitIds(After);
+		After.RemoveAll([&Before](const uint32 Id) { return Before.Contains(Id); });
+		return After.Num() == 1 ? After[0] : 0;
 	}
 }
 
@@ -71,4 +93,60 @@ bool FHOLBindingsUnitOwnerTypeTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+// ELROND-1123g B2: the player controller reads each selected unit through HOLCommandGrid::NoteSelectedUnitType; a real Monk, Damned Warrior and
+// Spearman born in a world (the real unit table, HOLUnitView::Find) must set bMonkUnit / bRageUnit as the Sceau de lumiere and rage cells need.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLBindingsSelectionKindsTest, "HeroesOfLiberty.Player.CommandGrid.SelectionKinds", UE::HeroesOfLiberty::Tests::BindingsLot::Flags)
+bool FHOLBindingsSelectionKindsTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::BindingsLot;
+	UWorld* World = UWorld::CreateWorld(EWorldType::Game, /*bInformEngineOfWorld*/ false);
+	FWorldContext& WorldContext = GEngine->CreateNewWorldContext(EWorldType::Game);
+	WorldContext.SetCurrentWorld(World);
+	World->InitializeActorsForPlay(FURL());
+	World->SetGameState(World->SpawnActor<AHOLGameState>());
+	UHOLUnitSubsystem* Units = World->GetSubsystem<UHOLUnitSubsystem>();
+	if (TestNotNull(TEXT("units"), Units))
+	{
+		const uint32 Monk = Place(Units, FName(TEXT("Monk")), FVector::ZeroVector);
+		const uint32 Warrior = Place(Units, FName(TEXT("DamnedWarrior")), FVector(300., 0., 0.));
+		const uint32 Spearman = Place(Units, FName(TEXT("Spearman")), FVector(600., 0., 0.));
+		if (TestTrue(TEXT("a Monk, a Damned Warrior and a Spearman born"), Monk != 0 && Warrior != 0 && Spearman != 0))
+		{
+			const auto Read = [World](const uint32 Id)
+			{
+				FHOLGridContext Context;
+				FHOLUnitView View;
+				if (HOLUnitView::Find(*World, Id, View))
+				{
+					HOLCommandGrid::NoteSelectedUnitType(Context, View.TypeName);
+				}
+				return Context;
+			};
+			const FHOLGridContext MonkOnly = Read(Monk);
+			TestTrue(TEXT("a selected Monk: bMonkUnit"), MonkOnly.bMonkUnit);
+			TestFalse(TEXT("a selected Monk: not bRageUnit"), MonkOnly.bRageUnit);
+			const FHOLGridContext WarriorOnly = Read(Warrior);
+			TestTrue(TEXT("a selected Damned Warrior: bRageUnit"), WarriorOnly.bRageUnit);
+			TestFalse(TEXT("a selected Damned Warrior: not bMonkUnit"), WarriorOnly.bMonkUnit);
+			const FHOLGridContext SpearmanOnly = Read(Spearman);
+			TestFalse(TEXT("a selected Spearman: not bMonkUnit"), SpearmanOnly.bMonkUnit);
+			TestFalse(TEXT("a selected Spearman: not bRageUnit"), SpearmanOnly.bRageUnit);
+			// A mixed selection accumulates (|=), as the controller's loop does.
+			FHOLGridContext Mixed;
+			for (const uint32 Id : { Spearman, Monk, Warrior })
+			{
+				FHOLUnitView View;
+				if (HOLUnitView::Find(*World, Id, View))
+				{
+					HOLCommandGrid::NoteSelectedUnitType(Mixed, View.TypeName);
+				}
+			}
+			TestTrue(TEXT("a mixed selection holding a Monk: bMonkUnit"), Mixed.bMonkUnit);
+			TestTrue(TEXT("a mixed selection holding a Damned Warrior: bRageUnit"), Mixed.bRageUnit);
+		}
+	}
+	GEngine->DestroyWorldContext(World);
+	World->DestroyWorld(false);
+	return true;
+}
 #endif // WITH_DEV_AUTOMATION_TESTS
