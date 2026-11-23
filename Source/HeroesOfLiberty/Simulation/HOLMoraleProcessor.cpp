@@ -111,6 +111,22 @@ void UHOLMoraleProcessor::SetSlotAttenuation(const int32 Slot, const int32 Perce
 	}
 }
 
+int32 UHOLMoraleProcessor::GetSlotAttenuation(const int32 Slot)
+{
+	return (Slot >= 0 && Slot < FHOLMatchConfig::MaxSlots) ? SlotAttenuationPercent[Slot] : 0;
+}
+
+int32 UHOLMoraleProcessor::NumPendingOrders()
+{
+	FScopeLock Lock(&PendingAroundLock);
+	return PendingAround.Num() + PendingClear.Num();
+}
+
+void UHOLMoraleProcessor::ResetForWorld(const UWorld* World)
+{
+	// STUB (red test first, REVUE-1123pm G1): does nothing yet.
+}
+
 UHOLMoraleProcessor::UHOLMoraleProcessor()
 	: EntityQuery(*this)
 {
