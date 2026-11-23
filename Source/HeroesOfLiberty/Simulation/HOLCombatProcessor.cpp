@@ -30,6 +30,7 @@
 #include "Simulation/HOLDeployProcessor.h"
 #include "Simulation/HOLCampSubsystem.h"
 #include "Simulation/HOLDuelSubsystem.h"
+#include "Simulation/HOLHealProcessor.h"
 #include "Simulation/HOLHeroAbilityRules.h"
 #include "Simulation/HOLMoraleRules.h"
 #include "Simulation/HOLMoraleTableRows.h"
@@ -1530,6 +1531,30 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 			Heroes->AddXP(KillerPlayer, XP, Source.GetValue());
 		}
 	};
+	// S1-e (D689/D859): an enemy dies within HonorKillRadiusCm of a BUILDING of a Dawn slot (D859: "+1 per enemy killed within 12 m of a Dawn building"): that slot earns HonorKillGain (once per death and slot).
+	// Off (radius or gain 0) until the script installs the Dawn's values; the credit is UHOLHealProcessor's, the one path of the gauge.
+	const auto AwardKillHonor = [&](const FFighter& Victim)
+	{
+		const int32 Radius = UHOLHealProcessor::GetHonorKillRadiusCm();
+		const AHOLGameState* GameState = Radius > 0 && UHOLHealProcessor::GetHonorKillGain() > 0 && World ? World->GetGameState<AHOLGameState>() : nullptr;
+		if (!GameState)
+		{
+			return;
+		}
+		TArray<int32, TInlineAllocator<4>> Slots;
+		const double RadiusSq = static_cast<double>(Radius) * Radius;
+		for (const FStepBuilding& Near : StepBuildings)
+		{
+			const int32 Slot = Near.OwnerPlayer;
+			if (Near.bGone || Near.Camp == Victim.Camp || Slots.Contains(Slot) || GameState->GetSlotFaction(Slot) != 0
+				|| Near.Box.ComputeSquaredDistanceToPoint(FVector2D(Victim.Location)) > RadiusSq)
+			{
+				continue;
+			}
+			Slots.Add(Slot);
+			UHOLHealProcessor::CreditKillHonor(World, Slot);
+		}
+	};
 	// A unit killed in the step: its own target loses an attacker at once (KillUnit disengages it), not at the next count.
 	const auto Kill = [&](FFighter& Victim, const int32 KillerPlayer, const uint32 KillerId)
 	{
@@ -1543,6 +1568,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 		}
 		KillUnit(World, *Units, Victim, StepIndex, KillerPlayer);
 		AwardKillXP(Victim, KillerPlayer, KillerId);
+		AwardKillHonor(Victim);
 	};
 
 	// D345.2b: the buildings that can be attacked this step (a bare foundation is unseen by the enemy: never a target).
@@ -2495,7 +2521,10 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 		}
 		// L4: under the necrotic rage the unit strikes 25 % faster (the CSV value, HOLUnitAbilityRules.h).
 		const int32 BaseIntervalMs = HOLCombat::ToMilliseconds(Constants.AttackInterval);
-		const int32 IntervalMs = Combat.RageMs > 0 ? HOLUnitAbility::GetRageIntervalMs(BaseIntervalMs) : BaseIntervalMs;
+		const int32 RageIntervalMs = Combat.RageMs > 0 ? HOLUnitAbility::GetRageIntervalMs(BaseIntervalMs) : BaseIntervalMs;
+			// PLAN-MORAL-1120 step 5 (S2-a): the Rate lever of the striker's morale (HOLMorale::Multiplier, the one source) shortens (bonus) or lengthens (malus) the time between blows.
+			const int32 MoraleRatePercent = Fighter.Morale ? HOLMorale::Multiplier(Fighter.Morale->State, HOLMorale::LeverRate) : 100;
+			const int32 IntervalMs = FMath::Max(1, RageIntervalMs * 100 / FMath::Max(MoraleRatePercent, 1));
 		if (Target == INDEX_NONE)
 		{
 			// D345.2b: no enemy unit. Its building (ordered, or taken on before), else one it takes on by itself: on an
@@ -3282,7 +3311,9 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 			}
 			Touch(Index);
 		}
-		const float Damage = HOLCombat::GetDamage(Constants, *Enemy.Constants, Combat.Level, GetTalentArmorBonus(Enemy), GetTechnologyAttackPercent(Fighter) + RagePercent, GetTechnologyArmorPercent(Enemy, Constants.AttackType));
+		// PLAN-MORAL-1120 step 5 (S2-a): the Dealt lever of the striker's morale (one source, the rule) scales the blow, as the Taken lever of the victim reduces it.
+			const int32 MoraleDealtPercent = Fighter.Morale ? HOLMorale::Multiplier(Fighter.Morale->State, HOLMorale::LeverDealt) : 100;
+			const float Damage = HOLCombat::GetDamage(Constants, *Enemy.Constants, Combat.Level, GetTalentArmorBonus(Enemy), GetTechnologyAttackPercent(Fighter) + RagePercent, GetTechnologyArmorPercent(Enemy, Constants.AttackType)) * static_cast<float>(MoraleDealtPercent) / 100.f;
 		if (bShot)
 		{
 			// An arrow (J7c.2): released now, at the strike's moment of the gesture; it lands on its target after its flight

@@ -1,0 +1,13 @@
+﻿=== build socle-ai 905b6b8 (S2-c attenuation par camp dans le processeur ; NOT COMPILED) 16:12:22
+
+build : PASS (HeroesOfLibertyEditor Development, HeroesOfLiberty-Galadriel, 71 s)
+
+
+build exit=0 16:14:53
+
+  check_placeholders : PASS (44 provisional types, 46 map entries, 165 lines)
+tests 2149/2149 : PASS
+quick_check : PASS in 290 s (game launch done at 0 s)
+
+
+fin 16:19:52

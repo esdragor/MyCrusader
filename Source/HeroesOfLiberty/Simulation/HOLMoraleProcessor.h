@@ -21,6 +21,13 @@ class HEROESOFLIBERTY_API UHOLMoraleProcessor : public UMassProcessor
 public:
 	UHOLMoraleProcessor();
 
+	/**
+	 * PLAN-MORAL-1120 step 6 (S2-b): queues a morale order of the duel (called by UHOLMoraleLibrary::ApplyEffectAround). The next Execute of this
+	 * world's processor lays the row EffectId (duration DurationMs, 0 = the row's) once, as a source of the camp OrderSlot at the point, on the units
+	 * of that camp within RadiusCm (0 = the row's), through the same pass as the cry and the banner (D705: never a Peasant).
+	 */
+	static void QueueEffectAround(const UWorld* World, int32 EffectId, int32 CenterXCm, int32 CenterYCm, int32 OrderSlot, int32 DurationMs, int32 RadiusCm);
+
 protected:
 	virtual void ConfigureQueries(const TSharedRef<FMassEntityManager>& EntityManager) override;
 	virtual void Execute(FMassEntityManager& EntityManager, FMassExecutionContext& Context) override;

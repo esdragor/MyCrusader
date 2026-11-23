@@ -46,10 +46,11 @@ bool FHOLMonkTableTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("Monk: a production time"), Monk->BuildTime > 0.f);
 	TestTrue(TEXT("Monk: sees at least as far as the Spearman"), Monk->SightRadius >= Spearman->SightRadius);
 
-	// No other type heals (the column is new): the Monk alone.
+	// No other type heals (the column is new): the Monk alone, and the Templars' Frere infirmier (InfirmaryBrother), a provisional copy of
+	// the Monk kept by D896 (D893, tier 1 of the Faith lane, GDD 13.7: "soin hors combat").
 	UnitTypes->ForeachRow<FHOLUnitTypeRow>(TEXT("Monk test"), [this](const FName& Name, const FHOLUnitTypeRow& Row)
 	{
-		if (Name != FName(TEXT("Monk")))
+		if (Name != FName(TEXT("Monk")) && Name != FName(TEXT("InfirmaryBrother")))
 		{
 			TestEqual(*FString::Printf(TEXT("%s: heals nobody"), *Name.ToString()), Row.HealRate, 0.f);
 		}

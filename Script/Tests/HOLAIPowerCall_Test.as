@@ -191,3 +191,24 @@ void Test_AIPlantsBannerFromTheHeroRealPlace(FUnitTest& T)
 	T.AssertFalse(HOLAIPowerCall::PlanBannerOf(Wounded, false, Hero, true, false).bPlant, "no hero found: no banner");
 	T.AssertFalse(HOLAIPowerCall::PlanBannerOf(Wounded, true, Hero, false, false).bPlant, "his ability not ready: no banner");
 }
+
+// GLORFINDEL-1123pg (D890, D891): the AI's Sacred Light zone reads the Sacred Light's OWN range (HOLDawnPowers::SacredLightRangeCm, 1200 cm), not the Seal's 800 cm:
+// a wounded unit 1000 cm from the cast origin is a target (it was not with the Seal's range), one at 1300 cm is still out of range.
+void Test_AISacredLightCastsOnAWoundedUnitAt1000cm(FUnitTest& T)
+{
+	const TArray<FHOLPowerRow> Rows = HOLDawnPowers::Rows();
+	TArray<int> Ready;
+	Ready.Add(0);
+	const FVector Origin(1000.0, 1000.0, 0.0);
+	const int64 Range = int64(HOLDawnPowers::SacredLightRangeCm());
+	TArray<FVector> Near;
+	Near.Add(FVector(2000.0, 1000.0, 0.0));
+	const FHOLAIPowerOrder InRange = HOLAIPowerCall::Plan(Rows, Ready, 100, 0, 1, PowerCallData(), Near, Origin, Range);
+	T.AssertTrue(InRange.bCast, "a wounded unit 1000 cm from the origin is inside the Sacred Light's 1200 cm: the AI casts");
+	const FHOLAIPowerOrder Seal = HOLAIPowerCall::Plan(Rows, Ready, 100, 0, 1, PowerCallData(), Near, Origin, HOLFactionPowerCast::SealRangeCm());
+	T.AssertFalse(Seal.bCast, "with the Seal's 800 cm the same wounded unit is out of range (the old behaviour)");
+	TArray<FVector> Far;
+	Far.Add(FVector(2300.0, 1000.0, 0.0));
+	const FHOLAIPowerOrder OutOfRange = HOLAIPowerCall::Plan(Rows, Ready, 100, 0, 1, PowerCallData(), Far, Origin, Range);
+	T.AssertFalse(OutOfRange.bCast, "a wounded unit 1300 cm away is past the Sacred Light's 1200 cm: no cast");
+}

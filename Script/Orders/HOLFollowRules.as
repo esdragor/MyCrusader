@@ -10,6 +10,8 @@ enum EHOLFollowOrder
 	Attack
 }
 
+const FConsoleVariable CVar_FollowMutualCancels("hol.Follow.MutualCancels", 1);
+
 struct FHOLFollowState
 {
 	bool bTargetIsAlly = true;
@@ -47,6 +49,16 @@ namespace HOLFollowRules
 	FVector Destination(FVector TargetLocation)
 	{
 		return TargetLocation;
+	}
+
+	// D895 (mutual follow, the LAST order given wins): does the order 'OrderedUnitId follows X' end the follow that X holds (TargetState, following TargetFollowsId)?
+	// Yes when that follow is active and aimed at the ordered unit itself (A follows B, then B is told to follow A: A stops, B follows A). Any other follower is untouched.
+	// hol.Follow.MutualCancels 0 gives the old behaviour back (both keep following each other). A longer cycle (A->B->C->A) is not decided by D895 and is not handled here.
+	bool CancelsFollowOf(const FHOLFollowState& TargetState, int TargetFollowsId, int OrderedUnitId)
+	{
+		if (CVar_FollowMutualCancels.GetInt() == 0)
+			return false;
+		return TargetState.bActive && TargetFollowsId == OrderedUnitId;
 	}
 
 	// Any manual order (move, attack, attack-move, stop, hold, patrol, another follow) ends this follow.

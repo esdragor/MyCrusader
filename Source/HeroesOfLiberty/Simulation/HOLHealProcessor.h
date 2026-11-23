@@ -41,6 +41,13 @@ public:
 	 * world can heal (PerfSpikeInProgress.md, part 1: the table of every light unit cost ~0.1 ms a step even with no Monk).
 	 */
 	static int32 GetLastCandidateCount() { return LastCandidateCount; }
+	/**
+	 * S1-e (D689, Honor of the Dawn from the heal): one Honor per HpPerPoint hit points healed by a slot's units and zones (a Sacred Light
+	 * counts for its owner), credited to the slot's faction gauge (AHOLGameState::FactionResource) up to Cap. The two values come from the
+	 * script (HOLDawnValues::HonorHealPerPoint / HonorCap, ONE source, D839): HpPerPoint 0 = off (the default). Server and solo only.
+	 */
+	static void ConfigureHonor(int32 HpPerPoint, int32 Cap, int32 KillGain = 0, int32 KillRadiusCm = 0);
+	static int32 GetHonorHpPerPoint() { return HonorHpPerPoint; }
 
 	/**
 	 * The player's order (a right click on an ally with Monks selected, RequestHealUnit): Healer heals TargetId first, whatever is nearer,
@@ -86,4 +93,23 @@ private:
 	static double TotalHealed;
 	static int64 HealSteps;
 	static int32 LastCandidateCount;
+	static int32 HonorHpPerPoint;
+	static int32 HonorCap;
+	/** The hit points healed by each slot and not yet turned into Honor (the remainder under HonorHpPerPoint waits for the next heal). */
+	static TArray<double> HonorPendingHp;
+	/** S1-e: adds the hit points a slot just healed to its pending Honor (no effect while the Honor is off). */
+	static void AddHonorHp(int32 Slot, double Hp);
+	/** S1-e: turns each slot's pending hit points into whole Honor points on its faction gauge (the Dawn's only), up to the cap. */
+	static void CreditHonor(const UWorld* World);
+	/** S1-e: adds Points to the gauge of a slot's faction if it is the Dawn's, up to the cap (the ONE credit path, heal and kill). */
+	static void CreditHonorPoints(const UWorld* World, int32 Slot, int32 Points);
+public:
+	/** S1-e (death): a Dawn slot has an enemy die within HonorKillRadiusCm of one of its units: credits it HonorKillGain. */
+	static void CreditKillHonor(const UWorld* World, int32 Slot);
+	/** Honor per kill made near the faction (0 = off) and the radius in cm of "near" (HOLDawnValues, installed by script). */
+	static int32 GetHonorKillGain() { return HonorKillGain; }
+	static int32 GetHonorKillRadiusCm() { return HonorKillRadiusCm; }
+private:
+	static int32 HonorKillGain;
+	static int32 HonorKillRadiusCm;
 };

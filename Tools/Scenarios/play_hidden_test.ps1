@@ -47,6 +47,12 @@ Check ((Alive).Count -eq 0) '-DryRun ne lance rien'
 $v = Run @('-DryRun') 'stay'
 Check ($v.Out -match 'hol\.Scenario fake' -and $v.Out -notmatch 'TestCursor') 'sans -Hidden (fenetre de l utilisateur) : pas de curseur virtuel force'
 
+# 1b. SAURON-1123pb : un scenario qui pilote la vraie souris (hol.Mouse.Drag) garde le curseur reel sous -Hidden : GetCursorFraction lit le curseur
+#     de test AVANT la souris, donc hol.Camera.TestCursor 0.5 0.5 figerait le glisser au centre de l ecran (wall_line_long, 2026-11-23).
+Set-Content (Join-Path $Root 'Tools\Scenarios\dragging.txt') @('# fake that drags', 'hol.Mouse.Drag 100 100 200 100 10', 'quit') -Encoding UTF8
+$m = & powershell -NoProfile -ExecutionPolicy Bypass -File $Play dragging -Root $Root -EngineDir $Eng -Hidden -DryRun 2>&1 | Out-String
+Check ($m -match 'hol\.Scenario dragging' -and $m -notmatch 'TestCursor') ('-Hidden + scenario a hol.Mouse.Drag : pas de curseur virtuel force (sortie : ' + (Flat $m) + ')')
+
 # 2. -Hidden ferme l'editeur et ses fils
 $r = Run @('-Hidden', '-TimeoutSec', '5') 'stay'
 $left = (Alive).Count

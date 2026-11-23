@@ -65,11 +65,11 @@ namespace HOLFactionPowerCast
 	FHOLFactionPowerDecision Decide(int Faction, int PowerIndex, const FHOLFactionResource& Gauge, int CooldownEndMs, int NowMs,
 		int OriginXCm, int OriginYCm, int PointXCm, int PointYCm)
 	{
-		return DecideInRange(Faction, PowerIndex, Gauge, CooldownEndMs, NowMs, OriginXCm, OriginYCm, PointXCm, PointYCm, SealRangeCm());
+		return DecideInRange(Faction, PowerIndex, Gauge, CooldownEndMs, NowMs, OriginXCm, OriginYCm, PointXCm, PointYCm, int64(HOLDawnPowers::SacredLightRangeCm()));
 	}
 
-	// GLORFINDEL-1123pf: the ONE chain (faction, row, cool-down, range, gauge) with the range as a parameter: Decide (the AI's cast, D891) keeps the Seal row's
-	// range, DecideAimed (the player's aimed cast, D897) the Sacred Light's own range (D890).
+	// GLORFINDEL-1123pf: the ONE chain (faction, row, cool-down, range, gauge) with the range as a parameter: Decide (the AI's cast, D891) and DecideAimed (the player's aimed cast, D897)
+	// both read the Sacred Light's own range, HOLDawnPowers::SacredLightRangeCm (D890, the ONE source).
 	FHOLFactionPowerDecision DecideInRange(int Faction, int PowerIndex, const FHOLFactionResource& Gauge, int CooldownEndMs, int NowMs,
 		int OriginXCm, int OriginYCm, int PointXCm, int PointYCm, int64 RangeCm)
 	{
@@ -106,8 +106,8 @@ namespace HOLFactionPowerCast
 			return Result;
 		}
 		// S1-b: the faction power is the book's Sacred Light line (NOT the Seal, which is the Monk's unit ability, D862): it pays the
-		// ROW's Honor cost and recharges after the ROW's cool-down. A gauge short of the cost is refused LAST. The range stays the
-		// LightSeal row's until the Sacred Light's own range is decided.
+		// ROW's Honor cost and recharges after the ROW's cool-down. A gauge short of the cost is refused LAST. D890: the range
+		// checked above is the Sacred Light's OWN 1200 cm (HOLDawnPowers::SacredLightRangeCm), not the Seal's 800 cm (SealRangeCm).
 		FHOLFactionResource Spent = Gauge;
 		if (!HOLFactionResource::TrySpend(Spent, Rows[PowerIndex].Cost))
 		{

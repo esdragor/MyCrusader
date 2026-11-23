@@ -1,0 +1,18 @@
+﻿integrate : branche integ-58 creee, 3 rouge(s) appliques
+integrate : build rouges SKIP (pas de C++ dans les rouges)
+integrate : tests des rouges ...
+integrate : verts depuis main, rouges retires (reset --hard fc41498)
+integrate : 4 vert(s) fusionne(s)
+integrate : build verts ...
+integrate : tests (apres les verts) ...
+integrate : parts net,build ...
+INTEGRATE integ-58 : FAIL (parts) (1185 s, 2026-11-23 15:29)
+  branche+rouges : PASS (3 cherry-pick, 3 s)
+  build rouges : SKIP (pas de C++ dans les rouges)
+  tests rouges : FAIL attendu 2144/2150 tests (293 s)
+  remise a main : PASS (verts depuis main, rouges retires : reset --hard fc41498)
+  merge verts : PASS (4 merge, 9 s)
+  build verts : PASS (234 s)
+  tests verts : PASS 2154/2154 tests (218 s)
+  parts net,build : FAIL (424 s)
+  rouges vus : Angelscript.UnitTests.Tests.HOLFactionPowerOrigin_Test.Test_PlayerCastsSacredLightAtTheHeroWithoutBanner, Angelscript.UnitTests.Tests.HOLWallLineRules_Test.Test_GatePassesOnlyTheOwnersUnits, Angelscript.UnitTests.Tests.HOLWallLineRules_Test.Test_GateReplacesOnlyOwnPalisadeSection, Angelscript.UnitTests.Tests.HOLWallLineRules_Test.Test_PalisadeGateIsATableRow, Angelscript.UnitTests.Tests.HOLWallLineRules_Test.Test_StoneWallIsATableRow, Angelscript.UnitTests.Tests.HOLWallLineRules_Test.Test_WoodGateDoesNotReplaceStoneWall ; sortie complete : Docs\Integrate_integ-58.log

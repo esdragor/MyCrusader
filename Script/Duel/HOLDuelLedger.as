@@ -32,6 +32,21 @@ class UHOLDuelLedger : UHOLDuelSubsystem
 	// built yet: nothing applies them to the troops today).
 	TArray<FHOLDuelMoraleOrder> PendingMorale;
 
+	// S2-b (PLAN-MORAL-1120 step 6): empties PendingMorale into the simulation's morale (one source: the C++ rule, through the bridge). An order
+	// without a place (a refusal: the refusing hero's position is not held by the ledger yet) is dropped, not guessed.
+	void ApplyMoraleOrders()
+	{
+		for (int Index = 0; Index < PendingMorale.Num(); Index++)
+		{
+			FHOLDuelMoraleOrder Order = PendingMorale[Index];
+			if (Order.bHasCenter && Order.Slot >= 0 && Order.EffectId >= 0)
+			{
+				HOLMorale::ApplyEffectAround(this, Order.EffectId, Order.CenterXCm, Order.CenterYCm, Order.Slot, Order.DurationMs, Order.RadiusCm);
+			}
+		}
+		PendingMorale.Empty();
+	}
+
 	void EnsureBook()
 	{
 		if (bReady)
@@ -223,6 +238,7 @@ class UHOLDuelLedger : UHOLDuelSubsystem
 		}
 		TArray<FHOLDuelEnded> Ended = HOLDuel::Tick(Settings, Book, DeltaMs, Health);
 		PendingMorale.Append(HOLDuelRewards::OrdersOfEnded(Settings, Ended));
+		ApplyMoraleOrders();
 		// D859 n. 3: the Honor of the duels that ended, on the gauges of the Dawn's slots alone.
 		TArray<bool> HasGauge;
 		TArray<int> Current;

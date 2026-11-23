@@ -1,0 +1,13 @@
+﻿=== build integ-25 b72562b (SpawnTestHero : un pas avec fin apres la naissance) 16:09:29
+
+build : PASS (HeroesOfLibertyEditor Development, HeroesOfLiberty-Elrond, 33 s)
+
+
+build exit=0 16:13:39
+
+  check_placeholders : PASS (44 provisional types, 46 map entries, 165 lines)
+tests 2148/2148 : PASS
+quick_check : PASS in 224 s (game launch done at 1 s)
+
+
+fin 16:17:31

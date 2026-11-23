@@ -1,6 +1,8 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "Simulation/HOLMoraleLibrary.h"
+#include "Engine/World.h"
+#include "Simulation/HOLMoraleProcessor.h"
 #include "Simulation/HOLMoraleRules.h"
 
 // Wrappers only (D839): each function converts the script state to the fixed state of the rule, calls HOLMorale::*, converts back. No rule here.
@@ -128,4 +130,10 @@ void UHOLMoraleLibrary::NativeGrantImmunity(FHOLMoraleStateData& State, const in
 	HOLMorale::FHOLMoraleState Rule = ToRule(State);
 	HOLMorale::GrantImmunity(Rule, DurationMs);
 	WriteBack(Rule, State);
+}
+
+void UHOLMoraleLibrary::ApplyEffectAround(const UObject* WorldContextObject, const int32 EffectId, const int32 CenterXCm, const int32 CenterYCm, const int32 OrderSlot, const int32 DurationMs, const int32 RadiusCm)
+{
+	// The processor lays it (one source of the rule, D836): the bridge only queues the order for the world's next step.
+	UHOLMoraleProcessor::QueueEffectAround(WorldContextObject != nullptr ? WorldContextObject->GetWorld() : nullptr, EffectId, CenterXCm, CenterYCm, OrderSlot, DurationMs, RadiusCm);
 }

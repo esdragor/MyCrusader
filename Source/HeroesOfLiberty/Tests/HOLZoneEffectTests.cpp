@@ -1,5 +1,7 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
+#include "Buildings/HOLBuilding.h"
+#include "Buildings/HOLBuildingTypes.h"
 #include "Engine/Engine.h"
 #include "Engine/World.h"
 #include "HAL/IConsoleManager.h"
@@ -8,6 +10,7 @@
 #include "MassProcessingContext.h"
 #include "Misc/AutomationTest.h"
 #include "Simulation/HOLCombatProcessor.h"
+#include "Match/HOLGameState.h"
 #include "Simulation/HOLHealProcessor.h"
 #include "Simulation/HOLHeroSubsystem.h"
 #include "Simulation/HOLSimulationFragments.h"
@@ -15,6 +18,22 @@
 #include "Simulation/HOLSimulationSubsystem.h"
 #include "Simulation/HOLUnitSubsystem.h"
 #include "Simulation/HOLZoneEffectRules.h"
+
+namespace
+{
+	// AHOLGameState::GetFactionResource is private in C++ (the script reads it by reflection): the test reads the gauge the same way, no change of visibility.
+	int32 ReadFactionGauge(AHOLGameState* State, const int32 Slot)
+	{
+		UFunction* Getter = State ? State->FindFunction(TEXT("GetFactionResource")) : nullptr;
+		if (!Getter)
+		{
+			return -1;
+		}
+		struct { int32 Slot; int32 ReturnValue; } Params{ Slot, 0 };
+		State->ProcessEvent(Getter, &Params);
+		return Params.ReturnValue;
+	}
+}
 
 #if WITH_DEV_AUTOMATION_TESTS
 
@@ -289,4 +308,246 @@ bool FHOLZoneEffectSacredLightTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+
+// D689, Honor of the Dawn from the heal (S1-e): the Sacred Light of slot 0 heals a wounded ally; the processor credits slot 0's faction gauge
+// (AHOLGameState::FactionResource) one Honor per HpPerPoint hit points healed. The expected Honor is CALCULATED from the health the fragment
+// really gained (floor(gain / HpPerPoint)), never a constant; a slot that healed nothing (slot 1) gets nothing; the gauge stops at the cap.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLZoneEffectHealHonorTest, "HeroesOfLiberty.Zone.HealHonor", UE::HeroesOfLiberty::Tests::ZoneEffect::Flags)
+
+bool FHOLZoneEffectHealHonorTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::ZoneEffect;
+	IConsoleVariable* CombatEnabled = IConsoleManager::Get().FindConsoleVariable(TEXT("hol.Combat.Enabled"));
+	if (!TestNotNull(TEXT("hol.Combat.Enabled"), CombatEnabled))
+	{
+		return false;
+	}
+	const int32 FormerEnabled = CombatEnabled->GetInt();
+	CombatEnabled->Set(0, ECVF_SetByCode);
+
+	UWorld* World = UWorld::CreateWorld(EWorldType::Game, /*bInformEngineOfWorld*/ false);
+	FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);
+	Context.SetCurrentWorld(World);
+	World->InitializeActorsForPlay(FURL());
+	AHOLGameState* State = World->SpawnActor<AHOLGameState>();
+	World->SetGameState(State);
+
+	UHOLUnitSubsystem* Units = World->GetSubsystem<UHOLUnitSubsystem>();
+	UHOLSimulationSubsystem* Simulation = World->GetSubsystem<UHOLSimulationSubsystem>();
+	UHOLHeroSubsystem* Heroes = World->GetSubsystem<UHOLHeroSubsystem>();
+	UMassEntitySubsystem* EntitySubsystem = World->GetSubsystem<UMassEntitySubsystem>();
+	if (TestNotNull(TEXT("game state"), State) && TestNotNull(TEXT("units"), Units) && TestNotNull(TEXT("simulation"), Simulation)
+		&& TestNotNull(TEXT("heroes"), Heroes) && TestNotNull(TEXT("entities"), EntitySubsystem))
+	{
+		Heroes->BindSteps();
+		constexpr int32 HpPerPoint = 20;
+		constexpr int32 Cap = 100;
+		UHOLHealProcessor::ConfigureHonor(HpPerPoint, Cap);
+		TSharedPtr<FMassEntityManager> EntityManager = EntitySubsystem->GetMutableEntityManager().AsShared();
+		UHOLCombatProcessor* Combat = NewObject<UHOLCombatProcessor>(Simulation);
+		Combat->CallInitialize(Simulation, EntityManager.ToSharedRef());
+		UHOLHealProcessor* Heal = NewObject<UHOLHealProcessor>(Simulation);
+		Heal->CallInitialize(Simulation, EntityManager.ToSharedRef());
+		const float StepSeconds = GetDefault<UHOLSimulationSettings>()->GetStepSeconds();
+		int64 Step = 0;
+		const auto RunStep = [Simulation, Units, Combat, Heal, &EntityManager, StepSeconds, &Step]
+		{
+			++Step;
+			Simulation->GetOnStepStarted().Broadcast(Step);
+			Units->ServeBirthRequests();
+			FMassProcessingContext ProcessingContext(EntityManager, StepSeconds);
+			UE::Mass::Executor::Run(*Combat, ProcessingContext);
+			UE::Mass::Executor::Run(*Heal, ProcessingContext);
+			Units->FlushDestructions();
+			Simulation->GetOnStepEnded().Broadcast(Step);
+		};
+		FHOLUnitSpawnRequest Request;
+		Request.TypeName = Spearman;
+		Request.Count = 1;
+		Request.OwnerPlayer = 0;
+		Request.Center = FVector(300.0, 0.0, 0.0);
+		Units->RequestUnits(Request);
+		Units->ServeBirthRequests();
+		TArray<uint32> Ids;
+		Units->GetAllUnitIds(Ids);
+		const FMassEntityHandle Entity = Ids.Num() == 1 ? Units->FindEntity(Ids[0]) : FMassEntityHandle();
+		FHOLUnitStateFragment* Ally = Entity.IsSet() ? EntityManager->GetFragmentDataPtr<FHOLUnitStateFragment>(Entity) : nullptr;
+		if (TestNotNull(TEXT("the ally born"), Ally))
+		{
+			RunStep();
+			Ally->CurrentHealth = 20.f;
+			TestEqual(TEXT("the gauge of slot 0 starts empty"), ReadFactionGauge(State, 0), 0);
+			TestTrue(TEXT("slot 0 puts the Sacred Light at the origin"), Heroes->StartSacredLight(0, FVector(0.0, 0.0, 0.0)));
+			const int32 ZoneSteps = FMath::CeilToInt(HOLZoneEffect::SacredLightDurationMs / 1000.f / StepSeconds) + 2;
+			for (int32 Steps = 0; Steps < ZoneSteps; ++Steps)
+			{
+				RunStep();
+			}
+			const int32 Gained = FMath::FloorToInt(Ally->CurrentHealth - 20.f);
+			const int32 Expected = FMath::Min(Gained / HpPerPoint, Cap);
+			TestTrue(*FString::Printf(TEXT("the zone healed something (%d hit points)"), Gained), Gained >= HpPerPoint);
+			// The remainder under HpPerPoint waits for the next heal, so the gauge is within one point of the whole division.
+			const int32 Honor = ReadFactionGauge(State, 0);
+			TestTrue(*FString::Printf(TEXT("slot 0 gauge %d = about %d (%d hit points healed, one Honor per %d)"), Honor, Expected, Gained, HpPerPoint),
+				Honor >= Expected - 1 && Honor <= Expected && Honor > 0);
+			TestEqual(TEXT("slot 1 healed nothing: no Honor"), ReadFactionGauge(State, 1), 0);
+		}
+		UHOLHealProcessor::ConfigureHonor(0, 0);
+	}
+	CombatEnabled->Set(FormerEnabled, ECVF_SetByCode);
+	GEngine->DestroyWorldContext(World);
+	World->DestroyWorld(false);
+	return true;
+}
+
+// D689/D859, Honor of the Dawn from a kill (S1-e): a Dawn spearman (slot 0) kills a 1 hp enemy (slot 1) within 12 m of a Dawn building, by the real combat processor:
+// the Dawn's gauge gains HonorKillGain per enemy that died (counted from the units really gone, never a constant); the enemy slot earns nothing.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLZoneEffectKillHonorTest, "HeroesOfLiberty.Zone.KillHonor", UE::HeroesOfLiberty::Tests::ZoneEffect::Flags)
+
+bool FHOLZoneEffectKillHonorTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::ZoneEffect;
+	IConsoleVariable* CombatEnabled = IConsoleManager::Get().FindConsoleVariable(TEXT("hol.Combat.Enabled"));
+	if (!TestNotNull(TEXT("hol.Combat.Enabled"), CombatEnabled))
+	{
+		return false;
+	}
+	const int32 FormerEnabled = CombatEnabled->GetInt();
+	CombatEnabled->Set(1, ECVF_SetByCode);
+
+	UWorld* World = UWorld::CreateWorld(EWorldType::Game, /*bInformEngineOfWorld*/ false);
+	FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);
+	Context.SetCurrentWorld(World);
+	World->InitializeActorsForPlay(FURL());
+	AHOLGameState* State = World->SpawnActor<AHOLGameState>();
+	World->SetGameState(State);
+
+	UHOLUnitSubsystem* Units = World->GetSubsystem<UHOLUnitSubsystem>();
+	UHOLSimulationSubsystem* Simulation = World->GetSubsystem<UHOLSimulationSubsystem>();
+	UMassEntitySubsystem* EntitySubsystem = World->GetSubsystem<UMassEntitySubsystem>();
+	if (TestNotNull(TEXT("game state"), State) && TestNotNull(TEXT("units"), Units) && TestNotNull(TEXT("simulation"), Simulation)
+		&& TestNotNull(TEXT("entities"), EntitySubsystem))
+	{
+		constexpr int32 KillGain = 3;
+		constexpr int32 Cap = 100;
+		UHOLHealProcessor::ConfigureHonor(20, Cap, KillGain, 1200);
+		TSharedPtr<FMassEntityManager> EntityManager = EntitySubsystem->GetMutableEntityManager().AsShared();
+		UHOLCombatProcessor* Combat = NewObject<UHOLCombatProcessor>(Simulation);
+		Combat->CallInitialize(Simulation, EntityManager.ToSharedRef());
+		const float StepSeconds = GetDefault<UHOLSimulationSettings>()->GetStepSeconds();
+		int64 Step = 0;
+		const auto RunStep = [Simulation, Units, Combat, &EntityManager, StepSeconds, &Step]
+		{
+			++Step;
+			Simulation->GetOnStepStarted().Broadcast(Step);
+			Units->ServeBirthRequests();
+			FMassProcessingContext ProcessingContext(EntityManager, StepSeconds);
+			UE::Mass::Executor::Run(*Combat, ProcessingContext);
+			Units->FlushDestructions();
+			Simulation->GetOnStepEnded().Broadcast(Step);
+		};
+		// Born one by one (as HeroesOfLiberty.HeroXP.KillInMatch), so each unit of a fight is known by its own identifier, and born again until
+		// its identifier is a multiple of 4: the combat looks for a target one step of SearchSteps (4) staggered by (UnitId + StepIndex), and the
+		// test's steps do not advance the simulation's step index, so a unit whose id is not a multiple of 4 never looks for an enemy
+		// (KillHonor 15:26: no blow struck in 10 s, enemy hp 1, Dawn spearman hp 80).
+		const auto Place = [Units](const int32 Owner, const FVector& Location)
+		{
+			for (int32 Attempt = 0; Attempt < 8; ++Attempt)
+			{
+				TArray<uint32> Before;
+				Units->GetAllUnitIds(Before);
+				FHOLUnitSpawnRequest Request;
+				Request.TypeName = Spearman;
+				Request.Count = 1;
+				Request.OwnerPlayer = static_cast<uint8>(Owner);
+				Request.Center = Location;
+				Units->RequestUnits(Request);
+				Units->ServeBirthRequests();
+				TArray<uint32> After;
+				Units->GetAllUnitIds(After);
+				uint32 Born = 0;
+				for (const uint32 Id : After)
+				{
+					Born = Before.Contains(Id) ? Born : Id;
+				}
+				if (Born == 0 || Born % 4 == 0)
+				{
+					return Born;
+				}
+				const uint32 Again[] = { Born };
+				Units->RequestDestroyUnits(Again);
+				Units->FlushDestructions();
+			}
+			return 0u;
+		};
+		// The unit's hit points (-1 once it is gone), for the message of a failure and for IsGone.
+		const auto HealthOf = [Units, &EntityManager](const uint32 Id)
+		{
+			const FMassEntityHandle Handle = Units->FindEntity(Id);
+			const FHOLUnitStateFragment* Fragment = Handle.IsSet() ? EntityManager->GetFragmentDataPtr<FHOLUnitStateFragment>(Handle) : nullptr;
+			return Fragment ? Fragment->CurrentHealth : -1.f;
+		};
+		// Dead = no hit point left, as HeroesOfLiberty.HeroXP.KillInMatch (IsDown): the combat marks the death (hp -7, the kill and its Honor counted,
+		// KillHonor 15:46: gauge right) and the unit leaves the subsystem later, so its type name is still there at the end of the step.
+		const auto IsGone = [&HealthOf](const uint32 Id)
+		{
+			return HealthOf(Id) <= 0.f;
+		};
+		const auto SetHealthToOne = [Units, &EntityManager](const uint32 Id)
+		{
+			FHOLUnitStateFragment* Fragment = EntityManager->GetFragmentDataPtr<FHOLUnitStateFragment>(Units->FindEntity(Id));
+			if (Fragment)
+			{
+				Fragment->CurrentHealth = 1.f;
+			}
+			return Fragment != nullptr;
+		};
+		// Steps until the victim is gone (10 s at most), the loop ends at its death; true if it is gone. The deaths are the units really gone, not a count of the test's own.
+		const auto RunUntilGone = [&RunStep, &IsGone, StepSeconds](const uint32 Victim)
+		{
+			for (int32 Steps = 0; Steps < FMath::CeilToInt(10.f / StepSeconds) && !IsGone(Victim); ++Steps)
+			{
+				RunStep();
+			}
+			RunStep();
+			return IsGone(Victim);
+		};
+		// D859: the Honor comes from a kill near a BUILDING of the Dawn: slot 0's centre stands 10 m west of the first fight.
+		AHOLBuilding* DawnCentre = World->SpawnActor<AHOLBuilding>(FVector(-1000.0, 0.0, 0.0), FRotator::ZeroRotator);
+		if (DawnCentre)
+		{
+			DawnCentre->Setup(HOLBuildingTypeNames::MainCentre, 0, 0);
+		}
+		const uint32 DawnNear = Place(0, FVector(0.0, 0.0, 0.0));
+		const uint32 EnemyNear = Place(1, FVector(150.0, 0.0, 0.0));
+		if (TestNotNull(TEXT("slot 0 centre spawned"), DawnCentre) && TestTrue(TEXT("a Dawn spearman and an enemy spearman born near the centre"), DawnNear != 0 && EnemyNear != 0))
+		{
+			RunStep();
+			TestTrue(TEXT("the near enemy is down to 1 hit point"), SetHealthToOne(EnemyNear));
+			TestEqual(TEXT("the gauge of slot 0 starts empty"), ReadFactionGauge(State, 0), 0);
+			const bool bNearGone = RunUntilGone(EnemyNear);
+			TArray<uint32> AliveIds;
+			Units->GetAllUnitIds(AliveIds);
+			TestTrue(*FString::Printf(TEXT("the enemy killed near the centre is gone (enemy hp %.0f, Dawn spearman hp %.0f, %d unit(s) alive)"), HealthOf(EnemyNear), HealthOf(DawnNear), AliveIds.Num()), bNearGone);
+			TestEqual(TEXT("slot 0 gauge = HonorKillGain for the one kill within 12 m of its building"), ReadFactionGauge(State, 0), KillGain);
+			TestEqual(TEXT("slot 1 killed nothing: no Honor"), ReadFactionGauge(State, 1), 0);
+
+			// The contrary case: a kill 50 m from every building of the Dawn gives nothing (the radius of D859 is the rule, not any kill).
+			const uint32 DawnFar = Place(0, FVector(5000.0, 0.0, 0.0));
+			const uint32 EnemyFar = Place(1, FVector(5150.0, 0.0, 0.0));
+			if (TestTrue(TEXT("a second pair born 50 m from the centre"), DawnFar != 0 && EnemyFar != 0))
+			{
+				RunStep();
+				TestTrue(TEXT("the far enemy is down to 1 hit point"), SetHealthToOne(EnemyFar));
+				TestTrue(*FString::Printf(TEXT("the enemy killed far from the centre is gone (enemy hp %.0f)"), HealthOf(EnemyFar)), RunUntilGone(EnemyFar));
+				TestEqual(TEXT("a kill beyond 12 m of every Dawn building: the gauge stays at one kill's Honor"), ReadFactionGauge(State, 0), KillGain);
+			}
+		}
+		UHOLHealProcessor::ConfigureHonor(0, 0);
+	}
+	CombatEnabled->Set(FormerEnabled, ECVF_SetByCode);
+	GEngine->DestroyWorldContext(World);
+	World->DestroyWorld(false);
+	return true;
+}
 #endif // WITH_DEV_AUTOMATION_TESTS

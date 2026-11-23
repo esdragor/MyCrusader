@@ -1,0 +1,11 @@
+GALADRIEL-1123pa : integrate.ps1 regen des tables (sans C++)
+APPELS_DECLARES: ~19 ; HEURE_DEBUT/HEURE_FIN: 15:09 / ~15:22 ; PREMIER_BUILD: sans C++ ; BUILD: NON COMPILE (aucun) ; LAUNCHCHECK_DEBUT: sans C++
+TEST_ROUGE: 090e30a (integrate_test.ps1 seul, 10 FAIL vus a 15:13) + assertit l'effet : oui (plan dry-run + vraie passe git avec -RegenScript factice : commit 'Regen tables after merge', .uasset sur la branche, resume regen: lance/inutile/FAIL) ; TEST_ROUGE_SEPARE: oui
+COMMITS: 2 (090e30a, 6748891), dernier 15:21, merge_main_fait: non necessaire (main fc41498 deja fusionne)
+TESTS: integrate_test.ps1 52 PASS / 0 FAIL ; TESTS_TAUTOLOGIQUES: 0
+FAIT : Tools/AutoJourney/integrate.ps1 : tables UnitTypes.csv -> Content/Units/UnitTypes.uasset et BuildingTypes.csv -> Content/Buildings/BuildingTypes.uasset ; etape 'regen' du plan entre les merges des verts et le build des verts (SKIP si pas de vert / aucun CSV change sans son .uasset / -SkipBuildTests sans -RegenScript) ; regen lance, code verifie (!=0 -> FAIL exit 1), git add des 2 .uasset, commit si diff ; resume : ajoute '; regen: X' a la ligne 'merge verts' (resume reste 10 lignes) ; parametre reserve -RegenScript. integrate_test.ps1 : +10 checks (3 plans, 4 passes reelles).
+Note : le correctif de test (@(Regen-Line ...) , depliage d'un tableau a 1 element) est dans le commit 2, pas dans le rouge.
+RESTE : regen avant le build des verts (suit la consigne) : si un vert change une colonne du struct C++ des tables, l'editeur de regen tournerait sur l'ancienne DLL ; a juger (variante : regen apres build quand GreensCpp). Regen lance sur la copie principale / worktree d'integration seul, file de build vide (regle 13).
+NON VERIFIE : regen_tables.ps1 reel (editeur) jamais lance par ce test ; integ-58 de Haldir non touchee.
+PROCESSUS_DETACHES: non lance (temps) ; IN_USE.txt non touche
+ANOMALIES: j'ai lance integrate_test 2 fois dans le premier appel (3 min perdues) ; commit 1 a echoue une fois (guillemets en here-string), refait par -F.

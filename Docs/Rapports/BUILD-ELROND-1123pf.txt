@@ -1,0 +1,20 @@
+﻿=== build integ-25 9d682e0 (lot de liaisons n2 : IsForumCompleteForSlot, SpawnTestHero, SetPlayerSpecialization ; NOT COMPILED) 15:53:01
+
+build : LaunchCheck debut (Get-StaleBinaryProblem) : the binary UnrealEditor-HeroesOfLiberty.dll of 
+C:\Users\baudo\Documents\HeroesOfLiberty-Elrond (2026-11-23T11:43:45) is older than its C++ source 
+Source\HeroesOfLiberty\Tests\HOLTestWorldLibrary.cpp (2026-11-23T15:50:23): Tools\build.ps1 in that copy first
+build : BUILD LENT (8 actions, 475 s > 3 x median 48.5 s of 200 earlier normal PASS builds of 4-16 actions); load: vm 
+25.1 GB; actions 8 (machine saturee ? diagnostic de charge)
+build : PASS (HeroesOfLibertyEditor Development, HeroesOfLiberty-Elrond, 475 s)
+
+
+build exit=0 16:01:08
+
+  check_placeholders : PASS (44 provisional types, 46 map entries, 165 lines)
+tests 2147/2148 : FAIL (REGRESSION : pas dans known_reds.txt)
+  [KO] all green (failed: HeroesOfLiberty.TestWorld.SpawnTestHero)
+quick_check : FAIL in 196 s (game launch done at 0 s)
+red summary : 1 regression(s) : tests 2147/2148 ; 0 rouge(s) connu(s)
+
+
+fin 16:04:30
