@@ -32,6 +32,14 @@ class UHOLDuelLedger : UHOLDuelSubsystem
 	// built yet: nothing applies them to the troops today).
 	TArray<FHOLDuelMoraleOrder> PendingMorale;
 
+	// S2-b: takes the orders the bridge lays now (the ones with a place, a slot and an effect) and empties PendingMorale.
+	// STUB (red): lays nothing and keeps the pending list.
+	TArray<FHOLDuelMoraleOrder> TakePendingOrders()
+	{
+		TArray<FHOLDuelMoraleOrder> None;
+		return None;
+	}
+
 	// S2-b (PLAN-MORAL-1120 step 6): empties PendingMorale into the simulation's morale (one source: the C++ rule, through the bridge). An order
 	// without a place (a refusal: the refusing hero's position is not held by the ledger yet) is dropped, not guessed.
 	void ApplyMoraleOrders()
