@@ -29,7 +29,7 @@ void Test_FactionPowerCastChain(FUnitTest& T)
 	const int Now = 1000;
 
 	// First cast: in range (the point sits exactly at the range), ready, funded.
-	const int Range = int(HOLFactionPowerCast::SealRangeCm());
+	const int Range = HOLDawnPowers::SacredLightRangeCm();
 	FHOLFactionPowerDecision First = HOLFactionPowerCast::Decide(FactionPowerCastTest::Dawn(), 0, Gauge, 0, Now, 0, 0, Range, 0);
 	T.AssertTrue(First.bAccepted, "a ready, funded, in-range cast of the Dawn is accepted");
 	T.AssertEquals(HOLFactionPowerCast::RefusalNone(), First.Refusal, "an accepted cast has no refusal");
@@ -52,7 +52,7 @@ void Test_FactionPowerCastChain(FUnitTest& T)
 void Test_FactionPowerCastRefusals(FUnitTest& T)
 {
 	FHOLFactionResource Full = FactionPowerCastTest::FullGauge();
-	const int Range = int(HOLFactionPowerCast::SealRangeCm());
+	const int Range = HOLDawnPowers::SacredLightRangeCm();
 
 	FHOLFactionPowerDecision Far = HOLFactionPowerCast::Decide(FactionPowerCastTest::Dawn(), 0, Full, 0, 0, 100, 0, 100 + Range + 1, 0);
 	T.AssertFalse(Far.bAccepted, "a point one centimetre beyond the range is refused");

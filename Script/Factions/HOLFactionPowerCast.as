@@ -86,7 +86,7 @@ namespace HOLFactionPowerCast
 		// accepted from anywhere), then capped under the int range so the ceiling cannot overflow either.
 		const double ExactCm = Math::Sqrt(double(DeltaX) * double(DeltaX) + double(DeltaY) * double(DeltaY));
 		const int64 DistanceCm = int64(Math::CeilToInt(Math::Min(ExactCm, 2000000000.0)));
-		const int Reason = HOLGroundAbility::TargetRefusal(true, DistanceCm, SealRangeCm(), Math::Max(CooldownEndMs - NowMs, 0));
+		const int Reason = HOLGroundAbility::TargetRefusal(true, DistanceCm, int64(HOLDawnPowers::SacredLightRangeCm()), Math::Max(CooldownEndMs - NowMs, 0));
 		if (Reason == 2)
 		{
 			Result.Refusal = RefusalCooldown();
@@ -98,8 +98,8 @@ namespace HOLFactionPowerCast
 			return Result;
 		}
 		// S1-b: the faction power is the book's Sacred Light line (NOT the Seal, which is the Monk's unit ability, D862): it pays the
-		// ROW's Honor cost and recharges after the ROW's cool-down. A gauge short of the cost is refused LAST. The range stays the
-		// LightSeal row's until the Sacred Light's own range is decided.
+		// ROW's Honor cost and recharges after the ROW's cool-down. A gauge short of the cost is refused LAST. D890: the range
+		// checked above is the Sacred Light's OWN 1200 cm (HOLDawnPowers::SacredLightRangeCm), not the Seal's 800 cm (SealRangeCm).
 		FHOLFactionResource Spent = Gauge;
 		if (!HOLFactionResource::TrySpend(Spent, Rows[PowerIndex].Cost))
 		{
