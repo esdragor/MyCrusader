@@ -79,6 +79,10 @@ void UHOLMoraleProcessor::QueueEffectAround(const UWorld* World, const int32 Eff
 	Order.RadiusCm = RadiusCm;
 }
 
+void UHOLMoraleProcessor::QueueClearMalusAround(const UWorld* World, const int32 CenterXCm, const int32 CenterYCm, const int32 RadiusCm, const int32 OrderSlot)
+{
+	// STUB (red test first): removes nothing yet.
+}
 void UHOLMoraleProcessor::SetSlotAttenuation(const int32 Slot, const int32 Percent)
 {
 	if (Slot >= 0 && Slot < FHOLMatchConfig::MaxSlots)

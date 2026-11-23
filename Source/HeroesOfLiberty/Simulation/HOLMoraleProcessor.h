@@ -29,6 +29,12 @@ public:
 	static void QueueEffectAround(const UWorld* World, int32 EffectId, int32 CenterXCm, int32 CenterYCm, int32 OrderSlot, int32 DurationMs, int32 RadiusCm);
 
 	/**
+	 * PLAN-MORAL-1120 step 8 (S2-c, D404; called by UHOLMoraleLibrary::ClearMalusAround): queues a clearing order. The next Execute of this world's
+	 * processor takes off the malus of the units of camp OrderSlot within RadiusCm of the point and grants them the immunity (the rule: HOLMorale::ClearMalusAndProtect).
+	 */
+	static void QueueClearMalusAround(const UWorld* World, int32 CenterXCm, int32 CenterYCm, int32 RadiusCm, int32 OrderSlot);
+
+	/**
 	 * PLAN-MORAL-1120 step 7 (S2-c, PROVISIONAL stand-in for the Luminous Monk's passive aura, which does not exist before A3; console command
 	 * hol.Morale.Attenuate <slot> <percent>): the attenuation percent (D125, D706) the camp Slot gives to every malus it is about to take. The
 	 * processor hands it to HOLMorale::Apply, which holds the whole rule (a temporary malus loses time, an aura malus loses intensity, a bonus

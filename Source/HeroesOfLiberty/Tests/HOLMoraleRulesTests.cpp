@@ -1097,4 +1097,117 @@ bool FHOLMoraleProcessorAttenuatesTheMalusTest::RunTest(const FString& Parameter
 	return true;
 }
 
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLMoraleProcessorClearsTheMalusTest, "HeroesOfLiberty.Morale.ProcessorClearsTheMalusAndProtects", UE::HeroesOfLiberty::Tests::MoraleRules::Flags)
+
+// PLAN-MORAL-1120 step 8 (S2-c, D404): ClearMalusAround takes off the malus of the camp's units within the radius (the bonus stays), those units are
+// then immune to every malus for HOLMorale::SacredLightImmunityMs (a malus laid 2 s later is refused, 6 s later it is taken); a unit beyond the
+// radius or of another camp keeps its malus. The rule is HOLMorale::ClearMalusAndProtect, the processor lays the order in its step.
+bool FHOLMoraleProcessorClearsTheMalusTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::MoraleRules;
+	UWorld* World = UWorld::CreateWorld(EWorldType::Game, /*bInformEngineOfWorld*/ false);
+	FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);
+	Context.SetCurrentWorld(World);
+	World->InitializeActorsForPlay(FURL());
+
+	UHOLUnitSubsystem* Units = World->GetSubsystem<UHOLUnitSubsystem>();
+	UHOLSimulationSubsystem* Simulation = World->GetSubsystem<UHOLSimulationSubsystem>();
+	UHOLHeroSubsystem* Heroes = World->GetSubsystem<UHOLHeroSubsystem>();
+	UMassEntitySubsystem* EntitySubsystem = World->GetSubsystem<UMassEntitySubsystem>();
+	if (TestNotNull(TEXT("units"), Units) && TestNotNull(TEXT("simulation"), Simulation) && TestNotNull(TEXT("heroes"), Heroes) && TestNotNull(TEXT("entities"), EntitySubsystem))
+	{
+		Heroes->BindSteps();
+		TSharedPtr<FMassEntityManager> EntityManager = EntitySubsystem->GetMutableEntityManager().AsShared();
+		UHOLMoraleProcessor* Morale = NewObject<UHOLMoraleProcessor>(Simulation);
+		Morale->CallInitialize(Simulation, EntityManager.ToSharedRef());
+		const float StepSeconds = GetDefault<UHOLSimulationSettings>()->GetStepSeconds();
+		int64 Step = 0;
+		const auto RunStep = [Simulation, Units, Morale, &EntityManager, StepSeconds, &Step]
+		{
+			++Step;
+			Simulation->GetOnStepStarted().Broadcast(Step);
+			Units->ServeBirthRequests();
+			FMassProcessingContext ProcessingContext(*EntityManager, StepSeconds);
+			UE::Mass::Executor::Run(*Morale, ProcessingContext);
+			Simulation->GetOnStepEnded().Broadcast(Step);
+		};
+		const auto Spawn = [this, Units](const uint8 Owner, const double X) -> FMassEntityHandle
+		{
+			TArray<uint32> Before;
+			Units->GetAllUnitIds(Before);
+			FHOLUnitSpawnRequest Request;
+			Request.TypeName = FName(TEXT("ManAtArms"));
+			Request.Count = 1;
+			Request.OwnerPlayer = Owner;
+			Request.Center = FVector(X, 3000.0, 0.0);
+			Units->RequestUnits(Request);
+			Units->ServeBirthRequests();
+			TArray<uint32> After;
+			Units->GetAllUnitIds(After);
+			uint32 Born = 0;
+			for (const uint32 Id : After)
+			{
+				Born = Before.Contains(Id) ? Born : Id;
+			}
+			return TestTrue(TEXT("a unit was born"), Born != 0) ? Units->FindEntity(Born) : FMassEntityHandle();
+		};
+		// Camp 0: Near (inside the radius, carries a malus and a bonus) and Far (outside). Camp 1: Other (inside the radius, carries a malus).
+		UHOLMoraleProcessor::SetSlotAttenuation(0, 0);
+		UHOLMoraleProcessor::SetSlotAttenuation(1, 0);
+		const FMassEntityHandle Near = Spawn(0, 5000.0);
+		const FMassEntityHandle Far = Spawn(0, 7000.0);
+		const FMassEntityHandle Other = Spawn(1, 5100.0);
+		const auto Has = [&EntityManager](const FMassEntityHandle Entity, const int32 Id) -> bool
+		{
+			const FHOLMoraleFragment* Fragment = Entity.IsSet() ? EntityManager->GetFragmentDataPtr<FHOLMoraleFragment>(Entity) : nullptr;
+			return Fragment != nullptr && HOLMorale::Has(Fragment->State, Id);
+		};
+		const HOLMoraleTableRows::FHOLMoraleTableRow* DemoralisedRow = HOLMoraleTableRows::Find(HOLMoraleTableRows::HOLMoraleDemoralised);
+		const HOLMoraleTableRows::FHOLMoraleTableRow* TriumphRow = HOLMoraleTableRows::Find(HOLMoraleTableRows::HOLMoraleTriumph);
+		if (TestTrue(TEXT("the rows"), DemoralisedRow && TriumphRow) && TestTrue(TEXT("three units"), Near.IsSet() && Far.IsSet() && Other.IsSet()))
+		{
+			const int32 StepMs = HOLCombat::ToMilliseconds(StepSeconds);
+			RunStep();
+			// A malus on every unit (a wide radius), a bonus on Near.
+			UHOLMoraleLibrary::ApplyEffectAround(World, HOLMoraleTableRows::HOLMoraleDemoralised, 5000, 3000, 0, DemoralisedRow->DurationMs, 5000);
+			UHOLMoraleLibrary::ApplyEffectAround(World, HOLMoraleTableRows::HOLMoraleDemoralised, 5000, 3000, 1, DemoralisedRow->DurationMs, 5000);
+			UHOLMoraleLibrary::ApplyEffectAround(World, HOLMoraleTableRows::HOLMoraleTriumph, 5000, 3000, 0, TriumphRow->DurationMs, 1200);
+			RunStep();
+			TestTrue(TEXT("Near carries the malus before"), Has(Near, HOLMoraleTableRows::HOLMoraleDemoralised));
+			TestTrue(TEXT("Near carries the bonus before"), Has(Near, HOLMoraleTableRows::HOLMoraleTriumph));
+			TestTrue(TEXT("Far carries the malus before"), Has(Far, HOLMoraleTableRows::HOLMoraleDemoralised));
+			TestTrue(TEXT("Other carries the malus before"), Has(Other, HOLMoraleTableRows::HOLMoraleDemoralised));
+			// Lumiere sacree: camp 0, within 12 m of the point.
+			UHOLMoraleLibrary::ClearMalusAround(World, 5000, 3000, 1200, 0);
+			RunStep();
+			TestFalse(TEXT("Near has no malus any more"), Has(Near, HOLMoraleTableRows::HOLMoraleDemoralised));
+			TestTrue(TEXT("Near keeps its bonus (Triumph is not a malus)"), Has(Near, HOLMoraleTableRows::HOLMoraleTriumph));
+			TestTrue(TEXT("Far (beyond the radius) keeps its malus"), Has(Far, HOLMoraleTableRows::HOLMoraleDemoralised));
+			TestTrue(TEXT("Other (another camp) keeps its malus"), Has(Other, HOLMoraleTableRows::HOLMoraleDemoralised));
+			// 2 s later a malus is refused (immunity).
+			const int32 TwoSecondsSteps = 2000 / StepMs;
+			for (int32 Index = 0; Index < TwoSecondsSteps; ++Index)
+			{
+				RunStep();
+			}
+			UHOLMoraleLibrary::ApplyEffectAround(World, HOLMoraleTableRows::HOLMoraleDemoralised, 5000, 3000, 0, DemoralisedRow->DurationMs, 1200);
+			RunStep();
+			TestFalse(TEXT("2 s after, a new malus is refused (immunity)"), Has(Near, HOLMoraleTableRows::HOLMoraleDemoralised));
+			// 6 s after the clearing the immunity (5 s) is over: the malus is accepted.
+			const int32 SixSecondsSteps = 6000 / StepMs;
+			for (int32 Index = TwoSecondsSteps + 1; Index < SixSecondsSteps; ++Index)
+			{
+				RunStep();
+			}
+			UHOLMoraleLibrary::ApplyEffectAround(World, HOLMoraleTableRows::HOLMoraleDemoralised, 5000, 3000, 0, DemoralisedRow->DurationMs, 1200);
+			RunStep();
+			TestTrue(TEXT("6 s after, a new malus is accepted (immunity over)"), Has(Near, HOLMoraleTableRows::HOLMoraleDemoralised));
+		}
+	}
+
+	GEngine->DestroyWorldContext(World);
+	World->DestroyWorld(false);
+	return true;
+}
 #endif // WITH_DEV_AUTOMATION_TESTS
