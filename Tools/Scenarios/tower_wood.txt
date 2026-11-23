@@ -28,8 +28,8 @@ hol.Camera.FocusNear 9500 0
 frames 2
 hol.Units.SpawnHere 3 Spearman 1 250
 waitunits 8
-hol.Camera.FocusNear 4700 0
-hol.Camera.Zoom 3
+hol.Camera.FocusNear 5100 0
+hol.Camera.Zoom 1
 frames 5
 note 1. AVANT : la Tour de guet en bois du joueur a gauche, trois Lanciers rouges loin a droite, hors de portee (55 m).
 capture tower_wood_before
