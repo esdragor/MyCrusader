@@ -87,23 +87,37 @@ void UHOLHealProcessor::CreditHonorPoints(const UWorld* World, const int32 Slot,
 	UFunction* Setter = GameState->FindFunction(TEXT("SetFactionResource"));
 	if (Getter && Setter)
 	{
-		struct { int32 Slot; int32 ReturnValue; } Current{ Slot, 0 };
+		struct FGetParams { int32 Slot; int32 ReturnValue; };
+		struct FSetParams { int32 Slot; int32 Value; };
+		// REVUE-1123pm G2: ProcessEvent copies the function's whole parameter block over our local structs; if the signature of the
+		// script / C++ function changed (type, extra parameter), it would write outside them (silent stack corruption). Size and count
+		// of parameters are checked first: on a mismatch, no credit at all (ensure = one message, never a crash of the game).
+		if (!ensureMsgf(ParmsSizeMatches(Getter, sizeof(FGetParams), 2) && ParmsSizeMatches(Setter, sizeof(FSetParams), 2),
+			TEXT("UHOLHealProcessor::CreditHonorPoints: GetFactionResource / SetFactionResource no longer have the expected parameters (%d and %d bytes, 2 each): the Honor is not credited."),
+			static_cast<int32>(sizeof(FGetParams)), static_cast<int32>(sizeof(FSetParams))))
+		{
+			return;
+		}
+		FGetParams Current{ Slot, 0 };
 		GameState->ProcessEvent(Getter, &Current);
 		// REVUE-1123 G5: never lowers a gauge already above the cap (120 stays 120): credits only below it.
-		struct { int32 Slot; int32 Value; } Next{ Slot, FMath::Max(Current.ReturnValue, FMath::Min(Current.ReturnValue + Points, HonorCap)) };
+		FSetParams Next{ Slot, FMath::Max(Current.ReturnValue, FMath::Min(Current.ReturnValue + Points, HonorCap)) };
 		GameState->ProcessEvent(Setter, &Next);
 	}
 }
 
 void UHOLHealProcessor::ResetHonor()
 {
-	// Stub (red test): the real reset comes in the next commit.
+	HonorHpPerPoint = 0;
+	HonorCap = 0;
+	HonorKillGain = 0;
+	HonorKillRadiusCm = 0;
+	HonorPendingHp.Reset();
 }
 
 bool UHOLHealProcessor::ParmsSizeMatches(const UFunction* Function, const int32 ExpectedSize, const int32 ExpectedNumParms)
 {
-	// Stub (red test): the real check comes in the next commit.
-	return true;
+	return Function && Function->ParmsSize == ExpectedSize && Function->NumParms == ExpectedNumParms;
 }
 
 void UHOLHealProcessor::CreditKillHonor(const UWorld* World, const int32 Slot)
@@ -143,9 +157,28 @@ void UHOLHealProcessor::CancelOrders(const TConstArrayView<uint32> UnitIds)
 	}
 }
 
+namespace
+{
+	FDelegateHandle HonorWorldCleanupHandle;
+
+	// REVUE-1123pm G3: the end of a game world (a match, a test world) turns the Honor off. A game without the Dawn played after one with it,
+	// or a test after another, so never inherits the settings or the pending hit points. The hook is installed once, by the class default object.
+	void OnHonorWorldCleanup(UWorld* World, bool /*bSessionEnded*/, bool /*bCleanupResources*/)
+	{
+		if (World && World->IsGameWorld())
+		{
+			UHOLHealProcessor::ResetHonor();
+		}
+	}
+}
+
 UHOLHealProcessor::UHOLHealProcessor()
 	: EntityQuery(*this)
 {
+	if (HasAnyFlags(RF_ClassDefaultObject) && !HonorWorldCleanupHandle.IsValid())
+	{
+		HonorWorldCleanupHandle = FWorldDelegates::OnWorldCleanup.AddStatic(&OnHonorWorldCleanup);
+	}
 	bAutoRegisterWithProcessingPhases = false; // fixed step only (D219)
 	ExecutionFlags = static_cast<int32>(EProcessorExecutionFlags::Server | EProcessorExecutionFlags::Standalone);
 	ExecutionOrder.ExecuteInGroup = UE::Mass::ProcessorGroupNames::Tasks;
