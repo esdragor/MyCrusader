@@ -966,6 +966,8 @@ void UHOLCombatProcessor::ReleaseBuildingArrows(const UWorld& World, const int64
 				ArrowDisplay->Launch(Launch);
 			}
 		}
+		// F8 T7b: a client draws this tower's arrows from a replicated count (AHOLBuilding::OnRep_ArrowShot); the server writes it once per release, with the last target and the number of arrows.
+		Step.Building->RecordArrowShot(Enemy.Location, FlightMs, ArrowCount);
 		// The next arrow in one interval of the row (BuildingAttackInterval), counted from the time this one was due (the carry below zero stays).
 		Cooldown->RemainingMs += FMath::Max(1, HOLCombat::ToMilliseconds(Row->BuildingAttackInterval));
 	}

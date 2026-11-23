@@ -12,10 +12,16 @@ frames 8
 hol.HUD.Report
 waitlog faction slot: slot gauge 100 / 100 powers SacredLight cost 25
 capture faction_click_before
-hol.HUD.Click FactionBox0
-waitlog HUD click FactionBox0: done
+hol.Mouse.Click FactionBox0
 waitlog FactionAim: refuse soon
 frames 4
 notereset 1/1 : apres le clic sur la case SacredLight (jauge 100 / 100) : la case est un bouton, le clic atteint HOLFactionAim (journal "FactionAim: refuse soon" tant que l'effet n'est pas code).
 capture faction_click_after
 hol.Test.Sanity
+# VARIANTE ATTENDUE APRES S1-b (faction_click_cast, NON ACTIVE : tant que bEffectCoded est faux elle echouerait). Remplacer les deux lignes "waitlog FactionAim: refuse soon" par :
+# waitlog FactionAim: aim 0
+# frames 4
+# capture faction_click_aim   (curseur de visee visible)
+# hol.Select.LeftClickGround 0 0   (clic sol d'un point libre de la carte ; remplacer par un point mesure)
+# waitlog FactionAim: cast 0 send true slot 0
+# puis la jauge baisse de 25 (hol.HUD.Report : faction slot: slot gauge 75 / 100).

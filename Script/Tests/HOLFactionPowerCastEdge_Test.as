@@ -105,7 +105,7 @@ void Test_FactionPowerCastCooldownLongEnded(FUnitTest& T)
 	// The stored end is far in the past: the remaining time is negative, which must read as "ready", and the new end counts from now.
 	FHOLFactionPowerDecision Result = FactionPowerCastEdgeTest::CastIt(FactionPowerCastTest::Dawn(), 0, Full, 500, Now, 0, 0, 0, 0);
 	T.AssertTrue(Result.bAccepted, "a cool-down that ended long ago does not refuse");
-	int ExpectedEnd = HOLGroundAbility::CooldownEndMs(Now, HOLFactionPowerCast::SealCooldownMs());
+	int ExpectedEnd = HOLGroundAbility::CooldownEndMs(Now, HOLDawnPowers::Rows()[0].CooldownMs);
 	T.AssertEquals(ExpectedEnd, Result.NewCooldownEndMs, "the new cool-down end counts from the cast, not from the old end");
 }
 

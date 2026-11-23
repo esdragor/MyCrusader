@@ -18,7 +18,7 @@ frames 40
 hol.Test.Sanity
 note 1. Les murs sont debloques (Masonry) et la camera est reculee : une ligne de plus de 16 cases de 4 m (plus de 64 m) tient dans l'ecran.
 waitkey Entree : je choisis le mur dans la grille du Paysan (case F4 : touche puis glisser a la souris)
-hol.Build.Place Wall
+hol.Build.Place Palisade
 waitlog placement
 frames 10
 # Geste reel : appui en X1 Y1, un deplacement par image, relache en X2 Y2 a la derniere image (pixels du viewport 1920x1080 : NON VERIFIE). 1500 px d'ecart = bien plus de 16 cases a ce zoom (a verifier sur la capture). 90 images : la capture pendant (apres 30 images) tombe au milieu du glisser.
