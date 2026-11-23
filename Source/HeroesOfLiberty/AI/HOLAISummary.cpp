@@ -58,7 +58,7 @@ namespace
 		Out.Location = Unit.Location;
 		Out.Health = Unit.Health;
 		Out.bIdle = Unit.Activity == EHOLUnitActivity::Idle;
-		Out.GarrisonKind = static_cast<int32>(HOLGarrison::KindOf(Unit.bSiege, Unit.bHero, /*bCavalry*/ false, Unit.bRanged));
+		Out.GarrisonKind = static_cast<int32>(HOLGarrison::KindOf(Unit.bSiege, Unit.bHero, Unit.bCavalry, Unit.bRanged));
 		Out.TargetId = Unit.Activity == EHOLUnitActivity::Attacking && Unit.TargetUnitId != 0 ? static_cast<int32>(Unit.TargetUnitId) : INDEX_NONE;
 		return Out;
 	}
