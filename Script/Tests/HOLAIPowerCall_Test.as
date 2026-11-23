@@ -187,7 +187,7 @@ void Test_AIPlantsBannerFromTheHeroRealPlace(FUnitTest& T)
 	TArray<FVector> Far;
 	Far.Add(FVector(17900.0, 0.0, 0.0));
 	const FHOLAIBannerOrder Edge = HOLAIPowerCall::PlanBannerOf(Far, true, Hero, true, false);
-	T.AssertTrue(Edge.bPlant && Edge.Point.X > Hero.X + 1000.0 && Edge.Point.X < 16000.0, "a far group: the banner is pushed from the hero's real place toward it, at the edge of his reach");
+	T.AssertTrue(Edge.bPlant && Edge.Point.X > Hero.X + 1500.0 && Edge.Point.X <= Hero.X + 1600.0, "a far group: the banner is pushed from the hero's real place toward it, at the edge of his reach (1600 cm: HOLHeroAbility_Test.as:44-45)");
 	T.AssertFalse(HOLAIPowerCall::PlanBannerOf(Wounded, false, Hero, true, false).bPlant, "no hero found: no banner");
 	T.AssertFalse(HOLAIPowerCall::PlanBannerOf(Wounded, true, Hero, false, false).bPlant, "his ability not ready: no banner");
 }
