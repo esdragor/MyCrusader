@@ -609,6 +609,7 @@ bool UHOLUnitReceptionSubsystem::MakeView(const FSlot& Slot, FHOLUnitView& OutVi
 		OutView.CarryCapacity = Row->CarryCapacity;
 		OutView.bRanged = HOLCombat::IsRangedAttack(Row->AttackRange);
 		OutView.bSiege = Row->HasArmorCategory(EHOLArmorCategory::Siege);
+	OutView.bCavalry = Row->HasArmorCategory(EHOLArmorCategory::Cavalry);
 		OutView.bKing = Row->HasArmorCategory(EHOLArmorCategory::King);
 		OutView.bHero = Row->HasArmorCategory(EHOLArmorCategory::Hero);
 		// J7b.5: the health received, exact (J7-Q5 revised); a hero's as a share (J8-Q5, J8a.3), his bar filled from it,

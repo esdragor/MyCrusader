@@ -1,0 +1,19 @@
+# GLORFINDEL-1123o : S1-d bouton du Moine (cellule Sceau de lumiere), PARTIEL
+
+APPELS_DECLARES: 22 (arret atteint ; premier Edit au 12e appel environ : L20-8 NON respecte, lectures de contexte trop larges)
+HEURE_DEBUT/HEURE_FIN: 11:34 / 11:38
+PREMIER_BUILD: sans C++ (pas de C++ neuf)   BUILD: NON COMPILE (build.ps1 -LiveCoding=0 -Wait lance 11:35 en run_in_background, resta en file derriere HeroesOfLiberty-Galadriel, aucun resultat vu ; non arrete)   LAUNCHCHECK_DEBUT: sans C++
+TEST_ROUGE: 265f895 (Test_CGMonkSealButton dans Script\Tests\HOLCommandGridRules_Test.as + GetMonkSealCell stub qui compile) ; assertit l'effet : oui (la grille repond LightSeal pour bMonkUnit, autre chose sans) ; rouge VU : NON (build en file)   TEST_ROUGE_SEPARE: oui (265f895 test, e269a1c correctif)
+COMMITS: 2 sur ability-columns (265f895 test, e269a1c regle + touche), dernier 11:37, merge_main_fait: oui (a6ed8cf, sans conflit, avant le travail)
+TESTS: aucun lance. TESTS_TAUTOLOGIQUES: 0 (la commande est CALCULEE par HOLCommandGridRules::GetCommand ; la cellule vient de GetMonkSealCell)
+ESSAIS: aucun
+QUESTIONS: aucune ecrite. Valeur par defaut codee : cellule 3 (touche R) = HOLCommandGridRules::GetMonkSealCell() (une ligne a changer) ; UnitAbilities.csv n'a pas de colonne de touche, la touche n'est PAS tiree d'une table : a trancher par l'utilisateur.
+FAIT : (1) cellule LightSeal dans HOLCommandGridRules.as (bMonkUnit, cellule 3) ; HOLCommandGridKeys.as : la touche de cette cellule est une touche de grille (pas un ordre) ; test script Test_CGMonkSealButton.
+RESTE (non fait, arret a 22 appels) :
+ - LA CELLULE NE S'AFFICHE PAS ENCORE : le C++ HOLGameScreen.cpp (switch de RefreshGrid, ~L1295-1350) n'a pas de case LightSeal : default -> ClearUnit. Sans C++ neuf : dans HOLCommandGridPanel.as Refresh() (L197-224), apres la boucle, lire Screen.GetAgesContext(Context) (FHOLGridContextView, vu HOLAgePanels.as:417) ; si !bGridShown && bOrdersShown && Context.bMonkUnit : Cells[HOLCommandGridRules::GetMonkSealCell()].SetCommand(HOLUnitAbilityTable::Name(LightSeal) , EHOLGridCellState Ready) + SetTooltip(nom, FHOLResources(), FHOLResources(), description de la table) ; libelle = NSLOCTEXT de HOLUnitAbilityTable.as:89 "Sceau de lumiere".
+ - CLIC : HOLCommandGridPanel.as ClickCell (L168-178) appelle Screen.ClickGridCell(Index), C++ HOLPlayerController.cpp:2799-2840 ignore LightSeal (default: return). Intercepter dans ClickCell si l'index = GetMonkSealCell() et le contexte a bMonkUnit : Controller.SetFactionAim(<index distinct, ex. 90>, HOLMonkSeal::RangeCm()) ; dans HOLGameScreenScript.as Tick (L2240-2252, qui sort aujourd'hui si !FactionView.bVisible) : si ConsumeFactionAimClick rend cet index, trouver le Moine parmi Controller.GetOwnSelectedUnits() (HOLUnitScript::GetUnitType == "Monk", GetUnitOwner == slot local) et appeler Rpc.ServerCastUnitAbility(HOLUnitAbilityTable::LightSeal, UnitId, Point) (HOLRpcPlayer.as:1083).
+ - Attentes : grep HOLCommandGrid_Test / quick_check L18-d / L21-3 bis / L22-3 : NON FAIT (aucun test ne compte les commandes de la case 3 ; a verifier apres compilation).
+NON VERIFIE : compilation Angelscript (DIAGNOSTICS_AS non releves), rouge/vert de Test_CGMonkSealButton, build jamais obtenu.
+PROCESSUS_DETACHES: voir sortie stray_processes en dernier geste (build en file : liste, non arrete).
+ANOMALIES_PROCESSUS: build en file derriere Galadriel (un build a la fois) ; l'agent finit avant la fin : le build detache meurt peut-etre avec lui, a relancer par la session principale.
+GIT_STATUS_PRINCIPALE: non verifie (docs voulus : ce rapport, EtapeDefini.md)

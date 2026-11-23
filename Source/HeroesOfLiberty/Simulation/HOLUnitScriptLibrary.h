@@ -33,4 +33,12 @@ public:
 	/** The attack range (cm, between the two bodies' edges) of the unit's type; 0 when the unit is unknown, dying or the type table is not there. */
 	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Units", meta = (WorldContext = "WorldContextObject"))
 	static float GetAttackRange(const UObject* WorldContextObject, int32 UnitId);
+
+	/** Sceau (D839): true when the unit is known to this machine (alive, not dying); its owner's slot in OutOwnerSlot (INDEX_NONE otherwise). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Units", meta = (WorldContext = "WorldContextObject"))
+	static bool GetUnitOwner(const UObject* WorldContextObject, int32 UnitId, int32& OutOwnerSlot);
+
+	/** Sceau (D839): the unit's type row name (Monk, Spearman...); NAME_None when the unit is unknown, dying or garrisoned. */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Units", meta = (WorldContext = "WorldContextObject"))
+	static FName GetUnitType(const UObject* WorldContextObject, int32 UnitId);
 };

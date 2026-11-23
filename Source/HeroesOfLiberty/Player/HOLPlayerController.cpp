@@ -2464,7 +2464,10 @@ void AHOLPlayerController::GetUnitsContext(FHOLGridContext& Context) const
 		for (const uint32 UnitId : Units)
 		{
 			FHOLUnitView RageView;
-			Context.bRageUnit |= HOLUnitView::Find(*GetWorld(), UnitId, RageView) && RageView.TypeName == FName(TEXT("DamnedWarrior"));
+			if (HOLUnitView::Find(*GetWorld(), UnitId, RageView))
+			{
+				HOLCommandGrid::NoteSelectedUnitType(Context, RageView.TypeName);
+			}
 		}
 		if (Context.bHero)
 		{
