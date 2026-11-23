@@ -13,7 +13,11 @@
 #include "Iris/Serialization/NetBitStreamWriter.h"
 #include "Iris/Serialization/NetSerializationContext.h"
 #include "Misc/AutomationTest.h"
+#include "Buildings/HOLBuilding.h"
+#include "Buildings/HOLBuildingTypes.h"
 #include "Net/HOLCheatRules.h"
+#include "Net/UnrealNetwork.h"
+#include "Presentation/HOLArrowSubsystem.h"
 #include "Net/HOLManagerLink.h"
 #include "Net/HOLNetUnitDisplay.h"
 #include "Net/HOLNetUnitStateNetSerializer.h"
@@ -1168,4 +1172,33 @@ bool FHOLNetServerQuitTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+// F8 T7b (D884): a tower's arrows are seen on a client. The server writes a replicated count (RecordArrowShot), the client's OnRep draws one arrow per released arrow
+// on the arrow display (ShowArrowShot); the count must be a replicated property. The drawn count is read from the display subsystem, computed by the code under test.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLNetBuildingArrowTest, "HeroesOfLiberty.Net.BuildingArrow", UE::HeroesOfLiberty::Tests::Net::Flags)
+bool FHOLNetBuildingArrowTest::RunTest(const FString& Parameters)
+{
+	UWorld* World = UWorld::CreateWorld(EWorldType::Game, /*bInformEngineOfWorld*/ false);
+	FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);
+	Context.SetCurrentWorld(World);
+	World->InitializeActorsForPlay(FURL());
+	AHOLBuilding* Tower = World->SpawnActor<AHOLBuilding>(FVector(3000.0, 0.0, 0.0), FRotator::ZeroRotator);
+	UHOLArrowSubsystem* Display = World->GetSubsystem<UHOLArrowSubsystem>();
+	if (TestNotNull(TEXT("a building"), Tower) && TestNotNull(TEXT("the world's arrow display"), Display))
+	{
+		Tower->Setup(HOLBuildingTypeNames::House, 0, 0, EHOLConstructionState::Finished);
+		const FProperty* CountProperty = AHOLBuilding::StaticClass()->FindPropertyByName(TEXT("ArrowShotCount"));
+		TArray<FLifetimeProperty> Lifetime;
+		Tower->GetLifetimeReplicatedProps(Lifetime);
+		TestTrue(TEXT("the arrow count is a replicated property of the building"), CountProperty && Lifetime.ContainsByPredicate([CountProperty](const FLifetimeProperty& Entry) { return Entry.RepIndex == CountProperty->RepIndex; }));
+		const uint16 Before = Tower->GetArrowShotCount();
+		const int64 LaunchedBefore = Display->GetLaunchedCount();
+		Tower->RecordArrowShot(FVector(4500.0, 0.0, 0.0), 1000, 2);
+		TestEqual(TEXT("the server's write: two released arrows count two"), static_cast<int32>(static_cast<uint16>(Tower->GetArrowShotCount() - Before)), 2);
+		Tower->ShowArrowShot(Before);
+		TestEqual(TEXT("the client's OnRep draws one arrow per released arrow on the display"), static_cast<int32>(Display->GetLaunchedCount() - LaunchedBefore), 2);
+	}
+	GEngine->DestroyWorldContext(World);
+	World->DestroyWorld(false);
+	return true;
+}
 #endif

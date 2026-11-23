@@ -122,6 +122,9 @@ void AHOLBuilding::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLife
 	DOREPLIFETIME(AHOLBuilding, ConstructionState);
 	DOREPLIFETIME(AHOLBuilding, ConstructionWork);
 	DOREPLIFETIME(AHOLBuilding, DamageTaken);
+	DOREPLIFETIME(AHOLBuilding, ArrowShotCount);
+	DOREPLIFETIME(AHOLBuilding, ArrowShotTo);
+	DOREPLIFETIME(AHOLBuilding, ArrowShotFlightMs);
 	DOREPLIFETIME(AHOLBuilding, bPrimaryForum);
 	DOREPLIFETIME_CONDITION(AHOLBuilding, ProductionQueue, COND_OwnerOnly);
 	DOREPLIFETIME_CONDITION(AHOLBuilding, RallyPoint, COND_OwnerOnly);
@@ -377,6 +380,20 @@ void AHOLBuilding::OnRep_DamageTaken(const uint16 OldDamageTaken)
 		LastHitTime = GetWorld() ? GetWorld()->GetTimeSeconds() : 0.0;
 	}
 	OnConstructionChanged.Broadcast();
+}
+
+// F8 T7b stub (red first): neither writes the count nor draws.
+void AHOLBuilding::RecordArrowShot(const FVector& To, int32 FlightMs, int32 ArrowCount)
+{
+}
+
+void AHOLBuilding::ShowArrowShot(uint16 OldCount)
+{
+}
+
+void AHOLBuilding::OnRep_ArrowShot(uint16 OldCount)
+{
+	ShowArrowShot(OldCount);
 }
 
 void AHOLBuilding::ReleaseFootprint()
