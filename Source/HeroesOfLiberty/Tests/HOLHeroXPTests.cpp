@@ -65,6 +65,21 @@ bool FHOLHeroXPSourcesTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+// D859 n. 9: a duel won is worth 150 XP (fixed: value 150 at weight 100 %), and two duels move a hero from level 1 to 2.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLHeroXPDuel150Test, "HeroesOfLiberty.HeroXP.Duel150", UE::HeroesOfLiberty::Tests::HeroXP::Flags)
+
+bool FHOLHeroXPDuel150Test::RunTest(const FString& Parameters)
+{
+	using namespace HOLHeroXP;
+	TestEqual(TEXT("A duel won: 150 XP"), GetXP(150, EHOLXPSource::Duel), 150);
+	TestEqual(TEXT("The duel source weighs 100 %"), GetWeightPercent(EHOLXPSource::Duel), 100);
+	// Real chain: the XP of two duels (computed) crosses the level 2 threshold (200), one does not.
+	TestEqual(TEXT("One duel: still level 1"), GetLevel(GetXP(150, EHOLXPSource::Duel)), 1);
+	TestEqual(TEXT("Two duels: level 2"), GetLevel(GetXP(150, EHOLXPSource::Duel) * 2), 2);
+	// A won duel is a fight: it does not count while the hero is dead.
+	TestFalse(TEXT("No duel XP while dead"), CountsWhileDead(EHOLXPSource::Duel));
+	return true;
+}
 // P1 (D04): the hero's level opens the civilisation's tier, 3, 6 and 9 for tiers 1, 2 and 3.
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLHeroXPTiersTest, "HeroesOfLiberty.HeroXP.Tiers", UE::HeroesOfLiberty::Tests::HeroXP::Flags)
 

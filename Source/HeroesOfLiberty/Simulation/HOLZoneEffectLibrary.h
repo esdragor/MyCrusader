@@ -48,6 +48,18 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Zone", meta = (WorldContext = "WorldContextObject"))
 	static bool StartLightSeal(const UObject* WorldContextObject, int32 Slot, FVector Center);
 
+	/** UHOLHeroSubsystem::StartSacredLight (D689): the slot puts a healing zone (about 5 s) at Center. The cost (25 Honour) and the cool-down (20 s) are the caller's. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Zone", meta = (WorldContext = "WorldContextObject"))
+	static bool StartSacredLight(const UObject* WorldContextObject, int32 Slot, FVector Center);
+
+	/** HOLZoneEffect::SacredLightRadiusCm / DurationMs / HealPerSecond (D689). */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Zone")
+	static int32 GetSacredLightRadiusCm();
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Zone")
+	static int32 GetSacredLightDurationMs();
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Zone")
+	static int32 GetSacredLightHealPerSecond();
+
 	/** How many zones of the hero subsystem are active now (UHOLHeroSubsystem::GetZones, ZoneActive at GetZoneNowMs); 0 without a world. */
 	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Zone", meta = (WorldContext = "WorldContextObject"))
 	static int32 GetActiveZoneCount(const UObject* WorldContextObject);
