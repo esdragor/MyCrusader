@@ -77,8 +77,8 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 	// L4 step 6: when each slot's Damned Warriors last cast their necrotic rage (the summary does not carry the abilities' state).
 	TMap<int, FHOLAIRageMemory> RageMemories;
 
-	// S4-b: the slot's towers call the units near them when attacked (HOLAIGarrisonCall.as). The summary has no reader of the hits on a building yet:
-	// no hit times are given, so every tower reads as calm until one exists (nothing is made up).
+	// S4-b: the slot's towers call the units near them when attacked (HOLAIGarrisonCall.as). Each FHOLAIBuilding of the summary carries its SecondsSinceHit, so HOLAIGarrisonCall reads the hit time itself
+	// when none is given (threshold hol.AI.GarrisonAttackedSeconds, 5 s); the empty arrays below mean "use the summary".
 	void ThinkGarrison(int PlayerIndex, int64 Step, EHOLAIDifficulty Level, const FHOLAISummary& Summary)
 	{
 		const int Rule = HOLAIGarrison::RuleFromCVar();
