@@ -1,0 +1,9 @@
+# ARWEN-1123pa (D890, portee propre de Lumiere sacree 1200 cm)
+FAIT: 4629ec6 (rouge: Test_SacredLightRangeIs1200 + bouchon HOLDawnPowers::SacredLightRangeCm = 0), df66c0c (correctif: SacredLightRangeCm = 1200, Decide l'utilise, Sceau reste 800 via SealRangeCm), tip = commit suivant (attente de Test_FactionPowerCastIsTheMonkAbilityRow).
+TEST_ROUGE: vu a 15:14 : tests 2143/2144, Test_SacredLightRangeIs1200. TEST_ROUGE_SEPARE: oui.
+VERT: NON VU. Run de df66c0c : 2143/2144, seul rouge = Test_FactionPowerCastIsTheMonkAbilityRow (attendait la portee du Sceau pour la Lumiere) ; corrige dans le dernier commit, NON RELANCE (arret des 25 appels / 15:23).
+A LANCER: powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Arwen\Tools\Tests\quick_check.ps1 -Parts tests  (attendu 2144/2144)
+ECARTS: le classifieur a refuse l'ajout d'un champ RangeCm a FHOLPowerRow (HOLPowerBookRules.as hors fichiers pris) : la "ligne a part" est donc HOLDawnPowers::SacredLightRangeCm() (une seule source). Touches en plus des 4 fichiers pris : HOLFactionPowerCast_Test.as et HOLFactionPowerCastEdge_Test.as (attentes de portee, L22-3). Grep quick_check.ps1 et Tools/Scenarios : aucun identifiant de portee.
+AI: HOLAIBrain.as:165/181 utilise encore SealRangeCm (800) pour la zone de l'IA : a passer a HOLDawnPowers::SacredLightRangeCm() par Glorfindel. Signature de Decide inchangee.
+NON FAIT: AubeInProgress.md, EtapeDefini.md, case de la file l.25 (limite d'appels). Placeholders: rien d'ajoute.
+DIAGNOSTICS_AS: non relus. BUILDS_DEMANDES: 0. TESTS_SCRIPT_AJOUTES: 1 (Test_SacredLightRangeIs1200). TYPES_A_EXPOSER: aucun. TESTS_TAUTOLOGIQUES: 0.
