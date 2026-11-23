@@ -4,6 +4,12 @@
 // Tested in Script/Tests/HOLDawnPowers_Test.as.
 namespace HOLDawnPowers
 {
+	// D890: STUB for the red test (Test_SacredLightRangeIs1200): the Sacred Light's own range is not coded yet.
+	int SacredLightRangeCm()
+	{
+		return 0;
+	}
+
 	TArray<FHOLPowerRow> Rows()
 	{
 		TArray<FHOLPowerRow> Result;
