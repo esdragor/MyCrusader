@@ -1069,28 +1069,8 @@ for (FString Command : Commands)
 			Log(n"LogHOLMatch", f"RpcPower: cast refused, sender slot {Sender} is not slot {Slot}");
 			return;
 		}
-		AHOLGameState State = Cast<AHOLGameState>(Gameplay::GetGameState());
-		if (State == nullptr)
-			return;
-		const FIntPoint Origin = HOLHero::GetHeroBannerLocation(Slot);
-		const int NowMs = int(Gameplay::GetTimeSeconds() * 1000.0);
-		FHOLFactionResource Gauge = HOLFactionResource::Make(State.GetFactionResource(Slot), 0, HOLDawnValues::HonorCap());
-		FHOLFactionPowerDecision Decision = HOLFactionPowerCast::Decide(State.GetSlotFaction(Slot), PowerIndex, Gauge,
-			State.GetPowerCooldownEndMs(Slot, PowerIndex), NowMs, Origin.X, Origin.Y, int(Point.X), int(Point.Y));
-		if (!Decision.bAccepted)
-		{
-			Log(n"LogHOLMatch", f"RpcPower: cast refused ({Decision.Refusal}) for slot {Slot} power {PowerIndex}");
-			return;
-		}
-		// S1-b: the faction power is the book's Sacred Light (started FIRST: a failed start costs nothing), then the Honor and the row's cool-down are written.
-		if (!HOLZoneEffect::StartSacredLight(Slot, Point))
-		{
-			Log(n"LogHOLMatch", f"RpcPower: Sacred Light not started for slot {Slot} (no world, subsystem or slot)");
-			return;
-		}
-		State.SetFactionResource(Slot, Decision.NewGaugeValue);
-		State.SetPowerCooldownEndMs(Slot, PowerIndex, Decision.NewCooldownEndMs);
-		Log(n"LogHOLMatch", f"RpcPower: Sacred Light put down by slot {Slot}, Honor now {Decision.NewGaugeValue}");
+		// S4-a: the server part is shared with the AI brain (Script/Factions/HOLFactionPowerServer.as).
+		HOLFactionPowerServer::TryCastPower(Slot, PowerIndex, Point);
 	}
 
 	// S1-d (D862): the Monk's Seal of Light from the command grid. AbilityId is a HOLUnitAbilityTable id (only LightSeal is cast here), UnitId the Monk,

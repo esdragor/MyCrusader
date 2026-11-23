@@ -37,11 +37,53 @@ struct FHOLAIPowerOrder
 
 namespace HOLAIPowerCall
 {
-	// STUB (red first): the brain's whole decision. Rows/Cooldowns/Stock/Tier/Level as Choose; Wounded = the ground points of the slot's wounded units;
+	// The AI's reserve per level (provisional values, one line to tune: D688, no cheating) and the share of full health under which a unit is "wounded".
+	FHOLAIPowerCallData DefaultData()
+	{
+		FHOLAIPowerCallData Data;
+		Data.ReserveByLevel.Add(0);
+		Data.ReserveByLevel.Add(25);
+		Data.ReserveByLevel.Add(50);
+		Data.ReserveByLevel.Add(75);
+		return Data;
+	}
+
+	int WoundedPercent()
+	{
+		return 70;
+	}
+
+	// The brain's whole decision. Rows/Cooldowns/Stock/Tier/Level as Choose; Wounded = the ground points of the slot's wounded units;
 	// Origin and RangeCm = the cast origin and range the server checks (a point out of range is never chosen: the server would refuse it).
+	// The Sacred Light (book key) is wanted when at least one wounded unit is in range, and is cast on the centre of those units.
 	FHOLAIPowerOrder Plan(const TArray<FHOLPowerRow>& Rows, const TArray<int>& CooldownLeftMs, int Stock, int Tier, int Level, const FHOLAIPowerCallData& Data, const TArray<FVector>& Wounded, const FVector& Origin, int64 RangeCm)
 	{
 		FHOLAIPowerOrder Order;
+		FVector Sum = FVector(0.0, 0.0, 0.0);
+		int InRange = 0;
+		for (int Index = 0; Index < Wounded.Num(); Index++)
+		{
+			const double DX = Wounded[Index].X - Origin.X;
+			const double DY = Wounded[Index].Y - Origin.Y;
+			if (Math::Sqrt(DX * DX + DY * DY) <= double(RangeCm))
+			{
+				Sum += Wounded[Index];
+				InRange++;
+			}
+		}
+		TArray<bool> Wanted;
+		for (int Index = 0; Index < Rows.Num(); Index++)
+		{
+			Wanted.Add(Rows[Index].Key == "SacredLight" && InRange > 0);
+		}
+		const int Picked = Choose(Rows, CooldownLeftMs, Wanted, Stock, Tier, Level, Data);
+		if (Picked < 0)
+		{
+			return Order;
+		}
+		Order.bCast = true;
+		Order.PowerIndex = Picked;
+		Order.Point = Sum / double(InRange);
 		return Order;
 	}
 }
