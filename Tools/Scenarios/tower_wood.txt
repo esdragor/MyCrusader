@@ -29,37 +29,31 @@ hol.Camera.Zoom 2
 frames 5
 note 1. AVANT : la Tour de guet en bois du joueur seule, aucun ennemi.
 capture tower_wood_before
+# FARAMIR-1123pd (S3-a) : trois cadrages sans fleche (CELEBORN-1123f/g/i) car aucune ligne au LANCER et la fleche ne vole que ~0,3 s pour ~20 px. Essai seulement :
+# hol.Combat.LogBuildingShots 1 ecrit une ligne a chaque fleche lachee par la tour (le waitlog la guette), hol.Arrow.Scale 3 grossit la fleche (defaut 1),
+# hol.Arrow.SlowMotion 4 allonge son vol dessine a ~1,2 s (defaut 1 ; les degats arrivent a l'heure). Rien de cela n'est allume en jeu.
+hol.Combat.LogBuildingShots 1
+hol.Arrow.Scale 3
+hol.Arrow.SlowMotion 4
 hol.Camera.FocusNear 5200 0
 hol.Units.SpawnHere 3 Spearman 1 250
 waitunits 8
 hol.Camera.FocusNear 4600 0
 hol.Camera.Zoom 2
 note 2. Trois Lanciers rouges a 12 m de la tour (dans sa portee de 30 m) : elle lache une fleche.
-# CELEBORN-1123i : ArrowReport est un instantane (pas de ligne a attendre sans l'appeler) : balayage, un rapport puis sa capture toutes les 3 images
-# autour de l image 21 ou la fleche est en vol ("in flight 1") ; le waitlog garantit que le rapport est ecrit avant la capture.
-frames 14
+# La tour lache sa 1re fleche des que les Lanciers sont a portee : la ligne "Combat: building shot" est ecrite au lancer, la capture suit tout de suite.
+waitlog Combat: building shot
 hol.Combat.ArrowReport
-waitlog Arrow report: in flight
 capture tower_wood_during
-frames 3
-hol.Combat.ArrowReport
-waitlog Arrow report: in flight
+frames 4
 capture tower_wood_during2
-frames 3
-hol.Combat.ArrowReport
-waitlog Arrow report: in flight
+frames 4
 capture tower_wood_during3
-frames 3
-hol.Combat.ArrowReport
-waitlog Arrow report: in flight
+frames 12
 capture tower_wood_during4
-frames 3
-hol.Combat.ArrowReport
-waitlog Arrow report: in flight
+frames 12
 capture tower_wood_during5
-frames 3
-hol.Combat.ArrowReport
-waitlog Arrow report: in flight
+frames 12
 capture tower_wood_during6
 frames 40
 note 3. APRES : plusieurs fleches ont touche, les barres de vie des Lanciers sont entamees.
