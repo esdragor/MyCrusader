@@ -1,0 +1,26 @@
+# S4-a (GLORFINDEL-1123g) : l'IA de l'Aube lance la Lumiere sacree sur ses blesses (preuve en partie, regle 4 de « Qualite des essais »)
+# Plain, toi (slot 0) contre une IA Facile (slot 1, Aube par defaut). Le scenario pose son armee (6 Hallebardiers + 1 Chevalier vertueux) pres de son forum,
+# puis 8 Hommes d'armes a toi sur eux : ils se battent, des blesses apparaissent. hol.AI.HonorSet 100 remplit la jauge d'Honneur de l'IA (hol.Cheat.Honor ne ecrit que
+# la jauge de l'emetteur, donc celle du joueur) ; hol.AI.LogPowers 1 journalise chaque pensee des pouvoirs (Honneur, blesses, decision).
+# Capture 1 (avant) : l'armee de l'IA rassemblee, aucun combat. Capture 2 (apres le lancer) : la ligne « Sacred Light cast » est au journal, la zone de lumiere est sur ses blesses.
+waitlog AI brain HOLAIBrain awake
+waitlog AI slot 1 step
+hol.AI.LogPowers 1
+hol.Cheat.Resources 1000
+hol.Cheat.Population 200
+hol.Camera.FocusNear 1500 0 enemy
+frames 2
+hol.Units.SpawnHere 6 Halberdier 1 300
+hol.Units.SpawnHere 1 VirtuousKnight 1 300
+waitunits 7
+hol.Camera.FocusNear 1500 0 enemy
+frames 20
+capture ai_sacred_light_before
+note 1. Devant le forum de l'IA : 6 Hallebardiers et 1 Chevalier vertueux rassembles, personne de blesse, aucune lumiere.
+hol.AI.HonorSet 100
+hol.Units.SpawnHere 8 ManAtArms 0 250
+hol.Camera.FocusNear 1500 0 enemy
+waitlog Sacred Light cast
+frames 45
+capture ai_sacred_light_after
+note 2. Ses soldats se battent contre tes 8 Hommes d'armes ; l'IA depense son Honneur : journal « AI slot 1 step N: Sacred Light cast on K wounded unit(s) », zone de lumiere sur ses blesses.

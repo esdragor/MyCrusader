@@ -1,0 +1,7 @@
+﻿build : LaunchCheck debut (Get-StaleBinaryProblem) : the binary UnrealEditor-HeroesOfLiberty.dll of C:\Users\baudo\Documents\HeroesOfLiberty-Elrond (2026-11-22T22:25:32) is older than its C++ source Source\HeroesOfLiberty\Simulation\HOLSmallRulesReadLibrary.h (2026-11-23T09:00:29): Tools\build.ps1 in that copy first
+build : FAIL (HeroesOfLibertyEditor Development, HeroesOfLiberty-Elrond, 45 s, exit 6; log C:\Users\baudo\Documents\HeroesOfLiberty-Elrond\Saved\Logs\build.log)
+  C:\Users\baudo\Documents\HeroesOfLiberty-Elrond\Source\HeroesOfLiberty\Simulation\HOLHeroSubsystem.cpp(509,21): error C4430: missing type specifier - int assumed. Note: C++ does not support default-int
+  C:\Users\baudo\Documents\HeroesOfLiberty-Elrond\Source\HeroesOfLiberty\Simulation\HOLHeroSubsystem.cpp(509,21): error C2556: 'int UHOLHeroSubsystem::SetXP(const int32,const int32)': overloaded function differs only by return type from 'bool UHOLHeroSubsystem::SetXP(int32,int32)'
+  C:\Users\baudo\Documents\HeroesOfLiberty-Elrond\Source\HeroesOfLiberty\Simulation\HOLHeroSubsystem.cpp(509,21): error C2371: 'UHOLHeroSubsystem::SetXP': redefinition; different basic types
+  Result: Failed (OtherCompilationError)
+BUILD exit 1

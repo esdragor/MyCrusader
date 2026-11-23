@@ -9,8 +9,9 @@
 #   -Phase Essay  : avant de donner une commande play.ps1 a l'utilisateur (-Root <worktree> : contient main, propre, build plus recent que le dernier commit de code ; -Essay <nom> : contient aussi le tip de chaque branche citee dans Retours\E-<nom>.md, ligne "branches: a, b" (L8-1))
 #   -Phase Report : a la RECEPTION du rapport de chaque agent (-Root <worktree de l'agent>) : la copie principale n'a que des docs voulus modifies, le worktree contient main, est propre, et son binaire n'est pas plus vieux que le dernier code (sinon build.ps1 AVANT tout quick_check : binaire perime = faux rouges)
 #   Launch verifie aussi la file : au moins 3 lignes '[ ]' etiquetees 'sans C++' dans Auto_Journey_File.md (de quoi relancer sans toucher au plafond de 3 agents C++)
+[CmdletBinding(PositionalBinding=$false)]   # 2026-11-23 : un nom apres un switch (-Scenarios faction_click) etait lu comme -End (1er positionnel libre)
 param(
-  [Parameter(Mandatory=$true)][ValidateSet('Launch','Merge','Close','Essay','Report')][string]$Phase,
+  [Parameter(Mandatory=$true,Position=0)][ValidateSet('Launch','Merge','Close','Essay','Report')][string]$Phase,
   [string]$End = '',                       # L8-3 : prioritaire ; absent = la ligne de Docs\SessionEnd.txt ('2026-11-07 12:00', creee une fois par la session principale), sinon 13:30 avec un WARN
   [string]$SessionEndFile = '',            # L8-3 : defaut <copie principale>\Docs\SessionEnd.txt
   [string]$QueueFile = '',                 # L8-7 : defaut <copie principale>\Auto_Journey_File.md (la file des lignes '[ ]')
@@ -30,6 +31,7 @@ param(
   [string]$EngineRoot = 'C:\UE\UE_5.8_HOL', # Launch (L12-1c) : un cl.exe dont aucun ancetre ne cite ce moteur = compilation d'un AUTRE moteur (ProjectShiva sur AS_3...) = WARN
   [int]$MaxMainCodeCommits = 3,           # Close (L19-1) : plus de N commits de code de la session principale = FAIL (1 a N = WARN)
   [string]$AgentName = '',                # Launch (L19-1) : nom de l'agent a lancer ; NETTOYAGE-* et ETAPE0-* (lances avant la lecture de la check-list) = WARN au lieu de FAIL
+  [Parameter(ValueFromRemainingArguments=$true)][string[]]$ScenarioNames = @(),   # noms de scenarios apres -Scenarios : acceptes et ignores (jamais pris pour une heure)
   [int]$MinMinutes = 5  # 2026-11-05 : l'utilisateur prefere finir 15 min APRES l'heure que 15 min avant (sauf consigne contraire dans le prompt de lancement) ; l'ancien seuil de 20 min laissait la seance vide
 )
 $ErrorActionPreference = 'Continue'
@@ -357,6 +359,8 @@ if ($Phase -eq 'Close') {
       if ([datetime]::ParseExact($Matches[2], 'yyyy-MM-dd HH:mm:ss', [Globalization.CultureInfo]::InvariantCulture) -lt $mcSince) { break }   # reflog : du plus recent au plus ancien
       if ($mcSeen.ContainsKey($mcSha)) { continue }
       $mcSeen[$mcSha] = $true
+      # L22-6 (2026-11-23, reponse B) : seul un commit portant la ligne de fin 'Agent: <nom>' (trailer) est exempte (travail d'agent) ; les autres comptent
+      if ((@(git -C $mcRepo show -s --format=%B $mcSha 2>$null) -join "`n") -match '(?m)^Agent: \S') { continue }
       if (Test-MainCodeCommit $mcTitle @(git -C $mcRepo show --name-only --format= $mcSha 2>$null)) { $mcMine += ("     {0} {1}" -f $mcSha.Substring(0, 7), $mcTitle) }
     }
   }

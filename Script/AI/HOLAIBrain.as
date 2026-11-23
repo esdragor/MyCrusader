@@ -18,6 +18,12 @@ struct FHOLAIRallied
 	FVector Point;
 }
 
+// GLORFINDEL-1123g: proof of the Dawn AI's Sacred Light (S4-a). hol.AI.LogPowers 1 writes one line per ThinkPowers (Honor gauge, wounded found, decision); default 0 so a normal
+// game is not flooded. hol.AI.HonorSet N (default -1 = off) is a TEST cheat: sets the Dawn AI slot's Honor gauge to N at each ThinkPowers (hol.Cheat.Honor writes the SENDER's slot only,
+// so a scenario cannot fill the AI's gauge with it).
+const FConsoleVariable CVar_AILogPowers("hol.AI.LogPowers", 0);
+const FConsoleVariable CVar_AIHonorSet("hol.AI.HonorSet", -1);
+
 class UHOLAIBrain : UHOLAIBrainSubsystem
 {
 	// Thoughts this brain ran, all slots together.
@@ -111,6 +117,72 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 			}
 			RageMemories.Add(PlayerIndex, Memory);
 			Log(n"LogHOLMatch", f"AI slot {PlayerIndex} step {Step}: necrotic rage cast by {Casters.Num()} Damned Warrior(s)");
+		}
+	}
+
+	// S4-a (D688, no cheating): the Dawn AI reads its Honor gauge and the book's rows and casts the Sacred Light by the SAME server path as the player's RPC
+	// (HOLFactionPowerServer::Cast), on its wounded units in range of its banner (the plan is HOLAIPowerCall::Plan, tested in script).
+	void ThinkPowers(int PlayerIndex, int64 Step, const FHOLAISummary& Summary, const FHOLAIOpeningData& Data)
+	{
+		AHOLGameState State = Cast<AHOLGameState>(Gameplay::GetGameState());
+		if (State == nullptr || State.GetSlotFaction(PlayerIndex) != int(EHOLFaction::DawnOrder))
+		{
+			return;
+		}
+		if (CVar_AIHonorSet.GetInt() >= 0)
+		{
+			HOLHonorCheat::Apply(State, PlayerIndex, EHOLFaction::DawnOrder, CVar_AIHonorSet.GetInt());
+		}
+		const TArray<FHOLPowerRow> Rows = HOLDawnPowers::Rows();
+		const int NowMs = int(Gameplay::GetTimeSeconds() * 1000.0);
+		TArray<int> CooldownLeft;
+		for (int Row = 0; Row < Rows.Num(); Row++)
+		{
+			CooldownLeft.Add(Math::Max(State.GetPowerCooldownEndMs(PlayerIndex, Row) - NowMs, 0));
+		}
+		TArray<FVector> Wounded;
+		for (int Index = 0; Index < Summary.Army.Num(); Index++)
+		{
+			FHOLAITypeFigures Figures;
+			if (Summary.Army[Index].Health > 0 && HOLAIOrder::ReadAIUnitFigures(Summary.Army[Index].Type, Figures) && Figures.Health > 0
+				&& Summary.Army[Index].Health * 100 < Figures.Health * HOLAIPowerCall::WoundedPercent())
+			{
+				Wounded.Add(Summary.Army[Index].Location);
+			}
+		}
+		TArray<FVector> ArmyPoints;
+		for (int Each = 0; Each < Summary.Army.Num(); Each++)
+		{
+			if (Summary.Army[Each].Health > 0)
+			{
+				ArmyPoints.Add(Summary.Army[Each].Location);
+			}
+		}
+		const FVector CastOrigin = HOLAIPowerCall::OriginOf(HOLHero::GetHeroBannerLocation(PlayerIndex), ArmyPoints);
+		const FIntPoint Banner = FIntPoint(int(CastOrigin.X), int(CastOrigin.Y));
+		const int Level = int(HOLAILives::Played(Summary.Level, Data.GameSeconds, HOLAIArmy::DefaultData().Lives));
+		const FHOLAIPowerOrder Order = HOLAIPowerCall::Plan(Rows, CooldownLeft, State.GetFactionResource(PlayerIndex), Summary.Tier, Level, HOLAIPowerCall::DefaultData(),
+			Wounded, FVector(double(Banner.X), double(Banner.Y), 0.0), HOLFactionPowerCast::SealRangeCm());
+		if (CVar_AILogPowers.GetInt() != 0)
+		{
+			// GLORFINDEL-1123h: what decides the cast: banner, distance banner -> nearest wounded, range, tier, level, cool-down left of row 0.
+			double NearestCm = -1.0;
+			for (int Each = 0; Each < Wounded.Num(); Each++)
+			{
+				const double DX = Wounded[Each].X - double(Banner.X);
+				const double DY = Wounded[Each].Y - double(Banner.Y);
+				const double Distance = Math::Sqrt(DX * DX + DY * DY);
+				if (NearestCm < 0.0 || Distance < NearestCm)
+				{
+					NearestCm = Distance;
+				}
+			}
+			const int Cooling = CooldownLeft.Num() > 0 ? CooldownLeft[0] : -1;
+			Log(n"LogHOLMatch", f"AI slot {PlayerIndex} step {Step}: powers think, Honor {State.GetFactionResource(PlayerIndex)}, wounded {Wounded.Num()} of {Summary.Army.Num()}, decision cast={Order.bCast} row {Order.PowerIndex}, banner ({Banner.X}, {Banner.Y}), nearest wounded {NearestCm} cm, range {HOLFactionPowerCast::SealRangeCm()} cm, tier {Summary.Tier}, level {Level}, cooldown left {Cooling} ms");
+		}
+		if (Order.bCast && HOLFactionPowerServer::TryCastPowerFrom(PlayerIndex, Order.PowerIndex, Order.Point, Banner))
+		{
+			Log(n"LogHOLMatch", f"AI slot {PlayerIndex} step {Step}: Sacred Light cast on {Wounded.Num()} wounded unit(s)");
 		}
 	}
 
@@ -1047,6 +1119,7 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 			}
 		}
 		ThinkRage(PlayerIndex, Step, FullSummary, Data);
+		ThinkPowers(PlayerIndex, Step, FullSummary, Data);
 		ThinkGarrison(PlayerIndex, Step, Level, FullSummary);
 		if (State.bDefending != bWas)
 		{

@@ -19,8 +19,8 @@
 
 namespace
 {
-	float HoldSeconds = HOLRelay::DefaultHoldSeconds;
-	FAutoConsoleVariableRef CVarHoldSeconds(TEXT("hol.Relay.HoldSeconds"), HoldSeconds,
+	float RelayHoldSeconds = HOLRelay::DefaultHoldSeconds;
+	FAutoConsoleVariableRef CVarHoldSeconds(TEXT("hol.Relay.RelayHoldSeconds"), RelayHoldSeconds,
 		TEXT("Seconds an adverse side must hold a relay's zone alone to take it (D388, provisional 60, like the ruin's)"));
 
 	FAutoConsoleCommandWithWorldAndArgs CommandAdd(TEXT("hol.Relay.Add"),
@@ -163,7 +163,7 @@ void UHOLRelaySubsystem::PublishViews()
 	{
 		return;
 	}
-	const int32 HoldSteps = FMath::Max(1, FMath::RoundToInt(HoldSeconds * GetDefault<UHOLSimulationSettings>()->SimulationRateHz));
+	const int32 HoldSteps = FMath::Max(1, FMath::RoundToInt(RelayHoldSeconds * GetDefault<UHOLSimulationSettings>()->SimulationRateHz));
 	TArray<FHOLRelayView> Views;
 	for (const FRelaySite& Site : Relays)
 	{
@@ -225,7 +225,7 @@ void UHOLRelaySubsystem::OnStepEnded(const int64 StepIndex)
 
 	const FHOLCampTable Relations = FHOLCampTable::FromWorld(World);
 	const int32 Rate = GetDefault<UHOLSimulationSettings>()->SimulationRateHz;
-	const int32 HoldSteps = FMath::Max(1, FMath::RoundToInt(HoldSeconds * Rate));
+	const int32 HoldSteps = FMath::Max(1, FMath::RoundToInt(RelayHoldSeconds * Rate));
 	for (int32 Index = 0; Index < Relays.Num(); ++Index)
 	{
 		FHOLRelayState& State = Relays[Index].State;

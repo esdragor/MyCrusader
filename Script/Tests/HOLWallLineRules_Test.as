@@ -331,10 +331,34 @@ void Test_WallLineDragFromWorldPointsMatchesThePlanOfTheRequest(FUnitTest& T)
 	T.AssertTrue(bSame, "the same cells in the same order");
 }
 
-// No wall type exists before F5: the gesture arms for none (the list grows when F5 adds a row).
-void Test_WallLineNoWallTypeBeforeF5ArmsNoDrag(FUnitTest& T)
+// S3-b: F5 gave the drag its first wall type. WallTypes() lists the Palisade, and every listed name is a real row of the building type table
+// (read as the simulation reads it, Tools/Data/BuildingTypes.csv regenerated into BuildingTypes.uasset), so the drag never arms for a name
+// the placement could not build. A tower is not a wall (it is placed one click at a time).
+void Test_WallTypesListsPalisade(FUnitTest& T)
 {
-	T.AssertEquals(0, HOLWallLine::WallTypes().Num(), "the list of wall types is empty until F5");
-	T.AssertTrue(!HOLWallLine::IsWallType(n"Palisade"), "Palisade is not a wall type yet");
+	TArray<FName> Types = HOLWallLine::WallTypes();
+	T.AssertTrue(Types.Num() > 0, "the list of wall types is not empty: the Palisade is the first wall type");
+	T.AssertTrue(HOLWallLine::IsWallType(n"Palisade"), "Palisade is a wall type");
 	T.AssertTrue(!HOLWallLine::IsWallType(NAME_None), "None is not a wall type");
+	T.AssertTrue(!HOLWallLine::IsWallType(n"TowerWood"), "a Wood watch tower is not a wall type");
+	T.AssertTrue(!HOLWallLine::IsWallType(n"House"), "a House is not a wall type");
+
+	FHOLBuildingTypeRow Row;
+	T.AssertTrue(HOLBuildingType::FindRow(n"Palisade", Row), "Palisade is a row of the building type table");
+	T.AssertEquals(0, Row.Age, "the Palisade is a tier 0 building (D691)");
+	T.AssertTrue(Row.MaxHealth > 0, "the Palisade has hit points");
+	T.AssertFalse(Row.Walkable, "a Palisade is not walkable (D692: only the stone rampart becomes walkable, last)");
+	FHOLAITypeFigures Figures;
+	T.AssertTrue(HOLAIOrder::ReadAIBuildingFigures(n"Palisade", Figures), "the AI reads Palisade as a known building type");
+	T.AssertTrue(Figures.CostWood > 0, "the Palisade is paid in wood");
+	T.AssertTrue(Figures.BuildTime > 0.f, "the Palisade takes time to build (D867: each cell is a building site)");
+
+	bool bEveryTypeIsARow = true;
+	for (int Index = 0; Index < Types.Num(); Index++)
+	{
+		FHOLBuildingTypeRow Listed;
+		if (!HOLBuildingType::FindRow(Types[Index], Listed))
+			bEveryTypeIsARow = false;
+	}
+	T.AssertTrue(bEveryTypeIsARow, "every wall type of the list is a row of the building type table");
 }
