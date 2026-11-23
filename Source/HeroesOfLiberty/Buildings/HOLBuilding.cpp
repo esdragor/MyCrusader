@@ -20,6 +20,7 @@
 #include "Materials/MaterialInstanceDynamic.h"
 #include "NavAreas/NavArea_Null.h"
 #include "Net/UnrealNetwork.h"
+#include "Presentation/HOLArrowSubsystem.h"
 #include "Resources/HOLSourceSubsystem.h"
 #include "Simulation/HOLSimulationSettings.h"
 #include "UObject/ConstructorHelpers.h"
@@ -382,18 +383,49 @@ void AHOLBuilding::OnRep_DamageTaken(const uint16 OldDamageTaken)
 	OnConstructionChanged.Broadcast();
 }
 
-// F8 T7b stub (red first): neither writes the count nor draws.
+// F8 T7b (D884): the server counts the arrows a tower released and keeps the last target and flight; replication brings them to every client, where OnRep draws them.
 void AHOLBuilding::RecordArrowShot(const FVector& To, int32 FlightMs, int32 ArrowCount)
 {
+	if (ArrowCount <= 0)
+	{
+		return;
+	}
+	ArrowShotCount = static_cast<uint16>(ArrowShotCount + ArrowCount);
+	ArrowShotTo = To;
+	ArrowShotFlightMs = static_cast<uint16>(FMath::Clamp(FlightMs, 0, 65535));
+	ForceNetUpdate();
 }
 
 void AHOLBuilding::ShowArrowShot(uint16 OldCount)
 {
+	// A burst is drawn in full up to a handful of arrows (a count that jumped further was missed, a late join is not a volley).
+	constexpr int32 MaxArrowsShown = 8;
+	const FHOLBuildingTypeRow* Row = GetType();
+	UWorld* World = GetWorld();
+	UHOLArrowSubsystem* ArrowDisplay = World ? World->GetSubsystem<UHOLArrowSubsystem>() : nullptr;
+	if (!Row || !ArrowDisplay)
+	{
+		return;
+	}
+	const int32 Released = FMath::Clamp(static_cast<int32>(static_cast<uint16>(ArrowShotCount - OldCount)), 1, MaxArrowsShown);
+	FHOLArrowLaunch Launch;
+	Launch.From = FVector(GetFootprintBounds().GetCenter(), Row->Height);
+	Launch.To = ArrowShotTo;
+	Launch.FlightMs = ArrowShotFlightMs;
+	Launch.ShooterType = NAME_None;
+	for (int32 Shot = 0; Shot < Released; ++Shot)
+	{
+		ArrowDisplay->Launch(Launch);
+	}
 }
 
 void AHOLBuilding::OnRep_ArrowShot(uint16 OldCount)
 {
-	ShowArrowShot(OldCount);
+	// The first replication of a building brings its count before it has begun play: not a shot, nothing is drawn.
+	if (HasActorBegunPlay())
+	{
+		ShowArrowShot(OldCount);
+	}
 }
 
 void AHOLBuilding::ReleaseFootprint()
