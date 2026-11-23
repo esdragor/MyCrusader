@@ -27,6 +27,13 @@ struct FHOLSpecializationSlotView
 	TArray<FString> OptionTexts;
 	// The bar's text, "23 s" while an unlock runs, empty otherwise.
 	FString BarText;
+	// The button or the chosen line shows: a tier is open, or a tier is applied (the permanent button keeps showing the voie the player took).
+	bool bVisible = false;
+	// One line per applied tier ("Voie A du palier 1"), read from View.Chosen; ChosenText joins them with a new line, empty when nothing is applied.
+	TArray<FString> ChosenTexts;
+	FString ChosenText;
+	// The button's label while a tier is open (the state "to choose"), empty when it is not lit.
+	FString ButtonText;
 	// "spec dark", "spec lit tier 1 options 2", "spec running tier 1 option 0 23 s".
 	FString Describe;
 }
@@ -130,12 +137,25 @@ namespace HOLSpecializationSlot
 		FHOLSpecializationSlotView Result;
 		Result.OpenTier = OpenTierOf(View, PlayerTier, bForumComplete);
 		Result.bLit = Result.OpenTier > 0;
+		const FString OptionNames = "ABC";
+		// The voie taken at each applied tier stays on the slot (the permanent button's second job): the table's text of the option, one line per tier.
+		for (int Tier = HOLSpecialization::FirstTier; Tier <= HOLSpecialization::LastTier; Tier++)
+		{
+			const int Applied = Tier < View.Chosen.Num() ? View.Chosen[Tier] : HOLSpecialization::None;
+			if (Applied == HOLSpecialization::None)
+				continue;
+			const FString Line = f"Voie {OptionNames.Mid(Applied, 1)} du palier {Tier}";
+			Result.ChosenTexts.Add(Line);
+			Result.ChosenText = Result.ChosenText.IsEmpty() ? Line : Result.ChosenText + "\n" + Line;
+		}
+		Result.bVisible = Result.bLit || Result.ChosenTexts.Num() > 0;
 		if (!Result.bLit)
 		{
-			Result.Describe = "spec dark";
+			Result.Describe = Result.ChosenTexts.Num() > 0 ? f"spec chosen {Result.ChosenTexts.Num()}" : "spec dark";
 			return Result;
 		}
-		const FString OptionNames = "ABC";
+		// The state to choose: the table's closest text (provisional, Retours/Q-sp3-libelles.md).
+		Result.ButtonText = "Specialisation";
 		for (int Option = 0; Option < OptionCount && Option < 3; Option++)
 			Result.OptionTexts.Add(f"Voie {OptionNames.Mid(Option, 1)} du palier {Result.OpenTier}");
 		Result.bRunning = View.PendingTier == Result.OpenTier && View.PendingOption >= 0;

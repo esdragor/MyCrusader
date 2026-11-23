@@ -55,6 +55,7 @@ TArray<UButton> SpecOptionButtons;
 TArray<UCommonTextBlock> SpecOptionLabels;
 UProgressBar SpecBar;
 UCommonTextBlock SpecBarText;
+	UCommonTextBlock SpecChosenText;
 FHOLSpecializationSlotView SpecView;
 bool bSpecPanelOpen = false;
 FHOLSpecializationRead SpecInjected;
@@ -2049,11 +2050,13 @@ UHOLScenarioPanelScript ScenarioPanel;
 		Column.AddChildToVerticalBox(SpecButton).SetPadding(FMargin(0.0, 4.0, 0.0, 0.0));
 		SpecLabel = MakeText(n"SpecLabel", UHOLTextStyleHUDLabel);
 		SpecLabel.SetVisibility(ESlateVisibility::HitTestInvisible);
-		SpecLabel.SetText(FText::FromString("Specialisation"));
 		SpecButton.AddChild(SpecLabel);
+		SpecChosenText = MakeText(n"SpecChosenText", UHOLTextStyleHUDLabel);
+		SpecChosenText.SetVisibility(ESlateVisibility::Collapsed);
+		Column.AddChildToVerticalBox(SpecChosenText);
 		SpecBar = MakeBar(n"SpecBar", FLinearColor(0.3, 0.7, 0.9, 1.0));
 		SpecBar.SetVisibility(ESlateVisibility::Collapsed);
-		Column.AddChildToVerticalBox(SizedBar(n"SpecBarBox", SpecBar, 6.0)).SetPadding(FMargin(0.0, 2.0, 0.0, 0.0));
+		Column.AddChildToVerticalBox(SizedBar(n"SpecBarBox", SpecBar, 12.0)).SetPadding(FMargin(0.0, 2.0, 0.0, 0.0));
 		SpecBarText = MakeText(n"SpecBarText", UHOLTextStyleHUDLabel);
 		SpecBarText.SetVisibility(ESlateVisibility::Collapsed);
 		Column.AddChildToVerticalBox(SpecBarText);
@@ -2081,6 +2084,10 @@ UHOLScenarioPanelScript ScenarioPanel;
 		if (!SpecView.bLit)
 			bSpecPanelOpen = false;
 		SpecButton.SetVisibility(SpecView.bLit ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
+		if (SpecView.bLit)
+			SpecLabel.SetText(FText::FromString(SpecView.ButtonText));
+		SpecChosenText.SetVisibility(SpecView.ChosenTexts.Num() > 0 ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+		SpecChosenText.SetText(FText::FromString(SpecView.ChosenText));
 		SpecOptionColumn.SetVisibility(SpecView.bLit && bSpecPanelOpen ? ESlateVisibility::SelfHitTestInvisible : ESlateVisibility::Collapsed);
 		for (int Option = 0; Option < SpecOptionButtons.Num(); ++Option)
 		{
