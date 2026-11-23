@@ -506,7 +506,7 @@ void UHOLHeroSubsystem::AwardDuelXP(const int32 Slot)
 {
 	AddXP(Slot, HOLHeroXP::GetXP(HOLHeroXP::DuelXP, EHOLXPSource::Duel), EHOLXPSource::Duel);
 }
- UHOLHeroSubsystem::SetXP(const int32 Slot, const int32 XP)
+bool UHOLHeroSubsystem::SetXP(const int32 Slot, const int32 XP)
 {
 	if (!Sheets.IsValidIndex(Slot) || !GetWorld() || GetWorld()->GetNetMode() == NM_Client)
 	{
