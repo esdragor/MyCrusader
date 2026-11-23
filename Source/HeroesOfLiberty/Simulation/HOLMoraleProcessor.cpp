@@ -2,6 +2,7 @@
 #include "Simulation/HOLMoraleProcessor.h"
 
 #include "Engine/World.h"
+#include "Misc/ScopeLock.h"
 #include "Match/HOLFactionRules.h"
 #include "Match/HOLMatchConfig.h"
 #include "MassCommonFragments.h"
@@ -26,6 +27,40 @@ namespace
 		double RadiusSquared = 0.0;
 		HOLMorale::FHOLMoraleEffect Effect;
 	};
+}
+
+namespace
+{
+	// The duel's morale orders waiting for the next step (S2-b): written by the script bridge, drained by Execute (one lock, no per-entity cost).
+	struct FPendingAround
+	{
+		TWeakObjectPtr<const UWorld> World;
+		int32 EffectId = -1;
+		int32 CenterXCm = 0;
+		int32 CenterYCm = 0;
+		int32 Slot = 0;
+		int32 DurationMs = 0;
+		int32 RadiusCm = 0;
+	};
+	FCriticalSection PendingAroundLock;
+	TArray<FPendingAround> PendingAround;
+}
+
+void UHOLMoraleProcessor::QueueEffectAround(const UWorld* World, const int32 EffectId, const int32 CenterXCm, const int32 CenterYCm, const int32 OrderSlot, const int32 DurationMs, const int32 RadiusCm)
+{
+	if (World == nullptr)
+	{
+		return;
+	}
+	FScopeLock Lock(&PendingAroundLock);
+	FPendingAround& Order = PendingAround.AddDefaulted_GetRef();
+	Order.World = World;
+	Order.EffectId = EffectId;
+	Order.CenterXCm = CenterXCm;
+	Order.CenterYCm = CenterYCm;
+	Order.Slot = OrderSlot;
+	Order.DurationMs = DurationMs;
+	Order.RadiusCm = RadiusCm;
 }
 
 UHOLMoraleProcessor::UHOLMoraleProcessor()
@@ -126,6 +161,37 @@ void UHOLMoraleProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 			{
 				Sources.Add({ FVector2D(BannerLocation.X, BannerLocation.Y), static_cast<uint8>(Slot), BannerRadiusSquared, Banner });
 			}
+		}
+	}
+	// The duel's orders waiting (S2-b): each is one source of its camp at its place, laid once, a timed effect (Triumph, Demoralised, Hesitation).
+	{
+		TArray<FPendingAround> Orders;
+		{
+			FScopeLock Lock(&PendingAroundLock);
+			for (int32 Index = PendingAround.Num() - 1; Index >= 0; --Index)
+			{
+				if (!PendingAround[Index].World.IsValid())
+				{
+					PendingAround.RemoveAt(Index); // its world is gone
+				}
+				else if (PendingAround[Index].World.Get() == World)
+				{
+					Orders.Insert(PendingAround[Index], 0); // keeps the order they came in
+					PendingAround.RemoveAt(Index);
+				}
+			}
+		}
+		for (const FPendingAround& Order : Orders)
+		{
+			const HOLMoraleTableRows::FHOLMoraleTableRow* Row = HOLMoraleTableRows::Find(Order.EffectId);
+			if (Row == nullptr || Order.Slot < 0 || Order.Slot >= FHOLMatchConfig::MaxSlots)
+			{
+				continue;
+			}
+			HOLMorale::FHOLMoraleEffect Effect = HOLMorale::MakeEffectFromRow(Order.EffectId);
+			Effect.DurationMs = Order.DurationMs > 0 ? Order.DurationMs : Effect.DurationMs;
+			const double Radius = static_cast<double>(Order.RadiusCm > 0 ? Order.RadiusCm : Row->RadiusCm);
+			Sources.Add({ FVector2D(Order.CenterXCm, Order.CenterYCm), static_cast<uint8>(Order.Slot), Radius * Radius, Effect });
 		}
 	}
 	if (Sources.IsEmpty())
