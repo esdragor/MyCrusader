@@ -52,6 +52,6 @@ frames 10
 hol.Heal.Report
 hol.Hero.Report
 hol.HUD.Report
-waitlog faction slot: slot gauge 75 / 100
+waitlog faction slot: slot gauge 8
 capture faction_aim_free_after
 hol.Test.Sanity
