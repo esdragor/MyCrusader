@@ -11,14 +11,15 @@ Historique du test du 2026-10-30 : `Docs\Archive\Auto_Journey_Test1_2026-10-30.m
 ## Agents du 2026-11-23
 
 Séance autonome (« lance une autojourney en prenant en prio Priorite_Socle_Factions_2026-11-16.md ») 08:47 -> 16:50 (fin choisie par la session principale, objectif ~8 h ; `Docs\SessionEnd.txt`). Priorité : `Docs\Priorite_Socle_Factions_2026-11-16.md` (lignes S1 à S4 d'`Auto_Journey_File.md`). 0 `AskUserQuestion` (L21-1, L23-1). Session principale sur Opus, sous-agents Sonnet 5.5, 15 min au plus.
+check-list lue (L24) : 08:55, en entier (238 l.), après 0a de la procédure et de la check-list (387d0c8) et avant le premier agent de travail. Veilleur 30 min (:13/:43), alarme fin - 15 min posée (16:35). Dernier lancement de code 15:50 (L18-c) ; première recette dès la première avance de main (L20-4) ; gate Launch seul, lancement au tour suivant (L24-4) ; L20-5 : build incrémental de l'agent C++ si la file est vide et vm >= 16 Go.
 Exception de gate : CLEAN-1123a-d (0a) lancés avec le FAIL L19-1 (check-list lue après le nettoyage 0a, qui la modifie, et avant le premier agent de travail, comme le 2026-11-22).
 
 | Agent | id | Worktree | Tâche | C++ | Lancé | Fini | Résumé |
 |---|---|---|---|---|---|---|---|
-| CLEAN-1123a | 0a | copie principale | nettoyage Jour + Retours.md | non | 08:50 | | |
-| CLEAN-1123b | 0a | copie principale | nettoyage Auto_Journey_File.md | non | 08:50 | | |
-| CLEAN-1123c | 0a | copie principale | nettoyage Retours\ | non | 08:50 | | |
-| CLEAN-1123d | 0a | copie principale | nettoyage procédure + check-list | non | 08:50 | | |
+| CLEAN-1123a | 0a | copie principale | nettoyage Jour + Retours.md | non | 08:50 | 08:50 | 0b1617b : Jour 295 -> 53 l. (2026-11-22 + 6 résumés archivés), Retours en-tête recalculé ; doute : item deploy « pas prêt » contre RECETTE-1122c |
+| CLEAN-1123b | 0a | copie principale | nettoyage Auto_Journey_File.md | non | 08:50 | 08:52 | d601023 : 26 lignes archivées (218 = 192 + 26), 91 [ ] dont 27 « sans C++ » ; socle non touché ; doutes : Bientôt (564db8d hors main), suivi 145-149/166 |
+| CLEAN-1123c | 0a | copie principale | nettoyage Retours\ | non | 08:50 | 08:50 | 6d5af16 : E-audio_panel archivée (report vérifié), index recomptés (1 [À ESSAYER] LOGIQUE SEULEMENT, 0 [À RÉPONDRE]) ; doutes : E-deploy (PAS PRÊT périmé ?), E-playtest_hero_army, BUG-*-spin ; AudioInProgress.md l.116 périmée |
+| CLEAN-1123d | 0a | copie principale | nettoyage procédure + check-list | non | 08:50 | 08:51 | 387d0c8 : copie intégrale archivée, 6 lignes retirées (T2-3, L3/T2, L9-10, L19-8 + 2 redites), D838/D888 alignés ; doutes : modèle d'énoncé « 45 appels » gardé (gate_test l.279-291), rapport 10 ou 6 lignes |
 
 ## Résumé de la séance du 2026-11-22
 
