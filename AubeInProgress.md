@@ -163,6 +163,7 @@ Chaque étape : **objectif**, **à toucher**, **test rouge d'abord**, **fin** et
 - **Fin** : tests verts ; la ligne T6 de `TechnologiesInProgress.md` mise à jour (Aube débloquée).
 
 ### A12 IA de l'Aube (script)
+- 2026-11-23 09:08 (A12, GALADRIEL-1123a, branche socle-ai) : Script\AI\HOLAIPowerCall.as (HOLAIPowerCall::Choose, reserve par niveau) + Tests\HOLAIPowerCall_Test.as ; rouge 4c412cb, vert 3550041 ; reste : ligne d'appel dans HOLAIBrain.as (stock Honneur, livre, ordre), effet nul tant que bEffectCoded est faux
 - **Objectif** : l'IA de l'Aube joue chaque système (§ 14.4) : production (Hallebardiers contre cavalerie, Chevaliers en ligne, Moines Lumineux derrière), **dépense de l'Honneur par une règle simple par pouvoir** (D688 : *Lumière sacrée* sous un seuil de PV d'un groupe en combat, *Renforts* quand le combat est perdu ou le centre attaqué, réserve gardée), *Défi* actif, *Sceau de lumière*, choix de spécialisation selon le profil, acceptation de duel (`bDawn` posé), niveaux Facile / Normal / Difficile et Évolutive comme les autres, **aucune triche**.
 - **Test rouge d'abord** : l'IA de l'Aube lance *Lumière sacrée* quand son groupe est en difficulté et pas autrement ; elle ne dépense pas sous sa réserve ; elle produit selon les contres ; `aiduel` Aube IA contre Légions IA sans plantage ; les règles pures en `*_Test.as`.
 - **Fin** : `aiduel` ; essai de l'utilisateur.
