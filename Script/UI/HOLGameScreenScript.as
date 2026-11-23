@@ -47,6 +47,18 @@ UVerticalBox FactionBoxColumn;
 TArray<UButton> FactionBoxButtons;
 TArray<UCommonTextBlock> FactionBoxLabels;
 const int FactionBoxMax = 4;
+// SP3 (ARWEN-1123d): the permanent specialization button, its option panel (up to 3 lines) and its countdown bar, inside the faction slot's column.
+UButton SpecButton;
+UCommonTextBlock SpecLabel;
+UVerticalBox SpecOptionColumn;
+TArray<UButton> SpecOptionButtons;
+TArray<UCommonTextBlock> SpecOptionLabels;
+UProgressBar SpecBar;
+UCommonTextBlock SpecBarText;
+FHOLSpecializationSlotView SpecView;
+bool bSpecPanelOpen = false;
+FHOLSpecializationRead SpecInjected;
+bool bSpecInjected = false;
 FString FactionSlotTexts = "";
 // Provisional (Placeholders.txt): the slot's rise above the bottom left place, to clear the hero's block.
 const float FactionSlotRise = 150.0;
@@ -2029,6 +2041,108 @@ UHOLScenarioPanelScript ScenarioPanel;
 			FactionBoxButtons.Add(BoxButton);
 			FactionBoxLabels.Add(BoxLabel);
 		}
+		// SP3: the specialization button (dark until a tier opens), its panel and its bar.
+		SpecButton = MakeButton(n"SpecButton");
+		SpecButton.SetVisibility(ESlateVisibility::Collapsed);
+		SpecButton.OnClicked.AddUFunction(this, n"HandleSpecButton");
+		Column.AddChildToVerticalBox(SpecButton).SetPadding(FMargin(0.0, 4.0, 0.0, 0.0));
+		SpecLabel = MakeText(n"SpecLabel", UHOLTextStyleHUDLabel);
+		SpecLabel.SetVisibility(ESlateVisibility::HitTestInvisible);
+		SpecLabel.SetText(FText::FromString("Specialisation"));
+		SpecButton.AddChild(SpecLabel);
+		SpecBar = MakeBar(n"SpecBar", FLinearColor(0.3, 0.7, 0.9, 1.0));
+		SpecBar.SetVisibility(ESlateVisibility::Collapsed);
+		Column.AddChildToVerticalBox(SizedBar(n"SpecBarBox", SpecBar, 6.0)).SetPadding(FMargin(0.0, 2.0, 0.0, 0.0));
+		SpecBarText = MakeText(n"SpecBarText", UHOLTextStyleHUDLabel);
+		SpecBarText.SetVisibility(ESlateVisibility::Collapsed);
+		Column.AddChildToVerticalBox(SpecBarText);
+		SpecOptionColumn = Cast<UVerticalBox>(ConstructWidget(UVerticalBox, n"SpecOptionColumn"));
+		SpecOptionColumn.SetVisibility(ESlateVisibility::Collapsed);
+		Column.AddChildToVerticalBox(SpecOptionColumn);
+		for (int Option = 0; Option < 3; ++Option)
+		{
+			UButton OptionButton = MakeButton(FName(f"SpecOption{Option}"));
+			OptionButton.OnClicked.AddUFunction(this, FName(f"HandleSpecOption{Option}"));
+			SpecOptionColumn.AddChildToVerticalBox(OptionButton).SetPadding(FMargin(0.0, 2.0, 0.0, 0.0));
+			UCommonTextBlock OptionLabel = MakeText(FName(f"SpecOptionLabel{Option}"), UHOLTextStyleHUDLabel);
+			OptionLabel.SetVisibility(ESlateVisibility::HitTestInvisible);
+			OptionButton.AddChild(OptionLabel);
+			SpecOptionButtons.Add(OptionButton);
+			SpecOptionLabels.Add(OptionLabel);
+		}
+	}
+
+	// SP3: the specialization widgets from the view (HOLSpecializationSlot::Resolve): the button shows while a tier is open, the panel its options,
+	// the bar the unlock's countdown. A panel left open closes by itself when the tier closes.
+	void RefreshSpecializationSlot()
+	{
+		SpecView = HOLSpecializationSlot::Resolve(Cast<AHOLPlayerController>(GetOwningPlayer()), SpecInjected, bSpecInjected);
+		if (!SpecView.bLit)
+			bSpecPanelOpen = false;
+		SpecButton.SetVisibility(SpecView.bLit ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
+		SpecOptionColumn.SetVisibility(SpecView.bLit && bSpecPanelOpen ? ESlateVisibility::SelfHitTestInvisible : ESlateVisibility::Collapsed);
+		for (int Option = 0; Option < SpecOptionButtons.Num(); ++Option)
+		{
+			const bool bOption = Option < SpecView.OptionTexts.Num();
+			SpecOptionButtons[Option].SetVisibility(bOption ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
+			if (bOption)
+				SpecOptionLabels[Option].SetText(FText::FromString(SpecView.OptionTexts[Option] + (SpecView.bRunning && SpecView.PendingOption == Option ? " (annuler)" : "")));
+		}
+		SpecBar.SetVisibility(SpecView.bRunning ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+		SpecBarText.SetVisibility(SpecView.bRunning ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+		SpecBar.SetPercent(SpecView.Fraction);
+		SpecBarText.SetText(FText::FromString(SpecView.BarText));
+	}
+
+	// SP3: the button toggles the panel; a click on an option starts it or cancels the running one (the server decides again).
+	bool ClickSpecButton()
+	{
+		if (!SpecView.bLit)
+			return false;
+		bSpecPanelOpen = !bSpecPanelOpen;
+		RefreshSpecializationSlot();
+		return true;
+	}
+
+	bool ClickSpecOption(int Option)
+	{
+		const FHOLSpecializationClick Click = HOLSpecializationSlot::ClickOption(SpecView, Option);
+		if (Click.Action == EHOLSpecializationAction::Nothing)
+			return false;
+		AHOLRpcPlayer Rpc = Cast<AHOLRpcPlayer>(HOLRpcBridge::FindPlayerActor(Cast<AHOLPlayerController>(GetOwningPlayer())));
+		if (Rpc != nullptr)
+		{
+			if (Click.Action == EHOLSpecializationAction::Start)
+				Rpc.ServerStartSpecialization(Click.Tier, Click.Option);
+			else
+				Rpc.ServerCancelSpecialization();
+		}
+		Log(n"LogHOLMatch", f"SpecializationSlot: {Click.Describe}");
+		return true;
+	}
+
+	UFUNCTION()
+	void HandleSpecButton()
+	{
+		ClickSpecButton();
+	}
+
+	UFUNCTION()
+	void HandleSpecOption0()
+	{
+		ClickSpecOption(0);
+	}
+
+	UFUNCTION()
+	void HandleSpecOption1()
+	{
+		ClickSpecOption(1);
+	}
+
+	UFUNCTION()
+	void HandleSpecOption2()
+	{
+		ClickSpecOption(2);
 	}
 
 	FMargin FactionSlotPlace()
@@ -2056,6 +2170,7 @@ UHOLScenarioPanelScript ScenarioPanel;
 		FactionPanel.SetVisibility(FactionView.bVisible ? ESlateVisibility::SelfHitTestInvisible : ESlateVisibility::Collapsed);
 		if (!FactionView.bVisible)
 			return;
+		RefreshSpecializationSlot();
 		FString Lines = "";
 		for (int Index = 0; Index < FactionView.Powers.Num(); ++Index)
 			Lines += (Lines.IsEmpty() ? "" : "\n") + HOLPowerDisplay::LineOf(FactionView.Powers[Index]);
@@ -2683,6 +2798,10 @@ UHOLScenarioPanelScript ScenarioPanel;
 		const int FactionBoxIndex = HOLFactionSlot::BoxIndexOfName(WidgetName);
 		if (FactionBoxIndex >= 0)
 			return ClickFactionBox(FactionBoxIndex);
+		if (WidgetName == n"SpecButton")
+			return ClickSpecButton();
+		if (WidgetName == n"SpecOption0" || WidgetName == n"SpecOption1" || WidgetName == n"SpecOption2")
+			return ClickSpecOption(WidgetName == n"SpecOption0" ? 0 : (WidgetName == n"SpecOption1" ? 1 : 2));
 		if (WidgetName == n"HeroPortrait")
 			return ClickPortrait();
 		if (WidgetName == n"HeroReturnButton")

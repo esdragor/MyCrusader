@@ -64,8 +64,34 @@ namespace HOLFactionSlot
 	}
 }
 
+// What the slot reads of the owner: the specialization view, the faction tier, whether the Forum is complete, the faction's option count.
+struct FHOLSpecializationRead
+{
+	FHOLSpecializationView View;
+	int PlayerTier = 0;
+	bool bForumComplete = false;
+	int OptionCount = 2;
+}
+
 namespace HOLSpecializationSlot
 {
+	// THE single read of the owner's specialization on the client (SP3 widget, ARWEN-1123d). Empty (button dark) for now: AHOLPlayerState::GetSpecialization
+	// (returns FHOLSpecializationView) is not a UFUNCTION, so the script cannot read it. Binding = the grouped C++ lot (ELROND-1123d): once it is a UFUNCTION,
+	// fill View here from the controller's player state, PlayerTier from the faction tier, bForumComplete from HOLNomad::HasCompleteForum, OptionCount from
+	// HOLSpecialization::OptionCountOf. Nothing else in the widget reads the state.
+	FHOLSpecializationRead ReadView(AHOLPlayerController Controller)
+	{
+		FHOLSpecializationRead Empty;
+		return Empty;
+	}
+
+	// The view the widget shows: the injected read (tests, the scenario) when there is one, ReadView otherwise.
+	FHOLSpecializationSlotView Resolve(AHOLPlayerController Controller, FHOLSpecializationRead Injected, bool bInjected)
+	{
+		const FHOLSpecializationRead Read = bInjected ? Injected : ReadView(Controller);
+		return Make(Read.View, Read.PlayerTier, Read.bForumComplete, Read.OptionCount);
+	}
+
 	// The lowest tier not applied yet, when it is open (reached by the faction tier, Forum complete); 0 otherwise. The tier before is applied by construction.
 	int OpenTierOf(FHOLSpecializationView View, int PlayerTier, bool bForumComplete)
 	{

@@ -114,3 +114,28 @@ void Test_SpecializationSlotClickStartsThenCancelsOnTheRealState(FUnitTest& T)
 	FHOLSpecializationClick Nothing = HOLSpecializationSlot::ClickOption(Dark, 0);
 	T.AssertTrue(Nothing.Action == EHOLSpecializationAction::Nothing, "a dark button takes no option click");
 }
+
+// SP3 widget (ARWEN-1123d): the widget reads the owner through HOLSpecializationSlot::Resolve (ReadView or an injected read). Until
+// AHOLPlayerState::GetSpecialization is a UFUNCTION, ReadView is empty: the button stays dark; an injected read built from the REAL rules lights it.
+void Test_SpecializationSlotWidgetReadIsDarkUntilBoundAndLitWhenInjected(FUnitTest& T)
+{
+	AHOLPlayerController NoController = nullptr;
+	FHOLSpecializationRead NoRead;
+	FHOLSpecializationSlotView Unbound = HOLSpecializationSlot::Resolve(NoController, NoRead, false);
+	T.AssertTrue(!Unbound.bLit, "the unbound read (ReadView) is empty: the button stays dark");
+	FHOLSpecializationState State = HOLSpecialization::NewState(2);
+	FHOLSpecializationRead Injected;
+	Injected.View = SpecializationSlotTest::ViewOf(State);
+	Injected.PlayerTier = 1;
+	Injected.bForumComplete = true;
+	Injected.OptionCount = 2;
+	FHOLSpecializationSlotView Lit = HOLSpecializationSlot::Resolve(NoController, Injected, true);
+	T.AssertTrue(Lit.bLit, "an injected view with a tier open lights the button");
+	T.AssertEquals(2, Lit.OptionTexts.Num(), "and its panel shows the 2 options");
+	HOLSpecialization::Start(State, 1, 0, 1);
+	Injected.View = SpecializationSlotTest::ViewOf(State);
+	FHOLSpecializationSlotView Running = HOLSpecializationSlot::Resolve(NoController, Injected, true);
+	T.AssertTrue(Running.bRunning && Running.Fraction >= 0.0, "once the real rule started an unlock, the injected view shows the bar running");
+	FHOLSpecializationSlotView Ignored = HOLSpecializationSlot::Resolve(NoController, Injected, false);
+	T.AssertTrue(!Ignored.bLit, "without the injection flag the injected read is ignored");
+}
