@@ -1,4 +1,4 @@
-# [À RÉPONDRE] Q-commanderie-palier1 : valeurs des 3 unités du palier 1 des voies de commanderie Templiers (D893)
+# [RÉPONDU] Q-commanderie-palier1 : valeurs des 3 unités du palier 1 des voies de commanderie Templiers (D893)
 
 Contexte : D893 demande d'abord les 3 unités du palier 1 (Fer : Sergent du Temple, Foi : Frère infirmier, Pierre : Arbalétrier à pavois), provisoires. Le GDD (§ 13.7, D133) donne les noms et le rôle, pas les coûts ni les PV : CELEBORN-1123pa a donc copié trois unités existantes (lignes de `Tools/Data/UnitTypes.csv`, faction `Templars`, mannequin, chaque ligne dans `Placeholders.txt`). La voie (Fer / Foi / Pierre) n'est pas une colonne de la table (ce serait du C++) : le test la porte en littéral ; le déblocage par la voie est la ligne suivante de la file.
 
@@ -19,4 +19,4 @@ Question : quelles valeurs veux-tu pour ces trois unités ?
 
 Recommandation : A.
 
-Réponse :
+Réponse : A pour les 3 (utilisateur, 2026-11-23 15:28, D896)
