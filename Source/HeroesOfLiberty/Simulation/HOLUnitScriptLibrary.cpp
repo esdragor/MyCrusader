@@ -74,3 +74,27 @@ float UHOLUnitScriptLibrary::GetAttackRange(const UObject* WorldContextObject, c
 	const FHOLUnitTypeRow* Row = UnitTypes && !View.TypeName.IsNone() ? UnitTypes->FindRow<FHOLUnitTypeRow>(View.TypeName, TEXT("HOLUnitScriptLibrary"), false) : nullptr;
 	return Row ? Row->AttackRange : 0.f;
 }
+
+bool UHOLUnitScriptLibrary::GetUnitOwner(const UObject* WorldContextObject, const int32 UnitId, int32& OutOwnerSlot)
+{
+	OutOwnerSlot = INDEX_NONE;
+	const UWorld* World = GEngine ? GEngine->GetWorldFromContextObject(WorldContextObject, EGetWorldErrorMode::ReturnNull) : nullptr;
+	FHOLUnitView View;
+	if (!World || UnitId <= 0 || !HOLUnitView::Find(*World, static_cast<uint32>(UnitId), View, false))
+	{
+		return false;
+	}
+	OutOwnerSlot = static_cast<int32>(View.OwnerPlayer);
+	return true;
+}
+
+FName UHOLUnitScriptLibrary::GetUnitType(const UObject* WorldContextObject, const int32 UnitId)
+{
+	const UWorld* World = GEngine ? GEngine->GetWorldFromContextObject(WorldContextObject, EGetWorldErrorMode::ReturnNull) : nullptr;
+	FHOLUnitView View;
+	if (!World || UnitId <= 0 || !HOLUnitView::Find(*World, static_cast<uint32>(UnitId), View, false))
+	{
+		return NAME_None;
+	}
+	return View.TypeName;
+}
