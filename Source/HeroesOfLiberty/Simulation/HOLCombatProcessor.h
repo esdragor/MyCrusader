@@ -66,6 +66,22 @@ public:
 	 * The ONE place the number lives: no test pins another number than 1.
 	 */
 	static int32 GetBuildingArrowCount(int32 Occupants);
+	/**
+	 * F8 T8 (measure): what the building shots cost the simulation, counted by ReleaseBuildingArrows. A SEARCH is one armed, ready building that looks for a target
+	 * this step; a CANDIDATE is one fighter it tests for that search. Searches x fighters is the worst case a step can pay (10 towers x 200 units = 2000 tests).
+	 * Last* = the latest step, Total* = since the processor was built (or ResetBuildingShotCost), MaxStepCandidates = the dearest step seen.
+	 */
+	struct FBuildingShotCost
+	{
+		int32 LastStepSearches = 0;
+		int32 LastStepCandidates = 0;
+		int64 TotalSearches = 0;
+		int64 TotalCandidates = 0;
+		int64 StepsCounted = 0;
+		int32 MaxStepCandidates = 0;
+	};
+	const FBuildingShotCost& GetBuildingShotCost() const { return BuildingShotCost; }
+	void ResetBuildingShotCost() { BuildingShotCost = FBuildingShotCost(); }
 
 protected:
 	virtual void ConfigureQueries(const TSharedRef<FMassEntityManager>& EntityManager) override;
@@ -162,6 +178,8 @@ protected:
 	};
 	/** Building identifier -> countdown; an entry only for a standing, finished, armed building (none otherwise: nothing to pay for). */
 	TMap<uint32, FBuildingCooldown> BuildingCooldownMs;
+	/** F8 T8: the cost counters (see GetBuildingShotCost). */
+	FBuildingShotCost BuildingShotCost;
 
 	FMassEntityQuery EntityQuery;
 
