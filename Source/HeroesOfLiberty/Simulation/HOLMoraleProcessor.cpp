@@ -43,8 +43,18 @@ namespace
 		int32 DurationMs = 0;
 		int32 RadiusCm = 0;
 	};
-	FCriticalSection PendingAroundLock;
+	// A clearing order (S2-c, step 8, D404): the malus of the camp's units within the radius are taken off and the immunity granted (HOLMorale::ClearMalusAndProtect).
+		struct FPendingClear
+		{
+			TWeakObjectPtr<const UWorld> World;
+			int32 CenterXCm = 0;
+			int32 CenterYCm = 0;
+			int32 RadiusCm = 0;
+			int32 Slot = 0;
+		};
+FCriticalSection PendingAroundLock;
 	TArray<FPendingAround> PendingAround;
+		TArray<FPendingClear> PendingClear; // under PendingAroundLock too
 
 	// PROVISIONAL (step 7, S2-c): the attenuation percent each camp gives (stand-in for the Luminous Monk's aura, A3). Only the rule HOLMorale::Apply
 	// decides what it does to an effect; this table is just the value handed to it.
@@ -81,7 +91,17 @@ void UHOLMoraleProcessor::QueueEffectAround(const UWorld* World, const int32 Eff
 
 void UHOLMoraleProcessor::QueueClearMalusAround(const UWorld* World, const int32 CenterXCm, const int32 CenterYCm, const int32 RadiusCm, const int32 OrderSlot)
 {
-	// STUB (red test first): removes nothing yet.
+	if (World == nullptr || RadiusCm <= 0 || OrderSlot < 0 || OrderSlot >= FHOLMatchConfig::MaxSlots)
+	{
+		return;
+	}
+	FScopeLock Lock(&PendingAroundLock);
+	FPendingClear& Order = PendingClear.AddDefaulted_GetRef();
+	Order.World = World;
+	Order.CenterXCm = CenterXCm;
+	Order.CenterYCm = CenterYCm;
+	Order.RadiusCm = RadiusCm;
+	Order.Slot = OrderSlot;
 }
 void UHOLMoraleProcessor::SetSlotAttenuation(const int32 Slot, const int32 Percent)
 {
@@ -222,13 +242,30 @@ void UHOLMoraleProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 			Sources.Add({ FVector2D(Order.CenterXCm, Order.CenterYCm), static_cast<uint8>(Order.Slot), Radius * Radius, Effect });
 		}
 	}
-	if (Sources.IsEmpty())
+	// The clearing orders waiting (S2-c, step 8): taken here, applied in the second pass BEFORE the sources, so a malus laid in the same step meets the immunity.
+	TArray<FPendingClear> Clears;
+	{
+		FScopeLock Lock(&PendingAroundLock);
+		for (int32 Index = PendingClear.Num() - 1; Index >= 0; --Index)
+		{
+			if (!PendingClear[Index].World.IsValid())
+			{
+				PendingClear.RemoveAt(Index); // its world is gone
+			}
+			else if (PendingClear[Index].World.Get() == World)
+			{
+				Clears.Insert(PendingClear[Index], 0); // keeps the order they came in
+				PendingClear.RemoveAt(Index);
+			}
+		}
+	}
+if (Sources.IsEmpty() && Clears.IsEmpty())
 	{
 		return;
 	}
 
 	const int32 PeasantBit = HOLArmorCategoryBit(EHOLArmorCategory::Peasant);
-	EntityQuery.ForEachEntityChunk(Context, [&Sources, PeasantBit](FMassExecutionContext& Chunk)
+	EntityQuery.ForEachEntityChunk(Context, [&Sources, &Clears, PeasantBit](FMassExecutionContext& Chunk)
 	{
 		const FHOLUnitTypeConstants& Constants = Chunk.GetConstSharedFragment<FHOLUnitTypeConstants>();
 		if ((Constants.ArmorCategoryMask & PeasantBit) != 0)
@@ -242,6 +279,15 @@ void UHOLMoraleProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 		{
 			const FVector Location = Transforms[Index].GetTransform().GetLocation();
 			const FVector2D Where(Location.X, Location.Y);
+				// Lumiere sacree (D404): the rule decides what is cleared and for how long the unit is immune; here only who is reached (camp and radius).
+				for (const FPendingClear& Clear : Clears)
+				{
+					if (Clear.Slot == States[Index].OwnerPlayer
+						&& FVector2D::DistSquared(FVector2D(Clear.CenterXCm, Clear.CenterYCm), Where) <= static_cast<double>(Clear.RadiusCm) * static_cast<double>(Clear.RadiusCm))
+					{
+						HOLMorale::ClearMalusAndProtect(Fragments[Index].State);
+					}
+				}
 			for (const FAuraSource& Source : Sources)
 			{
 				if (Source.Owner == States[Index].OwnerPlayer && FVector2D::DistSquared(Source.Location, Where) <= Source.RadiusSquared)
