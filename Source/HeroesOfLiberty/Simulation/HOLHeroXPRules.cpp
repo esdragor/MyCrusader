@@ -26,7 +26,7 @@ int32 HOLHeroXP::GetWeightPercent(const EHOLXPSource Source)
 	case EHOLXPSource::Command: return 75;
 	case EHOLXPSource::Development: return 50;
 	case EHOLXPSource::Exploration: return 25;
-	case EHOLXPSource::Duel: return 0; // STUB (red test Duel150): the real weight comes with the fix
+	case EHOLXPSource::Duel: return 100;
 	}
 	return 0;
 }

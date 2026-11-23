@@ -46,6 +46,10 @@ public:
 	 */
 	void AddXP(int32 Slot, int32 XP, EHOLXPSource Source);
 
+	/** D859 n. 9: a duel won, 150 XP (HOLHeroXP::DuelXP at the Duel source) added to the slot's sheet; the script's duel ledger calls it (authority only, nothing on a client). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Hero")
+	void AwardDuelXP(int32 Slot);
+
 	/** Development (hol.Hero.SetXP): the slot's XP set, its copies written at once. False out of range or on a client. */
 	bool SetXP(int32 Slot, int32 XP);
 
