@@ -38,10 +38,10 @@ namespace HOLTopBarText
 namespace HOLTopBar
 {
 	// REVUE-1122 minor 11: the game screen calls SetBannerRect on every Refresh. The tooltip drops only change when the banner rectangle changes, so the panel applies
-	// the rectangle only when it differs from the last one it fully applied. STUB (red step): always applies.
+	// the rectangle only when it differs from the last one it fully applied.
 	bool BannerRectNeedsApply(bool bHasApplied, float LastLeft, float LastRight, float LastBottom, float Left, float Right, float Bottom)
 	{
-		return true;
+		return !bHasApplied || LastLeft != Left || LastRight != Right || LastBottom != Bottom;
 	}
 
 	// The four resources, in the bar's order (the C++ screen's AddResource order).
@@ -267,6 +267,11 @@ class UHOLTopBarPanel : UObject
 	// D814 (B): the income tooltips, 8 HUD panels (the amount's and the gatherers' of each resource: a Slate widget has one parent), built at the first SetIncomeTips.
 	TArray<UBorder> IncomeTipPanels;
 	TArray<UBorder> IncomeTipHosts;
+	// The last banner rectangle SetBannerRect fully applied (every cell measured); REVUE-1122 minor 11.
+	bool bBannerRectApplied = false;
+	float LastBannerLeft = 0.0;
+	float LastBannerRight = 0.0;
+	float LastBannerBottom = 0.0;
 	TArray<UCommonTextBlock> IncomeTipTexts;
 	UHOLQueueItem IdleWorkers;
 	UBorder MenuPanel;
@@ -515,7 +520,10 @@ class UHOLTopBarPanel : UObject
 	// tooltips are dropped under it. Called by HOLGameScreenScript.as (not wired by this commit: the screen file is not this chantier's).
 	void SetBannerRect(float Left, float Right, float Bottom)
 	{
+		if (!HOLTopBar::BannerRectNeedsApply(bBannerRectApplied, LastBannerLeft, LastBannerRight, LastBannerBottom, Left, Right, Bottom))
+			return;
 		EnsureIncomeTipPanels();
+		bool bAllMeasured = true;
 		// One drop per tooltip, from ITS cell's position (the cursor point is the cell's centre) and the width of its text: only the tooltip that crosses the
 		// banner goes under it; a cell whose box is not known yet keeps the natural place.
 		for (int Index = 0; Index < IncomeTipHosts.Num(); Index++)
@@ -529,8 +537,15 @@ class UHOLTopBarPanel : UObject
 				const float TipWidth = HOLTopBar::IncomeTipWidth(IncomeTipTexts[Index].GetText().ToString(), HOLTopBar::IncomeTipView(0, Index / 2).Padding);
 				Drop = HOLTopBar::IncomeTipDropForCell((CellLow.X + CellHigh.X) * 0.5, TipWidth, Left, Right, Bottom);
 			}
+			else
+				bAllMeasured = false;
 			IncomeTipHosts[Index].SetPadding(FMargin(0.0, Drop, 0.0, 0.0));
 		}
+		// A cell not measured yet keeps the natural place: do not remember the rectangle, the next Refresh tries again.
+		bBannerRectApplied = bAllMeasured;
+		LastBannerLeft = Left;
+		LastBannerRight = Right;
+		LastBannerBottom = Bottom;
 	}
 
 	void SetIncomeTips(FHOLResources Income)
