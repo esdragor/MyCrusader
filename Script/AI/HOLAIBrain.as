@@ -101,6 +101,42 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 		}
 	}
 
+	// S4-a (D688, no cheating): the Dawn AI reads its Honor gauge and the book's rows and casts the Sacred Light by the SAME server path as the player's RPC
+	// (HOLFactionPowerServer::Cast), on its wounded units in range of its banner (the plan is HOLAIPowerCall::Plan, tested in script).
+	void ThinkPowers(int PlayerIndex, int64 Step, const FHOLAISummary& Summary, const FHOLAIOpeningData& Data)
+	{
+		AHOLGameState State = Cast<AHOLGameState>(Gameplay::GetGameState());
+		if (State == nullptr || State.GetSlotFaction(PlayerIndex) != int(EHOLFaction::DawnOrder))
+		{
+			return;
+		}
+		const TArray<FHOLPowerRow> Rows = HOLDawnPowers::Rows();
+		const int NowMs = int(Gameplay::GetTimeSeconds() * 1000.0);
+		TArray<int> CooldownLeft;
+		for (int Row = 0; Row < Rows.Num(); Row++)
+		{
+			CooldownLeft.Add(Math::Max(State.GetPowerCooldownEndMs(PlayerIndex, Row) - NowMs, 0));
+		}
+		TArray<FVector> Wounded;
+		for (int Index = 0; Index < Summary.Army.Num(); Index++)
+		{
+			FHOLAITypeFigures Figures;
+			if (Summary.Army[Index].Health > 0 && HOLAIOrder::ReadAIUnitFigures(Summary.Army[Index].Type, Figures) && Figures.Health > 0
+				&& Summary.Army[Index].Health * 100 < Figures.Health * HOLAIPowerCall::WoundedPercent())
+			{
+				Wounded.Add(Summary.Army[Index].Location);
+			}
+		}
+		const FIntPoint Banner = HOLHero::GetHeroBannerLocation(PlayerIndex);
+		const int Level = int(HOLAILives::Played(Summary.Level, Data.GameSeconds, HOLAIArmy::DefaultData().Lives));
+		const FHOLAIPowerOrder Order = HOLAIPowerCall::Plan(Rows, CooldownLeft, State.GetFactionResource(PlayerIndex), Summary.Tier, Level, HOLAIPowerCall::DefaultData(),
+			Wounded, FVector(double(Banner.X), double(Banner.Y), 0.0), HOLFactionPowerCast::SealRangeCm());
+		if (Order.bCast && HOLFactionPowerServer::TryCastPower(PlayerIndex, Order.PowerIndex, Order.Point))
+		{
+			Log(n"LogHOLMatch", f"AI slot {PlayerIndex} step {Step}: Sacred Light cast on {Wounded.Num()} wounded unit(s)");
+		}
+	}
+
 	TMap<int, int> RegroupCounts;
 	TMap<int, int> DefenceCounts;
 
@@ -1034,6 +1070,7 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 			}
 		}
 		ThinkRage(PlayerIndex, Step, FullSummary, Data);
+		ThinkPowers(PlayerIndex, Step, FullSummary, Data);
 		if (State.bDefending != bWas)
 		{
 			const FString Change = State.bDefending ? "defence begins" : "defence ends, home";
