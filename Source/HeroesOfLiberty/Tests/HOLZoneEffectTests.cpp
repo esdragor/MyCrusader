@@ -446,26 +446,39 @@ bool FHOLZoneEffectKillHonorTest::RunTest(const FString& Parameters)
 			Units->FlushDestructions();
 			Simulation->GetOnStepEnded().Broadcast(Step);
 		};
-		// Born one by one (as HeroesOfLiberty.HeroXP.KillInMatch), so each unit of a fight is known by its own identifier.
+		// Born one by one (as HeroesOfLiberty.HeroXP.KillInMatch), so each unit of a fight is known by its own identifier, and born again until
+		// its identifier is a multiple of 4: the combat looks for a target one step of SearchSteps (4) staggered by (UnitId + StepIndex), and the
+		// test's steps do not advance the simulation's step index, so a unit whose id is not a multiple of 4 never looks for an enemy
+		// (KillHonor 15:26: no blow struck in 10 s, enemy hp 1, Dawn spearman hp 80).
 		const auto Place = [Units](const int32 Owner, const FVector& Location)
 		{
-			TArray<uint32> Before;
-			Units->GetAllUnitIds(Before);
-			FHOLUnitSpawnRequest Request;
-			Request.TypeName = Spearman;
-			Request.Count = 1;
-			Request.OwnerPlayer = static_cast<uint8>(Owner);
-			Request.Center = Location;
-			Units->RequestUnits(Request);
-			Units->ServeBirthRequests();
-			TArray<uint32> After;
-			Units->GetAllUnitIds(After);
-			uint32 Born = 0;
-			for (const uint32 Id : After)
+			for (int32 Attempt = 0; Attempt < 8; ++Attempt)
 			{
-				Born = Before.Contains(Id) ? Born : Id;
+				TArray<uint32> Before;
+				Units->GetAllUnitIds(Before);
+				FHOLUnitSpawnRequest Request;
+				Request.TypeName = Spearman;
+				Request.Count = 1;
+				Request.OwnerPlayer = static_cast<uint8>(Owner);
+				Request.Center = Location;
+				Units->RequestUnits(Request);
+				Units->ServeBirthRequests();
+				TArray<uint32> After;
+				Units->GetAllUnitIds(After);
+				uint32 Born = 0;
+				for (const uint32 Id : After)
+				{
+					Born = Before.Contains(Id) ? Born : Id;
+				}
+				if (Born == 0 || Born % 4 == 0)
+				{
+					return Born;
+				}
+				const uint32 Again[] = { Born };
+				Units->RequestDestroyUnits(Again);
+				Units->FlushDestructions();
 			}
-			return Born;
+			return 0u;
 		};
 		const auto IsGone = [Units](const uint32 Id)
 		{
