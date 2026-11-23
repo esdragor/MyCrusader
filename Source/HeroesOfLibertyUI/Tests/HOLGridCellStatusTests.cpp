@@ -173,6 +173,24 @@ bool FHOLGridCellStatusFitTest::RunTest(const FString& Parameters)
 	}
 	TestTrue(TEXT("at least one language is wider than the cell (the reduction is exercised)"), bAnyReduced);
 
+	// D889: "Coming soon" is too wide for one line at the readable bound (55.8 px for 47), so it takes TWO lines ("Coming" / "soon"), each of
+	// them readable (scale above the bound, the fitted width inside the cell); the one-word statuses keep one line, and the name's zone makes room.
+	Cell->SetCommand(Name, EHOLGridCellState::Greyed);
+	Cell->SetStatus(FText::FromString(TEXT("Bientot")));
+	TestEqual(TEXT("a one-word status takes one line"), Cell->GetStatusLineCount(), 1);
+	const float OneLineZone = Cell->GetNameZoneHeight();
+	Cell->SetCommand(Name, EHOLGridCellState::Greyed);
+	Cell->SetStatus(FText::FromString(TEXT("Coming soon")));
+	TestEqual(TEXT("'Coming soon' takes two lines"), Cell->GetStatusLineCount(), 2);
+	TestEqual(TEXT("the content still reads the status as given"), Cell->DescribeContent(), Name.ToString() + TEXT("\nComing soon"));
+	const float TwoLinesWidth = Cell->MeasureStatusWidth();
+	const FHOLGridCellStatusFit TwoLinesFit = UHOLGridCell::ComputeStatusFit(TwoLinesWidth, Available);
+	TestTrue(*FString::Printf(TEXT("two lines fit in the 51 px cell (%.1f <= %.1f)"), TwoLinesFit.Width, Available), TwoLinesFit.Width <= Available + KINDA_SMALL_NUMBER);
+	TestTrue(TEXT("two lines are not reduced to the bound"), TwoLinesFit.Scale > UHOLGridCell::MinStatusScale);
+	TestTrue(TEXT("the name's zone is not taller with two status lines"), Cell->GetNameZoneHeight() <= OneLineZone + KINDA_SMALL_NUMBER);
+	TestEqual(TEXT("a status broken stays a single word when it has no space"), UHOLGridCell::BreakStatusLines(TEXT("Bientot")), FString(TEXT("Bientot")));
+	TestEqual(TEXT("a status is broken at the space nearest its middle"), UHOLGridCell::BreakStatusLines(TEXT("Coming soon")), FString(TEXT("Coming\nsoon")));
+
 	// A cell too narrow for the bound keeps the bound (the text is cut by the clip, never made unreadable).
 	TestEqual(TEXT("the reduction is bounded"), UHOLGridCell::ComputeStatusFit(100.f, 5.f).Scale, UHOLGridCell::MinStatusScale);
 

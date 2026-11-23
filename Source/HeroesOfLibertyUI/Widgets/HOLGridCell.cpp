@@ -318,7 +318,7 @@ FString UHOLGridCell::DescribeContent() const
 	if (StatusText && StatusText->GetVisibility() != ESlateVisibility::Collapsed)
 	{
 		// The status is a line of its own under the name (the text the scripted checks read is the one the glued text gave).
-		Content += TEXT("\n") + StatusText->GetText().ToString();
+		Content += TEXT("\n") + ShownStatus;
 	}
 	if (GainLine && GainLine->GetVisibility() != ESlateVisibility::Collapsed && GainAmount && GainMarker
 		&& GainMarker->GetVisibility() != ESlateVisibility::Collapsed)
@@ -345,7 +345,32 @@ void UHOLGridCell::ClearUnit()
 	SetTooltip(FText::GetEmpty(), FHOLResources(), FHOLResources(), FText::GetEmpty());
 }
 
-FHOLGridCellNameZone UHOLGridCell::ComputeNameZone(const float CellSize, const float TopBand, const float LineHeight, const bool bHasStatus)
+FString UHOLGridCell::BreakStatusLines(const FString& Status)
+{
+	// A status of several words takes two lines at most: broken at the space nearest its middle ("Coming soon" -> "Coming" / "soon").
+	// A single word, or a text already broken, is returned as it is.
+	if (Status.Contains(TEXT("\n")))
+	{
+		return Status;
+	}
+	const int32 Middle = Status.Len() / 2;
+	int32 Best = INDEX_NONE;
+	for (int32 Index = 0; Index < Status.Len(); ++Index)
+	{
+		if (Status[Index] == TEXT(' ') && (Best == INDEX_NONE || FMath::Abs(Index - Middle) < FMath::Abs(Best - Middle)))
+		{
+			Best = Index;
+		}
+	}
+	return Best == INDEX_NONE ? Status : Status.Left(Best) + TEXT("\n") + Status.Mid(Best + 1);
+}
+
+int32 UHOLGridCell::GetStatusLineCount() const
+{
+	return StatusLineCount;
+}
+
+FHOLGridCellNameZone UHOLGridCell::ComputeNameZone(const float CellSize, const float TopBand, const float LineHeight, const bool bHasStatus, const int32 StatusLines)
 {
 	using namespace UE::HeroesOfLiberty::UI::GridCell;
 
@@ -355,8 +380,8 @@ FHOLGridCellNameZone UHOLGridCell::ComputeNameZone(const float CellSize, const f
 	{
 		return Zone;
 	}
-	// The status takes one line at the bottom; the name keeps the whole lines left under the top band, at least one.
-	Zone.StatusHeight = LineHeight + StatusBottomPad;
+	// The status takes its lines (one, or two for a text broken in two: D889) at the bottom; the name keeps the whole lines left under the top band, at least one.
+	Zone.StatusHeight = FMath::Max(1, StatusLines) * LineHeight + StatusBottomPad;
 	const float Room = FMath::Max(0.f, CellSize - TopBand - Zone.StatusHeight);
 	Zone.NameLines = FMath::Max(1, FMath::FloorToInt(Room / LineHeight));
 	Zone.NameHeight = Zone.NameLines * LineHeight;
@@ -368,11 +393,23 @@ void UHOLGridCell::SetStatus(const FText& InStatus)
 	using namespace UE::HeroesOfLiberty::UI::GridCell;
 
 	const bool bHasStatus = !InStatus.IsEmpty();
+	ShownStatus = InStatus.ToString();
+	StatusLineCount = bHasStatus ? 1 : 0;
 	if (StatusText)
 	{
 		StatusText->SetText(InStatus);
 		StatusText->SetVisibility(bHasStatus ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
 		StatusText->SetRenderOpacity(State == EHOLGridCellState::Ready ? 1.f : GreyedOpacity);
+		// D889: a status wider than the cell on one line ("Coming soon") is broken in two lines instead of being reduced past the readable bound.
+		if (bHasStatus && MeasureStatusWidth() > DefaultCellSize - 2.f * StatusSidePad)
+		{
+			const FString Broken = BreakStatusLines(ShownStatus);
+			if (Broken != ShownStatus)
+			{
+				StatusText->SetText(FText::FromString(Broken));
+				StatusLineCount = 2;
+			}
+		}
 	}
 
 	// The height of a name line: measured on the name's font when a renderer exists, a constant otherwise.
@@ -383,7 +420,7 @@ void UHOLGridCell::SetStatus(const FText& InStatus)
 		const float Measured = Measure->GetMaxCharacterHeight(UnitName->GetFont());
 		LineHeight = Measured > 0.f ? Measured : FallbackLineHeight;
 	}
-	const FHOLGridCellNameZone Zone = ComputeNameZone(DefaultCellSize, NameTopBand, LineHeight, bHasStatus);
+	const FHOLGridCellNameZone Zone = ComputeNameZone(DefaultCellSize, NameTopBand, LineHeight, bHasStatus, FMath::Max(1, StatusLineCount));
 	NameZoneHeight = Zone.NameHeight;
 	if (NameBox)
 	{
@@ -420,22 +457,29 @@ float UHOLGridCell::MeasureStatusWidth() const
 	{
 		return 0.f;
 	}
-	if (FSlateApplication::IsInitialized() && FSlateApplication::Get().GetRenderer())
+	// The widest line (a status broken in two lines, D889, is as wide as its wider half).
+	TArray<FString> Lines;
+	Text.ParseIntoArrayLines(Lines, false);
+	const bool bCanMeasure = FSlateApplication::IsInitialized() && FSlateApplication::Get().GetRenderer();
+	float Widest = 0.f;
+	for (const FString& Line : Lines)
 	{
-		const TSharedRef<FSlateFontMeasure> Measure = FSlateApplication::Get().GetRenderer()->GetFontMeasureService();
-		const FVector2D TextSize = Measure->Measure(Text, StatusText->GetFont());
-		const float Measured = static_cast<float>(TextSize.X);
-		if (Measured > 0.f)
+		float LineWidth = 0.f;
+		if (bCanMeasure)
 		{
-			return Measured;
+			const TSharedRef<FSlateFontMeasure> Measure = FSlateApplication::Get().GetRenderer()->GetFontMeasureService();
+			LineWidth = static_cast<float>(Measure->Measure(Line, StatusText->GetFont()).X);
 		}
+		if (LineWidth <= 0.f)
+		{
+			for (const TCHAR Character : Line)
+			{
+				LineWidth += Character >= 0x2E80 ? FallbackWideCharWidth : FallbackCharWidth;
+			}
+		}
+		Widest = FMath::Max(Widest, LineWidth);
 	}
-	float Estimate = 0.f;
-	for (const TCHAR Character : Text)
-	{
-		Estimate += Character >= 0x2E80 ? FallbackWideCharWidth : FallbackCharWidth;
-	}
-	return Estimate;
+	return Widest;
 }
 
 FHOLGridCellStatusFit UHOLGridCell::ComputeStatusFit(const float TextWidth, const float AvailableWidth)

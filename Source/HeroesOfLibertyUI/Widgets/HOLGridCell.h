@@ -105,7 +105,11 @@ public:
 	 * height of a text line. With a status: the status line takes one line at the bottom, the name keeps the whole lines left (at least 1).
 	 * Without: nothing is bounded, the cell is as before.
 	 */
-	static FHOLGridCellNameZone ComputeNameZone(float CellSize, float TopBand, float LineHeight, bool bHasStatus);
+	static FHOLGridCellNameZone ComputeNameZone(float CellSize, float TopBand, float LineHeight, bool bHasStatus, int32 StatusLines = 1);
+	/** D889: Status broken in two lines at the space nearest its middle ("Coming soon" -> "Coming\nsoon"); a single word or a text with a line break is returned as it is. */
+	static FString BreakStatusLines(const FString& Status);
+	/** The lines the status takes in the cell (0: no status, 1, or 2 when a status wider than the cell was broken, D889), for the checks. */
+	int32 GetStatusLineCount() const;
 
 	/** The side of a cell of the grid (the script's size box, HOLCommandGridPanel.as CellSize, and HOLGameScreen.cpp CellSize). */
 	static constexpr float DefaultCellSize = 76.f;
@@ -200,6 +204,10 @@ private:
 	TObjectPtr<USizeBox> StatusClip;
 
 	float AppliedStatusScale = 1.f;
+
+	/** The status as given (the text the checks read; StatusText holds it broken in two lines when it is wider than the cell, D889) and its line count. */
+	FString ShownStatus;
+	int32 StatusLineCount = 0;
 
 	/** The height the name's zone is bounded to (GetNameZoneHeight); 0: not bounded. */
 	float NameZoneHeight = 0.f;
