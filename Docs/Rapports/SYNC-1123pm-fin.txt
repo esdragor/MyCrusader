@@ -1,0 +1,25 @@
+﻿=== sync fin 17:48:06
+Heure PowerShell : 17:48  main = 6545db4
+HeroesOfLiberty-Arwen | integ-37 | mis a jour (+115 de main) = 6545db4 ; code change : build lance (priorite basse, pid 47740, sortie C:\Users\baudo\Documents\HeroesOfLiberty-Arwen\Saved\Logs\sync_build.out)
+HeroesOfLiberty-Celeborn | integ-41 | mis a jour (+194 de main) = 6545db4 ; code change : build lance (priorite basse, pid 23156, sortie C:\Users\baudo\Documents\HeroesOfLiberty-Celeborn\Saved\Logs\sync_build.out)
+HeroesOfLiberty-Elrond | integ-25 | mis a jour (+201 de main) = 6545db4 ; code change : build lance (priorite basse, pid 60036, sortie C:\Users\baudo\Documents\HeroesOfLiberty-Elrond\Saved\Logs\sync_build.out)
+HeroesOfLiberty-Faramir | zone-effect | mis a jour (+99 de main) = 6545db4 ; code change : build lance (priorite basse, pid 60304, sortie C:\Users\baudo\Documents\HeroesOfLiberty-Faramir\Saved\Logs\sync_build.out)
+HeroesOfLiberty-Galadriel | socle-ai | mis a jour (+199 de main) = 6545db4 ; code change : build lance (priorite basse, pid 63112, sortie C:\Users\baudo\Documents\HeroesOfLiberty-Galadriel\Saved\Logs\sync_build.out)
+HeroesOfLiberty-Glorfindel | ability-columns | CONFLIT annule (1 fichier(s) : Tools/Scenarios/faction_aim_free.txt)
+HeroesOfLiberty-Haldir | integ-58 | mis a jour (+3 de main) = 30a25da
+HeroesOfLiberty-Sauron | integ-63 | mis a jour (+3 de main) = 6545db4
+build HeroesOfLiberty-Arwen | code 0 | build : PASS (HeroesOfLibertyEditor Development, HeroesOfLiberty-Arwen, 127 s)
+build HeroesOfLiberty-Celeborn | code 0 | build : PASS (HeroesOfLibertyEditor Development, HeroesOfLiberty-Celeborn, 116 s)
+build HeroesOfLiberty-Elrond | code 0 | build : PASS (HeroesOfLibertyEditor Development, HeroesOfLiberty-Elrond, 139 s)
+build HeroesOfLiberty-Faramir | code 0 | build : PASS (HeroesOfLibertyEditor Development, HeroesOfLiberty-Faramir, 137 s)
+build HeroesOfLiberty-Galadriel | code 0 | build : PASS (HeroesOfLibertyEditor Development, HeroesOfLiberty-Galadriel, 112 s)
+=== gate Close 17:59:00
+
+FAIL L19-1 : la session principale a codé elle-même 15 fois : à confier à des agents (L19-1) (seuil 3, reflog de main 
+et integ-* depuis 2026-11-23)
+     ebdd211 Test: faction aim steps (red stub HOLFactionAim, 2 script tests fail 2097/2099)
+FAIL HeroesOfLiberty-Glorfindel : retard de 74 commit(s) sur main : L8-9, lancer Tools\AutoJourney\sync_worktrees.ps1 
+-NoBuild (ou avec build) avant le bilan, aucun agent ne tourne
+=> 2 FAIL
+
+
