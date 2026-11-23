@@ -1,4 +1,6 @@
 # <nom de capture> | ce que l'utilisateur doit voir
 tower_wood_before | la Tour de guet en bois du joueur debout a gauche, 3 Lanciers rouges loin a droite hors de portee, aucune fleche
-tower_wood_during | des fleches en vol entre la tour et les Lanciers rouges qui approchent (la tour et les fleches font des dizaines de pixels)
+tower_wood_during | une fleche en vol (trait fin) entre la tour et les Lanciers rouges, camera rapprochee
+tower_wood_during2 | 5 images plus tard : fleche(s) en vol ou deja plantee(s), Lanciers plus pres de la tour
 tower_wood_after | les Lanciers rouges pres de la tour, leur barre de vie entamee apres plusieurs fleches
+tower_wood_during3 | 10 images de plus : nouvelle fleche (le tir revient toutes les 1,6 s) ou Lanciers au contact
