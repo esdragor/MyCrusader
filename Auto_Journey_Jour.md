@@ -20,6 +20,25 @@ Exception de gate : CLEAN-1123a-d (0a) lancés avec le FAIL L19-1 (check-list lu
 | CLEAN-1123b | 0a | copie principale | nettoyage Auto_Journey_File.md | non | 08:50 | 08:52 | d601023 : 26 lignes archivées (218 = 192 + 26), 91 [ ] dont 27 « sans C++ » ; socle non touché ; doutes : Bientôt (564db8d hors main), suivi 145-149/166 |
 | CLEAN-1123c | 0a | copie principale | nettoyage Retours\ | non | 08:50 | 08:50 | 6d5af16 : E-audio_panel archivée (report vérifié), index recomptés (1 [À ESSAYER] LOGIQUE SEULEMENT, 0 [À RÉPONDRE]) ; doutes : E-deploy (PAS PRÊT périmé ?), E-playtest_hero_army, BUG-*-spin ; AudioInProgress.md l.116 périmée |
 | CLEAN-1123d | 0a | copie principale | nettoyage procédure + check-list | non | 08:50 | 08:51 | 387d0c8 : copie intégrale archivée, 6 lignes retirées (T2-3, L3/T2, L9-10, L19-8 + 2 redites), D838/D888 alignés ; doutes : modèle d'énoncé « 45 appels » gardé (gate_test l.279-291), rapport 10 ou 6 lignes |
+| SYNC-debut | sync | 8 worktrees | sync_worktrees.ps1 sans -NoBuild | non | 08:52 | 08:53 | 8 mis à jour (+7 de main 6b18a0d), 0 conflit, 0 saut, aucun build nécessaire (docs seules) |
+| ETAPE0-1123 | 0 | lecture seule | plan de lancement (Docs\Rapports\ETAPE0-1123.md) | non | 08:53 | 08:55 | aucune ligne du socle déjà faite dans main ; 6 lancés, Haldir recette, Sauron intégration ; recoupé : non commités = journaux Integrate_*.txt seulement ; specialization-trial +17 hors main -> Galadriel sur branche neuve socle-ai |
+| intégrateur | passes | Sauron integ-53 | integrate.ps1 par la session principale (commande d'arrière-plan) ; recette = agent RECETTE sur Haldir | - | - | - | - |
+| FARAMIR-1123a | v1 | Faramir zone-effect | S1-a soin de zone Lumière sacrée (HOLZoneEffectRules.h, HOLHeroSubsystem, HOLZoneEffectLibrary, HOLHealProcessor.cpp) | oui | 09:0x | | |
+| CELEBORN-1123a | v1 | Celeborn integ-41 | S3-a T7/T8 tir de tour (fichiers de tir de integ-41, tower_wood) | oui | 09:0x | | |
+| ELROND-1123a | v1 | Elrond integ-25 | XP du duel 150 (HOLHeroXPRules, HOLSmallRulesReadLibrary, HOLHeroXPTests, HOLDuelRewards.as) | oui | 09:0x | | |
+| ARWEN-1123a | v1 | Arwen integ-37 | S1-c panneau de faction cliquable (HOLGameScreenScript.as, HOLFactionSlot.as, HOLFactionAim.as neuf) | non | 09:0x | | |
+| GLORFINDEL-1123a | v1 | Glorfindel ability-columns | S1-d Sceau du Moine + texte LightSeal (HOLUnitAbilityTable.as, UnitAbilities.csv, grille du Moine, HOLRpcPlayer.as) | non | 09:0x | | |
+| GALADRIEL-1123a | v1 | Galadriel socle-ai (neuve, de main) | relevé des voies de spécialisation puis S4-a préparé (Q-spec-*.md, HOLAIPowerCall.as neuf, HOLAIBrain.as 1 l.) | non | 09:0x | | |
+
+### Plan de lancement 2026-11-23 (ETAPE0-1123, detail : Docs\Rapports\ETAPE0-1123.md)
+- Faramir (zone-effect) : lancer S1-a (C++ Mass, soin de zone Lumiere sainte ; chaine combat : S1-e, S2-a, S2-b ensuite ici)
+- Celeborn (integ-41) : lancer S3-a (C++, T7/T8, tower_wood)
+- Elrond (integ-25) : lancer Reste XP duel 150 (C++ petit lot, hors combat)
+- Arwen (integ-37) : lancer S1-c (panneau de faction cliquable, script, scenario au vrai clic)
+- Glorfindel (ability-columns) : lancer S1-d (bouton Sceau du Moine) + texte LightSeal (script)
+- Galadriel (specialization-trial) : lancer releve des voies de specialisation (lecture seule) puis S4-a prepare (script)
+- Haldir (integ-50) : ne pas lancer : worktree de recette (essais sur le build de main fusionne), aucune tache de code
+- Sauron (integ-53) : ne pas lancer : worktree d'integration (integrate.ps1, passes), integ-53 = main exactement
 
 ## Résumé de la séance du 2026-11-22
 
