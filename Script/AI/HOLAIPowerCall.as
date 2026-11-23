@@ -26,3 +26,22 @@ namespace HOLAIPowerCall
 		return HOLAIPowerSpend::Choose(Rows, CooldownLeftMs, Wanted, Stock, Tier, ReserveOf(Data, Level));
 	}
 }
+
+// S4-a branch step: what the brain decides to cast now (the power's index in the book and the ground point), or nothing.
+struct FHOLAIPowerOrder
+{
+	bool bCast = false;
+	int PowerIndex = -1;
+	FVector Point;
+}
+
+namespace HOLAIPowerCall
+{
+	// STUB (red first): the brain's whole decision. Rows/Cooldowns/Stock/Tier/Level as Choose; Wounded = the ground points of the slot's wounded units;
+	// Origin and RangeCm = the cast origin and range the server checks (a point out of range is never chosen: the server would refuse it).
+	FHOLAIPowerOrder Plan(const TArray<FHOLPowerRow>& Rows, const TArray<int>& CooldownLeftMs, int Stock, int Tier, int Level, const FHOLAIPowerCallData& Data, const TArray<FVector>& Wounded, const FVector& Origin, int64 RangeCm)
+	{
+		FHOLAIPowerOrder Order;
+		return Order;
+	}
+}

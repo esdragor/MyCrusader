@@ -74,3 +74,46 @@ void Test_AIPowerCallNothingWithoutCodedEffect(FUnitTest& T)
 	const int Idle = HOLAIPowerCall::Choose(Coded, PowerCallCooldowns(), PowerCallWanted(false), 500, 0, 0, PowerCallData());
 	T.AssertEquals(-1, Idle, "no trigger from the brain: nothing is cast");
 }
+
+// S4-a branch step: the brain's decision on the REAL Dawn book (HOLDawnPowers::Rows: Sacred Light, effect coded, 25 Honor, 20 s) and the real rules
+// (book state, spend rule, reserve by level). The Honor stock, the wounded points and the cast origin are the fixtures; the choice and the ground point
+// are computed by Plan (the point is the centre of the wounded units in range, never copied from a fixture).
+TArray<FVector> PowerCallWounded()
+{
+	TArray<FVector> Result;
+	Result.Add(FVector(1000.0, 1000.0, 0.0));
+	Result.Add(FVector(1200.0, 1000.0, 0.0));
+	Result.Add(FVector(1100.0, 1200.0, 0.0));
+	return Result;
+}
+
+void Test_AIBrainCastsSacredLightWhenHonorAllows(FUnitTest& T)
+{
+	const TArray<FHOLPowerRow> Rows = HOLDawnPowers::Rows();
+	TArray<int> Ready;
+	Ready.Add(0);
+	const FHOLAIPowerCallData Data = PowerCallData();
+	const FVector Origin(1000.0, 1000.0, 0.0);
+	const int64 Range = 800;
+	// Honor 100 (75 left), level 1 keeps 40: the Sacred Light is cast, on the centre of the three wounded units.
+	const FHOLAIPowerOrder Order = HOLAIPowerCall::Plan(Rows, Ready, 100, 0, 1, Data, PowerCallWounded(), Origin, Range);
+	T.AssertTrue(Order.bCast, "the AI casts the Sacred Light with 75 Honor left above its reserve of 40");
+	T.AssertEquals(0, Order.PowerIndex, "the cast power is the book's first line (Sacred Light)");
+	T.AssertTrue(Math::Abs(Order.Point.X - 1100.0) < 1.0 && Math::Abs(Order.Point.Y - 1066.0) < 2.0, "the point is the centre of the wounded units");
+	// Honor 60 (35 left) is under the reserve of level 2 (80): nothing is cast (no cheating).
+	const FHOLAIPowerOrder Saving = HOLAIPowerCall::Plan(Rows, Ready, 60, 0, 2, Data, PowerCallWounded(), Origin, Range);
+	T.AssertFalse(Saving.bCast, "a stock whose rest stays under the reserve is kept");
+	// No wounded unit: no trigger, nothing is cast. A cool-down not over: nothing either.
+	TArray<FVector> None;
+	const FHOLAIPowerOrder Idle = HOLAIPowerCall::Plan(Rows, Ready, 100, 0, 1, Data, None, Origin, Range);
+	T.AssertFalse(Idle.bCast, "no wounded unit: the AI does not cast");
+	TArray<int> Cooling;
+	Cooling.Add(9000);
+	const FHOLAIPowerOrder Cold = HOLAIPowerCall::Plan(Rows, Cooling, 100, 0, 1, Data, PowerCallWounded(), Origin, Range);
+	T.AssertFalse(Cold.bCast, "a power still in cool-down is not cast");
+	// Wounded units beyond the cast range (the server would refuse the point): not chosen.
+	TArray<FVector> Far;
+	Far.Add(FVector(5000.0, 5000.0, 0.0));
+	const FHOLAIPowerOrder Away = HOLAIPowerCall::Plan(Rows, Ready, 100, 0, 1, Data, Far, Origin, Range);
+	T.AssertFalse(Away.bCast, "wounded units out of range are not a target");
+}
