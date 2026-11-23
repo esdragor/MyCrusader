@@ -95,6 +95,17 @@ void UHOLHealProcessor::CreditHonorPoints(const UWorld* World, const int32 Slot,
 	}
 }
 
+void UHOLHealProcessor::ResetHonor()
+{
+	// Stub (red test): the real reset comes in the next commit.
+}
+
+bool UHOLHealProcessor::ParmsSizeMatches(const UFunction* Function, const int32 ExpectedSize, const int32 ExpectedNumParms)
+{
+	// Stub (red test): the real check comes in the next commit.
+	return true;
+}
+
 void UHOLHealProcessor::CreditKillHonor(const UWorld* World, const int32 Slot)
 {
 	// One path for the gauge: the same credit as the heal source (cap, floor, Dawn only).
