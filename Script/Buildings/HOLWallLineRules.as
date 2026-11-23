@@ -195,6 +195,7 @@ namespace HOLWallLine
 	{
 		TArray<FName> Types;
 		Types.Add(n"Palisade");
+		Types.Add(n"StoneWall");
 		return Types;
 	}
 
@@ -247,7 +248,7 @@ namespace HOLWallLine
 	// A gate is placed ON a section of palisade already standing and replaces it: the section is a wall type of the same seat, and not a gate already.
 	bool GateReplaces(FName ExistingType, int ExistingOwner, int GateOwner)
 	{
-		return ExistingOwner == GateOwner && IsWallType(ExistingType);
+		return ExistingOwner == GateOwner && ExistingType == n"Palisade";
 	}
 
 	// A gate lets its owner's units through (other seats meet a solid building, D691 / D867 neighbours: walls and gates are solid for the enemy).

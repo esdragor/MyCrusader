@@ -521,7 +521,7 @@ void Test_CGTables(FUnitTest& T)
 	FHOLGridContextView Context;
 	Context.bBuilders = true;
 	Context = HOLCommandGridRead::WithTableBuildables(Context);
-	T.AssertEquals(17, Context.BuildableTypes.Num(), "seventeen buildable types (TowerWood, SecondaryCentre, Palisade and PalisadeGate added)");
+	T.AssertEquals(18, Context.BuildableTypes.Num(), "eighteen buildable types (TowerWood, SecondaryCentre, Palisade, PalisadeGate and StoneWall added)");
 	T.AssertTrue(HOLCommandGridRules::GetAgeBuilding(Context, 0, 0).TypeName == n"House", "A: house");
 	T.AssertTrue(HOLCommandGridRules::GetAgeBuilding(Context, 0, 1).TypeName == n"LumberCamp", "Z: lumber camp");
 	T.AssertTrue(HOLCommandGridRules::GetAgeBuilding(Context, 0, 2).TypeName == n"MiningCamp", "E: mining camp");
@@ -548,13 +548,14 @@ void Test_CGTables(FUnitTest& T)
 	FHOLGridCommandView StableCell = HOLCommandGridRules::GetAgeBuilding(Context, 1, 6);
 	T.AssertTrue(StableCell.TypeName == n"Stable" && StableCell.Command == EHOLGridCommandKind::Build && StableCell.Age == 1 && StableCell.bGreyed, "II D: the Stable, greyed");
 	FHOLGridCommandView ForgeCell = HOLCommandGridRules::GetAgeBuilding(Context, 1, 8);
+	FHOLGridCommandView StoneWallCell = HOLCommandGridRules::GetAgeBuilding(Context, 1, 7);
+	T.AssertTrue(StoneWallCell.TypeName == n"StoneWall" && StoneWallCell.Command == EHOLGridCommandKind::Build && StoneWallCell.Age == 1 && StoneWallCell.bGreyed, "II F: the stone wall (F10, Military slot 7 age II), greyed");
 	T.AssertTrue(ForgeCell.TypeName == n"Forge" && ForgeCell.Command == EHOLGridCommandKind::Build && ForgeCell.Age == 1 && ForgeCell.bGreyed, "II W: the Forge, greyed");
 	FHOLGridCommandView SecondaryCentreCell = HOLCommandGridRules::GetAgeBuilding(Context, 1, 1);
 	T.AssertTrue(SecondaryCentreCell.TypeName == n"SecondaryCentre" && SecondaryCentreCell.Command == EHOLGridCommandKind::Build && SecondaryCentreCell.Age == 1 && SecondaryCentreCell.bGreyed, "II Z: the Secondary centre, greyed");
 	TArray<int> EmptyII;
 	EmptyII.Add(2);
 	EmptyII.Add(3);
-	EmptyII.Add(7);
 	EmptyII.Add(9);
 	EmptyII.Add(10);
 	EmptyII.Add(11);
