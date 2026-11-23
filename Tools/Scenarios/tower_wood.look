@@ -1,0 +1,4 @@
+# <nom de capture> | ce que l'utilisateur doit voir
+tower_wood_before | la Tour de guet en bois du joueur debout a gauche, 3 Lanciers rouges loin a droite hors de portee, aucune fleche
+tower_wood_during | des fleches en vol entre la tour et les Lanciers rouges qui approchent (la tour et les fleches font des dizaines de pixels)
+tower_wood_after | les Lanciers rouges pres de la tour, leur barre de vie entamee apres plusieurs fleches

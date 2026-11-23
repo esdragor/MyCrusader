@@ -1,0 +1,45 @@
+# Tour de guet en bois (F8 T7) : la tour du joueur (cout 100 bois, portee 30 m, 5 de degat toutes les 1,625 s, tire meme vide : BuildingFiresEmpty) lache des
+# fleches sur 3 Lanciers ennemis qui avancent vers elle. Plain, deux joueurs (tower_wood.json). Positions dans le repere du centre du joueur (X vers le milieu de la carte).
+# Captures : avant (tour seule, ennemis hors portee), pendant (fleches en vol), apres (PV entames, journal "lands on ... HP left").
+hol.Cheat.Resources 5000
+hol.Cheat.Population 165
+hol.AI.ThinkSteps 100000
+hol.Combat.LogHits 1
+hol.Camera.FocusNear 115 -1250
+frames 2
+hol.Units.SpawnHere 5 Peasant 0 150
+waitunits 5
+hol.Build.PlaceNear TowerWood 4000 0
+waitlog Construction: slot 0 placed TowerWood foundation
+hol.Build.Instant 1
+hol.Camera.FocusNear 4000 0
+frames 5
+hol.Select.Own
+waitlog Selection: 5 units (own)
+hol.Select.OrderNear 4000 0
+waitlog Build order of slot 0: 5 units to TowerWood
+waitlog Construction: slot 0 finished TowerWood
+hol.Build.Instant 0
+hol.Camera.FocusNear 115 -1250
+frames 5
+hol.Select.OrderNear 400 -700
+hol.Camera.FocusNear 9500 0
+frames 2
+hol.Units.SpawnHere 3 Spearman 1 250
+waitunits 8
+hol.Camera.FocusNear 6000 0
+hol.Camera.Zoom 1
+frames 5
+note 1. AVANT : la Tour de guet en bois du joueur a gauche, trois Lanciers rouges loin a droite, hors de portee (55 m).
+capture tower_wood_before
+hol.Units.Move -10200 0 1
+note 2. Les Lanciers avancent vers la tour ; a moins de 30 m elle leur tire dessus.
+waitlog lands on
+capture tower_wood_during
+frames 30
+capture tower_wood_during2
+frames 30
+note 3. APRES : plusieurs fleches ont touche, les barres de vie des Lanciers sont entamees.
+capture tower_wood_after
+hol.Combat.Report 1
+quit
