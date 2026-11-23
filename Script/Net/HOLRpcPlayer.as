@@ -1111,6 +1111,7 @@ for (FString Command : Commands)
 			Log(n"LogHOLMatch", f"RpcUnitAbility: Seal of Light not started for slot {Slot} (no world, subsystem or slot)");
 			return;
 		}
+		HOLFactionPowerServer::DrawLightSealPlaceholder(Point);
 		State.SetPowerCooldownEndMs(Slot, SealCooldownIndex, Decision.NewCooldownEndMs);
 		Log(n"LogHOLMatch", f"RpcUnitAbility: Seal of Light put down by the Monk {UnitId} of slot {Slot}, Honor unchanged");
 	}

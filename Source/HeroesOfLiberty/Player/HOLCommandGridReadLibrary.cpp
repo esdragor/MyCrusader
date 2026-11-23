@@ -30,6 +30,7 @@ namespace HOLCommandGridReadLibraryPrivate
 		Out.bDeployedAny = View.bDeployedAny;
 		Out.bGarrisonOccupied = View.bGarrisonOccupied;
 		Out.bRageUnit = View.bRageUnit;
+		Out.bMonkUnit = View.bMonkUnit;
 		Out.bPrimaryForum = View.bPrimaryForum;
 		Out.SpecializationTier = View.SpecializationTier;
 		Out.SpecializationPendingOption = View.SpecializationPendingOption;
