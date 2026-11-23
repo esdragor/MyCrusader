@@ -129,3 +129,8 @@ void UHOLMoraleLibrary::NativeGrantImmunity(FHOLMoraleStateData& State, const in
 	HOLMorale::GrantImmunity(Rule, DurationMs);
 	WriteBack(Rule, State);
 }
+
+void UHOLMoraleLibrary::ApplyEffectAround(const UObject* WorldContextObject, const int32 EffectId, const int32 CenterXCm, const int32 CenterYCm, const int32 OrderSlot, const int32 DurationMs, const int32 RadiusCm)
+{
+	// Stub of the red commit: nothing is laid yet.
+}

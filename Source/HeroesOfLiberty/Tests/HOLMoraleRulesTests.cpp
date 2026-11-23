@@ -14,6 +14,7 @@
 #include "Simulation/HOLHeroAbilityRules.h"
 #include "Simulation/HOLHeroSubsystem.h"
 #include "Simulation/HOLHeroXPRules.h"
+#include "Simulation/HOLMoraleLibrary.h"
 #include "Simulation/HOLMoraleProcessor.h"
 #include "Simulation/HOLMoraleRules.h"
 #include "Simulation/HOLSimulationSettings.h"
@@ -864,6 +865,111 @@ bool FHOLMoraleProcessorLaysCryTest::RunTest(const FString& Parameters)
 				RunStep();
 			}
 			TestFalse(TEXT("past the row's duration the cry is gone"), HOLMorale::Has(Read(AllyNear)->State, HOLMoraleTableRows::HOLMoraleCloseRanks));
+		}
+	}
+
+	GEngine->DestroyWorldContext(World);
+	World->DestroyWorld(false);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLMoraleApplyEffectAroundTest, "HeroesOfLiberty.Morale.ApplyEffectAroundLaysDuelOrders", UE::HeroesOfLiberty::Tests::MoraleRules::Flags)
+
+// PLAN-MORAL-1120 step 6 (S2-b): the morale orders of a duel, through the bridge (UHOLMoraleLibrary::ApplyEffectAround) and the processor.
+bool FHOLMoraleApplyEffectAroundTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::MoraleRules;
+	UWorld* World = UWorld::CreateWorld(EWorldType::Game, /*bInformEngineOfWorld*/ false);
+	FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);
+	Context.SetCurrentWorld(World);
+	World->InitializeActorsForPlay(FURL());
+
+	UHOLUnitSubsystem* Units = World->GetSubsystem<UHOLUnitSubsystem>();
+	UHOLSimulationSubsystem* Simulation = World->GetSubsystem<UHOLSimulationSubsystem>();
+	UHOLHeroSubsystem* Heroes = World->GetSubsystem<UHOLHeroSubsystem>();
+	UMassEntitySubsystem* EntitySubsystem = World->GetSubsystem<UMassEntitySubsystem>();
+	if (TestNotNull(TEXT("units"), Units) && TestNotNull(TEXT("simulation"), Simulation) && TestNotNull(TEXT("heroes"), Heroes) && TestNotNull(TEXT("entities"), EntitySubsystem))
+	{
+		Heroes->BindSteps();
+		TSharedPtr<FMassEntityManager> EntityManager = EntitySubsystem->GetMutableEntityManager().AsShared();
+		UHOLMoraleProcessor* Morale = NewObject<UHOLMoraleProcessor>(Simulation);
+		Morale->CallInitialize(Simulation, EntityManager.ToSharedRef());
+		const float StepSeconds = GetDefault<UHOLSimulationSettings>()->GetStepSeconds();
+		int64 Step = 0;
+		const auto RunStep = [Simulation, Units, Morale, &EntityManager, StepSeconds, &Step]
+		{
+			++Step;
+			Simulation->GetOnStepStarted().Broadcast(Step);
+			Units->ServeBirthRequests();
+			FMassProcessingContext ProcessingContext(*EntityManager, StepSeconds);
+			UE::Mass::Executor::Run(*Morale, ProcessingContext);
+			Simulation->GetOnStepEnded().Broadcast(Step);
+		};
+		const auto Spawn = [this, Units](const TCHAR* TypeName, const uint8 Owner, const double X, const double Y) -> FMassEntityHandle
+		{
+			TArray<uint32> Before;
+			Units->GetAllUnitIds(Before);
+			FHOLUnitSpawnRequest Request;
+			Request.TypeName = FName(TypeName);
+			Request.Count = 1;
+			Request.OwnerPlayer = Owner;
+			Request.Center = FVector(X, Y, 0.0);
+			Units->RequestUnits(Request);
+			Units->ServeBirthRequests();
+			TArray<uint32> After;
+			Units->GetAllUnitIds(After);
+			uint32 Born = 0;
+			for (const uint32 Id : After)
+			{
+				Born = Before.Contains(Id) ? Born : Id;
+			}
+			return TestTrue(TEXT("a unit was born"), Born != 0) ? Units->FindEntity(Born) : FMassEntityHandle();
+		};
+		// The arena's centre C = (5000, 3000). The winner's camp is slot 0, the loser's slot 1. Near = 10 m from C, far = 15 m (the order reaches 12 m).
+		const double CenterX = 5000.0;
+		const double CenterY = 3000.0;
+		const FMassEntityHandle WinnerNear = Spawn(TEXT("ManAtArms"), 0, CenterX + 1000.0, CenterY);
+		const FMassEntityHandle WinnerFar = Spawn(TEXT("ManAtArms"), 0, CenterX + 1500.0, CenterY);
+		const FMassEntityHandle WinnerPeasant = Spawn(TEXT("Peasant"), 0, CenterX + 1000.0, CenterY);
+		const FMassEntityHandle LoserNear = Spawn(TEXT("ManAtArms"), 1, CenterX - 1000.0, CenterY);
+		const FMassEntityHandle LoserFar = Spawn(TEXT("ManAtArms"), 1, CenterX - 1500.0, CenterY);
+		const auto Read = [&EntityManager](const FMassEntityHandle Entity) -> const FHOLMoraleFragment*
+		{
+			return Entity.IsSet() ? EntityManager->GetFragmentDataPtr<FHOLMoraleFragment>(Entity) : nullptr;
+		};
+		const HOLMoraleTableRows::FHOLMoraleTableRow* TriumphRow = HOLMoraleTableRows::Find(HOLMoraleTableRows::HOLMoraleTriumph);
+		const HOLMoraleTableRows::FHOLMoraleTableRow* DemoralisedRow = HOLMoraleTableRows::Find(HOLMoraleTableRows::HOLMoraleDemoralised);
+		const HOLMoraleTableRows::FHOLMoraleTableRow* HesitationRow = HOLMoraleTableRows::Find(HOLMoraleTableRows::HOLMoraleHesitation);
+		if (TestTrue(TEXT("the three rows"), TriumphRow && DemoralisedRow && HesitationRow)
+			&& TestTrue(TEXT("every unit carries the fragment"), Read(WinnerNear) && Read(WinnerFar) && Read(WinnerPeasant) && Read(LoserNear) && Read(LoserFar)))
+		{
+			RunStep();
+			TestFalse(TEXT("nothing before an order"), HOLMorale::Has(Read(WinnerNear)->State, HOLMoraleTableRows::HOLMoraleTriumph));
+			// The duel ended: Triumph on the winner's camp, Demoralised on the loser's, both around C.
+			UHOLMoraleLibrary::ApplyEffectAround(World, HOLMoraleTableRows::HOLMoraleTriumph, 5000, 3000, 0, TriumphRow->DurationMs, 1200);
+			UHOLMoraleLibrary::ApplyEffectAround(World, HOLMoraleTableRows::HOLMoraleDemoralised, 5000, 3000, 1, DemoralisedRow->DurationMs, 1200);
+			RunStep();
+			TestTrue(TEXT("the winner's unit within the radius carries Triumph"), HOLMorale::Has(Read(WinnerNear)->State, HOLMoraleTableRows::HOLMoraleTriumph));
+			TestFalse(TEXT("the winner's unit beyond the radius carries nothing"), HOLMorale::Has(Read(WinnerFar)->State, HOLMoraleTableRows::HOLMoraleTriumph));
+			TestFalse(TEXT("the winner's Peasant carries nothing (D705)"), HOLMorale::Has(Read(WinnerPeasant)->State, HOLMoraleTableRows::HOLMoraleTriumph));
+			TestFalse(TEXT("the loser's unit does not carry Triumph"), HOLMorale::Has(Read(LoserNear)->State, HOLMoraleTableRows::HOLMoraleTriumph));
+			TestTrue(TEXT("the loser's unit within the radius carries Demoralised"), HOLMorale::Has(Read(LoserNear)->State, HOLMoraleTableRows::HOLMoraleDemoralised));
+			TestFalse(TEXT("the loser's unit beyond the radius carries nothing"), HOLMorale::Has(Read(LoserFar)->State, HOLMoraleTableRows::HOLMoraleDemoralised));
+			TestFalse(TEXT("the winner's unit does not carry Demoralised"), HOLMorale::Has(Read(WinnerNear)->State, HOLMoraleTableRows::HOLMoraleDemoralised));
+			// A refusal: Hesitation on the refuser's camp around the order's place.
+			UHOLMoraleLibrary::ApplyEffectAround(World, HOLMoraleTableRows::HOLMoraleHesitation, 5000, 3000, 1, HesitationRow->DurationMs, 1200);
+			RunStep();
+			TestTrue(TEXT("the refuser's unit within the radius carries Hesitation"), HOLMorale::Has(Read(LoserNear)->State, HOLMoraleTableRows::HOLMoraleHesitation));
+			TestFalse(TEXT("the refuser's unit beyond the radius does not"), HOLMorale::Has(Read(LoserFar)->State, HOLMoraleTableRows::HOLMoraleHesitation));
+			TestFalse(TEXT("the other camp does not"), HOLMorale::Has(Read(WinnerNear)->State, HOLMoraleTableRows::HOLMoraleHesitation));
+			// An order is laid once: it runs down with time and goes (it is not laid again every step).
+			const int32 StepMs = HOLCombat::ToMilliseconds(StepSeconds);
+			const int32 Steps = TriumphRow->DurationMs / StepMs + 2;
+			for (int32 Index = 0; Index < Steps; ++Index)
+			{
+				RunStep();
+			}
+			TestFalse(TEXT("past its duration Triumph is gone"), HOLMorale::Has(Read(WinnerNear)->State, HOLMoraleTableRows::HOLMoraleTriumph));
 		}
 	}
 
