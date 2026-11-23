@@ -844,7 +844,6 @@ int32 UHOLCombatProcessor::GetBuildingArrowCount(const int32 Occupants)
 }
 void UHOLCombatProcessor::ReleaseBuildingArrows(const UWorld& World, const int64 StepIndex, const int32 StepMs, const UHOLVisionSubsystem* Vision)
 {
-	(void)World;
 	// F8 T5: Vision is what the units' shots use (null: no fog started or the fog Disabled, hol.Fog.Mode 0): a tower aims only at what its OWNER sees.
 	// No standing building this step: no countdown can be alive (a no-op on an empty map), and nothing else costs anything.
 	if (StepBuildings.IsEmpty())
@@ -954,6 +953,18 @@ void UHOLCombatProcessor::ReleaseBuildingArrows(const UWorld& World, const int64
 			Arrow.ReleaseStep = StepIndex;
 			Arrow.ArrivalStep = StepIndex + HOLCombat::GetArrowFlightSteps(FlightMs, StepMs);
 			++TotalArrowsReleased;
+			// F8 T7: drawn here in solo / host, as a unit's arrow (the same process; a dedicated server has no arrow display). It leaves the centre of the body at
+			// the height of the roof (the row's Height), and lands after the same flight as the arrow above.
+			if (UHOLArrowSubsystem* ArrowDisplay = World.GetSubsystem<UHOLArrowSubsystem>())
+			{
+				FHOLArrowLaunch Launch;
+				Launch.From = FVector(Step.Box.GetCenter(), Row->Height);
+				Launch.To = Enemy.Location;
+				Launch.Target = Enemy.Entity;
+				Launch.FlightMs = FlightMs;
+				Launch.ShooterType = NAME_None;
+				ArrowDisplay->Launch(Launch);
+			}
 		}
 		// The next arrow in one interval of the row (BuildingAttackInterval), counted from the time this one was due (the carry below zero stays).
 		Cooldown->RemainingMs += FMath::Max(1, HOLCombat::ToMilliseconds(Row->BuildingAttackInterval));
