@@ -1,0 +1,18 @@
+﻿=== build integ-41 5e7eafb (HOLMonkTests.cpp : attente Monk.Table ; HOLSpecUnlock vert jamais lance) 15:48:55
+
+build : LaunchCheck debut (Get-StaleBinaryProblem) : the binary UnrealEditor-HeroesOfLiberty.dll of 
+C:\Users\baudo\Documents\HeroesOfLiberty-Celeborn (2026-11-23T15:30:21) is older than its C++ source 
+Source\HeroesOfLiberty\Tests\HOLMonkTests.cpp (2026-11-23T15:39:43): Tools\build.ps1 in that copy first
+build : BUILD LENT (4 actions, 128 s > 3 x median 38 s of 120 earlier normal PASS builds of 2-8 actions); load: vm 
+31.4 GB; actions 4 (machine saturee ? diagnostic de charge)
+build : PASS (HeroesOfLibertyEditor Development, HeroesOfLiberty-Celeborn, 128 s)
+
+
+build exit=0 15:51:12
+
+  check_placeholders : PASS (49 provisional types, 51 map entries, 167 lines)
+tests 2152/2152 : PASS
+quick_check : PASS in 249 s (game launch done at 0 s)
+
+
+fin 15:55:28
