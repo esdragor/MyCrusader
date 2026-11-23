@@ -96,6 +96,48 @@ void Test_AIGarrisonPlanFromSummary(FUnitTest& T)
 	T.AssertEquals(HOLAIGarrisonCall::PlanFromSummary(1, HOLAIGarrison::RuleRangedFoot, EHOLAIDifficulty::Normal, Summary, None, None, Radius).Num(), 0, "unknown hit times: no call, nothing made up");
 }
 
+// S4-b read: with no hit times given, the plan reads FHOLAIBuilding::SecondsSinceHit (the summary's reader of the hits): a tower hit within
+// hol.AI.GarrisonAttackedSeconds is attacked and calls, a tower hit longer ago or never hit is calm.
+void Test_AIGarrisonCallReadsSecondsSinceHit(FUnitTest& T)
+{
+	const float Attacked = HOLAIGarrison::AttackedSecondsFromCVar();
+	TArray<float> None;
+	const float Radius = HOLAIGarrison::RadiusFromCVar();
+	for (int Case = 0; Case < 3; Case++)
+	{
+		FHOLAISummary Summary;
+		FHOLAIBuilding Tower;
+		Tower.OwnerPlayer = 1;
+		Tower.TypeName = n"TowerWood";
+		Tower.State = EHOLConstructionState::Finished;
+		Tower.Location = FVector(0.f, 0.f, 0.f);
+		Tower.GarrisonSlots = 2;
+		Tower.Occupants = 0;
+		Tower.SecondsSinceHit = (Case == 0) ? 1.f : ((Case == 1) ? Attacked + 1.f : -1.f);
+		Summary.Buildings.Add(Tower);
+		for (int Index = 0; Index < 2; Index++)
+		{
+			FHOLAIUnit Archer;
+			Archer.Id = 200 + Index;
+			Archer.OwnerSlot = 1;
+			Archer.Location = FVector(300.f * float(Index + 1), 0.f, 0.f);
+			Archer.GarrisonKind = HOLGarrison::KindRangedInfantry;
+			Summary.Army.Add(Archer);
+		}
+		const TArray<FHOLAIGarrisonCall> Calls = HOLAIGarrisonCall::PlanFromSummary(1, HOLAIGarrison::RuleRangedFoot, EHOLAIDifficulty::Normal, Summary, None, None, Radius);
+		if (Case == 0)
+		{
+			T.AssertEquals(Calls.Num(), 1, "a tower hit one second ago is attacked: it calls");
+			if (Calls.Num() == 1)
+				T.AssertEquals(AgcList(Calls[0].UnitIds), "200,201", "the two Archers enter the attacked tower");
+		}
+		else
+		{
+			T.AssertEquals(Calls.Num(), 0, "a tower hit long ago or never hit is calm: nobody is called");
+		}
+	}
+}
+
 void Test_AIGarrisonsAttackedTower(FUnitTest& T)
 {
 	TArray<int> Ids;
