@@ -1,0 +1,16 @@
+APPELS_DECLARES: 12 (arret 15:50 ou 25 appels)
+HEURE_DEBUT/HEURE_FIN: 15:35 / 15:40
+LAUNCHCHECK_DEBUT: non lance (aucun build dans cet agent)
+BUILD: NON COMPILE (consigne : file saturee)
+MESSAGE_ECHEC_LU (Saved_Tests\Logs\quick_tests.log:33680, run 15:26) : "Expected 'the enemy killed near the centre is gone (enemy hp 1, Dawn spearman hp 80, 2 unit(s) alive)' to be true. [HOLZoneEffectTests.cpp(516)]" ; puis l.517/518 : jauge slot 0 = 0 au lieu de 3 ; cas lointain (l.527) : "enemy hp 1" aussi, jauge 0.
+CAUSE: (a) mise en scene. Les deux unites sont vivantes, l'ennemi a toujours 1 PV, la lance 80 PV : AUCUN coup en 10 s, donc l'ennemi ne meurt pas et AwardKillHonor n'est jamais atteint (ni (b) ni (c)). Mecanisme : HOLCombatProcessor.cpp:2096 bSearchStep = (UnitId + StepIndex) % 4 == 0 ; StepIndex = Simulation->GetStepIndex() (l.1009), membre du sous-systeme incremente seulement par son propre pas (HOLSimulationSubsystem.cpp:408) ; le test ne diffuse que OnStepStarted(Step) et ne le fait jamais avancer : il reste 0, donc une unite dont l'id n'est pas multiple de 4 ne cherche jamais de cible. Le Place du test (re-ecrit en ec74528) ne re-faisait pas naitre jusqu'a un id multiple de 4, contrairement a HeroXP.KillInMatch (HOLHeroXPMatchTests.cpp:131-160) et aux deux autres Place du meme fichier (l.114, l.226). Le batiment n'est pas en cause (difference de ids selon le nombre d'entites nees avant).
+CORRECTIF: 0fcf23d (branche zone-effect, tip, message finit par Agent: FARAMIR-1123pb) : Place de Zone.KillHonor (HOLZoneEffectTests.cpp ~l.449-483) : boucle de 8 essais, une unite nee dont l'id n'est pas multiple de 4 est detruite (RequestDestroyUnits + FlushDestructions) et re-nee. CODE DE JEU INCHANGE : HOLCombatProcessor.cpp, HOLHealProcessor.cpp/.h non touches.
+RELECTURE_CPP: meme motif que HOLZoneEffectTests.cpp:114-140 (deja compile) ; aucun include ajoute, aucun .generated.h, lambda a capture [Units] seule comme avant, retour 0u (uint32) coherent avec Born (uint32) dans les deux chemins, `const uint32 Again[] = { Born }` passe a RequestDestroyUnits comme l.139.
+A_FAIRE (session principale) : build puis `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Faramir\Tools\Tests\quick_check.ps1 -Parts tests` ; attendu 2145/2145 (Zone.KillHonor vert : jauge 3 pres du centre, inchangee a 50 m). Si encore rouge avec "enemy hp 1" : lire hp et nombre d'unites (le message les donne) ; piste suivante : la lance (id multiple de 4) cible-t-elle le batiment ? (HOLCombatProcessor.cpp:2545).
+BUILDS_DEMANDES: 1 (a la session principale)   TESTS_SCRIPT_AJOUTES: 0   TYPES_A_EXPOSER: aucun
+TEST_ROUGE: vu 15:26 : 2144/2145 ; TEST_ROUGE_SEPARE: sans objet (correctif de test seul)   TESTS_TAUTOLOGIQUES: 0
+NON VERIFIE: compilation ; que Zone.KillHonor passe au vert apres le correctif ; que 8 essais suffisent (ids consecutifs : au plus 3 essais par unite) ; le cas lointain (jamais vu vert).
+EDITS_REFUSES: 1 (Edit "not read" apres lecture par PowerShell : remplace par ReadAllText/WriteAllText exact)
+PROCESSUS_DETACHES: voir stray_processes ci-dessous
+ANOMALIES: premier git commit -m avec here-string a eclate en pathspecs (rien commite) : refait avec git commit -F ; IN_USE.txt de la worktree portait encore FARAMIR-1123pa.
+GIT_STATUS_PRINCIPALE: docs seulement

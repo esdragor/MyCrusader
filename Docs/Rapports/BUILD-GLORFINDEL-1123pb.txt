@@ -1,0 +1,22 @@
+﻿=== build ability-columns 153bd68 (PlantHeroBanner, NOT COMPILED) 15:27:24
+
+build : LaunchCheck debut (Get-StaleBinaryProblem) : the binary UnrealEditor-HeroesOfLiberty.dll of 
+C:\Users\baudo\Documents\HeroesOfLiberty-Glorfindel (2026-11-23T11:39:54) is older than its C++ source 
+Source\HeroesOfLiberty\Simulation\HOLHeroLibrary.cpp (2026-11-23T15:24:59): Tools\build.ps1 in that copy first
+queued behind the build of: HeroesOfLiberty-Celeborn, HeroesOfLiberty-Galadriel (position 2 of 2 waiting; one build at 
+a time on this engine; normal)
+queued behind the build of: HeroesOfLiberty-Galadriel (position 2 of 2 waiting; one build at a time on this engine; 
+normal)
+queued behind the build of: HeroesOfLiberty-Galadriel (position 1 of 1 waiting; one build at a time on this engine; 
+normal)
+build : PASS (HeroesOfLibertyEditor Development, HeroesOfLiberty-Glorfindel, 181 s)
+
+
+build exit=0 15:33:33
+
+  check_placeholders : PASS (44 provisional types, 46 map entries, 165 lines)
+tests 2147/2147 : PASS
+quick_check : PASS in 204 s (game launch done at 1 s)
+
+
+fin 15:37:06

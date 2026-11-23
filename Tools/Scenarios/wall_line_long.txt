@@ -1,9 +1,8 @@
-# Ligne de murs longue (D867 : plus de plafond de 16 cases par defaut, hol.Wall.MaxLineCells 0 = illimite ; dessin du glisser : un fantome vert plat par case, rouge si refuse). Toi (slot 0, Aube) contre une IA gelee (slot 1). 3 minutes au plus.
-# branches: wall-line, zone-effect (worktree qui contient wall-line ET la commande hol.Mouse.Drag, HOLUIMouse.cpp, ajoutee par FARAMIR-1120pf : NON COMPILEE a ce jour).
-# PREREQUIS MANQUANTS, scenario NON JOUE, NON JOUABLE aujourd'hui :
-#  (1) aucun type de mur n'existe : HOLWallLine::WallTypes() (HOLWallLineRules.as:193) renvoie une liste VIDE et BuildingTypes.csv n'a aucune ligne de mur ; le nom ci-dessous (Wall) est donc un NOM PROVISOIRE a remplacer par le type reel (case F4 de la grille du Paysan, FortificationsInProgress.md FQ-3) ;
-#  (2) hol.Mouse.Drag <X1> <Y1> <X2> <Y2> [Frames] : appui du bouton gauche en X1 Y1, un deplacement par image, relache en X2 Y2 a la derniere image (chemin HandleSelectPressed / HandleSelectCompleted du controleur, HOLPlayerController.cpp:4917 et 4975). La commande rend la main tout de suite : le glisser avance avec les images, la capture pendant se prend avant sa fin ; il faut un build avec HOLUIMouse.cpp (lot C++ de la seance) ;
-#  (3) deblocage des murs : la seule commande de triche connue est hol.Cheat.Technology <Nom> ; la technologie Masonry (Technologies.csv:19, Stats WallTowerHealth) est la candidate, a confirmer.
+# Ligne de palissade au GESTE REEL (D867 : pas de plafond de longueur, hol.Wall.MaxLineCells 0 = illimite ; dessin du glisser : un fantome vert plat par case, rouge si refuse). Toi (slot 0, Aube) contre une IA gelee (slot 1). 3 minutes au plus.
+# branches: integ-55
+# Geste : un Paysan est selectionne (hol.Select.ClickUnit), A (age I) puis D (hol.Select.Grid 0 puis 6 = la touche de la Palissade dans la grille du Paysan), puis un vrai glisser de souris hol.Mouse.Drag (appui, un deplacement par image, relache). Une ligne = une fondation de 5 bois par case (D892), les Paysans les bâtissent ensuite.
+# play.ps1 -Hidden ne pose PAS hol.Camera.TestCursor 0.5 0.5 pour un scenario a hol.Mouse.Drag (SAURON-1123pb) : la souris reelle est lue. Le viewport cache fait 1280x720 : le glisser est en pixels de ce viewport.
+# Camera centree sur (-17400, 0) : le glisser (y ecran 360) tombe sur x monde ~ -17400, a 10 m a l'ouest du MainCentre (-16400, 0), sur du sol libre : une case bloquee refuse TOUTE la ligne (refused (3), Occupied : HOLWallLineRules.as Validate).
 waitlog Starting hero of slot 0 spawned at
 hol.AI.ThinkSteps 100000
 hol.Cheat.Resources 20000
@@ -12,25 +11,36 @@ hol.Cheat.Technology Masonry
 hol.Build.Instant 1
 hol.Wall.MaxLineCells 0
 frames 2
-hol.Camera.FocusNear 0 0
-hol.Camera.Zoom 3
+hol.Units.Spawn 1 -17400 3000 0 Peasant 10
 frames 40
 hol.Test.Sanity
-note 1. Les murs sont debloques (Masonry) et la camera est reculee : une ligne de plus de 16 cases de 4 m (plus de 64 m) tient dans l'ecran.
-waitkey Entree : je choisis le mur dans la grille du Paysan (case F4 : touche puis glisser a la souris)
-hol.Build.Place Palisade
-waitlog placement
-frames 10
-# Geste reel : appui en X1 Y1, un deplacement par image, relache en X2 Y2 a la derniere image (pixels du viewport 1920x1080 : NON VERIFIE). 1500 px d'ecart = bien plus de 16 cases a ce zoom (a verifier sur la capture). 90 images : la capture pendant (apres 30 images) tombe au milieu du glisser.
-hol.Mouse.Drag 200 540 1700 540 90
+hol.Camera.Zoom 3
+hol.Camera.Focus -17400 3000
+frames 5
+note 1. Un Paysan est a l'ecran : tu le selectionnes, puis la touche A (age I) et la touche D (Palissade) de la grille, puis un glisser a la souris.
+# Selection du Paysan : le curseur virtuel au centre le temps du clic (ClickUnit vise le Paysan projete), puis rendu a la vraie souris pour le glisser.
+hol.Camera.TestCursor 0.5 0.5
+hol.Select.ClickUnit -1
+waitlog Selection: Peasant #
+hol.Camera.TestCursor off
+hol.Select.Grid 0
+hol.Select.Grid 6
+waitlog Placement: Palisade (cost
+hol.Camera.Focus -17400 0
+frames 40
+hol.Mouse.LogDragEnd 1
+# Glisser : appui en (200, 360), relache en (1000, 360), 90 images (pixels du viewport cache 1280x720) ; a ~3,8 cm par pixel : ~3000 cm, soit 7 a 8 cases de 4 m. La capture pendant (apres 30 images) tombe au milieu du glisser.
+hol.Mouse.Drag 200 360 1000 360 90
 frames 30
-note 2. PENDANT le glisser : une file de boites vertes plates, une par case, de ton point de depart au curseur (plus de 16, sans coupure).
+note 2. PENDANT le glisser : une file de boites vertes plates, une par case, de ton point d'appui au curseur, sur du sol libre (aucune boite rouge).
 capture wall_line_long_during
-waitlog wall line (
-frames 30
+waitlog Drag end: foreground=
+waitlog Placement: Palisade wall line (
+waitlog RpcOrder: place wall line received by the server
+wait 2
 hol.Build.Report
-note 3. APRES le relache : les fondations sont posees sur toute la ligne, une par case, ressources payees case par case.
+note 3. APRES le relache : les fondations de la palissade sont posees sur toute la ligne, une par case, 5 bois par case (le Bois a baisse).
 capture wall_line_long_after
 hol.Test.Sanity
-note 4. A toi : trace une ligne en diagonale, puis une ligne qui croise un arbre ou un batiment (les cases refusees passent au rouge).
+note 4. A toi : trace une ligne en diagonale, puis une ligne qui croise un arbre ou un batiment (la ligne entiere est refusee si une case est bloquee).
 quit

@@ -251,3 +251,19 @@ void Test_CGRageButton(FUnitTest& T)
 	FHOLGridCommandView WithoutRage = HOLCommandGridRules::GetCommand(Selection, RageCell);
 	T.AssertTrue(WithoutRage.Command != EHOLGridCommandKind::NecroticRage, "... and none for another selection");
 }
+
+// S1-d (GLORFINDEL-1123o): the Monk's Seal of Light button. The cell is the rule's own (GetMonkSealCell), the selection holds a Monk (bMonkUnit, filled by HOLCommandGrid::NoteSelectedUnitType).
+// RED before HOLCommandGridRules.as answers LightSeal.
+// HeroesOfLiberty.CommandGridRules.MonkSealButton
+void Test_CGMonkSealButton(FUnitTest& T)
+{
+	FHOLGridContextView Selection;
+	Selection.bOwnUnits = true;
+	Selection.bMonkUnit = true;
+	int SealCell = HOLCommandGridRules::GetMonkSealCell();
+	FHOLGridCommandView WithMonk = HOLCommandGridRules::GetCommand(Selection, SealCell);
+	T.AssertTrue(WithMonk.Command == EHOLGridCommandKind::LightSeal, "the grid shows the Seal of Light button for a selection with a Monk");
+	Selection.bMonkUnit = false;
+	FHOLGridCommandView WithoutMonk = HOLCommandGridRules::GetCommand(Selection, SealCell);
+	T.AssertTrue(WithoutMonk.Command != EHOLGridCommandKind::LightSeal, "... and none for another selection");
+}

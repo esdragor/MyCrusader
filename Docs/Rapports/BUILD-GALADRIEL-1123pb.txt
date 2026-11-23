@@ -1,0 +1,9 @@
+﻿=== socle-ai e0dc642 (S2-b ApplyEffectAround) : etat du binaire puis tests 15:45:35
+stale: []
+
+  check_placeholders : PASS (44 provisional types, 46 map entries, 165 lines)
+tests 2146/2146 : PASS
+quick_check : PASS in 217 s (game launch done at 1 s)
+
+
+fin 15:49:22
