@@ -438,8 +438,8 @@ bool FHOLBuildingShotTest::RunTest(const FString& Parameters)
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLBuildingShotFiresEmptyTest, "HeroesOfLiberty.Combat.BuildingShotFiresEmpty", UE::HeroesOfLiberty::Tests::BuildingShot::Flags)
 
 // F8 T6 (D884): BuildingFiresEmpty true: the tower looses arrows with no occupant; false: only with at least one occupant (the garrison list of the
-// unit subsystem), and it stops when the last one leaves. The number of arrows per shot is ONE in every case (UHOLCombatProcessor::GetBuildingArrowCount,
-// D884 : nombre par occupant à confirmer, 1 tant que non tranché): the test pins no other number. The rows are test rows (no row of the game is false today).
+// unit subsystem), and it stops when the last one leaves. The number of arrows per shot is 1 + one per occupant (D884, confirmed 2026-11-23, pinned by
+// HeroesOfLiberty.BuildingShot.ArrowsPerOccupant): here the one occupant makes two arrows per shot. The rows are test rows (no row of the game is false today).
 bool FHOLBuildingShotFiresEmptyTest::RunTest(const FString& Parameters)
 {
 	using namespace UE::HeroesOfLiberty::Tests::BuildingShot;
@@ -480,7 +480,7 @@ bool FHOLBuildingShotFiresEmptyTest::RunTest(const FString& Parameters)
 		TestEqual(TEXT("FiresEmpty false: an empty tower hurts nobody"), EmptyFalse.HealthLost, 0.f);
 		TestEqual(TEXT("FiresEmpty false: an empty tower holds no countdown"), EmptyFalse.EntriesAlive, 0);
 	}
-	// FiresEmpty false, one occupant: it looses arrows, ONE arrow per step at most (one shot = one arrow in every case).
+	// FiresEmpty false, one occupant: it looses arrows, TWO per shot (1 + one occupant), both on the step of the shot.
 	FShotOptions Garrisoned = NoEmptyEmpty;
 	Garrisoned.Occupants = 1;
 	const FShotResult Occupied = RunScenario(*this, EHOLConstructionState::Finished, 3, 1000.0, Garrisoned);
@@ -488,7 +488,7 @@ bool FHOLBuildingShotFiresEmptyTest::RunTest(const FString& Parameters)
 	{
 		TestTrue(TEXT("FiresEmpty false: a garrisoned tower looses arrows"), Occupied.Released >= 1);
 		TestTrue(TEXT("FiresEmpty false: a garrisoned tower hurts the enemy in reach"), Occupied.HealthLost > 0.f);
-		TestEqual(TEXT("one arrow per shot: the arrows released match the distinct steps they left on"), TSet<int32>(Occupied.ReleaseSteps).Num(), Occupied.ReleaseSteps.Num());
+		TestEqual(TEXT("two arrows per shot (1 + one occupant): the arrows released are twice the distinct steps they left on"), static_cast<int64>(Occupied.ReleaseSteps.Num()), static_cast<int64>(2 * TSet<int32>(Occupied.ReleaseSteps).Num()));
 	}
 	// The occupant leaves after step 5 (the first arrow left at once): the tower stops.
 	FShotOptions Leaving = Garrisoned;
@@ -503,6 +503,53 @@ bool FHOLBuildingShotFiresEmptyTest::RunTest(const FString& Parameters)
 	}
 
 	Table->RemoveRow(TestShotNoEmptyTowerType);
+	Table->RemoveRow(TestShotTowerType);
+	CombatEnabled->Set(FormerCombat, ECVF_SetByCode);
+	return true;
+}
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLBuildingShotArrowsPerOccupantTest, "HeroesOfLiberty.BuildingShot.ArrowsPerOccupant", UE::HeroesOfLiberty::Tests::BuildingShot::Flags)
+
+// D884 (confirmed 2026-11-23, ai_garrison trial): a garrisoned tower looses 1 + one arrow per occupant at each shot, all on the same step (UHOLCombatProcessor::GetBuildingArrowCount).
+// The window is one second, shorter than the 1.625 s interval: only the FIRST volley is counted. The tower row is a FiresEmpty true test row (the occupants only change the number).
+bool FHOLBuildingShotArrowsPerOccupantTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::BuildingShot;
+	UDataTable* Table = const_cast<UDataTable*>(GetDefault<UHOLBuildingSettings>()->BuildingTypesTable.LoadSynchronous());
+	const FHOLBuildingTypeRow* HouseRow = Table ? Table->FindRow<FHOLBuildingTypeRow>(HOLBuildingTypeNames::House, TEXT("building shot arrows per occupant test")) : nullptr;
+	IConsoleVariable* CombatEnabled = IConsoleManager::Get().FindConsoleVariable(TEXT("hol.Combat.Enabled"));
+	if (!TestNotNull(TEXT("the building type table and its House row"), HouseRow) || !TestNotNull(TEXT("hol.Combat.Enabled"), CombatEnabled))
+	{
+		return false;
+	}
+	const int32 FormerCombat = CombatEnabled->GetInt();
+	CombatEnabled->Set(1, ECVF_SetByCode);
+	FHOLBuildingTypeRow TowerRow = *HouseRow;
+	TowerRow.BuildingAttack = 5;
+	TowerRow.BuildingAttackInterval = 1.625f;
+	TowerRow.BuildingAttackRange = 3000.f;
+	TowerRow.BuildingFiresEmpty = true;
+	Table->AddRow(TestShotTowerType, TowerRow);
+
+	// 0, 1 and 3 occupants: the first volley is 1, 2 and 4 arrows, all on one step; a tough target outlives the window.
+	const int32 OccupantCounts[] = {0, 1, 3};
+	for (const int32 Occupants : OccupantCounts)
+	{
+		FShotOptions Options;
+		Options.Seconds = 1.f;
+		Options.VictimHealth = 100000.f;
+		Options.Occupants = Occupants;
+		const FShotResult Volley = RunScenario(*this, EHOLConstructionState::Finished, 3, 1000.0, Options);
+		if (TestTrue(*FString::Printf(TEXT("the %d occupants scenario ran"), Occupants), Volley.bRan))
+		{
+			TestEqual(*FString::Printf(TEXT("%d occupants: the first volley looses %d arrows"), Occupants, 1 + Occupants), Volley.Released, static_cast<int64>(1 + Occupants));
+			TestEqual(*FString::Printf(TEXT("%d occupants: all the arrows of the volley leave on one step"), Occupants), TSet<int32>(Volley.ReleaseSteps).Num(), 1);
+			if (Volley.Launched >= 0)
+			{
+				TestEqual(*FString::Printf(TEXT("%d occupants: the display is asked to draw every arrow of the volley"), Occupants), Volley.Launched, static_cast<int64>(1 + Occupants));
+			}
+		}
+	}
+
 	Table->RemoveRow(TestShotTowerType);
 	CombatEnabled->Set(FormerCombat, ECVF_SetByCode);
 	return true;
