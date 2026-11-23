@@ -480,16 +480,18 @@ bool FHOLZoneEffectKillHonorTest::RunTest(const FString& Parameters)
 			}
 			return 0u;
 		};
-		const auto IsGone = [Units](const uint32 Id)
-		{
-			return Units->GetUnitTypeName(Id).IsNone();
-		};
-		// The unit's hit points (-1 once it is gone), for the message of a failure.
+		// The unit's hit points (-1 once it is gone), for the message of a failure and for IsGone.
 		const auto HealthOf = [Units, &EntityManager](const uint32 Id)
 		{
 			const FMassEntityHandle Handle = Units->FindEntity(Id);
 			const FHOLUnitStateFragment* Fragment = Handle.IsSet() ? EntityManager->GetFragmentDataPtr<FHOLUnitStateFragment>(Handle) : nullptr;
 			return Fragment ? Fragment->CurrentHealth : -1.f;
+		};
+		// Dead = no hit point left, as HeroesOfLiberty.HeroXP.KillInMatch (IsDown): the combat marks the death (hp -7, the kill and its Honor counted,
+		// KillHonor 15:46: gauge right) and the unit leaves the subsystem later, so its type name is still there at the end of the step.
+		const auto IsGone = [&HealthOf](const uint32 Id)
+		{
+			return HealthOf(Id) <= 0.f;
 		};
 		const auto SetHealthToOne = [Units, &EntityManager](const uint32 Id)
 		{
