@@ -189,10 +189,12 @@ namespace HOLWallLine
 
 	// ---- Drag gesture (F4, client): the cells the drag SHOWS. One source with Validate (it lays exactly these cells when the line is accepted); the C++
 	// controller reads them through UHOLWallLineBridge (HOLWallLineBridge.as), it holds no copy of the rule. STUB (red first): empty.
-	// The wall types the drag is armed for. Empty until F5 adds the first wall type (Palissade / Mur): then its row name goes here.
+	// The wall types the drag is armed for (S3-b): the rows of BuildingTypes.csv placed as a line. The Palisade is the first; the stone Wall and
+	// the gates (F9 / F10) join this list when their rows exist.
 	TArray<FName> WallTypes()
 	{
 		TArray<FName> Types;
+		Types.Add(n"Palisade");
 		return Types;
 	}
 

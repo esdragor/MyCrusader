@@ -67,6 +67,12 @@ $fresh = & powershell -NoProfile -ExecutionPolicy Bypass -File $Gate -Phase Laun
 Check ($fresh -match '(?m)^PASS .*DLL' -and -not ($fresh -match '(?m)^FAIL .*DLL')) 'launch -Scenarios: DLL recente -> PASS' $fresh
 $noRoot = & powershell -NoProfile -ExecutionPolicy Bypass -File $Gate -Phase Launch -End 23:59 -Scenarios | Out-String
 Check ($noRoot -match '(?m)^FAIL .*-Root') 'launch -Scenarios sans -Root -> FAIL' $noRoot
+# 2026-11-23 09:13 : '-Scenarios faction_click' (nom de scenario apres le switch) etait lu comme -End (1er parametre positionnel libre) -> 'il reste -1065517033 min'.
+# Sans -End nomme : l'heure de fin doit venir de SessionEnd.txt, le nom de scenario ne doit jamais etre pris pour l'heure.
+$ScnEnd = Join-Path $Tmp 'SessionEnd_scn.txt'
+[IO.File]::WriteAllText($ScnEnd, (Get-Date).AddHours(3).ToString('yyyy-MM-dd HH:mm'), (New-Object Text.UTF8Encoding $false))
+$scnPos = & powershell -NoProfile -ExecutionPolicy Bypass -File $Gate -Phase Launch -NoCpp -SessionEndFile $ScnEnd -Root $Wt -Scenarios faction_click | Out-String
+Check ($scnPos -match '(?m)^PASS temps restant 1[0-9]{2} min' -and -not ($scnPos -match 'il reste -')) 'launch -Scenarios <nom> : le nom de scenario n est pas pris pour l heure de fin (temps restant lu de SessionEnd.txt)' $scnPos
 
 # --- L11-7 + L11-1 (2026-11-11) : plafond de 3 agents C++ compte depuis la file de build ET IN_USE.txt ; WARN (pas FAIL) si la tache est sans C++ (-NoCpp)
 $CapQ = Join-Path $Tmp 'queue'; $CapW = Join-Path $Tmp 'wts'
@@ -502,8 +508,12 @@ Add-CodeCommit (Join-Path $CW 'HeroesOfLiberty-B') 'Script\integy.as' 'Integrati
 Add-CodeCommit (Join-Path $CW 'HeroesOfLiberty-A') 'Script\cpsrc.as' 'cherry source from agent'
 $cpSha = (& git -C (Join-Path $CW 'HeroesOfLiberty-A') rev-parse HEAD).Trim()
 & git -C (Join-Path $CW 'HeroesOfLiberty-Arwen') cherry-pick $cpSha 2>&1 | Out-Null
+# L22-6 (2026-11-23, reponse B) : seul un commit portant la ligne de fin 'Agent: <nom>' (trailer) est exempte ; un commit de code sur integ-1 SANS trailer compte
+# ('Integration: integ one' ci-dessus), AVEC trailer non (le commit ci-dessous ne doit ni compter ni etre liste)
+Add-CodeCommit (Join-Path $CW 'HeroesOfLiberty-Arwen') 'Script\integ_trailer.as' "Integration: trailer carrier`n`nAgent: GALADRIEL-1123d"
 $ci = Run-C
 Check ($ci -match '(?m)^WARN .*L19-1.*\b1\b' -and -not ($ci -match '(?m)^FAIL .*L19-1') -and $ci -match 'Integration: integ one' -and -not ($ci -match 'Merge agent-a|agent a work|agent owned integ y|cherry source from agent')) 'L19-1 close (reflog): 1 commit direct sur integ-1 compte ; fusion, cherry-pick et commit sur integ-y (worktree d agent) non' $ci
+Check (-not ($ci -match 'trailer carrier') -and $ci -match '(?m)^WARN .*L19-1.* 1 fois') 'L22-6 close: commit sur integ-1 AVEC trailer Agent: exempte (compte reste 1), SANS trailer compte' $ci
 Add-CodeCommit $CR 'Script\main1.as' 'Integration: one'
 Add-CodeCommit $CR 'Source\main2.cpp' 'quick_check follows D858 two'
 Add-CodeCommit $CR 'Docs\onlydoc.md' 'doc only commit'

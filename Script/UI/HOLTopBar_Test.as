@@ -117,3 +117,18 @@ void Test_TopBarIncomeTipIsAHudPanel(FUnitTest& T)
 	T.AssertTrue(View.Border.R > 0.7 && View.Border.R > View.Border.G && View.Border.G > View.Border.B && View.Border.A > 0.9, "the border is gold");
 	T.AssertTrue(View.BorderWidth >= 1.0 && View.Padding > 0.0, "the border has a width and the text a padding");
 }
+
+// REVUE-1122 minor 11: SetBannerRect runs on every game-screen Refresh; it must redo its 8 widget measures and 8 paddings only when the banner rectangle changed.
+void Test_TopBarBannerRectIsAppliedOnlyWhenItChanges(FUnitTest& T)
+{
+	const bool First = HOLTopBar::BannerRectNeedsApply(false, 0.0, 0.0, 0.0, 530.0, 1390.0, 126.0);
+	T.AssertTrue(First, "nothing applied yet: the rectangle is applied");
+	const bool Same = HOLTopBar::BannerRectNeedsApply(true, 530.0, 1390.0, 126.0, 530.0, 1390.0, 126.0);
+	T.AssertFalse(Same, "the same rectangle as the last applied one: no new measure, no new padding");
+	const bool Moved = HOLTopBar::BannerRectNeedsApply(true, 530.0, 1390.0, 126.0, 530.0, 1390.0, 150.0);
+	T.AssertTrue(Moved, "the banner moved: the drops are recomputed");
+	const bool Hidden = HOLTopBar::BannerRectNeedsApply(true, 530.0, 1390.0, 126.0, 0.0, 0.0, 0.0);
+	T.AssertTrue(Hidden, "the banner went away: the tooltips go back to their natural place");
+	const bool StillHidden = HOLTopBar::BannerRectNeedsApply(true, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
+	T.AssertFalse(StillHidden, "no banner before and after: nothing to redo");
+}

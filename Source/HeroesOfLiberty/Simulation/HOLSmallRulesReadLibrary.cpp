@@ -12,7 +12,7 @@ namespace
 {
 	EHOLXPSource ToSource(const int32 Source)
 	{
-		return Source >= 0 && Source <= static_cast<int32>(EHOLXPSource::Exploration) ? static_cast<EHOLXPSource>(Source) : EHOLXPSource::Exploration;
+		return Source >= 0 && Source <= static_cast<int32>(EHOLXPSource::Duel) ? static_cast<EHOLXPSource>(Source) : EHOLXPSource::Exploration;
 	}
 
 	HOLHeal::FCandidate MakeCandidate(const int32 UnitId, const float X, const float Y, const float Health, const float MaxHealth, const int32 Camp, const bool bUnhealable)

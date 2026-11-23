@@ -59,6 +59,13 @@ public:
 	int32 GetArrowsInFlight() const { return Arrows.Num(); }
 	/** FNV-1a over the arrows in flight, in list order (J7c.4, determinism probe, hol.Simulation.StepHashes). */
 	uint64 HashArrows() const;
+	/** F8 T4: the buildings that hold a firing countdown right now (the tests: an entry per standing armed building, none after it is gone). */
+	int32 GetBuildingCooldownCount() const { return BuildingCooldownMs.Num(); }
+	/**
+	 * F8 T6 (D884): the arrows a building looses at each shot, given the occupants of its garrison. D884 : nombre par occupant à confirmer, 1 tant que non tranché.
+	 * The ONE place the number lives: no test pins another number than 1.
+	 */
+	static int32 GetBuildingArrowCount(int32 Occupants);
 
 protected:
 	virtual void ConfigureQueries(const TSharedRef<FMassEntityManager>& EntityManager) override;
@@ -137,6 +144,24 @@ protected:
 	};
 	/** In release order (the outcome does not depend on the chunks). */
 	TArray<FArrow> Arrows;
+
+	/**
+	 * F8 T2 (D884): the finished buildings of the step whose row has BuildingAttack > 0 and BuildingFiresEmpty (or, F8 T6, at least one occupant) loose arrows at the nearest
+	 * enemy within HOLCombat::IsInBuildingShotRange (StepCamps.FiresAtOnce). Called once a step before the arrows land.
+	 * The arrow is a FArrow with no shooter entity (T3: the ranged armour of the target, the kill credited to the owner slot).
+	 * F8 T4: the cadence is one countdown per building (BuildingCooldownMs, simulation milliseconds): the first arrow at once, then one every row interval
+	 * (BuildingAttackInterval, the carry kept so it is exact), none piled up while no enemy is in reach. A building looses at most one arrow a step;
+	 * several buildings each loose theirs in the same step. The countdown of a building that is gone is dropped.
+	 */
+	void ReleaseBuildingArrows(const UWorld& World, int64 StepIndex, int32 StepMs, const class UHOLVisionSubsystem* Vision);
+	/** F8 T4: the firing countdown of one standing armed building. RemainingMs: time left before its next arrow (<= 0 = ready; below zero = the carry kept so the interval holds exactly). SeenStep: the last step the building was met (a stale entry is dropped). */
+	struct FBuildingCooldown
+	{
+		int32 RemainingMs = 0;
+		int64 SeenStep = INDEX_NONE;
+	};
+	/** Building identifier -> countdown; an entry only for a standing, finished, armed building (none otherwise: nothing to pay for). */
+	TMap<uint32, FBuildingCooldown> BuildingCooldownMs;
 
 	FMassEntityQuery EntityQuery;
 

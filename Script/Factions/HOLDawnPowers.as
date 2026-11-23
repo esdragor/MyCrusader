@@ -11,6 +11,8 @@ namespace HOLDawnPowers
 		SacredLight.Key = "SacredLight";
 		SacredLight.Cost = 25;
 		SacredLight.CooldownMs = 20000;
+		// S1-b: the Sacred Light now has a coded effect (HOLZoneEffect::StartSacredLight, cast by ServerCastFactionPower).
+		SacredLight.bEffectCoded = true;
 		Result.Add(SacredLight);
 		return Result;
 	}

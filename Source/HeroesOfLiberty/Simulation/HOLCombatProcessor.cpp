@@ -4,6 +4,7 @@
 
 #include "Async/ParallelFor.h"
 #include "Buildings/HOLBuilding.h"
+#include "Buildings/HOLBuildingTypes.h"
 #include "Buildings/HOLConstructionSubsystem.h"
 #include "Commands/HOLCommandSubsystem.h"
 #include "Engine/World.h"
@@ -836,6 +837,151 @@ int32 UHOLCombatProcessor::GetBuildingAttackWithTechnology(const FFighter& Attac
 	return HOLTechnology::ScaleByPercent(Attacker.Constants->BuildingAttack, MangonelDamagePercent[Slot]);
 }
 
+int32 UHOLCombatProcessor::GetBuildingArrowCount(const int32 Occupants)
+{
+	(void)Occupants;
+	// D884 : nombre par occupant à confirmer, 1 tant que non tranché.
+	return 1;
+}
+void UHOLCombatProcessor::ReleaseBuildingArrows(const UWorld& World, const int64 StepIndex, const int32 StepMs, const UHOLVisionSubsystem* Vision)
+{
+	// F8 T5: Vision is what the units' shots use (null: no fog started or the fog Disabled, hol.Fog.Mode 0): a tower aims only at what its OWNER sees.
+	// No standing building this step: no countdown can be alive (a no-op on an empty map), and nothing else costs anything.
+	if (StepBuildings.IsEmpty())
+	{
+		BuildingCooldownMs.Reset();
+		return;
+	}
+	for (const FStepBuilding& Step : StepBuildings)
+	{
+		const FHOLBuildingTypeRow* Row = Step.Building ? Step.Building->GetType() : nullptr;
+		// The step's list holds standing buildings and drops the bare foundations; a building under construction is a foundation or a site: IsFinished only.
+		// An unarmed building (BuildingAttack 0, the 16 other rows) holds no countdown and costs one integer read.
+		if (!Row || Row->BuildingAttack <= 0 || Step.bGone || !Step.Building->IsFinished())
+		{
+			continue;
+		}
+		// F8 T6 (D884): BuildingFiresEmpty true fires with no occupant; false fires only with at least one (the unit subsystem's garrison list). A building that does not
+		// fire holds no countdown (it is purged below), so an occupant who leaves stops it at the next step. Read only for a FiresEmpty false row, else once per shot.
+		const auto CountOccupants = [&World, &Step]() -> int32
+		{
+			TArray<uint32> Inside;
+			if (const UHOLUnitSubsystem* UnitSubsystem = World.GetSubsystem<UHOLUnitSubsystem>())
+			{
+				UnitSubsystem->GetGarrisonUnitIds(Step.Building, Inside);
+			}
+			return Inside.Num();
+		};
+		int32 Occupants = INDEX_NONE;
+		if (!Row->BuildingFiresEmpty)
+		{
+			Occupants = CountOccupants();
+			if (Occupants <= 0)
+			{
+				continue;
+			}
+		}
+		// F8 T4: the countdown of this building, in simulation milliseconds (the step's own length, never the wall clock). A building met for the first time
+		// is ready at once (its first arrow leaves the first step an enemy is in reach); after that the step's length is taken off. The carry below zero
+		// is kept after a shot so the interval holds exactly over many arrows (1.625 s is not a whole number of steps).
+		FBuildingCooldown* Cooldown = BuildingCooldownMs.Find(Step.Id);
+		if (Cooldown)
+		{
+			Cooldown->RemainingMs -= StepMs;
+		}
+		else
+		{
+			Cooldown = &BuildingCooldownMs.Add(Step.Id);
+			Cooldown->RemainingMs = 0;
+		}
+		Cooldown->SeenStep = StepIndex;
+		if (Cooldown->RemainingMs > 0)
+		{
+			continue;
+		}
+		// The nearest enemy within the reach counted from the body's edge: the same hostility as the archers (another camp, and at war in Diplomacy:
+		// an ally, a Neutral and one's own are never shot). Ties go to the smallest unit identifier (deterministic).
+		int32 Best = INDEX_NONE;
+		double BestGapSquared = 0.;
+		for (int32 Index = 0; Index < Fighters.Num(); ++Index)
+		{
+			const FFighter& Candidate = Fighters[Index];
+			if (Candidate.State->CurrentHealth <= 0.f || Candidate.Camp == Step.Camp || !Candidate.Constants
+				|| (StepCamps.IsDiplomacy() && !StepCamps.FiresAtOnce(Step.OwnerPlayer, Candidate.State->OwnerPlayer))
+			|| (Vision && !Vision->IsVisible(Step.OwnerPlayer, Candidate.Location)) // F8 T5: the same test as IsSeenBy in Execute; out of sight, never chosen
+				|| !HOLCombat::IsInBuildingShotRange(Step.Box, FVector2D(Candidate.Location), Candidate.Constants->Radius, Row->BuildingAttackRange))
+			{
+				continue;
+			}
+			const FVector2D Location(Candidate.Location);
+			const FVector2D Nearest(FMath::Clamp(Location.X, Step.Box.Min.X, Step.Box.Max.X), FMath::Clamp(Location.Y, Step.Box.Min.Y, Step.Box.Max.Y));
+			const double GapSquared = FVector2D::DistSquared(Location, Nearest);
+			if (Best == INDEX_NONE || GapSquared < BestGapSquared || (GapSquared == BestGapSquared && Candidate.UnitId < Fighters[Best].UnitId))
+			{
+				Best = Index;
+				BestGapSquared = GapSquared;
+			}
+		}
+		if (Best == INDEX_NONE)
+		{
+			// No target: the building waits ready, the time does not pile up (no burst of arrows when an enemy steps in after a pause).
+			// StepMs and not 0 (CELEBORN-1122m): the next step takes StepMs off before the test, so 0 would read -StepMs there, a carry of one step that never elapsed
+			// (after a pause the 2nd arrow left at p0+32 instead of p0+33 = p0 + ceil(1.625 s / 50 ms)). StepMs brings the countdown to exactly 0 = ready now.
+			Cooldown->RemainingMs = StepMs;
+			continue;
+		}
+		const FFighter& Enemy = Fighters[Best];
+		// The arrow leaves the centre of the body and lands after its flight, through the projectiles' own landing (the target loses the flat BuildingAttack).
+		const int32 FlightMs = HOLCombat::GetArrowFlightMilliseconds(Step.Box.GetCenter(), FVector2D(Enemy.Location), HOLCombat::GetArrowSpeed());
+		// F8 T6: the arrows of one shot (D884 : nombre par occupant à confirmer, 1 tant que non tranché: GetBuildingArrowCount is the only place the number lives).
+		if (Occupants == INDEX_NONE)
+		{
+			Occupants = CountOccupants();
+		}
+		const int32 ArrowCount = FMath::Max(1, GetBuildingArrowCount(Occupants));
+		for (int32 Shot = 0; Shot < ArrowCount; ++Shot)
+		{
+			FArrow& Arrow = Arrows.AddDefaulted_GetRef();
+			Arrow.Target = Enemy.Entity;
+			Arrow.ShooterId = Step.Id;
+			Arrow.TargetId = Enemy.UnitId;
+			Arrow.ShooterType = NAME_None;
+			Arrow.ShooterSlot = Step.OwnerPlayer;
+			// F8 T3: the row's BuildingAttack through the ranged armour of the target (and its talent / Forge modifiers), as an archer's arrow; the morale
+			// lever is read where the arrow lands, as for every arrow.
+			Arrow.Damage = HOLCombat::GetBuildingShotDamage(static_cast<float>(Row->BuildingAttack), *Enemy.Constants, GetTalentArmorBonus(Enemy), GetTechnologyArmorPercent(Enemy, EHOLAttackType::Ranged));
+			Arrow.ShooterCamp = Step.Camp;
+			Arrow.ReleaseStep = StepIndex;
+			Arrow.ArrivalStep = StepIndex + HOLCombat::GetArrowFlightSteps(FlightMs, StepMs);
+			++TotalArrowsReleased;
+			// F8 T7: drawn here in solo / host, as a unit's arrow (the same process; a dedicated server has no arrow display). It leaves the centre of the body at
+			// the height of the roof (the row's Height), and lands after the same flight as the arrow above.
+			if (UHOLArrowSubsystem* ArrowDisplay = World.GetSubsystem<UHOLArrowSubsystem>())
+			{
+				FHOLArrowLaunch Launch;
+				Launch.From = FVector(Step.Box.GetCenter(), Row->Height);
+				Launch.To = Enemy.Location;
+				Launch.Target = Enemy.Entity;
+				Launch.FlightMs = FlightMs;
+				Launch.ShooterType = NAME_None;
+				ArrowDisplay->Launch(Launch);
+			}
+		}
+		// F8 T7b: a client draws this tower's arrows from a replicated count (AHOLBuilding::OnRep_ArrowShot); the server writes it once per release, with the last target and the number of arrows.
+		Step.Building->RecordArrowShot(Enemy.Location, FlightMs, ArrowCount);
+		// The next arrow in one interval of the row (BuildingAttackInterval), counted from the time this one was due (the carry below zero stays).
+		Cooldown->RemainingMs += FMath::Max(1, HOLCombat::ToMilliseconds(Row->BuildingAttackInterval));
+	}
+	// A building that is gone (destroyed, no longer standing or armed) was not met this step: its countdown goes, nothing leaks.
+	for (auto It = BuildingCooldownMs.CreateIterator(); It; ++It)
+	{
+		if (It.Value().SeenStep != StepIndex)
+		{
+			It.RemoveCurrent();
+		}
+	}
+}
+
 void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecutionContext& Context)
 {
 	using namespace UE::HeroesOfLiberty::Combat;
@@ -1018,6 +1164,8 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 	if (Fighters.Num() == 0)
 	{
 		TotalArrowsLost += Arrows.Num(); // no target left for any
+		// F8 T5c: no unit alive, no building is met this step (ReleaseBuildingArrows is not reached): the countdowns are purged here, nothing leaks.
+		BuildingCooldownMs.Reset();
 		Arrows.Reset();
 		return;
 	}
@@ -1067,6 +1215,8 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 	if (!bFighting)
 	{
 		Deaths.Reset();
+		// F8 T5b: no building looses an arrow while the combat is off, and no countdown is kept (a building destroyed meanwhile leaves none; on return each is met afresh).
+		BuildingCooldownMs.Reset();
 		for (FFighter& Fighter : Fighters)
 		{
 			// Nobody strikes (EtapeDefini I): a unit caught striking is no longer Attacking (its gesture, the HUD, the clients),
@@ -1090,7 +1240,20 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 	// With no arrow in flight, the pass below then only sets AttackerCount 0 and, for each unit: busy, TickIdle; else the
 	// branch without target (bFlanking false, FlankWaitSeconds 0, TickIdle). Checked first, then applied: no unit changes
 	// another, so the order does not matter.
-	if (FastIdle != 0 && Arrows.Num() == 0)
+	// F8 T4 (D884; CELEBORN-1122l, measured: the combat log showed Execute without the call below on three steps of four): ReleaseBuildingArrows lies below the return of this skip, so
+	// a skipped step took nothing off a tower's countdown (the cadence became four times the interval) and purged none. A standing armed building, or a
+	// countdown still held (to be purged), bars the skip.
+	bool bBuildingsLive = BuildingCooldownMs.Num() > 0;
+	if (FastIdle != 0 && Arrows.Num() == 0 && !bBuildingsLive)
+	{
+		for (FHOLBuildingIterator It(World); It && !bBuildingsLive; ++It)
+		{
+			AHOLBuilding* Building = *It;
+			const FHOLBuildingTypeRow* Row = IsValid(Building) ? Building->GetType() : nullptr;
+			bBuildingsLive = Row && Row->BuildingAttack > 0 && Building->IsFinished() && Building->GetHealth() > 0; // F8 T6: armed, FiresEmpty or not (a garrisoned one fires)
+		}
+	}
+	if (FastIdle != 0 && Arrows.Num() == 0 && !bBuildingsLive)
 	{
 		bool bIdle = true;
 		for (int32 Index = 0; Index < Fighters.Num() && bIdle; ++Index)
@@ -1429,6 +1592,9 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 		return false;
 	};
 
+	// F8 T2 / T4 (D884): the buildings' arrows (one countdown per building) are released before the arrows land.
+	ReleaseBuildingArrows(*World, StepIndex, StepMs, Vision);
+
 	// The arrows that land this step (J7c.2), in release order, before the units are taken: a unit killed by one dies as
 	// one killed in melee, its attackers look for another this step.
 	int32 Kept = 0;
@@ -1523,7 +1689,9 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 			{
 				++Fighters[Shooter].Combat->Kills;
 			}
-			Kill(Enemy, Arrow.ShooterSlot, Arrow.ShooterId);
+			// F8 T3: an arrow of a building has no shooter entity (Arrow.Shooter unset): the kill is credited to the owner's slot (ShooterSlot) and no unit id is passed,
+				// so AwardKillXP never mistakes a building's object id for the hero's unit id.
+				Kill(Enemy, Arrow.ShooterSlot, Arrow.Shooter.IsSet() ? Arrow.ShooterId : 0u);
 			UE_LOG(LogHOLSimulation, Display, TEXT("Combat: step %lld #%u %s of slot %d killed by #%u %s of slot %d (%d hits struck, by arrow)"), StepIndex, Enemy.UnitId,
 				*Enemy.Constants->TypeName.ToString(), Enemy.State->OwnerPlayer, Arrow.ShooterId, *Arrow.ShooterType.ToString(), Arrow.ShooterSlot,
 				Shooter != INDEX_NONE ? Fighters[Shooter].Combat->Hits : 0);

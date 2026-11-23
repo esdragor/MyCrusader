@@ -107,6 +107,25 @@ void Test_UnitAbilityTableGroundColumns(FUnitTest& T)
 	T.AssertFalse(HOLZoneEffect::IsInZone(5, 5, Rage.RadiusCm, 6, 5), "a zero radius holds nothing else");
 }
 
+// S1-d / Reste texte LightSeal: the Seal's description must not say the slow is "not yet wired": the combat reads the zone (HOLCombatProcessor.cpp:1045).
+// The text is read from the real table (HOLUnitAbilityTable::Description of the LightSeal row), never copied here. RED while the stale sentence stands.
+void Test_LightSealTextNotStale(FUnitTest& T)
+{
+	int Id = -1;
+	for (int I = 0; I < HOLUnitAbilityTable::Count; I++)
+	{
+		if (HOLUnitAbilityTable::Row(I).Key == "LightSeal")
+			Id = I;
+	}
+	T.AssertTrue(Id >= 0, "the table has the LightSeal row");
+	if (Id < 0)
+		return;
+	FText DescriptionText = HOLUnitAbilityTable::Description(Id);
+	FString Description = DescriptionText.ToString();
+	T.AssertFalse(Description.Contains("pas encore"), "the Seal text does not say the slow is not yet wired");
+	T.AssertFalse(Description.Contains("pas encore branch"), "no stale 'pas encore branchee' sentence");
+}
+
 // D859 step 1c: the Light Seal (Dawn) is a real row of the table, aimed at the ground, and the pure ground rules read ITS fields: the zone holds a
 // point 5.9 m from the centre and not one at 6.1 m, a target 8.1 m from the caster is refused out of range (code 3), and the zone ends within the
 // row's duration. The -40 % slow is simulation C++ (the lot), not asserted here. The row is looked up by key so that a missing row is a red assertion.

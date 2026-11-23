@@ -42,6 +42,23 @@ UProgressBar FactionBar;
 UCommonTextBlock FactionGaugeText;
 UCommonTextBlock FactionPowersText;
 FHOLFactionSlotView FactionView;
+// S1-c (ARWEN-1123a): one button per power box (HOLFactionAim: a click arms the controller's aim, the next ground click casts), and the last aim line for the log.
+UVerticalBox FactionBoxColumn;
+TArray<UButton> FactionBoxButtons;
+TArray<UCommonTextBlock> FactionBoxLabels;
+const int FactionBoxMax = 4;
+// SP3 (ARWEN-1123d): the permanent specialization button, its option panel (up to 3 lines) and its countdown bar, inside the faction slot's column.
+UButton SpecButton;
+UCommonTextBlock SpecLabel;
+UVerticalBox SpecOptionColumn;
+TArray<UButton> SpecOptionButtons;
+TArray<UCommonTextBlock> SpecOptionLabels;
+UProgressBar SpecBar;
+UCommonTextBlock SpecBarText;
+FHOLSpecializationSlotView SpecView;
+bool bSpecPanelOpen = false;
+FHOLSpecializationRead SpecInjected;
+bool bSpecInjected = false;
 FString FactionSlotTexts = "";
 // Provisional (Placeholders.txt): the slot's rise above the bottom left place, to clear the hero's block.
 const float FactionSlotRise = 150.0;
@@ -1592,6 +1609,7 @@ UHOLScenarioPanelScript ScenarioPanel;
 		{
 			SelectionUnitBlock.RefreshFrame();
 			SendSelectionStats();
+			HOLMoraleView::Refresh(this, SelectionBlock.StatsHost);
 		}
 	}
 
@@ -2009,7 +2027,123 @@ UHOLScenarioPanelScript ScenarioPanel;
 		FactionBar = MakeBar(n"FactionBar", FLinearColor(0.9, 0.8, 0.3, 1.0));
 		Column.AddChildToVerticalBox(SizedBar(n"FactionBarBox", FactionBar, 8.0)).SetPadding(FMargin(0.0, 3.0, 0.0, 1.0));
 		FactionPowersText = MakeText(n"FactionPowers", UHOLTextStyleHUDLabel);
-		Column.AddChildToVerticalBox(FactionPowersText);
+		// The boxes are buttons (S1-c): the panel itself stays click-through (SelfHitTestInvisible), only the buttons take a click.
+		FactionBoxColumn = Cast<UVerticalBox>(ConstructWidget(UVerticalBox, n"FactionBoxColumn"));
+		Column.AddChildToVerticalBox(FactionBoxColumn);
+		for (int Box = 0; Box < FactionBoxMax; ++Box)
+		{
+			UButton BoxButton = MakeButton(FName(f"FactionBox{Box}"));
+			BoxButton.SetVisibility(ESlateVisibility::Collapsed);
+			BoxButton.OnClicked.AddUFunction(this, FName(f"HandleFactionBox{Box}"));
+			FactionBoxColumn.AddChildToVerticalBox(BoxButton).SetPadding(FMargin(0.0, 2.0, 0.0, 0.0));
+			UCommonTextBlock BoxLabel = MakeText(FName(f"FactionBoxLabel{Box}"), UHOLTextStyleHUDLabel);
+			BoxLabel.SetVisibility(ESlateVisibility::HitTestInvisible);
+			BoxButton.AddChild(BoxLabel);
+			FactionBoxButtons.Add(BoxButton);
+			FactionBoxLabels.Add(BoxLabel);
+		}
+		// SP3: the specialization button (dark until a tier opens), its panel and its bar.
+		SpecButton = MakeButton(n"SpecButton");
+		SpecButton.SetVisibility(ESlateVisibility::Collapsed);
+		SpecButton.OnClicked.AddUFunction(this, n"HandleSpecButton");
+		Column.AddChildToVerticalBox(SpecButton).SetPadding(FMargin(0.0, 4.0, 0.0, 0.0));
+		SpecLabel = MakeText(n"SpecLabel", UHOLTextStyleHUDLabel);
+		SpecLabel.SetVisibility(ESlateVisibility::HitTestInvisible);
+		SpecLabel.SetText(FText::FromString("Specialisation"));
+		SpecButton.AddChild(SpecLabel);
+		SpecBar = MakeBar(n"SpecBar", FLinearColor(0.3, 0.7, 0.9, 1.0));
+		SpecBar.SetVisibility(ESlateVisibility::Collapsed);
+		Column.AddChildToVerticalBox(SizedBar(n"SpecBarBox", SpecBar, 6.0)).SetPadding(FMargin(0.0, 2.0, 0.0, 0.0));
+		SpecBarText = MakeText(n"SpecBarText", UHOLTextStyleHUDLabel);
+		SpecBarText.SetVisibility(ESlateVisibility::Collapsed);
+		Column.AddChildToVerticalBox(SpecBarText);
+		SpecOptionColumn = Cast<UVerticalBox>(ConstructWidget(UVerticalBox, n"SpecOptionColumn"));
+		SpecOptionColumn.SetVisibility(ESlateVisibility::Collapsed);
+		Column.AddChildToVerticalBox(SpecOptionColumn);
+		for (int Option = 0; Option < 3; ++Option)
+		{
+			UButton OptionButton = MakeButton(FName(f"SpecOption{Option}"));
+			OptionButton.OnClicked.AddUFunction(this, FName(f"HandleSpecOption{Option}"));
+			SpecOptionColumn.AddChildToVerticalBox(OptionButton).SetPadding(FMargin(0.0, 2.0, 0.0, 0.0));
+			UCommonTextBlock OptionLabel = MakeText(FName(f"SpecOptionLabel{Option}"), UHOLTextStyleHUDLabel);
+			OptionLabel.SetVisibility(ESlateVisibility::HitTestInvisible);
+			OptionButton.AddChild(OptionLabel);
+			SpecOptionButtons.Add(OptionButton);
+			SpecOptionLabels.Add(OptionLabel);
+		}
+	}
+
+	// SP3: the specialization widgets from the view (HOLSpecializationSlot::Resolve): the button shows while a tier is open, the panel its options,
+	// the bar the unlock's countdown. A panel left open closes by itself when the tier closes.
+	void RefreshSpecializationSlot()
+	{
+		SpecView = HOLSpecializationSlot::Resolve(Cast<AHOLPlayerController>(GetOwningPlayer()), SpecInjected, bSpecInjected);
+		if (!SpecView.bLit)
+			bSpecPanelOpen = false;
+		SpecButton.SetVisibility(SpecView.bLit ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
+		SpecOptionColumn.SetVisibility(SpecView.bLit && bSpecPanelOpen ? ESlateVisibility::SelfHitTestInvisible : ESlateVisibility::Collapsed);
+		for (int Option = 0; Option < SpecOptionButtons.Num(); ++Option)
+		{
+			const bool bOption = Option < SpecView.OptionTexts.Num();
+			SpecOptionButtons[Option].SetVisibility(bOption ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
+			if (bOption)
+				SpecOptionLabels[Option].SetText(FText::FromString(SpecView.OptionTexts[Option] + (SpecView.bRunning && SpecView.PendingOption == Option ? " (annuler)" : "")));
+		}
+		SpecBar.SetVisibility(SpecView.bRunning ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+		SpecBarText.SetVisibility(SpecView.bRunning ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+		SpecBar.SetPercent(SpecView.Fraction);
+		SpecBarText.SetText(FText::FromString(SpecView.BarText));
+	}
+
+	// SP3: the button toggles the panel; a click on an option starts it or cancels the running one (the server decides again).
+	bool ClickSpecButton()
+	{
+		if (!SpecView.bLit)
+			return false;
+		bSpecPanelOpen = !bSpecPanelOpen;
+		RefreshSpecializationSlot();
+		return true;
+	}
+
+	bool ClickSpecOption(int Option)
+	{
+		const FHOLSpecializationClick Click = HOLSpecializationSlot::ClickOption(SpecView, Option);
+		if (Click.Action == EHOLSpecializationAction::Nothing)
+			return false;
+		AHOLRpcPlayer Rpc = Cast<AHOLRpcPlayer>(HOLRpcBridge::FindPlayerActor(Cast<AHOLPlayerController>(GetOwningPlayer())));
+		if (Rpc != nullptr)
+		{
+			if (Click.Action == EHOLSpecializationAction::Start)
+				Rpc.ServerStartSpecialization(Click.Tier, Click.Option);
+			else
+				Rpc.ServerCancelSpecialization();
+		}
+		Log(n"LogHOLMatch", f"SpecializationSlot: {Click.Describe}");
+		return true;
+	}
+
+	UFUNCTION()
+	void HandleSpecButton()
+	{
+		ClickSpecButton();
+	}
+
+	UFUNCTION()
+	void HandleSpecOption0()
+	{
+		ClickSpecOption(0);
+	}
+
+	UFUNCTION()
+	void HandleSpecOption1()
+	{
+		ClickSpecOption(1);
+	}
+
+	UFUNCTION()
+	void HandleSpecOption2()
+	{
+		ClickSpecOption(2);
 	}
 
 	FMargin FactionSlotPlace()
@@ -2034,16 +2168,87 @@ UHOLScenarioPanelScript ScenarioPanel;
 		if (PlayerSlot >= 0)
 			FactionView = HOLFactionSlot::FromGameState(Cast<AHOLGameState>(Gameplay::GetGameState()), PlayerSlot, false, false);
 		FactionPanelSlot.SetPadding(FactionSlotPlace());
-		FactionPanel.SetVisibility(FactionView.bVisible ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+		FactionPanel.SetVisibility(FactionView.bVisible ? ESlateVisibility::SelfHitTestInvisible : ESlateVisibility::Collapsed);
 		if (!FactionView.bVisible)
 			return;
+		RefreshSpecializationSlot();
 		FString Lines = "";
 		for (int Index = 0; Index < FactionView.Powers.Num(); ++Index)
 			Lines += (Lines.IsEmpty() ? "" : "\n") + HOLPowerDisplay::LineOf(FactionView.Powers[Index]);
 		FactionBar.SetPercent(FactionView.Fraction);
 		FactionGaugeText.SetText(FText::FromString(FactionView.GaugeText));
 		FactionPowersText.SetText(FText::FromString(Lines));
+		for (int Box = 0; Box < FactionBoxButtons.Num(); ++Box)
+		{
+			const bool bBox = Box < FactionView.Powers.Num();
+			FactionBoxButtons[Box].SetVisibility(bBox ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
+			if (bBox)
+				FactionBoxLabels[Box].SetText(FText::FromString(HOLPowerDisplay::LineOf(FactionView.Powers[Box])));
+		}
 		FactionSlotTexts = FactionView.Describe;
+	}
+
+	// S1-c: the controller's aim and the cast (HOLFactionAim): arm or end the aim, send the kept ground click to the server (the server decides again).
+	void ApplyFactionAim(AHOLPlayerController Controller, FHOLFactionAimStep Step)
+	{
+		if (Step.bSetAim)
+			Controller.SetFactionAim(Step.AimIndex, Step.RangeCm);
+		if (Step.bSend)
+		{
+			AHOLRpcPlayer Rpc = Cast<AHOLRpcPlayer>(HOLRpcBridge::FindPlayerActor(Controller));
+			if (Rpc != nullptr)
+				Rpc.ServerCastFactionPower(Step.Slot, Step.PowerIndex, Step.Point);
+		}
+		if (Step.Click.Action != EHOLFactionClickAction::Nothing)
+			Log(n"LogHOLMatch", f"FactionAim: {Step.Click.Describe} send {Step.bSend} slot {Step.Slot} at {Step.Point.ToString()}");
+	}
+
+	bool ClickFactionBox(int Box)
+	{
+		AHOLPlayerController Controller = Cast<AHOLPlayerController>(GetOwningPlayer());
+		if (Controller == nullptr || !FactionView.bVisible)
+			return false;
+		ApplyFactionAim(Controller, HOLFactionAim::OnBox(FactionView, Controller.GetFactionAim(), Box));
+		return true;
+	}
+
+	UFUNCTION()
+	void HandleFactionBox0()
+	{
+		ClickFactionBox(0);
+	}
+
+	UFUNCTION()
+	void HandleFactionBox1()
+	{
+		ClickFactionBox(1);
+	}
+
+	UFUNCTION()
+	void HandleFactionBox2()
+	{
+		ClickFactionBox(2);
+	}
+
+	UFUNCTION()
+	void HandleFactionBox3()
+	{
+		ClickFactionBox(3);
+	}
+
+	// Every frame: the ground click the controller kept while a power is aimed (ConsumeFactionAimClick) casts it (or cancels it if no longer ready).
+	UFUNCTION(BlueprintOverride)
+	void Tick(FGeometry MyGeometry, float32 InDeltaTime)
+	{
+		if (!FactionView.bVisible)
+			return;
+		AHOLPlayerController Controller = Cast<AHOLPlayerController>(GetOwningPlayer());
+		if (Controller == nullptr || Controller.GetFactionAim() < 0)
+			return;
+		FVector Point;
+		int Aimed = -1;
+		if (Controller.ConsumeFactionAimClick(Point, Aimed))
+			ApplyFactionAim(Controller, HOLFactionAim::OnGround(FactionView, Aimed, GetLocalSlot(), Point));
 	}
 
 	// The view (HOLHeroBlock::Make) from the public sheet, the slot and the return's quote for an order sent now.
@@ -2590,6 +2795,14 @@ UHOLScenarioPanelScript ScenarioPanel;
 			return true;
 		if (ScenarioPanel != nullptr && ScenarioPanel.ClickName(WidgetName))
 			return true;
+		// hol.HUD.Click FactionBox<n> (ARWEN-1123c): the faction slot's power buttons, as the mouse reaches them.
+		const int FactionBoxIndex = HOLFactionSlot::BoxIndexOfName(WidgetName);
+		if (FactionBoxIndex >= 0)
+			return ClickFactionBox(FactionBoxIndex);
+		if (WidgetName == n"SpecButton")
+			return ClickSpecButton();
+		if (WidgetName == n"SpecOption0" || WidgetName == n"SpecOption1" || WidgetName == n"SpecOption2")
+			return ClickSpecOption(WidgetName == n"SpecOption0" ? 0 : (WidgetName == n"SpecOption1" ? 1 : 2));
 		if (WidgetName == n"HeroPortrait")
 			return ClickPortrait();
 		if (WidgetName == n"HeroReturnButton")
