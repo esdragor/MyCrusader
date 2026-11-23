@@ -16,3 +16,4 @@ NON VÉRIFIÉ : l'issue réelle de A et de B (nombre de survivants : journal non
 
 Lancer UNE commande (pour l'utilisateur, à ses risques, non prêt) : `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Elrond\Tools\Scenarios\play.ps1 playtest_hero_army -Root C:\Users\baudo\Documents\HeroesOfLiberty-Elrond`
 Durée : environ 1 min 15 + attente de la touche Entrée. Réponse attendue : `OK`, `BUG: ...` ou `REGLAGE: ...`.
+NETTOYAGE-1123g 2026-11-23 : toujours LOGIQUE SEULEMENT ; commande Elrond (integ-25) complete, worktree existant ; manque pour devenir pret : un correctif de la mele (D641 : stall #18 a ~110 cm de la portee avec une place libre, voir BUG-playtest_hero_army-spin.md, lot C++) et un cadrage A/B sans chevauchement (decide par l auteur).
