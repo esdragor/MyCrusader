@@ -43,6 +43,59 @@ FString AgcList(const TArray<int>& List)
 	return Text;
 }
 
+// S4-b wired: the plan is read from the AI's summary (own finished towers with places, own units with a garrison kind), the hit
+// times of the towers being an input (empty = unknown = calm: no reader of the hits on a building yet, nothing is made up).
+void Test_AIGarrisonPlanFromSummary(FUnitTest& T)
+{
+	FHOLAISummary Summary;
+	FHOLAIBuilding Tower;
+	Tower.OwnerPlayer = 1;
+	Tower.TypeName = n"TowerWood";
+	Tower.State = EHOLConstructionState::Finished;
+	Tower.Location = FVector(0.f, 0.f, 0.f);
+	Tower.GarrisonSlots = 2;
+	Tower.Occupants = 0;
+	Summary.Buildings.Add(Tower);
+	FHOLAIBuilding Hall;
+	Hall.OwnerPlayer = 1;
+	Hall.TypeName = n"Barracks";
+	Hall.Location = FVector(50.f, 0.f, 0.f);
+	Hall.GarrisonSlots = 0;
+	Summary.Buildings.Add(Hall);
+	for (int Index = 0; Index < 3; Index++)
+	{
+		FHOLAIUnit Archer;
+		Archer.Id = 200 + Index;
+		Archer.OwnerSlot = 1;
+		Archer.Type = n"Archer";
+		Archer.Location = FVector(300.f * float(Index + 1), 0.f, 0.f);
+		Archer.GarrisonKind = HOLGarrison::KindRangedInfantry;
+		Summary.Army.Add(Archer);
+	}
+	FHOLAIUnit Unread;
+	Unread.Id = 299;
+	Unread.OwnerSlot = 1;
+	Unread.Location = FVector(100.f, 0.f, 0.f);
+	Summary.Army.Add(Unread);
+
+	TArray<float> Firsts;
+	TArray<float> Lasts;
+	Firsts.Add(4.f);
+	Firsts.Add(-1.f);
+	Lasts.Add(1.f);
+	Lasts.Add(-1.f);
+	const float Radius = HOLAIGarrison::RadiusFromCVar();
+	const TArray<FHOLAIGarrisonCall> Calls = HOLAIGarrisonCall::PlanFromSummary(1, HOLAIGarrison::RuleRangedFoot, EHOLAIDifficulty::Normal, Summary, Firsts, Lasts, Radius);
+	T.AssertEquals(Calls.Num(), 1, "the attacked tower of the summary makes one call");
+	if (Calls.Num() == 1)
+	{
+		T.AssertEquals(Calls[0].TowerIndex, 0, "the call is the first building's (the tower)");
+		T.AssertEquals(AgcList(Calls[0].UnitIds), "200,201", "the two nearest Archers with a read kind fill the two places; never the unread unit");
+	}
+	TArray<float> None;
+	T.AssertEquals(HOLAIGarrisonCall::PlanFromSummary(1, HOLAIGarrison::RuleRangedFoot, EHOLAIDifficulty::Normal, Summary, None, None, Radius).Num(), 0, "unknown hit times: no call, nothing made up");
+}
+
 void Test_AIGarrisonsAttackedTower(FUnitTest& T)
 {
 	TArray<int> Ids;

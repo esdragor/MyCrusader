@@ -12,6 +12,13 @@ struct FHOLAIGarrisonCall
 
 namespace HOLAIGarrisonCall
 {
+	// STUB (red first): the plan read from the summary. TowerIndex is an index into Summary.Buildings.
+	TArray<FHOLAIGarrisonCall> PlanFromSummary(int PlayerIndex, int Rule, EHOLAIDifficulty Level, const FHOLAISummary& Summary,
+		const TArray<float>& SinceFirstHits, const TArray<float>& SinceLastHits, float Radius)
+	{
+		TArray<FHOLAIGarrisonCall> Calls;
+		return Calls;
+	}
 	// For each tower that calls (HOLAIGarrison::TowerCalls inside Entrants), the units that enter (HOLAIGarrison::Entrants: in reach, of a kind
 	// the rule calls, nearest first, admitted by the garrison rule). A unit that enters one tower is no longer offered to the next ones.
 	TArray<FHOLAIGarrisonCall> Plan(int Rule, EHOLAIDifficulty Level, const TArray<FHOLAIGarrisonTower>& Towers, const TArray<int>& UnitIds,
