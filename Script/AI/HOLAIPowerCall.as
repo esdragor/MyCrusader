@@ -88,7 +88,9 @@ namespace HOLAIPowerCall
 	}
 }
 
-// GLORFINDEL-1123pa (D891): the AI plants a banner before it casts (the cast origin is the banner, as for the player). STUB of commit 1 (the red test).
+// GLORFINDEL-1123pa (D891): the AI plants a banner before it casts (the cast origin is the banner, as for the player; the army-centre fallback of
+// HOLFactionPowerServer::CastOriginOf stays while none is planted). A pure rule, tested in script. The ORDER to plant is not reachable from script:
+// UHOLHeroSubsystem::PlantBanner and UHOLCommandSubsystem::IssueHeroAbilityOrder are not UFUNCTIONs (TYPES_A_EXPOSER), so the brain only logs the decision.
 struct FHOLAIBannerOrder
 {
 	bool bPlant = false;
@@ -97,9 +99,44 @@ struct FHOLAIBannerOrder
 
 namespace HOLAIPowerCall
 {
+	// Plant when a hero able to (alive, level, cool-down: bHeroCanPlant) has no banner standing and some of the army is wounded (the same trigger as the cast).
+	// The point is the centre of the wounded units, brought back along the line from the hero to the nearest point he may plant at (the reach is the hero
+	// rules' own, HOLHeroAbilityRead::CanPlantBanner, found by halving: no copied constant), so the server never refuses it for distance.
 	FHOLAIBannerOrder PlanBanner(const TArray<FVector>& Wounded, const FVector& HeroLocation, bool bHeroCanPlant, bool bBannerStanding)
 	{
 		FHOLAIBannerOrder Order;
+		if (!bHeroCanPlant || bBannerStanding || Wounded.Num() == 0)
+		{
+			return Order;
+		}
+		FVector Sum = FVector(0.0, 0.0, 0.0);
+		for (int Index = 0; Index < Wounded.Num(); Index++)
+		{
+			Sum += Wounded[Index];
+		}
+		const FVector Centre = FVector(Sum.X / double(Wounded.Num()), Sum.Y / double(Wounded.Num()), 0.0);
+		const double DX = Centre.X - HeroLocation.X;
+		const double DY = Centre.Y - HeroLocation.Y;
+		Order.bPlant = true;
+		Order.Point = Centre;
+		if (!HOLHeroAbilityRead::CanPlantBanner(float(Math::Sqrt(DX * DX + DY * DY))))
+		{
+			double Near = 0.0;
+			double Far = 1.0;
+			for (int Step = 0; Step < 24; Step++)
+			{
+				const double Mid = (Near + Far) * 0.5;
+				if (HOLHeroAbilityRead::CanPlantBanner(float(Mid * Math::Sqrt(DX * DX + DY * DY))))
+				{
+					Near = Mid;
+				}
+				else
+				{
+					Far = Mid;
+				}
+			}
+			Order.Point = FVector(HeroLocation.X + DX * Near, HeroLocation.Y + DY * Near, 0.0);
+		}
 		return Order;
 	}
 }
