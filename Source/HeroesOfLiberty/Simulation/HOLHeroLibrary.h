@@ -197,4 +197,12 @@ public:
 	 */
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Hero", meta = (WorldContext = "WorldContextObject"))
 	static bool BuyHeroReturn(const UObject* WorldContextObject, int32 Slot, int32 PlaceIndex, int32 Price);
+
+	/**
+	 * Server (D891, GLORFINDEL-1123pb): the slot's hero plants his banner at Location (cm) by UHOLHeroSubsystem::PlantBanner, the very function the
+	 * player's order reaches (IssueHeroAbilityOrder, then the hero subsystem's step): same refusals (hero dead, level, cool-down, reach). False when
+	 * refused and on a client. The AI's HOLAIBrain::ThinkPowers calls it; the rule that picks the point is HOLAIPowerCall::PlanBanner (script).
+	 */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Hero", meta = (WorldContext = "WorldContextObject"))
+	static bool PlantHeroBanner(const UObject* WorldContextObject, int32 Slot, const FVector& Location);
 };

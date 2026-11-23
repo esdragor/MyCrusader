@@ -390,3 +390,12 @@ void UHOLHeroLibrary::PlayTalentTakenSound(const UObject* WorldContextObject)
 		UGameplayStatics::PlaySound2D(WorldContextObject, Sound);
 	}
 }
+
+bool UHOLHeroLibrary::PlantHeroBanner(const UObject* WorldContextObject, const int32 Slot, const FVector& Location)
+{
+	// STUB (GLORFINDEL-1123pb, commit 1): plants nothing; the real binding is the next commit.
+	(void)WorldContextObject;
+	(void)Slot;
+	(void)Location;
+	return false;
+}
