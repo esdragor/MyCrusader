@@ -1,0 +1,9 @@
+﻿=== Haldir : merge main 86a2e15 + build 16:24:33
+ create mode 100644 Script/Tests/HOLSpecUnlock_Test.as
+merge exit=0 52c8279
+
+build : PASS (HeroesOfLibertyEditor Development, HeroesOfLiberty-Haldir, 333 s)
+
+
+build exit=0 16:30:19
+ecart de code avec main : 0 fichier(s)

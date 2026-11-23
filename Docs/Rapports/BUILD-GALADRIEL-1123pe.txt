@@ -1,0 +1,13 @@
+﻿=== build socle-ai a3de24e (S2-c etape 8 : ClearMalusAround + immunite 5 s ; NOT COMPILED) 16:32:04
+
+build : PASS (HeroesOfLibertyEditor Development, HeroesOfLiberty-Galadriel, 237 s)
+
+
+build exit=0 16:39:01
+
+  check_placeholders : PASS (44 provisional types, 46 map entries, 165 lines)
+tests 2150/2150 : PASS
+quick_check : PASS in 260 s (game launch done at 1 s)
+
+
+fin 16:43:34
