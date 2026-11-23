@@ -1592,6 +1592,7 @@ UHOLScenarioPanelScript ScenarioPanel;
 		{
 			SelectionUnitBlock.RefreshFrame();
 			SendSelectionStats();
+			HOLMoraleView::Refresh(this, SelectionBlock.StatsHost);
 		}
 	}
 
