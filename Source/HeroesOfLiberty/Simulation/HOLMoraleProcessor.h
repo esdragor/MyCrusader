@@ -42,7 +42,21 @@ public:
 	 */
 	static void SetSlotAttenuation(int32 Slot, int32 Percent);
 
+	/** The attenuation percent the camp Slot gives now (0 for a slot out of range). Read side of SetSlotAttenuation. */
+	static int32 GetSlotAttenuation(int32 Slot);
+
+	/** How many morale orders (ApplyEffectAround and ClearMalusAround together) wait for a step, all worlds. */
+	static int32 NumPendingOrders();
+
+	/**
+	 * REVUE-1123pm G1: the statics of this processor (the attenuation table, the two order queues) belong to the process, not to a world, so a
+	 * match's leftovers must not reach the next one. Puts every camp's attenuation back to 0 and drops the queued orders of World and of dead
+	 * worlds. Called at the beginning of a world (the processor's InitializeInternal) and at its end (UHOLSimulationSubsystem::Deinitialize).
+	 */
+	static void ResetForWorld(const UWorld* World);
+
 protected:
+	virtual void InitializeInternal(UObject& Owner, const TSharedRef<FMassEntityManager>& EntityManager) override;
 	virtual void ConfigureQueries(const TSharedRef<FMassEntityManager>& EntityManager) override;
 	virtual void Execute(FMassEntityManager& EntityManager, FMassExecutionContext& Context) override;
 

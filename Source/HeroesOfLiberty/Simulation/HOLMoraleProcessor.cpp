@@ -111,6 +111,36 @@ void UHOLMoraleProcessor::SetSlotAttenuation(const int32 Slot, const int32 Perce
 	}
 }
 
+int32 UHOLMoraleProcessor::GetSlotAttenuation(const int32 Slot)
+{
+	return (Slot >= 0 && Slot < FHOLMatchConfig::MaxSlots) ? SlotAttenuationPercent[Slot] : 0;
+}
+
+int32 UHOLMoraleProcessor::NumPendingOrders()
+{
+	FScopeLock Lock(&PendingAroundLock);
+	return PendingAround.Num() + PendingClear.Num();
+}
+
+void UHOLMoraleProcessor::ResetForWorld(const UWorld* World)
+{
+	FScopeLock Lock(&PendingAroundLock);
+	for (int32 Slot = 0; Slot < FHOLMatchConfig::MaxSlots; ++Slot)
+	{
+		SlotAttenuationPercent[Slot] = 0;
+	}
+	// The orders of this world and of worlds already gone; an order of another live world keeps waiting for its own step.
+	PendingAround.RemoveAll([World](const FPendingAround& Order) { return !Order.World.IsValid() || Order.World.Get() == World; });
+	PendingClear.RemoveAll([World](const FPendingClear& Order) { return !Order.World.IsValid() || Order.World.Get() == World; });
+}
+
+void UHOLMoraleProcessor::InitializeInternal(UObject& Owner, const TSharedRef<FMassEntityManager>& EntityManager)
+{
+	Super::InitializeInternal(Owner, EntityManager);
+	// The beginning of a world (UHOLSimulationSubsystem::OnWorldBeginPlay creates and initialises the processors): nothing of a previous match stays (G1).
+	ResetForWorld(Owner.GetWorld());
+}
+
 UHOLMoraleProcessor::UHOLMoraleProcessor()
 	: EntityQuery(*this)
 {
