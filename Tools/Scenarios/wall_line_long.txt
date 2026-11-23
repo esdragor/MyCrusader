@@ -24,7 +24,9 @@ frames 10
 # Geste reel : appui en X1 Y1, un deplacement par image, relache en X2 Y2 a la derniere image (pixels du viewport 1920x1080 : NON VERIFIE). 1500 px d'ecart = bien plus de 16 cases a ce zoom (a verifier sur la capture). 90 images : la capture pendant (apres 30 images) tombe au milieu du glisser.
 # S3-b (SAURON-1123pa) : trace de ce que le controleur voit au relache (IsForegroundWindow, GetMousePosition, sol), eteinte par defaut.
 hol.Mouse.LogDragEnd 1
-hol.Mouse.Drag 200 540 1700 540 90
+# 2026-11-23 15:13 (SAURON-1123pa) : play.ps1 -Hidden fixe hol.Camera.TestCursor 0.5 0.5, qui l'emporte sur la souris reelle de hol.Mouse.Drag (GetCursorFraction) : on le rend a la vraie souris ; le viewport cache fait 1280x720, pas 1920x1080.
+hol.Camera.TestCursor off
+hol.Mouse.Drag 133 360 1133 360 90
 frames 30
 note 2. PENDANT le glisser : une file de boites vertes plates, une par case, de ton point de depart au curseur (plus de 16, sans coupure).
 capture wall_line_long_during
