@@ -37,6 +37,13 @@ namespace HOLTopBarText
 
 namespace HOLTopBar
 {
+	// REVUE-1122 minor 11: the game screen calls SetBannerRect on every Refresh. The tooltip drops only change when the banner rectangle changes, so the panel applies
+	// the rectangle only when it differs from the last one it fully applied. STUB (red step): always applies.
+	bool BannerRectNeedsApply(bool bHasApplied, float LastLeft, float LastRight, float LastBottom, float Left, float Right, float Bottom)
+	{
+		return true;
+	}
+
 	// The four resources, in the bar's order (the C++ screen's AddResource order).
 	int Food() { return 0; }
 	int Wood() { return 1; }
