@@ -12,6 +12,7 @@
 #include "MassEntitySubsystem.h"
 #include "MassExecutionContext.h"
 #include "Match/HOLDiplomacyRules.h"
+#include "Match/HOLGameState.h"
 #include "Match/HOLMatchConfig.h"
 #include "Match/HOLVictoryRules.h"
 #include "Simulation/HOLCombatRules.h"
@@ -40,6 +41,47 @@ int64 UHOLHealProcessor::HealSteps = 0;
 int32 UHOLHealProcessor::LastCandidateCount = 0;
 TMap<uint32, UHOLHealProcessor::FOrder> UHOLHealProcessor::Orders;
 bool UHOLHealProcessor::bIssuing = false;
+int32 UHOLHealProcessor::HonorHpPerPoint = 0;
+int32 UHOLHealProcessor::HonorCap = 0;
+TArray<double> UHOLHealProcessor::HonorPendingHp;
+
+void UHOLHealProcessor::AddHonorHp(const int32 Slot, const double Hp)
+{
+	if (HonorHpPerPoint > 0 && Hp > 0. && HonorPendingHp.IsValidIndex(Slot))
+	{
+		HonorPendingHp[Slot] += Hp;
+	}
+}
+
+void UHOLHealProcessor::CreditHonor(const UWorld* World)
+{
+	AHOLGameState* GameState = HonorHpPerPoint > 0 && World ? World->GetGameState<AHOLGameState>() : nullptr;
+	if (!GameState)
+	{
+		return;
+	}
+	for (int32 Slot = 0; Slot < HonorPendingHp.Num(); ++Slot)
+	{
+		const int32 Points = FMath::FloorToInt32(HonorPendingHp[Slot] / HonorHpPerPoint);
+		if (Points <= 0)
+		{
+			continue;
+		}
+		HonorPendingHp[Slot] -= static_cast<double>(Points) * HonorHpPerPoint;
+		// Only the Dawn has the Honor gauge (faction 0, as AHOLGameState::GetSlotFaction); the others' healing earns nothing.
+		if (GameState->GetSlotFaction(Slot) == 0)
+		{
+			// RED STUB (FARAMIR-1123c): the credit is neutralised, Zone.HealHonor must fail.
+		}
+	}
+}
+
+void UHOLHealProcessor::ConfigureHonor(const int32 HpPerPoint, const int32 Cap)
+{
+	HonorHpPerPoint = FMath::Max(HpPerPoint, 0);
+	HonorCap = FMath::Max(Cap, 0);
+	HonorPendingHp.Init(0., FHOLMatchConfig::MaxSlots);
+}
 
 void UHOLHealProcessor::OrderHeal(const uint32 HealerId, const uint32 TargetId)
 {
@@ -329,6 +371,7 @@ void UHOLHealProcessor::Execute(FMassEntityManager& EntityManager, FMassExecutio
 		const float After = HOLHeal::GetHealedHealth(Before, Target.Candidate.MaxHealth, HealRate, StepMs);
 		Target.State->CurrentHealth = After;
 		Candidates[Chosen].Health = After;
+		AddHonorHp(Healer.State->OwnerPlayer, static_cast<double>(After - Before));
 		TotalHealed += static_cast<double>(After - Before);
 		NewKept.Add(Healer.Candidate.UnitId, Target.Candidate.UnitId);
 		Links.Add(FLink{ Healer.Candidate.UnitId, Target.Candidate.UnitId, bBoosted });
@@ -378,8 +421,10 @@ void UHOLHealProcessor::Execute(FMassEntityManager& EntityManager, FMassExecutio
 			const float After = HOLHeal::GetHealedHealth(Before, Unit.Candidate.MaxHealth, static_cast<float>(Zone.HealPerSecond), StepMs);
 			Unit.State->CurrentHealth = After;
 			TotalHealed += static_cast<double>(After - Before);
+			AddHonorHp(Zone.OwnerSlot, static_cast<double>(After - Before));
 		}
 	}
+	CreditHonor(World);
 	Kept = MoveTemp(NewKept);
 	HealSteps += Links.Num();
 }

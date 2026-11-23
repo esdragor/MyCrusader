@@ -52,6 +52,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Zone", meta = (WorldContext = "WorldContextObject"))
 	static bool StartSacredLight(const UObject* WorldContextObject, int32 Slot, FVector Center);
 
+	/** UHOLHealProcessor::ConfigureHonor (S1-e): one Honor per HpPerPoint hit points healed, up to Cap (the script's HonorHealPerPoint / HonorCap); 0 = off. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Zone")
+	static void ConfigureHealHonor(int32 HpPerPoint, int32 Cap);
+
 	/** HOLZoneEffect::SacredLightRadiusCm / DurationMs / HealPerSecond (D689). */
 	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Zone")
 	static int32 GetSacredLightRadiusCm();

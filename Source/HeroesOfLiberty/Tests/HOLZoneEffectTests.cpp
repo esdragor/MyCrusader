@@ -8,6 +8,7 @@
 #include "MassProcessingContext.h"
 #include "Misc/AutomationTest.h"
 #include "Simulation/HOLCombatProcessor.h"
+#include "Match/HOLGameState.h"
 #include "Simulation/HOLHealProcessor.h"
 #include "Simulation/HOLHeroSubsystem.h"
 #include "Simulation/HOLSimulationFragments.h"
@@ -290,3 +291,94 @@ bool FHOLZoneEffectSacredLightTest::RunTest(const FString& Parameters)
 }
 
 #endif // WITH_DEV_AUTOMATION_TESTS
+
+// D689, Honor of the Dawn from the heal (S1-e): the Sacred Light of slot 0 heals a wounded ally; the processor credits slot 0's faction gauge
+// (AHOLGameState::FactionResource) one Honor per HpPerPoint hit points healed. The expected Honor is CALCULATED from the health the fragment
+// really gained (floor(gain / HpPerPoint)), never a constant; a slot that healed nothing (slot 1) gets nothing; the gauge stops at the cap.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLZoneEffectHealHonorTest, "HeroesOfLiberty.Zone.HealHonor", UE::HeroesOfLiberty::Tests::ZoneEffect::Flags)
+
+bool FHOLZoneEffectHealHonorTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::ZoneEffect;
+	IConsoleVariable* CombatEnabled = IConsoleManager::Get().FindConsoleVariable(TEXT("hol.Combat.Enabled"));
+	if (!TestNotNull(TEXT("hol.Combat.Enabled"), CombatEnabled))
+	{
+		return false;
+	}
+	const int32 FormerEnabled = CombatEnabled->GetInt();
+	CombatEnabled->Set(0, ECVF_SetByCode);
+
+	UWorld* World = UWorld::CreateWorld(EWorldType::Game, /*bInformEngineOfWorld*/ false);
+	FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);
+	Context.SetCurrentWorld(World);
+	World->InitializeActorsForPlay(FURL());
+	AHOLGameState* State = World->SpawnActor<AHOLGameState>();
+	World->SetGameState(State);
+
+	UHOLUnitSubsystem* Units = World->GetSubsystem<UHOLUnitSubsystem>();
+	UHOLSimulationSubsystem* Simulation = World->GetSubsystem<UHOLSimulationSubsystem>();
+	UHOLHeroSubsystem* Heroes = World->GetSubsystem<UHOLHeroSubsystem>();
+	UMassEntitySubsystem* EntitySubsystem = World->GetSubsystem<UMassEntitySubsystem>();
+	if (TestNotNull(TEXT("game state"), State) && TestNotNull(TEXT("units"), Units) && TestNotNull(TEXT("simulation"), Simulation)
+		&& TestNotNull(TEXT("heroes"), Heroes) && TestNotNull(TEXT("entities"), EntitySubsystem))
+	{
+		Heroes->BindSteps();
+		constexpr int32 HpPerPoint = 20;
+		constexpr int32 Cap = 100;
+		UHOLHealProcessor::ConfigureHonor(HpPerPoint, Cap);
+		TSharedPtr<FMassEntityManager> EntityManager = EntitySubsystem->GetMutableEntityManager().AsShared();
+		UHOLCombatProcessor* Combat = NewObject<UHOLCombatProcessor>(Simulation);
+		Combat->CallInitialize(Simulation, EntityManager.ToSharedRef());
+		UHOLHealProcessor* Heal = NewObject<UHOLHealProcessor>(Simulation);
+		Heal->CallInitialize(Simulation, EntityManager.ToSharedRef());
+		const float StepSeconds = GetDefault<UHOLSimulationSettings>()->GetStepSeconds();
+		int64 Step = 0;
+		const auto RunStep = [Simulation, Units, Combat, Heal, &EntityManager, StepSeconds, &Step]
+		{
+			++Step;
+			Simulation->GetOnStepStarted().Broadcast(Step);
+			Units->ServeBirthRequests();
+			FMassProcessingContext ProcessingContext(EntityManager, StepSeconds);
+			UE::Mass::Executor::Run(*Combat, ProcessingContext);
+			UE::Mass::Executor::Run(*Heal, ProcessingContext);
+			Units->FlushDestructions();
+			Simulation->GetOnStepEnded().Broadcast(Step);
+		};
+		FHOLUnitSpawnRequest Request;
+		Request.TypeName = Spearman;
+		Request.Count = 1;
+		Request.OwnerPlayer = 0;
+		Request.Center = FVector(300.0, 0.0, 0.0);
+		Units->RequestUnits(Request);
+		Units->ServeBirthRequests();
+		TArray<uint32> Ids;
+		Units->GetAllUnitIds(Ids);
+		const FMassEntityHandle Entity = Ids.Num() == 1 ? Units->FindEntity(Ids[0]) : FMassEntityHandle();
+		FHOLUnitStateFragment* Ally = Entity.IsSet() ? EntityManager->GetFragmentDataPtr<FHOLUnitStateFragment>(Entity) : nullptr;
+		if (TestNotNull(TEXT("the ally born"), Ally))
+		{
+			RunStep();
+			Ally->CurrentHealth = 20.f;
+			TestEqual(TEXT("the gauge of slot 0 starts empty"), State->GetFactionResource(0), 0);
+			TestTrue(TEXT("slot 0 puts the Sacred Light at the origin"), Heroes->StartSacredLight(0, FVector(0.0, 0.0, 0.0)));
+			const int32 ZoneSteps = FMath::CeilToInt(HOLZoneEffect::SacredLightDurationMs / 1000.f / StepSeconds) + 2;
+			for (int32 Steps = 0; Steps < ZoneSteps; ++Steps)
+			{
+				RunStep();
+			}
+			const int32 Gained = FMath::FloorToInt(Ally->CurrentHealth - 20.f);
+			const int32 Expected = FMath::Min(Gained / HpPerPoint, Cap);
+			TestTrue(*FString::Printf(TEXT("the zone healed something (%d hit points)"), Gained), Gained >= HpPerPoint);
+			// The remainder under HpPerPoint waits for the next heal, so the gauge is within one point of the whole division.
+			const int32 Honor = State->GetFactionResource(0);
+			TestTrue(*FString::Printf(TEXT("slot 0 gauge %d = about %d (%d hit points healed, one Honor per %d)"), Honor, Expected, Gained, HpPerPoint),
+				Honor >= Expected - 1 && Honor <= Expected && Honor > 0);
+			TestEqual(TEXT("slot 1 healed nothing: no Honor"), State->GetFactionResource(1), 0);
+		}
+		UHOLHealProcessor::ConfigureHonor(0, 0);
+	}
+	CombatEnabled->Set(FormerEnabled, ECVF_SetByCode);
+	GEngine->DestroyWorldContext(World);
+	World->DestroyWorld(false);
+	return true;
+}
