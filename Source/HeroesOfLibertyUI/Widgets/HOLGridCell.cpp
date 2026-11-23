@@ -393,6 +393,7 @@ void UHOLGridCell::SetStatus(const FText& InStatus)
 	using namespace UE::HeroesOfLiberty::UI::GridCell;
 
 	const bool bHasStatus = !InStatus.IsEmpty();
+	StatusSource = InStatus;
 	ShownStatus = InStatus.ToString();
 	StatusLineCount = bHasStatus ? 1 : 0;
 	if (StatusText)
@@ -410,6 +411,11 @@ void UHOLGridCell::SetStatus(const FText& InStatus)
 void UHOLGridCell::FitStatusToWidth(const float CellWidth)
 {
 	FittedCellWidth = CellWidth;
+	// The localized text is re-read on every fit: a language switch changes it without a new SetStatus (the stale string put the French text back over the English one).
+	if (!StatusSource.IsEmpty())
+	{
+		ShownStatus = StatusSource.ToString();
+	}
 	const bool bHasStatus = !ShownStatus.IsEmpty();
 	int32 Lines = bHasStatus ? 1 : 0;
 	FString Shown = ShownStatus;
@@ -426,7 +432,7 @@ void UHOLGridCell::FitStatusToWidth(const float CellWidth)
 	}
 	if (StatusText && bHasStatus && StatusText->GetText().ToString() != Shown)
 	{
-		StatusText->SetText(FText::FromString(Shown));
+		StatusText->SetText(Lines == 1 && !StatusSource.IsEmpty() ? StatusSource : FText::FromString(Shown));
 	}
 	if (Lines != StatusLineCount)
 	{

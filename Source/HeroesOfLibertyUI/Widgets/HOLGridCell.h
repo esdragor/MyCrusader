@@ -217,6 +217,8 @@ private:
 	float FittedCellWidth = DefaultCellSize;
 
 	/** The status as given (the text the checks read; StatusText holds it broken in two lines when it is wider than the cell, D889) and its line count. */
+	/** D889 fix (GALADRIEL-1123k): the status as the FText it was given, so the shown text follows a language switch (ShownStatus is re-read from it each fit). */
+	FText StatusSource;
 	FString ShownStatus;
 	int32 StatusLineCount = 0;
 
