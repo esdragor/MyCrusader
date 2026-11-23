@@ -8,6 +8,18 @@ Historique du test du 2026-10-30 : `Docs\Archive\Auto_Journey_Test1_2026-10-30.m
 
 **Relevé du 2026-11-15** : voir Docs\ReleveGDD_2026-11-15.md (état réel de A1-A4 et B1-B6, branchements C++ à faire, questions en attente). L'ancien relevé du 2026-11-12 est archivé dans Docs\Archive\Auto_Journey_Jour_Chapitres_GDD_releve_2026-11-12_archive_2026-11-15.md.
 
+## Agents du 2026-11-23
+
+Séance autonome (« lance une autojourney en prenant en prio Priorite_Socle_Factions_2026-11-16.md ») 08:47 -> 16:50 (fin choisie par la session principale, objectif ~8 h ; `Docs\SessionEnd.txt`). Priorité : `Docs\Priorite_Socle_Factions_2026-11-16.md` (lignes S1 à S4 d'`Auto_Journey_File.md`). 0 `AskUserQuestion` (L21-1, L23-1). Session principale sur Opus, sous-agents Sonnet 5.5, 15 min au plus.
+Exception de gate : CLEAN-1123a-d (0a) lancés avec le FAIL L19-1 (check-list lue après le nettoyage 0a, qui la modifie, et avant le premier agent de travail, comme le 2026-11-22).
+
+| Agent | id | Worktree | Tâche | C++ | Lancé | Fini | Résumé |
+|---|---|---|---|---|---|---|---|
+| CLEAN-1123a | 0a | copie principale | nettoyage Jour + Retours.md | non | 08:50 | | |
+| CLEAN-1123b | 0a | copie principale | nettoyage Auto_Journey_File.md | non | 08:50 | | |
+| CLEAN-1123c | 0a | copie principale | nettoyage Retours\ | non | 08:50 | | |
+| CLEAN-1123d | 0a | copie principale | nettoyage procédure + check-list | non | 08:50 | | |
+
 ## Agents du 2026-11-22
 
 Séance autonome (« lance une auto journey ») 16:17 -> 20:20 (fin choisie par la session principale, aucune heure donnée ; `Docs\SessionEnd.txt`). 0 `AskUserQuestion` (L21-1, L23-1). Modèles : la session principale reste sur Opus (utilisateur, 2026-11-22 : « on reste sur opus ») ; sous-agents Sonnet 5.5, 15 min au plus (consigne du 2026-11-16, inchangée).
