@@ -42,6 +42,12 @@ namespace HOLCommandGridRules
 	int GetDeployCell() { return DeployCell; }
 	float GetLockedAgePanelOpacity() { return LockedAgePanelOpacity; }
 
+	// S1-d (GLORFINDEL-1123o): the Monk's Seal of Light cell (R, cell 3: free next to the hero's A Z and the rage's E); default pending the user's choice of key (Q-sceau-touche).
+	int GetMonkSealCell()
+	{
+		return 3;
+	}
+
 	// GetRageCell / GetHeroAbilityCell (cpp 136-143): the rage on E (cell 2); the cry on A, the banner on Z; the aura has no cell.
 	int GetRageCell()
 	{
