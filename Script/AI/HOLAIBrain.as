@@ -145,7 +145,7 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 				ArmyPoints.Add(Summary.Army[Each].Location);
 			}
 		}
-		const FVector CastOrigin = HOLAIPowerCall::OriginOf(HOLHero::GetHeroBannerLocation(PlayerIndex), ArmyPoints);
+		const FVector CastOrigin = HOLFactionPowerServer::CastOriginOf(HOLHero::GetHeroBannerLocation(PlayerIndex), ArmyPoints);
 		const FIntPoint Banner = FIntPoint(int(CastOrigin.X), int(CastOrigin.Y));
 		const int Level = int(HOLAILives::Played(Summary.Level, Data.GameSeconds, HOLAIArmy::DefaultData().Lives));
 		const FHOLAIPowerOrder Order = HOLAIPowerCall::Plan(Rows, CooldownLeft, State.GetFactionResource(PlayerIndex), Summary.Tier, Level, HOLAIPowerCall::DefaultData(),

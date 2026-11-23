@@ -4,15 +4,38 @@
 namespace HOLFactionPowerServer
 {
 	// True when the power was put down (the effect started FIRST: a failed start costs nothing, then the gauge and the cool-down are written).
-	// GLORFINDEL-1123m: the ONE cast origin of a faction power, for the player and the AI. STUB (red first): banner only.
+	// GLORFINDEL-1123n: the ONE cast origin of a faction power, for the player AND the AI (it replaces HOLAIPowerCall::OriginOf). A planted banner is the
+	// origin; with none planted (it reads (0, 0): the AI never plants one, the player may not have) the origin is the centre of Own, the caller's points:
+	// the AI passes its army, the player the points of its units (provisional: no script reader of the hero's own position exists, see TYPES_A_EXPOSER;
+	// the choice is Retours/Q-sacred-light-values.md). No points: the banner as is.
 	FVector CastOriginOf(const FIntPoint& Banner, const TArray<FVector>& Own)
 	{
-		return FVector(double(Banner.X), double(Banner.Y), 0.0);
+		if ((Banner.X != 0 || Banner.Y != 0) || Own.Num() == 0)
+		{
+			return FVector(double(Banner.X), double(Banner.Y), 0.0);
+		}
+		FVector Sum = FVector(0.0, 0.0, 0.0);
+		for (int Index = 0; Index < Own.Num(); Index++)
+		{
+			Sum += Own[Index];
+		}
+		return FVector(Sum.X / double(Own.Num()), Sum.Y / double(Own.Num()), 0.0);
 	}
 
+	// The player's cast (after the RPC's sender check) and the AI's share the ONE origin: CastOriginOf(planted banner, else the centre of the slot's living units).
 	bool TryCastPower(int Slot, int PowerIndex, FVector Point)
 	{
-		return TryCastPowerFrom(Slot, PowerIndex, Point, HOLHero::GetHeroBannerLocation(Slot));
+		FHOLAISummary Summary = HOLAISummary::ReadAISummary(Slot);
+		TArray<FVector> Own;
+		for (int Each = 0; Each < Summary.Army.Num(); Each++)
+		{
+			if (Summary.Army[Each].Health > 0)
+			{
+				Own.Add(Summary.Army[Each].Location);
+			}
+		}
+		const FVector Origin = CastOriginOf(HOLHero::GetHeroBannerLocation(Slot), Own);
+		return TryCastPowerFrom(Slot, PowerIndex, Point, FIntPoint(int(Origin.X), int(Origin.Y)));
 	}
 
 	// GLORFINDEL-1123j: PLACEHOLDER look of the Sacred Light zone (the zone had no drawing at all): a golden debug circle on the ground, the zone's radius, for

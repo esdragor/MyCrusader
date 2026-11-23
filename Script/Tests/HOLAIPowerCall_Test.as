@@ -104,11 +104,11 @@ void Test_AIBrainCastsWithoutAPlantedBanner(FUnitTest& T)
 	{
 		Wounded.Add(Army[Index]);
 	}
-	const FVector Origin = HOLAIPowerCall::OriginOf(FIntPoint(0, 0), Army);
+	const FVector Origin = HOLFactionPowerServer::CastOriginOf(FIntPoint(0, 0), Army);
 	const FHOLAIPowerOrder Order = HOLAIPowerCall::Plan(Rows, Ready, 100, 0, 0, HOLAIPowerCall::DefaultData(), Wounded, Origin, 800);
 	T.AssertTrue(Order.bCast, "no banner planted, 3 of 7 wounded in the army, Honor 100: the AI casts the Sacred Light");
 	// A planted banner stays the origin.
-	const FVector Planted = HOLAIPowerCall::OriginOf(FIntPoint(500, 700), Army);
+	const FVector Planted = HOLFactionPowerServer::CastOriginOf(FIntPoint(500, 700), Army);
 	T.AssertTrue(Math::Abs(Planted.X - 500.0) < 1.0 && Math::Abs(Planted.Y - 700.0) < 1.0, "a planted banner is the origin");
 }
 
