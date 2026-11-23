@@ -6,10 +6,15 @@ namespace HOLFactionPowerServer
 	// True when the power was put down (the effect started FIRST: a failed start costs nothing, then the gauge and the cool-down are written).
 	bool TryCastPower(int Slot, int PowerIndex, FVector Point)
 	{
+		return TryCastPowerFrom(Slot, PowerIndex, Point, HOLHero::GetHeroBannerLocation(Slot));
+	}
+
+	bool TryCastPowerFrom(int Slot, int PowerIndex, FVector Point, FIntPoint Origin)
+	{
 		AHOLGameState State = Cast<AHOLGameState>(Gameplay::GetGameState());
 		if (State == nullptr)
 			return false;
-		const FIntPoint Origin = HOLHero::GetHeroBannerLocation(Slot);
+		// The origin is the caller's: the player's banner, or the AI's army centre (it plants no banner).
 		const int NowMs = int(Gameplay::GetTimeSeconds() * 1000.0);
 		FHOLFactionResource Gauge = HOLFactionResource::Make(State.GetFactionResource(Slot), 0, HOLDawnValues::HonorCap());
 		FHOLFactionPowerDecision Decision = HOLFactionPowerCast::Decide(State.GetSlotFaction(Slot), PowerIndex, Gauge,
