@@ -25,6 +25,7 @@
 #include "Simulation/HOLSimulationSettings.h"
 #include "Simulation/HOLSimulationSubsystem.h"
 #include "Simulation/HOLUnitSubsystem.h"
+#include "Simulation/HOLUnitView.h"
 
 namespace
 {
@@ -400,7 +401,15 @@ bool UHOLHeroLibrary::PlantHeroBanner(const UObject* WorldContextObject, const i
 
 bool UHOLHeroLibrary::GetHeroLocation(const UObject* WorldContextObject, const int32 Slot, FVector& OutLocation)
 {
-	// STUB (GLORFINDEL-1123pd, red first): no hero is ever found.
+	// D891: the unit's own place (its view), the same hero the sheets follow (FindHeroUnit); a garrisoned or dead hero has no view: false.
 	OutLocation = FVector::ZeroVector;
-	return false;
+	const UWorld* World = GetWorldOf(WorldContextObject);
+	const UHOLUnitSubsystem* Units = World ? World->GetSubsystem<UHOLUnitSubsystem>() : nullptr;
+	FHOLUnitView View;
+	if (!Units || !Units->GetUnitView(Units->FindHeroUnit(Slot), View) || View.Health <= 0)
+	{
+		return false;
+	}
+	OutLocation = View.Location;
+	return true;
 }

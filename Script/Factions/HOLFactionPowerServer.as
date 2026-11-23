@@ -6,13 +6,23 @@ namespace HOLFactionPowerServer
 	// True when the power was put down (the effect started FIRST: a failed start costs nothing, then the gauge and the cool-down are written).
 	// GLORFINDEL-1123n: the ONE cast origin of a faction power, for the player AND the AI (it replaces HOLAIPowerCall::OriginOf). A planted banner is the
 	// origin; with none planted (it reads (0, 0): the AI never plants one, the player may not have) the origin is the centre of Own, the caller's points:
-	// the AI passes its army, the player the points of its units (provisional: no script reader of the hero's own position exists, see TYPES_A_EXPOSER;
+	// the AI passes its army, the player the points of its units (an empty army: the hero's place, HeroPlaceOf, GLORFINDEL-1123pd;
 	// the choice is Retours/Q-sacred-light-values.md). No points: the banner as is.
 	FVector CastOriginOf(const FIntPoint& Banner, const TArray<FVector>& Own)
 	{
-		if ((Banner.X != 0 || Banner.Y != 0) || Own.Num() == 0)
+		return CastOriginOf(Banner, Own, false, FVector(0.0, 0.0, 0.0));
+	}
+
+	// GLORFINDEL-1123pd: the cast origin with the hero as the LAST resort (banner, else the centre of Own, else the hero when bHeroKnown, else the banner as is).
+	FVector CastOriginOf(const FIntPoint& Banner, const TArray<FVector>& Own, bool bHeroKnown, const FVector& HeroPlace)
+	{
+		if ((Banner.X != 0 || Banner.Y != 0) || (Own.Num() == 0 && !bHeroKnown))
 		{
 			return FVector(double(Banner.X), double(Banner.Y), 0.0);
+		}
+		if (Own.Num() == 0)
+		{
+			return FVector(HeroPlace.X, HeroPlace.Y, 0.0);
 		}
 		FVector Sum = FVector(0.0, 0.0, 0.0);
 		for (int Index = 0; Index < Own.Num(); Index++)
@@ -20,12 +30,6 @@ namespace HOLFactionPowerServer
 			Sum += Own[Index];
 		}
 		return FVector(Sum.X / double(Own.Num()), Sum.Y / double(Own.Num()), 0.0);
-	}
-
-	// GLORFINDEL-1123pd: the cast origin with the hero as the LAST resort (banner, else the centre of Own, else the hero when bHeroKnown, else the banner as is).
-	FVector CastOriginOf(const FIntPoint& Banner, const TArray<FVector>& Own, bool bHeroKnown, const FVector& HeroPlace)
-	{
-		return CastOriginOf(Banner, Own); // STUB: the hero is ignored
 	}
 
 	// GLORFINDEL-1123pd: where the slot's hero stands (the ONE reader, for the player's cast origin and the AI's banner place); false without a living hero.
@@ -46,7 +50,9 @@ namespace HOLFactionPowerServer
 				Own.Add(Summary.Army[Each].Location);
 			}
 		}
-		const FVector Origin = CastOriginOf(HOLHero::GetHeroBannerLocation(Slot), Own);
+		FVector HeroPlace = FVector(0.0, 0.0, 0.0);
+		const bool bHeroKnown = HeroPlaceOf(Slot, HeroPlace);
+		const FVector Origin = CastOriginOf(HOLHero::GetHeroBannerLocation(Slot), Own, bHeroKnown, HeroPlace);
 		return TryCastPowerFrom(Slot, PowerIndex, Point, FIntPoint(int(Origin.X), int(Origin.Y)));
 	}
 

@@ -102,7 +102,7 @@ namespace HOLAIPowerCall
 	// GLORFINDEL-1123pd: PlanBanner fed with the hero's REAL place (HOLFactionPowerServer::HeroPlaceOf): no hero found, or his ability not ready, plants nothing.
 	FHOLAIBannerOrder PlanBannerOf(const TArray<FVector>& Wounded, bool bHeroKnown, const FVector& HeroLocation, bool bAbilityReady, bool bBannerStanding)
 	{
-		return PlanBanner(Wounded, FVector(0.0, 0.0, 0.0), bHeroKnown && bAbilityReady, bBannerStanding); // STUB: the hero's place is ignored
+		return PlanBanner(Wounded, HeroLocation, bHeroKnown && bAbilityReady, bBannerStanding);
 	}
 
 	// Plant when a hero able to (alive, level, cool-down: bHeroCanPlant) has no banner standing and some of the army is wounded (the same trigger as the cast).
