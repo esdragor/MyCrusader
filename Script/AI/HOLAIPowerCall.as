@@ -48,6 +48,22 @@ namespace HOLAIPowerCall
 		return Data;
 	}
 
+	// The point the AI casts from (GLORFINDEL-1123h). A planted banner is the origin (same as the player); the AI never plants one (its banner reads (0, 0), 14709 cm from its army in the real partie),
+	// so without a banner the origin is the centre of its army (provisional: Retours/Q-sacred-light-values.md). No army: the banner as is.
+	FVector OriginOf(const FIntPoint& Banner, const TArray<FVector>& Army)
+	{
+		if ((Banner.X != 0 || Banner.Y != 0) || Army.Num() == 0)
+		{
+			return FVector(double(Banner.X), double(Banner.Y), 0.0);
+		}
+		FVector Sum = FVector(0.0, 0.0, 0.0);
+		for (int Index = 0; Index < Army.Num(); Index++)
+		{
+			Sum += Army[Index];
+		}
+		return FVector(Sum.X / double(Army.Num()), Sum.Y / double(Army.Num()), 0.0);
+	}
+
 	int WoundedPercent()
 	{
 		return 70;
