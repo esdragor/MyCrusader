@@ -30,6 +30,7 @@
 #include "Simulation/HOLDeployProcessor.h"
 #include "Simulation/HOLCampSubsystem.h"
 #include "Simulation/HOLDuelSubsystem.h"
+#include "Simulation/HOLHealProcessor.h"
 #include "Simulation/HOLHeroAbilityRules.h"
 #include "Simulation/HOLMoraleRules.h"
 #include "Simulation/HOLMoraleTableRows.h"
@@ -1530,6 +1531,30 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 			Heroes->AddXP(KillerPlayer, XP, Source.GetValue());
 		}
 	};
+	// S1-e (D689/D859): an enemy dies within HonorKillRadiusCm of a BUILDING of a Dawn slot (D859: "+1 per enemy killed within 12 m of a Dawn building"): that slot earns HonorKillGain (once per death and slot).
+	// Off (radius or gain 0) until the script installs the Dawn's values; the credit is UHOLHealProcessor's, the one path of the gauge.
+	const auto AwardKillHonor = [&](const FFighter& Victim)
+	{
+		const int32 Radius = UHOLHealProcessor::GetHonorKillRadiusCm();
+		const AHOLGameState* GameState = Radius > 0 && UHOLHealProcessor::GetHonorKillGain() > 0 && World ? World->GetGameState<AHOLGameState>() : nullptr;
+		if (!GameState)
+		{
+			return;
+		}
+		TArray<int32, TInlineAllocator<4>> Slots;
+		const double RadiusSq = static_cast<double>(Radius) * Radius;
+		for (const FStepBuilding& Near : StepBuildings)
+		{
+			const int32 Slot = Near.OwnerPlayer;
+			if (Near.bGone || Near.Camp == Victim.Camp || Slots.Contains(Slot) || GameState->GetSlotFaction(Slot) != 0
+				|| Near.Box.ComputeSquaredDistanceToPoint(FVector2D(Victim.Location)) > RadiusSq)
+			{
+				continue;
+			}
+			Slots.Add(Slot);
+			UHOLHealProcessor::CreditKillHonor(World, Slot);
+		}
+	};
 	// A unit killed in the step: its own target loses an attacker at once (KillUnit disengages it), not at the next count.
 	const auto Kill = [&](FFighter& Victim, const int32 KillerPlayer, const uint32 KillerId)
 	{
@@ -1543,6 +1568,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 		}
 		KillUnit(World, *Units, Victim, StepIndex, KillerPlayer);
 		AwardKillXP(Victim, KillerPlayer, KillerId);
+		AwardKillHonor(Victim);
 	};
 
 	// D345.2b: the buildings that can be attacked this step (a bare foundation is unseen by the enemy: never a target).

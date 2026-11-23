@@ -121,4 +121,12 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Morale")
 	static void NativeGrantImmunity(UPARAM(ref) FHOLMoraleStateData& State, int32 DurationMs);
+
+	/**
+	 * PLAN-MORAL-1120 step 6 (S2-b): a morale order of the duel (HOLDuelLedger::PendingMorale). Lays the table row EffectId (Triumph, Demoralised,
+	 * Hesitation) for DurationMs on every unit of camp OrderSlot within RadiusCm of the point, at the next step of the morale processor (one source
+	 * of the rule: the processor, the same path as the cry; never a Peasant, D705). Wrapper only (D839): the order is queued, the processor lays it.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Morale")
+	static void ApplyEffectAround(const UObject* WorldContextObject, int32 EffectId, int32 CenterXCm, int32 CenterYCm, int32 OrderSlot, int32 DurationMs, int32 RadiusCm);
 };

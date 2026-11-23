@@ -121,7 +121,7 @@ void Test_SpecializationSlotWidgetReadIsDarkUntilBoundAndLitWhenInjected(FUnitTe
 {
 	AHOLPlayerController NoController = nullptr;
 	FHOLSpecializationRead NoRead;
-	FHOLSpecializationSlotView Unbound = HOLSpecializationSlot::Resolve(NoController, NoRead, false);
+	FHOLSpecializationSlotView Unbound = HOLSpecializationSlot::Resolve(NoController, 0, NoRead, false);
 	T.AssertTrue(!Unbound.bLit, "the unbound read (ReadView) is empty: the button stays dark");
 	FHOLSpecializationState State = HOLSpecialization::NewState(2);
 	FHOLSpecializationRead Injected;
@@ -129,13 +129,37 @@ void Test_SpecializationSlotWidgetReadIsDarkUntilBoundAndLitWhenInjected(FUnitTe
 	Injected.PlayerTier = 1;
 	Injected.bForumComplete = true;
 	Injected.OptionCount = 2;
-	FHOLSpecializationSlotView Lit = HOLSpecializationSlot::Resolve(NoController, Injected, true);
+	FHOLSpecializationSlotView Lit = HOLSpecializationSlot::Resolve(NoController, 0, Injected, true);
 	T.AssertTrue(Lit.bLit, "an injected view with a tier open lights the button");
 	T.AssertEquals(2, Lit.OptionTexts.Num(), "and its panel shows the 2 options");
 	HOLSpecialization::Start(State, 1, 0, 1);
 	Injected.View = SpecializationSlotTest::ViewOf(State);
-	FHOLSpecializationSlotView Running = HOLSpecializationSlot::Resolve(NoController, Injected, true);
+	FHOLSpecializationSlotView Running = HOLSpecializationSlot::Resolve(NoController, 0, Injected, true);
 	T.AssertTrue(Running.bRunning && Running.Fraction >= 0.0, "once the real rule started an unlock, the injected view shows the bar running");
-	FHOLSpecializationSlotView Ignored = HOLSpecializationSlot::Resolve(NoController, Injected, false);
+	FHOLSpecializationSlotView Ignored = HOLSpecializationSlot::Resolve(NoController, 0, Injected, false);
 	T.AssertTrue(!Ignored.bLit, "without the injection flag the injected read is ignored");
+}
+
+// SP3 (ELROND-1123pd): the read from the state. The test world cannot set a player's specialization (AHOLPlayerState::SetSpecialization is not a
+// UFUNCTION), so the pure conversion ReadOf is tested: the view of a REAL state (rules Start / Advance) and the faction tier give the voie, its progress
+// and the faction's option count; no specialization at tier 1 gives the lit "to choose" view.
+void Test_SpecializationSlotReadOfShowsTheVoieAndItsProgress(FUnitTest& T)
+{
+	FHOLSpecializationState Fresh = HOLSpecialization::NewStateFor(EHOLFaction::Templars);
+	FHOLSpecializationRead ToChoose = HOLSpecializationSlot::ReadOf(SpecializationSlotTest::ViewOf(Fresh), 1, EHOLFaction::Templars);
+	FHOLSpecializationSlotView Choose = HOLSpecializationSlot::Make(ToChoose.View, ToChoose.PlayerTier, ToChoose.bForumComplete, ToChoose.OptionCount);
+	T.AssertTrue(Choose.bLit && !Choose.bRunning, "no specialization at faction tier 1: lit, to choose");
+	T.AssertEquals(3, Choose.OptionTexts.Num(), "the Templars' read carries their three voies");
+
+	HOLSpecialization::Start(Fresh, 1, 2, 1);
+	HOLSpecialization::Advance(Fresh, 7500, true);
+	FHOLSpecializationRead Running = HOLSpecializationSlot::ReadOf(SpecializationSlotTest::ViewOf(Fresh), 1, EHOLFaction::Templars);
+	FHOLSpecializationSlotView Voie = HOLSpecializationSlot::Make(Running.View, Running.PlayerTier, Running.bForumComplete, Running.OptionCount);
+	T.AssertTrue(Voie.bRunning && Voie.PendingOption == 2, "the read carries the voie that runs (Voie C)");
+	T.AssertEquals(22500, Voie.RemainingMs, "and its time left");
+
+	FHOLSpecializationRead Early = HOLSpecializationSlot::ReadOf(SpecializationSlotTest::ViewOf(Fresh), 0, EHOLFaction::Templars);
+	T.AssertEquals(0, Early.PlayerTier, "the faction tier is the one given");
+	FHOLSpecializationRead Dawn = HOLSpecializationSlot::ReadOf(SpecializationSlotTest::ViewOf(Fresh), 1, EHOLFaction::DawnOrder);
+	T.AssertEquals(HOLSpecialization::OptionCountOf(EHOLFaction::DawnOrder), Dawn.OptionCount, "the option count follows the faction");
 }

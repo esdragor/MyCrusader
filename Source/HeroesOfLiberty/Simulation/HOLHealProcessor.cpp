@@ -12,6 +12,7 @@
 #include "MassEntitySubsystem.h"
 #include "MassExecutionContext.h"
 #include "Match/HOLDiplomacyRules.h"
+#include "Match/HOLGameState.h"
 #include "Match/HOLMatchConfig.h"
 #include "Match/HOLVictoryRules.h"
 #include "Simulation/HOLCombatRules.h"
@@ -40,6 +41,74 @@ int64 UHOLHealProcessor::HealSteps = 0;
 int32 UHOLHealProcessor::LastCandidateCount = 0;
 TMap<uint32, UHOLHealProcessor::FOrder> UHOLHealProcessor::Orders;
 bool UHOLHealProcessor::bIssuing = false;
+int32 UHOLHealProcessor::HonorHpPerPoint = 0;
+int32 UHOLHealProcessor::HonorCap = 0;
+int32 UHOLHealProcessor::HonorKillGain = 0;
+int32 UHOLHealProcessor::HonorKillRadiusCm = 0;
+TArray<double> UHOLHealProcessor::HonorPendingHp;
+
+void UHOLHealProcessor::AddHonorHp(const int32 Slot, const double Hp)
+{
+	if (HonorHpPerPoint > 0 && Hp > 0. && HonorPendingHp.IsValidIndex(Slot))
+	{
+		HonorPendingHp[Slot] += Hp;
+	}
+}
+
+void UHOLHealProcessor::CreditHonor(const UWorld* World)
+{
+	AHOLGameState* GameState = HonorHpPerPoint > 0 && World ? World->GetGameState<AHOLGameState>() : nullptr;
+	if (!GameState)
+	{
+		return;
+	}
+	for (int32 Slot = 0; Slot < HonorPendingHp.Num(); ++Slot)
+	{
+		const int32 Points = FMath::FloorToInt32(HonorPendingHp[Slot] / HonorHpPerPoint);
+		if (Points <= 0)
+		{
+			continue;
+		}
+		HonorPendingHp[Slot] -= static_cast<double>(Points) * HonorHpPerPoint;
+		CreditHonorPoints(World, Slot, Points);
+	}
+}
+
+void UHOLHealProcessor::CreditHonorPoints(const UWorld* World, const int32 Slot, const int32 Points)
+{
+	AHOLGameState* GameState = Points > 0 && World ? World->GetGameState<AHOLGameState>() : nullptr;
+	// Only the Dawn has the Honor gauge (faction 0, as AHOLGameState::GetSlotFaction); the others earn nothing.
+	if (!GameState || GameState->GetSlotFaction(Slot) != 0)
+	{
+		return;
+	}
+	// The gauge accessors are private in C++ (the script reads them by reflection): same path here, no change of visibility.
+	UFunction* Getter = GameState->FindFunction(TEXT("GetFactionResource"));
+	UFunction* Setter = GameState->FindFunction(TEXT("SetFactionResource"));
+	if (Getter && Setter)
+	{
+		struct { int32 Slot; int32 ReturnValue; } Current{ Slot, 0 };
+		GameState->ProcessEvent(Getter, &Current);
+		// REVUE-1123 G5: never lowers a gauge already above the cap (120 stays 120): credits only below it.
+		struct { int32 Slot; int32 Value; } Next{ Slot, FMath::Max(Current.ReturnValue, FMath::Min(Current.ReturnValue + Points, HonorCap)) };
+		GameState->ProcessEvent(Setter, &Next);
+	}
+}
+
+void UHOLHealProcessor::CreditKillHonor(const UWorld* World, const int32 Slot)
+{
+	// One path for the gauge: the same credit as the heal source (cap, floor, Dawn only).
+	CreditHonorPoints(World, Slot, HonorKillGain);
+}
+
+void UHOLHealProcessor::ConfigureHonor(const int32 HpPerPoint, const int32 Cap, const int32 KillGain, const int32 KillRadiusCm)
+{
+	HonorHpPerPoint = FMath::Max(HpPerPoint, 0);
+	HonorCap = FMath::Max(Cap, 0);
+	HonorKillGain = FMath::Max(KillGain, 0);
+	HonorKillRadiusCm = FMath::Max(KillRadiusCm, 0);
+	HonorPendingHp.Init(0., FHOLMatchConfig::MaxSlots);
+}
 
 void UHOLHealProcessor::OrderHeal(const uint32 HealerId, const uint32 TargetId)
 {
@@ -329,6 +398,7 @@ void UHOLHealProcessor::Execute(FMassEntityManager& EntityManager, FMassExecutio
 		const float After = HOLHeal::GetHealedHealth(Before, Target.Candidate.MaxHealth, HealRate, StepMs);
 		Target.State->CurrentHealth = After;
 		Candidates[Chosen].Health = After;
+		AddHonorHp(Healer.State->OwnerPlayer, static_cast<double>(After - Before));
 		TotalHealed += static_cast<double>(After - Before);
 		NewKept.Add(Healer.Candidate.UnitId, Target.Candidate.UnitId);
 		Links.Add(FLink{ Healer.Candidate.UnitId, Target.Candidate.UnitId, bBoosted });
@@ -378,8 +448,10 @@ void UHOLHealProcessor::Execute(FMassEntityManager& EntityManager, FMassExecutio
 			const float After = HOLHeal::GetHealedHealth(Before, Unit.Candidate.MaxHealth, static_cast<float>(Zone.HealPerSecond), StepMs);
 			Unit.State->CurrentHealth = After;
 			TotalHealed += static_cast<double>(After - Before);
+			AddHonorHp(Zone.OwnerSlot, static_cast<double>(After - Before));
 		}
 	}
+	CreditHonor(World);
 	Kept = MoveTemp(NewKept);
 	HealSteps += Links.Num();
 }

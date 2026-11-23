@@ -1,0 +1,11 @@
+# GALADRIEL-1123pc (2026-11-23, worktree Galadriel, socle-ai, SANS C++) : S2-b, videur du registre teste, Hesitation posee
+
+Joueur : refuser un duel pose maintenant Hesitation autour du heros qui refuse (en plus de Triomphe / Demoralise a l'arene).
+
+- (1) Videur : TEST_ROUGE vu a 16:01 : tests 2146/2148 (Test_LedgerDrainLaysTriumphAndDemoralisedAtTheCentre et Test_LedgerPlacesHesitationAtTheRefusersPosition rouges sur bouchons). Commit test+bouchon 316878e ; correctif cb79b98 : UHOLDuelLedger::TakePendingOrders (filtre place/slot/effet, vide PendingMorale) ; ApplyMoraleOrders = Take + HOLMorale::ApplyEffectAround. Le test passe par la fonction pure + le vrai vidage sur un vrai registre (NewObject) ; l'appel C++ n'est pas appele en test (file C++ statique).
+- (2) Hesitation : GDD 10.1/D16 : aux unites de celui qui refuse, autour de son heros, 20-30 s, malus plus faible que Demoralise. Aucun accesseur de position de heros n'etait necessaire : StartChallenge / AnswerChallenge recoivent deja la position de la cible (B de MeasureFacts). Le registre la note (FHOLDuelRefuserPlace, HOLDuelLedgerRules::NotePlace, une par slot, la derniere gagne) et HOLDuelLedgerRules::OrdersOfEndedPlaced pose Hesitation la (HOLDuelRewards::OrdersAt). Test 0b0a583 rouge, correctif d565704 vert.
+- Limite : un refus par silence utilise la position de la cible au moment du defi (pas relue au refus) ; refus sans position notee : ordre abandonne.
+- Tests : 2148/2148 PASS 16:05 (quick_check -Parts tests, 211 s). Diagnostics AS : 0 erreur au journal (compilation des scripts reussie).
+- BUILDS_DEMANDES: 0 ; TESTS_SCRIPT_AJOUTES: 2 (Test_LedgerDrainLaysTriumphAndDemoralisedAtTheCentre, Test_LedgerPlacesHesitationAtTheRefusersPosition, Script\Duel\HOLDuelLedger_Test.as) ; TYPES_A_EXPOSER: aucun ; TESTS_TAUTOLOGIQUES: 0 ; EDITS_REFUSES: 0 ; TEST_ROUGE_SEPARE: oui.
+- NON VERIFIE : effet en jeu (Hesitation visible sur de vraies troupes), mesure ; merge main non fait.
+- Placeholders : aucun provisoire ajoute ou retire. socle-ai PRETE a d565704 (tests verts 2148/2148).
