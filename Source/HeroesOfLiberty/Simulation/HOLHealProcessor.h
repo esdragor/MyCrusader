@@ -46,7 +46,7 @@ public:
 	 * counts for its owner), credited to the slot's faction gauge (AHOLGameState::FactionResource) up to Cap. The two values come from the
 	 * script (HOLDawnValues::HonorHealPerPoint / HonorCap, ONE source, D839): HpPerPoint 0 = off (the default). Server and solo only.
 	 */
-	static void ConfigureHonor(int32 HpPerPoint, int32 Cap);
+	static void ConfigureHonor(int32 HpPerPoint, int32 Cap, int32 KillGain = 0, int32 KillRadiusCm = 0);
 	static int32 GetHonorHpPerPoint() { return HonorHpPerPoint; }
 
 	/**
@@ -101,4 +101,13 @@ private:
 	static void AddHonorHp(int32 Slot, double Hp);
 	/** S1-e: turns each slot's pending hit points into whole Honor points on its faction gauge (the Dawn's only), up to the cap. */
 	static void CreditHonor(const UWorld* World);
+	/** S1-e: adds Points to the gauge of a slot's faction if it is the Dawn's, up to the cap (the ONE credit path, heal and kill). */
+	static void CreditHonorPoints(const UWorld* World, int32 Slot, int32 Points);
+	/** S1-e (death): a Dawn slot has an enemy die within HonorKillRadiusCm of one of its units: credits it HonorKillGain. */
+	static void CreditKillHonor(const UWorld* World, int32 Slot);
+	/** Honor per kill made near the faction (0 = off) and the radius in cm of "near" (HOLDawnValues, installed by script). */
+	static int32 GetHonorKillGain() { return HonorKillGain; }
+	static int32 GetHonorKillRadiusCm() { return HonorKillRadiusCm; }
+	static int32 HonorKillGain;
+	static int32 HonorKillRadiusCm;
 };

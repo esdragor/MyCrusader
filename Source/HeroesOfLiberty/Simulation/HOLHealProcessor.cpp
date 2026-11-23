@@ -43,6 +43,8 @@ TMap<uint32, UHOLHealProcessor::FOrder> UHOLHealProcessor::Orders;
 bool UHOLHealProcessor::bIssuing = false;
 int32 UHOLHealProcessor::HonorHpPerPoint = 0;
 int32 UHOLHealProcessor::HonorCap = 0;
+int32 UHOLHealProcessor::HonorKillGain = 0;
+int32 UHOLHealProcessor::HonorKillRadiusCm = 0;
 TArray<double> UHOLHealProcessor::HonorPendingHp;
 
 void UHOLHealProcessor::AddHonorHp(const int32 Slot, const double Hp)
@@ -68,27 +70,42 @@ void UHOLHealProcessor::CreditHonor(const UWorld* World)
 			continue;
 		}
 		HonorPendingHp[Slot] -= static_cast<double>(Points) * HonorHpPerPoint;
-		// Only the Dawn has the Honor gauge (faction 0, as AHOLGameState::GetSlotFaction); the others' healing earns nothing.
-		if (GameState->GetSlotFaction(Slot) == 0)
-		{
-			// The gauge accessors are private in C++ (the script reads them by reflection): same path here, no change of visibility.
-			UFunction* Getter = GameState->FindFunction(TEXT("GetFactionResource"));
-			UFunction* Setter = GameState->FindFunction(TEXT("SetFactionResource"));
-			if (Getter && Setter)
-			{
-				struct { int32 Slot; int32 ReturnValue; } Current{ Slot, 0 };
-				GameState->ProcessEvent(Getter, &Current);
-				struct { int32 Slot; int32 Value; } Next{ Slot, FMath::Min(Current.ReturnValue + Points, HonorCap) };
-				GameState->ProcessEvent(Setter, &Next);
-			}
-		}
+		CreditHonorPoints(World, Slot, Points);
 	}
 }
 
-void UHOLHealProcessor::ConfigureHonor(const int32 HpPerPoint, const int32 Cap)
+void UHOLHealProcessor::CreditHonorPoints(const UWorld* World, const int32 Slot, const int32 Points)
+{
+	AHOLGameState* GameState = Points > 0 && World ? World->GetGameState<AHOLGameState>() : nullptr;
+	// Only the Dawn has the Honor gauge (faction 0, as AHOLGameState::GetSlotFaction); the others earn nothing.
+	if (!GameState || GameState->GetSlotFaction(Slot) != 0)
+	{
+		return;
+	}
+	// The gauge accessors are private in C++ (the script reads them by reflection): same path here, no change of visibility.
+	UFunction* Getter = GameState->FindFunction(TEXT("GetFactionResource"));
+	UFunction* Setter = GameState->FindFunction(TEXT("SetFactionResource"));
+	if (Getter && Setter)
+	{
+		struct { int32 Slot; int32 ReturnValue; } Current{ Slot, 0 };
+		GameState->ProcessEvent(Getter, &Current);
+		// REVUE-1123 G5: never lowers a gauge already above the cap (120 stays 120): credits only below it.
+		struct { int32 Slot; int32 Value; } Next{ Slot, FMath::Max(Current.ReturnValue, FMath::Min(Current.ReturnValue + Points, HonorCap)) };
+		GameState->ProcessEvent(Setter, &Next);
+	}
+}
+
+void UHOLHealProcessor::CreditKillHonor(const UWorld* World, const int32 Slot)
+{
+	// RED STUB (S1-e death): credits nothing yet.
+}
+
+void UHOLHealProcessor::ConfigureHonor(const int32 HpPerPoint, const int32 Cap, const int32 KillGain, const int32 KillRadiusCm)
 {
 	HonorHpPerPoint = FMath::Max(HpPerPoint, 0);
 	HonorCap = FMath::Max(Cap, 0);
+	HonorKillGain = FMath::Max(KillGain, 0);
+	HonorKillRadiusCm = FMath::Max(KillRadiusCm, 0);
 	HonorPendingHp.Init(0., FHOLMatchConfig::MaxSlots);
 }
 

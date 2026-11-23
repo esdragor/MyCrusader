@@ -306,7 +306,6 @@ bool FHOLZoneEffectSacredLightTest::RunTest(const FString& Parameters)
 	return true;
 }
 
-#endif // WITH_DEV_AUTOMATION_TESTS
 
 // D689, Honor of the Dawn from the heal (S1-e): the Sacred Light of slot 0 heals a wounded ally; the processor credits slot 0's faction gauge
 // (AHOLGameState::FactionResource) one Honor per HpPerPoint hit points healed. The expected Honor is CALCULATED from the health the fragment
@@ -398,3 +397,100 @@ bool FHOLZoneEffectHealHonorTest::RunTest(const FString& Parameters)
 	World->DestroyWorld(false);
 	return true;
 }
+
+// D689/D859, Honor of the Dawn from a kill (S1-e): a Dawn spearman (slot 0) kills a 1 hp enemy (slot 1) next to it, by the real combat processor:
+// the Dawn's gauge gains HonorKillGain per enemy that died (counted from the units really gone, never a constant); the enemy slot earns nothing.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLZoneEffectKillHonorTest, "HeroesOfLiberty.Zone.KillHonor", UE::HeroesOfLiberty::Tests::ZoneEffect::Flags)
+
+bool FHOLZoneEffectKillHonorTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::ZoneEffect;
+	IConsoleVariable* CombatEnabled = IConsoleManager::Get().FindConsoleVariable(TEXT("hol.Combat.Enabled"));
+	if (!TestNotNull(TEXT("hol.Combat.Enabled"), CombatEnabled))
+	{
+		return false;
+	}
+	const int32 FormerEnabled = CombatEnabled->GetInt();
+	CombatEnabled->Set(1, ECVF_SetByCode);
+
+	UWorld* World = UWorld::CreateWorld(EWorldType::Game, /*bInformEngineOfWorld*/ false);
+	FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);
+	Context.SetCurrentWorld(World);
+	World->InitializeActorsForPlay(FURL());
+	AHOLGameState* State = World->SpawnActor<AHOLGameState>();
+	World->SetGameState(State);
+
+	UHOLUnitSubsystem* Units = World->GetSubsystem<UHOLUnitSubsystem>();
+	UHOLSimulationSubsystem* Simulation = World->GetSubsystem<UHOLSimulationSubsystem>();
+	UMassEntitySubsystem* EntitySubsystem = World->GetSubsystem<UMassEntitySubsystem>();
+	if (TestNotNull(TEXT("game state"), State) && TestNotNull(TEXT("units"), Units) && TestNotNull(TEXT("simulation"), Simulation)
+		&& TestNotNull(TEXT("entities"), EntitySubsystem))
+	{
+		constexpr int32 KillGain = 3;
+		constexpr int32 Cap = 100;
+		UHOLHealProcessor::ConfigureHonor(20, Cap, KillGain, 1200);
+		TSharedPtr<FMassEntityManager> EntityManager = EntitySubsystem->GetMutableEntityManager().AsShared();
+		UHOLCombatProcessor* Combat = NewObject<UHOLCombatProcessor>(Simulation);
+		Combat->CallInitialize(Simulation, EntityManager.ToSharedRef());
+		const float StepSeconds = GetDefault<UHOLSimulationSettings>()->GetStepSeconds();
+		int64 Step = 0;
+		const auto RunStep = [Simulation, Units, Combat, &EntityManager, StepSeconds, &Step]
+		{
+			++Step;
+			Simulation->GetOnStepStarted().Broadcast(Step);
+			Units->ServeBirthRequests();
+			FMassProcessingContext ProcessingContext(EntityManager, StepSeconds);
+			UE::Mass::Executor::Run(*Combat, ProcessingContext);
+			Units->FlushDestructions();
+			Simulation->GetOnStepEnded().Broadcast(Step);
+		};
+		FHOLUnitSpawnRequest Dawn;
+		Dawn.TypeName = Spearman;
+		Dawn.Count = 1;
+		Dawn.OwnerPlayer = 0;
+		Dawn.Center = FVector(0.0, 0.0, 0.0);
+		Units->RequestUnits(Dawn);
+		FHOLUnitSpawnRequest Enemy = Dawn;
+		Enemy.OwnerPlayer = 1;
+		Enemy.Center = FVector(150.0, 0.0, 0.0);
+		Units->RequestUnits(Enemy);
+		Units->ServeBirthRequests();
+		TArray<uint32> Ids;
+		Units->GetAllUnitIds(Ids);
+		if (TestEqual(TEXT("two units born"), Ids.Num(), 2))
+		{
+			RunStep();
+			for (const uint32 Id : Ids)
+			{
+				FHOLUnitStateFragment* Fragment = EntityManager->GetFragmentDataPtr<FHOLUnitStateFragment>(Units->FindEntity(Id));
+				if (Fragment && Fragment->OwnerPlayer == 1)
+				{
+					Fragment->CurrentHealth = 1.f;
+				}
+			}
+			TestEqual(TEXT("the gauge of slot 0 starts empty"), ReadFactionGauge(State, 0), 0);
+			for (int32 Steps = 0; Steps < 200; ++Steps)
+			{
+				RunStep();
+				TArray<uint32> Alive;
+				Units->GetAllUnitIds(Alive);
+				if (Alive.Num() < 2)
+				{
+					break;
+				}
+			}
+			TArray<uint32> Alive;
+			Units->GetAllUnitIds(Alive);
+			const int32 Deaths = Ids.Num() - Alive.Num();
+			TestTrue(*FString::Printf(TEXT("the enemy died (%d unit(s) gone)"), Deaths), Deaths >= 1);
+			TestEqual(TEXT("slot 0 gauge = HonorKillGain per death"), ReadFactionGauge(State, 0), FMath::Min(Deaths * KillGain, Cap));
+			TestEqual(TEXT("slot 1 killed nothing: no Honor"), ReadFactionGauge(State, 1), 0);
+		}
+		UHOLHealProcessor::ConfigureHonor(0, 0);
+	}
+	CombatEnabled->Set(FormerEnabled, ECVF_SetByCode);
+	GEngine->DestroyWorldContext(World);
+	World->DestroyWorld(false);
+	return true;
+}
+#endif // WITH_DEV_AUTOMATION_TESTS

@@ -54,7 +54,7 @@ public:
 
 	/** UHOLHealProcessor::ConfigureHonor (S1-e): one Honor per HpPerPoint hit points healed, up to Cap (the script's HonorHealPerPoint / HonorCap); 0 = off. */
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Zone")
-	static void ConfigureHealHonor(int32 HpPerPoint, int32 Cap);
+	static void ConfigureHealHonor(int32 HpPerPoint, int32 Cap, int32 KillGain, int32 KillRadiusCm);
 
 	/** HOLZoneEffect::SacredLightRadiusCm / DurationMs / HealPerSecond (D689). */
 	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Zone")

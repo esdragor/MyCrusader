@@ -59,9 +59,9 @@ bool UHOLZoneEffectLibrary::StartSacredLight(const UObject* WorldContextObject, 
 	return Heroes && Heroes->StartSacredLight(Slot, Center);
 }
 
-void UHOLZoneEffectLibrary::ConfigureHealHonor(const int32 HpPerPoint, const int32 Cap)
+void UHOLZoneEffectLibrary::ConfigureHealHonor(const int32 HpPerPoint, const int32 Cap, const int32 KillGain, const int32 KillRadiusCm)
 {
-	UHOLHealProcessor::ConfigureHonor(HpPerPoint, Cap);
+	UHOLHealProcessor::ConfigureHonor(HpPerPoint, Cap, KillGain, KillRadiusCm);
 }
 
 int32 UHOLZoneEffectLibrary::GetSacredLightRadiusCm()

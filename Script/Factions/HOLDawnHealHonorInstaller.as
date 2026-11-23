@@ -11,7 +11,8 @@ class UHOLDawnHealHonorInstaller : UScriptWorldSubsystem
 	{
 		if (bConfigured)
 			return;
-		HOLZoneEffect::ConfigureHealHonor(HOLDawnValues::HonorHealPerPoint(), HOLDawnValues::HonorCap());
+		HOLZoneEffect::ConfigureHealHonor(HOLDawnValues::HonorHealPerPoint(), HOLDawnValues::HonorCap(),
+			HOLDawnValues::HonorKillGain(), HOLDawnValues::HonorKillRadiusCm());
 		bConfigured = true;
 	}
 }
