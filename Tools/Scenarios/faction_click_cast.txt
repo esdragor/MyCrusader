@@ -24,8 +24,7 @@ capture faction_click_cast_aim
 hol.Camera.FocusSlot 0
 frames 2
 hol.Select.LeftClickGround -17035 300
-waitlog FactionAim: cast 0 send true slot 0
-waitlog puts a Sacred Light at (-17035, 300)
+waitlog Sacred Light placeholder: golden ring of 600 cm for 5.0 s at (-170
 frames 20
 hol.HUD.Report
 waitlog faction slot: slot gauge 75 / 100
