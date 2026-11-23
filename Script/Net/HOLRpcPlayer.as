@@ -1092,6 +1092,48 @@ for (FString Command : Commands)
 		Log(n"LogHOLMatch", f"RpcPower: Seal of Light put down by slot {Slot}, Honor unchanged");
 	}
 
+	// S1-d (D862): the Monk's Seal of Light from the command grid. AbilityId is a HOLUnitAbilityTable id (only LightSeal is cast here), UnitId the Monk,
+	// Point the aimed ground point. The slot is the sender's. The range is read from the MONK's position (HOLUnitScript::GetUnitLocation: unknown or dead
+	// Monk refused), the pure rule is HOLMonkSeal::Decide, no Honor is paid; the Seal is started FIRST (a failed start costs nothing), then the slot's
+	// cool-down is written (power index 0 of the slot, the same cool-down the book Seal used; S1-b replaces the book power).
+	// TYPES_A_EXPOSER: the owner and the type of a unit id (script check "UnitId is a Monk of the sender's slot"): none exposed to script today, so this RPC
+	// trusts UnitId for now; it has NO caller until the C++ grid button (a Monk command kind) is added, so nothing reaches it yet.
+	UFUNCTION(Server)
+	void ServerCastUnitAbility(int AbilityId, int UnitId, FVector Point)
+	{
+		const int Slot = HOLRpcBridge::GetSenderSlot(this);
+		if (Slot < 0 || AbilityId != HOLUnitAbilityTable::LightSeal)
+		{
+			Log(n"LogHOLMatch", f"RpcUnitAbility: cast refused, slot {Slot} ability {AbilityId}");
+			return;
+		}
+		AHOLGameState State = Cast<AHOLGameState>(Gameplay::GetGameState());
+		if (State == nullptr)
+			return;
+		FVector Caster;
+		if (!HOLUnitScript::GetUnitLocation(UnitId, Caster))
+		{
+			Log(n"LogHOLMatch", f"RpcUnitAbility: caster unit {UnitId} unknown or dead, slot {Slot}");
+			return;
+		}
+		const int SealCooldownIndex = 0;
+		const int NowMs = int(Gameplay::GetTimeSeconds() * 1000.0);
+		FHOLMonkSealDecision Decision = HOLMonkSeal::Decide(State.GetSlotFaction(Slot), State.GetPowerCooldownEndMs(Slot, SealCooldownIndex), NowMs,
+			int(Caster.X), int(Caster.Y), int(Point.X), int(Point.Y));
+		if (!Decision.bAccepted)
+		{
+			Log(n"LogHOLMatch", f"RpcUnitAbility: Seal refused ({Decision.Refusal}) for slot {Slot}");
+			return;
+		}
+		if (!HOLZoneEffect::StartLightSeal(Slot, Point))
+		{
+			Log(n"LogHOLMatch", f"RpcUnitAbility: Seal of Light not started for slot {Slot} (no world, subsystem or slot)");
+			return;
+		}
+		State.SetPowerCooldownEndMs(Slot, SealCooldownIndex, Decision.NewCooldownEndMs);
+		Log(n"LogHOLMatch", f"RpcUnitAbility: Seal of Light put down by the Monk {UnitId} of slot {Slot}, Honor unchanged");
+	}
+
 	// Morceau 8 (NOT COMPILED): hol.Cheat.Specialization; the bridge calls AHOLPlayerController::DoCheatSpecialization (cheat guard, the board's rules, start then end at once).
 	UFUNCTION(Server)
 	void ServerCheatSpecialization(int Tier, int Option)

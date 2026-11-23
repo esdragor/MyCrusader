@@ -48,10 +48,33 @@ namespace HOLMonkSeal
 	// Faction: the EHOLFaction index of the slot. CooldownEndMs: the slot's cool-down end for the Seal (0 = ready). NowMs: the clock it is written in.
 	FHOLMonkSealDecision Decide(int Faction, int CooldownEndMs, int NowMs, int CasterXCm, int CasterYCm, int PointXCm, int PointYCm)
 	{
-		// RED STUB (the test comes first): refuses everything.
 		FHOLMonkSealDecision Result;
 		Result.NewCooldownEndMs = CooldownEndMs;
-		Result.Refusal = 99;
+		if (Faction != int(EHOLFaction::DawnOrder))
+		{
+			Result.Refusal = RefusalNotDawn();
+			return Result;
+		}
+		// Distance from the MONK to the point. Squares in double (a delta up to 2^32 - 1 squares past an int64), capped under the int range.
+		const double DeltaX = double(PointXCm) - double(CasterXCm);
+		const double DeltaY = double(PointYCm) - double(CasterYCm);
+		const double ExactCm = Math::Sqrt(DeltaX * DeltaX + DeltaY * DeltaY);
+		const int64 DistanceCm = int64(Math::CeilToInt(Math::Min(ExactCm, 2000000000.0)));
+		// Cool-down then range, by the shared ground-ability rule (1 dead caster, 2 cool-down, 3 range): the caster is alive here (the RPC read his position).
+		const int Reason = HOLGroundAbility::TargetRefusal(true, DistanceCm, RangeCm(), Math::Max(CooldownEndMs - NowMs, 0));
+		if (Reason == 2)
+		{
+			Result.Refusal = RefusalCooldown();
+			return Result;
+		}
+		if (Reason == 3)
+		{
+			Result.Refusal = RefusalOutOfRange();
+			return Result;
+		}
+		// D862: NO Honor is paid; only the cool-down is written.
+		Result.bAccepted = true;
+		Result.NewCooldownEndMs = HOLGroundAbility::CooldownEndMs(NowMs, CooldownMs());
 		return Result;
 	}
 }
