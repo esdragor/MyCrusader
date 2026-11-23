@@ -1,4 +1,6 @@
-# [À ESSAYER] E-wall_line_long : pose en ligne de la palissade au geste réel (Paysan, touches A puis D, glisser de souris), 9 fondations, Bois 20200 -> 20155
+# [RÉPONDU : BUG + design, à rejouer après correction] E-wall_line_long : pose en ligne de la palissade au geste réel (Paysan, touches A puis D, glisser de souris), 9 fondations, Bois 20200 -> 20155
+
+Reponse: BUG: Quand je relache le tracé, ils vont pas automatiquement construire + quand il s'agit de mur en pierre ou en bois, une casese divise en 4 cases plus petite de longeur est largeur et dans le tracé, ce qui est le plus important c'est le debut et la fin, le reste c'est juste un tracé (plus simple pour les ligne ni horizontale ni verticale) (utilisateur, 2026-11-23 17:00, D898)
 
 STATUT : VU À L'ÉCRAN
 GESTE: réel
