@@ -17,6 +17,22 @@
 #include "Simulation/HOLUnitSubsystem.h"
 #include "Simulation/HOLZoneEffectRules.h"
 
+namespace
+{
+	// AHOLGameState::GetFactionResource is private in C++ (the script reads it by reflection): the test reads the gauge the same way, no change of visibility.
+	int32 ReadFactionGauge(AHOLGameState* State, const int32 Slot)
+	{
+		UFunction* Getter = State ? State->FindFunction(TEXT("GetFactionResource")) : nullptr;
+		if (!Getter)
+		{
+			return -1;
+		}
+		struct { int32 Slot; int32 ReturnValue; } Params{ Slot, 0 };
+		State->ProcessEvent(Getter, &Params);
+		return Params.ReturnValue;
+	}
+}
+
 #if WITH_DEV_AUTOMATION_TESTS
 
 namespace UE::HeroesOfLiberty::Tests::ZoneEffect
@@ -359,7 +375,7 @@ bool FHOLZoneEffectHealHonorTest::RunTest(const FString& Parameters)
 		{
 			RunStep();
 			Ally->CurrentHealth = 20.f;
-			TestEqual(TEXT("the gauge of slot 0 starts empty"), State->GetFactionResource(0), 0);
+			TestEqual(TEXT("the gauge of slot 0 starts empty"), ReadFactionGauge(State, 0), 0);
 			TestTrue(TEXT("slot 0 puts the Sacred Light at the origin"), Heroes->StartSacredLight(0, FVector(0.0, 0.0, 0.0)));
 			const int32 ZoneSteps = FMath::CeilToInt(HOLZoneEffect::SacredLightDurationMs / 1000.f / StepSeconds) + 2;
 			for (int32 Steps = 0; Steps < ZoneSteps; ++Steps)
@@ -370,10 +386,10 @@ bool FHOLZoneEffectHealHonorTest::RunTest(const FString& Parameters)
 			const int32 Expected = FMath::Min(Gained / HpPerPoint, Cap);
 			TestTrue(*FString::Printf(TEXT("the zone healed something (%d hit points)"), Gained), Gained >= HpPerPoint);
 			// The remainder under HpPerPoint waits for the next heal, so the gauge is within one point of the whole division.
-			const int32 Honor = State->GetFactionResource(0);
+			const int32 Honor = ReadFactionGauge(State, 0);
 			TestTrue(*FString::Printf(TEXT("slot 0 gauge %d = about %d (%d hit points healed, one Honor per %d)"), Honor, Expected, Gained, HpPerPoint),
 				Honor >= Expected - 1 && Honor <= Expected && Honor > 0);
-			TestEqual(TEXT("slot 1 healed nothing: no Honor"), State->GetFactionResource(1), 0);
+			TestEqual(TEXT("slot 1 healed nothing: no Honor"), ReadFactionGauge(State, 1), 0);
 		}
 		UHOLHealProcessor::ConfigureHonor(0, 0);
 	}
