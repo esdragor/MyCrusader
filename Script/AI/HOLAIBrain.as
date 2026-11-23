@@ -18,6 +18,12 @@ struct FHOLAIRallied
 	FVector Point;
 }
 
+// GLORFINDEL-1123g: proof of the Dawn AI's Sacred Light (S4-a). hol.AI.LogPowers 1 writes one line per ThinkPowers (Honor gauge, wounded found, decision); default 0 so a normal
+// game is not flooded. hol.AI.HonorSet N (default -1 = off) is a TEST cheat: sets the Dawn AI slot's Honor gauge to N at each ThinkPowers (hol.Cheat.Honor writes the SENDER's slot only,
+// so a scenario cannot fill the AI's gauge with it).
+const FConsoleVariable CVar_AILogPowers("hol.AI.LogPowers", 0);
+const FConsoleVariable CVar_AIHonorSet("hol.AI.HonorSet", -1);
+
 class UHOLAIBrain : UHOLAIBrainSubsystem
 {
 	// Thoughts this brain ran, all slots together.
@@ -110,6 +116,10 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 		{
 			return;
 		}
+		if (CVar_AIHonorSet.GetInt() >= 0)
+		{
+			HOLHonorCheat::Apply(State, PlayerIndex, EHOLFaction::DawnOrder, CVar_AIHonorSet.GetInt());
+		}
 		const TArray<FHOLPowerRow> Rows = HOLDawnPowers::Rows();
 		const int NowMs = int(Gameplay::GetTimeSeconds() * 1000.0);
 		TArray<int> CooldownLeft;
@@ -131,6 +141,10 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 		const int Level = int(HOLAILives::Played(Summary.Level, Data.GameSeconds, HOLAIArmy::DefaultData().Lives));
 		const FHOLAIPowerOrder Order = HOLAIPowerCall::Plan(Rows, CooldownLeft, State.GetFactionResource(PlayerIndex), Summary.Tier, Level, HOLAIPowerCall::DefaultData(),
 			Wounded, FVector(double(Banner.X), double(Banner.Y), 0.0), HOLFactionPowerCast::SealRangeCm());
+		if (CVar_AILogPowers.GetInt() != 0)
+		{
+			Log(n"LogHOLMatch", f"AI slot {PlayerIndex} step {Step}: powers think, Honor {State.GetFactionResource(PlayerIndex)}, wounded {Wounded.Num()} of {Summary.Army.Num()}, decision cast={Order.bCast} row {Order.PowerIndex}");
+		}
 		if (Order.bCast && HOLFactionPowerServer::TryCastPower(PlayerIndex, Order.PowerIndex, Order.Point))
 		{
 			Log(n"LogHOLMatch", f"AI slot {PlayerIndex} step {Step}: Sacred Light cast on {Wounded.Num()} wounded unit(s)");
