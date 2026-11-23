@@ -410,6 +410,7 @@ namespace HOLAISummary
 			}
 			Out.bProducing = !Building->GetProductionQueue().IsEmpty() && Building->GetProductionQueue()[0].IsStarted();
 			Out.Actor = const_cast<AHOLBuilding*>(Building);
+			Out.SecondsSinceHit = Building->GetLastHitTime() >= 0.0 ? static_cast<float>(World.GetTimeSeconds() - Building->GetLastHitTime()) : -1.f;
 			Out.GarrisonSlots = UHOLGarrisonSubsystem::GetSlots(*Building);
 			TArray<int32> Occupants;
 			Building->GetGarrisonOccupants(Occupants);
