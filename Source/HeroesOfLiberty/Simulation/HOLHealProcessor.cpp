@@ -97,7 +97,8 @@ void UHOLHealProcessor::CreditHonorPoints(const UWorld* World, const int32 Slot,
 
 void UHOLHealProcessor::CreditKillHonor(const UWorld* World, const int32 Slot)
 {
-	// RED STUB (S1-e death): credits nothing yet.
+	// One path for the gauge: the same credit as the heal source (cap, floor, Dawn only).
+	CreditHonorPoints(World, Slot, HonorKillGain);
 }
 
 void UHOLHealProcessor::ConfigureHonor(const int32 HpPerPoint, const int32 Cap, const int32 KillGain, const int32 KillRadiusCm)

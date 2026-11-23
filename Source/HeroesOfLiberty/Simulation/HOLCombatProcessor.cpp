@@ -1358,7 +1358,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 			Heroes->AddXP(KillerPlayer, XP, Source.GetValue());
 		}
 	};
-	// S1-e (D689/D859): an enemy dies within HonorKillRadiusCm of a unit of a Dawn slot: that slot earns HonorKillGain (once per death and slot).
+	// S1-e (D689/D859): an enemy dies within HonorKillRadiusCm of a BUILDING of a Dawn slot (D859: "+1 per enemy killed within 12 m of a Dawn building"): that slot earns HonorKillGain (once per death and slot).
 	// Off (radius or gain 0) until the script installs the Dawn's values; the credit is UHOLHealProcessor's, the one path of the gauge.
 	const auto AwardKillHonor = [&](const FFighter& Victim)
 	{
@@ -1369,12 +1369,12 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 			return;
 		}
 		TArray<int32, TInlineAllocator<4>> Slots;
-		for (const FFighter& Near : Fighters)
+		const double RadiusSq = static_cast<double>(Radius) * Radius;
+		for (const FStepBuilding& Near : StepBuildings)
 		{
-			const int32 Slot = Near.State->OwnerPlayer;
-			if (&Near == &Victim || Near.Camp == Victim.Camp || Near.State->CurrentHealth <= 0.f || Near.Combat->DeathStep >= 0
-				|| Slots.Contains(Slot) || GameState->GetSlotFaction(Slot) != 0
-				|| FVector::Dist2D(Near.Location, Victim.Location) > Radius)
+			const int32 Slot = Near.OwnerPlayer;
+			if (Near.bGone || Near.Camp == Victim.Camp || Slots.Contains(Slot) || GameState->GetSlotFaction(Slot) != 0
+				|| Near.Box.ComputeSquaredDistanceToPoint(FVector2D(Victim.Location)) > RadiusSq)
 			{
 				continue;
 			}

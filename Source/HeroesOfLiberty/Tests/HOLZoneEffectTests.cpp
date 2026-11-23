@@ -1,5 +1,7 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
+#include "Buildings/HOLBuilding.h"
+#include "Buildings/HOLBuildingTypes.h"
 #include "Engine/Engine.h"
 #include "Engine/World.h"
 #include "HAL/IConsoleManager.h"
@@ -398,7 +400,7 @@ bool FHOLZoneEffectHealHonorTest::RunTest(const FString& Parameters)
 	return true;
 }
 
-// D689/D859, Honor of the Dawn from a kill (S1-e): a Dawn spearman (slot 0) kills a 1 hp enemy (slot 1) next to it, by the real combat processor:
+// D689/D859, Honor of the Dawn from a kill (S1-e): a Dawn spearman (slot 0) kills a 1 hp enemy (slot 1) within 12 m of a Dawn building, by the real combat processor:
 // the Dawn's gauge gains HonorKillGain per enemy that died (counted from the units really gone, never a constant); the enemy slot earns nothing.
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLZoneEffectKillHonorTest, "HeroesOfLiberty.Zone.KillHonor", UE::HeroesOfLiberty::Tests::ZoneEffect::Flags)
 
@@ -454,10 +456,16 @@ bool FHOLZoneEffectKillHonorTest::RunTest(const FString& Parameters)
 		Enemy.OwnerPlayer = 1;
 		Enemy.Center = FVector(150.0, 0.0, 0.0);
 		Units->RequestUnits(Enemy);
+		// D859: the Honor comes from a kill near a BUILDING of the Dawn: slot 0's centre stands 10 m west of the fight.
+		AHOLBuilding* DawnCentre = World->SpawnActor<AHOLBuilding>(FVector(-1000.0, 0.0, 0.0), FRotator::ZeroRotator);
+		if (DawnCentre)
+		{
+			DawnCentre->Setup(HOLBuildingTypeNames::MainCentre, 0, 0);
+		}
 		Units->ServeBirthRequests();
 		TArray<uint32> Ids;
 		Units->GetAllUnitIds(Ids);
-		if (TestEqual(TEXT("two units born"), Ids.Num(), 2))
+		if (TestNotNull(TEXT("slot 0 centre spawned"), DawnCentre) && TestEqual(TEXT("two units born"), Ids.Num(), 2))
 		{
 			RunStep();
 			for (const uint32 Id : Ids)
