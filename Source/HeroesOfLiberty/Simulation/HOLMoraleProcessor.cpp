@@ -2,6 +2,7 @@
 #include "Simulation/HOLMoraleProcessor.h"
 
 #include "Engine/World.h"
+#include "HAL/IConsoleManager.h"
 #include "Misc/ScopeLock.h"
 #include "Match/HOLFactionRules.h"
 #include "Match/HOLMatchConfig.h"
@@ -44,6 +45,21 @@ namespace
 	};
 	FCriticalSection PendingAroundLock;
 	TArray<FPendingAround> PendingAround;
+
+	// PROVISIONAL (step 7, S2-c): the attenuation percent each camp gives (stand-in for the Luminous Monk's aura, A3). Only the rule HOLMorale::Apply
+	// decides what it does to an effect; this table is just the value handed to it.
+	int32 SlotAttenuationPercent[FHOLMatchConfig::MaxSlots] = {};
+
+	FAutoConsoleCommand AttenuateCommand(
+		TEXT("hol.Morale.Attenuate"),
+		TEXT("hol.Morale.Attenuate <slot> <percent> : the camp <slot> takes every morale malus attenuated by <percent> % (75 at most, 0 = none). Stand-in for the Luminous Monk's aura (D125, D706)."),
+		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
+		{
+			if (Args.Num() >= 2)
+			{
+				UHOLMoraleProcessor::SetSlotAttenuation(FCString::Atoi(*Args[0]), FCString::Atoi(*Args[1]));
+			}
+		}));
 }
 
 void UHOLMoraleProcessor::QueueEffectAround(const UWorld* World, const int32 EffectId, const int32 CenterXCm, const int32 CenterYCm, const int32 OrderSlot, const int32 DurationMs, const int32 RadiusCm)
@@ -65,7 +81,10 @@ void UHOLMoraleProcessor::QueueEffectAround(const UWorld* World, const int32 Eff
 
 void UHOLMoraleProcessor::SetSlotAttenuation(const int32 Slot, const int32 Percent)
 {
-	// STUB (red test first, step 7): the percent is not kept yet, the processor lays every effect at full strength.
+	if (Slot >= 0 && Slot < FHOLMatchConfig::MaxSlots)
+	{
+		SlotAttenuationPercent[Slot] = FMath::Clamp(Percent, 0, 100);
+	}
 }
 
 UHOLMoraleProcessor::UHOLMoraleProcessor()
@@ -223,7 +242,9 @@ void UHOLMoraleProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 			{
 				if (Source.Owner == States[Index].OwnerPlayer && FVector2D::DistSquared(Source.Location, Where) <= Source.RadiusSquared)
 				{
-					HOLMorale::Apply(Fragments[Index].State, Source.Effect); // the same effect id from several sources is refreshed, never cumulated
+					// The camp's attenuation (a malus only: the rule leaves a bonus alone); the same effect id from several sources is refreshed, never cumulated.
+					const int32 OwnerSlot = States[Index].OwnerPlayer;
+					HOLMorale::Apply(Fragments[Index].State, Source.Effect, OwnerSlot < FHOLMatchConfig::MaxSlots ? SlotAttenuationPercent[OwnerSlot] : 0);
 				}
 			}
 		}
