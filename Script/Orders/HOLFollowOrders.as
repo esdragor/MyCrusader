@@ -44,6 +44,10 @@ namespace HOLFollowOrders
 	void Begin(FHOLFollowBook& Book, int UnitId, int TargetId, bool bTargetIsAlly)
 	{
 		const FHOLFollowState State = HOLFollowRules::Start(bTargetIsAlly);
+		// D895: the last order wins. If the target is following this unit, that follow ends (the target stops following, this unit follows the target).
+		const int TargetIndex = IndexOf(Book, TargetId);
+		if (TargetIndex >= 0 && HOLFollowRules::CancelsFollowOf(Book.States[TargetIndex], Book.TargetIds[TargetIndex], UnitId))
+			OnManualOrder(Book, TargetId);
 		const int Index = IndexOf(Book, UnitId);
 		if (Index < 0)
 		{
