@@ -28,6 +28,14 @@ public:
 	 */
 	static void QueueEffectAround(const UWorld* World, int32 EffectId, int32 CenterXCm, int32 CenterYCm, int32 OrderSlot, int32 DurationMs, int32 RadiusCm);
 
+	/**
+	 * PLAN-MORAL-1120 step 7 (S2-c, PROVISIONAL stand-in for the Luminous Monk's passive aura, which does not exist before A3; console command
+	 * hol.Morale.Attenuate <slot> <percent>): the attenuation percent (D125, D706) the camp Slot gives to every malus it is about to take. The
+	 * processor hands it to HOLMorale::Apply, which holds the whole rule (a temporary malus loses time, an aura malus loses intensity, a bonus
+	 * is never touched, 75 % at most); 0 = none. The value is clamped to 0..100.
+	 */
+	static void SetSlotAttenuation(int32 Slot, int32 Percent);
+
 protected:
 	virtual void ConfigureQueries(const TSharedRef<FMassEntityManager>& EntityManager) override;
 	virtual void Execute(FMassEntityManager& EntityManager, FMassExecutionContext& Context) override;

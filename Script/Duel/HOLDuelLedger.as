@@ -1,6 +1,65 @@
 // The match's book of duels (DuelInProgress.md D5), the script side of UHOLDuelSubsystem: the C++ part gives the step
 // and the heroes' health and asks, once a combat step, which pairs of heroes may touch each other; the rules are
 // HOLDuelRules.as (HOLDuel::BookCanHit, Tick). Server and solo only (the C++ base never calls it on a client).
+// Where a target stood when it was challenged or answered (D866 Q2 = A: Hesitation is laid at the refusing hero's position). Slot -1 = none.
+struct FHOLDuelRefuserPlace
+{
+	int Slot = -1;
+	int XCm = 0;
+	int YCm = 0;
+}
+
+namespace HOLDuelLedgerRules
+{
+	// Notes (or replaces) the place of a slot: one place per slot, the last note counts.
+	void NotePlace(TArray<FHOLDuelRefuserPlace>& Places, int Slot, int XCm, int YCm)
+	{
+		if (Slot < 0)
+			return;
+		for (int Index = 0; Index < Places.Num(); Index++)
+		{
+			if (Places[Index].Slot == Slot)
+			{
+				Places[Index].XCm = XCm;
+				Places[Index].YCm = YCm;
+				return;
+			}
+		}
+		FHOLDuelRefuserPlace Place;
+		Place.Slot = Slot;
+		Place.XCm = XCm;
+		Place.YCm = YCm;
+		Places.Add(Place);
+	}
+
+	// The morale orders of the duels that ended: Triumph and Demoralised at the arena's centre, a refusal's Hesitation at its refuser's
+	// (the duel's target) noted position; a refuser never noted keeps a placeless order (the drain drops it).
+	TArray<FHOLDuelMoraleOrder> OrdersOfEndedPlaced(const FHOLDuelSettings& S, const TArray<FHOLDuelEnded>& Ended, const TArray<FHOLDuelRefuserPlace>& Places)
+	{
+		TArray<FHOLDuelMoraleOrder> Result;
+		for (int Index = 0; Index < Ended.Num(); Index++)
+		{
+			bool bFound = false;
+			int XCm = 0;
+			int YCm = 0;
+			for (int P = 0; P < Places.Num(); P++)
+			{
+				if (Places[P].Slot == Ended[Index].Duel.Target)
+				{
+					bFound = true;
+					XCm = Places[P].XCm;
+					YCm = Places[P].YCm;
+				}
+			}
+			if (bFound)
+				Result.Append(HOLDuelRewards::OrdersAt(S, Ended[Index].Duel, XCm, YCm));
+			else
+				Result.Append(HOLDuelRewards::Orders(S, Ended[Index].Duel));
+		}
+		return Result;
+	}
+}
+
 class UHOLDuelLedger : UHOLDuelSubsystem
 {
 	FHOLDuelBook Book;
@@ -32,19 +91,32 @@ class UHOLDuelLedger : UHOLDuelSubsystem
 	// built yet: nothing applies them to the troops today).
 	TArray<FHOLDuelMoraleOrder> PendingMorale;
 
+	// Where each target stood when it was challenged and when it answered (D866 Q2 = A: Hesitation at the refusing hero's position).
+	TArray<FHOLDuelRefuserPlace> RefuserPlaces;
+
+	// S2-b: takes the orders the bridge lays now (the ones with a place, a slot and an effect) and empties PendingMorale. An order without
+	// a place (a refusal whose hero's position was never noted) is dropped, not guessed.
+	TArray<FHOLDuelMoraleOrder> TakePendingOrders()
+	{
+		TArray<FHOLDuelMoraleOrder> Laid;
+		for (int Index = 0; Index < PendingMorale.Num(); Index++)
+		{
+			if (PendingMorale[Index].bHasCenter && PendingMorale[Index].Slot >= 0 && PendingMorale[Index].EffectId >= 0)
+				Laid.Add(PendingMorale[Index]);
+		}
+		PendingMorale.Empty();
+		return Laid;
+	}
+
 	// S2-b (PLAN-MORAL-1120 step 6): empties PendingMorale into the simulation's morale (one source: the C++ rule, through the bridge). An order
 	// without a place (a refusal: the refusing hero's position is not held by the ledger yet) is dropped, not guessed.
 	void ApplyMoraleOrders()
 	{
-		for (int Index = 0; Index < PendingMorale.Num(); Index++)
+		TArray<FHOLDuelMoraleOrder> Laid = TakePendingOrders();
+		for (int Index = 0; Index < Laid.Num(); Index++)
 		{
-			FHOLDuelMoraleOrder Order = PendingMorale[Index];
-			if (Order.bHasCenter && Order.Slot >= 0 && Order.EffectId >= 0)
-			{
-				HOLMorale::ApplyEffectAround(this, Order.EffectId, Order.CenterXCm, Order.CenterYCm, Order.Slot, Order.DurationMs, Order.RadiusCm);
-			}
+			HOLMorale::ApplyEffectAround(this, Laid[Index].EffectId, Laid[Index].CenterXCm, Laid[Index].CenterYCm, Laid[Index].Slot, Laid[Index].DurationMs, Laid[Index].RadiusCm);
 		}
-		PendingMorale.Empty();
 	}
 
 	void EnsureBook()
@@ -114,7 +186,11 @@ class UHOLDuelLedger : UHOLDuelSubsystem
 	FString StartChallenge(int Challenger, int Target, int Facts, int AX, int AY, int BX, int BY, const TArray<int>& ForumXY)
 	{
 		EnsureBook();
-		return HOLDuel::BookStartChallenge(Settings, Book, Challenger, Target, Facts, AX, AY, BX, BY, ForumXY);
+		FString Reason = HOLDuel::BookStartChallenge(Settings, Book, Challenger, Target, Facts, AX, AY, BX, BY, ForumXY);
+		// B is the target's position (UHOLDuelSubsystem::MeasureFacts): noted for the Hesitation of a refusal by silence.
+		if (Reason.IsEmpty())
+			HOLDuelLedgerRules::NotePlace(RefuserPlaces, Target, BX, BY);
+		return Reason;
 	}
 
 	// D4, the answer command: whether a challenge addressed to the slot was waiting. The conditions are read now (DU-Q2); an
@@ -131,6 +207,8 @@ class UHOLDuelLedger : UHOLDuelSubsystem
 		}
 		if (!HOLDuel::AnswerChecked(Settings, Book, Slot, bAccept, HOLDuel::ConditionsHold(Settings, Facts, AX, AY, BX, BY, ForumXY)))
 			return false;
+		// The answerer's position now (B): where its Hesitation is laid if the answer is a refusal.
+		HOLDuelLedgerRules::NotePlace(RefuserPlaces, Slot, BX, BY);
 		if (HOLDuel::BookInDuel(Book, Slot) && HOLDuel::BookAdversaryOf(Book, Slot) == Challenger)
 		{
 			HOLDuel::BookSetArena(Book, Challenger, Slot, HOLDuel::MakeArena(Settings, AX, AY, BX, BY));
@@ -237,7 +315,7 @@ class UHOLDuelLedger : UHOLDuelSubsystem
 			Kits[Slot] = HOLDuelKit::Tick(Kits[Slot], DeltaMs);
 		}
 		TArray<FHOLDuelEnded> Ended = HOLDuel::Tick(Settings, Book, DeltaMs, Health);
-		PendingMorale.Append(HOLDuelRewards::OrdersOfEnded(Settings, Ended));
+		PendingMorale.Append(HOLDuelLedgerRules::OrdersOfEndedPlaced(Settings, Ended, RefuserPlaces));
 		ApplyMoraleOrders();
 		// D859 n. 3: the Honor of the duels that ended, on the gauges of the Dawn's slots alone.
 		TArray<bool> HasGauge;
