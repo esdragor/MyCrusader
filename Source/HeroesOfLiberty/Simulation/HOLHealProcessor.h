@@ -103,11 +103,13 @@ private:
 	static void CreditHonor(const UWorld* World);
 	/** S1-e: adds Points to the gauge of a slot's faction if it is the Dawn's, up to the cap (the ONE credit path, heal and kill). */
 	static void CreditHonorPoints(const UWorld* World, int32 Slot, int32 Points);
+public:
 	/** S1-e (death): a Dawn slot has an enemy die within HonorKillRadiusCm of one of its units: credits it HonorKillGain. */
 	static void CreditKillHonor(const UWorld* World, int32 Slot);
 	/** Honor per kill made near the faction (0 = off) and the radius in cm of "near" (HOLDawnValues, installed by script). */
 	static int32 GetHonorKillGain() { return HonorKillGain; }
 	static int32 GetHonorKillRadiusCm() { return HonorKillRadiusCm; }
+private:
 	static int32 HonorKillGain;
 	static int32 HonorKillRadiusCm;
 };
