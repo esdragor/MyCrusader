@@ -22,10 +22,13 @@ hol.Build.Place Palisade
 waitlog placement
 frames 10
 # Geste reel : appui en X1 Y1, un deplacement par image, relache en X2 Y2 a la derniere image (pixels du viewport 1920x1080 : NON VERIFIE). 1500 px d'ecart = bien plus de 16 cases a ce zoom (a verifier sur la capture). 90 images : la capture pendant (apres 30 images) tombe au milieu du glisser.
+# S3-b (SAURON-1123pa) : trace de ce que le controleur voit au relache (IsForegroundWindow, GetMousePosition, sol), eteinte par defaut.
+hol.Mouse.LogDragEnd 1
 hol.Mouse.Drag 200 540 1700 540 90
 frames 30
 note 2. PENDANT le glisser : une file de boites vertes plates, une par case, de ton point de depart au curseur (plus de 16, sans coupure).
 capture wall_line_long_during
+waitlog Drag end: foreground=
 waitlog wall line (
 frames 30
 hol.Build.Report
