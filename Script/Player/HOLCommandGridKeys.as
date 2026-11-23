@@ -48,7 +48,7 @@ namespace HOLCommandGridKeys
 		{
 			// The hero's cells (A Z) and the rage's are the grid's; the other keys the orders'.
 			FHOLGridCommandView Command = HOLCommandGridRules::GetCommand(Context, Cell);
-			bool bGridKey = Command.Command == EHOLGridCommandKind::HeroAbility || Command.Command == EHOLGridCommandKind::NecroticRage;
+			bool bGridKey = Command.Command == EHOLGridCommandKind::HeroAbility || Command.Command == EHOLGridCommandKind::NecroticRage || Command.Command == EHOLGridCommandKind::LightSeal;
 			Result.Target = bGridKey ? EHOLGridKeyTargetKind::Grid : EHOLGridKeyTargetKind::Orders;
 			return Result;
 		}
