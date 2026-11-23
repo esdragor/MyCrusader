@@ -12,10 +12,16 @@ Historique du test du 2026-10-30 : `Docs\Archive\Auto_Journey_Test1_2026-10-30.m
 
 Séance autonome de l'après-midi (« lance une autojourney en prenant en prio Priorite_Socle_Factions_2026-11-16.md ») 14:47 -> 19:00 (`Docs\SessionEnd.txt`). Priorité : `Docs\Priorite_Socle_Factions_2026-11-16.md` (lignes S1 à S4 d'`Auto_Journey_File.md`). Sous-agents Sonnet 5.5, 15 min au plus. 0 `AskUserQuestion` en séance (L21-1, L23-1).
 fin et mode demandés à 12:56 (L25-6, interface de choix) ; réponse reçue à 14:46 : fin 19:00, mode autonome.
-main = 0fef853 POUSSÉ sur origin à 12:5x à la demande de l'utilisateur (« push tout » : main + fog, galadriel-tab, hero-j8-close, net-playtest, tiers) ; la règle « jamais de push » reste en vigueur pour la séance.
+check-list lue (L25) : 14:54, en entier (250 l.), après le nettoyage 0a de la procédure et de la check-list (7ae89ba) et avant le premier agent de travail. Veilleur 30 min (:13/:43), alarme fin - 15 min posée (18:45). Dernier lancement de code 18:00 (L18-c) ; première recette dès la première avance de main (L20-4) ; gate Launch seul, lancement au tour suivant (L24-4) ; au plus 2 agents C++ tant qu'un build dépasse 5 min (L25-5), build d'un lot C++ lancé par la principale dès le commit de l'agent.
+Gate Launch 14:47 (avant 0a, `-NoCpp -AgentName NETTOYAGE-1123pm`) : aucun FAIL ; 8 worktrees à 4 commits de retard sur main -> sync après 0a.
+main = 0fef853 POUSSÉ sur origin à 12:24 (reflog d'origin/main) à la demande de l'utilisateur (« push tout » : main + fog, galadriel-tab, hero-j8-close, net-playtest, tiers) ; la règle « jamais de push » reste en vigueur pour la séance.
 
 | Agent | id | Worktree | Tâche | C++ | Lancé | Fini | Résumé |
 |---|---|---|---|---|---|---|---|
+| NETTOYAGE-1123e | 0a | copie principale | nettoyage Jour + Retours.md (lance 14:48, fini 14:51) | non | 14:54 | 14:54 | 27dff2f : Jour 291 -> 37 l. (seance du matin archivee, resume en 6 puces), en-tete de Retours recalcule (0 a repondre, 3 a essayer LOGIQUE SEULEMENT) ; anomalie : Retours.md est en LF |
+| NETTOYAGE-1123f | 0a | copie principale | nettoyage Auto_Journey_File.md (lance 14:48, fini 14:52) | non | 14:54 | 14:54 | 861d60c : 228 -> 211 l., 21 archivees, 98 [ ] dont 31 sans C++ ; 3 lignes ajoutees (integ-57, faction_click_cast, OUTIL trailer Agent:) ; D890-D895 deja en tete ; doutes : 6 [?] sans reponse, S3-b l.47 et S1-b l.30 perimees ? |
+| NETTOYAGE-1123g | 0a | copie principale | nettoyage Retours\ (lance 14:48, fini 14:52) | non | 14:54 | 14:54 | 284c846 : rien archive (aucune fiche repondue ni jouee), E-deploy et E-wall_line_long statuts corriges, index : 0 a repondre, 0 pret VU A L ECRAN, 5 LOGIQUE SEULEMENT, 2 BUG ; EtapeDefini.md 1 ligne (commitee par la principale) |
+| NETTOYAGE-1123h | 0a | copie principale | nettoyage procedure + check-list + trailer Agent: au brief (lance 14:48, fini 14:53) | non | 14:54 | 14:54 | 7ae89ba : procedure 188 -> 177 l. alignee sur L25-6, check-list 248 -> 250 (renvois), brief point 9 = trailer Agent: ; gate Launch sans FAIL ; anomalie : commit_docs -Only refuse brief_commun.md |
 
 ## Résumé de la séance du 2026-11-23 matin
 
