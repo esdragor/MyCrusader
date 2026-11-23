@@ -4,6 +4,7 @@
 hol.Cheat.Resources 5000
 hol.Cheat.Population 165
 hol.AI.ThinkSteps 100000
+hol.Cheat.UnitSpeed 0.4
 hol.Combat.LogHits 1
 hol.Camera.FocusNear 115 -1250
 frames 2
@@ -27,16 +28,17 @@ hol.Camera.FocusNear 9500 0
 frames 2
 hol.Units.SpawnHere 3 Spearman 1 250
 waitunits 8
-hol.Camera.FocusNear 6000 0
-hol.Camera.Zoom 1
+hol.Camera.FocusNear 4700 0
+hol.Camera.Zoom 3
 frames 5
 note 1. AVANT : la Tour de guet en bois du joueur a gauche, trois Lanciers rouges loin a droite, hors de portee (55 m).
 capture tower_wood_before
 hol.Units.Move -10200 0 1
 note 2. Les Lanciers avancent vers la tour ; a moins de 30 m elle leur tire dessus.
 waitlog lands on
+frames 25
 capture tower_wood_during
-frames 30
+frames 25
 capture tower_wood_during2
 frames 30
 note 3. APRES : plusieurs fleches ont touche, les barres de vie des Lanciers sont entamees.
