@@ -5,6 +5,7 @@
 #include "Algo/Unique.h"
 #include "Buildings/HOLBuilding.h"
 #include "Buildings/HOLBuildingTypes.h"
+#include "Buildings/HOLGarrisonRules.h"
 #include "Buildings/HOLProductionRules.h"
 #include "Engine/Engine.h"
 #include "Engine/World.h"
@@ -17,6 +18,7 @@
 #include "Match/HOLSpecializationSubsystem.h"
 #include "Resources/HOLSourceSubsystem.h"
 #include "Resources/HOLSourceTypes.h"
+#include "Simulation/HOLGarrisonSubsystem.h"
 #include "Simulation/HOLUnitView.h"
 
 FHOLAIResourceSummary& FHOLAISummary::Get(const EHOLResource Resource)
@@ -56,6 +58,7 @@ namespace
 		Out.Location = Unit.Location;
 		Out.Health = Unit.Health;
 		Out.bIdle = Unit.Activity == EHOLUnitActivity::Idle;
+		Out.GarrisonKind = static_cast<int32>(HOLGarrison::KindOf(Unit.bSiege, Unit.bHero, Unit.bCavalry, Unit.bRanged));
 		Out.TargetId = Unit.Activity == EHOLUnitActivity::Attacking && Unit.TargetUnitId != 0 ? static_cast<int32>(Unit.TargetUnitId) : INDEX_NONE;
 		return Out;
 	}
@@ -406,6 +409,12 @@ namespace HOLAISummary
 				Out.Queue.Add(Item.TypeName);
 			}
 			Out.bProducing = !Building->GetProductionQueue().IsEmpty() && Building->GetProductionQueue()[0].IsStarted();
+			Out.Actor = const_cast<AHOLBuilding*>(Building);
+			Out.SecondsSinceHit = Building->GetLastHitTime() >= 0.0 ? static_cast<float>(World.GetTimeSeconds() - Building->GetLastHitTime()) : -1.f;
+			Out.GarrisonSlots = UHOLGarrisonSubsystem::GetSlots(*Building);
+			TArray<int32> Occupants;
+			Building->GetGarrisonOccupants(Occupants);
+			Out.Occupants = Occupants.Num();
 		}
 	}
 

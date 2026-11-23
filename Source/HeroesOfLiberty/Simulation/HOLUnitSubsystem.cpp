@@ -1214,6 +1214,7 @@ namespace UE::HeroesOfLiberty::Units
 			OutView.CarryCapacity = Constants->CarryCapacity;
 			OutView.bRanged = HOLCombat::IsRangedAttack(Constants->AttackRange);
 			OutView.bSiege = Constants->HasArmorCategory(EHOLArmorCategory::Siege);
+	OutView.bCavalry = Constants->HasArmorCategory(EHOLArmorCategory::Cavalry);
 			OutView.bKing = Constants->HasArmorCategory(EHOLArmorCategory::King);
 			OutView.bHero = Constants->HasArmorCategory(EHOLArmorCategory::Hero);
 			// J8b.2: the maximum at its level (the hero's grows).

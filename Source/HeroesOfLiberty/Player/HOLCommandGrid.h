@@ -49,6 +49,8 @@ enum class EHOLGridCommand : uint8
 	CancelSpecialization,
 	/** D813 (Q-garrison-ui Q1 C): the selected finished building with occupants sends everyone out (RequestUngarrisonAllSelected); cell HOLCommandGridRules::GetUngarrisonAllCell. */
 	UngarrisonAll,
+	/** Sceau de lumiere (Monk, GLORFINDEL-1123a): the selection holds a Monk (Context.bMonkUnit); the cell and the ground aim stay in HOLCommandGridRules.as, the RPC call in script. */
+	LightSeal,
 };
 
 /** A cell's command and the type it names (the unit produced, the building placed). */
@@ -168,6 +170,8 @@ struct FHOLGridContext
 	bool bHero = false;
 	/** L4: a Damned Warrior is among the units commanded: the necrotic rage on the grid (GetRageCell). */
 	bool bRageUnit = false;
+	/** Sceau de lumiere: a Monk is among the units commanded (the cell is chosen by HOLCommandGridRules.as, no rule here). */
+	bool bMonkUnit = false;
 	int32 HeroLevel = 0;
 	int32 HeroCooldownSeconds[3] = {};
 	/** The types builders build, their cell and their age (BuildGridSlot, Age of the building type table). */
@@ -323,6 +327,8 @@ namespace HOLCommandGrid
 	HEROESOFLIBERTY_API int32 GetHeroAbilityCell(EHOLHeroAbility Ability);
 	/** L4: the cell of the necrotic rage, after the hero's two (to confirm against the AoE4 grid). */
 	HEROESOFLIBERTY_API int32 GetRageCell();
+	/** B2: reads one selected unit's type into the grid context: a Damned Warrior sets bRageUnit, a Monk sets bMonkUnit (what the player controller calls per selected unit). */
+	HEROESOFLIBERTY_API void NoteSelectedUnitType(FHOLGridContext& Context, FName TypeName);
 
 	/** SP3: the default options of a tier's choice (D07: 2); a Templar seat has 3 commanderies (D131), drawn from FHOLGridContext::SpecializationFaction by HOLCommandGridRules.as. */
 	inline constexpr int32 SpecializationOptions = 2;
