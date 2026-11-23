@@ -16,4 +16,10 @@ namespace HOLDawnPowers
 		Result.Add(SacredLight);
 		return Result;
 	}
+
+	// D890: the Sacred Light's OWN cast range (a value of its own, no longer the Seal row's 800 cm), given by the user: 1200 cm. Measured from the cast origin to the aimed point (D897).
+	int64 SacredLightRangeCm()
+	{
+		return 1200;
+	}
 }

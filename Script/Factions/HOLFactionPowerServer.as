@@ -53,7 +53,20 @@ namespace HOLFactionPowerServer
 		FVector HeroPlace = FVector(0.0, 0.0, 0.0);
 		const bool bHeroKnown = HeroPlaceOf(Slot, HeroPlace);
 		const FVector Origin = CastOriginOf(HOLHero::GetHeroBannerLocation(Slot), Own, bHeroKnown, HeroPlace);
-		return TryCastPowerFrom(Slot, PowerIndex, Point, FIntPoint(int(Origin.X), int(Origin.Y)));
+		// D897: the zone is put down AT THE AIMED POINT; the origin only measures the range (HOLFactionPowerCast::DecideAimed, measured here on the server).
+		AHOLGameState State = Cast<AHOLGameState>(Gameplay::GetGameState());
+		if (State == nullptr)
+			return false;
+		const int NowMs = int(Gameplay::GetTimeSeconds() * 1000.0);
+		FHOLFactionResource Gauge = HOLFactionResource::Make(State.GetFactionResource(Slot), 0, HOLDawnValues::HonorCap());
+		const FHOLAimedCastDecision Aimed = HOLFactionPowerCast::DecideAimed(State.GetSlotFaction(Slot), PowerIndex, Gauge,
+			State.GetPowerCooldownEndMs(Slot, PowerIndex), NowMs, int(Origin.X), int(Origin.Y), int(Point.X), int(Point.Y));
+		FHOLFactionPowerDecision Decision;
+		Decision.bAccepted = Aimed.bAccepted;
+		Decision.Refusal = Aimed.Refusal;
+		Decision.NewGaugeValue = Aimed.NewGaugeValue;
+		Decision.NewCooldownEndMs = Aimed.NewCooldownEndMs;
+		return PutDown(State, Slot, PowerIndex, Decision, FVector(double(Aimed.PoseXCm), double(Aimed.PoseYCm), Point.Z));
 	}
 
 	// GLORFINDEL-1123j: PLACEHOLDER look of the Sacred Light zone (the zone had no drawing at all): a golden debug circle on the ground, the zone's radius, for
@@ -95,18 +108,24 @@ namespace HOLFactionPowerServer
 		FHOLFactionResource Gauge = HOLFactionResource::Make(State.GetFactionResource(Slot), 0, HOLDawnValues::HonorCap());
 		FHOLFactionPowerDecision Decision = HOLFactionPowerCast::Decide(State.GetSlotFaction(Slot), PowerIndex, Gauge,
 			State.GetPowerCooldownEndMs(Slot, PowerIndex), NowMs, Origin.X, Origin.Y, int(Point.X), int(Point.Y));
+		return PutDown(State, Slot, PowerIndex, Decision, Point);
+	}
+
+	// The ONE writing of an accepted cast (the AI's TryCastPowerFrom and the player's aimed TryCastPower): refusal log, effect FIRST at Pose, then gauge and cool-down.
+	bool PutDown(AHOLGameState State, int Slot, int PowerIndex, const FHOLFactionPowerDecision& Decision, FVector Pose)
+	{
 		if (!Decision.bAccepted)
 		{
 			Log(n"LogHOLMatch", f"RpcPower: cast refused ({Decision.Refusal}) for slot {Slot} power {PowerIndex}");
 			return false;
 		}
 		// S1-b: the faction power is the book's Sacred Light (started FIRST: a failed start costs nothing), then the Honor and the row's cool-down are written.
-		if (!HOLZoneEffect::StartSacredLight(Slot, Point))
+		if (!HOLZoneEffect::StartSacredLight(Slot, Pose))
 		{
 			Log(n"LogHOLMatch", f"RpcPower: Sacred Light not started for slot {Slot} (no world, subsystem or slot)");
 			return false;
 		}
-		DrawSacredLightPlaceholder(Point);
+		DrawSacredLightPlaceholder(Pose);
 		State.SetFactionResource(Slot, Decision.NewGaugeValue);
 		State.SetPowerCooldownEndMs(Slot, PowerIndex, Decision.NewCooldownEndMs);
 		Log(n"LogHOLMatch", f"RpcPower: Sacred Light put down by slot {Slot}, Honor now {Decision.NewGaugeValue}");

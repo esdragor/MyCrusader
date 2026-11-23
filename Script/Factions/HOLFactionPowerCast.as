@@ -65,6 +65,14 @@ namespace HOLFactionPowerCast
 	FHOLFactionPowerDecision Decide(int Faction, int PowerIndex, const FHOLFactionResource& Gauge, int CooldownEndMs, int NowMs,
 		int OriginXCm, int OriginYCm, int PointXCm, int PointYCm)
 	{
+		return DecideInRange(Faction, PowerIndex, Gauge, CooldownEndMs, NowMs, OriginXCm, OriginYCm, PointXCm, PointYCm, SealRangeCm());
+	}
+
+	// GLORFINDEL-1123pf: the ONE chain (faction, row, cool-down, range, gauge) with the range as a parameter: Decide (the AI's cast, D891) keeps the Seal row's
+	// range, DecideAimed (the player's aimed cast, D897) the Sacred Light's own range (D890).
+	FHOLFactionPowerDecision DecideInRange(int Faction, int PowerIndex, const FHOLFactionResource& Gauge, int CooldownEndMs, int NowMs,
+		int OriginXCm, int OriginYCm, int PointXCm, int PointYCm, int64 RangeCm)
+	{
 		FHOLFactionPowerDecision Result;
 		Result.NewGaugeValue = Gauge.Value;
 		Result.NewCooldownEndMs = CooldownEndMs;
@@ -86,7 +94,7 @@ namespace HOLFactionPowerCast
 		// accepted from anywhere), then capped under the int range so the ceiling cannot overflow either.
 		const double ExactCm = Math::Sqrt(double(DeltaX) * double(DeltaX) + double(DeltaY) * double(DeltaY));
 		const int64 DistanceCm = int64(Math::CeilToInt(Math::Min(ExactCm, 2000000000.0)));
-		const int Reason = HOLGroundAbility::TargetRefusal(true, DistanceCm, SealRangeCm(), Math::Max(CooldownEndMs - NowMs, 0));
+		const int Reason = HOLGroundAbility::TargetRefusal(true, DistanceCm, RangeCm, Math::Max(CooldownEndMs - NowMs, 0));
 		if (Reason == 2)
 		{
 			Result.Refusal = RefusalCooldown();
@@ -128,18 +136,20 @@ struct FHOLAimedCastDecision
 
 namespace HOLFactionPowerCast
 {
-	// STUB (red commit): pose = the origin, the range is Decide's. The fix replaces it.
+	// D897: the player's Sacred Light. Pose = the AIMED point (the ground click), the origin (banner, else army centre, else hero) only measures the range, the Sacred Light's
+	// own 1200 cm (D890). Out of range = REFUSAL (default of Retours/Q-lumiere-sacree-visee.md; to clamp the point onto the range circle instead, change ONLY this function).
+	// The caller passes the SERVER's origin and the client's aimed point: the range is measured here, never believed from the client.
 	FHOLAimedCastDecision DecideAimed(int Faction, int PowerIndex, const FHOLFactionResource& Gauge, int CooldownEndMs, int NowMs,
 		int OriginXCm, int OriginYCm, int AimXCm, int AimYCm)
 	{
 		FHOLAimedCastDecision Result;
-		const FHOLFactionPowerDecision Base = Decide(Faction, PowerIndex, Gauge, CooldownEndMs, NowMs, OriginXCm, OriginYCm, AimXCm, AimYCm);
+		const FHOLFactionPowerDecision Base = DecideInRange(Faction, PowerIndex, Gauge, CooldownEndMs, NowMs, OriginXCm, OriginYCm, AimXCm, AimYCm, HOLDawnPowers::SacredLightRangeCm());
 		Result.bAccepted = Base.bAccepted;
 		Result.Refusal = Base.Refusal;
 		Result.NewGaugeValue = Base.NewGaugeValue;
 		Result.NewCooldownEndMs = Base.NewCooldownEndMs;
-		Result.PoseXCm = OriginXCm;
-		Result.PoseYCm = OriginYCm;
+		Result.PoseXCm = AimXCm;
+		Result.PoseYCm = AimYCm;
 		return Result;
 	}
 }
