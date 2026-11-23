@@ -1,0 +1,35 @@
+﻿=== build 15:15:32
+build : LaunchCheck debut (Get-StaleBinaryProblem) : the binary UnrealEditor-HeroesOfLiberty.dll of C:\Users\baudo\Documents\HeroesOfLiberty-Celeborn (2026-11-23T11:03:44) is older than its C++ source Source\HeroesOfLiberty\Tests\HOLBindingsLotTests.cpp (2026-11-23T11:49:24): Tools\build.ps1 in that copy first
+queued behind the build of: HeroesOfLiberty-Faramir, HeroesOfLiberty-Haldir (position 2 of 2 waiting; one build at a time on this engine; normal)
+queued behind the build of: HeroesOfLiberty-Haldir (position 1 of 1 waiting; one build at a time on this engine; normal)
+queued behind the build of: HeroesOfLiberty-Haldir, another project (position 1 of 1 waiting; one build at a time on this engine; normal)
+build : BUILD LENT (21 actions, 720 s > 3 x median 147 s of 275 earlier normal PASS builds of 11-42 actions); load: vm 24.7 GB; actions 21 (machine saturee ? diagnostic de charge)
+build : PASS (HeroesOfLibertyEditor Development, HeroesOfLiberty-Celeborn, 720 s)
+build exit=0 15:30:23
+=== tests avant regen (rouge attendu : Test_SpecTier1UnitsExist)
+
+  check_placeholders : FAIL (3 problem(s))
+quick_check : FAIL (check_placeholders: a provisional type has no line in Placeholders.txt, see above)
+
+
+=== regen 15:30:30
+[2026.11.23-14.31.19:238][  0]LogInit: Display: 
+[2026.11.23-14.31.19:238][  0]LogInit: Display: Success - 0 error(s), 293 warning(s)
+[2026.11.23-14.31.19:238][  0]LogInit: Display: 
+
+Execution of commandlet took:  0.12 seconds, PeakPhysMemoryMB=1877 MB, PeakVirtMemoryMB=1704 MB
+[2026.11.23-14.31.19:505][  0]LogAssetRegistry: Display: CleanupOrphanedCacheFiles (PostWrite): 1 .ref files found, 1 referenced binaries
+[2026.11.23-14.31.19:505][  0]LogAssetRegistry: Display: CleanupOrphanedCacheFiles: 1 total binaries, 1 referenced (kept), 0 old-style pre-migration (kept), 0 orphans deleted, 0 orphans locked (kept)
+[2026.11.23-14.31.19:770][  0]LogShaderCompilers: Display: Exiting ShaderCompilingThread
+regen exit=0
+=== tests apres regen 15:31:21
+
+  check_placeholders : FAIL (3 problem(s))
+quick_check : FAIL (check_placeholders: a provisional type has no line in Placeholders.txt, see above)
+
+
+
+ M Content/Units/UnitTypes.uasset
+
+
+fin 15:31:28

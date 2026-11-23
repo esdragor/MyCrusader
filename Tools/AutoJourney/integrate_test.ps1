@@ -42,6 +42,10 @@ Git $Repo config user.email 'test@example.com' | Out-Null
 Git $Repo config core.autocrlf false | Out-Null
 Put $Repo 'Source/a.cpp' 'int a;'
 Put $Repo 'Script/a.as' 'a'
+Put $Repo 'Tools/Data/UnitTypes.csv' 'id,hp'
+Put $Repo 'Content/Units/UnitTypes.uasset' 'unit-v1'
+Put $Repo 'Tools/Data/BuildingTypes.csv' 'id,hp'
+Put $Repo 'Content/Buildings/BuildingTypes.uasset' 'bld-v1'
 Git $Repo add -A | Out-Null
 Git $Repo commit -q -m init | Out-Null
 foreach ($B in 'red-as', 'red-cpp', 'g1', 'g2', 'gcpp') { Git $Repo branch $B main | Out-Null }
@@ -50,6 +54,10 @@ $RedCpp = CommitOn $Repo 'red-cpp' 'Source/t.cpp' 't'
 CommitOn $Repo 'g1' 'Script/g1.as' 'g1' | Out-Null
 CommitOn $Repo 'g2' 'Script/g2.as' 'g2' | Out-Null
 CommitOn $Repo 'gcpp' 'Source/g.h' 'g' | Out-Null
+foreach ($B in 'gcsv', 'gboth') { Git $Repo branch $B main | Out-Null }
+CommitOn $Repo 'gcsv' 'Tools/Data/BuildingTypes.csv' "id,hp`nnew,1" | Out-Null
+CommitOn $Repo 'gboth' 'Tools/Data/UnitTypes.csv' "id,hp`nnew,1" | Out-Null
+CommitOn $Repo 'gboth' 'Content/Units/UnitTypes.uasset' 'unit-v2' | Out-Null
 Git $Repo checkout -q main | Out-Null
 $Base = @('-Root', $Repo, '-Branch', 'integ-x', '-DryRun')
 
@@ -57,7 +65,7 @@ $Base = @('-Root', $Repo, '-Branch', 'integ-x', '-DryRun')
 $P = Run-Plan ($Base + @('-Reds', $RedAs, '-Greens', 'g1,g2'))
 $K = Kinds $P
 Check ($P.Code -eq 0) 'script only: exit 0' "code=$($P.Code) out=$($P.Out -join ' | ')"
-Check (($K -join ',') -eq 'branch,red,build,tests,reset,green,green,build,tests,parts,summary') 'script only: order of the steps (reset to main between the red tests and the greens)' ($K -join ',')
+Check (($K -join ',') -eq 'branch,red,build,tests,reset,green,green,regen,build,tests,parts,summary') 'script only: order of the steps (reset to main between the red tests and the greens)' ($K -join ',')
 Check (@($P.Lines | Where-Object { $_ -match '^PLAN \d+ reset .*reset --hard [0-9a-f]{40}' }).Count -eq 1) 'plan shows the reset to the sha of main' ($P.Lines -join ' | ')
 $GreenLines = @($P.Lines | Where-Object { $_ -match '^PLAN \d+ green ' })
 Check ($GreenLines.Count -eq 2) 'list split at the commas: 2 green steps, not one name "g1,g2"' "count=$($GreenLines.Count)"
@@ -171,6 +179,49 @@ $R = Run-Fake '' 'g1' @("0`ntests 0/0 : PASS`n")
 Check ($R.Code -eq 1) 'no reds, greens 0/0: exit 1' "code=$($R.Code) out=$($R.Text)"
 Git $Repo checkout -q -f main | Out-Null
 
+# 8. Regen of the tables (GALADRIEL-1123pa ; DIAG-1123a: integ-55 went red because BuildingTypes.uasset was not regenerated after a new line of BuildingTypes.csv).
+#    Rule: after the merge of the greens, if a table CSV (Tools/Data/UnitTypes.csv, BuildingTypes.csv) changed vs main and its .uasset did not, integrate.ps1 runs
+#    regen_tables.ps1 (here a FAKE script given by -RegenScript, never the editor), checks its exit code, commits the regenerated .uasset ("Regen tables after merge")
+#    and the summary says "regen: lance" ; "regen: inutile" when nothing is needed ; "regen: FAIL" when the script fails.
+$FakeRegen = Join-Path $Tmp 'fake_regen.ps1'
+[IO.File]::WriteAllText($FakeRegen, "param([string]`$Root, [switch]`$DryRun)`r`nif (`$env:HOL_FAKE_REGEN_CODE -and `$env:HOL_FAKE_REGEN_CODE -ne '0') { 'fake regen fails'; exit ([int]`$env:HOL_FAKE_REGEN_CODE) }`r`n[IO.File]::WriteAllText((Join-Path `$Root 'Content\Buildings\BuildingTypes.uasset'), 'bld-regen')`r`nexit 0`r`n")
+$RegenArgs = @('-RegenScript', $FakeRegen)
+function Regen-Line($Plan) { return @($Plan.Lines | Where-Object { $_ -match '^PLAN \d+ regen ' }) }
+$P = Run-Plan ($Base + @('-Greens', 'g1,gcsv') + $RegenArgs)
+$L = @(Regen-Line $P)
+Check (($L.Count -eq 1) -and ($L[0] -notmatch 'SKIP') -and ($L[0] -match 'fake_regen\.ps1')) 'a green changes BuildingTypes.csv without its .uasset: the plan has a real regen step' ($P.Lines -join ' | ')
+$P = Run-Plan ($Base + @('-Greens', 'g1,g2') + $RegenArgs)
+$L = @(Regen-Line $P)
+Check (($L.Count -eq 1) -and ($L[0] -match 'SKIP')) 'no table CSV changed: the regen step is SKIP' ($P.Lines -join ' | ')
+$P = Run-Plan ($Base + @('-Greens', 'gboth') + $RegenArgs)
+$L = @(Regen-Line $P)
+Check (($L.Count -eq 1) -and ($L[0] -match 'SKIP')) 'UnitTypes.csv AND UnitTypes.uasset changed in the greens: the regen step is SKIP (already regenerated)' ($P.Lines -join ' | ')
+function Run-Regen([string]$Greens, [string]$Code) {
+  $script:CaseNo++
+  Git $Repo checkout -q -f main | Out-Null
+  $env:HOL_FAKE_REGEN_CODE = $Code
+  $Br = "integ-regen$($script:CaseNo)"
+  $Out = @(& powershell.exe -NoProfile -ExecutionPolicy Bypass -File $Tool -Root $Repo -Branch $Br -Greens $Greens -SkipBuildTests @RegenArgs 2>&1 | ForEach-Object { "$_" })
+  $Rc = $LASTEXITCODE
+  $env:HOL_FAKE_REGEN_CODE = ''
+  return @{ Code = $Rc; Text = ($Out -join "`n"); Branch = $Br }
+}
+$R = Run-Regen 'g1,gcsv' '0'
+$Subject = (Git $Repo log -1 --format=%s $R.Branch | Out-String).Trim()
+$Asset = (Git $Repo show "$($R.Branch):Content/Buildings/BuildingTypes.uasset" | Out-String).Trim()
+Check ($R.Code -eq 0) 'real run, BuildingTypes.csv changed: exit 0' "code=$($R.Code) out=$($R.Text)"
+Check ($R.Text -match 'regen: lance') 'real run: the summary says "regen: lance"' $R.Text
+Check ($Subject -eq 'Regen tables after merge') 'real run: the last commit of the integration branch is "Regen tables after merge"' "subject=$Subject"
+Check ($Asset -eq 'bld-regen') 'real run: the regenerated .uasset is committed on the integration branch' "asset=$Asset"
+$R = Run-Regen 'g1' '0'
+$Subject = (Git $Repo log -1 --format=%s $R.Branch | Out-String).Trim()
+Check (($R.Code -eq 0) -and ($R.Text -match 'regen: inutile') -and ($Subject -ne 'Regen tables after merge')) 'real run, no CSV changed: "regen: inutile", no regen commit' "code=$($R.Code) subject=$Subject out=$($R.Text)"
+$R = Run-Regen 'gboth' '0'
+Check (($R.Code -eq 0) -and ($R.Text -match 'regen: inutile')) 'real run, CSV and .uasset both changed in the green: "regen: inutile"' "code=$($R.Code) out=$($R.Text)"
+$R = Run-Regen 'gcsv' '2'
+$Subject = (Git $Repo log -1 --format=%s $R.Branch | Out-String).Trim()
+Check (($R.Code -eq 1) -and ($R.Text -match 'regen: FAIL') -and ($R.Text -match 'INTEGRATE integ-regen\d+ : FAIL') -and ($Subject -ne 'Regen tables after merge')) 'regen script exits 2: exit 1, "regen: FAIL", nothing committed' "code=$($R.Code) subject=$Subject out=$($R.Text)"
+Git $Repo checkout -q -f main | Out-Null
 Remove-Item -Recurse -Force $Tmp -ErrorAction SilentlyContinue
 Write-Output "integrate_test : $(if ($Fails) { "$Fails FAIL" } else { 'PASS' })"
 if ($Fails) { exit 1 } else { exit 0 }

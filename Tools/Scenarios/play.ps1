@@ -63,7 +63,10 @@ $GameArgs = @("`"$UProject`"", "-game", "-nosplash", "-culture=fr", "-LiveCoding
 if ($PlayerName) { $GameArgs += "-PlayerName=$PlayerName" }
 # Hidden: the virtual cursor first (a console variable, it survives the scenario's `open`), then the scenario.
 $ExecCmds = "hol.Scenario $Name"
-if ($Hidden) { $ExecCmds = "hol.Camera.TestCursor 0.5 0.5,$ExecCmds" }
+# A scenario that drives the real mouse (hol.Mouse.Drag) keeps it: GetCursorFraction reads the virtual cursor BEFORE the mouse, so TestCursor 0.5 0.5 would freeze the drag at the screen centre
+# (wall_line_long, SAURON-1123pa/pb 2026-11-23). It sets or clears hol.Camera.TestCursor itself. The ~130 other scenarios are unchanged.
+$UsesRealMouse = [bool](Select-String -LiteralPath (Join-Path $Scenarios "$Name.txt") -Pattern '^\s*hol\.Mouse\.Drag\b' -Quiet)
+if ($Hidden -and -not $UsesRealMouse) { $ExecCmds = "hol.Camera.TestCursor 0.5 0.5,$ExecCmds" }
 $GameArgs += "-ExecCmds=`"$ExecCmds`""
 if ($Hidden) { $GameArgs += @("-RenderOffScreen", "-nosound", "-unattended") }
 # Test seam (play_hidden_test.ps1): arguments put BEFORE the game's, so a fake engine can be a script host.

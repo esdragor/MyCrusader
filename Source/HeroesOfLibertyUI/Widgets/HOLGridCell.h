@@ -9,9 +9,32 @@ class UBorder;
 class UCommonTextBlock;
 class UHorizontalBox;
 class UImage;
+class UOverlaySlot;
+class USizeBox;
 class UVerticalBox;
 struct FHOLTradeGain;
 class UHOLGridCell;
+
+/**
+ * The zone of a cell's face (GALADRIEL-1122g): a status line of its own at the bottom of the cell (Bientot, always visible) and,
+ * above it, the zone of the name bounded to whole lines, so that a name of 3 to 4 lines no longer pushes the status out of the cell.
+ */
+struct FHOLGridCellNameZone
+{
+	/** Height of the name's zone, a whole number of lines; 0: not bounded (a cell without a status). */
+	float NameHeight = 0.f;
+	/** The lines of the name that fit in that zone (at least 1); 0 without a status. */
+	int32 NameLines = 0;
+	/** Height kept at the bottom of the cell for the status line; 0 without a status. */
+	float StatusHeight = 0.f;
+};
+
+/** The status line's text once reduced to fit a width (GALADRIEL-1122h): Scale in [MinStatusScale, 1], Width the text's width after it. */
+struct FHOLGridCellStatusFit
+{
+	float Scale = 1.f;
+	float Width = 0.f;
+};
 
 /** How a cell of the grid takes a click. */
 UENUM(BlueprintType)
@@ -70,6 +93,49 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|UI")
 	void ClearUnit();
 
+	/**
+	 * A status under the name (Bientot, the technologies without an effect, D601): a line of its own at the bottom of the cell,
+	 * the name's zone bounded above it. Empty: none, the name is not bounded. SetCommand clears it: set it after SetCommand.
+	 */
+	void SetStatus(const FText& InStatus);
+	/** The height the name's zone is bounded to while a status is shown (0: not bounded), for the checks. */
+	float GetNameZoneHeight() const;
+	/**
+	 * The zone of the name and of the status in a square cell of side CellSize: TopBand is the band under the key's line, LineHeight the
+	 * height of a text line. With a status: the status line takes one line at the bottom, the name keeps the whole lines left (at least 1).
+	 * Without: nothing is bounded, the cell is as before.
+	 */
+	static FHOLGridCellNameZone ComputeNameZone(float CellSize, float TopBand, float LineHeight, bool bHasStatus, int32 StatusLines = 1);
+	/** D889: Status broken in two lines at the space nearest its middle ("Coming soon" -> "Coming\nsoon"); a single word or a text with a line break is returned as it is. */
+	static FString BreakStatusLines(const FString& Status);
+	/** The lines the status takes in the cell (0: no status, 1, or 2 when a status wider than the cell was broken, D889), for the checks. */
+	int32 GetStatusLineCount() const;
+
+	/** The side of a cell of the grid (the script's size box, HOLCommandGridPanel.as CellSize, and HOLGameScreen.cpp CellSize). */
+	static constexpr float DefaultCellSize = 76.f;
+	/** The band under the key's line, above the name. */
+	static constexpr float NameTopBand = 12.f;
+	/** The room left on each side of the status line's text in the cell. */
+	static constexpr float StatusSidePad = 2.f;
+	/** The status line's smallest scale (the text stays readable); a narrower cell cuts it (the scale box clips). */
+	static constexpr float MinStatusScale = 0.6f;
+	/** The width of the status line's text at its natural size, in Slate units (0: no status); estimated when there is no renderer. */
+	float MeasureStatusWidth() const;
+	/** The width of Text (its widest line) on the status line's font at its natural size (0: empty); estimated when there is no renderer. */
+	float MeasureTextWidth(const FString& Text) const;
+	/**
+	 * D889: decides the status' line count on the REAL width of the cell (not a constant): a status wider than CellWidth - 2 * StatusSidePad on one
+	 * line is broken in two (BreakStatusLines), else it keeps one. Called by SetStatus (last known width) and by NativeTick (laid out width).
+	 */
+	void FitStatusToWidth(float CellWidth);
+	/** The name's zone and the room taken at the bottom for the status' lines (one or two), from the status shown and its line count. */
+	void RefreshNameZone();
+	/**
+	 * The reduction of the status line so that its text fits in AvailableWidth (a cell at 1280x720 is about 51 px wide, "Coming soon" is wider):
+	 * Scale is 1 when it fits, else AvailableWidth / TextWidth bounded below by MinStatusScale; Width is the text's width once reduced.
+	 */
+	static FHOLGridCellStatusFit ComputeStatusFit(float TextWidth, float AvailableWidth);
+
 	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|UI")
 	EHOLGridCellState GetState() const { return State; }
 	/** "Maison | W 50 | +10 population": what the tooltip says, for the scripted checks (hol.HUD.Report). */
@@ -82,6 +148,8 @@ public:
 
 protected:
 	virtual void NativeOnInitialized() override;
+	/** Fits the status line's text to the cell's width (ComputeStatusFit): the cell's width is known only once laid out. */
+	virtual void NativeTick(const FGeometry& MyGeometry, float InDeltaTime) override;
 
 	UPROPERTY(meta = (BindWidgetOptional))
 	TObjectPtr<UCommonTextBlock> Key;
@@ -129,6 +197,33 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<UImage> GainMarker;
+
+	/** The name's box (bounded to whole lines while a status is shown), the name's slot of the cell and the status line. */
+	UPROPERTY(Transient)
+	TObjectPtr<USizeBox> NameBox;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UOverlaySlot> UnitSlot;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UCommonTextBlock> StatusText;
+
+	/** The status line's clipping box (the text, reduced to the cell's width, never spills onto the next cell) and the scale applied to the text. */
+	UPROPERTY(Transient)
+	TObjectPtr<USizeBox> StatusClip;
+
+	float AppliedStatusScale = 1.f;
+	/** The cell's width the status was last fitted to (D889): the default size until the cell is laid out. */
+	float FittedCellWidth = DefaultCellSize;
+
+	/** The status as given (the text the checks read; StatusText holds it broken in two lines when it is wider than the cell, D889) and its line count. */
+	/** D889 fix (GALADRIEL-1123k): the status as the FText it was given, so the shown text follows a language switch (ShownStatus is re-read from it each fit). */
+	FText StatusSource;
+	FString ShownStatus;
+	int32 StatusLineCount = 0;
+
+	/** The height the name's zone is bounded to (GetNameZoneHeight); 0: not bounded. */
+	float NameZoneHeight = 0.f;
 
 	/** The button's native click, broadcast as OnCellClicked. */
 	void BroadcastCellClicked();

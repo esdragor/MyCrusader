@@ -1,0 +1,18 @@
+﻿=== build socle-ai (S2-a 05f4465 + 9c515ca jamais compiles, outil 6748891) 15:22:20
+
+build : LaunchCheck debut (Get-StaleBinaryProblem) : vide (each dll newer than its sources)
+queued behind the build of: HeroesOfLiberty-Celeborn (position 1 of 1 waiting; one build at a time on this engine; 
+normal)
+queued behind the build of: HeroesOfLiberty-Celeborn (position 1 of 2 waiting; one build at a time on this engine; 
+normal)
+build : PASS (HeroesOfLibertyEditor Development, HeroesOfLiberty-Galadriel, 4 s)
+
+
+build exit=0 15:30:30
+
+  check_placeholders : PASS (44 provisional types, 46 map entries, 165 lines)
+tests 2145/2145 : PASS
+quick_check : PASS in 220 s (game launch done at 1 s)
+
+
+fin 15:34:22

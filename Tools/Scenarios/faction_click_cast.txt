@@ -1,0 +1,28 @@
+# Faction panel click then ground click casts the Sacred Light (variant of faction_click, RECETTE-1123a). Dawn (slot 0, human) vs a frozen AI (slot 1). Real click on FactionBox0 (Mouse.Click), then ground click. 3 minutes at most.
+waitlog Starting hero of slot 0 spawned at
+hol.AI.ThinkSteps 100000
+hol.Sanity.Watch 1
+frames 10
+hol.Camera.FocusSlot 0
+frames 8
+hol.Cheat.Honor 100
+waitlog RpcCheat: honor set to 100 for sender slot 0
+wait 2
+frames 8
+hol.HUD.Report
+waitlog faction slot: slot gauge 100 / 100 powers SacredLight cost 25
+capture faction_click_cast_before
+hol.Mouse.Click FactionBox0
+waitlog FactionAim: aim 0
+frames 4
+capture faction_click_cast_aim
+hol.Camera.FocusSlot 0
+frames 2
+hol.Select.LeftClickGround -17535 300
+waitlog FactionAim: cast 0 send true slot 0
+frames 20
+hol.HUD.Report
+waitlog faction slot: slot gauge 75 / 100
+note 1. Click on the SacredLight box then on the ground: the Sacred Light is cast (golden circle), Honor 100 -> 75, 20 s cooldown on the box.
+capture faction_click_cast_after
+hol.Test.Sanity
