@@ -54,27 +54,29 @@ class UHOLDuelLedger : UHOLDuelSubsystem
 	// built yet: nothing applies them to the troops today).
 	TArray<FHOLDuelMoraleOrder> PendingMorale;
 
-	// S2-b: takes the orders the bridge lays now (the ones with a place, a slot and an effect) and empties PendingMorale.
-	// STUB (red): lays nothing and keeps the pending list.
+	// S2-b: takes the orders the bridge lays now (the ones with a place, a slot and an effect) and empties PendingMorale. An order without
+	// a place (a refusal whose hero's position was never noted) is dropped, not guessed.
 	TArray<FHOLDuelMoraleOrder> TakePendingOrders()
 	{
-		TArray<FHOLDuelMoraleOrder> None;
-		return None;
+		TArray<FHOLDuelMoraleOrder> Laid;
+		for (int Index = 0; Index < PendingMorale.Num(); Index++)
+		{
+			if (PendingMorale[Index].bHasCenter && PendingMorale[Index].Slot >= 0 && PendingMorale[Index].EffectId >= 0)
+				Laid.Add(PendingMorale[Index]);
+		}
+		PendingMorale.Empty();
+		return Laid;
 	}
 
 	// S2-b (PLAN-MORAL-1120 step 6): empties PendingMorale into the simulation's morale (one source: the C++ rule, through the bridge). An order
 	// without a place (a refusal: the refusing hero's position is not held by the ledger yet) is dropped, not guessed.
 	void ApplyMoraleOrders()
 	{
-		for (int Index = 0; Index < PendingMorale.Num(); Index++)
+		TArray<FHOLDuelMoraleOrder> Laid = TakePendingOrders();
+		for (int Index = 0; Index < Laid.Num(); Index++)
 		{
-			FHOLDuelMoraleOrder Order = PendingMorale[Index];
-			if (Order.bHasCenter && Order.Slot >= 0 && Order.EffectId >= 0)
-			{
-				HOLMorale::ApplyEffectAround(this, Order.EffectId, Order.CenterXCm, Order.CenterYCm, Order.Slot, Order.DurationMs, Order.RadiusCm);
-			}
+			HOLMorale::ApplyEffectAround(this, Laid[Index].EffectId, Laid[Index].CenterXCm, Laid[Index].CenterYCm, Laid[Index].Slot, Laid[Index].DurationMs, Laid[Index].RadiusCm);
 		}
-		PendingMorale.Empty();
 	}
 
 	void EnsureBook()
