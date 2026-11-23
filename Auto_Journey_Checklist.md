@@ -35,6 +35,8 @@ Origines : T2 = test 2 du 2026-10-30 ; Q = « Qualité des essais » du 2026-11-
 
 **Nettoyage du 2026-11-22** (copie intégrale avant nettoyage dans `Docs\Archive\Auto_Journey_Procedure_Checklist_nettoyage_2026-11-22.md`, règles toujours en vigueur, cochées au bilan comme les autres). Ligne retirée : L20-6 (fait : `Tools\AutoJourney\integrate.ps1` pris pour toutes les passes, 5 avances le 2026-11-21 soir d'après `Auto_Journey_Jour.md`, `integrate_test.ps1` ; reste : ses défauts se corrigent dans l'outil). Précisé sans règle neuve : L19-6 et « À garder » valent en mode interactif seulement (L21-1, L23-1).
 
+**Nettoyage du 2026-11-23** (copie intégrale avant nettoyage dans `Docs\Archive\Auto_Journey_Procedure_Checklist_nettoyage_2026-11-23.md`, règles toujours en vigueur, cochées au bilan comme les autres). Lignes retirées : T2-3 (AGENT : redite d'`agent_rules.md` et de `brief_commun.md`, l'énoncé commence par « lis agent_rules.md »), L3 / T2 (redite de « Builds : ne pas saturer la file » et du modèle d'énoncé de fusion de `Auto_Journey.md`), L9-10 (redite d'`agent_rules.md` règle 18 : statuts `GESTE` / `SON`), L19-8 (redite d'`agent_rules.md` règle 7 : `TEST_ROUGE_SEPARE`).
+
 ## Avant le lancement
 | ID | Règle | Contrôle | Où |
 |---|---|---|---|
@@ -45,7 +47,6 @@ Origines : T2 = test 2 du 2026-10-30 ; Q = « Qualité des essais » du 2026-11-
 | L4-1, L4-3 | L'arrêt dur est un contrat ; alarme de fin posée au lancement ; prolongation demandée 15 min avant, max 2 cycles | `CronList` montre l'alarme « fin - 15 min » ; heure de fin écrite dans le titre du tableau ; **assoupli par la règle de durée du 2026-11-05 PM** : arrêt dur des agents = l'heure de fin, dépassement toléré 15 min au plus, au-delà on demande | SESSION |
 | L3-8, L4-9, Q5, L1-14 | Agent d'intégration NOMMÉ au lancement ; il rejoue les essais après la fusion | ligne `intégrateur` du tableau des agents | SESSION |
 | L3-9 | La session principale se relance vers 200k : compter ses propres appels d'outils | à 150 appels de la session principale : écrire le point de reprise dans `Auto_Journey_Jour.md` | SESSION |
-| T2-3 | Énoncé : chemins absolus, « enchaîne sans t'arrêter », arrêt dur, rapport fixe | l'énoncé commence par « lis Tools\AutoJourney\agent_rules.md » + l'heure d'arrêt calculée par `Launch` | AGENT |
 
 ## Pendant les agents
 | ID | Règle | Contrôle | Où |
@@ -66,7 +67,6 @@ Origines : T2 = test 2 du 2026-10-30 ; Q = « Qualité des essais » du 2026-11-
 ## Fusion et fin de séance
 | ID | Règle | Contrôle | Où |
 |---|---|---|---|
-| L3 / T2 | Fusion groupée : toutes les branches prêtes, UN build `-Priority merge`, UN `quick_check`, avance rapide de `main` | énoncé de fusion de `Auto_Journey.md` | SESSION |
 | L1-3 | Les agents ont fusionné `main` avant le rapport : l'agent de fusion ne rejoue que `tests,aiserver,aiduel` | `RAPPORT merge_main_fait` | RAPPORT |
 
 ## Leçons du 2026-11-06 (séance d'1 h du 2026-11-05 après-midi) : contrôles ajoutés
@@ -100,7 +100,6 @@ Origines : T2 = test 2 du 2026-10-30 ; Q = « Qualité des essais » du 2026-11-
 | L9-6 | La fusion 1 a pris 55 min et 99 appels : les tips de 3 branches ont bougé pendant la fusion (net-playtest en 3 temps) | figer les branches à fusionner (aucun agent actif dessus) AVANT de lancer l'agent de fusion ; énoncé avec tips relevés à la minute (`git rev-parse <branche>` au lancement, jamais des SHA recopiés d'un rapport : L7-2) | SESSION |
 | L9-8 | Haldir (3 agents), Sauron, Arwen, Elrond sans tâche utile de 14:20 à 16:10 : la file « sans C++ » était vide et aucun chapitre du GDD n'est libre (tous ont un *InProgress.md) | l'étape 0 liste les chapitres GDD libres (sans *InProgress.md) ; en fin de séance précédente préparer 3 lignes sans C++ par worktree ; réserver un créneau MACHINE CALME en début de séance pour les mesures S1/S2 (jamais possible en cours de séance) | SESSION + ÉTAPE 0 |
 | L9-9 | Mode autonome choisi alors que l'utilisateur était présent : ses réponses (Q-melee-stall A, sites, panneau B) n'ont pas été appliquées en séance | si l'utilisateur répond pendant une séance, proposer de passer en mode interactif (réponse = ligne de tête + relance de l'agent du worktree) | SESSION |
-| L9-10 | Essais sonores : aucun agent n'entend rien ; 12 écoutes réparties en 12 scénarios | un seul panneau d'écoute (touche = cue suivant, lettre = vote, résumé écrit à la fin) ; statut LOGIQUE SEULEMENT à vie pour les agents | AGENT 18 |
 
 ## Lecons du 2026-11-08 (seance interactive 10:25-13:40) : controles ajoutes
 | ID | Regle | Controle | Ou |
@@ -189,7 +188,6 @@ Origines : T2 = test 2 du 2026-10-30 ; Q = « Qualité des essais » du 2026-11-
 | L19-5 | Essais donnés tard (l'utilisateur a dû les demander) ; un `.look` ne juge pas une durée (le montage « instantané » de `deploy` est passé) | la fiche E s'écrit dès le pré-vol PASS ; toute action qui dure a une capture « pendant » au `.look` ; recette indépendante (règle 5) par un agent | AGENT + OUTIL |
 | L19-6 | Questions posées tard : réponses en 5 min à 12:30 alors qu'elles bloquaient depuis 9-10 h | chaque `Q-*.md` neuve est posée par l'interface de choix dès qu'elle paraît si l'utilisateur est là (mode interactif seulement : L21-1, L23-1) ; proposer le mode interactif quand des questions bloquent | PRINCIPALE |
 | L19-7 | Builds de 13 et 21 min sous la charge mémoire d'un autre projet ; une propriété répliquée sur un en-tête central recompile large | regarder la mémoire libre avant un lot C++ ; regrouper les changements d'en-têtes centraux dans UN seul build | PRINCIPALE |
-| L19-8 | Rouge pas toujours séparé du vert (test et correctif dans un même commit ; test vert avant correctif) | champ de rapport `TEST_ROUGE_SEPARE: oui/non` ; « non » = tâche renvoyée | RAPPORT |
 
 ## L20 : leçons de la séance du 2026-11-20 après-midi (15:32 -> 18:00, interactif)
 | ID | Constat (preuve, 2026-11-20) | Règle / contrôle à mettre en place | Où |
