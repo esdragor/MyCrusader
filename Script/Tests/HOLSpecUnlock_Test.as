@@ -31,3 +31,40 @@ void Test_SpecUnlockOrdinaryUnitsAreUntouched(FUnitTest& T)
 	T.AssertEquals(1, HOLSpecUnlock::LaneOfUnit(n"InfirmaryBrother"), "Frere infirmier: lane 1");
 	T.AssertEquals(2, HOLSpecUnlock::LaneOfUnit(n"PaviseCrossbowman"), "Arbaletrier a pavois: lane 2");
 }
+
+// D893 step 3 (server refusal): the production gate reads the applied tier 1 option of the seat's FHOLSpecializationView (AHOLPlayerState::GetSpecialization).
+FHOLSpecializationView SpecUnlockViewWithTier1(int Option)
+{
+	FHOLSpecializationView View;
+	View.Chosen.Add(-1);
+	View.Chosen.Add(Option);
+	View.Chosen.Add(-1);
+	View.Chosen.Add(-1);
+	return View;
+}
+
+void Test_SpecUnlockServerRefusesLaneUnitOfAnotherLane(FUnitTest& T)
+{
+	const EHOLFaction Templars = EHOLFaction::Templars;
+	T.AssertTrue(HOLSpecUnlock::CanProduce(n"TempleSergeant", SpecUnlockViewWithTier1(0), Templars), "Iron chosen: the Sergent du Temple is produced");
+	T.AssertTrue(HOLSpecUnlock::CanProduce(n"InfirmaryBrother", SpecUnlockViewWithTier1(1), Templars), "Faith chosen: the Frere infirmier is produced");
+	T.AssertTrue(HOLSpecUnlock::CanProduce(n"PaviseCrossbowman", SpecUnlockViewWithTier1(2), Templars), "Stone chosen: the Arbaletrier a pavois is produced");
+	T.AssertFalse(HOLSpecUnlock::CanProduce(n"TempleSergeant", SpecUnlockViewWithTier1(1), Templars), "another lane chosen: the Sergent du Temple is refused");
+	T.AssertFalse(HOLSpecUnlock::CanProduce(n"InfirmaryBrother", SpecUnlockViewWithTier1(2), Templars), "another lane chosen: the Frere infirmier is refused");
+	T.AssertFalse(HOLSpecUnlock::CanProduce(n"PaviseCrossbowman", SpecUnlockViewWithTier1(0), Templars), "another lane chosen: the Arbaletrier a pavois is refused");
+}
+
+void Test_SpecUnlockServerRefusesLaneUnitWithoutChoiceOrOfOtherFaction(FUnitTest& T)
+{
+	FHOLSpecializationView Empty;
+	T.AssertFalse(HOLSpecUnlock::CanProduce(n"TempleSergeant", Empty, EHOLFaction::Templars), "no read at all: locked");
+	T.AssertFalse(HOLSpecUnlock::CanProduce(n"TempleSergeant", SpecUnlockViewWithTier1(-1), EHOLFaction::Templars), "no lane chosen yet: locked");
+	T.AssertFalse(HOLSpecUnlock::CanProduce(n"TempleSergeant", SpecUnlockViewWithTier1(0), EHOLFaction::DawnOrder), "another faction never produces a lane unit");
+}
+
+void Test_SpecUnlockServerLeavesOrdinaryUnitsAlone(FUnitTest& T)
+{
+	FHOLSpecializationView Empty;
+	T.AssertTrue(HOLSpecUnlock::CanProduce(n"Halberdier", Empty, EHOLFaction::DawnOrder), "a common unit is produced without any choice");
+	T.AssertTrue(HOLSpecUnlock::CanProduce(n"Monk", SpecUnlockViewWithTier1(2), EHOLFaction::Templars), "the Monk is produced whatever the lane");
+}

@@ -27,4 +27,10 @@ namespace HOLSpecUnlock
 			return true;
 		return Faction == EHOLFaction::Templars && ChosenOption == Lane;
 	}
+	// The server's gate of a production (D893, D896): the seat whose specialization read is Spec (tier 1 applied option in Spec.Chosen) and faction Faction may produce UnitType.
+	// STUB (red step): accepts everything.
+	bool CanProduce(FName UnitType, const FHOLSpecializationView& Spec, EHOLFaction Faction)
+	{
+		return true;
+	}
 }
