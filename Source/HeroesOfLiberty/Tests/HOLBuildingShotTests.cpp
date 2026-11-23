@@ -62,6 +62,8 @@ namespace UE::HeroesOfLiberty::Tests::BuildingShot
 		int64 ReleasedAfterLeave = 0;
 		/** F8 T7: the arrows the display subsystem was asked to draw during the window (-1: no display subsystem in the world). */
 		int64 Launched = -1;
+		/** F8 T8: what the building shots cost the processor over the window (UHOLCombatProcessor::GetBuildingShotCost). */
+		UHOLCombatProcessor::FBuildingShotCost Cost;
 	};
 
 	struct FShotOptions
@@ -84,6 +86,8 @@ namespace UE::HeroesOfLiberty::Tests::BuildingShot
 		/** F8 T6: occupants (allied Spearmen set in the tower's garrison before the first step); they all leave after the step LeaveAtStep (-1: they stay). */
 		int32 Occupants = 0;
 		int32 LeaveAtStep = -1;
+		/** F8 T8: enemy Spearmen added beside the target (the bench: 199 + the target = 200 units). */
+		int32 Crowd = 0;
 	};
 
 	/** The step at which the K-th arrow (K = 0 first) leaves a countdown that fires on the first step at which the elapsed time covers K intervals. */
@@ -128,6 +132,15 @@ namespace UE::HeroesOfLiberty::Tests::BuildingShot
 			if (SecondTower)
 			{
 				SecondTower->Setup(Options.TowerType, 0, 0, State);
+			}
+			for (int32 Index = 2; Index < Options.Towers; ++Index)
+			{
+				// F8 T8: the bench's other towers (all within reach of the target, bodies may overlap: only the processor is under test).
+				AHOLBuilding* Extra = World->SpawnActor<AHOLBuilding>(FVector(3000.0, 100.0 * Index, 0.0), FRotator::ZeroRotator);
+				if (Test.TestNotNull(TEXT("extra tower"), Extra))
+				{
+					Extra->Setup(Options.TowerType, 0, 0, State);
+				}
 			}
 			const TSharedRef<FMassEntityManager> EntityManager = EntitySubsystem->GetMutableEntityManager().AsShared();
 			UHOLCombatProcessor* Combat = NewObject<UHOLCombatProcessor>(Simulation);
@@ -242,7 +255,18 @@ namespace UE::HeroesOfLiberty::Tests::BuildingShot
 							OccupantIds.Add(Id);
 						}
 					}
-				}				const FVector Home = VictimTransform->GetTransform().GetLocation();
+				}
+				if (Options.Crowd > 0)
+				{
+					FHOLUnitSpawnRequest CrowdRequest;
+					CrowdRequest.TypeName = FName(TEXT("Spearman"));
+					CrowdRequest.Count = Options.Crowd;
+					CrowdRequest.OwnerPlayer = static_cast<uint8>(VictimOwner);
+					CrowdRequest.Center = VictimAt;
+					Units->RequestUnits(CrowdRequest);
+					Units->ServeBirthRequests();
+				}
+				const FVector Home = VictimTransform->GetTransform().GetLocation();
 				int64 ReleasedBefore = UHOLCombatProcessor::GetTotalArrowsReleased();
 				if (Options.PauseSteps > 0)
 				{
@@ -290,6 +314,7 @@ namespace UE::HeroesOfLiberty::Tests::BuildingShot
 				Result.Released = UHOLCombatProcessor::GetTotalArrowsReleased() - ReleasedBefore; Result.Launched = ArrowDisplay ? ArrowDisplay->GetLaunchedCount() - LaunchedBefore : -1;
 				Result.ReleasedAfterLeave = Result.Released - Result.ReleasedAtLeave;
 				Result.EntriesAlive = Combat->GetBuildingCooldownCount();
+				Result.Cost = Combat->GetBuildingShotCost();
 				if (Options.bCombatOffAtEnd && CombatEnabledVar)
 				{
 					CombatEnabledVar->Set(0, ECVF_SetByCode);
@@ -802,4 +827,57 @@ bool FHOLBuildingShotDisplayTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLBuildingShotCostTest, "HeroesOfLiberty.Combat.BuildingShotCost", UE::HeroesOfLiberty::Tests::BuildingShot::Flags)
+
+// F8 T8 (D884, measure): the bench of the plan (CELEBORN-1122d T8), 200 enemy units and 10 towers all in reach for 10 s of the REAL combat processor. The cost is
+// read from the processor's own counters (GetBuildingShotCost: searches = a ready tower looking for a target, candidates = fighters it tests). Three bounds:
+// (1) the towers do search and test fighters (the counter is alive), (2) the cadence gates the searches (a tower searches when its countdown is ready:
+// at most one search per arrow of the schedule, ExpectedArrows + 1 per tower, never one per step), (3) the budget: no step tests more than Towers x Units
+// candidates and the average step stays under BudgetAveragePerStep (value posed here, the session may move it).
+bool FHOLBuildingShotCostTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::BuildingShot;
+	constexpr int32 Towers = 10;
+	constexpr int32 Units = 200;
+	constexpr int64 BudgetAveragePerStep = 200;
+	UDataTable* Table = const_cast<UDataTable*>(GetDefault<UHOLBuildingSettings>()->BuildingTypesTable.LoadSynchronous());
+	const FHOLBuildingTypeRow* HouseRow = Table ? Table->FindRow<FHOLBuildingTypeRow>(HOLBuildingTypeNames::House, TEXT("building shot cost test")) : nullptr;
+	IConsoleVariable* CombatEnabled = IConsoleManager::Get().FindConsoleVariable(TEXT("hol.Combat.Enabled"));
+	if (!TestNotNull(TEXT("the building type table and its House row"), HouseRow) || !TestNotNull(TEXT("hol.Combat.Enabled"), CombatEnabled))
+	{
+		return false;
+	}
+	const int32 FormerCombat = CombatEnabled->GetInt();
+	CombatEnabled->Set(1, ECVF_SetByCode);
+	FHOLBuildingTypeRow TowerRow = *HouseRow;
+	TowerRow.BuildingAttack = 5;
+	TowerRow.BuildingAttackInterval = 1.625f;
+	TowerRow.BuildingAttackRange = 3000.f;
+	TowerRow.BuildingFiresEmpty = true;
+	Table->AddRow(TestShotTowerType, TowerRow);
+	const int32 IntervalMs = HOLCombat::ToMilliseconds(TowerRow.BuildingAttackInterval);
+
+	FShotOptions Bench;
+	Bench.VictimHealth = 100000.f;
+	Bench.Towers = Towers;
+	Bench.Crowd = Units - 1;
+	Bench.Seconds = 10.f;
+	const FShotResult Run = RunScenario(*this, EHOLConstructionState::Finished, 3, 1000.0, Bench);
+	if (TestTrue(TEXT("the bench ran"), Run.bRan))
+	{
+		const UHOLCombatProcessor::FBuildingShotCost& Cost = Run.Cost;
+		TestTrue(FString::Printf(TEXT("the towers searched (searches %lld)"), Cost.TotalSearches), Cost.TotalSearches >= Towers);
+		TestTrue(FString::Printf(TEXT("each search tested at least one fighter (candidates %lld, searches %lld)"), Cost.TotalCandidates, Cost.TotalSearches), Cost.TotalCandidates >= Cost.TotalSearches && Cost.TotalCandidates > 0);
+		const int64 SearchCeiling = static_cast<int64>(Towers) * (ExpectedArrows(0, IntervalMs, Run.StepMs, Run.Steps) + 1);
+		TestTrue(FString::Printf(TEXT("the cadence gates the searches (%lld searches over %d steps, ceiling %lld)"), Cost.TotalSearches, Run.Steps, SearchCeiling), Cost.TotalSearches <= SearchCeiling);
+		TestTrue(FString::Printf(TEXT("no step tests more than towers x units (%d <= %d)"), Cost.MaxStepCandidates, Towers * Units), Cost.MaxStepCandidates <= Towers * Units);
+		const int64 Average = Cost.TotalCandidates / FMath::Max<int64>(1, Cost.StepsCounted);
+		TestTrue(FString::Printf(TEXT("the average step stays under the budget (%lld <= %lld candidates, %lld steps)"), Average, BudgetAveragePerStep, Cost.StepsCounted), Average <= BudgetAveragePerStep && Cost.StepsCounted > 0);
+		AddInfo(FString::Printf(TEXT("BuildingShotCost: %lld searches, %lld candidates over %lld steps (average %lld, dearest step %d)"), Cost.TotalSearches, Cost.TotalCandidates, Cost.StepsCounted, Average, Cost.MaxStepCandidates));
+	}
+	Table->RemoveRow(TestShotTowerType);
+	CombatEnabled->Set(FormerCombat, ECVF_SetByCode);
+	return true;
+}
 #endif // WITH_DEV_AUTOMATION_TESTS

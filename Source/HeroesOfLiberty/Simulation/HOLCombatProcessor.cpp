@@ -845,12 +845,16 @@ int32 UHOLCombatProcessor::GetBuildingArrowCount(const int32 Occupants)
 void UHOLCombatProcessor::ReleaseBuildingArrows(const UWorld& World, const int64 StepIndex, const int32 StepMs, const UHOLVisionSubsystem* Vision)
 {
 	// F8 T5: Vision is what the units' shots use (null: no fog started or the fog Disabled, hol.Fog.Mode 0): a tower aims only at what its OWNER sees.
+	// F8 T8: the cost of this step is counted from zero (GetBuildingShotCost: searches = ready buildings looking for a target, candidates = fighters tested).
+	BuildingShotCost.LastStepSearches = 0;
+	BuildingShotCost.LastStepCandidates = 0;
 	// No standing building this step: no countdown can be alive (a no-op on an empty map), and nothing else costs anything.
 	if (StepBuildings.IsEmpty())
 	{
 		BuildingCooldownMs.Reset();
 		return;
 	}
+	++BuildingShotCost.StepsCounted;
 	for (const FStepBuilding& Step : StepBuildings)
 	{
 		const FHOLBuildingTypeRow* Row = Step.Building ? Step.Building->GetType() : nullptr;
@@ -902,6 +906,12 @@ void UHOLCombatProcessor::ReleaseBuildingArrows(const UWorld& World, const int64
 		// an ally, a Neutral and one's own are never shot). Ties go to the smallest unit identifier (deterministic).
 		int32 Best = INDEX_NONE;
 		double BestGapSquared = 0.;
+		// F8 T8: one search, and the whole fighter list is walked (no early exit below): Fighters.Num() candidates tested.
+		++BuildingShotCost.LastStepSearches;
+		++BuildingShotCost.TotalSearches;
+		BuildingShotCost.LastStepCandidates += Fighters.Num();
+		BuildingShotCost.TotalCandidates += Fighters.Num();
+		BuildingShotCost.MaxStepCandidates = FMath::Max(BuildingShotCost.MaxStepCandidates, BuildingShotCost.LastStepCandidates);
 		for (int32 Index = 0; Index < Fighters.Num(); ++Index)
 		{
 			const FFighter& Candidate = Fighters[Index];

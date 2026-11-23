@@ -135,6 +135,7 @@ public:
 	bool SetHeroPrivate(const FHOLHeroPrivateSheet& InHeroPrivate);
 
 	/** SP2 (D203, D684): the player's specialization (running unlock, time left, applied options), owner only; the client never decides. */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Specialization")
 	const FHOLSpecializationView& GetSpecialization() const { return Specialization; }
 	/** Server only (UHOLSpecializationSubsystem): true when it changed (and is then sent at once). */
 	bool SetSpecialization(const FHOLSpecializationView& InSpecialization);

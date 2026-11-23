@@ -72,6 +72,7 @@ FHOLGridContextView UHOLCommandGridBoard::MakeContextView(const FHOLGridContext&
 	Out.bGarrisonOccupied = Context.bGarrisonOccupied;
 	Out.bHero = Context.bHero;
 	Out.bRageUnit = Context.bRageUnit;
+	Out.bMonkUnit = Context.bMonkUnit;
 	Out.HeroLevel = Context.HeroLevel;
 	Out.ReachedAge = Context.ReachedAge;
 	Out.bPrimaryForum = Context.bPrimaryForum;
