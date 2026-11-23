@@ -53,6 +53,16 @@ Set-Content (Join-Path $Root 'Tools\Scenarios\dragging.txt') @('# fake that drag
 $m = & powershell -NoProfile -ExecutionPolicy Bypass -File $Play dragging -Root $Root -EngineDir $Eng -Hidden -DryRun 2>&1 | Out-String
 Check ($m -match 'hol\.Scenario dragging' -and $m -notmatch 'TestCursor') ('-Hidden + scenario a hol.Mouse.Drag : pas de curseur virtuel force (sortie : ' + (Flat $m) + ')')
 
+# 1c. ARWEN-1123pd : meme regle pour un clic de souris reel sur le MONDE (hol.Mouse.Click <x> <y>, coordonnees numeriques) : TestCursor 0.5 0.5 ferait
+#     choisir a GetCursorFraction le centre de l ecran quel que soit le point clique (le Mangonneau de deploy n y est pas : aucune selection, 2026-11-23).
+#     Un clic sur un WIDGET NOMME (hol.Mouse.Click <WidgetName>, chemin Slate de l interface) ne lit pas le curseur du monde : il garde le comportement actuel.
+Set-Content (Join-Path $Root 'Tools\Scenarios\clicking.txt') @('# fake that clicks the world', 'hol.Mouse.Click 533 300', 'quit') -Encoding UTF8
+$c = & powershell -NoProfile -ExecutionPolicy Bypass -File $Play clicking -Root $Root -EngineDir $Eng -Hidden -DryRun 2>&1 | Out-String
+Check ($c -match 'hol\.Scenario clicking' -and $c -notmatch 'TestCursor') ('-Hidden + scenario a hol.Mouse.Click <x> <y> : pas de curseur virtuel force (sortie : ' + (Flat $c) + ')')
+Set-Content (Join-Path $Root 'Tools\Scenarios\widgetclick.txt') @('# fake that clicks a widget', 'hol.Mouse.Click SpecializationSlot', 'quit') -Encoding UTF8
+$w = & powershell -NoProfile -ExecutionPolicy Bypass -File $Play widgetclick -Root $Root -EngineDir $Eng -Hidden -DryRun 2>&1 | Out-String
+Check ($w -match 'hol\.Scenario widgetclick' -and $w -match 'TestCursor 0\.5 0\.5') ('-Hidden + scenario a hol.Mouse.Click <Widget> : curseur virtuel inchange (sortie : ' + (Flat $w) + ')')
+
 # 2. -Hidden ferme l'editeur et ses fils
 $r = Run @('-Hidden', '-TimeoutSec', '5') 'stay'
 $left = (Alive).Count
