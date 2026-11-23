@@ -10,6 +10,8 @@ Historique du test du 2026-10-30 : `Docs\Archive\Auto_Journey_Test1_2026-10-30.m
 
 ## Agents du 2026-11-23
 
+**Séance close à 12:0x** (fin ramenée à 12:00 par l'utilisateur ; main = ca4220a pour le code, 3 passes intégrées, integ-57 abandonnée ; bilan et leçons ci-dessous).
+
 Séance autonome (« lance une autojourney en prenant en prio Priorite_Socle_Factions_2026-11-16.md ») 08:47 -> 16:50 (fin choisie par la session principale, objectif ~8 h ; `Docs\SessionEnd.txt`). Priorité : `Docs\Priorite_Socle_Factions_2026-11-16.md` (lignes S1 à S4 d'`Auto_Journey_File.md`). 0 `AskUserQuestion` (L21-1, L23-1). Session principale sur Opus, sous-agents Sonnet 5.5, 15 min au plus.
 check-list lue (L24) : 08:55, en entier (238 l.), après 0a de la procédure et de la check-list (387d0c8) et avant le premier agent de travail. Veilleur 30 min (:13/:43), alarme fin - 15 min posée (16:35). Dernier lancement de code 15:50 (L18-c) ; première recette dès la première avance de main (L20-4) ; gate Launch seul, lancement au tour suivant (L24-4) ; L20-5 : build incrémental de l'agent C++ si la file est vide et vm >= 16 Go.
 check-list lue (L25) : 10:06, section L25 écrite en séance par GALADRIEL-1123f (e8e859c), relue en entier ; L25-5 appliquée dès 10:06 (au plus 2 agents C++ tant qu'un build dépasse 5 min).
@@ -125,6 +127,124 @@ Exception de gate : CLEAN-1123a-d (0a) lancés avec le FAIL L19-1 (check-list lu
 Anomalies de séance : (1) 09:13 `session_gate -Phase Launch -NoCpp -Root <wt> -Scenarios faction_click` : « il reste -1065517033 min » (FAIL faux : -Scenarios casse la lecture de la fin) -> ligne OUTIL à ouvrir ; (2) builds de 3 agents C++ en file : ELROND-1123a n'a pas compilé dans ses 15 min (build lancé par la principale, rouge SetXP) ; (3) 09:2x GLORFINDEL-1123c a lancé un fix.ps1 du scratchpad partagé écrit par FARAMIR-1123b (fichiers de Faramir retouchés) : règle à ajouter au brief (scripts temporaires nommés par agent, jamais lancer un script d'un autre) ; (4) TaskStop de FARAMIR-1123b à 09:28 a tué son build EN COMPILATION (BuildQueue.csv : FAIL « owner process died ») : ne jamais arrêter un agent dont le build compile ; (5) T7b (CELEBORN-1123c) touche AHOLBuilding (en-tête central) : build de 09:28 encore en cours à 09:37, intégration et Faramir derrière (L19-7) ; agents de 15 min incapables de finir un lot C++ quand la file a plus d'un build.
 
 Point de reprise (L3-9, ~150 appels de la principale, 10:24) : main = 47f6fe4 + docs (integ-54 : S1-a, T7, S4-a règle, S1-c, XP duel). integ-55 (Sauron) FAIL sur la seule table Palissade : DIAG-1123a régénère, puis parts net,build et avance de main. Prêtes pour integ-56 : zone-effect 6b90b54 (S1-e soin) + suite FARAMIR-1123f (mort), integ-25 1c9571f (liaisons C++, S4-b branché), integ-41 8e47ff6 (T8), ability-columns après GLORFINDEL-1123h (défaut : l'IA ne lance jamais Lumière sacrée). Recette (Haldir ou Sauron) après integ-55 : faction_click_cast (tir au sol), tower_wood, ai_sacred_light. Rouges à prendre dans integ-56 : 12dd617 (HealHonor), 48525f2, 64972bb (integ-25), b5bf92a (T8).
+
+### Bilan 2026-11-23 (BILAN-1123, 11:4x ; fin fixée à 12:00 par l'utilisateur)
+- Passes : integ-54 -> main 47f6fe4 (10:01), integ-55 -> main 3f7d89e (10:52), integ-56 -> main ca4220a (11:33) ; main ensuite = docs seulement (a79c329). integ-57 ABANDONNÉE au conflit de Placeholders.txt faute de temps, 6 rouges vus (065a643, eeba85e, aeb8abc et 3 autres) ; rien de ses verts n'est dans main.
+- DANS MAIN pour le joueur (socle des factions) : S1-a soin de zone Lumière sacrée, S1-b lancer par le serveur (25 Honneur, recharge 20 s), S1-c panneau de faction cliquable, S1-d en script (texte LightSeal, HOLMonkSeal.as ; le bouton du Moine reste sur branche), S4-a l'IA lance Lumière sacrée, S4-b garnison de l'IA sur coup reçu, T7 / T7b / T8 tir de tour (répliqué, coût mesuré), palissade (WallTypes), XP du duel 150, lot de liaisons C++, B2 / G1, rendus provisoires de la zone (anneau doré, Sceau bleu pâle), tower_wood (logique).
+- SUR BRANCHE, non intégré : ability-columns cdb1b3d + e269a1c (lancer du joueur sans bannière + cellule du Moine partielle) ; integ-55 (Sauron) EndWallDrag 68c86d0 + scénarios de recette ; specialization-trial fefe033 (D889 vu sur PNG, FR/EN) ; integ-41 a2b4208 (F9 portes, F10 murs) ; zone-effect a302195 (Honneur à la mort : Zone.KillHonor rouge, aucun mort dans le test) ; socle-ai 4afd2cc (S2-a NON COMPILÉ) ; integ-25 37040fe + scénario ai_garrison.
+- Défauts trouvés par la recette (RECETTE-1123a) : lancer du joueur refusé « cast refused (4) » (origine bannière (0,0)) -> corrigé sur branche (cdb1b3d), pose en ligne de la palissade = une seule fondation -> EndWallDrag 68c86d0 sur branche (8 fondations vues). Par REVUE-1123 : B1 (test HealHonor hors WITH_DEV_AUTOMATION_TESTS) et B2 (bMonkUnit jamais vrai) CORRIGÉS ; G1 corrigé, G5 pris par Faramir ; autres gênants et mineurs ouverts.
+- Essais : AUCUN VU À L'ÉCRAN donné. E-tower_wood et E-wall_line_long LOGIQUE SEULEMENT (geste interne, flèche jamais vue en vol) ; E-talents_heal LOGIQUE SEULEMENT (ancien) ; ai_sacred_light vu sur PNG (anneau doré) mais pas dans main (rendu 6a4b2c8 intégré à ca4220a, mais fiche E non écrite) ; faction_click_cast à rejouer après integ-57.
+- Questions ouvertes (7 [À RÉPONDRE], Retours\Q-*.md, défaut codé derrière un réglage) : Q-empreinte-jauge, Q-mur, Q-palissade, Q-porte-palissade, Q-sacred-light-values, Q-spec-voies (unités de commanderie absentes : décision de créer le palier 1), Q-suivi-mutuel. T2-4 dépassé : 3 questions S3-b (palissade, porte, mur).
+- AskUserQuestion : 0 en autonome, sauf la question de lancement (fin 12:00, mode autonome) posée à 11:3x à la demande de l'utilisateur : fin 16:50 choisie seule par la principale au lancement (L21-1 / L23-1 récidive, voir leçons).
+- Anomalies de séance : script du scratchpad d'un autre agent lancé (L25-1), TaskStop d'un agent en build (L25-4), builds en file trop longs (705 s, 13 min), 6 agents C++ NON COMPILÉS à leur rapport, integrate.ps1 ne lance pas regen_tables (BuildingTypes.uasset), gate Launch -Scenarios faux FAIL (corrigé L22-6 / b265309), attentes quick_check périmées (palissade).
+- Reste à faire en priorité (séance suivante) : relancer integ-57 (résoudre Placeholders.txt), compiler et intégrer socle-ai S2-a, rejouer faction_click_cast et wall_line_long au geste réel, répondre aux 7 questions, bouton du Moine (lot C++).
+
+### Lecons appliquees 2026-11-23
+- T2-1 : appliquee : ETAPE0-1123 (08:53-08:55) et plan de lancement ci-dessous
+- T2-2 : appliquee : une ligne par worktree libre, raison écrite pour Haldir et Sauron (plan l.136-137)
+- L3-12 : appliquee : étape 0 faite, non sautée
+- L5-7 : non vérifié : aucune trace écrite de la question « dossiers non suivis »
+- L4-1, L4-3 : appliquee : alarme fin - 15 min (16:35) et fin dans le titre ; la fin a ensuite été ramenée à 12:00 par l'utilisateur
+- L3-8, L4-9, Q5, L1-14 : appliquee : ligne `intégrateur` du tableau, recette Haldir/Sauron
+- L3-9 : appliquee : point de reprise écrit à 10:24 (~150 appels)
+- L1-1, L3-6, L4-7, L5-3 : non appliquee : ARWEN-1123a 47 appels vus (> 45), GLORFINDEL-1123c 25 appels sans correctif
+- L5-6 : non vérifié : aucun tableau de questions groupées écrit
+- L3-11, L5-5 : non vérifié : regen BuildingTypes.uasset par DIAG-1123a/b, pas de preuve « éditeur seul »
+- L3-7, L1-4 : appliquee : veilleur 30 min (:13/:43) posé (plan du jour)
+- T2-4 : non appliquee : 3 questions S3-b (Q-palissade, Q-porte-palissade, Q-mur)
+- Q5, L5-4 : non appliquee : recette indépendante faite (RECETTE-1123a) mais gestes internes, 3 fiches E LOGIQUE SEULEMENT
+- Q8 : non vérifié : pas de ligne `[ ]` de défaut commun relevée
+- Q11 : appliquee : 0 essai prêt donné
+- L1-3 : non vérifié : champ merge_main_fait non relevé ici (FARAMIR-1123h et CELEBORN-1123j ont fusionné main)
+- L6-2 : non vérifié : pas de relevé de la lecture de la file par la principale
+- L6-4 : non vérifié : faction_click_cast rejoue le clic mais le correctif n'est pas rejoué
+- L6-6 : non vérifié : aucune mesure répétée du jour
+- L7-7 : appliquee : integ-54 lancée à 09:20 dès 4 branches vertes
+- L8-4 : non vérifié : aucun essai sonore du jour
+- L8-8 : appliquee : integ-54 (C++) lancée avant les autres branches
+- L9-1 : non vérifié : pas de relevé de re-notifications en boucle
+- L9-6 : non vérifié : liste figée d'integ-57 non écrite avant lancement (conflit Placeholders.txt)
+- L9-8 : non vérifié : tâches des agents inactifs non relevées
+- L9-9 : non vérifié : mode choisi par la principale sans relevé de présence
+- L10-2 : non vérifié : net PASS à integ-55, pas de net rouge sur main du jour
+- L10-3 : non vérifié : session_gate Report non relevé
+- L11-3 : non vérifié : pas de verdict de 5 min noté
+- L11-4 : non vérifié : gate Close non lancé avant ce bilan
+- L11-8 : non vérifié : liste figée integ-56 non écrite
+- L11-9 : appliquee : intégrateur de recette nommé (Haldir) et RECETTE-1123a
+- L11-10, L10-5, L9-7 : non vérifié : aucune mesure de mêlée du jour
+- L11-11 : non vérifié : lecture de Retours\REPONSES non tracée
+- L11-12 : appliquee : CLEAN-1123c (6d5af16) a purgé Retours
+- L11-13 : non vérifié : heures annoncées sans trace de Get-Date
+- L12-1 : appliquee : SYNC-debut sans -NoBuild (08:52)
+- L12-1b : non vérifié : charge machine non relevée (builds de 705 s notés BUILD LENT)
+- L13-1 : non vérifié : pas de 403 constaté, 6 agents lancés d'emblée
+- L13-4 : non vérifié : pas de net rouge sous charge
+- L13-5 : non vérifié : dossiers non suivis > 50 fichiers non relevés
+- L13-6 : non appliquee : tower_wood 4 PNG sans flèche (caméra loin, ennemis sous le bandeau)
+- L13-7 : non vérifié : aucun balayage du jour
+- L14-2 : appliquee : gate C++ FAIL (plafond 3) -> ELROND-1123d sans C++ (09:35)
+- L14-4 : non vérifié : 0 AskUserQuestion en séance
+- L14-5 : non appliquee : E-tower_wood, E-wall_line_long, E-talents_heal en geste interne
+- L14-6 : non appliquee : rouges jamais vus (GLORFINDEL-1123a, CELEBORN-1123j, ELROND-1123c vert non vu)
+- L14-9 : non vérifié : pas de vérification 1080p du jour
+- L14-10 : non vérifié : pas d'essai audio
+- L14-11 : appliquee : integ-56 faite en 30 min (11:02-11:32)
+- L15-4 : non vérifié : usage d'agents_table.ps1 non tracé
+- L15-6 : non vérifié : build_wait.ps1 non tracé (agents recompilent après merge main)
+- L15-7 : appliquee : ETAPE0-1123 a recoupé la file contre main (aucune ligne du socle déjà faite)
+- L15-8 : non vérifié : `.look` non relus
+- L15-9 : non appliquee : ELROND-1123a et FARAMIR-1123b arrêtés sans livrer, ARWEN-1123a 47 appels
+- L15-10 : appliquee : rapports dans Docs\Rapports\<AGENT>.md
+- L16-1 : non vérifié : discussion de la file de build non tracée
+- L16-2 : non vérifié : aucune commande play.ps1 donnée à l'utilisateur
+- L16-3 : appliquee : tests verts avant chaque avance (2114/2114, 2132/2132, 2143/2143)
+- L16-4 : non vérifié : langue des messages non relevée
+- L16-5 : non vérifié : chiffres annoncés non recoupés
+- L16-6 : non vérifié : builds de confort non relevés
+- L16-7 : non vérifié : sorties tronquées non relevées
+- L16-8 : non vérifié : aucun essai donné
+- L17-a : non vérifié : pas de test porté sans build relevé
+- L17-b : non vérifié : archives de la file par section non relevées
+- L17-c : non vérifié : BuildQueue.state non relu à la reprise
+- L18-a : non vérifié : git diff du .uasset régénéré non tracé
+- L18-b : non vérifié : types canoniques non relevés
+- L18-c : non appliquee : GALADRIEL-1123m (S2-a, C++) lancé à 11:23 pour une fin à 12:00, NON COMPILÉ
+- L18-d : non vérifié : Grep des listes non tracé
+- L18-e : appliquee : 8a63439 rouge puis d0c24eb vert (deux commits)
+- L18-f : non vérifié : scénarios avec attente d'effet non relus
+- L19-1 : non appliquee : lancement avec FAIL L19-1 (check-list lue après 0a), exception écrite
+- L19-4 : non appliquee : build hud / barracks FAIL d'integ-55 (attentes quick_check périmées, DIAG-1123c)
+- L19-5 : non appliquee : tower_wood 3 captures sans flèche en vol (CELEBORN-1123i)
+- L19-6 : non vérifié : séance autonome, questions dans Retours\
+- L19-7 : non appliquee : T7b sur AHOLBuilding, build de 13 min (anomalie 5)
+- L20-2 : non appliquee : builds FAIL d'agents (FARAMIR-1123b, d, f ; accesseur privé)
+- L20-4 : non appliquee : 1re recette à 10:53, 52 min après main 47f6fe4 (report écrit l.101)
+- L20-5 : non appliquee : builds en file derrière d'autres (ELROND-1123a, FARAMIR-1123c/f)
+- L20-7 : non vérifié : rouges script dans le même build non tracés
+- L20-8 : non appliquee : 1er Edit au 9e (GLORFINDEL-1123a), 11e (1123d) appel
+- L21-1 : non appliquee : fin (16:50) et mode choisis par la principale, non demandés au lancement par l'interface de choix ; relevé par l'utilisateur à 11:3x
+- L21-2 : non vérifié : pas de double modification de lignes relevée
+- L21-3 : non vérifié : placeholders_map.csv non relu pour les lignes F9/F10
+- L22-1 : appliquee : 0 erreur AS (GLORFINDEL-1123l, ARWEN-1123b)
+- L22-2 : non appliquee : conflit de cherry-pick du rouge 7fa5b77 (integ-54) et conflit d'integ-56
+- L22-3 : non appliquee : même cause que L19-4 (attentes « I D: Palissade » périmées)
+- L22-4 : non vérifié : pas de doublon relevé
+- L22-5 : non vérifié : scénario court d'un pont C++ non tracé
+- L22-6 : appliquee : outil gate Close corrigé (b265309), gate_test 109 PASS dont « L22-6 close »
+- L22-7 : non vérifié : GDD.md non commité non relevé
+- L23-1 : non appliquee : RÉCIDIVE de la question de lancement (fin, mode) non posée au lancement ; seule question posée à 11:3x à la demande de l'utilisateur
+- L24-1 : non vérifié : accord de fusion locale (D888) sans trace de la question de lancement
+- L24-2 : non vérifié : aucune passe à 0/0 relevée
+- L24-3 : non appliquee : agents C++ NON COMPILÉS (ELROND-1123a, FARAMIR-1123b/f, CELEBORN-1123j, GALADRIEL-1123m)
+- L24-4 : non vérifié : gate Launch seul posé au plan mais exécution non tracée
+- L24-5 : appliquee : refus du classifieur signalé (GLORFINDEL-1123d, edit_line)
+- L25-1 : non vérifié : règle posée à 10:03, aucune récidive relevée ensuite
+- L25-2 : non vérifié : pas de récidive relevée
+- L25-3 : non appliquee : GALADRIEL-1123m et ELROND agents vivants en attente de build (« agent vivant »)
+- L25-4 : non vérifié : pas de TaskStop depuis 09:28
+- L25-5 : appliquee : au plus 2 agents C++ tant qu'un build dépasse 5 min, appliquée dès 10:06
+- Bilan des leçons : 104 lignes = 23 appliquées, 22 non appliquées, 59 non vérifiées (pas de preuve écrite). Leçon neuve de la séance : L25-6 (fin et mode demandés au lancement par l'interface de choix, même en autonome ; récidive de L21-1 / L23-1) ajoutée à la section L25 de la check-list.
 
 ### Plan de lancement 2026-11-23 (ETAPE0-1123, detail : Docs\Rapports\ETAPE0-1123.md)
 - Faramir (zone-effect) : lancer S1-a (C++ Mass, soin de zone Lumiere sainte ; chaine combat : S1-e, S2-a, S2-b ensuite ici)
