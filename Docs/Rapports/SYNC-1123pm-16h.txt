@@ -1,0 +1,22 @@
+﻿=== sync cible apres l avance c3578b1 16:03:31
+Haldir : fusion OK = cbcf3ea 16:03:35
+
+build : PASS (HeroesOfLibertyEditor Development, HeroesOfLiberty-Haldir, 99 s)
+
+
+Haldir : build exit=0 16:08:38
+Arwen : fusion OK = aa96530 16:08:41
+
+build : PASS (HeroesOfLibertyEditor Development, HeroesOfLiberty-Arwen, 85 s)
+
+
+Arwen : build exit=0 16:13:03
+Faramir : fusion OK = 894e47c 16:13:06
+
+build : BUILD LENT (9 actions, 451 s > 3 x median 61 s of 188 earlier normal PASS builds of 5-18 actions); load: vm 
+34.2 GB; actions 9 (machine saturee ? diagnostic de charge)
+build : PASS (HeroesOfLibertyEditor Development, HeroesOfLiberty-Faramir, 451 s)
+
+
+Faramir : build exit=0 16:22:26
+=== Haldir preflight wall_line_long 16:22:26

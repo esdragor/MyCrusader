@@ -1,0 +1,19 @@
+﻿integrate : branche integ-60 creee, 4 rouge(s) appliques
+integrate : build rouges SKIP (pas de C++ dans les rouges)
+integrate : tests des rouges ...
+integrate : verts depuis main, rouges retires (reset --hard c3578b1)
+integrate : 6 vert(s) fusionne(s)
+integrate : regen inutile (aucun CSV de table change sans son .uasset dans les verts)
+integrate : build verts ...
+integrate : tests (apres les verts) ...
+integrate : parts net,build ...
+INTEGRATE integ-60 : PASS (1143 s, 2026-11-23 16:21)
+  branche+rouges : PASS (4 cherry-pick, 8 s)
+  build rouges : SKIP (pas de C++ dans les rouges)
+  tests rouges : FAIL attendu 2160/2167 tests (222 s)
+  remise a main : PASS (verts depuis main, rouges retires : reset --hard c3578b1)
+  merge verts : PASS (6 merge, 11 s) ; regen: inutile
+  build verts : PASS (280 s)
+  tests verts : PASS 2170/2170 tests (201 s)
+  parts net,build : PASS (417 s)
+  rouges vus : Angelscript.UnitTests.Orders.HOLFollowRules_Test.Test_FollowMutualLastOrderWins, Angelscript.UnitTests.Orders.HOLFollowRules_Test.Test_FollowMutualRuleIsPure, Angelscript.UnitTests.Tests.HOLSpecializationSlot_Test.Test_SpecializationSlotReadOfShowsTheVoieAndItsProgress, Angelscript.UnitTests.Tests.HOLSpecTier1Units_Test.Test_SpecTier1UnitsExist, Angelscript.UnitTests.Tests.HOLSpecUnlock_Test.Test_SpecUnlockLaneUnitNeedsItsLane, Angelscript.UnitTests.Tests.HOLSpecUnlock_Test.Test_SpecUnlockOrdinaryUnitsAreUntouched, Angelscript.UnitTests.Tests.HOLSpecUnlock_Test.Test_SpecUnlockOtherFactionNeverSeesLaneUnits ; sortie complete : Docs\Integrate_integ-60.log

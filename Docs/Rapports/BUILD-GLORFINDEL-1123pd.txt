@@ -1,0 +1,34 @@
+﻿=== build ability-columns 3974596 (GetHeroLocation, HeroPlaceOf, CastOriginOf heros ; NOT COMPILED) 16:02:47
+
+build : LaunchCheck debut (Get-StaleBinaryProblem) : the binary UnrealEditor-HeroesOfLiberty.dll of 
+C:\Users\baudo\Documents\HeroesOfLiberty-Glorfindel (2026-11-23T15:32:56) is older than its C++ source 
+Source\HeroesOfLiberty\Simulation\HOLHeroLibrary.cpp (2026-11-23T16:00:36): Tools\build.ps1 in that copy first
+build : PASS (HeroesOfLibertyEditor Development, HeroesOfLiberty-Glorfindel, 241 s)
+
+
+build exit=0 16:06:56
+
+  check_placeholders : PASS (44 provisional types, 46 map entries, 165 lines)
+tests 2149/2150 : FAIL (REGRESSION : pas dans known_reds.txt)
+  [KO] all green (failed: Angelscript.UnitTests.Tests.HOLAIPowerCall_Test.Test_AIPlantsBannerFromTheHeroRealPlace)
+quick_check : FAIL in 207 s (game launch done at 0 s)
+red summary : 1 regression(s) : tests 2149/2150 ; 0 rouge(s) connu(s)
+
+
+=== preflight ai_sacred_light 16:10:31
+
+check ai_sacred_light : frames WARN line 28: 'frames 45' waits for the game by frames (> 30 ; hidden window ~150 
+frames/s: frames 600 = 4 s) : use 'wait <s>' or 'waitlog <text>'
+engine smoke tests: 20 'Condition failed' at start (UnifiedErrorTests.cpp under -culture=fr, English messages 
+compared; not the scenario, not counted)
+check ai_sacred_light : PASS (31 s)
+OK    no warning or error in the log
+WARN  no 'HUD overlap:' line: the scenario does not call hol.HUD.Report at the moment of the screenshots (a panel 
+hiding another is not checked)
+WARN  no 'Sanity:' audit line: the scenario does not call hol.Test.Sanity (neutral colours, spinning, shaking not 
+checked)
+preflight ai_sacred_light : PASS (list the trial only once every PNG above has been opened and seen)
+
+
+=== lignes banner du journal le plus recent
+fin 16:11:11
