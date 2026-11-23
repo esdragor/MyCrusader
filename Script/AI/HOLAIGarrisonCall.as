@@ -14,7 +14,7 @@ namespace HOLAIGarrisonCall
 {
 	// The plan read from the summary: the slot's finished buildings with places are the towers, its units with a read garrison kind the
 	// candidates. TowerIndex of a call is an index into Summary.Buildings. SinceFirstHits / SinceLastHits are aligned to Summary.Buildings
-	// (empty or short = -1 = never hit = calm): the summary has no reader of the hits on a building yet, so the brain gives none and nothing is made up.
+	// (empty or short = -1 = not given: the tower's own Building.SecondsSinceHit is read instead, -1 there = never hit = calm).
 	TArray<FHOLAIGarrisonCall> PlanFromSummary(int PlayerIndex, int Rule, EHOLAIDifficulty Level, const FHOLAISummary& Summary,
 		const TArray<float>& SinceFirstHits, const TArray<float>& SinceLastHits, float Radius)
 	{
@@ -33,6 +33,15 @@ namespace HOLAIGarrisonCall
 			Tower.Occupants = Building.Occupants;
 			Tower.SinceFirstHit = SinceFirstHits.IsValidIndex(Index) ? SinceFirstHits[Index] : -1.f;
 			Tower.SinceLastHit = SinceLastHits.IsValidIndex(Index) ? SinceLastHits[Index] : -1.f;
+				// S4-b read: no hit time given, the summary's own reader (AHOLBuilding last hit) says when the tower was last hit. The AI has
+				// no reader of the FIRST hit yet, so the reaction delay of the level (HOLAIGarrison::ReactSeconds) is not measurable and
+				// counts as elapsed: a tower hit within hol.AI.GarrisonAttackedSeconds calls at once.
+				if (Tower.SinceLastHit < 0.f && Building.SecondsSinceHit >= 0.f)
+				{
+					Tower.SinceLastHit = Building.SecondsSinceHit;
+					if (Tower.SinceFirstHit < 0.f)
+						Tower.SinceFirstHit = Math::Max(Building.SecondsSinceHit, HOLAIGarrison::ReactSeconds(Level));
+				}
 			Towers.Add(Tower);
 			BuildingIndices.Add(Index);
 		}
