@@ -397,3 +397,10 @@ bool UHOLHeroLibrary::PlantHeroBanner(const UObject* WorldContextObject, const i
 	UHOLHeroSubsystem* Heroes = GetAuthorityHeroes(GetWorldOf(WorldContextObject));
 	return Heroes && Heroes->PlantBanner(Slot, Location);
 }
+
+bool UHOLHeroLibrary::GetHeroLocation(const UObject* WorldContextObject, const int32 Slot, FVector& OutLocation)
+{
+	// STUB (GLORFINDEL-1123pd, red first): no hero is ever found.
+	OutLocation = FVector::ZeroVector;
+	return false;
+}

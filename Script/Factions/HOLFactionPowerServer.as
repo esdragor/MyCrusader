@@ -22,6 +22,18 @@ namespace HOLFactionPowerServer
 		return FVector(Sum.X / double(Own.Num()), Sum.Y / double(Own.Num()), 0.0);
 	}
 
+	// GLORFINDEL-1123pd: the cast origin with the hero as the LAST resort (banner, else the centre of Own, else the hero when bHeroKnown, else the banner as is).
+	FVector CastOriginOf(const FIntPoint& Banner, const TArray<FVector>& Own, bool bHeroKnown, const FVector& HeroPlace)
+	{
+		return CastOriginOf(Banner, Own); // STUB: the hero is ignored
+	}
+
+	// GLORFINDEL-1123pd: where the slot's hero stands (the ONE reader, for the player's cast origin and the AI's banner place); false without a living hero.
+	bool HeroPlaceOf(int Slot, FVector&out OutPlace)
+	{
+		return HOLHero::GetHeroLocation(Slot, OutPlace);
+	}
+
 	// The player's cast (after the RPC's sender check) and the AI's share the ONE origin: CastOriginOf(planted banner, else the centre of the slot's living units).
 	bool TryCastPower(int Slot, int PowerIndex, FVector Point)
 	{

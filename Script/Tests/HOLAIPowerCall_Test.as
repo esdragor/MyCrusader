@@ -170,3 +170,24 @@ void Test_AIPlantsABannerBeforeCasting(FUnitTest& T)
 	TArray<FVector> None;
 	T.AssertFalse(HOLAIPowerCall::PlanBanner(None, Hero, true, false).bPlant, "no wounded unit: no banner");
 }
+
+// GLORFINDEL-1123pd (recette 1123pa, defect b): the banner was refused ("banner at (1599, -2) refused") because ThinkPowers read the hero's place as (0, 0).
+// PlanBannerOf is the pure seam fed with the hero's real place (the script test world has no living hero yet, so the C++ reader is run by the main session).
+void Test_AIPlantsBannerFromTheHeroRealPlace(FUnitTest& T)
+{
+	TArray<FVector> Wounded;
+	Wounded.Add(FVector(14940.0, -40.0, 0.0));
+	Wounded.Add(FVector(14960.0, -60.0, 0.0));
+	const FVector Hero = FVector(14900.0, 0.0, 0.0);
+	const FHOLAIBannerOrder Order = HOLAIPowerCall::PlanBannerOf(Wounded, true, Hero, true, false);
+	T.AssertTrue(Order.bPlant, "a hero found, able to plant, wounded units: the AI plants");
+	const double Reach = Math::Sqrt(Math::Square(Order.Point.X - Hero.X) + Math::Square(Order.Point.Y - Hero.Y));
+	T.AssertTrue(HOLHeroAbilityRead::CanPlantBanner(float(Reach)), "the banner is within the hero's REAL reach (a (0, 0) hero gave (1599, -2), 13000 cm away)");
+	T.AssertTrue(Math::Abs(Order.Point.X - 14950.0) < 1.0 && Math::Abs(Order.Point.Y + 50.0) < 1.0, "the banner goes on the centre of the wounded units");
+	TArray<FVector> Far;
+	Far.Add(FVector(17900.0, 0.0, 0.0));
+	const FHOLAIBannerOrder Edge = HOLAIPowerCall::PlanBannerOf(Far, true, Hero, true, false);
+	T.AssertTrue(Edge.bPlant && Edge.Point.X > Hero.X + 1000.0 && Edge.Point.X < 16000.0, "a far group: the banner is pushed from the hero's real place toward it, at the edge of his reach");
+	T.AssertFalse(HOLAIPowerCall::PlanBannerOf(Wounded, false, Hero, true, false).bPlant, "no hero found: no banner");
+	T.AssertFalse(HOLAIPowerCall::PlanBannerOf(Wounded, true, Hero, false, false).bPlant, "his ability not ready: no banner");
+}
