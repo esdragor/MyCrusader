@@ -149,4 +149,46 @@ bool FHOLBindingsSelectionKindsTest::RunTest(const FString& Parameters)
 	World->DestroyWorld(false);
 	return true;
 }
+
+// ELROND-1123g G1 / G3: the AI summary reports the cavalry (kind 2), the siege (3) and the hero (4); a LightCavalry born in a world carries bCavalry from its type row.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLBindingsGarrisonKindCavalryTest, "HeroesOfLiberty.AI.Summary.GarrisonKindCavalry", UE::HeroesOfLiberty::Tests::BindingsLot::Flags)
+bool FHOLBindingsGarrisonKindCavalryTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::BindingsLot;
+	FHOLUnitView Horse = MakeUnit(1, FName(TEXT("LightCavalry")), false, false, false);
+	Horse.bCavalry = true;
+	const TArray<FHOLUnitView> Units = {
+		Horse, MakeUnit(2, FName(TEXT("Ram")), true, false, false), MakeUnit(3, FName(TEXT("Hero")), false, false, true) };
+	const FHOLAISummary Slot0 = HOLAISummary::Make(0, Units, {}, {}, {});
+	TMap<int32, int32> KindById;
+	for (const FHOLAIUnit& Unit : Slot0.Army)
+	{
+		KindById.Add(Unit.Id, Unit.GarrisonKind);
+	}
+	// HOLGarrison::EKind: 2 cavalry, 3 siege. The hero is left out of the army (IA2.1), so he is not checked here.
+	TestEqual(TEXT("a cavalryman: kind 2"), KindById.FindRef(1), 2);
+	TestEqual(TEXT("a siege unit: kind 3"), KindById.FindRef(2), 3);
+
+	UWorld* World = UWorld::CreateWorld(EWorldType::Game, /*bInformEngineOfWorld*/ false);
+	FWorldContext& WorldContext = GEngine->CreateNewWorldContext(EWorldType::Game);
+	WorldContext.SetCurrentWorld(World);
+	World->InitializeActorsForPlay(FURL());
+	World->SetGameState(World->SpawnActor<AHOLGameState>());
+	UHOLUnitSubsystem* Subsystem = World->GetSubsystem<UHOLUnitSubsystem>();
+	if (TestNotNull(TEXT("units"), Subsystem))
+	{
+		const uint32 Cavalry = Place(Subsystem, FName(TEXT("LightCavalry")), FVector::ZeroVector);
+		const uint32 Spearman = Place(Subsystem, FName(TEXT("Spearman")), FVector(300., 0., 0.));
+		FHOLUnitView CavalryView;
+		FHOLUnitView SpearmanView;
+		if (TestTrue(TEXT("both born and found"), Cavalry != 0 && Spearman != 0 && HOLUnitView::Find(*World, Cavalry, CavalryView) && HOLUnitView::Find(*World, Spearman, SpearmanView)))
+		{
+			TestTrue(TEXT("a LightCavalry reads bCavalry from its type"), CavalryView.bCavalry);
+			TestFalse(TEXT("a Spearman does not"), SpearmanView.bCavalry);
+		}
+	}
+	GEngine->DestroyWorldContext(World);
+	World->DestroyWorld(false);
+	return true;
+}
 #endif // WITH_DEV_AUTOMATION_TESTS
