@@ -1,6 +1,6 @@
 // The morale rewards of a duel's end, as a pure rule (DuelInProgress.md D7, GDD 10.5, D16, D35): from the final state of a
 // duel, the list of morale effects to pose. Nothing is applied here: the match applies the orders to the troops (the bridge
-// to the simulation's morale is MoraleInProgress.md M7). Not here either: the XP bonus (no figure in the GDD) and the
+// to the simulation's morale is MoraleInProgress.md M7). The XP of the duel (150, D859 n. 9) is XPWinnersOfEnded / ApplyXP below. Not here either: the
 // faction's effect (Honour for the Dawn).
 
 // One morale effect to pose: on the troops around the hero of the slot, for DurationMs, within RadiusCm.
@@ -163,6 +163,32 @@ namespace HOLDuelRewards
 		return Orders.Num();
 	}
 
+	// The XP of the duels won (D859 n. 9): the winner's slot of every duel that ended in one step and whose effects carry the XP bonus,
+	// in the order of the list. The 150 is C++ (HOLHeroXP::DuelXP, UHOLHeroSubsystem::AwardDuelXP).
+	TArray<int> XPWinnersOfEnded(const FHOLDuelSettings& S, const TArray<FHOLDuelEnded>& Ended)
+	{
+		TArray<int> Result;
+		for (int Index = 0; Index < Ended.Num(); Index++)
+		{
+			FHOLDuelEffects E = HOLDuel::Effects(S, Ended[Index].Duel);
+			if (E.bXpBonus && E.TriumphSlot >= 0)
+				Result.Add(E.TriumphSlot);
+		}
+		return Result;
+	}
+
+	// Gives each winner his duel XP (authority). Returns how many were given.
+	int ApplyXP(const TArray<int>& Slots)
+	{
+		UHOLHeroSubsystem Heroes = UHOLHeroSubsystem::Get();
+		if (Heroes == nullptr)
+			return 0;
+		for (int Index = 0; Index < Slots.Num(); Index++)
+		{
+			Heroes.AwardDuelXP(Slots[Index]);
+		}
+		return Slots.Num();
+	}
 	// The orders of every duel that ended in one step (what HOLDuel::Tick hands back), in the order of the list: the ledger keeps
 	// them in PendingMorale until the bridge to the simulation's morale applies them (MoraleInProgress.md M7).
 	TArray<FHOLDuelMoraleOrder> OrdersOfEnded(const FHOLDuelSettings& S, const TArray<FHOLDuelEnded>& Ended)

@@ -228,6 +228,8 @@ class UHOLDuelLedger : UHOLDuelSubsystem
 		TArray<int> Current;
 		SlotGauges(HasGauge, Current);
 		ApplyHonorOrders(HOLDuelRewards::HonorOfEnded(Settings, Ended, HasGauge, Current));
+		// D859 n. 9: 150 XP to the winner of each duel that ended.
+		HOLDuelRewards::ApplyXP(HOLDuelRewards::XPWinnersOfEnded(Settings, Ended));
 		for (int Index = 0; Index < Ended.Num(); Index++)
 		{
 			Log("Duel ended: slots " + Ended[Index].Duel.Challenger + " and " + Ended[Index].Duel.Target + ", end " + int(Ended[Index].Duel.End) + ", winner " + Ended[Index].Duel.Winner);
