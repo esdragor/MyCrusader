@@ -191,6 +191,28 @@ bool FHOLGridCellStatusFitTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("a status broken stays a single word when it has no space"), UHOLGridCell::BreakStatusLines(TEXT("Bientot")), FString(TEXT("Bientot")));
 	TestEqual(TEXT("a status is broken at the space nearest its middle"), UHOLGridCell::BreakStatusLines(TEXT("Coming soon")), FString(TEXT("Coming\nsoon")));
 
+	// GALADRIEL-1123j (D889, recette 1123i): the break follows the REAL width of the cell, not a constant. The cell is laid out at 51 px (1280x720) then
+	// at 76 px (1920x1080): "Coming soon", measured by the cell on its own font, is wider than both and takes TWO lines each time; a one-word status
+	// and a text without a space keep one line; a cell wide enough for the whole text keeps one line (the break is undone when the cell widens).
+	const float NarrowWidths[] = { 51.f, 76.f };
+	for (const float LaidOutWidth : NarrowWidths)
+	{
+		Cell->SetCommand(Name, EHOLGridCellState::Greyed);
+		Cell->SetStatus(FText::FromString(TEXT("Coming soon")));
+		Cell->FitStatusToWidth(LaidOutWidth);
+		TestEqual(*FString::Printf(TEXT("'Coming soon' in a %.0f px cell takes two lines"), LaidOutWidth), Cell->GetStatusLineCount(), 2);
+		Cell->FitStatusToWidth(1000.f);
+		TestEqual(*FString::Printf(TEXT("'Coming soon' in a 1000 px cell takes one line (after %.0f px)"), LaidOutWidth), Cell->GetStatusLineCount(), 1);
+		Cell->FitStatusToWidth(LaidOutWidth);
+		TestEqual(*FString::Printf(TEXT("'Coming soon' back in a %.0f px cell takes two lines"), LaidOutWidth), Cell->GetStatusLineCount(), 2);
+		Cell->SetStatus(FText::FromString(TEXT("近日公開")));
+		Cell->FitStatusToWidth(LaidOutWidth);
+		TestEqual(*FString::Printf(TEXT("a Japanese status without a space keeps one line in %.0f px"), LaidOutWidth), Cell->GetStatusLineCount(), 1);
+		Cell->SetStatus(FText::FromString(TEXT("Bientot")));
+		Cell->FitStatusToWidth(LaidOutWidth);
+		TestEqual(*FString::Printf(TEXT("a one-word status keeps one line in %.0f px"), LaidOutWidth), Cell->GetStatusLineCount(), 1);
+	}
+
 	// A cell too narrow for the bound keeps the bound (the text is cut by the clip, never made unreadable).
 	TestEqual(TEXT("the reduction is bounded"), UHOLGridCell::ComputeStatusFit(100.f, 5.f).Scale, UHOLGridCell::MinStatusScale);
 

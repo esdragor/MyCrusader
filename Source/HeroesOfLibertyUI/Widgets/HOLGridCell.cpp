@@ -400,18 +400,46 @@ void UHOLGridCell::SetStatus(const FText& InStatus)
 		StatusText->SetText(InStatus);
 		StatusText->SetVisibility(bHasStatus ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
 		StatusText->SetRenderOpacity(State == EHOLGridCellState::Ready ? 1.f : GreyedOpacity);
-		// D889: a status wider than the cell on one line ("Coming soon") is broken in two lines instead of being reduced past the readable bound.
-		if (bHasStatus && MeasureStatusWidth() > DefaultCellSize - 2.f * StatusSidePad)
+	}
+	// D889: the break into two lines is decided on the width of the cell (FitStatusToWidth), here on the last known one; NativeTick keeps it
+	// on the real width once the cell is laid out.
+	FitStatusToWidth(FittedCellWidth);
+	RefreshNameZone();
+}
+
+void UHOLGridCell::FitStatusToWidth(const float CellWidth)
+{
+	FittedCellWidth = CellWidth;
+	const bool bHasStatus = !ShownStatus.IsEmpty();
+	int32 Lines = bHasStatus ? 1 : 0;
+	FString Shown = ShownStatus;
+	// D889: a status wider than the cell on one line ("Coming soon") is broken in two lines instead of being reduced past the readable bound;
+	// measured on the font the text has NOW, against the real width of the cell (not a constant).
+	if (bHasStatus && MeasureTextWidth(ShownStatus) > CellWidth - 2.f * StatusSidePad)
+	{
+		const FString Broken = BreakStatusLines(ShownStatus);
+		if (Broken != ShownStatus)
 		{
-			const FString Broken = BreakStatusLines(ShownStatus);
-			if (Broken != ShownStatus)
-			{
-				StatusText->SetText(FText::FromString(Broken));
-				StatusLineCount = 2;
-			}
+			Shown = Broken;
+			Lines = 2;
 		}
 	}
+	if (StatusText && bHasStatus && StatusText->GetText().ToString() != Shown)
+	{
+		StatusText->SetText(FText::FromString(Shown));
+	}
+	if (Lines != StatusLineCount)
+	{
+		StatusLineCount = Lines;
+		RefreshNameZone();
+	}
+}
 
+void UHOLGridCell::RefreshNameZone()
+{
+	using namespace UE::HeroesOfLiberty::UI::GridCell;
+
+	const bool bHasStatus = !ShownStatus.IsEmpty();
 	// The height of a name line: measured on the name's font when a renderer exists, a constant otherwise.
 	float LineHeight = FallbackLineHeight;
 	if (bHasStatus && UnitName && FSlateApplication::IsInitialized() && FSlateApplication::Get().GetRenderer())
@@ -452,8 +480,14 @@ float UHOLGridCell::MeasureStatusWidth() const
 	{
 		return 0.f;
 	}
-	const FString Text = StatusText->GetText().ToString();
-	if (Text.IsEmpty())
+	return MeasureTextWidth(StatusText->GetText().ToString());
+}
+
+float UHOLGridCell::MeasureTextWidth(const FString& Text) const
+{
+	using namespace UE::HeroesOfLiberty::UI::GridCell;
+
+	if (!StatusText || Text.IsEmpty())
 	{
 		return 0.f;
 	}
@@ -506,6 +540,11 @@ void UHOLGridCell::NativeTick(const FGeometry& MyGeometry, const float InDeltaTi
 		return;
 	}
 	const FVector2D LocalSize = MyGeometry.GetLocalSize();
+	// D889: the break into two lines follows the real width of the cell (the cell is laid out only now), before the reduction.
+	if (LocalSize.X > 1.0)
+	{
+		FitStatusToWidth(static_cast<float>(LocalSize.X));
+	}
 	const float Available = static_cast<float>(LocalSize.X) - 2.f * StatusSidePad;
 	const float Scale = ComputeStatusFit(MeasureStatusWidth(), Available).Scale;
 	if (!FMath::IsNearlyEqual(Scale, AppliedStatusScale))

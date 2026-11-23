@@ -121,6 +121,15 @@ public:
 	static constexpr float MinStatusScale = 0.6f;
 	/** The width of the status line's text at its natural size, in Slate units (0: no status); estimated when there is no renderer. */
 	float MeasureStatusWidth() const;
+	/** The width of Text (its widest line) on the status line's font at its natural size (0: empty); estimated when there is no renderer. */
+	float MeasureTextWidth(const FString& Text) const;
+	/**
+	 * D889: decides the status' line count on the REAL width of the cell (not a constant): a status wider than CellWidth - 2 * StatusSidePad on one
+	 * line is broken in two (BreakStatusLines), else it keeps one. Called by SetStatus (last known width) and by NativeTick (laid out width).
+	 */
+	void FitStatusToWidth(float CellWidth);
+	/** The name's zone and the room taken at the bottom for the status' lines (one or two), from the status shown and its line count. */
+	void RefreshNameZone();
 	/**
 	 * The reduction of the status line so that its text fits in AvailableWidth (a cell at 1280x720 is about 51 px wide, "Coming soon" is wider):
 	 * Scale is 1 when it fits, else AvailableWidth / TextWidth bounded below by MinStatusScale; Width is the text's width once reduced.
@@ -204,6 +213,8 @@ private:
 	TObjectPtr<USizeBox> StatusClip;
 
 	float AppliedStatusScale = 1.f;
+	/** The cell's width the status was last fitted to (D889): the default size until the cell is laid out. */
+	float FittedCellWidth = DefaultCellSize;
 
 	/** The status as given (the text the checks read; StatusText holds it broken in two lines when it is wider than the cell, D889) and its line count. */
 	FString ShownStatus;
