@@ -1,1 +1,4 @@
-tech_soon_barracks | La grille de la Caserne : la case W porte Hallebardes trempees et Bientot, grisee
+tech_soon_barracks | La grille de la Caserne : la case W porte Hallebardes trempees (nom borne a 3 lignes) et Bientot sur sa propre ligne, en bas de la case, grisee, Bientot entier visible (GALADRIEL-1122g)
+tech_soon_barracks_en | La meme case en EN a 76 px : Coming soon entier sur sa ligne (reduit si besoin), dans la case (GALADRIEL-1122h)
+tech_soon_barracks_ja | La meme case en JA : le statut entier dans la case
+tech_soon_barracks_720 | 1280x720, case de ~51 px, EN : Coming soon reduit, entier, sans deborder sur les cases voisines (le defaut de la recette 1122d)
