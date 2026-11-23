@@ -185,7 +185,7 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 		const FIntPoint Banner = FIntPoint(int(CastOrigin.X), int(CastOrigin.Y));
 		const int Level = int(HOLAILives::Played(Summary.Level, Data.GameSeconds, HOLAIArmy::DefaultData().Lives));
 		const FHOLAIPowerOrder Order = HOLAIPowerCall::Plan(Rows, CooldownLeft, State.GetFactionResource(PlayerIndex), Summary.Tier, Level, HOLAIPowerCall::DefaultData(),
-			Wounded, FVector(double(Banner.X), double(Banner.Y), 0.0), HOLFactionPowerCast::SealRangeCm());
+			Wounded, FVector(double(Banner.X), double(Banner.Y), 0.0), int64(HOLDawnPowers::SacredLightRangeCm()));
 		if (CVar_AILogPowers.GetInt() != 0)
 		{
 			// GLORFINDEL-1123h: what decides the cast: banner, distance banner -> nearest wounded, range, tier, level, cool-down left of row 0.
@@ -201,7 +201,7 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 				}
 			}
 			const int Cooling = CooldownLeft.Num() > 0 ? CooldownLeft[0] : -1;
-			Log(n"LogHOLMatch", f"AI slot {PlayerIndex} step {Step}: powers think, Honor {State.GetFactionResource(PlayerIndex)}, wounded {Wounded.Num()} of {Summary.Army.Num()}, decision cast={Order.bCast} row {Order.PowerIndex}, banner ({Banner.X}, {Banner.Y}), nearest wounded {NearestCm} cm, range {HOLFactionPowerCast::SealRangeCm()} cm, tier {Summary.Tier}, level {Level}, cooldown left {Cooling} ms");
+			Log(n"LogHOLMatch", f"AI slot {PlayerIndex} step {Step}: powers think, Honor {State.GetFactionResource(PlayerIndex)}, wounded {Wounded.Num()} of {Summary.Army.Num()}, decision cast={Order.bCast} row {Order.PowerIndex}, banner ({Banner.X}, {Banner.Y}), nearest wounded {NearestCm} cm, range {HOLDawnPowers::SacredLightRangeCm()} cm, tier {Summary.Tier}, level {Level}, cooldown left {Cooling} ms");
 		}
 		if (Order.bCast && HOLFactionPowerServer::TryCastPowerFrom(PlayerIndex, Order.PowerIndex, Order.Point, Banner))
 		{

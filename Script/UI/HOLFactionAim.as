@@ -20,8 +20,8 @@ struct FHOLFactionAimStep
 
 namespace HOLFactionAim
 {
-	// The reach drawn around the hero while a power is aimed (cm); the server decides the real range again (HOLFactionPowerCast::Decide).
-	const double AimRangeCm = 800.0;
+	// The reach drawn around the hero while a power is aimed (cm); the server decides the real range again (HOLFactionPowerCast::DecideAimed; D890, 1200 cm = HOLDawnPowers::SacredLightRangeCm).
+	const double AimRangeCm = 1200.0;
 
 	// A click on the box BoxIndex while the controller aims CurrentAim (-1 = none).
 	FHOLFactionAimStep OnBox(FHOLFactionSlotView View, int CurrentAim, int BoxIndex)

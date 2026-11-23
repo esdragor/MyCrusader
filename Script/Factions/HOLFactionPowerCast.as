@@ -65,6 +65,14 @@ namespace HOLFactionPowerCast
 	FHOLFactionPowerDecision Decide(int Faction, int PowerIndex, const FHOLFactionResource& Gauge, int CooldownEndMs, int NowMs,
 		int OriginXCm, int OriginYCm, int PointXCm, int PointYCm)
 	{
+		return DecideInRange(Faction, PowerIndex, Gauge, CooldownEndMs, NowMs, OriginXCm, OriginYCm, PointXCm, PointYCm, int64(HOLDawnPowers::SacredLightRangeCm()));
+	}
+
+	// GLORFINDEL-1123pf: the ONE chain (faction, row, cool-down, range, gauge) with the range as a parameter: Decide (the AI's cast, D891) and DecideAimed (the player's aimed cast, D897)
+	// both read the Sacred Light's own range, HOLDawnPowers::SacredLightRangeCm (D890, the ONE source).
+	FHOLFactionPowerDecision DecideInRange(int Faction, int PowerIndex, const FHOLFactionResource& Gauge, int CooldownEndMs, int NowMs,
+		int OriginXCm, int OriginYCm, int PointXCm, int PointYCm, int64 RangeCm)
+	{
 		FHOLFactionPowerDecision Result;
 		Result.NewGaugeValue = Gauge.Value;
 		Result.NewCooldownEndMs = CooldownEndMs;
@@ -86,7 +94,7 @@ namespace HOLFactionPowerCast
 		// accepted from anywhere), then capped under the int range so the ceiling cannot overflow either.
 		const double ExactCm = Math::Sqrt(double(DeltaX) * double(DeltaX) + double(DeltaY) * double(DeltaY));
 		const int64 DistanceCm = int64(Math::CeilToInt(Math::Min(ExactCm, 2000000000.0)));
-		const int Reason = HOLGroundAbility::TargetRefusal(true, DistanceCm, int64(HOLDawnPowers::SacredLightRangeCm()), Math::Max(CooldownEndMs - NowMs, 0));
+		const int Reason = HOLGroundAbility::TargetRefusal(true, DistanceCm, RangeCm, Math::Max(CooldownEndMs - NowMs, 0));
 		if (Reason == 2)
 		{
 			Result.Refusal = RefusalCooldown();
@@ -109,6 +117,39 @@ namespace HOLFactionPowerCast
 		Result.bAccepted = true;
 		Result.NewGaugeValue = Spent.Value;
 		Result.NewCooldownEndMs = HOLGroundAbility::CooldownEndMs(NowMs, Rows[PowerIndex].CooldownMs);
+		return Result;
+	}
+}
+
+// GLORFINDEL-1123pf (D897): the player's Sacred Light is put down AT THE POINT AIMED (the ground click), the cast origin only measures the range (D890). ONE pure
+// function {accepted, pose point}: the choice "out of range = refusal" is Retours/Q-lumiere-sacree-visee.md (default coded here, easy to change in DecideAimed).
+struct FHOLAimedCastDecision
+{
+	bool bAccepted = false;
+	int Refusal = 0;
+	// Where the zone is put down (centimetres); meaningful only when bAccepted.
+	int PoseXCm = 0;
+	int PoseYCm = 0;
+	int NewGaugeValue = 0;
+	int NewCooldownEndMs = 0;
+}
+
+namespace HOLFactionPowerCast
+{
+	// D897: the player's Sacred Light. Pose = the AIMED point (the ground click), the origin (banner, else army centre, else hero) only measures the range, the Sacred Light's
+	// own 1200 cm (D890). Out of range = REFUSAL (default of Retours/Q-lumiere-sacree-visee.md; to clamp the point onto the range circle instead, change ONLY this function).
+	// The caller passes the SERVER's origin and the client's aimed point: the range is measured here, never believed from the client.
+	FHOLAimedCastDecision DecideAimed(int Faction, int PowerIndex, const FHOLFactionResource& Gauge, int CooldownEndMs, int NowMs,
+		int OriginXCm, int OriginYCm, int AimXCm, int AimYCm)
+	{
+		FHOLAimedCastDecision Result;
+		const FHOLFactionPowerDecision Base = DecideInRange(Faction, PowerIndex, Gauge, CooldownEndMs, NowMs, OriginXCm, OriginYCm, AimXCm, AimYCm, HOLDawnPowers::SacredLightRangeCm());
+		Result.bAccepted = Base.bAccepted;
+		Result.Refusal = Base.Refusal;
+		Result.NewGaugeValue = Base.NewGaugeValue;
+		Result.NewCooldownEndMs = Base.NewCooldownEndMs;
+		Result.PoseXCm = AimXCm;
+		Result.PoseYCm = AimYCm;
 		return Result;
 	}
 }

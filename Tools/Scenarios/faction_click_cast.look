@@ -1,4 +1,4 @@
 # <nom de capture> | ce que l'utilisateur doit voir
 faction_click_cast_before | panneau de faction : jauge Honneur 100 / 100, case SacredLight active
 faction_click_cast_aim | apres le clic sur la case : curseur de visee armee
-faction_click_cast_after | apres le clic sol : cercle dore (Lumiere sacree) au sol, Honneur 75 / 100, recharge visible sur la case
+faction_click_cast_after | apres le clic sol : cercle dore (Lumiere sacree) centre sur le POINT CLIQUE (a ~5 m des soldats, pas sur eux), Honneur 75 / 100, recharge visible sur la case
