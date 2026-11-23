@@ -281,7 +281,14 @@ namespace HOLMorale
 		return Removed;
 	}
 
-	void GrantImmunity(FHOLMoraleState& State, int32 DurationMs)
+	int32 ClearMalusAndProtect(FHOLMoraleState& State)
+	{
+		const int32 Removed = RemoveMalus(State);
+		GrantImmunity(State, SacredLightImmunityMs);
+		return Removed;
+	}
+
+void GrantImmunity(FHOLMoraleState& State, int32 DurationMs)
 	{
 		State.ImmunityMs = FMath::Max(State.ImmunityMs, DurationMs);
 	}

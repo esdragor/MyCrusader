@@ -1,0 +1,13 @@
+﻿=== build socle-ai 2f8a019 (ResetForWorld de l etat statique du moral ; NOT COMPILED) 16:57:26
+
+build : PASS (HeroesOfLibertyEditor Development, HeroesOfLiberty-Galadriel, 54 s)
+
+
+build exit=0 16:58:24
+
+  check_placeholders : PASS (44 provisional types, 46 map entries, 165 lines)
+tests 2151/2151 : PASS
+quick_check : PASS in 191 s (game launch done at 0 s)
+
+
+fin 17:01:40

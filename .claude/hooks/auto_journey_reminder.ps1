@@ -21,6 +21,7 @@ RAPPEL AUTO_JOURNEY (hook du projet, lecon L19-1 du 2026-11-20) :
 2. La session principale est le CHEF D'ORCHESTRE : elle lance les agents, lit leurs rapports de 10 lignes, tient le tableau des agents, lance build.ps1 / quick_check en UNE commande d'arriere-plan et avance main.
 3. Tout le reste va a un SOUS-AGENT : correction d'une erreur de compilation vue a l'integration, diagnostic d'un rouge, retouche d'un outil ou d'un scenario, pre-vols et lecture des PNG, fiches E et Q, en-tete des Retours, enregistrement des reponses.
 4. Chemins ABSOLUS pour toute ecriture [IO.File] (le repertoire du processus est la copie principale).
+5. BUDGET (regle imperative du 2026-11-23) : session principale <= 300k tokens ; enonces de 8 lignes ; tableau et points detailles delegues ; un message d'une ligne par evenement.
 "@
 
 $out = @{ hookSpecificOutput = @{ hookEventName = 'UserPromptSubmit'; additionalContext = $text } }

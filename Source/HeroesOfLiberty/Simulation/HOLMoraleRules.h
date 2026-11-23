@@ -132,4 +132,8 @@ namespace HOLMorale
 
 	// The immunity to the malus for this long; a shorter grant never cuts a longer one.
 	void GrantImmunity(FHOLMoraleState& State, int32 DurationMs);
+
+	// Lumiere sacree's rule (D404), the ONE place that says what clearing means: takes off every malus (RemoveMalus; the bonus stay) and grants the
+	// immunity to the malus for SacredLightImmunityMs (even when the unit carried none: the protection is the point). Returns the count of malus removed.
+	int32 ClearMalusAndProtect(FHOLMoraleState& State);
 }

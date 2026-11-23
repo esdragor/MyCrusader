@@ -1,0 +1,44 @@
+# Bouton permanent de specialisation a cote de la jauge de faction (SP3, D823 = B ; HOLSpecializationSlot.as, SpecButton / SpecOption0 / SpecBar de HOLGameScreenScript.as). Aube (slot 0, humain, panneau de faction) contre une IA gelee (slot 1). Palier 1 force (hol.Cheat.Tier 1), Forum complet d'office (siege standard). Vrais clics souris : SpecButton ouvre le panneau, SpecOption0 (Voie A du palier 1) lance le deblocage ; attente reelle des 30 s pour la fin. Le bouton porte le libelle fixe « Specialisation » ; une fois la voie appliquee il disparait (le code ne montre pas la voie choisie : voir le rapport). 3 minutes au plus.
+waitlog Starting hero of slot 0 spawned at
+hol.AI.ThinkSteps 100000
+hol.Sanity.Watch 1
+hol.Cheat.Tier 1
+frames 10
+hol.Camera.FocusSlot 0
+frames 8
+hol.Cheat.Honor 100
+waitlog RpcCheat: honor set to 100 for sender slot 0
+wait 2
+frames 8
+hol.HUD.Report
+waitlog faction slot: slot gauge 100 / 100 powers SacredLight cost 25
+hol.Spec.Report
+waitlog Specialization state slot 0 local: pending tier 0 option
+waitlog chosen -1 -1 -1
+frames 8
+notereset 1/3 : palier 1 atteint, rien de choisi : a cote de la jauge de faction (bas gauche), sous la jauge, le bouton « Specialisation » est allume ; aucun panneau ouvert.
+capture specialization_slot_before
+# Geste reel 1 : vrai clic souris sur le bouton, il ouvre le petit panneau des voies.
+hol.Mouse.Click SpecButton
+waitlog Mouse click SpecButton x1 at
+frames 8
+# Geste reel 2 : vrai clic souris sur la premiere voie (SpecOption0 = Voie A du palier 1) : le serveur demarre le deblocage.
+hol.Mouse.Click SpecOption0
+waitlog Mouse click SpecOption0 x1 at
+waitlog SpecializationSlot: start 1 0
+waitlog Specialization: slot 0 starts tier 1 option 0, answer 0
+wait 2
+frames 8
+notereset 2/3 : apres le clic sur la voie A : le deblocage tourne ; sous le bouton une barre de progression bleue et le compte « N s » (N proche de 30), la ligne de la voie A porte « (annuler) ».
+capture specialization_slot_during
+# Fin par l'attente reelle : 30 s de temps de match (HOLSpecialization::DelayMs(1)).
+waitlog Specialization: slot 0 tier 1 option 0 applied
+wait 2
+frames 8
+hol.Spec.Report
+waitlog Specialization state slot 0 local: pending tier 0 option
+waitlog chosen 0 -1 -1
+frames 8
+notereset 3/3 : voie A du palier 1 appliquee (Spec.Report : chosen 0 -1 -1) ; palier 1 clos, le bouton, la barre et le panneau ne sont plus affiches, mais la voie choisie reste affichee sous la jauge : Voie A du palier 1.
+capture specialization_slot_after
+hol.Test.Sanity

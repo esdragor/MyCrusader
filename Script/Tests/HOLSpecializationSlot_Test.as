@@ -146,20 +146,73 @@ void Test_SpecializationSlotWidgetReadIsDarkUntilBoundAndLitWhenInjected(FUnitTe
 void Test_SpecializationSlotReadOfShowsTheVoieAndItsProgress(FUnitTest& T)
 {
 	FHOLSpecializationState Fresh = HOLSpecialization::NewStateFor(EHOLFaction::Templars);
-	FHOLSpecializationRead ToChoose = HOLSpecializationSlot::ReadOf(SpecializationSlotTest::ViewOf(Fresh), 1, EHOLFaction::Templars);
+	FHOLSpecializationRead ToChoose = HOLSpecializationSlot::ReadOf(SpecializationSlotTest::ViewOf(Fresh), 1, EHOLFaction::Templars, true);
 	FHOLSpecializationSlotView Choose = HOLSpecializationSlot::Make(ToChoose.View, ToChoose.PlayerTier, ToChoose.bForumComplete, ToChoose.OptionCount);
 	T.AssertTrue(Choose.bLit && !Choose.bRunning, "no specialization at faction tier 1: lit, to choose");
 	T.AssertEquals(3, Choose.OptionTexts.Num(), "the Templars' read carries their three voies");
 
 	HOLSpecialization::Start(Fresh, 1, 2, 1);
 	HOLSpecialization::Advance(Fresh, 7500, true);
-	FHOLSpecializationRead Running = HOLSpecializationSlot::ReadOf(SpecializationSlotTest::ViewOf(Fresh), 1, EHOLFaction::Templars);
+	FHOLSpecializationRead Running = HOLSpecializationSlot::ReadOf(SpecializationSlotTest::ViewOf(Fresh), 1, EHOLFaction::Templars, true);
 	FHOLSpecializationSlotView Voie = HOLSpecializationSlot::Make(Running.View, Running.PlayerTier, Running.bForumComplete, Running.OptionCount);
 	T.AssertTrue(Voie.bRunning && Voie.PendingOption == 2, "the read carries the voie that runs (Voie C)");
 	T.AssertEquals(22500, Voie.RemainingMs, "and its time left");
 
-	FHOLSpecializationRead Early = HOLSpecializationSlot::ReadOf(SpecializationSlotTest::ViewOf(Fresh), 0, EHOLFaction::Templars);
+	FHOLSpecializationRead Early = HOLSpecializationSlot::ReadOf(SpecializationSlotTest::ViewOf(Fresh), 0, EHOLFaction::Templars, true);
 	T.AssertEquals(0, Early.PlayerTier, "the faction tier is the one given");
-	FHOLSpecializationRead Dawn = HOLSpecializationSlot::ReadOf(SpecializationSlotTest::ViewOf(Fresh), 1, EHOLFaction::DawnOrder);
+	FHOLSpecializationRead Dawn = HOLSpecializationSlot::ReadOf(SpecializationSlotTest::ViewOf(Fresh), 1, EHOLFaction::DawnOrder, true);
 	T.AssertEquals(HOLSpecialization::OptionCountOf(EHOLFaction::DawnOrder), Dawn.OptionCount, "the option count follows the faction");
+}
+
+// ELROND-1123pf: the Forum flag is what the owner's seat HAS (HOLSpecializationRead::IsForumCompleteForSlot feeds it in ReadView), not a constant: a read
+// without a complete Forum keeps the button dark (OpenTier 0) where the same read with one lights it.
+void Test_SpecializationSlotReadOfCarriesTheForumFlag(FUnitTest& T)
+{
+	FHOLSpecializationState Fresh = HOLSpecialization::NewState(2);
+	FHOLSpecializationRead WithForum = HOLSpecializationSlot::ReadOf(SpecializationSlotTest::ViewOf(Fresh), 1, EHOLFaction::Templars, true);
+	FHOLSpecializationRead NoForum = HOLSpecializationSlot::ReadOf(SpecializationSlotTest::ViewOf(Fresh), 1, EHOLFaction::Templars, false);
+	T.AssertTrue(WithForum.bForumComplete, "the read says the Forum is complete when it is");
+	T.AssertFalse(NoForum.bForumComplete, "the read says it is not when it is not (a Nomad seat before its first Forum)");
+	FHOLSpecializationSlotView Lit = HOLSpecializationSlot::Resolve(nullptr, 0, WithForum, true);
+	FHOLSpecializationSlotView Dark = HOLSpecializationSlot::Resolve(nullptr, 0, NoForum, true);
+	T.AssertTrue(Lit.OpenTier > 0, "with the Forum the button opens a tier");
+	T.AssertEquals(0, Dark.OpenTier, "without the Forum no tier is open: the button stays dark");
+}
+
+// SP3 (ELROND-1123pi): the permanent button keeps showing the player's voie once the tier is applied (before: the button, the bar and the voies all
+// disappeared, the chosen voie was shown nowhere). The view is read through ReadOf from the view of a REAL state (rules Start / Advance).
+void Test_SpecializationSlotKeepsShowingTheChosenVoieOnceApplied(FUnitTest& T)
+{
+	FHOLSpecializationState State = HOLSpecialization::NewState(2);
+	HOLSpecialization::Start(State, 1, 0, 1);
+	int Applied = HOLSpecialization::Advance(State, 30000, true);
+	T.AssertEquals(1, Applied, "tier 1 applies with the voie 0");
+	FHOLSpecializationRead Read = HOLSpecializationSlot::ReadOf(SpecializationSlotTest::ViewOf(State), 1, EHOLFaction::DawnOrder, true);
+	FHOLSpecializationSlotView View = HOLSpecializationSlot::Make(Read.View, Read.PlayerTier, Read.bForumComplete, Read.OptionCount);
+	T.AssertTrue(View.bVisible, "tier 1 applied: the slot stays visible");
+	T.AssertTrue(!View.bLit, "no tier open: the button itself is not lit");
+	T.AssertEquals(1, View.ChosenTexts.Num(), "one voie taken");
+	T.AssertEquals("Voie A du palier 1", View.ChosenTexts[0], "the table's text of the voie taken");
+	T.AssertEquals("Voie A du palier 1", View.ChosenText, "the line shown");
+
+	HOLSpecialization::Start(State, 2, 1, 2);
+	HOLSpecialization::Advance(State, 60000, true);
+	FHOLSpecializationRead Next = HOLSpecializationSlot::ReadOf(SpecializationSlotTest::ViewOf(State), 2, EHOLFaction::DawnOrder, true);
+	FHOLSpecializationSlotView Two = HOLSpecializationSlot::Make(Next.View, Next.PlayerTier, Next.bForumComplete, Next.OptionCount);
+	T.AssertEquals(2, Two.ChosenTexts.Num(), "two voies taken, one per tier");
+	T.AssertEquals("Voie B du palier 2", Two.ChosenTexts[1], "tier 2 took the voie B");
+}
+
+void Test_SpecializationSlotSaysToChooseWhenNothingIsChosen(FUnitTest& T)
+{
+	FHOLSpecializationState State = HOLSpecialization::NewState(2);
+	FHOLSpecializationRead Read = HOLSpecializationSlot::ReadOf(SpecializationSlotTest::ViewOf(State), 1, EHOLFaction::DawnOrder, true);
+	FHOLSpecializationSlotView View = HOLSpecializationSlot::Make(Read.View, Read.PlayerTier, Read.bForumComplete, Read.OptionCount);
+	T.AssertTrue(View.bVisible && View.bLit, "tier 1 open, nothing chosen: visible and lit");
+	T.AssertEquals(0, View.ChosenTexts.Num(), "no voie to show");
+	T.AssertEquals("", View.ChosenText, "no chosen line");
+	T.AssertEquals("Specialisation", View.ButtonText, "the state to choose keeps the table's closest text (provisional, Q-sp3-libelles)");
+	FHOLSpecializationRead Early = HOLSpecializationSlot::ReadOf(SpecializationSlotTest::ViewOf(State), 0, EHOLFaction::DawnOrder, true);
+	FHOLSpecializationSlotView Dark = HOLSpecializationSlot::Make(Early.View, Early.PlayerTier, Early.bForumComplete, Early.OptionCount);
+	T.AssertTrue(!Dark.bVisible, "faction tier 0 and nothing chosen: nothing to show");
 }

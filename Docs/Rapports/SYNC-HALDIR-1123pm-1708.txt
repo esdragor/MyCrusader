@@ -1,0 +1,11 @@
+﻿=== Haldir : merge main 3b6d29c + scenario faction_aim_free + build 17:07:35
+ create mode 100644 Tools/Scenarios/specialization_slot.txt
+ Date: Mon Nov 23 16:58:24 2026 +0100
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+cherry-pick exit=0 HEAD=e94285c
+
+build : PASS (HeroesOfLibertyEditor Development, HeroesOfLiberty-Haldir, 95 s)
+
+
+build exit=0 17:09:16
+ecart de code avec main : 0 fichier(s)

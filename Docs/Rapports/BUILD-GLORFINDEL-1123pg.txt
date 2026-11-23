@@ -1,0 +1,32 @@
+﻿=== build ability-columns e809222 (fusion de main 86a2e15 ; D897 zone au point vise) 16:37:03
+
+build : BUILD LENT (17 actions, 489 s > 3 x median 144 s of 311 earlier normal PASS builds of 9-34 actions); load: vm 
+36.8 GB; actions 17 (machine saturee ? diagnostic de charge)
+build : PASS (HeroesOfLibertyEditor Development, HeroesOfLiberty-Glorfindel, 489 s)
+
+
+build exit=0 16:47:12
+
+  check_placeholders : PASS (49 provisional types, 51 map entries, 167 lines)
+tests 2177/2177 : PASS
+quick_check : PASS in 188 s (game launch done at 1 s)
+
+
+=== preflight faction_click_cast 16:50:28
+
+engine smoke tests: 20 'Condition failed' at start (UnifiedErrorTests.cpp under -culture=fr, English messages 
+compared; not the scenario, not counted)
+check faction_click_cast : PASS (28 s)
+OK    sanity audit passed
+preflight faction_click_cast : PASS (list the trial only once every PNG above has been opened and seen)
+
+
+=== preflight ai_sacred_light 16:51:02
+
+engine smoke tests: 20 'Condition failed' at start (UnifiedErrorTests.cpp under -culture=fr, English messages 
+compared; not the scenario, not counted)
+check ai_sacred_light : PASS (31 s)
+preflight ai_sacred_light : PASS (list the trial only once every PNG above has been opened and seen)
+
+
+fin 16:51:38

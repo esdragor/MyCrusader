@@ -1,0 +1,19 @@
+﻿integrate : branche integ-61 creee, 3 rouge(s) appliques
+integrate : build rouges SKIP (pas de C++ dans les rouges)
+integrate : tests des rouges ...
+integrate : verts depuis main, rouges retires (reset --hard 86a2e15)
+integrate : 4 vert(s) fusionne(s)
+integrate : regen inutile (aucun CSV de table change sans son .uasset dans les verts)
+integrate : build verts ...
+integrate : tests (apres les verts) ...
+integrate : parts net,build ...
+INTEGRATE integ-61 : PASS (1313 s, 2026-11-23 16:45)
+  branche+rouges : PASS (3 cherry-pick, 4 s)
+  build rouges : SKIP (pas de C++ dans les rouges)
+  tests rouges : FAIL attendu 2171/2175 tests (224 s)
+  remise a main : PASS (verts depuis main, rouges retires : reset --hard 86a2e15)
+  merge verts : PASS (4 merge, 11 s) ; regen: inutile
+  build verts : PASS (412 s)
+  tests verts : PASS 2183/2183 tests (209 s)
+  parts net,build : PASS (451 s)
+  rouges vus : Angelscript.UnitTests.Duel.HOLDuelLedger_Test.Test_LedgerDrainLaysTriumphAndDemoralisedAtTheCentre, Angelscript.UnitTests.Duel.HOLDuelLedger_Test.Test_LedgerPlacesHesitationAtTheRefusersPosition, Angelscript.UnitTests.Tests.HOLSpecUnlock_Test.Test_SpecUnlockServerRefusesLaneUnitOfAnotherLane, Angelscript.UnitTests.Tests.HOLSpecUnlock_Test.Test_SpecUnlockServerRefusesLaneUnitWithoutChoiceOrOfOtherFaction ; sortie complete : Docs\Integrate_integ-61.log

@@ -166,6 +166,19 @@ namespace HOLWallLine
 		return FVector((Cell.X + 0.5) * Tile, (Cell.Y + 0.5) * Tile, Z);
 	}
 
+	// F4 (ARWEN-1123pe; the user's bug of 2026-11-23, wall_line_long: "when I release the line they do not build"): the Peasants a line's cell is given to,
+	// and whether the order is queued. One rule for ServerPlaceWallLine (HOLRpcPlayer.as), as ServerPlaceBuilding sends its UnitIds with one building.
+	// Rule not decided by the GDD (3348 says only "several Peasants in parallel"): every selected Peasant gets every cell, the first cell obeys the Shift
+	// of the player, the next cells queue behind it (so the band is built in the order of the drag). See Docs\Rapports\ARWEN-1123pe.md.
+	TArray<uint32> BuildersForCell(int CellIndex, const TArray<uint32>& UnitIds)
+	{
+		return UnitIds;
+	}
+
+	bool QueueForCell(int CellIndex, bool bQueue)
+	{
+		return bQueue || CellIndex > 0;
+	}
 	FHOLWallLinePlan PlanFromRequest(int SenderSlot, FVector Start, FVector End, double Tile, FIntPoint MapMin, FIntPoint MapMax, const TArray<FIntPoint>& Occupied, int MaxCells)
 	{
 		FHOLWallLinePlan Plan;

@@ -420,3 +420,44 @@ void Test_WoodGateDoesNotReplaceStoneWall(FUnitTest& T)
 	T.AssertTrue(!HOLWallLine::GateReplaces(n"StoneWall", 0, 0), "the wooden gate does not replace a stone wall section");
 	T.AssertTrue(HOLWallLine::GateReplaces(n"Palisade", 0, 0), "the wooden gate still replaces its own palisade section");
 }
+
+// F4 (ARWEN-1123pe, the user's bug of 2026-11-23): the released line must send its Peasants to build. Two selected Peasants and a line of 3 cells: each of the 3
+// cells (the plan computed by the rule) gives its builders to BOTH Peasants (6 orders), the first cell obeys the player's Shift, the next ones queue behind it.
+// The RPC itself needs a seat and a world (not reachable from a script test): ServerPlaceWallLine calls exactly these two rules.
+void Test_WallLineBuildersGetOrder(FUnitTest& T)
+{
+	TArray<FIntPoint> None;
+	FVector A = HOLWallLine::CellToPoint(FIntPoint(2, 3), WallLineTile, 0.0);
+	FVector B = HOLWallLine::CellToPoint(FIntPoint(4, 3), WallLineTile, 0.0);
+	HOLWallLine::FHOLWallLinePlan Plan = HOLWallLine::PlanFromRequest(0, A, B, WallLineTile, WallLineMapMin, WallLineMapMax, None, 16);
+	T.AssertEquals(3, Plan.Cells.Num(), "a line of 3 cells: 3 foundations");
+	TArray<uint32> Peasants;
+	Peasants.Add(11);
+	Peasants.Add(12);
+	int Orders = 0;
+	for (int Index = 0; Index < Plan.Cells.Num(); Index++)
+	{
+		TArray<uint32> Builders = HOLWallLine::BuildersForCell(Index, Peasants);
+		for (int Seat = 0; Seat < Peasants.Num(); Seat++)
+		{
+			if (Builders.Contains(Peasants[Seat]))
+				Orders++;
+		}
+	}
+	T.AssertEquals(6, Orders, "3 foundations x 2 Peasants: every selected Peasant has a build order on every foundation");
+	bool bFirst = HOLWallLine::QueueForCell(0, false);
+	bool bSecond = HOLWallLine::QueueForCell(1, false);
+	bool bThird = HOLWallLine::QueueForCell(2, false);
+	T.AssertFalse(bFirst, "no Shift: the first foundation takes the Peasants off what they were doing");
+	T.AssertTrue(bSecond && bThird, "the next foundations are queued behind the first (the band is built in the order of the drag)");
+	bool bKept = HOLWallLine::QueueForCell(0, true);
+	T.AssertTrue(bKept, "Shift: the first foundation is queued too");
+}
+
+// A line laid with nobody selected still lays its foundations (as a single building without selection): no builder, no order.
+void Test_WallLineNoSelectionNoBuilders(FUnitTest& T)
+{
+	TArray<uint32> Nobody;
+	TArray<uint32> Builders = HOLWallLine::BuildersForCell(1, Nobody);
+	T.AssertEquals(0, Builders.Num(), "nobody selected: no builder is named");
+}

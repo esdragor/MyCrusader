@@ -129,4 +129,12 @@ public:
 	 */
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Morale")
 	static void ApplyEffectAround(const UObject* WorldContextObject, int32 EffectId, int32 CenterXCm, int32 CenterYCm, int32 OrderSlot, int32 DurationMs, int32 RadiusCm);
+
+	/**
+	 * PLAN-MORAL-1120 step 8 (S2-c, D404): Lumiere sacree's brick. Takes off the MALUS of the units of camp OrderSlot within RadiusCm of the point
+	 * and makes them immune to every malus for a few seconds (HOLMorale::SacredLightImmunityMs); the bonus stay. Wrapper only (D839): the order is
+	 * queued, the processor lays it in its next step, the same path as ApplyEffectAround (the rule is HOLMorale::ClearMalusAndProtect).
+	 */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Morale")
+	static void ClearMalusAround(const UObject* WorldContextObject, int32 CenterXCm, int32 CenterYCm, int32 RadiusCm, int32 OrderSlot);
 };

@@ -50,6 +50,7 @@
 int64 UHOLCombatProcessor::TotalHits = 0;
 int64 UHOLCombatProcessor::TotalKills = 0;
 int64 UHOLCombatProcessor::TotalArrowsReleased = 0;
+int64 UHOLCombatProcessor::TotalBuildingShotsLogged = 0;
 int64 UHOLCombatProcessor::TotalArrowsLanded = 0;
 int64 UHOLCombatProcessor::TotalArrowsLost = 0;
 
@@ -77,6 +78,9 @@ namespace UE::HeroesOfLiberty::Combat
 		TEXT("Speed of the units under the cry Serrez les rangs, in percent of their walk (default 0: held in place, 1-100: slowed; Pas de l'Aube lets them advance at 50 % at least)"));
 	int32 LogHits = 0;
 	FAutoConsoleVariableRef CVarLogHits(TEXT("hol.Combat.LogHits"), LogHits, TEXT("1: logs every hit of the melee and every arrow released, landed or lost (server or solo)"));
+	/** S3-a: 1 writes a line when a building looses an arrow (for the trials: a scenario waits for it to catch the arrow in flight). Off by default. */
+	int32 LogBuildingShots = 0;
+	FAutoConsoleVariableRef CVarLogBuildingShots(TEXT("hol.Combat.LogBuildingShots"), LogBuildingShots, TEXT("1: logs one line per arrow a building looses, at its release: the building, the target, the planned flight (default 0)"));
 	int32 Enabled = 1;
 	FAutoConsoleVariableRef CVarEnabled(TEXT("hol.Combat.Enabled"), Enabled, TEXT("0: no unit fights (server or solo)"));
 	/** D733: a unit on an attack-move takes on the Neutrals it meets (a Neutral player's units, in Diplomacy). 0: it leaves them alone, as before. */
@@ -839,9 +843,8 @@ int32 UHOLCombatProcessor::GetBuildingAttackWithTechnology(const FFighter& Attac
 
 int32 UHOLCombatProcessor::GetBuildingArrowCount(const int32 Occupants)
 {
-	(void)Occupants;
-	// D884 : nombre par occupant à confirmer, 1 tant que non tranché.
-	return 1;
+	// D884 (confirmed 2026-11-23): 1 + one arrow per occupant. Every armed row is the TowerWood today (the 16 others have BuildingAttack 0), so no type test and no new column.
+	return 1 + FMath::Max(0, Occupants);
 }
 void UHOLCombatProcessor::ReleaseBuildingArrows(const UWorld& World, const int64 StepIndex, const int32 StepMs, const UHOLVisionSubsystem* Vision)
 {
@@ -943,7 +946,7 @@ void UHOLCombatProcessor::ReleaseBuildingArrows(const UWorld& World, const int64
 		const FFighter& Enemy = Fighters[Best];
 		// The arrow leaves the centre of the body and lands after its flight, through the projectiles' own landing (the target loses the flat BuildingAttack).
 		const int32 FlightMs = HOLCombat::GetArrowFlightMilliseconds(Step.Box.GetCenter(), FVector2D(Enemy.Location), HOLCombat::GetArrowSpeed());
-		// F8 T6: the arrows of one shot (D884 : nombre par occupant à confirmer, 1 tant que non tranché: GetBuildingArrowCount is the only place the number lives).
+		// F8 T6: the arrows of one shot (D884: 1 + one per occupant; GetBuildingArrowCount is the only place the number lives).
 		if (Occupants == INDEX_NONE)
 		{
 			Occupants = CountOccupants();
@@ -964,6 +967,14 @@ void UHOLCombatProcessor::ReleaseBuildingArrows(const UWorld& World, const int64
 			Arrow.ReleaseStep = StepIndex;
 			Arrow.ArrivalStep = StepIndex + HOLCombat::GetArrowFlightSteps(FlightMs, StepMs);
 			++TotalArrowsReleased;
+			// S3-a: one launch line per arrow, at its release (the impact line "lands on" comes ArrivalStep - ReleaseStep steps later): a trial waits for it to catch the arrow in flight.
+			if (UE::HeroesOfLiberty::Combat::LogBuildingShots != 0)
+			{
+				++TotalBuildingShotsLogged;
+				UE_LOG(LogHOLSimulation, Display, TEXT("Combat: building shot step %lld: #%u %s looses arrow %d of %d at #%u %s, flight %d ms (%d steps)"), StepIndex,
+					Step.Id, *Step.Building->GetTypeName().ToString(), Shot + 1, ArrowCount, Enemy.UnitId, *Enemy.Constants->TypeName.ToString(), FlightMs,
+					static_cast<int32>(Arrow.ArrivalStep - Arrow.ReleaseStep));
+			}
 			// F8 T7: drawn here in solo / host, as a unit's arrow (the same process; a dedicated server has no arrow display). It leaves the centre of the body at
 			// the height of the roof (the row's Height), and lands after the same flight as the arrow above.
 			if (UHOLArrowSubsystem* ArrowDisplay = World.GetSubsystem<UHOLArrowSubsystem>())

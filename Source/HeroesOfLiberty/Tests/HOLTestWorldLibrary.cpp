@@ -1179,3 +1179,48 @@ UHOLVictoryEventCounter* UHOLTestWorldLibrary::CountVictoryEvents(AHOLGameState*
 	Counter->Bind(State);
 	return Counter;
 }
+int32 UHOLTestWorldLibrary::SpawnTestHero(UHOLTestWorldHandle* TestWorld, const int32 Slot, const FVector Location)
+{
+#if WITH_DEV_AUTOMATION_TESTS
+	UWorld* World = HOLTestWorldLibNs::HOLTestWorldLibWorldOf(TestWorld);
+	UHOLUnitSubsystem* Units = World ? World->GetSubsystem<UHOLUnitSubsystem>() : nullptr;
+	UHOLHeroSubsystem* Heroes = World ? World->GetSubsystem<UHOLHeroSubsystem>() : nullptr;
+	if (!Units || !Heroes || Slot < 0 || Slot > static_cast<int32>(MAX_uint8))
+	{
+		return 0;
+	}
+	// As HOLHeroAbilityMatchTests.cpp: the steps bound (idempotent), then a Hero unit born for the slot through the real unit table.
+	Heroes->BindSteps();
+	TArray<uint32> Before;
+	Units->GetAllUnitIds(Before);
+	FHOLUnitSpawnRequest Request;
+	Request.TypeName = FName(TEXT("Hero"));
+	Request.Count = 1;
+	Request.OwnerPlayer = static_cast<uint8>(Slot);
+	Request.Center = Location;
+	Units->RequestUnits(Request);
+	Units->ServeBirthRequests();
+	TArray<uint32> After;
+	Units->GetAllUnitIds(After);
+	After.RemoveAll([&Before](const uint32 Id) { return Before.Contains(Id); });
+	if (After.Num() != 1)
+	{
+		return 0;
+	}
+	// The hero is registered at birth (FindHeroUnit), but his SHEET (state Alive, level) is only written by UpdateSheets at a step's end:
+	// one step with its end, as the RunStep of HOLHeroAbilityMatchTests.cpp (his sheet: alive, level 1). Without it PlantBanner / CanCast see a hero not alive.
+	HOLTestWorldLibNs::HOLTestWorldLibBroadcast(World, 1, true);
+	return static_cast<int32>(After[0]);
+#else
+	return 0;
+#endif
+}
+
+bool UHOLTestWorldLibrary::SetPlayerSpecialization(AHOLPlayerState* Player, const FHOLSpecializationView& View)
+{
+#if WITH_DEV_AUTOMATION_TESTS
+	return Player && Player->SetSpecialization(View);
+#else
+	return false;
+#endif
+}

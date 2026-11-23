@@ -668,8 +668,6 @@ bool FHOLMoraleTakenLeverTest::RunTest(const FString& Parameters)
 	}
 	return true;
 }
-#endif // WITH_DEV_AUTOMATION_TESTS
-
 // The banner (PLAN-MORAL-1120 step 4, the aura's second source): a banner PLANTED by a hero is a point, not a unit. The morale processor lays the levers of
 // the Banner row (it gives the Dawn aura's, one effect) on the allies of its owner within the row radius of the point, once however many sources cover them
 // (a unit near both the hero and the banner carries ONE effect), and nothing on an enemy or out of range. Born through the real chain, the banner planted by
@@ -977,3 +975,323 @@ bool FHOLMoraleApplyEffectAroundTest::RunTest(const FString& Parameters)
 	World->DestroyWorld(false);
 	return true;
 }
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLMoraleProcessorAttenuatesTheMalusTest, "HeroesOfLiberty.Morale.ProcessorAttenuatesTheTimedMalus", UE::HeroesOfLiberty::Tests::MoraleRules::Flags)
+
+// PLAN-MORAL-1120 step 7 (S2-c, D125 / D706): a camp that gives an attenuation takes a timed malus for a shorter time (50 % = half), the intensity of a
+// timed effect unchanged; a fresh effect of the same kind at no attenuation puts the time back to full (the longest is kept). The camp without attenuation
+// carries the full time at the same moment. The attenuation is read by the rule (HOLMorale::Apply), the processor only hands the percent over.
+bool FHOLMoraleProcessorAttenuatesTheMalusTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::MoraleRules;
+	UWorld* World = UWorld::CreateWorld(EWorldType::Game, /*bInformEngineOfWorld*/ false);
+	FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);
+	Context.SetCurrentWorld(World);
+	World->InitializeActorsForPlay(FURL());
+
+	UHOLUnitSubsystem* Units = World->GetSubsystem<UHOLUnitSubsystem>();
+	UHOLSimulationSubsystem* Simulation = World->GetSubsystem<UHOLSimulationSubsystem>();
+	UHOLHeroSubsystem* Heroes = World->GetSubsystem<UHOLHeroSubsystem>();
+	UMassEntitySubsystem* EntitySubsystem = World->GetSubsystem<UMassEntitySubsystem>();
+	if (TestNotNull(TEXT("units"), Units) && TestNotNull(TEXT("simulation"), Simulation) && TestNotNull(TEXT("heroes"), Heroes) && TestNotNull(TEXT("entities"), EntitySubsystem))
+	{
+		Heroes->BindSteps();
+		TSharedPtr<FMassEntityManager> EntityManager = EntitySubsystem->GetMutableEntityManager().AsShared();
+		UHOLMoraleProcessor* Morale = NewObject<UHOLMoraleProcessor>(Simulation);
+		Morale->CallInitialize(Simulation, EntityManager.ToSharedRef());
+		const float StepSeconds = GetDefault<UHOLSimulationSettings>()->GetStepSeconds();
+		int64 Step = 0;
+		const auto RunStep = [Simulation, Units, Morale, &EntityManager, StepSeconds, &Step]
+		{
+			++Step;
+			Simulation->GetOnStepStarted().Broadcast(Step);
+			Units->ServeBirthRequests();
+			FMassProcessingContext ProcessingContext(*EntityManager, StepSeconds);
+			UE::Mass::Executor::Run(*Morale, ProcessingContext);
+			Simulation->GetOnStepEnded().Broadcast(Step);
+		};
+		const auto Spawn = [this, Units](const uint8 Owner) -> FMassEntityHandle
+		{
+			TArray<uint32> Before;
+			Units->GetAllUnitIds(Before);
+			FHOLUnitSpawnRequest Request;
+			Request.TypeName = FName(TEXT("ManAtArms"));
+			Request.Count = 1;
+			Request.OwnerPlayer = Owner;
+			Request.Center = FVector(5000.0 + 100.0 * Owner, 3000.0, 0.0);
+			Units->RequestUnits(Request);
+			Units->ServeBirthRequests();
+			TArray<uint32> After;
+			Units->GetAllUnitIds(After);
+			uint32 Born = 0;
+			for (const uint32 Id : After)
+			{
+				Born = Before.Contains(Id) ? Born : Id;
+			}
+			return TestTrue(TEXT("a unit was born"), Born != 0) ? Units->FindEntity(Born) : FMassEntityHandle();
+		};
+		// Slot 0 takes no attenuation, slot 1 takes 50 % and gets a fresh effect later, slot 2 takes 50 % and is left alone.
+		const FMassEntityHandle Plain = Spawn(0);
+		const FMassEntityHandle Refreshed = Spawn(1);
+		const FMassEntityHandle Alone = Spawn(2);
+		// The time left of the Demoralised effect on a unit, -1 when it carries none.
+		const auto TimeLeft = [&EntityManager](const FMassEntityHandle Entity) -> int32
+		{
+			const FHOLMoraleFragment* Fragment = Entity.IsSet() ? EntityManager->GetFragmentDataPtr<FHOLMoraleFragment>(Entity) : nullptr;
+			if (Fragment != nullptr)
+			{
+				for (int32 Index = 0; Index < Fragment->State.Num; ++Index)
+				{
+					if (Fragment->State.Effects[Index].Id == HOLMoraleTableRows::HOLMoraleDemoralised)
+					{
+						return Fragment->State.Effects[Index].DurationMs;
+					}
+				}
+			}
+			return -1;
+		};
+		const HOLMoraleTableRows::FHOLMoraleTableRow* Row = HOLMoraleTableRows::Find(HOLMoraleTableRows::HOLMoraleDemoralised);
+		if (TestNotNull(TEXT("the Demoralised row"), Row) && TestTrue(TEXT("three units"), Plain.IsSet() && Refreshed.IsSet() && Alone.IsSet()))
+		{
+			const int32 FullMs = Row->DurationMs;
+			const int32 StepMs = HOLCombat::ToMilliseconds(StepSeconds);
+			RunStep();
+			UHOLMoraleProcessor::SetSlotAttenuation(0, 0);
+			UHOLMoraleProcessor::SetSlotAttenuation(1, 50);
+			UHOLMoraleProcessor::SetSlotAttenuation(2, 50);
+			for (int32 Slot = 0; Slot < 3; ++Slot)
+			{
+				UHOLMoraleLibrary::ApplyEffectAround(World, HOLMoraleTableRows::HOLMoraleDemoralised, 5000, 3000, Slot, FullMs, 1200);
+			}
+			RunStep();
+			TestEqual(TEXT("at pose, no attenuation = the full time"), TimeLeft(Plain), FullMs);
+			TestEqual(TEXT("at pose, 50 % attenuation = half the time"), TimeLeft(Alone), FullMs / 2);
+			// A quarter of the full time later, the attenuated unit has half minus a quarter left; the plain one three quarters.
+			const int32 QuarterSteps = (FullMs / 4) / StepMs;
+			for (int32 Index = 0; Index < QuarterSteps; ++Index)
+			{
+				RunStep();
+			}
+			TestEqual(TEXT("mid-duration of the attenuated effect"), TimeLeft(Refreshed), FullMs / 2 - QuarterSteps * StepMs);
+			TestEqual(TEXT("mid-duration of the plain effect"), TimeLeft(Plain), FullMs - QuarterSteps * StepMs);
+			// A fresh Demoralised on slot 1 with no attenuation any more: the time is back to full.
+			UHOLMoraleProcessor::SetSlotAttenuation(1, 0);
+			UHOLMoraleLibrary::ApplyEffectAround(World, HOLMoraleTableRows::HOLMoraleDemoralised, 5000, 3000, 1, FullMs, 1200);
+			RunStep();
+			TestEqual(TEXT("a fresh effect puts the time back to full"), TimeLeft(Refreshed), FullMs);
+			// The end: the attenuated unit that was left alone loses the effect at half the full time, the plain one still carries it.
+			const int32 HalfSteps = (FullMs / 2) / StepMs + 2 - QuarterSteps;
+			for (int32 Index = 0; Index < HalfSteps; ++Index)
+			{
+				RunStep();
+			}
+			TestEqual(TEXT("the attenuated effect is over after half the full time"), TimeLeft(Alone), -1);
+			TestTrue(TEXT("the plain effect is still there at that moment"), TimeLeft(Plain) > 0);
+			UHOLMoraleProcessor::SetSlotAttenuation(1, 0);
+			UHOLMoraleProcessor::SetSlotAttenuation(2, 0);
+		}
+	}
+
+	GEngine->DestroyWorldContext(World);
+	World->DestroyWorld(false);
+	return true;
+}
+
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLMoraleProcessorClearsTheMalusTest, "HeroesOfLiberty.Morale.ProcessorClearsTheMalusAndProtects", UE::HeroesOfLiberty::Tests::MoraleRules::Flags)
+
+// PLAN-MORAL-1120 step 8 (S2-c, D404): ClearMalusAround takes off the malus of the camp's units within the radius (the bonus stays), those units are
+// then immune to every malus for HOLMorale::SacredLightImmunityMs (a malus laid 2 s later is refused, 6 s later it is taken); a unit beyond the
+// radius or of another camp keeps its malus. The rule is HOLMorale::ClearMalusAndProtect, the processor lays the order in its step.
+bool FHOLMoraleProcessorClearsTheMalusTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::MoraleRules;
+	UWorld* World = UWorld::CreateWorld(EWorldType::Game, /*bInformEngineOfWorld*/ false);
+	FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);
+	Context.SetCurrentWorld(World);
+	World->InitializeActorsForPlay(FURL());
+
+	UHOLUnitSubsystem* Units = World->GetSubsystem<UHOLUnitSubsystem>();
+	UHOLSimulationSubsystem* Simulation = World->GetSubsystem<UHOLSimulationSubsystem>();
+	UHOLHeroSubsystem* Heroes = World->GetSubsystem<UHOLHeroSubsystem>();
+	UMassEntitySubsystem* EntitySubsystem = World->GetSubsystem<UMassEntitySubsystem>();
+	if (TestNotNull(TEXT("units"), Units) && TestNotNull(TEXT("simulation"), Simulation) && TestNotNull(TEXT("heroes"), Heroes) && TestNotNull(TEXT("entities"), EntitySubsystem))
+	{
+		Heroes->BindSteps();
+		TSharedPtr<FMassEntityManager> EntityManager = EntitySubsystem->GetMutableEntityManager().AsShared();
+		UHOLMoraleProcessor* Morale = NewObject<UHOLMoraleProcessor>(Simulation);
+		Morale->CallInitialize(Simulation, EntityManager.ToSharedRef());
+		const float StepSeconds = GetDefault<UHOLSimulationSettings>()->GetStepSeconds();
+		int64 Step = 0;
+		const auto RunStep = [Simulation, Units, Morale, &EntityManager, StepSeconds, &Step]
+		{
+			++Step;
+			Simulation->GetOnStepStarted().Broadcast(Step);
+			Units->ServeBirthRequests();
+			FMassProcessingContext ProcessingContext(*EntityManager, StepSeconds);
+			UE::Mass::Executor::Run(*Morale, ProcessingContext);
+			Simulation->GetOnStepEnded().Broadcast(Step);
+		};
+		const auto Spawn = [this, Units](const uint8 Owner, const double X) -> FMassEntityHandle
+		{
+			TArray<uint32> Before;
+			Units->GetAllUnitIds(Before);
+			FHOLUnitSpawnRequest Request;
+			Request.TypeName = FName(TEXT("ManAtArms"));
+			Request.Count = 1;
+			Request.OwnerPlayer = Owner;
+			Request.Center = FVector(X, 3000.0, 0.0);
+			Units->RequestUnits(Request);
+			Units->ServeBirthRequests();
+			TArray<uint32> After;
+			Units->GetAllUnitIds(After);
+			uint32 Born = 0;
+			for (const uint32 Id : After)
+			{
+				Born = Before.Contains(Id) ? Born : Id;
+			}
+			return TestTrue(TEXT("a unit was born"), Born != 0) ? Units->FindEntity(Born) : FMassEntityHandle();
+		};
+		// Camp 0: Near (inside the radius, carries a malus and a bonus) and Far (outside). Camp 1: Other (inside the radius, carries a malus).
+		UHOLMoraleProcessor::SetSlotAttenuation(0, 0);
+		UHOLMoraleProcessor::SetSlotAttenuation(1, 0);
+		const FMassEntityHandle Near = Spawn(0, 5000.0);
+		const FMassEntityHandle Far = Spawn(0, 7000.0);
+		const FMassEntityHandle Other = Spawn(1, 5100.0);
+		const auto Has = [&EntityManager](const FMassEntityHandle Entity, const int32 Id) -> bool
+		{
+			const FHOLMoraleFragment* Fragment = Entity.IsSet() ? EntityManager->GetFragmentDataPtr<FHOLMoraleFragment>(Entity) : nullptr;
+			return Fragment != nullptr && HOLMorale::Has(Fragment->State, Id);
+		};
+		const HOLMoraleTableRows::FHOLMoraleTableRow* DemoralisedRow = HOLMoraleTableRows::Find(HOLMoraleTableRows::HOLMoraleDemoralised);
+		const HOLMoraleTableRows::FHOLMoraleTableRow* TriumphRow = HOLMoraleTableRows::Find(HOLMoraleTableRows::HOLMoraleTriumph);
+		if (TestTrue(TEXT("the rows"), DemoralisedRow && TriumphRow) && TestTrue(TEXT("three units"), Near.IsSet() && Far.IsSet() && Other.IsSet()))
+		{
+			const int32 StepMs = HOLCombat::ToMilliseconds(StepSeconds);
+			RunStep();
+			// A malus on every unit (a wide radius), a bonus on Near.
+			UHOLMoraleLibrary::ApplyEffectAround(World, HOLMoraleTableRows::HOLMoraleDemoralised, 5000, 3000, 0, DemoralisedRow->DurationMs, 5000);
+			UHOLMoraleLibrary::ApplyEffectAround(World, HOLMoraleTableRows::HOLMoraleDemoralised, 5000, 3000, 1, DemoralisedRow->DurationMs, 5000);
+			UHOLMoraleLibrary::ApplyEffectAround(World, HOLMoraleTableRows::HOLMoraleTriumph, 5000, 3000, 0, TriumphRow->DurationMs, 1200);
+			RunStep();
+			TestTrue(TEXT("Near carries the malus before"), Has(Near, HOLMoraleTableRows::HOLMoraleDemoralised));
+			TestTrue(TEXT("Near carries the bonus before"), Has(Near, HOLMoraleTableRows::HOLMoraleTriumph));
+			TestTrue(TEXT("Far carries the malus before"), Has(Far, HOLMoraleTableRows::HOLMoraleDemoralised));
+			TestTrue(TEXT("Other carries the malus before"), Has(Other, HOLMoraleTableRows::HOLMoraleDemoralised));
+			// Lumiere sacree: camp 0, within 12 m of the point.
+			UHOLMoraleLibrary::ClearMalusAround(World, 5000, 3000, 1200, 0);
+			RunStep();
+			TestFalse(TEXT("Near has no malus any more"), Has(Near, HOLMoraleTableRows::HOLMoraleDemoralised));
+			TestTrue(TEXT("Near keeps its bonus (Triumph is not a malus)"), Has(Near, HOLMoraleTableRows::HOLMoraleTriumph));
+			TestTrue(TEXT("Far (beyond the radius) keeps its malus"), Has(Far, HOLMoraleTableRows::HOLMoraleDemoralised));
+			TestTrue(TEXT("Other (another camp) keeps its malus"), Has(Other, HOLMoraleTableRows::HOLMoraleDemoralised));
+			// 2 s later a malus is refused (immunity).
+			const int32 TwoSecondsSteps = 2000 / StepMs;
+			for (int32 Index = 0; Index < TwoSecondsSteps; ++Index)
+			{
+				RunStep();
+			}
+			UHOLMoraleLibrary::ApplyEffectAround(World, HOLMoraleTableRows::HOLMoraleDemoralised, 5000, 3000, 0, DemoralisedRow->DurationMs, 1200);
+			RunStep();
+			TestFalse(TEXT("2 s after, a new malus is refused (immunity)"), Has(Near, HOLMoraleTableRows::HOLMoraleDemoralised));
+			// 6 s after the clearing the immunity (5 s) is over: the malus is accepted.
+			const int32 SixSecondsSteps = 6000 / StepMs;
+			for (int32 Index = TwoSecondsSteps + 1; Index < SixSecondsSteps; ++Index)
+			{
+				RunStep();
+			}
+			UHOLMoraleLibrary::ApplyEffectAround(World, HOLMoraleTableRows::HOLMoraleDemoralised, 5000, 3000, 0, DemoralisedRow->DurationMs, 1200);
+			RunStep();
+			TestTrue(TEXT("6 s after, a new malus is accepted (immunity over)"), Has(Near, HOLMoraleTableRows::HOLMoraleDemoralised));
+		}
+	}
+
+	GEngine->DestroyWorldContext(World);
+	World->DestroyWorld(false);
+	return true;
+}
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLMoraleProcessorStaticStateTest, "HeroesOfLiberty.Morale.ProcessorStaticStateEndsWithTheWorld", UE::HeroesOfLiberty::Tests::MoraleRules::Flags)
+
+// REVUE-1123pm G1: the attenuation table and the two order queues of the morale processor are statics of the process. What a match leaves there (a camp
+// attenuated 50 %, an order waiting) must be gone when the world ends, and a world that begins must start from a clean table: no attenuation, nothing
+// laid at its first step.
+bool FHOLMoraleProcessorStaticStateTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::MoraleRules;
+	// A first world: camp 1 attenuated by 50 %, a laying order and a clearing order waiting; then the world ends.
+	{
+		UWorld* First = UWorld::CreateWorld(EWorldType::Game, /*bInformEngineOfWorld*/ false);
+		FWorldContext& FirstContext = GEngine->CreateNewWorldContext(EWorldType::Game);
+		FirstContext.SetCurrentWorld(First);
+		First->InitializeActorsForPlay(FURL());
+		const int32 WaitingBefore = UHOLMoraleProcessor::NumPendingOrders();
+		UHOLMoraleProcessor::SetSlotAttenuation(1, 50);
+		UHOLMoraleLibrary::ApplyEffectAround(First, HOLMoraleTableRows::HOLMoraleDemoralised, 5000, 3000, 1, 0, 1200);
+		UHOLMoraleLibrary::ClearMalusAround(First, 5000, 3000, 1200, 1);
+		TestEqual(TEXT("during the match: camp 1 attenuated 50 %"), UHOLMoraleProcessor::GetSlotAttenuation(1), 50);
+		TestEqual(TEXT("during the match: the two orders wait"), UHOLMoraleProcessor::NumPendingOrders(), WaitingBefore + 2);
+		GEngine->DestroyWorldContext(First);
+		First->DestroyWorld(false);
+	}
+	TestEqual(TEXT("the world has ended: camp 1 is back to no attenuation"), UHOLMoraleProcessor::GetSlotAttenuation(1), 0);
+	TestEqual(TEXT("the world has ended: no order left in the queues"), UHOLMoraleProcessor::NumPendingOrders(), 0);
+
+	// A leftover between two matches (the console command), then a new world begins: its processor starts from a clean table.
+	UHOLMoraleProcessor::SetSlotAttenuation(1, 50);
+	UWorld* World = UWorld::CreateWorld(EWorldType::Game, /*bInformEngineOfWorld*/ false);
+	FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);
+	Context.SetCurrentWorld(World);
+	World->InitializeActorsForPlay(FURL());
+	UHOLUnitSubsystem* Units = World->GetSubsystem<UHOLUnitSubsystem>();
+	UHOLSimulationSubsystem* Simulation = World->GetSubsystem<UHOLSimulationSubsystem>();
+	UHOLHeroSubsystem* Heroes = World->GetSubsystem<UHOLHeroSubsystem>();
+	UMassEntitySubsystem* EntitySubsystem = World->GetSubsystem<UMassEntitySubsystem>();
+	if (TestNotNull(TEXT("units"), Units) && TestNotNull(TEXT("simulation"), Simulation) && TestNotNull(TEXT("heroes"), Heroes) && TestNotNull(TEXT("entities"), EntitySubsystem))
+	{
+		Heroes->BindSteps();
+		TSharedPtr<FMassEntityManager> EntityManager = EntitySubsystem->GetMutableEntityManager().AsShared();
+		UHOLMoraleProcessor* Morale = NewObject<UHOLMoraleProcessor>(Simulation);
+		Morale->CallInitialize(Simulation, EntityManager.ToSharedRef());
+		TestEqual(TEXT("the world has begun: camp 1 has no attenuation"), UHOLMoraleProcessor::GetSlotAttenuation(1), 0);
+		TestEqual(TEXT("the world has begun: no order waits"), UHOLMoraleProcessor::NumPendingOrders(), 0);
+
+		// First step of the new world: a Demoralised laid on camp 1 keeps its full time (nothing attenuates it).
+		FHOLUnitSpawnRequest Request;
+		Request.TypeName = FName(TEXT("ManAtArms"));
+		Request.Count = 1;
+		Request.OwnerPlayer = 1;
+		Request.Center = FVector(5100.0, 3000.0, 0.0);
+		Units->RequestUnits(Request);
+		Units->ServeBirthRequests();
+		TArray<uint32> Ids;
+		Units->GetAllUnitIds(Ids);
+		const FMassEntityHandle Entity = TestTrue(TEXT("a unit was born"), Ids.Num() == 1) ? Units->FindEntity(Ids[0]) : FMassEntityHandle();
+		const HOLMoraleTableRows::FHOLMoraleTableRow* Row = HOLMoraleTableRows::Find(HOLMoraleTableRows::HOLMoraleDemoralised);
+		if (TestNotNull(TEXT("the Demoralised row"), Row) && TestTrue(TEXT("the unit exists"), Entity.IsSet()))
+		{
+			UHOLMoraleLibrary::ApplyEffectAround(World, HOLMoraleTableRows::HOLMoraleDemoralised, 5000, 3000, 1, Row->DurationMs, 1200);
+			const float StepSeconds = GetDefault<UHOLSimulationSettings>()->GetStepSeconds();
+			Simulation->GetOnStepStarted().Broadcast(1);
+			Units->ServeBirthRequests();
+			FMassProcessingContext ProcessingContext(*EntityManager, StepSeconds);
+			UE::Mass::Executor::Run(*Morale, ProcessingContext);
+			Simulation->GetOnStepEnded().Broadcast(1);
+			int32 TimeLeft = -1;
+			if (const FHOLMoraleFragment* Fragment = EntityManager->GetFragmentDataPtr<FHOLMoraleFragment>(Entity))
+			{
+				for (int32 Index = 0; Index < Fragment->State.Num; ++Index)
+				{
+					if (Fragment->State.Effects[Index].Id == HOLMoraleTableRows::HOLMoraleDemoralised)
+					{
+						TimeLeft = Fragment->State.Effects[Index].DurationMs;
+					}
+				}
+			}
+			TestEqual(TEXT("first step of the new world: the full time, no attenuation left over"), TimeLeft, Row->DurationMs);
+		}
+	}
+	GEngine->DestroyWorldContext(World);
+	World->DestroyWorld(false);
+	return true;
+}
+#endif // WITH_DEV_AUTOMATION_TESTS

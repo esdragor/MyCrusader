@@ -1,6 +1,7 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "Simulation/HOLSimulationSubsystem.h"
+#include "Simulation/HOLMoraleProcessor.h"
 
 #include "Engine/World.h"
 #include "HAL/IConsoleManager.h"
@@ -300,6 +301,8 @@ void UHOLSimulationSubsystem::Deinitialize()
 	}
 	PhaseStartedHandle.Reset();
 	OnStepStarted.Clear();
+	// The end of the world: the morale processor's statics (attenuation table, order queues) do not outlive the match (REVUE-1123pm G1).
+	UHOLMoraleProcessor::ResetForWorld(GetWorld());
 	OnStepEnded.Clear();
 	StepPipeline.Reset();
 	ProcessorThrottled.Reset();

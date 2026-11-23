@@ -1,0 +1,10 @@
+﻿=== build zone-effect 565b88a (Honneur durci d414f8e + c827613, volee 1 + occupants 27f7476 + 565b88a) 17:10:23
+
+build : PASS (HeroesOfLibertyEditor Development, HeroesOfLiberty-Faramir, 88 s)
+
+
+
+tests 2166/2166 : PASS
+
+
+fin 17:14:54

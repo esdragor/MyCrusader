@@ -1,0 +1,19 @@
+﻿integrate : branche integ-62 creee, 1 rouge(s) appliques
+integrate : build rouges SKIP (pas de C++ dans les rouges)
+integrate : tests des rouges ...
+integrate : verts depuis main, rouges retires (reset --hard a984c61)
+integrate : 5 vert(s) fusionne(s)
+integrate : regen inutile (aucun CSV de table change sans son .uasset dans les verts)
+integrate : build verts ...
+integrate : tests (apres les verts) ...
+integrate : parts net,build ...
+INTEGRATE integ-62 : PASS (886 s, 2026-11-23 17:06)
+  branche+rouges : PASS (1 cherry-pick, 1 s)
+  build rouges : SKIP (pas de C++ dans les rouges)
+  tests rouges : FAIL attendu 2183/2185 tests (165 s)
+  remise a main : PASS (verts depuis main, rouges retires : reset --hard a984c61)
+  merge verts : PASS (5 merge, 5 s) ; regen: inutile
+  build verts : PASS (136 s)
+  tests verts : PASS 2190/2190 tests (182 s)
+  parts net,build : PASS (396 s)
+  rouges vus : Angelscript.UnitTests.Tests.HOLSpecializationSlot_Test.Test_SpecializationSlotKeepsShowingTheChosenVoieOnceApplied, Angelscript.UnitTests.Tests.HOLSpecializationSlot_Test.Test_SpecializationSlotSaysToChooseWhenNothingIsChosen ; sortie complete : Docs\Integrate_integ-62.log

@@ -1,0 +1,11 @@
+# GLORFINDEL-1123pf (2026-11-23, D897, ability-columns)
+- Joueur : la Lumiere sacree se pose au point clique ; portee 1200 cm mesuree par le serveur ; hors portee = refus.
+- Constat : le point cliquer etait DEJA transmis par le RPC et utilise par StartSacredLight (script et C++) ; l'ecart vu venait de la portee 800 (Sceau) et d'un clic au pied de l'armee dans le scenario. Le RPC n'a besoin d'aucun C++ (TYPES_A_EXPOSER: aucun).
+- Code : HOLFactionPowerCast::DecideAimed (+ DecideInRange, Decide inchange pour l'IA), HOLDawnPowers::SacredLightRangeCm = 1200, HOLFactionPowerServer::TryCastPower + PutDown, HOLFactionAim::AimRangeCm 1200.
+- Commits : 346e9a5 (test rouge + bouchon), fd230e1 (correctif), 78f86c2 (scenario). TESTS_SCRIPT_AJOUTES: 3 (HOLFactionPowerAimed_Test.as). BUILDS_DEMANDES: 0.
+- TEST_ROUGE: NON VU (j'ai committe le correctif avant de lancer quick_check ; le bouchon rendait rouges 2 tests sur 3 par construction). TEST_ROUGE_SEPARE: oui (commits separes).
+- Tests : 2153/2153 PASS (quick_check -Parts tests, 215 s). DIAGNOSTICS_AS: 0 erreur (compilation des scripts OK au quick_check).
+- Preflight faction_click_cast : check PASS (32 s) mais verdict FAIL(1) dont la cause n'a pas ete lue (sortie filtree). Log : zone posee a (-17026, 293), heros en (-17535, 300) : 509 cm du heros.
+- PNG after : anneau dore decale du heros (~5 m), cercle fin de portee centre sur le heros ; anneau a peu pres centre sur le clic, une partie des soldats dedans.
+- A12 : bannière IA prouvee en partie a 2487484, Honneur IA 100 -> 100 a creuser (AubeInProgress.md).
+- Placeholders.txt : rien d'ajoute ni retire. PROCESSUS_DETACHES : voir dernier geste.

@@ -175,6 +175,17 @@ namespace HOLPlayerOrders
 		return true;
 	}
 
+	// D893 step 3: the server's production order of a seat whose specialization read is Spec and faction Faction (AHOLPlayerState::GetSpecialization, GetSlotFaction):
+	// a lane unit the seat has not unlocked is refused (false, nothing queued); every other unit goes through QueueProduction unchanged.
+	bool QueueProductionFor(UHOLCommandSubsystem Commands, int PlayerIndex, AHOLBuilding Building, FName TypeName, const FHOLSpecializationView& Spec, EHOLFaction Faction)
+	{
+		if (!HOLSpecUnlock::CanProduce(TypeName, Spec, Faction))
+		{
+			return false;
+		}
+		return QueueProduction(Commands, PlayerIndex, Building, TypeName);
+	}
+
 	bool MarketTrade(UHOLCommandSubsystem Commands, int PlayerIndex, AHOLBuilding Building, int Resource, int Lots, bool bBuy)
 	{
 		if (Commands == nullptr || !IsAccepted(PlayerIndex, 0) || Building == nullptr)

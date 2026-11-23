@@ -2,6 +2,7 @@
 #include "Simulation/HOLMoraleProcessor.h"
 
 #include "Engine/World.h"
+#include "HAL/IConsoleManager.h"
 #include "Misc/ScopeLock.h"
 #include "Match/HOLFactionRules.h"
 #include "Match/HOLMatchConfig.h"
@@ -42,8 +43,33 @@ namespace
 		int32 DurationMs = 0;
 		int32 RadiusCm = 0;
 	};
-	FCriticalSection PendingAroundLock;
+	// A clearing order (S2-c, step 8, D404): the malus of the camp's units within the radius are taken off and the immunity granted (HOLMorale::ClearMalusAndProtect).
+		struct FPendingClear
+		{
+			TWeakObjectPtr<const UWorld> World;
+			int32 CenterXCm = 0;
+			int32 CenterYCm = 0;
+			int32 RadiusCm = 0;
+			int32 Slot = 0;
+		};
+FCriticalSection PendingAroundLock;
 	TArray<FPendingAround> PendingAround;
+		TArray<FPendingClear> PendingClear; // under PendingAroundLock too
+
+	// PROVISIONAL (step 7, S2-c): the attenuation percent each camp gives (stand-in for the Luminous Monk's aura, A3). Only the rule HOLMorale::Apply
+	// decides what it does to an effect; this table is just the value handed to it.
+	int32 SlotAttenuationPercent[FHOLMatchConfig::MaxSlots] = {};
+
+	FAutoConsoleCommand AttenuateCommand(
+		TEXT("hol.Morale.Attenuate"),
+		TEXT("hol.Morale.Attenuate <slot> <percent> : the camp <slot> takes every morale malus attenuated by <percent> % (75 at most, 0 = none). Stand-in for the Luminous Monk's aura (D125, D706)."),
+		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
+		{
+			if (Args.Num() >= 2)
+			{
+				UHOLMoraleProcessor::SetSlotAttenuation(FCString::Atoi(*Args[0]), FCString::Atoi(*Args[1]));
+			}
+		}));
 }
 
 void UHOLMoraleProcessor::QueueEffectAround(const UWorld* World, const int32 EffectId, const int32 CenterXCm, const int32 CenterYCm, const int32 OrderSlot, const int32 DurationMs, const int32 RadiusCm)
@@ -61,6 +87,58 @@ void UHOLMoraleProcessor::QueueEffectAround(const UWorld* World, const int32 Eff
 	Order.Slot = OrderSlot;
 	Order.DurationMs = DurationMs;
 	Order.RadiusCm = RadiusCm;
+}
+
+void UHOLMoraleProcessor::QueueClearMalusAround(const UWorld* World, const int32 CenterXCm, const int32 CenterYCm, const int32 RadiusCm, const int32 OrderSlot)
+{
+	if (World == nullptr || RadiusCm <= 0 || OrderSlot < 0 || OrderSlot >= FHOLMatchConfig::MaxSlots)
+	{
+		return;
+	}
+	FScopeLock Lock(&PendingAroundLock);
+	FPendingClear& Order = PendingClear.AddDefaulted_GetRef();
+	Order.World = World;
+	Order.CenterXCm = CenterXCm;
+	Order.CenterYCm = CenterYCm;
+	Order.RadiusCm = RadiusCm;
+	Order.Slot = OrderSlot;
+}
+void UHOLMoraleProcessor::SetSlotAttenuation(const int32 Slot, const int32 Percent)
+{
+	if (Slot >= 0 && Slot < FHOLMatchConfig::MaxSlots)
+	{
+		SlotAttenuationPercent[Slot] = FMath::Clamp(Percent, 0, 100);
+	}
+}
+
+int32 UHOLMoraleProcessor::GetSlotAttenuation(const int32 Slot)
+{
+	return (Slot >= 0 && Slot < FHOLMatchConfig::MaxSlots) ? SlotAttenuationPercent[Slot] : 0;
+}
+
+int32 UHOLMoraleProcessor::NumPendingOrders()
+{
+	FScopeLock Lock(&PendingAroundLock);
+	return PendingAround.Num() + PendingClear.Num();
+}
+
+void UHOLMoraleProcessor::ResetForWorld(const UWorld* World)
+{
+	FScopeLock Lock(&PendingAroundLock);
+	for (int32 Slot = 0; Slot < FHOLMatchConfig::MaxSlots; ++Slot)
+	{
+		SlotAttenuationPercent[Slot] = 0;
+	}
+	// The orders of this world and of worlds already gone; an order of another live world keeps waiting for its own step.
+	PendingAround.RemoveAll([World](const FPendingAround& Order) { return !Order.World.IsValid() || Order.World.Get() == World; });
+	PendingClear.RemoveAll([World](const FPendingClear& Order) { return !Order.World.IsValid() || Order.World.Get() == World; });
+}
+
+void UHOLMoraleProcessor::InitializeInternal(UObject& Owner, const TSharedRef<FMassEntityManager>& EntityManager)
+{
+	Super::InitializeInternal(Owner, EntityManager);
+	// The beginning of a world (UHOLSimulationSubsystem::OnWorldBeginPlay creates and initialises the processors): nothing of a previous match stays (G1).
+	ResetForWorld(Owner.GetWorld());
 }
 
 UHOLMoraleProcessor::UHOLMoraleProcessor()
@@ -194,13 +272,30 @@ void UHOLMoraleProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 			Sources.Add({ FVector2D(Order.CenterXCm, Order.CenterYCm), static_cast<uint8>(Order.Slot), Radius * Radius, Effect });
 		}
 	}
-	if (Sources.IsEmpty())
+	// The clearing orders waiting (S2-c, step 8): taken here, applied in the second pass BEFORE the sources, so a malus laid in the same step meets the immunity.
+	TArray<FPendingClear> Clears;
+	{
+		FScopeLock Lock(&PendingAroundLock);
+		for (int32 Index = PendingClear.Num() - 1; Index >= 0; --Index)
+		{
+			if (!PendingClear[Index].World.IsValid())
+			{
+				PendingClear.RemoveAt(Index); // its world is gone
+			}
+			else if (PendingClear[Index].World.Get() == World)
+			{
+				Clears.Insert(PendingClear[Index], 0); // keeps the order they came in
+				PendingClear.RemoveAt(Index);
+			}
+		}
+	}
+if (Sources.IsEmpty() && Clears.IsEmpty())
 	{
 		return;
 	}
 
 	const int32 PeasantBit = HOLArmorCategoryBit(EHOLArmorCategory::Peasant);
-	EntityQuery.ForEachEntityChunk(Context, [&Sources, PeasantBit](FMassExecutionContext& Chunk)
+	EntityQuery.ForEachEntityChunk(Context, [&Sources, &Clears, PeasantBit](FMassExecutionContext& Chunk)
 	{
 		const FHOLUnitTypeConstants& Constants = Chunk.GetConstSharedFragment<FHOLUnitTypeConstants>();
 		if ((Constants.ArmorCategoryMask & PeasantBit) != 0)
@@ -214,11 +309,22 @@ void UHOLMoraleProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 		{
 			const FVector Location = Transforms[Index].GetTransform().GetLocation();
 			const FVector2D Where(Location.X, Location.Y);
+				// Lumiere sacree (D404): the rule decides what is cleared and for how long the unit is immune; here only who is reached (camp and radius).
+				for (const FPendingClear& Clear : Clears)
+				{
+					if (Clear.Slot == States[Index].OwnerPlayer
+						&& FVector2D::DistSquared(FVector2D(Clear.CenterXCm, Clear.CenterYCm), Where) <= static_cast<double>(Clear.RadiusCm) * static_cast<double>(Clear.RadiusCm))
+					{
+						HOLMorale::ClearMalusAndProtect(Fragments[Index].State);
+					}
+				}
 			for (const FAuraSource& Source : Sources)
 			{
 				if (Source.Owner == States[Index].OwnerPlayer && FVector2D::DistSquared(Source.Location, Where) <= Source.RadiusSquared)
 				{
-					HOLMorale::Apply(Fragments[Index].State, Source.Effect); // the same effect id from several sources is refreshed, never cumulated
+					// The camp's attenuation (a malus only: the rule leaves a bonus alone); the same effect id from several sources is refreshed, never cumulated.
+					const int32 OwnerSlot = States[Index].OwnerPlayer;
+					HOLMorale::Apply(Fragments[Index].State, Source.Effect, OwnerSlot < FHOLMatchConfig::MaxSlots ? SlotAttenuationPercent[OwnerSlot] : 0);
 				}
 			}
 		}

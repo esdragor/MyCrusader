@@ -137,3 +137,9 @@ void UHOLMoraleLibrary::ApplyEffectAround(const UObject* WorldContextObject, con
 	// The processor lays it (one source of the rule, D836): the bridge only queues the order for the world's next step.
 	UHOLMoraleProcessor::QueueEffectAround(WorldContextObject != nullptr ? WorldContextObject->GetWorld() : nullptr, EffectId, CenterXCm, CenterYCm, OrderSlot, DurationMs, RadiusCm);
 }
+
+void UHOLMoraleLibrary::ClearMalusAround(const UObject* WorldContextObject, const int32 CenterXCm, const int32 CenterYCm, const int32 RadiusCm, const int32 OrderSlot)
+{
+	// The processor does it (one source of the rule, D836): the bridge only queues the order for the world's next step.
+	UHOLMoraleProcessor::QueueClearMalusAround(WorldContextObject != nullptr ? WorldContextObject->GetWorld() : nullptr, CenterXCm, CenterYCm, RadiusCm, OrderSlot);
+}
