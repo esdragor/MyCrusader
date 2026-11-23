@@ -178,3 +178,41 @@ void Test_SpecializationSlotReadOfCarriesTheForumFlag(FUnitTest& T)
 	T.AssertTrue(Lit.OpenTier > 0, "with the Forum the button opens a tier");
 	T.AssertEquals(0, Dark.OpenTier, "without the Forum no tier is open: the button stays dark");
 }
+
+// SP3 (ELROND-1123pi): the permanent button keeps showing the player's voie once the tier is applied (before: the button, the bar and the voies all
+// disappeared, the chosen voie was shown nowhere). The view is read through ReadOf from the view of a REAL state (rules Start / Advance).
+void Test_SpecializationSlotKeepsShowingTheChosenVoieOnceApplied(FUnitTest& T)
+{
+	FHOLSpecializationState State = HOLSpecialization::NewState(2);
+	HOLSpecialization::Start(State, 1, 0, 1);
+	int Applied = HOLSpecialization::Advance(State, 30000, true);
+	T.AssertEquals(1, Applied, "tier 1 applies with the voie 0");
+	FHOLSpecializationRead Read = HOLSpecializationSlot::ReadOf(SpecializationSlotTest::ViewOf(State), 1, EHOLFaction::DawnOrder, true);
+	FHOLSpecializationSlotView View = HOLSpecializationSlot::Make(Read.View, Read.PlayerTier, Read.bForumComplete, Read.OptionCount);
+	T.AssertTrue(View.bVisible, "tier 1 applied: the slot stays visible");
+	T.AssertTrue(!View.bLit, "no tier open: the button itself is not lit");
+	T.AssertEquals(1, View.ChosenTexts.Num(), "one voie taken");
+	T.AssertEquals("Voie A du palier 1", View.ChosenTexts[0], "the table's text of the voie taken");
+	T.AssertEquals("Voie A du palier 1", View.ChosenText, "the line shown");
+
+	HOLSpecialization::Start(State, 2, 1, 2);
+	HOLSpecialization::Advance(State, 60000, true);
+	FHOLSpecializationRead Next = HOLSpecializationSlot::ReadOf(SpecializationSlotTest::ViewOf(State), 2, EHOLFaction::DawnOrder, true);
+	FHOLSpecializationSlotView Two = HOLSpecializationSlot::Make(Next.View, Next.PlayerTier, Next.bForumComplete, Next.OptionCount);
+	T.AssertEquals(2, Two.ChosenTexts.Num(), "two voies taken, one per tier");
+	T.AssertEquals("Voie B du palier 2", Two.ChosenTexts[1], "tier 2 took the voie B");
+}
+
+void Test_SpecializationSlotSaysToChooseWhenNothingIsChosen(FUnitTest& T)
+{
+	FHOLSpecializationState State = HOLSpecialization::NewState(2);
+	FHOLSpecializationRead Read = HOLSpecializationSlot::ReadOf(SpecializationSlotTest::ViewOf(State), 1, EHOLFaction::DawnOrder, true);
+	FHOLSpecializationSlotView View = HOLSpecializationSlot::Make(Read.View, Read.PlayerTier, Read.bForumComplete, Read.OptionCount);
+	T.AssertTrue(View.bVisible && View.bLit, "tier 1 open, nothing chosen: visible and lit");
+	T.AssertEquals(0, View.ChosenTexts.Num(), "no voie to show");
+	T.AssertEquals("", View.ChosenText, "no chosen line");
+	T.AssertEquals("Specialisation", View.ButtonText, "the state to choose keeps the table's closest text (provisional, Q-sp3-libelles)");
+	FHOLSpecializationRead Early = HOLSpecializationSlot::ReadOf(SpecializationSlotTest::ViewOf(State), 0, EHOLFaction::DawnOrder, true);
+	FHOLSpecializationSlotView Dark = HOLSpecializationSlot::Make(Early.View, Early.PlayerTier, Early.bForumComplete, Early.OptionCount);
+	T.AssertTrue(!Dark.bVisible, "faction tier 0 and nothing chosen: nothing to show");
+}

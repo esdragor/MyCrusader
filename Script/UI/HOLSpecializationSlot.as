@@ -27,6 +27,13 @@ struct FHOLSpecializationSlotView
 	TArray<FString> OptionTexts;
 	// The bar's text, "23 s" while an unlock runs, empty otherwise.
 	FString BarText;
+	// The button or the chosen line shows: a tier is open, or a tier is applied (the permanent button keeps showing the voie the player took).
+	bool bVisible = false;
+	// One line per applied tier ("Voie A du palier 1"), read from View.Chosen; ChosenText joins them with a new line, empty when nothing is applied.
+	TArray<FString> ChosenTexts;
+	FString ChosenText;
+	// The button's label while a tier is open (the state "to choose"), empty when it is not lit.
+	FString ButtonText;
 	// "spec dark", "spec lit tier 1 options 2", "spec running tier 1 option 0 23 s".
 	FString Describe;
 }
