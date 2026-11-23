@@ -29,7 +29,7 @@ void Test_FactionPowerCastChain(FUnitTest& T)
 	const int Now = 1000;
 
 	// First cast: in range (the point sits exactly at the range), ready, funded.
-	const int Range = int(HOLFactionPowerCast::SealRangeCm());
+	const int Range = HOLDawnPowers::SacredLightRangeCm();
 	FHOLFactionPowerDecision First = HOLFactionPowerCast::Decide(FactionPowerCastTest::Dawn(), 0, Gauge, 0, Now, 0, 0, Range, 0);
 	T.AssertTrue(First.bAccepted, "a ready, funded, in-range cast of the Dawn is accepted");
 	T.AssertEquals(HOLFactionPowerCast::RefusalNone(), First.Refusal, "an accepted cast has no refusal");
@@ -52,7 +52,7 @@ void Test_FactionPowerCastChain(FUnitTest& T)
 void Test_FactionPowerCastRefusals(FUnitTest& T)
 {
 	FHOLFactionResource Full = FactionPowerCastTest::FullGauge();
-	const int Range = int(HOLFactionPowerCast::SealRangeCm());
+	const int Range = HOLDawnPowers::SacredLightRangeCm();
 
 	FHOLFactionPowerDecision Far = HOLFactionPowerCast::Decide(FactionPowerCastTest::Dawn(), 0, Full, 0, 0, 100, 0, 100 + Range + 1, 0);
 	T.AssertFalse(Far.bAccepted, "a point one centimetre beyond the range is refused");
@@ -89,17 +89,18 @@ void Test_FactionPowerCastRefusals(FUnitTest& T)
 // D862: the Seal is the Monk ability of the unit ability table (row LightSeal): its range and its cool-down are that row's, and the cast leaves the Honor gauge alone.
 void Test_FactionPowerCastIsTheMonkAbilityRow(FUnitTest& T)
 {
-	HOLUnitAbilityTable::FHOLUnitAbilityRow Row = HOLUnitAbilityTable::Row(HOLUnitAbilityTable::LightSeal);
+	// D890: the Sacred Light's range is its OWN 1200 cm row (HOLDawnPowers), no longer the Monk row's 800 cm; the cool-down stays the book row's.
+	const int Range = HOLDawnPowers::SacredLightRangeCm();
 	FHOLFactionResource Full = FactionPowerCastTest::FullGauge();
 	const int Now = 5000;
-	FHOLFactionPowerDecision AtRange = HOLFactionPowerCast::Decide(FactionPowerCastTest::Dawn(), 0, Full, 0, Now, 0, 0, int(Row.RangeCm), 0);
+	FHOLFactionPowerDecision AtRange = HOLFactionPowerCast::Decide(FactionPowerCastTest::Dawn(), 0, Full, 0, Now, 0, 0, Range, 0);
 	T.AssertTrue(AtRange.bAccepted, "a point at the Monk row's range is accepted");
 	const FHOLPowerRow Book = HOLDawnPowers::Rows()[0];
 	FHOLFactionResource Spent = FactionPowerCastTest::FullGauge();
 	HOLFactionResource::TrySpend(Spent, Book.Cost);
 	T.AssertEquals(Spent.Value, AtRange.NewGaugeValue, "S1-b: the Sacred Light pays the book row's Honor");
 	T.AssertEquals(HOLGroundAbility::CooldownEndMs(Now, Book.CooldownMs), AtRange.NewCooldownEndMs, "the cool-down is the book row's (the Monk row's belongs to ServerCastUnitAbility)");
-	FHOLFactionPowerDecision PastRange = HOLFactionPowerCast::Decide(FactionPowerCastTest::Dawn(), 0, Full, 0, Now, 0, 0, int(Row.RangeCm) + 1, 0);
+	FHOLFactionPowerDecision PastRange = HOLFactionPowerCast::Decide(FactionPowerCastTest::Dawn(), 0, Full, 0, Now, 0, 0, Range + 1, 0);
 	T.AssertEquals(HOLFactionPowerCast::RefusalOutOfRange(), PastRange.Refusal, "one centimetre past the Monk row's range is refused");
 }
 
