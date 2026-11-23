@@ -1,0 +1,1 @@
+﻿=== build integ-25 9d682e0 (lot de liaisons n2 : IsForumCompleteForSlot, SpawnTestHero, SetPlayerSpecialization ; NOT COMPILED) 15:53:01
