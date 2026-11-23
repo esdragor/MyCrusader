@@ -48,6 +48,12 @@ namespace HOLAIPowerCall
 		return Data;
 	}
 
+	// The point the AI casts from (GLORFINDEL-1123h). STUB (red step): the banner as is. Real partie: the AI never plants a banner, so it reads (0, 0), 14709 cm from its army.
+	FVector OriginOf(const FIntPoint& Banner, const TArray<FVector>& Army)
+	{
+		return FVector(double(Banner.X), double(Banner.Y), 0.0);
+	}
+
 	int WoundedPercent()
 	{
 		return 70;
