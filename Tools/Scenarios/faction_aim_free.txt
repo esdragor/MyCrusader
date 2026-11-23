@@ -22,12 +22,12 @@ hol.Hero.Report
 hol.HUD.Report
 waitlog faction slot: slot gauge 100 / 100 powers SacredLight cost 25
 capture faction_aim_free_ready
-note Clique la case Lumière sacrée (panneau en bas à gauche), puis clique le sol OÙ TU VEUX : la zone dorée se pose sous ta souris. Essaie près de tes soldats blessés, puis très loin (plus de 12 m) : le jeu doit refuser. Entrée = lancer suivant (Honneur remis à 100).
+note Clique la case Lumière sacrée (panneau en bas à gauche), puis clique le sol OÙ TU VEUX : la zone dorée se pose sous ta souris. Essaie près de tes soldats blessés, puis très loin (plus de 12 m) : le jeu refuse EN SILENCE (aucun message : pas de zone dorée, l'Honneur ne bouge pas, pas de recharge). Entrée = lancer suivant (Honneur remis à 100).
 waitkey Lancer 1/3 : clique la case Lumière sacrée puis le sol près des blessés. Entrée = lancer suivant (attends 20 s de recharge si le lancer a réussi)
 hol.Cheat.Wound 40
 hol.Cheat.Honor 100
 hol.Camera.FocusSlot 0
-waitkey Lancer 2/3 : vise très loin (plus de 12 m) : refus attendu. Entrée = lancer suivant
+waitkey Lancer 2/3 : vise très loin (plus de 12 m) : refus silencieux attendu (aucune zone, Honneur inchangé). Entrée = lancer suivant
 hol.Cheat.Wound 40
 hol.Cheat.Honor 100
 hol.Camera.FocusSlot 0
