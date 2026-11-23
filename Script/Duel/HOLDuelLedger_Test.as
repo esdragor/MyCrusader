@@ -51,3 +51,50 @@ void Test_LedgerDrainLaysTriumphAndDemoralisedAtTheCentre(FUnitTest& T)
 	TArray<FHOLDuelMoraleOrder> Again = Ledger.TakePendingOrders();
 	T.AssertEquals(0, Again.Num(), "a second drain lays nothing: no order twice");
 }
+// D866 Q2 = A, GDD 10.1 (D16): a refusal lays Hesitation at the refusing hero's position (the target's, noted when it was challenged and
+// again when it answered: the last one counts), a won duel keeps the arena's centre; a refuser whose position was never noted has no place.
+void Test_LedgerPlacesHesitationAtTheRefusersPosition(FUnitTest& T)
+{
+	FHOLDuelSettings S = HOLDuel::Preset();
+	FHOLDuel Won = HOLDuel::Respond(S, HOLDuel::Challenge(S, 0, 1), true);
+	Won.bHasArena = true;
+	Won.Arena = HOLDuel::MakeArena(S, 1000, 2000, 1400, 2400);
+	Won = HOLDuel::Advance(S, Won, 3000, 0, 40);
+	FHOLDuel Refused = HOLDuel::Respond(S, HOLDuel::Challenge(S, 2, 3), false);
+	FHOLDuel RefusedUnknown = HOLDuel::Respond(S, HOLDuel::Challenge(S, 4, 5), false);
+	TArray<FHOLDuelEnded> Ended;
+	FHOLDuelEnded First;
+	First.Duel = Won;
+	First.Effects = HOLDuel::Effects(S, Won);
+	Ended.Add(First);
+	FHOLDuelEnded Second;
+	Second.Duel = Refused;
+	Second.Effects = HOLDuel::Effects(S, Refused);
+	Ended.Add(Second);
+	FHOLDuelEnded Third;
+	Third.Duel = RefusedUnknown;
+	Third.Effects = HOLDuel::Effects(S, RefusedUnknown);
+	Ended.Add(Third);
+	TArray<FHOLDuelRefuserPlace> Places;
+	HOLDuelLedgerRules::NotePlace(Places, 3, 777, -555);
+	HOLDuelLedgerRules::NotePlace(Places, 3, 800, -600);
+	T.AssertEquals(1, Places.Num(), "a slot has one place: the last note replaces the first");
+	TArray<FHOLDuelMoraleOrder> Orders = HOLDuelLedgerRules::OrdersOfEndedPlaced(S, Ended, Places);
+	T.AssertEquals(4, Orders.Num(), "Triumph, Demoralised and two Hesitations");
+	int Hes = LedgerFindOrder(Orders, HOLMoraleTable::Hesitation, 3);
+	int Unknown = LedgerFindOrder(Orders, HOLMoraleTable::Hesitation, 5);
+	int Win = LedgerFindOrder(Orders, HOLMoraleTable::Triumph, 1);
+	T.AssertTrue(Hes >= 0, "Hesitation on the refuser");
+	T.AssertTrue(Unknown >= 0, "Hesitation on the second refuser");
+	T.AssertTrue(Win >= 0, "Triumph kept");
+	if (Hes >= 0)
+	{
+		T.AssertTrue(Orders[Hes].bHasCenter, "Hesitation has a place");
+		T.AssertEquals(800, Orders[Hes].CenterXCm, "x = the refuser's last noted position");
+		T.AssertEquals(-600, Orders[Hes].CenterYCm, "y = the refuser's last noted position");
+	}
+	if (Unknown >= 0)
+		T.AssertFalse(Orders[Unknown].bHasCenter, "a refuser never noted has no place (the drain drops it)");
+	if (Win >= 0)
+		T.AssertEquals(Won.Arena.CenterX, Orders[Win].CenterXCm, "a won duel keeps the arena's centre");
+}

@@ -1,6 +1,28 @@
 // The match's book of duels (DuelInProgress.md D5), the script side of UHOLDuelSubsystem: the C++ part gives the step
 // and the heroes' health and asks, once a combat step, which pairs of heroes may touch each other; the rules are
 // HOLDuelRules.as (HOLDuel::BookCanHit, Tick). Server and solo only (the C++ base never calls it on a client).
+// Where a target stood when it was challenged or answered (D866 Q2 = A: Hesitation is laid at the refusing hero's position). Slot -1 = none.
+struct FHOLDuelRefuserPlace
+{
+	int Slot = -1;
+	int XCm = 0;
+	int YCm = 0;
+}
+
+namespace HOLDuelLedgerRules
+{
+	// Notes (or replaces) the place of a slot. STUB (red): notes nothing.
+	void NotePlace(TArray<FHOLDuelRefuserPlace>& Places, int Slot, int XCm, int YCm)
+	{
+	}
+
+	// The morale orders of the duels that ended, a refusal placed at its refuser's noted position. STUB (red): the placeless orders.
+	TArray<FHOLDuelMoraleOrder> OrdersOfEndedPlaced(const FHOLDuelSettings& S, const TArray<FHOLDuelEnded>& Ended, const TArray<FHOLDuelRefuserPlace>& Places)
+	{
+		return HOLDuelRewards::OrdersOfEnded(S, Ended);
+	}
+}
+
 class UHOLDuelLedger : UHOLDuelSubsystem
 {
 	FHOLDuelBook Book;
