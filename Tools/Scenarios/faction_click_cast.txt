@@ -5,6 +5,11 @@ hol.Sanity.Watch 1
 frames 10
 hol.Camera.FocusSlot 0
 frames 8
+hol.Cheat.Resources 1000
+hol.Cheat.Population 200
+hol.Units.SpawnHere 4 ManAtArms 0 250
+frames 20
+hol.Camera.FocusSlot 0
 hol.Cheat.Honor 100
 waitlog RpcCheat: honor set to 100 for sender slot 0
 wait 2
