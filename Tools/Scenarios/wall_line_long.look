@@ -1,7 +1,6 @@
-# branches: wall-line
-# STATUT : LOGIQUE SEULEMENT, NON JOUE, NON JOUABLE aujourd'hui (aucun type de mur dans les donnees, pas de hol.Mouse.Drag : voir l'en-tete du .txt)
-# OBJET attendu : une ligne de boites vertes plates (une par case de 4 m ; cote = 92 % d'une case, soit 368 cm : HOLWallGhostDrawer.as:100, Side = Tile/100*0.92 en echelle d'un cube de 100 cm), puis les fondations des murs sur les memes cases.
-# TAILLE en pixels : NON MESUREE (zoom -> pixels inconnu sans lancement). A relever sur la capture : largeur d'une boite verte en pixels = (368 / 400) x pas entre deux centres voisins ; la ligne doit compter PLUS de 16 boites et ne montrer aucune coupure ni boite rouge sur terrain libre.
+# branches: integ-55
+# STATUT : geste reel (Paysan selectionne, touches A puis D de la grille, glisser de souris hol.Mouse.Drag) ; play.ps1 -Hidden garde la souris reelle pour ce scenario (SAURON-1123pb).
+# OBJET attendu : une file de boites vertes plates alignees (un fantome par case de 4 m ; cote = 92 % d'une case, soit 368 cm : HOLWallGhostDrawer.as:100), puis les FONDATIONS de la palissade sur les memes cases. Viewport cache 1280x720, zoom 3 : environ 3,8 cm par pixel, donc une case de 4 m = environ 105 px et une boite verte = environ 97 px de large ; la ligne mesure environ 800 px (de x=200 a x=1000), soit 7 a 8 boites.
 # <nom de capture> | ce que l'utilisateur doit voir
-wall_line_long_during | pendant le glisser (bouton tenu) : plus de 16 boites vertes plates alignees, une par case, du point d'appui au curseur ; aucune boite rouge ; le joueur Aube et son centre visibles hors du panneau des notes
-wall_line_long_after | apres le relache : des fondations de mur sur toute la ligne (autant que de boites vertes), plus aucune boite verte ; la barre de ressources a baisse du cout de toutes les cases
+wall_line_long_during | pendant le glisser (bouton tenu) : 7 a 8 boites vertes plates (environ 97 px chacune) alignees horizontalement vers y=360, du point d'appui (x=200) au curseur ; aucune boite rouge ; la barre de ressources montre encore le Bois d'avant
+wall_line_long_after | apres le relache : 7 a 8 fondations de palissade (environ 105 px de pas) sur la meme ligne, plus aucune boite verte ; le Bois de la barre de ressources a baisse de 5 par case
