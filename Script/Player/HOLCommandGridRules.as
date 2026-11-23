@@ -212,6 +212,11 @@ namespace HOLCommandGridRules
 			}
 			return Result;
 		}
+		if (Context.bMonkUnit && Cell == GetMonkSealCell())
+		{
+			Result.Command = EHOLGridCommandKind::LightSeal;
+			return Result;
+		}
 		if (Context.bRageUnit && Cell == GetRageCell())
 		{
 			Result.Command = EHOLGridCommandKind::NecroticRage;
