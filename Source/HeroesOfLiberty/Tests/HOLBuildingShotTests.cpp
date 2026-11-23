@@ -62,6 +62,9 @@ namespace UE::HeroesOfLiberty::Tests::BuildingShot
 		int64 ReleasedAfterLeave = 0;
 		/** F8 T7: the arrows the display subsystem was asked to draw during the window (-1: no display subsystem in the world). */
 		int64 Launched = -1;
+		/** S3-a: the launch lines hol.Combat.LogBuildingShots wrote during the window (UHOLCombatProcessor::GetTotalBuildingShotsLogged), and whether at any step they differed from the arrows released by then. */
+		int64 LaunchLogged = 0;
+		bool bLaunchLogBehind = false;
 		/** F8 T8: what the building shots cost the processor over the window (UHOLCombatProcessor::GetBuildingShotCost). */
 		UHOLCombatProcessor::FBuildingShotCost Cost;
 	};
@@ -282,7 +285,7 @@ namespace UE::HeroesOfLiberty::Tests::BuildingShot
 				}
 				const UHOLArrowSubsystem* ArrowDisplay = World->GetSubsystem<UHOLArrowSubsystem>(); const int64 LaunchedBefore = ArrowDisplay ? ArrowDisplay->GetLaunchedCount() : 0; const float Start = HealthOf(Victim);
 				Result.Steps = FMath::CeilToInt(Options.Seconds / StepSeconds) + 1;
-				int64 Seen = ReleasedBefore;
+				int64 Seen = ReleasedBefore; const int64 LoggedBefore = UHOLCombatProcessor::GetTotalBuildingShotsLogged();
 				for (int32 Index = 0; Index < Result.Steps; ++Index)
 				{
 					RunStep();
@@ -292,6 +295,12 @@ namespace UE::HeroesOfLiberty::Tests::BuildingShot
 						Result.ReleaseSteps.Add(Index);
 					}
 					Seen = Now;
+					// S3-a: the launch line is written in the step the arrow leaves (before any impact, which comes steps later), one per arrow.
+					Result.LaunchLogged = UHOLCombatProcessor::GetTotalBuildingShotsLogged() - LoggedBefore;
+					if (Result.LaunchLogged != Now - ReleasedBefore)
+					{
+						Result.bLaunchLogBehind = true;
+					}
 					if (Index == Options.LeaveAtStep)
 					{
 						// F8 T6: the occupants leave (the unit goes back to the field); what the tower looses from the next step on is counted apart.
@@ -878,6 +887,95 @@ bool FHOLBuildingShotCostTest::RunTest(const FString& Parameters)
 	}
 	Table->RemoveRow(TestShotTowerType);
 	CombatEnabled->Set(FormerCombat, ECVF_SetByCode);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLBuildingShotLaunchLogTest, "HeroesOfLiberty.Combat.BuildingShotLaunchLog", UE::HeroesOfLiberty::Tests::BuildingShot::Flags)
+
+// S3-a: with hol.Combat.LogBuildingShots 1 a building writes ONE launch line per arrow, in the step the arrow leaves (the count is the processor's
+// GetTotalBuildingShotsLogged, checked after every step against the arrows released: no file read); with the cvar off (its default) none.
+bool FHOLBuildingShotLaunchLogTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::BuildingShot;
+	UDataTable* Table = const_cast<UDataTable*>(GetDefault<UHOLBuildingSettings>()->BuildingTypesTable.LoadSynchronous());
+	const FHOLBuildingTypeRow* HouseRow = Table ? Table->FindRow<FHOLBuildingTypeRow>(HOLBuildingTypeNames::House, TEXT("building shot launch log test")) : nullptr;
+	IConsoleVariable* CombatEnabled = IConsoleManager::Get().FindConsoleVariable(TEXT("hol.Combat.Enabled"));
+	IConsoleVariable* LogShots = IConsoleManager::Get().FindConsoleVariable(TEXT("hol.Combat.LogBuildingShots"));
+	if (!TestNotNull(TEXT("the building type table and its House row"), HouseRow) || !TestNotNull(TEXT("hol.Combat.Enabled"), CombatEnabled) || !TestNotNull(TEXT("hol.Combat.LogBuildingShots"), LogShots))
+	{
+		return false;
+	}
+	const int32 FormerCombat = CombatEnabled->GetInt();
+	const int32 FormerLog = LogShots->GetInt();
+	TestEqual(TEXT("the launch line is off by default"), FormerLog, 0);
+	CombatEnabled->Set(1, ECVF_SetByCode);
+	FHOLBuildingTypeRow TowerRow = *HouseRow;
+	TowerRow.BuildingAttack = 5;
+	TowerRow.BuildingAttackInterval = 1.625f;
+	TowerRow.BuildingAttackRange = 3000.f;
+	TowerRow.BuildingFiresEmpty = true;
+	Table->AddRow(TestShotTowerType, TowerRow);
+
+	LogShots->Set(1, ECVF_SetByCode);
+	const FShotResult On = RunScenario(*this, EHOLConstructionState::Finished, 3, 1000.0);
+	if (TestTrue(TEXT("the lit scenario ran and released"), On.bRan && On.Released >= 1))
+	{
+		TestEqual(TEXT("one launch line per arrow released"), On.LaunchLogged, On.Released);
+		TestFalse(TEXT("at every step the lines written equal the arrows released (the line is at the launch, before the impact)"), On.bLaunchLogBehind);
+	}
+	FShotOptions TwoTowers;
+	TwoTowers.Towers = 2;
+	const FShotResult Two = RunScenario(*this, EHOLConstructionState::Finished, 3, 1000.0, TwoTowers);
+	if (TestTrue(TEXT("the two-tower scenario ran and released"), Two.bRan && Two.Released >= 2))
+	{
+		TestEqual(TEXT("two towers: still one launch line per arrow"), Two.LaunchLogged, Two.Released);
+		TestFalse(TEXT("two towers: the lines follow the releases at every step"), Two.bLaunchLogBehind);
+	}
+	LogShots->Set(0, ECVF_SetByCode);
+	const FShotResult Off = RunScenario(*this, EHOLConstructionState::Finished, 3, 1000.0);
+	if (TestTrue(TEXT("the dark scenario ran and released"), Off.bRan && Off.Released >= 1))
+	{
+		TestEqual(TEXT("cvar off: no launch line"), Off.LaunchLogged, static_cast<int64>(0));
+	}
+	Table->RemoveRow(TestShotTowerType);
+	LogShots->Set(FormerLog, ECVF_SetByCode);
+	CombatEnabled->Set(FormerCombat, ECVF_SetByCode);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLArrowScaleCvarTest, "HeroesOfLiberty.Combat.ArrowScaleCvar", UE::HeroesOfLiberty::Tests::BuildingShot::Flags)
+
+// S3-a: hol.Arrow.Scale multiplies the scale the arrow subsystem draws (default 1: the base 1.5 / 4 / 4, unchanged in the game), and
+// hol.Arrow.SlowMotion the drawn flight time (default 1: unchanged). Both are read where the subsystem renders (GetArrowScale / GetFlightDurationSeconds).
+bool FHOLArrowScaleCvarTest::RunTest(const FString& Parameters)
+{
+	IConsoleVariable* Scale = IConsoleManager::Get().FindConsoleVariable(TEXT("hol.Arrow.Scale"));
+	IConsoleVariable* Slow = IConsoleManager::Get().FindConsoleVariable(TEXT("hol.Arrow.SlowMotion"));
+	if (!TestNotNull(TEXT("hol.Arrow.Scale"), Scale) || !TestNotNull(TEXT("hol.Arrow.SlowMotion"), Slow))
+	{
+		return false;
+	}
+	const float FormerScale = Scale->GetFloat();
+	const float FormerSlow = Slow->GetFloat();
+	TestEqual(TEXT("hol.Arrow.Scale defaults to 1"), FormerScale, 1.f);
+	TestEqual(TEXT("hol.Arrow.SlowMotion defaults to 1"), FormerSlow, 1.f);
+
+	Scale->Set(1.f, ECVF_SetByCode);
+	const FVector Base = UHOLArrowSubsystem::GetArrowScale();
+	TestTrue(TEXT("scale 1: the base scale 1.5 / 4 / 4, unchanged"), Base.Equals(FVector(1.5, 4.0, 4.0), 0.001));
+	Scale->Set(3.f, ECVF_SetByCode);
+	const FVector Tripled = UHOLArrowSubsystem::GetArrowScale();
+	TestTrue(TEXT("scale 3: three times the base"), Tripled.Equals(Base * 3.0, 0.001));
+	TestTrue(TEXT("scale 3: 4.5 / 12 / 12"), Tripled.Equals(FVector(4.5, 12.0, 12.0), 0.001));
+	Scale->Set(1.f, ECVF_SetByCode);
+	TestTrue(TEXT("scale back to 1: the base again"), UHOLArrowSubsystem::GetArrowScale().Equals(Base, 0.001));
+
+	Slow->Set(1.f, ECVF_SetByCode);
+	TestEqual(TEXT("slow motion 1: a 300 ms flight is drawn 0.3 s"), UHOLArrowSubsystem::GetFlightDurationSeconds(300), 0.3, 0.0001);
+	Slow->Set(4.f, ECVF_SetByCode);
+	TestEqual(TEXT("slow motion 4: a 300 ms flight is drawn 1.2 s"), UHOLArrowSubsystem::GetFlightDurationSeconds(300), 1.2, 0.0001);
+	Slow->Set(FormerSlow, ECVF_SetByCode);
+	Scale->Set(FormerScale, ECVF_SetByCode);
 	return true;
 }
 #endif // WITH_DEV_AUTOMATION_TESTS

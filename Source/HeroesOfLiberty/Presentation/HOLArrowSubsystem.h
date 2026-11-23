@@ -43,6 +43,11 @@ public:
 	/** Launches an arrow now (a dedicated server: nothing). */
 	void Launch(const FHOLArrowLaunch& Arrow);
 
+	/** S3-a: the scale an arrow is drawn at: the base (1.5, 4, 4) times hol.Arrow.Scale (default 1: unchanged; the trials raise it to see the arrow). */
+	static FVector GetArrowScale();
+	/** S3-a: how long an arrow of FlightMs milliseconds of flight is drawn (s): the flight times hol.Arrow.SlowMotion (default 1: unchanged; the trials slow the drawing only, the landing stays on time). */
+	static double GetFlightDurationSeconds(int32 FlightMs);
+
 	int32 GetInFlightCount() const { return Arrows.Num(); }
 	int64 GetLaunchedCount() const { return Launched; }
 	int64 GetLandedCount() const { return Landed; }

@@ -53,6 +53,8 @@ public:
 	static int64 GetTotalKills() { return TotalKills; }
 	/** Arrows released, landed on their target and lost (target dead in flight) since the program started. */
 	static int64 GetTotalArrowsReleased() { return TotalArrowsReleased; }
+	/** S3-a: launch lines written by hol.Combat.LogBuildingShots (one per arrow of a building, at its release); 0 while the cvar is off. For the tests. */
+	static int64 GetTotalBuildingShotsLogged() { return TotalBuildingShotsLogged; }
 	static int64 GetTotalArrowsLanded() { return TotalArrowsLanded; }
 	static int64 GetTotalArrowsLost() { return TotalArrowsLost; }
 	/** Arrows in flight (the tests). */
@@ -379,6 +381,7 @@ protected:
 	static int64 TotalHits;
 	static int64 TotalKills;
 	static int64 TotalArrowsReleased;
+	static int64 TotalBuildingShotsLogged;
 	static int64 TotalArrowsLanded;
 	static int64 TotalArrowsLost;
 };

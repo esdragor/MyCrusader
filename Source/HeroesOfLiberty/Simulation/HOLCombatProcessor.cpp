@@ -50,6 +50,7 @@
 int64 UHOLCombatProcessor::TotalHits = 0;
 int64 UHOLCombatProcessor::TotalKills = 0;
 int64 UHOLCombatProcessor::TotalArrowsReleased = 0;
+int64 UHOLCombatProcessor::TotalBuildingShotsLogged = 0;
 int64 UHOLCombatProcessor::TotalArrowsLanded = 0;
 int64 UHOLCombatProcessor::TotalArrowsLost = 0;
 
@@ -77,6 +78,9 @@ namespace UE::HeroesOfLiberty::Combat
 		TEXT("Speed of the units under the cry Serrez les rangs, in percent of their walk (default 0: held in place, 1-100: slowed; Pas de l'Aube lets them advance at 50 % at least)"));
 	int32 LogHits = 0;
 	FAutoConsoleVariableRef CVarLogHits(TEXT("hol.Combat.LogHits"), LogHits, TEXT("1: logs every hit of the melee and every arrow released, landed or lost (server or solo)"));
+	/** S3-a: 1 writes a line when a building looses an arrow (for the trials: a scenario waits for it to catch the arrow in flight). Off by default. */
+	int32 LogBuildingShots = 0;
+	FAutoConsoleVariableRef CVarLogBuildingShots(TEXT("hol.Combat.LogBuildingShots"), LogBuildingShots, TEXT("1: logs one line per arrow a building looses, at its release: the building, the target, the planned flight (default 0)"));
 	int32 Enabled = 1;
 	FAutoConsoleVariableRef CVarEnabled(TEXT("hol.Combat.Enabled"), Enabled, TEXT("0: no unit fights (server or solo)"));
 	/** D733: a unit on an attack-move takes on the Neutrals it meets (a Neutral player's units, in Diplomacy). 0: it leaves them alone, as before. */

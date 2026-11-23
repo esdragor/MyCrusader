@@ -26,7 +26,12 @@ namespace
 	constexpr double ArcShare = 0.06;
 	/** The arrow drawn larger than life to be seen from the RTS camera (J7c.2b, trial): at its true 1.2 cm shaft it was
 	 *  a pixel or two wide in the close-ups. 1.5 times as long (~117 cm), 4 times as thick (shaft ~5 cm). */
-	const FVector ArrowScale(1.5, 4.0, 4.0);
+	const FVector ArrowBaseScale(1.5, 4.0, 4.0);
+	/** S3-a: for the trials only: the arrow drawn this many times larger (default 1 = the base above), and its drawing this many times slower (default 1). */
+	float ArrowScaleFactor = 1.f;
+	FAutoConsoleVariableRef CVarArrowScale(TEXT("hol.Arrow.Scale"), ArrowScaleFactor, TEXT("Multiplier of the drawn arrow's scale (default 1: unchanged; a trial raises it, e.g. 3, to see the arrow of a tower)"));
+	float ArrowSlowMotion = 1.f;
+	FAutoConsoleVariableRef CVarArrowSlowMotion(TEXT("hol.Arrow.SlowMotion"), ArrowSlowMotion, TEXT("Multiplier of the drawn arrow's flight time (default 1: unchanged; a trial raises it, e.g. 4, so the arrow stays in view; the damage still lands on time)"));
 
 	FAutoConsoleCommandWithWorld ArrowReportCommand(
 		TEXT("hol.Combat.ArrowReport"),
@@ -43,6 +48,18 @@ namespace
 				ArrowSubsystem->GetInFlightCount(), ArrowSubsystem->GetLaunchedCount(), ArrowSubsystem->GetLandedCount(), ArrowSubsystem->GetGapCount(),
 				ArrowSubsystem->GetGapMeanMs(), ArrowSubsystem->GetGapMinMs(), ArrowSubsystem->GetGapMaxMs());
 		}));
+}
+
+FVector UHOLArrowSubsystem::GetArrowScale()
+{
+	// NOT COMPILED, stub (red test): hol.Arrow.Scale is not applied yet.
+	return ArrowBaseScale;
+}
+
+double UHOLArrowSubsystem::GetFlightDurationSeconds(const int32 FlightMs)
+{
+	// NOT COMPILED, stub (red test): hol.Arrow.SlowMotion is not applied yet.
+	return FMath::Max(FlightMs, 1) / 1000.0;
 }
 
 bool UHOLArrowSubsystem::ShouldCreateSubsystem(UObject* Outer) const
@@ -183,7 +200,7 @@ void UHOLArrowSubsystem::Launch(const FHOLArrowLaunch& Launch)
 	Arrow.LastTarget = Launch.To + FVector(0.0, 0.0, ImpactHeight);
 	Arrow.Target = Launch.Target;
 	Arrow.Start = World->GetTimeSeconds();
-	Arrow.Duration = FMath::Max(Launch.FlightMs, 1) / 1000.0;
+	Arrow.Duration = GetFlightDurationSeconds(Launch.FlightMs);
 	Arrow.Group = FindOrAddGroup(Launch.ShooterType);
 	++Launched;
 	// A gun's shot (the Arquebusier): a puff of powder smoke at the muzzle, ahead of the shooter at his shoulder's height.
@@ -294,7 +311,7 @@ void UHOLArrowSubsystem::Tick(float DeltaTime)
 		const double Arc = ArcShare * FVector2D(Span.X, Span.Y).Size();
 		const FVector Position = Arrow.From + Span * T + FVector(0.0, 0.0, Arc * 4.0 * T * (1.0 - T));
 		const FVector Velocity = Span + FVector(0.0, 0.0, Arc * (4.0 - 8.0 * T));
-		GroupTransforms[Arrow.Group].Emplace(FRotationMatrix::MakeFromX(Velocity.GetSafeNormal()).ToQuat(), Position, ArrowScale);
+		GroupTransforms[Arrow.Group].Emplace(FRotationMatrix::MakeFromX(Velocity.GetSafeNormal()).ToQuat(), Position, GetArrowScale());
 	}
 
 	// The puffs of powder smoke: swelling, rising and fading out over SmokeSeconds (their own scale, not the arrows'): a translucent
