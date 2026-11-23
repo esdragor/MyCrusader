@@ -18,6 +18,11 @@ namespace HOLZoneEffect
 	constexpr int32 LightSealDurationMs = 10000;
 	constexpr int32 LightSealSlowPercent = 40;
 
+	/** D689, Sacred Light (S1-a): a zone that HEALS the allies standing in it, continuously, for about 5 s. Radius and rate are provisional defaults (Retours/Q-sacred-light-values.md); the cost (25 Honour) and the cool-down (20 s) are the script's (S1-b). */
+	constexpr int32 SacredLightRadiusCm = 600;
+	constexpr int32 SacredLightDurationMs = 5000;
+	constexpr int32 SacredLightHealPerSecond = 30;
+
 	/** One zone on the ground, put down by OwnerSlot at StartMs. */
 	struct FZone
 	{
@@ -28,6 +33,8 @@ namespace HOLZoneEffect
 		int32 StartMs = 0;
 		int32 DurationMs = 0;
 		int32 SlowPercent = 0;
+		/** Health an ALLY of the owner in the zone gets each second (0: not a healing zone; Sacred Light). */
+		int32 HealPerSecond = 0;
 	};
 
 	/** Is the point inside the disc (the edge counts). */
