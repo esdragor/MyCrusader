@@ -1203,7 +1203,14 @@ int32 UHOLTestWorldLibrary::SpawnTestHero(UHOLTestWorldHandle* TestWorld, const 
 	TArray<uint32> After;
 	Units->GetAllUnitIds(After);
 	After.RemoveAll([&Before](const uint32 Id) { return Before.Contains(Id); });
-	return After.Num() == 1 ? static_cast<int32>(After[0]) : 0;
+	if (After.Num() != 1)
+	{
+		return 0;
+	}
+	// The hero is registered at birth (FindHeroUnit), but his SHEET (state Alive, level) is only written by UpdateSheets at a step's end:
+	// one step with its end, as the RunStep of HOLHeroAbilityMatchTests.cpp (his sheet: alive, level 1). Without it PlantBanner / CanCast see a hero not alive.
+	HOLTestWorldLibNs::HOLTestWorldLibBroadcast(World, 1, true);
+	return static_cast<int32>(After[0]);
 #else
 	return 0;
 #endif

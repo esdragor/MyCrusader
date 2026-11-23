@@ -283,6 +283,8 @@ bool FHOLBindingsSpawnTestHeroTest::RunTest(const FString& Parameters)
 			TestEqual(TEXT("it is the slot's hero"), static_cast<int32>(Units->FindHeroUnit(0)), HeroUnit);
 			TestFalse(TEXT("no banner at level 1"), Heroes->PlantBanner(0, FVector(1600.0, 0.0, 0.0)));
 			Heroes->SetXP(0, HOLHeroXP::GetLevelXP(4));
+			// The level reaches the hero's sheet (what CanCast reads) at a step's end, as the RunStep after SetXP of HOLHeroAbilityMatchTests.cpp.
+			UHOLTestWorldLibrary::AdvanceStepsWithEnd(Handle, 1);
 			TestFalse(TEXT("no banner 16.5 m away"), Heroes->PlantBanner(0, FVector(1650.0, 0.0, 0.0)));
 			TestTrue(TEXT("a banner 16 m away"), Heroes->PlantBanner(0, FVector(1600.0, 0.0, 0.0)));
 		}
