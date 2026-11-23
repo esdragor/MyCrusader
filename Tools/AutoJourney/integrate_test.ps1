@@ -188,13 +188,13 @@ $FakeRegen = Join-Path $Tmp 'fake_regen.ps1'
 $RegenArgs = @('-RegenScript', $FakeRegen)
 function Regen-Line($Plan) { return @($Plan.Lines | Where-Object { $_ -match '^PLAN \d+ regen ' }) }
 $P = Run-Plan ($Base + @('-Greens', 'g1,gcsv') + $RegenArgs)
-$L = Regen-Line $P
+$L = @(Regen-Line $P)
 Check (($L.Count -eq 1) -and ($L[0] -notmatch 'SKIP') -and ($L[0] -match 'fake_regen\.ps1')) 'a green changes BuildingTypes.csv without its .uasset: the plan has a real regen step' ($P.Lines -join ' | ')
 $P = Run-Plan ($Base + @('-Greens', 'g1,g2') + $RegenArgs)
-$L = Regen-Line $P
+$L = @(Regen-Line $P)
 Check (($L.Count -eq 1) -and ($L[0] -match 'SKIP')) 'no table CSV changed: the regen step is SKIP' ($P.Lines -join ' | ')
 $P = Run-Plan ($Base + @('-Greens', 'gboth') + $RegenArgs)
-$L = Regen-Line $P
+$L = @(Regen-Line $P)
 Check (($L.Count -eq 1) -and ($L[0] -match 'SKIP')) 'UnitTypes.csv AND UnitTypes.uasset changed in the greens: the regen step is SKIP (already regenerated)' ($P.Lines -join ' | ')
 function Run-Regen([string]$Greens, [string]$Code) {
   $script:CaseNo++
