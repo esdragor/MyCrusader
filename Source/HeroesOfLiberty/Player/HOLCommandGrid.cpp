@@ -117,6 +117,7 @@ namespace HOLCommandGrid
 	void NoteSelectedUnitType(FHOLGridContext& Context, const FName TypeName)
 	{
 		Context.bRageUnit |= TypeName == FName(TEXT("DamnedWarrior"));
+		Context.bMonkUnit |= TypeName == FName(TEXT("Monk"));
 	}
 	int32 GetHeroAbilityCell(const EHOLHeroAbility Ability)
 	{
