@@ -446,53 +446,87 @@ bool FHOLZoneEffectKillHonorTest::RunTest(const FString& Parameters)
 			Units->FlushDestructions();
 			Simulation->GetOnStepEnded().Broadcast(Step);
 		};
-		FHOLUnitSpawnRequest Dawn;
-		Dawn.TypeName = Spearman;
-		Dawn.Count = 1;
-		Dawn.OwnerPlayer = 0;
-		Dawn.Center = FVector(0.0, 0.0, 0.0);
-		Units->RequestUnits(Dawn);
-		FHOLUnitSpawnRequest Enemy = Dawn;
-		Enemy.OwnerPlayer = 1;
-		Enemy.Center = FVector(150.0, 0.0, 0.0);
-		Units->RequestUnits(Enemy);
-		// D859: the Honor comes from a kill near a BUILDING of the Dawn: slot 0's centre stands 10 m west of the fight.
+		// Born one by one (as HeroesOfLiberty.HeroXP.KillInMatch), so each unit of a fight is known by its own identifier.
+		const auto Place = [Units](const int32 Owner, const FVector& Location)
+		{
+			TArray<uint32> Before;
+			Units->GetAllUnitIds(Before);
+			FHOLUnitSpawnRequest Request;
+			Request.TypeName = Spearman;
+			Request.Count = 1;
+			Request.OwnerPlayer = static_cast<uint8>(Owner);
+			Request.Center = Location;
+			Units->RequestUnits(Request);
+			Units->ServeBirthRequests();
+			TArray<uint32> After;
+			Units->GetAllUnitIds(After);
+			uint32 Born = 0;
+			for (const uint32 Id : After)
+			{
+				Born = Before.Contains(Id) ? Born : Id;
+			}
+			return Born;
+		};
+		const auto IsGone = [Units](const uint32 Id)
+		{
+			return Units->GetUnitTypeName(Id).IsNone();
+		};
+		// The unit's hit points (-1 once it is gone), for the message of a failure.
+		const auto HealthOf = [Units, &EntityManager](const uint32 Id)
+		{
+			const FMassEntityHandle Handle = Units->FindEntity(Id);
+			const FHOLUnitStateFragment* Fragment = Handle.IsSet() ? EntityManager->GetFragmentDataPtr<FHOLUnitStateFragment>(Handle) : nullptr;
+			return Fragment ? Fragment->CurrentHealth : -1.f;
+		};
+		const auto SetHealthToOne = [Units, &EntityManager](const uint32 Id)
+		{
+			FHOLUnitStateFragment* Fragment = EntityManager->GetFragmentDataPtr<FHOLUnitStateFragment>(Units->FindEntity(Id));
+			if (Fragment)
+			{
+				Fragment->CurrentHealth = 1.f;
+			}
+			return Fragment != nullptr;
+		};
+		// Steps until the victim is gone (10 s at most), the loop ends at its death; true if it is gone. The deaths are the units really gone, not a count of the test's own.
+		const auto RunUntilGone = [&RunStep, &IsGone, StepSeconds](const uint32 Victim)
+		{
+			for (int32 Steps = 0; Steps < FMath::CeilToInt(10.f / StepSeconds) && !IsGone(Victim); ++Steps)
+			{
+				RunStep();
+			}
+			RunStep();
+			return IsGone(Victim);
+		};
+		// D859: the Honor comes from a kill near a BUILDING of the Dawn: slot 0's centre stands 10 m west of the first fight.
 		AHOLBuilding* DawnCentre = World->SpawnActor<AHOLBuilding>(FVector(-1000.0, 0.0, 0.0), FRotator::ZeroRotator);
 		if (DawnCentre)
 		{
 			DawnCentre->Setup(HOLBuildingTypeNames::MainCentre, 0, 0);
 		}
-		Units->ServeBirthRequests();
-		TArray<uint32> Ids;
-		Units->GetAllUnitIds(Ids);
-		if (TestNotNull(TEXT("slot 0 centre spawned"), DawnCentre) && TestEqual(TEXT("two units born"), Ids.Num(), 2))
+		const uint32 DawnNear = Place(0, FVector(0.0, 0.0, 0.0));
+		const uint32 EnemyNear = Place(1, FVector(150.0, 0.0, 0.0));
+		if (TestNotNull(TEXT("slot 0 centre spawned"), DawnCentre) && TestTrue(TEXT("a Dawn spearman and an enemy spearman born near the centre"), DawnNear != 0 && EnemyNear != 0))
 		{
 			RunStep();
-			for (const uint32 Id : Ids)
-			{
-				FHOLUnitStateFragment* Fragment = EntityManager->GetFragmentDataPtr<FHOLUnitStateFragment>(Units->FindEntity(Id));
-				if (Fragment && Fragment->OwnerPlayer == 1)
-				{
-					Fragment->CurrentHealth = 1.f;
-				}
-			}
+			TestTrue(TEXT("the near enemy is down to 1 hit point"), SetHealthToOne(EnemyNear));
 			TestEqual(TEXT("the gauge of slot 0 starts empty"), ReadFactionGauge(State, 0), 0);
-			for (int32 Steps = 0; Steps < 200; ++Steps)
+			const bool bNearGone = RunUntilGone(EnemyNear);
+			TArray<uint32> AliveIds;
+			Units->GetAllUnitIds(AliveIds);
+			TestTrue(*FString::Printf(TEXT("the enemy killed near the centre is gone (enemy hp %.0f, Dawn spearman hp %.0f, %d unit(s) alive)"), HealthOf(EnemyNear), HealthOf(DawnNear), AliveIds.Num()), bNearGone);
+			TestEqual(TEXT("slot 0 gauge = HonorKillGain for the one kill within 12 m of its building"), ReadFactionGauge(State, 0), KillGain);
+			TestEqual(TEXT("slot 1 killed nothing: no Honor"), ReadFactionGauge(State, 1), 0);
+
+			// The contrary case: a kill 50 m from every building of the Dawn gives nothing (the radius of D859 is the rule, not any kill).
+			const uint32 DawnFar = Place(0, FVector(5000.0, 0.0, 0.0));
+			const uint32 EnemyFar = Place(1, FVector(5150.0, 0.0, 0.0));
+			if (TestTrue(TEXT("a second pair born 50 m from the centre"), DawnFar != 0 && EnemyFar != 0))
 			{
 				RunStep();
-				TArray<uint32> Alive;
-				Units->GetAllUnitIds(Alive);
-				if (Alive.Num() < 2)
-				{
-					break;
-				}
+				TestTrue(TEXT("the far enemy is down to 1 hit point"), SetHealthToOne(EnemyFar));
+				TestTrue(*FString::Printf(TEXT("the enemy killed far from the centre is gone (enemy hp %.0f)"), HealthOf(EnemyFar)), RunUntilGone(EnemyFar));
+				TestEqual(TEXT("a kill beyond 12 m of every Dawn building: the gauge stays at one kill's Honor"), ReadFactionGauge(State, 0), KillGain);
 			}
-			TArray<uint32> Alive;
-			Units->GetAllUnitIds(Alive);
-			const int32 Deaths = Ids.Num() - Alive.Num();
-			TestTrue(*FString::Printf(TEXT("the enemy died (%d unit(s) gone)"), Deaths), Deaths >= 1);
-			TestEqual(TEXT("slot 0 gauge = HonorKillGain per death"), ReadFactionGauge(State, 0), FMath::Min(Deaths * KillGain, Cap));
-			TestEqual(TEXT("slot 1 killed nothing: no Honor"), ReadFactionGauge(State, 1), 0);
 		}
 		UHOLHealProcessor::ConfigureHonor(0, 0);
 	}
