@@ -5,5 +5,6 @@ VERT: NON VU. Run de df66c0c : 2143/2144, seul rouge = Test_FactionPowerCastIsTh
 A LANCER: powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Arwen\Tools\Tests\quick_check.ps1 -Parts tests  (attendu 2144/2144)
 ECARTS: le classifieur a refuse l'ajout d'un champ RangeCm a FHOLPowerRow (HOLPowerBookRules.as hors fichiers pris) : la "ligne a part" est donc HOLDawnPowers::SacredLightRangeCm() (une seule source). Touches en plus des 4 fichiers pris : HOLFactionPowerCast_Test.as et HOLFactionPowerCastEdge_Test.as (attentes de portee, L22-3). Grep quick_check.ps1 et Tools/Scenarios : aucun identifiant de portee.
 AI: HOLAIBrain.as:165/181 utilise encore SealRangeCm (800) pour la zone de l'IA : a passer a HOLDawnPowers::SacredLightRangeCm() par Glorfindel. Signature de Decide inchangee.
-NON FAIT: AubeInProgress.md, EtapeDefini.md, case de la file l.25 (limite d'appels). Placeholders: rien d'ajoute.
+MAJ ARWEN-1123pb (15:4x) : f0c6896 = attente de Test_FactionPowerCastIsTheMonkAbilityRow mise a jour ; tests 2144/2144 PASS a 15:31, lances par la session principale ; integ-37 PRETE a f0c6896 (pas encore dans main). Les docs ci-dessous (AubeInProgress, EtapeDefini, file l.25) sont rattrapees par ARWEN-1123pb.
+NON FAIT (par pa): AubeInProgress.md, EtapeDefini.md, case de la file l.25 (limite d'appels). Placeholders: rien d'ajoute.
 DIAGNOSTICS_AS: non relus. BUILDS_DEMANDES: 0. TESTS_SCRIPT_AJOUTES: 1 (Test_SacredLightRangeIs1200). TYPES_A_EXPOSER: aucun. TESTS_TAUTOLOGIQUES: 0.

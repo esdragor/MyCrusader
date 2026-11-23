@@ -1,0 +1,17 @@
+﻿=== Faramir zone-effect ec74528 (attendu 2100/2100, Zone.KillHonor) 15:21:46
+
+  check_placeholders : PASS (44 provisional types, 46 map entries, 165 lines)
+tests 2144/2145 : FAIL (REGRESSION : pas dans known_reds.txt)
+  [KO] all green (failed: HeroesOfLiberty.Zone.KillHonor)
+quick_check : FAIL in 296 s (game launch done at 1 s)
+red summary : 1 regression(s) : tests 2144/2145 ; 0 rouge(s) connu(s)
+
+
+=== Arwen integ-37 f0c6896 (attendu 2144/2144) 15:26:52
+
+  check_placeholders : PASS (44 provisional types, 46 map entries, 165 lines)
+tests 2144/2144 : PASS
+quick_check : PASS in 261 s (game launch done at 1 s)
+
+
+fin 15:31:28
