@@ -9,7 +9,7 @@
 /**
  * Read libraries of two small pure rules (MIG-C-PetitesRegles, D830, D836, D839), envelopes only (no rule here), so that the tests of
  * HOLHeroXPTests.cpp and HOLMonkTests.cpp can be ported to script. The rules stay in C++ (HOLHeroXPRules.h, HOLHealRules.h).
- * A source of XP is its number (EHOLXPSource: 0 Combat, 1 Command, 2 Development, 3 Exploration).
+ * A source of XP is its number (EHOLXPSource: 0 Combat, 1 Command, 2 Development, 3 Exploration, 4 Duel).
  */
 
 /** HOLHeroXP:: for Angelscript (namespace HOLHeroXPRead there). */

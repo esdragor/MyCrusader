@@ -46,6 +46,10 @@ public:
 	 */
 	void AddXP(int32 Slot, int32 XP, EHOLXPSource Source);
 
+	/** D859 n. 9: a duel won, 150 XP (HOLHeroXP::DuelXP at the Duel source) added to the slot's sheet; the script's duel ledger calls it (authority only, nothing on a client). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Hero")
+	void AwardDuelXP(int32 Slot);
+
 	/** Development (hol.Hero.SetXP): the slot's XP set, its copies written at once. False out of range or on a client. */
 	bool SetXP(int32 Slot, int32 XP);
 
@@ -117,6 +121,9 @@ public:
 	 * The cast range (800 cm) and the cool-down (40 s) are the caller's (the UnitAbilities line), not checked here.
 	 */
 	bool StartLightSeal(int32 Slot, const FVector& Center);
+
+	/** D689, Sacred Light: the slot puts a healing zone at Center (S1-a). One per slot and per kind: the slot's Seal stays. Server or solo only. */
+	bool StartSacredLight(int32 Slot, const FVector& Center);
 
 	/** D859: the zones put down (expired ones are dropped when another starts; HOLZoneEffect::ZoneActive says which are active now). */
 	const TArray<HOLZoneEffect::FZone>& GetZones() const { return Zones; }

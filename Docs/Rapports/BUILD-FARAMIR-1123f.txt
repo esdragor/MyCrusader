@@ -1,0 +1,10 @@
+﻿build : LaunchCheck debut (Get-StaleBinaryProblem) : the binary UnrealEditor-HeroesOfLiberty.dll of C:\Users\baudo\Documents\HeroesOfLiberty-Faramir (2026-11-23T10:18:05) is older than its C++ source Source\HeroesOfLiberty\Simulation\HOLHealProcessor.h (2026-11-23T10:31:47): Tools\build.ps1 in that copy first
+queued behind the build of: HeroesOfLiberty-Elrond, HeroesOfLiberty-Faramir (position 2 of 2 waiting; one build at a time on this engine; normal)
+queued behind the build of: HeroesOfLiberty-Faramir (position 2 of 2 waiting; one build at a time on this engine; normal)
+queued behind the build of: HeroesOfLiberty-Faramir (position 1 of 1 waiting; one build at a time on this engine; normal)
+queued behind the build of: HeroesOfLiberty-Faramir, another project (position 1 of 1 waiting; one build at a time on this engine; normal)
+build : PASS (HeroesOfLibertyEditor Development, HeroesOfLiberty-Faramir, 3 s)
+BUILD exit 0
+  check_placeholders : PASS (43 provisional types, 45 map entries, 161 lines)
+parts: tests
+engine: C:\UE\UE_5.8_HOL\Engine\Binaries\Win64

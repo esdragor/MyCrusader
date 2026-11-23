@@ -308,3 +308,14 @@ void Test_DuelRewardsOrdersCarryTheirPlace(FUnitTest& T)
 	if (NoPlace.Num() == 1)
 		T.AssertFalse(NoPlace[0].bHasCenter, "Orders alone give no place to a refusal");
 }
+// D859 n. 9: of a won duel and a refused one, only the winner (slot 1) earns the duel XP; nobody for the refusal.
+void Test_DuelXPGoesToTheWinnerOnly(FUnitTest& T)
+{
+	FHOLDuelSettings S = HOLDuel::Preset();
+	TArray<int> Winners = HOLDuelRewards::XPWinnersOfEnded(S, HonorTwoEnded(S));
+	T.AssertEquals(1, Winners.Num(), "one winner of two ended duels");
+	if (Winners.Num() == 1)
+		T.AssertEquals(1, Winners[0], "the winner of the won duel gets the XP, not the refuser");
+	TArray<FHOLDuelEnded> None;
+	T.AssertEquals(0, HOLDuelRewards::XPWinnersOfEnded(S, None).Num(), "no duel ended: no XP");
+}

@@ -17,6 +17,8 @@ enum class EHOLXPSource : uint8
 	Development,
 	/** Exploration and territory (relays, secondary centres, fog: later). Territory: the rules are in Script/Relays/HOLRelayRules.as (D388, RelaysInProgress.md); not wired to the hero yet. */
 	Exploration,
+	/** A duel won (GDD 10.5, DuelInProgress.md D7, D859 n. 9): a fixed 150 XP, no scaling by the killed unit. */
+	Duel,
 };
 
 /**
@@ -34,6 +36,9 @@ namespace HOLHeroXP
 
 	/** XP for a hero killed (J8b-Q5), before the levels' ratio and the source's weight. */
 	constexpr int32 HeroKillXP = 300;
+
+	/** XP of a duel won (D859 n. 9): fixed 150, through GetXP at the Duel source (weight 100 %). */
+	constexpr int32 DuelXP = 150;
 
 	/** The source's weight in percent (J8b-Q2: military > economy > exploration): 100, 75, 50, 25. */
 	HEROESOFLIBERTY_API int32 GetWeightPercent(EHOLXPSource Source);

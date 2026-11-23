@@ -495,13 +495,17 @@ void UHOLHeroSubsystem::AddXP(const int32 Slot, const int32 XP, const EHOLXPSour
 	{
 		return;
 	}
-	static const TCHAR* const SourceNames[] = { TEXT("combat"), TEXT("command"), TEXT("development"), TEXT("exploration") };
+	static const TCHAR* const SourceNames[] = { TEXT("combat"), TEXT("command"), TEXT("development"), TEXT("exploration"), TEXT("duel") };
 	const int32 SourceIndex = static_cast<int32>(Source);
 	Sheets[Slot].Private.XP += XP;
 	UE_LOG(LogHOLMatch, Display, TEXT("Hero XP: slot %d +%d (%s), xp %d"), Slot, XP,
 		SourceIndex < UE_ARRAY_COUNT(SourceNames) ? SourceNames[SourceIndex] : TEXT("?"), Sheets[Slot].Private.XP);
 }
 
+void UHOLHeroSubsystem::AwardDuelXP(const int32 Slot)
+{
+	AddXP(Slot, HOLHeroXP::GetXP(HOLHeroXP::DuelXP, EHOLXPSource::Duel), EHOLXPSource::Duel);
+}
 bool UHOLHeroSubsystem::SetXP(const int32 Slot, const int32 XP)
 {
 	if (!Sheets.IsValidIndex(Slot) || !GetWorld() || GetWorld()->GetNetMode() == NM_Client)
@@ -728,7 +732,7 @@ bool UHOLHeroSubsystem::StartLightSeal(const int32 Slot, const FVector& Center)
 	}
 	const int32 NowMs = ZoneClockMs;
 	// One per slot: the slot's former zone goes, and any zone already over.
-	Zones.RemoveAll([Slot, NowMs](const HOLZoneEffect::FZone& Zone) { return Zone.OwnerSlot == Slot || NowMs >= Zone.StartMs + Zone.DurationMs; });
+	Zones.RemoveAll([Slot, NowMs](const HOLZoneEffect::FZone& Zone) { return (Zone.OwnerSlot == Slot && Zone.HealPerSecond == 0) || NowMs >= Zone.StartMs + Zone.DurationMs; });
 	HOLZoneEffect::FZone Zone;
 	Zone.OwnerSlot = Slot;
 	Zone.CenterXCm = FMath::RoundToInt32(Center.X);
@@ -739,6 +743,28 @@ bool UHOLHeroSubsystem::StartLightSeal(const int32 Slot, const FVector& Center)
 	Zone.SlowPercent = HOLZoneEffect::LightSealSlowPercent;
 	Zones.Add(Zone);
 	UE_LOG(LogHOLMatch, Display, TEXT("Zone effect: slot %d puts a Seal of Light at (%.0f, %.0f)"), Slot, Center.X, Center.Y);
+	return true;
+}
+
+bool UHOLHeroSubsystem::StartSacredLight(const int32 Slot, const FVector& Center)
+{
+	if (!Sheets.IsValidIndex(Slot) || !GetWorld() || GetWorld()->GetNetMode() == NM_Client)
+	{
+		return false;
+	}
+	const int32 NowMs = ZoneClockMs;
+	// One Sacred Light per slot (a new one replaces the former), and any zone already over goes; the slot's Seal of Light stays.
+	Zones.RemoveAll([Slot, NowMs](const HOLZoneEffect::FZone& Zone) { return (Zone.OwnerSlot == Slot && Zone.HealPerSecond > 0) || NowMs >= Zone.StartMs + Zone.DurationMs; });
+	HOLZoneEffect::FZone Zone;
+	Zone.OwnerSlot = Slot;
+	Zone.CenterXCm = FMath::RoundToInt32(Center.X);
+	Zone.CenterYCm = FMath::RoundToInt32(Center.Y);
+	Zone.RadiusCm = HOLZoneEffect::SacredLightRadiusCm;
+	Zone.StartMs = NowMs;
+	Zone.DurationMs = HOLZoneEffect::SacredLightDurationMs;
+	Zone.HealPerSecond = HOLZoneEffect::SacredLightHealPerSecond;
+	Zones.Add(Zone);
+	UE_LOG(LogHOLMatch, Display, TEXT("Zone effect: slot %d puts a Sacred Light at (%.0f, %.0f)"), Slot, Center.X, Center.Y);
 	return true;
 }
 
