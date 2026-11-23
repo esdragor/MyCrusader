@@ -87,3 +87,19 @@ namespace HOLAIPowerCall
 		return Order;
 	}
 }
+
+// GLORFINDEL-1123pa (D891): the AI plants a banner before it casts (the cast origin is the banner, as for the player). STUB of commit 1 (the red test).
+struct FHOLAIBannerOrder
+{
+	bool bPlant = false;
+	FVector Point;
+}
+
+namespace HOLAIPowerCall
+{
+	FHOLAIBannerOrder PlanBanner(const TArray<FVector>& Wounded, const FVector& HeroLocation, bool bHeroCanPlant, bool bBannerStanding)
+	{
+		FHOLAIBannerOrder Order;
+		return Order;
+	}
+}

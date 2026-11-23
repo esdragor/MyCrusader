@@ -142,3 +142,31 @@ void Test_AIBrainCastsSacredLightWhenHonorAllows(FUnitTest& T)
 	const FHOLAIPowerOrder Away = HOLAIPowerCall::Plan(Rows, Ready, 100, 0, 1, Data, Far, Origin, Range);
 	T.AssertFalse(Away.bCast, "wounded units out of range are not a target");
 }
+
+// GLORFINDEL-1123pa (D891): the AI plants a banner before casting the Sacred Light; the centre-of-army origin stays only while none is planted.
+// The decision (PlanBanner) is a pure rule: the wounded points, the hero's place, whether he may plant (alive, level, cool-down), whether a banner stands.
+void Test_AIPlantsABannerBeforeCasting(FUnitTest& T)
+{
+	TArray<FVector> Wounded;
+	Wounded.Add(FVector(13700.0, 0.0, 0.0));
+	Wounded.Add(FVector(13800.0, 100.0, 0.0));
+	Wounded.Add(FVector(13900.0, 200.0, 0.0));
+	const FVector Hero = FVector(13600.0, 0.0, 0.0);
+	// A hero able to plant, no banner standing, wounded units: the AI plants, at the wounded units' centre when it is within the hero's reach.
+	const FHOLAIBannerOrder Order = HOLAIPowerCall::PlanBanner(Wounded, Hero, true, false);
+	T.AssertTrue(Order.bPlant, "wounded units, no banner standing, the hero can plant: the AI plants a banner");
+	T.AssertTrue(Math::Abs(Order.Point.X - 13800.0) < 1.0 && Math::Abs(Order.Point.Y - 100.0) < 1.0, "the banner goes on the centre of the wounded units");
+	// A wounded group beyond the hero's reach: the banner is put at the reach's edge, on the line toward them (the server would refuse a farther point).
+	TArray<FVector> Far;
+	Far.Add(FVector(16600.0, 0.0, 0.0));
+	const FHOLAIBannerOrder Edge = HOLAIPowerCall::PlanBanner(Far, Hero, true, false);
+	T.AssertTrue(Edge.bPlant, "a far wounded group still asks for a banner");
+	const double Reach = Math::Sqrt(Math::Square(Edge.Point.X - Hero.X) + Math::Square(Edge.Point.Y - Hero.Y));
+	T.AssertTrue(HOLHeroAbilityRead::CanPlantBanner(float(Reach)), "the banner stays within the hero's planting reach");
+	T.AssertTrue(Edge.Point.X > Hero.X + 1000.0, "and it is pushed toward the wounded units, not left at the hero's feet");
+	// Nothing to plant: a banner already stands, the hero cannot, or nobody is wounded (the origin then stays the banner or the army's centre).
+	T.AssertFalse(HOLAIPowerCall::PlanBanner(Wounded, Hero, true, true).bPlant, "a standing banner is not planted again");
+	T.AssertFalse(HOLAIPowerCall::PlanBanner(Wounded, Hero, false, false).bPlant, "a hero who cannot plant (dead, low level, cool-down) plants nothing");
+	TArray<FVector> None;
+	T.AssertFalse(HOLAIPowerCall::PlanBanner(None, Hero, true, false).bPlant, "no wounded unit: no banner");
+}
