@@ -27,6 +27,15 @@ namespace HOLFactionAim
 	FHOLFactionAimStep OnBox(FHOLFactionSlotView View, int CurrentAim, int BoxIndex)
 	{
 		FHOLFactionAimStep Step;
+		Step.Click = HOLFactionSlot::ClickPower(View, CurrentAim, EHOLFactionClickKind::Box, BoxIndex);
+		if (Step.Click.Action == EHOLFactionClickAction::Aim)
+		{
+			Step.bSetAim = true;
+			Step.AimIndex = Step.Click.AimIndex;
+			Step.RangeCm = AimRangeCm;
+		}
+		else if (Step.Click.Action == EHOLFactionClickAction::Cancel)
+			Step.bSetAim = true;
 		return Step;
 	}
 
@@ -34,6 +43,15 @@ namespace HOLFactionAim
 	FHOLFactionAimStep OnGround(FHOLFactionSlotView View, int CurrentAim, int Slot, FVector Point)
 	{
 		FHOLFactionAimStep Step;
+		Step.Click = HOLFactionSlot::ClickPower(View, CurrentAim, EHOLFactionClickKind::Ground, -1);
+		if (Step.Click.Action == EHOLFactionClickAction::Launch)
+		{
+			Step.bSend = true;
+			Step.Slot = Slot;
+			Step.PowerIndex = Step.Click.CastIndex;
+			Step.Point = Point;
+		}
+		Step.bSetAim = Step.Click.Action == EHOLFactionClickAction::Launch || Step.Click.Action == EHOLFactionClickAction::Cancel;
 		return Step;
 	}
 }
