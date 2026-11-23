@@ -2,3 +2,8 @@
 queued behind the build of: HeroesOfLiberty-Faramir, HeroesOfLiberty-Elrond (position 2 of 2 waiting; one build at a time on this engine; normal)
 queued behind the build of: HeroesOfLiberty-Elrond (position 1 of 1 waiting; one build at a time on this engine; normal)
 queued behind the build of: HeroesOfLiberty-Elrond (position 1 of 2 waiting; one build at a time on this engine; normal)
+build : PASS (HeroesOfLibertyEditor Development, HeroesOfLiberty-Celeborn, 29 s)
+BUILD exit 0
+  check_placeholders : PASS (43 provisional types, 45 map entries, 161 lines)
+parts: tests
+engine: C:\UE\UE_5.8_HOL\Engine\Binaries\Win64
