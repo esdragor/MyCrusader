@@ -78,3 +78,36 @@ void Test_FollowManualOrderStopsIt(FUnitTest& T)
 	T.AssertTrue(Order == EHOLFollowOrder::None, "no order once a manual order ended the follow");
 	T.AssertTrue(!State.bActive, "the follow is no longer active");
 }
+
+// D895 (mutual follow, last order wins) on the REAL book: A follows B, then the player orders "B follows A": A stops following, B follows A.
+void Test_FollowMutualLastOrderWins(FUnitTest& T)
+{
+	FHOLFollowBook Book;
+	HOLFollowOrders::Begin(Book, 1, 2, true);
+	HOLFollowOrders::Begin(Book, 2, 1, true);
+	const int IndexA = HOLFollowOrders::IndexOf(Book, 1);
+	const int IndexB = HOLFollowOrders::IndexOf(Book, 2);
+	T.AssertTrue(IndexA >= 0 && IndexB >= 0, "both units are in the book");
+	T.AssertTrue(!Book.States[IndexA].bActive, "A no longer follows anyone after the order 'B follows A'");
+	T.AssertTrue(Book.States[IndexB].bActive && Book.TargetIds[IndexB] == 1, "B follows A");
+}
+
+// D895 control: C follows B, then "B follows A": C's follow of B is NOT cancelled (only the follow of the ordered unit's new target on that unit is).
+void Test_FollowMutualDoesNotCancelThirdParty(FUnitTest& T)
+{
+	FHOLFollowBook Book;
+	HOLFollowOrders::Begin(Book, 3, 2, true);
+	HOLFollowOrders::Begin(Book, 2, 1, true);
+	const int IndexC = HOLFollowOrders::IndexOf(Book, 3);
+	T.AssertTrue(IndexC >= 0 && Book.States[IndexC].bActive && Book.TargetIds[IndexC] == 2, "C still follows B");
+}
+
+// D895 pure rule: the order 'ordered unit follows target' ends the follow only when the target actively follows the ordered unit.
+void Test_FollowMutualRuleIsPure(FUnitTest& T)
+{
+	FHOLFollowState Active = HOLFollowRules::Start(true);
+	T.AssertTrue(HOLFollowRules::CancelsFollowOf(Active, 1, 1), "the target follows the ordered unit: its follow is cancelled");
+	T.AssertTrue(!HOLFollowRules::CancelsFollowOf(Active, 3, 1), "the target follows someone else: kept");
+	HOLFollowRules::OnManualOrder(Active);
+	T.AssertTrue(!HOLFollowRules::CancelsFollowOf(Active, 1, 1), "an already ended follow is not 'cancelled' again");
+}

@@ -49,6 +49,12 @@ namespace HOLFollowRules
 		return TargetLocation;
 	}
 
+	// STUB (D895, red commit): does the order 'OrderedUnitId follows X' end the follow that X holds (TargetState, following TargetFollowsId) on the ordered unit?
+	bool CancelsFollowOf(const FHOLFollowState& TargetState, int TargetFollowsId, int OrderedUnitId)
+	{
+		return false;
+	}
+
 	// Any manual order (move, attack, attack-move, stop, hold, patrol, another follow) ends this follow.
 	void OnManualOrder(FHOLFollowState& State)
 	{
