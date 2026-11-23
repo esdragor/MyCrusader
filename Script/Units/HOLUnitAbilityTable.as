@@ -94,7 +94,7 @@ namespace HOLUnitAbilityTable
 	FText Description(int Id)
 	{
 		if (Id == 0) return NSLOCTEXT("HOLUnitAbilityTable", "DescriptionNecroticRage", "Le Guerrier damné se jette dans le combat pendant 10 s : 40 % de dégâts en plus, 25 % de cadence en plus, au prix de 3 PV par coup porté. Refusée sous 30 PV, elle s'arrête à 20 PV ; recharge de 40 s.");
-		if (Id == 1) return NSLOCTEXT("HOLUnitAbilityTable", "DescriptionLightSeal", "Le Moine pose un sceau de lumière sur le sol, à 8 m au plus de lui : une zone de 6 m de rayon qui dure 10 s ; recharge de 40 s. (Le ralentissement des ennemis de la zone est une règle de simulation, pas encore branchée.)");
+		if (Id == 1) return NSLOCTEXT("HOLUnitAbilityTable", "DescriptionLightSeal", "Le Moine pose un sceau de lumière sur le sol, à 8 m au plus de lui : une zone de 6 m de rayon qui dure 10 s ; recharge de 40 s. Les ennemis dans la zone sont ralentis : la règle de simulation est lue par le combat.");
 		if (Id == 2) return NSLOCTEXT("HOLUnitAbilityTable", "DescriptionKnightChallenge", "Le Chevalier vertueux lance un défi : pendant 8 s, les ennemis à 8 m ou moins de lui sont défiés ; recharge de 45 s. (Le ralentissement, la provocation sont des règles de simulation, pas encore branchées.)");
 		return FText();
 	}
