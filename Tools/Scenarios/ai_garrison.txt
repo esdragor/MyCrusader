@@ -4,6 +4,8 @@
 # Pourquoi cet ordre (ELROND-1123pa) : avec les defenseurs poses d'avance, la defense de l'IA (HOLAIArmy DefenceRadius 3000 cm) les envoyait
 # au contact des 8 Hommes d'armes avant que la tour soit frappee, et l'attaque-deplacement les tuait tous (journal 14:10 : 7 morts en ~160 pas)
 # avant tout appel de garnison. Ici la tour est frappee d'abord (SecondsSinceHit < hol.AI.GarrisonAttackedSeconds, 5 s), puis les archers sont la.
+# Preuve a l'ecran (ELROND-1123pb) : un soldat en garnison n'est plus dans la liste des unites a dessiner (HOLUnitSubsystem::GetUnitViews), il DISPARAIT donc de l'ecran a l'entree ; les occupants repliques (GarrisonOccupants, COND_OwnerOnly) et le compteur " n / places " n'existent que pour le proprietaire : le joueur ne voit PAS la garnison d'une tour ENNEMIE, seule la disparition des archers fait preuve. La tour a 3 places : 3 des 4 archers entrent, le 4e reste dehors.
+# Entree effective = journal " Garrison: slot 1 puts " (HOLGarrisonSubsystem.cpp:193), distinct de l'ordre " Garrison order: slot 1 " (HOLAIGarrisonOrders.cpp:38).
 # Journal attendu : « Garrison order: slot 1, N unit(s) queued (AI) » puis « AI slot 1 step S: K garrison order(s) ».
 # Si rien : la ligne du cerveau dit pourquoi (SecondsSinceHit, entrants) ; on ne change pas le seuil.
 waitlog AI brain HOLAIBrain awake
@@ -26,14 +28,17 @@ waitlog Select army: 8 soldiers
 frames 5
 hol.Select.AttackMoveNear 2800 2600 enemy
 wait 4
-hol.Camera.FocusNear 2800 2400 enemy
+hol.Camera.FocusNear 2800 2600 enemy
+hol.Camera.Zoom 4
 frames 2
 hol.Units.SpawnHere 4 Archer 1 300
 waitunits 4
+frames 3
+capture ai_garrison_during
+note 2. Les 4 Archers de l'IA viennent d'arriver pres de la tour que tes Hommes d'armes frappent : ils sont encore dehors.
 waitlog Garrison order: slot 1
-wait 3
-hol.Camera.FocusNear 2800 2600 enemy
-frames 10
+waitlog Garrison: slot 1 puts
+frames 20
 capture ai_garrison_after
-note 2. Tes 8 Hommes d'armes frappent la tour : les Archers de l'IA arrives tout pres s'y garnisonnent (journal « Garrison order: slot 1 »).
+note 3. Les Archers de l'IA sont entres dans la tour : ils ont disparu de l'ecran (3 places, 3 entres), on n'en voit plus qu'un dehors.
 hol.Test.Sanity
