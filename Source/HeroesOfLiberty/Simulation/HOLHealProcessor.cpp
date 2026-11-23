@@ -23,6 +23,7 @@
 #include "Simulation/HOLSimulationSubsystem.h"
 #include "Simulation/HOLUnitSubsystem.h"
 #include "Simulation/HOLUnitTypes.h"
+#include "Simulation/HOLZoneEffectRules.h"
 
 namespace UE::HeroesOfLiberty::Heal
 {
@@ -95,13 +96,25 @@ void UHOLHealProcessor::Execute(FMassEntityManager& EntityManager, FMassExecutio
 	// Sleep while nobody can heal (PerfSpikeInProgress.md, part 1): HealRate and HealRange are in the unit type's shared fragment, the
 	// same for a whole chunk, so a walk over the chunks (no walk over the units) tells whether a healer exists. Without one, the table
 	// of every light unit below would be built and thrown away (~0.1 ms a step with 2000 units).
+	// S1-a (D689): a Sacred Light on the ground heals the allies standing in it, healer or not: the processor wakes for an active one.
+	TArray<HOLZoneEffect::FZone> HealZones;
+	if (const UHOLHeroSubsystem* ZoneHeroes = World->GetSubsystem<UHOLHeroSubsystem>())
+	{
+		for (const HOLZoneEffect::FZone& Zone : ZoneHeroes->GetZones())
+		{
+			if (Zone.HealPerSecond > 0 && HOLZoneEffect::ZoneActive(Zone.StartMs, Zone.DurationMs, ZoneHeroes->GetZoneNowMs()))
+			{
+				HealZones.Add(Zone);
+			}
+		}
+	}
 	bool bHealerInWorld = false;
 	EntityQuery.ForEachEntityChunk(Context, [&bHealerInWorld](FMassExecutionContext& Chunk)
 	{
 		const FHOLUnitTypeConstants& Constants = Chunk.GetConstSharedFragment<FHOLUnitTypeConstants>();
 		bHealerInWorld |= Constants.HealRate > 0.f && Constants.HealRange > 0.f && Chunk.GetNumEntities() > 0;
 	});
-	if (!bHealerInWorld)
+	if (!bHealerInWorld && HealZones.IsEmpty())
 	{
 		Kept.Reset();
 		Orders.Reset();
@@ -164,7 +177,7 @@ void UHOLHealProcessor::Execute(FMassEntityManager& EntityManager, FMassExecutio
 		}
 	});
 	LastCandidateCount = Step.Num();
-	if (!bAnyHealer)
+	if (!bAnyHealer && HealZones.IsEmpty())
 	{
 		Kept.Reset();
 		Orders.Reset();
@@ -343,6 +356,28 @@ void UHOLHealProcessor::Execute(FMassEntityManager& EntityManager, FMassExecutio
 			}
 			UE_LOG(LogHOLSimulation, Display, TEXT("Heal: step %lld #%u (slot %d) is healed to %.0f by #%u"), StepIndex, Target.Candidate.UnitId, Target.State->OwnerPlayer,
 				Target.Candidate.MaxHealth, Healer.Candidate.UnitId);
+		}
+	}
+	// S1-a (D689, Sacred Light): each ally of the zone's owner standing in an active healing zone gains the zone's rate for the step.
+	for (const HOLZoneEffect::FZone& Zone : HealZones)
+	{
+		const uint8 ZoneCamp = CampTable.Get(static_cast<uint8>(Zone.OwnerSlot));
+		for (FUnit& Unit : Step)
+		{
+			if (Unit.Candidate.bUnhealable || Unit.State->CurrentHealth <= 0.f)
+			{
+				continue;
+			}
+			const bool bAlly = Unit.State->OwnerPlayer == Zone.OwnerSlot
+				|| (CampTable.IsDiplomacy() ? CampTable.Relation(Unit.State->OwnerPlayer, Zone.OwnerSlot) == HOLDiplomacy::Ally : Unit.Camp == ZoneCamp);
+			if (!bAlly || !HOLZoneEffect::IsInZone(Zone.CenterXCm, Zone.CenterYCm, Zone.RadiusCm, FMath::RoundToInt32(Unit.Candidate.Location.X), FMath::RoundToInt32(Unit.Candidate.Location.Y)))
+			{
+				continue;
+			}
+			const float Before = Unit.State->CurrentHealth;
+			const float After = HOLHeal::GetHealedHealth(Before, Unit.Candidate.MaxHealth, static_cast<float>(Zone.HealPerSecond), StepMs);
+			Unit.State->CurrentHealth = After;
+			TotalHealed += static_cast<double>(After - Before);
 		}
 	}
 	Kept = MoveTemp(NewKept);
