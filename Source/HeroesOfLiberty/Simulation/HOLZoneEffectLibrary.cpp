@@ -1,6 +1,7 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "Simulation/HOLZoneEffectLibrary.h"
+#include "Simulation/HOLHealProcessor.h"
 
 #include "Engine/Engine.h"
 #include "Engine/World.h"
@@ -56,6 +57,11 @@ bool UHOLZoneEffectLibrary::StartSacredLight(const UObject* WorldContextObject, 
 {
 	UHOLHeroSubsystem* Heroes = FindHeroSubsystem(WorldContextObject);
 	return Heroes && Heroes->StartSacredLight(Slot, Center);
+}
+
+void UHOLZoneEffectLibrary::ConfigureHealHonor(const int32 HpPerPoint, const int32 Cap, const int32 KillGain, const int32 KillRadiusCm)
+{
+	UHOLHealProcessor::ConfigureHonor(HpPerPoint, Cap, KillGain, KillRadiusCm);
 }
 
 int32 UHOLZoneEffectLibrary::GetSacredLightRadiusCm()
