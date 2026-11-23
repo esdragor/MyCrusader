@@ -79,16 +79,23 @@ namespace HOLSpecializationSlot
 	// (returns FHOLSpecializationView) is not a UFUNCTION, so the script cannot read it. Binding = the grouped C++ lot (ELROND-1123d): once it is a UFUNCTION,
 	// fill View here from the controller's player state, PlayerTier from the faction tier, bForumComplete from HOLNomad::HasCompleteForum, OptionCount from
 	// HOLSpecialization::OptionCountOf. Nothing else in the widget reads the state.
-	FHOLSpecializationRead ReadView(AHOLPlayerController Controller)
+	FHOLSpecializationRead ReadView(AHOLPlayerController Controller, int Slot)
+	{
+		FHOLSpecializationRead Empty;
+		return Empty;
+	}
+
+	// What the slot reads from the owner's specialization view, the faction tier and the faction (pure; ReadView feeds it from the live state).
+	FHOLSpecializationRead ReadOf(FHOLSpecializationView View, int PlayerTier, EHOLFaction Faction)
 	{
 		FHOLSpecializationRead Empty;
 		return Empty;
 	}
 
 	// The view the widget shows: the injected read (tests, the scenario) when there is one, ReadView otherwise.
-	FHOLSpecializationSlotView Resolve(AHOLPlayerController Controller, FHOLSpecializationRead Injected, bool bInjected)
+	FHOLSpecializationSlotView Resolve(AHOLPlayerController Controller, int Slot, FHOLSpecializationRead Injected, bool bInjected)
 	{
-		const FHOLSpecializationRead Read = bInjected ? Injected : ReadView(Controller);
+		const FHOLSpecializationRead Read = bInjected ? Injected : ReadView(Controller, Slot);
 		return Make(Read.View, Read.PlayerTier, Read.bForumComplete, Read.OptionCount);
 	}
 

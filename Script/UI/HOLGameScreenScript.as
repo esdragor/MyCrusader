@@ -2077,7 +2077,7 @@ UHOLScenarioPanelScript ScenarioPanel;
 	// the bar the unlock's countdown. A panel left open closes by itself when the tier closes.
 	void RefreshSpecializationSlot()
 	{
-		SpecView = HOLSpecializationSlot::Resolve(Cast<AHOLPlayerController>(GetOwningPlayer()), SpecInjected, bSpecInjected);
+		SpecView = HOLSpecializationSlot::Resolve(Cast<AHOLPlayerController>(GetOwningPlayer()), GetLocalSlot(), SpecInjected, bSpecInjected);
 		if (!SpecView.bLit)
 			bSpecPanelOpen = false;
 		SpecButton.SetVisibility(SpecView.bLit ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
