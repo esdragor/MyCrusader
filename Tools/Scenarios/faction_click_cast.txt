@@ -18,7 +18,7 @@ frames 4
 capture faction_click_cast_aim
 hol.Camera.FocusSlot 0
 frames 2
-hol.Select.LeftClickGround -17535 900
+hol.Select.LeftClickGround -17535 300
 waitlog FactionAim: cast 0 send true slot 0
 frames 20
 hol.HUD.Report
