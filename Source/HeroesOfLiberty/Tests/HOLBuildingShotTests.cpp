@@ -15,6 +15,7 @@
 #include "MassNavigationFragments.h"
 #include "MassProcessingContext.h"
 #include "Match/HOLGameState.h"
+#include "Presentation/HOLArrowSubsystem.h"
 #include "Misc/AutomationTest.h"
 #include "Simulation/HOLCombatProcessor.h"
 #include "Simulation/HOLCombatRules.h"
@@ -59,6 +60,8 @@ namespace UE::HeroesOfLiberty::Tests::BuildingShot
 		/** F8 T6: the arrows released up to the step the occupants left (LeaveAtStep), and after it. */
 		int64 ReleasedAtLeave = 0;
 		int64 ReleasedAfterLeave = 0;
+		/** F8 T7: the arrows the display subsystem was asked to draw during the window (-1: no display subsystem in the world). */
+		int64 Launched = -1;
 	};
 
 	struct FShotOptions
@@ -253,7 +256,7 @@ namespace UE::HeroesOfLiberty::Tests::BuildingShot
 					VictimTransform->GetMutableTransform().SetLocation(Home);
 					ReleasedBefore = UHOLCombatProcessor::GetTotalArrowsReleased();
 				}
-				const float Start = HealthOf(Victim);
+				const UHOLArrowSubsystem* ArrowDisplay = World->GetSubsystem<UHOLArrowSubsystem>(); const int64 LaunchedBefore = ArrowDisplay ? ArrowDisplay->GetLaunchedCount() : 0; const float Start = HealthOf(Victim);
 				Result.Steps = FMath::CeilToInt(Options.Seconds / StepSeconds) + 1;
 				int64 Seen = ReleasedBefore;
 				for (int32 Index = 0; Index < Result.Steps; ++Index)
@@ -284,7 +287,7 @@ namespace UE::HeroesOfLiberty::Tests::BuildingShot
 				Result.bVictimDown = HealthOf(Victim) <= 0.f;
 				Result.bRan = true;
 				Result.HealthLost = Start - HealthOf(Victim);
-				Result.Released = UHOLCombatProcessor::GetTotalArrowsReleased() - ReleasedBefore;
+				Result.Released = UHOLCombatProcessor::GetTotalArrowsReleased() - ReleasedBefore; Result.Launched = ArrowDisplay ? ArrowDisplay->GetLaunchedCount() - LaunchedBefore : -1;
 				Result.ReleasedAfterLeave = Result.Released - Result.ReleasedAtLeave;
 				Result.EntriesAlive = Combat->GetBuildingCooldownCount();
 				if (Options.bCombatOffAtEnd && CombatEnabledVar)
@@ -765,4 +768,38 @@ bool FHOLBuildingShotIdleVictimTest::RunTest(const FString& Parameters)
 	CombatEnabled->Set(FormerCombat, ECVF_SetByCode);
 	return true;
 }
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLBuildingShotDisplayTest, "HeroesOfLiberty.Combat.BuildingShotDisplay", UE::HeroesOfLiberty::Tests::BuildingShot::Flags)
+
+// F8 T7 (D884): a tower's arrow is drawn like an archer's (solo / host: the processor feeds UHOLArrowSubsystem::Launch at the release). The effect read is the
+// display subsystem's own launched count over the window, against the arrows the processor released (both counted by the code under test, nothing copied).
+bool FHOLBuildingShotDisplayTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::BuildingShot;
+	UDataTable* Table = const_cast<UDataTable*>(GetDefault<UHOLBuildingSettings>()->BuildingTypesTable.LoadSynchronous());
+	const FHOLBuildingTypeRow* HouseRow = Table ? Table->FindRow<FHOLBuildingTypeRow>(HOLBuildingTypeNames::House, TEXT("building shot display test")) : nullptr;
+	IConsoleVariable* CombatEnabled = IConsoleManager::Get().FindConsoleVariable(TEXT("hol.Combat.Enabled"));
+	if (!TestNotNull(TEXT("the building type table and its House row"), HouseRow) || !TestNotNull(TEXT("hol.Combat.Enabled"), CombatEnabled))
+	{
+		return false;
+	}
+	const int32 FormerCombat = CombatEnabled->GetInt();
+	CombatEnabled->Set(1, ECVF_SetByCode);
+	FHOLBuildingTypeRow TowerRow = *HouseRow;
+	TowerRow.BuildingAttack = 5;
+	TowerRow.BuildingAttackInterval = 1.625f;
+	TowerRow.BuildingAttackRange = 3000.f;
+	TowerRow.BuildingFiresEmpty = true;
+	Table->AddRow(TestShotTowerType, TowerRow);
+
+	const FShotResult Shot = RunScenario(*this, EHOLConstructionState::Finished, 3, 1000.0);
+	if (TestTrue(TEXT("the scenario ran and the tower released arrows"), Shot.bRan && Shot.Released >= 1) && TestTrue(TEXT("the world has an arrow display subsystem"), Shot.Launched >= 0))
+	{
+		TestEqual(TEXT("every arrow a tower releases is launched on the display (one drawn arrow per released arrow)"), Shot.Launched, Shot.Released);
+	}
+
+	Table->RemoveRow(TestShotTowerType);
+	CombatEnabled->Set(FormerCombat, ECVF_SetByCode);
+	return true;
+}
+
 #endif // WITH_DEV_AUTOMATION_TESTS
