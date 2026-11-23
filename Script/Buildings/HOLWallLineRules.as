@@ -236,22 +236,22 @@ namespace HOLWallLine
 	// by towers and gates); the figures live in Tools\Data\BuildingTypes.csv, the open points in Retours\Q-porte-palissade.md (default A).
 	FName GateTypeName()
 	{
-	    return n"PalisadeGate";
+		return n"PalisadeGate";
 	}
 
 	bool IsGateType(FName TypeName)
 	{
-	    return TypeName == GateTypeName();
+		return TypeName == GateTypeName();
 	}
 
 	// A gate is placed ON a section of palisade already standing and replaces it: the section is a wall type of the same seat, and not a gate already.
 	bool GateReplaces(FName ExistingType, int ExistingOwner, int GateOwner)
 	{
-	    return false;
+		return ExistingOwner == GateOwner && IsWallType(ExistingType);
 	}
 
 	// A gate lets its owner's units through (other seats meet a solid building, D691 / D867 neighbours: walls and gates are solid for the enemy).
 	bool GatePassesUnit(FName GateType, int GateOwner, int UnitOwner)
 	{
-	    return false;
+		return IsGateType(GateType) && GateOwner >= 0 && GateOwner == UnitOwner;
 	}}
