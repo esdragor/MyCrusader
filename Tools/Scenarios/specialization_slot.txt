@@ -39,6 +39,6 @@ hol.Spec.Report
 waitlog Specialization state slot 0 local: pending tier 0 option
 waitlog chosen 0 -1 -1
 frames 8
-notereset 3/3 : voie A du palier 1 appliquee (Spec.Report : chosen 0 -1 -1) ; palier 1 clos, donc le bouton, la barre et le panneau ne sont plus affiches : la voie choisie n'est montree nulle part.
+notereset 3/3 : voie A du palier 1 appliquee (Spec.Report : chosen 0 -1 -1) ; palier 1 clos, le bouton, la barre et le panneau ne sont plus affiches, mais la voie choisie reste affichee sous la jauge : Voie A du palier 1.
 capture specialization_slot_after
 hol.Test.Sanity
