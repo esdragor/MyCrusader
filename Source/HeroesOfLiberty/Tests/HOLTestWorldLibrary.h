@@ -9,6 +9,7 @@
 #include "Match/HOLResources.h"
 #include "Subsystems/WorldSubsystem.h"
 #include "UObject/Object.h"
+#include "Match/HOLSpecializationView.h"
 #include "HOLTestWorldLibrary.generated.h"
 
 class AHOLBuilding;
@@ -456,4 +457,21 @@ public:
 	/** A counter of the OnSlotDefeated and OnMatchOver broadcasts of State, started now (nullptr without a state). */
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
 	static UHOLVictoryEventCounter* CountVictoryEvents(AHOLGameState* State);
+
+	// ---- ELROND-1123pf (D839, lot of bindings 2): test-only helpers, bodies under WITH_DEV_AUTOMATION_TESTS (false / 0 elsewhere) ----
+
+	/**
+	 * Makes the hero of Slot be born ALIVE in the test world, as a match's hero unit (type Hero, owner Slot, at Location): the hero subsystem's steps are
+	 * bound first (as the C++ tests do). Returns the unit identifier (0 if none was born: no world, no unit table, bad slot). The slot's XP is then
+	 * set with SetHeroXP (level 4 opens the banner), and UHOLHeroLibrary::PlantHeroBanner / HOLHero abilities have a hero to work with.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
+	static int32 SpawnTestHero(UHOLTestWorldHandle* TestWorld, int32 Slot, FVector Location);
+
+	/**
+	 * AHOLPlayerState::SetSpecialization (the server's copy of the specialization view onto the player; not a UFUNCTION): TESTS only, never the game.
+	 * Returns what SetSpecialization returns; false without a player.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
+	static bool SetPlayerSpecialization(AHOLPlayerState* Player, const FHOLSpecializationView& View);
 };

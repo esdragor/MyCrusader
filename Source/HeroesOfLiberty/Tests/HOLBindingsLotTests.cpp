@@ -4,7 +4,13 @@
 #include "Engine/Engine.h"
 #include "Engine/World.h"
 #include "Match/HOLGameState.h"
+#include "Match/HOLPlayerState.h"
+#include "Match/HOLSpecializationReadLibrary.h"
+#include "Match/HOLSpecializationSubsystem.h"
+#include "Simulation/HOLHeroSubsystem.h"
+#include "Simulation/HOLHeroXPRules.h"
 #include "Simulation/HOLUnitSubsystem.h"
+#include "Tests/HOLTestWorldLibrary.h"
 #include "AI/HOLAISummary.h"
 #include "Buildings/HOLBuilding.h"
 #include "Misc/AutomationTest.h"
@@ -229,6 +235,89 @@ bool FHOLBindingsSecondsSinceHitTest::RunTest(const FString& Parameters)
 	}
 	GEngine->DestroyWorldContext(World);
 	World->DestroyWorld(false);
+	return true;
+}
+// ELROND-1123pf (lot of bindings 2, D839). (A) The SP3 button reads "Forum complete" through the server's own calculation (a standard seat true, a Nomad
+// seat false until its first Forum is complete, no world false). Model: HeroesOfLiberty.Specialization.NomadForum.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLBindingsForumCompleteForSlotTest, "HeroesOfLiberty.Specialization.ForumCompleteForSlot", UE::HeroesOfLiberty::Tests::BindingsLot::Flags)
+bool FHOLBindingsForumCompleteForSlotTest::RunTest(const FString& Parameters)
+{
+	UWorld* World = UWorld::CreateWorld(EWorldType::Game, /*bInformEngineOfWorld*/ false);
+	FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);
+	Context.SetCurrentWorld(World);
+	World->InitializeActorsForPlay(FURL());
+	AHOLGameState* GameState = World->SpawnActor<AHOLGameState>();
+	World->SetGameState(GameState);
+
+	UHOLSpecializationSubsystem* Board = UHOLSpecializationSubsystem::Find(World);
+	if (TestNotNull(TEXT("the script board of specializations"), Board))
+	{
+		Board->SetNomadNow(1, true);
+		TestTrue(TEXT("a standard seat has its Forum"), UHOLSpecializationReadLibrary::IsForumCompleteForSlot(World, 0));
+		TestFalse(TEXT("a Nomad seat without a Forum has none"), UHOLSpecializationReadLibrary::IsForumCompleteForSlot(World, 1));
+		Board->NoteForumCompleteNow(1);
+		TestTrue(TEXT("its first Forum complete: it has one"), UHOLSpecializationReadLibrary::IsForumCompleteForSlot(World, 1));
+		TestFalse(TEXT("a negative slot has none"), UHOLSpecializationReadLibrary::IsForumCompleteForSlot(World, -1));
+	}
+	TestFalse(TEXT("no world, no Forum"), UHOLSpecializationReadLibrary::IsForumCompleteForSlot(nullptr, 0));
+	GEngine->DestroyWorldContext(World);
+	World->DestroyWorld(false);
+	return true;
+}
+
+// (B) HOLTestWorld::SpawnTestHero makes the slot's hero BORN ALIVE: the unit table knows it as the slot's hero, and the real PlantBanner of the hero
+// subsystem (the one PlantHeroBanner calls) works on it: refused at level 1, accepted at level 4 inside 16 m, refused beyond.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLBindingsSpawnTestHeroTest, "HeroesOfLiberty.TestWorld.SpawnTestHero", UE::HeroesOfLiberty::Tests::BindingsLot::Flags)
+bool FHOLBindingsSpawnTestHeroTest::RunTest(const FString& Parameters)
+{
+	UHOLTestWorldHandle* Handle = UHOLTestWorldLibrary::CreateTestWorld();
+	if (TestNotNull(TEXT("the test world"), Handle))
+	{
+		UWorld* World = Handle->GetTestWorld();
+		UHOLUnitSubsystem* Units = World ? World->GetSubsystem<UHOLUnitSubsystem>() : nullptr;
+		UHOLHeroSubsystem* Heroes = World ? World->GetSubsystem<UHOLHeroSubsystem>() : nullptr;
+		const int32 HeroUnit = UHOLTestWorldLibrary::SpawnTestHero(Handle, 0, FVector(0.0, 0.0, 0.0));
+		TestTrue(TEXT("a hero unit was born"), HeroUnit > 0);
+		if (TestNotNull(TEXT("the unit table"), Units) && TestNotNull(TEXT("the hero subsystem"), Heroes))
+		{
+			TestEqual(TEXT("it is the slot's hero"), static_cast<int32>(Units->FindHeroUnit(0)), HeroUnit);
+			TestFalse(TEXT("no banner at level 1"), Heroes->PlantBanner(0, FVector(1600.0, 0.0, 0.0)));
+			Heroes->SetXP(0, HOLHeroXP::GetLevelXP(4));
+			// The level reaches the hero's sheet (what CanCast reads) at a step's end, as the RunStep after SetXP of HOLHeroAbilityMatchTests.cpp.
+			UHOLTestWorldLibrary::AdvanceStepsWithEnd(Handle, 1);
+			TestFalse(TEXT("no banner 16.5 m away"), Heroes->PlantBanner(0, FVector(1650.0, 0.0, 0.0)));
+			TestTrue(TEXT("a banner 16 m away"), Heroes->PlantBanner(0, FVector(1600.0, 0.0, 0.0)));
+		}
+		TestEqual(TEXT("an unknown slot gets no hero"), UHOLTestWorldLibrary::SpawnTestHero(Handle, -1, FVector::ZeroVector), 0);
+		UHOLTestWorldLibrary::DestroyTestWorld(Handle);
+	}
+	return true;
+}
+
+// (C) HOLTestWorld::SetPlayerSpecialization (AHOLPlayerState::SetSpecialization, for the tests only) puts the view on the player: what GetSpecialization
+// (a UFUNCTION, the SP3 ReadView's source) then reads back.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLBindingsSetPlayerSpecializationTest, "HeroesOfLiberty.TestWorld.SetPlayerSpecialization", UE::HeroesOfLiberty::Tests::BindingsLot::Flags)
+bool FHOLBindingsSetPlayerSpecializationTest::RunTest(const FString& Parameters)
+{
+	UHOLTestWorldHandle* Handle = UHOLTestWorldLibrary::CreateTestWorld();
+	if (TestNotNull(TEXT("the test world"), Handle))
+	{
+		AHOLPlayerState* Player = UHOLTestWorldLibrary::SpawnPlayerState(Handle, 0, 0, TEXT("Spec"));
+		if (TestNotNull(TEXT("a player state"), Player))
+		{
+			TestEqual(TEXT("nothing runs at first"), Player->GetSpecialization().PendingTier, 0);
+			FHOLSpecializationView View;
+			View.PendingTier = 1;
+			View.PendingOption = 1;
+			View.RemainingMs = 5000;
+			TestTrue(TEXT("the view changed: the server's answer is true"), UHOLTestWorldLibrary::SetPlayerSpecialization(Player, View));
+			TestEqual(TEXT("the pending tier reads back"), Player->GetSpecialization().PendingTier, 1);
+			TestEqual(TEXT("the pending option reads back"), Player->GetSpecialization().PendingOption, 1);
+			TestEqual(TEXT("the remaining time reads back"), Player->GetSpecialization().RemainingMs, 5000);
+		}
+		TestFalse(TEXT("no player, nothing set"), UHOLTestWorldLibrary::SetPlayerSpecialization(nullptr, FHOLSpecializationView()));
+		UHOLTestWorldLibrary::DestroyTestWorld(Handle);
+	}
 	return true;
 }
 #endif // WITH_DEV_AUTOMATION_TESTS
