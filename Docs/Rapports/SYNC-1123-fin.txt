@@ -1,0 +1,9 @@
+﻿Heure PowerShell : 11:40  main = a79c329
+HeroesOfLiberty-Arwen | integ-37 | mis a jour (+158 de main) = a79c329 ; code change : build lance (priorite basse, pid 44656, sortie C:\Users\baudo\Documents\HeroesOfLiberty-Arwen\Saved\Logs\sync_build.out)
+HeroesOfLiberty-Celeborn | integ-41 | CONFLIT annule (1 fichier(s) : Placeholders.txt)
+HeroesOfLiberty-Elrond | integ-25 | mis a jour (+148 de main) = 4a6195e ; code change : build lance (priorite basse, pid 44076, sortie C:\Users\baudo\Documents\HeroesOfLiberty-Elrond\Saved\Logs\sync_build.out)
+HeroesOfLiberty-Faramir | zone-effect | mis a jour (+38 de main) = 7c67db6 ; code change : build lance (priorite basse, pid 39192, sortie C:\Users\baudo\Documents\HeroesOfLiberty-Faramir\Saved\Logs\sync_build.out)
+HeroesOfLiberty-Galadriel | socle-ai | mis a jour (+38 de main) = 14cb74e ; code change : build lance (priorite basse, pid 25404, sortie C:\Users\baudo\Documents\HeroesOfLiberty-Galadriel\Saved\Logs\sync_build.out)
+HeroesOfLiberty-Glorfindel | ability-columns | mis a jour (+2 de main) = e9f17f7
+HeroesOfLiberty-Haldir | integ-56 | mis a jour (+2 de main) = a79c329
+HeroesOfLiberty-Sauron | integ-55 | mis a jour (+40 de main) = 3f9c94e ; code change : build lance (priorite basse, pid 35408, sortie C:\Users\baudo\Documents\HeroesOfLiberty-Sauron\Saved\Logs\sync_build.out)
