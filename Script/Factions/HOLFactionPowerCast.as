@@ -112,3 +112,34 @@ namespace HOLFactionPowerCast
 		return Result;
 	}
 }
+
+// GLORFINDEL-1123pf (D897): the player's Sacred Light is put down AT THE POINT AIMED (the ground click), the cast origin only measures the range (D890). ONE pure
+// function {accepted, pose point}: the choice "out of range = refusal" is Retours/Q-lumiere-sacree-visee.md (default coded here, easy to change in DecideAimed).
+struct FHOLAimedCastDecision
+{
+	bool bAccepted = false;
+	int Refusal = 0;
+	// Where the zone is put down (centimetres); meaningful only when bAccepted.
+	int PoseXCm = 0;
+	int PoseYCm = 0;
+	int NewGaugeValue = 0;
+	int NewCooldownEndMs = 0;
+}
+
+namespace HOLFactionPowerCast
+{
+	// STUB (red commit): pose = the origin, the range is Decide's. The fix replaces it.
+	FHOLAimedCastDecision DecideAimed(int Faction, int PowerIndex, const FHOLFactionResource& Gauge, int CooldownEndMs, int NowMs,
+		int OriginXCm, int OriginYCm, int AimXCm, int AimYCm)
+	{
+		FHOLAimedCastDecision Result;
+		const FHOLFactionPowerDecision Base = Decide(Faction, PowerIndex, Gauge, CooldownEndMs, NowMs, OriginXCm, OriginYCm, AimXCm, AimYCm);
+		Result.bAccepted = Base.bAccepted;
+		Result.Refusal = Base.Refusal;
+		Result.NewGaugeValue = Base.NewGaugeValue;
+		Result.NewCooldownEndMs = Base.NewCooldownEndMs;
+		Result.PoseXCm = OriginXCm;
+		Result.PoseYCm = OriginYCm;
+		return Result;
+	}
+}
