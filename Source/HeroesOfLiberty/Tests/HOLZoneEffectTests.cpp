@@ -400,6 +400,76 @@ bool FHOLZoneEffectHealHonorTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+// REVUE-1123pm G3 (part b): the Honor settings and the pending hit points are process-wide statics; the end of a game world must turn the Honor off.
+// A world configured with the Honor (heal, kill, hit points waiting) is destroyed; the next one, NOT configured, finds the Honor off: no setting,
+// an empty table, no hit point kept, no gain from a death.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLZoneEffectHonorWorldEndTest, "HeroesOfLiberty.Zone.HonorWorldEnd", UE::HeroesOfLiberty::Tests::ZoneEffect::Flags)
+
+bool FHOLZoneEffectHonorWorldEndTest::RunTest(const FString& Parameters)
+{
+	const auto OpenWorld = [](AHOLGameState*& OutState) -> UWorld*
+	{
+		UWorld* World = UWorld::CreateWorld(EWorldType::Game, /*bInformEngineOfWorld*/ false);
+		FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);
+		Context.SetCurrentWorld(World);
+		World->InitializeActorsForPlay(FURL());
+		OutState = World->SpawnActor<AHOLGameState>();
+		World->SetGameState(OutState);
+		return World;
+	};
+	const auto CloseWorld = [](UWorld* World)
+	{
+		GEngine->DestroyWorldContext(World);
+		World->DestroyWorld(false);
+	};
+
+	AHOLGameState* FirstState = nullptr;
+	UWorld* First = OpenWorld(FirstState);
+	UHOLHealProcessor::ConfigureHonor(20, 100, 5, 1200);
+	UHOLHealProcessor::AddHonorHp(0, 35.);
+	TestEqual(TEXT("first world: Honor on (one per 20 hit points)"), UHOLHealProcessor::GetHonorHpPerPoint(), 20);
+	TestTrue(TEXT("first world: 35 hit points wait for slot 0"), UHOLHealProcessor::GetHonorPendingHp().IsValidIndex(0) && FMath::IsNearlyEqual(UHOLHealProcessor::GetHonorPendingHp()[0], 35.));
+	CloseWorld(First);
+
+	AHOLGameState* SecondState = nullptr;
+	UWorld* Second = OpenWorld(SecondState);
+	TestEqual(TEXT("second world (not configured): no hit points per Honor"), UHOLHealProcessor::GetHonorHpPerPoint(), 0);
+	TestEqual(TEXT("second world: no cap"), UHOLHealProcessor::GetHonorCap(), 0);
+	TestEqual(TEXT("second world: no Honor per kill"), UHOLHealProcessor::GetHonorKillGain(), 0);
+	TestEqual(TEXT("second world: no kill radius"), UHOLHealProcessor::GetHonorKillRadiusCm(), 0);
+	TestTrue(TEXT("second world: no hit point waits (the table is empty)"), UHOLHealProcessor::GetHonorPendingHp().IsEmpty());
+	UHOLHealProcessor::AddHonorHp(0, 50.);
+	TestTrue(TEXT("second world: a heal gains nothing while the Honor is off"), UHOLHealProcessor::GetHonorPendingHp().IsEmpty());
+	UHOLHealProcessor::CreditKillHonor(Second, 0);
+	TestEqual(TEXT("second world: a death earns no Honor"), ReadFactionGauge(SecondState, 0), 0);
+	CloseWorld(Second);
+	return true;
+}
+
+// REVUE-1123pm G2 (part a): the gauge is read and written by reflection with local structs; the credit must first check the size of the
+// parameter block of the function it found. The check (UHOLHealProcessor::ParmsSizeMatches) is tested on the real getter and setter of the
+// game state, with the right size and wrong ones; the credit itself keeps being tested by Zone.HealHonor / Zone.KillHonor.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLZoneEffectHonorGuardTest, "HeroesOfLiberty.Zone.HonorGuard", UE::HeroesOfLiberty::Tests::ZoneEffect::Flags)
+
+bool FHOLZoneEffectHonorGuardTest::RunTest(const FString& Parameters)
+{
+	const UFunction* Getter = AHOLGameState::StaticClass()->FindFunctionByName(TEXT("GetFactionResource"));
+	const UFunction* Setter = AHOLGameState::StaticClass()->FindFunctionByName(TEXT("SetFactionResource"));
+	if (!TestNotNull(TEXT("GetFactionResource reflected"), Getter) || !TestNotNull(TEXT("SetFactionResource reflected"), Setter))
+	{
+		return false;
+	}
+	// Slot (int32) + return value (int32), as in CreditHonorPoints; Slot + Value (int32 each).
+	TestTrue(TEXT("getter: 8 bytes, 2 parameters is the signature the credit expects"), UHOLHealProcessor::ParmsSizeMatches(Getter, 8, 2));
+	TestTrue(TEXT("setter: 8 bytes, 2 parameters is the signature the credit expects"), UHOLHealProcessor::ParmsSizeMatches(Setter, 8, 2));
+	TestFalse(TEXT("getter: a struct of 12 bytes is refused"), UHOLHealProcessor::ParmsSizeMatches(Getter, 12, 2));
+	TestFalse(TEXT("getter: a struct of 4 bytes is refused"), UHOLHealProcessor::ParmsSizeMatches(Getter, 4, 2));
+	TestFalse(TEXT("getter: 3 parameters instead of 2 is refused"), UHOLHealProcessor::ParmsSizeMatches(Getter, 8, 3));
+	TestFalse(TEXT("setter: a struct of 16 bytes is refused"), UHOLHealProcessor::ParmsSizeMatches(Setter, 16, 2));
+	TestFalse(TEXT("no function: refused"), UHOLHealProcessor::ParmsSizeMatches(nullptr, 8, 2));
+	return true;
+}
+
 // D689/D859, Honor of the Dawn from a kill (S1-e): a Dawn spearman (slot 0) kills a 1 hp enemy (slot 1) within 12 m of a Dawn building, by the real combat processor:
 // the Dawn's gauge gains HonorKillGain per enemy that died (counted from the units really gone, never a constant); the enemy slot earns nothing.
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLZoneEffectKillHonorTest, "HeroesOfLiberty.Zone.KillHonor", UE::HeroesOfLiberty::Tests::ZoneEffect::Flags)

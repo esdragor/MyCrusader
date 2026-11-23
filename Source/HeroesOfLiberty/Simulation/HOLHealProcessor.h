@@ -48,6 +48,20 @@ public:
 	 */
 	static void ConfigureHonor(int32 HpPerPoint, int32 Cap, int32 KillGain = 0, int32 KillRadiusCm = 0);
 	static int32 GetHonorHpPerPoint() { return HonorHpPerPoint; }
+	static int32 GetHonorCap() { return HonorCap; }
+	/** The hit points waiting to become Honor, per slot: empty until ConfigureHonor, emptied again by ResetHonor (REVUE-1123pm G3). */
+	static const TArray<double>& GetHonorPendingHp() { return HonorPendingHp; }
+	/**
+	 * REVUE-1123pm G3: turns the Honor off and drops the pending hit points (the four settings to 0, the table empty). Called when a game world is
+	 * cleaned up (a hook the processor installs itself, see the constructor); the rules are process-wide statics, so without it a game without the
+	 * Dawn would keep the Honor of the previous one.
+	 */
+	static void ResetHonor();
+	/**
+	 * REVUE-1123pm G2: true when the reflected function has exactly ExpectedNumParms parameters (the return value counts) and its parameter block
+	 * is ExpectedSize bytes: the check made before a ProcessEvent with a local struct (a function whose signature changed is never called).
+	 */
+	static bool ParmsSizeMatches(const UFunction* Function, int32 ExpectedSize, int32 ExpectedNumParms);
 
 	/**
 	 * The player's order (a right click on an ally with Monks selected, RequestHealUnit): Healer heals TargetId first, whatever is nearer,
@@ -97,8 +111,10 @@ private:
 	static int32 HonorCap;
 	/** The hit points healed by each slot and not yet turned into Honor (the remainder under HonorHpPerPoint waits for the next heal). */
 	static TArray<double> HonorPendingHp;
+public:
 	/** S1-e: adds the hit points a slot just healed to its pending Honor (no effect while the Honor is off). */
 	static void AddHonorHp(int32 Slot, double Hp);
+private:
 	/** S1-e: turns each slot's pending hit points into whole Honor points on its faction gauge (the Dawn's only), up to the cap. */
 	static void CreditHonor(const UWorld* World);
 	/** S1-e: adds Points to the gauge of a slot's faction if it is the Dawn's, up to the cap (the ONE credit path, heal and kill). */

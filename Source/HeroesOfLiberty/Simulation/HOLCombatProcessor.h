@@ -53,6 +53,8 @@ public:
 	static int64 GetTotalKills() { return TotalKills; }
 	/** Arrows released, landed on their target and lost (target dead in flight) since the program started. */
 	static int64 GetTotalArrowsReleased() { return TotalArrowsReleased; }
+	/** S3-a: launch lines written by hol.Combat.LogBuildingShots (one per arrow of a building, at its release); 0 while the cvar is off. For the tests. */
+	static int64 GetTotalBuildingShotsLogged() { return TotalBuildingShotsLogged; }
 	static int64 GetTotalArrowsLanded() { return TotalArrowsLanded; }
 	static int64 GetTotalArrowsLost() { return TotalArrowsLost; }
 	/** Arrows in flight (the tests). */
@@ -62,8 +64,8 @@ public:
 	/** F8 T4: the buildings that hold a firing countdown right now (the tests: an entry per standing armed building, none after it is gone). */
 	int32 GetBuildingCooldownCount() const { return BuildingCooldownMs.Num(); }
 	/**
-	 * F8 T6 (D884): the arrows a building looses at each shot, given the occupants of its garrison. D884 : nombre par occupant à confirmer, 1 tant que non tranché.
-	 * The ONE place the number lives: no test pins another number than 1.
+	 * F8 T6 (D884, confirmed 2026-11-23): the arrows a building looses at each shot, given the occupants of its garrison: 1 + one per occupant.
+	 * The ONE place the number lives (test HeroesOfLiberty.BuildingShot.ArrowsPerOccupant).
 	 */
 	static int32 GetBuildingArrowCount(int32 Occupants);
 	/**
@@ -379,6 +381,7 @@ protected:
 	static int64 TotalHits;
 	static int64 TotalKills;
 	static int64 TotalArrowsReleased;
+	static int64 TotalBuildingShotsLogged;
 	static int64 TotalArrowsLanded;
 	static int64 TotalArrowsLost;
 };

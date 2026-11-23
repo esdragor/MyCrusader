@@ -1,9 +1,9 @@
 # <nom de capture> | ce que l'utilisateur doit voir
 tower_wood_before | la Tour de guet en bois du joueur seule au centre de l'ecran, aucun ennemi, aucune fleche
-tower_wood_during | fleche en vol entre la tour et le Lancier (3 Lanciers rouges a 12 m de la tour ; ArrowReport juste avant : in flight 1)
-tower_wood_during2 | 3 images plus tard : fleche en vol entre la tour et le Lancier
-tower_wood_during3 | 3 images de plus : fleche en vol entre la tour et le Lancier, ou deja plantee
-tower_wood_during4 | 3 images de plus : fleche en vol entre la tour et le Lancier, ou deja plantee
-tower_wood_during5 | 3 images de plus : fleche en vol entre la tour et le Lancier, ou deja plantee
-tower_wood_during6 | 3 images de plus : fleche en vol entre la tour et le Lancier, ou deja plantee (Lanciers au contact)
+tower_wood_during | UNE FLECHE EN VOL entre la tour et le Lancier rouge, ~60 px de long (hol.Arrow.Scale 3), prise juste apres la ligne "Combat: building shot" ; ArrowReport juste avant : in flight 1
+tower_wood_during2 | 4 images plus tard : la meme fleche en vol (hol.Arrow.SlowMotion 4 : ~1,2 s de vol), plus pres du Lancier
+tower_wood_during3 | 4 images de plus : fleche en vol tout pres du Lancier, ou deja plantee
+tower_wood_during4 | 12 images de plus : fleche en vol ou plantee, un Lancier au contact de la tour
+tower_wood_during5 | 12 images de plus : fleche en vol ou plantee
+tower_wood_during6 | 12 images de plus : fleche en vol ou plantee (Lanciers au contact)
 tower_wood_after | les Lanciers rouges pres de la tour, leur barre de vie entamee apres plusieurs fleches
