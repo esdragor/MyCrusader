@@ -143,7 +143,20 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 			Wounded, FVector(double(Banner.X), double(Banner.Y), 0.0), HOLFactionPowerCast::SealRangeCm());
 		if (CVar_AILogPowers.GetInt() != 0)
 		{
-			Log(n"LogHOLMatch", f"AI slot {PlayerIndex} step {Step}: powers think, Honor {State.GetFactionResource(PlayerIndex)}, wounded {Wounded.Num()} of {Summary.Army.Num()}, decision cast={Order.bCast} row {Order.PowerIndex}");
+			// GLORFINDEL-1123h: what decides the cast: banner, distance banner -> nearest wounded, range, tier, level, cool-down left of row 0.
+			double NearestCm = -1.0;
+			for (int Each = 0; Each < Wounded.Num(); Each++)
+			{
+				const double DX = Wounded[Each].X - double(Banner.X);
+				const double DY = Wounded[Each].Y - double(Banner.Y);
+				const double Distance = Math::Sqrt(DX * DX + DY * DY);
+				if (NearestCm < 0.0 || Distance < NearestCm)
+				{
+					NearestCm = Distance;
+				}
+			}
+			const int Cooling = CooldownLeft.Num() > 0 ? CooldownLeft[0] : -1;
+			Log(n"LogHOLMatch", f"AI slot {PlayerIndex} step {Step}: powers think, Honor {State.GetFactionResource(PlayerIndex)}, wounded {Wounded.Num()} of {Summary.Army.Num()}, decision cast={Order.bCast} row {Order.PowerIndex}, banner ({Banner.X}, {Banner.Y}), nearest wounded {NearestCm} cm, range {HOLFactionPowerCast::SealRangeCm()} cm, tier {Summary.Tier}, level {Level}, cooldown left {Cooling} ms");
 		}
 		if (Order.bCast && HOLFactionPowerServer::TryCastPower(PlayerIndex, Order.PowerIndex, Order.Point))
 		{
