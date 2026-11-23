@@ -1,0 +1,10 @@
+﻿=== build integ-37 8ffb822 (les Paysans recoivent l ordre de construction de la ligne) 17:10:15
+
+build : PASS (HeroesOfLibertyEditor Development, HeroesOfLiberty-Arwen, 20 s)
+
+
+
+tests 2164/2164 : PASS
+
+
+fin 17:13:41
