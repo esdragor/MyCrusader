@@ -42,6 +42,11 @@ UProgressBar FactionBar;
 UCommonTextBlock FactionGaugeText;
 UCommonTextBlock FactionPowersText;
 FHOLFactionSlotView FactionView;
+// S1-c (ARWEN-1123a): one button per power box (HOLFactionAim: a click arms the controller's aim, the next ground click casts), and the last aim line for the log.
+UVerticalBox FactionBoxColumn;
+TArray<UButton> FactionBoxButtons;
+TArray<UCommonTextBlock> FactionBoxLabels;
+const int FactionBoxMax = 4;
 FString FactionSlotTexts = "";
 // Provisional (Placeholders.txt): the slot's rise above the bottom left place, to clear the hero's block.
 const float FactionSlotRise = 150.0;
@@ -2009,7 +2014,21 @@ UHOLScenarioPanelScript ScenarioPanel;
 		FactionBar = MakeBar(n"FactionBar", FLinearColor(0.9, 0.8, 0.3, 1.0));
 		Column.AddChildToVerticalBox(SizedBar(n"FactionBarBox", FactionBar, 8.0)).SetPadding(FMargin(0.0, 3.0, 0.0, 1.0));
 		FactionPowersText = MakeText(n"FactionPowers", UHOLTextStyleHUDLabel);
-		Column.AddChildToVerticalBox(FactionPowersText);
+		// The boxes are buttons (S1-c): the panel itself stays click-through (SelfHitTestInvisible), only the buttons take a click.
+		FactionBoxColumn = Cast<UVerticalBox>(ConstructWidget(UVerticalBox, n"FactionBoxColumn"));
+		Column.AddChildToVerticalBox(FactionBoxColumn);
+		for (int Box = 0; Box < FactionBoxMax; ++Box)
+		{
+			UButton BoxButton = MakeButton(FName(f"FactionBox{Box}"));
+			BoxButton.SetVisibility(ESlateVisibility::Collapsed);
+			BoxButton.OnClicked.AddUFunction(this, FName(f"HandleFactionBox{Box}"));
+			FactionBoxColumn.AddChildToVerticalBox(BoxButton).SetPadding(FMargin(0.0, 2.0, 0.0, 0.0));
+			UCommonTextBlock BoxLabel = MakeText(FName(f"FactionBoxLabel{Box}"), UHOLTextStyleHUDLabel);
+			BoxLabel.SetVisibility(ESlateVisibility::HitTestInvisible);
+			BoxButton.AddChild(BoxLabel);
+			FactionBoxButtons.Add(BoxButton);
+			FactionBoxLabels.Add(BoxLabel);
+		}
 	}
 
 	FMargin FactionSlotPlace()
@@ -2034,7 +2053,7 @@ UHOLScenarioPanelScript ScenarioPanel;
 		if (PlayerSlot >= 0)
 			FactionView = HOLFactionSlot::FromGameState(Cast<AHOLGameState>(Gameplay::GetGameState()), PlayerSlot, false, false);
 		FactionPanelSlot.SetPadding(FactionSlotPlace());
-		FactionPanel.SetVisibility(FactionView.bVisible ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+		FactionPanel.SetVisibility(FactionView.bVisible ? ESlateVisibility::SelfHitTestInvisible : ESlateVisibility::Collapsed);
 		if (!FactionView.bVisible)
 			return;
 		FString Lines = "";
@@ -2043,7 +2062,77 @@ UHOLScenarioPanelScript ScenarioPanel;
 		FactionBar.SetPercent(FactionView.Fraction);
 		FactionGaugeText.SetText(FText::FromString(FactionView.GaugeText));
 		FactionPowersText.SetText(FText::FromString(Lines));
+		for (int Box = 0; Box < FactionBoxButtons.Num(); ++Box)
+		{
+			const bool bBox = Box < FactionView.Powers.Num();
+			FactionBoxButtons[Box].SetVisibility(bBox ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
+			if (bBox)
+				FactionBoxLabels[Box].SetText(FText::FromString(HOLPowerDisplay::LineOf(FactionView.Powers[Box])));
+		}
 		FactionSlotTexts = FactionView.Describe;
+	}
+
+	// S1-c: the controller's aim and the cast (HOLFactionAim): arm or end the aim, send the kept ground click to the server (the server decides again).
+	void ApplyFactionAim(AHOLPlayerController Controller, FHOLFactionAimStep Step)
+	{
+		if (Step.bSetAim)
+			Controller.SetFactionAim(Step.AimIndex, Step.RangeCm);
+		if (Step.bSend)
+		{
+			AHOLRpcPlayer Rpc = Cast<AHOLRpcPlayer>(HOLRpcBridge::FindPlayerActor(Controller));
+			if (Rpc != nullptr)
+				Rpc.ServerCastFactionPower(Step.Slot, Step.PowerIndex, Step.Point);
+		}
+		if (Step.Click.Action != EHOLFactionClickAction::Nothing)
+			Log(n"LogHOLMatch", f"FactionAim: {Step.Click.Describe} send {Step.bSend} slot {Step.Slot} at {Step.Point.ToString()}");
+	}
+
+	bool ClickFactionBox(int Box)
+	{
+		AHOLPlayerController Controller = Cast<AHOLPlayerController>(GetOwningPlayer());
+		if (Controller == nullptr || !FactionView.bVisible)
+			return false;
+		ApplyFactionAim(Controller, HOLFactionAim::OnBox(FactionView, Controller.GetFactionAim(), Box));
+		return true;
+	}
+
+	UFUNCTION()
+	void HandleFactionBox0()
+	{
+		ClickFactionBox(0);
+	}
+
+	UFUNCTION()
+	void HandleFactionBox1()
+	{
+		ClickFactionBox(1);
+	}
+
+	UFUNCTION()
+	void HandleFactionBox2()
+	{
+		ClickFactionBox(2);
+	}
+
+	UFUNCTION()
+	void HandleFactionBox3()
+	{
+		ClickFactionBox(3);
+	}
+
+	// Every frame: the ground click the controller kept while a power is aimed (ConsumeFactionAimClick) casts it (or cancels it if no longer ready).
+	UFUNCTION(BlueprintOverride)
+	void Tick(FGeometry MyGeometry, float32 InDeltaTime)
+	{
+		if (!FactionView.bVisible)
+			return;
+		AHOLPlayerController Controller = Cast<AHOLPlayerController>(GetOwningPlayer());
+		if (Controller == nullptr || Controller.GetFactionAim() < 0)
+			return;
+		FVector Point;
+		int Aimed = -1;
+		if (Controller.ConsumeFactionAimClick(Point, Aimed))
+			ApplyFactionAim(Controller, HOLFactionAim::OnGround(FactionView, Aimed, GetLocalSlot(), Point));
 	}
 
 	// The view (HOLHeroBlock::Make) from the public sheet, the slot and the return's quote for an order sent now.

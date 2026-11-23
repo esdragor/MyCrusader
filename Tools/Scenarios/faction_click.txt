@@ -1,0 +1,21 @@
+# Panneau de faction cliquable (S1-c, ARWEN-1123a : HOLFactionAim.as, boutons FactionBox0..3 de HOLGameScreenScript.as, HOLFactionSlot::ClickPower). Aube (slot 0, humain) contre une IA gelee (slot 1, Legions). hol.Cheat.Honor 100 remplit la jauge ; hol.HUD.Click FactionBox0 clique le bouton de la case du pouvoir par le meme chemin que la souris (Screen.ClickWidget). ATTENDU TANT QUE S1-b N'EST PAS FAIT : bEffectCoded est faux (HOLDawnPowers.as), la case est "soon" : le clic est REFUSE ("FactionAim: refuse soon"), la visee ne s'arme pas. Quand bEffectCoded sera vrai (S1-b), la meme ligne dit "FactionAim: aim 0" puis le clic sol (hol.Select.LeftClickGround) donnera "FactionAim: cast 0 send true slot 0". 3 minutes au plus.
+waitlog Starting hero of slot 0 spawned at
+hol.AI.ThinkSteps 100000
+hol.Sanity.Watch 1
+frames 10
+hol.Camera.FocusSlot 0
+frames 8
+hol.Cheat.Honor 100
+waitlog RpcCheat: honor set to 100 for sender slot 0
+wait 2
+frames 8
+hol.HUD.Report
+waitlog faction slot: slot gauge 100 / 100 powers SacredLight cost 25
+capture faction_click_before
+hol.HUD.Click FactionBox0
+waitlog HUD click FactionBox0: done
+waitlog FactionAim: refuse soon
+frames 4
+notereset 1/1 : apres le clic sur la case SacredLight (jauge 100 / 100) : la case est un bouton, le clic atteint HOLFactionAim (journal "FactionAim: refuse soon" tant que l'effet n'est pas code).
+capture faction_click_after
+hol.Test.Sanity

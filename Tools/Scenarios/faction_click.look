@@ -1,0 +1,3 @@
+# <nom de capture> | ce que l'utilisateur doit voir
+faction_click_before | POINT A REGARDER : le panneau de faction de l'Aube (coin bas gauche, au-dessus du bloc du heros) : barre d'Honneur pleine 100 / 100 et, dessous, la case SacredLight, maintenant un bouton
+faction_click_after | meme panneau apres le clic sur la case : toujours affiche, aucun curseur de visee (la case est "bientot" tant que l'effet n'est pas code, le clic est refuse) ; la preuve est la ligne FactionAim du journal
