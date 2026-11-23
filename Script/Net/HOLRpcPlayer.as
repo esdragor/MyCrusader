@@ -1512,13 +1512,13 @@ for (FString Command : Commands)
 	}
 
 	// F4: a wall line dragged from Start to End. The pure part (seat, finite points, length cap hol.Wall.MaxLineCells, map, occupied cells) is HOLWallLine::PlanFromRequest;
-	// accepted, one foundation per cell goes through the same bridge as ServerPlaceBuilding (so the board's gates, price and CheckPlacement apply to each cell). NO builder is sent.
+	// accepted, one foundation per cell goes through the same bridge as ServerPlaceBuilding (so the board's gates, price and CheckPlacement apply to each cell). UnitIds are the client's selected Peasants (as ServerPlaceBuilding): each cell gives them its build order (HOLWallLine::BuildersForCell / QueueForCell, ARWEN-1123pe).
 	// The world (map limit, cells under a building, tile size) is read by the C++ accessor HOLConstructionRead::GetWallLineWorld. TypeName is the wall type chosen by the client.
 	UFUNCTION(Server)
-	void ServerPlaceWallLine(FName TypeName, FVector_NetQuantize Start, FVector_NetQuantize End, bool bQueue)
+	void ServerPlaceWallLine(FName TypeName, FVector_NetQuantize Start, FVector_NetQuantize End, TArray<uint32> UnitIds, bool bQueue)
 	{
 		const int Slot = HOLRpcBridge::GetSenderSlot(this);
-		Log(n"LogHOLMatch", f"RpcOrder: place wall line received by the server: slot {Slot} type {TypeName} queue {bQueue}");
+		Log(n"LogHOLMatch", f"RpcOrder: place wall line received by the server: slot {Slot} type {TypeName} builders {UnitIds.Num()} queue {bQueue}");
 		if (TypeName == NAME_None)
 		{
 			Log(n"LogHOLMatch", f"RpcOrder: place wall line refused (4) for sender slot {Slot}");
@@ -1537,11 +1537,10 @@ for (FString Command : Commands)
 			Log(n"LogHOLMatch", f"RpcOrder: place wall line refused ({RefusalCode}) for sender slot {Slot}, cell ({BadX}, {BadY})");
 			return;
 		}
-		TArray<int32> NoBuilders;
 		for (int Index = 0; Index < Plan.Cells.Num(); Index++)
 		{
 			const FVector Point = HOLWallLine::CellToPoint(Plan.Cells[Index], Tile, Start.Z);
-			HOLRpcBridge::OrderPlaceBuilding(this, TypeName, Point.X, Point.Y, Point.Z, NoBuilders, bQueue);
+			HOLRpcBridge::OrderPlaceBuilding(this, TypeName, Point.X, Point.Y, Point.Z, HOLRpc::OrderIds(HOLWallLine::BuildersForCell(Index, UnitIds)), HOLWallLine::QueueForCell(Index, bQueue));
 		}
 	}
 
