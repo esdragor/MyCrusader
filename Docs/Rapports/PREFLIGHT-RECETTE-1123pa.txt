@@ -1,0 +1,34 @@
+﻿=== Haldir 21e336f 15:48:25 ; fichiers suivis modifies :
+=== preflight faction_click_cast 15:48:25
+
+engine smoke tests: 20 'Condition failed' at start (UnifiedErrorTests.cpp under -culture=fr, English messages 
+compared; not the scenario, not counted)
+check faction_click_cast : PASS (29 s)
+OK    no warning or error in the log
+OK    sanity audit passed
+preflight faction_click_cast : PASS (list the trial only once every PNG above has been opened and seen)
+
+
+=== preflight ai_sacred_light 15:49:06
+
+engine smoke tests: 20 'Condition failed' at start (UnifiedErrorTests.cpp under -culture=fr, English messages 
+compared; not the scenario, not counted)
+check ai_sacred_light : PASS (28 s)
+OK    no warning or error in the log
+WARN  no 'HUD overlap:' line: the scenario does not call hol.HUD.Report at the moment of the screenshots (a panel 
+hiding another is not checked)
+WARN  no 'Sanity:' audit line: the scenario does not call hol.Test.Sanity (neutral colours, spinning, shaking not 
+checked)
+preflight ai_sacred_light : PASS (list the trial only once every PNG above has been opened and seen)
+
+
+=== gate Essay
+
+=> aucun FAIL
+
+
+
+=> aucun FAIL
+
+
+fin 15:49:52

@@ -23,6 +23,9 @@ Un chantier ne se clôt pas sans avoir relu ce fichier.
 - Archer Aube [mannequin]
 - Archer squelette Légions [mannequin]
 - Arbalétrier Aube [mannequin]
+- Sergent du Temple Templiers, palier 1 voie du Fer (ligne de table provisoire, CELEBORN-1123pa : copie de l'Hallebardier, 75 nourriture + 30 bois, 100 PV, mannequin ; pas de capacité Ouvrir les rangs, non débloqué par la voie ; valeurs derriere UnitTypes.csv, Retours\Q-commanderie-palier1.md) [mannequin]
+- Frère infirmier Templiers, palier 1 voie de la Foi (ligne de table provisoire, CELEBORN-1123pa : copie du Moine, 100 nourriture + 100 or, 80 PV, mannequin ; pas de soin hors combat, non débloqué par la voie ; valeurs derriere UnitTypes.csv, Retours\Q-commanderie-palier1.md) [mannequin]
+- Arbalétrier à pavois Templiers, palier 1 voie de la Pierre (ligne de table provisoire, CELEBORN-1123pa : copie de l'Arbalétrier, 80 nourriture + 40 or, 80 PV, mannequin ; pas de Planter le pavois, non débloqué par la voie ; valeurs derriere UnitTypes.csv, Retours\Q-commanderie-palier1.md) [mannequin]
 - Arquebusier (mannequin de l'Arbalétrier, corps propre non fait ; balle SM_Bullet = ellipsoïde sombre sans modèle d'artiste ; fumée de poudre = une sphère translucide à bord doux qui s'efface (SM_PowderSmoke, M_PowderSmoke), sans texture de fumée ; pas de son propre ; mort = chute de l'Arbalétrier. Arquebuse, bandoulière, baguette et gestes repos / marche / tir / rechargement faits le 2026-11-14 : Retours\Q-arquebusier-modele.md) [mannequin]
 - Arbalétrier squelette Légions [mannequin]
 - Cavalier léger Aube (mannequin fixe, sans animation) [mannequin]
@@ -77,7 +80,6 @@ Un chantier ne se clôt pas sans avoir relu ce fichier.
 - Tir de tour (fleche de batiment : la fleche de l'archer, partie du toit, sans son ni particule propres) [forme du moteur]
 - Fleche de tour chez un client : tiree a la replication du compteur ArrowShotCount (pas a l'instant du tir), jusqu'a 8 fleches par paquet, cible = derniere position (pas suivie) [forme] (integ-41 CELEBORN-1123c, NON COMPILE)
 - Porte de bois [à venir]
-- Mur de pierre [à venir]
 - Porte de pierre [à venir]
 - Tour de pierre [à venir]
 - Rempart praticable [à venir]

@@ -4,6 +4,13 @@
 // Tested in Script/Tests/HOLDawnPowers_Test.as.
 namespace HOLDawnPowers
 {
+	// D890 (2026-11-23): the Sacred Light's cast range from the caster's origin is its OWN 1200 cm (12 m), a line apart from the Seal's
+	// 800 cm (the LightSeal row of the unit ability table). Read by HOLFactionPowerCast::Decide. Tested: Test_SacredLightRangeIs1200.
+	int SacredLightRangeCm()
+	{
+		return 1200;
+	}
+
 	TArray<FHOLPowerRow> Rows()
 	{
 		TArray<FHOLPowerRow> Result;

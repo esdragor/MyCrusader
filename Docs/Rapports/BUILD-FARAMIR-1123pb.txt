@@ -1,0 +1,18 @@
+﻿=== build zone-effect 0fcf23d (Zone.KillHonor : Place re-porte l unite jusqu a un id multiple de 4) 15:40:29
+
+build : LaunchCheck debut (Get-StaleBinaryProblem) : the binary UnrealEditor-HeroesOfLiberty.dll of 
+C:\Users\baudo\Documents\HeroesOfLiberty-Faramir (2026-11-23T15:15:46) is older than its C++ source 
+Source\HeroesOfLiberty\Tests\HOLZoneEffectTests.cpp (2026-11-23T15:36:30): Tools\build.ps1 in that copy first
+build : PASS (HeroesOfLibertyEditor Development, HeroesOfLiberty-Faramir, 94 s)
+
+
+build exit=0 15:42:11
+
+  check_placeholders : PASS (44 provisional types, 46 map entries, 165 lines)
+tests 2144/2145 : FAIL (REGRESSION : pas dans known_reds.txt)
+  [KO] all green (failed: HeroesOfLiberty.Zone.KillHonor)
+quick_check : FAIL in 233 s (game launch done at 1 s)
+red summary : 1 regression(s) : tests 2144/2145 ; 0 rouge(s) connu(s)
+
+
+fin 15:46:13

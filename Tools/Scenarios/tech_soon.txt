@@ -8,8 +8,24 @@ hol.Cheat.SpawnBuilding Barracks 0 2500 2500
 waitlog Cheat: spawned Barracks of slot 0
 hol.Hero.SetXP 0 600
 waitlog Hero level up: slot 0 level 1 -> 3
+# 1920x1080 : la case fait 76 px (la vraie taille), le FR par defaut.
+r.SetRes 1920x1080w
+hol.UI.Language fr
+frames 10
+
 hol.Select.Category Military
 frames 10
 note La Caserne est selectionnee, palier 1, ressources pleines : la cellule W (Hallebardes trempees) est grisee et affiche Bientot, aucune recherche ne part.
 hol.HUD.Report
 capture tech_soon_barracks
+# Les 3 langues sur la meme case, puis 1280x720 (case de ~51 px) en EN : Coming soon doit tenir dans la case (GALADRIEL-1122h).
+hol.UI.Language en
+frames 10
+capture tech_soon_barracks_en
+hol.UI.Language ja
+frames 10
+capture tech_soon_barracks_ja
+hol.UI.Language en
+r.SetRes 1280x720w
+frames 10
+capture tech_soon_barracks_720

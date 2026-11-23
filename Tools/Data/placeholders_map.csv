@@ -45,3 +45,5 @@ Halberdier,UnitTypes,^- Hallebardier Aube
 VirtuousKnight,UnitTypes,^- Chevalier Vertueux Aube
 SecondaryCentre,BuildingTypes,^- Centre secondaire \(SecondaryCentre\)
 Palisade,BuildingTypes,^- Palissade
+PalisadeGate,BuildingTypes,^- Porte de palissade
+StoneWall,BuildingTypes,^- Mur de pierre

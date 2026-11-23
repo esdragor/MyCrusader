@@ -6,6 +6,8 @@
 # main, rouges retires", L20-6 ; les verts portent les memes commits, un bouchon de rouge remplace dans sa branche ne conflite plus) ; merge des verts (tips) un par un ; build (seulement si C++ dans
 # un vert) ; quick_check -Parts tests (doit etre vert) ; quick_check -Parts <Parts> ; resume court (10 lignes) imprime ET ecrit dans
 # <Root>\Docs\Integrate_<Branch>.txt (sortie complete : Docs\Integrate_<Branch>.log).
+# Tables (GALADRIEL-1123pa, DIAG-1123a) : apres le merge des verts et avant leur build / tests, si Tools/Data/UnitTypes.csv ou BuildingTypes.csv a change sans que le .uasset
+# correspondant ait ete regenere dans les verts, lance regen_tables.ps1, verifie son code, commite le .uasset ("Regen tables after merge") ; le resume dit "regen: lance / inutile / FAIL".
 # -DryRun : imprime le plan (lignes "PLAN <n> <genre> : <commande>" ou "... : SKIP (<raison>)") sans rien creer ni lancer (lit seulement git).
 # `powershell -File` passe une liste en UN SEUL argument ("a,b") : -Reds, -Greens et -Parts sont des chaines coupees aux virgules ici
 # (piege du 2026-11-20 : "liste lue comme un seul nom"). -Parts est transmis tel quel a quick_check (qui coupe lui aussi).
@@ -17,7 +19,8 @@ param(
   [string] $Greens = '',
   [string] $Parts = 'net,build',
   [switch] $DryRun,
-  [switch] $SkipBuildTests   # RESERVE AU TEST (integrate_test.ps1) : saute build.ps1 et quick_check (etapes build / tests / parts), garde toute la partie git
+  [switch] $SkipBuildTests,   # RESERVE AU TEST (integrate_test.ps1) : saute build.ps1 et quick_check (etapes build / tests / parts), garde toute la partie git
+  [string] $RegenScript = ''   # RESERVE AU TEST : script de regen factice (sans lui, -SkipBuildTests saute aussi la regen : jamais d'editeur dans le test)
 )
 $ErrorActionPreference = 'Continue'
 if (-not $Root) { $Root = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path }
@@ -45,7 +48,24 @@ foreach ($RedItem in $RedList) { if (@(Git-Out diff-tree --no-commit-id --name-o
 $GreensCpp = $false
 foreach ($GreenItem in $GreenList) { if (@(Git-Out diff --name-only "main...$GreenItem") -match $CppPattern) { $GreensCpp = $true } }
 
+# Tables: a CSV of Tools/Data and the .uasset that regen_tables.ps1 builds from it (make_unit_types.py / make_building_types.py).
+$Tables = @(
+  @{ Csv = 'Tools/Data/UnitTypes.csv'; Asset = 'Content/Units/UnitTypes.uasset' },
+  @{ Csv = 'Tools/Data/BuildingTypes.csv'; Asset = 'Content/Buildings/BuildingTypes.uasset' }
+)
+function Get-RegenNeed([string[]] $Changed) {
+  $Need = @()
+  foreach ($Table in $Tables) { if (($Changed -contains $Table.Csv) -and -not ($Changed -contains $Table.Asset)) { $Need += $Table.Csv } }
+  return $Need
+}
+$GreensChanged = @()
+foreach ($GreenItem in $GreenList) { $GreensChanged += @(Git-Out diff --name-only "main...$GreenItem") }
+$RegenNeed = @(Get-RegenNeed $GreensChanged)
+if (-not $RegenScript) { $RegenScript = Join-Path $Root 'Tools\AutoJourney\regen_tables.ps1' }
+$RegenGiven = $PSBoundParameters.ContainsKey('RegenScript')
+
 $PS = 'powershell -NoProfile -ExecutionPolicy Bypass -File'
+$RegenCmd = "$PS $RegenScript -Root $Root"
 $BuildCmd = "$PS $Root\Tools\build.ps1 -Root $Root -LiveCoding=0 -Wait -Priority merge"
 $QcCmd = "$PS $Root\Tools\Tests\quick_check.ps1"
 $SummaryPath = Join-Path $Root "Docs\Integrate_$Branch.txt"
@@ -68,6 +88,7 @@ $MainSha = (Git-Out rev-parse 'main^{commit}' | Select-Object -First 1).Trim()
 Add-Step 'reset' "git -C $Root reset --hard $MainSha" $(if ($RedList.Count) { '' } else { 'pas de rouge' })
 if ($GreenList.Count) { foreach ($GreenItem in $GreenList) { Add-Step 'green' "git -C $Root merge --no-ff --no-edit $GreenItem" } }
 else { Add-Step 'green' 'merge' 'pas de vert' }
+Add-Step 'regen' $RegenCmd $(if (-not $GreenList.Count) { 'pas de vert' } elseif ($SkipBuildTests -and -not $RegenGiven) { '-SkipBuildTests (reserve au test)' } elseif (-not $RegenNeed.Count) { 'aucun CSV de table change sans son .uasset dans les verts' } else { '' })
 Add-Step 'build' $BuildCmd $(if (-not $GreenList.Count) { 'pas de vert' } elseif (-not $GreensCpp) { 'pas de C++ (.cpp/.h) dans les verts' } else { '' })
 Add-Step 'tests' "$QcCmd -Parts tests"
 Add-Step 'parts' "$QcCmd -Parts $PartsText"
@@ -90,6 +111,7 @@ $Started = Get-Date
 $Rows = [ordered]@{}        # stage -> text of the summary line
 $RedsSeen = @()
 $RedsNote = ''
+$RegenNote = ''   # "lance" / "inutile" / "FAIL", appended to the merge verts line of the summary
 function Log([string] $Line) { Write-Output $Line; Add-Content -Path $LogPath -Value $Line -Encoding ASCII }
 function Run-Native([string] $Command) {
   # Runs one command line, mirrors the output to the log, returns @{ Code; Out }.
@@ -101,7 +123,9 @@ function Run-Native([string] $Command) {
 function Write-Summary([string] $Verdict) {
   $Lines = @("INTEGRATE $Branch : $Verdict ($([int]((Get-Date) - $Started).TotalSeconds) s, $(Get-Date -Format 'yyyy-MM-dd HH:mm'))")
   foreach ($Key in 'branche+rouges', 'build rouges', 'tests rouges', 'remise a main', 'merge verts', 'build verts', 'tests verts', "parts $PartsText") {
-    $Lines += "  $Key : $(if ($Rows.Contains($Key)) { $Rows[$Key] } else { 'NON LANCE' })"
+    $Value = $(if ($Rows.Contains($Key)) { $Rows[$Key] } else { 'NON LANCE' })
+    if (($Key -eq 'merge verts') -and $RegenNote) { $Value += " ; regen: $RegenNote" }
+    $Lines += "  $Key : $Value"
   }
   $Lines += "  rouges vus : $(if ($RedsSeen.Count) { $RedsSeen -join ', ' } else { if ($RedsNote) { $RedsNote } else { 'aucun' } }) ; sortie complete : Docs\Integrate_$Branch.log"
   Set-Content -Path $SummaryPath -Value $Lines -Encoding ASCII
@@ -191,6 +215,28 @@ foreach ($GreenItem in $GreenList) {
 }
 $Rows['merge verts'] = "PASS ($Merged merge, $(Stage-Time $Since))"
 Log "integrate : $Merged vert(s) fusionne(s)"
+
+# 4b. Regen of the tables (DIAG-1123a): a table CSV changed in the merged tree without its .uasset -> regen_tables.ps1, exit code checked, .uasset committed.
+$RegenStep = @($Plan | Where-Object { $_.Kind -eq 'regen' })[0]
+$RegenNow = @(Get-RegenNeed @(Git-Out diff --name-only $MainSha HEAD))
+if ($RegenStep.Skip -or -not $RegenNow.Count) {
+  $RegenNote = 'inutile'
+  Log "integrate : regen inutile ($(if ($RegenStep.Skip) { $RegenStep.Skip } else { 'aucun CSV de table change sans son .uasset' }))"
+} else {
+  Log "integrate : regen des tables ($($RegenNow -join ', ')) ..."
+  $Run = Run-Native $RegenCmd
+  if ($Run.Code -ne 0) { $RegenNote = 'FAIL'; Log "integrate : regen FAIL (code $($Run.Code)) : $(($Run.Out | Select-Object -Last 3) -join ' | ')"; Write-Summary 'FAIL (regen)'; exit 1 }
+  $AssetPaths = @($Tables | ForEach-Object { $_.Asset })
+  Git-Out add -- @AssetPaths | Out-Null
+  Git-Out diff --cached --quiet | Out-Null
+  if ($LASTEXITCODE -ne 0) {
+    $Out = Git-Out commit -q -m 'Regen tables after merge'
+    Add-Content -Path $LogPath -Value ($Out -join "`n") -Encoding ASCII
+    if ($LASTEXITCODE -ne 0) { $RegenNote = 'FAIL'; Log "integrate : ERROR commit regen : $($Out -join ' ')"; Write-Summary 'FAIL (regen commit)'; exit 1 }
+    $RegenNote = 'lance'
+  } else { $RegenNote = 'lance (aucun .uasset change)' }
+  Log "integrate : regen $RegenNote"
+}
 
 # 5-7. Build, tests (must be green), final parts.
 Build-Stage 'build verts' $GreensCpp 'pas de C++ dans les verts'

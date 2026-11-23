@@ -40,7 +40,7 @@ void Test_FactionPowerCastRefusalPriority(FUnitTest& T)
 	FHOLFactionResource Full = FactionPowerCastTest::FullGauge();
 	FHOLFactionResource Empty = FactionPowerCastEdgeTest::EmptyGauge();
 	const int Dawn = FactionPowerCastTest::Dawn();
-	const int FarX = int(HOLFactionPowerCast::SealRangeCm()) + 50;
+	const int FarX = HOLDawnPowers::SacredLightRangeCm() + 50;
 	const int NoPower = HOLDawnPowers::Rows().Num();
 
 	// (a) not the Dawn wins over everything else: invalid index, cool-down running, out of range, empty gauge.
@@ -72,7 +72,7 @@ void Test_FactionPowerCastRefusalWritesNothing(FUnitTest& T)
 {
 	FHOLFactionResource Full = FactionPowerCastTest::FullGauge();
 	const int Dawn = FactionPowerCastTest::Dawn();
-	const int FarX = int(HOLFactionPowerCast::SealRangeCm()) + 50;
+	const int FarX = HOLDawnPowers::SacredLightRangeCm() + 50;
 	const int Cooldown = 12345;
 
 	// A refusal hands back the cool-down end it was given (and the gauge it was given), whatever the reason.
@@ -111,7 +111,7 @@ void Test_FactionPowerCastCooldownLongEnded(FUnitTest& T)
 
 void Test_FactionPowerCastDistanceRounding(FUnitTest& T)
 {
-	const int Range = int(HOLFactionPowerCast::SealRangeCm());
+	const int Range = HOLDawnPowers::SacredLightRangeCm();
 
 	// The exact diagonal 3-4-5 scaled to the range (480, 640) is 800.000 cm: accepted.
 	FHOLFactionPowerDecision Diagonal = FactionPowerCastEdgeTest::CastTo(Range * 3 / 5, Range * 4 / 5);
@@ -131,7 +131,7 @@ void Test_FactionPowerCastNegativeDeltas(FUnitTest& T)
 {
 	FHOLFactionResource Full = FactionPowerCastTest::FullGauge();
 	const int Dawn = FactionPowerCastTest::Dawn();
-	const int Range = int(HOLFactionPowerCast::SealRangeCm());
+	const int Range = HOLDawnPowers::SacredLightRangeCm();
 
 	FHOLFactionPowerDecision Left = FactionPowerCastEdgeTest::CastTo(-Range, 0);
 	T.AssertTrue(Left.bAccepted, "a point exactly at the range on the left is accepted");

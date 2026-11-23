@@ -1,0 +1,18 @@
+﻿integrate : branche integ-59 creee, 2 rouge(s) appliques
+integrate : build rouges SKIP (pas de C++ dans les rouges)
+integrate : tests des rouges ...
+integrate : verts depuis main, rouges retires (reset --hard b5a285b)
+integrate : 5 vert(s) fusionne(s)
+integrate : build verts ...
+integrate : tests (apres les verts) ...
+integrate : parts net,build ...
+INTEGRATE integ-59 : PASS (1152 s, 2026-11-23 15:59)
+  branche+rouges : PASS (2 cherry-pick, 4 s)
+  build rouges : SKIP (pas de C++ dans les rouges)
+  tests rouges : FAIL attendu 2150/2152 tests (238 s)
+  remise a main : PASS (verts depuis main, rouges retires : reset --hard b5a285b)
+  merge verts : PASS (5 merge, 12 s)
+  build verts : PASS (234 s)
+  tests verts : PASS 2159/2159 tests (222 s)
+  parts net,build : PASS (439 s)
+  rouges vus : Angelscript.UnitTests.Tests.HOLAIPowerCall_Test.Test_AIPlantsABannerBeforeCasting, Angelscript.UnitTests.Tests.HOLDawnPowers_Test.Test_SacredLightRangeIs1200 ; sortie complete : Docs\Integrate_integ-59.log
