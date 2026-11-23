@@ -22,6 +22,28 @@ main = 0fef853 POUSSÉ sur origin à 12:24 (reflog d'origin/main) à la demande 
 | NETTOYAGE-1123f | 0a | copie principale | nettoyage Auto_Journey_File.md (lance 14:48, fini 14:52) | non | 14:54 | 14:54 | 861d60c : 228 -> 211 l., 21 archivees, 98 [ ] dont 31 sans C++ ; 3 lignes ajoutees (integ-57, faction_click_cast, OUTIL trailer Agent:) ; D890-D895 deja en tete ; doutes : 6 [?] sans reponse, S3-b l.47 et S1-b l.30 perimees ? |
 | NETTOYAGE-1123g | 0a | copie principale | nettoyage Retours\ (lance 14:48, fini 14:52) | non | 14:54 | 14:54 | 284c846 : rien archive (aucune fiche repondue ni jouee), E-deploy et E-wall_line_long statuts corriges, index : 0 a repondre, 0 pret VU A L ECRAN, 5 LOGIQUE SEULEMENT, 2 BUG ; EtapeDefini.md 1 ligne (commitee par la principale) |
 | NETTOYAGE-1123h | 0a | copie principale | nettoyage procedure + check-list + trailer Agent: au brief (lance 14:48, fini 14:53) | non | 14:54 | 14:54 | 7ae89ba : procedure 188 -> 177 l. alignee sur L25-6, check-list 248 -> 250 (renvois), brief point 9 = trailer Agent: ; gate Launch sans FAIL ; anomalie : commit_docs -Only refuse brief_commun.md |
+| SYNC-debut-pm | sync | 8 worktrees | sync_worktrees.ps1 sans -NoBuild (Docs\Rapports\SYNC-1123pm-debut.txt) | non | 14:56 | 14:56 | 8 mis a jour (+9 de main fc41498), 0 conflit, 0 saut, aucun build (docs seules) ; Arwen et Haldir = main exactement |
+| ETAPE0-1123pm | 0 | lecture seule | plan de lancement (Docs\Rapports\ETAPE0-1123pm.md), passe integ-58 preparee | non | 14:56 | 15:06 | plan : 6 lances + Galadriel sur une ligne OUTIL, Haldir = integration integ-58 puis recette ; recoupe par la principale 15:04 (tips, rouges absents de main, lignes 25-27, 33-34, 45, 49 de la file) ; lignes perimees : l.30, l.35 a/c, l.48, l.79, l.85 ; conflit Placeholders.txt ne se reproduit plus (merge-tree) ; doublon probable Mur de pierre |
+| integ-58 | passe | Haldir | LISTE FIGEE 15:04 : rouges 065a643, eeba85e, aeb8abc ; verts cdb1b3d (ability-columns sans e269a1c), 3ddc875 (integ-55 EndWallDrag), fefe033 (specialization-trial D889), 6985134 (integ-41 F9/F10) ; exclus : integ-25 (commentaire + scenario FAIL), zone-effect (KillHonor rouge), socle-ai (S2-a non compile) | oui | 15:07 | en cours | |
+| ARWEN-1123pa | v1 | Arwen integ-37 | D890 portee propre de Lumiere sacree 1200 cm (file l.25) ; pris : HOLDawnPowers.as, HOLFactionPowerCast.as, HOLDawnPowers_Test.as, AubeInProgress.md | non | 15:07 | en cours | |
+| CELEBORN-1123pa | v1 | Celeborn integ-41 | D893 : 3 lignes d unites du palier 1 Fer/Foi/Pierre, sans deblocage (file l.27) ; pris : UnitTypes.csv, UnitTypes.uasset, Placeholders.txt, placeholders_map.csv, SpecializationInProgress.md | non | 15:07 | en cours | |
+| ELROND-1123pa | v1 | Elrond integ-25 | S4-b preuve en jeu : scenario ai_garrison corrige (file l.49) ; pris : Tools/Scenarios/ai_garrison.*, FortificationsInProgress.md | non | 15:07 | en cours | |
+| FARAMIR-1123pa | v1 | Faramir zone-effect | S1-e Honneur a la mort : Zone.KillHonor rouge -> vert (file l.33-34) ; pris : HOLCombatProcessor.cpp, HOLHealProcessor.cpp/.h, HOLZoneEffectLibrary.*, HOLZoneEffectTests.cpp, toute la simulation | oui | 15:07 | en cours | |
+| GLORFINDEL-1123pa | v1 | Glorfindel ability-columns | D891 : l IA plante une banniere avant Lumiere sacree (file l.26) ; pris : HOLAIBrain.as, HOLAIPowerCall.as, HOLFactionPowerServer.as, HOLAIPowerCall_Test.as, AubeInProgress.md (section IA) | non | 15:07 | en cours | |
+| SAURON-1123pa | v1 | Sauron integ-55 | S3-b : trace IsForegroundWindow / GetMousePosition en fin de hol.Mouse.Drag (file l.45) ; pris : HOLPlayerController.cpp, Tools/Scenarios/wall_line_long.* | oui | 15:07 | en cours | |
+| GALADRIEL-1123pa | v1 | Galadriel socle-ai | OUTIL : integrate.ps1 lance regen_tables.ps1 quand une table CSV change (file section Outils) ; S2-a attend la fin de Faramir (HOLCombatProcessor.cpp pris) ; pris : Tools/AutoJourney/integrate.ps1, integrate_test.ps1 | non | 15:07 | en cours | |
+| integrateur | passes | Haldir | integrate.ps1 par la session principale (commande en arriere-plan) ; recette independante = agent RECETTE sur Haldir apres la 1re avance de main | non | 15:09 | en cours | |
+
+### Plan de lancement 2026-11-23 après-midi (ETAPE0-1123pm, détail : Docs\Rapports\ETAPE0-1123pm.md)
+- Arwen (integ-37 = main) : lancer D890, portée propre de Lumière sacrée 1200 cm (script)
+- Celeborn (integ-41) : lancer D893, 3 lignes d'unités du palier 1 Fer / Foi / Pierre, sans déblocage (données)
+- Elrond (integ-25) : lancer S4-b preuve en jeu, scénario ai_garrison à corriger (scénario)
+- Faramir (zone-effect) : lancer S1-e, Honneur à la mort, Zone.KillHonor rouge puis vert (C++ Mass ; seul agent sur la simulation)
+- Galadriel (socle-ai) : S2-a attend HOLCombatProcessor.cpp (pris par Faramir) ; en attendant, ligne OUTIL integrate.ps1 + regen_tables (exception au plan de l'étape 0, qui disait « ne pas lancer » : un worktree libre prend une ligne sans C++)
+- Glorfindel (ability-columns) : lancer D891, l'IA plante une bannière avant Lumière sacrée (script)
+- Sauron (integ-55) : lancer S3-b, trace du curseur sans sol en fin de glisser (C++, contrôleur)
+- Haldir (integ-56 = main) : pas d'agent de travail : worktree de la passe integ-58 (lancée 15:08), puis recette indépendante après la première avance de main
+- Proposé par l'étape 0, NON fait : `Placeholders.txt merge=union` dans .gitattributes (le conflit du matin ne se reproduit plus ; l'union a déjà laissé un doublon « Mur de pierre », donné à CELEBORN-1123pa).
 
 ## Résumé de la séance du 2026-11-23 matin
 
