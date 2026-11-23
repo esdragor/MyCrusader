@@ -1,1 +1,11 @@
 ﻿=== build zone-effect 44641f6 (journal au lancer des fleches de tour, hol.Arrow.Scale ; NOT COMPILED) 16:34:21
+
+build : FAIL (HeroesOfLibertyEditor Development, HeroesOfLiberty-Faramir, 96 s, exit 6; log 
+C:\Users\baudo\Documents\HeroesOfLiberty-Faramir\Saved\Logs\build.log)
+  C:\Users\baudo\Documents\HeroesOfLiberty-Faramir\Source\HeroesOfLiberty\Simulation\HOLCombatProcessor.cpp(972,8): 
+error C2065: 'LogBuildingShots': undeclared identifier
+  Result: Failed (OtherCompilationError)
+
+
+build exit=1 16:48:50
+fin 16:48:50
