@@ -1187,6 +1187,7 @@ bool FHOLNetBuildingArrowTest::RunTest(const FString& Parameters)
 	{
 		Tower->Setup(HOLBuildingTypeNames::House, 0, 0, EHOLConstructionState::Finished);
 		const FProperty* CountProperty = AHOLBuilding::StaticClass()->FindPropertyByName(TEXT("ArrowShotCount"));
+		AHOLBuilding::StaticClass()->SetUpRuntimeReplicationData();	// a world without a net driver never numbers the replicated properties: RepIndex stays 0 and the lifetime list asserts
 		TArray<FLifetimeProperty> Lifetime;
 		Tower->GetLifetimeReplicatedProps(Lifetime);
 		TestTrue(TEXT("the arrow count is a replicated property of the building"), CountProperty && Lifetime.ContainsByPredicate([CountProperty](const FLifetimeProperty& Entry) { return Entry.RepIndex == CountProperty->RepIndex; }));
