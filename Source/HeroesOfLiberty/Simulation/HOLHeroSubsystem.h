@@ -118,6 +118,9 @@ public:
 	 */
 	bool StartLightSeal(int32 Slot, const FVector& Center);
 
+	/** D689, Sacred Light: the slot puts a healing zone at Center (S1-a). One per slot and per kind: the slot's Seal stays. Server or solo only. */
+	bool StartSacredLight(int32 Slot, const FVector& Center);
+
 	/** D859: the zones put down (expired ones are dropped when another starts; HOLZoneEffect::ZoneActive says which are active now). */
 	const TArray<HOLZoneEffect::FZone>& GetZones() const { return Zones; }
 
