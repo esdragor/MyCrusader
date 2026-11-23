@@ -3,9 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-
-struct FHOLUnitTypeConstants;
-enum class EHOLAttackType : uint8;
+#include "Simulation/HOLUnitTypes.h"
 
 /**
  * Pure rules of the melee (J7b.1, J7-Q4: home-made processor, AoE4-like rules): the damage of a hit, the cadence of the
@@ -43,6 +41,19 @@ namespace HOLCombat
 	 * technologies (Maille, Barde: HOLTechnology::GetArmorStat), 0 by default; the hit stays 1 at least.
 	 */
 	HEROESOFLIBERTY_API float GetDamage(const FHOLUnitTypeConstants& Attacker, const FHOLUnitTypeConstants& Defender, int32 AttackerLevel = 1, int32 DefenderArmorBonus = 0, int32 AttackerAttackPercent = 0, int32 DefenderArmorPercent = 0);
+
+	/**
+	 * F8 T3 (D884): the damage of a building's arrow on a unit: Base (the row's BuildingAttack) less the Victim's RANGED armour (a talent's bonus
+	 * VictimArmorBonus included), then the Forge percent the victim's player took off (VictimArmorPercent), 1 at least, and HeroTroopDamageFactor on a
+	 * hero: the formula of an archer's arrow (GetDamage) without the shooter's level, penetration, bonuses or technology (a building has none: nothing invented).
+	 */
+	inline float GetBuildingShotDamage(const float Base, const FHOLUnitTypeConstants& Victim, const int32 VictimArmorBonus = 0, const int32 VictimArmorPercent = 0)
+	{
+			const float ArmorKept = static_cast<float>(GetArmor(Victim, EHOLAttackType::Ranged) + VictimArmorBonus);
+		const float Gross = (Base - ArmorKept) * static_cast<float>(100 - FMath::Clamp(VictimArmorPercent, 0, 90)) / 100.f;
+		const float Hit = FMath::Max(Gross, 1.f);
+		return Victim.HasArmorCategory(EHOLArmorCategory::Hero) ? Hit * HeroTroopDamageFactor : Hit;
+	}
 
 	/**
 	 * J8b.2: a unit's maximum health at its level (the hero's grows +8 % a level, J8b-Q3), rounded to nearest. S5: HealthPercent
@@ -111,6 +122,24 @@ namespace HOLCombat
 	{
 		const double Reach = static_cast<double>(RadiusA) + static_cast<double>(RadiusB) + FMath::Max(static_cast<double>(Range), 0.);
 		return FVector2D::DistSquared(A, B) <= Reach * Reach;
+	}
+
+	/**
+	 * F8 (D884): a building's shot reach. The reach is counted from the EDGE of the building's body (its footprint box,
+	 * Body) to the edge of the unit (UnitRadius), on the ground plane: the height is ignored, as for the archers. The
+	 * nearest point of the body to the unit is the unit's position clamped into the box (the unit itself when it stands
+	 * inside the body: gap 0, in reach); in reach when the gap to that point, minus the unit's radius, is at most Range.
+	 * A Range of 0 or less never reaches (a building without a shot). Squares compared, no root: met per target per step.
+	 */
+	inline bool IsInBuildingShotRange(const FBox2D& Body, const FVector2D& UnitLocation, const float UnitRadius, const float Range)
+	{
+		if (Range <= 0.f)
+		{
+			return false;
+		}
+		const FVector2D Nearest(FMath::Clamp(UnitLocation.X, Body.Min.X, Body.Max.X), FMath::Clamp(UnitLocation.Y, Body.Min.Y, Body.Max.Y));
+		const double Reach = static_cast<double>(FMath::Max(UnitRadius, 0.f)) + static_cast<double>(Range);
+		return FVector2D::DistSquared(UnitLocation, Nearest) <= Reach * Reach;
 	}
 
 	/**
