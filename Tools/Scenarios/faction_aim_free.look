@@ -1,0 +1,3 @@
+# <nom de capture> | ce que l'utilisateur doit voir
+faction_aim_free_ready | 1066x600 : les 5 Hommes d'armes et le heros de l'Aube pres de la camera, AUCUNE banniere plantee, leurs barres de vie ENTAMEES (40 %) ; panneau de faction en bas a gauche : jauge Honneur 100 / 100, case SacredLight active ; PV du heros 180 / 450 dans son panneau (en bas a gauche) ; panneau du scenario en haut, encore "en preparation" (la consigne arrive juste apres)
+faction_aim_free_after | 1066x600 : apres le lancer de controle (clic case puis clic sol a 5 m des soldats) : cercle dore (Lumiere sacree, rayon 6 m) centre sur le POINT CLIQUE, Honneur 75 puis 85 / 100 (le soin rend de l'Honneur), recharge sur la case, barres de vie des blesses qui REMONTENT (plus pleines que sur ready)

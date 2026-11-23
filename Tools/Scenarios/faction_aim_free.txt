@@ -1,0 +1,57 @@
+# Faction power aimed FREE with the mouse (D897, GLORFINDEL-1123ph): the user aims the Sacred Light himself. Dawn (slot 0, human) vs a frozen AI (slot 1), Honor 100, 5 Men-at-arms next to the hero, ALL WOUNDED to 40 % (the heal shows on the life bars), NO banner planted (the range origin is the army, 1200 cm).
+# The user plays 3 rounds (waitkey, Enter = next round: Honor back to 100 and everybody wounded again; the 20 s cooldown of the box is NOT reset, no command for it exists). Under preflight / -Hidden / -unattended the waitkey go on by themselves after 1 s, then a SCRIPTED control cast (the same as faction_click_cast) proves the scene. 3 minutes at most.
+waitlog Starting hero of slot 0 spawned at
+hol.AI.ThinkSteps 100000
+hol.Sanity.Watch 1
+frames 10
+hol.Camera.FocusSlot 0
+frames 8
+hol.Cheat.Resources 1000
+hol.Cheat.Population 200
+hol.Units.SpawnHere 5 ManAtArms 0 250
+frames 20
+hol.Cheat.Wound 40
+waitlog Cheat: slot 0 wound to 40 %
+hol.Cheat.Honor 100
+waitlog RpcCheat: honor set to 100 for sender slot 0
+hol.Camera.FocusSlot 0
+wait 2
+frames 8
+hol.Heal.Report
+hol.Hero.Report
+hol.HUD.Report
+waitlog faction slot: slot gauge 100 / 100 powers SacredLight cost 25
+capture faction_aim_free_ready
+note Clique la case Lumière sacrée (panneau en bas à gauche), puis clique le sol OÙ TU VEUX : la zone dorée se pose sous ta souris. Essaie près de tes soldats blessés, puis très loin (plus de 12 m) : le jeu refuse EN SILENCE (aucun message : pas de zone dorée, l'Honneur ne bouge pas, pas de recharge). Entrée = lancer suivant (Honneur remis à 100).
+waitkey Lancer 1/3 : clique la case Lumière sacrée puis le sol près des blessés. Entrée = lancer suivant (attends 20 s de recharge si le lancer a réussi)
+hol.Cheat.Wound 40
+hol.Cheat.Honor 100
+hol.Camera.FocusSlot 0
+waitkey Lancer 2/3 : vise très loin (plus de 12 m) : refus silencieux attendu (aucune zone, Honneur inchangé). Entrée = lancer suivant
+hol.Cheat.Wound 40
+hol.Cheat.Honor 100
+hol.Camera.FocusSlot 0
+waitkey Lancer 3/3 : vise où tu veux. Entrée = fin (un lancer automatique de contrôle suit dans 20 s)
+note Contrôle automatique : le jeu lance seul la Lumière sacrée au point décalé de 5 m, soldats blessés de nouveau.
+wait 21
+hol.Cheat.Wound 40
+waitlog Cheat: slot 0 wound to 40 %
+hol.Cheat.Honor 100
+waitlog RpcCheat: honor set to 100 for sender slot 0
+hol.Camera.FocusSlot 0
+frames 10
+hol.Heal.Report
+hol.Mouse.Click FactionBox0
+waitlog FactionAim: aim 0
+hol.Camera.FocusSlot 0
+frames 2
+hol.Select.LeftClickGround -17035 300
+waitlog Sacred Light placeholder: golden ring of 600 cm for 5.0 s at (-170
+wait 2
+frames 10
+hol.Heal.Report
+hol.Hero.Report
+hol.HUD.Report
+waitlog faction slot: slot gauge 8
+capture faction_aim_free_after
+hol.Test.Sanity
