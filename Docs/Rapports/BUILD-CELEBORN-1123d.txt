@@ -7,3 +7,6 @@ BUILD exit 0
   check_placeholders : PASS (43 provisional types, 45 map entries, 161 lines)
 parts: tests
 engine: C:\UE\UE_5.8_HOL\Engine\Binaries\Win64
+tests 2108/2108 : PASS
+quick_check : PASS in 199 s (game launch done at 1 s)
+QUICK_CHECK exit 0
