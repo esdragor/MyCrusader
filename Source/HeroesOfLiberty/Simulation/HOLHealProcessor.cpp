@@ -71,7 +71,16 @@ void UHOLHealProcessor::CreditHonor(const UWorld* World)
 		// Only the Dawn has the Honor gauge (faction 0, as AHOLGameState::GetSlotFaction); the others' healing earns nothing.
 		if (GameState->GetSlotFaction(Slot) == 0)
 		{
-			// RED STUB (FARAMIR-1123c): the credit is neutralised, Zone.HealHonor must fail.
+			// The gauge accessors are private in C++ (the script reads them by reflection): same path here, no change of visibility.
+			UFunction* Getter = GameState->FindFunction(TEXT("GetFactionResource"));
+			UFunction* Setter = GameState->FindFunction(TEXT("SetFactionResource"));
+			if (Getter && Setter)
+			{
+				struct { int32 Slot; int32 ReturnValue; } Current{ Slot, 0 };
+				GameState->ProcessEvent(Getter, &Current);
+				struct { int32 Slot; int32 Value; } Next{ Slot, FMath::Min(Current.ReturnValue + Points, HonorCap) };
+				GameState->ProcessEvent(Setter, &Next);
+			}
 		}
 	}
 }
