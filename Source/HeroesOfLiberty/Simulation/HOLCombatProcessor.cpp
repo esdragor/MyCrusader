@@ -969,7 +969,7 @@ void UHOLCombatProcessor::ReleaseBuildingArrows(const UWorld& World, const int64
 			Arrow.ArrivalStep = StepIndex + HOLCombat::GetArrowFlightSteps(FlightMs, StepMs);
 			++TotalArrowsReleased;
 			// S3-a: one launch line per arrow, at its release (the impact line "lands on" comes ArrivalStep - ReleaseStep steps later): a trial waits for it to catch the arrow in flight.
-			if (LogBuildingShots != 0)
+			if (UE::HeroesOfLiberty::Combat::LogBuildingShots != 0)
 			{
 				++TotalBuildingShotsLogged;
 				UE_LOG(LogHOLSimulation, Display, TEXT("Combat: building shot step %lld: #%u %s looses arrow %d of %d at #%u %s, flight %d ms (%d steps)"), StepIndex,
