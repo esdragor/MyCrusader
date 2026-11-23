@@ -1,0 +1,18 @@
+GLORFINDEL-1123n : origine du lancer du joueur VERT, recette PAS prete.
+Impact joueur : sans banniere plantee, la Lumiere sacree du joueur n'est plus refusee (origine = centre de ses unites, pas (0,0)).
+
+APPELS_DECLARES: 17 (arret a 20)
+HEURE_DEBUT/HEURE_FIN: 11:14 / 11:22
+PREMIER_BUILD: sans C++   BUILD: NON COMPILE (script seul)   LAUNCHCHECK_DEBUT: sans C++
+TEST_ROUGE: 065a643 (GLORFINDEL-1123m), rouge VU 11:12 : tests 2105/2108, Test_PlayerCastsSacredLightAtTheHeroWithoutBanner ; assertit l'effet : oui (verdict Decide + Honneur ecrit)   TEST_ROUGE_SEPARE: oui
+COMMITS: 1 (cdb1b3d, 11:19), merge_main_fait: non (DLL non verifiee, pas de C++)
+TESTS: quick_check -Parts tests (worktree, 1 appel) 11:19 : 2106/2108 ; Test_PlayerCastsSacredLightAtTheHeroWithoutBanner VERT, Test_PlayerCastOriginKeepsAPlantedBanner vert, tests HOLAIPowerCall_Test verts ; 2 rouges restants = Test_CGTables (HOLCommandGrid_Test) et Test_WallTypesListsPalisade (palissade, connus d'apres 1123m) ; quick_check les imprime "REGRESSION : pas dans known_reds.txt" (a ajouter par la session principale si palissade confirmee). TESTS_TAUTOLOGIQUES: 0
+ESSAIS: faction_click_cast : preflight FAIL (6). Cause : "hol.Mouse.Click: no such drawn widget or no viewport (FactionBox0)" puis timeout step 22 "waitlog FactionAim: aim 0" ; PNG before OUVERT et VU (panneau Honneur 100/100 "Lumiere sacree : coût 25, prêt" visible a gauche, anneau de portee autour du forum) mais la case est cliquee sous un nom que le widget n'a pas ; aim/after absents. Statut : LOGIQUE SEULEMENT. Fichiers .txt/.look/.json recuperes de b68cc78 puis retires du worktree (deja dans integ-55 / main). Piste : le nom du widget de la case de pouvoir dans HOLGameScreenScript (pas de FactionBox0) ou cliquer par coordonnees.
+QUESTIONS: Retours\Q-sacred-light-values.md : ligne ajoutee (portee mesuree depuis la banniere plantee, sinon le heros (defaut), le GDD ne tranche pas) ; reference du reglage mise a jour (CastOriginOf).
+FAIT: (1) HOLFactionPowerServer::CastOriginOf = corps de l'ancien OriginOf (banniere plantee, sinon centre de Own, sinon banniere telle quelle) ; HOLAIPowerCall::OriginOf supprime ; appelants HOLAIBrain.as:148 et HOLAIPowerCall_Test.as:107,111 mis a jour ; TryCastPower lit les unites vivantes du joueur (HOLAISummary::ReadAISummary(Slot).Army) et passe par CastOriginOf : une seule source joueur + IA. (2) quick_check ci-dessus. (3) Q-sacred-light-values. (4) EtapeDefini ligne ajoutee, Auto_Journey_File ligne S1-b ajoutee, IN_USE libre.
+RESTE: scenario faction_click_cast a corriger (nom de widget FactionBox0) puis preflight ; position reelle du heros a exposer.
+TYPES_A_EXPOSER: accesseur script de la position du heros du joueur (ex. HOLHero::GetHeroLocation(Slot) -> FVector) ; repli actuel = centre des unites vivantes du joueur (heros inclus). BUILDS_DEMANDES: 0. TESTS_SCRIPT_AJOUTES: 0 (les 2 de 1123m).
+NON VERIFIE: rien lance en partie reelle (le scenario ne passe pas) ; ReadAISummary(Slot) sur le slot d'un JOUEUR humain (lu comme celui de l'IA, non teste hors tests purs) ; DIAGNOSTICS_AS: pas relus dans VS Code (compilation des scripts OK : quick_check tests a charge les .as).
+PROCESSUS_DETACHES: aucun processus detache pour C:\Users\baudo\Documents\HeroesOfLiberty-Glorfindel
+ANOMALIES_PROCESSUS: quick_check lance en appel bloquant a ete bascule en arriere-plan par l'outil apres 180 s (termine seul, code 1 = les 2 rouges palissade) ; sorties de Select-String sur EtapeDefini.md tres volumineuses (garde-fou a ajouter).
+GIT_STATUS_PRINCIPALE: docs seulement (Auto_Journey_File.md, Auto_Journey_Jour.md, EtapeDefini.md, Placeholders.txt, Retours/Q-sacred-light-values.md modifies ; rapports et Retours non suivis) : oui
