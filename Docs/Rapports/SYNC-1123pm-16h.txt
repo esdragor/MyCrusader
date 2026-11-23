@@ -20,3 +20,29 @@ build : PASS (HeroesOfLibertyEditor Development, HeroesOfLiberty-Faramir, 451 s)
 
 Faramir : build exit=0 16:22:26
 === Haldir preflight wall_line_long 16:22:26
+
+check wall_line_long : frames WARN line 15: 'frames 40' waits for the game by frames (> 30 ; hidden window ~150 
+frames/s: frames 600 = 4 s) : use 'wait <s>' or 'waitlog <text>'
+engine smoke tests: 20 'Condition failed' at start (UnifiedErrorTests.cpp under -culture=fr, English messages 
+compared; not the scenario, not counted)
+check wall_line_long : PASS (22 s)
+OK    no warning or error in the log
+WARN  no 'HUD overlap:' line: the scenario does not call hol.HUD.Report at the moment of the screenshots (a panel 
+hiding another is not checked)
+OK    sanity audit passed
+preflight wall_line_long : PASS (list the trial only once every PNG above has been opened and seen)
+
+
+=== Haldir preflight ai_garrison 16:22:52
+
+engine smoke tests: 20 'Condition failed' at start (UnifiedErrorTests.cpp under -culture=fr, English messages 
+compared; not the scenario, not counted)
+check ai_garrison : PASS (28 s)
+OK    no warning or error in the log
+WARN  no 'HUD overlap:' line: the scenario does not call hol.HUD.Report at the moment of the screenshots (a panel 
+hiding another is not checked)
+OK    sanity audit passed
+preflight ai_garrison : PASS (list the trial only once every PNG above has been opened and seen)
+
+
+fin 16:23:25
