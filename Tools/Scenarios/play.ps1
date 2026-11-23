@@ -65,7 +65,9 @@ if ($PlayerName) { $GameArgs += "-PlayerName=$PlayerName" }
 $ExecCmds = "hol.Scenario $Name"
 # A scenario that drives the real mouse (hol.Mouse.Drag) keeps it: GetCursorFraction reads the virtual cursor BEFORE the mouse, so TestCursor 0.5 0.5 would freeze the drag at the screen centre
 # (wall_line_long, SAURON-1123pa/pb 2026-11-23). It sets or clears hol.Camera.TestCursor itself. The ~130 other scenarios are unchanged.
-$UsesRealMouse = [bool](Select-String -LiteralPath (Join-Path $Scenarios "$Name.txt") -Pattern '^\s*hol\.Mouse\.Drag\b' -Quiet)
+# ARWEN-1123pd: same for a real click on the WORLD (hol.Mouse.Click <x> <y>, numeric): with TestCursor 0.5 0.5 the press is read at the screen centre whatever the point clicked.
+# A click on a named widget (hol.Mouse.Click <WidgetName>) goes through Slate's hit test, not the world cursor: unchanged.
+$UsesRealMouse = [bool](Select-String -LiteralPath (Join-Path $Scenarios "$Name.txt") -Pattern '^\s*hol\.Mouse\.(Drag\b|Click\s+-?\d)' -Quiet)
 if ($Hidden -and -not $UsesRealMouse) { $ExecCmds = "hol.Camera.TestCursor 0.5 0.5,$ExecCmds" }
 $GameArgs += "-ExecCmds=`"$ExecCmds`""
 if ($Hidden) { $GameArgs += @("-RenderOffScreen", "-nosound", "-unattended") }
