@@ -8,3 +8,8 @@ BUILD exit 0
   check_placeholders : PASS (43 provisional types, 45 map entries, 161 lines)
 parts: tests
 engine: C:\UE\UE_5.8_HOL\Engine\Binaries\Win64
+tests 2099/2100 : FAIL (REGRESSION : pas dans known_reds.txt)
+  [KO] all green (failed: HeroesOfLiberty.Zone.KillHonor)
+quick_check : FAIL in 192 s (game launch done at 0 s)
+red summary : 1 regression(s) : tests 2099/2100 ; 0 rouge(s) connu(s)
+QUICK_CHECK exit 1
