@@ -1,6 +1,7 @@
 # Engin deployable (Palier 3, G6) : avec hol.Siege.Deployable 1, le Mangonneau (nom du GDD ; substitut du Trebuchet tant qu'il n'existe pas) nait DEMONTE ; la case D de sa grille dit Monter ; la touche D le monte (1,5 s, valeurs proposees, D869), la case dit alors Demonter ; monte et sans ordre, il prend seul la Maison ennemie a portee et tire (hol.Siege.DeployedAutoFire 1 par defaut, reponse B de l'utilisateur a Retours/Q-deployed-engine-autofire.md) ; la touche D le demonte (1 s), la case redit Monter. Geste reel : la vraie touche D (hol.UI.Key D : evenement clavier Slate, le chemin d'une vraie touche), modele neutrals_qground. 3 minutes au plus.
 # Plain, toi (slot 0) contre une IA gelee (slot 1). Le cvar doit preceder la naissance de l'engin (le fragment est pose a la naissance).
 # Tir visible (recette 2, 21:25) : le coup de siege du Mangonneau sur un batiment n'a PAS de projectile dessine (BuildingAttackType Siege : coup immediat, hol.Combat.ArrowReport 'launched 0') ; on montre donc l'effet : clic sur la Maison, ses PV a deux coups d'intervalle. notereset garde le panneau des notes court (il cachait la Maison).
+# branches: integ-37
 waitlog Starting hero of slot 0 spawned at
 hol.AI.ThinkSteps 100000
 hol.Cheat.Resources 5000
@@ -11,12 +12,13 @@ hol.Camera.FocusNear 3000 1500
 frames 2
 hol.Cheat.SpawnBuilding House 1 5300 0
 waitlog Cheat: spawned House of slot 1
-hol.Units.SpawnHere 1 Mangonel 0 50
+# ARWEN-1123pd (geste reel) : le Mangonneau nait au point EXACT que FocusNear 3000 1500 met au centre de l'ecran (point absolu -13400 1500), pour que le vrai clic au centre du viewport (hol.Mouse.Click 533 300 : viewport cache 1066x600, centre 533,300) le touche. play.ps1 -Hidden ne pose plus le curseur virtuel pour hol.Mouse.Click <x> <y>.
+hol.Units.Spawn 1 -13400 1500 0 Mangonel 0
 waitunits 7
 frames 20
 hol.Camera.FocusNear 3000 1500
 frames 2
-hol.Select.ClickUnit -1
+hol.Mouse.Click 533 300
 waitlog Selection: Mangonel
 frames 20
 hol.HUD.Report
@@ -49,9 +51,9 @@ frames 20
 hol.HUD.Report
 capture deploy_fire_hit
 notereset
-hol.Camera.FocusNear 4200 0
+hol.Camera.FocusNear 3000 1500
 frames 2
-hol.Select.ClickUnit -1
+hol.Mouse.Click 533 300
 waitlog Selection: Mangonel
 frames 10
 hol.UI.Key D 0 0.1
@@ -147,6 +149,7 @@ notereset
 hol.Camera.FocusNear 3000 -3700
 hol.Cheat.SpawnBuilding House 1 3000 -6500
 waitlog Cheat: spawned House of slot 1
+# 3e selection (engin deja marche, position exacte inconnue apres l'ordre d'attaque) : interne, ClickUnit projette l'engin ; les deux premieres sont au vrai clic (ARWEN-1123pd).
 hol.Select.ClickUnit -1
 waitlog Selection: Mangonel
 hol.UI.Key D 0 0.1
