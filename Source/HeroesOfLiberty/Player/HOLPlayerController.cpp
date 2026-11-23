@@ -3451,7 +3451,9 @@ bool AHOLPlayerController::GetWallDragView(FVector& OutStart, FVector& OutEnd, d
 // F4: the release sends the line (the server validates it again: ServerPlaceWallLine), Shift keeps the mode as for a single building.
 void AHOLPlayerController::EndWallDrag()
 {
-	FVector Ground = WallDragStart;
+	// ARWEN-1123f: when the cursor has no ground at the release (the real cursor lost, or the ray misses), the line ends at the last
+	// ground the drag showed (WallDragEnd), not at its own start: before, the release laid ONE foundation (wall_line_long, 2026-11-23).
+	FVector Ground = WallDragEnd;
 	GetCursorGround(Ground);
 	const FVector Start = WallDragStart;
 	bWallDragging = false;
