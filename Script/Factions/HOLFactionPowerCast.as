@@ -54,6 +54,12 @@ namespace HOLFactionPowerCast
 		return 4;
 	}
 
+	// S1-b: the gauge cannot pay the book row's Honor cost (checked last).
+	int RefusalGaugeShort()
+	{
+		return 5;
+	}
+
 	// Faction: the EHOLFaction index of the slot (AHOLGameState::GetSlotFaction). Gauge: the slot's gauge. CooldownEndMs: the slot's
 	// PowerCooldownEndMs for this power (0 = ready). NowMs: the clock the cool-down end is written in.
 	FHOLFactionPowerDecision Decide(int Faction, int PowerIndex, const FHOLFactionResource& Gauge, int CooldownEndMs, int NowMs,
