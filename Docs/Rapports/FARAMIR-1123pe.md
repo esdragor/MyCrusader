@@ -1,0 +1,16 @@
+﻿# FARAMIR-1123pe (zone-effect, C++, 2026-11-23 16:50 -> 17:00)
+
+1. FAIT : le lot "fleche de tour visible" de FARAMIR-1123pd ne compilait pas. Cause : `LogBuildingShots` (cvar hol.Combat.LogBuildingShots, HOLCombatProcessor.cpp:82) est declaree dans `namespace UE::HeroesOfLiberty::Combat` ; `UHOLCombatProcessor::ReleaseBuildingArrows` (l.972) est un membre HORS de ce namespace -> C2065. Correctif : `UE::HeroesOfLiberty::Combat::LogBuildingShots` (une ligne, l.972), commit e1528ac (Agent: FARAMIR-1123pe). Une seule erreur dans build.log.
+2. RELECTURE_CPP de `git diff b0d7ceb~1..HEAD -- Source` (5 fichiers, +137/-4) : rien d'autre trouve ; le build l'a confirme.
+3. BUILD : PASS (HeroesOfLibertyEditor Development, 38 s ; 1 seul build). BUILDS_DEMANDES: 1.
+4. TESTS : quick_check -Parts tests = 2163/2163 PASS (164 s). Etat : BuildingShotLaunchLog Success, ArrowScaleCvar Success, les 11 autres BuildingShot* Success (BuildingShot, Cadence, Cost, Damage, Display, FiresEmpty, Fog, Guard, IdleVictim, NoUnit, Range). TEST_ROUGE: non revu a l'execution (le rouge de b0d7ceb n'avait pas ete vu : stubs non compiles ; le vert est vu maintenant). TESTS_SCRIPT_AJOUTES: 0. TESTS_TAUTOLOGIQUES: 0.
+5. PREFLIGHT tower_wood : PASS (37 s, 9 PNG). PNG ouverts : before, during, during2, during3 (4 sur 9 ; during4..6 et after NON ouverts).
+   - FLECHE EN VOL VUE : OUI. during : fut beige ~190 x 13 px, pointe grise, empennage blanc, au-dessus du toit de la tour, inclinee vers les Lanciers rouges a gauche (absente de before). Capture ~50 ms (3 images) apres la ligne "Combat: building shot step 248 ... flight 171 ms (4 steps)" ; ArrowReport juste avant : en vol 1, lancees 2, atterries 1. during2 (+4 images) : la meme fleche, ~90 px, plus pres du Lancier. during3 (+4 images) : plus de fleche nette (petit objet blanc non identifie pres du Lancier de gauche). Les petits traits orange pres des Lanciers sont leurs barres de vie, les traits sombres leurs lances.
+   - Journal du scenario : building shot step 215 (flight 276 ms, 6 steps), 248 (171 ms, 4 steps), 280 (121 ms, 3 steps) ; "lands on" 6 / 4 / 3 pas plus tard ; report final released 3 landed 3 lost 0.
+   - Reserve : la fleche vue est x3 et ralentie x4 (aides d'essai) ; a taille et duree reelles (~20 px, 0,3 s) NON VERIFIE.
+6. FICHE Retours\E-tower_wood.md : STATUT VU A L'ECRAN, GESTE: interne, SON: non entendu, branches: zone-effect (e1528ac), premiere ligne "PAS ENCORE DANS MAIN", cvars d'essai dites comme aides d'essai ; historique conserve.
+7. Suivi : EtapeDefini.md (l.41 ajoutee + l.1002 mise a jour), FortificationsInProgress.md l.268, Auto_Journey_File.md l.55 ([x]). Placeholders.txt relu : rien a changer (les cvars sont des aides d'essai, pas un provisoire du jeu).
+
+NON VERIFIE : geste reel, son, fleche a taille reelle, during4..6 / after, merge main (NON fait : consigne) ; zone-effect non fusionnee dans main.
+ZONE-EFFECT : PRETE a e1528ac (build PASS, tests 2163/2163), non fusionnee.
+EDITS_REFUSES: 0. DIAGNOSTICS_AS: 0 erreur (aucun .as touche). LAUNCHCHECK_DEBUT: DLL 16:22 plus vieille que la source (attendu : build lance en premier). PROCESSUS_DETACHES: voir stray_processes ci-dessous.

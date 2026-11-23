@@ -1,4 +1,6 @@
-# [À ESSAYER] E-ai_garrison : tes 8 Hommes d'armes frappent la Tour de guet en bois de l'IA ; les Archers de l'IA arrivent et 3 d'entre eux entrent dans la tour (ils disparaissent de l'écran)
+# [RÉPONDU : OK + doute sur la volée] E-ai_garrison : tes 8 Hommes d'armes frappent la Tour de guet en bois de l'IA ; les Archers de l'IA arrivent et 3 d'entre eux entrent dans la tour (ils disparaissent de l'écran)
+
+Reponse: OK mais je crois que la tour ne tirait qu'une fleche et pas (1 + nombre d'occupants) * fleche (utilisateur, 2026-11-23 17:00, D899)
 
 STATUT : VU À L'ÉCRAN   (l'entrée se voit par la DISPARITION : plusieurs Archers rouges serrés au pied de la tour sur « during », un seul dehors sur « after » ; l'intérieur de la tour n'est pas montré au joueur)
 GESTE: interne      (c'est l'IA qui joue : commandes `hol.*` du scénario pour poser la tour, les 8 Hommes d'armes et l'attaque-déplacement ; pas de clic réel)
