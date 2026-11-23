@@ -1,0 +1,37 @@
+# S4-b (D811) preuve en partie : l'IA Normale garnisonne sa Tour de guet en bois quand tes unites l'attaquent
+# Plain, toi (slot 0) contre une IA Normale (slot 1). Le scenario pose chez elle une Tour de guet en bois (TowerWood) et 4 Archers + 3 Lanciers
+# a ~5 m. Tes 8 Hommes d'armes attaquent la tour (attaque-deplacement). Normal reagit 3 s apres le premier coup (hol.AI.GarrisonReactNormal).
+# Point 1 : capture ai_garrison_before (tour, defenseurs dehors). Point 2 : capture ai_garrison_after (unites entrees dans la tour).
+# Journal attendu : « Garrison order: slot 1, N unit(s) queued (AI) » puis « AI slot 1 step S: K garrison order(s) ».
+# Si rien : la ligne du cerveau dit pourquoi (SecondsSinceHit, entrants) ; on ne change pas le seuil.
+waitlog AI brain HOLAIBrain awake
+hol.Sanity.Watch 1
+waitlog AI slot 1 step
+hol.Cheat.Resources 1000
+hol.Cheat.Population 200
+hol.Cheat.SpawnBuilding TowerWood 1 2800 2600 enemy
+waitlog Cheat: spawned TowerWood of slot 1
+hol.Camera.FocusNear 2800 2200 enemy
+frames 2
+hol.Units.SpawnHere 4 Archer 1 400
+hol.Units.SpawnHere 3 Spearman 1 400
+waitunits 7
+hol.Camera.FocusNear 2800 2600 enemy
+frames 30
+capture ai_garrison_before
+note 1. Devant la Tour de guet en bois de « IA Normale 2 » : 4 Archers et 3 Lanciers de l'IA tout pres, dehors.
+hol.Camera.FocusNear 2200 2600 enemy
+frames 2
+hol.Units.SpawnHere 8 ManAtArms 0 300
+wait 2
+hol.Select.Army
+waitlog Select army: 8 soldiers
+frames 5
+hol.Select.AttackMoveNear 2800 2600 enemy
+waitlog Garrison order: slot 1
+wait 6
+hol.Camera.FocusNear 2800 2600 enemy
+frames 10
+capture ai_garrison_after
+note 2. Tes 8 Hommes d'armes frappent la tour : l'IA envoie ses unites proches s'y garnisonner (journal « Garrison order: slot 1 »).
+hol.Test.Sanity

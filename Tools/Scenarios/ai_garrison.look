@@ -1,0 +1,3 @@
+# <nom de capture> | ce que l'utilisateur doit voir
+ai_garrison_before | une Tour de guet en bois de l'IA debout, 4 Archers et 3 Lanciers de l'IA a cote de la tour, dehors, aucun dedans
+ai_garrison_after | la Tour de guet en bois de l'IA attaquee par des Hommes d'armes du joueur, une partie des unites de l'IA entree dans la tour (moins d'unites visibles dehors, compteur de garnison si affiche)
