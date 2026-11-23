@@ -6,6 +6,7 @@
 #include "Match/HOLGameState.h"
 #include "Simulation/HOLUnitSubsystem.h"
 #include "AI/HOLAISummary.h"
+#include "Buildings/HOLBuilding.h"
 #include "Misc/AutomationTest.h"
 #include "Player/HOLCommandGrid.h"
 #include "Player/HOLCommandGridReadLibrary.h"
@@ -186,6 +187,45 @@ bool FHOLBindingsGarrisonKindCavalryTest::RunTest(const FString& Parameters)
 			TestTrue(TEXT("a LightCavalry reads bCavalry from its type"), CavalryView.bCavalry);
 			TestFalse(TEXT("a Spearman does not"), SpearmanView.bCavalry);
 		}
+	}
+	GEngine->DestroyWorldContext(World);
+	World->DestroyWorld(false);
+	return true;
+}
+
+// ELROND-1123g S4-b: the AI summary gives each building the seconds since its last hit (what the script's garrison rule reads): a hit House reads >= 0, an untouched one < 0.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLBindingsSecondsSinceHitTest, "HeroesOfLiberty.AI.Summary.SecondsSinceHit", UE::HeroesOfLiberty::Tests::BindingsLot::Flags)
+bool FHOLBindingsSecondsSinceHitTest::RunTest(const FString& Parameters)
+{
+	UWorld* World = UWorld::CreateWorld(EWorldType::Game, /*bInformEngineOfWorld*/ false);
+	FWorldContext& WorldContext = GEngine->CreateNewWorldContext(EWorldType::Game);
+	WorldContext.SetCurrentWorld(World);
+	World->InitializeActorsForPlay(FURL());
+	World->SetGameState(World->SpawnActor<AHOLGameState>());
+	AHOLBuilding* Hit = World->SpawnActor<AHOLBuilding>(FVector(3000.0, 0.0, 0.0), FRotator::ZeroRotator);
+	AHOLBuilding* Spared = World->SpawnActor<AHOLBuilding>(FVector(-3000.0, 0.0, 0.0), FRotator::ZeroRotator);
+	if (TestNotNull(TEXT("two buildings"), Hit) && TestNotNull(TEXT("two buildings"), Spared))
+	{
+		Hit->Setup(HOLBuildingTypeNames::House, 0, 0);
+		Spared->Setup(HOLBuildingTypeNames::House, 0, 0);
+		Hit->TakeDamagePoints(1);
+		TArray<FHOLAIBuilding> Buildings;
+		HOLAISummary::GatherBuildings(*World, Buildings);
+		float HitSeconds = -99.f;
+		float SparedSeconds = -99.f;
+		for (const FHOLAIBuilding& Building : Buildings)
+		{
+			if (Building.Actor == Hit)
+			{
+				HitSeconds = Building.SecondsSinceHit;
+			}
+			else if (Building.Actor == Spared)
+			{
+				SparedSeconds = Building.SecondsSinceHit;
+			}
+		}
+		TestTrue(TEXT("the building that took a hit reads >= 0 s since the hit"), HitSeconds >= 0.f && HitSeconds < 5.f);
+		TestTrue(TEXT("the building never hit reads a negative value"), SparedSeconds < 0.f && SparedSeconds > -50.f);
 	}
 	GEngine->DestroyWorldContext(World);
 	World->DestroyWorld(false);

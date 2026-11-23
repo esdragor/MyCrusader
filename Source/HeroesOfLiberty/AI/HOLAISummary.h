@@ -130,6 +130,10 @@ struct HEROESOFLIBERTY_API FHOLAIBuilding
 	UPROPERTY(BlueprintReadOnly, ScriptReadWrite, Category = "AI")
 	bool bProducing = false;
 
+	/** S4-b: seconds since this building last took damage (the server clock, AHOLBuilding::GetLastHitTime), negative if never hit: the garrison rule of the script garrisons a building under attack. */
+	UPROPERTY(BlueprintReadOnly, ScriptReadWrite, Category = "AI")
+	float SecondsSinceHit = -1.f;
+
 	/** S4-b: the building itself, so that the script can name it to IssueAIGarrisonOrder (null in a rule-only test). */
 	UPROPERTY(BlueprintReadOnly, ScriptReadWrite, Category = "AI")
 	TObjectPtr<AHOLBuilding> Actor = nullptr;
