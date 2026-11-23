@@ -97,10 +97,18 @@ namespace HOLFactionPowerCast
 			Result.Refusal = RefusalOutOfRange();
 			return Result;
 		}
-		// D862: the Seal costs NO Honor, so the gauge is carried through unchanged (no TrySpend, no gauge refusal).
+		// S1-b: the faction power is the book's Sacred Light line (NOT the Seal, which is the Monk's unit ability, D862): it pays the
+		// ROW's Honor cost and recharges after the ROW's cool-down. A gauge short of the cost is refused LAST. The range stays the
+		// LightSeal row's until the Sacred Light's own range is decided.
+		FHOLFactionResource Spent = Gauge;
+		if (!HOLFactionResource::TrySpend(Spent, Rows[PowerIndex].Cost))
+		{
+			Result.Refusal = RefusalGaugeShort();
+			return Result;
+		}
 		Result.bAccepted = true;
-		Result.NewGaugeValue = Gauge.Value;
-		Result.NewCooldownEndMs = HOLGroundAbility::CooldownEndMs(NowMs, SealCooldownMs());
+		Result.NewGaugeValue = Spent.Value;
+		Result.NewCooldownEndMs = HOLGroundAbility::CooldownEndMs(NowMs, Rows[PowerIndex].CooldownMs);
 		return Result;
 	}
 }

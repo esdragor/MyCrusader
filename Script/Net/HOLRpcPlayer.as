@@ -1082,14 +1082,15 @@ for (FString Command : Commands)
 			Log(n"LogHOLMatch", f"RpcPower: cast refused ({Decision.Refusal}) for slot {Slot} power {PowerIndex}");
 			return;
 		}
-		if (!HOLZoneEffect::StartLightSeal(Slot, Point))
+		// S1-b: the faction power is the book's Sacred Light (started FIRST: a failed start costs nothing), then the Honor and the row's cool-down are written.
+		if (!HOLZoneEffect::StartSacredLight(Slot, Point))
 		{
-			Log(n"LogHOLMatch", f"RpcPower: Seal of Light not started for slot {Slot} (no world, subsystem or slot)");
+			Log(n"LogHOLMatch", f"RpcPower: Sacred Light not started for slot {Slot} (no world, subsystem or slot)");
 			return;
 		}
-		// D862: no Honor is paid (the Seal is the Monk's unit ability): the gauge is not written, only the cool-down.
+		State.SetFactionResource(Slot, Decision.NewGaugeValue);
 		State.SetPowerCooldownEndMs(Slot, PowerIndex, Decision.NewCooldownEndMs);
-		Log(n"LogHOLMatch", f"RpcPower: Seal of Light put down by slot {Slot}, Honor unchanged");
+		Log(n"LogHOLMatch", f"RpcPower: Sacred Light put down by slot {Slot}, Honor now {Decision.NewGaugeValue}");
 	}
 
 	// S1-d (D862): the Monk's Seal of Light from the command grid. AbilityId is a HOLUnitAbilityTable id (only LightSeal is cast here), UnitId the Monk,
