@@ -75,21 +75,32 @@ struct FHOLSpecializationRead
 
 namespace HOLSpecializationSlot
 {
-	// THE single read of the owner's specialization on the client (SP3 widget, ARWEN-1123d). Empty (button dark) for now: AHOLPlayerState::GetSpecialization
-	// (returns FHOLSpecializationView) is not a UFUNCTION, so the script cannot read it. Binding = the grouped C++ lot (ELROND-1123d): once it is a UFUNCTION,
-	// fill View here from the controller's player state, PlayerTier from the faction tier, bForumComplete from HOLNomad::HasCompleteForum, OptionCount from
-	// HOLSpecialization::OptionCountOf. Nothing else in the widget reads the state.
+	// THE single read of the owner's specialization on the client (SP3 widget, ARWEN-1123d, ELROND-1123pd): the view from the controller's player state
+	// (AHOLPlayerState::GetSpecialization, a UFUNCTION), the tier and faction of Slot from the game state (GetTier, GetSlotFaction). Empty (button dark)
+	// without a controller, a slot or a state. Nothing else in the widget reads the state.
 	FHOLSpecializationRead ReadView(AHOLPlayerController Controller, int Slot)
 	{
 		FHOLSpecializationRead Empty;
-		return Empty;
+		if (Controller == nullptr || Slot < 0)
+			return Empty;
+		AHOLPlayerState Player = Cast<AHOLPlayerState>(Controller.PlayerState);
+		AHOLGameState State = Cast<AHOLGameState>(Gameplay::GetGameState());
+		if (Player == nullptr || State == nullptr)
+			return Empty;
+		return ReadOf(Player.GetSpecialization(), State.GetTier(Slot), EHOLFaction(State.GetSlotFaction(Slot)));
 	}
 
 	// What the slot reads from the owner's specialization view, the faction tier and the faction (pure; ReadView feeds it from the live state).
+	// bForumComplete stays true (PROVISIONAL, Placeholders.txt): "Forum present" is not readable from the script (IsSeatNomad, GetNomadForumSeats,
+	// UHOLSpecializationSubsystem::Find are not UFUNCTIONs); the server still refuses an unlock without a complete Forum (NoForumComplete).
 	FHOLSpecializationRead ReadOf(FHOLSpecializationView View, int PlayerTier, EHOLFaction Faction)
 	{
-		FHOLSpecializationRead Empty;
-		return Empty;
+		FHOLSpecializationRead Read;
+		Read.View = View;
+		Read.PlayerTier = PlayerTier;
+		Read.bForumComplete = true;
+		Read.OptionCount = HOLSpecialization::OptionCountOf(Faction);
+		return Read;
 	}
 
 	// The view the widget shows: the injected read (tests, the scenario) when there is one, ReadView otherwise.
