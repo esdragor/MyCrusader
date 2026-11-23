@@ -362,3 +362,61 @@ void Test_WallTypesListsPalisade(FUnitTest& T)
 	}
 	T.AssertTrue(bEveryTypeIsARow, "every wall type of the list is a row of the building type table");
 }
+
+// F9: the palisade gate is a row of the table (Tools\Data\BuildingTypes.csv regenerated into the .uasset), tier 0, paid in wood, solid by default.
+void Test_PalisadeGateIsATableRow(FUnitTest& T)
+{
+	T.AssertTrue(HOLWallLine::IsGateType(HOLWallLine::GateTypeName()), "the gate type name is a gate type");
+	T.AssertTrue(!HOLWallLine::IsGateType(n"Palisade"), "a plain palisade is not a gate");
+	T.AssertTrue(!HOLWallLine::IsWallType(HOLWallLine::GateTypeName()), "a gate is not dragged as a line of wall: it is placed one at a time");
+	FHOLBuildingTypeRow Row;
+	T.AssertTrue(HOLBuildingType::FindRow(HOLWallLine::GateTypeName(), Row), "the gate is a row of the building type table");
+	T.AssertEquals(0, Row.Age, "the palisade gate is a tier 0 building");
+	T.AssertTrue(Row.MaxHealth > 0, "the gate has hit points");
+	T.AssertFalse(Row.Walkable, "the gate is not a walkable rampart");
+	FHOLAITypeFigures Figures;
+	T.AssertTrue(HOLAIOrder::ReadAIBuildingFigures(HOLWallLine::GateTypeName(), Figures), "the AI reads the gate as a known building type");
+	T.AssertTrue(Figures.CostWood > 0, "the gate is paid in wood");
+}
+
+// F9: a gate replaces a section of palisade of the same seat, nothing else.
+void Test_GateReplacesOnlyOwnPalisadeSection(FUnitTest& T)
+{
+	T.AssertTrue(HOLWallLine::GateReplaces(n"Palisade", 0, 0), "a gate replaces a palisade section of its own seat");
+	T.AssertTrue(!HOLWallLine::GateReplaces(n"Palisade", 1, 0), "a gate does not replace an enemy or foreign palisade");
+	T.AssertTrue(!HOLWallLine::GateReplaces(n"House", 0, 0), "a gate does not replace a House");
+	T.AssertTrue(!HOLWallLine::GateReplaces(HOLWallLine::GateTypeName(), 0, 0), "a gate does not replace another gate");
+	T.AssertTrue(!HOLWallLine::GateReplaces(NAME_None, 0, 0), "a gate does not replace nothing");
+}
+
+// F9: the gate lets the owner's units through, no other seat's, and a plain palisade lets nobody through.
+void Test_GatePassesOnlyTheOwnersUnits(FUnitTest& T)
+{
+	T.AssertTrue(HOLWallLine::GatePassesUnit(HOLWallLine::GateTypeName(), 0, 0), "the gate lets its owner's unit through");
+	T.AssertTrue(!HOLWallLine::GatePassesUnit(HOLWallLine::GateTypeName(), 0, 1), "the gate stops another seat's unit");
+	T.AssertTrue(!HOLWallLine::GatePassesUnit(n"Palisade", 0, 0), "a plain palisade lets nobody through, not even its owner");
+}
+
+// F10: the stone wall is a row of the table (D691: Mur de pierre, tier 1, paid in stone), a wall type, solid and sturdier than the palisade.
+void Test_StoneWallIsATableRow(FUnitTest& T)
+{
+	T.AssertTrue(HOLWallLine::IsWallType(n"StoneWall"), "the stone wall is a wall type (it is dragged as a line)");
+	FHOLBuildingTypeRow Row;
+	T.AssertTrue(HOLBuildingType::FindRow(n"StoneWall", Row), "the stone wall is a row of the building type table");
+	FHOLBuildingTypeRow Wood;
+	T.AssertTrue(HOLBuildingType::FindRow(n"Palisade", Wood), "the palisade row is there to compare with");
+	T.AssertEquals(1, Row.Age, "the stone wall is a tier 1 building (D691)");
+	T.AssertTrue(Row.MaxHealth > Wood.MaxHealth, "a stone wall has more hit points than a palisade");
+	T.AssertFalse(Row.Walkable, "the stone wall is not walkable yet (D692: the walkable rampart comes last)");
+	FHOLAITypeFigures Figures;
+	T.AssertTrue(HOLAIOrder::ReadAIBuildingFigures(n"StoneWall", Figures), "the AI reads the stone wall as a known building type");
+	T.AssertTrue(Figures.CostStone > 0 && Figures.CostWood == 0, "the stone wall is paid in stone alone");
+	T.AssertTrue(Figures.BuildTime > 0.f, "the stone wall takes time to build (D867: each cell is a building site)");
+}
+
+// F10: the wooden gate only replaces a section of wooden palisade (D691: the stone gate is another building), never a stone wall.
+void Test_WoodGateDoesNotReplaceStoneWall(FUnitTest& T)
+{
+	T.AssertTrue(!HOLWallLine::GateReplaces(n"StoneWall", 0, 0), "the wooden gate does not replace a stone wall section");
+	T.AssertTrue(HOLWallLine::GateReplaces(n"Palisade", 0, 0), "the wooden gate still replaces its own palisade section");
+}
