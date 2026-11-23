@@ -2679,6 +2679,10 @@ UHOLScenarioPanelScript ScenarioPanel;
 			return true;
 		if (ScenarioPanel != nullptr && ScenarioPanel.ClickName(WidgetName))
 			return true;
+		// hol.HUD.Click FactionBox<n> (ARWEN-1123c): the faction slot's power buttons, as the mouse reaches them.
+		const int FactionBoxIndex = HOLFactionSlot::BoxIndexOfName(WidgetName);
+		if (FactionBoxIndex >= 0)
+			return ClickFactionBox(FactionBoxIndex);
 		if (WidgetName == n"HeroPortrait")
 			return ClickPortrait();
 		if (WidgetName == n"HeroReturnButton")
