@@ -1,0 +1,8 @@
+﻿=== Haldir : merge main b5299e5 + build 17:29:11
+ create mode 100644 Retours/E-faction_aim_free.md
+
+build : PASS (HeroesOfLibertyEditor Development, HeroesOfLiberty-Haldir, 70 s)
+
+
+build exit=0 17:30:25
+ecart de code avec main : 0 fichier(s)
