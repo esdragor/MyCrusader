@@ -47,3 +47,6 @@ SecondaryCentre,BuildingTypes,^- Centre secondaire \(SecondaryCentre\)
 Palisade,BuildingTypes,^- Palissade
 PalisadeGate,BuildingTypes,^- Porte de palissade
 StoneWall,BuildingTypes,^- Mur de pierre
+TempleSergeant,UnitTypes,^- Sergent du Temple
+InfirmaryBrother,UnitTypes,^- Fr.re infirmier
+PaviseCrossbowman,UnitTypes,^- Arbal.trier . pavois
