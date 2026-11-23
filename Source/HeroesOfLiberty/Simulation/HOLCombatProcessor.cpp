@@ -2485,7 +2485,10 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 		}
 		// L4: under the necrotic rage the unit strikes 25 % faster (the CSV value, HOLUnitAbilityRules.h).
 		const int32 BaseIntervalMs = HOLCombat::ToMilliseconds(Constants.AttackInterval);
-		const int32 IntervalMs = Combat.RageMs > 0 ? HOLUnitAbility::GetRageIntervalMs(BaseIntervalMs) : BaseIntervalMs;
+		const int32 RageIntervalMs = Combat.RageMs > 0 ? HOLUnitAbility::GetRageIntervalMs(BaseIntervalMs) : BaseIntervalMs;
+			// PLAN-MORAL-1120 step 5 (S2-a): the Rate lever of the striker's morale (HOLMorale::Multiplier, the one source) shortens (bonus) or lengthens (malus) the time between blows.
+			const int32 MoraleRatePercent = Fighter.Morale ? HOLMorale::Multiplier(Fighter.Morale->State, HOLMorale::LeverRate) : 100;
+			const int32 IntervalMs = FMath::Max(1, RageIntervalMs * 100 / FMath::Max(MoraleRatePercent, 1));
 		if (Target == INDEX_NONE)
 		{
 			// D345.2b: no enemy unit. Its building (ordered, or taken on before), else one it takes on by itself: on an
@@ -3272,7 +3275,9 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 			}
 			Touch(Index);
 		}
-		const float Damage = HOLCombat::GetDamage(Constants, *Enemy.Constants, Combat.Level, GetTalentArmorBonus(Enemy), GetTechnologyAttackPercent(Fighter) + RagePercent, GetTechnologyArmorPercent(Enemy, Constants.AttackType));
+		// PLAN-MORAL-1120 step 5 (S2-a): the Dealt lever of the striker's morale (one source, the rule) scales the blow, as the Taken lever of the victim reduces it.
+			const int32 MoraleDealtPercent = Fighter.Morale ? HOLMorale::Multiplier(Fighter.Morale->State, HOLMorale::LeverDealt) : 100;
+			const float Damage = HOLCombat::GetDamage(Constants, *Enemy.Constants, Combat.Level, GetTalentArmorBonus(Enemy), GetTechnologyAttackPercent(Fighter) + RagePercent, GetTechnologyArmorPercent(Enemy, Constants.AttackType)) * static_cast<float>(MoraleDealtPercent) / 100.f;
 		if (bShot)
 		{
 			// An arrow (J7c.2): released now, at the strike's moment of the gesture; it lands on its target after its flight
