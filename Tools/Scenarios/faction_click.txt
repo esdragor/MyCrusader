@@ -12,8 +12,7 @@ frames 8
 hol.HUD.Report
 waitlog faction slot: slot gauge 100 / 100 powers SacredLight cost 25
 capture faction_click_before
-hol.HUD.Click FactionBox0
-waitlog HUD click FactionBox0: done
+hol.Mouse.Click FactionBox0
 waitlog FactionAim: refuse soon
 frames 4
 notereset 1/1 : apres le clic sur la case SacredLight (jauge 100 / 100) : la case est un bouton, le clic atteint HOLFactionAim (journal "FactionAim: refuse soon" tant que l'effet n'est pas code).
