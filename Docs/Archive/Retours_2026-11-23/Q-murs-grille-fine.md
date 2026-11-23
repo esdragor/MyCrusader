@@ -1,4 +1,6 @@
-# [À RÉPONDRE] Q-murs-grille-fine : sur la grille fine des murs (une case = 4 sous-cases), 3 choses que ta réponse ne dit pas
+# [RÉPONDU] Q-murs-grille-fine : sur la grille fine des murs (une case = 4 sous-cases), 3 choses que ta réponse ne dit pas
+
+Reponse: Q1 A = palissade, mur de bois et mur de pierre sur la grille fine ; Q2 B = prix actuel par sous-case ; Q3 B = sauter l'obstacle (D901) (utilisateur, 2026-11-23 18:1x, interface de choix, D904)
 
 Contexte (GDD D898) : tu as dit que pour les murs de bois et de pierre une case se divise en 4 cases plus petites, et que dans le tracé seuls le début et la fin comptent. Pour écrire le plan sans deviner, il manque trois réponses ; rien n'est codé tant que tu n'as pas répondu.
 
