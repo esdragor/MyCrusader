@@ -52,6 +52,27 @@ bool UHOLZoneEffectLibrary::StartLightSeal(const UObject* WorldContextObject, co
 	return Heroes && Heroes->StartLightSeal(Slot, Center);
 }
 
+bool UHOLZoneEffectLibrary::StartSacredLight(const UObject* WorldContextObject, const int32 Slot, const FVector Center)
+{
+	UHOLHeroSubsystem* Heroes = FindHeroSubsystem(WorldContextObject);
+	return Heroes && Heroes->StartSacredLight(Slot, Center);
+}
+
+int32 UHOLZoneEffectLibrary::GetSacredLightRadiusCm()
+{
+	return HOLZoneEffect::SacredLightRadiusCm;
+}
+
+int32 UHOLZoneEffectLibrary::GetSacredLightDurationMs()
+{
+	return HOLZoneEffect::SacredLightDurationMs;
+}
+
+int32 UHOLZoneEffectLibrary::GetSacredLightHealPerSecond()
+{
+	return HOLZoneEffect::SacredLightHealPerSecond;
+}
+
 int32 UHOLZoneEffectLibrary::GetActiveZoneCount(const UObject* WorldContextObject)
 {
 	const UHOLHeroSubsystem* Heroes = FindHeroSubsystem(WorldContextObject);
