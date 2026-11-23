@@ -170,16 +170,14 @@ namespace HOLWallLine
 	// and whether the order is queued. One rule for ServerPlaceWallLine (HOLRpcPlayer.as), as ServerPlaceBuilding sends its UnitIds with one building.
 	// Rule not decided by the GDD (3348 says only "several Peasants in parallel"): every selected Peasant gets every cell, the first cell obeys the Shift
 	// of the player, the next cells queue behind it (so the band is built in the order of the drag). See Docs\Rapports\ARWEN-1123pe.md.
-	// STUB (red first): no builder, the player's flag: what the line did before the fix.
 	TArray<uint32> BuildersForCell(int CellIndex, const TArray<uint32>& UnitIds)
 	{
-		TArray<uint32> None;
-		return None;
+		return UnitIds;
 	}
 
 	bool QueueForCell(int CellIndex, bool bQueue)
 	{
-		return bQueue;
+		return bQueue || CellIndex > 0;
 	}
 	FHOLWallLinePlan PlanFromRequest(int SenderSlot, FVector Start, FVector End, double Tile, FIntPoint MapMin, FIntPoint MapMax, const TArray<FIntPoint>& Occupied, int MaxCells)
 	{

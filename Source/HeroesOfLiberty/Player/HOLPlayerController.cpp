@@ -87,7 +87,7 @@ namespace HOLRpcScriptRoute_Haldir1117n
 	bool RouteMoveInLine(AHOLPlayerController* Controller, TConstArrayView<uint32> UnitIds, const FVector& Start, const FVector& End, bool bWidth, bool bQueue);
 	bool RouteGather(AHOLPlayerController* Controller, TConstArrayView<uint32> UnitIds, int32 SourceIndex, bool bQueue);
 	bool RoutePlaceBuilding(AHOLPlayerController* Controller, FName TypeName, const FVector& Point, TConstArrayView<uint32> UnitIds, bool bQueue);
-	bool RoutePlaceWallLine(AHOLPlayerController* Controller, FName TypeName, const FVector& Start, const FVector& End, bool bQueue);
+	bool RoutePlaceWallLine(AHOLPlayerController* Controller, FName TypeName, const FVector& Start, const FVector& End, TConstArrayView<uint32> UnitIds, bool bQueue);
 	bool RouteBuildUnits(AHOLPlayerController* Controller, TConstArrayView<uint32> UnitIds, AHOLBuilding* Building, bool bQueue);
 	bool RouteDropOff(AHOLPlayerController* Controller, TConstArrayView<uint32> UnitIds, AHOLBuilding* Building, const FVector& Point, bool bQueue);
 	bool RouteGarrison(AHOLPlayerController* Controller, TConstArrayView<uint32> UnitIds, AHOLBuilding* Building);
@@ -3496,8 +3496,15 @@ void AHOLPlayerController::RequestPlaceWallLine(const FName TypeName, const FVec
 {
 	if (!TypeName.IsNone() && !IsSpectator())
 	{
-		UHOLFollowBridge::NativeManualOrder(this, GetCommandUnits()); // the builders of the line: a manual order ends their Follow (GLORFINDEL-1122m, D818)
-		if (!HOLRpcScriptRoute_Haldir1117n::RoutePlaceWallLine(this, TypeName, Start, End, bQueue)) { HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("PlaceWallLine")); }
+		// The selected Peasants build the line, as for a single building (ARWEN-1123pe: the line sent none, so nobody built it).
+		const TArray<uint32> Builders = GetCommandUnits();
+		if (!Builders.IsEmpty())
+		{
+			UHOLFollowBridge::NativeManualOrder(this, Builders); // the builders of the line: a manual order ends their Follow (GLORFINDEL-1122m, D818)
+			UE_LOG(LogHOLMatch, Display, TEXT("Placement: %d units sent to build the line%s"), Builders.Num(), bQueue ? TEXT(", queued") : TEXT(""));
+			OnOrderGiven.Broadcast(Start); // the brief mark of an order (J4.6), on the first foundation
+		}
+		if (!HOLRpcScriptRoute_Haldir1117n::RoutePlaceWallLine(this, TypeName, Start, End, Builders, bQueue)) { HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("PlaceWallLine")); }
 	}
 }
 
@@ -4323,10 +4330,11 @@ namespace HOLRpcScriptRoute_Haldir1117n
 		return CallFull(Controller, nullptr, TEXT("ServerPlaceBuilding"), TArrayView<const int32>(Args, 1), nullptr, &Point, nullptr, &TypeName, &Ids);
 	}
 
-	bool RoutePlaceWallLine(AHOLPlayerController* Controller, const FName TypeName, const FVector& Start, const FVector& End, const bool bQueue)
+	bool RoutePlaceWallLine(AHOLPlayerController* Controller, const FName TypeName, const FVector& Start, const FVector& End, const TConstArrayView<uint32> UnitIds, const bool bQueue)
 	{
+		const TArray<int32> Ids = ToIds(UnitIds);
 		const int32 Args[1] = { bQueue ? 1 : 0 };
-		return CallFull(Controller, nullptr, TEXT("ServerPlaceWallLine"), TArrayView<const int32>(Args, 1), nullptr, &Start, nullptr, &TypeName, nullptr, &End);
+		return CallFull(Controller, nullptr, TEXT("ServerPlaceWallLine"), TArrayView<const int32>(Args, 1), nullptr, &Start, nullptr, &TypeName, &Ids, &End);
 	}
 
 	bool RouteBuildUnits(AHOLPlayerController* Controller, const TConstArrayView<uint32> UnitIds, AHOLBuilding* Building, const bool bQueue)
