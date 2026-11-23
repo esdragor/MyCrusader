@@ -16,11 +16,26 @@ namespace HOLFactionPowerServer
 	{
 		const float Radius = float(HOLZoneEffect::GetSacredLightRadiusCm());
 		const float Seconds = float(HOLZoneEffect::GetSacredLightDurationMs()) / 1000.f;
-		const FVector Centre = FVector(Point.X, Point.Y, Point.Z + 30.0);
-		const FLinearColor Gold = FLinearColor(1.0, 0.8, 0.1, 1.0);
-		System::DrawDebugCircle(Centre, Radius, 64, Gold, Seconds, 25.f, FVector(1.0, 0.0, 0.0), FVector(0.0, 1.0, 0.0), false);
-		System::DrawDebugCircle(Centre, Radius * 0.5f, 48, Gold, Seconds, 15.f, FVector(1.0, 0.0, 0.0), FVector(0.0, 1.0, 0.0), false);
+		DrawZoneCircles(Point, Radius, Seconds, FLinearColor(1.0, 0.8, 0.1, 1.0));
 		Log(n"LogHOLMatch", f"Sacred Light placeholder: golden ring of {int(Radius)} cm for {Seconds} s at ({int(Point.X)}, {int(Point.Y)})");
+	}
+
+	// GLORFINDEL-1123k: PLACEHOLDER look of the Seal of Light zone (the slowing zone the Monk puts down): pale blue, so it reads apart from the golden Sacred
+	// Light; radius and duration read from the zone constants (HOLZoneEffect::GetLightSeal*), never copied. Same limits and Placeholders.txt line as above.
+	void DrawLightSealPlaceholder(FVector Point)
+	{
+		const float Radius = float(HOLZoneEffect::GetLightSealRadiusCm());
+		const float Seconds = float(HOLZoneEffect::GetLightSealDurationMs()) / 1000.f;
+		DrawZoneCircles(Point, Radius, Seconds, FLinearColor(0.35, 0.65, 1.0, 1.0));
+		Log(n"LogHOLMatch", f"Seal of Light placeholder: pale blue ring of {int(Radius)} cm for {Seconds} s at ({int(Point.X)}, {int(Point.Y)})");
+	}
+
+	// The ONE drawing of a placeholder zone: an outer circle of the zone's radius and an inner one at half of it, 30 cm above the ground, for Seconds.
+	void DrawZoneCircles(FVector Point, float Radius, float Seconds, FLinearColor Colour)
+	{
+		const FVector Centre = FVector(Point.X, Point.Y, Point.Z + 30.0);
+		System::DrawDebugCircle(Centre, Radius, 64, Colour, Seconds, 25.f, FVector(1.0, 0.0, 0.0), FVector(0.0, 1.0, 0.0), false);
+		System::DrawDebugCircle(Centre, Radius * 0.5f, 48, Colour, Seconds, 15.f, FVector(1.0, 0.0, 0.0), FVector(0.0, 1.0, 0.0), false);
 	}
 
 	bool TryCastPowerFrom(int Slot, int PowerIndex, FVector Point, FIntPoint Origin)
