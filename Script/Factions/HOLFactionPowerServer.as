@@ -4,6 +4,12 @@
 namespace HOLFactionPowerServer
 {
 	// True when the power was put down (the effect started FIRST: a failed start costs nothing, then the gauge and the cool-down are written).
+	// GLORFINDEL-1123m: the ONE cast origin of a faction power, for the player and the AI. STUB (red first): banner only.
+	FVector CastOriginOf(const FIntPoint& Banner, const TArray<FVector>& Own)
+	{
+		return FVector(double(Banner.X), double(Banner.Y), 0.0);
+	}
+
 	bool TryCastPower(int Slot, int PowerIndex, FVector Point)
 	{
 		return TryCastPowerFrom(Slot, PowerIndex, Point, HOLHero::GetHeroBannerLocation(Slot));
