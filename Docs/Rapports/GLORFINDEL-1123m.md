@@ -1,0 +1,5 @@
+GLORFINDEL-1123m : PARTIEL, arret a 22 appels, 11:1x.
+REGLE GDD: le GDD ne tranche pas la portee de la Lumiere sacree (HOLFactionPowerCast.as: portee = LightSeal 800 cm "until the Sacred Light own range is decided"). Defaut: origine de l IA = banniere plantee, sinon centre des unites.
+FAIT: commit rouge (stub HOLFactionPowerServer::CastOriginOf + Script/Tests/HOLFactionPowerOrigin_Test.as). quick_check -Parts tests lance en fond (rouge attendu 2 tests de Origin_Test... 1 rouge: Test_PlayerCastsSacredLightAtTheHeroWithoutBanner), resultat NON LU.
+RESTE: (1) lire la sortie du quick_check (rouge VU) ; (2) correctif: CastOriginOf = corps de HOLAIPowerCall::OriginOf (le supprimer, brain + son test appellent CastOriginOf), TryCastPower: CastOriginOf(GetHeroBannerLocation, [position du heros]) : AUCUN accesseur script de la position du heros trouve (HOLUnitScript::GetUnitLocation prend un UnitId ; HOLHero::GetMainForumPosition existe comme repli provisoire) ; (3) scenario faction_click_cast + preflight + PNG ; (4) Q-sacred-light-values.md une ligne ; (5) EtapeDefini, Auto_Journey_File S1-b, IN_USE libre, stray_processes.
+IN_USE.txt du worktree reste OCCUPE.

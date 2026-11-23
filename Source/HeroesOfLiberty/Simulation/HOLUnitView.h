@@ -41,6 +41,8 @@ struct FHOLUnitView
 	/** Its type's class in a group's formation (HOLFormation::GetRowPriority): a shooter (HOLCombat::IsRangedAttack), a siege unit. */
 	bool bRanged = false;
 	bool bSiege = false;
+	/** G1: its type has the Cavalry armour category (the garrison kind of the AI summary, HOLGarrison::KindOf). */
+	bool bCavalry = false;
 	/** The King of Regicide (V5.3): moves, stops and attacks on order only, no attack-move nor hold (HOLCommandGrid::GetOrder). */
 	bool bKing = false;
 	/** G6 d: the deploy phase (HOLDeploy::EPhase as a number) of an engine that deploys, -1 for a unit that does not. Solo and server; a client until G6 e. */

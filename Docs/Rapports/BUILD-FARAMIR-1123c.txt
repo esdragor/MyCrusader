@@ -1,0 +1,10 @@
+﻿build : LaunchCheck debut (Get-StaleBinaryProblem) : the binary UnrealEditor-HeroesOfLiberty.dll of C:\Users\baudo\Documents\HeroesOfLiberty-Faramir (2026-11-23T09:09:29) is older than its C++ source Source\HeroesOfLiberty\Simulation\HOLHealProcessor.cpp (2026-11-23T09:29:27): Tools\build.ps1 in that copy first
+queued behind the build of: HeroesOfLiberty-Celeborn, HeroesOfLiberty-Sauron, HeroesOfLiberty-Faramir (position 3 of 3 waiting; one build at a time on this engine; normal)
+queued behind the build of: HeroesOfLiberty-Celeborn, HeroesOfLiberty-Sauron (position 2 of 2 waiting; one build at a time on this engine; normal)
+queued behind the build of: HeroesOfLiberty-Sauron (position 1 of 1 waiting; one build at a time on this engine; normal)
+build : FAIL (HeroesOfLibertyEditor Development, HeroesOfLiberty-Faramir, 337 s, exit 6; log C:\Users\baudo\Documents\HeroesOfLiberty-Faramir\Saved\Logs\build.log)
+  C:\Users\baudo\Documents\HeroesOfLiberty-Faramir\Source\HeroesOfLiberty\Tests\HOLZoneEffectTests.cpp(362,61): error C2248: 'AHOLGameState::FactionResource': cannot access private member declared in class 'AHOLGameState'
+  C:\Users\baudo\Documents\HeroesOfLiberty-Faramir\Source\HeroesOfLiberty\Tests\HOLZoneEffectTests.cpp(373,29): error C2248: 'AHOLGameState::FactionResource': cannot access private member declared in class 'AHOLGameState'
+  C:\Users\baudo\Documents\HeroesOfLiberty-Faramir\Source\HeroesOfLiberty\Tests\HOLZoneEffectTests.cpp(376,60): error C2248: 'AHOLGameState::FactionResource': cannot access private member declared in class 'AHOLGameState'
+  Result: Failed (OtherCompilationError)
+BUILD exit 1

@@ -1,0 +1,9 @@
+# <nom de capture> | ce que l'utilisateur doit voir
+tower_wood_before | la Tour de guet en bois du joueur seule au centre de l'ecran, aucun ennemi, aucune fleche
+tower_wood_during | fleche en vol entre la tour et le Lancier (3 Lanciers rouges a 12 m de la tour ; ArrowReport juste avant : in flight 1)
+tower_wood_during2 | 3 images plus tard : fleche en vol entre la tour et le Lancier
+tower_wood_during3 | 3 images de plus : fleche en vol entre la tour et le Lancier, ou deja plantee
+tower_wood_during4 | 3 images de plus : fleche en vol entre la tour et le Lancier, ou deja plantee
+tower_wood_during5 | 3 images de plus : fleche en vol entre la tour et le Lancier, ou deja plantee
+tower_wood_during6 | 3 images de plus : fleche en vol entre la tour et le Lancier, ou deja plantee (Lanciers au contact)
+tower_wood_after | les Lanciers rouges pres de la tour, leur barre de vie entamee apres plusieurs fleches

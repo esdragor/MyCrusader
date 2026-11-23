@@ -129,6 +129,22 @@ struct HEROESOFLIBERTY_API FHOLAIBuilding
 	/** The head of the queue is in production (not waiting for room in the population). */
 	UPROPERTY(BlueprintReadOnly, ScriptReadWrite, Category = "AI")
 	bool bProducing = false;
+
+	/** S4-b: seconds since this building last took damage (the server clock, AHOLBuilding::GetLastHitTime), negative if never hit: the garrison rule of the script garrisons a building under attack. */
+	UPROPERTY(BlueprintReadOnly, ScriptReadWrite, Category = "AI")
+	float SecondsSinceHit = -1.f;
+
+	/** S4-b: the building itself, so that the script can name it to IssueAIGarrisonOrder (null in a rule-only test). */
+	UPROPERTY(BlueprintReadOnly, ScriptReadWrite, Category = "AI")
+	TObjectPtr<AHOLBuilding> Actor = nullptr;
+
+	/** S4-b: its places (UHOLGarrisonSubsystem::GetSlots, 0 for a type without garrison). */
+	UPROPERTY(BlueprintReadOnly, ScriptReadWrite, Category = "AI")
+	int32 GarrisonSlots = 0;
+
+	/** S4-b: how many units sit inside now (AHOLBuilding::GetGarrisonOccupants). The seconds since the first and last hit are NOT here: no reader of the hits on AHOLBuilding yet. */
+	UPROPERTY(BlueprintReadOnly, ScriptReadWrite, Category = "AI")
+	int32 Occupants = 0;
 };
 
 /**
@@ -217,6 +233,10 @@ struct HEROESOFLIBERTY_API FHOLAIUnit
 	/** While it strikes: the unit identifier of its target; INDEX_NONE otherwise. */
 	UPROPERTY(BlueprintReadOnly, ScriptReadWrite, Category = "AI")
 	int32 TargetId = INDEX_NONE;
+
+	/** S4-b: its garrison kind, the value of HOLGarrison::EKind (0 melee, 1 ranged, 2 cavalry, 3 siege, 4 hero); INDEX_NONE until read. The rule that admits a kind stays HOLGarrisonRules.as. */
+	UPROPERTY(BlueprintReadOnly, ScriptReadWrite, Category = "AI")
+	int32 GarrisonKind = INDEX_NONE;
 };
 
 /** The summary of the world for one player slot (IA0.3). */

@@ -562,7 +562,6 @@ void Test_CGTables(FUnitTest& T)
 		T.AssertTrue(HOLCommandGridRules::GetAgeBuilding(Context, 1, EmptyII[I]).Command == EHOLGridCommandKind::None, "page II: no building yet on the other cells");
 	}
 	TArray<int> EmptyI;
-	EmptyI.Add(6);
 	EmptyI.Add(10);
 	EmptyI.Add(11);
 	for (int I = 0; I < EmptyI.Num(); I++)

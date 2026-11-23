@@ -83,6 +83,19 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 	// L4 step 6: when each slot's Damned Warriors last cast their necrotic rage (the summary does not carry the abilities' state).
 	TMap<int, FHOLAIRageMemory> RageMemories;
 
+	// S4-b: the slot's towers call the units near them when attacked (HOLAIGarrisonCall.as). The summary has no reader of the hits on a building yet:
+	// no hit times are given, so every tower reads as calm until one exists (nothing is made up).
+	void ThinkGarrison(int PlayerIndex, int64 Step, EHOLAIDifficulty Level, const FHOLAISummary& Summary)
+	{
+		const int Rule = HOLAIGarrison::RuleFromCVar();
+		if (Rule == HOLAIGarrison::RuleNone)
+			return;
+		TArray<float> NoHits;
+		const int Issued = HOLAIGarrisonCall::Issue(PlayerIndex, Rule, Level, Summary, NoHits, NoHits);
+		if (Issued > 0)
+			Log(n"LogHOLMatch", f"AI slot {PlayerIndex} step {Step}: {Issued} garrison order(s)");
+	}
+
 	// The Damned Warriors of the slot in a melee cast their rage (HOLAIRage.as); the server refuses what the rule got wrong (cooldown, health).
 	void ThinkRage(int PlayerIndex, int64 Step, const FHOLAISummary& Summary, const FHOLAIOpeningData& Data)
 	{
@@ -1107,6 +1120,7 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 		}
 		ThinkRage(PlayerIndex, Step, FullSummary, Data);
 		ThinkPowers(PlayerIndex, Step, FullSummary, Data);
+		ThinkGarrison(PlayerIndex, Step, Level, FullSummary);
 		if (State.bDefending != bWas)
 		{
 			const FString Change = State.bDefending ? "defence begins" : "defence ends, home";

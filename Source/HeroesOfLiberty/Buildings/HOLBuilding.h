@@ -147,6 +147,15 @@ public:
 	int32 GetMaxHealth() const;
 	int32 GetHealth() const;
 	int32 GetDamageTaken() const { return DamageTaken; }
+
+	/**
+	 * F8 T7b (D884), server: a tower released ArrowCount arrows at To (cm) with this flight (ms): the replicated count goes up, the last target and flight are kept, so a client
+	 * draws them (ShowArrowShot, from OnRep_ArrowShot). The server's own display is fed by the combat processor, not by this.
+	 */
+	void RecordArrowShot(const FVector& To, int32 FlightMs, int32 ArrowCount);
+	/** F8 T7b, client: draws the arrows released since OldCount (at least one, at most a handful) on UHOLArrowSubsystem, from the roof's height at the body's centre. */
+	void ShowArrowShot(uint16 OldCount);
+	uint16 GetArrowShotCount() const { return ArrowShotCount; }
 	/** It took damage (its health bar shows, D345.2a). */
 	bool IsHurt() const { return DamageTaken > 0; }
 	/** This machine's world time (s) of its last hit (DamageTaken grew, server or client), negative if never hit here. */
@@ -400,6 +409,9 @@ private:
 	void OnRep_DamageTaken(uint16 OldDamageTaken);
 
 	UFUNCTION()
+	void OnRep_ArrowShot(uint16 OldCount);
+
+	UFUNCTION()
 	void OnRep_PrimaryForum();
 
 	/** V2.3a: what its owner's forum state shows (AHOLGameState); Standing for any other building. */
@@ -504,6 +516,15 @@ private:
 	/** Health taken off it (D345.2a), at most its health: two bytes, to everyone, only when it is hit. */
 	UPROPERTY(ReplicatedUsing = OnRep_DamageTaken)
 	uint16 DamageTaken = 0;
+
+	/** F8 T7b: arrows a tower released, counted (wraps); a change is a shot, drawn by a client in OnRep_ArrowShot. Replicated to everyone (the fog filter of the actor applies). */
+	UPROPERTY(ReplicatedUsing = OnRep_ArrowShot)
+	uint16 ArrowShotCount = 0;
+	/** F8 T7b: where the last arrow went (cm) and its flight (ms), applied with the count. */
+	UPROPERTY(Replicated)
+	FVector_NetQuantize ArrowShotTo = FVector::ZeroVector;
+	UPROPERTY(Replicated)
+	uint16 ArrowShotFlightMs = 0;
 
 	/** Ids of the units garrisoned here, sorted, to the owner only (one int each, changes on enter or exit). */
 	UPROPERTY(Replicated)
