@@ -35,21 +35,33 @@ waitunits 8
 hol.Camera.FocusNear 4600 0
 hol.Camera.Zoom 2
 note 2. Trois Lanciers rouges a 12 m de la tour (dans sa portee de 30 m) : elle lache une fleche.
+# CELEBORN-1123i : ArrowReport est un instantane (pas de ligne a attendre sans l'appeler) : balayage, un rapport puis sa capture toutes les 3 images
+# autour de l image 21 ou la fleche est en vol ("in flight 1") ; le waitlog garantit que le rapport est ecrit avant la capture.
+frames 14
 hol.Combat.ArrowReport
-waitlog lands on
-hol.Combat.ArrowReport
+waitlog Arrow report: in flight
 capture tower_wood_during
-frames 12
+frames 3
 hol.Combat.ArrowReport
+waitlog Arrow report: in flight
 capture tower_wood_during2
-frames 8
+frames 3
 hol.Combat.ArrowReport
+waitlog Arrow report: in flight
 capture tower_wood_during3
-frames 8
-hol.Camera.Zoom 3
+frames 3
 hol.Combat.ArrowReport
+waitlog Arrow report: in flight
 capture tower_wood_during4
-frames 60
+frames 3
+hol.Combat.ArrowReport
+waitlog Arrow report: in flight
+capture tower_wood_during5
+frames 3
+hol.Combat.ArrowReport
+waitlog Arrow report: in flight
+capture tower_wood_during6
+frames 40
 note 3. APRES : plusieurs fleches ont touche, les barres de vie des Lanciers sont entamees.
 hol.Combat.ArrowReport
 capture tower_wood_after
