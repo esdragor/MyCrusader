@@ -843,9 +843,8 @@ int32 UHOLCombatProcessor::GetBuildingAttackWithTechnology(const FFighter& Attac
 
 int32 UHOLCombatProcessor::GetBuildingArrowCount(const int32 Occupants)
 {
-	(void)Occupants;
-	// D884 : nombre par occupant à confirmer, 1 tant que non tranché.
-	return 1;
+	// D884 (confirmed 2026-11-23): 1 + one arrow per occupant. Every armed row is the TowerWood today (the 16 others have BuildingAttack 0), so no type test and no new column.
+	return 1 + FMath::Max(0, Occupants);
 }
 void UHOLCombatProcessor::ReleaseBuildingArrows(const UWorld& World, const int64 StepIndex, const int32 StepMs, const UHOLVisionSubsystem* Vision)
 {
@@ -947,7 +946,7 @@ void UHOLCombatProcessor::ReleaseBuildingArrows(const UWorld& World, const int64
 		const FFighter& Enemy = Fighters[Best];
 		// The arrow leaves the centre of the body and lands after its flight, through the projectiles' own landing (the target loses the flat BuildingAttack).
 		const int32 FlightMs = HOLCombat::GetArrowFlightMilliseconds(Step.Box.GetCenter(), FVector2D(Enemy.Location), HOLCombat::GetArrowSpeed());
-		// F8 T6: the arrows of one shot (D884 : nombre par occupant à confirmer, 1 tant que non tranché: GetBuildingArrowCount is the only place the number lives).
+		// F8 T6: the arrows of one shot (D884: 1 + one per occupant; GetBuildingArrowCount is the only place the number lives).
 		if (Occupants == INDEX_NONE)
 		{
 			Occupants = CountOccupants();
