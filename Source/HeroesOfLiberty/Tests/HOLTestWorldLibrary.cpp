@@ -1181,17 +1181,39 @@ UHOLVictoryEventCounter* UHOLTestWorldLibrary::CountVictoryEvents(AHOLGameState*
 }
 int32 UHOLTestWorldLibrary::SpawnTestHero(UHOLTestWorldHandle* TestWorld, const int32 Slot, const FVector Location)
 {
-	// STUB (ELROND-1123pf commit 1, red tests): the real body follows in commit 2.
-	(void)TestWorld;
-	(void)Slot;
-	(void)Location;
+#if WITH_DEV_AUTOMATION_TESTS
+	UWorld* World = HOLTestWorldLibNs::HOLTestWorldLibWorldOf(TestWorld);
+	UHOLUnitSubsystem* Units = World ? World->GetSubsystem<UHOLUnitSubsystem>() : nullptr;
+	UHOLHeroSubsystem* Heroes = World ? World->GetSubsystem<UHOLHeroSubsystem>() : nullptr;
+	if (!Units || !Heroes || Slot < 0 || Slot > static_cast<int32>(MAX_uint8))
+	{
+		return 0;
+	}
+	// As HOLHeroAbilityMatchTests.cpp: the steps bound (idempotent), then a Hero unit born for the slot through the real unit table.
+	Heroes->BindSteps();
+	TArray<uint32> Before;
+	Units->GetAllUnitIds(Before);
+	FHOLUnitSpawnRequest Request;
+	Request.TypeName = FName(TEXT("Hero"));
+	Request.Count = 1;
+	Request.OwnerPlayer = static_cast<uint8>(Slot);
+	Request.Center = Location;
+	Units->RequestUnits(Request);
+	Units->ServeBirthRequests();
+	TArray<uint32> After;
+	Units->GetAllUnitIds(After);
+	After.RemoveAll([&Before](const uint32 Id) { return Before.Contains(Id); });
+	return After.Num() == 1 ? static_cast<int32>(After[0]) : 0;
+#else
 	return 0;
+#endif
 }
 
 bool UHOLTestWorldLibrary::SetPlayerSpecialization(AHOLPlayerState* Player, const FHOLSpecializationView& View)
 {
-	// STUB (ELROND-1123pf commit 1, red tests): the real body follows in commit 2.
-	(void)Player;
-	(void)View;
+#if WITH_DEV_AUTOMATION_TESTS
+	return Player && Player->SetSpecialization(View);
+#else
 	return false;
+#endif
 }

@@ -2,10 +2,13 @@
 
 #include "Match/HOLSpecializationReadLibrary.h"
 
+#include "Engine/Engine.h"
+#include "Engine/World.h"
+#include "Match/HOLSpecializationSubsystem.h"
+
 bool UHOLSpecializationReadLibrary::IsForumCompleteForSlot(const UObject* WorldContextObject, const int32 Slot)
 {
-	// STUB (ELROND-1123pf commit 1, red test): the real body follows in commit 2.
-	(void)WorldContextObject;
-	(void)Slot;
-	return true;
+	// One source: the calculation the server refuses an unlock with (NoForumComplete); nothing recopied here.
+	UWorld* World = GEngine ? GEngine->GetWorldFromContextObject(WorldContextObject, EGetWorldErrorMode::ReturnNull) : nullptr;
+	return UHOLSpecializationSubsystem::IsForumComplete(World, Slot);
 }
