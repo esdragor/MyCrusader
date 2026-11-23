@@ -52,14 +52,12 @@ namespace
 
 FVector UHOLArrowSubsystem::GetArrowScale()
 {
-	// NOT COMPILED, stub (red test): hol.Arrow.Scale is not applied yet.
-	return ArrowBaseScale;
+	return ArrowBaseScale * static_cast<double>(ArrowScaleFactor);
 }
 
 double UHOLArrowSubsystem::GetFlightDurationSeconds(const int32 FlightMs)
 {
-	// NOT COMPILED, stub (red test): hol.Arrow.SlowMotion is not applied yet.
-	return FMath::Max(FlightMs, 1) / 1000.0;
+	return FMath::Max(FlightMs, 1) / 1000.0 * static_cast<double>(FMath::Max(ArrowSlowMotion, 0.01f));
 }
 
 bool UHOLArrowSubsystem::ShouldCreateSubsystem(UObject* Outer) const

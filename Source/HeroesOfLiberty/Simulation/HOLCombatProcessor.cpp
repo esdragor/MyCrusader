@@ -968,6 +968,14 @@ void UHOLCombatProcessor::ReleaseBuildingArrows(const UWorld& World, const int64
 			Arrow.ReleaseStep = StepIndex;
 			Arrow.ArrivalStep = StepIndex + HOLCombat::GetArrowFlightSteps(FlightMs, StepMs);
 			++TotalArrowsReleased;
+			// S3-a: one launch line per arrow, at its release (the impact line "lands on" comes ArrivalStep - ReleaseStep steps later): a trial waits for it to catch the arrow in flight.
+			if (LogBuildingShots != 0)
+			{
+				++TotalBuildingShotsLogged;
+				UE_LOG(LogHOLSimulation, Display, TEXT("Combat: building shot step %lld: #%u %s looses arrow %d of %d at #%u %s, flight %d ms (%d steps)"), StepIndex,
+					Step.Id, *Step.Building->GetTypeName().ToString(), Shot + 1, ArrowCount, Enemy.UnitId, *Enemy.Constants->TypeName.ToString(), FlightMs,
+					static_cast<int32>(Arrow.ArrivalStep - Arrow.ReleaseStep));
+			}
 			// F8 T7: drawn here in solo / host, as a unit's arrow (the same process; a dedicated server has no arrow display). It leaves the centre of the body at
 			// the height of the roof (the row's Height), and lands after the same flight as the arrow above.
 			if (UHOLArrowSubsystem* ArrowDisplay = World.GetSubsystem<UHOLArrowSubsystem>())
