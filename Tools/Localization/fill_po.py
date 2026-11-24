@@ -770,6 +770,9 @@ TRANSLATIONS = {
     "HOLGameNames,SpecializationRunningCell": ("{0} s\nCancel", "{0}秒\nキャンセル"),
     # D905 (Q-sp3-libelles = B): the specialization button's two texts (Script/UI/HOLSpecializationSlot.as, NSLOCTEXT).
     "HOLSpecializationSlot,ToChoose": ("Specialization: to choose", "専門化：選択してください"),
+    "HOLSpecializationSlot,VoieFer": ("Iron", "鉄"),
+    "HOLSpecializationSlot,VoieFaith": ("Faith", "信仰"),
+    "HOLSpecializationSlot,VoieStone": ("Stone", "石"),
     "HOLSpecializationSlot,ChosenVoie": ("Specialization: Path {0} (tier {1})", "専門化：ルート{0}（段階{1}）"),
     "HOLGameScreen,SpecializationRunningEffect": ("Unlock in progress at the Forum. Clicking cancels at no cost; the choice stays open.", "町の中心で解放中。クリックすると費用なしでキャンセルされ、選択は保留のままになる。"),
     "HOLGameScreen,SpecializationEffect": ("Free. Unlocks at the Forum in 30 / 45 / 60 s (tier I / II / III), in parallel with its queue. Final once applied.", "無料。町の中心で30 / 45 / 60秒（段階I / II / III）かけて解放され、生産待ち行列と並行して進む。適用後は確定。"),
