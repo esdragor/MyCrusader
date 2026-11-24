@@ -1,0 +1,3 @@
+# <nom de capture> | ce que l'utilisateur doit voir
+ai_tower_built | une Tour de guet en bois de l'IA (objet attendu : la tour, quelques metres de haut, fine, a l'echelle des unites) debout, achevee, pres du forum de l'IA, posee par l'IA elle-meme
+ai_tower_garrison | la meme tour de l'IA pres de son forum avec des Hommes d'armes du joueur qui attaquent ; des Lanciers de l'IA ont disparu de l'ecran (entres dans la tour, 3 places)

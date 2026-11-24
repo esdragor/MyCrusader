@@ -1,0 +1,37 @@
+# FARAMIR-1124sh (point 7, partie naturelle) : l'IA Normale POSE d'elle-meme une Tour de guet en bois (HOLAITower::WantsTower), puis la garnit quand tu l'attaques
+# Plain, toi (slot 0) contre une IA Normale (slot 1). Aucun TowerWood n'est pose par le scenario : seule l'IA decide (HOLAIBrain.ThinkTowerBuild, etape 3b5).
+# Condition de la regle : niveau Normal (1 tour), un centre ennemi, au moins 4 soldats (MinSoldiers) et le bois du TowerWood : le scenario donne 5 Lanciers a l'IA.
+# Journal attendu : << AI slot 1 step S: build TowerWood at (x, y) by #N (level 1, 0 already, an army of 5) >>, puis << Construction: slot 1 finished TowerWood >>.
+# Puis tes Hommes d'armes attaquent son forum ; la tour est frappee, les Lanciers entrent : << Garrison: slot 1 puts >> (3 places).
+# Si rien : la ligne du cerveau dit pourquoi (no spot for TowerWood / build TowerWood refused) ; on ne change pas la regle.
+waitlog AI brain HOLAIBrain awake
+hol.Sanity.Watch 1
+waitlog AI slot 1 step
+hol.Cheat.Resources 1000
+hol.Cheat.Population 200
+hol.Camera.FocusNear 2800 0 enemy
+frames 2
+hol.Units.SpawnHere 5 Spearman 1 500
+waitunits 5
+note 1. L'IA Normale n'a aucune tour, mais 5 Lanciers : elle va en poser une toute seule (journal : build TowerWood).
+waitlog build TowerWood at
+waitlog Construction: slot 1 finished TowerWood
+hol.Camera.FocusSlot 1
+frames 30
+capture ai_tower_built
+note 2. La Tour de guet en bois que l'IA a posee et achevee elle-meme, pres de son forum.
+hol.Camera.FocusNear 1800 0 enemy
+frames 2
+hol.Units.SpawnHere 8 ManAtArms 0 300
+wait 2
+hol.Select.Army
+waitlog Select army: 8 soldiers
+frames 5
+hol.Select.AttackMoveNear 2800 0 enemy
+waitlog Garrison order: slot 1
+waitlog Garrison: slot 1 puts
+hol.Camera.FocusSlot 1
+frames 20
+capture ai_tower_garrison
+note 3. Tes Hommes d'armes attaquent : des Lanciers de l'IA entrent dans la tour (ils disparaissent de l'ecran).
+hol.Test.Sanity
