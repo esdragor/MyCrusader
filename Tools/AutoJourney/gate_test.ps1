@@ -557,6 +557,10 @@ Check ($vl0 -match '(?m)^WARN .*L27-12.*version launcher') 'L27-12 close: bilan 
 [IO.File]::WriteAllText($CJour, "# Jour`r`n`r`n## Agents du $LDate`r`n`r`n- Version launcher : 0.4.3 (publie, Launcher 7)`r`n`r`n## Autre`r`n", $NoBom)
 $vl1 = Run-C
 Check ($vl1 -match '(?m)^PASS .*L27-12.*version launcher' -and -not ($vl1 -match '(?m)^WARN .*L27-12')) 'L27-12 close: bilan AVEC la ligne version launcher -> PASS, aucun WARN L27-12' $vl1
+# L27-12 (SAURON-1124sb) : une vieille ligne 'version launcher' dans le bilan d'un AUTRE jour ne compte pas -> WARN (seule la section '## Bilan du <date du jour>' est lue)
+[IO.File]::WriteAllText($CJour, "# Jour`r`n`r`n## Bilan du 2020-01-01`r`n`r`n- Version launcher : 0.1.0 (vieux jour)`r`n`r`n## Bilan du $LDate`r`n`r`n- rien ici`r`n`r`n## Autre`r`n", $NoBom)
+$vl2 = Run-C
+Check ($vl2 -match '(?m)^WARN .*L27-12.*version launcher' -and -not ($vl2 -match '(?m)^PASS .*L27-12')) 'L27-12 close: vieille ligne version launcher d un autre jour (bilan du jour sans la ligne) -> WARN' $vl2
 foreach ($wn in 'A', 'B', 'Arwen') { & git -C $CR worktree remove --force (Join-Path $CW "HeroesOfLiberty-$wn") 2>&1 | Out-Null }
 
 Remove-Item -Recurse -Force $Tmp -ErrorAction SilentlyContinue
