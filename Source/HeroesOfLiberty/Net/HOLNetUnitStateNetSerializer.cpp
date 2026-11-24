@@ -39,6 +39,8 @@ struct FHOLNetUnitStateNetSerializer
 		/** J7-Q5 revised: the exact health points of a wounded unit. */
 		uint16 Health;
 		uint16 TargetSlot;
+		/** M5 / A2: the morale effect mask, sent only when not 0. */
+		uint16 EffectMask;
 	};
 
 	typedef FHOLNetUnitState SourceType;
@@ -160,6 +162,11 @@ void FHOLNetUnitStateNetSerializer::Serialize(FNetSerializationContext& Context,
 	{
 		Writer.WriteBits(State.DeployPhase, SourceType::DeployPhaseBits);
 	}
+	// M5 / A2: one bit for every unit, then the morale effect mask of one under an effect.
+	if (Writer.WriteBool(State.EffectMask != 0))
+	{
+		Writer.WriteBits(State.EffectMask, SourceType::EffectMaskBits);
+	}
 }
 
 void FHOLNetUnitStateNetSerializer::Deserialize(FNetSerializationContext& Context, const FNetDeserializeArgs& Args)
@@ -183,6 +190,7 @@ void FHOLNetUnitStateNetSerializer::Deserialize(FNetSerializationContext& Contex
 	State.FrontYaw = State.Activity == HOLUnitReplication::IdleFacingFrontWireValue ? static_cast<uint8>(Reader.ReadBits(SourceType::FrontYawBits)) : 0;
 	State.bDeploys = Reader.ReadBool() ? 1 : 0;
 	State.DeployPhase = State.bDeploys ? static_cast<uint8>(Reader.ReadBits(SourceType::DeployPhaseBits)) : 0;
+	State.EffectMask = Reader.ReadBool() ? static_cast<uint16>(Reader.ReadBits(SourceType::EffectMaskBits)) : 0;
 }
 
 void FHOLNetUnitStateNetSerializer::Quantize(FNetSerializationContext& Context, const FNetQuantizeArgs& Args)
@@ -205,6 +213,7 @@ void FHOLNetUnitStateNetSerializer::Quantize(FNetSerializationContext& Context, 
 	Target.FrontYaw = Source.FrontYaw;
 	Target.bDeploys = Source.bDeploys ? 1 : 0;
 	Target.DeployPhase = Source.DeployPhase;
+	Target.EffectMask = Source.EffectMask;
 }
 
 void FHOLNetUnitStateNetSerializer::Dequantize(FNetSerializationContext& Context, const FNetDequantizeArgs& Args)
@@ -227,6 +236,7 @@ void FHOLNetUnitStateNetSerializer::Dequantize(FNetSerializationContext& Context
 	Target.FrontYaw = Source.FrontYaw;
 	Target.bDeploys = Source.bDeploys ? 1 : 0;
 	Target.DeployPhase = Source.DeployPhase;
+	Target.EffectMask = Source.EffectMask;
 }
 
 bool FHOLNetUnitStateNetSerializer::IsEqual(FNetSerializationContext& Context, const FNetIsEqualArgs& Args)
@@ -238,7 +248,7 @@ bool FHOLNetUnitStateNetSerializer::IsEqual(FNetSerializationContext& Context, c
 		return A.X == B.X && A.Y == B.Y && A.VelocityX == B.VelocityX && A.VelocityY == B.VelocityY
 			&& A.Activity == B.Activity && A.Step == B.Step && A.bCarrying == B.bCarrying && A.LoadResource == B.LoadResource
 			&& A.bFullHealth == B.bFullHealth && A.Health == B.Health && A.TargetSlot == B.TargetSlot && A.FrontYaw == B.FrontYaw
-			&& A.bDeploys == B.bDeploys && A.DeployPhase == B.DeployPhase;
+			&& A.bDeploys == B.bDeploys && A.DeployPhase == B.DeployPhase && A.EffectMask == B.EffectMask;
 	}
 	return *reinterpret_cast<const SourceType*>(Args.Source0) == *reinterpret_cast<const SourceType*>(Args.Source1);
 }

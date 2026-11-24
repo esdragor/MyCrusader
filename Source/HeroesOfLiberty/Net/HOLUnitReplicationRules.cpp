@@ -99,7 +99,8 @@ bool HOLUnitReplication::IsSameAction(const FHOLNetUnitState& A, const FHOLNetUn
 {
 	return EncodeActivity(A.Activity, A.GatherResource, A.bFacesFront) == EncodeActivity(B.Activity, B.GatherResource, B.bFacesFront)
 		&& A.bFullHealth == B.bFullHealth && A.Health == B.Health && A.TargetSlot == B.TargetSlot && A.FrontYaw == B.FrontYaw
-		&& A.bDeploys == B.bDeploys && A.DeployPhase == B.DeployPhase && A.bGarrisoned == B.bGarrisoned;
+		&& A.bDeploys == B.bDeploys && A.DeployPhase == B.DeployPhase && A.bGarrisoned == B.bGarrisoned
+		&& A.EffectMask == B.EffectMask; // M5 / A2: a change of effects is a change of action (sent at once)
 }
 
 FVector FHOLNetUnitState::GetPosition() const
