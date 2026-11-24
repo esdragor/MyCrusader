@@ -1,4 +1,4 @@
-# [À RÉPONDRE] Q-grille-fine-structure : grille fine des murs (D898 + D904), 2 questions
+# [REPONDU 2026-11-24] Q-grille-fine-structure : grille fine des murs (D898 + D904), 2 questions
 
 Contexte : une case de 4 m devient 4 x 4 sous-cases de 1 m ; palissade, mur de bois et mur de pierre se posent par sous-case, au prix actuel par sous-case (D904).
 Plan : Docs\Rapports\PLAN-GRILLE-FINE-1124.md. Écrit par SAURON-1124a le 2026-11-24 ; aucune réponse attendue pour continuer (les étapes G1 à G3 ne dépendent ni de A ni de B).
@@ -16,3 +16,5 @@ D904 fixe le prix (5 Bois la sous-case de palissade). Les lignes CSV `Palisade` 
 - B : PV et durée divisés par 4 : une ligne de même longueur garde la solidité et la durée d'aujourd'hui, seul le prix est multiplié par 4 (comme D904).
 - Autre : à préciser.
 Recommandation : A pour G1 à G5, puis régler avec la mesure G9. Valeur par défaut codée : A (lignes de Tools\Data\BuildingTypes.csv inchangées, une ligne à changer par type).
+
+Reponse: (2026-11-24 apres la cloture, dans la conversation, DOCS-1124f) Question A : « A d'abord, puis bascule vers B si la mesure de G9 depasse un seuil » (= option C, GDD D906). Question B : « A jusqu'a G5, puis reglage d'apres la mesure de G9 » (GDD D907). Seuil de bascule et reglage PV / duree a fixer a la mesure G9.
