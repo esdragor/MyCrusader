@@ -92,6 +92,9 @@ namespace HOLConstruction
 	 */
 	HEROESOFLIBERTY_API FBox2D SnapToGrid(const FVector2D& Point, const FVector2D& Footprint, double Grid);
 
+	/** D898 G4: a wall piece on the fine grid: the row's footprint and the grid both divided by SubDivision (1 or less = SnapToGrid unchanged). */
+	HEROESOFLIBERTY_API FBox2D SnapWallPiece(const FVector2D& Point, const FVector2D& Footprint, double Grid, int32 SubDivision);
+
 	/**
 	 * Yaw (degrees) of a building on the grid: the nearest quarter turn, so its footprint stays along the grid lines
 	 * (a main centre facing a diagonal start turns by 45 degrees; a square looks the same).

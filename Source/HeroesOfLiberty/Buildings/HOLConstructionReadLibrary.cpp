@@ -50,6 +50,11 @@ FHOLConstructionBox UHOLConstructionReadLibrary::MakeBox(const FVector2D& Min, c
 	return Out;
 }
 
+FHOLConstructionBox UHOLConstructionReadLibrary::SnapWallPiece(const FVector2D& Point, const FVector2D& Footprint, const double Grid, const int32 SubDivision)
+{
+	return ConstructionRead_FromBox(HOLConstruction::SnapWallPiece(Point, Footprint, Grid, SubDivision));
+}
+
 FHOLConstructionBox UHOLConstructionReadLibrary::SnapToGrid(const FVector2D& Point, const FVector2D& Footprint, const double Grid)
 {
 	return ConstructionRead_FromBox(HOLConstruction::SnapToGrid(Point, Footprint, Grid));

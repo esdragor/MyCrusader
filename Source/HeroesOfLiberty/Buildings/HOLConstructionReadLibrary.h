@@ -81,6 +81,10 @@ public:
 	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Construction")
 	static FHOLConstructionBox MakeBox(const FVector2D& Min, const FVector2D& Max);
 
+	/** HOLConstruction::SnapWallPiece (D898 G4): SnapToGrid with the footprint and the grid divided by SubDivision. */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Construction")
+	static FHOLConstructionBox SnapWallPiece(const FVector2D& Point, const FVector2D& Footprint, double Grid, int32 SubDivision);
+
 	/** HOLConstruction::SnapToGrid. */
 	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Construction")
 	static FHOLConstructionBox SnapToGrid(const FVector2D& Point, const FVector2D& Footprint, double Grid);

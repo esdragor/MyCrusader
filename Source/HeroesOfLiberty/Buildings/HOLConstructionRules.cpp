@@ -19,6 +19,12 @@ FBox2D HOLConstruction::SnapToGrid(const FVector2D& Point, const FVector2D& Foot
 	return FBox2D(Corner, Corner + Footprint);
 }
 
+// STUB (D898 G4 red): ignores SubDivision, the piece still snaps on the 4 m grid.
+FBox2D HOLConstruction::SnapWallPiece(const FVector2D& Point, const FVector2D& Footprint, const double Grid, const int32 SubDivision)
+{
+	return SnapToGrid(Point, Footprint, Grid);
+}
+
 float HOLConstruction::SnapYaw(const float Yaw)
 {
 	return FRotator::NormalizeAxis(FMath::RoundToFloat(Yaw / 90.f) * 90.f);
