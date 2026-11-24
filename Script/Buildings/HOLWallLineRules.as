@@ -214,16 +214,24 @@ namespace HOLWallLine
 		return Validate(FIntPoint(CellOfCoordinate(Start.X, Tile), CellOfCoordinate(Start.Y, Tile)), FIntPoint(CellOfCoordinate(End.X, Tile), CellOfCoordinate(End.Y, Tile)), MapMin, MapMax, Occupied, MaxCells);
 	}
 
+	// D898 G2: every occupied 4 m tile becomes SubDivision x SubDivision sub-cells. STUB (red first): empty.
+	TArray<FIntPoint> ExpandOccupied(const TArray<FIntPoint>& OccupiedTiles, int SubDivision)
+	{
+		TArray<FIntPoint> Result;
+		return Result;
+	}
+
 	// ---- Fine grid (D898, G1, PLAN-GRILLE-FINE-1124.md): the line on a pitch of Tile / SubDivision (4 m tile, SubDivision 4 = 1 m cells). Cells are then sub-cells.
 	// MapMin / MapMax stay in 4 m tiles (the caller does not change): the last valid tile holds SubDivision sub-cells. SubDivision 1 or less = the 4 m plan, unchanged.
-	// Occupied is read in sub-cells as given (G2 expands the 4 m cells of the buildings); the wall pieces already laid are seen as 4 m cells until G4.
+	// Occupied comes in 4 m tiles (G2: ExpandOccupied makes sub-cells of them); the wall pieces already laid are seen as 4 m tiles until G4.
 	FHOLWallLinePlan PlanFromRequestFine(int SenderSlot, FVector Start, FVector End, double Tile, int SubDivision, FIntPoint MapMin, FIntPoint MapMax, const TArray<FIntPoint>& Occupied, int MaxCells)
 	{
 		if (SubDivision <= 1)
 			return PlanFromRequest(SenderSlot, Start, End, Tile, MapMin, MapMax, Occupied, MaxCells);
+		const TArray<FIntPoint> FineOccupied = ExpandOccupied(Occupied, SubDivision);
 		const FIntPoint FineMin = FIntPoint(MapMin.X * SubDivision, MapMin.Y * SubDivision);
 		const FIntPoint FineMax = FIntPoint(MapMax.X * SubDivision + SubDivision - 1, MapMax.Y * SubDivision + SubDivision - 1);
-		return PlanFromRequest(SenderSlot, Start, End, Tile / double(SubDivision), FineMin, FineMax, Occupied, MaxCells);
+		return PlanFromRequest(SenderSlot, Start, End, Tile / double(SubDivision), FineMin, FineMax, FineOccupied, MaxCells);
 	}
 
 	// The setting read by the callers (D898, Q-grille-fine-structure.md, not answered): 1 (the default) = the 4 m grid of today, 4 = 1 m sub-cells. The default moves to 4 at G10.

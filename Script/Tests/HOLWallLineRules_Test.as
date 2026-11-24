@@ -518,3 +518,25 @@ void Test_WallLineFineGridLineIsSeventeenCells(FUnitTest& T)
 	HOLWallLine::FHOLWallLinePlan Coarse = HOLWallLine::PlanFromRequestFine(0, FVector(50.0, 50.0, 0.0), FVector(1650.0, 50.0, 0.0), 400.0, 1, WallLineMapMin, WallLineMapMax, Taken, 1000);
 	T.AssertEquals(5, Coarse.Cells.Num(), "SubDivision 1 keeps today's 4 m grid: 5 cells");
 }
+// D898 G2 (PLAN-GRILLE-FINE-1124.md): the occupied cells come in 4 m tiles (what GetWallLineWorld rends) and the rule expands each into SubDivision x SubDivision sub-cells.
+// The 4 m tile (2,0) on the line of G1 covers the sub-cells 8..11 of the row 0: 4 holes, 13 laid and paid (13 x 5 = 65); every tile of the line taken = Occupied, nothing laid.
+void Test_WallLineFineGridOccupiedTileSkipsItsSubCells(FUnitTest& T)
+{
+	TArray<FIntPoint> Taken;
+	Taken.Add(FIntPoint(2, 0));
+	HOLWallLine::FHOLWallLinePlan Plan = HOLWallLine::PlanFromRequestFine(0, FVector(50.0, 50.0, 0.0), FVector(1650.0, 50.0, 0.0), 400.0, 4, WallLineMapMin, WallLineMapMax, Taken, 1000);
+	T.AssertTrue(Plan.Refusal == HOLWallLine::EHOLWallLineRefusal::Ok, "a hole is not a refusal");
+	T.AssertEquals(4, Plan.Skipped.Num(), "the tile (2,0) holds 4 sub-cells of the row");
+	T.AssertEquals(13, Plan.Cells.Num(), "17 sub-cells, 4 skipped: 13 laid");
+	T.AssertTrue(WallLineHasCell(Plan.Skipped, 8, 0) && WallLineHasCell(Plan.Skipped, 11, 0), "the holes are the sub-cells 8..11");
+	T.AssertFalse(WallLineHasCell(Plan.Cells, 9, 0), "a skipped sub-cell is not laid");
+	T.AssertEquals(65, Plan.Cells.Num() * 5, "13 laid sub-cells at 5 Wood");
+	TArray<FIntPoint> All;
+	for (int X = 0; X <= 4; X++)
+		All.Add(FIntPoint(X, 0));
+	HOLWallLine::FHOLWallLinePlan None = HOLWallLine::PlanFromRequestFine(0, FVector(50.0, 50.0, 0.0), FVector(1650.0, 50.0, 0.0), 400.0, 4, WallLineMapMin, WallLineMapMax, All, 1000);
+	T.AssertTrue(None.Refusal == HOLWallLine::EHOLWallLineRefusal::Occupied, "every sub-cell taken: refused as Occupied");
+	T.AssertEquals(0, None.Cells.Num(), "nothing laid");
+	HOLWallLine::FHOLWallLinePlan Coarse = HOLWallLine::PlanFromRequestFine(0, FVector(50.0, 50.0, 0.0), FVector(1650.0, 50.0, 0.0), 400.0, 1, WallLineMapMin, WallLineMapMax, Taken, 1000);
+	T.AssertEquals(1, Coarse.Skipped.Num(), "SubDivision 1: the tile is one cell, as today");
+}
