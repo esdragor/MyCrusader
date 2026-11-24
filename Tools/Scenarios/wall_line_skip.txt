@@ -1,0 +1,49 @@
+# La ligne du glisser court le long de l'axe Y du monde a x ~ -17700 (de y -1400 a +2000) ; hol.Build.PlaceNear prend un decalage depuis le MainCentre (-16400, 0) : House -1300 300 pose la Maison sur le trace, vers y 300.
+# CELEBORN-1124b (D901) : ligne de palissade qui CROISE un batiment : la case bloquee est SAUTEE (trou rouge dans la ligne verte), les autres cases sont posees. Variante de wall_line_long, meme geste reel. (D867 : pas de plafond de longueur, hol.Wall.MaxLineCells 0 = illimite ; dessin du glisser : un fantome vert plat par case, rouge si refuse). Toi (slot 0, Aube) contre une IA gelee (slot 1). 3 minutes au plus.
+# branches: main
+# Geste : un Paysan est selectionne (hol.Select.ClickUnit), A (age I) puis D (hol.Select.Grid 0 puis 6 = la touche de la Palissade dans la grille du Paysan), puis un vrai glisser de souris hol.Mouse.Drag (appui, un deplacement par image, relache). Une ligne = une fondation de 5 bois par case (D892), les Paysans les bâtissent ensuite.
+# play.ps1 -Hidden ne pose PAS hol.Camera.TestCursor 0.5 0.5 pour un scenario a hol.Mouse.Drag (SAURON-1123pb) : la souris reelle est lue. Le viewport cache fait 1280x720 : le glisser est en pixels de ce viewport.
+# Camera centree sur (-17400, 0) : le glisser (y ecran 360) tombe sur x monde ~ -17400, a 10 m a l'ouest du MainCentre (-16400, 0), sur du sol libre : une case bloquee est SAUTEE (D901 : les autres cases sont posees, la case occupee reste un trou ; toutes bloquees = refus Occupied : HOLWallLineRules.as Validate).
+waitlog Starting hero of slot 0 spawned at
+hol.AI.ThinkSteps 100000
+hol.Cheat.Resources 20000
+hol.Cheat.Population 40
+hol.Cheat.Technology Masonry
+hol.Build.Instant 1
+hol.Wall.MaxLineCells 0
+hol.Build.PlaceNear House -1300 300
+frames 10
+frames 2
+hol.Units.Spawn 1 -17400 3000 0 Peasant 10
+frames 40
+hol.Test.Sanity
+hol.Camera.Zoom 3
+hol.Camera.Focus -17400 3000
+frames 5
+note 1. Un Paysan est a l'ecran : tu le selectionnes, puis la touche A (age I) et la touche D (Palissade) de la grille, puis un glisser a la souris.
+# Selection du Paysan : le curseur virtuel au centre le temps du clic (ClickUnit vise le Paysan projete), puis rendu a la vraie souris pour le glisser.
+hol.Camera.TestCursor 0.5 0.5
+hol.Select.ClickUnit -1
+waitlog Selection: Peasant #
+hol.Camera.TestCursor off
+hol.Select.Grid 0
+hol.Select.Grid 6
+waitlog Placement: Palisade (cost
+hol.Camera.Focus -17400 0
+frames 40
+hol.Mouse.LogDragEnd 1
+# Glisser : appui en (200, 360), relache en (1000, 360), 90 images (pixels du viewport cache 1280x720) ; a ~3,8 cm par pixel : ~3000 cm, soit 7 a 8 cases de 4 m. La capture pendant (apres 70 images sur 90) tombe aux trois quarts du glisser (6 a 7 boites ; a 30 images elle n'en montrait que 4).
+hol.Mouse.Drag 200 360 1000 360 90
+frames 70
+note 2. PENDANT le glisser : une file de boites vertes plates, une par case, avec un TROU ROUGE (case(s) du batiment) au milieu : la ligne reste verte (acceptee).
+capture wall_line_skip_during
+waitlog Drag end: foreground=
+waitlog Placement: Palisade wall line (
+waitlog RpcOrder: place wall line received by the server
+wait 2
+hol.Build.Report
+note 3. APRES le relache : les fondations sont posees sur toutes les cases SAUF celle(s) du batiment (trou) ; le Bois a baisse de 5 par case posee seulement.
+capture wall_line_skip_after
+hol.Test.Sanity
+note 4. A toi : trace une ligne en diagonale, puis une ligne qui croise un arbre ou un batiment (la case bloquee est sautee, les autres sont posees ; toute la ligne est refusee seulement si toutes les cases sont bloquees).
+quit

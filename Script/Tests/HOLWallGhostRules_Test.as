@@ -33,19 +33,19 @@ void Test_WallGhostShowsTheLineTheReleaseLays(FUnitTest& T)
 	}
 }
 
-// A refused line still shows its cells (the player sees where it breaks), in the refused colour, with the refused cell named as Validate names it.
-void Test_WallGhostOfAnOccupiedLineIsRedAndNamesTheCell(FUnitTest& T)
+// D901: a line over one occupied cell is still valid (green): all its cells are shown, the occupied one is listed in Skipped (drawn red), as Validate lists it.
+void Test_WallGhostOfAnOccupiedLineIsValidAndSkipsTheCell(FUnitTest& T)
 {
 	TArray<FIntPoint> Taken;
 	Taken.Add(FIntPoint(5, 0));
 	HOLWallLine::FHOLWallLinePlan Plan = HOLWallLine::Validate(FIntPoint(0, 0), FIntPoint(8, 0), FIntPoint(-100, -100), FIntPoint(100, 100), Taken, 16);
 	HOLWallGhost::FHOLWallGhost Ghost = HOLWallGhost::Build(FIntPoint(0, 0), FIntPoint(8, 0), FIntPoint(-100, -100), FIntPoint(100, 100), Taken, 16);
-	T.AssertTrue(Plan.Refusal == HOLWallLine::EHOLWallLineRefusal::Occupied, "Validate refuses a line over an occupied cell");
-	T.AssertFalse(Ghost.bValid, "the ghost is shown refused");
+	T.AssertTrue(Plan.Refusal == HOLWallLine::EHOLWallLineRefusal::Ok, "Validate lays the free cells of a line over an occupied cell");
+	T.AssertTrue(Ghost.bValid, "the ghost is shown valid (the release lays 8 cells)");
 	int Shown = Ghost.Cells.Num();
 	T.AssertEquals(9, Shown, "the 9 cells of the dragged row are all shown");
-	T.AssertEquals(Plan.BadCell.X, Ghost.BadCell.X, "the refused cell is the one Validate names (x)");
-	T.AssertEquals(Plan.BadCell.Y, Ghost.BadCell.Y, "the refused cell is the one Validate names (y)");
+	T.AssertTrue(Ghost.Skipped.Num() == 1 && Ghost.Skipped[0].X == 5 && Ghost.Skipped[0].Y == 0, "the occupied cell (5,0) is the skipped one, as Validate lists it");
+	T.AssertTrue(Plan.Skipped.Num() == Ghost.Skipped.Num() && Plan.Cells.Num() == 8, "the same hole in the plan: 8 cells laid");
 }
 
 // Past the map edge: refused, the cells up to and beyond the edge are shown.

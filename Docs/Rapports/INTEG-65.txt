@@ -1,0 +1,16 @@
+integrate : branche integ-65 creee, 0 rouge(s) appliques
+integrate : 6 vert(s) fusionne(s)
+integrate : regen inutile (aucun CSV de table change sans son .uasset dans les verts)
+integrate : build verts ...
+integrate : tests (apres les verts) ...
+integrate : parts net,build ...
+INTEGRATE integ-65 : PASS (1268 s, 2026-11-24 11:50)
+  branche+rouges : PASS (0 cherry-pick, 1 s)
+  build rouges : SKIP (pas de rouge)
+  tests rouges : SKIP (pas de rouge)
+  remise a main : SKIP (pas de rouge)
+  merge verts : PASS (6 merge, 18 s) ; regen: inutile
+  build verts : PASS (591 s)
+  tests verts : PASS 2208/2208 tests (245 s)
+  parts net,build : PASS (412 s)
+  rouges vus : aucun ; sortie complete : Docs\Integrate_integ-65.log
