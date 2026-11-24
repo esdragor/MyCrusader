@@ -682,3 +682,38 @@ void Test_WallLineFineDiagonalCapCountsFillers(FUnitTest& T)
 	T.AssertEquals(int(HOLWallLine::EHOLWallLineRefusal::Ok), int(Fits.Refusal), "a cap of exactly 17 accepts it");
 	T.AssertEquals(17, Fits.Cells.Num(), "all 17 pieces laid");
 }
+
+// D898 G8 (rest): the 4 m tile (1,0) holds the sub-cells x 4..7, y 0..3: on the (0,0)-(8,8) diagonal that is exactly ONE filler, (4,3), and no diagonal piece. The ghost sees the tile
+// as occupied at the fine step: the filler is listed in Skipped (drawn red), as the server skips it.
+void Test_WallGhostFineOccupiedFillerIsRedAndRefusedByThePlan(FUnitTest& T)
+{
+	TArray<FIntPoint> Taken;
+	Taken.Add(FIntPoint(1, 0));
+	HOLWallGhost::FHOLWallGhost Ghost = HOLWallGhost::BuildFine(FIntPoint(0, 0), FIntPoint(8, 8), FIntPoint(0, 0), FIntPoint(99, 99), Taken, 1000, 4);
+	HOLWallLine::FHOLWallLinePlan Plan = HOLWallLine::PlanFromRequestFine(0, FVector(50.0, 50.0, 0.0), FVector(850.0, 850.0, 0.0), 400.0, 4, WallLineMapMin, WallLineMapMax, Taken, 1000);
+	T.AssertEquals(int(HOLWallLine::EHOLWallLineRefusal::Ok), int(Plan.Refusal), "a line over one occupied filler is still laid (D901)");
+	T.AssertFalse(WallLineHasCell(Plan.Cells, 4, 3), "the server does not lay the filler on the occupied tile");
+	T.AssertTrue(WallLineHasCell(Plan.Skipped, 4, 3), "the server lists the occupied filler in Skipped");
+	T.AssertTrue(WallLineHasCell(Ghost.Cells, 4, 3), "the ghost still draws the filler cell");
+	T.AssertTrue(WallLineHasCell(Ghost.Skipped, 4, 3), "the ghost lists the occupied filler in Skipped: drawn red");
+	T.AssertEquals(Plan.Skipped.Num(), Ghost.Skipped.Num(), "the ghost holes are the server holes");
+}
+
+// The fill comes BEFORE the occupied cells are taken out: the tile (1,1) holds the sub-cells 4..7 x 4..7 (diagonal pieces (4,4)..(7,7) and the fillers (5,4),(6,5),(7,6)). The free fillers
+// that touch the hole, (4,3) and (8,7), are still laid; the hole is 4 + 3 pieces, in the plan and in the ghost.
+void Test_WallLineFineFillsBeforeRemovingOccupiedCells(FUnitTest& T)
+{
+	TArray<FIntPoint> Taken;
+	Taken.Add(FIntPoint(1, 1));
+	HOLWallLine::FHOLWallLinePlan Plan = HOLWallLine::PlanFromRequestFine(0, FVector(50.0, 50.0, 0.0), FVector(850.0, 850.0, 0.0), 400.0, 4, WallLineMapMin, WallLineMapMax, Taken, 1000);
+	T.AssertEquals(int(HOLWallLine::EHOLWallLineRefusal::Ok), int(Plan.Refusal), "the line is laid around the hole");
+	T.AssertTrue(WallLineHasCell(Plan.Cells, 4, 3), "the filler (4,3) next to the hole is laid (the jump over the hole does not hide it)");
+	T.AssertTrue(WallLineHasCell(Plan.Cells, 8, 7), "the filler (8,7) next to the hole is laid");
+	T.AssertFalse(WallLineHasCell(Plan.Cells, 5, 4), "the filler (5,4) inside the hole is not laid");
+	T.AssertEquals(7, Plan.Skipped.Num(), "4 diagonal pieces + 3 fillers form the hole");
+	T.AssertEquals(10, Plan.Cells.Num(), "17 pieces less the 7 of the hole");
+	HOLWallGhost::FHOLWallGhost Ghost = HOLWallGhost::BuildFine(FIntPoint(0, 0), FIntPoint(8, 8), FIntPoint(0, 0), FIntPoint(99, 99), Taken, 1000, 4);
+	T.AssertEquals(Plan.Skipped.Num(), Ghost.Skipped.Num(), "the ghost draws as many red pieces as the server skips");
+	for (int Index = 0; Index < Plan.Skipped.Num(); Index++)
+		T.AssertTrue(WallLineHasCell(Ghost.Skipped, Plan.Skipped[Index].X, Plan.Skipped[Index].Y), "the ghost draws red the skipped piece " + Index);
+}
