@@ -271,6 +271,7 @@ Plan de lancement (ETAPE0-1124, 10:5x ; énoncés : `Docs\Rapports\ENONCES-1124.
 - L27-10 : à compléter : aucune preuve relevée pour le soir par ELROND-1124sk (brouillon) : la session principale la remplit ou dit « non vérifié »
 - L27-11 : à compléter : aucune preuve relevée pour le soir par ELROND-1124sk (brouillon) : la session principale la remplit ou dit « non vérifié »
 - L27-12 : appliquee : ligne « version launcher » écrite au bilan du soir (0.4.3 du 2026-11-24 13:51 UTC, 115 commits de main depuis, verdict proposé oui) ; session_gate Close lit la section du jour (ec98a3d)
+- L28 : 9 axes inscrits dans la check-list (DOCS-L28)
 
 ## Bilan du 2026-11-24
 
