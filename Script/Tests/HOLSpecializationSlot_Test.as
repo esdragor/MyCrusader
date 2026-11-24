@@ -192,15 +192,15 @@ void Test_SpecializationSlotKeepsShowingTheChosenVoieOnceApplied(FUnitTest& T)
 	T.AssertTrue(View.bVisible, "tier 1 applied: the slot stays visible");
 	T.AssertTrue(!View.bLit, "no tier open: the button itself is not lit");
 	T.AssertEquals(1, View.ChosenTexts.Num(), "one voie taken");
-	T.AssertEquals("Voie A du palier 1", View.ChosenTexts[0], "the table's text of the voie taken");
-	T.AssertEquals("Voie A du palier 1", View.ChosenText, "the line shown");
+	T.AssertEquals("Spécialisation : Voie A (palier 1)", View.ChosenTexts[0], "D905: the button's text of the voie taken");
+	T.AssertEquals("Spécialisation : Voie A (palier 1)", View.ChosenText, "the line shown");
 
 	HOLSpecialization::Start(State, 2, 1, 2);
 	HOLSpecialization::Advance(State, 60000, true);
 	FHOLSpecializationRead Next = HOLSpecializationSlot::ReadOf(SpecializationSlotTest::ViewOf(State), 2, EHOLFaction::DawnOrder, true);
 	FHOLSpecializationSlotView Two = HOLSpecializationSlot::Make(Next.View, Next.PlayerTier, Next.bForumComplete, Next.OptionCount);
 	T.AssertEquals(2, Two.ChosenTexts.Num(), "two voies taken, one per tier");
-	T.AssertEquals("Voie B du palier 2", Two.ChosenTexts[1], "tier 2 took the voie B");
+	T.AssertEquals("Spécialisation : Voie B (palier 2)", Two.ChosenTexts[1], "tier 2 took the voie B");
 }
 
 void Test_SpecializationSlotSaysToChooseWhenNothingIsChosen(FUnitTest& T)
@@ -211,7 +211,7 @@ void Test_SpecializationSlotSaysToChooseWhenNothingIsChosen(FUnitTest& T)
 	T.AssertTrue(View.bVisible && View.bLit, "tier 1 open, nothing chosen: visible and lit");
 	T.AssertEquals(0, View.ChosenTexts.Num(), "no voie to show");
 	T.AssertEquals("", View.ChosenText, "no chosen line");
-	T.AssertEquals("Specialisation", View.ButtonText, "the state to choose keeps the table's closest text (provisional, Q-sp3-libelles)");
+	T.AssertEquals("Spécialisation : à choisir", View.ButtonText, "D905 (Q-sp3-libelles = B): the state to choose reads 'Spécialisation : à choisir'");
 	FHOLSpecializationRead Early = HOLSpecializationSlot::ReadOf(SpecializationSlotTest::ViewOf(State), 0, EHOLFaction::DawnOrder, true);
 	FHOLSpecializationSlotView Dark = HOLSpecializationSlot::Make(Early.View, Early.PlayerTier, Early.bForumComplete, Early.OptionCount);
 	T.AssertTrue(!Dark.bVisible, "faction tier 0 and nothing chosen: nothing to show");

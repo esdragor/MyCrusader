@@ -2,7 +2,7 @@
 // (pure: no world, no widget). The button is lit while a tier is open; a click shows the small panel of the tier's options (2, 3 for the Templars);
 // while an unlock runs, a bar under it counts down and a click on the running option cancels it. The D / F cells of the Forum grid stay a shortcut
 // (same server rule: HOLSpecialization::Start / Cancel, through ServerStartSpecialization / ServerCancelSpecialization). Texts are the game's text
-// table's (HOLGameNames.cpp GetSpecializationName "Voie A du palier N", GetSpecializationCellText "N s" / "Annuler"), none invented here.
+// table's (HOLGameNames.cpp GetSpecializationName "Voie A du palier N" for the panel's options; the button's own two texts: ToChooseText, ChosenLineOf).
 // Tested in Script/Tests/HOLSpecializationSlot_Test.as.
 
 enum EHOLSpecializationAction
@@ -130,6 +130,18 @@ namespace HOLSpecializationSlot
 		return 0;
 	}
 
+	// D905 (Q-sp3-libelles = B): the button reads "Spécialisation : à choisir" before the choice and "Spécialisation : Voie A (palier 1)" after it. One
+	// source: these two NSLOCTEXT (the English and Japanese texts are in Tools/Localization/fill_po.py). The grid cells keep "Voie A du palier N".
+	FString ToChooseText()
+	{
+		return NSLOCTEXT("HOLSpecializationSlot", "ToChoose", "Spécialisation : à choisir").ToString();
+	}
+
+	FString ChosenLineOf(FString OptionName, int Tier)
+	{
+		return NSLOCTEXT("HOLSpecializationSlot", "ChosenVoie", "Spécialisation : Voie {0} (palier {1})").ToString().Replace("{0}", OptionName).Replace("{1}", f"{Tier}");
+	}
+
 	// The slot's specialization view from what the owner reads (FHOLSpecializationView), the faction tier, whether the Forum is complete
 	// (HOLNomad::HasCompleteForum) and the number of options of the faction (HOLSpecialization::OptionCountOf).
 	FHOLSpecializationSlotView Make(FHOLSpecializationView View, int PlayerTier, bool bForumComplete, int OptionCount)
@@ -144,7 +156,7 @@ namespace HOLSpecializationSlot
 			const int Applied = Tier < View.Chosen.Num() ? View.Chosen[Tier] : HOLSpecialization::None;
 			if (Applied == HOLSpecialization::None)
 				continue;
-			const FString Line = f"Voie {OptionNames.Mid(Applied, 1)} du palier {Tier}";
+			const FString Line = ChosenLineOf(OptionNames.Mid(Applied, 1), Tier);
 			Result.ChosenTexts.Add(Line);
 			Result.ChosenText = Result.ChosenText.IsEmpty() ? Line : Result.ChosenText + "\n" + Line;
 		}
@@ -154,8 +166,8 @@ namespace HOLSpecializationSlot
 			Result.Describe = Result.ChosenTexts.Num() > 0 ? f"spec chosen {Result.ChosenTexts.Num()}" : "spec dark";
 			return Result;
 		}
-		// The state to choose: the table's closest text (provisional, Retours/Q-sp3-libelles.md).
-		Result.ButtonText = "Specialisation";
+		// The state to choose (D905, Retours/Q-sp3-libelles.md = B): "Spécialisation : à choisir", in the player's language.
+		Result.ButtonText = ToChooseText();
 		for (int Option = 0; Option < OptionCount && Option < 3; Option++)
 			Result.OptionTexts.Add(f"Voie {OptionNames.Mid(Option, 1)} du palier {Result.OpenTier}");
 		Result.bRunning = View.PendingTier == Result.OpenTier && View.PendingOption >= 0;
