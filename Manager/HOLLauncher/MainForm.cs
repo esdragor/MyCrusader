@@ -7,9 +7,10 @@ namespace HOLLauncher;
  * "Play" (L8) asks PlayConfirmation if any (outdated game), starts the game (GameLauncher) and closes the launcher.
  * "Settings" (L15, while nothing runs) opens SettingsForm, saves the choice (LauncherSettings), applies the language
  * (Texts, ApplyTexts) and the game folder (GameFolder.Prepare, new HTTP clients), then reads the status again. The
- * window's fixed texts come from Texts (ApplyTexts); the status texts are still French (StatusView, L16).
+ * window's fixed texts come from Texts (ApplyTexts); the status texts are still French (StatusView, L16). "Files" (L17):
+ * MainForm.Files.cs.
  */
-public sealed class MainForm : Form
+public sealed partial class MainForm : Form
 {
     // Both send the key of servers.json to its manager (L11).
     private HttpClient http;
@@ -63,6 +64,7 @@ public sealed class MainForm : Form
 
         var buttons = new FlowLayoutPanel { Dock = DockStyle.Fill, AutoSize = true, WrapContents = true };
         buttons.Controls.AddRange([play, updateGame, updateLauncher, refresh, settingsButton]);
+        AddFilesMenu(buttons); // L17: MainForm.Files.cs
 
         var layout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, Padding = new Padding(12) };
         layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
@@ -125,6 +127,7 @@ public sealed class MainForm : Form
         refresh.Text = Texts.Get("Refresh");
         settingsButton.Text = Texts.Get("Settings");
         cancel.Text = Texts.Get("Cancel");
+        ApplyFilesTexts();
     }
 
     /**
@@ -414,6 +417,7 @@ public sealed class MainForm : Form
         updateLauncher.Enabled = view.UpdateLauncherEnabled;
         refresh.Enabled = view.RefreshEnabled;
         settingsButton.Enabled = view.RefreshEnabled;
+        filesButton.Enabled = view.RefreshEnabled;
     }
 
     private static Label NewLabel(string text = "") => new()

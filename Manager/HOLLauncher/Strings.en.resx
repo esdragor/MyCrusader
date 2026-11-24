@@ -22,4 +22,29 @@
   <data name="SettingsUnreadable" xml:space="preserve"><value>Settings unreadable, defaults used: {0}</value></data>
   <data name="SettingsNotSaved" xml:space="preserve"><value>Settings not saved: {0}</value></data>
   <data name="SettingsBadFolder" xml:space="preserve"><value>Game folder unusable: {0}</value></data>
+  <data name="Files" xml:space="preserve"><value>Files</value></data>
+  <data name="FilesVerify" xml:space="preserve"><value>Verify / repair the files</value></data>
+  <data name="FilesOpenGame" xml:space="preserve"><value>Open the game folder</value></data>
+  <data name="FilesOpenLogs" xml:space="preserve"><value>Open the logs folder</value></data>
+  <data name="FilesUninstall" xml:space="preserve"><value>Uninstall the game…</value></data>
+  <data name="FilesServersError" xml:space="preserve"><value>Error: {0}</value></data>
+  <data name="RepairChecking" xml:space="preserve"><value>Checking the game files…</value></data>
+  <data name="RepairNotInstalled" xml:space="preserve"><value>The game is not installed: install it first.</value></data>
+  <data name="RepairIntact" xml:space="preserve"><value>All the game files are intact ({0}).</value></data>
+  <data name="RepairDone" xml:space="preserve"><value>{0} file(s) repaired: the game is intact again ({1}).</value></data>
+  <data name="RepairToLatest" xml:space="preserve"><value>The installed version, {0}, is no longer available on the server: the game was repaired to the latest version, {1} ({2} file(s) downloaded).</value></data>
+  <data name="RepairCancelled" xml:space="preserve"><value>Check cancelled: no file was replaced.</value></data>
+  <data name="RepairNoSpace" xml:space="preserve"><value>Not enough disk space: repairing the game needs {0} GB free, the disk of {1} only has {2}. Free some space, then try again.</value></data>
+  <data name="RepairDownloadFailed" xml:space="preserve"><value>Download failed: {0}</value></data>
+  <data name="RepairInterrupted" xml:space="preserve"><value>Repair interrupted: {0}; please run it again.</value></data>
+  <data name="RepairServerUnreachable" xml:space="preserve"><value>Server unreachable: {0}</value></data>
+  <data name="UninstallConfirm" xml:space="preserve"><value>Uninstall Heroes of Liberty from {0}? The game files will be deleted. Kept: the launcher, its settings, hpatchz.exe, servers.json and your own files (the game's settings and logs in HeroesOfLiberty\Saved).</value></data>
+  <data name="UninstallNothing" xml:space="preserve"><value>The game is not installed in {0}: nothing to uninstall.</value></data>
+  <data name="UninstallNoList" xml:space="preserve"><value>The list of the game files is unknown (game installed without the launcher, server unreachable): nothing was deleted. Try again when the server answers.</value></data>
+  <data name="UninstallLocked" xml:space="preserve"><value>{0} is in use: close the game, then try again. Nothing was deleted.</value></data>
+  <data name="UninstallDone" xml:space="preserve"><value>The game is uninstalled ({0} file(s) deleted). The launcher, its settings and your own files are kept.</value></data>
+  <data name="UninstallFailed" xml:space="preserve"><value>Uninstall interrupted: {0}</value></data>
+  <data name="LogsMissing" xml:space="preserve"><value>No game logs yet: {0} does not exist (has the game been started yet?).</value></data>
+  <data name="GameDirMissing" xml:space="preserve"><value>The game folder does not exist: {0}</value></data>
+  <data name="FolderOpenFailed" xml:space="preserve"><value>Cannot open {0}: {1}</value></data>
 </root>
