@@ -1,0 +1,6 @@
+  check_placeholders : PASS (49 provisional types, 51 map entries, 167 lines)
+parts: tests
+engine: C:\UE\UE_5.8_HOL\Engine\Binaries\Win64
+quick_check : C:\Users\baudo\Documents\HeroesOfLiberty-Faramir\Saved_Tests\Logs\quick_tests.log is held by another process (a game or editor of this worktree still running?); this pass writes and reads C:\Users\baudo\Documents\HeroesOfLiberty-Faramir\Saved_Tests\Logs\quick_tests_20261124_121518_358.log
+tests 2187/2187 : PASS
+quick_check : PASS in 236 s (game launch done at 6 s)
