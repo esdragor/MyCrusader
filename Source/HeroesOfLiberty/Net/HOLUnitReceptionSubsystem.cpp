@@ -642,6 +642,8 @@ bool UHOLUnitReceptionSubsystem::MakeView(const FSlot& Slot, FHOLUnitView& OutVi
 	}
 	// G6 e: the phase of an engine that deploys (the Mount / Dismount cell D of a client), -1 otherwise.
 	OutView.DeployPhase = Slot.State.GetDeployPhase();
+	// A2 (S2-c step 9): the morale effects the server sent with the state (HOLMoraleView::Read draws from it).
+	OutView.EffectMask = Slot.State.EffectMask;
 	return true;
 }
 
