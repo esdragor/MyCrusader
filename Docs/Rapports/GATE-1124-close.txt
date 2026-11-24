@@ -1,0 +1,38 @@
+Heure PowerShell : 13:51:08  fin dure 14:00  reste 9 min
+PASS L19-1 : aucun commit de code de la session principale (reflog de main et integ-* depuis 2026-11-24)
+WARN EtapeDefini dit 'pas dans main' mais commits 66e0be0, c74f5bf, c74f5bf, 849c057 deja dans main : passer la ligne a 'dans main' (agent de fusion, meme commit) : - GLORFINDEL-1124e (ability-columns, sans C++, NON COMPILE, 11:5x) : D900 F3 branchement fait : rouge 66e0be0, correctif
+WARN EtapeDefini dit 'pas dans main' mais commits 20d4888, d8d2939, d8d2939 deja dans main : passer la ligne a 'dans main' (agent de fusion, meme commit) : - CELEBORN-1124h (integ-41, C++ corrige, 12:10) : grille fine G4 compile (20d4888), build PASS, test WallPieceSubGrid co
+WARN EtapeDefini dit 'pas dans main' mais commits aa1bbfe, 405e578, 405e578, 20d4888 deja dans main : passer la ligne a 'dans main' (agent de fusion, meme commit) : - CELEBORN-1124g (integ-41, C++, 11:55) : grille fine G4 : test aa1bbfe + correctif 405e578 (SnapWallPiece, SnapFootprin
+WARN EtapeDefini dit 'pas dans main' mais commits e1528ac deja dans main : passer la ligne a 'dans main' (agent de fusion, meme commit) : - S3-a tower_wood (FARAMIR-1123pd / 1123pe) : journal du lancer des fleches de tour + hol.Arrow.Scale / SlowMotion, zone
+WARN EtapeDefini dit 'pas dans main' mais commits aac9d9a, ea2c420, ef5f1ef, aac9d9a, ad0288f deja dans main : passer la ligne a 'dans main' (agent de fusion, meme commit) : - FARAMIR-1124f (D894) : colonne faction du hash de pas ecrite sur zone-effect (aac9d9a test rouge, ea2c420 + ef5f1ef co
+PASS HeroesOfLiberty-Arwen : propre
+PASS HeroesOfLiberty-Arwen : a jour avec main
+WARN HeroesOfLiberty-Arwen : fins de ligne melees dans 4 fichier(s) suivi(s) : Docs/Orphan_Values_2026-11-11.md, Script/Sites/HOLSiteRules.as, Tools/Scenarios/ecran_multijoueur.ps1, Tools/Tests/unit_ability_times_test.py -> powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\MyCrusader\Tools\AutoJourney\eol_check.ps1 -Root C:\Users\baudo\Documents\HeroesOfLiberty-Arwen -Fix (aucun diff git)
+PASS HeroesOfLiberty-Celeborn : propre
+PASS HeroesOfLiberty-Celeborn : a jour avec main
+PASS HeroesOfLiberty-Celeborn : fins de ligne propres (eol_check)
+PASS HeroesOfLiberty-Elrond : propre
+PASS HeroesOfLiberty-Elrond : a jour avec main
+WARN HeroesOfLiberty-Elrond : fins de ligne melees dans 2 fichier(s) suivi(s) : Script/Duel/HOLDuelRewards_Test.as, Tools/Scenarios/specialization_slot.look -> powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\MyCrusader\Tools\AutoJourney\eol_check.ps1 -Root C:\Users\baudo\Documents\HeroesOfLiberty-Elrond -Fix (aucun diff git)
+PASS HeroesOfLiberty-Faramir : propre
+PASS HeroesOfLiberty-Faramir : a jour avec main
+PASS HeroesOfLiberty-Faramir : fins de ligne propres (eol_check)
+PASS HeroesOfLiberty-Galadriel : propre
+PASS HeroesOfLiberty-Galadriel : a jour avec main
+PASS HeroesOfLiberty-Galadriel : fins de ligne propres (eol_check)
+PASS HeroesOfLiberty-Glorfindel : propre
+PASS HeroesOfLiberty-Glorfindel : a jour avec main
+WARN HeroesOfLiberty-Glorfindel : fins de ligne melees dans 3 fichier(s) suivi(s) : Script/Tests/HOLAIPowerCall_Test.as, Tools/Scenarios/follow_crowd.look, Tools/Scenarios/follow_short.look -> powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\MyCrusader\Tools\AutoJourney\eol_check.ps1 -Root C:\Users\baudo\Documents\HeroesOfLiberty-Glorfindel -Fix (aucun diff git)
+PASS HeroesOfLiberty-Haldir : propre
+PASS HeroesOfLiberty-Haldir : a jour avec main
+WARN HeroesOfLiberty-Haldir : fins de ligne melees dans 1 fichier(s) suivi(s) : Script/Neutrals/HOLCampClearing.as -> powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\MyCrusader\Tools\AutoJourney\eol_check.ps1 -Root C:\Users\baudo\Documents\HeroesOfLiberty-Haldir -Fix (aucun diff git)
+PASS HeroesOfLiberty-Sauron : propre
+PASS HeroesOfLiberty-Sauron : a jour avec main
+WARN HeroesOfLiberty-Sauron : fins de ligne melees dans 4 fichier(s) suivi(s) : AnimationsInProgress.md, Script/Commands/HOLCommandLibrary_Test.as, Script/Economy/HOLMarketRules_Test.as, Script/Visual/HOLResourceReview.as -> powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\MyCrusader\Tools\AutoJourney\eol_check.ps1 -Root C:\Users\baudo\Documents\HeroesOfLiberty-Sauron -Fix (aucun diff git)
+PASS copie principale : L15-1 a main (+0/-0) (docs seulement : DLL non controlee, D808)
+WARN copie principale : fins de ligne melees dans 173 fichier(s) suivi(s) : AngelscriptInProgress.md, Docs/Archive/Auto_Journey_Procedure_Checklist_nettoyage_2026-11-19_soir.md, Docs/Archive/Auto_Journey_Procedure_Checklist_nettoyage_2026-11-20.md, Docs/Archive/Auto_Journey_Procedure_Checklist_nettoyage_2026-11-21_soir.md, Docs/Archive/Auto_Journey_Procedure_Checklist_nettoyage_2026-11-23_apres-midi.md -> powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\MyCrusader\Tools\AutoJourney\eol_check.ps1 -Root C:\Users\baudo\Documents\MyCrusader -Fix (aucun diff git)
+PASS copie principale propre
+PASS copie principale : aucun fichier non suivi dans Retours\
+PASS aucune reponse non traitee dans Retours\
+PASS bilan des lecons present (### Lecons appliquees 2026-11-24)
+=> aucun FAIL

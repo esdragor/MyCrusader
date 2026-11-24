@@ -1,0 +1,9 @@
+Heure PowerShell : 13:50  main = 83bc002
+HeroesOfLiberty-Arwen | integ-37 | mis a jour (+1 de main) = 83bc002
+HeroesOfLiberty-Celeborn | integ-41 | mis a jour (+1 de main) = 83bc002
+HeroesOfLiberty-Elrond | integ-25 | mis a jour (+1 de main) = 83bc002
+HeroesOfLiberty-Faramir | zone-effect | mis a jour (+1 de main) = 83bc002
+HeroesOfLiberty-Galadriel | socle-ai | mis a jour (+1 de main) = 517fbca
+HeroesOfLiberty-Glorfindel | ability-columns | mis a jour (+1 de main) = 83bc002
+HeroesOfLiberty-Haldir | integ-58 | mis a jour (+1 de main) = bca81d5
+HeroesOfLiberty-Sauron | integ-70 | mis a jour (+1 de main) = 83bc002
