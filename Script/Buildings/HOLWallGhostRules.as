@@ -1,6 +1,6 @@
 // The wall drag ghost, pure rule (F4 client drawing, HALDIR-1120pc, D839): which cells the player sees while dragging a wall line, and in
 // which colour. One source with the server: the cells are exactly the line HOLWallLine::Validate checks (a refused line still shows its
-// cells, so the player sees where it breaks), the colour is Validate's verdict (all or nothing, as the release will be). The drawing
+// cells, so the player sees where it breaks), the colour is Validate's verdict (D901: the release lays the free cells, the occupied cells stay holes, listed in Skipped and drawn red). The drawing
 // itself (instanced boxes on the ground) is Script\Buildings\HOLWallGhostDrawer.as. Tested in Script\Tests\HOLWallGhostRules_Test.as.
 
 namespace HOLWallGhost
@@ -11,6 +11,8 @@ namespace HOLWallGhost
 		TArray<FIntPoint> Cells;
 		// True: the release lays the whole line (green); false: it lays nothing (red).
 		bool bValid = true;
+		// D901: the occupied cells of the line, left as holes by the release: drawn red inside a valid (green) line.
+		TArray<FIntPoint> Skipped;
 		// The cell that causes the refusal (the start cell when valid): drawn apart in red.
 		FIntPoint BadCell = FIntPoint(0, 0);
 	}
@@ -23,6 +25,7 @@ namespace HOLWallGhost
 		Ghost.Cells = HOLWallLine::DragCells(Start, End, MaxCells);
 		Ghost.bValid = Plan.Refusal == HOLWallLine::EHOLWallLineRefusal::Ok;
 		Ghost.BadCell = Plan.BadCell;
+		Ghost.Skipped = Plan.Skipped;
 		return Ghost;
 	}
 

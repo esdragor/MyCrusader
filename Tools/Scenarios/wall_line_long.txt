@@ -2,7 +2,7 @@
 # branches: main
 # Geste : un Paysan est selectionne (hol.Select.ClickUnit), A (age I) puis D (hol.Select.Grid 0 puis 6 = la touche de la Palissade dans la grille du Paysan), puis un vrai glisser de souris hol.Mouse.Drag (appui, un deplacement par image, relache). Une ligne = une fondation de 5 bois par case (D892), les Paysans les bâtissent ensuite.
 # play.ps1 -Hidden ne pose PAS hol.Camera.TestCursor 0.5 0.5 pour un scenario a hol.Mouse.Drag (SAURON-1123pb) : la souris reelle est lue. Le viewport cache fait 1280x720 : le glisser est en pixels de ce viewport.
-# Camera centree sur (-17400, 0) : le glisser (y ecran 360) tombe sur x monde ~ -17400, a 10 m a l'ouest du MainCentre (-16400, 0), sur du sol libre : une case bloquee refuse TOUTE la ligne (refused (3), Occupied : HOLWallLineRules.as Validate).
+# Camera centree sur (-17400, 0) : le glisser (y ecran 360) tombe sur x monde ~ -17400, a 10 m a l'ouest du MainCentre (-16400, 0), sur du sol libre : une case bloquee est SAUTEE (D901 : les autres cases sont posees, la case occupee reste un trou ; toutes bloquees = refus Occupied : HOLWallLineRules.as Validate).
 waitlog Starting hero of slot 0 spawned at
 hol.AI.ThinkSteps 100000
 hol.Cheat.Resources 20000
@@ -42,5 +42,5 @@ hol.Build.Report
 note 3. APRES le relache : les fondations de la palissade sont posees sur toute la ligne, une par case, 5 bois par case (le Bois a baisse).
 capture wall_line_long_after
 hol.Test.Sanity
-note 4. A toi : trace une ligne en diagonale, puis une ligne qui croise un arbre ou un batiment (la ligne entiere est refusee si une case est bloquee).
+note 4. A toi : trace une ligne en diagonale, puis une ligne qui croise un arbre ou un batiment (la case bloquee est sautee, les autres sont posees ; toute la ligne est refusee seulement si toutes les cases sont bloquees).
 quit
