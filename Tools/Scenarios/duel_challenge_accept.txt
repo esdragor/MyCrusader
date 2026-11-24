@@ -5,8 +5,8 @@ hol.Camera.Focus -15600 400
 frames 10
 hol.Combat.Enabled 0
 note 1. Ton héros et celui de l'IA marchent vers le centre de la carte avec leurs 5 Paysans (environ 25 s, rien à faire). Regarde les unités autour de ton héros : elles ne doivent pas trembler.
-hol.Units.Move -300 300 0
-hol.Units.Move 300 300 1
+hol.Units.Move -250 1050 0
+hol.Units.Move 250 1050 1
 # La caméra suit la marche (les héros partent à -15900, vitesse 697 cm/s) : l'utilisateur voit les unités autour du héros.
 wait 3
 hol.Camera.Focus -13500 400
@@ -24,7 +24,9 @@ hol.Camera.Focus -3000 400
 wait 3
 hol.Camera.Focus -900 400
 wait 3
-hol.Camera.Focus 0 300
+# Cadrage (1124sj) : milieu des deux groupes (0 1050, herbe degagee a droite des arbres), zoom avant pour voir les deux heros ; les Paysans restent en arriere, hors de l'anneau.
+hol.Camera.Focus 0 1050
+hol.Camera.Zoom 2
 frames 10
 capture duel_heroes_face
 note 2. Les deux héros sont face à face au centre, avec leurs Paysans. Appuie sur Entrée quand tu veux : ton héros défie celui de l'IA (console hol.Duel.Challenge 1, comme le fera le bouton). Ce panneau se cache alors pour laisser voir la fenêtre de défi, en haut au centre, il revient quand le duel commence.
@@ -33,7 +35,7 @@ panel hide
 hol.Duel.Challenge 1
 waitlog challenges slot 1 at step
 waitlog made
-hol.Camera.Focus 0 300
+hol.Camera.Focus 0 1050
 hol.Combat.Enabled 1
 wait 0.6
 hol.HUD.Report
@@ -41,8 +43,8 @@ waitlog duel window: Défi envoyé au héros du joueur 2
 capture duel_window
 hol.Duel.ForceAnswer 1 1
 waitlog slot 1 accepts at step
-hol.Camera.Focus 0 300
-wait 2
+hol.Camera.Focus 0 1050
+wait 4
 hol.Select.Report
 waitlog Duel rings: 1 |
 capture duel_started
