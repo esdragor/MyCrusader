@@ -34,6 +34,8 @@ Put $Repo 'PlaceholdersInProgress.md' 'v1'
 Put $Repo 'FooInProgress.md' 'v1'
 Put $Repo 'Docs/SessionEnd.txt' 'v1'
 Put $Repo 'Docs/Archive/OldInProgress.md' 'v1'
+Put $Repo 'Docs/Priorite_X.md' 'v1'
+Put $Repo 'Docs/Autre.md' 'v1'
 Git $Repo add -A | Out-Null
 Git $Repo commit -q -m 'init' | Out-Null
 $Head0 = (Git $Repo rev-parse HEAD | Out-String).Trim()
@@ -113,6 +115,19 @@ Check ($c3 -ne 0 -and (Git $Repo rev-parse HEAD | Out-String).Trim() -eq $HeadO2
 $o4 = & powershell -NoProfile -ExecutionPolicy Bypass -File $Tool -Root $Repo -Only 'EtapeDefini.md' | Out-String
 Check ($LASTEXITCODE -eq 0 -and $o4 -match 'rien' -and (Git $Repo rev-parse HEAD | Out-String).Trim() -eq $HeadO2) '-Only d''un doc inchange: rien a committer, code 0' $o4
 Git $Repo checkout -q -- Auto_Journey_Jour.md | Out-Null
+
+# --- 2026-11-24 (SAURON-1124si) : un survey Docs\Priorite_*.md est un doc de suivi ; -Only doit le commiter, mais pas un autre Docs\*.md
+Put $Repo 'Docs/Priorite_X.md' 'v2'
+Put $Repo 'Docs/Autre.md' 'v2'
+$HeadP = (Git $Repo rev-parse HEAD | Out-String).Trim()
+$o5 = & powershell -NoProfile -ExecutionPolicy Bypass -File $Tool -Root $Repo -Only 'Docs\Priorite_X.md' -Message 'Docs: priorite' | Out-String
+$c5 = $LASTEXITCODE
+$f5 = @(Git $Repo show --name-only --no-renames --format= HEAD | ForEach-Object { "$_".Trim() } | Where-Object { $_ })
+Check ($c5 -eq 0 -and (Git $Repo rev-list --count "$HeadP..HEAD" | Out-String).Trim() -eq '1' -and ($f5 -join '|') -eq 'Docs/Priorite_X.md') '-Only Docs\Priorite_X.md: commite exactement ce survey' "code=$c5 files=$($f5 -join ', ') out=$o5"
+$HeadP2 = (Git $Repo rev-parse HEAD | Out-String).Trim()
+$o6 = & powershell -NoProfile -ExecutionPolicy Bypass -File $Tool -Root $Repo -Only 'Docs/Autre.md' | Out-String
+Check ($LASTEXITCODE -eq 3 -and (Git $Repo rev-parse HEAD | Out-String).Trim() -eq $HeadP2) '-Only Docs/Autre.md (hors Priorite_*): refuse code 3, aucun commit' $o6
+Git $Repo checkout -q -- Docs/Autre.md Docs/Priorite_X.md | Out-Null   # l'etat du depot jetable sert encore aux cas session_gate ci-dessous
 
 # --- Pas un depot git
 $NoGit = Join-Path $Tmp 'plain'
