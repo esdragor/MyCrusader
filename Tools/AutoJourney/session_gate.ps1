@@ -246,7 +246,19 @@ if ($Phase -eq 'Report') {
       Say-StaleBySource $Root $bin 'WARN'
     } else { Say 'WARN' 'binaire ou commit de code introuvable' }
   }
-}
+  # L14-6 (BILAN-1123pm) : un TEST_ROUGE « suppose » (rouge C++ jamais vu a l'execution) sans justification est refuse ; avec justification = WARN.
+  if ($ReportFile) {
+    if (-not (Test-Path $ReportFile)) { Say 'FAIL' "L14-6 : rapport introuvable : $ReportFile" }
+    else {
+      $trLine = @(Get-Content $ReportFile -Encoding UTF8 | Where-Object { $_ -match '^\s*TEST_ROUGE\s*:' }) | Select-Object -First 1
+      if (-not $trLine) { Say 'WARN' 'L14-6 : champ TEST_ROUGE absent du rapport' }
+      elseif ($trLine -match 'suppos') {
+        $trShort = $trLine.Trim(); if ($trShort.Length -gt 140) { $trShort = $trShort.Substring(0, 140) }
+        if ($trLine -match '(justification|raison)\s*:\s*\S.{9,}') { Say 'WARN' "L14-6 : TEST_ROUGE suppose (justifie) : $trShort" }
+        else { Say 'FAIL' "L14-6 : TEST_ROUGE suppose sans justification (ecris 'vu a HH:MM : <compte>' ou 'justification : <raison>') : $trShort" }
+      } else { Say 'PASS' 'L14-6 : TEST_ROUGE non suppose (vu a l execution)' }
+    }
+  }}
 
 if ($Phase -eq 'Merge') {
   # L9-5 : des docs non commites de la copie principale ont bloque l'avance rapide deux fois ; du CODE modifie dans la copie principale ne doit jamais s'y trouver
