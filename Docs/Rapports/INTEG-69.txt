@@ -1,0 +1,16 @@
+integrate : branche integ-69 creee, 0 rouge(s) appliques
+integrate : 2 vert(s) fusionne(s)
+integrate : regen inutile (aucun CSV de table change sans son .uasset dans les verts)
+integrate : build verts ...
+integrate : tests (apres les verts) ...
+integrate : parts net,build ...
+INTEGRATE integ-69 : FAIL (parts) (1019 s, 2026-11-24 12:57)
+  branche+rouges : PASS (0 cherry-pick, 2 s)
+  build rouges : SKIP (pas de rouge)
+  tests rouges : SKIP (pas de rouge)
+  remise a main : SKIP (pas de rouge)
+  merge verts : PASS (2 merge, 8 s) ; regen: inutile
+  build verts : PASS (380 s)
+  tests verts : PASS 2203/2203 tests (230 s)
+  parts net,build : FAIL (399 s)
+  rouges vus : aucun ; sortie complete : Docs\Integrate_integ-69.log
