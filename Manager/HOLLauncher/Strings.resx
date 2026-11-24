@@ -22,4 +22,46 @@
   <data name="SettingsUnreadable" xml:space="preserve"><value>Réglages illisibles, réglages par défaut utilisés : {0}</value></data>
   <data name="SettingsNotSaved" xml:space="preserve"><value>Réglages non enregistrés : {0}</value></data>
   <data name="SettingsBadFolder" xml:space="preserve"><value>Dossier du jeu impossible : {0}</value></data>
+  <data name="InstalledVersion" xml:space="preserve"><value>Version installée : {0}</value></data>
+  <data name="LatestVersion" xml:space="preserve"><value>Dernière version : {0}</value></data>
+  <data name="VersionNotInstalled" xml:space="preserve"><value>pas installé</value></data>
+  <data name="VersionUnknown" xml:space="preserve"><value>inconnue</value></data>
+  <data name="VersionPending" xml:space="preserve"><value>…</value></data>
+  <data name="StatusLoading" xml:space="preserve"><value>Lecture en cours…</value></data>
+  <data name="GameUpToDate" xml:space="preserve"><value>Le jeu est à jour.</value></data>
+  <data name="GameOutdated" xml:space="preserve"><value>Une mise à jour du jeu est disponible ({0}).</value></data>
+  <data name="GameNotInstalled" xml:space="preserve"><value>Le jeu n'est pas installé ; la version {0} est disponible.</value></data>
+  <data name="BadKey" xml:space="preserve"><value>Clé d'accès refusée : le kit n'est pas le bon. Redemandez-le.</value></data>
+  <data name="ServerUnreachable" xml:space="preserve"><value>Serveur injoignable : {0}</value></data>
+  <data name="Error" xml:space="preserve"><value>Erreur : {0}</value></data>
+  <data name="LauncherLine" xml:space="preserve"><value>Lanceur : version {0}</value></data>
+  <data name="LauncherLineUpdate" xml:space="preserve"><value>Lanceur : version {0} (version {1} disponible)</value></data>
+  <data name="UpdateGame" xml:space="preserve"><value>Mettre à jour le jeu</value></data>
+  <data name="InstallGame" xml:space="preserve"><value>Installer le jeu</value></data>
+  <data name="PlayOutdatedConfirmation" xml:space="preserve"><value>Le jeu n'est pas à jour : le serveur refusera cette version. Jouer quand même (en solo) ?</value></data>
+  <data name="PlaySoloWarning" xml:space="preserve"><value>Vous pouvez jouer en solo.</value></data>
+  <data name="ProgressStarting" xml:space="preserve"><value>Préparation de la mise à jour…</value></data>
+  <data name="ProgressFile" xml:space="preserve"><value>Fichier {0}/{1} : {2} — {3} Mo</value></data>
+  <data name="ProgressLauncher" xml:space="preserve"><value>Lanceur version {0} : {1} Mo</value></data>
+  <data name="ProgressLauncherTotal" xml:space="preserve"><value>Lanceur version {0} : {1} / {2} Mo</value></data>
+  <data name="ProgressCancelling" xml:space="preserve"><value>Annulation…</value></data>
+  <data name="GameInstalled" xml:space="preserve"><value>Le jeu est installé (version {0}).</value></data>
+  <data name="GameUpdated" xml:space="preserve"><value>Le jeu est à jour (version {0}).</value></data>
+  <data name="GameUpdateCancelled" xml:space="preserve"><value>Mise à jour annulée ; elle reprendra où elle s'est arrêtée.</value></data>
+  <data name="GameDownloadFailed" xml:space="preserve"><value>Téléchargement impossible : {0}</value></data>
+  <data name="GameUpdateInterrupted" xml:space="preserve"><value>Mise à jour interrompue : {0} ; relancez-la.</value></data>
+  <data name="GameFileInUse" xml:space="preserve"><value>{0} est utilisé : fermez le jeu, puis relancez la mise à jour.</value></data>
+  <data name="NotEnoughSpace" xml:space="preserve"><value>Espace disque insuffisant : il faut {0} Go libres pour la version {1}, le disque de {2} n'en a que {3}. Libérez de la place puis relancez.</value></data>
+  <data name="LauncherUpdated" xml:space="preserve"><value>Le lanceur est passé à la version {0}.</value></data>
+  <data name="LauncherCorrupt" xml:space="preserve"><value>Le lanceur téléchargé est abîmé (SHA-256 {0} au lieu de {1}) ; il a été supprimé, réessayez.</value></data>
+  <data name="LauncherUpdateCancelled" xml:space="preserve"><value>Mise à jour du lanceur annulée ; elle reprendra où elle s'est arrêtée.</value></data>
+  <data name="LauncherDownloadFailed" xml:space="preserve"><value>Téléchargement du lanceur impossible : {0}</value></data>
+  <data name="LauncherUpdateInterrupted" xml:space="preserve"><value>Mise à jour du lanceur interrompue : {0} ; le lanceur actuel est gardé.</value></data>
+  <data name="LauncherRestartByHand" xml:space="preserve"><value>{0} Relancez-le à la main ({1}).</value></data>
+  <data name="LauncherPathUnknown" xml:space="preserve"><value>Erreur : chemin du lanceur inconnu.</value></data>
+  <data name="UpdateCancelled" xml:space="preserve"><value>Mise à jour annulée.</value></data>
+  <data name="GameNotFound" xml:space="preserve"><value>Le jeu est introuvable : {0} n'existe pas.</value></data>
+  <data name="GameStarted" xml:space="preserve"><value>Jeu lancé.</value></data>
+  <data name="GameStartFailed" xml:space="preserve"><value>Le jeu n'a pas pu être lancé : {0}</value></data>
+  <data name="BadCommandLine" xml:space="preserve"><value>Ligne de commande incorrecte : {0}</value></data>
 </root>

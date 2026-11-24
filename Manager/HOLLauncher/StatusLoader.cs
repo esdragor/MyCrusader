@@ -7,8 +7,11 @@ namespace HOLLauncher;
  */
 public static class StatusLoader
 {
-    public static async Task<StatusView> LoadAsync(string gameDir, VersionsClient client, CancellationToken cancel = default)
+    /** L16: the view's texts in the given language (null: the one in use, read once before the request). */
+    public static async Task<StatusView> LoadAsync(string gameDir, VersionsClient client, CancellationToken cancel = default,
+        string? language = null)
     {
+        var lang = Texts.LanguageOr(language);
         ManagerServer server;
         try
         {
@@ -16,9 +19,9 @@ public static class StatusLoader
         }
         catch (InvalidDataException e)
         {
-            return StatusView.Error(e.Message, InstalledVersion.Read(gameDir));
+            return StatusView.Error(e.Message, InstalledVersion.Read(gameDir), language: lang);
         }
         var latest = await client.GetLatestAsync(server.Url, cancel);
-        return StatusView.From(LauncherStatus.Compute(InstalledVersion.Read(gameDir), latest));
+        return StatusView.From(LauncherStatus.Compute(InstalledVersion.Read(gameDir), latest), lang);
     }
 }

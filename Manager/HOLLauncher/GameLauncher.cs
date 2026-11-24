@@ -22,13 +22,17 @@ public static class GameLauncher
         return File.Exists(exe) ? exe : null;
     }
 
-    /** Starts the game without waiting for it; never throws (a missing exe or a refused start is the message). */
-    public static LaunchResult Start(string gameDir, IReadOnlyList<string>? arguments = null)
+    /**
+     * Starts the game without waiting for it; never throws (a missing exe or a refused start is the message, L16: in the
+     * given language, null: the one in use).
+     */
+    public static LaunchResult Start(string gameDir, IReadOnlyList<string>? arguments = null, string? language = null)
     {
+        var lang = Texts.LanguageOr(language);
         var exe = FindExe(gameDir);
         if (exe is null)
         {
-            return new LaunchResult(false, $"Le jeu est introuvable : {Path.Combine(gameDir, ExeName)} n'existe pas.");
+            return new LaunchResult(false, Texts.FormatIn(lang, "GameNotFound", Path.Combine(gameDir, ExeName)));
         }
         var start = new ProcessStartInfo(exe) { UseShellExecute = false, WorkingDirectory = gameDir };
         foreach (var argument in arguments ?? [])
@@ -38,11 +42,11 @@ public static class GameLauncher
         try
         {
             Process.Start(start)?.Dispose();
-            return new LaunchResult(true, "Jeu lancé.");
+            return new LaunchResult(true, Texts.Get("GameStarted", lang));
         }
         catch (Exception e) when (e is Win32Exception or IOException or InvalidOperationException)
         {
-            return new LaunchResult(false, $"Le jeu n'a pas pu être lancé : {e.Message}");
+            return new LaunchResult(false, Texts.FormatIn(lang, "GameStartFailed", e.Message));
         }
     }
 }

@@ -16,7 +16,8 @@ internal static class Program
         }
         catch (ArgumentException e)
         {
-            MessageBox.Show(e.Message, "Heroes of Liberty", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            // L16: the reason stays technical (English), the sentence around it is the player's language.
+            MessageBox.Show(Texts.Format("BadCommandLine", e.Message), "Heroes of Liberty", MessageBoxButtons.OK, MessageBoxIcon.Error);
             return 2;
         }
         if (Environment.ProcessPath is { } exePath)
