@@ -23,7 +23,12 @@ hol.Camera.FocusSlot 1
 frames 30
 capture ai_tower_built
 note 2. La Tour de guet en bois que l'IA a posee et achevee elle-meme, pres de son forum.
-hol.Camera.FocusNear 1800 0 enemy
+# ELROND-1123pa (modele ai_garrison) : les Lanciers ne doivent pas etre au contact avant que la tour soit frappee, sinon la defense de l'IA
+# (DefenceRadius 3000 cm) les envoie contre les 8 Hommes d'armes et ils meurent avant tout appel de garnison. Ils ont servi a declencher la regle
+# (MinSoldiers 4) : on les retire, on frappe la tour, puis 4 Lanciers de l'IA arrivent 4 s apres le premier coup.
+hol.Units.Remove 0 0 200000 1 Spearman
+frames 5
+hol.Camera.FocusNear 2200 0 enemy
 frames 2
 hol.Units.SpawnHere 8 ManAtArms 0 300
 wait 2
@@ -31,6 +36,14 @@ hol.Select.Army
 waitlog Select army: 8 soldiers
 frames 5
 hol.Select.AttackMoveNear 2800 0 enemy
+# les premiers coups tombent ~1,3 s apres l'ordre ; 4 s plus tard les Hommes d'armes avaient quitte la tour pour un Paysan (journal 20:00 : seuil de 5 s depasse)
+wait 1
+hol.Camera.FocusNear 2800 0 enemy
+hol.Camera.Zoom 4
+frames 2
+hol.Units.SpawnHere 4 Spearman 1 300
+waitunits 4
+frames 3
 waitlog Garrison order: slot 1
 waitlog Garrison: slot 1 puts
 hol.Camera.FocusSlot 1
