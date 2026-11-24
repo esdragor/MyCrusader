@@ -11,6 +11,9 @@
 // The cap of a dragged line in cells (D345 a setting; D867: no cap by default, 0 or less = no limit; every cell of the line is a foundation to build).
 const FConsoleVariable CVar_WallMaxLineCells("hol.Wall.MaxLineCells", 0);
 
+// D898 (fine grid, G1): the pitch of a wall line is Tile / SubDivision. 1 = the 4 m grid (default until G10 validates the fine grid), 4 = 1 m sub-cells.
+const FConsoleVariable CVar_WallSubDivision("hol.Wall.SubDivision", 1);
+
 namespace HOLWallLine
 {
 	int SignOf(int Value)
@@ -212,10 +215,22 @@ namespace HOLWallLine
 	}
 
 	// ---- Fine grid (D898, G1, PLAN-GRILLE-FINE-1124.md): the line on a pitch of Tile / SubDivision (4 m tile, SubDivision 4 = 1 m cells). Cells are then sub-cells.
-	// MapMin / MapMax stay in 4 m tiles (the caller does not change). STUB (red first): ignores SubDivision, the 4 m plan.
+	// MapMin / MapMax stay in 4 m tiles (the caller does not change): the last valid tile holds SubDivision sub-cells. SubDivision 1 or less = the 4 m plan, unchanged.
+	// Occupied is read in sub-cells as given (G2 expands the 4 m cells of the buildings); the wall pieces already laid are seen as 4 m cells until G4.
 	FHOLWallLinePlan PlanFromRequestFine(int SenderSlot, FVector Start, FVector End, double Tile, int SubDivision, FIntPoint MapMin, FIntPoint MapMax, const TArray<FIntPoint>& Occupied, int MaxCells)
 	{
-		return PlanFromRequest(SenderSlot, Start, End, Tile, MapMin, MapMax, Occupied, MaxCells);
+		if (SubDivision <= 1)
+			return PlanFromRequest(SenderSlot, Start, End, Tile, MapMin, MapMax, Occupied, MaxCells);
+		const FIntPoint FineMin = FIntPoint(MapMin.X * SubDivision, MapMin.Y * SubDivision);
+		const FIntPoint FineMax = FIntPoint(MapMax.X * SubDivision + SubDivision - 1, MapMax.Y * SubDivision + SubDivision - 1);
+		return PlanFromRequest(SenderSlot, Start, End, Tile / double(SubDivision), FineMin, FineMax, Occupied, MaxCells);
+	}
+
+	// The setting read by the callers (D898, Q-grille-fine-structure.md, not answered): 1 (the default) = the 4 m grid of today, 4 = 1 m sub-cells. The default moves to 4 at G10.
+	int SubDivision()
+	{
+		const int Value = CVar_WallSubDivision.GetInt();
+		return Value < 1 ? 1 : Value;
 	}
 
 	// ---- Drag gesture (F4, client): the cells the drag SHOWS. One source with Validate (it lays exactly these cells when the line is accepted); the C++
