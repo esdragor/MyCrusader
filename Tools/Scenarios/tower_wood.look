@@ -1,9 +1,9 @@
 # <nom de capture> | ce que l'utilisateur doit voir
 tower_wood_before | la Tour de guet en bois du joueur seule au centre de l'ecran, aucun ennemi, aucune fleche
-tower_wood_during | UNE FLECHE EN VOL entre la tour et le Lancier rouge, ~60 px de long (hol.Arrow.Scale 3), prise juste apres la ligne "Combat: building shot" ; ArrowReport juste avant : in flight 1
+tower_wood_during | UNE FLECHE EN VOL entre la tour et le Lancier rouge, ~190 px de long mesures sur le PNG (hol.Arrow.Scale 3, zoom 2 ; en jeu x1 elle est 3 fois plus petite), prise juste apres la ligne "Combat: building shot" ; ArrowReport juste avant : in flight 1
 tower_wood_during2 | 4 images plus tard : la meme fleche en vol (hol.Arrow.SlowMotion 4 : ~1,2 s de vol), plus pres du Lancier
 tower_wood_during3 | 4 images de plus : fleche en vol tout pres du Lancier, ou deja plantee
 tower_wood_during4 | 12 images de plus : fleche en vol ou plantee, un Lancier au contact de la tour
 tower_wood_during5 | 12 images de plus : fleche en vol ou plantee
 tower_wood_during6 | 12 images de plus : fleche en vol ou plantee (Lanciers au contact)
-tower_wood_after | les Lanciers rouges pres de la tour, leur barre de vie entamee apres plusieurs fleches
+tower_wood_after | panneau de construction FERME (plus de Paysan selectionne), 2 Lanciers rouges cadres au centre-gauche de l'ecran a cote de la tour de bois (la 3e hors cadre) ; au moins une petite barre de vie orange (entamee, rouge-orange et non verte) au-dessus d'un Lancier ; pas de panneau au bord gauche autre que celui de la faction
