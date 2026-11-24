@@ -227,7 +227,7 @@ if ($Phase -eq 'Launch') {
 }
 
 if ($Phase -eq 'Report') {
-  $docOk = '^(Auto_Journey.*\.md|EtapeDefini\.md|GDD\.md|[A-Za-z0-9_]+InProgress\.md|Retours/.*)$'
+  $docOk = '^(Auto_Journey.*\.md|EtapeDefini\.md|GDD\.md|[A-Za-z0-9_]+InProgress\.md|Retours/.*|Placeholders[^/]*\.(txt|md)|Docs/SessionEnd\.txt)$'   # + Placeholders / SessionEnd comme $mdocOk de Merge (regle CLAUDE.md)
   $bad = @(git -C $Main status --short 2>$null | Where-Object { $_ -match '^ ?[MADR]' } | ForEach-Object { $_.Substring(3).Trim('"') } | Where-Object { $_ -notmatch $docOk })
   if ($bad.Count -gt 0) { Say 'FAIL' ("la copie principale porte des fichiers modifies hors docs voulus (ecriture au mauvais endroit ?) : " + ($bad -join ', ')) } else { Say 'PASS' 'copie principale : seulement des docs voulus' }
   if (-not $Root -or -not (Test-Path $Root)) { Say 'FAIL' 'donner -Root <worktree de l agent>' }
@@ -254,7 +254,7 @@ if ($Phase -eq 'Report') {
     else {
       $trLine = @(Get-Content $ReportFile -Encoding UTF8 | Where-Object { $_ -match '^\s*TEST_ROUGE\s*:' }) | Select-Object -First 1
       if (-not $trLine) { Say 'WARN' 'L14-6 : champ TEST_ROUGE absent du rapport' }
-      elseif ($trLine -match 'suppos') {
+      elseif (($trLine -replace '(?i)\b(pas|non|jamais|ni)\s+suppos\w*', '') -match '(?i)suppos') {   # « vu a 10:00 (pas suppose) » n'est pas un rouge suppose
         $trShort = $trLine.Trim(); if ($trShort.Length -gt 140) { $trShort = $trShort.Substring(0, 140) }
         if ($trLine -match '(justification|raison)\s*:\s*\S.{9,}') { Say 'WARN' "L14-6 : TEST_ROUGE suppose (justifie) : $trShort" }
         else { Say 'FAIL' "L14-6 : TEST_ROUGE suppose sans justification (ecris 'vu a HH:MM : <compte>' ou 'justification : <raison>') : $trShort" }
