@@ -27,6 +27,10 @@ struct FHOLUnitSelView
 	UPROPERTY(BlueprintReadOnly, Category = "HeroesOfLiberty|Selection")
 	bool bOwn = false;
 
+	/** A2 (S2-c step 9): the morale effects on the first unit, one bit per effect row of the table (FHOLUnitView::EffectMask, received from the server); 0: none. */
+	UPROPERTY(BlueprintReadOnly, Category = "HeroesOfLiberty|Selection")
+	int32 EffectMask = 0;
+
 	UPROPERTY(BlueprintReadOnly, Category = "HeroesOfLiberty|Selection")
 	FLinearColor OwnerColour = FLinearColor::White;
 

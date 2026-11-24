@@ -23,13 +23,22 @@ namespace HOLMoraleView
 		FLinearColor Color = FLinearColor(1.0, 1.0, 1.0, 1.0);
 	}
 
-	// THE one reading point. Until the replicated effects mask exists (sub-step 9, C++ network) this returns an empty view: the pastille stays
-	// hidden. Sub-step 9 fills the view here from FHOLUnitView's mask (the effect ids, the time left on OUR units only, the immunity time).
-	FHOLMoraleView Read(int ShownSlot, bool bOwn, bool bPeasant)
+	// THE one reading point. EffectMask (A2, S2-c step 9) is the mask the server replicated for the shown unit (bit R = the effect of table row R,
+	// FHOLUnitSelView.EffectMask); 0 gives an empty view (the pastille stays hidden). Only the ids travel: no time left, no immunity on the client yet.
+	FHOLMoraleView Read(int ShownSlot, bool bOwn, bool bPeasant, int EffectMask = 0)
 	{
 		FHOLMoraleView View;
 		View.bOwn = bOwn;
 		View.bPeasant = bPeasant;
+		if (EffectMask != 0)
+		{
+			View.bAvailable = true;
+			for (int Id = 0; Id < 16; Id++)
+			{
+				if ((EffectMask & (1 << Id)) != 0)
+					View.State.Effects.Add(HOLMorale::NativeMakeEffectFromRow(Id));
+			}
+		}
 		return View;
 	}
 
@@ -99,7 +108,7 @@ namespace HOLMoraleView
 		{
 			// A worker is a Peasant for the morale (D705: it never reaches the Peasants).
 			const bool bPeasant = Sel.TypeWorkers.Num() > 0 && Sel.TypeWorkers[0];
-			View = Read(Screen.GetShownSlot(), Sel.bOwn, bPeasant);
+			View = Read(Screen.GetShownSlot(), Sel.bOwn, bPeasant, Sel.EffectMask);
 		}
 		const FHOLMoralePastille Drawn = Present(View);
 		if (!Drawn.bShown)

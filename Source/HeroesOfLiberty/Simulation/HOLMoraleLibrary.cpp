@@ -101,6 +101,8 @@ int32 UHOLMoraleLibrary::NativeApply(FHOLMoraleStateData& State, const FHOLMoral
 
 int32 UHOLMoraleLibrary::NativeTotal(const FHOLMoraleStateData& State, const int32 Lever) { return HOLMorale::Total(ToRule(State), Lever); }
 
+int32 UHOLMoraleLibrary::NumPendingOrders() { return UHOLMoraleProcessor::NumPendingOrders(); }
+
 int32 UHOLMoraleLibrary::NativeMultiplier(const FHOLMoraleStateData& State, const int32 Lever) { return HOLMorale::Multiplier(ToRule(State), Lever); }
 
 void UHOLMoraleLibrary::NativeTick(FHOLMoraleStateData& State, const int32 ElapsedMs)
