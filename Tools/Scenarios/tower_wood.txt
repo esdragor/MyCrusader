@@ -10,14 +10,22 @@ hol.Camera.FocusNear 115 -1250
 frames 2
 hol.Units.SpawnHere 5 Peasant 0 150
 waitunits 5
-hol.Build.PlaceNear TowerWood 4000 0
-waitlog Construction: slot 0 placed TowerWood foundation
-hol.Build.Instant 1
+# FARAMIR-1124sa (L14-5) : GESTE REEL de pose. Les 5 Paysans sont selectionnes (hol.Select.Own), puis la touche A (age I, hol.Select.Grid 0) et la touche F de la grille
+# (Tour de guet en bois = Military slot 7 age I, hol.Select.Grid 7), puis un VRAI clic gauche au sol (hol.Select.LeftClickGround : appui et relache par les gestionnaires
+# d'entree) a l'emplacement (MainCentre -16400 0 + 4000 0 = -12400 0), puis un VRAI clic droit sur la fondation (hol.Select.RightClickGround) = ordre de construire.
+# hol.Build.Instant 1 reste une aide d'essai (construction immediate), pas le jeu.
 hol.Camera.FocusNear 4000 0
 frames 5
 hol.Select.Own
 waitlog Selection: 5 units (own)
-hol.Select.OrderNear 4000 0
+hol.Select.Grid 0
+hol.Select.Grid 7
+waitlog Placement: TowerWood
+hol.Build.Instant 1
+hol.Select.LeftClickGround -12400 0
+waitlog Scripted left click at
+waitlog Construction: slot 0 placed TowerWood foundation
+hol.Select.RightClickGround -12400 0
 waitlog Build order of slot 0: 5 units to TowerWood
 waitlog Construction: slot 0 finished TowerWood
 hol.Build.Instant 0
