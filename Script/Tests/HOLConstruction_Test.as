@@ -1448,10 +1448,10 @@ void Test_Construction_MainCentreOneBuilder(FUnitTest& T)
 // D898 G4: a wall piece (the 400 x 400 row footprint, SubDivision 4) snaps on the 1 m sub-grid and is 1 m wide; a 600 x 600 house at SubDivision 1 stays on the 4 m grid.
 void Test_Construction_WallPieceSubGrid(FUnitTest& T)
 {
-	FHOLConstructionBox Piece = HOLConstructionRead::SnapWallPiece(FVector2D(130.0, 70.0), FVector2D(400.0, 400.0), ConTestTile, 4);
+	FHOLConstructionBox Piece = HOLConstructionRead::SnapWallPiece(FVector2D(130.0, 70.0), FVector2D(400.0, 400.0), 400.0, 4);
 	T.AssertTrue(ConNearV(Piece.Min, FVector2D(100.0, 0.0)), "wall piece at (130, 70): lower corner on the 1 m grid, (100, 0)");
 	T.AssertTrue(ConNearV(ConSize(Piece), FVector2D(100.0, 100.0)), "wall piece: 1 m x 1 m");
-	FHOLConstructionBox House = HOLConstructionRead::SnapWallPiece(FVector2D(1234.0, -60.0), FVector2D(600.0, 600.0), ConTestTile, 1);
-	T.AssertTrue(ConNearV(House.Min, FVector2D(900.0, -300.0)), "SubDivision 1: the 4 m grid of today");
+	FHOLConstructionBox House = HOLConstructionRead::SnapWallPiece(FVector2D(1234.0, -60.0), FVector2D(600.0, 600.0), 400.0, 1);
+	T.AssertTrue(ConNearV(House.Min, FVector2D(800.0, -400.0)), "SubDivision 1: the 4 m grid of today");
 	T.AssertTrue(ConNearV(ConSize(House), FVector2D(600.0, 600.0)), "SubDivision 1: size kept");
 }
