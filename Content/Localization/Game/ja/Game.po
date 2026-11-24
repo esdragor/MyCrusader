@@ -4773,3 +4773,10 @@ msgctxt "HOLTitleScreen,Quit"
 msgid "Quitter"
 msgstr "終了"
 
+
+#. Key:	PowerRefusedHonor
+#. SourceLocation:	Script/Factions/HOLFactionPowerServer.as(1)
+#: Script/Factions/HOLFactionPowerServer.as(1)
+msgctxt "HOLFactionSlot,PowerRefusedHonor"
+msgid "Honneur insuffisant"
+msgstr "名誉が足りません"

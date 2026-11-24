@@ -510,6 +510,12 @@ class AHOLRpcPlayer : AHOLScriptRpcPlayerActor
 		if (HasAuthority())
 		{
 			HOLFactionPowerServer::TickPendingCasts();
+			// D911: a refusal found on arrival is told to the player of this actor (the Honor was short).
+			const int NoticeRefusal = HOLFactionPowerServer::TakeNotice(HOLRpcBridge::GetSenderSlot(this));
+			if (NoticeRefusal != 0)
+			{
+				ClientPowerRefused(NoticeRefusal);
+			}
 		}
 		if (bRouteProved && DeferredCommands.Num() > 0 && !HasAuthority())
 		{
@@ -1272,6 +1278,17 @@ for (FString Command : Commands)
 		}
 		Log(n"LogHOLMatch", f"RpcSignal: received by the server: slot {Slot} kind {Kind}");
 		HOLRpcBridge::PostSignal(this, Kind, Location.X, Location.Y, Location.Z);
+	}
+
+	// GLORFINDEL-1124sb (D911): the notice of a refused power, shown to the owner (PLACEHOLDER look: the on-screen message, Placeholders.txt).
+	UFUNCTION(Client)
+	void ClientPowerRefused(int Refusal)
+	{
+		const FString Text = HOLFactionPowerServer::RefusalNoticeTextOf(Refusal).ToString();
+		if (Text.Len() > 0)
+		{
+			Print(Text, 4.0, FLinearColor(1.0, 0.4, 0.2, 1.0));
+		}
 	}
 
 	UFUNCTION(Client)
