@@ -10,6 +10,21 @@ Historique du test du 2026-10-30 : `Docs\Archive\Auto_Journey_Test1_2026-10-30.m
 
 ## Agents du 2026-11-24
 
+### Séance du soir (19:13 -> 23:15, autonome)
+fin et mode demandés à 19:13 (fin 23:15, autonome ; priorité Docs\Priorite_Socle_Factions_2026-11-16.md)
+check-list lue (L27) à 19:22 après le nettoyage 0a (commits e6410e8, 6251cdf, af59bcd ; CLEAN-D : rien) ; veilleur 30 min et alarme 23:00 posés ; sync_worktrees lancé à 19:20
+Plan de lancement ETAPE0-1124s (19:2x, énoncés détaillés Docs\Rapports\ENONCES-1124s.md, vérifié contre git main e6410e8 ET branches : socle-ai seule branche en avance, +11 dont Rage étape 3 8d7eee2 / c02786d ; F3 D900, G4, D894 sont dans main) : socle factions d'abord ; 2 places C++ pour toute la séance : A = Galadriel (moral : étape 8 commandes, étape 9 masque réseau, tirs de tour sans Rate, D893 (2) champ voie), B = Celeborn (grille fine G6, G7, G9, puis clic du Moine S1-d et crochet D909 si besoin) ; builds lancés par la principale / l'intégrateur (L27-3)
+- Galadriel | socle-ai | GALADRIEL-1124sa (E1) | S2-c étape 8 hol.Morale.Clear / Report | C++ oui, place A (Mass) | suite sans C++ : HOLMoraleView::Read, morale_look, Placeholders pastille
+- Glorfindel | à créer socle-power-1124s | GLORFINDEL-1124sa (E2) | D908 contrôle de l'Honneur dès l'ordre ; puis sa = D911 message de refus, sb = D909 crochet en script d'abord | non (script) | suite : aperçu hors portée (marque d'arrêt)
+- Celeborn | à créer walls-fine-1124s | CELEBORN-1124sa (E3) | D898 G6 scénario wall_fine_block + collision à 1 m ; puis G7, G9, clic du Moine | C++ oui, place B (collision / navmesh Mass) | suite sans C++ : D904 coût, G8 fantômes, G10 portes
+- Elrond | à créer monk-seal-1124s | ELROND-1124sa (E4) | S1-d Sceau du Moine : scénario monk_seal (le clic LightSeal n'est pas traité dans le contrôleur) | non (le C++ manquant se signale pour la place B) | suite : E-talents_heal et E-deploy en geste réel, D893 (3) Produces
+- Arwen | à créer loc-ja-1124s | ARWEN-1124sa (E5) | JA Voie A/B du palier N : ja.po est DÉJÀ traduit (e2b5ab4), chercher .locres ou chemin du texte | non | suite : relevé S2-b pont du duel, E-sacred_light_heal geste réel, textes D911 JA/EN
+- Faramir | à créer tower-wood-1124s | FARAMIR-1124sa (E6) | tower_wood passé au geste réel (L14-5), fiche donnée à l'utilisateur ensuite | non | suite : Placeholders.txt relu, budget 200 candidats de la tour, F9 portes (plan)
+- Haldir | à créer integ-71 | HALDIR-1124sa (E7) | intégrateur : passe integ-71 de socle-ai (8d7eee2 + c02786d, liste figée) puis recette RECETTE-1124s | non (build d'intégration par la principale) | suite : integ-72 des branches vertes, ESSAIS-A-JOUER
+- Sauron | à créer gate-launcher-1124s | SAURON-1124sa (E8) | OUTIL session_gate -Phase Close : WARN sans ligne « version launcher » (L27-12) | non | suite : liste des essais internes et rouges non vus, no_window_test rejoué
+Alertes étape 0 : (1) charge machine 71 % CPU à 19:19, 37 Go libres, 1 processus dotnet vivant, aucun éditeur ; (2) les 8 worktrees portent encore des noms de branche launcher-* (= main) : créer une branche par chantier avant le 1er commit ; autre session : la séance launcher de l'après-midi (15:00-18:25) a fini, IN_USE tous libres, aucun commit récent hors main ; (3) Retours : 0 Q à répondre, 4 [À ESSAYER] prêts + tower_wood non donné, 2 BUG (melee-spin-sanity, playtest_hero_army-spin) ; Priorite_Socle_Factions_2026-11-16.md est périmée (17:2x du 2026-11-23)
+
+### Séance du matin (10:38 -> 14:00)
 fin et mode demandés à 10:38 (fin 14:00, autonome ; priorité Docs\Priorite_Socle_Factions_2026-11-16.md)
 check-list lue (L26) à 10:50 après le nettoyage 0a (commits 5d97eb3, 173d31b, 8da775a) ; veilleur 30 min et alarme 13:45 posés
 Plan de lancement (ETAPE0-1124, 10:5x ; énoncés : `Docs\Rapports\ENONCES-1124.md` ; sync_worktrees tournait à 10:43 : lancer Glorfindel et Haldir seulement après `Docs\Rapports\SYNC-1124-debut.txt` complet ; 3 tâches C++ : E5, E6, E7) :
