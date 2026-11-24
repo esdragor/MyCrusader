@@ -33,6 +33,27 @@ namespace
 		State->ProcessEvent(Getter, &Params);
 		return Params.ReturnValue;
 	}
+
+	// The setters are private too (script-only access): the hash test writes the gauge and the cool-down by reflection, as the credit does.
+	void WriteFactionGauge(AHOLGameState* State, const int32 Slot, const int32 Value)
+	{
+		UFunction* Setter = State ? State->FindFunction(TEXT("SetFactionResource")) : nullptr;
+		if (Setter)
+		{
+			struct { int32 Slot; int32 Value; } Params{ Slot, Value };
+			State->ProcessEvent(Setter, &Params);
+		}
+	}
+
+	void WritePowerCooldown(AHOLGameState* State, const int32 Slot, const int32 PowerIndex, const int32 EndMs)
+	{
+		UFunction* Setter = State ? State->FindFunction(TEXT("SetPowerCooldownEndMs")) : nullptr;
+		if (Setter)
+		{
+			struct { int32 Slot; int32 PowerIndex; int32 EndMs; } Params{ Slot, PowerIndex, EndMs };
+			State->ProcessEvent(Setter, &Params);
+		}
+	}
 }
 
 #if WITH_DEV_AUTOMATION_TESTS
@@ -470,6 +491,48 @@ bool FHOLZoneEffectHonorGuardTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+#include "Simulation/HOLSimulationSubsystem.h"
+
+// D894: the Honor gauge and the power cool-downs of the game state have a column of their own in the step hash (HashFactionState): a change of
+// either, in any slot, changes it; the same state hashes the same; the slot of the value matters.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLSimulationFactionHashTest, "HeroesOfLiberty.Simulation.FactionHashColumn", UE::HeroesOfLiberty::Tests::ZoneEffect::Flags)
+
+bool FHOLSimulationFactionHashTest::RunTest(const FString& Parameters)
+{
+	AHOLGameState* State = nullptr;
+	UWorld* World = UWorld::CreateWorld(EWorldType::Game, /*bInformEngineOfWorld*/ false);
+	GEngine->CreateNewWorldContext(EWorldType::Game).SetCurrentWorld(World);
+	World->InitializeActorsForPlay(FURL());
+	State = World->SpawnActor<AHOLGameState>();
+	World->SetGameState(State);
+	const auto CloseWorld = [World]
+	{
+		GEngine->DestroyWorldContext(World);
+		World->DestroyWorld(false);
+	};
+	UHOLSimulationSubsystem* Simulation = World ? World->GetSubsystem<UHOLSimulationSubsystem>() : nullptr;
+	if (!TestNotNull(TEXT("game state"), State) || !TestNotNull(TEXT("simulation subsystem"), Simulation))
+	{
+		CloseWorld();
+		return false;
+	}
+	const uint64 Empty = Simulation->HashFactionState();
+	TestTrue(TEXT("same state, same hash"), Simulation->HashFactionState() == Empty);
+	WriteFactionGauge(State, 0, 7);
+	const uint64 WithGauge = Simulation->HashFactionState();
+	TestTrue(TEXT("a gauge of 7 in slot 0 changes the hash"), WithGauge != Empty);
+	WriteFactionGauge(State, 0, 0);
+	TestTrue(TEXT("the gauge back to 0 gives the first hash again"), Simulation->HashFactionState() == Empty);
+	WriteFactionGauge(State, 1, 7);
+	TestTrue(TEXT("the same gauge in slot 1 is not the same hash as in slot 0"), Simulation->HashFactionState() != WithGauge);
+	WriteFactionGauge(State, 1, 0);
+	WritePowerCooldown(State, 0, 0, 5000);
+	TestTrue(TEXT("a power cool-down in slot 0 changes the hash"), Simulation->HashFactionState() != Empty);
+	WritePowerCooldown(State, 0, 0, 0);
+	TestTrue(TEXT("the cool-down cleared gives the first hash again"), Simulation->HashFactionState() == Empty);
+	CloseWorld();
+	return true;
+}
 // D689/D859, Honor of the Dawn from a kill (S1-e): a Dawn spearman (slot 0) kills a 1 hp enemy (slot 1) within 12 m of a Dawn building, by the real combat processor:
 // the Dawn's gauge gains HonorKillGain per enemy that died (counted from the units really gone, never a constant); the enemy slot earns nothing.
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLZoneEffectKillHonorTest, "HeroesOfLiberty.Zone.KillHonor", UE::HeroesOfLiberty::Tests::ZoneEffect::Flags)
