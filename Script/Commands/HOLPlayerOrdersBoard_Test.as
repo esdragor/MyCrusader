@@ -178,3 +178,31 @@ void Test_PlayerOrdersBoardAgreesBuildingRefusals(FUnitTest& T)
 	T.AssertEquals(0, HOLPlayerOrdersBoard::AnswerGather(ViaBridge, 0, POBUnits(201), 0, false, false, Spot), "gather: 201 refused");
 	T.AssertEquals(0, HOLCommandScript::ConsumeProductions(ViaBridge).Num(), "nothing queued");
 }
+
+// D893 step 1 (script half): the bridge's production answer takes the seat's specialization: a Templars seat that chose the Faith lane (tier 1 option 1) is refused the Iron
+// lane unit (TempleSergeant: 0, nothing queued), gets its own lane unit (InfirmaryBrother) and a unit of no lane (Spearman); the answers come from the whole chain (rule -> queue).
+void Test_PlayerOrdersBoardRefusesLockedLaneUnit(FUnitTest& T)
+{
+	UHOLTestWorldHandle TestWorld = HOLTestWorld::CreateTestWorld();
+	T.AssertTrue(TestWorld != nullptr, "a test world is created");
+	if (TestWorld == nullptr)
+		return;
+	AHOLBuilding Commandery = HOLTestWorld::SpawnBuilding(TestWorld, n"MainCentre", 0, FVector(0.0, 0.0, 0.0), EHOLConstructionState::Finished);
+	T.AssertTrue(Commandery != nullptr, "a finished building to queue at");
+	if (Commandery == nullptr)
+		return;
+	UHOLCommandSubsystem ViaBridge = HOLCommandScript::MakeDetachedForTest();
+	FHOLSpecializationView Faith;
+	Faith.Chosen.Add(-1);
+	Faith.Chosen.Add(1);
+	int Locked = HOLPlayerOrdersBoard::AnswerQueueProductionFor(ViaBridge, 0, Commandery, n"TempleSergeant", Faith, EHOLFaction::Templars);
+	T.AssertEquals(0, Locked, "the Iron lane unit is refused to a seat of the Faith lane");
+	int NumAfterLocked = HOLCommandScript::ConsumeProductions(ViaBridge).Num();
+	T.AssertEquals(0, NumAfterLocked, "nothing queued for the locked lane unit");
+	int Own = HOLPlayerOrdersBoard::AnswerQueueProductionFor(ViaBridge, 0, Commandery, n"InfirmaryBrother", Faith, EHOLFaction::Templars);
+	T.AssertEquals(1, Own, "the Faith lane unit is accepted to a seat of the Faith lane");
+	int Plain = HOLPlayerOrdersBoard::AnswerQueueProductionFor(ViaBridge, 0, Commandery, n"Spearman", Faith, EHOLFaction::Templars);
+	T.AssertEquals(1, Plain, "a unit of no lane is accepted");
+	int NumQueued = HOLCommandScript::ConsumeProductions(ViaBridge).Num();
+	T.AssertEquals(2, NumQueued, "the two accepted productions are queued");
+}
