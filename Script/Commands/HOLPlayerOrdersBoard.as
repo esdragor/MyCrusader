@@ -76,8 +76,7 @@ namespace HOLPlayerOrdersBoard
 	// HOLPlayerOrders::QueueProductionFor. The server's lookup of Spec and Faction (slot -> AHOLPlayerState::GetSpecialization, GetPlayerIndex is not a UFUNCTION) is the C++ lot.
 	int AnswerQueueProductionFor(UHOLCommandSubsystem Commands, int PlayerIndex, AHOLBuilding Building, FName TypeName, const FHOLSpecializationView& Spec, EHOLFaction Faction)
 	{
-		// RED STUB (compiles, ignores Spec and Faction): the correction calls HOLPlayerOrders::QueueProductionFor.
-		return Answer(HOLPlayerOrders::QueueProduction(Commands, PlayerIndex, Building, TypeName));
+		return Answer(HOLPlayerOrders::QueueProductionFor(Commands, PlayerIndex, Building, TypeName, Spec, Faction));
 	}
 
 	int AnswerMarketTrade(UHOLCommandSubsystem Commands, int PlayerIndex, AHOLBuilding Building, int Resource, int Lots, bool bBuy)
