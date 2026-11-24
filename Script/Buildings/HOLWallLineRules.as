@@ -11,6 +11,9 @@
 // The cap of a dragged line in cells (D345 a setting; D867: no cap by default, 0 or less = no limit; every cell of the line is a foundation to build).
 const FConsoleVariable CVar_WallMaxLineCells("hol.Wall.MaxLineCells", 0);
 
+// D898 (fine grid, G1): the pitch of a wall line is Tile / SubDivision. 1 = the 4 m grid (default until G10 validates the fine grid), 4 = 1 m sub-cells.
+const FConsoleVariable CVar_WallSubDivision("hol.Wall.SubDivision", 1);
+
 namespace HOLWallLine
 {
 	int SignOf(int Value)
@@ -211,6 +214,88 @@ namespace HOLWallLine
 		return Validate(FIntPoint(CellOfCoordinate(Start.X, Tile), CellOfCoordinate(Start.Y, Tile)), FIntPoint(CellOfCoordinate(End.X, Tile), CellOfCoordinate(End.Y, Tile)), MapMin, MapMax, Occupied, MaxCells);
 	}
 
+	// D898 G2: every occupied 4 m tile becomes SubDivision x SubDivision sub-cells (tile (2,0) at 4 = the sub-cells 8..11 x 0..3). SubDivision 1 or less: the tiles as they are.
+	TArray<FIntPoint> ExpandOccupied(const TArray<FIntPoint>& OccupiedTiles, int SubDivision)
+	{
+		TArray<FIntPoint> Result;
+		if (SubDivision <= 1)
+		{
+			Result = OccupiedTiles;
+			return Result;
+		}
+		for (int Tile = 0; Tile < OccupiedTiles.Num(); Tile++)
+		{
+			for (int SubX = 0; SubX < SubDivision; SubX++)
+			{
+				for (int SubY = 0; SubY < SubDivision; SubY++)
+					Result.Add(FIntPoint(OccupiedTiles[Tile].X * SubDivision + SubX, OccupiedTiles[Tile].Y * SubDivision + SubY));
+			}
+		}
+		return Result;
+	}
+
+	// D898 G3: the ground footprint of the wall piece of a cell, in world units: [Cell x Pitch, Cell x Pitch + Pitch] on both axes (grid origin at the world origin, as CellToPoint).
+	// The boxes of neighbouring cells touch without overlapping, so the first box of a line starts under the mouse cell and the last one ends under the end cell.
+	struct FHOLWallPieceBox
+	{
+		double MinX = 0.0;
+		double MinY = 0.0;
+		double MaxX = 0.0;
+		double MaxY = 0.0;
+	}
+
+	FHOLWallPieceBox PieceBox(FIntPoint Cell, double Pitch)
+	{
+		FHOLWallPieceBox Box;
+		Box.MinX = Cell.X * Pitch;
+		Box.MinY = Cell.Y * Pitch;
+		Box.MaxX = Box.MinX + Pitch;
+		Box.MaxY = Box.MinY + Pitch;
+		return Box;
+	}
+
+	// ---- Fine grid (D898, G1, PLAN-GRILLE-FINE-1124.md): the line on a pitch of Tile / SubDivision (4 m tile, SubDivision 4 = 1 m cells). Cells are then sub-cells.
+	// MapMin / MapMax stay in 4 m tiles (the caller does not change): the last valid tile holds SubDivision sub-cells. SubDivision 1 or less = the 4 m plan, unchanged.
+	// Occupied comes in 4 m tiles (G2: ExpandOccupied makes sub-cells of them); the wall pieces already laid are seen as 4 m tiles until G4.
+	FHOLWallLinePlan PlanFromRequestFine(int SenderSlot, FVector Start, FVector End, double Tile, int SubDivision, FIntPoint MapMin, FIntPoint MapMax, const TArray<FIntPoint>& Occupied, int MaxCells)
+	{
+		if (SubDivision <= 1)
+			return PlanFromRequest(SenderSlot, Start, End, Tile, MapMin, MapMax, Occupied, MaxCells);
+		const TArray<FIntPoint> FineOccupied = ExpandOccupied(Occupied, SubDivision);
+		const FIntPoint FineMin = FIntPoint(MapMin.X * SubDivision, MapMin.Y * SubDivision);
+		const FIntPoint FineMax = FIntPoint(MapMax.X * SubDivision + SubDivision - 1, MapMax.Y * SubDivision + SubDivision - 1);
+		return PlanFromRequest(SenderSlot, Start, End, Tile / double(SubDivision), FineMin, FineMax, FineOccupied, MaxCells);
+	}
+
+	// The setting read by the callers (D898, Q-grille-fine-structure.md, not answered): 1 (the default) = the 4 m grid of today, 4 = 1 m sub-cells. The default moves to 4 at G10.
+	int SubDivision()
+	{
+		const int Value = CVar_WallSubDivision.GetInt();
+		return Value < 1 ? 1 : Value;
+	}
+
+	// D898 G5 (PLAN-GRILLE-FINE-1124.md): the server orders of a line: one place-building order per cell of the plan, each carrying the Peasants of BuildersForCell and the queue flag of QueueForCell.
+	// The one rule for ServerPlaceWallLine (HOLRpcPlayer.as) at any SubDivision: a cell is a sub-cell when SubDivision > 1.
+	struct FHOLWallOrder
+	{
+		FIntPoint Cell;
+		TArray<uint32> Builders;
+		bool bQueue = false;
+	}
+
+	TArray<FHOLWallOrder> OrdersForLine(const FHOLWallLinePlan& Plan, const TArray<uint32>& UnitIds, bool bQueue)
+	{
+		TArray<FHOLWallOrder> Orders;
+		for (int Index = 0; Index < Plan.Cells.Num(); Index++)
+		{
+			FHOLWallOrder Order;
+			Order.Cell = Plan.Cells[Index];
+			Order.Builders = BuildersForCell(Index, UnitIds);
+			Order.bQueue = QueueForCell(Index, bQueue);
+			Orders.Add(Order);
+		}
+		return Orders;
+	}
 	// ---- Drag gesture (F4, client): the cells the drag SHOWS. One source with Validate (it lays exactly these cells when the line is accepted); the C++
 	// controller reads them through UHOLWallLineBridge (HOLWallLineBridge.as), it holds no copy of the rule. STUB (red first): empty.
 	// The wall types the drag is armed for (S3-b): the rows of BuildingTypes.csv placed as a line. The Palisade is the first; the stone Wall and

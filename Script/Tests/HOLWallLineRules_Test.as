@@ -500,3 +500,122 @@ void Test_WallLineSkippedCellIsNotPaidNorQueued(FUnitTest& T)
 	T.AssertTrue(Plan.Cells[0].X == 1, "the first laid cell is the first free one (the first order, index 0, obeys Shift)");
 	T.AssertFalse(HOLWallLine::QueueForCell(0, false), "the first LAID cell is not queued without Shift");
 }
+// D898 G1 (PLAN-GRILLE-FINE-1124.md): on the fine grid (4 m tile, SubDivision 4 = 1 m pitch) a drag from x = 50 to x = 1650 on one row covers the cells
+// 0..16 of 100: 17 cells (the 4 m grid gives 5), 17 x 5 Wood = 85. The count is computed by the rule from the two world points, the cost by Cost() over the laid cells.
+void Test_WallLineFineGridLineIsSeventeenCells(FUnitTest& T)
+{
+	TArray<FIntPoint> Taken;
+	HOLWallLine::FHOLWallLinePlan Plan = HOLWallLine::PlanFromRequestFine(0, FVector(50.0, 50.0, 0.0), FVector(1650.0, 50.0, 0.0), 400.0, 4, WallLineMapMin, WallLineMapMax, Taken, 1000);
+	T.AssertTrue(Plan.Refusal == HOLWallLine::EHOLWallLineRefusal::Ok, "the fine line is accepted");
+	T.AssertEquals(17, Plan.Cells.Num(), "(50,50) -> (1650,50) at SubDivision 4: 17 cells of 100");
+	if (Plan.Cells.Num() == 17)
+	{
+		T.AssertTrue(Plan.Cells[0].X == 0 && Plan.Cells[0].Y == 0, "the first cell is (0,0)");
+		T.AssertTrue(Plan.Cells[16].X == 16 && Plan.Cells[16].Y == 0, "the last cell is (16,0)");
+		const int Wood = HOLWallLine::Cost(Plan.Cells[0], Plan.Cells[16], 1000, 5);
+		T.AssertEquals(85, Wood, "17 cells at 5 Wood cost 85");
+	}
+	HOLWallLine::FHOLWallLinePlan Coarse = HOLWallLine::PlanFromRequestFine(0, FVector(50.0, 50.0, 0.0), FVector(1650.0, 50.0, 0.0), 400.0, 1, WallLineMapMin, WallLineMapMax, Taken, 1000);
+	T.AssertEquals(5, Coarse.Cells.Num(), "SubDivision 1 keeps today's 4 m grid: 5 cells");
+}
+// D898 G2 (PLAN-GRILLE-FINE-1124.md): the occupied cells come in 4 m tiles (what GetWallLineWorld rends) and the rule expands each into SubDivision x SubDivision sub-cells.
+// The 4 m tile (2,0) on the line of G1 covers the sub-cells 8..11 of the row 0: 4 holes, 13 laid and paid (13 x 5 = 65); every tile of the line taken = Occupied, nothing laid.
+void Test_WallLineFineGridOccupiedTileSkipsItsSubCells(FUnitTest& T)
+{
+	TArray<FIntPoint> Taken;
+	Taken.Add(FIntPoint(2, 0));
+	HOLWallLine::FHOLWallLinePlan Plan = HOLWallLine::PlanFromRequestFine(0, FVector(50.0, 50.0, 0.0), FVector(1650.0, 50.0, 0.0), 400.0, 4, WallLineMapMin, WallLineMapMax, Taken, 1000);
+	T.AssertTrue(Plan.Refusal == HOLWallLine::EHOLWallLineRefusal::Ok, "a hole is not a refusal");
+	T.AssertEquals(4, Plan.Skipped.Num(), "the tile (2,0) holds 4 sub-cells of the row");
+	T.AssertEquals(13, Plan.Cells.Num(), "17 sub-cells, 4 skipped: 13 laid");
+	T.AssertTrue(WallLineHasCell(Plan.Skipped, 8, 0) && WallLineHasCell(Plan.Skipped, 11, 0), "the holes are the sub-cells 8..11");
+	T.AssertFalse(WallLineHasCell(Plan.Cells, 9, 0), "a skipped sub-cell is not laid");
+	T.AssertEquals(65, Plan.Cells.Num() * 5, "13 laid sub-cells at 5 Wood");
+	TArray<FIntPoint> All;
+	for (int X = 0; X <= 4; X++)
+		All.Add(FIntPoint(X, 0));
+	HOLWallLine::FHOLWallLinePlan None = HOLWallLine::PlanFromRequestFine(0, FVector(50.0, 50.0, 0.0), FVector(1650.0, 50.0, 0.0), 400.0, 4, WallLineMapMin, WallLineMapMax, All, 1000);
+	T.AssertTrue(None.Refusal == HOLWallLine::EHOLWallLineRefusal::Occupied, "every sub-cell taken: refused as Occupied");
+	T.AssertEquals(0, None.Cells.Num(), "nothing laid");
+	HOLWallLine::FHOLWallLinePlan Coarse = HOLWallLine::PlanFromRequestFine(0, FVector(50.0, 50.0, 0.0), FVector(1650.0, 50.0, 0.0), 400.0, 1, WallLineMapMin, WallLineMapMax, Taken, 1000);
+	T.AssertEquals(1, Coarse.Skipped.Num(), "SubDivision 1: the tile is one cell, as today");
+}// D898 G3 (PLAN-GRILLE-FINE-1124.md): start and end under the mouse. The piece box of a cell is [Cell x Pitch, Cell x Pitch + Pitch]: on the line of G1 (pitch 400 / 4 = 100) the first box
+// starts at x = 0 and the last ends at x = 1700, neighbours touch without overlapping (the widths add up to 17 x 100). The diagonal (50,50) -> (850,850) is 9 cells ending at (8,8).
+// The snap to the 8 directions is kept on the fine grid: a drag at 20 degrees stays on the axis, a drag at 30 degrees goes to the diagonal (nearest of the 8 directions).
+void Test_WallLineFineGridStartAndEndBoxesTouchTheMouseCells(FUnitTest& T)
+{
+	TArray<FIntPoint> Taken;
+	const double Pitch = 400.0 / 4.0;
+	HOLWallLine::FHOLWallLinePlan Plan = HOLWallLine::PlanFromRequestFine(0, FVector(50.0, 50.0, 0.0), FVector(1650.0, 50.0, 0.0), 400.0, 4, WallLineMapMin, WallLineMapMax, Taken, 1000);
+	T.AssertEquals(17, Plan.Cells.Num(), "the line of G1: 17 cells");
+	if (Plan.Cells.Num() == 17)
+	{
+		HOLWallLine::FHOLWallPieceBox First = HOLWallLine::PieceBox(Plan.Cells[0], Pitch);
+		HOLWallLine::FHOLWallPieceBox Last = HOLWallLine::PieceBox(Plan.Cells[16], Pitch);
+		T.AssertEquals(0, int(First.MinX), "the first box starts at x = 0");
+		T.AssertEquals(1700, int(Last.MaxX), "the last box ends at x = 1700");
+		double Total = 0.0;
+		bool bTouching = true;
+		for (int Index = 0; Index < 17; Index++)
+		{
+			HOLWallLine::FHOLWallPieceBox Box = HOLWallLine::PieceBox(Plan.Cells[Index], Pitch);
+			Total += Box.MaxX - Box.MinX;
+			if (Index > 0)
+			{
+				HOLWallLine::FHOLWallPieceBox Before = HOLWallLine::PieceBox(Plan.Cells[Index - 1], Pitch);
+				if (Before.MaxX != Box.MinX)
+					bTouching = false;
+			}
+		}
+		T.AssertEquals(1700, int(Total), "the widths add up to 17 x 100");
+		T.AssertTrue(bTouching, "each box starts where the previous one ends: no gap, no overlap");
+		T.AssertEquals(100, int(First.MaxY - First.MinY), "a piece is 100 deep");
+	}
+	HOLWallLine::FHOLWallLinePlan Diagonal = HOLWallLine::PlanFromRequestFine(0, FVector(50.0, 50.0, 0.0), FVector(850.0, 850.0, 0.0), 400.0, 4, WallLineMapMin, WallLineMapMax, Taken, 1000);
+	T.AssertEquals(9, Diagonal.Cells.Num(), "(50,50) -> (850,850): 9 cells");
+	if (Diagonal.Cells.Num() == 9)
+	{
+		T.AssertTrue(Diagonal.Cells[8].X == 8 && Diagonal.Cells[8].Y == 8, "the last cell is (8,8)");
+		HOLWallLine::FHOLWallPieceBox End = HOLWallLine::PieceBox(Diagonal.Cells[8], Pitch);
+		T.AssertTrue(End.MinX == 800.0 && End.MaxX == 900.0 && End.MinY == 800.0 && End.MaxY == 900.0, "the end box is the 100 x 100 square of the cell under the mouse");
+	}
+	HOLWallLine::FHOLWallLinePlan Shallow = HOLWallLine::PlanFromRequestFine(0, FVector(50.0, 50.0, 0.0), FVector(1459.0, 563.0, 0.0), 400.0, 4, WallLineMapMin, WallLineMapMax, Taken, 1000);
+	bool bOnAxis = Shallow.Cells.Num() > 1;
+	for (int Index = 0; Index < Shallow.Cells.Num(); Index++)
+		if (Shallow.Cells[Index].Y != 0)
+			bOnAxis = false;
+	T.AssertTrue(bOnAxis, "a drag at 20 degrees snaps to the axis");
+	HOLWallLine::FHOLWallLinePlan Steep = HOLWallLine::PlanFromRequestFine(0, FVector(50.0, 50.0, 0.0), FVector(1349.0, 800.0, 0.0), 400.0, 4, WallLineMapMin, WallLineMapMax, Taken, 1000);
+	bool bOnDiagonal = Steep.Cells.Num() > 1;
+	for (int Index = 0; Index < Steep.Cells.Num(); Index++)
+		if (Steep.Cells[Index].X != Steep.Cells[Index].Y)
+			bOnDiagonal = false;
+	T.AssertTrue(bOnDiagonal, "a drag at 30 degrees snaps to the diagonal, one of the 8 directions");
+}
+// D898 G5 (PLAN-GRILLE-FINE-1124.md): the server lays one piece per sub-cell and every selected Peasant gets every piece. A line of 13 sub-cells (pitch 100) with 2 Peasants = 13 x 2 = 26 builder orders;
+// the first piece obeys the Shift of the player (not queued), the next ones queue behind it. The plan is the one the server computes (PlanFromRequestFine at SubDivision 4), the count is the code's.
+void Test_WallLineFineGridOrdersOnePiecePerSubCellForEveryPeasant(FUnitTest& T)
+{
+	TArray<FIntPoint> Taken;
+	TArray<uint32> Peasants;
+	Peasants.Add(7);
+	Peasants.Add(8);
+	HOLWallLine::FHOLWallLinePlan Plan = HOLWallLine::PlanFromRequestFine(0, FVector(50.0, 50.0, 0.0), FVector(1250.0, 50.0, 0.0), 400.0, 4, WallLineMapMin, WallLineMapMax, Taken, 1000);
+	T.AssertEquals(13, Plan.Cells.Num(), "(50,50) -> (1250,50) at 1 m sub-cells: 13 cells");
+	TArray<HOLWallLine::FHOLWallOrder> Orders = HOLWallLine::OrdersForLine(Plan, Peasants, false);
+	T.AssertEquals(13, Orders.Num(), "one order per sub-cell");
+	int BuilderOrders = 0;
+	bool bQueueRule = Orders.Num() > 0;
+	for (int Index = 0; Index < Orders.Num(); Index++)
+	{
+		BuilderOrders += Orders[Index].Builders.Num();
+		if (Orders[Index].bQueue != HOLWallLine::QueueForCell(Index, false))
+			bQueueRule = false;
+	}
+	T.AssertEquals(26, BuilderOrders, "13 pieces x 2 Peasants = 26 builder orders");
+	T.AssertTrue(bQueueRule, "the first piece is not queued, the next ones queue behind it");
+	if (Orders.Num() == 13)
+		T.AssertTrue(Orders[12].Cell.X == 12 && Orders[12].Cell.Y == 0, "the last order is the last sub-cell of the drag");
+	TArray<HOLWallLine::FHOLWallOrder> Shifted = HOLWallLine::OrdersForLine(Plan, Peasants, true);
+	T.AssertTrue(Shifted.Num() > 0 && Shifted[0].bQueue, "Shift held: the first piece queues too");
+}
