@@ -480,9 +480,14 @@ private:
 	/** Powers a faction slot can hold (the size of one slot's block of PowerCooldownEndMs). */
 	static constexpr int32 MaxFactionPowers = 8;
 
-	/** The match time (ms) at which the slot's power PowerIndex is ready again, as this machine has it; 0 (ready) for a slot or power out of the table. */
+public:
+	/**
+	 * The match time (ms) at which the slot's power PowerIndex is ready again, as this machine has it; 0 (ready) for a slot or power out of the table.
+	 * Public (L20-2): the HUD's Seal of Light cell (HOLGameScreen LightSeal) reads it from the UI module; the setter stays private (authority, script).
+	 */
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Faction")
 	int32 GetPowerCooldownEndMs(int32 Slot, int32 PowerIndex) const;
+private:
 	/** Authority only (no effect on a client): stores the end time of the slot's power cooldown; no effect out of the table. */
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Faction")
 	void SetPowerCooldownEndMs(int32 Slot, int32 PowerIndex, int32 EndMs);
