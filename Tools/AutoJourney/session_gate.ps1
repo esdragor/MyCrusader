@@ -26,6 +26,8 @@ param(
   [string]$RetoursDir = '',                # Close, Essay : dossier des Retours\ (defaut : la copie principale)
   [string]$JourFile = '',                  # Launch, Close (L15-1) : Auto_Journey_Jour.md a lire (defaut <copie principale>\Auto_Journey_Jour.md) ; sert aux tests
   [string]$EtapeFile = '',                 # Close (L90 / L12-6) : EtapeDefini.md a relire (defaut <copie principale>\EtapeDefini.md) ; son dossier est le depot git qui porte main
+  [string]$MainDir = '',                   # Report : copie principale a controler (defaut = la vraie ; sert aux tests de gate_test)
+  [string]$ReportFile = '',               # Report (L14-6) : rapport de l'agent (Docs\Rapports\<AGENT>.md) dont le champ TEST_ROUGE est controle
   [string]$Essay = '',                   # Essay : nom de l'essai (E-<nom>.md de Retours\) dont les branches citees doivent etre dans le worktree ; defaut : tous les E-*.md ouverts
   [double]$MinFreeVirtualGB = 8,           # Launch (L12-1c) : memoire virtuelle libre sous ce seuil = WARN (2026-11-12 : builds et jeux qui echouent faute de memoire)
   [string]$EngineRoot = 'C:\UE\UE_5.8_HOL', # Launch (L12-1c) : un cl.exe dont aucun ancetre ne cite ce moteur = compilation d'un AUTRE moteur (ProjectShiva sur AS_3...) = WARN
@@ -37,6 +39,7 @@ param(
 $ErrorActionPreference = 'Continue'
 $Branches = @($Branches | ForEach-Object { $_ -split ',' } | Where-Object { $_ })   # -File passe "a,b" comme une seule chaine
 $Main = 'C:\Users\baudo\Documents\MyCrusader'
+if ($MainDir) { $Main = $MainDir }
 $Exclude = @($Exclude | ForEach-Object { $_ -split ',' } | Where-Object { $_ } | ForEach-Object { $_ -replace '^HeroesOfLiberty-', '' })
 if (-not $RetoursDir) { $RetoursDir = "$Main\Retours" }
 if (-not $JourFile) { $JourFile = "$Main\Auto_Journey_Jour.md" }
@@ -224,7 +227,7 @@ if ($Phase -eq 'Launch') {
 }
 
 if ($Phase -eq 'Report') {
-  $docOk = '^(Auto_Journey.*\.md|EtapeDefini\.md|GDD\.md|[A-Za-z0-9_]+InProgress\.md|Retours/.*)$'
+  $docOk = '^(Auto_Journey.*\.md|EtapeDefini\.md|GDD\.md|[A-Za-z0-9_]+InProgress\.md|Retours/.*|Placeholders[^/]*\.(txt|md)|Docs/SessionEnd\.txt)$'   # + Placeholders / SessionEnd comme $mdocOk de Merge (regle CLAUDE.md)
   $bad = @(git -C $Main status --short 2>$null | Where-Object { $_ -match '^ ?[MADR]' } | ForEach-Object { $_.Substring(3).Trim('"') } | Where-Object { $_ -notmatch $docOk })
   if ($bad.Count -gt 0) { Say 'FAIL' ("la copie principale porte des fichiers modifies hors docs voulus (ecriture au mauvais endroit ?) : " + ($bad -join ', ')) } else { Say 'PASS' 'copie principale : seulement des docs voulus' }
   if (-not $Root -or -not (Test-Path $Root)) { Say 'FAIL' 'donner -Root <worktree de l agent>' }
@@ -245,7 +248,19 @@ if ($Phase -eq 'Report') {
       Say-StaleBySource $Root $bin 'WARN'
     } else { Say 'WARN' 'binaire ou commit de code introuvable' }
   }
-}
+  # L14-6 (BILAN-1123pm) : un TEST_ROUGE « suppose » (rouge C++ jamais vu a l'execution) sans justification est refuse ; avec justification = WARN.
+  if ($ReportFile) {
+    if (-not (Test-Path $ReportFile)) { Say 'FAIL' "L14-6 : rapport introuvable : $ReportFile" }
+    else {
+      $trLine = @(Get-Content $ReportFile -Encoding UTF8 | Where-Object { $_ -match '^\s*TEST_ROUGE\s*:' }) | Select-Object -First 1
+      if (-not $trLine) { Say 'WARN' 'L14-6 : champ TEST_ROUGE absent du rapport' }
+      elseif (($trLine -replace '(?i)\b(pas|non|jamais|ni)\s+suppos\w*', '') -match '(?i)suppos') {   # « vu a 10:00 (pas suppose) » n'est pas un rouge suppose
+        $trShort = $trLine.Trim(); if ($trShort.Length -gt 140) { $trShort = $trShort.Substring(0, 140) }
+        if ($trLine -match '(justification|raison)\s*:\s*\S.{9,}') { Say 'WARN' "L14-6 : TEST_ROUGE suppose (justifie) : $trShort" }
+        else { Say 'FAIL' "L14-6 : TEST_ROUGE suppose sans justification (ecris 'vu a HH:MM : <compte>' ou 'justification : <raison>') : $trShort" }
+      } else { Say 'PASS' 'L14-6 : TEST_ROUGE non suppose (vu a l execution)' }
+    }
+  }}
 
 if ($Phase -eq 'Merge') {
   # L9-5 : des docs non commites de la copie principale ont bloque l'avance rapide deux fois ; du CODE modifie dans la copie principale ne doit jamais s'y trouver
@@ -486,6 +501,7 @@ if ($Phase -eq 'Close') {
   $ru = @(git -C $Main status --short --untracked-files=all -- Retours 2>$null | Where-Object { $_ -match '^\?\? ' } | ForEach-Object { $_.Substring(3) })
   if ($ru.Count -gt 0) { Say 'WARN' ("copie principale : {0} fichier(s) de Retours\ non suivi(s) par git (a commiter ou supprimer) : {1}" -f $ru.Count, (($ru | Select-Object -First 8) -join ', ')) } else { Say 'PASS' 'copie principale : aucun fichier non suivi dans Retours\' }
   # L7-6 : chaque E-*.md ouvert ([... ESSAYER]) porte GESTE: reel|interne et SON: entendu|non entendu
+  $gInterne = @()
   foreach ($e in @(Get-ChildItem $RetoursDir -Filter 'E-*.md' -ErrorAction SilentlyContinue)) {
     $txt = Get-Content $e.FullName -Raw -Encoding UTF8
     if ($txt -notmatch '(?m)^#.*ESSAYER\]') { continue }
@@ -494,7 +510,10 @@ if ($Phase -eq 'Close') {
     if ($txt -notmatch '(?m)^\s*\**GESTE\s*:\**\s*(r.el|interne)') { $miss += 'GESTE: reel|interne' }
     if ($txt -notmatch '(?m)^\s*\**SON\s*:\**\s*(entendu|non entendu|sans objet)') { $miss += 'SON: entendu|non entendu|sans objet' }
     if ($miss.Count -gt 0) { Say 'WARN' ("Retours\{0} : ligne(s) de statut manquante(s) : {1} (gabarit Tools\AutoJourney\E_template.md)" -f $e.Name, ($miss -join ' ; ')) }
+    if ($txt -match '(?m)^\s*\**GESTE\s*:\**\s*interne') { $gInterne += $e.Name }
   }
+  # L14-5 (SAURON-1124sc) : les essais ouverts au GESTE interne (commande hol.*) ne comptent pas comme essayes au geste reel : le bilan les liste
+  if ($gInterne.Count -gt 0) { Say 'WARN' ("L14-5 : {0} essai(s) [A ESSAYER] au geste interne (LOGIQUE SEULEMENT tant que GESTE: interne ; rejouer au clic reel, modele neutrals_qground / hol.Mouse.Click) : {1}" -f $gInterne.Count, ($gInterne -join ', ')) }
   $ret = @(Get-ChildItem "$Main\Retours" -Filter '*.md' -ErrorAction SilentlyContinue | Where-Object { (Get-Content $_.FullName -Raw) -match '(?m)^\s*\**R[ée]ponse[^:\n]*:\**\s*\S' })
   if ($ret.Count -gt 0) { Say 'WARN' ("reponses de l'utilisateur encore dans Retours\ (a reporter dans le chantier puis supprimer) : " + (($ret | ForEach-Object { $_.Name }) -join ', ')) } else { Say 'PASS' 'aucune reponse non traitee dans Retours\' }
   $jour = Get-Content $JourFile -Raw -ErrorAction SilentlyContinue

@@ -177,17 +177,54 @@ Check ($ess -match '(?m)^FAIL .*(binaire|DLL).*(ANCIEN|perim).*Source') 'essay: 
 $rep2 = & powershell -NoProfile -ExecutionPolicy Bypass -File $Gate -Phase Report -Root $Repo | Out-String
 Check (-not ($rep2 -match '(?m)^WARN .*(binaire|DLL).*(ANCIEN|perim)') -and $rep2 -match '(?m)^PASS .*binaire') 'report: binaire plus recent que le fichier -> PASS' $rep2
 
+# --- L14-6 (BILAN-1123pm) : rouges C++ jamais vus. -Phase Report -ReportFile <rapport> refuse un TEST_ROUGE « suppose » sans justification.
+$RepSup = Join-Path $Tmp 'rapport-suppose.md'
+Set-Content -Path $RepSup -Encoding UTF8 -Value "TEST_ROUGE: suppose rouge (commit abc1234) + assertit l'effet : oui   TEST_ROUGE_SEPARE: oui"
+$rsup = & powershell -NoProfile -ExecutionPolicy Bypass -File $Gate -Phase Report -Root $Repo -ReportFile $RepSup | Out-String
+Check ($rsup -match '(?m)^FAIL .*L14-6.*suppos') 'L14-6 report: TEST_ROUGE suppose sans justification -> FAIL' $rsup
+$RepJus = Join-Path $Tmp 'rapport-suppose-justifie.md'
+Set-Content -Path $RepJus -Encoding UTF8 -Value "TEST_ROUGE: suppose rouge (commit abc1234) ; justification : lot C++ non compile, le rouge se verra au build de la session principale"
+$rjus = & powershell -NoProfile -ExecutionPolicy Bypass -File $Gate -Phase Report -Root $Repo -ReportFile $RepJus | Out-String
+Check ($rjus -match '(?m)^WARN .*L14-6.*suppos' -and -not ($rjus -match '(?m)^FAIL .*L14-6')) 'L14-6 report: TEST_ROUGE suppose AVEC justification -> WARN, pas FAIL' $rjus
+$RepVu = Join-Path $Tmp 'rapport-vu.md'
+Set-Content -Path $RepVu -Encoding UTF8 -Value "TEST_ROUGE: vu a 19:41 : 1410/1419 (commit abc1234) + assertit l'effet : oui"
+$rvu = & powershell -NoProfile -ExecutionPolicy Bypass -File $Gate -Phase Report -Root $Repo -ReportFile $RepVu | Out-String
+Check ($rvu -match '(?m)^PASS .*L14-6' -and -not ($rvu -match '(?m)^(FAIL|WARN) .*L14-6')) 'L14-6 report: TEST_ROUGE vu a l execution -> PASS' $rvu
+$RepNone = Join-Path $Tmp 'rapport-introuvable.md'
+$rnone = & powershell -NoProfile -ExecutionPolicy Bypass -File $Gate -Phase Report -Root $Repo -ReportFile $RepNone | Out-String
+Check ($rnone -match '(?m)^FAIL .*L14-6.*introuvable') 'L14-6 report: rapport introuvable -> FAIL' $rnone
+# --- SAURON-1124sd anomalies : (1) Report refusait Placeholders.txt / Docs\SessionEnd.txt modifies dans la copie principale (Merge les accepte) ; (2) « vu a 10:00 (pas suppose) » donnait un faux FAIL.
+$FakeMain = Join-Path $Tmp 'FakeMain'
+New-Item -ItemType Directory -Path (Join-Path $FakeMain 'Docs') -Force | Out-Null
+git -C $FakeMain init -q 2>$null | Out-Null
+Set-Content -Path (Join-Path $FakeMain 'Placeholders.txt') -Value 'a'
+Set-Content -Path (Join-Path $FakeMain 'Docs\SessionEnd.txt') -Value 'a'
+git -C $FakeMain add . 2>$null | Out-Null
+git -C $FakeMain -c user.name=t -c user.email=t@t commit -q -m docs 2>$null | Out-Null
+Set-Content -Path (Join-Path $FakeMain 'Placeholders.txt') -Value 'b'
+Set-Content -Path (Join-Path $FakeMain 'Docs\SessionEnd.txt') -Value 'b'
+$rdoc = & powershell -NoProfile -ExecutionPolicy Bypass -File $Gate -Phase Report -Root $Repo -MainDir $FakeMain | Out-String
+Check ($rdoc -match '(?m)^PASS .*copie principale : seulement des docs voulus' -and -not ($rdoc -match '(?m)^FAIL .*copie principale')) 'report: Placeholders.txt + Docs\SessionEnd.txt modifies dans la copie principale -> PASS (comme Merge)' $rdoc
+$RepNeg = Join-Path $Tmp 'rapport-vu-pas-suppose.md'
+Set-Content -Path $RepNeg -Encoding UTF8 -Value "TEST_ROUGE: vu a 10:00 (pas suppose) : 3 FAIL sur 3 (commit abc1234) + assertit l'effet : oui"
+$rneg = & powershell -NoProfile -ExecutionPolicy Bypass -File $Gate -Phase Report -Root $Repo -ReportFile $RepNeg | Out-String
+Check ($rneg -match '(?m)^PASS .*L14-6' -and -not ($rneg -match '(?m)^(FAIL|WARN) .*L14-6')) 'L14-6 report: « vu a 10:00 (pas suppose) » -> PASS, pas de faux FAIL' $rneg
+
 # --- L7-8 + L7-6 : Close -Exclude et ligne GESTE / SON des E-*.md
 $Ret = Join-Path $Tmp 'Retours'
 New-Item -ItemType Directory -Path $Ret | Out-Null
 Set-Content -Path (Join-Path $Ret 'E-bad.md') -Encoding UTF8 -Value "# [$A ESSAYER] E-bad : un essai sans statut`nSTATUT : VU $A L'$($E)CRAN"
 Set-Content -Path (Join-Path $Ret 'E-good.md') -Encoding UTF8 -Value "# [$A ESSAYER] E-good : un essai complet`nSTATUT : VU $A L'$($E)CRAN`nGESTE: r$($E)el`nSON: non entendu"
 Set-Content -Path (Join-Path $Ret 'E-done.md') -Encoding UTF8 -Value "# [OK] E-done : essai deja valide`nSTATUT : VU"
+Set-Content -Path (Join-Path $Ret 'E-interne.md') -Encoding UTF8 -Value "# [$A ESSAYER] E-interne : essai au geste interne`nSTATUT : LOGIQUE SEULEMENT`nGESTE: interne`nSON: non entendu"
 $close = & powershell -NoProfile -ExecutionPolicy Bypass -File $Gate -Phase Close -Exclude Faramir -RetoursDir $Ret | Out-String
 Check (-not ($close -match '(?m)^(PASS|FAIL)\s+HeroesOfLiberty-Faramir ')) 'close -Exclude Faramir: aucun controle PASS/FAIL pour ce worktree' $close
 Check ($close -match '(?m)^WARN\s+HeroesOfLiberty-Faramir : exclu') 'close -Exclude: une ligne dit que Faramir est exclu' $close
 Check ($close -match '(?m)^WARN .*E-bad\.md.*GESTE' -and $close -match 'SON') 'close: E-bad.md signale (GESTE et SON manquants)' $close
 Check (-not ($close -match 'E-good\.md.*(GESTE|SON)') -and -not ($close -match 'E-done\.md.*(GESTE|SON)')) 'close: E-good.md complet et E-done.md clos ne sont pas signales' $close
+# SAURON-1124sc, L14-5 : un essai [A ESSAYER] au GESTE interne est liste (WARN) ; un essai au geste reel, un essai clos et un essai sans ligne GESTE n'y figurent pas
+Check ($close -match '(?m)^WARN .*L14-5.*geste interne.*E-interne\.md') 'L14-5 close: E-interne.md (GESTE: interne) liste dans un WARN geste interne' $close
+Check (-not ($close -match '(?m)^WARN .*L14-5[^\r\n]*(E-good|E-done|E-bad)\.md')) 'L14-5 close: E-good (reel), E-done (clos), E-bad (sans GESTE) ne sont pas listes' $close
 $closeAll = & powershell -NoProfile -ExecutionPolicy Bypass -File $Gate -Phase Close -RetoursDir $Ret | Out-String
 Check ($closeAll -match '(?m)^(PASS|FAIL)\s+HeroesOfLiberty-Faramir ' -and -not ($closeAll -match 'Faramir : exclu')) 'close sans -Exclude: Faramir est controle' $closeAll
 
@@ -287,13 +324,16 @@ Check ($r -match 'tool_uses') 'agent_rules: tool_uses releve par la session prin
 Check ($r -match 'PROCESSUS_DETACHES') 'agent_rules: champ PROCESSUS_DETACHES'
 Check ($r -match 'GESTE' -and $r -match 'SON') 'agent_rules: statuts GESTE et SON'
 Check ($r -match 'stray_processes') 'agent_rules: stray_processes.ps1 cite'
-# L13-2 / L88 / L89 : marqueur CPP du IN_USE.txt, LAUNCHCHECK_DEBUT, TESTS_TAUTOLOGIQUES dans agent_rules.md ET dans le modele d'enonce d'Auto_Journey.md
+# L13-2 / L88 / L89 : marqueur CPP du IN_USE.txt, LAUNCHCHECK_DEBUT, TESTS_TAUTOLOGIQUES dans agent_rules.md (et dans brief_commun.md, plus bas : le modele d'enonce d'Auto_Journey.md n'en porte plus, L15-10)
 $ajText = Get-Content (Join-Path (Split-Path -Parent (Split-Path -Parent $Here)) 'Auto_Journey.md') -Raw -Encoding UTF8
 $ajModel = if ($ajText -match '(?s)## Mod.le d..nonc. d.un agent \(.*?```(.*?)```') { $Matches[1] } else { '' }
 foreach ($k in 'CPP: oui', 'LAUNCHCHECK_DEBUT', 'TESTS_TAUTOLOGIQUES') {
   Check ($r.Contains($k)) "agent_rules: cite '$k'"
-  Check ($ajModel.Contains($k)) "Auto_Journey.md modele d'enonce: cite '$k'"
 }
+# 2026-11-24 (L15-10, SAURON-1124sg) : le modele d'enonce ne recopie plus le bloc commun, il renvoie a brief_commun.md qui porte ces champs
+$briefText = Get-Content (Join-Path $Here 'brief_commun.md') -Raw -Encoding UTF8
+Check ($ajModel.Contains('brief_commun.md')) 'Auto_Journey.md modele d''enonce: renvoie a brief_commun.md (L15-10)'
+foreach ($k in 'CPP: oui', 'LAUNCHCHECK_DEBUT', 'TESTS_TAUTOLOGIQUES') { Check ($briefText.Contains($k)) "brief_commun.md: cite '$k'" }
 Check ($ajText -match 'L12-6') 'Auto_Journey.md: fusion = index de Retours, LISEZ-MOI et EtapeDefini dans le meme commit (L12-6)'
 
 # --- L90 (L12-6) : Close WARN quand EtapeDefini.md dit 'pas dans main' pour une branche (ou des commits cites) deja dans main
