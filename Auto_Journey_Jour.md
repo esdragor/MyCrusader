@@ -148,6 +148,129 @@ Plan de lancement (ETAPE0-1124, 10:5x ; énoncés : `Docs\Rapports\ENONCES-1124.
 | ANOMALIE | - | integ-68 | 12:39 integ-68 : tests verts 0/0 (Global variable 'PendingCasts' must be const, HOLFactionPowerServer.as:67) | - | 12:39 | 12:45 | F3 global Angelscript de GLORFINDEL-1124e ; corrigé par GLORFINDEL-1124f (849c057) |
 | ANOMALIE | - | integ-69 | 12:57 integ-69 : tests 2203/2203 PASS, parts net,build FAIL (399 s) | - | 12:57 | - | net vide sous charge ; QC-NET-integ69.txt (net, netsig3) relancé sur machine calme, en vérification à 13:00 |
 
+## Bilan du 2026-11-24 soir
+
+- BROUILLON ELROND-1124sk (21:4x), à relire et compléter par la session principale avant la fin (23:15) ; les chiffres viennent de `git log main`, de `Docs\Rapports\INTEG-7*.txt`, de `Retours\` et du tableau du soir ci-dessus ; ce qui n'a pas pu être relevé est écrit « à compléter ».
+- Séance autonome du soir 19:13 -> 23:15, session principale + agents Sonnet 5.5 (E1 à E8, CLEAN, rapports 1124sa à 1124sl), priorité socle des factions (`Docs\Priorite_Socle_Factions_2026-11-16.md`), 2 places C++ pour toute la séance. Avances de main par `integrate.ps1` : integ-72 PASS 20:27 (855 s, 7 verts) -> main `fddd44c` (passes précédentes : FAIL conflit 19:59, FAIL tests 20:13 sur `Test_SpecializationSlotOptionTextsFollowTheCulture`, test mal monté, ARWEN-1124sg) ; integ-73 FAIL build des rouges 20:50 (862 s) puis integ-73b (PASS 2716 s) -> main `0b225f7` (21:37, 9 verts fusionnés : 21bea82, f94a172, 8bc37e7, df89a15, 7733d8f, e6a21a0, 621573a, 7eb9396, e5d68be) ; integ-74 en cours (`INTEG-74.txt` 21:38 : 2 rouges appliqués, build des rouges). integ-71 (HALDIR-1124sa) : 1 vert fusionné, passe de préparation.
+- Fait du socle, maintenant dans main : D908 Honneur contrôlé dès l'ordre, refusé sur place s'il manque (5b7ddb6) et D911 message « Honneur insuffisant » FR/EN/JA (0da0a6f) ; D909 reste : un ordre qui nomme le héros (déploiement, dépôt, garnison) annule son sort en attente (985d6db, 8bc37e7) ; D900 l'aperçu de visée marque le point d'arrêt du héros quand la cible est hors de portée (f94a172) ; Sceau de lumière du Moine : case LightSeal de la grille + clic sur le sol (3d484c6, 4508f0a, e5d68be), VU À L'ÉCRAN geste réel (ELROND-1124sf) ; D905 le bouton de spécialisation nomme la voie du Templier (Fer, Foi, Pierre : 21bea82) ; moral : `hol.Morale.Report` / `Clear` (ceb8c30) et masque d'effets sur le réseau (fad4af7, df89a15) ; IA : sortie de garnison S4-b (7af2352, 7733d8f) et construction de Tours de guet par niveau (e6a21a0) ; murs fins D898 G6 : `hol.Wall.PlaceLine`, `hol.Wall.GapProbe`, empreinte d'une pièce de 1 m (8f17c5f, 621573a, fd56b78) ; outils : `session_gate -Phase Close` lit la ligne « version launcher » (L27-12, 796138f, ec98a3d), `play.ps1 -Hidden` rend un code non nul sur « Test sequence: timeout » (7eb9396).
+- Reste hors main au relevé (`git branch --no-merged main`, à relire) : `loc-ja-1124s` (SetLanguageName, ARWEN-1124sh, NON COMPILÉ, lot C++), `walls-g7-1124s` (G7 FillDiagonalGaps, DragCellsFine, `Q-mur-diagonale`), `ground-cast-1124s` (monk_seal_slow, a4d6a48 et 92a739a), `faramir-1124sg` (scénario ai_tower, 2cd8588 à 90c4593), `gate-launcher-1124s` (Report, contrôles brief_commun), `arwen-1124sd`, `socle-ai` (Galadriel : lots C++ place A, rouges non vus) ; HALDIR-1124sa cite 8dee317 et 2733bd4 que `git branch --contains` ne trouve pas (à vérifier).
+- Essais prêts mais NON DONNÉS (aucune recette indépendante sur main ce soir : faute de temps, L11-9 ; `Retours\ESSAIS-A-JOUER.md` dit « A JOUER MAINTENANT : 0 ») : fiches `[À ESSAYER]` E-faction_aim_free, E-wall_line_skip, E-deploy_far, E-specialization_slot, E-tower_wood, E-tower_wood_garrison (clic droit réel, preflight PASS 28 s), E-monk_seal (VU À L'ÉCRAN, geste réel), E-monk_seal_slow (branche ground-cast-1124s, pas dans main), E-wall_fine_block (résultat attendu : le Paysan passe par le trou de 1 m), E-sacred_light_heal (LOGIQUE SEULEMENT). Aucune commande donnée à l'utilisateur ; à ramener à ~6 essais (Q11) avant d'en donner.
+- Bugs neufs : `Retours\BUG-ai_peasant-spin.md` (l'audit Sanity signale le Paysan IA #7 qui tourne sans but pendant `ai_tower` : path 1520 cm, net 0 cm, 2 retournements, ordre 25 % ; FARAMIR-1124sk / sl, faramir-1124sg 90c4593 ; distinct de BUG-melee-spin-sanity, piste récolte / évitement).
+- Questions neuves (3, chantiers distincts, défaut codé, aucune attendue) : `Q-ai-towers` (Facile 0, Normal 1, Difficile 2 tours, défaut A), `Q-mur-diagonale` (pièce de remplissage ou rotation 45 degrés, défaut A : `hol.Wall.DiagonalFill 1`), `Q-chevalier-defi-effet` (effet du Défi du Chevalier : provocation seule ou provocation + ralentissement, défaut dans la fiche, GLORFINDEL-1124sh).
+- Anomalies : (1) SAURON-1124sf a créé le worktree `HeroesOfLiberty-Sauron-play` (sparse `Tools\`, branche play-exit-1124s depuis main 194d5f7, parce que gate-launcher-1124s portait une modification non commitée de `session_gate.ps1`) puis l'a retiré ; (2) FARAMIR-1124sk a retiré l'audit Sanity (`hol.Sanity.Watch 1` / `hol.Test.Sanity`) de `ai_tower.txt` (interdit), FARAMIR-1124sl l'a remis (90c4593) et le preflight 21:25 est FAIL sur l'unité #7 (BUG-ai_peasant-spin) ; (3) 3 passes integ FAIL avant PASS (integ-72 deux fois, integ-73 build des rouges 862 s) ; (4) rapports NON COMPILÉ : lots C++ de Galadriel (place A), Arwen loc-ja, Celeborn ; rouge NON VU pour GALADRIEL-1124sa/sc/sd, CELEBORN-1124sa, FARAMIR-1124sg, ARWEN-1124sa ; (5) la ligne « version launcher » du bilan du matin (0.3.0 du 2026-11-03) est périmée : 0.4.3 a été publiée le 2026-11-24 à 14:51 (voir ci-dessous) ; (6) ~60 fichiers non suivis (`Docs\Rapports\`, `.vscode\`) au `git status` de départ.
+- version launcher : dernière publiée 0.4.3 le 2026-11-24 13:51 UTC (14:51 locale ; `Saved\Manager\Versions\latest.txt` + `0.4.3\published.txt`, pas de sha : dernier commit de main avant cette date = `27582ed` « Launcher L17: Files menu... », 14:51:12), 115 commits de main depuis (84 hors fusions, dont 16 « Launcher » de l'après-midi : accueil WPF version 5, icône de zone de notification version 6, fermeture dans la zone de notification version 7), fonctions joueur entrées depuis : Sceau de lumière du Moine (case + clic), Honneur contrôlé dès l'ordre + message « Honneur insuffisant » FR/EN/JA, un ordre du héros annule son sort en attente, point d'arrêt du héros dans l'aperçu de visée, noms de voies du Templier sur le bouton de spécialisation, IA qui construit des Tours de guet et vide les tours calmes, murs en pièces de 1 m (outils de mesure), moral (commandes et masque réseau) ; verdict proposé : nouvelle version : oui, raison : une dizaine de fonctions joueur et 115 commits depuis 0.4.3, mais à publier seulement depuis un main PASS après integ-74 et sans essai donné ce soir (L11-9) ; « oui » = ligne [À RÉPONDRE] dans `Auto_Journey_Retours.md` (non écrite par ELROND-1124sk, à la session principale) ; la publication (`Tools\Package\publish.ps1 -Notes x.txt`) reste décidée par l'utilisateur et exige `x.en.txt` et `x.ja.txt` non vides à côté.
+
+### Lecons appliquees 2026-11-24 soir
+- T2-1 : appliquee : ETAPE0-1124s (ef86361, Docs\Rapports\ENONCES-1124s.md), plan de lancement écrit au Jour (l.15 à 25 du tableau du soir)
+- T2-2 : appliquee : 8 worktrees E1 à E8 lancés d'emblée vers 19:2x (plan de lancement du Jour)
+- L3-12 : appliquee : étape 0 faite (ETAPE0-1124s, vérifiée contre main e6410e8 et les branches), non sautée
+- L5-7 : à compléter : 13+ fichiers non suivis (Docs\Rapports, .vscode) au git status de départ ; la question « dossiers non suivis » n'a pas de trace écrite
+- L4-1, L4-3 : appliquee : fin 23:15 écrite au Jour (« Séance du soir 19:13 -> 23:15 »), veilleur 30 min et alarme 23:00 posés (Jour l.14 du soir)
+- L3-8, L4-9, Q5, L1-14 : appliquee : intégrateur HALDIR-1124sa (E7) nommé au plan ; passes integ-71, integ-72 (PASS 20:27, fddd44c), integ-73b (0b225f7), integ-74 en cours
+- L3-9 : à compléter : appels d'outils de la principale non relevés
+- L1-1, L3-6, L4-7, L5-3 : à compléter : appels déclarés par agent non recomptés ; tool_uses non relevés (aucun dépassement signalé dans les rapports lus)
+- L5-6 : à compléter : séance autonome : aucun tableau de questions groupées ; 3 Q-*.md neuves avec défaut codé
+- L3-11, L5-5 : à compléter : aucune régénération de cartes relevée ce soir
+- L3-7, L1-4 : appliquee : veilleur 30 min posé (Jour l.14 du soir)
+- T2-4 : appliquee : 3 Q-*.md neuves (Q-ai-towers, Q-mur-diagonale, Q-chevalier-defi-effet), 1 par chantier (IA, murs, héros Chevalier)
+- Q5, L5-4 : non appliquee : aucune recette indépendante sur main ce soir (faute de temps, L11-9) : E-monk_seal VU À L'ÉCRAN par ELROND-1124sf seulement, aucun essai donné
+- Q8 : à compléter : BUG-ai_peasant-spin (21:25) : ligne [ ] en tête de Auto_Journey_File.md non relevée
+- Q11 : appliquee : 0 essai donné ; 10 fiches [À ESSAYER] prêtes à ramener à ~6 avant de les donner
+- L1-3 : non appliquee : merge_main_fait: non au moins pour SAURON-1124sf (branche play-exit-1124s créée depuis main 194d5f7) ; autres rapports à relever
+- L6-2 : à compléter : aucune preuve relevée pour le soir par ELROND-1124sk (brouillon) : la session principale la remplit ou dit « non vérifié »
+- L6-4 : à compléter : aucune preuve relevée pour le soir par ELROND-1124sk (brouillon) : la session principale la remplit ou dit « non vérifié »
+- L6-6 : à compléter : aucune preuve relevée pour le soir par ELROND-1124sk (brouillon) : la session principale la remplit ou dit « non vérifié »
+- L7-7 : appliquee : première avance de main du soir à 20:27 (integ-72, fddd44c), seconde à 21:37 (integ-73b, 0b225f7) : avant fin - 90 min
+- L8-4 : à compléter : aucune preuve relevée pour le soir par ELROND-1124sk (brouillon) : la session principale la remplit ou dit « non vérifié »
+- L8-8 : à compléter : aucune preuve relevée pour le soir par ELROND-1124sk (brouillon) : la session principale la remplit ou dit « non vérifié »
+- L9-1 : à compléter : aucune preuve relevée pour le soir par ELROND-1124sk (brouillon) : la session principale la remplit ou dit « non vérifié »
+- L9-6 : à compléter : listes figées avant integ-72 / 73 / 74 non relevées dans ce brouillon
+- L9-8 : à compléter : aucune preuve relevée pour le soir par ELROND-1124sk (brouillon) : la session principale la remplit ou dit « non vérifié »
+- L9-9 : à compléter : aucune preuve relevée pour le soir par ELROND-1124sk (brouillon) : la session principale la remplit ou dit « non vérifié »
+- L10-2 : à compléter : aucune preuve relevée pour le soir par ELROND-1124sk (brouillon) : la session principale la remplit ou dit « non vérifié »
+- L10-3 : à compléter : aucune preuve relevée pour le soir par ELROND-1124sk (brouillon) : la session principale la remplit ou dit « non vérifié »
+- L11-3 : à compléter : aucune preuve relevée pour le soir par ELROND-1124sk (brouillon) : la session principale la remplit ou dit « non vérifié »
+- L11-4 : à compléter : aucune preuve relevée pour le soir par ELROND-1124sk (brouillon) : la session principale la remplit ou dit « non vérifié »
+- L11-8 : à compléter : aucune preuve relevée pour le soir par ELROND-1124sk (brouillon) : la session principale la remplit ou dit « non vérifié »
+- L11-9 : non appliquee : aucun intégrateur de recette sur main ce soir (faute de temps) ; ESSAIS-A-JOUER.md : A JOUER MAINTENANT 0
+- L11-10, L10-5, L9-7 : à compléter : aucune preuve relevée pour le soir par ELROND-1124sk (brouillon) : la session principale la remplit ou dit « non vérifié »
+- L11-11 : à compléter : aucune preuve relevée pour le soir par ELROND-1124sk (brouillon) : la session principale la remplit ou dit « non vérifié »
+- L11-12 : à compléter : aucune preuve relevée pour le soir par ELROND-1124sk (brouillon) : la session principale la remplit ou dit « non vérifié »
+- L11-13 : à compléter : aucune preuve relevée pour le soir par ELROND-1124sk (brouillon) : la session principale la remplit ou dit « non vérifié »
+- L12-1 : appliquee : sync_worktrees lancé à 19:20 avant les lancements (Jour l.15 du soir)
+- L12-1b : à compléter : aucune preuve relevée pour le soir par ELROND-1124sk (brouillon) : la session principale la remplit ou dit « non vérifié »
+- L13-1 : à compléter : aucune preuve relevée pour le soir par ELROND-1124sk (brouillon) : la session principale la remplit ou dit « non vérifié »
+- L13-4 : à compléter : aucune preuve relevée pour le soir par ELROND-1124sk (brouillon) : la session principale la remplit ou dit « non vérifié »
+- L13-5 : à compléter : aucune preuve relevée pour le soir par ELROND-1124sk (brouillon) : la session principale la remplit ou dit « non vérifié »
+- L13-6 : appliquee : objet nommé et vu sur les PNG : FARAMIR-1124sa 9 PNG vus (tower_wood), FARAMIR-1124sc 2 PNG (garnison), ELROND-1124sf (Sceau)
+- L13-7 : à compléter : aucune preuve relevée pour le soir par ELROND-1124sk (brouillon) : la session principale la remplit ou dit « non vérifié »
+- L14-2 : appliquee : 2 places C++ pour toute la séance (A Galadriel, B Celeborn/Elrond), plan de lancement du Jour
+- L14-4 : à compléter : aucune preuve relevée pour le soir par ELROND-1124sk (brouillon) : la session principale la remplit ou dit « non vérifié »
+- L14-5 : appliquee : geste réel : monk_seal (touche R + clic), tower_wood (71d4ae9), tower_wood_garrison (clic droit, eb7e87a), sacred_light_heal (2ae0003) ; wall_fine_block et ai_tower à relire
+- L14-6 : non appliquee : rouge NON VU : GALADRIEL-1124sa/sc/sd, CELEBORN-1124sa, FARAMIR-1124sg, ARWEN-1124sa ; rouge vu : GLORFINDEL-1124sb 19:44, ELROND-1124sa 19:29, FARAMIR-1124se 19:59, ARWEN-1124se 20:00, GLORFINDEL-1124se 20:38, CELEBORN-1124si 20:43, SAURON-1124sh 20:56, CELEBORN-1124sj 21:00
+- L14-9 : à compléter : aucune preuve relevée pour le soir par ELROND-1124sk (brouillon) : la session principale la remplit ou dit « non vérifié »
+- L14-10 : à compléter : aucune preuve relevée pour le soir par ELROND-1124sk (brouillon) : la session principale la remplit ou dit « non vérifié »
+- L14-11 : à compléter : aucune preuve relevée pour le soir par ELROND-1124sk (brouillon) : la session principale la remplit ou dit « non vérifié »
+- L15-6 : à compléter : aucune preuve relevée pour le soir par ELROND-1124sk (brouillon) : la session principale la remplit ou dit « non vérifié »
+- L15-7 : à compléter : aucune preuve relevée pour le soir par ELROND-1124sk (brouillon) : la session principale la remplit ou dit « non vérifié »
+- L15-8 : à compléter : aucune preuve relevée pour le soir par ELROND-1124sk (brouillon) : la session principale la remplit ou dit « non vérifié »
+- L15-9 : à compléter : aucune preuve relevée pour le soir par ELROND-1124sk (brouillon) : la session principale la remplit ou dit « non vérifié »
+- L16-1 : à compléter : aucune preuve relevée pour le soir par ELROND-1124sk (brouillon) : la session principale la remplit ou dit « non vérifié »
+- L16-2 : à compléter : aucune preuve relevée pour le soir par ELROND-1124sk (brouillon) : la session principale la remplit ou dit « non vérifié »
+- L16-3 : à compléter : aucune preuve relevée pour le soir par ELROND-1124sk (brouillon) : la session principale la remplit ou dit « non vérifié »
+- L16-4 : à compléter : aucune preuve relevée pour le soir par ELROND-1124sk (brouillon) : la session principale la remplit ou dit « non vérifié »
+- L16-5 : à compléter : aucune preuve relevée pour le soir par ELROND-1124sk (brouillon) : la session principale la remplit ou dit « non vérifié »
+- L16-6 : à compléter : aucune preuve relevée pour le soir par ELROND-1124sk (brouillon) : la session principale la remplit ou dit « non vérifié »
+- L16-7 : à compléter : aucune preuve relevée pour le soir par ELROND-1124sk (brouillon) : la session principale la remplit ou dit « non vérifié »
+- L16-8 : à compléter : aucune preuve relevée pour le soir par ELROND-1124sk (brouillon) : la session principale la remplit ou dit « non vérifié »
+- L17-a : à compléter : aucune preuve relevée pour le soir par ELROND-1124sk (brouillon) : la session principale la remplit ou dit « non vérifié »
+- L17-b : à compléter : aucune preuve relevée pour le soir par ELROND-1124sk (brouillon) : la session principale la remplit ou dit « non vérifié »
+- L17-c : à compléter : aucune preuve relevée pour le soir par ELROND-1124sk (brouillon) : la session principale la remplit ou dit « non vérifié »
+- L18-a : à compléter : aucune preuve relevée pour le soir par ELROND-1124sk (brouillon) : la session principale la remplit ou dit « non vérifié »
+- L18-b : à compléter : aucune preuve relevée pour le soir par ELROND-1124sk (brouillon) : la session principale la remplit ou dit « non vérifié »
+- L18-c : à compléter : aucune preuve relevée pour le soir par ELROND-1124sk (brouillon) : la session principale la remplit ou dit « non vérifié »
+- L18-d : à compléter : aucune preuve relevée pour le soir par ELROND-1124sk (brouillon) : la session principale la remplit ou dit « non vérifié »
+- L18-e : appliquee : test puis correctif en deux commits : GLORFINDEL-1124sb bfe3fcd/0da0a6f, ARWEN-1124se ca7352f/21bea82, GLORFINDEL-1124se 4d5b830/8bc37e7, SAURON-1124sd/sh, FARAMIR-1124se bf1f453/7af2352
+- L18-f : à compléter : aucune preuve relevée pour le soir par ELROND-1124sk (brouillon) : la session principale la remplit ou dit « non vérifié »
+- L19-1 : à compléter : aucune preuve relevée pour le soir par ELROND-1124sk (brouillon) : la session principale la remplit ou dit « non vérifié »
+- L19-4 : à compléter : aucune preuve relevée pour le soir par ELROND-1124sk (brouillon) : la session principale la remplit ou dit « non vérifié »
+- L19-5 : appliquee : fiche E-tower_wood_garrison écrite par FARAMIR-1124sd dès le pré-vol PASS ; E-monk_seal, E-monk_seal_slow dans Retours\
+- L19-6 : appliquee : 0 question de travail posée à l'utilisateur (à confirmer) ; 3 Q-*.md avec défaut codé (Q-ai-towers défaut A, Q-mur-diagonale hol.Wall.DiagonalFill 1)
+- L19-7 : appliquee : charge machine relevée à l'étape 0 : 71 % CPU à 19:19, 37 Go libres
+- L20-2 : à compléter : aucune preuve relevée pour le soir par ELROND-1124sk (brouillon) : la session principale la remplit ou dit « non vérifié »
+- L20-4 : à compléter : aucune preuve relevée pour le soir par ELROND-1124sk (brouillon) : la session principale la remplit ou dit « non vérifié »
+- L20-5 : non appliquee : rapports NON COMPILÉ (lot C++ place A de Galadriel, Arwen loc-ja, Celeborn) : build incrémental avant rapport non fait
+- L20-7 : à compléter : aucune preuve relevée pour le soir par ELROND-1124sk (brouillon) : la session principale la remplit ou dit « non vérifié »
+- L20-8 : à compléter : aucune preuve relevée pour le soir par ELROND-1124sk (brouillon) : la session principale la remplit ou dit « non vérifié »
+- L21-1 : à compléter : aucune preuve relevée pour le soir par ELROND-1124sk (brouillon) : la session principale la remplit ou dit « non vérifié »
+- L21-2 : à compléter : aucune preuve relevée pour le soir par ELROND-1124sk (brouillon) : la session principale la remplit ou dit « non vérifié »
+- L21-3 : à compléter : aucune preuve relevée pour le soir par ELROND-1124sk (brouillon) : la session principale la remplit ou dit « non vérifié »
+- L22-1 : à compléter : aucune preuve relevée pour le soir par ELROND-1124sk (brouillon) : la session principale la remplit ou dit « non vérifié »
+- L22-2 : à compléter : aucune preuve relevée pour le soir par ELROND-1124sk (brouillon) : la session principale la remplit ou dit « non vérifié »
+- L22-3 : à compléter : aucune preuve relevée pour le soir par ELROND-1124sk (brouillon) : la session principale la remplit ou dit « non vérifié »
+- L22-4 : appliquee : GLORFINDEL-1124sf : « point 5 du socle déjà dans main » dit avant tout code
+- L22-5 : à compléter : aucune preuve relevée pour le soir par ELROND-1124sk (brouillon) : la session principale la remplit ou dit « non vérifié »
+- L23-1 : à compléter : aucune preuve relevée pour le soir par ELROND-1124sk (brouillon) : la session principale la remplit ou dit « non vérifié »
+- L24-3 : non appliquee : voir L20-5 : lots C++ rendus NON COMPILÉ (GALADRIEL-1124sa/sb/sc/sd, ARWEN-1124sh, CELEBORN-1124sa)
+- L24-4 : à compléter : aucune preuve relevée pour le soir par ELROND-1124sk (brouillon) : la session principale la remplit ou dit « non vérifié »
+- L24-5 : à compléter : aucune preuve relevée pour le soir par ELROND-1124sk (brouillon) : la session principale la remplit ou dit « non vérifié »
+- L25-4 : à compléter : aucune preuve relevée pour le soir par ELROND-1124sk (brouillon) : la session principale la remplit ou dit « non vérifié »
+- L25-5 : à compléter : builds en file : integ-73 build des rouges 862 s (20:50) ; durée des builds C++ d'agents non relevée
+- L25-6 : appliquee : fin et mode demandés à 19:13 (Jour l.13 du soir)
+- L26-1 : à compléter : aucune preuve relevée pour le soir par ELROND-1124sk (brouillon) : la session principale la remplit ou dit « non vérifié »
+- L27-1 : à compléter : aucune preuve relevée pour le soir par ELROND-1124sk (brouillon) : la session principale la remplit ou dit « non vérifié »
+- L27-2 : à compléter : aucune preuve relevée pour le soir par ELROND-1124sk (brouillon) : la session principale la remplit ou dit « non vérifié »
+- L27-3 : à compléter : aucune preuve relevée pour le soir par ELROND-1124sk (brouillon) : la session principale la remplit ou dit « non vérifié »
+- L27-4 : à compléter : aucune preuve relevée pour le soir par ELROND-1124sk (brouillon) : la session principale la remplit ou dit « non vérifié »
+- L27-5 : à compléter : aucune preuve relevée pour le soir par ELROND-1124sk (brouillon) : la session principale la remplit ou dit « non vérifié »
+- L27-6 : à compléter : aucune preuve relevée pour le soir par ELROND-1124sk (brouillon) : la session principale la remplit ou dit « non vérifié »
+- L27-7 : à compléter : aucune preuve relevée pour le soir par ELROND-1124sk (brouillon) : la session principale la remplit ou dit « non vérifié »
+- L27-8 : à compléter : aucune preuve relevée pour le soir par ELROND-1124sk (brouillon) : la session principale la remplit ou dit « non vérifié »
+- L27-9 : à compléter : aucune preuve relevée pour le soir par ELROND-1124sk (brouillon) : la session principale la remplit ou dit « non vérifié »
+- L27-10 : à compléter : aucune preuve relevée pour le soir par ELROND-1124sk (brouillon) : la session principale la remplit ou dit « non vérifié »
+- L27-11 : à compléter : aucune preuve relevée pour le soir par ELROND-1124sk (brouillon) : la session principale la remplit ou dit « non vérifié »
+- L27-12 : appliquee : ligne « version launcher » écrite au bilan du soir (0.4.3 du 2026-11-24 13:51 UTC, 115 commits de main depuis, verdict proposé oui) ; session_gate Close lit la section du jour (ec98a3d)
+
 ## Bilan du 2026-11-24
 
 - Séance autonome 10:38 -> 14:00 (arrêt dur de DOCS-1124b 13:25), session principale + agents Sonnet 5.5 ; SEPT passes d'`integrate.ps1` (integ-64 à 70) : integ-64 FAIL 11:28 (conflit de 8b6fd50 puis `Hero.GetHeroLocationStep` = défaut du harnais, DIAG-1124a), integ-65 PASS 11:50 -> main `9d40517` (tests 2208/2208, net et build PASS), integ-66 FAIL build des rouges 12:00, integ-67 PASS 12:23 -> main `25e29ab` (tests 2201/2201, net et build PASS), integ-68 FAIL 12:39 (tests 0/0 : global Angelscript `PendingCasts`), integ-69 PASS après rejeu du net -> main `afcf7a5` (12:57 : tests 2203/2203, parts net,build FAIL 399 s, net rouge « valeurs vides » sous charge ; rejoué machine calme PASS, `Docs\Rapports\QC-NET-integ69.txt`, L13-4 ; contenu : G4 grille fine C++ et D894 colonne faction du hash de pas), integ-70 PASS -> main `b1c58e9` (F3 D900 le héros s'approche puis lance, tests 2206/2206, net et build PASS). Sync de fin `Docs\Rapports\SYNC-1124-fin.txt` (13:17, main = b1c58e9) : 8 worktrees mis à jour, builds lancés (priorité basse). RIEN poussé (origin/main = 0fef853).
