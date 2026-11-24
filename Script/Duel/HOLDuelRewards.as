@@ -31,8 +31,14 @@ namespace HOLDuelRewards
 	// One journal line for a morale order a duel lays (F5, ARWEN-1124e): "Duel morale: <effect> slot S at (X, Y) radius R ms D".
 	FString DescribeMoraleOrder(const FHOLDuelMoraleOrder& Order)
 	{
-		// STUB (red first): the body comes in the next commit.
-		return "";
+		FString Name = "Effect " + Order.EffectId;
+		if (Order.EffectId == HOLMoraleTable::Triumph)
+			Name = "Triumph";
+		else if (Order.EffectId == HOLMoraleTable::Demoralised)
+			Name = "Demoralised";
+		else if (Order.EffectId == HOLMoraleTable::Hesitation)
+			Name = "Hesitation";
+		return "Duel morale: " + Name + " slot " + Order.Slot + " at (" + Order.CenterXCm + ", " + Order.CenterYCm + ") radius " + Order.RadiusCm + " ms " + Order.DurationMs;
 	}
 
 	// The orders of the duel's end: Triumph for the winner and Demoralised for the loser; Hesitation on the one who refuses
