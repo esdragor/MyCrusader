@@ -207,8 +207,8 @@ public:
 	static bool PlantHeroBanner(const UObject* WorldContextObject, int32 Slot, const FVector& Location);
 
 	/**
-	 * GLORFINDEL-1123pd (D891): where the slot's hero stands (cm, the unit's own place), the ONE position reader of the script (the AI's banner place, the
-	 * player's cast origin when no soldier is left). False (and the origin in OutLocation) without a living hero on the map. Server and solo.
+	 * GLORFINDEL-1123pd (D891): where the slot's hero stands (cm, his place of the simulation step, never the interpolated view), the ONE position reader of the script (the AI's banner place, the
+	 * player's cast origin when no soldier is left). False (and the origin in OutLocation) without a living hero on the map, and on a client. Server and solo.
 	 */
 	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Hero", meta = (WorldContext = "WorldContextObject"))
 	static bool GetHeroLocation(const UObject* WorldContextObject, int32 Slot, FVector& OutLocation);
