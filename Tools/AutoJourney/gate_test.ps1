@@ -424,6 +424,25 @@ Check ($eShaBad -match "(?m)^FAIL .*$shaB.*ABSENTE" -and -not ($eShaBad -match "
 $eTypo = & powershell -NoProfile -ExecutionPolicy Bypass -File $Gate -Phase Essay -Root $G -RetoursDir $RetE -Essay E-typo | Out-String
 Check ($eTypo -match "(?m)^FAIL .*nexistepas.*inconnue") 'essay: un mot qui n est ni branche ni commit -> FAIL inconnue' $eTypo
 
+# --- AX-9 (2026-11-24, HALDIR-1124j ; regle 13 de l'utilisateur 2026-11-14) : une fiche E-* dont la ligne de commande est ABREGEE ("meme commande avec ...",
+# "idem", "comme ci-dessus") sans `play.ps1 <nom>` complet sur cette ligne fait FAIL "commande abregee" en phase Essay ; une commande complete, ou une phrase
+# qui CITE l'abreviation pour l'interdire ("jamais ..."), ne fait pas FAIL.
+$Ecirc = [string][char]0xEA   # e circonflexe
+Set-Content -Path (Join-Path $RetE 'E-abbrev.md') -Encoding UTF8 -Value "# [$A ESSAYER] E-abbrev : essai`nGESTE: r$($E)el`nbranches: fixa`nCommande : m$($Ecirc)me commande avec -TimeoutSec 60"
+Set-Content -Path (Join-Path $RetE 'E-abbrev2.md') -Encoding UTF8 -Value "# [$A ESSAYER] E-abbrev2 : essai`nGESTE: r$($E)el`nbranches: fixa`nCommande : meme commande avec -Hidden"
+Set-Content -Path (Join-Path $RetE 'E-abbrev3.md') -Encoding UTF8 -Value "# [$A ESSAYER] E-abbrev3 : essai`nGESTE: r$($E)el`nbranches: fixa`nCommande : idem"
+Set-Content -Path (Join-Path $RetE 'E-abbrev4.md') -Encoding UTF8 -Value "# [$A ESSAYER] E-abbrev4 : essai`nGESTE: r$($E)el`nbranches: fixa`nCommande : comme ci-dessus, avec -TimeoutSec 90"
+Set-Content -Path (Join-Path $RetE 'E-fullcmd.md') -Encoding UTF8 -Value "# [$A ESSAYER] E-fullcmd : essai`nGESTE: r$($E)el`nbranches: fixa`nCommande : powershell -ExecutionPolicy Bypass -File X\Tools\Scenarios\play.ps1 scen_full -Root X"
+Set-Content -Path (Join-Path $RetE 'E-forbid.md') -Encoding UTF8 -Value "# [$A ESSAYER] E-forbid : essai`nGESTE: r$($E)el`nbranches: fixa`nCommande compl$($E)te : jamais m$($Ecirc)me commande avec ... ni idem`nCommande : powershell -File play.ps1 scen_forbid -Root X"
+foreach ($ab in 'E-abbrev', 'E-abbrev2', 'E-abbrev3', 'E-abbrev4') {
+  $eAb = & powershell -NoProfile -ExecutionPolicy Bypass -File $Gate -Phase Essay -Root $G -RetoursDir $RetE -Essay $ab | Out-String
+  Check ($eAb -match "(?m)^FAIL .*$ab\.md.*abreg") "AX-9 essay: fiche $ab avec une commande abregee -> FAIL commande abregee" $eAb
+}
+foreach ($okc in 'E-fullcmd', 'E-forbid') {
+  $eFull = & powershell -NoProfile -ExecutionPolicy Bypass -File $Gate -Phase Essay -Root $G -RetoursDir $RetE -Essay $okc | Out-String
+  Check (-not ($eFull -match '(?m)^FAIL .*abreg') -and $eFull -match '(?m)^PASS .*fixa') "AX-9 essay: fiche $okc (commande complete, ou abreviation citee pour l'interdire) -> pas de FAIL abregee, PASS fixa" $eFull
+}
+
 # --- L12-1c (2026-11-12) : session_gate Launch : WARN si la memoire virtuelle libre < seuil (8 Go) ou si un cl.exe d'un AUTRE moteur compile
 $VmRoot = Join-Path $Tmp 'HeroesOfLiberty-FakeVm'
 New-Item -ItemType Directory -Path $VmRoot | Out-Null
