@@ -96,6 +96,7 @@ namespace HOLPlayerOrders
 			return false;
 		}
 		HOLCommandScript::IssueToggleDeployPlayer(Commands, UnitIds, PlayerIndex);
+		HOLFactionPowerServer::CancelPendingOnOrder(Pending, PlayerIndex, UnitIds, HeroId);
 		return true;
 	}
 
@@ -169,11 +170,13 @@ namespace HOLPlayerOrders
 		if (!bDeposit)
 		{
 			HOLCommandScript::IssueMovePlayer(Commands, UnitIds, Point, PlayerIndex, bQueue, FVector2D(0.0, 0.0), false);
+			HOLFactionPowerServer::CancelPendingOnOrder(Pending, PlayerIndex, UnitIds, HeroId);
 			return true;
 		}
 		if (UnitIds.Num() > 0)
 		{
 			HOLCommandScript::IssueDropOffMovePlayer(Commands, UnitIds, Building, Point, PlayerIndex, bQueue);
+			HOLFactionPowerServer::CancelPendingOnOrder(Pending, PlayerIndex, UnitIds, HeroId);
 		}
 		return true;
 	}
@@ -245,6 +248,7 @@ namespace HOLPlayerOrders
 			return false;
 		}
 		HOLCommandScript::IssueGarrison(Commands, PlayerIndex, UnitIds, Building);
+		HOLFactionPowerServer::NoteHeroOrder(PlayerIndex, UnitIds);
 		return true;
 	}
 
