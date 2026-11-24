@@ -87,8 +87,7 @@ class UHOLDuelLedger : UHOLDuelSubsystem
 	FHOLDuelKitSettings KitSettings;
 	TArray<FHOLDuelKit> Kits;
 
-	// D7: the morale orders of the duels that ended, kept for the bridge to the simulation's morale (MoraleInProgress.md M7, not
-	// built yet: nothing applies them to the troops today).
+	// D7: the morale orders of the duels that ended, kept until AdvanceDuels hands them to the bridge (ApplyMoraleOrders, S2-b).
 	TArray<FHOLDuelMoraleOrder> PendingMorale;
 
 	// Where each target stood when it was challenged and when it answered (D866 Q2 = A: Hesitation at the refusing hero's position).
