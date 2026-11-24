@@ -18,12 +18,23 @@ struct FHOLPendingCast
 	int ExpireMs = 0;
 }
 
+// GLORFINDEL-1124sb (D911): a refusal to tell to the player of Slot (the arrival found the Honor short).
+struct FHOLPendingNotice
+{
+	int Slot = 0;
+	int Refusal = 0;
+}
+
 // GLORFINDEL-1124f: the casts waiting for their hero (one per slot), read each server tick by TickPendingCasts. A script global cannot be mutable (D900 pass integ-68:
 // "Global variable 'PendingCasts' must be const"): the list lives in a world subsystem (UHOLFactionPendingHolder::Get().Pending), as UHOLFollowBookHolder does.
 class UHOLFactionPendingHolder : UScriptWorldSubsystem
 {
 	UPROPERTY()
 	TArray<FHOLPendingCast> Pending;
+
+	// GLORFINDEL-1124sb (D911): the refusals found ON ARRIVAL, waiting to be told to their player.
+	UPROPERTY()
+	TArray<FHOLPendingNotice> Notices;
 }
 
 // GLORFINDEL-1124e: the cvar hol.Faction.ApproachPays, default 0 = the Honor is paid on ARRIVAL (nothing before); 1 = paid at the order (Retours/Q-lumiere-sacree-approche.md).
@@ -105,6 +116,54 @@ namespace HOLFactionPowerServer
 		}
 	}
 
+	// GLORFINDEL-1124sa (D908): the Honor control AT THE ORDER of an approached cast, a pure rule (no write): the decision measured from the aimed point itself (range 0),
+	// so the row's Honor, level and cool-down rules apply. Writes nothing: the caller pays (at the order with hol.Faction.ApproachPays 1, else on arrival, D900).
+	FHOLFactionPowerDecision ApproachDecisionOf(int Faction, int PowerIndex, int GaugeValue, int CooldownEndMs, int NowMs, const FVector& Point)
+	{
+		FHOLFactionResource Gauge = HOLFactionResource::Make(GaugeValue, 0, HOLDawnValues::HonorCap());
+		return HOLFactionPowerCast::Decide(Faction, PowerIndex, Gauge, CooldownEndMs, NowMs, int(Point.X), int(Point.Y), int(Point.X), int(Point.Y));
+	}
+
+	// GLORFINDEL-1124sb (D911): the text key of the notice a refusal raises ("" = none). Only the short Honor gauge speaks for now.
+	FString RefusalNoticeKeyOf(int Refusal)
+	{
+		if (Refusal == HOLFactionPowerCast::RefusalGaugeShort())
+		{
+			return "PowerRefusedHonor";
+		}
+		return "";
+	}
+
+	// GLORFINDEL-1124sb (D911): the notice text of a refusal, in the current language (table HOLFactionSlot, EN / JA in Game.po); empty when the refusal raises none.
+	FText RefusalNoticeTextOf(int Refusal)
+	{
+		if (RefusalNoticeKeyOf(Refusal) == "PowerRefusedHonor")
+		{
+			return NSLOCTEXT("HOLFactionSlot", "PowerRefusedHonor", "Honneur insuffisant");
+		}
+		return FText::FromString("");
+	}
+
+	// GLORFINDEL-1124sb (D911): the refusal of the first notice waiting for Slot, removed from the list (0 = none waiting). The owner's RPC actor sends it to its client.
+	int TakeNotice(int Slot)
+	{
+		UHOLFactionPendingHolder Holder = UHOLFactionPendingHolder::Get();
+		if (Holder == nullptr)
+		{
+			return 0;
+		}
+		for (int Each = 0; Each < Holder.Notices.Num(); Each++)
+		{
+			if (Holder.Notices[Each].Slot == Slot)
+			{
+				const int Refusal = Holder.Notices[Each].Refusal;
+				Holder.Notices.RemoveAt(Each);
+				return Refusal;
+			}
+		}
+		return 0;
+	}
+
 	// GLORFINDEL-1124e (D900): the aimed point is out of range: the hero walks to the stop point of ApproachPointOf, the cast waits for him. Default: the Honor is
 	// written on ARRIVAL (nothing before); hol.Faction.ApproachPays 1 writes it at the order. False when no walk is needed or the order is refused.
 	bool BeginApproach(AHOLGameState State, int Slot, int PowerIndex, const FVector& Point, const FVector& HeroPlace, int HeroId, int NowMs)
@@ -119,20 +178,16 @@ namespace HOLFactionPowerServer
 		Order.PowerIndex = PowerIndex;
 		Order.Point = Point;
 		Order.ExpireMs = NowMs + 60000;
-		FHOLFactionPowerDecision Paid;
-		const bool bPayAtOrder = CVar_FactionApproachPays.GetInt() != 0;
-		if (bPayAtOrder)
+		// D908: the Honor (and level, cool-down) is CONTROLLED at the order, whoever pays: a short gauge refuses at once, no walk, nothing pending. Nothing is written here.
+		const FHOLFactionPowerDecision Paid = ApproachDecisionOf(State.GetSlotFaction(Slot), PowerIndex, State.GetFactionResource(Slot),
+			State.GetPowerCooldownEndMs(Slot, PowerIndex), NowMs, Point);
+		if (!Paid.bAccepted)
 		{
-			// Paid at the order: the decision is measured from the point itself (range 0), the row's Honor, level and cool-down rules still apply.
-			FHOLFactionResource Gauge = HOLFactionResource::Make(State.GetFactionResource(Slot), 0, HOLDawnValues::HonorCap());
-			Paid = HOLFactionPowerCast::Decide(State.GetSlotFaction(Slot), PowerIndex, Gauge, State.GetPowerCooldownEndMs(Slot, PowerIndex), NowMs,
-				int(Point.X), int(Point.Y), int(Point.X), int(Point.Y));
-			if (!Paid.bAccepted)
-			{
-				Log(n"LogHOLMatch", f"RpcPower: approach refused ({Paid.Refusal}) for slot {Slot} power {PowerIndex}");
-				return false;
-			}
+			Log(n"LogHOLMatch", f"RpcPower: approach refused ({Paid.Refusal}) for slot {Slot} power {PowerIndex}");
+			return false;
 		}
+		// The write stays on ARRIVAL by default (D900); hol.Faction.ApproachPays 1 writes it at the order.
+		const bool bPayAtOrder = CVar_FactionApproachPays.GetInt() != 0;
 		TArray<int> HeroIds;
 		HeroIds.Add(HeroId);
 		if (!HOLPlayerOrders::Move(HOLCommandScript::GetCommands(), Slot, HeroIds, Walk.StopPoint, false, FVector2D(0.0, 0.0), false))
@@ -196,7 +251,13 @@ namespace HOLFactionPowerServer
 				Decision.NewGaugeValue = Aimed.NewGaugeValue;
 				Decision.NewCooldownEndMs = Aimed.NewCooldownEndMs;
 			}
-			PutDown(State, Order.Slot, Order.PowerIndex, Decision, Order.Point);
+			if (!PutDown(State, Order.Slot, Order.PowerIndex, Decision, Order.Point) && RefusalNoticeKeyOf(Decision.Refusal) != "")
+			{
+				FHOLPendingNotice Notice;
+				Notice.Slot = Order.Slot;
+				Notice.Refusal = Decision.Refusal;
+				Holder.Notices.Add(Notice);
+			}
 		}
 	}
 
