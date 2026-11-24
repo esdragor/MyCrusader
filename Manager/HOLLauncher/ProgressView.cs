@@ -37,4 +37,20 @@ public sealed record ProgressView(string Text, int Percent, bool CancelEnabled)
     }
 
     public ProgressView Cancelling() => this with { Text = "Annulation…", CancelEnabled = false };
+
+    // Pause and resume (L18). Pause cancels the running update (MainForm), what was received is kept on disk;
+    // Resume runs it again and FileDownloader skips or resumes (Range) what is there.
+
+    /** Paused: the bar and the last line stay, "Pause" reads "Resume", "Cancel" ends the pause. */
+    public bool IsPaused { get; init; }
+
+    /** Goes with "Cancel": both off while a stop is under way (Cancelling, Pausing), both on otherwise. */
+    public bool PauseEnabled => CancelEnabled;
+
+    public string PauseText => Texts.Get(IsPaused ? "Resume" : "Pause");
+
+    public ProgressView Pausing() => this with { Text = Texts.Get("Pausing"), CancelEnabled = false };
+
+    /** Called on the line shown when "Pause" was clicked (not on Pausing's). */
+    public ProgressView Paused() => this with { Text = Texts.Format("UpdatePaused", Text), CancelEnabled = true, IsPaused = true };
 }

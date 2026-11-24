@@ -22,4 +22,8 @@
   <data name="SettingsUnreadable" xml:space="preserve"><value>設定を読み込めないため、既定の設定を使用します：{0}</value></data>
   <data name="SettingsNotSaved" xml:space="preserve"><value>設定を保存できません：{0}</value></data>
   <data name="SettingsBadFolder" xml:space="preserve"><value>このゲームフォルダーは使用できません：{0}</value></data>
+  <data name="Pause" xml:space="preserve"><value>一時停止</value></data>
+  <data name="Resume" xml:space="preserve"><value>再開</value></data>
+  <data name="Pausing" xml:space="preserve"><value>一時停止しています…</value></data>
+  <data name="UpdatePaused" xml:space="preserve"><value>一時停止中（{0}）。受信済みのデータは保存されています。「再開」を押すと、続きからダウンロードします。</value></data>
 </root>
