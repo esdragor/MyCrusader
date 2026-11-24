@@ -1,2 +1,2 @@
-monk_seal_before | Le Moine selectionne, seul au centre : sa grille de commandes porte la cellule du Sceau de lumiere
-monk_seal_zone | Le Moine a pose le Sceau a 8 m : une zone de lumiere (cercle dore provisoire, rayon 6 m) est visible sur le sol devant lui
+monk_seal_before | Le Moine selectionne, seul au centre : le panneau "Lumiere sacree : cout 25" est affiche au-dessus de sa fiche (ressource insuffisante avant le geste)
+monk_seal_zone | Le Moine a pose le Sceau a 8 m : une zone de lumiere (double anneau bleu pale provisoire, rayon 6 m) est visible sur le sol devant lui, le panneau dit "recharge 40 s"
