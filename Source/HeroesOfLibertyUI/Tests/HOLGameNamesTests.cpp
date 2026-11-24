@@ -122,6 +122,40 @@ bool FHOLGameNamesLegionsLanguagesTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+// ARWEN-1124sj (RECETTE-1124b): the specialization panel's option lines read HOLGameNames SpecializationOptionA/B/C (HOLSpecializationSlot.as
+// OptionTextOf), so in Japanese they are the .po's "dan-kai {0} no ruuto A/B/C" lines, not the French source "Voie A du palier {0}" the
+// f-string showed. The test editor cannot switch the game's language live (see LegionsLanguages above), so the text is read from the
+// file the game loads: Content/Localization/Game/ja/Game.locres. The characters are \u escapes to stay independent of the file's encoding.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLGameNamesSpecializationOptionsJaTest, "HeroesOfLiberty.UI.GameNames.SpecializationOptionsJa",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FHOLGameNamesSpecializationOptionsJaTest::RunTest(const FString& Parameters)
+{
+	const TCHAR* const Keys[] = { TEXT("SpecializationOptionA"), TEXT("SpecializationOptionB"), TEXT("SpecializationOptionC") };
+	const TCHAR* const Letters[] = { TEXT("A"), TEXT("B"), TEXT("C") };
+	const TCHAR* const FrenchSource[] = { TEXT("Voie A du palier {0}"), TEXT("Voie B du palier {0}"), TEXT("Voie C du palier {0}") };
+	// U+6BB5 U+968E "{0}" U+306E U+30EB U+30FC U+30C8, then the letter (the .po's msgstr of the three keys).
+	const FString JapanesePrefix = TEXT("段階{0}のルート");
+
+	FTextLocalizationResource Resource;
+	const FString File = FPaths::Combine(FPaths::ProjectContentDir(), TEXT("Localization/Game"), TEXT("ja"), TEXT("Game.locres"));
+	if (!TestTrue(*FString::Printf(TEXT("%s is readable"), *File), Resource.LoadFromFile(File, 0)))
+	{
+		return true;
+	}
+	for (int32 Option = 0; Option < 3; ++Option)
+	{
+		const FTextLocalizationResource::FEntry* Entry = Resource.Entries.Find(FTextId(FTextKey(TEXT("HOLGameNames")), FTextKey(Keys[Option])));
+		if (!TestTrue(*FString::Printf(TEXT("%s has a ja entry"), Keys[Option]), Entry != nullptr && Entry->LocalizedString.IsValid()))
+		{
+			continue;
+		}
+		const FString Own = *Entry->LocalizedString;
+		TestEqual(*FString::Printf(TEXT("option %s in ja"), Letters[Option]), Own, JapanesePrefix + Letters[Option]);
+		TestNotEqual(*FString::Printf(TEXT("option %s: the ja text is translated, not the French source"), Letters[Option]), Own, FString(FrenchSource[Option]));
+	}
+	return true;
+}
+
 // F1: the Forge has its own localization key (the .po files carry `HOLGameNames,Forge`), so its name follows the language; with no row, the
 // name still comes from the code, not from the table's French DisplayName.
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLGameNamesForgeTest, "HeroesOfLiberty.UI.GameNames.ForgeKey",
