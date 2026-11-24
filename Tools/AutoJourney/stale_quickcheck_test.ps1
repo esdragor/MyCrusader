@@ -31,7 +31,7 @@ Git $Repo symbolic-ref HEAD refs/heads/main | Out-Null
 Git $Repo config user.name 'Test' | Out-Null
 Git $Repo config user.email 'test@example.com' | Out-Null
 Git $Repo config core.autocrlf false | Out-Null
-Put $Repo 'Script/Hero/Banner.as' "// banner`nvoid Show() { Log(`"Hero F9 label`"); }`nvoid Other() { Log(`"Kept label`"); }`n"
+Put $Repo 'Script/Hero/Banner.as' "// banner`nvoid Show() { Log(`"Hero F9 label`"); }`nvoid Other() { Log(`"Kept label`"); }`nvoid Third() { Log(`"Uncited label`"); }`n"
 Put $Repo 'Script/Hero/Banner_Test.as' "void Test_OldBannerRule(FAutomationTest T) { }`nvoid Test_KeptRule(FAutomationTest T) { }`n"
 Put $Repo 'Tools/Data/Abilities.csv' "Name,Cost`nOldAbility,10`nKeptAbility,20`n"
 Put $Repo 'Tools/Tests/quick_check.ps1' "# quick_check`nWrite-Output 'start'`n`$want = 'Hero F9 label'`n`$t = 'Test_OldBannerRule'`n`$a = 'OldAbility'`n`$k = 'Kept label'`n`$u = 'Test_KeptRule'`n`$n = 'BrandNewLabel'`n"
@@ -52,9 +52,9 @@ Commit $Repo 'add label'
 $r2 = RunTool $Repo
 Check ($r2.Count -eq 0) 'identifier added only: no STALE line' ($r2 -join ' | ')
 
-# Case 3 : a removed identifier that quick_check does not cite -> no STALE line.
+# Case 3 : a removed identifier ("Uncited label") that quick_check does not cite -> no STALE line.
 NewBranch $Repo 'work3'
-Put $Repo 'Script/Hero/Banner.as' "// banner`nvoid Show() { Log(`"Hero F9 label`"); }`nvoid Other() { Log(`"Nobody cites this`"); }`n"
+Put $Repo 'Script/Hero/Banner.as' "// banner`nvoid Show() { Log(`"Hero F9 label`"); }`nvoid Other() { Log(`"Kept label`"); }`n"
 Commit $Repo 'rename uncited label'
 $r3 = RunTool $Repo
 Check ($r3.Count -eq 0) 'removed identifier not cited by quick_check: no STALE line' ($r3 -join ' | ')
