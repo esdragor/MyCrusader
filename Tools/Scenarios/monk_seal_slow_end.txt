@@ -1,0 +1,48 @@
+# ELROND-1124si : FIN du Sceau a 10 s. Meme montage que monk_seal_slow, mais l'ennemi ne part que 11 s apres la pose : le Sceau (10 s) est fini, il retraverse la meme zone a pleine vitesse (rapport ~ 1, monk_seal_slow_check.ps1 -Expect free).
+# Plain, toi (slot 0) contre une IA gelee (slot 1). Le Moine pose le Sceau a (-11600, 0) par le geste reel de monk_seal (touche de la grille, clic gauche sur le sol), puis UN ManAtArms ennemi marche vers l'est sur y=300 (zone : X -12200 a -11000 a cette ligne, 10 s).
+# Lecture : une ligne hol.Units.Where 1 par seconde ; les pas dans la zone doivent valoir ~60 % des pas hors zone.
+waitlog Starting hero of slot 0 spawned at
+hol.AI.ThinkSteps 100000
+hol.Cheat.Population 40
+hol.Camera.FocusNear 4000 0
+frames 2
+hol.Units.SpawnHere 1 Monk 0 50
+waitlog SpawnHere: 1 Monk of slot 0
+hol.Camera.FocusNear 4000 0
+hol.Camera.Zoom 3
+frames 20
+hol.Select.Type Monk last
+waitlog Selection: Monk
+hol.Select.Grid 3
+waitlog Grid: monk seal, click on the ground
+hol.Camera.FocusNear 4000 0
+frames 2
+hol.Select.LeftClickGround -11600 0
+waitlog Scripted left click at
+waitlog RpcUnitAbility: Seal of Light put down by the Monk
+wait 11
+hol.Units.Spawn 1 -13400 300 1 ManAtArms 1
+frames 5
+hol.Units.Where 1
+hol.Units.Move -9000 300 1
+wait 1
+hol.Units.Where 1
+wait 1
+hol.Units.Where 1
+wait 1
+hol.Units.Where 1
+wait 1
+hol.Units.Where 1
+capture monk_seal_slow_end_mid
+note 1. Un ennemi (slot 1, ManAtArms) marche vers l'est a travers la zone du Sceau : ses pas par seconde (lignes Where) baissent dans la zone.
+wait 1
+hol.Units.Where 1
+wait 1
+hol.Units.Where 1
+wait 1
+hol.Units.Where 1
+wait 1
+hol.Units.Where 1
+wait 1
+hol.Units.Where 1
+quit
