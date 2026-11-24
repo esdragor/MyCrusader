@@ -550,6 +550,17 @@ Add-CodeCommit $CR 'Script\docs_titled.as' 'Docs: session docs touching a script
 Add-CodeCommit $CR 'Script\Maps\regen.uasset' 'Regenerate maps assets only (L20-3)'
 $c6 = Run-C
 Check ($c6 -match '(?m)^FAIL .*L19-1.*\b5\b' -and -not ($c6 -match 'Docs: session docs touching|Regenerate maps assets only')) 'L19-1 close (L20-3): un commit Docs: et un commit .uasset seul ne sont pas comptes (toujours 5)' $c6
+# --- L27-12 (2026-11-24) : Close WARN quand le bilan (Auto_Journey_Jour.md) n'a pas de ligne 'version launcher' (relevee dans Saved\Manager\Versions\latest.txt)
+[IO.File]::WriteAllText($CJour, "# Jour`r`n`r`n## Agents du $LDate`r`n`r`n## Autre`r`n", $NoBom)
+$vl0 = Run-C
+Check ($vl0 -match '(?m)^WARN .*L27-12.*version launcher') 'L27-12 close: bilan SANS ligne version launcher -> WARN' $vl0
+[IO.File]::WriteAllText($CJour, "# Jour`r`n`r`n## Bilan du $LDate`r`n`r`n- Version launcher : 0.4.3 (publie, Launcher 7)`r`n`r`n## Autre`r`n", $NoBom)
+$vl1 = Run-C
+Check ($vl1 -match '(?m)^PASS .*L27-12.*version launcher' -and -not ($vl1 -match '(?m)^WARN .*L27-12')) 'L27-12 close: bilan AVEC la ligne version launcher -> PASS, aucun WARN L27-12' $vl1
+# L27-12 (SAURON-1124sb) : une vieille ligne 'version launcher' dans le bilan d'un AUTRE jour ne compte pas -> WARN (seule la section '## Bilan du <date du jour>' est lue)
+[IO.File]::WriteAllText($CJour, "# Jour`r`n`r`n## Bilan du 2020-01-01`r`n`r`n- Version launcher : 0.1.0 (vieux jour)`r`n`r`n## Bilan du $LDate`r`n`r`n- rien ici`r`n`r`n## Autre`r`n", $NoBom)
+$vl2 = Run-C
+Check ($vl2 -match '(?m)^WARN .*L27-12.*version launcher' -and -not ($vl2 -match '(?m)^PASS .*L27-12')) 'L27-12 close: vieille ligne version launcher d un autre jour (bilan du jour sans la ligne) -> WARN' $vl2
 foreach ($wn in 'A', 'B', 'Arwen') { & git -C $CR worktree remove --force (Join-Path $CW "HeroesOfLiberty-$wn") 2>&1 | Out-Null }
 
 Remove-Item -Recurse -Force $Tmp -ErrorAction SilentlyContinue
