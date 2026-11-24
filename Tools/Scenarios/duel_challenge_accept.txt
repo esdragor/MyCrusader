@@ -49,4 +49,4 @@ capture duel_started
 panel show
 note 3. Le défi est parti ; l'acceptation de l'IA est donnée d'office (hol.Duel.ForceAnswer 1 1, développement). Le duel commence : les deux héros se frappent seuls (D18), personne d'autre ne les touche.
 waitlog Duel ended: slots
-note 4. Le duel est fini (un héros est tombé, ou 90 s sans vainqueur). Les récompenses (Triomphe, XP, effet de faction) ne sont pas encore branchées (D7).
+note 4. Le duel est fini (un héros est tombé, ou 90 s sans vainqueur). Les récompenses sont branchées (D7) : s'il y a un vainqueur, le journal porte « Duel morale: Triumph » (camp du vainqueur) et « Duel morale: Demoralised » (camp du vaincu), 150 XP au vainqueur ; sans vainqueur (90 s), aucune de ces lignes.
