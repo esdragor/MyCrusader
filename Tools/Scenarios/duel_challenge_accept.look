@@ -1,3 +1,3 @@
-﻿duel_heroes_face | Les deux héros face à face au centre de la carte, ton héros avec ses 5 Paysans, le héros de l'IA en face.
-duel_window | La fenêtre « Défi envoyé au héros du joueur 2 » en haut au centre, avec la barre et les secondes, le panneau du scénario caché, les deux héros dans la vue.
-duel_started | Le duel est en cours : les deux héros seuls l'un contre l'autre.
+﻿duel_heroes_face | Les deux héros face à face au milieu de la carte (cadre sur l'herbe dégagée à droite des arbres, zoom avant) : le héros bleu (en bas, avec ses Paysans bleus) et le héros rouge de l'IA (en haut, silhouette claire entourée de Paysans rouges), tous deux nets.
+duel_window | La fenêtre « Défi envoyé au héros du joueur 2 » en haut au centre, avec la barre et les secondes (6 s), le panneau du scénario caché, les deux héros (bleu et rouge) côte à côte au centre de la vue.
+duel_started | Le duel est en cours : l'anneau rouge d'arène au centre avec les deux héros (bleu et rouge) l'un contre l'autre, PV du héros bleu entamés ; les Paysans restent hors de l'anneau (un Paysan bleu isolé à gauche, dehors).
