@@ -5,6 +5,7 @@
 # Le scenario s'arrete a la tour achevee ; l'entree des Lanciers (Garrison: slot 1 puts) est prouvee par le scenario ai_garrison.
 # Si rien : la ligne du cerveau dit pourquoi (no spot for TowerWood / build TowerWood refused) ; on ne change pas la regle.
 waitlog AI brain HOLAIBrain awake
+hol.Sanity.Watch 1
 waitlog AI slot 1 step
 hol.Cheat.Resources 1000
 hol.Cheat.Population 200
@@ -18,8 +19,9 @@ waitunits 5
 note 1. L'IA Normale n'a aucune tour, mais 5 Lanciers : elle va en poser une toute seule (journal : build TowerWood).
 waitlog build TowerWood at
 waitlog Construction: slot 1 finished TowerWood
-hol.Camera.FocusSlot 1
+hol.Camera.FocusNear 14800 0
 frames 30
 capture ai_tower_built
 note 2. La Tour de guet en bois que l'IA a posee et achevee elle-meme, pres de son forum.
+hol.Test.Sanity
 hol.HUD.Report
