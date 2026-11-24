@@ -29,6 +29,12 @@ namespace HOLWallGhost
 		return Ghost;
 	}
 
+	// D898 G8 STUB (red first): the ghost on the fine grid; today the bare line.
+	FHOLWallGhost BuildFine(FIntPoint Start, FIntPoint End, FIntPoint MapMin, FIntPoint MapMax, const TArray<FIntPoint>& Occupied, int MaxCells, int SubDivision)
+	{
+		return Build(Start, End, MapMin, MapMax, Occupied, MaxCells);
+	}
+
 	// From the two ground points the client holds (the press and the cursor), as HOLWallLine::PlanFromRequest reads them.
 	FHOLWallGhost BuildFromPoints(FVector Start, FVector End, double Tile, FIntPoint MapMin, FIntPoint MapMax, const TArray<FIntPoint>& Occupied, int MaxCells)
 	{

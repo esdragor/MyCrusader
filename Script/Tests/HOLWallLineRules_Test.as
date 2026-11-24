@@ -647,3 +647,38 @@ void Test_WallLineFineGridDiagonalHasNoCornerOnlyGap(FUnitTest& T)
 	HOLWallLine::FHOLWallLinePlan Coarse = HOLWallLine::PlanFromRequestFine(0, FVector(50.0, 50.0, 0.0), FVector(850.0, 850.0, 0.0), 400.0, 1, WallLineMapMin, WallLineMapMax, Taken, 1000);
 	T.AssertEquals(3, Coarse.Cells.Num(), "the 4 m plan (SubDivision 1) keeps its bare diagonal, unchanged");
 }
+
+// D898 G8: the drag the client SHOWS (DragCellsFine, read by the C++ controller through the bridge) is the diagonal the server lays: same fillers, no corner-only slit.
+void Test_WallLineDragCellsFineDiagonalIsEdgeConnected(FUnitTest& T)
+{
+	TArray<FIntPoint> Shown = HOLWallLine::DragCellsFine(FIntPoint(0, 0), FIntPoint(8, 8), 1000, 4);
+	T.AssertTrue(WallLineIsEdgeConnected(Shown), "the shown diagonal shares an edge between every pair of pieces");
+	T.AssertEquals(17, Shown.Num(), "9 diagonal pieces + 8 fillers, as the server lays them");
+	TArray<FIntPoint> Bare = HOLWallLine::DragCellsFine(FIntPoint(0, 0), FIntPoint(8, 8), 1000, 1);
+	T.AssertEquals(9, Bare.Num(), "SubDivision 1 shows the bare 4 m diagonal");
+}
+
+// The ghost uses the same list as the server plan: the cells it draws are the cells PlanFromRequestFine lays (free line).
+void Test_WallGhostFineDiagonalShowsTheServerCells(FUnitTest& T)
+{
+	TArray<FIntPoint> Taken;
+	HOLWallGhost::FHOLWallGhost Ghost = HOLWallGhost::BuildFine(FIntPoint(0, 0), FIntPoint(8, 8), FIntPoint(0, 0), FIntPoint(99, 99), Taken, 1000, 4);
+	HOLWallLine::FHOLWallLinePlan Plan = HOLWallLine::PlanFromRequestFine(0, FVector(50.0, 50.0, 0.0), FVector(850.0, 850.0, 0.0), 400.0, 4, WallLineMapMin, WallLineMapMax, Taken, 1000);
+	T.AssertEquals(Plan.Cells.Num(), Ghost.Cells.Num(), "the ghost draws as many pieces as the server lays");
+	for (int Index = 0; Index < Plan.Cells.Num(); Index++)
+		T.AssertTrue(WallLineHasCell(Ghost.Cells, Plan.Cells[Index].X, Plan.Cells[Index].Y), "the ghost shows laid piece " + Index);
+}
+
+// The cap counts the pieces AFTER the fill: a 9-piece diagonal under a cap of 10 holds 17 pieces, so it is refused on the server and shown as too long (one piece past the cap), not laid.
+void Test_WallLineFineDiagonalCapCountsFillers(FUnitTest& T)
+{
+	TArray<FIntPoint> Taken;
+	HOLWallLine::FHOLWallLinePlan Plan = HOLWallLine::PlanFromRequestFine(0, FVector(50.0, 50.0, 0.0), FVector(850.0, 850.0, 0.0), 400.0, 4, WallLineMapMin, WallLineMapMax, Taken, 10);
+	T.AssertEquals(int(HOLWallLine::EHOLWallLineRefusal::TooLong), int(Plan.Refusal), "17 pieces over a cap of 10: refused");
+	T.AssertEquals(0, Plan.Cells.Num(), "a refused line lays nothing");
+	TArray<FIntPoint> Shown = HOLWallLine::DragCellsFine(FIntPoint(0, 0), FIntPoint(8, 8), 10, 4);
+	T.AssertEquals(11, Shown.Num(), "the shown list stops one piece past the cap, as the bare rule");
+	HOLWallLine::FHOLWallLinePlan Fits = HOLWallLine::PlanFromRequestFine(0, FVector(50.0, 50.0, 0.0), FVector(850.0, 850.0, 0.0), 400.0, 4, WallLineMapMin, WallLineMapMax, Taken, 17);
+	T.AssertEquals(int(HOLWallLine::EHOLWallLineRefusal::Ok), int(Fits.Refusal), "a cap of exactly 17 accepts it");
+	T.AssertEquals(17, Fits.Cells.Num(), "all 17 pieces laid");
+}

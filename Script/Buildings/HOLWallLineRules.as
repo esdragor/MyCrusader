@@ -381,6 +381,12 @@ namespace HOLWallLine
 		return DragCells(FIntPoint(CellOfCoordinate(Start.X, Tile), CellOfCoordinate(Start.Y, Tile)), FIntPoint(CellOfCoordinate(End.X, Tile), CellOfCoordinate(End.Y, Tile)), MaxCells);
 	}
 
+	// D898 G8 STUB (red first): the drag the client shows on the fine grid; today the bare line.
+	TArray<FIntPoint> DragCellsFine(FIntPoint Start, FIntPoint End, int MaxCells, int SubDivision)
+	{
+		return DragCells(Start, End, MaxCells);
+	}
+
 	// F9 (S3-b, FortificationsInProgress.md): the palisade GATE. PROVISIONAL, no GDD value (D867 neighbours only say: gates are solid, units climb stone walls
 	// by towers and gates); the figures live in Tools\Data\BuildingTypes.csv, the open points in Retours\Q-porte-palissade.md (default A).
 	FName GateTypeName()
