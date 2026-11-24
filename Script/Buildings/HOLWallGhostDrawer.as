@@ -101,7 +101,14 @@ class UHOLWallGhostDrawer : UScriptWorldSubsystem
 		for (int Index = 0; Index < Ghost.Cells.Num(); Index++)
 		{
 			FVector At = HOLWallLine::CellToPoint(Ghost.Cells[Index], Tile, Start.Z + 8.0);
-			Shown.AddInstance(FTransform(FRotator(0.0f, 0.0f, 0.0f), At, FVector(Side, Side, 0.08f)), true);
+			bool bHole = false;
+			for (int Hole = 0; Hole < Ghost.Skipped.Num(); Hole++)
+			{
+				if (Ghost.Skipped[Hole].X == Ghost.Cells[Index].X && Ghost.Skipped[Hole].Y == Ghost.Cells[Index].Y)
+					bHole = true;
+			}
+			UInstancedStaticMeshComponent Box = bHole ? BadBoxes : Shown;
+			Box.AddInstance(FTransform(FRotator(0.0f, 0.0f, 0.0f), At, FVector(Side, Side, 0.08f)), true);
 		}
 		Log(n"LogHOLMatch", f"Wall ghost: cells={Ghost.Cells.Num()} valid={Ghost.bValid}");
 	}
