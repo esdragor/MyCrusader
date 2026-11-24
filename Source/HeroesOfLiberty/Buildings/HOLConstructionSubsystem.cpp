@@ -72,6 +72,12 @@ void UHOLConstructionSubsystem::Deinitialize()
 
 FBox2D UHOLConstructionSubsystem::SnapFootprint(const FHOLBuildingTypeRow& Type, const FVector& Point)
 {
+	// D898 G4: a wall piece goes on the fine grid of hol.Wall.SubDivision; every other building (and a wall at SubDivision 1) keeps the 4 m grid.
+	const int32 SubDivision = HOLConstruction::GetWallSubDivision();
+	if (SubDivision > 1 && HOLConstruction::IsWallPieceType(Type.TypeName))
+	{
+		return HOLConstruction::SnapWallPiece(FVector2D(Point), Type.Footprint, UHOLBuildingSettings::GetTileSize(), SubDivision);
+	}
 	return HOLConstruction::SnapToGrid(FVector2D(Point), Type.Footprint, UHOLBuildingSettings::GetTileSize());
 }
 

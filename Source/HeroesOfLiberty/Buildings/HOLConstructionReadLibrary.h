@@ -122,6 +122,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Construction", meta = (WorldContext = "WorldContextObject"))
 	static double GetWallLineWorld(const UObject* WorldContextObject, FIntPoint& OutMapMin, FIntPoint& OutMapMax, TArray<FIntPoint>& OutOccupied);
 
+	/** D898 G4: GetWallLineWorld on the fine grid: the cells (OutMapMin, OutMapMax, OutOccupied) are cells of Tile / SubDivision, the occupied ones from the footprint of every building and every wall piece; returns the 4 m Tile. SubDivision 1 = GetWallLineWorld. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Construction", meta = (WorldContext = "WorldContextObject"))
+	static double GetWallLineWorldAtPitch(const UObject* WorldContextObject, int32 SubDivision, FIntPoint& OutMapMin, FIntPoint& OutMapMax, TArray<FIntPoint>& OutOccupied);
+
 	/** HOLConstruction::IsAgeOpen. */
 	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Construction")
 	static bool IsAgeOpen(int32 BuildingAge, int32 Tier);
