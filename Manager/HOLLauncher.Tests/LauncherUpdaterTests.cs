@@ -290,4 +290,11 @@ public class LauncherUpdaterTests
         Assert.Equal(["--game-dir", @"D:\HOL", "--update"],
             LauncherUpdater.RestartArguments(["--game-dir", @"D:\HOL", "--update-launcher", "--update"]));
     }
+
+    /** L23: updated from the window, the new launcher shows its window even if this one started in the tray. */
+    [Fact]
+    public void RestartArgumentsDropTray()
+    {
+        Assert.Equal(["--game-dir", @"D:\HOL"], LauncherUpdater.RestartArguments(["--tray", "--game-dir", @"D:\HOL"]));
+    }
 }

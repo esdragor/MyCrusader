@@ -86,14 +86,7 @@ public sealed partial class MainWindow
         {
             return;
         }
-        if (result.Success)
-        {
-            Inform(result.Message);
-        }
-        else
-        {
-            Warn(result.Message);
-        }
+        TellResult(result.Success, result.Message);
         await RefreshStatusAsync();
     }
 
@@ -143,14 +136,7 @@ public sealed partial class MainWindow
         {
             return;
         }
-        if (result.Success)
-        {
-            Inform(result.Message);
-        }
-        else
-        {
-            Warn(result.Message);
-        }
+        TellResult(result.Success, result.Message);
         await RefreshStatusAsync();
     }
 
@@ -218,12 +204,15 @@ public sealed partial class MainWindow
                 {
                     start.ArgumentList.Add(argument);
                 }
+                // L23: the new launcher must find the game folder free (SingleInstance), this one is still closing.
+                instance?.Release();
                 Process.Start(start)?.Dispose();
-                Close();
+                Quit();
                 return;
             }
             catch (Exception e) when (e is System.ComponentModel.Win32Exception or IOException)
             {
+                instance?.Reclaim();
                 result = new LauncherUpdateResult(false, Texts.Format("LauncherRestartByHand", result.Message, e.Message));
             }
         }
@@ -390,7 +379,7 @@ public sealed partial class MainWindow
         if (GameSession.Decide(settings.CloseOnPlay) == AfterPlay.Close)
         {
             result.Game?.Dispose();
-            Close();
+            Quit();
             return;
         }
         if (result.Game is { } game)
@@ -399,13 +388,20 @@ public sealed partial class MainWindow
         }
     }
 
-    /** "Running" until the game exits; then back to the window, the crash check of that run, a new reading. */
+    /**
+     * "Running" until the game exits; then back to the window, the crash check of that run, a new reading. L23: a game
+     * started from the tray menu while the window is hidden leaves it hidden; it comes back only to offer the report.
+     */
     private async Task WatchGameAsync(Process game, DateTime startedUtc)
     {
         gameRunning = true;
         var before = WindowState;
+        var wasShown = IsVisible;
         Render();
-        WindowState = WindowState.Minimized;
+        if (wasShown)
+        {
+            WindowState = WindowState.Minimized;
+        }
         try
         {
             await GameSession.WaitForExitAsync(game, GameSession.IsGameRunning, TimeSpan.FromSeconds(2), closing.Token);
@@ -423,18 +419,25 @@ public sealed partial class MainWindow
         {
             return;
         }
-        if (WindowState == WindowState.Minimized)
+        if (wasShown && IsVisible)
         {
-            WindowState = before == WindowState.Maximized ? WindowState.Maximized : WindowState.Normal;
+            if (WindowState == WindowState.Minimized)
+            {
+                WindowState = before == WindowState.Maximized ? WindowState.Maximized : WindowState.Normal;
+            }
+            Activate();
         }
-        Activate();
         Render();
         var gameDir = Options.GameDir;
         var check = await Task.Run(() => CrashDetector.Check(gameDir, startedUtc, gameRunning: false));
         StoreCrashCheck(DateTime.UtcNow);
-        if (check.Crashed && !closed && Ask(Texts.Get("ReportCrashDetected")))
+        if (check.Crashed && !closed)
         {
-            await SendReportAsync();
+            ShowFromTray();
+            if (Ask(Texts.Get("ReportCrashDetected")))
+            {
+                await SendReportAsync();
+            }
         }
         if (!closed)
         {

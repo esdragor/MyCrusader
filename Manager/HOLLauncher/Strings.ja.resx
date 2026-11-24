@@ -147,4 +147,31 @@
   <data name="SettingsCloseOnPlayHint" xml:space="preserve"><value>オフの場合、ランチャーは最小化してゲームの終了を待ちます。ゲームが異常終了したときは、すぐにレポートの作成を提案します。</value></data>
   <data name="SettingsBadSize" xml:space="preserve"><value>サイズは {0} から {1} までの整数で入力してください。</value></data>
   <data name="SettingsGeneral" xml:space="preserve"><value>一般</value></data>
+  <data name="TrayOpen" xml:space="preserve"><value>開く</value></data>
+  <data name="TrayCheckForUpdates" xml:space="preserve"><value>アップデートを確認</value></data>
+  <data name="TrayQuit" xml:space="preserve"><value>終了</value></data>
+  <data name="TrayHiddenTitle" xml:space="preserve"><value>ランチャーは実行中です</value></data>
+  <data name="TrayHiddenText" xml:space="preserve"><value>時計の近くの通知領域で待機し、アップデートを確認しています。終了するにはアイコンを右クリックしてください。</value></data>
+  <data name="TrayUpdateAvailable" xml:space="preserve"><value>アップデート {0} が利用可能です</value></data>
+  <data name="TrayGameAvailable" xml:space="preserve"><value>Heroes of Liberty {0} が利用可能です</value></data>
+  <data name="TrayClickToOpen" xml:space="preserve"><value>ここをクリックするとランチャーが開きます。</value></data>
+  <data name="TrayLauncherAvailable" xml:space="preserve"><value>新しいランチャーが利用可能です（{0}）</value></data>
+  <data name="TrayLauncherAvailableText" xml:space="preserve"><value>ランチャーを開いて更新してください。</value></data>
+  <data name="TrayUpdating" xml:space="preserve"><value>アップデート {0} をインストール中</value></data>
+  <data name="TrayUpdatingText" xml:space="preserve"><value>バックグラウンドでダウンロードしています。クリックすると進行状況の確認や一時停止ができます。</value></data>
+  <data name="TrayUpdateDone" xml:space="preserve"><value>アップデートが完了しました</value></data>
+  <data name="TrayUpdateFailed" xml:space="preserve"><value>アップデートに失敗しました</value></data>
+  <data name="SettingsBackground" xml:space="preserve"><value>バックグラウンド</value></data>
+  <data name="SettingsMinimizeToTray" xml:space="preserve"><value>ウィンドウを閉じたら通知領域に最小化する</value></data>
+  <data name="SettingsMinimizeToTrayHint" xml:space="preserve"><value>アイコンのメニューの「終了」で完全に閉じます。ゲーム中にウィンドウを閉じると、ランチャーは終了します。</value></data>
+  <data name="SettingsAutoUpdate" xml:space="preserve"><value>アップデート：</value></data>
+  <data name="SettingsAutoUpdateOff" xml:space="preserve"><value>確認しない</value></data>
+  <data name="SettingsAutoUpdateNotify" xml:space="preserve"><value>アップデートが出たら知らせる</value></data>
+  <data name="SettingsAutoUpdateInstall" xml:space="preserve"><value>自動でインストールする</value></data>
+  <data name="SettingsCheckEvery" xml:space="preserve"><value>確認の間隔：</value></data>
+  <data name="SettingsMinutes" xml:space="preserve"><value>分ごと</value></data>
+  <data name="SettingsAutoUpdateHint" xml:space="preserve"><value>ゲーム中は行いません。新しいランチャーはお知らせのみで、自動ではインストールされません。</value></data>
+  <data name="SettingsBadInterval" xml:space="preserve"><value>間隔は {0} から {1} までの整数（分）で入力してください。</value></data>
+  <data name="SettingsStartWithWindows" xml:space="preserve"><value>Windows の起動時に開始する（通知領域）</value></data>
+  <data name="SettingsStartWithWindowsFailed" xml:space="preserve"><value>Windows の起動時の設定を変更できませんでした: {0}</value></data>
 </root>

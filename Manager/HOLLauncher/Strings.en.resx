@@ -147,4 +147,31 @@
   <data name="SettingsCloseOnPlayHint" xml:space="preserve"><value>Otherwise the launcher minimizes and waits for the game to end; if the game crashes, it offers a report right away.</value></data>
   <data name="SettingsBadSize" xml:space="preserve"><value>The size must be a whole number between {0} and {1}.</value></data>
   <data name="SettingsGeneral" xml:space="preserve"><value>General</value></data>
+  <data name="TrayOpen" xml:space="preserve"><value>Open</value></data>
+  <data name="TrayCheckForUpdates" xml:space="preserve"><value>Check for updates</value></data>
+  <data name="TrayQuit" xml:space="preserve"><value>Quit</value></data>
+  <data name="TrayHiddenTitle" xml:space="preserve"><value>The launcher is still running</value></data>
+  <data name="TrayHiddenText" xml:space="preserve"><value>It waits in the notification area, near the clock, and checks for updates. Right-click its icon to quit it.</value></data>
+  <data name="TrayUpdateAvailable" xml:space="preserve"><value>Update {0} available</value></data>
+  <data name="TrayGameAvailable" xml:space="preserve"><value>Heroes of Liberty {0} is available</value></data>
+  <data name="TrayClickToOpen" xml:space="preserve"><value>Click here to open the launcher.</value></data>
+  <data name="TrayLauncherAvailable" xml:space="preserve"><value>New launcher available ({0})</value></data>
+  <data name="TrayLauncherAvailableText" xml:space="preserve"><value>Open the launcher to update it.</value></data>
+  <data name="TrayUpdating" xml:space="preserve"><value>Installing update {0}</value></data>
+  <data name="TrayUpdatingText" xml:space="preserve"><value>Downloading in the background; click here to follow or pause it.</value></data>
+  <data name="TrayUpdateDone" xml:space="preserve"><value>Update finished</value></data>
+  <data name="TrayUpdateFailed" xml:space="preserve"><value>The update failed</value></data>
+  <data name="SettingsBackground" xml:space="preserve"><value>Background</value></data>
+  <data name="SettingsMinimizeToTray" xml:space="preserve"><value>Minimize to the notification area when the window is closed</value></data>
+  <data name="SettingsMinimizeToTrayHint" xml:space="preserve"><value>"Quit" in its icon's menu really closes it. During a game, closing the window quits the launcher.</value></data>
+  <data name="SettingsAutoUpdate" xml:space="preserve"><value>Updates:</value></data>
+  <data name="SettingsAutoUpdateOff" xml:space="preserve"><value>Don't check</value></data>
+  <data name="SettingsAutoUpdateNotify" xml:space="preserve"><value>Tell me when an update is out</value></data>
+  <data name="SettingsAutoUpdateInstall" xml:space="preserve"><value>Install automatically</value></data>
+  <data name="SettingsCheckEvery" xml:space="preserve"><value>Interval:</value></data>
+  <data name="SettingsMinutes" xml:space="preserve"><value>minutes</value></data>
+  <data name="SettingsAutoUpdateHint" xml:space="preserve"><value>Never during a game. A new launcher is only announced, never installed on its own.</value></data>
+  <data name="SettingsBadInterval" xml:space="preserve"><value>The interval must be a whole number of minutes between {0} and {1}.</value></data>
+  <data name="SettingsStartWithWindows" xml:space="preserve"><value>Start with Windows (in the notification area)</value></data>
+  <data name="SettingsStartWithWindowsFailed" xml:space="preserve"><value>Could not change starting with Windows: {0}</value></data>
 </root>

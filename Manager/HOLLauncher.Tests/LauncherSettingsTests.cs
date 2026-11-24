@@ -177,6 +177,53 @@ public class LauncherSettingsTests
         Assert.Same(Palette.Dark, Themes.Resolve(load.Settings.Theme, appsUseLightTheme: 0));
     }
 
+    /** L23: the background fields are read back, and only written when not the default. */
+    [Fact]
+    public void BackgroundFieldsAreReadBack()
+    {
+        using var dir = new TempDir();
+        var settings = new LauncherSettings(Language: "en", MinimizeToTray: true, AutoUpdate: "install", CheckEveryMinutes: 45,
+            StartWithWindows: true, TrayHintShown: true);
+        settings.Save(dir.Root);
+        Assert.Equal(settings, LauncherSettings.Load(dir.Root).Settings);
+        var text = File.ReadAllText(Path.Combine(dir.Root, LauncherSettings.FileName));
+        Assert.Contains("\"minimizeToTray\": true", text);
+        Assert.Contains("\"autoUpdate\": \"install\"", text);
+        Assert.Contains("\"checkEveryMinutes\": 45", text);
+        Assert.Contains("\"startWithWindows\": true", text);
+        Assert.Contains("\"trayHintShown\": true", text);
+
+        new LauncherSettings(Language: "en").Save(dir.Root);
+        text = File.ReadAllText(Path.Combine(dir.Root, LauncherSettings.FileName));
+        foreach (var name in new[] { "minimizeToTray", "autoUpdate", "checkEveryMinutes", "startWithWindows", "trayHintShown" })
+        {
+            Assert.DoesNotContain(name, text);
+        }
+    }
+
+    /** A launcher 5 file (no background field): closing quits, updates are notified every 30 minutes, no logon start. */
+    [Fact]
+    public void Launcher5FileKeepsItsBehaviour()
+    {
+        using var dir = new TempDir();
+        dir.Write(LauncherSettings.FileName, "{\n  \"language\": \"fr\",\n  \"theme\": \"dark\",\n  \"closeOnPlay\": true\n}");
+        var load = LauncherSettings.Load(dir.Root);
+        Assert.Null(load.Problem);
+        Assert.Equal(new LauncherSettings(Language: "fr", Theme: "dark", CloseOnPlay: true), load.Settings);
+        Assert.False(TrayMenu.CloseHides(load.Settings, gameRunning: false, quitting: false));
+        Assert.Equal(AutoUpdateMode.Notify, BackgroundUpdatePolicy.ModeOf(load.Settings.AutoUpdate));
+        Assert.Equal(TimeSpan.FromMinutes(30), BackgroundUpdatePolicy.Interval(load.Settings.CheckEveryMinutes));
+        Assert.Null(load.Settings.StartWithWindows);
+    }
+
+    [Fact]
+    public void ABadIntervalTypeMakesTheFileUnreadable()
+    {
+        using var dir = new TempDir();
+        dir.Write(LauncherSettings.FileName, "{ \"checkEveryMinutes\": \"often\" }");
+        Assert.NotNull(LauncherSettings.Load(dir.Root).Problem);
+    }
+
     /** The settings window changes the theme with "with": the fields of later steps are kept. */
     [Fact]
     public void ThemeChangeKeepsTheOtherFields()

@@ -26,7 +26,16 @@ public sealed record LanguageChoice(string Code)
     public override string ToString() => Texts.LanguageName(Code);
 }
 
-/** What the settings window shows for the stored settings: the selected index of each list and the field texts. */
+/** An automatic update mode of the settings list (L23). */
+public sealed record AutoUpdateChoice(AutoUpdateMode Mode, string Text)
+{
+    public override string ToString() => Text;
+}
+
+/**
+ * What the settings window shows for the stored settings: the selected index of each list and the field texts. L23's
+ * background fields have defaults (the stored defaults) so that older callers keep building them.
+ */
 public sealed record SettingsFields(
     int LanguageIndex,
     int ThemeIndex,
@@ -36,7 +45,11 @@ public sealed record SettingsFields(
     string Width,
     string Height,
     string ExtraArguments,
-    bool CloseOnPlay);
+    bool CloseOnPlay,
+    bool MinimizeToTray = false,
+    int AutoUpdateIndex = 1,
+    string CheckEveryMinutes = "30",
+    bool StartWithWindows = false);
 
 /** "Save": the settings to apply (Result), or why not (Problem, in the player's language). */
 public sealed record SettingsOutcome(LauncherSettings? Result, string? Problem);
@@ -48,6 +61,9 @@ public sealed record SettingsOutcome(LauncherSettings? Result, string? Problem);
  * is not a full path, an unclosed quote or extra arguments the launch would leave out (LaunchArguments.Rejected), a
  * custom size out of LaunchArguments' bounds. An unknown mode or an invalid stored size shows "the game's own", as the
  * launch treats them. CloseOnPlay is stored true or not at all (false is the default).
+ * Background (L23): MinimizeToTray and StartWithWindows likewise true or not at all, AutoUpdate only when not "notify",
+ * CheckEveryMinutes only when not 30 (a whole number of minutes within BackgroundUpdatePolicy's bounds, else the
+ * problem); a stored interval out of bounds shows its bounded value.
  */
 public static class SettingsModel
 {
@@ -88,10 +104,30 @@ public static class SettingsModel
         var common = resolutions.ToList().FindIndex(c => !c.Custom && saved is not null && c.Size == saved);
         var resolutionIndex = saved is null ? 0 : common >= 0 ? common : resolutions.Count - 1;
         var (shownWidth, shownHeight) = saved ?? DefaultSize;
+        var autoUpdateIndex = Math.Max(0, AutoUpdateModes.ToList().IndexOf(BackgroundUpdatePolicy.ModeOf(settings.AutoUpdate)));
+        var minutes = (int)BackgroundUpdatePolicy.Interval(settings.CheckEveryMinutes).TotalMinutes;
         return new SettingsFields(languageIndex, themeIndex, currentGameDir, displayIndex, resolutionIndex,
             shownWidth.ToString(CultureInfo.InvariantCulture), shownHeight.ToString(CultureInfo.InvariantCulture),
-            settings.ExtraArguments ?? "", settings.CloseOnPlay == true);
+            settings.ExtraArguments ?? "", settings.CloseOnPlay == true, settings.MinimizeToTray == true, autoUpdateIndex,
+            minutes.ToString(CultureInfo.InvariantCulture), settings.StartWithWindows == true);
     }
+
+    /** The automatic update modes in the settings list's order (L23). */
+    public static readonly IReadOnlyList<AutoUpdateMode> AutoUpdateModes = [AutoUpdateMode.Off, AutoUpdateMode.Notify, AutoUpdateMode.Install];
+
+    public static IReadOnlyList<AutoUpdateChoice> AutoUpdateChoices(string language) => AutoUpdateModes
+        .Select(mode => new AutoUpdateChoice(mode, Texts.Get(mode switch
+        {
+            AutoUpdateMode.Off => "SettingsAutoUpdateOff",
+            AutoUpdateMode.Install => "SettingsAutoUpdateInstall",
+            _ => "SettingsAutoUpdateNotify",
+        }, language)))
+        .ToList();
+
+    /** A typed interval in whole minutes within BackgroundUpdatePolicy's bounds, else null. */
+    public static int? Minutes(string text)
+        => int.TryParse(text.Trim(), NumberStyles.None, CultureInfo.InvariantCulture, out var value)
+            && value >= BackgroundUpdatePolicy.MinMinutes && value <= BackgroundUpdatePolicy.MaxMinutes ? value : null;
 
     /** "Save" with these fields, the window's texts in language. */
     public static SettingsOutcome Build(LauncherSettings old, SettingsFields fields, string launcherDir, string language)
@@ -125,6 +161,12 @@ public static class SettingsModel
         {
             (width, height) = (cw, ch);
         }
+        if (Minutes(fields.CheckEveryMinutes) is not { } minutes)
+        {
+            return new SettingsOutcome(null, Texts.FormatIn(language, "SettingsBadInterval",
+                BackgroundUpdatePolicy.MinMinutes, BackgroundUpdatePolicy.MaxMinutes));
+        }
+        var mode = AutoUpdateModes[Math.Clamp(fields.AutoUpdateIndex, 0, AutoUpdateModes.Count - 1)];
         var displays = DisplayChoices(language);
         var chosen = old with
         {
@@ -136,6 +178,10 @@ public static class SettingsModel
             ExtraArguments = extra == "" ? null : extra,
             Theme = Themes.SettingFor(Themes.Choices[Math.Clamp(fields.ThemeIndex, 0, Themes.Choices.Count - 1)]),
             CloseOnPlay = fields.CloseOnPlay ? true : null,
+            MinimizeToTray = fields.MinimizeToTray ? true : null,
+            AutoUpdate = BackgroundUpdatePolicy.SettingFor(mode),
+            CheckEveryMinutes = minutes == BackgroundUpdatePolicy.DefaultMinutes ? null : minutes,
+            StartWithWindows = fields.StartWithWindows ? true : null,
         };
         if (LaunchArguments.Rejected(chosen) is { Count: > 0 } rejected)
         {

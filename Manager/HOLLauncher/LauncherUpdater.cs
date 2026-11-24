@@ -130,9 +130,12 @@ public sealed class LauncherUpdater(HttpClient http, string managerUrl, string e
         return DeleteOld(exePath);
     }
 
-    /** The new launcher gets the same arguments, without --update-launcher (it is the new version already). */
+    /**
+     * The new launcher gets the same arguments, without --update-launcher (it is the new version already) nor --tray
+     * (L23: the player updated from the window, the new launcher shows it).
+     */
     public static IReadOnlyList<string> RestartArguments(IEnumerable<string> args)
-        => args.Where(a => a != UpdateLauncherOption).ToList();
+        => args.Where(a => a != UpdateLauncherOption && a != StartWithWindows.TrayOption).ToList();
 
     private static string DirOf(string exePath) => Path.GetDirectoryName(Path.GetFullPath(exePath))!;
 

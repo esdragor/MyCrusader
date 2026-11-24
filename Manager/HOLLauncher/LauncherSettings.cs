@@ -21,7 +21,13 @@ public sealed record SettingsLoad(LauncherSettings Settings, string? Problem);
  * Theme (L22, Themes): "light" or "dark" (null: follow Windows' app theme). Older files have none: they follow Windows.
  * CloseOnPlay (launcher 5, GameSession): true closes the launcher once the game started (L8's behaviour); null or
  * false (the default) keeps it open, minimized, watching the game. Older files have none: they stay open.
- * Later steps add their own fields (L23 automatic update): with "with", the window keeps them.
+ * Background (L23, written only when not the default; older files have none and keep launcher 5's behaviour):
+ * MinimizeToTray true: the window's close button hides the launcher in the notification area (TrayRules; null: false,
+ * closing quits). AutoUpdate "off", "notify" or "install" (BackgroundUpdatePolicy; null or unknown: "notify").
+ * CheckEveryMinutes: how often the background check reads /versions/latest (null: 30; bounded 5..1440). StartWithWindows
+ * true: the launcher starts hidden in the notification area at logon (StartWithWindows, the HKCU Run key; null: false).
+ * TrayHintShown: the one-time "the launcher went to the notification area" message was shown (null: not yet).
+ * Later steps add their own fields: with "with", the window keeps them.
  */
 public sealed record LauncherSettings(
     string? Language = null,
@@ -32,7 +38,12 @@ public sealed record LauncherSettings(
     string? ExtraArguments = null,
     DateTime? LastCrashCheckUtc = null,
     string? Theme = null,
-    bool? CloseOnPlay = null)
+    bool? CloseOnPlay = null,
+    bool? MinimizeToTray = null,
+    string? AutoUpdate = null,
+    int? CheckEveryMinutes = null,
+    bool? StartWithWindows = null,
+    bool? TrayHintShown = null)
 {
     public const string FileName = "HOLLauncher.settings.json";
 

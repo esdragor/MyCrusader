@@ -3,8 +3,11 @@
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net8.0-windows</TargetFramework>
-    <!-- Launcher 5: the home window is WPF (custom chrome, key art, translucent panel); no WinForms left. -->
+    <!-- Launcher 5: the home window is WPF (custom chrome, key art, translucent panel). -->
     <UseWPF>true</UseWPF>
+    <!-- L23: WinForms only for its NotifyIcon (WPF has no notification-area icon); its global usings are removed below so
+         that WPF's Application, Window, ContextMenu, Color... stay unambiguous. -->
+    <UseWindowsForms>true</UseWindowsForms>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <!-- L15: Strings.resx is French; Strings.en.resx and Strings.ja.resx become satellite assemblies (Texts.cs). -->
@@ -31,6 +34,8 @@
   <ItemGroup>
     <Using Include="System.IO" />
     <Using Include="System.Net.Http" />
+    <Using Remove="System.Windows.Forms" />
+    <Using Remove="System.Drawing" />
   </ItemGroup>
 
   <ItemGroup>

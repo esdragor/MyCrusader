@@ -19,6 +19,8 @@ namespace HOLLauncher;
  * Texts (L16): the fixed ones bound in XAML (UiTexts), the others set here, all in Texts.Language; a language change
  * refreshes both and reads the status again. Theme (L22): the settings' palette as brushes (WpfTheme), applied at start,
  * after "Settings", and when Windows' app theme changes while the setting follows it.
+ * L23 (MainWindow.Tray.cs): the notification-area icon and its menu, the close button that may hide the window there,
+ * the background update checks, "Start with Windows", the second start that brings this window to the front.
  */
 public sealed partial class MainWindow : Window
 {
@@ -39,16 +41,21 @@ public sealed partial class MainWindow : Window
     private PrimaryKind primaryKind = PrimaryKind.Loading;
     private Palette palette = Palette.Light;
     private bool closed;
-    private bool started;
+    private bool shownOnce;
+    private bool readingStarted;
 
-    public MainWindow(LauncherOptions options, string launcherDir, SettingsLoad settingsLoad, IHomeSource homeSource)
+    /** instance: this launcher's claim on its game folder (L23, SingleInstance; null: none, the visual check). */
+    public MainWindow(LauncherOptions options, string launcherDir, SettingsLoad settingsLoad, IHomeSource homeSource,
+        SingleInstance? instance = null)
     {
         InitializeComponent();
         Options = options;
         this.launcherDir = launcherDir;
         this.homeSource = homeSource;
+        this.instance = instance;
         settings = settingsLoad.Settings;
         settingsProblem = settingsLoad.Problem;
+        SetUpTray();
         http = VersionsClient.CreateHttpClient(options.GameDir);
         downloads = FileDownloader.CreateHttpClient(options.GameDir);
         autoUpdatePending = options.UpdateAtStart;
@@ -63,9 +70,16 @@ public sealed partial class MainWindow : Window
         menu.VerticalOffset = -6;
 
         StateChanged += (_, _) => ShowWindowState();
-        ContentRendered += async (_, _) => await StartAsync();
-        Closing += (_, _) =>
+        ContentRendered += async (_, _) => await OnFirstShownAsync();
+        Closing += (_, e) =>
         {
+            // L23: with minimizeToTray the close button hides the window in the notification area instead.
+            if (TrayMenu.CloseHides(settings, gameRunning, quitting))
+            {
+                e.Cancel = true;
+                HideToTray();
+                return;
+            }
             updating?.Cancel(); // the downloaded part stays for the next try
             closing.Cancel();
         };
@@ -73,6 +87,7 @@ public sealed partial class MainWindow : Window
         {
             closed = true;
             Microsoft.Win32.SystemEvents.UserPreferenceChanged -= OnUserPreferenceChanged;
+            CloseTray();
             http.Dispose();
             downloads.Dispose();
         };
@@ -85,19 +100,34 @@ public sealed partial class MainWindow : Window
 
     public LauncherOptions Options { get; private set; }
 
-    /** Once, when the window is first drawn: the unreadable settings warning, the crash offer (L20), the reading. */
-    private async Task StartAsync()
+    /**
+     * Once, when the window is first drawn: the unreadable settings warning, the crash offer (L20), the reading (unless
+     * a --tray start already made it: L23, the window then opens later from the icon).
+     */
+    private async Task OnFirstShownAsync()
     {
-        if (started)
+        if (shownOnce)
         {
             return;
         }
-        started = true;
+        shownOnce = true;
         if (settingsProblem is not null)
         {
             Warn(Texts.Format("SettingsUnreadable", settingsProblem));
         }
         await OfferReportAfterCrashAsync();
+        await StartReadingAsync();
+    }
+
+    /** The first reading of the status, once, and the background checks after it (L23). */
+    private async Task StartReadingAsync()
+    {
+        if (readingStarted)
+        {
+            return;
+        }
+        readingStarted = true;
+        checkTimer.Start();
         await RefreshStatusAsync();
     }
 
@@ -186,6 +216,7 @@ public sealed partial class MainWindow : Window
         });
         FooterPanel.ToolTip = footer.Tooltip;
         ShowNews();
+        tray.Tooltip = TrayMenu.Tooltip(GameName, progressView?.Text ?? StateText.Text);
     }
 
     /** A run with or without a bar is under way. */
@@ -193,6 +224,7 @@ public sealed partial class MainWindow : Window
 
     private async Task RefreshStatusAsync()
     {
+        schedule.Checked(); // L23: the next background check comes a full interval after any reading
         Display(StatusView.Loading());
         var gameDir = Options.GameDir;
         StatusView view;
@@ -374,6 +406,7 @@ public sealed partial class MainWindow : Window
             Warn(Texts.Format("SettingsNotSaved", e.Message));
         }
         settings = chosen;
+        ApplyStartWithWindows(warn: true);
         Texts.Use(Texts.Resolve(chosen.Language, System.Globalization.CultureInfo.CurrentUICulture));
         if (folderChanged)
         {

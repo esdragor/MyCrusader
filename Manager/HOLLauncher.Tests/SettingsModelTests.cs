@@ -53,6 +53,77 @@ public class SettingsModelTests
         Assert.Equal((1920, 1080), SettingsModel.ResolutionChoices("fr")[fields.ResolutionIndex].Size);
     }
 
+    /** L23: the background section round-trips, and its defaults are not written. */
+    [Fact]
+    public void BackgroundFieldsComeBackUnchanged()
+    {
+        var stored = new LauncherSettings(Language: "fr", MinimizeToTray: true, AutoUpdate: "install", CheckEveryMinutes: 60,
+            StartWithWindows: true, TrayHintShown: true);
+        var fields = SettingsModel.Fields(stored, LauncherDir, "fr");
+        Assert.True(fields.MinimizeToTray);
+        Assert.Equal(AutoUpdateMode.Install, SettingsModel.AutoUpdateChoices("fr")[fields.AutoUpdateIndex].Mode);
+        Assert.Equal("60", fields.CheckEveryMinutes);
+        Assert.True(fields.StartWithWindows);
+        Assert.Equal(stored, SettingsModel.Build(stored, fields, LauncherDir, "fr").Result);
+    }
+
+    [Fact]
+    public void BackgroundDefaultsAreShownAndNotWritten()
+    {
+        var fields = SettingsModel.Fields(LauncherSettings.Default, LauncherDir, "en");
+        Assert.Equal((false, "30", false), (fields.MinimizeToTray, fields.CheckEveryMinutes, fields.StartWithWindows));
+        Assert.Equal(AutoUpdateMode.Notify, SettingsModel.AutoUpdateChoices("en")[fields.AutoUpdateIndex].Mode);
+        var json = SettingsModel.Build(LauncherSettings.Default, fields, LauncherDir, "en").Result!.ToJson();
+        foreach (var name in new[] { "minimizeToTray", "autoUpdate", "checkEveryMinutes", "startWithWindows" })
+        {
+            Assert.DoesNotContain(name, json);
+        }
+    }
+
+    [Fact]
+    public void TheChosenBackgroundFieldsAreApplied()
+    {
+        var fields = SettingsModel.Fields(LauncherSettings.Default, LauncherDir, "fr") with
+        {
+            MinimizeToTray = true, AutoUpdateIndex = 0, CheckEveryMinutes = " 15 ", StartWithWindows = true,
+        };
+        var result = SettingsModel.Build(new LauncherSettings(TrayHintShown: true), fields, LauncherDir, "fr").Result!;
+        Assert.Equal(new LauncherSettings(Language: "fr", MinimizeToTray: true, AutoUpdate: "off", CheckEveryMinutes: 15,
+            StartWithWindows: true, TrayHintShown: true), result);
+
+        // Back to 30 minutes: the default, not written.
+        Assert.Null(SettingsModel.Build(result, fields with { CheckEveryMinutes = "30" }, LauncherDir, "fr").Result!.CheckEveryMinutes);
+    }
+
+    [Theory]
+    [InlineData("4")]
+    [InlineData("1441")]
+    [InlineData("")]
+    [InlineData("ten")]
+    [InlineData("-30")]
+    [InlineData("7.5")]
+    public void ABadIntervalKeepsTheWindowOpen(string minutes)
+    {
+        var fields = SettingsModel.Fields(LauncherSettings.Default, LauncherDir, "fr") with { CheckEveryMinutes = minutes };
+        var outcome = SettingsModel.Build(LauncherSettings.Default, fields, LauncherDir, "fr");
+        Assert.Null(outcome.Result);
+        Assert.Contains("entre 5 et 1440", outcome.Problem);
+    }
+
+    [Fact]
+    public void AStoredIntervalOutOfBoundsShowsItsBoundedValue()
+    {
+        Assert.Equal("5", SettingsModel.Fields(new LauncherSettings(CheckEveryMinutes: 1), LauncherDir, "en").CheckEveryMinutes);
+    }
+
+    [Fact]
+    public void AutoUpdateChoicesAreInTheLanguage()
+    {
+        Assert.Equal(["Ne pas vérifier", "Prévenir quand une mise à jour sort", "Installer automatiquement"],
+            SettingsModel.AutoUpdateChoices("fr").Select(c => c.ToString()));
+        Assert.Equal("自動でインストールする", SettingsModel.AutoUpdateChoices("ja")[2].Text);
+    }
+
     [Fact]
     public void CloseOnPlayIsStoredTrueOrNotAtAll()
     {
