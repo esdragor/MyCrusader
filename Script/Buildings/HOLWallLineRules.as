@@ -234,7 +234,8 @@ namespace HOLWallLine
 		return Result;
 	}
 
-	// D898 G3: the ground footprint of the wall piece of a cell, in world units. Stub (red step): an empty box.
+	// D898 G3: the ground footprint of the wall piece of a cell, in world units: [Cell x Pitch, Cell x Pitch + Pitch] on both axes (grid origin at the world origin, as CellToPoint).
+	// The boxes of neighbouring cells touch without overlapping, so the first box of a line starts under the mouse cell and the last one ends under the end cell.
 	struct FHOLWallPieceBox
 	{
 		double MinX = 0.0;
@@ -246,6 +247,10 @@ namespace HOLWallLine
 	FHOLWallPieceBox PieceBox(FIntPoint Cell, double Pitch)
 	{
 		FHOLWallPieceBox Box;
+		Box.MinX = Cell.X * Pitch;
+		Box.MinY = Cell.Y * Pitch;
+		Box.MaxX = Box.MinX + Pitch;
+		Box.MaxY = Box.MinY + Pitch;
 		return Box;
 	}
 
