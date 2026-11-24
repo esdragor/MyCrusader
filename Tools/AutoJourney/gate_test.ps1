@@ -177,8 +177,24 @@ Check ($ess -match '(?m)^FAIL .*(binaire|DLL).*(ANCIEN|perim).*Source') 'essay: 
 $rep2 = & powershell -NoProfile -ExecutionPolicy Bypass -File $Gate -Phase Report -Root $Repo | Out-String
 Check (-not ($rep2 -match '(?m)^WARN .*(binaire|DLL).*(ANCIEN|perim)') -and $rep2 -match '(?m)^PASS .*binaire') 'report: binaire plus recent que le fichier -> PASS' $rep2
 
+# --- SAURON-1124sj : Merge, un Docs\Priorite_X.md modifie dans la copie principale est un DOC (comme dans commit_docs.ps1 depuis 7d9d58d) : pas de FAIL ;
+# un Docs\Autre.md modifie reste du hors-docs : FAIL.
+$PM = Join-Path $Tmp 'HeroesOfLiberty-PrioMain'
+New-Item -ItemType Directory -Path (Join-Path $PM 'Docs') -Force | Out-Null
+git -C $PM init -q 2>$null | Out-Null
+Set-Content -Path (Join-Path $PM 'Docs\Priorite_X.md') -Value 'a'
+Set-Content -Path (Join-Path $PM 'Docs\Autre.md') -Value 'a'
+git -C $PM add Docs 2>$null | Out-Null
+git -C $PM -c user.name=t -c user.email=t@t commit -q -m docs 2>$null | Out-Null
+Set-Content -Path (Join-Path $PM 'Docs\Priorite_X.md') -Value 'b'
+$mgP = & powershell -NoProfile -ExecutionPolicy Bypass -File $Gate -Phase Merge -MainRoot $PM | Out-String
+Check (-not ($mgP -match '(?m)^FAIL .*copie principale') -and $mgP -match '(?m)^WARN .*copie principale.*1 doc') 'merge: Docs\Priorite_X.md modifie dans la copie principale -> doc (WARN), pas de FAIL' $mgP
+Set-Content -Path (Join-Path $PM 'Docs\Autre.md') -Value 'b'
+$mgA = & powershell -NoProfile -ExecutionPolicy Bypass -File $Gate -Phase Merge -MainRoot $PM | Out-String
+Check ($mgA -match '(?m)^FAIL .*copie principale.*Docs/Autre\.md') 'merge: Docs\Autre.md modifie dans la copie principale -> FAIL (hors docs)' $mgA
+
 # --- L7-8 + L7-6 : Close -Exclude et ligne GESTE / SON des E-*.md
-$Ret = Join-Path $Tmp 'Retours'
+$Ret =Join-Path $Tmp 'Retours'
 New-Item -ItemType Directory -Path $Ret | Out-Null
 Set-Content -Path (Join-Path $Ret 'E-bad.md') -Encoding UTF8 -Value "# [$A ESSAYER] E-bad : un essai sans statut`nSTATUT : VU $A L'$($E)CRAN"
 Set-Content -Path (Join-Path $Ret 'E-good.md') -Encoding UTF8 -Value "# [$A ESSAYER] E-good : un essai complet`nSTATUT : VU $A L'$($E)CRAN`nGESTE: r$($E)el`nSON: non entendu"
