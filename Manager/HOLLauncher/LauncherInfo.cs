@@ -7,5 +7,5 @@ namespace HOLLauncher;
  */
 public static class LauncherInfo
 {
-    public const string Version = "4";
+    public const string Version = "5";
 }
