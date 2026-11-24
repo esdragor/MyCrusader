@@ -8,6 +8,7 @@
 #include "Match/HOLMatchConfig.h"
 #include "MassCommonFragments.h"
 #include "MassCommonTypes.h"
+#include "MassEntitySubsystem.h"
 #include "MassExecutionContext.h"
 #include "Simulation/HOLCombatRules.h"
 #include "Simulation/HOLHeroSubsystem.h"
@@ -103,6 +104,92 @@ void UHOLMoraleProcessor::QueueClearMalusAround(const UWorld* World, const int32
 	Order.RadiusCm = RadiusCm;
 	Order.Slot = OrderSlot;
 }
+namespace
+{
+	// Visits the units of the camp Slot between two steps (console side, never per entity per step): the fragment of each, writable.
+	template <typename FVisitor>
+	void ForEachUnitOfSlot(const UWorld* World, const int32 Slot, FVisitor&& Visit)
+	{
+		UMassEntitySubsystem* EntitySubsystem = World != nullptr ? World->GetSubsystem<UMassEntitySubsystem>() : nullptr;
+		if (EntitySubsystem == nullptr)
+		{
+			return;
+		}
+		FMassEntityManager& EntityManager = EntitySubsystem->GetMutableEntityManager();
+		FMassEntityQuery Query(EntityManager.AsShared());
+		Query.AddRequirement<FHOLMoraleFragment>(EMassFragmentAccess::ReadWrite);
+		Query.AddRequirement<FHOLUnitStateFragment>(EMassFragmentAccess::ReadOnly);
+		FMassExecutionContext ExecutionContext(EntityManager);
+		Query.ForEachEntityChunk(ExecutionContext, [Slot, &Visit](FMassExecutionContext& Chunk)
+		{
+			const TArrayView<FHOLMoraleFragment> Fragments = Chunk.GetMutableFragmentView<FHOLMoraleFragment>();
+			const TConstArrayView<FHOLUnitStateFragment> States = Chunk.GetFragmentView<FHOLUnitStateFragment>();
+			for (int32 Index = 0; Index < Fragments.Num(); ++Index)
+			{
+				if (States[Index].OwnerPlayer == Slot)
+				{
+					Visit(Fragments[Index]);
+				}
+			}
+		});
+	}
+}
+
+UHOLMoraleProcessor::FReport UHOLMoraleProcessor::ReportSlot(const UWorld* World, const int32 Slot)
+{
+	FReport Report;
+	ForEachUnitOfSlot(World, Slot, [&Report](FHOLMoraleFragment& Fragment)
+	{
+		// The same call GetDamageTakenPercent starts from (HOLCombatProcessor.cpp): the percent of the morale lever alone, before the ford.
+		Report.TakenPercents.Add(HOLMorale::TakenPercent(Fragment.State, 0));
+		Report.NumWithEffects += HOLMorale::IsEmpty(Fragment.State) ? 0 : 1;
+	});
+	return Report;
+}
+
+int32 UHOLMoraleProcessor::ClearSlot(const UWorld* World, const int32 Slot)
+{
+	int32 NumCleared = 0;
+	ForEachUnitOfSlot(World, Slot, [&NumCleared](FHOLMoraleFragment& Fragment)
+	{
+		NumCleared += HOLMorale::IsEmpty(Fragment.State) && Fragment.State.ImmunityMs <= 0 ? 0 : 1;
+		Fragment.State = HOLMorale::FHOLMoraleState();
+	});
+	return NumCleared;
+}
+
+namespace
+{
+	// hol.Morale.Report <slot> / hol.Morale.Clear <slot>: the two debug commands of the morale (S2-c step 8). The world is the one of the console.
+	FAutoConsoleCommandWithWorldAndArgs ReportCommand(
+		TEXT("hol.Morale.Report"),
+		TEXT("hol.Morale.Report <slot> : logs, for the camp <slot>, each unit's damage-taken percent as the combat reads it, and how many units carry a morale effect."),
+		FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
+		{
+			if (Args.Num() >= 1)
+			{
+				const UHOLMoraleProcessor::FReport Report = UHOLMoraleProcessor::ReportSlot(World, FCString::Atoi(*Args[0]));
+				int32 Worst = 0;
+				for (const int32 Percent : Report.TakenPercents)
+				{
+					Worst = FMath::Abs(Percent) > FMath::Abs(Worst) ? Percent : Worst;
+				}
+				UE_LOG(LogTemp, Display, TEXT("hol.Morale.Report slot %s: %d units, %d with an effect, worst taken percent %d"), *Args[0], Report.TakenPercents.Num(), Report.NumWithEffects, Worst);
+			}
+		}));
+
+	FAutoConsoleCommandWithWorldAndArgs ClearCommand(
+		TEXT("hol.Morale.Clear"),
+		TEXT("hol.Morale.Clear <slot> : puts the morale of every unit of the camp <slot> back to 0 (effects and immunity). Debug."),
+		FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
+		{
+			if (Args.Num() >= 1)
+			{
+				UE_LOG(LogTemp, Display, TEXT("hol.Morale.Clear slot %s: %d units cleared"), *Args[0], UHOLMoraleProcessor::ClearSlot(World, FCString::Atoi(*Args[0])));
+			}
+		}));
+}
+
 void UHOLMoraleProcessor::SetSlotAttenuation(const int32 Slot, const int32 Percent)
 {
 	if (Slot >= 0 && Slot < FHOLMatchConfig::MaxSlots)

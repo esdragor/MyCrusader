@@ -45,6 +45,21 @@ public:
 	/** The attenuation percent the camp Slot gives now (0 for a slot out of range). Read side of SetSlotAttenuation. */
 	static int32 GetSlotAttenuation(int32 Slot);
 
+	/** What hol.Morale.Report <slot> reads for a camp (PLAN-MORAL-1120 step 8, S2-c): one value per unit of the camp. */
+	struct FReport
+	{
+		/** Per unit, the damage-taken percent the combat reads (HOLMorale::TakenPercent of the unit's fragment, the value UHOLCombatProcessor::GetDamageTakenPercent starts from). */
+		TArray<int32> TakenPercents;
+		/** How many of those units carry at least one morale effect. */
+		int32 NumWithEffects = 0;
+	};
+
+	/** Reads the camp Slot's morale as the combat reads it (read side of the console command hol.Morale.Report). Between two steps; never per entity per step. */
+	static FReport ReportSlot(const UWorld* World, int32 Slot);
+
+	/** Puts the morale of every unit of the camp Slot back to 0 (effects and immunity): debug, the console command hol.Morale.Clear <slot>. Returns how many units carried something. */
+	static int32 ClearSlot(const UWorld* World, int32 Slot);
+
 	/** How many morale orders (ApplyEffectAround and ClearMalusAround together) wait for a step, all worlds. */
 	static int32 NumPendingOrders();
 
