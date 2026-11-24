@@ -4,6 +4,7 @@
 
 #include "Internationalization/Culture.h"
 #include "Internationalization/Internationalization.h"
+#include "Kismet/KismetInternationalizationLibrary.h"
 #include "Match/HOLForumRules.h"
 #include "Match/HOLMatchConfig.h"
 
@@ -97,6 +98,14 @@ FString UHOLForumMessagesReadLibrary::SetCultureName(const FString& Culture)
 {
 	const FString Previous = FInternationalization::Get().GetCurrentCulture()->GetName();
 	FInternationalization::Get().SetCurrentCulture(Culture);
+	return Previous;
+}
+
+FString UHOLForumMessagesReadLibrary::SetLanguageName(const FString& Culture)
+{
+	// As FScopedLanguage (HOLGameNamesTests.cpp): the previous language is read first, SaveToConfig is false.
+	const FString Previous = FInternationalization::Get().GetCurrentLanguage()->GetName();
+	UKismetInternationalizationLibrary::SetCurrentLanguage(Culture, /*SaveToConfig*/ false);
 	return Previous;
 }
 

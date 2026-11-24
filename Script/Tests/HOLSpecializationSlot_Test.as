@@ -63,10 +63,11 @@ void Test_SpecializationSlotTemplarsShowThreeOptions(FUnitTest& T)
 // read the .po's 段階{0}のルートA, not the French source (the lines were built with an f-string, never localized).
 void Test_SpecializationSlotOptionTextsFollowTheCulture(FUnitTest& T)
 {
-	FString Previous = HOLForumMessagesRead::SetCultureName("ja");
+	// SetLanguageName (not SetCultureName) also loads the ja .locres, like Settings > Language.
+	FString Previous = HOLForumMessagesRead::SetLanguageName("ja");
 	FHOLSpecializationState State = HOLSpecialization::NewStateFor(EHOLFaction::Templars);
 	FHOLSpecializationSlotView View = HOLSpecializationSlot::Make(SpecializationSlotTest::ViewOf(State), 1, true, HOLSpecialization::OptionCountOf(EHOLFaction::Templars));
-	HOLForumMessagesRead::SetCultureName(Previous);
+	HOLForumMessagesRead::SetLanguageName(Previous);
 	T.AssertEquals(3, View.OptionTexts.Num(), "three options for the Templars");
 	T.AssertEquals("段階1のルートA", View.OptionTexts[0], "ja: the table's text of option A");
 	T.AssertEquals("段階1のルートB", View.OptionTexts[1], "ja: the table's text of option B");
