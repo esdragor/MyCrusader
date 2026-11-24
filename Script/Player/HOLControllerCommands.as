@@ -409,3 +409,46 @@ const FConsoleCommand HOLVictoryDefeatConsole("hol.Victory.Defeat", n"HOLVictory
 const FConsoleCommand HOLVictoryFallForumConsole("hol.Victory.FallForum", n"HOLVictoryFallForumCommand");
 const FConsoleCommand HOLVictorySkipRuinConsole("hol.Victory.SkipRuin", n"HOLVictorySkipRuinCommand");
 const FConsoleCommand HOLVictoryHoldPresenceConsole("hol.Victory.HoldPresence", n"HOLVictoryHoldPresenceCommand");
+
+// D898 G6 (CELEBORN-1124sg): hol.Wall.PlaceLine <Type> X1 Y1 X2 Y2 [queue 0|1] lays a wall line in world coordinates for every local controller, with its selected Peasants
+// as builders (the same ServerPlaceWallLine the drag release sends). No mouse, no pixel: the scenario states the cells it wants.
+void HOLWallPlaceLineCommand(const TArray<FString>& Args)
+{
+	if (Args.Num() < 5 || Args[0].IsEmpty() || !HOLControllerCommands::IsNumber(Args[1]) || !HOLControllerCommands::IsNumber(Args[2]) || !HOLControllerCommands::IsNumber(Args[3]) || !HOLControllerCommands::IsNumber(Args[4]))
+	{
+		HOLScriptLog::LogWarning(n"LogHOLMatch", "Usage: hol.Wall.PlaceLine <Type> <X1> <Y1> <X2> <Y2> [queue 0|1]");
+		return;
+	}
+	const FName TypeName = FName(Args[0]);
+	const FVector Start = FVector(HOLControllerCommands::ParseReal(Args[1]), HOLControllerCommands::ParseReal(Args[2]), 0.0);
+	const FVector End = FVector(HOLControllerCommands::ParseReal(Args[3]), HOLControllerCommands::ParseReal(Args[4]), 0.0);
+	const bool bQueue = Args.Num() >= 6 && HOLControllerCommands::IsNumber(Args[5]) && HOLControllerCommands::ParseReal(Args[5]) != 0.0;
+	TArray<AHOLPlayerController> Controllers;
+	GetAllActorsOfClass(Controllers);
+	for (AHOLPlayerController Controller : Controllers)
+	{
+		if (!Controller.IsLocalController())
+			continue;
+		AHOLRpcPlayer Rpc = Cast<AHOLRpcPlayer>(HOLRpcBridge::FindPlayerActor(Controller));
+		if (Rpc == nullptr)
+		{
+			HOLScriptLog::LogError(n"LogHOLMatch", "hol.Wall.PlaceLine not sent: no script RPC actor");
+			continue;
+		}
+		TArray<int> SelectedIds;
+		HOLControllerCommand::OwnSelectedUnitIds(Controller, SelectedIds);
+		TArray<uint32> UnitIds;
+		for (int UnitId : SelectedIds)
+			UnitIds.Add(uint32(UnitId));
+		FVector_NetQuantize QuantizedStart;
+		QuantizedStart.X = Start.X;
+		QuantizedStart.Y = Start.Y;
+		QuantizedStart.Z = Start.Z;
+		FVector_NetQuantize QuantizedEnd;
+		QuantizedEnd.X = End.X;
+		QuantizedEnd.Y = End.Y;
+		QuantizedEnd.Z = End.Z;
+		Rpc.ServerPlaceWallLine(TypeName, QuantizedStart, QuantizedEnd, UnitIds, bQueue);
+	}
+}
+const FConsoleCommand HOLWallPlaceLineConsole("hol.Wall.PlaceLine", n"HOLWallPlaceLineCommand");

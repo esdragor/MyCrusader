@@ -27,18 +27,11 @@ hol.Camera.TestCursor 0.5 0.5
 hol.Select.ClickUnit -1
 waitlog Selection: Peasant #
 hol.Camera.TestCursor off
-hol.Select.Grid 0
-hol.Select.Grid 6
-waitlog Placement: Palisade (cost
-hol.Camera.Focus -17400 0
-frames 150
 hol.Camera.Focus -17400 0
 frames 60
-hol.Mouse.LogDragEnd 1
-hol.Mouse.Drag 245 360 1035 360 90
+hol.Wall.PlaceLine Palisade -17450 -1500 -17450 1500
+waitlog place wall line received by the server
 frames 70
-waitlog Drag end: foreground=
-waitlog Placement: Palisade wall line (
 wait 2
 hol.Build.Report
 # D898 G6 (CELEBORN-1124sd) : la ligne A doit compter 30 pieces de 1 m (centres y = -1450 + 100 k). Rouge observe : 11 pieces (pas de 300, boite de 400 de la voisine, GetFootprintBounds).
@@ -69,17 +62,11 @@ hol.Camera.TestCursor 0.5 0.5
 hol.Select.ClickUnit -1
 waitlog Selection: Peasant #
 hol.Camera.TestCursor off
-hol.Select.Grid 0
-hol.Select.Grid 6
-waitlog Placement: Palisade (cost
 hol.Camera.Focus -19400 0
 frames 40
-hol.Mouse.Drag 245 360 627 360 45
+hol.Wall.PlaceLine Palisade -19450 -1500 -19450 -105
 frames 20
-hol.Select.Grid 0
-hol.Select.Grid 6
-waitlog Placement: Palisade (cost
-hol.Mouse.Drag 653 360 1035 360 45
+hol.Wall.PlaceLine Palisade -19450 5 -19450 1500
 frames 20
 wait 2
 hol.Build.Report
