@@ -7,7 +7,7 @@ Impact joueur : au lieu de poser des blocs de 4 m, le joueur trace un mur fin (1
 metre (5 Bois la sous-case de palissade) et une case occupee fait un trou au lieu de tout annuler.
 
 ## 1. Decisions deja prises (a integrer telles quelles)
-- D898 : une case se divise en 4 sous-cases en longueur ET en largeur (donc 16 par case) ; le plus important est le debut et la fin, le reste est un trace.
+- D898 : une case se divise en 4 sous-cases en longueur ET en largeur (donc 16 par case, sous-cases de 1 m : confirme par D910, 2026-11-24, « 4x4 de 1 m », qui remplace le « 2 x 2 de 200 cm » de D904) ; le plus important est le debut et la fin, le reste est un trace.
 - Q1 = A : palissade + mur de bois + mur de pierre sur la grille fine (lignes CSV `Palisade`, `StoneWall` ; `PalisadeGate` : voir point 2).
 - D904 : cout = prix actuel PAR SOUS-CASE (palissade 5 Bois, mur de pierre 10 Pierre) ; une ligne de meme longueur coute 4 fois plus.
   Exemple lu : le geste reel de SAURON-1123pb (9 fondations, Bois 20200 -> 20155 = 9 x 5) devient 36 sous-cases = 180 Bois.
