@@ -486,6 +486,7 @@ if ($Phase -eq 'Close') {
   $ru = @(git -C $Main status --short --untracked-files=all -- Retours 2>$null | Where-Object { $_ -match '^\?\? ' } | ForEach-Object { $_.Substring(3) })
   if ($ru.Count -gt 0) { Say 'WARN' ("copie principale : {0} fichier(s) de Retours\ non suivi(s) par git (a commiter ou supprimer) : {1}" -f $ru.Count, (($ru | Select-Object -First 8) -join ', ')) } else { Say 'PASS' 'copie principale : aucun fichier non suivi dans Retours\' }
   # L7-6 : chaque E-*.md ouvert ([... ESSAYER]) porte GESTE: reel|interne et SON: entendu|non entendu
+  $gInterne = @()
   foreach ($e in @(Get-ChildItem $RetoursDir -Filter 'E-*.md' -ErrorAction SilentlyContinue)) {
     $txt = Get-Content $e.FullName -Raw -Encoding UTF8
     if ($txt -notmatch '(?m)^#.*ESSAYER\]') { continue }
@@ -494,7 +495,10 @@ if ($Phase -eq 'Close') {
     if ($txt -notmatch '(?m)^\s*\**GESTE\s*:\**\s*(r.el|interne)') { $miss += 'GESTE: reel|interne' }
     if ($txt -notmatch '(?m)^\s*\**SON\s*:\**\s*(entendu|non entendu|sans objet)') { $miss += 'SON: entendu|non entendu|sans objet' }
     if ($miss.Count -gt 0) { Say 'WARN' ("Retours\{0} : ligne(s) de statut manquante(s) : {1} (gabarit Tools\AutoJourney\E_template.md)" -f $e.Name, ($miss -join ' ; ')) }
+    if ($txt -match '(?m)^\s*\**GESTE\s*:\**\s*interne') { $gInterne += $e.Name }
   }
+  # L14-5 (SAURON-1124sc) : les essais ouverts au GESTE interne (commande hol.*) ne comptent pas comme essayes au geste reel : le bilan les liste
+  if ($gInterne.Count -gt 0) { Say 'WARN' ("L14-5 : {0} essai(s) [A ESSAYER] au geste interne (LOGIQUE SEULEMENT tant que GESTE: interne ; rejouer au clic reel, modele neutrals_qground / hol.Mouse.Click) : {1}" -f $gInterne.Count, ($gInterne -join ', ')) }
   $ret = @(Get-ChildItem "$Main\Retours" -Filter '*.md' -ErrorAction SilentlyContinue | Where-Object { (Get-Content $_.FullName -Raw) -match '(?m)^\s*\**R[ée]ponse[^:\n]*:\**\s*\S' })
   if ($ret.Count -gt 0) { Say 'WARN' ("reponses de l'utilisateur encore dans Retours\ (a reporter dans le chantier puis supprimer) : " + (($ret | ForEach-Object { $_.Name }) -join ', ')) } else { Say 'PASS' 'aucune reponse non traitee dans Retours\' }
   $jour = Get-Content $JourFile -Raw -ErrorAction SilentlyContinue
