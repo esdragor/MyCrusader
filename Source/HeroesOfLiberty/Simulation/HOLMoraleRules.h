@@ -124,6 +124,9 @@ namespace HOLMorale
 	// Takes off every malus (Lumiere sacree); the count removed. The bonus stay; the immunity is granted apart.
 	int32 RemoveMalus(FHOLMoraleState& State);
 
+	// Takes off the effect of this id (the necrotic rage ends at its stop floor before its time is over); the count removed (0 or 1: an id is posed once, Apply refreshes).
+	int32 RemoveById(FHOLMoraleState& State, int32 Id);
+
 	// A unit with no effect and no immunity: its fragment is left out of the step's fingerprint (D190, as RageMs).
 	bool IsEmpty(const FHOLMoraleState& State);
 

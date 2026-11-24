@@ -281,6 +281,20 @@ namespace HOLMorale
 		return Removed;
 	}
 
+	int32 RemoveById(FHOLMoraleState& State, int32 Id)
+	{
+		int32 Removed = 0;
+		for (int32 Index = State.Num - 1; Index >= 0; Index--)
+		{
+			if (State.Effects[Index].Id == Id)
+			{
+				RemoveAt(State, Index);
+				Removed++;
+			}
+		}
+		return Removed;
+	}
+
 	int32 ClearMalusAndProtect(FHOLMoraleState& State)
 	{
 		const int32 Removed = RemoveMalus(State);

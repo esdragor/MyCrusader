@@ -12,6 +12,8 @@
 #include "Misc/Paths.h"
 #include "Simulation/HOLUnitAbilityRules.h"
 #include "Simulation/HOLRageVisual.h"
+#include "Simulation/HOLCombatRules.h"
+#include "Simulation/HOLMoraleRules.h"
 #include "Commands/HOLCommandSubsystem.h"
 #include "Simulation/HOLCombatProcessor.h"
 #include "Simulation/HOLSimulationFragments.h"
@@ -144,6 +146,18 @@ bool FHOLDamnedWarriorRageTest::RunTest(const FString& Parameters)
 			++Step;
 			Simulation->GetOnStepStarted().Broadcast(Step);
 			Units->ServeBirthRequests();
+			// In the game the morale processor runs just before the combat each step and runs the time of every unit's effects down (HOLMorale::Tick,
+			// UHOLMoraleProcessor::Execute); this harness runs the combat alone, so it passes the same time here, or the rage's effect would never end.
+			TArray<uint32> AllIds;
+			Units->GetAllUnitIds(AllIds);
+			for (const uint32 UnitId : AllIds)
+			{
+				const FMassEntityHandle UnitEntity = Units->FindEntity(UnitId);
+				if (FHOLMoraleFragment* UnitMorale = UnitEntity.IsSet() ? EntityManager->GetFragmentDataPtr<FHOLMoraleFragment>(UnitEntity) : nullptr)
+				{
+					HOLMorale::Tick(UnitMorale->State, HOLCombat::ToMilliseconds(StepSeconds));
+				}
+			}
 			FMassProcessingContext ProcessingContext(EntityManager, StepSeconds);
 			UE::Mass::Executor::Run(*Combat, ProcessingContext);
 			Units->FlushDestructions();
