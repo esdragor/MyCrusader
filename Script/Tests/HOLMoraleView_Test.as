@@ -68,3 +68,28 @@ void Test_MoraleViewPeasantNoneAndImmunity(FUnitTest& T)
 	T.AssertTrue(Gold.bShown, "the immunity alone shows a pastille");
 	T.AssertTrue(Gold.Color.R > Gold.Color.B && Gold.Color.G > Gold.Color.B, "gold: red and green above blue");
 }
+
+// A non-zero replicated mask gives a view with one effect per bit, at the right table ids (the real HOLMorale::NativeMakeEffectFromRow chain, no copied value).
+void Test_MoraleViewReadWithMaskGivesOneEffectPerBit(FUnitTest& T)
+{
+	const int Mask = (1 << HOLMoraleTable::CloseRanks) | (1 << HOLMoraleTable::Demoralised);
+	const HOLMoraleView::FHOLMoraleView View = HOLMoraleView::Read(0, true, false, Mask);
+	T.AssertTrue(View.bAvailable, "a non-zero mask makes the view available");
+	T.AssertEquals(2, View.State.Effects.Num(), "two bits, two effects");
+	if (View.State.Effects.Num() == 2)
+	{
+		T.AssertEquals(HOLMoraleTable::CloseRanks, View.State.Effects[0].Id, "the lowest bit is the Close Ranks row");
+		T.AssertEquals(HOLMoraleTable::Demoralised, View.State.Effects[1].Id, "the next bit is the Demoralised row");
+		const FHOLMoraleEffectData Native = HOLMorale::NativeMakeEffectFromRow(HOLMoraleTable::Demoralised);
+		T.AssertEquals(Native.Taken, View.State.Effects[1].Taken, "the effect is the one the rule builds from its row");
+	}
+	const HOLMoraleView::FHOLMoralePastille Pastille = HOLMoraleView::Present(View);
+	T.AssertTrue(Pastille.bShown, "the pastille shows for the masked unit");
+	T.AssertTrue(Pastille.Text.Contains(HOLMoraleTable::Name(HOLMoraleTable::CloseRanks).ToString()), "the pastille names the bonus bit");
+	T.AssertTrue(Pastille.Text.Contains(HOLMoraleTable::Name(HOLMoraleTable::Demoralised).ToString()), "the pastille names the malus bit");
+	T.AssertTrue(Pastille.Color.R > Pastille.Color.G, "a malus in the mask makes the pastille red");
+	const HOLMoraleView::FHOLMoraleView Single = HOLMoraleView::Read(0, true, false, 1 << HOLMoraleTable::Triumph);
+	T.AssertEquals(1, Single.State.Effects.Num(), "one bit, one effect");
+	const HOLMoraleView::FHOLMoraleView Peasant = HOLMoraleView::Read(0, true, true, Mask);
+	T.AssertFalse(HOLMoraleView::Present(Peasant).bShown, "a Peasant still shows nothing with a mask (D705)");
+}
