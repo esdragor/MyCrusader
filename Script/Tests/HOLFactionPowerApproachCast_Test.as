@@ -48,6 +48,20 @@ void Test_FactionApproachSecondCastReplacesTheFirst(FUnitTest& T)
 }
 
 // GLORFINDEL-1124sa (D908): the Honor is controlled at the ORDER. The decision is the rule's (HOLFactionPowerCast::Decide measured from the point itself), never copied.
+// GLORFINDEL-1124sb (D911): a refused power says WHY to the player. The notice key comes from the refusal the rule COMPUTED (Decide), never from a number typed here.
+void Test_FactionRefusalNoticeNamesTheShortHonor(FUnitTest& T)
+{
+	const FVector Point = FVector(2000.0, 0.0, 0.0);
+	const FHOLFactionPowerDecision Short = HOLFactionPowerServer::ApproachDecisionOf(int(EHOLFaction::DawnOrder), 0, 0, 0, 1000, Point);
+	const FString ShortKey = HOLFactionPowerServer::RefusalNoticeKeyOf(Short.Refusal);
+	T.AssertEquals("PowerRefusedHonor", ShortKey, "a power refused for a short Honor gauge has the Honor notice");
+	const FString ShortText = HOLFactionPowerServer::RefusalNoticeTextOf(Short.Refusal).ToString();
+	T.AssertTrue(ShortText.Len() > 0, "the Honor notice has a text in the current language");
+	const FHOLFactionPowerDecision Enough = HOLFactionPowerServer::ApproachDecisionOf(int(EHOLFaction::DawnOrder), 0, HOLDawnValues::HonorCap(), 0, 1000, Point);
+	const FString EnoughKey = HOLFactionPowerServer::RefusalNoticeKeyOf(Enough.Refusal);
+	T.AssertEquals("", EnoughKey, "an accepted power raises no notice");
+}
+
 // Honor 0: the order is refused for the gauge reason and the gauge it carries is unchanged (nothing paid).
 void Test_FactionApproachOrderRefusedWhenHonorIsShort(FUnitTest& T)
 {

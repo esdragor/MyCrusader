@@ -113,6 +113,18 @@ namespace HOLFactionPowerServer
 		return HOLFactionPowerCast::Decide(Faction, PowerIndex, Gauge, CooldownEndMs, NowMs, int(Point.X), int(Point.Y), int(Point.X), int(Point.Y));
 	}
 
+	// GLORFINDEL-1124sb (D911) STUB (red): the text key of the notice a refusal raises ("" = none).
+	FString RefusalNoticeKeyOf(int Refusal)
+	{
+		return "";
+	}
+
+	// GLORFINDEL-1124sb (D911) STUB (red): the notice text of a refusal.
+	FText RefusalNoticeTextOf(int Refusal)
+	{
+		return FText::FromString("");
+	}
+
 	// GLORFINDEL-1124e (D900): the aimed point is out of range: the hero walks to the stop point of ApproachPointOf, the cast waits for him. Default: the Honor is
 	// written on ARRIVAL (nothing before); hol.Faction.ApproachPays 1 writes it at the order. False when no walk is needed or the order is refused.
 	bool BeginApproach(AHOLGameState State, int Slot, int PowerIndex, const FVector& Point, const FVector& HeroPlace, int HeroId, int NowMs)
