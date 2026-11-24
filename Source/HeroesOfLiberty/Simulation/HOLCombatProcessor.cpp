@@ -1152,7 +1152,19 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 		for (FMassExecutionContext::FEntityIterator EntityIt = Context.CreateEntityIterator(); EntityIt; ++EntityIt)
 		{
 			bAnyDamageRedirect |= bRedirects && States[EntityIt].CurrentHealth > 0.f;
-			HOLHeroAbility::Tick(Combats[EntityIt].RageMs, StepMs); // L4: the necrotic rage and its cool-down count down like the cry
+			// L4 / PLAN-MORAL-1120 step 3: the necrotic rage runs while its morale effect is on the unit (the morale clock ends it after the NecroticRage row's DurationMs);
+			// RageMs is no more counted down here, it follows the effect. A unit with no morale fragment keeps the plain countdown. The cool-down counts down like the cry.
+			if (Combats[EntityIt].RageMs > 0)
+			{
+				if (Morales.IsEmpty())
+				{
+					HOLHeroAbility::Tick(Combats[EntityIt].RageMs, StepMs);
+				}
+				else if (!HOLMorale::Has(Morales[EntityIt].State, HOLMoraleTableRows::HOLMoraleNecroticRage))
+				{
+					Combats[EntityIt].RageMs = 0;
+				}
+			}
 			HOLHeroAbility::Tick(Combats[EntityIt].RageCooldownMs, StepMs);
 			if (bHeroes && States[EntityIt].CurrentHealth > 0.f && Combats[EntityIt].DeathStep < 0)
 			{
