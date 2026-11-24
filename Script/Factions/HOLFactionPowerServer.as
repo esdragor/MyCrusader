@@ -1,8 +1,55 @@
 // S4-a: the SERVER part of a faction power cast, ONE source called by the RPC ServerCastFactionPower (the player's order, after its sender check) and by
 // the AI brain (HOLAIBrain::ThinkPowers): the same rule (HOLFactionPowerCast::Decide), the same effect (HOLZoneEffect::StartSacredLight), the same
 // writes (gauge, cool-down). The AI gets no other path and no discount (D688).
+// FARAMIR-1124a (D900, answer C of Q-lumiere-sacree-visee): an aimed cast beyond the range is no longer refused, the hero walks up to the range, then casts.
+struct FHOLFactionApproach
+{
+	bool bNeedsWalk = false;
+	FVector StopPoint = FVector(0.0, 0.0, 0.0);
+}
+
+// FARAMIR-1124b (S2-c, D404): the order Sacred Light hands to the morale bridge (HOLMorale::ClearMalusAround) when the zone is put down.
+struct FHOLSacredLightClearOrder
+{
+	int CenterXCm = 0;
+	int CenterYCm = 0;
+	int RadiusCm = 0;
+	int Slot = 0;
+}
+
 namespace HOLFactionPowerServer
 {
+	// FARAMIR-1124b: the clearing order of a Sacred Light put down at Pose by Slot (centre = the pose, radius = the zone's radius, camp = the caster).
+	FHOLSacredLightClearOrder ClearMalusOrderOf(int Slot, const FVector& Pose)
+	{
+		FHOLSacredLightClearOrder Order;
+		Order.CenterXCm = int(Pose.X);
+		Order.CenterYCm = int(Pose.Y);
+		Order.RadiusCm = HOLZoneEffect::GetSacredLightRadiusCm();
+		Order.Slot = Slot;
+		return Order;
+	}
+
+	// FARAMIR-1124a: the pure rule of the approach. Origin = the hero's place, Point = the aimed point, RangeCm = the cast range. Beyond the range the hero
+	// walks and stops (RangeCm - 50) cm from the point on the line to it (in range on arrival, the 50 cm absorb the stop's slack); inside, no walk.
+	FHOLFactionApproach ApproachPointOf(const FVector& Origin, const FVector& Point, double RangeCm)
+	{
+		FHOLFactionApproach Result;
+		Result.StopPoint = Origin;
+		const double Dx = Point.X - Origin.X;
+		const double Dy = Point.Y - Origin.Y;
+		const double Distance = Math::Sqrt(Dx * Dx + Dy * Dy);
+		if (Distance <= RangeCm || Distance < 1.0)
+		{
+			return Result;
+		}
+		const double StopFromPoint = Math::Max(0.0, RangeCm - 50.0);
+		const double Walk = Distance - StopFromPoint;
+		Result.bNeedsWalk = true;
+		Result.StopPoint = FVector(Origin.X + Dx / Distance * Walk, Origin.Y + Dy / Distance * Walk, Origin.Z);
+		return Result;
+	}
+
 	// True when the power was put down (the effect started FIRST: a failed start costs nothing, then the gauge and the cool-down are written).
 	// GLORFINDEL-1123n: the ONE cast origin of a faction power, for the player AND the AI (it replaces HOLAIPowerCall::OriginOf). A planted banner is the
 	// origin; with none planted (it reads (0, 0): the AI never plants one, the player may not have) the origin is the centre of Own, the caller's points:
@@ -125,6 +172,9 @@ namespace HOLFactionPowerServer
 			Log(n"LogHOLMatch", f"RpcPower: Sacred Light not started for slot {Slot} (no world, subsystem or slot)");
 			return false;
 		}
+		// S2-c (D404): the light takes the malus off the caster's camp where it lands (queued; the morale processor lays it at its next step), after the start succeeded.
+		const FHOLSacredLightClearOrder Clear = ClearMalusOrderOf(Slot, Pose);
+		HOLMorale::ClearMalusAround(State, Clear.CenterXCm, Clear.CenterYCm, Clear.RadiusCm, Clear.Slot);
 		DrawSacredLightPlaceholder(Pose);
 		State.SetFactionResource(Slot, Decision.NewGaugeValue);
 		State.SetPowerCooldownEndMs(Slot, PowerIndex, Decision.NewCooldownEndMs);
