@@ -2,7 +2,7 @@ using System.Net;
 
 namespace HOLLauncher.Tests;
 
-/** L11: the key of servers.json, sent in X-HOL-Key to its manager only; a 401 bad_key is said in French. */
+/** L11: the key of servers.json, sent in X-HOL-Key to its manager only; a 401 bad_key is a signal of its own (L16: said in the player's language by the views). */
 public sealed class AccessKeyTests : IDisposable
 {
     private const string Key = "k3y-Of_The-Kit";
@@ -93,9 +93,8 @@ public sealed class AccessKeyTests : IDisposable
     {
         var client = new VersionsClient(new HttpClient(FakeHandler.Json(HttpStatusCode.Unauthorized, BadKeyBody)));
         var result = await client.GetLatestAsync("http://h:7700");
-        Assert.Equal(LatestOutcome.Refused, result.Outcome);
-        Assert.Equal(AccessKeyHandler.BadKeyMessage, result.Message);
-        var view = StatusView.From(LauncherStatus.Compute("v1", result));
+        Assert.Equal(LatestOutcome.BadKey, result.Outcome);
+        var view = StatusView.From(LauncherStatus.Compute("v1", result), "fr");
         Assert.StartsWith("Clé d'accès refusée : le kit n'est pas le bon. Redemandez-le.", view.StateText);
         Assert.DoesNotContain("injoignable", view.StateText);
     }
@@ -105,8 +104,7 @@ public sealed class AccessKeyTests : IDisposable
     {
         var downloader = new FileDownloader(new HttpClient(FakeHandler.Json(HttpStatusCode.Unauthorized, BadKeyBody)),
             "http://h:7700", game.Root);
-        var e = await Assert.ThrowsAsync<UpdateDownloadException>(
+        await Assert.ThrowsAsync<AccessKeyRefusedException>(
             () => downloader.FetchRouteAsync("launcher/latest", Path.Combine(game.Root, "l.part")));
-        Assert.Equal(AccessKeyHandler.BadKeyMessage, e.Message);
     }
 }

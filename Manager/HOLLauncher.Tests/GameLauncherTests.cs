@@ -15,9 +15,12 @@ public class GameLauncherTests
     {
         using var game = new TempDir();
         Assert.Null(GameLauncher.FindExe(game.Root));
-        var result = GameLauncher.Start(game.Root);
+        var result = GameLauncher.Start(game.Root, language: "fr");
         Assert.False(result.Success);
         Assert.Equal($"Le jeu est introuvable : {Path.Combine(game.Root, GameLauncher.ExeName)} n'existe pas.", result.Message);
+        var exe = Path.Combine(game.Root, GameLauncher.ExeName);
+        Assert.Equal($"Game not found: {exe} does not exist.", GameLauncher.Start(game.Root, language: "en").Message);
+        Assert.Equal($"ゲームが見つかりません：{exe} が存在しません。", GameLauncher.Start(game.Root, language: "ja").Message);
     }
 
     [Fact]

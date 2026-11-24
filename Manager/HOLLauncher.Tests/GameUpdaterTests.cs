@@ -131,8 +131,8 @@ public class GameUpdaterTests
     }
 
     private static Task<UpdateResult> Update(TempDir game, Published published, string? hpatchz = null,
-        Func<string, long>? freeSpace = null)
-        => new GameUpdater(published.Client(), hpatchz ?? HDiffPatchTool.Hpatchz, freeSpace ?? (_ => long.MaxValue))
+        Func<string, long>? freeSpace = null, string language = "fr")
+        => new GameUpdater(published.Client(), hpatchz ?? HDiffPatchTool.Hpatchz, freeSpace ?? (_ => long.MaxValue), language)
             .UpdateAsync(game.Root, Manager, published.Latest);
 
     /** A friend's first install (L9): only the kit (launcher, patcher, servers.json aimed at the user), no Version.txt. */
@@ -374,6 +374,45 @@ public class GameUpdaterTests
         Assert.Equal("v2", list.Version);
         Assert.Equal(["Data/New.pak", "HeroesOfLiberty.exe", "HeroesOfLiberty/Version.txt"], list.Files.Select(f => f.Path));
         Assert.False(Directory.Exists(FileDownloader.TempDirFor(game.Root, "v2")));
+    }
+
+    /** L16: the end of an update is said in the player's language; sizes in GB with the language's numbers. */
+    [Fact]
+    public async Task MessagesFollowTheLanguage()
+    {
+        using (var game = InstalledGame())
+        {
+            Assert.Equal("The game is up to date (version v2).", (await Update(game, WithPatch(), language: "en")).Message);
+        }
+        using (var game = KitOnly())
+        {
+            Assert.Equal("ゲームをインストールしました（バージョン v2）。", (await Update(game, WithPatch(), language: "ja")).Message);
+        }
+        using (var game = KitOnly())
+        {
+            const long gigabyte = 1024L * 1024 * 1024;
+            var en = await Update(game, WithPatch(), freeSpace: _ => gigabyte / 10, language: "en");
+            Assert.StartsWith("Not enough disk space: version v2 needs 0.2 GB free, ", en.Message);
+            Assert.Contains(" has only 0.1 GB.", en.Message);
+            var fr = await Update(game, WithPatch(), freeSpace: _ => gigabyte / 10, language: "fr");
+            Assert.StartsWith("Espace disque insuffisant : il faut 0,2 Go libres pour la version v2, ", fr.Message);
+        }
+    }
+
+    /** A refused key during the downloads is said as such (the outcome, not a compared text), in the language. */
+    [Theory]
+    [InlineData("fr", "Clé d'accès refusée : le kit n'est pas le bon. Redemandez-le.")]
+    [InlineData("en", "Access key refused: this is not the right kit. Ask for it again.")]
+    public async Task BadKeyDuringTheDownloadsIsSaid(string language, string expected)
+    {
+        using var game = InstalledGame();
+        var refused = FakeHandler.Json(HttpStatusCode.Unauthorized, "{\"error\":\"bad_key\",\"message\":\"no\"}");
+
+        var result = await new GameUpdater(new HttpClient(refused), HDiffPatchTool.Hpatchz, _ => long.MaxValue, language)
+            .UpdateAsync(game.Root, Manager, WithPatch().Latest);
+
+        Assert.False(result.Success);
+        Assert.Equal(expected, result.Message);
     }
 
     [Fact]

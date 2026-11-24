@@ -47,6 +47,48 @@
   <data name="LogsMissing" xml:space="preserve"><value>ゲームのログはまだありません。{0} が存在しません（ゲームを起動したことはありますか？）。</value></data>
   <data name="GameDirMissing" xml:space="preserve"><value>ゲームフォルダーが存在しません：{0}</value></data>
   <data name="FolderOpenFailed" xml:space="preserve"><value>{0} を開けません：{1}</value></data>
+  <data name="InstalledVersion" xml:space="preserve"><value>インストール済みのバージョン：{0}</value></data>
+  <data name="LatestVersion" xml:space="preserve"><value>最新バージョン：{0}</value></data>
+  <data name="VersionNotInstalled" xml:space="preserve"><value>未インストール</value></data>
+  <data name="VersionUnknown" xml:space="preserve"><value>不明</value></data>
+  <data name="VersionPending" xml:space="preserve"><value>…</value></data>
+  <data name="StatusLoading" xml:space="preserve"><value>読み込み中…</value></data>
+  <data name="GameUpToDate" xml:space="preserve"><value>ゲームは最新の状態です。</value></data>
+  <data name="GameOutdated" xml:space="preserve"><value>ゲームのアップデートがあります（{0}）。</value></data>
+  <data name="GameNotInstalled" xml:space="preserve"><value>ゲームはインストールされていません。バージョン {0} をインストールできます。</value></data>
+  <data name="BadKey" xml:space="preserve"><value>アクセスキーが拒否されました。キットが正しくありません。もう一度入手してください。</value></data>
+  <data name="ServerUnreachable" xml:space="preserve"><value>サーバーに接続できません：{0}</value></data>
+  <data name="Error" xml:space="preserve"><value>エラー：{0}</value></data>
+  <data name="LauncherLine" xml:space="preserve"><value>ランチャー：バージョン {0}</value></data>
+  <data name="LauncherLineUpdate" xml:space="preserve"><value>ランチャー：バージョン {0}（バージョン {1} が利用可能）</value></data>
+  <data name="UpdateGame" xml:space="preserve"><value>ゲームを更新</value></data>
+  <data name="InstallGame" xml:space="preserve"><value>ゲームをインストール</value></data>
+  <data name="PlayOutdatedConfirmation" xml:space="preserve"><value>ゲームが最新ではありません。サーバーはこのバージョンを受け付けません。ソロでプレイしますか？</value></data>
+  <data name="PlaySoloWarning" xml:space="preserve"><value>ソロでプレイできます。</value></data>
+  <data name="ProgressStarting" xml:space="preserve"><value>アップデートを準備中…</value></data>
+  <data name="ProgressFile" xml:space="preserve"><value>ファイル {0}/{1}：{2} — {3} MB</value></data>
+  <data name="ProgressLauncher" xml:space="preserve"><value>ランチャー バージョン {0}：{1} MB</value></data>
+  <data name="ProgressLauncherTotal" xml:space="preserve"><value>ランチャー バージョン {0}：{1} / {2} MB</value></data>
+  <data name="ProgressCancelling" xml:space="preserve"><value>キャンセル中…</value></data>
+  <data name="GameInstalled" xml:space="preserve"><value>ゲームをインストールしました（バージョン {0}）。</value></data>
+  <data name="GameUpdated" xml:space="preserve"><value>ゲームを更新しました（バージョン {0}）。</value></data>
+  <data name="GameUpdateCancelled" xml:space="preserve"><value>アップデートをキャンセルしました。次回は中断したところから再開します。</value></data>
+  <data name="GameDownloadFailed" xml:space="preserve"><value>ダウンロードできません：{0}</value></data>
+  <data name="GameUpdateInterrupted" xml:space="preserve"><value>アップデートが中断されました：{0}。もう一度実行してください。</value></data>
+  <data name="GameFileInUse" xml:space="preserve"><value>{0} は使用中です。ゲームを終了してから、もう一度アップデートしてください。</value></data>
+  <data name="NotEnoughSpace" xml:space="preserve"><value>ディスクの空き容量が足りません。バージョン {1} には {0} GB の空き容量が必要ですが、{2} のディスクには {3} GB しかありません。空き容量を増やしてから、もう一度お試しください。</value></data>
+  <data name="LauncherUpdated" xml:space="preserve"><value>ランチャーをバージョン {0} に更新しました。</value></data>
+  <data name="LauncherCorrupt" xml:space="preserve"><value>ダウンロードしたランチャーが破損しています（SHA-256 が {1} ではなく {0}）。削除しましたので、もう一度お試しください。</value></data>
+  <data name="LauncherUpdateCancelled" xml:space="preserve"><value>ランチャーの更新をキャンセルしました。次回は中断したところから再開します。</value></data>
+  <data name="LauncherDownloadFailed" xml:space="preserve"><value>ランチャーをダウンロードできません：{0}</value></data>
+  <data name="LauncherUpdateInterrupted" xml:space="preserve"><value>ランチャーの更新が中断されました：{0}。現在のランチャーをそのまま使用します。</value></data>
+  <data name="LauncherRestartByHand" xml:space="preserve"><value>{0} ランチャーを手動で起動し直してください（{1}）。</value></data>
+  <data name="LauncherPathUnknown" xml:space="preserve"><value>エラー：ランチャーの場所がわかりません。</value></data>
+  <data name="UpdateCancelled" xml:space="preserve"><value>アップデートをキャンセルしました。</value></data>
+  <data name="GameNotFound" xml:space="preserve"><value>ゲームが見つかりません：{0} が存在しません。</value></data>
+  <data name="GameStarted" xml:space="preserve"><value>ゲームを起動しました。</value></data>
+  <data name="GameStartFailed" xml:space="preserve"><value>ゲームを起動できませんでした：{0}</value></data>
+  <data name="BadCommandLine" xml:space="preserve"><value>コマンドラインが正しくありません：{0}</value></data>
   <data name="NotesOlderMissing" xml:space="preserve"><value>これより古いバージョンの更新内容は表示できません。</value></data>
   <data name="SettingsLaunch" xml:space="preserve"><value>ゲームの起動</value></data>
   <data name="SettingsDisplayMode" xml:space="preserve"><value>表示モード：</value></data>

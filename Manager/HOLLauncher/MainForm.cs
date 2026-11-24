@@ -8,7 +8,8 @@ namespace HOLLauncher;
  * the settings (LaunchArguments, L19) and closes the launcher.
  * "Settings" (L15, while nothing runs) opens SettingsForm, saves the choice (LauncherSettings), applies the language
  * (Texts, ApplyTexts) and the game folder (GameFolder.Prepare, new HTTP clients), then reads the status again. The
- * window's fixed texts come from Texts (ApplyTexts); the status texts are still French (StatusView, L16).
+ * window's fixed texts come from Texts (ApplyTexts); L16: every other text too (StatusView, ProgressView, the updaters'
+ * messages, the message boxes), in Texts.Language.
  * "Pause" (L18), beside "Cancel" during either update, cancels the run but keeps the window in its paused state
  * (ProgressView.Paused): "Resume" runs the same update again, which fetches nothing already received (FileDownloader:
  * finished files skipped, a .part resumed with Range); "Cancel" while paused ends it like a cancel. Closing while
@@ -35,7 +36,7 @@ public sealed partial class MainForm : Form
     };
     private readonly Label launcher = NewLabel();
     private readonly Button play = NewButton();
-    private readonly Button updateGame = NewButton(StatusView.UpdateGameLabel);
+    private readonly Button updateGame = NewButton();
     private readonly Button updateLauncher = NewButton();
     private readonly Button refresh = NewButton();
     private readonly Button settingsButton = NewButton();
@@ -140,7 +141,7 @@ public sealed partial class MainForm : Form
         refresh.Text = Texts.Get("Refresh");
         settingsButton.Text = Texts.Get("Settings");
         cancel.Text = Texts.Get("Cancel");
-        pause.Text = progressView.PauseText;
+        pause.Text = progressView.PauseText();
         ApplyFilesTexts();
     }
 
@@ -249,7 +250,7 @@ public sealed partial class MainForm : Form
         var exePath = Environment.ProcessPath;
         if (exePath is null)
         {
-            MessageBox.Show(this, "Erreur : chemin du lanceur inconnu.", "Heroes of Liberty", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            MessageBox.Show(this, Texts.Get("LauncherPathUnknown"), "Heroes of Liberty", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             return;
         }
         using var source = new CancellationTokenSource();
@@ -294,7 +295,7 @@ public sealed partial class MainForm : Form
             }
             catch (Exception e) when (e is System.ComponentModel.Win32Exception or IOException)
             {
-                result = new LauncherUpdateResult(false, $"{result.Message} Relancez-le à la main ({e.Message}).");
+                result = new LauncherUpdateResult(false, Texts.Format("LauncherRestartByHand", result.Message, e.Message));
             }
         }
         MessageBox.Show(this, result.Message, "Heroes of Liberty", MessageBoxButtons.OK, MessageBoxIcon.Warning);
@@ -311,7 +312,7 @@ public sealed partial class MainForm : Form
         }
         catch (Exception e) when (e is InvalidDataException or IOException or UnauthorizedAccessException)
         {
-            return new LauncherUpdateResult(false, $"Erreur : {e.Message}");
+            return new LauncherUpdateResult(false, Texts.Format("Error", e.Message));
         }
         return await new LauncherUpdater(downloads, server.Url, exePath).UpdateAsync(progress, token);
     }
@@ -364,7 +365,7 @@ public sealed partial class MainForm : Form
         }
         catch (Exception e) when (e is InvalidDataException or IOException or UnauthorizedAccessException)
         {
-            return new UpdateResult(false, $"Erreur : {e.Message}");
+            return new UpdateResult(false, Texts.Format("Error", e.Message));
         }
         LatestResult latest;
         try
@@ -373,11 +374,13 @@ public sealed partial class MainForm : Form
         }
         catch (OperationCanceledException)
         {
-            return new UpdateResult(false, "Mise à jour annulée.", Cancelled: true);
+            return new UpdateResult(false, Texts.Get("UpdateCancelled"), Cancelled: true);
         }
         if (latest.Latest is null)
         {
-            return new UpdateResult(false, $"Serveur injoignable : {latest.Message}");
+            return new UpdateResult(false, latest.Outcome == LatestOutcome.BadKey
+                ? Texts.Get("BadKey")
+                : Texts.Format("ServerUnreachable", latest.Message));
         }
         return await new GameUpdater(downloads).UpdateAsync(Options.GameDir, server.Url, latest.Latest, progress, token);
     }
@@ -470,7 +473,7 @@ public sealed partial class MainForm : Form
         progressBar.Value = view.Percent;
         cancel.Enabled = view.CancelEnabled;
         pause.Enabled = view.PauseEnabled;
-        pause.Text = view.PauseText;
+        pause.Text = view.PauseText();
     }
 
     private void Display(StatusView view)

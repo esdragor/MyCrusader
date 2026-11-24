@@ -47,6 +47,48 @@
   <data name="LogsMissing" xml:space="preserve"><value>No game logs yet: {0} does not exist (has the game been started yet?).</value></data>
   <data name="GameDirMissing" xml:space="preserve"><value>The game folder does not exist: {0}</value></data>
   <data name="FolderOpenFailed" xml:space="preserve"><value>Cannot open {0}: {1}</value></data>
+  <data name="InstalledVersion" xml:space="preserve"><value>Installed version: {0}</value></data>
+  <data name="LatestVersion" xml:space="preserve"><value>Latest version: {0}</value></data>
+  <data name="VersionNotInstalled" xml:space="preserve"><value>not installed</value></data>
+  <data name="VersionUnknown" xml:space="preserve"><value>unknown</value></data>
+  <data name="VersionPending" xml:space="preserve"><value>…</value></data>
+  <data name="StatusLoading" xml:space="preserve"><value>Loading…</value></data>
+  <data name="GameUpToDate" xml:space="preserve"><value>The game is up to date.</value></data>
+  <data name="GameOutdated" xml:space="preserve"><value>A game update is available ({0}).</value></data>
+  <data name="GameNotInstalled" xml:space="preserve"><value>The game is not installed; version {0} is available.</value></data>
+  <data name="BadKey" xml:space="preserve"><value>Access key refused: this is not the right kit. Ask for it again.</value></data>
+  <data name="ServerUnreachable" xml:space="preserve"><value>Server unreachable: {0}</value></data>
+  <data name="Error" xml:space="preserve"><value>Error: {0}</value></data>
+  <data name="LauncherLine" xml:space="preserve"><value>Launcher: version {0}</value></data>
+  <data name="LauncherLineUpdate" xml:space="preserve"><value>Launcher: version {0} (version {1} available)</value></data>
+  <data name="UpdateGame" xml:space="preserve"><value>Update the game</value></data>
+  <data name="InstallGame" xml:space="preserve"><value>Install the game</value></data>
+  <data name="PlayOutdatedConfirmation" xml:space="preserve"><value>The game is not up to date: the server will refuse this version. Play anyway (solo)?</value></data>
+  <data name="PlaySoloWarning" xml:space="preserve"><value>You can play solo.</value></data>
+  <data name="ProgressStarting" xml:space="preserve"><value>Preparing the update…</value></data>
+  <data name="ProgressFile" xml:space="preserve"><value>File {0}/{1}: {2} — {3} MB</value></data>
+  <data name="ProgressLauncher" xml:space="preserve"><value>Launcher version {0}: {1} MB</value></data>
+  <data name="ProgressLauncherTotal" xml:space="preserve"><value>Launcher version {0}: {1} / {2} MB</value></data>
+  <data name="ProgressCancelling" xml:space="preserve"><value>Cancelling…</value></data>
+  <data name="GameInstalled" xml:space="preserve"><value>The game is installed (version {0}).</value></data>
+  <data name="GameUpdated" xml:space="preserve"><value>The game is up to date (version {0}).</value></data>
+  <data name="GameUpdateCancelled" xml:space="preserve"><value>Update cancelled; it will resume where it stopped.</value></data>
+  <data name="GameDownloadFailed" xml:space="preserve"><value>Download failed: {0}</value></data>
+  <data name="GameUpdateInterrupted" xml:space="preserve"><value>Update interrupted: {0}; please start it again.</value></data>
+  <data name="GameFileInUse" xml:space="preserve"><value>{0} is in use: close the game, then start the update again.</value></data>
+  <data name="NotEnoughSpace" xml:space="preserve"><value>Not enough disk space: version {1} needs {0} GB free, the disk of {2} has only {3} GB. Free some space, then try again.</value></data>
+  <data name="LauncherUpdated" xml:space="preserve"><value>The launcher is now version {0}.</value></data>
+  <data name="LauncherCorrupt" xml:space="preserve"><value>The downloaded launcher is damaged (SHA-256 {0} instead of {1}); it was deleted, please try again.</value></data>
+  <data name="LauncherUpdateCancelled" xml:space="preserve"><value>Launcher update cancelled; it will resume where it stopped.</value></data>
+  <data name="LauncherDownloadFailed" xml:space="preserve"><value>Launcher download failed: {0}</value></data>
+  <data name="LauncherUpdateInterrupted" xml:space="preserve"><value>Launcher update interrupted: {0}; the current launcher is kept.</value></data>
+  <data name="LauncherRestartByHand" xml:space="preserve"><value>{0} Please start it again yourself ({1}).</value></data>
+  <data name="LauncherPathUnknown" xml:space="preserve"><value>Error: the launcher's location is unknown.</value></data>
+  <data name="UpdateCancelled" xml:space="preserve"><value>Update cancelled.</value></data>
+  <data name="GameNotFound" xml:space="preserve"><value>Game not found: {0} does not exist.</value></data>
+  <data name="GameStarted" xml:space="preserve"><value>Game started.</value></data>
+  <data name="GameStartFailed" xml:space="preserve"><value>The game could not be started: {0}</value></data>
+  <data name="BadCommandLine" xml:space="preserve"><value>Invalid command line: {0}</value></data>
   <data name="NotesOlderMissing" xml:space="preserve"><value>The notes of older versions are no longer available.</value></data>
   <data name="SettingsLaunch" xml:space="preserve"><value>Game launch</value></data>
   <data name="SettingsDisplayMode" xml:space="preserve"><value>Display:</value></data>

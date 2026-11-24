@@ -36,6 +36,7 @@ public class LauncherStatusTests
     [Theory]
     [InlineData(LatestOutcome.Unreachable)]
     [InlineData(LatestOutcome.Refused)]
+    [InlineData(LatestOutcome.BadKey)]
     public void UnreachableKeepsInstalledVersionAndMessage(LatestOutcome outcome)
     {
         var status = LauncherStatus.Compute("v1", new LatestResult(outcome, null, "connection refused"));
@@ -45,6 +46,8 @@ public class LauncherStatusTests
         Assert.Equal("", status.Notes);
         Assert.Equal("connection refused", status.Message);
         Assert.False(status.LauncherUpdateAvailable);
+        // L16: the refused key is a signal of its own, not a text to compare.
+        Assert.Equal(outcome == LatestOutcome.BadKey, status.KeyRefused);
     }
 
     [Fact]

@@ -185,6 +185,26 @@ public class LauncherUpdaterTests
         Assert.Equal(OldLauncher, File.ReadAllBytes(exe));
     }
 
+    /** L16: the launcher update speaks the player's language; a refused key is said as such. */
+    [Fact]
+    public async Task MessagesFollowTheLanguage()
+    {
+        var (dir, exe) = RunningLauncher();
+        using var _ = dir;
+        using var cancel = new CancellationTokenSource();
+        cancel.Cancel();
+
+        var en = await new LauncherUpdater(new Server().Client(), Manager, exe, "en").UpdateAsync(cancel: cancel.Token);
+        Assert.Equal("Launcher update cancelled; it will resume where it stopped.", en.Message);
+        var ja = await new LauncherUpdater(new Server().Client(), Manager, exe, "ja").UpdateAsync(cancel: cancel.Token);
+        Assert.Equal("ランチャーの更新をキャンセルしました。次回は中断したところから再開します。", ja.Message);
+        var refused = FakeHandler.Json(HttpStatusCode.Unauthorized, "{\"error\":\"bad_key\",\"message\":\"no\"}");
+        var badKey = await new LauncherUpdater(new HttpClient(refused), Manager, exe, "en").UpdateAsync();
+        Assert.False(badKey.Success);
+        Assert.Equal("Access key refused: this is not the right kit. Ask for it again.", badKey.Message);
+        Assert.Equal(OldLauncher, File.ReadAllBytes(exe));
+    }
+
     [Fact]
     public async Task CancelKeepsTheLauncher()
     {
@@ -193,7 +213,7 @@ public class LauncherUpdaterTests
         using var cancel = new CancellationTokenSource();
         cancel.Cancel();
 
-        var result = await new LauncherUpdater(new Server().Client(), Manager, exe).UpdateAsync(cancel: cancel.Token);
+        var result = await new LauncherUpdater(new Server().Client(), Manager, exe, "fr").UpdateAsync(cancel: cancel.Token);
 
         Assert.False(result.Success);
         Assert.Contains("annulée", result.Message);

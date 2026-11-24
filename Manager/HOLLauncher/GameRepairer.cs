@@ -56,7 +56,8 @@ public sealed class GameRepairer(HttpClient http, Func<string, long>? freeSpace 
         }
         catch (GameLockedException e)
         {
-            return new UpdateResult(false, e.Message);
+            // L16: the translated sentence, as GameUpdater does (the exception's own message is English).
+            return new UpdateResult(false, Texts.Format("GameFileInUse", e.Path));
         }
         catch (UpdateDownloadException e)
         {
