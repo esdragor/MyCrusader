@@ -72,6 +72,13 @@ namespace HOLPlayerOrdersBoard
 		return Answer(HOLPlayerOrders::QueueProduction(Commands, PlayerIndex, Building, TypeName));
 	}
 
+	// D893 step 1 (script half): the answer of a production order of a seat whose specialization read is Spec and faction Faction: a lane unit the seat has not unlocked is 0, as 
+	// HOLPlayerOrders::QueueProductionFor. The server's lookup of Spec and Faction (slot -> AHOLPlayerState::GetSpecialization, GetPlayerIndex is not a UFUNCTION) is the C++ lot.
+	int AnswerQueueProductionFor(UHOLCommandSubsystem Commands, int PlayerIndex, AHOLBuilding Building, FName TypeName, const FHOLSpecializationView& Spec, EHOLFaction Faction)
+	{
+		return Answer(HOLPlayerOrders::QueueProductionFor(Commands, PlayerIndex, Building, TypeName, Spec, Faction));
+	}
+
 	int AnswerMarketTrade(UHOLCommandSubsystem Commands, int PlayerIndex, AHOLBuilding Building, int Resource, int Lots, bool bBuy)
 	{
 		return Answer(HOLPlayerOrders::MarketTrade(Commands, PlayerIndex, Building, Resource, Lots, bBuy));
