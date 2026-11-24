@@ -62,6 +62,25 @@ namespace UE::HeroesOfLiberty::Simulation
 		}
 	}
 
+	// D894: the Honor gauge (FactionResource) and the power cool-downs (PowerCooldownEndMs) are private to the game state (their accessors too: script
+	// reads them), so the two int32 arrays are read by reflection (the array property, not a call per slot): their size, then their values, in order.
+	void MixInt32Array(uint64& Hash, const AHOLGameState* State, const TCHAR* PropertyName)
+	{
+		const FArrayProperty* Array = FindFProperty<FArrayProperty>(AHOLGameState::StaticClass(), PropertyName);
+		const FIntProperty* Inner = Array ? CastField<FIntProperty>(Array->Inner) : nullptr;
+		if (!Inner)
+		{
+			MixInto(Hash, 0xFFFFFFFFull);
+			return;
+		}
+		FScriptArrayHelper Helper(Array, Array->ContainerPtrToValuePtr<void>(State));
+		MixInto(Hash, static_cast<uint64>(Helper.Num()));
+		for (int32 Index = 0; Index < Helper.Num(); ++Index)
+		{
+			MixInto(Hash, static_cast<uint64>(static_cast<uint32>(Inner->GetPropertyValue(Helper.GetRawPtr(Index)))));
+		}
+	}
+
 	/** D894: FNV-1a over the game state's Honor gauge and power cool-downs, slot by slot (the arrays' lengths first, so a resize shows). */
 	uint64 HashFaction(const UWorld* World)
 	{
@@ -71,16 +90,8 @@ namespace UE::HeroesOfLiberty::Simulation
 		{
 			return Hash;
 		}
-		MixInto(Hash, static_cast<uint64>(State->FactionResource.Num()));
-		for (const int32 Gauge : State->FactionResource)
-		{
-			MixInto(Hash, static_cast<uint64>(static_cast<uint32>(Gauge)));
-		}
-		MixInto(Hash, static_cast<uint64>(State->PowerCooldownEndMs.Num()));
-		for (const int32 EndMs : State->PowerCooldownEndMs)
-		{
-			MixInto(Hash, static_cast<uint64>(static_cast<uint32>(EndMs)));
-		}
+		MixInt32Array(Hash, State, TEXT("FactionResource"));
+		MixInt32Array(Hash, State, TEXT("PowerCooldownEndMs"));
 		return Hash;
 	}
 
