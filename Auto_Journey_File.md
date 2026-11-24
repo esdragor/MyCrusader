@@ -78,6 +78,9 @@ Sous-sections (Glorfindel, Galadriel, Arwen, Elrond, Faramir, Haldir, Sauron, lo
 - [ ] (C++, D824 Q-stealth Q1 = A, Q3 = B) furtivite : distance 800 cm (defaut) ; aspect = bosquet d'arbres bas + contour discret au sol au survol ou quand une unite du joueur y entre, ses unites a demi transparentes ; branchement vue par camp ; `StealthInProgress.md` (migration finie D857 : à écrire en Angelscript, D839 ; C++ seulement si une liaison manque)
  - [ ] (C++, Arwen, D824) filtre reseau furtivite : UHOLFogNetSubsystem (D518/D526) appelle HOLStealth::IsVisibleToCamp avec UHOLVisionSubsystem::GetCampUnitPositions (liaison faite en ARWEN-1121sc) pour ne pas envoyer au client les unites cachees ; test rouge d'abord ; apres le build de la liaison.
 - [ ] (Arwen, 2026-11-21 soir) dessiner l opacite de furtivite : HOLInterpolatedInstancesProcessor ~l.582 (ecrire l opacite par instance) + entree d opacite du materiau M_UnitPlayerColor ; sans cela la furtivite par camp ne change rien a l ecran | D887 (2026-11-22) : A = Masked + tramage dans les 3 materiaux M_UnitPlayerColor* (editeur), mesure avant / apres a 2000 unites (machine calme) ; sinon C = teinte
+- [ ] (sans C++, suite E5a, ARWEN-1124sa, 2026-11-24 soir) relevé S2-b « pont du duel » : `Script\Duel\HOLDuelLedger.as` vide `PendingMorale` dans `HOLMoraleLibrary::ApplyEffectAround` ? (lecture + test, le C++ éventuel se signale pour la place A)
+- [ ] (sans C++, suite E5b, ARWEN-1124sa, 2026-11-24 soir) `E-sacred_light_heal` LOGIQUE SEULEMENT -> geste réel
+- [ ] (sans C++, suite E5c, ARWEN-1124sa, 2026-11-24 soir) traductions JA / EN des textes neufs de la séance (D911 de Glorfindel) après son commit
 
 ## Celeborn — `hero-j8-close` — Mêlée et clôture de J8 (`NeutralsInProgress.md`, `DuelInProgress.md`)
 - (Celeborn, 2026-11-22 DOCS-1122c) D884 : processeur de tir de bâtiment, colonnes sans lecteur
@@ -85,6 +88,9 @@ Sous-sections (Glorfindel, Galadriel, Arwen, Elrond, Faramir, Haldir, Sauron, lo
 - [ ] (C++) [2026-11-14 11:3x CELEBORN-1114c : residu #2 NON REPRODUIT (melee_stuck x16 = 8/16, 0 FAIL #2, 0 orbite) ; #3 deterministe et #11 revenus, 8/16 contre 15/16 le 11-11 ; RearSlideMaxTurn sans cas ; 12:2x CELEBORN-1114d : PAS de regression, variance : issue fixee par le pas de simulation de l'ordre (Arwen 4/16, ancien binaire 11/16, memes echecs au cm au meme pas)] D641 : soldats qui tournent en cercle en mêlée (playtest_hero_army, neutrals, diplomacy_qground) ; rejouer sur main fusionné ; mêmes causes que les lignes ci-dessus. 2026-11-11 : RearTurnLimit écarté, résidu #2 de melee_stuck non diagnostiqué (SlideAlongFriends). (migration finie D857 : à écrire en Angelscript, D839 ; C++ seulement si une liaison manque)
 - [ ] (C++) Mouvement de groupe à la vitesse du plus lent (D617) : audit group_march instable (3 Paysans de l'IA, shakes) ; eeaab39 partiel ; `DuelInProgress.md`. (migration finie D857 : à écrire en Angelscript, D839 ; C++ seulement si une liaison manque)
 - [B] (sans C++) Supprimer les scénarios de repro neutrals_d3, nv1, nv2, nv3, nvpb0, nvpw1, neutrals_trace quand la mêlée est close (`-Parts net` 2 fois).
+- [ ] (sans C++, suite E3a, CELEBORN-1124sa, 2026-11-24 soir) D904 coût des murs : ligne de N sous-cases = N x prix actuel déduit du stock (`HOLWallLineRules.as`, `Tools\Data\BuildingTypes.csv`)
+- [ ] (sans C++, suite E3b, CELEBORN-1124sa, 2026-11-24 soir) G8 fantômes par sous-case et rouge de la sautée (`HOLWallLineBridge.as` ; `DragCells` rend 17 cases pour G1, compte lu par l'état du contrôleur)
+- [ ] (sans C++, suite E3c, CELEBORN-1124sa, 2026-11-24 soir) G10 portes (`GateReplaces`) après G6
 
 ## Elrond — `tiers` — Intégration, Paliers, Talents
 - [ ] (sans C++, integrateur, NETTOYAGE-1123f 2026-11-23, bilan du matin) RELANCER la passe integ-57 (abandonnee le 2026-11-23 : conflit de Placeholders.txt a resoudre en gardant les lignes des deux cotes ; tip 164bf27 = merges de cdb1b3d CastOriginOf, 68c86d0, fefe033 specialization-trial) ; Auto_Journey_Jour.md ; Tools\AutoJourney\integrate.ps1 (apres regen_tables, ligne OUTIL de la section Outils)
@@ -109,11 +115,17 @@ Sous-sections (Glorfindel, Galadriel, Arwen, Elrond, Faramir, Haldir, Sauron, lo
   - ELROND-1122c/1122d 17:0x : FAIT sans C++ (integ-25 57082ea) : 2e Maison a (3000,-6500), marche ~2300 cm (11,5 s) prouvee par le journal, OrderGround, camera replacee avant chaque clic droit (pan exposure) ; reste : un preflight deploy final (le dernier correctif de camera n est pas rejoue), recette independante ; Docs\Rapports\ELROND-1122d.md
   - ELROND-1122b 16:4x : FAIT sans C++ (integ-25 d578f88) : etape 9 moitie B VERTE (montage tout seul a l arrivee), far_* recadre, preflight PASS 91 s ; reste far_walking/midway a re-sequencer ; Docs\Rapports\ELROND-1122b.md
 - [ ] (Elrond, 2026-11-21 soir) C++ : tir de batiment (tour de bois) : lot C++ decrit dans Docs\Rapports\ELROND-1121sg.md (colonnes d attaque BuildingTypes.csv + processeur de tir), Q-towerwood-tir REPONDUE = A (D884, 2026-11-22) : 5 degats, 1.625 s, portee 3000, tire meme vide ; fleches par occupant a confirmer a part | DOCS-1122c : colonnes d'attaque FAITES : 010dddd, 62f0b13, 6656131 (BuildingTypes.uasset régénéré ; 1.625 et 3000 relus dans le binaire, 5 non relu) DANS integ-50, tests 2083/2083, main non avancé ; reste réel : processeur de tir (C++, HOLCombatProcessor), aucun lecteur des colonnes ; flèches par occupant à confirmer
+- [ ] (sans C++, suite E4a, ELROND-1124sa, 2026-11-24 soir) `E-talents_heal` LOGIQUE SEULEMENT -> geste réel (fiche `Retours\E-talents_heal.md`)
+- [ ] (sans C++, suite E4b, ELROND-1124sa, 2026-11-24 soir) `E-deploy` PAS PRÊT : relire `Retours\E-deploy.md`, refaire le scénario `deploy` en vrai clic
+- [ ] (sans C++, suite E4c, ELROND-1124sa, 2026-11-24 soir) D893 (3) colonne `Produces` des 3 unités de commanderie (Q-commanderie-batiment = A, D902 : bâtiment de l'unité copiée) dans `Tools\Data\BuildingTypes.csv`, test rouge d'abord, sans toucher à la grille C++
 
 ## Faramir — `fog` — Brouillard, Siège (`FogInProgress.md`) : lignes faites archivées le 2026-11-10, le 2026-11-12 et le 2026-11-13
 - (Seizième nettoyage 2026-11-23, CLEAN-1123b, main = 5f98997) 2 ligne(s) archivée(s) telles quelles dans `Docs\Archive\Auto_Journey_File_faits_2026-11-23.md` : talents_heal_cell (64a212a, 4e58051, 2a11ec2, 4146ec1)
 - [ ] (C++ de HUD existant, D886, Q-heal-mark-couche-2 = A) tracer le « + / ++ » de soin dans `AHOLGameHUD::DrawHUD` au lieu de `DrawDebugString` (HOLHealEffectSubsystem.cpp:41, HOLGameHUD.cpp:215-261) ; rouge d'abord ; puis retirer le contournement de Tools\Scenarios\talents_heal.txt
   - (FARAMIR-1122a/b 2026-11-22) D881 : scenario talents_heal_nocheat 0e328e9 (PNG sans contournement) ; mesure 1122b : le ++ garde sa couleur exacte (255,215,60) = defaut de COUCHE (DrawDebugString -> SDebugCanvas au-dessus de l'interface), pas de translucidite : fond opaque inutile ; question Retours\Q-heal-mark-couche-2.md [A REPONDRE] ; ligne laissee [ ].
+- [ ] (sans C++, suite E6a, FARAMIR-1124sa, 2026-11-24 soir) `Placeholders.txt` relu contre le jeu (cercle d'aperçu 6 m de `faction_aim_free`, zones dorée et bleue pâle, Sceau) : une ligne par provisoire, rien d'obsolète
+- [ ] (sans C++, suite E6b, FARAMIR-1124sa, 2026-11-24 soir) validation du budget de 200 candidats par pas de la tour (S3-a reste, lecture + banc existant `BuildingShotCost`)
+- [ ] (sans C++, suite E6c, FARAMIR-1124sa, 2026-11-24 soir) F9 portes (S3-b) : plan des données seul, sans prendre les fichiers de Celeborn
 
 ## Galadriel — `galadriel-tab` — Interface, Marché, Légions
 - [ ] (C++ Slate, GALADRIEL-1122h, recette 1122d) le badge de touche (W) chevauche la 1re ligne du nom d'une case a etat (WCloche, Wallebarde) : la bande haute NameTopBand = 12 px ne couvre pas le badge ; defaut PRE-EXISTANT (main : UnitSlot->SetPadding(FMargin(0, 12, 0, 0))). Correctif : bande haute = hauteur reelle du badge (mesuree comme la ligne du nom) ou nom decale sous le badge, borne par ComputeNameZone ; test : Top + NameHeight + StatusHeight <= case avec la bande mesuree.
@@ -138,6 +150,9 @@ Sous-sections (Glorfindel, Galadriel, Arwen, Elrond, Faramir, Haldir, Sauron, lo
 - [?] (attend l'utilisateur) Légions : relire le japonais des 7 noms (proposition de Galadriel-8) ; `Retours\E-legions_roster_names.md` ; numéro D au GDD par la revue.
 - (Galadriel : le reste de ses journaux est du C++ (code de L4, tribut vers un client distant) ou attend l'utilisateur ; rien d'autre de sans C++ n'en sort.)
 - [ ] C++ (liaison) : réécrire le test de retraduction de l'infobulle de revenu (retiré d'integ-43 par DIAG-1121sc) avec EnableGameLocalizationPreview ou une liaison qui applique la langue du jeu dans l'éditeur ; rouge à voir sur main sans 116bf29.
+- [ ] (sans C++, suite E1a, GALADRIEL-1124sa, 2026-11-24 soir) corps de `HOLMoraleView::Read` (Script\UI\HOLMoraleView.as, tests `HOLMoraleView_Test.as`) une fois le masque A2 là
+- [ ] (sans C++, suite E1b, GALADRIEL-1124sa, 2026-11-24 soir) scénario `morale_look` (étape 10 : pastille de moral, preflight, PNG vus)
+- [ ] (sans C++, suite E1c, GALADRIEL-1124sa, 2026-11-24 soir) ligne `Placeholders.txt` de la pastille de moral
 
 ## Glorfindel — `net-playtest` — Légions, Sites, Déconnexion, Réseau
 - [ ] (C++ pour le Gather partagé, cadence en script ; REVUE-1122 gênant 2, NON corrigé) Suivi : un Move à CHAQUE Tick et par suiveur + un `Gather` complet et un `LoadSynchronous`/`FindRow` par suiveur et par image (HOLPlayerController.cpp fin de Tick `NativeStep` ; Script/Orders/HOLFollowBridge.as `Step` ; HOLFollowOrders.as `Step` ; Source/HeroesOfLiberty/Presentation/HOLUnitScriptLibrary.cpp:34-62 `GetEnemiesNear`, `GetAttackRange`) ; coût non mesuré (follow_crowd) ; correctif : 4 à 5 Hz, Move seulement si la cible a bougé de plus de FollowDistance, un Gather par pas
@@ -168,6 +183,9 @@ Sous-sections (Glorfindel, Galadriel, Arwen, Elrond, Faramir, Haldir, Sauron, lo
 - [ ] (Glorfindel, 2026-11-21 soir, C++) pont de Suivre : instance NewObject<UHOLFollowBridge>(Controller) au lieu du CDO (UHOLFollowBridge::Get() renvoie le CDO : 19 727 erreurs AS 'requires WorldContext' dans quick_check build, integ-47), puis reintegrer la serie ability-columns (2136ad3, 7aa7efa, 43d5866...) avec un scenario court avant l'integration (L22-5)
   - 2026-11-22 GLORFINDEL-1122a : ligne 137 (pont de Suivre instance) ECRITE sur ability-columns, NON COMPILE : 6aee2a7 bouchon GetFor + test rouge HeroesOfLiberty.Follow.BridgeIsAnInstanceOfTheController, cf625af correctif (NewObject<UHOLFollowBridge>(Controller, classe script) dans AHOLPlayerController::FollowBridge). A compiler puis lancer ce test. | DOCS-1122c : 6aee2a7, cf625af PAS dans integ-50 (ability-columns, integ-51 en cours)
 - [B] (sans C++) Playtest PT3 `match_report.py` et PT6 `match_batch.ps1` : bloqués par PT2 (C++ de match) ; `PlaytestInProgress.md`.
+- [ ] (sans C++, suite E2a, GLORFINDEL-1124sa, 2026-11-24 soir) D911
+- [ ] (sans C++, suite E2b, GLORFINDEL-1124sa, 2026-11-24 soir) D909 en script
+- [ ] (sans C++, suite E2c, GLORFINDEL-1124sa, 2026-11-24 soir) REGLAGE de l'aperçu hors de portée (ligne de file « aperçu de visée », `HOLFactionAim.as`, `DrawZoneCircles`) : autre couleur + marque de la position d'arrêt du héros (`ApproachPointOf`), scénario `faction_aim_free` à rejouer
 
 ## Haldir — `maps` — Cartes (`MapsInProgress.md`)
 - [B] (D883, réponse 2026-11-22) Centre secondaire : case cloche d'alarme (W) en plus du Paysan, quand ses garnisons (D384) sont jouables ; SecondaryCentersInProgress.md
@@ -182,6 +200,9 @@ Sous-sections (Glorfindel, Galadriel, Arwen, Elrond, Faramir, Haldir, Sauron, lo
 - [ ] (C++ de navigation, Fortifications F12, § 16.5) Remparts praticables (D24) absents : chemin de ronde, montée par tour ou porte, cible prioritaire du siège, chute des occupants avec dégâts ; aucune navigation sur deux niveaux. (migration finie D857 : à écrire en Angelscript, D839 ; C++ seulement si une liaison manque)
 - [ ] (script, Fortifications F14) L'IA ne garnit pas les remparts en défense et ne les vise pas en attaque (§ 6.2) : à faire après F12.
 - [ ] (docs) `GDD.md` l. 3024 porte un vieux « Prochain numéro D214 ».
+- [ ] (sans C++, suite E7a, HALDIR-1124sa, 2026-11-24 soir) recette indépendante RECETTE-1124s des essais de la séance (faction_aim_free, monk_seal, tower_wood) sur main après la passe
+- [ ] (sans C++, suite E7b, HALDIR-1124sa, 2026-11-24 soir) passe integ-72 des branches GLORFINDEL / ELROND / ARWEN / FARAMIR quand elles sont vertes (liste figée)
+- [ ] (sans C++, suite E7c, HALDIR-1124sa, 2026-11-24 soir) `Retours\ESSAIS-A-JOUER.md` relu et mis à jour (au plus 6 essais, Q11)
 
 ## Sauron — `visual` — Biomes, Placeholders, Neutres (`BiomeInProgress.md`, `PlaceholdersInProgress.md`)
 - [ ] (C++, D809 Q-exploration-xp = Q1 C, Q2 B) XP d'exploration : preset C garde (tranche 3, lieu 25) ; les lieux ne paient a la 1re vue que sans autre paiement (autel du Volcan, futurs lieux), pas relais ni camps ; `ExplorationXPInProgress.md` (migration finie D857 : à écrire en Angelscript, D839 ; C++ seulement si une liaison manque)
@@ -190,6 +211,9 @@ Sous-sections (Glorfindel, Galadriel, Arwen, Elrond, Faramir, Haldir, Sauron, lo
 - [ ] (sans C++, machine calme, HORS SÉANCE (créneau à part), Sauron/visual, ~25 min) Mesures S1/S2 du décor générique des Biomes (2128 pièces HISM sur la Plaine) : `biome_decor_cost.ps1 -Rounds 3` ; lancer seul, sans autre éditeur ; aucun chiffre le 2026-11-08 (machine jamais libre).
 - [?] (attend l'utilisateur) Biomes B4 : colonne biome de Maps.csv après son jugement des cinq looks (Q2 = B) ; `E-biome_decor_tour.md`, `Q-biomes-look.md`.
 - [ ] (2026-11-10, Sauron, apres le lot ressources et decor PQ-1) Modele de l'Arquebusier ET ses animations (marche, tir a poudre, rechargement, mort ; aujourd'hui celles de l'Arbalétrier) : corps propre, fumee de poudre, son de tir (Placeholders.txt ligne 27) ; dix echantillons vus dans le jeu, l'utilisateur dit aime / pas aime ; Palier3InProgress.md. **2026-11-13 Sauron-1113c : tour 1 HORS JEU fait (planche A-J, `Tools\Editor\arquebus_sheet.py`, branche visual), attend `Retours\Q-arquebusier-modele.md`. 2026-11-13 Sauron-1113d : GIF animes voies A et B faits (`Tools\Editor\arquebus_gif.py`, ebd758a sur visual ; chemins dans la fiche), attend toujours la reponse.**
+- [ ] (sans C++, suite E8a, SAURON-1124sa, 2026-11-24 soir) L14-5 / L14-6 : outil qui liste les essais au geste interne et les rouges jamais vus au bilan (ligne 197 du File)
+- [ ] (sans C++, suite E8b, SAURON-1124sa, 2026-11-24 soir) mesures S1/S2 du décor des Biomes : HORS SÉANCE (machine calme, créneau à part, ligne 190) : ne pas lancer
+- [ ] (sans C++, suite E8c, SAURON-1124sa, 2026-11-24 soir) `Tools\AutoJourney\no_window_test.ps1` rejoué après les nouveaux scénarios (monk_seal, wall_fine_*) : aucun lancement fenêtré
 
 ## Outils et processus (worktree libre)
 - [ ] (sans C++, OUTIL, L27-12, DOCS-1124e 2026-11-24) `session_gate -Phase Close` : WARN sans ligne « version launcher » au bilan (L27-12) ; relevé = `Saved\Manager\Versions\latest.txt` + `published.txt` + commits de main depuis
