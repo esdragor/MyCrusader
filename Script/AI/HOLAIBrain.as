@@ -94,6 +94,17 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 		const int Issued = HOLAIGarrisonCall::Issue(PlayerIndex, Rule, Level, Summary, NoHits, NoHits);
 		if (Issued > 0)
 			Log(n"LogHOLMatch", f"AI slot {PlayerIndex} step {Step}: {Issued} garrison order(s)");
+		// S4-b exit (D696 Q2 A): the towers calm for hol.AI.GarrisonExitCalmSeconds let their occupants out (HOLAIGarrisonExit.as, UngarrisonAll as the AI's slot).
+		const TArray<int> ToEmpty = HOLAIGarrisonExit::TowersToEmpty(PlayerIndex, Summary, NoHits, HOLAIGarrison::ExitCalmSecondsFromCVar());
+		int Emptied = 0;
+		for (int Each = 0; Each < ToEmpty.Num(); Each++)
+		{
+			AHOLBuilding Tower = Summary.Buildings[ToEmpty[Each]].Actor;
+			if (Tower != nullptr && HOLAIGarrisonOrder::IssueAIUngarrisonOrder(PlayerIndex, Tower))
+				Emptied++;
+		}
+		if (Emptied > 0)
+			Log(n"LogHOLMatch", f"AI slot {PlayerIndex} step {Step}: {Emptied} tower(s) emptied");
 	}
 
 	// The Damned Warriors of the slot in a melee cast their rage (HOLAIRage.as); the server refuses what the rule got wrong (cooldown, health).

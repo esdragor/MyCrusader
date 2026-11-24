@@ -22,4 +22,8 @@ public:
 	/** The slot PlayerIndex's UnitIds go into Building: queued as a player's order is (UHOLCommandSubsystem::IssueGarrisonOrder). Server and solo only; false when nothing was queued. */
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|AI", meta = (WorldContext = "WorldContextObject"))
 	static bool IssueAIGarrisonOrder(const UObject* WorldContextObject, int32 PlayerIndex, const TArray<int32>& UnitIds, AHOLBuilding* Building);
+
+	/** The slot PlayerIndex's Building lets every occupant out: queued as a player's UngarrisonAll is (UHOLCommandSubsystem::IssueUngarrisonAllOrder; the owner is checked when applied). Server and solo only; false when nothing was queued. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|AI", meta = (WorldContext = "WorldContextObject"))
+	static bool IssueAIUngarrisonOrder(const UObject* WorldContextObject, int32 PlayerIndex, AHOLBuilding* Building);
 };

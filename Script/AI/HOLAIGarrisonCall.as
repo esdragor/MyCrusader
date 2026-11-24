@@ -1,7 +1,7 @@
 // The AI's garrison call (S4-b, D811): which of the AI's towers call which of its units in this think, built on the rule of
 // HOLAIGarrisonRules.as (TowerCalls, Entrants). Pure function on plain inputs; the order itself is HOLPlayerOrders::Garrison (script).
-// NOT WIRED to the brain yet: the summary carries no tower places, occupants or hit times, and the AI has no garrison order
-// (TYPES_A_EXPOSER in Docs/Rapports/ELROND-1123c.md).
+// WIRED to the brain (HOLAIBrain.ThinkGarrison -> Issue): the summary carries the towers' places, occupants and SecondsSinceHit, and the order is
+// HOLAIGarrisonOrder::IssueAIGarrisonOrder (C++ binding, HOLAIGarrisonOrders.h). The exit is HOLAIGarrisonExit.as.
 
 // One call: the tower (index into the towers given to Plan) and the ids of the units sent in, nearest first.
 struct FHOLAIGarrisonCall

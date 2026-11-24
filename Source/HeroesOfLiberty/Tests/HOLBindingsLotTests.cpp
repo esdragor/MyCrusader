@@ -97,6 +97,7 @@ bool FHOLBindingsUnitOwnerTypeTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("no world: the owner slot is INDEX_NONE"), Owner, static_cast<int32>(INDEX_NONE));
 	TestEqual(TEXT("no world: the type is none"), UHOLUnitScriptLibrary::GetUnitType(nullptr, 7), FName());
 	TestFalse(TEXT("no world: the AI garrison order is refused"), UHOLAIGarrisonOrderLibrary::IssueAIGarrisonOrder(nullptr, 0, TArray<int32>{ 7 }, nullptr));
+	TestFalse(TEXT("no world: the AI ungarrison order is refused"), UHOLAIGarrisonOrderLibrary::IssueAIUngarrisonOrder(nullptr, 0, nullptr));
 	return true;
 }
 

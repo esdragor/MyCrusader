@@ -3,8 +3,8 @@
 // which of its units nearby enter, in which order, and when they come out. Pure functions on plain inputs, tested in
 // HOLAIGarrisonRules_Test.as. The admission itself (own slot, kind, free places) is HOLGarrison::AdmittedWith, the same rule the server
 // applies to the right click (HOLPlayerOrders::Garrison).
-// NOT WIRED to the game: no tower row exists in Tools/Data/BuildingTypes.csv (GarrisonSlots 0 everywhere, F8 creates TowerWood), so no AI
-// building can take a garrison; the coming step is a C++ caller (the AI's orders, HOLAIOrders.h, on the HOLPlayerOrders::Garrison chain).
+// WIRED to the brain (HOLAIBrain.ThinkGarrison: HOLAIGarrisonCall.as for the entry, HOLAIGarrisonExit.as for the exit, via the C++ bindings
+// HOLAIGarrisonOrder::IssueAIGarrisonOrder / IssueAIUngarrisonOrder). Still inert in a match until a building type has GarrisonSlots > 0 (see BuildingTypes.csv).
 // The design is not decided (Retours/Q-garrison-ia.md, [A REPONDRE]): the defaults below are the recommended ones, one setting each.
 
 // Which units the AI sends in (Q-garrison-ia Q1): 0 = never, 1 = ranged foot only (A, default), 2 = ranged foot first then any admitted
