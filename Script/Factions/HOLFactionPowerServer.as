@@ -106,12 +106,11 @@ namespace HOLFactionPowerServer
 	}
 
 	// GLORFINDEL-1124sa (D908): the Honor control AT THE ORDER of an approached cast, a pure rule (no write): the decision measured from the aimed point itself (range 0),
-	// so the row's Honor, level and cool-down rules apply. STUB (red first): accepts everything.
+	// so the row's Honor, level and cool-down rules apply. Writes nothing: the caller pays (at the order with hol.Faction.ApproachPays 1, else on arrival, D900).
 	FHOLFactionPowerDecision ApproachDecisionOf(int Faction, int PowerIndex, int GaugeValue, int CooldownEndMs, int NowMs, const FVector& Point)
 	{
-		FHOLFactionPowerDecision Stub;
-		Stub.bAccepted = true;
-		return Stub;
+		FHOLFactionResource Gauge = HOLFactionResource::Make(GaugeValue, 0, HOLDawnValues::HonorCap());
+		return HOLFactionPowerCast::Decide(Faction, PowerIndex, Gauge, CooldownEndMs, NowMs, int(Point.X), int(Point.Y), int(Point.X), int(Point.Y));
 	}
 
 	// GLORFINDEL-1124e (D900): the aimed point is out of range: the hero walks to the stop point of ApproachPointOf, the cast waits for him. Default: the Honor is
@@ -128,20 +127,16 @@ namespace HOLFactionPowerServer
 		Order.PowerIndex = PowerIndex;
 		Order.Point = Point;
 		Order.ExpireMs = NowMs + 60000;
-		FHOLFactionPowerDecision Paid;
-		const bool bPayAtOrder = CVar_FactionApproachPays.GetInt() != 0;
-		if (bPayAtOrder)
+		// D908: the Honor (and level, cool-down) is CONTROLLED at the order, whoever pays: a short gauge refuses at once, no walk, nothing pending. Nothing is written here.
+		const FHOLFactionPowerDecision Paid = ApproachDecisionOf(State.GetSlotFaction(Slot), PowerIndex, State.GetFactionResource(Slot),
+			State.GetPowerCooldownEndMs(Slot, PowerIndex), NowMs, Point);
+		if (!Paid.bAccepted)
 		{
-			// Paid at the order: the decision is measured from the point itself (range 0), the row's Honor, level and cool-down rules still apply.
-			FHOLFactionResource Gauge = HOLFactionResource::Make(State.GetFactionResource(Slot), 0, HOLDawnValues::HonorCap());
-			Paid = HOLFactionPowerCast::Decide(State.GetSlotFaction(Slot), PowerIndex, Gauge, State.GetPowerCooldownEndMs(Slot, PowerIndex), NowMs,
-				int(Point.X), int(Point.Y), int(Point.X), int(Point.Y));
-			if (!Paid.bAccepted)
-			{
-				Log(n"LogHOLMatch", f"RpcPower: approach refused ({Paid.Refusal}) for slot {Slot} power {PowerIndex}");
-				return false;
-			}
+			Log(n"LogHOLMatch", f"RpcPower: approach refused ({Paid.Refusal}) for slot {Slot} power {PowerIndex}");
+			return false;
 		}
+		// The write stays on ARRIVAL by default (D900); hol.Faction.ApproachPays 1 writes it at the order.
+		const bool bPayAtOrder = CVar_FactionApproachPays.GetInt() != 0;
 		TArray<int> HeroIds;
 		HeroIds.Add(HeroId);
 		if (!HOLPlayerOrders::Move(HOLCommandScript::GetCommands(), Slot, HeroIds, Walk.StopPoint, false, FVector2D(0.0, 0.0), false))
