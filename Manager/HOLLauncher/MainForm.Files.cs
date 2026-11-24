@@ -12,7 +12,7 @@ namespace HOLLauncher;
  */
 public sealed partial class MainForm
 {
-    private readonly Button filesButton = NewButton();
+    private readonly ThemedButton filesButton = NewButton();
     private readonly ContextMenuStrip filesMenu = new();
     private readonly ToolStripMenuItem verifyItem = new();
     private readonly ToolStripMenuItem openGameItem = new();

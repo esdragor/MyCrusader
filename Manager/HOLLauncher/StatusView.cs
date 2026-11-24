@@ -13,7 +13,7 @@ public sealed record StatusView(
     string InstalledText,
     string LatestText,
     string StateText,
-    string Notes,
+    IReadOnlyList<NewsBlock> News,
     string LauncherText,
     bool PlayEnabled,
     bool UpdateGameEnabled,
@@ -22,7 +22,10 @@ public sealed record StatusView(
     string? PlayConfirmation = null,
     string UpdateGameText = "")
 {
-    public bool NotesVisible => Notes != "";
+    /** L22: the news as blocks for the box (NewsFormat); Notes is their plain text. */
+    public string Notes => ReleaseNotes.PlainText(News);
+
+    public bool NotesVisible => News.Count > 0;
 
     public static StatusView From(LauncherStatus status, string? language = null)
     {
@@ -44,7 +47,7 @@ public sealed record StatusView(
         var launcher = status.LauncherUpdateAvailable
             ? Texts.FormatIn(lang, "LauncherLineUpdate", status.LauncherCurrent, status.LauncherAvailable)
             : LauncherLine(status.LauncherCurrent, lang);
-        return new StatusView(InstalledLine(status.Installed, lang), LatestLine(status.Latest, lang), state, status.Notes, launcher,
+        return new StatusView(InstalledLine(status.Installed, lang), LatestLine(status.Latest, lang), state, status.News, launcher,
             PlayEnabled: play.Enabled,
             UpdateGameEnabled: status.State is GameState.Outdated or GameState.NotInstalled,
             UpdateLauncherEnabled: status.LauncherUpdateAvailable,
@@ -59,7 +62,7 @@ public sealed record StatusView(
         var lang = Texts.LanguageOr(language);
         var pending = Texts.Get("VersionPending", lang);
         return new(Texts.FormatIn(lang, "InstalledVersion", pending), Texts.FormatIn(lang, "LatestVersion", pending),
-            Texts.Get("StatusLoading", lang), "", LauncherLine(launcherCurrent, lang), false, false, false, false,
+            Texts.Get("StatusLoading", lang), [], LauncherLine(launcherCurrent, lang), false, false, false, false,
             UpdateGameText: Texts.Get("UpdateGame", lang));
     }
 
@@ -72,7 +75,7 @@ public sealed record StatusView(
         string? language = null)
     {
         var lang = Texts.LanguageOr(language);
-        return new(InstalledLine(installed, lang), LatestLine(null, lang), Texts.FormatIn(lang, "Error", message), "",
+        return new(InstalledLine(installed, lang), LatestLine(null, lang), Texts.FormatIn(lang, "Error", message), [],
             LauncherLine(launcherCurrent, lang), false, false, false, true,
             UpdateGameText: Texts.Get(installed is null ? "InstallGame" : "UpdateGame", lang));
     }

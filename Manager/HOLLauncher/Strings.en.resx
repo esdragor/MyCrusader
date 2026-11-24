@@ -111,4 +111,9 @@
   <data name="ReportCreated" xml:space="preserve"><value>Report created: {0}&#10;Give this file to the developer: the launcher does not send it anywhere by itself. It holds the game's logs and a description of the computer, without the access key.</value></data>
   <data name="ReportFailed" xml:space="preserve"><value>The report could not be created: {0}</value></data>
   <data name="ReportCrashDetected" xml:space="preserve"><value>The game seems to have crashed last time. Create a report for the developer?</value></data>
+  <data name="SettingsTheme" xml:space="preserve"><value>Theme:</value></data>
+  <data name="ThemeSystem" xml:space="preserve"><value>Same as Windows</value></data>
+  <data name="ThemeLight" xml:space="preserve"><value>Light</value></data>
+  <data name="ThemeDark" xml:space="preserve"><value>Dark</value></data>
+  <data name="HeaderSubtitle" xml:space="preserve"><value>Game launcher</value></data>
 </root>

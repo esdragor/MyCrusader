@@ -18,6 +18,7 @@ public sealed record SettingsLoad(LauncherSettings Settings, string? Problem);
  * (advanced, null: none). An L15 file has none of them: the game starts without argument, as before.
  * LastCrashCheckUtc (L20, CrashDetector): when the launcher last looked for a crash of the game, UTC (null: never, the
  * first start only stores the time). Older files have none.
+ * Theme (L22, Themes): "light" or "dark" (null: follow Windows' app theme). Older files have none: they follow Windows.
  * Later steps add their own fields (L23 automatic update): with "with", the window keeps them.
  */
 public sealed record LauncherSettings(
@@ -27,7 +28,8 @@ public sealed record LauncherSettings(
     int? ResolutionWidth = null,
     int? ResolutionHeight = null,
     string? ExtraArguments = null,
-    DateTime? LastCrashCheckUtc = null)
+    DateTime? LastCrashCheckUtc = null,
+    string? Theme = null)
 {
     public const string FileName = "HOLLauncher.settings.json";
 

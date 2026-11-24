@@ -133,6 +133,42 @@ public class LauncherSettingsTests
         Assert.Empty(LaunchArguments.For(load.Settings));
     }
 
+    /** L22: the theme is stored when forced ("light", "dark"); none (follow Windows) is not written. */
+    [Fact]
+    public void ThemeIsReadBackAndNoneIsNotWritten()
+    {
+        using var dir = new TempDir();
+        var settings = new LauncherSettings(Language: "en", Theme: "dark");
+        settings.Save(dir.Root);
+        Assert.Equal(settings, LauncherSettings.Load(dir.Root).Settings);
+        Assert.Contains("\"theme\": \"dark\"", File.ReadAllText(Path.Combine(dir.Root, LauncherSettings.FileName)));
+
+        new LauncherSettings(Language: "en").Save(dir.Root);
+        Assert.DoesNotContain("theme", File.ReadAllText(Path.Combine(dir.Root, LauncherSettings.FileName)));
+    }
+
+    [Fact]
+    public void L21FileWithoutThemeStillLoadsAndFollowsWindows()
+    {
+        using var dir = new TempDir();
+        // The file as L21 writes it: no theme.
+        dir.Write(LauncherSettings.FileName,
+            "{\n  \"language\": \"fr\",\n  \"lastCrashCheckUtc\": \"2026-11-24T09:30:15.123Z\"\n}");
+        var load = LauncherSettings.Load(dir.Root);
+        Assert.Null(load.Problem);
+        Assert.Null(load.Settings.Theme);
+        Assert.Same(Palette.Dark, Themes.Resolve(load.Settings.Theme, appsUseLightTheme: 0));
+    }
+
+    /** The settings window changes the theme with "with": the fields of later steps are kept. */
+    [Fact]
+    public void ThemeChangeKeepsTheOtherFields()
+    {
+        var settings = new LauncherSettings(Language: "ja", DisplayMode: "windowed", ExtraArguments: "-x");
+        var chosen = settings with { Theme = Themes.SettingFor("light") };
+        Assert.Equal(new LauncherSettings(Language: "ja", DisplayMode: "windowed", ExtraArguments: "-x", Theme: "light"), chosen);
+    }
+
     [Fact]
     public void GameUpdatesNeverTouchTheSettings()
     {

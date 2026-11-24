@@ -111,4 +111,9 @@
   <data name="ReportCreated" xml:space="preserve"><value>Rapport créé : {0}&#10;Donnez ce fichier au développeur : le lanceur ne l'envoie nulle part lui-même. Il contient les journaux du jeu et la description de l'ordinateur, sans la clé d'accès.</value></data>
   <data name="ReportFailed" xml:space="preserve"><value>Le rapport n'a pas pu être créé : {0}</value></data>
   <data name="ReportCrashDetected" xml:space="preserve"><value>Le jeu semble s'être arrêté brutalement la dernière fois. Créer un rapport pour le développeur ?</value></data>
+  <data name="SettingsTheme" xml:space="preserve"><value>Thème :</value></data>
+  <data name="ThemeSystem" xml:space="preserve"><value>Comme Windows</value></data>
+  <data name="ThemeLight" xml:space="preserve"><value>Clair</value></data>
+  <data name="ThemeDark" xml:space="preserve"><value>Sombre</value></data>
+  <data name="HeaderSubtitle" xml:space="preserve"><value>Lanceur du jeu</value></data>
 </root>

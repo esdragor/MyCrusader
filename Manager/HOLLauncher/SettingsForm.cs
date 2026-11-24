@@ -7,10 +7,13 @@ namespace HOLLauncher;
  * "Game launch" (L19): display mode and resolution ("Game setting" = no argument, the usual sizes, "Custom" with two
  * sizes bounded by LaunchArguments.MinSize / MaxSize) and the extra arguments; "Save" refuses an unclosed quote and
  * extra arguments the launch would leave out (LaunchArguments.Rejected) rather than drop them silently.
+ * "Theme" (L22): follow Windows, light or dark (Themes); the window itself shows the main window's palette, the choice
+ * applies once saved.
  */
 public sealed class SettingsForm : Form
 {
     private readonly ComboBox language = new() { DropDownStyle = ComboBoxStyle.DropDownList, Width = 200 };
+    private readonly ComboBox theme = new() { DropDownStyle = ComboBoxStyle.DropDownList, Width = 200 };
     private readonly TextBox gameDir = new() { Dock = DockStyle.Fill, MinimumSize = new Size(320, 0) };
     private readonly ComboBox displayMode = new() { DropDownStyle = ComboBoxStyle.DropDownList, Width = 200 };
     private readonly ComboBox resolution = new() { DropDownStyle = ComboBoxStyle.DropDownList, Width = 200 };
@@ -20,7 +23,7 @@ public sealed class SettingsForm : Form
     private readonly LauncherSettings settings;
     private readonly string launcherDir;
 
-    public SettingsForm(LauncherSettings settings, string launcherDir, string currentGameDir)
+    public SettingsForm(LauncherSettings settings, string launcherDir, string currentGameDir, Palette palette)
     {
         this.settings = settings;
         this.launcherDir = launcherDir;
@@ -39,51 +42,60 @@ public sealed class SettingsForm : Form
             language.Items.Add(new LanguageItem(code));
         }
         language.SelectedIndex = Math.Max(0, Texts.Languages.ToList().IndexOf(Texts.Language));
+        foreach (var choice in Themes.Choices)
+        {
+            theme.Items.Add(new ThemeItem(choice, Themes.ChoiceText(choice, Texts.Language)));
+        }
+        theme.SelectedIndex = Math.Max(0, Themes.Choices.ToList().IndexOf(Themes.ChoiceOf(settings.Theme)));
         gameDir.Text = currentGameDir;
         FillLaunchOptions();
 
-        var browse = new Button { Text = Texts.Get("SettingsBrowse"), AutoSize = true };
-        var launcherFolder = new Button { Text = Texts.Get("SettingsLauncherDir"), AutoSize = true };
-        var save = new Button { Text = Texts.Get("SettingsSave"), AutoSize = true };
-        var cancel = new Button { Text = Texts.Get("Cancel"), AutoSize = true, DialogResult = DialogResult.Cancel };
+        var browse = new ThemedButton { Text = Texts.Get("SettingsBrowse"), AutoSize = true };
+        var launcherFolder = new ThemedButton { Text = Texts.Get("SettingsLauncherDir"), AutoSize = true };
+        var save = new ThemedButton { Text = Texts.Get("SettingsSave"), AutoSize = true, Accent = true };
+        var cancel = new ThemedButton { Text = Texts.Get("Cancel"), AutoSize = true, DialogResult = DialogResult.Cancel };
         AcceptButton = save;
         CancelButton = cancel;
 
         var layout = new TableLayoutPanel { AutoSize = true, ColumnCount = 3, Padding = new Padding(12), Dock = DockStyle.Fill };
         layout.Controls.Add(NewLabel(Texts.Get("SettingsLanguage")), 0, 0);
         layout.Controls.Add(language, 1, 0);
-        layout.Controls.Add(NewLabel(Texts.Get("SettingsGameDir")), 0, 1);
-        layout.Controls.Add(gameDir, 1, 1);
-        layout.Controls.Add(browse, 2, 1);
-        layout.Controls.Add(launcherFolder, 1, 2);
+        layout.Controls.Add(NewLabel(Texts.Get("SettingsTheme")), 0, 1);
+        layout.Controls.Add(theme, 1, 1);
+        layout.Controls.Add(NewLabel(Texts.Get("SettingsGameDir")), 0, 2);
+        layout.Controls.Add(gameDir, 1, 2);
+        layout.Controls.Add(browse, 2, 2);
+        layout.Controls.Add(launcherFolder, 1, 3);
         var hint = NewLabel(Texts.Get("SettingsGameDirHint"));
         hint.MaximumSize = new Size(520, 0);
-        layout.Controls.Add(hint, 0, 3);
+        layout.Controls.Add(hint, 0, 4);
         layout.SetColumnSpan(hint, 3);
         var launch = NewLabel(Texts.Get("SettingsLaunch"));
         launch.Font = new Font(Font, FontStyle.Bold);
         launch.Margin = new Padding(3, 16, 3, 6);
-        layout.Controls.Add(launch, 0, 4);
+        layout.Controls.Add(launch, 0, 5);
         layout.SetColumnSpan(launch, 3);
-        layout.Controls.Add(NewLabel(Texts.Get("SettingsDisplayMode")), 0, 5);
-        layout.Controls.Add(displayMode, 1, 5);
-        layout.Controls.Add(NewLabel(Texts.Get("SettingsResolution")), 0, 6);
-        layout.Controls.Add(resolution, 1, 6);
+        layout.Controls.Add(NewLabel(Texts.Get("SettingsDisplayMode")), 0, 6);
+        layout.Controls.Add(displayMode, 1, 6);
+        layout.Controls.Add(NewLabel(Texts.Get("SettingsResolution")), 0, 7);
+        layout.Controls.Add(resolution, 1, 7);
         var size = new FlowLayoutPanel { AutoSize = true, WrapContents = false, Margin = Padding.Empty };
         size.Controls.AddRange([width, NewLabel("×"), height]);
-        layout.Controls.Add(size, 1, 7);
-        layout.Controls.Add(NewLabel(Texts.Get("SettingsExtraArguments")), 0, 8);
-        layout.Controls.Add(extraArguments, 1, 8);
+        layout.Controls.Add(size, 1, 8);
+        layout.Controls.Add(NewLabel(Texts.Get("SettingsExtraArguments")), 0, 9);
+        layout.Controls.Add(extraArguments, 1, 9);
         layout.SetColumnSpan(extraArguments, 2);
         var extraHint = NewLabel(Texts.Get("SettingsExtraArgumentsHint"));
         extraHint.MaximumSize = new Size(520, 0);
-        layout.Controls.Add(extraHint, 0, 9);
+        layout.Controls.Add(extraHint, 0, 10);
         layout.SetColumnSpan(extraHint, 3);
         var buttons = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.RightToLeft, Dock = DockStyle.Fill };
         buttons.Controls.AddRange([cancel, save]);
-        layout.Controls.Add(buttons, 0, 10);
+        layout.Controls.Add(buttons, 0, 11);
         layout.SetColumnSpan(buttons, 3);
         Controls.Add(layout);
+        ThemeApplier.Apply(this, palette);
+        hint.ForeColor = extraHint.ForeColor = palette.Muted;
 
         browse.Click += (_, _) => Browse();
         launcherFolder.Click += (_, _) => gameDir.Text = Path.TrimEndingDirectorySeparator(Path.GetFullPath(launcherDir));
@@ -138,6 +150,7 @@ public sealed class SettingsForm : Form
             ResolutionWidth = resolutionWidth,
             ResolutionHeight = resolutionHeight,
             ExtraArguments = extra == "" ? null : extra,
+            Theme = Themes.SettingFor(((ThemeItem)theme.SelectedItem!).Choice),
         };
         if (LaunchArguments.Rejected(chosen) is { Count: > 0 } rejected)
         {
@@ -222,6 +235,11 @@ public sealed class SettingsForm : Form
     }
 
     private sealed record ResolutionItem((int Width, int Height)? Size, string Text, bool Custom = false)
+    {
+        public override string ToString() => Text;
+    }
+
+    private sealed record ThemeItem(string Choice, string Text)
     {
         public override string ToString() => Text;
     }

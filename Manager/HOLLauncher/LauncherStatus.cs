@@ -17,13 +17,13 @@ public enum GameState
  * What the window shows (L5b): the game's state, both versions, the news, and whether a newer launcher exists. Notes:
  * the news since the installed version (ReleaseNotes, L21). KeyRefused (L16): the manager answered 401 bad_key, a
  * signal of its own so that the views say it in the player's language (Message stays the technical detail, never
- * compared).
+ * compared). L22: the news as blocks (ReleaseNotes.Blocks), styled by the window; Notes is their plain text.
  */
 public sealed record LauncherStatus(
     GameState State,
     string? Installed,
     string? Latest,
-    string Notes,
+    IReadOnlyList<NewsBlock> News,
     string LauncherCurrent,
     string LauncherAvailable,
     string Message,
@@ -32,18 +32,23 @@ public sealed record LauncherStatus(
     /** A launcher is published and it is not this one. */
     public bool LauncherUpdateAvailable => LauncherAvailable != "" && LauncherAvailable != LauncherCurrent;
 
-    public static LauncherStatus Compute(string? installed, LatestResult latest, string launcherCurrent = LauncherInfo.Version)
+    public string Notes => ReleaseNotes.PlainText(News);
+
+    /** The "older notes" line in the given language (null: the one in use). */
+    public static LauncherStatus Compute(string? installed, LatestResult latest, string launcherCurrent = LauncherInfo.Version,
+        string? language = null)
     {
         if (latest.Outcome != LatestOutcome.Ok || latest.Latest is null)
         {
-            return new LauncherStatus(GameState.Unreachable, installed, null, "", launcherCurrent, "", latest.Message,
+            return new LauncherStatus(GameState.Unreachable, installed, null, [], launcherCurrent, "", latest.Message,
                 KeyRefused: latest.Outcome == LatestOutcome.BadKey);
         }
         var available = latest.Latest;
         var state = installed is null ? GameState.NotInstalled
             : installed == available.Version ? GameState.UpToDate
             : GameState.Outdated;
-        return new LauncherStatus(state, installed, available.Version, ReleaseNotes.Text(installed, available), launcherCurrent,
+        return new LauncherStatus(state, installed, available.Version, ReleaseNotes.Blocks(installed, available, language),
+            launcherCurrent,
             available.LauncherVersion, latest.Message);
     }
 }

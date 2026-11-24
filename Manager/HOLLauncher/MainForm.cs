@@ -14,6 +14,9 @@ namespace HOLLauncher;
  * (ProgressView.Paused): "Resume" runs the same update again, which fetches nothing already received (FileDownloader:
  * finished files skipped, a .part resumed with Range); "Cancel" while paused ends it like a cancel. Closing while
  * paused keeps the files too: "Update the game" resumes at the next start. "Files" (L17): MainForm.Files.cs.
+ * Appearance (L22): the header band (HeaderBand), the news box (a RichTextBox filled by NewsFormat: version headings,
+ * bullets) and the theme (Themes, Palette, ThemeApplier) of the settings, applied at start, after "Settings", and when
+ * Windows' app theme changes while the setting follows it.
  */
 public sealed partial class MainForm : Form
 {
@@ -27,23 +30,29 @@ public sealed partial class MainForm : Form
     private readonly Label latest = NewLabel();
     private readonly Label state = NewLabel();
     private readonly Label notesTitle = NewLabel();
-    private readonly TextBox notes = new()
+    private readonly RichTextBox news = new()
     {
-        Multiline = true,
         ReadOnly = true,
-        ScrollBars = ScrollBars.Vertical,
+        BorderStyle = BorderStyle.None,
+        ScrollBars = RichTextBoxScrollBars.Vertical,
+        DetectUrls = false,
+        ShortcutsEnabled = true,
         Dock = DockStyle.Fill,
     };
+    // L22: the news box framed by a one-pixel border (Border) around a margin of the box's own colour (Surface).
+    private readonly Panel newsFrame = new() { Dock = DockStyle.Fill, Padding = new Padding(1), Margin = new Padding(3, 2, 3, 6) };
+    private readonly Panel newsMargin = new() { Dock = DockStyle.Fill, Padding = new Padding(10, 8, 4, 8) };
+    private readonly HeaderBand header = new();
     private readonly Label launcher = NewLabel();
-    private readonly Button play = NewButton();
-    private readonly Button updateGame = NewButton();
-    private readonly Button updateLauncher = NewButton();
-    private readonly Button refresh = NewButton();
-    private readonly Button settingsButton = NewButton();
+    private readonly ThemedButton play = NewButton();
+    private readonly ThemedButton updateGame = NewButton();
+    private readonly ThemedButton updateLauncher = NewButton();
+    private readonly ThemedButton refresh = NewButton();
+    private readonly ThemedButton settingsButton = NewButton();
     private readonly Label progressText = NewLabel();
     private readonly ProgressBar progressBar = new() { Dock = DockStyle.Fill, Minimum = 0, Maximum = 100, Height = 20 };
-    private readonly Button pause = NewButton();
-    private readonly Button cancel = NewButton();
+    private readonly ThemedButton pause = NewButton();
+    private readonly ThemedButton cancel = NewButton();
     private readonly TableLayoutPanel progressPanel = new()
     {
         Dock = DockStyle.Fill, AutoSize = true, ColumnCount = 3, Visible = false, Margin = new Padding(0),
@@ -58,6 +67,10 @@ public sealed partial class MainForm : Form
     private ProgressView? pausedLine;
     private Func<Task>? resume;
     private string? pausedMessage;
+    // L22: the theme in use, and what the news box shows (filled again only when either changes).
+    private Palette palette = Palette.Light;
+    private IReadOnlyList<NewsBlock>? shownNews;
+    private Palette? shownPalette;
 
     public MainForm(LauncherOptions options, string launcherDir, SettingsLoad settingsLoad)
     {
@@ -69,8 +82,9 @@ public sealed partial class MainForm : Form
         downloads = FileDownloader.CreateHttpClient(options.GameDir);
         autoUpdatePending = options.UpdateAtStart;
         autoLauncherUpdatePending = options.UpdateLauncherAtStart;
-        ClientSize = new Size(640, 400);
-        MinimumSize = new Size(480, 320);
+        // L22: larger than before for the header band; the minimum keeps a few lines of news (fr, ja, 100 % DPI).
+        ClientSize = new Size(760, 600);
+        MinimumSize = new Size(640, 600);
         StartPosition = FormStartPosition.CenterScreen;
 
         var buttons = new FlowLayoutPanel { Dock = DockStyle.Fill, AutoSize = true, WrapContents = true };
@@ -86,7 +100,9 @@ public sealed partial class MainForm : Form
             layout.Controls.Add(control);
         }
         layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-        layout.Controls.Add(notes);
+        newsMargin.Controls.Add(news);
+        newsFrame.Controls.Add(newsMargin);
+        layout.Controls.Add(newsFrame);
         layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         layout.Controls.Add(launcher);
         progressPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
@@ -102,6 +118,9 @@ public sealed partial class MainForm : Form
         layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         layout.Controls.Add(buttons);
         Controls.Add(layout);
+        Controls.Add(header);
+        layout.BringToFront(); // docked last: fills what the header band leaves
+        play.Accent = true;
 
         play.Click += (_, _) => Play();
         updateGame.Click += async (_, _) => await UpdateGameAsync();
@@ -123,10 +142,13 @@ public sealed partial class MainForm : Form
         FormClosing += (_, _) => updating?.Cancel(); // the downloaded part stays for the next try
         FormClosed += (_, _) =>
         {
+            Microsoft.Win32.SystemEvents.UserPreferenceChanged -= OnUserPreferenceChanged;
             http.Dispose();
             downloads.Dispose();
         };
+        Microsoft.Win32.SystemEvents.UserPreferenceChanged += OnUserPreferenceChanged;
         ApplyTexts();
+        ApplyTheme();
         Display(StatusView.Loading());
     }
 
@@ -137,6 +159,8 @@ public sealed partial class MainForm : Form
     {
         Text = Texts.Format("WindowTitle", LauncherInfo.Version);
         Font = new Font(Texts.FontFamily(Texts.Language), 10f);
+        state.Font = new Font(Font, FontStyle.Bold);
+        header.Subtitle = Texts.Get("HeaderSubtitle");
         notesTitle.Text = Texts.Get("NotesTitle");
         play.Text = Texts.Get("Play");
         updateLauncher.Text = Texts.Get("UpdateLauncher");
@@ -146,6 +170,49 @@ public sealed partial class MainForm : Form
         pause.Text = progressView.PauseText();
         ApplyFilesTexts();
         ApplyReportTexts();
+        ShowNews(current.News);
+    }
+
+    /** The theme of the settings (L22): colours of the window, its menu and the news box; the title bar too. */
+    private void ApplyTheme()
+    {
+        palette = Themes.Current(settings);
+        ThemeApplier.Apply(this, palette);
+        ThemeApplier.Apply(filesMenu, palette);
+        newsFrame.BackColor = palette.Border;
+        newsMargin.BackColor = palette.Surface;
+        launcher.ForeColor = palette.Muted;
+        ShowNews(current.News);
+    }
+
+    /** Windows' app theme changed (Settings > Personalisation > Colours): followed when the setting says so. */
+    private void OnUserPreferenceChanged(object? sender, Microsoft.Win32.UserPreferenceChangedEventArgs e)
+    {
+        if (e.Category != Microsoft.Win32.UserPreferenceCategory.General || IsDisposed || !IsHandleCreated)
+        {
+            return;
+        }
+        BeginInvoke(() =>
+        {
+            if (!IsDisposed && Themes.Current(settings) != palette)
+            {
+                ApplyTheme();
+            }
+        });
+    }
+
+    /** Fills the news box again only when the news, the palette or the language's font changed (keeps the scroll). */
+    private void ShowNews(IReadOnlyList<NewsBlock> blocks)
+    {
+        var family = Texts.FontFamily(Texts.Language);
+        if (ReferenceEquals(blocks, shownNews) && ReferenceEquals(palette, shownPalette) && news.Font.Name == family)
+        {
+            return;
+        }
+        shownNews = blocks;
+        shownPalette = palette;
+        news.Font = new Font(family, NewsFormat.BodySize);
+        NewsFormat.Fill(news, NewsFormat.Paragraphs(blocks, palette), family);
     }
 
     /**
@@ -159,7 +226,7 @@ public sealed partial class MainForm : Form
             return;
         }
         LauncherSettings chosen;
-        using (var form = new SettingsForm(settings, launcherDir, Options.GameDir))
+        using (var form = new SettingsForm(settings, launcherDir, Options.GameDir, palette))
         {
             if (form.ShowDialog(this) != DialogResult.OK || form.Result is null)
             {
@@ -192,6 +259,7 @@ public sealed partial class MainForm : Form
         settings = chosen;
         Texts.Use(Texts.Resolve(chosen.Language, System.Globalization.CultureInfo.CurrentUICulture));
         ApplyTexts();
+        ApplyTheme();
         if (folderChanged)
         {
             Options = Options with { GameDir = gameDir };
@@ -485,9 +553,9 @@ public sealed partial class MainForm : Form
         installed.Text = view.InstalledText;
         latest.Text = view.LatestText;
         state.Text = view.StateText;
-        notes.Text = view.Notes;
+        ShowNews(view.News);
         notesTitle.Visible = view.NotesVisible;
-        notes.Visible = view.NotesVisible;
+        newsFrame.Visible = view.NotesVisible;
         launcher.Text = view.LauncherText;
         play.Enabled = view.PlayEnabled;
         updateGame.Enabled = view.UpdateGameEnabled;
@@ -503,8 +571,9 @@ public sealed partial class MainForm : Form
         Text = text,
         AutoSize = true,
         Anchor = AnchorStyles.Left | AnchorStyles.Right, // wraps long lines in the table
-        Margin = new Padding(3, 4, 3, 4),
+        Margin = new Padding(3, 3, 3, 3),
     };
 
-    private static Button NewButton(string text = "") => new() { Text = text, AutoSize = true, Enabled = false };
+    /** L22: drawn in the theme's colours, a disabled one included (ThemedButton). */
+    private static ThemedButton NewButton(string text = "") => new() { Text = text, AutoSize = true, Enabled = false };
 }
