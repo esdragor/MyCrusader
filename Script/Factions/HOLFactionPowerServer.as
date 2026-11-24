@@ -105,6 +105,15 @@ namespace HOLFactionPowerServer
 		}
 	}
 
+	// GLORFINDEL-1124sa (D908): the Honor control AT THE ORDER of an approached cast, a pure rule (no write): the decision measured from the aimed point itself (range 0),
+	// so the row's Honor, level and cool-down rules apply. STUB (red first): accepts everything.
+	FHOLFactionPowerDecision ApproachDecisionOf(int Faction, int PowerIndex, int GaugeValue, int CooldownEndMs, int NowMs, const FVector& Point)
+	{
+		FHOLFactionPowerDecision Stub;
+		Stub.bAccepted = true;
+		return Stub;
+	}
+
 	// GLORFINDEL-1124e (D900): the aimed point is out of range: the hero walks to the stop point of ApproachPointOf, the cast waits for him. Default: the Honor is
 	// written on ARRIVAL (nothing before); hol.Faction.ApproachPays 1 writes it at the order. False when no walk is needed or the order is refused.
 	bool BeginApproach(AHOLGameState State, int Slot, int PowerIndex, const FVector& Point, const FVector& HeroPlace, int HeroId, int NowMs)

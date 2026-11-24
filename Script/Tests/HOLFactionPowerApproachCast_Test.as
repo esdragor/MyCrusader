@@ -46,3 +46,34 @@ void Test_FactionApproachSecondCastReplacesTheFirst(FUnitTest& T)
 	const int Step = HOLFactionPowerServer::PendingStepOf(Pending, 0, FVector(1000.0, 0.0, 0.0), 1200.0);
 	T.AssertEquals(Step, 1, "the first point (2000) would be in range from 1000, the replacing one (-5000) is not");
 }
+
+// GLORFINDEL-1124sa (D908): the Honor is controlled at the ORDER. The decision is the rule's (HOLFactionPowerCast::Decide measured from the point itself), never copied.
+// Honor 0: the order is refused for the gauge reason and the gauge it carries is unchanged (nothing paid).
+void Test_FactionApproachOrderRefusedWhenHonorIsShort(FUnitTest& T)
+{
+	const FHOLPowerRow Book = HOLDawnPowers::Rows()[0];
+	const int Now = 1000;
+	const FVector Point = FVector(2000.0, 0.0, 0.0);
+	const FHOLFactionPowerDecision Order = HOLFactionPowerServer::ApproachDecisionOf(int(EHOLFaction::DawnOrder), 0, 0, 0, Now, Point);
+	T.AssertTrue(Book.Cost > 0, "the Sacred Light row costs Honor (else the test proves nothing)");
+	T.AssertFalse(Order.bAccepted, "with no Honor the order of an approached cast is refused at once");
+	T.AssertEquals(HOLFactionPowerCast::RefusalGaugeShort(), Order.Refusal, "the reason is the short Honor gauge");
+	T.AssertEquals(0, Order.NewGaugeValue, "a refused order leaves the gauge untouched");
+}
+
+// Honor enough: the order is accepted, the decision carries the price the ARRIVAL will write (the rule's: the row cost), and the same decision is what Decide says.
+void Test_FactionApproachOrderAcceptedWhenHonorIsEnough(FUnitTest& T)
+{
+	const FHOLPowerRow Book = HOLDawnPowers::Rows()[0];
+	const int Now = 1000;
+	const FVector Point = FVector(2000.0, 0.0, 0.0);
+	FHOLFactionResource Gauge = HOLFactionResource::Make(0, 0, HOLDawnValues::HonorCap());
+	HOLFactionResource::Gain(Gauge, HOLDawnValues::HonorCap());
+	const int Before = Gauge.Value;
+	FHOLFactionResource OneSpend = HOLFactionResource::Make(Before, 0, HOLDawnValues::HonorCap());
+	HOLFactionResource::TrySpend(OneSpend, Book.Cost);
+	const FHOLFactionPowerDecision Order = HOLFactionPowerServer::ApproachDecisionOf(int(EHOLFaction::DawnOrder), 0, Before, 0, Now, Point);
+	T.AssertTrue(Order.bAccepted, "with enough Honor the order is accepted");
+	T.AssertEquals(OneSpend.Value, Order.NewGaugeValue, "the decision carries the row's price, written only on arrival (D900)");
+	T.AssertTrue(Order.NewGaugeValue < Before, "the price is below the full gauge");
+}
