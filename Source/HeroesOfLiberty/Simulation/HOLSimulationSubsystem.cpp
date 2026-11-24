@@ -1,6 +1,7 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "Simulation/HOLSimulationSubsystem.h"
+#include "Simulation/HOLHealProcessor.h"
 #include "Simulation/HOLMoraleProcessor.h"
 
 #include "Engine/World.h"
@@ -303,6 +304,8 @@ void UHOLSimulationSubsystem::Deinitialize()
 	OnStepStarted.Clear();
 	// The end of the world: the morale processor's statics (attenuation table, order queues) do not outlive the match (REVUE-1123pm G1).
 	UHOLMoraleProcessor::ResetForWorld(GetWorld());
+	// The honour waiting to be granted (static, per slot) does not outlive the match either (FARAMIR-1123pf).
+	UHOLHealProcessor::ResetHonor();
 	OnStepEnded.Clear();
 	StepPipeline.Reset();
 	ProcessorThrottled.Reset();
