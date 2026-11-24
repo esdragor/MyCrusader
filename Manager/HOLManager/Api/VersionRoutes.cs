@@ -27,6 +27,8 @@ public static class VersionRoutes
                 notes = latest.Notes,
                 patchesFrom = latest.PatchesFrom,
                 launcherVersion = latest.LauncherVersion,
+                // L21: a field added, format stays 1 (an older launcher ignores it and shows "notes" only).
+                history = latest.History.Select(h => new { version = h.Version, published = h.Published, notes = h.Notes }),
             });
         }));
 

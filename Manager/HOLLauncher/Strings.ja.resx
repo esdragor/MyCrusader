@@ -22,4 +22,5 @@
   <data name="SettingsUnreadable" xml:space="preserve"><value>設定を読み込めないため、既定の設定を使用します：{0}</value></data>
   <data name="SettingsNotSaved" xml:space="preserve"><value>設定を保存できません：{0}</value></data>
   <data name="SettingsBadFolder" xml:space="preserve"><value>このゲームフォルダーは使用できません：{0}</value></data>
+  <data name="NotesOlderMissing" xml:space="preserve"><value>これより古いバージョンの更新内容は表示できません。</value></data>
 </root>

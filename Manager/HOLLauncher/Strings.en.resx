@@ -22,4 +22,5 @@
   <data name="SettingsUnreadable" xml:space="preserve"><value>Settings unreadable, defaults used: {0}</value></data>
   <data name="SettingsNotSaved" xml:space="preserve"><value>Settings not saved: {0}</value></data>
   <data name="SettingsBadFolder" xml:space="preserve"><value>Game folder unusable: {0}</value></data>
+  <data name="NotesOlderMissing" xml:space="preserve"><value>The notes of older versions are no longer available.</value></data>
 </root>

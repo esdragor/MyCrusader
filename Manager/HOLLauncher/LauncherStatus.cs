@@ -10,7 +10,10 @@ public enum GameState
     Unreachable,
 }
 
-/** What the window shows (L5b): the game's state, both versions, the news, and whether a newer launcher exists. */
+/**
+ * What the window shows (L5b): the game's state, both versions, the news, and whether a newer launcher exists. Notes:
+ * the news since the installed version (ReleaseNotes, L21).
+ */
 public sealed record LauncherStatus(
     GameState State,
     string? Installed,
@@ -33,7 +36,7 @@ public sealed record LauncherStatus(
         var state = installed is null ? GameState.NotInstalled
             : installed == available.Version ? GameState.UpToDate
             : GameState.Outdated;
-        return new LauncherStatus(state, installed, available.Version, available.Notes, launcherCurrent,
+        return new LauncherStatus(state, installed, available.Version, ReleaseNotes.Text(installed, available), launcherCurrent,
             available.LauncherVersion, latest.Message);
     }
 }
