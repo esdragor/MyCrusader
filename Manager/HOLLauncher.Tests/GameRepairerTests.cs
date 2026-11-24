@@ -293,6 +293,7 @@ public class GameRepairerTests
 
         Assert.False(result.Success);
         Assert.Equal(Texts.Get("RepairCancelled"), result.Message);
+        Assert.True(result.Cancelled);
         Assert.Equal("damaged", Read(game, "Data/Game.pak"));
     }
 }

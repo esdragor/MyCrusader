@@ -1,20 +1,21 @@
 using System.Globalization;
 using System.Text.RegularExpressions;
+using HOLUpdate;
 
 namespace HOLPublish;
 
 /**
- * The versions folder as laid out in LauncherInProgress.md (L2) and read by HOLManager's VersionStore, plus what only the
- * publication uses: <v>/published.txt (UTC date of the publication, never served) gives the order of the versions, since
- * names need not sort (a --version given by hand); a version without it (copied by hand) counts from its manifest.json's
- * last write. <v>.tmp is a publication being written; "launcher" holds the launcher's own versions.
+ * The versions folder as laid out in LauncherInProgress.md (L2) and read by HOLManager's VersionStore: <v>/published.txt
+ * (UTC date of the publication, never served) gives the order of the versions, read by HOLUpdate.PublishedVersions (the
+ * manager reads the same order for the notes history, L21). <v>.tmp is a publication being written; "launcher" holds the
+ * launcher's own versions.
  */
 public static partial class VersionFolder
 {
     public const string Latest = "latest.txt";
-    public const string Manifest = "manifest.json";
+    public const string Manifest = PublishedVersions.ManifestFile;
     public const string Notes = "notes.txt";
-    public const string PublishedFile = "published.txt";
+    public const string PublishedFile = PublishedVersions.DateFile;
     public const string Files = "files";
     public const string Patches = "patches";
     public const string TmpSuffix = ".tmp";
@@ -30,19 +31,7 @@ public static partial class VersionFolder
         && !name.Equals(Latest, StringComparison.OrdinalIgnoreCase);
 
     /** The published versions (those with a manifest.json), newest first. */
-    public static IReadOnlyList<string> Published(string versionsDir)
-    {
-        if (!Directory.Exists(versionsDir))
-        {
-            return [];
-        }
-        return Directory.GetDirectories(versionsDir)
-            .Select(d => Path.GetFileName(d)!)
-            .Where(name => IsPublishable(name) && File.Exists(Path.Combine(versionsDir, name, Manifest)))
-            .Select(name => (Name: name, Date: PublishedDate(Path.Combine(versionsDir, name))))
-            .OrderByDescending(v => v.Date).ThenByDescending(v => v.Name, StringComparer.Ordinal)
-            .Select(v => v.Name).ToList();
-    }
+    public static IReadOnlyList<string> Published(string versionsDir) => PublishedVersions.NewestFirst(versionsDir, IsPublishable);
 
     /** The name in latest.txt, null if none. */
     public static string? ReadLatest(string versionsDir)
@@ -66,15 +55,4 @@ public static partial class VersionFolder
     /** A list path ('/') under a folder, with a suffix (".gz", ".patch"). */
     public static string Under(string dir, string listPath, string suffix = "") =>
         Path.Combine(dir, listPath.Replace('/', Path.DirectorySeparatorChar) + suffix);
-
-    private static DateTime PublishedDate(string versionDir)
-    {
-        var file = Path.Combine(versionDir, PublishedFile);
-        if (File.Exists(file) && DateTime.TryParse(File.ReadAllText(file).Trim(), CultureInfo.InvariantCulture,
-                DateTimeStyles.RoundtripKind, out var date))
-        {
-            return date.ToUniversalTime();
-        }
-        return File.GetLastWriteTimeUtc(Path.Combine(versionDir, Manifest));
-    }
 }

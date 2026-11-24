@@ -68,6 +68,45 @@ public class LauncherSettingsTests
     }
 
     [Fact]
+    public void LaunchOptionsAreReadBack()
+    {
+        using var dir = new TempDir();
+        var settings = new LauncherSettings(Language: "en", DisplayMode: "windowed", ResolutionWidth: 1600,
+            ResolutionHeight: 900, ExtraArguments: "-nosound -Key=\"a b\"");
+        settings.Save(dir.Root);
+        Assert.Equal(settings, LauncherSettings.Load(dir.Root).Settings);
+        var text = File.ReadAllText(Path.Combine(dir.Root, LauncherSettings.FileName));
+        Assert.Contains("\"displayMode\": \"windowed\"", text);
+        Assert.Contains("\"resolutionWidth\": 1600", text);
+        Assert.Contains("\"resolutionHeight\": 900", text);
+        Assert.Contains("\"extraArguments\": ", text);
+    }
+
+    [Fact]
+    public void DefaultLaunchOptionsAreNotWritten()
+    {
+        using var dir = new TempDir();
+        new LauncherSettings(Language: "fr").Save(dir.Root);
+        var text = File.ReadAllText(Path.Combine(dir.Root, LauncherSettings.FileName));
+        foreach (var name in new[] { "displayMode", "resolutionWidth", "resolutionHeight", "extraArguments" })
+        {
+            Assert.DoesNotContain(name, text);
+        }
+    }
+
+    [Fact]
+    public void L15FileWithoutLaunchOptionsStillLoads()
+    {
+        using var dir = new TempDir();
+        // The file as L15 writes it: no launch option.
+        dir.Write(LauncherSettings.FileName, "{\n  \"language\": \"ja\",\n  \"gameDir\": \"D:\\\\HOL\"\n}");
+        var load = LauncherSettings.Load(dir.Root);
+        Assert.Null(load.Problem);
+        Assert.Equal(new LauncherSettings(Language: "ja", GameDir: @"D:\HOL"), load.Settings);
+        Assert.Empty(LaunchArguments.For(load.Settings));
+    }
+
+    [Fact]
     public void GameUpdatesNeverTouchTheSettings()
     {
         Assert.True(UpdatePlan.IsLauncherOwned(LauncherSettings.FileName));

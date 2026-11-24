@@ -11,17 +11,24 @@ public sealed class VersionException(int status, string error, string message) :
     public string Error { get; } = error;
 }
 
-/** What /versions/latest tells the launcher (L2). */
+/**
+ * What /versions/latest tells the launcher (L2). History (L21): the notes of every kept version, newest first from this
+ * one down, so that a launcher several versions behind shows what changed since its own.
+ */
 public sealed record LatestVersion(string Version, VersionManifest Manifest, string Notes, IReadOnlyList<string> PatchesFrom,
-    string LauncherVersion);
+    string LauncherVersion, IReadOnlyList<VersionNotes> History);
+
+/** One kept version's notes, as listed in the history of /versions/latest (L21). */
+public sealed record VersionNotes(string Version, DateTime Published, string Notes);
 
 /** The launcher exe to serve, its version and SHA-256 (L2, L7). */
 public sealed record LauncherFile(string Version, string Path, string Sha256);
 
 /**
  * Reads the versions folder written by the publication script (L4), laid out as in LauncherInProgress.md: latest.txt,
- * <v>/manifest.json, <v>/notes.txt, <v>/files/<path>.gz, <v>/patches/<from>/<path>.patch, launcher/latest.txt and
- * launcher/<lv>/HOLLauncher.exe. Nothing is cached but the launcher's hash: a version can be published while running.
+ * <v>/manifest.json, <v>/notes.txt, <v>/published.txt (order of the notes history, L21), <v>/files/<path>.gz,
+ * <v>/patches/<from>/<path>.patch, launcher/latest.txt and launcher/<lv>/HOLLauncher.exe. Nothing is cached but the
+ * launcher's hash: a version can be published while running.
  * A file is served only if its path is an entry of the version's list, and only if it resolves under the version's folder.
  */
 public sealed partial class VersionStore(string root)
@@ -52,15 +59,50 @@ public sealed partial class VersionStore(string root)
         }
         var dir = Path.Combine(Root, version);
         var manifest = LoadManifest(version);
-        var notesFile = Path.Combine(dir, "notes.txt");
-        var notes = File.Exists(notesFile) ? File.ReadAllText(notesFile).Trim() : "";
+        var notes = ReadNotes(dir);
         var patchesDir = Path.Combine(dir, "patches");
         var patchesFrom = Directory.Exists(patchesDir)
             ? Directory.GetDirectories(patchesDir).Select(d => Path.GetFileName(d)).Where(IsValidName)
                 .Order(StringComparer.Ordinal).ToList()
             : [];
         var launcher = ReadName(Path.Combine(Root, "launcher", "latest.txt")) ?? "";
-        return new LatestVersion(version, manifest, notes, patchesFrom, launcher);
+        return new LatestVersion(version, manifest, notes, patchesFrom, launcher, History(version, notes));
+    }
+
+    /**
+     * L21: the kept versions in publication order (HOLUpdate.PublishedVersions, as the publisher prunes them), newest
+     * first from latest down: a version published after it (latest.txt set back by hand) is not news for anyone. A
+     * version pruned while being read is left out rather than failing the launcher's whole answer.
+     */
+    private IReadOnlyList<VersionNotes> History(string latest, string latestNotes)
+    {
+        var kept = PublishedVersions.NewestFirst(Root,
+            name => IsValidName(name) && !name.EndsWith(".tmp", StringComparison.OrdinalIgnoreCase)).ToList();
+        var from = kept.IndexOf(latest);
+        if (from < 0)
+        {
+            return [new VersionNotes(latest, PublishedVersions.Date(Path.Combine(Root, latest)), latestNotes)];
+        }
+        var history = new List<VersionNotes>();
+        foreach (var version in kept.Skip(from))
+        {
+            var dir = Path.Combine(Root, version);
+            try
+            {
+                history.Add(new VersionNotes(version, PublishedVersions.Date(dir), version == latest ? latestNotes : ReadNotes(dir)));
+            }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+            {
+            }
+        }
+        return history;
+    }
+
+    /** <v>/notes.txt, trimmed; empty without it. */
+    private static string ReadNotes(string dir)
+    {
+        var file = Path.Combine(dir, "notes.txt");
+        return File.Exists(file) ? File.ReadAllText(file).Trim() : "";
     }
 
     /** <v>/files/<path>.gz, the file compressed at publication. */

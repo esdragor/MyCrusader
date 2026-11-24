@@ -6,7 +6,8 @@ namespace HOLLauncher;
 
 /**
  * The "Files" button of the window (L17), kept apart from MainForm.cs: a menu with "Verify / repair the files"
- * (GameRepairer, run like an update: bar, "Cancel"), "Open the game folder", "Open the logs folder" (GameLogs) and
+ * (GameRepairer, run like an update: bar, "Pause" / "Resume" (L18: a resumed check hashes the files again, the files
+ * already fetched are not), "Cancel"), "Open the game folder", "Open the logs folder" (GameLogs) and
  * "Uninstall the game" (confirmation, then GameUninstaller). Enabled like "Settings": only while nothing runs.
  */
 public sealed partial class MainForm
@@ -40,15 +41,19 @@ public sealed partial class MainForm
         uninstallItem.Text = Texts.Get("FilesUninstall");
     }
 
-    /** As UpdateGameAsync: the status may be old, so servers.json and /versions/latest are read again first. */
+    /**
+     * As UpdateGameAsync: the status may be old, so servers.json and /versions/latest are read again first. Only
+     * reached from the menu while nothing runs, or from "Resume" (the window then still shows StatusView.Updating).
+     */
     private async Task RepairGameAsync()
     {
-        if (updating is not null || !current.RefreshEnabled)
+        if (updating is not null)
         {
             return;
         }
         using var source = new CancellationTokenSource();
         updating = source;
+        pauseAsked = false;
         Display(StatusView.Updating(current));
         ShowProgress(new ProgressView(Texts.Get("RepairChecking"), 0, true));
         progressPanel.Visible = true;
@@ -68,7 +73,7 @@ public sealed partial class MainForm
         {
             updating = null;
         }
-        if (IsDisposed)
+        if (IsDisposed || EnterPauseIfAsked(result.Cancelled, result.Message, RepairGameAsync))
         {
             return;
         }
@@ -83,7 +88,7 @@ public sealed partial class MainForm
         var (url, latest, problem) = await ReadLatestAsync(token);
         if (latest is null)
         {
-            return new UpdateResult(false, problem);
+            return new UpdateResult(false, problem, Cancelled: token.IsCancellationRequested);
         }
         return await new GameRepairer(downloads).RepairAsync(Options.GameDir, url, latest, progress, token);
     }

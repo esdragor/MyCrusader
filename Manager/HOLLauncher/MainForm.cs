@@ -4,11 +4,15 @@ namespace HOLLauncher;
  * The launcher's window, kept thin: it reads the status in the background (StatusLoader) and shows the StatusView.
  * "Update the game" runs GameUpdater in the background with a progress bar and "Cancel" (ProgressView); "Update the
  * launcher" runs LauncherUpdater the same way, then starts the new exe with the same arguments and closes (L7);
- * "Play" (L8) asks PlayConfirmation if any (outdated game), starts the game (GameLauncher) and closes the launcher.
+ * "Play" (L8) asks PlayConfirmation if any (outdated game), starts the game (GameLauncher) with the launch options of
+ * the settings (LaunchArguments, L19) and closes the launcher.
  * "Settings" (L15, while nothing runs) opens SettingsForm, saves the choice (LauncherSettings), applies the language
  * (Texts, ApplyTexts) and the game folder (GameFolder.Prepare, new HTTP clients), then reads the status again. The
- * window's fixed texts come from Texts (ApplyTexts); the status texts are still French (StatusView, L16). "Files" (L17):
- * MainForm.Files.cs.
+ * window's fixed texts come from Texts (ApplyTexts); the status texts are still French (StatusView, L16).
+ * "Pause" (L18), beside "Cancel" during either update, cancels the run but keeps the window in its paused state
+ * (ProgressView.Paused): "Resume" runs the same update again, which fetches nothing already received (FileDownloader:
+ * finished files skipped, a .part resumed with Range); "Cancel" while paused ends it like a cancel. Closing while
+ * paused keeps the files too: "Update the game" resumes at the next start. "Files" (L17): MainForm.Files.cs.
  */
 public sealed partial class MainForm : Form
 {
@@ -37,16 +41,22 @@ public sealed partial class MainForm : Form
     private readonly Button settingsButton = NewButton();
     private readonly Label progressText = NewLabel();
     private readonly ProgressBar progressBar = new() { Dock = DockStyle.Fill, Minimum = 0, Maximum = 100, Height = 20 };
+    private readonly Button pause = NewButton();
     private readonly Button cancel = NewButton();
     private readonly TableLayoutPanel progressPanel = new()
     {
-        Dock = DockStyle.Fill, AutoSize = true, ColumnCount = 2, Visible = false, Margin = new Padding(0),
+        Dock = DockStyle.Fill, AutoSize = true, ColumnCount = 3, Visible = false, Margin = new Padding(0),
     };
     private StatusView current = StatusView.Loading();
     private ProgressView progressView = ProgressView.Starting();
     private CancellationTokenSource? updating;
     private bool autoUpdatePending;
     private bool autoLauncherUpdatePending;
+    // Pause (L18): asked during the run; once paused, the run to start again on "Resume" and its cancel message.
+    private bool pauseAsked;
+    private ProgressView? pausedLine;
+    private Func<Task>? resume;
+    private string? pausedMessage;
 
     public MainForm(LauncherOptions options, string launcherDir, SettingsLoad settingsLoad)
     {
@@ -79,10 +89,12 @@ public sealed partial class MainForm : Form
         layout.Controls.Add(launcher);
         progressPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         progressPanel.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        progressPanel.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
         progressPanel.Controls.Add(progressText, 0, 0);
-        progressPanel.SetColumnSpan(progressText, 2);
+        progressPanel.SetColumnSpan(progressText, 3);
         progressPanel.Controls.Add(progressBar, 0, 1);
-        progressPanel.Controls.Add(cancel, 1, 1);
+        progressPanel.Controls.Add(pause, 1, 1);
+        progressPanel.Controls.Add(cancel, 2, 1);
         layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         layout.Controls.Add(progressPanel);
         layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
@@ -93,7 +105,8 @@ public sealed partial class MainForm : Form
         updateGame.Click += async (_, _) => await UpdateGameAsync();
         updateLauncher.Click += async (_, _) => await UpdateLauncherAsync();
         refresh.Click += async (_, _) => await RefreshStatusAsync();
-        cancel.Click += (_, _) => CancelUpdate();
+        cancel.Click += async (_, _) => await CancelUpdateAsync();
+        pause.Click += async (_, _) => await PauseOrResumeAsync();
         settingsButton.Click += async (_, _) => await OpenSettingsAsync();
         Shown += async (_, _) =>
         {
@@ -127,6 +140,7 @@ public sealed partial class MainForm : Form
         refresh.Text = Texts.Get("Refresh");
         settingsButton.Text = Texts.Get("Settings");
         cancel.Text = Texts.Get("Cancel");
+        pause.Text = progressView.PauseText;
         ApplyFilesTexts();
     }
 
@@ -240,6 +254,7 @@ public sealed partial class MainForm : Form
         }
         using var source = new CancellationTokenSource();
         updating = source;
+        pauseAsked = false;
         Display(StatusView.Updating(current));
         ShowProgress(ProgressView.Starting());
         progressPanel.Visible = true;
@@ -259,7 +274,7 @@ public sealed partial class MainForm : Form
         {
             updating = null;
         }
-        if (IsDisposed)
+        if (IsDisposed || EnterPauseIfAsked(result.Cancelled, result.Message, UpdateLauncherAsync))
         {
             return;
         }
@@ -310,6 +325,7 @@ public sealed partial class MainForm : Form
         }
         using var source = new CancellationTokenSource();
         updating = source;
+        pauseAsked = false;
         Display(StatusView.Updating(current));
         ShowProgress(ProgressView.Starting());
         progressPanel.Visible = true;
@@ -329,7 +345,7 @@ public sealed partial class MainForm : Form
         {
             updating = null;
         }
-        if (IsDisposed)
+        if (IsDisposed || EnterPauseIfAsked(result.Cancelled, result.Message, UpdateGameAsync))
         {
             return;
         }
@@ -357,7 +373,7 @@ public sealed partial class MainForm : Form
         }
         catch (OperationCanceledException)
         {
-            return new UpdateResult(false, "Mise à jour annulée.");
+            return new UpdateResult(false, "Mise à jour annulée.", Cancelled: true);
         }
         if (latest.Latest is null)
         {
@@ -378,7 +394,7 @@ public sealed partial class MainForm : Form
         {
             return;
         }
-        var result = GameLauncher.Start(Options.GameDir);
+        var result = GameLauncher.Start(Options.GameDir, LaunchArguments.For(settings));
         if (result.Success)
         {
             Close();
@@ -387,10 +403,64 @@ public sealed partial class MainForm : Form
         MessageBox.Show(this, result.Message, "Heroes of Liberty", MessageBoxButtons.OK, MessageBoxIcon.Warning);
     }
 
-    private void CancelUpdate()
+    private async Task CancelUpdateAsync()
     {
+        if (resume is not null)
+        {
+            await EndPauseAsync();
+            return;
+        }
         updating?.Cancel();
         ShowProgress(progressView.Cancelling());
+    }
+
+    /** "Pause" stops the run (its token, like Cancel) and asks for the paused state at its end; "Resume" runs it again. */
+    private async Task PauseOrResumeAsync()
+    {
+        if (resume is { } again)
+        {
+            resume = null;
+            pausedMessage = null;
+            await again();
+            return;
+        }
+        if (updating is null)
+        {
+            return;
+        }
+        pauseAsked = true;
+        pausedLine = progressView;
+        updating.Cancel();
+        ShowProgress(progressView.Pausing());
+    }
+
+    /**
+     * At the end of a run: if "Pause" stopped it, the window stays on the paused line with "Resume" and "Cancel"
+     * (true). A run that ended otherwise (done, or failed before the click took) is shown as usual (false).
+     */
+    private bool EnterPauseIfAsked(bool cancelled, string message, Func<Task> again)
+    {
+        var asked = pauseAsked;
+        pauseAsked = false;
+        if (!asked || !cancelled)
+        {
+            return false;
+        }
+        resume = again;
+        pausedMessage = message;
+        ShowProgress((pausedLine ?? progressView).Paused());
+        return true;
+    }
+
+    /** "Cancel" while paused: the run's cancel message, as after a cancel; what was received stays for the next run. */
+    private async Task EndPauseAsync()
+    {
+        var message = pausedMessage ?? "";
+        resume = null;
+        pausedMessage = null;
+        progressPanel.Visible = false;
+        MessageBox.Show(this, message, "Heroes of Liberty", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+        await RefreshStatusAsync();
     }
 
     private void ShowProgress(ProgressView view)
@@ -399,6 +469,8 @@ public sealed partial class MainForm : Form
         progressText.Text = view.Text;
         progressBar.Value = view.Percent;
         cancel.Enabled = view.CancelEnabled;
+        pause.Enabled = view.PauseEnabled;
+        pause.Text = view.PauseText;
     }
 
     private void Display(StatusView view)

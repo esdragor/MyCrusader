@@ -53,6 +53,12 @@ public class GameUpdaterTests
         public Dictionary<string, byte[]> Patches { get; } = [];
         public List<string> Requests { get; } = [];
 
+        /** Every request with its Range start ("70000-"), null without Range (L18). */
+        public List<(string Path, string? Range)> Fetches { get; } = [];
+
+        /** Once: the body of Path stops after Bytes and Pause is played (the player's click, L18). */
+        public (string Path, int Bytes, Action Pause)? PauseAt { get; set; }
+
         public LatestVersion Latest => new("v2", new VersionManifest("v2", Files.Select(f => Entry(f.Key, f.Value))), "", ["v1"], "");
 
         public HttpClient Client() => new(new FakeHandler(Answer));
@@ -61,6 +67,8 @@ public class GameUpdaterTests
         {
             var path = Uri.UnescapeDataString(request.RequestUri!.AbsolutePath);
             Requests.Add(path);
+            var range = request.Headers.Range?.Ranges.FirstOrDefault();
+            Fetches.Add((path, range is null ? null : $"{range.From}-"));
             byte[]? body = null;
             if (path.StartsWith("/versions/v2/files/") && Files.TryGetValue(path["/versions/v2/files/".Length..], out var file))
             {
@@ -78,7 +86,19 @@ public class GameUpdaterTests
                     Content = new StringContent($$"""{ "error": "{{error}}", "message": "no" }""", Encoding.UTF8, "application/json"),
                 };
             }
-            return new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(body) };
+            // Like HOLManager: a Range is honored with 206 (PROTOCOL.md).
+            var from = range?.From is { } start ? (int)start : 0;
+            var slice = body[from..];
+            Stream stream = new MemoryStream(slice);
+            if (PauseAt is { } pause && pause.Path == path)
+            {
+                PauseAt = null;
+                stream = new PausingStream(slice, pause.Bytes, pause.Pause);
+            }
+            return new HttpResponseMessage(from > 0 ? HttpStatusCode.PartialContent : HttpStatusCode.OK)
+            {
+                Content = new StreamContent(stream),
+            };
         }
     }
 
@@ -375,6 +395,71 @@ public class GameUpdaterTests
         Assert.Empty(published.Requests);
         Assert.False(Exists(game, "HeroesOfLiberty/Version.txt"));
         Assert.False(Directory.Exists(Path.Combine(game.Root, UpdatePlan.WorkDirName)));
+    }
+
+    /** Runs the update, paused (L18) when published.PauseAt plays its click: the window's "Pause" cancels the token. */
+    private static async Task<UpdateResult> UpdatePausable(TempDir game, Published published, CancellationTokenSource pause)
+        => await new GameUpdater(published.Client(), HDiffPatchTool.Hpatchz, _ => long.MaxValue)
+            .UpdateAsync(game.Root, Manager, published.Latest, null, pause.Token);
+
+    [Fact]
+    public async Task PausedInstallResumesWithoutFetchingAgainWhatWasReceived()
+    {
+        using var game = KitOnly();
+        var published = WithPatch();
+        using var pause = new CancellationTokenSource();
+        published.PauseAt = ("/versions/v2/files/HeroesOfLiberty.exe", 5000, pause.Cancel);
+
+        var paused = await UpdatePausable(game, published, pause);
+
+        Assert.False(paused.Success);
+        Assert.True(paused.Cancelled);
+        Assert.False(Exists(game, "HeroesOfLiberty/Version.txt"));
+        Assert.Equal(["/versions/v2/files/Data/New.pak", "/versions/v2/files/HeroesOfLiberty.exe"], published.Requests);
+        var firstRun = published.Fetches.Count;
+
+        var resumed = await Update(game, published);
+
+        Assert.True(resumed.Success, resumed.Message);
+        Assert.False(resumed.Cancelled);
+        Assert.Equal(NewExe, File.ReadAllBytes(Path.Combine(game.Root, "HeroesOfLiberty.exe")));
+        Assert.Equal("new pak", Read(game, "Data/New.pak"));
+        // The finished file is not asked again; the paused one goes on from its 5000th byte.
+        Assert.Equal([("/versions/v2/files/HeroesOfLiberty.exe", "5000-"), ("/versions/v2/files/HeroesOfLiberty/Version.txt", null)],
+            published.Fetches.Skip(firstRun));
+    }
+
+    [Fact]
+    public async Task PausedUpdateDoesNotFetchAFinishedPatchAgain()
+    {
+        using var game = InstalledGame();
+        var published = WithPatch();
+        using var pause = new CancellationTokenSource();
+        published.PauseAt = ("/versions/v2/files/HeroesOfLiberty/Version.txt", 10, pause.Cancel);
+
+        var paused = await UpdatePausable(game, published, pause);
+
+        Assert.True(paused.Cancelled);
+        Assert.Contains("/versions/v2/patches/v1/HeroesOfLiberty.exe", published.Requests);
+        Assert.Equal("v1", Read(game, "HeroesOfLiberty/Version.txt"));
+        var firstRun = published.Fetches.Count;
+
+        var resumed = await Update(game, published);
+
+        Assert.True(resumed.Success, resumed.Message);
+        Assert.Equal(NewExe, File.ReadAllBytes(Path.Combine(game.Root, "HeroesOfLiberty.exe")));
+        Assert.Equal([("/versions/v2/files/HeroesOfLiberty/Version.txt", "10-")], published.Fetches.Skip(firstRun));
+    }
+
+    [Fact]
+    public async Task OtherFailuresAreNotCancelled()
+    {
+        using var game = KitOnly();
+
+        var result = await Update(game, WithPatch(), freeSpace: _ => 0);
+
+        Assert.False(result.Success);
+        Assert.False(result.Cancelled);
     }
 
     [Fact]

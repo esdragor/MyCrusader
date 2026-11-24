@@ -235,6 +235,24 @@ public sealed class PublishTests : IDisposable
         Assert.Equal(latest.Manifest.Files.Single(f => f.Path == Exe).Sha256, ManifestBuilder.Hash(rebuilt));
     }
 
+    /** L21: each kept version keeps its notes.txt; the manager reads them back as the history, newest first. */
+    [Fact]
+    public void ThreePublicationsGiveTheNotesHistoryOfTheKeptVersions()
+    {
+        Publish(Game("0.3.9", 0), notes: "Un.");
+        Publish(Game("0.3.10", 1));
+        Publish(Game("0.3.11", 2), notes: "Trois.\r\n");
+
+        var history = new VersionStore(Versions).Latest().History;
+
+        Assert.Equal(["0.3.11", "0.3.10", "0.3.9"], history.Select(h => h.Version));
+        Assert.Equal(["Trois.", "", "Un."], history.Select(h => h.Notes));
+
+        Publish(Game("0.3.12", 3), notes: "Quatre.", keep: 1);
+
+        Assert.Equal(["0.3.12", "0.3.11"], new VersionStore(Versions).Latest().History.Select(h => h.Version));
+    }
+
     [Fact]
     public void KeepZeroMakesNoPatchAndKeepsOnlyTheNewVersion()
     {

@@ -25,7 +25,8 @@ public sealed class UpdateDownloadException(string message, Exception? inner = n
  *   patches/<path>.patch    whole patch (L6b applies it)
  *   patches/<path>.patch.part
  * A .part left by a cut is resumed with Range (206: appended; 200: restarted from zero). A full file already present
- * and matching its list is not fetched again. The HttpClient is given (tests: a fake handler); CreateHttpClient gives
+ * and matching its list is not fetched again, nor (L18, pause and resume) a whole .patch or a file already patched.
+ * The HttpClient is given (tests: a fake handler); CreateHttpClient gives
  * one without a global timeout, since the exe weighs 124 MB gzipped; answers are read as streams.
  */
 public sealed class FileDownloader
@@ -83,8 +84,24 @@ public sealed class FileDownloader
         cancel.ThrowIfCancellationRequested();
         if (planned.Kind == DownloadKind.Patch)
         {
+            // L18: an update paused (or stopped) after this file may run again; nothing already here is fetched again.
+            var built = LocalPath("files", planned.File.Path);
+            if (File.Exists(built) && Matches(built, planned.File))
+            {
+                // Patched (or fetched in full after a failed patch) by an earlier run.
+                return new DownloadResult(planned with { Kind = DownloadKind.Full, RelativeUrl = planned.FullUrl },
+                    DownloadKind.Full, built);
+            }
             var patch = LocalPath("patches", planned.File.Path) + ".patch";
-            if (await FetchAsync(planned.RelativeUrl, patch + ".part", counter, allowPatchNotFound: true, cancel))
+            if (File.Exists(patch))
+            {
+                // Whole: a .patch is only renamed from its .part once fully received. A bad one fails in hpatchz,
+                // then the full file is fetched (GameUpdater).
+                return new DownloadResult(planned, DownloadKind.Patch, patch);
+            }
+            // A full file being received means the patch was missing last time: no need to ask for it again.
+            if (!File.Exists(built + ".gz.part")
+                && await FetchAsync(planned.RelativeUrl, patch + ".part", counter, allowPatchNotFound: true, cancel))
             {
                 File.Move(patch + ".part", patch, overwrite: true);
                 return new DownloadResult(planned, DownloadKind.Patch, patch);

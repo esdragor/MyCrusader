@@ -48,7 +48,7 @@ public sealed class GameRepairer(HttpClient http, Func<string, long>? freeSpace 
         }
         catch (OperationCanceledException)
         {
-            return new UpdateResult(false, Texts.Get("RepairCancelled"));
+            return new UpdateResult(false, Texts.Get("RepairCancelled"), Cancelled: true);
         }
         catch (NotEnoughSpaceException e)
         {
