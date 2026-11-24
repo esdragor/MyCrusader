@@ -19,10 +19,14 @@ struct FHOLSacredLightClearOrder
 
 namespace HOLFactionPowerServer
 {
-	// FARAMIR-1124b STUB (red): the clearing order of a Sacred Light put down at Pose by Slot (centre = the pose, radius = the zone's radius, camp = the caster).
+	// FARAMIR-1124b: the clearing order of a Sacred Light put down at Pose by Slot (centre = the pose, radius = the zone's radius, camp = the caster).
 	FHOLSacredLightClearOrder ClearMalusOrderOf(int Slot, const FVector& Pose)
 	{
 		FHOLSacredLightClearOrder Order;
+		Order.CenterXCm = int(Pose.X);
+		Order.CenterYCm = int(Pose.Y);
+		Order.RadiusCm = HOLZoneEffect::GetSacredLightRadiusCm();
+		Order.Slot = Slot;
 		return Order;
 	}
 
@@ -168,6 +172,9 @@ namespace HOLFactionPowerServer
 			Log(n"LogHOLMatch", f"RpcPower: Sacred Light not started for slot {Slot} (no world, subsystem or slot)");
 			return false;
 		}
+		// S2-c (D404): the light takes the malus off the caster's camp where it lands (queued; the morale processor lays it at its next step), after the start succeeded.
+		const FHOLSacredLightClearOrder Clear = ClearMalusOrderOf(Slot, Pose);
+		HOLMorale::ClearMalusAround(State, Clear.CenterXCm, Clear.CenterYCm, Clear.RadiusCm, Clear.Slot);
 		DrawSacredLightPlaceholder(Pose);
 		State.SetFactionResource(Slot, Decision.NewGaugeValue);
 		State.SetPowerCooldownEndMs(Slot, PowerIndex, Decision.NewCooldownEndMs);
