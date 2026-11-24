@@ -1,0 +1,27 @@
+# Archive du nettoyage 0a, séance autonome du 2026-11-24 soir (CLEAN-A)
+
+Sections retirées telles quelles (copie verbatim) de `Auto_Journey_Jour.md` (l.197-213, deux résumés de séances du 2026-11-23 déjà clos) et de `Auto_Journey_Retours.md` (l.25, essais joués et répondus le 2026-11-23). Rien n'a été supprimé sans copie ici.
+
+## Auto_Journey_Jour.md, l.197-213
+
+## Résumé de la séance du 2026-11-23 après-midi
+
+- Séance autonome 14:47 -> 19:00 (priorité Docs\Priorite_Socle_Factions_2026-11-16.md), session principale + agents Sonnet 5.5 ; SIX passes d'`integrate.ps1` (integ-58 à 63, toutes PASS), 6 avances de main en local : b5a285b 15:37, c3578b1 16:01, 86a2e15 16:23, a984c61 16:46, 3b6d29c 17:07, b5299e5 17:28 (tests 2198/2198, net et build PASS) ; RIEN poussé depuis 12:24 (origin/main = 0fef853).
+- Dans main pour le joueur : S1 lancer de Lumière sacrée sans bannière, zone au point visé à 1200 cm (D890, D897), Honneur au soin et à la mort ; S2 moral lu par le combat, Triomphe / Démoralisé / Hésitation, atténuation par camp ; S3 tour garnie 1 + occupants flèches (D899), Paysans construisent au relâché d'une ligne de palissade, F9 / F10 ; S4 l'IA plante sa bannière et lance à 1200 cm, ai_garrison ; hors lot : D893 (3 unités palier 1, déblocage NON BRANCHÉ), D895 suivi mutuel, SP3 bouton de spécialisation, integrate.ps1 + regen_tables.
+- Essais : 6 donnés (faction_click_cast REGLAGE D897, ai_sacred_light OK, wall_line_long BUG + design D898 puis OK après correction, ai_garrison OK + doute D899, faction_aim_free OK sans aperçu de visée = REGLAGE en tête du socle) ; prêts mais NON donnés : tower_wood et specialization_slot ; LOGIQUE SEULEMENT : Honneur à la mort, tout le moral, D895, déblocage D893, bannière de l'IA.
+- Questions : 6 [À RÉPONDRE] posées puis répondues 18:1x par l'interface de choix (D900 à D905), Q-commanderie-palier1 = A (D896) ; REVUE-1123pm : 0 bloquant, 5 gênants dont G1 à G3 corrigés, G4 et G5 en file ; anomalies : gate Launch FAIL 3 fois, 14 rapports C++ non compilés, budget de la principale à 646,5k (L26-1).
+- Détail (tableau d'agents, bilan, tableau « Lecons appliquees 2026-11-23 », plan de lancement, résumé du 2026-11-22) : `Docs\Archive\Auto_Journey_Jour_2026-11-23_apres-midi_archive_2026-11-24.md`.
+
+## Résumé de la séance du 2026-11-23 matin
+
+- Séance autonome 08:47 -> ~12:00 (fin ramenée de 16:50 à 12:00 par l'utilisateur), session principale + agents Sonnet ; TROIS passes d'`integrate.ps1` : integ-54 -> main `47f6fe4` (10:01), integ-55 -> `3f7d89e` (10:52), integ-56 -> `ca4220a` (11:33) ; main = `ca4220a` pour le code, docs seulement ensuite ; integ-57 abandonnée (conflit de Placeholders.txt).
+- Dans main pour le joueur : S1-a soin de zone Lumière sacrée, S1-b lancer par le serveur, S1-c panneau de faction cliquable, S1-d en script, S4-a l'IA lance Lumière sacrée, S4-b garnison de l'IA, tir de tour T7 / T7b / T8, palissade, XP du duel 150, lot de liaisons C++, B2 / G1 corrigés.
+- Sur branche, non intégré : ability-columns, integ-55 (EndWallDrag), specialization-trial, integ-41 (portes et murs F9 / F10), zone-effect, socle-ai (S2-a non compilé), integ-25 ; 6 agents C++ non compilés à leur rapport, builds en file trop longs.
+- Essais : 0 VU À L'ÉCRAN (tower_wood, wall_line_long, talents_heal = LOGIQUE SEULEMENT) ; 0 `AskUserQuestion` en séance, 7 questions [À RÉPONDRE] posées.
+- Réponses de l'utilisateur à 12:05 : D890 à D895 (GDD.md) pour les 7 questions ; leçon neuve L25-6 (fin et mode demandés au lancement).
+- Détail (tableau d'agents, clôtures, anomalies, bilan, tableau « Lecons appliquees 2026-11-23 », plan de lancement) : `Docs\Archive\Auto_Journey_Jour_2026-11-23_matin_archive_2026-11-23.md`.
+
+
+## Auto_Journey_Retours.md, l.25 (item de la section « 1. Essais à jouer »)
+
+- Joués et répondus le 2026-11-23 (wall_line_long OK après correction, faction_aim_free OK + REGLAGE aperçu de visée en tête du socle de la file, ai_garrison OK + doute D899, faction_click_cast REGLAGE D897, ai_sacred_light OK) : fiches archivées dans Docs\Archive\Retours_2026-11-23\, détail dans l'archive du soir (lien en tête) ; 0 essai en attente.
