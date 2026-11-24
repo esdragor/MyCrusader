@@ -83,6 +83,7 @@ if (-not $Hidden) {
     Start-Process -FilePath $Editor -ArgumentList $GameArgs
     exit 0
 }
+$Started = Get-Date
 $Proc = Start-Process -FilePath $Editor -ArgumentList $GameArgs -WindowStyle Hidden -PassThru
 if ($NoWait) { exit 0 }
 
@@ -136,4 +137,18 @@ if ($QuitAt) {
     Write-Host ("play: the game quit by itself after {0:N1} s{1}" -f ($QuitAt - $Deadline.AddSeconds(-$TimeoutSec)).TotalSeconds, $(if ($EndsWithQuit) { " (the scenario's last step is quit)" } else { "" }))
 }
 Write-Host ("play: hidden game ended after {0:N1} s (-TimeoutSec {1})" -f ((Get-Date) - $Deadline.AddSeconds(-$TimeoutSec)).TotalSeconds, $TimeoutSec)
+# Exit code (CELEBORN-1124se: play.ps1 returned 0 on a failed scenario, "Test sequence: timeout at step N" in the journal). The game wrote Saved\Logs\HeroesOfLiberty.log during THIS launch
+# (written at or after $Started: an older journal is not judged); a timeout step in it = the scenario failed = exit 2. Read with FileShare.ReadWrite (the game may still hold the file).
+$JournalFile = Join-Path $Root "Saved\Logs\HeroesOfLiberty.log"
+$Failure = $null
+if (Test-Path -LiteralPath $JournalFile) {
+    try {
+        if ((Get-Item -LiteralPath $JournalFile).LastWriteTime -ge $Started.AddSeconds(-1)) {
+            $Fs = [IO.File]::Open($JournalFile, [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::ReadWrite)
+            $Sr = New-Object IO.StreamReader($Fs)
+            try { while (($Ln = $Sr.ReadLine()) -ne $null) { if ($Ln -match 'Test sequence: timeout at step') { $Failure = $Ln; break } } } finally { $Sr.Dispose() }
+        }
+    } catch { Write-Host ("play: journal not readable ({0}): exit code not judged" -f $_.Exception.Message) }
+}
+if ($Failure) { Write-Host ("play: scenario FAILED (exit 2): " + $Failure.Trim()); exit 2 }
 exit 0
