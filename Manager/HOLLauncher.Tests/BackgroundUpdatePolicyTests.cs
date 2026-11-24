@@ -144,10 +144,10 @@ public class BackgroundUpdatePolicyTests
     [Fact]
     public void AManualCheckSaysAgainWhatWasAlreadyNotified()
     {
-        var first = Decide(NotifyMode, Status(GameState.Outdated, launcherAvailable: "6"));
-        var asked = Decide(NotifyMode, Status(GameState.Outdated, launcherAvailable: "6"), memory: first.Memory, manual: true);
+        var first = Decide(NotifyMode, Status(GameState.Outdated, launcherAvailable: "99"));
+        var asked = Decide(NotifyMode, Status(GameState.Outdated, launcherAvailable: "99"), memory: first.Memory, manual: true);
         Assert.Equal(BackgroundAction.Notify, asked.Game);
-        Assert.Equal("6", asked.LauncherVersion);
+        Assert.Equal("99", asked.LauncherVersion);
     }
 
     [Fact]
@@ -160,10 +160,10 @@ public class BackgroundUpdatePolicyTests
     [Fact]
     public void ALauncherUpdateIsOnlyNotifiedAndOnce()
     {
-        var status = Status(GameState.UpToDate, latest: "0.1.0", launcherAvailable: "6");
+        var status = Status(GameState.UpToDate, latest: "0.1.0", launcherAvailable: "99");
         var first = Decide(InstallMode, status);
         Assert.Equal(BackgroundAction.None, first.Game);
-        Assert.Equal("6", first.LauncherVersion);
+        Assert.Equal("99", first.LauncherVersion);
         Assert.Null(Decide(InstallMode, status, memory: first.Memory).LauncherVersion);
         Assert.Null(Decide(NotifyMode, status, windowShown: true).LauncherVersion);
     }
@@ -171,10 +171,10 @@ public class BackgroundUpdatePolicyTests
     [Fact]
     public void TheGameAndTheLauncherAreBothSaid()
     {
-        var decision = Decide(NotifyMode, Status(GameState.Outdated, launcherAvailable: "6"));
+        var decision = Decide(NotifyMode, Status(GameState.Outdated, launcherAvailable: "99"));
         Assert.Equal(BackgroundAction.Notify, decision.Game);
-        Assert.Equal("6", decision.LauncherVersion);
-        Assert.Equal(new BackgroundMemory(NotifiedGame: "0.2.0", NotifiedLauncher: "6"), decision.Memory);
+        Assert.Equal("99", decision.LauncherVersion);
+        Assert.Equal(new BackgroundMemory(NotifiedGame: "0.2.0", NotifiedLauncher: "99"), decision.Memory);
     }
 
     [Fact]
