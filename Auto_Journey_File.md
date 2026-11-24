@@ -8,6 +8,8 @@ Mode d'emploi 4/5 : `session_gate.ps1 -Phase Launch` exige au moins 3 lignes `sa
 Mode d'emploi 5/5 : nettoyage du 2026-11-10 (demande de l'utilisateur) : fichier en UTF-8 SANS BOM, fins de ligne CRLF ; l'ancienne consigne « avec BOM » de la ligne 7 est archivée.
 
 ## Prochaine séance (par ordre de valeur ; détail dans les lignes ci-dessous)
+- [ ] (sans C++, 2026-11-24) JA : lignes Voie A/B du palier N non traduites (RECETTE-1124b)
+- [ ] (sans C++, 2026-11-24) Rage nécrotique étape 3 socle-ai : build PASS 2209/2209 sur le worktree, à intégrer ; risque Apply refusé = rage arrêtée (GALADRIEL-1124e)
 - (Seizième nettoyage 2026-11-23, CLEAN-1123b, main = 5f98997) 2 ligne(s) archivée(s) telles quelles dans `Docs\Archive\Auto_Journey_File_faits_2026-11-23.md` : deploy doublon BUG D877 ; neutrals_clairiere fermée
 - (Dix-septieme nettoyage 2026-11-23 apres-midi, NETTOYAGE-1123f, main = 0fef853) 21 ligne(s) archivee(s) telles quelles dans `Docs\Archive\Auto_Journey_File_faits_2026-11-23_apres-midi.md` (19 [x] + 2 [~] dont le sha est dans main) ; S2-a [~] -> [ ] (socle-ai 05f4465 / 9c515ca, hors main) ; 3 lignes [ ] ajoutees (integ-57, faction_click_cast, trailer Agent:)
 - (Dix-huitieme nettoyage 2026-11-24, NETTOYAGE-B, main = 5d97eb3) 18 ligne(s) archivee(s) telles quelles dans `Docs\Archive\Auto_Journey_File_faits_2026-11-24.md` (14 [x], D890 faite dans main, 3 notes S4-a perimees) ; doutes gardes : S2-a, S3-a / tower_wood, D891, Elrond SP3, `Restes de migration`
