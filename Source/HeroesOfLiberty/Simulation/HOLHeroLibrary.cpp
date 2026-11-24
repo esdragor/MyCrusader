@@ -9,6 +9,8 @@
 #include "HAL/IConsoleManager.h"
 #include "HAL/PlatformTime.h"
 #include "Kismet/GameplayStatics.h"
+#include "MassCommonFragments.h"
+#include "MassEntitySubsystem.h"
 #include "Match/HOLForumMessages.h"
 #include "Misc/FileHelper.h"
 #include "Misc/Paths.h"
@@ -401,15 +403,37 @@ bool UHOLHeroLibrary::PlantHeroBanner(const UObject* WorldContextObject, const i
 
 bool UHOLHeroLibrary::GetHeroLocation(const UObject* WorldContextObject, const int32 Slot, FVector& OutLocation)
 {
-	// D891: the unit's own place (its view), the same hero the sheets follow (FindHeroUnit); a garrisoned or dead hero has no view: false.
+	// D891 (REVUE-1123pm gene 3): the hero's place of the SIMULATION STEP (his entity's transform), never the interpolated view (it moves with the
+	// frame's alpha); the same hero the sheets follow (FindHeroUnit). A garrisoned, dead or absent hero, a client (no step here), no world: false.
 	OutLocation = FVector::ZeroVector;
 	const UWorld* World = GetWorldOf(WorldContextObject);
-	const UHOLUnitSubsystem* Units = World ? World->GetSubsystem<UHOLUnitSubsystem>() : nullptr;
+	const UHOLUnitSubsystem* Units = World && World->GetNetMode() != NM_Client ? World->GetSubsystem<UHOLUnitSubsystem>() : nullptr;
+	const UMassEntitySubsystem* Entities = World ? World->GetSubsystem<UMassEntitySubsystem>() : nullptr;
+	const uint32 HeroId = Units ? Units->FindHeroUnit(Slot) : 0u;
 	FHOLUnitView View;
-	if (!Units || !Units->GetUnitView(Units->FindHeroUnit(Slot), View) || View.Health <= 0)
+	if (!Units || !Entities || !Units->GetUnitView(HeroId, View) || View.Health <= 0)
 	{
 		return false;
 	}
-	OutLocation = View.Location;
+	const FTransformFragment* Step = Entities->GetEntityManager().GetFragmentDataPtr<FTransformFragment>(Units->FindEntity(HeroId));
+	if (!Step)
+	{
+		return false;
+	}
+	OutLocation = Step->GetTransform().GetLocation();
 	return true;
+}
+
+int32 UHOLHeroLibrary::GetHeroUnitId(const UObject* WorldContextObject, const int32 Slot)
+{
+	// The hero GetHeroLocation reads (FindHeroUnit), alive on the map; a client has no unit table. One id for the script's walk order (D900).
+	const UWorld* World = GetWorldOf(WorldContextObject);
+	const UHOLUnitSubsystem* Units = World && World->GetNetMode() != NM_Client ? World->GetSubsystem<UHOLUnitSubsystem>() : nullptr;
+	const uint32 HeroId = Units ? Units->FindHeroUnit(Slot) : 0u;
+	FHOLUnitView View;
+	if (HeroId == 0u || !Units->GetUnitView(HeroId, View) || View.Health <= 0)
+	{
+		return -1;
+	}
+	return static_cast<int32>(HeroId);
 }

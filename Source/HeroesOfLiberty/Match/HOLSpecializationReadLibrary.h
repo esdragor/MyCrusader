@@ -23,4 +23,12 @@ public:
 	 */
 	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Specialization", meta = (WorldContext = "WorldContextObject"))
 	static bool IsForumCompleteForSlot(const UObject* WorldContextObject, int32 Slot);
+
+	/**
+	 * GLORFINDEL-1124b (ELROND-1124b point 3, D893): the option the SEAT of Slot applied at Tier (1 to 3), read on its AHOLPlayerState's specialization view
+	 * (GetPlayerIndex is no UFUNCTION: the seat -> player state step lives here, no central header touched). -1 for no option yet, a tier out of range, a
+	 * slot without a player state (an AI slot) and without a world. The view is owner-only: a client reads its own seat, -1 for the others.
+	 */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Specialization", meta = (WorldContext = "WorldContextObject"))
+	static int32 GetChosenOptionForSlot(const UObject* WorldContextObject, int32 Slot, int32 Tier);
 };
