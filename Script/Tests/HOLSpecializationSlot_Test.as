@@ -203,6 +203,27 @@ void Test_SpecializationSlotKeepsShowingTheChosenVoieOnceApplied(FUnitTest& T)
 	T.AssertEquals("Spécialisation : Voie B (palier 2)", Two.ChosenTexts[1], "tier 2 took the voie B");
 }
 
+// D905 / D132: the Templars' three voies are Fer, Foi, Pierre (GDD 13.7), so the button names the voie taken instead of "Voie A / B / C". The state is a
+// REAL one (rules Start / Advance), read through ReadOf; the Dawn keeps "Voie A / B" (its voie names are not in the GDD yet).
+void Test_SpecializationSlotNamesTheTemplarVoieTaken(FUnitTest& T)
+{
+	TArray<FString> Names;
+	Names.Add("Fer");
+	Names.Add("Foi");
+	Names.Add("Pierre");
+	for (int Option = 0; Option < 3; Option++)
+	{
+		FHOLSpecializationState State = HOLSpecialization::NewStateFor(EHOLFaction::Templars);
+		HOLSpecialization::Start(State, 1, Option, 1);
+		HOLSpecialization::Advance(State, 30000, true);
+		FHOLSpecializationRead Read = HOLSpecializationSlot::ReadOf(SpecializationSlotTest::ViewOf(State), 1, EHOLFaction::Templars, true);
+		FHOLSpecializationSlotView View = HOLSpecializationSlot::Make(Read.View, Read.PlayerTier, Read.bForumComplete, Read.OptionCount);
+		T.AssertEquals(1, View.ChosenTexts.Num(), "one voie taken");
+		const FString Expected = "Spécialisation : Voie " + Names[Option] + " (palier 1)";
+		T.AssertEquals(Expected, View.ChosenText, "the Templar voie is named by the table");
+	}
+}
+
 void Test_SpecializationSlotSaysToChooseWhenNothingIsChosen(FUnitTest& T)
 {
 	FHOLSpecializationState State = HOLSpecialization::NewState(2);
