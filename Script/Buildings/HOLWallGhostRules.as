@@ -32,8 +32,30 @@ namespace HOLWallGhost
 	// D898 G8: the ghost on the fine grid draws the filled diagonal the server lays; the cap is counted on it (over the cap = refused, the cell past the cap is the bad one).
 	FHOLWallGhost BuildFine(FIntPoint Start, FIntPoint End, FIntPoint MapMin, FIntPoint MapMax, const TArray<FIntPoint>& Occupied, int MaxCells, int SubDivision)
 	{
-		FHOLWallGhost Ghost = Build(Start, End, MapMin, MapMax, Occupied, MaxCells);
+		if (SubDivision <= 1)
+		{
+			FHOLWallGhost Coarse = Build(Start, End, MapMin, MapMax, Occupied, MaxCells);
+			Coarse.Cells = HOLWallLine::DragCellsFine(Start, End, MaxCells, SubDivision);
+			if (Coarse.bValid && Coarse.Cells.Num() > MaxCells)
+			{
+				Coarse.bValid = false;
+				Coarse.BadCell = Coarse.Cells[MaxCells];
+			}
+			return Coarse;
+		}
+		// Occupied and the map come in 4 m tiles, as for HOLWallLine::PlanFromRequestFine: the sub-cells of the occupied tiles are the occupied cells of the fine line (fillers included).
+		const TArray<FIntPoint> FineOccupied = HOLWallLine::ExpandOccupied(Occupied, SubDivision);
+		const FIntPoint FineMin = FIntPoint(MapMin.X * SubDivision, MapMin.Y * SubDivision);
+		const FIntPoint FineMax = FIntPoint(MapMax.X * SubDivision + SubDivision - 1, MapMax.Y * SubDivision + SubDivision - 1);
+		FHOLWallGhost Ghost = Build(Start, End, FineMin, FineMax, FineOccupied, MaxCells);
 		Ghost.Cells = HOLWallLine::DragCellsFine(Start, End, MaxCells, SubDivision);
+		if (Ghost.bValid && HOLWallLine::FillIsOn())
+		{
+			// The very fill the server runs (one rule): its holes, fillers on occupied tiles included, are the red pieces.
+			TArray<FIntPoint> Holes;
+			HOLWallLine::FillLine(HOLWallLine::DragCells(Start, End, MaxCells), FineOccupied, Holes);
+			Ghost.Skipped = Holes;
+		}
 		if (Ghost.bValid && Ghost.Cells.Num() > MaxCells)
 		{
 			Ghost.bValid = false;
