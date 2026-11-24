@@ -324,12 +324,11 @@ Check ($r -match 'tool_uses') 'agent_rules: tool_uses releve par la session prin
 Check ($r -match 'PROCESSUS_DETACHES') 'agent_rules: champ PROCESSUS_DETACHES'
 Check ($r -match 'GESTE' -and $r -match 'SON') 'agent_rules: statuts GESTE et SON'
 Check ($r -match 'stray_processes') 'agent_rules: stray_processes.ps1 cite'
-# L13-2 / L88 / L89 : marqueur CPP du IN_USE.txt, LAUNCHCHECK_DEBUT, TESTS_TAUTOLOGIQUES dans agent_rules.md ET dans le modele d'enonce d'Auto_Journey.md
+# L13-2 / L88 / L89 : marqueur CPP du IN_USE.txt, LAUNCHCHECK_DEBUT, TESTS_TAUTOLOGIQUES dans agent_rules.md (et dans brief_commun.md, plus bas : le modele d'enonce d'Auto_Journey.md n'en porte plus, L15-10)
 $ajText = Get-Content (Join-Path (Split-Path -Parent (Split-Path -Parent $Here)) 'Auto_Journey.md') -Raw -Encoding UTF8
 $ajModel = if ($ajText -match '(?s)## Mod.le d..nonc. d.un agent \(.*?```(.*?)```') { $Matches[1] } else { '' }
 foreach ($k in 'CPP: oui', 'LAUNCHCHECK_DEBUT', 'TESTS_TAUTOLOGIQUES') {
   Check ($r.Contains($k)) "agent_rules: cite '$k'"
-  Check ($ajModel.Contains($k)) "Auto_Journey.md modele d'enonce: cite '$k'"
 }
 # 2026-11-24 (L15-10, SAURON-1124sg) : le modele d'enonce ne recopie plus le bloc commun, il renvoie a brief_commun.md qui porte ces champs
 $briefText = Get-Content (Join-Path $Here 'brief_commun.md') -Raw -Encoding UTF8
