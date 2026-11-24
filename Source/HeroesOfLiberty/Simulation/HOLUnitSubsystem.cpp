@@ -1211,6 +1211,11 @@ namespace UE::HeroesOfLiberty::Units
 			OutView.LoadAmount = Gather->Load.Amount;
 		}
 		OutView.bLoadAmountKnown = true;
+		// A2 (S2-c step 9) R2: the morale effects of a local unit (solo, server), as UHOLUnitReplicationSubsystem sends them to a client; none for a unit without morale.
+		if (const FHOLMoraleFragment* Morale = EntityManager.GetFragmentDataPtr<FHOLMoraleFragment>(Entity))
+		{
+			OutView.EffectMask = HOLMorale::EffectMask(Morale->State);
+		}
 		if (const FHOLDeployFragment* Deploy = EntityManager.GetFragmentDataPtr<FHOLDeployFragment>(Entity))
 		{
 			OutView.DeployPhase = Deploy->Phase;

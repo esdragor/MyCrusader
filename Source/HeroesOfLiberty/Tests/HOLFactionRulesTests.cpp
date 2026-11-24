@@ -24,6 +24,9 @@
 #include "Presentation/HOLCorpse.h"
 #include "Net/HOLUnitReplicationRules.h"
 #include "Resources/HOLSourceSubsystem.h"
+#include "Simulation/HOLMoraleRules.h"
+#include "Simulation/HOLMoraleTableRows.h"
+#include "Simulation/HOLSimulationFragments.h"
 #include "Simulation/HOLSimulationSubsystem.h"
 #include "Simulation/HOLUnitSubsystem.h"
 #include "Simulation/HOLUnitTypes.h"
@@ -736,6 +739,58 @@ bool FHOLMoraleMaskClientViewTest::RunTest(const FString& Parameters)
 		TestEqual(TEXT("the client's view of a unit under effects carries the received mask"), static_cast<int32>(MarkedView.EffectMask), (1 << 0) | (1 << 3));
 		TestEqual(TEXT("the client's view of a unit without effect carries no mask"), static_cast<int32>(PlainView.EffectMask), 0);
 	}
+	return true;
+}
+
+// A2 (S2-c step 9) R2, solo / server model: a unit of the local simulation under a morale effect has that effect in its view
+// (UHOLUnitSubsystem::GetUnitView -> FHOLUnitView::EffectMask), as the client's view has it from the received mask; else the morale pastille stays empty.
+// Real chain: two real units born, the effect posed on the fragment of one (HOLMorale::Apply, as the rage does), the views read back.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLMoraleMaskSoloViewTest, "HeroesOfLiberty.Match.Morale.SoloViewMask", UE::HeroesOfLiberty::Tests::Factions::Flags)
+bool FHOLMoraleMaskSoloViewTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::Factions;
+	FWorld Test;
+	if (!TestTrue(TEXT("the test world stands"), Test.IsReady()))
+	{
+		return false;
+	}
+	UMassEntitySubsystem* EntitySubsystem = Test.World->GetSubsystem<UMassEntitySubsystem>();
+	if (!TestNotNull(TEXT("the entity subsystem"), EntitySubsystem)
+		|| !TestTrue(TEXT("Peasants asked for slot 0"), AHeroesOfLibertyGameModeBase::SpawnStartingPeasants(*Test.World, 0, *Test.Centre[0], 2)))
+	{
+		return false;
+	}
+	Test.Units->ServeBirthRequests();
+	TArray<uint32> Ids;
+	Test.Units->GetAllUnitIds(Ids);
+	Ids.Sort();
+	if (!TestEqual(TEXT("two units were born"), Ids.Num(), 2))
+	{
+		return false;
+	}
+	FMassEntityManager& EntityManager = EntitySubsystem->GetMutableEntityManager();
+	FHOLMoraleFragment* Morale = EntityManager.GetFragmentDataPtr<FHOLMoraleFragment>(Test.Units->FindEntity(Ids[0]));
+	if (!TestNotNull(TEXT("the unit has a morale fragment"), Morale))
+	{
+		return false;
+	}
+	HOLMorale::Apply(Morale->State, HOLMorale::MakeEffectFromRow(HOLMoraleTableRows::HOLMoraleNecroticRage));
+	FHOLUnitView MarkedView;
+	FHOLUnitView PlainView;
+	if (TestTrue(TEXT("the marked view is made"), Test.Units->GetUnitView(Ids[0], MarkedView))
+		&& TestTrue(TEXT("the plain view is made"), Test.Units->GetUnitView(Ids[1], PlainView)))
+	{
+		TestEqual(TEXT("the solo view of a unit under an effect carries its mask"), static_cast<int32>(MarkedView.EffectMask), 1 << HOLMoraleTableRows::HOLMoraleNecroticRage);
+		TestEqual(TEXT("the solo view of a unit without effect carries no mask"), static_cast<int32>(PlainView.EffectMask), 0);
+	}
+	TArray<FHOLUnitView> Views;
+	Test.Units->GetUnitViews(Views);
+	int32 Marked = 0;
+	for (const FHOLUnitView& View : Views)
+	{
+		Marked += View.EffectMask != 0 ? 1 : 0;
+	}
+	TestEqual(TEXT("GetUnitViews carries the mask too (one unit under effect)"), Marked, 1);
 	return true;
 }
 
