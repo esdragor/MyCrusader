@@ -272,9 +272,38 @@ namespace HOLWallLine
 		return FinePlan;
 	}
 
-	// D898 G7: STUB (red first), the plan is left as is.
+	// D898 G7: between two consecutive pieces that touch only by a corner (one step on both axes) a filler piece is laid at (next.X, previous.Y), so the line is edge-connected and no unit slips through the slit.
+	// The filler lies inside the box of the two pieces, so it is inside the map when they are. An occupied filler is skipped like any occupied cell (D901) and listed in Skipped. The cap counts the drag
+	// pieces only (the check came before): a diagonal can hold up to twice that many pieces.
 	void FillDiagonalGaps(FHOLWallLinePlan& Plan, const TArray<FIntPoint>& FineOccupied)
 	{
+		TArray<FIntPoint> Filled;
+		for (int Index = 0; Index < Plan.Cells.Num(); Index++)
+		{
+			if (Index > 0)
+			{
+				const FIntPoint Previous = Plan.Cells[Index - 1];
+				const FIntPoint Current = Plan.Cells[Index];
+				const int StepX = Current.X - Previous.X;
+				const int StepY = Current.Y - Previous.Y;
+				if ((StepX == 1 || StepX == -1) && (StepY == 1 || StepY == -1))
+				{
+					const FIntPoint Filler = FIntPoint(Current.X, Previous.Y);
+					bool bTaken = false;
+					for (int Taken = 0; Taken < FineOccupied.Num(); Taken++)
+					{
+						if (FineOccupied[Taken] == Filler)
+							bTaken = true;
+					}
+					if (bTaken)
+						Plan.Skipped.Add(Filler);
+					else
+						Filled.Add(Filler);
+				}
+			}
+			Filled.Add(Plan.Cells[Index]);
+		}
+		Plan.Cells = Filled;
 	}
 
 	// The setting read by the callers (D898, Q-grille-fine-structure.md, not answered): 1 (the default) = the 4 m grid of today, 4 = 1 m sub-cells. The default moves to 4 at G10.
