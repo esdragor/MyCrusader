@@ -1,0 +1,9 @@
+Heure PowerShell : 10:56:10  fin dure 14:00  reste 184 min
+WARN copie principale C:\Users\baudo\Documents\MyCrusader : 7 doc(s) modifie(s) non commite(s) : lancer Tools\AutoJourney\commit_docs.ps1 AVANT la fusion (sinon l'avance rapide est bloquee)
+FAIL integ-37 : (1) REFUSE : integ-37 n'a pas les 1 dernier(s) commit(s) de main (git merge main dans la branche, rejouer tests)
+FAIL integ-41 : (1) REFUSE : integ-41 n'a pas les 1 dernier(s) commit(s) de main (git merge main dans la branche, rejouer tests)
+FAIL zone-effect : (1) REFUSE : zone-effect n'a pas les 1 dernier(s) commit(s) de main (git merge main dans la branche, rejouer tests)
+FAIL integ-25 : (1) REFUSE : integ-25 n'a pas les 1 dernier(s) commit(s) de main (git merge main dans la branche, rejouer tests)
+FAIL integ-63 : (1) REFUSE : integ-63 n'a pas les 1 dernier(s) commit(s) de main (git merge main dans la branche, rejouer tests)
+WARN rappel : rien n'entre dans main sans build.ps1 PASS ET quick_check -Parts tests tout vert SUR LE RESULTAT DE LA FUSION ; un .uasset en conflit se REGENERE, jamais 'theirs'
+=> 5 FAIL
