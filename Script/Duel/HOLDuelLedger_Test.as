@@ -134,3 +134,32 @@ void Test_LedgerDescribesEachMoraleOrder(FUnitTest& T)
 	T.AssertTrue(HesitationLine.StartsWith("Duel morale: Hesitation slot 3 "), "Hesitation line names the effect and the refuser's slot: " + HesitationLine);
 	T.AssertTrue(HesitationLine.Contains("at (800, -600)"), "Hesitation line gives the refuser's place: " + HesitationLine);
 }
+
+// Releve S2-b "pont du duel" (ARWEN-1124sb): it is ApplyMoraleOrders itself (not only TakePendingOrders) that empties PendingMorale, BEFORE
+// it calls the bridge: HOLMorale::ApplyEffectAround only queues in the C++ processor and empties nothing of the ledger. Run through the real
+// method, a won duel's two orders and an order without a place all leave PendingMorale, and a second drain lays nothing (no order twice).
+// (The ledger made here has no world, so the C++ queue drops the orders; the queue itself is covered by
+// HeroesOfLiberty.Morale.ApplyEffectAroundLaysDuelOrders. NumPendingOrders is not exposed to script: C++ to signal for the C++ lot.)
+void Test_LedgerApplyMoraleOrdersEmptiesPendingMorale(FUnitTest& T)
+{
+	FHOLDuelSettings S = HOLDuel::Preset();
+	FHOLDuel D = HOLDuel::Respond(S, HOLDuel::Challenge(S, 0, 1), true);
+	D.bHasArena = true;
+	D.Arena = HOLDuel::MakeArena(S, 1000, 2000, 1400, 2400);
+	D = HOLDuel::Advance(S, D, 3000, 0, 40);
+	FHOLDuelEnded Done;
+	Done.Duel = D;
+	Done.Effects = HOLDuel::Effects(S, D);
+	TArray<FHOLDuelEnded> Ended;
+	Ended.Add(Done);
+	UHOLDuelLedger Ledger = Cast<UHOLDuelLedger>(NewObject(GetTransientPackage(), UHOLDuelLedger::StaticClass()));
+	Ledger.PendingMorale.Append(HOLDuelRewards::OrdersOfEnded(S, Ended));
+	Ledger.PendingMorale.Add(HOLDuelRewards::MakeOrder(2, HOLMoraleTable::Hesitation));
+	int Before = Ledger.PendingMorale.Num();
+	T.AssertEquals(3, Before, "Triumph, Demoralised and a Hesitation without a place wait in PendingMorale");
+	Ledger.ApplyMoraleOrders();
+	int After = Ledger.PendingMorale.Num();
+	T.AssertEquals(0, After, "ApplyMoraleOrders empties PendingMorale (the placed orders go to the bridge, the one without a place is dropped)");
+	TArray<FHOLDuelMoraleOrder> Again = Ledger.TakePendingOrders();
+	T.AssertEquals(0, Again.Num(), "nothing is left to lay a second time");
+}
