@@ -52,3 +52,16 @@ void Test_FactionAimGroundClickSendsCast(FUnitTest& T)
 	const FHOLFactionAimStep Idle = HOLFactionAim::OnGround(Slot, -1, 0, Point);
 	T.AssertTrue(!Idle.bSend && !Idle.bSetAim, "no aim: the click is not for the slot");
 }
+
+// ARWEN-1124a (REGLAGE 2026-11-23): the aim preview under the mouse is a circle of the Sacred Light zone's radius (the real HOLZoneEffect getter), drawn in another colour when the point is out of the aim's reach (1200 cm from the origin).
+void Test_FactionAimPreviewColoursOutOfReach(FUnitTest& T)
+{
+	const FVector Origin = FVector(0.0, 0.0, 0.0);
+	const FHOLFactionAimPreview Near = HOLFactionAim::PreviewOf(Origin, FVector(500.0, 0.0, 0.0));
+	const FHOLFactionAimPreview Far = HOLFactionAim::PreviewOf(Origin, FVector(2000.0, 0.0, 0.0));
+	T.AssertTrue(Near.bInRange, "500 cm from the origin is in reach");
+	T.AssertTrue(!Far.bInRange, "2000 cm from the origin is out of reach");
+	T.AssertTrue(Math::Abs(Near.Radius - 600.0) < 0.01 && Math::Abs(Far.Radius - 600.0) < 0.01, "the circle is the zone's 6 m");
+	const double Gap = Math::Abs(Near.Colour.R - Far.Colour.R) + Math::Abs(Near.Colour.G - Far.Colour.G) + Math::Abs(Near.Colour.B - Far.Colour.B);
+	T.AssertTrue(Gap > 0.1, "another colour out of reach");
+}
