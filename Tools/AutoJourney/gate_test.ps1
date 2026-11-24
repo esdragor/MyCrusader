@@ -183,11 +183,15 @@ New-Item -ItemType Directory -Path $Ret | Out-Null
 Set-Content -Path (Join-Path $Ret 'E-bad.md') -Encoding UTF8 -Value "# [$A ESSAYER] E-bad : un essai sans statut`nSTATUT : VU $A L'$($E)CRAN"
 Set-Content -Path (Join-Path $Ret 'E-good.md') -Encoding UTF8 -Value "# [$A ESSAYER] E-good : un essai complet`nSTATUT : VU $A L'$($E)CRAN`nGESTE: r$($E)el`nSON: non entendu"
 Set-Content -Path (Join-Path $Ret 'E-done.md') -Encoding UTF8 -Value "# [OK] E-done : essai deja valide`nSTATUT : VU"
+Set-Content -Path (Join-Path $Ret 'E-interne.md') -Encoding UTF8 -Value "# [$A ESSAYER] E-interne : essai au geste interne`nSTATUT : LOGIQUE SEULEMENT`nGESTE: interne`nSON: non entendu"
 $close = & powershell -NoProfile -ExecutionPolicy Bypass -File $Gate -Phase Close -Exclude Faramir -RetoursDir $Ret | Out-String
 Check (-not ($close -match '(?m)^(PASS|FAIL)\s+HeroesOfLiberty-Faramir ')) 'close -Exclude Faramir: aucun controle PASS/FAIL pour ce worktree' $close
 Check ($close -match '(?m)^WARN\s+HeroesOfLiberty-Faramir : exclu') 'close -Exclude: une ligne dit que Faramir est exclu' $close
 Check ($close -match '(?m)^WARN .*E-bad\.md.*GESTE' -and $close -match 'SON') 'close: E-bad.md signale (GESTE et SON manquants)' $close
 Check (-not ($close -match 'E-good\.md.*(GESTE|SON)') -and -not ($close -match 'E-done\.md.*(GESTE|SON)')) 'close: E-good.md complet et E-done.md clos ne sont pas signales' $close
+# SAURON-1124sc, L14-5 : un essai [A ESSAYER] au GESTE interne est liste (WARN) ; un essai au geste reel, un essai clos et un essai sans ligne GESTE n'y figurent pas
+Check ($close -match '(?m)^WARN .*L14-5.*geste interne.*E-interne\.md') 'L14-5 close: E-interne.md (GESTE: interne) liste dans un WARN geste interne' $close
+Check (-not ($close -match '(?m)^WARN .*L14-5[^\r\n]*(E-good|E-done|E-bad)\.md')) 'L14-5 close: E-good (reel), E-done (clos), E-bad (sans GESTE) ne sont pas listes' $close
 $closeAll = & powershell -NoProfile -ExecutionPolicy Bypass -File $Gate -Phase Close -RetoursDir $Ret | Out-String
 Check ($closeAll -match '(?m)^(PASS|FAIL)\s+HeroesOfLiberty-Faramir ' -and -not ($closeAll -match 'Faramir : exclu')) 'close sans -Exclude: Faramir est controle' $closeAll
 
