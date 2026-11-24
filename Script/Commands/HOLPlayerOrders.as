@@ -28,6 +28,7 @@ namespace HOLPlayerOrders
 			return false;
 		}
 		HOLCommandScript::IssueMovePlayer(Commands, UnitIds, Target, PlayerIndex, bQueue, FrontLine, bFrontWidth);
+		HOLFactionPowerServer::NoteHeroOrder(PlayerIndex, UnitIds); // D909 (GLORFINDEL-1124sc): a new order naming the hero cancels his pending cast
 		return true;
 	}
 
@@ -38,6 +39,7 @@ namespace HOLPlayerOrders
 			return false;
 		}
 		HOLCommandScript::IssueAttackPlayer(Commands, UnitIds, TargetUnitId, PlayerIndex, bQueue);
+		HOLFactionPowerServer::NoteHeroOrder(PlayerIndex, UnitIds);
 		return true;
 	}
 
@@ -48,6 +50,7 @@ namespace HOLPlayerOrders
 			return false;
 		}
 		HOLCommandScript::IssueAttackBuildingPlayer(Commands, UnitIds, Building, PlayerIndex, bQueue);
+		HOLFactionPowerServer::NoteHeroOrder(PlayerIndex, UnitIds);
 		return true;
 	}
 
@@ -58,6 +61,7 @@ namespace HOLPlayerOrders
 			return false;
 		}
 		HOLCommandScript::IssueAttackMovePlayer(Commands, UnitIds, Target, PlayerIndex, bQueue);
+		HOLFactionPowerServer::NoteHeroOrder(PlayerIndex, UnitIds);
 		return true;
 	}
 
@@ -69,6 +73,7 @@ namespace HOLPlayerOrders
 			return false;
 		}
 		HOLCommandScript::IssueStopPlayer(Commands, UnitIds, PlayerIndex, bHold);
+		HOLFactionPowerServer::NoteHeroOrder(PlayerIndex, UnitIds);
 		return true;
 	}
 

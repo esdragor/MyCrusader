@@ -117,22 +117,49 @@ namespace HOLFactionPowerServer
 	}
 
 	// GLORFINDEL-1124sc (D909): the rule of the hook. An order of Slot that NAMES the slot's hero (HeroId in OrderedUnitIds) cancels the slot's pending cast; an order that
-	// names other units, or no hero (HeroId < 0), leaves it. True when a pending cast was cancelled. STUB (red): does nothing yet.
+	// names other units, or no hero (HeroId < 0), leaves it. True when a pending cast was cancelled.
 	bool CancelPendingOnOrder(TArray<FHOLPendingCast>& Pending, int Slot, const TArray<int>& OrderedUnitIds, int HeroId)
 	{
-		return false;
+		if (HeroId < 0 || !OrderedUnitIds.Contains(HeroId))
+		{
+			return false;
+		}
+		bool bCancelled = false;
+		for (int Each = Pending.Num() - 1; Each >= 0; Each--)
+		{
+			if (Pending[Each].Slot == Slot)
+			{
+				Pending.RemoveAt(Each);
+				bCancelled = true;
+			}
+		}
+		return bCancelled;
 	}
 
 	// GLORFINDEL-1124sc (D909): the hook itself, called by every hero-capable player order of HOLPlayerOrders AFTER it issued its command (BeginApproach's own Move comes
 	// BEFORE its SetPending, so it never cancels the cast it starts). No world subsystem (a detached test) = nothing pending = nothing to do.
 	void NoteHeroOrder(int Slot, const TArray<int>& OrderedUnitIds)
 	{
+		UHOLFactionPendingHolder Holder = UHOLFactionPendingHolder::Get();
+		if (Holder == nullptr || Holder.Pending.Num() == 0)
+		{
+			return;
+		}
+		CancelPendingOnOrder(Holder.Pending, Slot, OrderedUnitIds, HOLHero::GetHeroUnitId(Slot));
 	}
 
 	// GLORFINDEL-1124sc (D911): the refusal found AT THE ORDER (BeginApproach) or on arrival is queued as a notice for Slot when it has a text (RefusalNoticeKeyOf). STUB (red).
 	bool RaiseRefusalNotice(TArray<FHOLPendingNotice>& Notices, int Slot, int Refusal)
 	{
-		return false;
+		if (RefusalNoticeKeyOf(Refusal) == "")
+		{
+			return false;
+		}
+		FHOLPendingNotice Notice;
+		Notice.Slot = Slot;
+		Notice.Refusal = Refusal;
+		Notices.Add(Notice);
+		return true;
 	}
 
 	// GLORFINDEL-1124sc (D911): the refusal of the first notice waiting for Slot in Notices, removed from it (0 = none waiting). TakeNotice reads the holder's list through it.
@@ -218,6 +245,12 @@ namespace HOLFactionPowerServer
 		if (!Paid.bAccepted)
 		{
 			Log(n"LogHOLMatch", f"RpcPower: approach refused ({Paid.Refusal}) for slot {Slot} power {PowerIndex}");
+			// D911 (GLORFINDEL-1124sc): the refusal AT THE ORDER tells its player too (the RPC actor delivers the notice through TakeNotice).
+			UHOLFactionPendingHolder NoticeHolder = UHOLFactionPendingHolder::Get();
+			if (NoticeHolder != nullptr)
+			{
+				RaiseRefusalNotice(NoticeHolder.Notices, Slot, Paid.Refusal);
+			}
 			return false;
 		}
 		// The write stays on ARRIVAL by default (D900); hol.Faction.ApproachPays 1 writes it at the order.
@@ -285,12 +318,9 @@ namespace HOLFactionPowerServer
 				Decision.NewGaugeValue = Aimed.NewGaugeValue;
 				Decision.NewCooldownEndMs = Aimed.NewCooldownEndMs;
 			}
-			if (!PutDown(State, Order.Slot, Order.PowerIndex, Decision, Order.Point) && RefusalNoticeKeyOf(Decision.Refusal) != "")
+			if (!PutDown(State, Order.Slot, Order.PowerIndex, Decision, Order.Point))
 			{
-				FHOLPendingNotice Notice;
-				Notice.Slot = Order.Slot;
-				Notice.Refusal = Decision.Refusal;
-				Holder.Notices.Add(Notice);
+				RaiseRefusalNotice(Holder.Notices, Order.Slot, Decision.Refusal);
 			}
 		}
 	}
