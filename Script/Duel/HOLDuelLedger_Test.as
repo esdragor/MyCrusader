@@ -134,3 +134,19 @@ void Test_LedgerDescribesEachMoraleOrder(FUnitTest& T)
 	T.AssertTrue(HesitationLine.StartsWith("Duel morale: Hesitation slot 3 "), "Hesitation line names the effect and the refuser's slot: " + HesitationLine);
 	T.AssertTrue(HesitationLine.Contains("at (800, -600)"), "Hesitation line gives the refuser's place: " + HesitationLine);
 }
+// S2-b, the CALL SITE (ARWEN-1124sd): AdvanceDuels itself drains PendingMorale into the bridge when a duel ends. A duel begun for slots 0 and
+// 1, slot 0 at 0 health: one duel ends, its two orders (Triumph, Demoralised) were laid and PendingMorale is empty. Without the call to
+// ApplyMoraleOrders in AdvanceDuels the two orders stay in PendingMorale (and a second tick would lay them again).
+void Test_AdvanceDuelsDrainsPendingMorale(FUnitTest& T)
+{
+	UHOLDuelLedger Ledger = Cast<UHOLDuelLedger>(NewObject(GetTransientPackage(), UHOLDuelLedger::StaticClass()));
+	bool bBegun = Ledger.BeginDuel(0, 1, 1000, 2000, 1400, 2400);
+	T.AssertTrue(bBegun, "the duel begins");
+	TArray<int> Health;
+	Health.Add(0);
+	Health.Add(40);
+	int EndedCount = Ledger.AdvanceDuels(3000, Health);
+	T.AssertEquals(1, EndedCount, "the duel ends when slot 0 is at 0 health");
+	int PendingLeft = Ledger.PendingMorale.Num();
+	T.AssertEquals(0, PendingLeft, "AdvanceDuels drains PendingMorale into the bridge (no order left behind)");
+}
