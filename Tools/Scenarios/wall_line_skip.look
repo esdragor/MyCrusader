@@ -1,0 +1,6 @@
+# branches: integ-41
+# STATUT : geste reel (Paysan selectionne, A puis D de la grille, glisser hol.Mouse.Drag) ; variante de wall_line_long avec une Maison posee sur le trace (D901).
+# OBJET attendu : la file de boites vertes plates (une par case) AVEC un trou rouge (boite rouge sur la ou les cases de la Maison) ; puis les fondations de palissade sur les memes cases sauf la ou les cases de la Maison.
+# <nom de capture> | ce que l'utilisateur doit voir
+wall_line_skip_during | pendant le glisser : file de boites vertes plates alignees vers y=360 avec une boite rouge (case de la Maison) au milieu ; la ligne n'est pas refusee
+wall_line_skip_after | apres le relache : fondations de palissade sur la ligne avec un trou a la place de la Maison ; plus aucune boite verte ou rouge ; le Bois a baisse de 5 par case posee
