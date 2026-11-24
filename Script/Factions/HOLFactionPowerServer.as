@@ -18,6 +18,14 @@ struct FHOLPendingCast
 	int ExpireMs = 0;
 }
 
+// GLORFINDEL-1124f: the casts waiting for their hero (one per slot), read each server tick by TickPendingCasts. A script global cannot be mutable (D900 pass integ-68:
+// "Global variable 'PendingCasts' must be const"): the list lives in a world subsystem (UHOLFactionPendingHolder::Get().Pending), as UHOLFollowBookHolder does.
+class UHOLFactionPendingHolder : UScriptWorldSubsystem
+{
+	UPROPERTY()
+	TArray<FHOLPendingCast> Pending;
+}
+
 // GLORFINDEL-1124e: the cvar hol.Faction.ApproachPays, default 0 = the Honor is paid on ARRIVAL (nothing before); 1 = paid at the order (Retours/Q-lumiere-sacree-approche.md).
 const FConsoleVariable CVar_FactionApproachPays("hol.Faction.ApproachPays", 0);
 
@@ -62,9 +70,6 @@ namespace HOLFactionPowerServer
 		Result.StopPoint = FVector(Origin.X + Dx / Distance * Walk, Origin.Y + Dy / Distance * Walk, Origin.Z);
 		return Result;
 	}
-
-	// GLORFINDEL-1124e: the casts waiting for their hero (one per slot), read each server tick by TickPendingCasts.
-	TArray<FHOLPendingCast> PendingCasts;
 
 	// GLORFINDEL-1124e: the step of the slot's pending cast. 0 = none pending, 1 = the hero still walks, 2 = arrived (within RangeCm of the aimed point): cast now.
 	int PendingStepOf(const TArray<FHOLPendingCast>& Pending, int Slot, const FVector& HeroPlace, double RangeCm)
@@ -140,7 +145,7 @@ namespace HOLFactionPowerServer
 			State.SetPowerCooldownEndMs(Slot, PowerIndex, Paid.NewCooldownEndMs);
 			Order.bPaid = true;
 		}
-		SetPending(PendingCasts, Order);
+		SetPending(UHOLFactionPendingHolder::Get().Pending, Order);
 		Log(n"LogHOLMatch", f"RpcPower: slot {Slot} hero {HeroId} walks to ({int(Walk.StopPoint.X)}, {int(Walk.StopPoint.Y)}) to cast power {PowerIndex} at ({int(Point.X)}, {int(Point.Y)}), paid at order: {bPayAtOrder}");
 		return true;
 	}
@@ -149,7 +154,8 @@ namespace HOLFactionPowerServer
 	// is written ONCE: now, or already at the order when bPaid); a dead hero or an expired cast (60 s) is dropped.
 	void TickPendingCasts()
 	{
-		if (PendingCasts.Num() == 0)
+		UHOLFactionPendingHolder Holder = UHOLFactionPendingHolder::Get();
+		if (Holder == nullptr || Holder.Pending.Num() == 0)
 		{
 			return;
 		}
@@ -159,20 +165,20 @@ namespace HOLFactionPowerServer
 			return;
 		}
 		const int NowMs = int(Gameplay::GetTimeSeconds() * 1000.0);
-		for (int Each = PendingCasts.Num() - 1; Each >= 0; Each--)
+		for (int Each = Holder.Pending.Num() - 1; Each >= 0; Each--)
 		{
-			const FHOLPendingCast Order = PendingCasts[Each];
+			const FHOLPendingCast Order = Holder.Pending[Each];
 			FVector HeroPlace = FVector(0.0, 0.0, 0.0);
 			if (NowMs > Order.ExpireMs || !HeroPlaceOf(Order.Slot, HeroPlace))
 			{
-				PendingCasts.RemoveAt(Each);
+				Holder.Pending.RemoveAt(Each);
 				continue;
 			}
-			if (PendingStepOf(PendingCasts, Order.Slot, HeroPlace, double(HOLDawnPowers::SacredLightRangeCm())) != 2)
+			if (PendingStepOf(Holder.Pending, Order.Slot, HeroPlace, double(HOLDawnPowers::SacredLightRangeCm())) != 2)
 			{
 				continue;
 			}
-			PendingCasts.RemoveAt(Each);
+			Holder.Pending.RemoveAt(Each);
 			FHOLFactionPowerDecision Decision;
 			if (Order.bPaid)
 			{
