@@ -70,10 +70,11 @@ public class TrayMenuTests
         Assert.Equal(TrayMenu.Ellipsis, cut[^1]);
     }
 
+    /** The user's choice (2026-11-24): the close button hides in the notification area by default; unticked, it quits. */
     [Fact]
-    public void CloseQuitsByDefault()
+    public void CloseHidesByDefaultAndQuitsWhenUnticked()
     {
-        Assert.False(TrayMenu.CloseHides(LauncherSettings.Default, gameRunning: false, quitting: false));
+        Assert.True(TrayMenu.CloseHides(LauncherSettings.Default, gameRunning: false, quitting: false));
         Assert.False(TrayMenu.CloseHides(new LauncherSettings(MinimizeToTray: false), false, false));
     }
 

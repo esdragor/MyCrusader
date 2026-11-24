@@ -46,7 +46,7 @@ public sealed record SettingsFields(
     string Height,
     string ExtraArguments,
     bool CloseOnPlay,
-    bool MinimizeToTray = false,
+    bool MinimizeToTray = true,
     int AutoUpdateIndex = 1,
     string CheckEveryMinutes = "30",
     bool StartWithWindows = false);
@@ -61,7 +61,7 @@ public sealed record SettingsOutcome(LauncherSettings? Result, string? Problem);
  * is not a full path, an unclosed quote or extra arguments the launch would leave out (LaunchArguments.Rejected), a
  * custom size out of LaunchArguments' bounds. An unknown mode or an invalid stored size shows "the game's own", as the
  * launch treats them. CloseOnPlay is stored true or not at all (false is the default).
- * Background (L23): MinimizeToTray and StartWithWindows likewise true or not at all, AutoUpdate only when not "notify",
+ * Background (L23): MinimizeToTray false or not at all (ticked is the default), StartWithWindows true or not at all, AutoUpdate only when not "notify",
  * CheckEveryMinutes only when not 30 (a whole number of minutes within BackgroundUpdatePolicy's bounds, else the
  * problem); a stored interval out of bounds shows its bounded value.
  */
@@ -108,7 +108,7 @@ public static class SettingsModel
         var minutes = (int)BackgroundUpdatePolicy.Interval(settings.CheckEveryMinutes).TotalMinutes;
         return new SettingsFields(languageIndex, themeIndex, currentGameDir, displayIndex, resolutionIndex,
             shownWidth.ToString(CultureInfo.InvariantCulture), shownHeight.ToString(CultureInfo.InvariantCulture),
-            settings.ExtraArguments ?? "", settings.CloseOnPlay == true, settings.MinimizeToTray == true, autoUpdateIndex,
+            settings.ExtraArguments ?? "", settings.CloseOnPlay == true, settings.MinimizeToTray != false, autoUpdateIndex,
             minutes.ToString(CultureInfo.InvariantCulture), settings.StartWithWindows == true);
     }
 
@@ -178,7 +178,8 @@ public static class SettingsModel
             ExtraArguments = extra == "" ? null : extra,
             Theme = Themes.SettingFor(Themes.Choices[Math.Clamp(fields.ThemeIndex, 0, Themes.Choices.Count - 1)]),
             CloseOnPlay = fields.CloseOnPlay ? true : null,
-            MinimizeToTray = fields.MinimizeToTray ? true : null,
+            // Ticked is the default (null, not written); unticked is stored as false.
+            MinimizeToTray = fields.MinimizeToTray ? null : false,
             AutoUpdate = BackgroundUpdatePolicy.SettingFor(mode),
             CheckEveryMinutes = minutes == BackgroundUpdatePolicy.DefaultMinutes ? null : minutes,
             StartWithWindows = fields.StartWithWindows ? true : null,

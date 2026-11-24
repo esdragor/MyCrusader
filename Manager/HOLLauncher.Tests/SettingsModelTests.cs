@@ -57,10 +57,10 @@ public class SettingsModelTests
     [Fact]
     public void BackgroundFieldsComeBackUnchanged()
     {
-        var stored = new LauncherSettings(Language: "fr", MinimizeToTray: true, AutoUpdate: "install", CheckEveryMinutes: 60,
+        var stored = new LauncherSettings(Language: "fr", MinimizeToTray: false, AutoUpdate: "install", CheckEveryMinutes: 60,
             StartWithWindows: true, TrayHintShown: true);
         var fields = SettingsModel.Fields(stored, LauncherDir, "fr");
-        Assert.True(fields.MinimizeToTray);
+        Assert.False(fields.MinimizeToTray);
         Assert.Equal(AutoUpdateMode.Install, SettingsModel.AutoUpdateChoices("fr")[fields.AutoUpdateIndex].Mode);
         Assert.Equal("60", fields.CheckEveryMinutes);
         Assert.True(fields.StartWithWindows);
@@ -71,7 +71,7 @@ public class SettingsModelTests
     public void BackgroundDefaultsAreShownAndNotWritten()
     {
         var fields = SettingsModel.Fields(LauncherSettings.Default, LauncherDir, "en");
-        Assert.Equal((false, "30", false), (fields.MinimizeToTray, fields.CheckEveryMinutes, fields.StartWithWindows));
+        Assert.Equal((true, "30", false), (fields.MinimizeToTray, fields.CheckEveryMinutes, fields.StartWithWindows));
         Assert.Equal(AutoUpdateMode.Notify, SettingsModel.AutoUpdateChoices("en")[fields.AutoUpdateIndex].Mode);
         var json = SettingsModel.Build(LauncherSettings.Default, fields, LauncherDir, "en").Result!.ToJson();
         foreach (var name in new[] { "minimizeToTray", "autoUpdate", "checkEveryMinutes", "startWithWindows" })
@@ -85,11 +85,14 @@ public class SettingsModelTests
     {
         var fields = SettingsModel.Fields(LauncherSettings.Default, LauncherDir, "fr") with
         {
-            MinimizeToTray = true, AutoUpdateIndex = 0, CheckEveryMinutes = " 15 ", StartWithWindows = true,
+            MinimizeToTray = false, AutoUpdateIndex = 0, CheckEveryMinutes = " 15 ", StartWithWindows = true,
         };
         var result = SettingsModel.Build(new LauncherSettings(TrayHintShown: true), fields, LauncherDir, "fr").Result!;
-        Assert.Equal(new LauncherSettings(Language: "fr", MinimizeToTray: true, AutoUpdate: "off", CheckEveryMinutes: 15,
+        Assert.Equal(new LauncherSettings(Language: "fr", MinimizeToTray: false, AutoUpdate: "off", CheckEveryMinutes: 15,
             StartWithWindows: true, TrayHintShown: true), result);
+        // Ticked again: the default, not written (an older file's explicit true means the same).
+        Assert.Null(SettingsModel.Build(result, fields with { MinimizeToTray = true }, LauncherDir, "fr").Result!.MinimizeToTray);
+        Assert.True(SettingsModel.Fields(new LauncherSettings(MinimizeToTray: true), LauncherDir, "fr").MinimizeToTray);
 
         // Back to 30 minutes: the default, not written.
         Assert.Null(SettingsModel.Build(result, fields with { CheckEveryMinutes = "30" }, LauncherDir, "fr").Result!.CheckEveryMinutes);

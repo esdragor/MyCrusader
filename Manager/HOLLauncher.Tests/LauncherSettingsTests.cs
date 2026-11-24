@@ -210,7 +210,8 @@ public class LauncherSettingsTests
         var load = LauncherSettings.Load(dir.Root);
         Assert.Null(load.Problem);
         Assert.Equal(new LauncherSettings(Language: "fr", Theme: "dark", CloseOnPlay: true), load.Settings);
-        Assert.False(TrayMenu.CloseHides(load.Settings, gameRunning: false, quitting: false));
+        // Since 2026-11-24 (the user's choice) hiding in the notification area is the default, older files included.
+        Assert.True(TrayMenu.CloseHides(load.Settings, gameRunning: false, quitting: false));
         Assert.Equal(AutoUpdateMode.Notify, BackgroundUpdatePolicy.ModeOf(load.Settings.AutoUpdate));
         Assert.Equal(TimeSpan.FromMinutes(30), BackgroundUpdatePolicy.Interval(load.Settings.CheckEveryMinutes));
         Assert.Null(load.Settings.StartWithWindows);

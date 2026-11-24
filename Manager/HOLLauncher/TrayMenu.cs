@@ -55,7 +55,10 @@ public static class TrayMenu
         return text.Length <= MaxTooltip ? text : text[..(MaxTooltip - 1)] + Ellipsis;
     }
 
-    /** The close button hides the window in the notification area (true) or quits (false). */
+    /**
+     * The close button hides the window in the notification area (true) or quits (false). Hiding is the default (the
+     * user's choice, 2026-11-24, as in other game launchers): only an explicit false quits.
+     */
     public static bool CloseHides(LauncherSettings settings, bool gameRunning, bool quitting)
-        => settings.MinimizeToTray == true && !gameRunning && !quitting;
+        => settings.MinimizeToTray != false && !gameRunning && !quitting;
 }

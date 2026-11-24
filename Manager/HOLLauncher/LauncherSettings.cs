@@ -22,8 +22,8 @@ public sealed record SettingsLoad(LauncherSettings Settings, string? Problem);
  * CloseOnPlay (launcher 5, GameSession): true closes the launcher once the game started (L8's behaviour); null or
  * false (the default) keeps it open, minimized, watching the game. Older files have none: they stay open.
  * Background (L23, written only when not the default; older files have none and keep launcher 5's behaviour):
- * MinimizeToTray true: the window's close button hides the launcher in the notification area (TrayRules; null: false,
- * closing quits). AutoUpdate "off", "notify" or "install" (BackgroundUpdatePolicy; null or unknown: "notify").
+ * MinimizeToTray: the window's close button hides the launcher in the notification area (TrayMenu.CloseHides) unless it
+ * is false (null or true: hide, the default since 2026-11-24; false: closing quits). AutoUpdate "off", "notify" or "install" (BackgroundUpdatePolicy; null or unknown: "notify").
  * CheckEveryMinutes: how often the background check reads /versions/latest (null: 30; bounded 5..1440). StartWithWindows
  * true: the launcher starts hidden in the notification area at logon (StartWithWindows, the HKCU Run key; null: false).
  * TrayHintShown: the one-time "the launcher went to the notification area" message was shown (null: not yet).
