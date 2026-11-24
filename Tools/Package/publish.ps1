@@ -18,8 +18,9 @@
 # - the version published is the one in <archive>\Windows\HeroesOfLiberty\Version.txt (what the game reads); a -Version
 #   that differs from it is refused;
 # - -Notes: the "what's new" text shown by the launcher, in French (copied as notes.txt; none without it); its
-#   translations beside it, <name>.en.txt and <name>.ja.txt, are copied as notes.en.txt / notes.ja.txt (launcher 3 asks
-#   the notes in its language, ?lang=; a missing translation shows the French);
+#   translations beside it, <name>.en.txt and <name>.ja.txt, are MANDATORY (user's rule, 2026-11-24: FAIL before the
+#   package when one is missing or empty) and copied as notes.en.txt / notes.ja.txt (launcher 3 asks the notes in its
+#   language, ?lang=);
 # - -VersionsDir: <copy>\Saved\Manager\Versions by default (the manager built by build_manager.ps1 in Saved\Manager\
 #   reads Versions\ next to its exe, VersionSettings.VersionsDir);
 # - -ServersDir: <copy>\Saved\Manager\Servers by default (beside Versions\, ManagerSettings.ServersDir).
@@ -50,6 +51,15 @@ if ($Keep -lt 0) { Fail "-Keep wants a number >= 0, not $Keep" }
 if ($Notes) {
     if (-not (Test-Path $Notes -PathType Leaf)) { Fail "notes file not found: $Notes" }
     $Notes = (Resolve-Path $Notes).Path
+    # Mandatory translations (user's rule, 2026-11-24), checked here before the package (minutes) and again by HOLPublish.
+    # Not ChangeExtension($Notes, $null): PowerShell passes "" for $null, which leaves the dot (n..en.txt).
+    $Base = Join-Path (Split-Path $Notes) ([IO.Path]::GetFileNameWithoutExtension($Notes))
+    foreach ($Language in "en", "ja") {
+        $Translated = "$Base.$Language.txt"
+        if (-not (Test-Path $Translated -PathType Leaf) -or -not (Get-Content -Raw -Encoding utf8 $Translated).Trim()) {
+            Fail "the notes must be translated in every language of the launcher: $Translated missing or empty"
+        }
+    }
 }
 if (-not $VersionsDir) { $VersionsDir = Join-Path $Project "Saved\Manager\Versions" }
 $VersionsDir = [IO.Path]::GetFullPath($VersionsDir)

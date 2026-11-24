@@ -68,7 +68,11 @@ public sealed class PublishTests : IDisposable
         string? notesFile = null;
         if (notes != null)
         {
-            notesFile = dir.Write(Path.Combine("notes", Guid.NewGuid().ToString("N") + ".txt"), notes);
+            // Translations are mandatory beside the notes (launcher 3): every publication with notes has them.
+            var name = Guid.NewGuid().ToString("N");
+            notesFile = dir.Write(Path.Combine("notes", name + ".txt"), notes);
+            dir.Write(Path.Combine("notes", name + ".en.txt"), "en: " + notes);
+            dir.Write(Path.Combine("notes", name + ".ja.txt"), "ja: " + notes);
         }
         return Publisher.Publish(new PublishOptions(game, Versions, version, notesFile, keep, hdiffz ?? HDiffPatchTool.Hdiffz));
     }
@@ -126,6 +130,55 @@ public sealed class PublishTests : IDisposable
         Assert.Equal("Archers plus rapides.", store.Latest().Notes);
         Assert.Equal("Faster archers.", store.Latest("en").Notes);
         Assert.Equal("Faster archers.", Assert.Single(store.Latest("en").History).Notes);
+    }
+
+    /**
+     * The notes must exist in every language of the launcher (user's rule, 2026-11-24): notes without their .en.txt or
+     * .ja.txt, or with an empty one, are refused before anything is written.
+     */
+    [Theory]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(false, false)]
+    public void NotesWithoutEveryTranslationAreRefused(bool english, bool japanese)
+    {
+        var game = Game("2026-10-25-a", 0);
+        var notes = dir.Write(Path.Combine("notes", "v.txt"), "Archers plus rapides.");
+        if (english)
+        {
+            dir.Write(Path.Combine("notes", "v.en.txt"), "Faster archers.");
+        }
+        if (japanese)
+        {
+            dir.Write(Path.Combine("notes", "v.ja.txt"), "弓兵が速くなりました。");
+        }
+
+        var e = Assert.Throws<PublishException>(() =>
+            Publisher.Publish(new PublishOptions(game, Versions, null, notes, 3, HDiffPatchTool.Hdiffz)));
+
+        if (!english)
+        {
+            Assert.Contains("v.en.txt", e.Message);
+        }
+        if (!japanese)
+        {
+            Assert.Contains("v.ja.txt", e.Message);
+        }
+        Assert.False(Directory.Exists(Versions) && Directory.EnumerateFileSystemEntries(Versions).Any());
+    }
+
+    [Fact]
+    public void EmptyTranslationIsRefused()
+    {
+        var game = Game("2026-10-25-a", 0);
+        var notes = dir.Write(Path.Combine("notes", "v.txt"), "Archers plus rapides.");
+        dir.Write(Path.Combine("notes", "v.en.txt"), "Faster archers.");
+        dir.Write(Path.Combine("notes", "v.ja.txt"), "  \r\n");
+
+        var e = Assert.Throws<PublishException>(() =>
+            Publisher.Publish(new PublishOptions(game, Versions, null, notes, 3, HDiffPatchTool.Hdiffz)));
+
+        Assert.Contains("v.ja.txt", e.Message);
     }
 
     [Fact]

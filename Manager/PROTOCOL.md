@@ -615,7 +615,9 @@ quand il existe, sinon dans `notes.txt` (français, la langue où elles sont éc
 sans traduction reste en français. `<langue>` = deux lettres minuscules (`en`, `ja`) ; autre chose (absent, `de` sans
 fichier, majuscules, chemin) donne le français. Le lanceur envoie la langue de sa fenêtre pour la lecture de l'état et
 la relit après un changement de langue ; un gestionnaire plus ancien ignore le paramètre (français). `publish.ps1
--Notes x.txt` publie aussi `x.en.txt` / `x.ja.txt` s'ils sont à côté.
+-Notes x.txt` publie aussi `x.en.txt` / `x.ja.txt` posés à côté : **obligatoires** (règle de l'utilisateur, 2026-11-24 :
+des nouveautés se publient dans toutes les langues du lanceur ou pas du tout ; `publish.ps1` et HOLPublish refusent une
+traduction absente ou vide). Les versions publiées avant la règle peuvent n'avoir que `notes.txt` (repli français).
 
 | `error` | HTTP | Quand |
 |---|---|---|

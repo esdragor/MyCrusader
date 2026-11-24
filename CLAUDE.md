@@ -26,6 +26,13 @@ neuf le regroupe dans le lot C++ de la séance (un build) au lieu d'ouvrir un bu
 - Relire le fichier juste avant d'éditer, ne toucher que ses lignes (plusieurs sessions écrivent en parallèle).
 - Section « Fichiers de développement » à jour aussi (nouveau `*InProgress.md`, avancée d'un chantier).
 
+## Nouveautés publiées dans toutes les langues (règle permanente, 2026-11-24)
+
+Toute publication du jeu avec nouveautés (`Tools\Package\publish.ps1 -Notes x.txt`) fournit **obligatoirement** leurs
+traductions à côté : `x.txt` (français), `x.en.txt`, `x.ja.txt`, toutes non vides ; noms du jeu repris de
+`Content/Localization/Game/{en,ja}/Game.po`. `publish.ps1` (avant le paquet) et HOLPublish refusent (FAIL) sinon ; le
+lanceur montre les nouveautés dans sa langue (`Manager/PROTOCOL.md`, `?lang=`).
+
 ## Placeholders.txt à jour (règle permanente)
 
 `C:\Users\baudo\Documents\MyCrusader\Placeholders.txt` liste TOUT ce qui est provisoire dans le jeu (unités, bâtiments,
