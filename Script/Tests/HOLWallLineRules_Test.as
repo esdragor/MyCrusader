@@ -572,11 +572,11 @@ void Test_WallLineFineGridStartAndEndBoxesTouchTheMouseCells(FUnitTest& T)
 		T.AssertEquals(100, int(First.MaxY - First.MinY), "a piece is 100 deep");
 	}
 	HOLWallLine::FHOLWallLinePlan Diagonal = HOLWallLine::PlanFromRequestFine(0, FVector(50.0, 50.0, 0.0), FVector(850.0, 850.0, 0.0), 400.0, 4, WallLineMapMin, WallLineMapMax, Taken, 1000);
-	T.AssertEquals(9, Diagonal.Cells.Num(), "(50,50) -> (850,850): 9 cells");
-	if (Diagonal.Cells.Num() == 9)
+	T.AssertEquals(17, Diagonal.Cells.Num(), "(50,50) -> (850,850): 9 diagonal cells + 8 corner fillers (D898 G7)");
+	if (Diagonal.Cells.Num() == 17)
 	{
-		T.AssertTrue(Diagonal.Cells[8].X == 8 && Diagonal.Cells[8].Y == 8, "the last cell is (8,8)");
-		HOLWallLine::FHOLWallPieceBox End = HOLWallLine::PieceBox(Diagonal.Cells[8], Pitch);
+		T.AssertTrue(Diagonal.Cells[16].X == 8 && Diagonal.Cells[16].Y == 8, "the last cell is (8,8)");
+		HOLWallLine::FHOLWallPieceBox End = HOLWallLine::PieceBox(Diagonal.Cells[16], Pitch);
 		T.AssertTrue(End.MinX == 800.0 && End.MaxX == 900.0 && End.MinY == 800.0 && End.MaxY == 900.0, "the end box is the 100 x 100 square of the cell under the mouse");
 	}
 	HOLWallLine::FHOLWallLinePlan Shallow = HOLWallLine::PlanFromRequestFine(0, FVector(50.0, 50.0, 0.0), FVector(1459.0, 563.0, 0.0), 400.0, 4, WallLineMapMin, WallLineMapMax, Taken, 1000);
@@ -588,7 +588,7 @@ void Test_WallLineFineGridStartAndEndBoxesTouchTheMouseCells(FUnitTest& T)
 	HOLWallLine::FHOLWallLinePlan Steep = HOLWallLine::PlanFromRequestFine(0, FVector(50.0, 50.0, 0.0), FVector(1349.0, 800.0, 0.0), 400.0, 4, WallLineMapMin, WallLineMapMax, Taken, 1000);
 	bool bOnDiagonal = Steep.Cells.Num() > 1;
 	for (int Index = 0; Index < Steep.Cells.Num(); Index++)
-		if (Steep.Cells[Index].X != Steep.Cells[Index].Y)
+		if (Steep.Cells[Index].X - Steep.Cells[Index].Y > 1 || Steep.Cells[Index].Y - Steep.Cells[Index].X > 1)
 			bOnDiagonal = false;
 	T.AssertTrue(bOnDiagonal, "a drag at 30 degrees snaps to the diagonal, one of the 8 directions");
 }
@@ -618,4 +618,102 @@ void Test_WallLineFineGridOrdersOnePiecePerSubCellForEveryPeasant(FUnitTest& T)
 		T.AssertTrue(Orders[12].Cell.X == 12 && Orders[12].Cell.Y == 0, "the last order is the last sub-cell of the drag");
 	TArray<HOLWallLine::FHOLWallOrder> Shifted = HOLWallLine::OrdersForLine(Plan, Peasants, true);
 	T.AssertTrue(Shifted.Num() > 0 && Shifted[0].bQueue, "Shift held: the first piece queues too");
+}
+
+// D898 G7: a diagonal line on the fine grid. Pieces of 1 m that touch only by a corner leave a zero-width slit the navmesh can read as a way through (a crossable staircase). The plan the server computes
+// (PlanFromRequestFine at SubDivision 4, drag (50,50) -> (850,850) = 9 diagonal sub-cells) must have every piece sharing an EDGE with the next one (no corner-only contact), and keep the 9 diagonal pieces.
+bool WallLineIsEdgeConnected(const TArray<FIntPoint>& Line)
+{
+	for (int Index = 1; Index < Line.Num(); Index++)
+	{
+		int DX = Line[Index].X - Line[Index - 1].X;
+		int DY = Line[Index].Y - Line[Index - 1].Y;
+		int Manhattan = (DX < 0 ? -DX : DX) + (DY < 0 ? -DY : DY);
+		if (Manhattan != 1)
+			return false;
+	}
+	return true;
+}
+
+void Test_WallLineFineGridDiagonalHasNoCornerOnlyGap(FUnitTest& T)
+{
+	TArray<FIntPoint> Taken;
+	HOLWallLine::FHOLWallLinePlan Plan = HOLWallLine::PlanFromRequestFine(0, FVector(50.0, 50.0, 0.0), FVector(850.0, 850.0, 0.0), 400.0, 4, WallLineMapMin, WallLineMapMax, Taken, 1000);
+	T.AssertEquals(int(HOLWallLine::EHOLWallLineRefusal::Ok), int(Plan.Refusal), "the diagonal drag is accepted");
+	T.AssertTrue(WallLineIsEdgeConnected(Plan.Cells), "every piece of the diagonal shares an edge with the next: no corner-only slit");
+	for (int Step = 0; Step < 9; Step++)
+		T.AssertTrue(WallLineHasCell(Plan.Cells, Step, Step), "the diagonal sub-cell " + Step + " is still laid");
+	T.AssertEquals(17, Plan.Cells.Num(), "9 diagonal pieces + 8 fillers");
+	HOLWallLine::FHOLWallLinePlan Coarse = HOLWallLine::PlanFromRequestFine(0, FVector(50.0, 50.0, 0.0), FVector(850.0, 850.0, 0.0), 400.0, 1, WallLineMapMin, WallLineMapMax, Taken, 1000);
+	T.AssertEquals(3, Coarse.Cells.Num(), "the 4 m plan (SubDivision 1) keeps its bare diagonal, unchanged");
+}
+
+// D898 G8: the drag the client SHOWS (DragCellsFine, read by the C++ controller through the bridge) is the diagonal the server lays: same fillers, no corner-only slit.
+void Test_WallLineDragCellsFineDiagonalIsEdgeConnected(FUnitTest& T)
+{
+	TArray<FIntPoint> Shown = HOLWallLine::DragCellsFine(FIntPoint(0, 0), FIntPoint(8, 8), 1000, 4);
+	T.AssertTrue(WallLineIsEdgeConnected(Shown), "the shown diagonal shares an edge between every pair of pieces");
+	T.AssertEquals(17, Shown.Num(), "9 diagonal pieces + 8 fillers, as the server lays them");
+	TArray<FIntPoint> Bare = HOLWallLine::DragCellsFine(FIntPoint(0, 0), FIntPoint(8, 8), 1000, 1);
+	T.AssertEquals(9, Bare.Num(), "SubDivision 1 shows the bare 4 m diagonal");
+}
+
+// The ghost uses the same list as the server plan: the cells it draws are the cells PlanFromRequestFine lays (free line).
+void Test_WallGhostFineDiagonalShowsTheServerCells(FUnitTest& T)
+{
+	TArray<FIntPoint> Taken;
+	HOLWallGhost::FHOLWallGhost Ghost = HOLWallGhost::BuildFine(FIntPoint(0, 0), FIntPoint(8, 8), FIntPoint(0, 0), FIntPoint(99, 99), Taken, 1000, 4);
+	HOLWallLine::FHOLWallLinePlan Plan = HOLWallLine::PlanFromRequestFine(0, FVector(50.0, 50.0, 0.0), FVector(850.0, 850.0, 0.0), 400.0, 4, WallLineMapMin, WallLineMapMax, Taken, 1000);
+	T.AssertEquals(Plan.Cells.Num(), Ghost.Cells.Num(), "the ghost draws as many pieces as the server lays");
+	for (int Index = 0; Index < Plan.Cells.Num(); Index++)
+		T.AssertTrue(WallLineHasCell(Ghost.Cells, Plan.Cells[Index].X, Plan.Cells[Index].Y), "the ghost shows laid piece " + Index);
+}
+
+// The cap counts the pieces AFTER the fill: a 9-piece diagonal under a cap of 10 holds 17 pieces, so it is refused on the server and shown as too long (one piece past the cap), not laid.
+void Test_WallLineFineDiagonalCapCountsFillers(FUnitTest& T)
+{
+	TArray<FIntPoint> Taken;
+	HOLWallLine::FHOLWallLinePlan Plan = HOLWallLine::PlanFromRequestFine(0, FVector(50.0, 50.0, 0.0), FVector(850.0, 850.0, 0.0), 400.0, 4, WallLineMapMin, WallLineMapMax, Taken, 10);
+	T.AssertEquals(int(HOLWallLine::EHOLWallLineRefusal::TooLong), int(Plan.Refusal), "17 pieces over a cap of 10: refused");
+	T.AssertEquals(0, Plan.Cells.Num(), "a refused line lays nothing");
+	TArray<FIntPoint> Shown = HOLWallLine::DragCellsFine(FIntPoint(0, 0), FIntPoint(8, 8), 10, 4);
+	T.AssertEquals(11, Shown.Num(), "the shown list stops one piece past the cap, as the bare rule");
+	HOLWallLine::FHOLWallLinePlan Fits = HOLWallLine::PlanFromRequestFine(0, FVector(50.0, 50.0, 0.0), FVector(850.0, 850.0, 0.0), 400.0, 4, WallLineMapMin, WallLineMapMax, Taken, 17);
+	T.AssertEquals(int(HOLWallLine::EHOLWallLineRefusal::Ok), int(Fits.Refusal), "a cap of exactly 17 accepts it");
+	T.AssertEquals(17, Fits.Cells.Num(), "all 17 pieces laid");
+}
+
+// D898 G8 (rest): the 4 m tile (1,0) holds the sub-cells x 4..7, y 0..3: on the (0,0)-(8,8) diagonal that is exactly ONE filler, (4,3), and no diagonal piece. The ghost sees the tile
+// as occupied at the fine step: the filler is listed in Skipped (drawn red), as the server skips it.
+void Test_WallGhostFineOccupiedFillerIsRedAndRefusedByThePlan(FUnitTest& T)
+{
+	TArray<FIntPoint> Taken;
+	Taken.Add(FIntPoint(1, 0));
+	HOLWallGhost::FHOLWallGhost Ghost = HOLWallGhost::BuildFine(FIntPoint(0, 0), FIntPoint(8, 8), FIntPoint(0, 0), FIntPoint(99, 99), Taken, 1000, 4);
+	HOLWallLine::FHOLWallLinePlan Plan = HOLWallLine::PlanFromRequestFine(0, FVector(50.0, 50.0, 0.0), FVector(850.0, 850.0, 0.0), 400.0, 4, WallLineMapMin, WallLineMapMax, Taken, 1000);
+	T.AssertEquals(int(HOLWallLine::EHOLWallLineRefusal::Ok), int(Plan.Refusal), "a line over one occupied filler is still laid (D901)");
+	T.AssertFalse(WallLineHasCell(Plan.Cells, 4, 3), "the server does not lay the filler on the occupied tile");
+	T.AssertTrue(WallLineHasCell(Plan.Skipped, 4, 3), "the server lists the occupied filler in Skipped");
+	T.AssertTrue(WallLineHasCell(Ghost.Cells, 4, 3), "the ghost still draws the filler cell");
+	T.AssertTrue(WallLineHasCell(Ghost.Skipped, 4, 3), "the ghost lists the occupied filler in Skipped: drawn red");
+	T.AssertEquals(Plan.Skipped.Num(), Ghost.Skipped.Num(), "the ghost holes are the server holes");
+}
+
+// The fill comes BEFORE the occupied cells are taken out: the tile (1,1) holds the sub-cells 4..7 x 4..7 (diagonal pieces (4,4)..(7,7) and the fillers (5,4),(6,5),(7,6)). The free fillers
+// that touch the hole, (4,3) and (8,7), are still laid; the hole is 4 + 3 pieces, in the plan and in the ghost.
+void Test_WallLineFineFillsBeforeRemovingOccupiedCells(FUnitTest& T)
+{
+	TArray<FIntPoint> Taken;
+	Taken.Add(FIntPoint(1, 1));
+	HOLWallLine::FHOLWallLinePlan Plan = HOLWallLine::PlanFromRequestFine(0, FVector(50.0, 50.0, 0.0), FVector(850.0, 850.0, 0.0), 400.0, 4, WallLineMapMin, WallLineMapMax, Taken, 1000);
+	T.AssertEquals(int(HOLWallLine::EHOLWallLineRefusal::Ok), int(Plan.Refusal), "the line is laid around the hole");
+	T.AssertTrue(WallLineHasCell(Plan.Cells, 4, 3), "the filler (4,3) next to the hole is laid (the jump over the hole does not hide it)");
+	T.AssertTrue(WallLineHasCell(Plan.Cells, 8, 7), "the filler (8,7) next to the hole is laid");
+	T.AssertFalse(WallLineHasCell(Plan.Cells, 5, 4), "the filler (5,4) inside the hole is not laid");
+	T.AssertEquals(7, Plan.Skipped.Num(), "4 diagonal pieces + 3 fillers form the hole");
+	T.AssertEquals(10, Plan.Cells.Num(), "17 pieces less the 7 of the hole");
+	HOLWallGhost::FHOLWallGhost Ghost = HOLWallGhost::BuildFine(FIntPoint(0, 0), FIntPoint(8, 8), FIntPoint(0, 0), FIntPoint(99, 99), Taken, 1000, 4);
+	T.AssertEquals(Plan.Skipped.Num(), Ghost.Skipped.Num(), "the ghost draws as many red pieces as the server skips");
+	for (int Index = 0; Index < Plan.Skipped.Num(); Index++)
+		T.AssertTrue(WallLineHasCell(Ghost.Skipped, Plan.Skipped[Index].X, Plan.Skipped[Index].Y), "the ghost draws red the skipped piece " + Index);
 }

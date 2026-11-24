@@ -13,6 +13,8 @@ const FConsoleVariable CVar_WallMaxLineCells("hol.Wall.MaxLineCells", 0);
 
 // D898 (fine grid, G1): the pitch of a wall line is Tile / SubDivision. 1 = the 4 m grid (default until G10 validates the fine grid), 4 = 1 m sub-cells.
 const FConsoleVariable CVar_WallSubDivision("hol.Wall.SubDivision", 1);
+// D898 G7 (Q-mur-diagonale.md, not answered): 1 (the default) = a diagonal line of sub-cells gets a filler piece at each corner so no unit slips between two corner-touching pieces; 0 = the bare diagonal.
+const FConsoleVariable CVar_WallDiagonalFill("hol.Wall.DiagonalFill", 1);
 
 namespace HOLWallLine
 {
@@ -264,7 +266,79 @@ namespace HOLWallLine
 		const TArray<FIntPoint> FineOccupied = ExpandOccupied(Occupied, SubDivision);
 		const FIntPoint FineMin = FIntPoint(MapMin.X * SubDivision, MapMin.Y * SubDivision);
 		const FIntPoint FineMax = FIntPoint(MapMax.X * SubDivision + SubDivision - 1, MapMax.Y * SubDivision + SubDivision - 1);
-		return PlanFromRequest(SenderSlot, Start, End, Tile / double(SubDivision), FineMin, FineMax, FineOccupied, MaxCells);
+		FHOLWallLinePlan FinePlan = PlanFromRequest(SenderSlot, Start, End, Tile / double(SubDivision), FineMin, FineMax, FineOccupied, MaxCells);
+		if (FinePlan.Refusal == EHOLWallLineRefusal::Ok && CVar_WallDiagonalFill.GetInt() != 0)
+			{
+				const double FineTile = Tile / double(SubDivision);
+				const FIntPoint FineStart = FIntPoint(CellOfCoordinate(Start.X, FineTile), CellOfCoordinate(Start.Y, FineTile));
+				const FIntPoint FineEnd = FIntPoint(CellOfCoordinate(End.X, FineTile), CellOfCoordinate(End.Y, FineTile));
+				FillDiagonalGaps(FinePlan, DragCells(FineStart, FineEnd, MaxCells), FineOccupied, MaxCells);
+			}
+		return FinePlan;
+	}
+
+	// D898 G7: between two consecutive pieces that touch only by a corner (one step on both axes) a filler piece is laid at (next.X, previous.Y), so the line is edge-connected and no unit slips through the slit.
+	// The filler lies inside the box of the two pieces, so it is inside the map when they are. An occupied filler is skipped like any occupied cell (D901) and listed in Skipped. The cap counts the drag
+	// pieces only (the check came before): a diagonal can hold up to twice that many pieces.
+	// D898 G8: the cap is recounted AFTER the fill (a diagonal holds up to twice its drag pieces): over MaxCells the line is refused TooLong and lays nothing, as Validate refuses a long line.
+	void FillDiagonalGaps(FHOLWallLinePlan& Plan, const TArray<FIntPoint>& FullLine, const TArray<FIntPoint>& FineOccupied, int MaxCells)
+	{
+		// The fill runs on the WHOLE line (occupied cells included), then the occupied pieces (line cells and fillers alike) go to Skipped: a filler next to a hole is not lost.
+		Plan.Skipped.Empty();
+		Plan.Cells = FillLine(FullLine, FineOccupied, Plan.Skipped);
+		if (Plan.Cells.Num() > MaxCells)
+		{
+			Plan.Refusal = EHOLWallLineRefusal::TooLong;
+			Plan.BadCell = Plan.Cells[MaxCells];
+			Plan.Cells.Empty();
+		}
+	}
+
+	// The one fill rule (server plan and client drag): the line with a filler at each corner-only step; an occupied piece (line cell or filler) goes to Skipped, not to the result.
+	TArray<FIntPoint> FillLine(const TArray<FIntPoint>& Line, const TArray<FIntPoint>& FineOccupied, TArray<FIntPoint>& Skipped)
+	{
+		TArray<FIntPoint> Filled;
+		for (int Index = 0; Index < Line.Num(); Index++)
+		{
+			bool bLineTaken = false;
+			for (int Held = 0; Held < FineOccupied.Num(); Held++)
+			{
+				if (FineOccupied[Held] == Line[Index])
+					bLineTaken = true;
+			}
+			if (Index > 0)
+			{
+				const FIntPoint Previous = Line[Index - 1];
+				const FIntPoint Current = Line[Index];
+				const int StepX = Current.X - Previous.X;
+				const int StepY = Current.Y - Previous.Y;
+				if ((StepX == 1 || StepX == -1) && (StepY == 1 || StepY == -1))
+				{
+					const FIntPoint Filler = FIntPoint(Current.X, Previous.Y);
+					bool bTaken = false;
+					for (int Taken = 0; Taken < FineOccupied.Num(); Taken++)
+					{
+						if (FineOccupied[Taken] == Filler)
+							bTaken = true;
+					}
+					if (bTaken)
+						Skipped.Add(Filler);
+					else
+						Filled.Add(Filler);
+				}
+			}
+			if (bLineTaken)
+				Skipped.Add(Line[Index]);
+			else
+				Filled.Add(Line[Index]);
+		}
+		return Filled;
+	}
+
+	// True when the diagonal fill is on (hol.Wall.DiagonalFill), read by the ghost so it follows the server.
+	bool FillIsOn()
+	{
+		return CVar_WallDiagonalFill.GetInt() != 0;
 	}
 
 	// The setting read by the callers (D898, Q-grille-fine-structure.md, not answered): 1 (the default) = the 4 m grid of today, 4 = 1 m sub-cells. The default moves to 4 at G10.
@@ -339,7 +413,22 @@ namespace HOLWallLine
 			TArray<FIntPoint> Nothing;
 			return Nothing;
 		}
-		return DragCells(FIntPoint(CellOfCoordinate(Start.X, Tile), CellOfCoordinate(Start.Y, Tile)), FIntPoint(CellOfCoordinate(End.X, Tile), CellOfCoordinate(End.Y, Tile)), MaxCells);
+		return DragCellsFine(FIntPoint(CellOfCoordinate(Start.X, Tile), CellOfCoordinate(Start.Y, Tile)), FIntPoint(CellOfCoordinate(End.X, Tile), CellOfCoordinate(End.Y, Tile)), MaxCells, SubDivision());
+	}
+
+	// D898 G8: the drag the client shows on the fine grid = the cells the server lays (same FillLine), bounded to one piece past the cap.
+	TArray<FIntPoint> DragCellsFine(FIntPoint Start, FIntPoint End, int MaxCells, int SubDivision)
+	{
+		TArray<FIntPoint> Line = DragCells(Start, End, MaxCells);
+		if (SubDivision <= 1 || CVar_WallDiagonalFill.GetInt() == 0)
+			return Line;
+		TArray<FIntPoint> NoOccupied;
+		TArray<FIntPoint> NoSkipped;
+		TArray<FIntPoint> Filled = FillLine(Line, NoOccupied, NoSkipped);
+		TArray<FIntPoint> Shown;
+		for (int Index = 0; Index < Filled.Num() && Index <= MaxCells; Index++)
+			Shown.Add(Filled[Index]);
+		return Shown;
 	}
 
 	// F9 (S3-b, FortificationsInProgress.md): the palisade GATE. PROVISIONAL, no GDD value (D867 neighbours only say: gates are solid, units climb stone walls
