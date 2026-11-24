@@ -10,6 +10,7 @@
 #include "Buildings/HOLProductionSubsystem.h"
 #include "Simulation/HOLRageVisual.h"
 #include "Simulation/HOLUnitAbilityRules.h"
+#include "Simulation/HOLZoneEffectRules.h"
 #include "CommonTextBlock.h"
 #include "Components/Border.h"
 #include "Components/HorizontalBox.h"
@@ -1091,6 +1092,7 @@ void UHOLGameScreen::RefreshGrid(const AHOLBuilding* OwnBuilding, const bool bOw
 			: bOrdersShown && Orders.IsValidIndex(Cell) ? Orders[Cell] : FHOLGridCommand();
 		ShownGridTypes[Cell] = !bGridShown ? NAME_None : Command.Command == EHOLGridCommand::CancelConstruction ? CancelName
 			: Command.Command == EHOLGridCommand::NecroticRage ? FName(TEXT("NecroticRage"))
+			: Command.Command == EHOLGridCommand::LightSeal ? FName(TEXT("LightSeal"))
 			: Command.Command == EHOLGridCommand::Specialize || Command.Command == EHOLGridCommand::CancelSpecialization ? HOLCommandGrid::GetReportName(Command)
 : Command.Command == EHOLGridCommand::HeroAbility ? FName(Command.Ability == EHOLHeroAbility::Banner ? TEXT("Banner") : TEXT("CloseRanks"))
 			: Command.Command == EHOLGridCommand::Trade ? FName(*FString::Printf(TEXT("%s%s"), Command.bBuy ? TEXT("Buy") : TEXT("Sell"),
@@ -1315,6 +1317,32 @@ void UHOLGameScreen::RefreshGrid(const AHOLBuilding* OwnBuilding, const bool bOw
 				? FText::Format(LOCTEXT("HeroAbilityCooldown", "{0}\n{1} s"), Short, FText::AsNumber(Command.CooldownSeconds)) : Short,
 				Command.bGreyed ? EHOLGridCellState::Greyed : EHOLGridCellState::Ready);
 			GridCell->SetTooltip(Name, FHOLResources(), FHOLResources(), Effect);
+			break;
+		}
+		case EHOLGridCommand::LightSeal:
+		{
+			// S1-d (D862, ELROND-1124se): the Monk's Seal of Light (cell R), modelled on NecroticRage. A text cell (no icon yet: Placeholders.txt);
+			// the seconds left of the cool-down (the slot's PowerCooldownEndMs 0, the one ServerCastUnitAbility writes) show under the label and
+			// grey the cell. The numbers in the tooltip are HOLZoneEffect's; the range (8 m) and the cool-down (40 s) are the UnitAbilities table's.
+			FText SealLabel = LOCTEXT("LightSealShort", "Sceau");
+			EHOLGridCellState SealCellState = Command.bGreyed ? EHOLGridCellState::Greyed : EHOLGridCellState::Ready;
+			const AHOLGameState* SealState = GetWorld() ? GetWorld()->GetGameState<AHOLGameState>() : nullptr;
+			if (SealState && PlayerState)
+			{
+				constexpr int32 SealCooldownIndex = 0; // HOLRpcPlayer.as ServerCastUnitAbility: SealCooldownIndex.
+				const int32 NowMs = FMath::FloorToInt(GetWorld()->GetTimeSeconds() * 1000.0);
+				const int32 SealLeftMs = SealState->GetPowerCooldownEndMs(PlayerState->GetPlayerIndex(), SealCooldownIndex) - NowMs;
+				if (SealLeftMs > 0)
+				{
+					SealLabel = FText::Format(LOCTEXT("LightSealCooldown", "{0}\n{1} s"), SealLabel, FText::AsNumber(FMath::CeilToInt(SealLeftMs / 1000.f)));
+					SealCellState = EHOLGridCellState::Greyed;
+				}
+			}
+			GridCell->SetCommand(SealLabel, SealCellState);
+			GridCell->SetTooltip(LOCTEXT("LightSealName", "Sceau de lumière"), FHOLResources(), FHOLResources(),
+				FText::Format(LOCTEXT("LightSealEffect", "Puis clic au sol, à 8 m du Moine au plus : une zone de {0} m de rayon pendant {1} s ; les ennemis dedans sont ralentis de {2} % ; recharge 40 s"),
+					FText::AsNumber(HOLZoneEffect::LightSealRadiusCm / 100), FText::AsNumber(HOLZoneEffect::LightSealDurationMs / 1000),
+					FText::AsNumber(HOLZoneEffect::LightSealSlowPercent)));
 			break;
 		}
 		case EHOLGridCommand::NecroticRage:
