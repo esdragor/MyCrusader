@@ -169,6 +169,12 @@ class UHOLDuelLedger : UHOLDuelSubsystem
 	UFUNCTION(BlueprintOverride)
 	bool BeginDuel(int Challenger, int Target, int AX, int AY, int BX, int BY)
 	{
+		return BeginDuelScript(Challenger, Target, AX, AY, BX, BY);
+	}
+
+	// The body of the override above, a plain script method so a script test can call it (a BlueprintOverride resolves to the C++ base from outside).
+	bool BeginDuelScript(int Challenger, int Target, int AX, int AY, int BX, int BY)
+	{
 		EnsureBook();
 		if (Challenger == Target || HOLDuel::BookInDuel(Book, Challenger) || HOLDuel::BookInDuel(Book, Target))
 			return false;
@@ -308,6 +314,12 @@ class UHOLDuelLedger : UHOLDuelSubsystem
 
 	UFUNCTION(BlueprintOverride)
 	int AdvanceDuels(int DeltaMs, const TArray<int>& Health)
+	{
+		return AdvanceDuelsScript(DeltaMs, Health);
+	}
+
+	// The body of the override above, a plain script method so a script test can call it.
+	int AdvanceDuelsScript(int DeltaMs, const TArray<int>& Health)
 	{
 		EnsureBook();
 		for (int Slot = 0; Slot < Kits.Num(); Slot++)
