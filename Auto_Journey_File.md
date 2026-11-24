@@ -8,6 +8,10 @@ Mode d'emploi 4/5 : `session_gate.ps1 -Phase Launch` exige au moins 3 lignes `sa
 Mode d'emploi 5/5 : nettoyage du 2026-11-10 (demande de l'utilisateur) : fichier en UTF-8 SANS BOM, fins de ligne CRLF ; l'ancienne consigne « avec BOM » de la ligne 7 est archivée.
 
 ## Prochaine séance (par ordre de valeur ; détail dans les lignes ci-dessous)
+- [ ] (sans C++, 2026-11-24 soir, RECETTE-1124s FAIL) duel_challenge_accept : héros IA hors cadre à l'écran au rejeu ; fiche `Retours\E-duel_challenge_accept.md` ABSENTE (aucune ligne écrite) : recadrer le scénario, écrire la fiche E, rejouer le pré-vol
+- [ ] (sans C++, 2026-11-24 soir, RECETTE-1124s FAIL) tower_wood : barres de vie des Lanciers illisibles à l'écran, `.look` périmé (~60 px) : refaire le cadrage ou le zoom, corriger `tower_wood.look`, rejouer le pré-vol, mettre à jour `Retours\E-tower_wood.md`
+- [ ] (tools-1124si, 867e771, 2026-11-24 soir) rebaser la branche tools-1124si sur main (e503646) puis l'intégrer ; ses 3 FAIL gate_test sont réglés par 13a1f44 (dans main)
+- [ ] (arwen-1124sd, 1118093, 2026-11-24 soir) rebaser la branche arwen-1124sd sur main : conflit dans HOLDuelLedger_Test.as à résoudre, puis l'intégrer
 - [ ] (D908, 3a, 2026-11-24, réponse « Autre » à Q-lumiere-sacree-approche point 1, PAS le défaut codé A ; script d'abord) contrôle de l'Honneur dès l'ordre dans BeginApproach (HOLFactionPowerServer.as), refus immédiat, test rouge d'abord ; garder le paiement à l'arrivée ; journal AubeInProgress.md
 - [ ] (D911, 3a2, 2026-11-24 apres la cloture, reponse « 4x4 de 1 m, et affiche un message de refus » ; script d'abord) message de refus a l'arrivee quand l'Honneur manque (TickPendingCasts, HOLFactionPowerServer.as), meme canal que les autres refus de pouvoir (Grep), texte NSLOCTEXT FR/EN/JA, test rouge d'abord ; journal AubeInProgress.md
 - [ ] (D909, 3b, C++, 2026-11-24, réponse A à Q-lumiere-sacree-approche point 2) crochet C++ nouvel ordre du héros -> CancelPending (TYPES_A_EXPOSER de GLORFINDEL-1124e, lot C++ de la séance) ; tout nouvel ordre annule le lancer en attente ; journal AubeInProgress.md
