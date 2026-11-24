@@ -49,9 +49,14 @@ public sealed class VersionsClient
     /** The launcher's, sending the key of <gameDir>/servers.json (L11). */
     public static HttpClient CreateHttpClient(string gameDir) => AccessKeyHandler.CreateHttpClient(gameDir, DefaultTimeout);
 
-    public async Task<LatestResult> GetLatestAsync(string managerUrl, CancellationToken cancel = default)
+    /**
+     * language: asks the notes in it (?lang=, a manager without translations answers French; an older manager ignores
+     * it). Null for the reads that only need the version (updates, repair).
+     */
+    public async Task<LatestResult> GetLatestAsync(string managerUrl, CancellationToken cancel = default, string? language = null)
     {
-        if (!Uri.TryCreate(managerUrl.TrimEnd('/') + "/versions/latest", UriKind.Absolute, out var uri)
+        var query = language is null ? "" : "?lang=" + Uri.EscapeDataString(language);
+        if (!Uri.TryCreate(managerUrl.TrimEnd('/') + "/versions/latest" + query, UriKind.Absolute, out var uri)
             || uri.Scheme is not ("http" or "https"))
         {
             return Unreachable($"bad manager address '{managerUrl}'");

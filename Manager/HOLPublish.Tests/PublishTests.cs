@@ -108,6 +108,26 @@ public sealed class PublishTests : IDisposable
         Assert.Equal(compressed, result.CompressedBytes);
     }
 
+    /** The notes' translations beside the notes file (<name>.en.txt, <name>.ja.txt) become notes.en.txt / notes.ja.txt. */
+    [Fact]
+    public void NotesTranslationsBesideTheNotesFileArePublished()
+    {
+        var game = Game("2026-10-25-a", 0);
+        var notes = dir.Write(Path.Combine("notes", "v.txt"), "Archers plus rapides.");
+        dir.Write(Path.Combine("notes", "v.en.txt"), "Faster archers.");
+        dir.Write(Path.Combine("notes", "v.ja.txt"), "弓兵が速くなりました。");
+
+        Publisher.Publish(new PublishOptions(game, Versions, null, notes, 3, HDiffPatchTool.Hdiffz));
+
+        var folder = Path.Combine(Versions, "2026-10-25-a");
+        Assert.Equal("Faster archers.", File.ReadAllText(Path.Combine(folder, "notes.en.txt")));
+        Assert.Equal("弓兵が速くなりました。", File.ReadAllText(Path.Combine(folder, "notes.ja.txt")));
+        var store = new VersionStore(Versions);
+        Assert.Equal("Archers plus rapides.", store.Latest().Notes);
+        Assert.Equal("Faster archers.", store.Latest("en").Notes);
+        Assert.Equal("Faster archers.", Assert.Single(store.Latest("en").History).Notes);
+    }
+
     [Fact]
     public void SecondPublicationPatchesTheChangedFileOnly()
     {

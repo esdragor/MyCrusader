@@ -15,6 +15,11 @@ public static partial class VersionFolder
     public const string Latest = "latest.txt";
     public const string Manifest = PublishedVersions.ManifestFile;
     public const string Notes = "notes.txt";
+
+    /** The notes' translations (notes.txt is French): notes.<language>.txt, published when the notes file has them beside it. */
+    public static readonly IReadOnlyList<string> NotesLanguages = ["en", "ja"];
+
+    public static string NotesIn(string language) => $"notes.{language}.txt";
     public const string PublishedFile = PublishedVersions.DateFile;
     public const string Files = "files";
     public const string Patches = "patches";

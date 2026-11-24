@@ -19,7 +19,7 @@ public class StatusLoaderTests
 
         var view = await StatusLoader.LoadAsync(dir.Root, new VersionsClient(new HttpClient(handler)), language: "fr");
 
-        Assert.Equal(new Uri("http://home:7700/versions/latest"), Assert.Single(handler.Requests));
+        Assert.Equal(new Uri("http://home:7700/versions/latest?lang=fr"), Assert.Single(handler.Requests));
         Assert.Equal("Version installée : v1", view.InstalledText);
         Assert.Equal("Dernière version : v2", view.LatestText);
         Assert.True(view.UpdateGameEnabled);

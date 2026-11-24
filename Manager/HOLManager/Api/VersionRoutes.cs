@@ -16,9 +16,10 @@ public static class VersionRoutes
 
     public static void MapVersionRoutes(this WebApplication app)
     {
-        app.MapGet("/versions/latest", (VersionStore store) => Answer(() =>
+        // ?lang=<language> (launcher 3): notes and history in that language when translated, else French.
+        app.MapGet("/versions/latest", (VersionStore store, string? lang) => Answer(() =>
         {
-            var latest = store.Latest();
+            var latest = store.Latest(lang);
             return Results.Json(new
             {
                 format = LatestFormat,

@@ -21,7 +21,8 @@ public static class StatusLoader
         {
             return StatusView.Error(e.Message, InstalledVersion.Read(gameDir), language: lang);
         }
-        var latest = await client.GetLatestAsync(server.Url, cancel);
+        // The notes in the view's language (a language change in the settings reads the status again).
+        var latest = await client.GetLatestAsync(server.Url, cancel, lang);
         return StatusView.From(LauncherStatus.Compute(InstalledVersion.Read(gameDir), latest), lang);
     }
 }

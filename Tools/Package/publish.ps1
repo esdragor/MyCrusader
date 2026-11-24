@@ -17,7 +17,9 @@
 #   creation: HOLPublish release set --file ... --stage 3 --update 0 (HOLPublish.exe is in <copy>\Saved\HOLPublish\);
 # - the version published is the one in <archive>\Windows\HeroesOfLiberty\Version.txt (what the game reads); a -Version
 #   that differs from it is refused;
-# - -Notes: the "what's new" text shown by the launcher (copied as notes.txt; none without it);
+# - -Notes: the "what's new" text shown by the launcher, in French (copied as notes.txt; none without it); its
+#   translations beside it, <name>.en.txt and <name>.ja.txt, are copied as notes.en.txt / notes.ja.txt (launcher 3 asks
+#   the notes in its language, ?lang=; a missing translation shows the French);
 # - -VersionsDir: <copy>\Saved\Manager\Versions by default (the manager built by build_manager.ps1 in Saved\Manager\
 #   reads Versions\ next to its exe, VersionSettings.VersionsDir);
 # - -ServersDir: <copy>\Saved\Manager\Servers by default (beside Versions\, ManagerSettings.ServersDir).

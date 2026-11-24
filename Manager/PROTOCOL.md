@@ -558,7 +558,8 @@ script de publication (L4) :
 <versions>/latest.txt                          nom de la dernière version
 <versions>/release.json                       numéro de la prochaine publication (L14), jamais servi
 <versions>/<v>/manifest.json                   liste des fichiers (HOLUpdate : chemin, taille, SHA-256)
-<versions>/<v>/notes.txt                       nouveautés (facultatif)
+<versions>/<v>/notes.txt                       nouveautés (facultatif), en français
+<versions>/<v>/notes.<langue>.txt              leur traduction (facultatif ; en, ja), servie sur ?lang=<langue>
 <versions>/<v>/published.txt                   date de publication (UTC) : ordre des versions (L4, L21), jamais servi
 <versions>/<v>/files/<chemin>.gz               fichier compressé (gzip) à la publication
 <versions>/<v>/patches/<depuis>/<chemin>.patch correctif binaire depuis la version <depuis> (L3/L4)
@@ -576,7 +577,7 @@ stocké n'a ni `V` ni espace ; le lanceur et le jeu affichent `V 0.Y.X` (`HOLUpd
 une publication réussie de ce numéro ; `next-stage` : Y + 1, X = 0). Les anciens noms datés restent valides et
 s'affichent tels quels. Le protocole ne change pas (`protocolVersion` reste 1).
 
-### `GET /versions/latest`
+### `GET /versions/latest[?lang=<langue>]`
 
 ```json
 {
@@ -608,6 +609,13 @@ seul ; un gestionnaire plus ancien ne l'envoie pas, le lanceur L21 montre alors 
 nouveautés de chaque version plus récente que la version installée (chacune sous son nom affiché, `V 0.Y.X`) ; si la
 version installée n'est plus dans la liste, toutes celles de la liste et une ligne « nouveautés plus anciennes non
 disponibles » ; à jour ou pas installé : celles de `version` seule.
+
+**`?lang=<langue>` (lanceur 3)** : `notes` et chaque `notes` de `history` sont lus dans `<v>/notes.<langue>.txt`
+quand il existe, sinon dans `notes.txt` (français, la langue où elles sont écrites) : version par version, une version
+sans traduction reste en français. `<langue>` = deux lettres minuscules (`en`, `ja`) ; autre chose (absent, `de` sans
+fichier, majuscules, chemin) donne le français. Le lanceur envoie la langue de sa fenêtre pour la lecture de l'état et
+la relit après un changement de langue ; un gestionnaire plus ancien ignore le paramètre (français). `publish.ps1
+-Notes x.txt` publie aussi `x.en.txt` / `x.ja.txt` s'ils sont à côté.
 
 | `error` | HTTP | Quand |
 |---|---|---|

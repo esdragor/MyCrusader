@@ -84,6 +84,15 @@ public static class Publisher
             if (options.NotesFile != null)
             {
                 File.Copy(options.NotesFile, Path.Combine(tmp, VersionFolder.Notes));
+                // Translations beside it (<name>.en.txt, <name>.ja.txt): notes.en.txt, notes.ja.txt, served on ?lang=.
+                foreach (var language in VersionFolder.NotesLanguages)
+                {
+                    var translated = Path.ChangeExtension(options.NotesFile, null) + $".{language}.txt";
+                    if (File.Exists(translated))
+                    {
+                        File.Copy(translated, Path.Combine(tmp, VersionFolder.NotesIn(language)));
+                    }
+                }
             }
             foreach (var file in manifest.Files)
             {

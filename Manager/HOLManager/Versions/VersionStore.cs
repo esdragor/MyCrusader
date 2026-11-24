@@ -50,7 +50,11 @@ public sealed partial class VersionStore(string root)
     public string? LatestName() =>
         ReadName(Path.Combine(Root, "latest.txt")) is { } version && Directory.Exists(Path.Combine(Root, version)) ? version : null;
 
-    public LatestVersion Latest()
+    /**
+     * language (launcher 3, ?lang=): the notes in that language when the version has <v>/notes.<language>.txt, else
+     * notes.txt (French, the language they are written in). Only two lowercase letters are looked for (no path).
+     */
+    public LatestVersion Latest(string? language = null)
     {
         var version = ReadName(Path.Combine(Root, "latest.txt"));
         if (version == null || !Directory.Exists(Path.Combine(Root, version)))
@@ -59,14 +63,14 @@ public sealed partial class VersionStore(string root)
         }
         var dir = Path.Combine(Root, version);
         var manifest = LoadManifest(version);
-        var notes = ReadNotes(dir);
+        var notes = ReadNotes(dir, language);
         var patchesDir = Path.Combine(dir, "patches");
         var patchesFrom = Directory.Exists(patchesDir)
             ? Directory.GetDirectories(patchesDir).Select(d => Path.GetFileName(d)).Where(IsValidName)
                 .Order(StringComparer.Ordinal).ToList()
             : [];
         var launcher = ReadName(Path.Combine(Root, "launcher", "latest.txt")) ?? "";
-        return new LatestVersion(version, manifest, notes, patchesFrom, launcher, History(version, notes));
+        return new LatestVersion(version, manifest, notes, patchesFrom, launcher, History(version, notes, language));
     }
 
     /**
@@ -74,7 +78,7 @@ public sealed partial class VersionStore(string root)
      * first from latest down: a version published after it (latest.txt set back by hand) is not news for anyone. A
      * version pruned while being read is left out rather than failing the launcher's whole answer.
      */
-    private IReadOnlyList<VersionNotes> History(string latest, string latestNotes)
+    private IReadOnlyList<VersionNotes> History(string latest, string latestNotes, string? language)
     {
         var kept = PublishedVersions.NewestFirst(Root,
             name => IsValidName(name) && !name.EndsWith(".tmp", StringComparison.OrdinalIgnoreCase)).ToList();
@@ -89,7 +93,7 @@ public sealed partial class VersionStore(string root)
             var dir = Path.Combine(Root, version);
             try
             {
-                history.Add(new VersionNotes(version, PublishedVersions.Date(dir), version == latest ? latestNotes : ReadNotes(dir)));
+                history.Add(new VersionNotes(version, PublishedVersions.Date(dir), version == latest ? latestNotes : ReadNotes(dir, language)));
             }
             catch (Exception e) when (e is IOException or UnauthorizedAccessException)
             {
@@ -98,12 +102,19 @@ public sealed partial class VersionStore(string root)
         return history;
     }
 
-    /** <v>/notes.txt, trimmed; empty without it. */
-    private static string ReadNotes(string dir)
+    /** <v>/notes.<language>.txt if there, else <v>/notes.txt, trimmed; empty without either. */
+    private static string ReadNotes(string dir, string? language = null)
     {
+        if (IsLanguage(language) && Path.Combine(dir, $"notes.{language}.txt") is var translated && File.Exists(translated))
+        {
+            return File.ReadAllText(translated).Trim();
+        }
         var file = Path.Combine(dir, "notes.txt");
         return File.Exists(file) ? File.ReadAllText(file).Trim() : "";
     }
+
+    /** "en", "ja"...: two lowercase ASCII letters, so that a ?lang= never names another file. */
+    public static bool IsLanguage(string? language) => language is { Length: 2 } && language.All(c => c is >= 'a' and <= 'z');
 
     /** <v>/files/<path>.gz, the file compressed at publication. */
     public string FilePath(string version, string path)

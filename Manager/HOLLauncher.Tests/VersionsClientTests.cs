@@ -38,6 +38,25 @@ public class VersionsClientTests
         Assert.Equal(new Uri("http://host:7700/versions/latest"), Assert.Single(handler.Requests));
     }
 
+    /** The notes in the launcher's language: ?lang=<language> (the manager falls back to French). */
+    [Fact]
+    public async Task AsksTheNotesInTheGivenLanguage()
+    {
+        var handler = FakeHandler.Json(HttpStatusCode.OK, Latest);
+        await new VersionsClient(new HttpClient(handler)).GetLatestAsync("http://host:7700/", language: "ja");
+        Assert.Equal(new Uri("http://host:7700/versions/latest?lang=ja"), Assert.Single(handler.Requests));
+    }
+
+    [Fact]
+    public async Task StatusAsksTheNotesInTheViewsLanguage()
+    {
+        using var dir = new TempDir();
+        dir.Write("servers.json", "{ \"servers\": [ { \"url\": \"http://host:7700\" } ] }");
+        var handler = FakeHandler.Json(HttpStatusCode.OK, Latest);
+        await StatusLoader.LoadAsync(dir.Root, new VersionsClient(new HttpClient(handler)), language: "en");
+        Assert.Equal(new Uri("http://host:7700/versions/latest?lang=en"), Assert.Single(handler.Requests));
+    }
+
     [Fact]
     public async Task TrailingSlashOfManagerUrlIsIgnored()
     {

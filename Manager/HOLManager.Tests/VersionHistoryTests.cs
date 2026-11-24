@@ -40,10 +40,10 @@ public sealed class VersionHistoryTests : IClassFixture<WebApplicationFactory<Pr
         }
     }
 
-    private async Task<JsonNode> Latest()
+    private async Task<JsonNode> Latest(string query = "")
     {
         var client = factory.WithWebHostBuilder(b => b.UseSetting("VersionsDir", root)).CreateClient();
-        var response = await client.GetAsync("/versions/latest");
+        var response = await client.GetAsync("/versions/latest" + query);
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         return JsonNode.Parse(await response.Content.ReadAsStringAsync())!;
     }
@@ -80,6 +80,34 @@ public sealed class VersionHistoryTests : IClassFixture<WebApplicationFactory<Pr
         var history = (await Latest())["history"]!.AsArray();
 
         Assert.Equal(["0.3.10", "0.3.9"], history.Select(h => (string?)h!["version"]));
+    }
+
+    /**
+     * Notes in the launcher's language: <v>/notes.<lang>.txt for ?lang=<lang>, else notes.txt (French, the language the
+     * notes are written in); an unknown or malformed language is French too.
+     */
+    [Fact]
+    public async Task NotesFollowTheAskedLanguageElseFrench()
+    {
+        Publish("0.3.9", Day(1), "Archers plus rapides.");
+        File.WriteAllText(Path.Combine(root, "0.3.9", "notes.en.txt"), "Faster archers.\r\n");
+        Publish("0.3.10", Day(2), "Nouvelle carte.");
+        File.WriteAllText(Path.Combine(root, "0.3.10", "notes.ja.txt"), "新しいマップ。");
+        File.WriteAllText(Path.Combine(root, "latest.txt"), "0.3.10");
+
+        var english = await Latest("?lang=en");
+        Assert.Equal("Nouvelle carte.", (string?)english["notes"]);
+        Assert.Equal(["Nouvelle carte.", "Faster archers."], english["history"]!.AsArray().Select(h => (string?)h!["notes"]));
+
+        var japanese = await Latest("?lang=ja");
+        Assert.Equal("新しいマップ。", (string?)japanese["notes"]);
+        Assert.Equal(["新しいマップ。", "Archers plus rapides."], japanese["history"]!.AsArray().Select(h => (string?)h!["notes"]));
+
+        foreach (var query in new[] { "", "?lang=de", "?lang=../en", "?lang=EN" })
+        {
+            Assert.Equal(["Nouvelle carte.", "Archers plus rapides."],
+                (await Latest(query))["history"]!.AsArray().Select(h => (string?)h!["notes"]));
+        }
     }
 
     [Fact]
