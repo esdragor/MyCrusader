@@ -118,6 +118,15 @@ bool FHOLRageMoraleDealtTest::RunTest(const FString& Parameters)
 				HOLMorale::Multiplier(WarriorMorale->State, HOLMorale::LeverRate), 100 + HOLUnitAbility::RageRatePercent);
 			TestEqual(TEXT("the rage is ONE effect (damage and rate together), not two"), WarriorMorale->State.Num, EffectsBefore + 1);
 
+			// Step 3 (GALADRIEL-1124e): the rage's countdown is the effect's (Temporary, DurationMs of the NecroticRage row; the morale clock takes it
+			// off). The combat no longer counts RageMs down: once the effect is off the unit, the rage is over on the next combat step.
+			HOLMorale::RemoveById(WarriorMorale->State, HOLMoraleTableRows::HOLMoraleNecroticRage);
+			RunStep();
+			TestEqual(TEXT("the effect ended by the morale clock: the rage runs no more (RageMs follows the effect)"), WarriorCombat->RageMs, 0);
+			TestFalse(TEXT("... and the combat does not lay the effect back"), HOLMorale::Has(WarriorMorale->State, HOLMoraleTableRows::HOLMoraleNecroticRage));
+			WarriorCombat->RageCooldownMs = 0; // cast it again for the stop-floor part below
+			TestTrue(TEXT("the second cast is accepted"), Units->CastRage(Warrior));
+
 			// The rage ends at StopHp: one health above it, the next blow costs 1 and ends it. The effect leaves with it.
 			WarriorState->CurrentHealth = static_cast<float>(HOLUnitAbility::RageStopHp) + 1.f;
 			for (int32 Steps = 0; Steps < FMath::CeilToInt(6.f / StepSeconds) && WarriorCombat->RageMs > 0; ++Steps)
