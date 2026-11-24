@@ -572,11 +572,11 @@ void Test_WallLineFineGridStartAndEndBoxesTouchTheMouseCells(FUnitTest& T)
 		T.AssertEquals(100, int(First.MaxY - First.MinY), "a piece is 100 deep");
 	}
 	HOLWallLine::FHOLWallLinePlan Diagonal = HOLWallLine::PlanFromRequestFine(0, FVector(50.0, 50.0, 0.0), FVector(850.0, 850.0, 0.0), 400.0, 4, WallLineMapMin, WallLineMapMax, Taken, 1000);
-	T.AssertEquals(9, Diagonal.Cells.Num(), "(50,50) -> (850,850): 9 cells");
-	if (Diagonal.Cells.Num() == 9)
+	T.AssertEquals(17, Diagonal.Cells.Num(), "(50,50) -> (850,850): 9 diagonal cells + 8 corner fillers (D898 G7)");
+	if (Diagonal.Cells.Num() == 17)
 	{
-		T.AssertTrue(Diagonal.Cells[8].X == 8 && Diagonal.Cells[8].Y == 8, "the last cell is (8,8)");
-		HOLWallLine::FHOLWallPieceBox End = HOLWallLine::PieceBox(Diagonal.Cells[8], Pitch);
+		T.AssertTrue(Diagonal.Cells[16].X == 8 && Diagonal.Cells[16].Y == 8, "the last cell is (8,8)");
+		HOLWallLine::FHOLWallPieceBox End = HOLWallLine::PieceBox(Diagonal.Cells[16], Pitch);
 		T.AssertTrue(End.MinX == 800.0 && End.MaxX == 900.0 && End.MinY == 800.0 && End.MaxY == 900.0, "the end box is the 100 x 100 square of the cell under the mouse");
 	}
 	HOLWallLine::FHOLWallLinePlan Shallow = HOLWallLine::PlanFromRequestFine(0, FVector(50.0, 50.0, 0.0), FVector(1459.0, 563.0, 0.0), 400.0, 4, WallLineMapMin, WallLineMapMax, Taken, 1000);
@@ -588,7 +588,7 @@ void Test_WallLineFineGridStartAndEndBoxesTouchTheMouseCells(FUnitTest& T)
 	HOLWallLine::FHOLWallLinePlan Steep = HOLWallLine::PlanFromRequestFine(0, FVector(50.0, 50.0, 0.0), FVector(1349.0, 800.0, 0.0), 400.0, 4, WallLineMapMin, WallLineMapMax, Taken, 1000);
 	bool bOnDiagonal = Steep.Cells.Num() > 1;
 	for (int Index = 0; Index < Steep.Cells.Num(); Index++)
-		if (Steep.Cells[Index].X != Steep.Cells[Index].Y)
+		if (Steep.Cells[Index].X - Steep.Cells[Index].Y > 1 || Steep.Cells[Index].Y - Steep.Cells[Index].X > 1)
 			bOnDiagonal = false;
 	T.AssertTrue(bOnDiagonal, "a drag at 30 degrees snaps to the diagonal, one of the 8 directions");
 }
