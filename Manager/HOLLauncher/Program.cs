@@ -5,10 +5,14 @@ internal static class Program
     [STAThread]
     private static int Main(string[] args)
     {
+        // L15: settings beside the exe, then the language (setting, else Windows', else English), then the command line.
+        var launcherDir = AppContext.BaseDirectory;
+        var settings = LauncherSettings.Load(launcherDir);
+        Texts.Use(Texts.Resolve(settings.Settings.Language, System.Globalization.CultureInfo.CurrentUICulture));
         LauncherOptions options;
         try
         {
-            options = LauncherOptions.Parse(args, AppContext.BaseDirectory);
+            options = LauncherOptions.Parse(args, launcherDir, settings.Settings);
         }
         catch (ArgumentException e)
         {
@@ -21,7 +25,7 @@ internal static class Program
             _ = Task.Run(() => LauncherUpdater.DeleteOldAsync(exePath));
         }
         ApplicationConfiguration.Initialize();
-        Application.Run(new MainForm(options));
+        Application.Run(new MainForm(options, launcherDir, settings));
         return 0;
     }
 }

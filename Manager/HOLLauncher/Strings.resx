@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Launcher texts (L15, Texts.cs). French (neutral). A new text goes into Strings.resx, Strings.en.resx and Strings.ja.resx at once. -->
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <data name="WindowTitle" xml:space="preserve"><value>Heroes of Liberty - lanceur {0}</value></data>
+  <data name="Play" xml:space="preserve"><value>Jouer</value></data>
+  <data name="UpdateLauncher" xml:space="preserve"><value>Mettre à jour le lanceur</value></data>
+  <data name="Refresh" xml:space="preserve"><value>Actualiser</value></data>
+  <data name="Cancel" xml:space="preserve"><value>Annuler</value></data>
+  <data name="NotesTitle" xml:space="preserve"><value>Nouveautés :</value></data>
+  <data name="Settings" xml:space="preserve"><value>Réglages</value></data>
+  <data name="SettingsLanguage" xml:space="preserve"><value>Langue :</value></data>
+  <data name="SettingsGameDir" xml:space="preserve"><value>Dossier du jeu :</value></data>
+  <data name="SettingsBrowse" xml:space="preserve"><value>Parcourir…</value></data>
+  <data name="SettingsBrowseDescription" xml:space="preserve"><value>Choisissez le dossier du jeu</value></data>
+  <data name="SettingsLauncherDir" xml:space="preserve"><value>Dossier du lanceur</value></data>
+  <data name="SettingsGameDirHint" xml:space="preserve"><value>Le jeu installé n'est pas déplacé : un nouveau dossier demande un nouveau téléchargement.</value></data>
+  <data name="SettingsSave" xml:space="preserve"><value>Enregistrer</value></data>
+  <data name="SettingsUnreadable" xml:space="preserve"><value>Réglages illisibles, réglages par défaut utilisés : {0}</value></data>
+  <data name="SettingsNotSaved" xml:space="preserve"><value>Réglages non enregistrés : {0}</value></data>
+  <data name="SettingsBadFolder" xml:space="preserve"><value>Dossier du jeu impossible : {0}</value></data>
+</root>

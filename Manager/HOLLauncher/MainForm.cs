@@ -5,16 +5,22 @@ namespace HOLLauncher;
  * "Update the game" runs GameUpdater in the background with a progress bar and "Cancel" (ProgressView); "Update the
  * launcher" runs LauncherUpdater the same way, then starts the new exe with the same arguments and closes (L7);
  * "Play" (L8) asks PlayConfirmation if any (outdated game), starts the game (GameLauncher) and closes the launcher.
+ * "Settings" (L15, while nothing runs) opens SettingsForm, saves the choice (LauncherSettings), applies the language
+ * (Texts, ApplyTexts) and the game folder (GameFolder.Prepare, new HTTP clients), then reads the status again. The
+ * window's fixed texts come from Texts (ApplyTexts); the status texts are still French (StatusView, L16).
  */
 public sealed class MainForm : Form
 {
     // Both send the key of servers.json to its manager (L11).
-    private readonly HttpClient http;
-    private readonly HttpClient downloads;
+    private HttpClient http;
+    private HttpClient downloads;
+    private readonly string launcherDir;
+    private LauncherSettings settings;
+    private readonly string? settingsProblem;
     private readonly Label installed = NewLabel();
     private readonly Label latest = NewLabel();
     private readonly Label state = NewLabel();
-    private readonly Label notesTitle = NewLabel("Nouveautés :");
+    private readonly Label notesTitle = NewLabel();
     private readonly TextBox notes = new()
     {
         Multiline = true,
@@ -23,13 +29,14 @@ public sealed class MainForm : Form
         Dock = DockStyle.Fill,
     };
     private readonly Label launcher = NewLabel();
-    private readonly Button play = NewButton("Jouer");
+    private readonly Button play = NewButton();
     private readonly Button updateGame = NewButton(StatusView.UpdateGameLabel);
-    private readonly Button updateLauncher = NewButton("Mettre à jour le lanceur");
-    private readonly Button refresh = NewButton("Actualiser");
+    private readonly Button updateLauncher = NewButton();
+    private readonly Button refresh = NewButton();
+    private readonly Button settingsButton = NewButton();
     private readonly Label progressText = NewLabel();
     private readonly ProgressBar progressBar = new() { Dock = DockStyle.Fill, Minimum = 0, Maximum = 100, Height = 20 };
-    private readonly Button cancel = NewButton("Annuler");
+    private readonly Button cancel = NewButton();
     private readonly TableLayoutPanel progressPanel = new()
     {
         Dock = DockStyle.Fill, AutoSize = true, ColumnCount = 2, Visible = false, Margin = new Padding(0),
@@ -40,21 +47,22 @@ public sealed class MainForm : Form
     private bool autoUpdatePending;
     private bool autoLauncherUpdatePending;
 
-    public MainForm(LauncherOptions options)
+    public MainForm(LauncherOptions options, string launcherDir, SettingsLoad settingsLoad)
     {
         Options = options;
+        this.launcherDir = launcherDir;
+        settings = settingsLoad.Settings;
+        settingsProblem = settingsLoad.Problem;
         http = VersionsClient.CreateHttpClient(options.GameDir);
         downloads = FileDownloader.CreateHttpClient(options.GameDir);
         autoUpdatePending = options.UpdateAtStart;
         autoLauncherUpdatePending = options.UpdateLauncherAtStart;
-        Text = $"Heroes of Liberty - lanceur {LauncherInfo.Version}";
         ClientSize = new Size(640, 400);
         MinimumSize = new Size(480, 320);
         StartPosition = FormStartPosition.CenterScreen;
-        Font = new Font("Segoe UI", 10f);
 
         var buttons = new FlowLayoutPanel { Dock = DockStyle.Fill, AutoSize = true, WrapContents = true };
-        buttons.Controls.AddRange([play, updateGame, updateLauncher, refresh]);
+        buttons.Controls.AddRange([play, updateGame, updateLauncher, refresh, settingsButton]);
 
         var layout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, Padding = new Padding(12) };
         layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
@@ -84,17 +92,95 @@ public sealed class MainForm : Form
         updateLauncher.Click += async (_, _) => await UpdateLauncherAsync();
         refresh.Click += async (_, _) => await RefreshStatusAsync();
         cancel.Click += (_, _) => CancelUpdate();
-        Shown += async (_, _) => await RefreshStatusAsync();
+        settingsButton.Click += async (_, _) => await OpenSettingsAsync();
+        Shown += async (_, _) =>
+        {
+            if (settingsProblem is not null)
+            {
+                MessageBox.Show(this, Texts.Format("SettingsUnreadable", settingsProblem), "Heroes of Liberty",
+                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
+            await RefreshStatusAsync();
+        };
         FormClosing += (_, _) => updating?.Cancel(); // the downloaded part stays for the next try
         FormClosed += (_, _) =>
         {
             http.Dispose();
             downloads.Dispose();
         };
+        ApplyTexts();
         Display(StatusView.Loading());
     }
 
-    public LauncherOptions Options { get; }
+    public LauncherOptions Options { get; private set; }
+
+    /** The window's fixed texts and font in Texts.Language (at start and after a language change). */
+    private void ApplyTexts()
+    {
+        Text = Texts.Format("WindowTitle", LauncherInfo.Version);
+        Font = new Font(Texts.FontFamily(Texts.Language), 10f);
+        notesTitle.Text = Texts.Get("NotesTitle");
+        play.Text = Texts.Get("Play");
+        updateLauncher.Text = Texts.Get("UpdateLauncher");
+        refresh.Text = Texts.Get("Refresh");
+        settingsButton.Text = Texts.Get("Settings");
+        cancel.Text = Texts.Get("Cancel");
+    }
+
+    /**
+     * Only while nothing runs (Refresh enabled). The new game folder is made ready first (a failure keeps the old
+     * settings); a settings file that cannot be written is said, the choice still applies until the launcher closes.
+     */
+    private async Task OpenSettingsAsync()
+    {
+        if (updating is not null || !current.RefreshEnabled)
+        {
+            return;
+        }
+        LauncherSettings chosen;
+        using (var form = new SettingsForm(settings, launcherDir, Options.GameDir))
+        {
+            if (form.ShowDialog(this) != DialogResult.OK || form.Result is null)
+            {
+                return;
+            }
+            chosen = form.Result;
+        }
+        var gameDir = LauncherOptions.GameDirFrom(chosen, launcherDir);
+        var folderChanged = !GameFolder.Same(gameDir, Options.GameDir);
+        if (folderChanged)
+        {
+            try
+            {
+                GameFolder.Prepare(Options.GameDir, gameDir);
+            }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
+            {
+                MessageBox.Show(this, Texts.Format("SettingsBadFolder", e.Message), "Heroes of Liberty", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+        }
+        try
+        {
+            chosen.Save(launcherDir);
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            MessageBox.Show(this, Texts.Format("SettingsNotSaved", e.Message), "Heroes of Liberty", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+        }
+        settings = chosen;
+        Texts.Use(Texts.Resolve(chosen.Language, System.Globalization.CultureInfo.CurrentUICulture));
+        ApplyTexts();
+        if (folderChanged)
+        {
+            Options = Options with { GameDir = gameDir };
+            http.Dispose();
+            downloads.Dispose();
+            http = VersionsClient.CreateHttpClient(gameDir);
+            downloads = FileDownloader.CreateHttpClient(gameDir);
+        }
+        await RefreshStatusAsync();
+    }
 
     private async Task RefreshStatusAsync()
     {
@@ -327,6 +413,7 @@ public sealed class MainForm : Form
         updateGame.Text = view.UpdateGameText;
         updateLauncher.Enabled = view.UpdateLauncherEnabled;
         refresh.Enabled = view.RefreshEnabled;
+        settingsButton.Enabled = view.RefreshEnabled;
     }
 
     private static Label NewLabel(string text = "") => new()
@@ -337,5 +424,5 @@ public sealed class MainForm : Form
         Margin = new Padding(3, 4, 3, 4),
     };
 
-    private static Button NewButton(string text) => new() { Text = text, AutoSize = true, Enabled = false };
+    private static Button NewButton(string text = "") => new() { Text = text, AutoSize = true, Enabled = false };
 }

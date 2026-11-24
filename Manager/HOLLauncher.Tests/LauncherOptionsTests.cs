@@ -49,4 +49,25 @@ public class LauncherOptionsTests
         Assert.False(LauncherOptions.Parse([], @"C:\Games\HOL").UpdateLauncherAtStart);
         Assert.True(LauncherOptions.Parse(["--update-launcher"], @"C:\Games\HOL").UpdateLauncherAtStart);
     }
+
+    [Fact]
+    public void SettingsGameDirIsUsedWithoutCommandLine()
+    {
+        var options = LauncherOptions.Parse([], @"C:\Games\HOL", new LauncherSettings(GameDir: @"D:\HOL"));
+        Assert.Equal(@"D:\HOL", options.GameDir);
+    }
+
+    [Fact]
+    public void CommandLineWinsOverSettings()
+    {
+        var options = LauncherOptions.Parse(["--game-dir", @"E:\HOL"], @"C:\Games\HOL", new LauncherSettings(GameDir: @"D:\HOL"));
+        Assert.Equal(@"E:\HOL", options.GameDir);
+    }
+
+    [Fact]
+    public void NoSettingsGameDirMeansTheLauncherFolder()
+    {
+        Assert.Equal(Path.GetFullPath(@"C:\Games\HOL"), LauncherOptions.GameDirFrom(LauncherSettings.Default, @"C:\Games\HOL"));
+        Assert.Equal(@"D:\HOL", LauncherOptions.GameDirFrom(new LauncherSettings(GameDir: @"D:\HOL"), @"C:\Games\HOL"));
+    }
 }

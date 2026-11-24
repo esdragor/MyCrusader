@@ -1,15 +1,15 @@
 namespace HOLLauncher;
 
 /**
- * Command line: --game-dir <folder> (default: the launcher's folder, the launcher sits next to the game); --update
- * starts the game update as soon as the window has read the status (tests); --update-launcher likewise for the
- * launcher's own update (L7, tests).
+ * Command line: --game-dir <folder> (default: the settings' game folder, else the launcher's folder, the launcher sits
+ * next to the game; L15); --update starts the game update as soon as the window has read the status (tests);
+ * --update-launcher likewise for the launcher's own update (L7, tests).
  */
 public sealed record LauncherOptions(string GameDir, bool UpdateAtStart = false, bool UpdateLauncherAtStart = false)
 {
-    public static LauncherOptions Parse(IReadOnlyList<string> args, string launcherDir)
+    public static LauncherOptions Parse(IReadOnlyList<string> args, string launcherDir, LauncherSettings? settings = null)
     {
-        var gameDir = Path.GetFullPath(launcherDir);
+        var gameDir = GameDirFrom(settings ?? LauncherSettings.Default, launcherDir);
         var update = false;
         var updateLauncher = false;
         for (var i = 0; i < args.Count; i++)
@@ -38,4 +38,8 @@ public sealed record LauncherOptions(string GameDir, bool UpdateAtStart = false,
         }
         return new LauncherOptions(gameDir, update, updateLauncher);
     }
+
+    /** The settings' game folder (made full against the launcher's folder), else the launcher's folder. */
+    public static string GameDirFrom(LauncherSettings settings, string launcherDir)
+        => settings.GameDir is { Length: > 0 } dir ? Path.GetFullPath(dir, Path.GetFullPath(launcherDir)) : Path.GetFullPath(launcherDir);
 }

@@ -48,10 +48,11 @@ public sealed class UpdatePlan
     public const string ServersName = GameServers.FileName;
 
     /**
-     * Files of the launcher or the player, matched on the file name like ManifestBuilder's exclusions: never in the
-     * game's list nor in installed.json, never replaced nor deleted; only a missing servers.json is fetched.
+     * Files of the launcher or the player (L15: the launcher's settings too), matched on the file name like
+     * ManifestBuilder's exclusions: never in the game's list nor in installed.json, never replaced nor deleted; only a missing servers.json is fetched.
      */
-    public static readonly IReadOnlyList<string> LauncherOwned = [LauncherPattern, LauncherPartPattern, HpatchzName, ServersName];
+    public static readonly IReadOnlyList<string> LauncherOwned =
+        [LauncherPattern, LauncherPartPattern, HpatchzName, ServersName, LauncherSettings.FileName];
 
     /** ManifestBuilder counts every file under the game folder: the launcher also leaves out its work folder and its own files. */
     public static readonly IReadOnlyList<string> Excludes =

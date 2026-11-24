@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Launcher texts (L15, Texts.cs). Japanese. A new text goes into Strings.resx, Strings.en.resx and Strings.ja.resx at once. -->
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <data name="WindowTitle" xml:space="preserve"><value>Heroes of Liberty - ランチャー {0}</value></data>
+  <data name="Play" xml:space="preserve"><value>プレイ</value></data>
+  <data name="UpdateLauncher" xml:space="preserve"><value>ランチャーを更新</value></data>
+  <data name="Refresh" xml:space="preserve"><value>再読み込み</value></data>
+  <data name="Cancel" xml:space="preserve"><value>キャンセル</value></data>
+  <data name="NotesTitle" xml:space="preserve"><value>新着情報：</value></data>
+  <data name="Settings" xml:space="preserve"><value>設定</value></data>
+  <data name="SettingsLanguage" xml:space="preserve"><value>言語：</value></data>
+  <data name="SettingsGameDir" xml:space="preserve"><value>ゲームフォルダー：</value></data>
+  <data name="SettingsBrowse" xml:space="preserve"><value>参照…</value></data>
+  <data name="SettingsBrowseDescription" xml:space="preserve"><value>ゲームフォルダーを選択してください</value></data>
+  <data name="SettingsLauncherDir" xml:space="preserve"><value>ランチャーのフォルダー</value></data>
+  <data name="SettingsGameDirHint" xml:space="preserve"><value>インストール済みのゲームは移動されません。新しいフォルダーには再ダウンロードが必要です。</value></data>
+  <data name="SettingsSave" xml:space="preserve"><value>保存</value></data>
+  <data name="SettingsUnreadable" xml:space="preserve"><value>設定を読み込めないため、既定の設定を使用します：{0}</value></data>
+  <data name="SettingsNotSaved" xml:space="preserve"><value>設定を保存できません：{0}</value></data>
+  <data name="SettingsBadFolder" xml:space="preserve"><value>このゲームフォルダーは使用できません：{0}</value></data>
+</root>

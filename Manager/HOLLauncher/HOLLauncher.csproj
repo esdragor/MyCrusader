@@ -6,6 +6,9 @@
     <UseWindowsForms>true</UseWindowsForms>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <!-- L15: Strings.resx is French; Strings.en.resx and Strings.ja.resx become satellite assemblies (Texts.cs). -->
+    <NeutralLanguage>fr</NeutralLanguage>
+    <SatelliteResourceLanguages>en;ja</SatelliteResourceLanguages>
   </PropertyGroup>
 
   <!-- One self-contained exe for players: dotnet publish -c Release -r win-x64 (no trimming: WinForms does not

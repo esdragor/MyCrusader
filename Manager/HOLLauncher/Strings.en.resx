@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Launcher texts (L15, Texts.cs). English. A new text goes into Strings.resx, Strings.en.resx and Strings.ja.resx at once. -->
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <data name="WindowTitle" xml:space="preserve"><value>Heroes of Liberty - launcher {0}</value></data>
+  <data name="Play" xml:space="preserve"><value>Play</value></data>
+  <data name="UpdateLauncher" xml:space="preserve"><value>Update the launcher</value></data>
+  <data name="Refresh" xml:space="preserve"><value>Refresh</value></data>
+  <data name="Cancel" xml:space="preserve"><value>Cancel</value></data>
+  <data name="NotesTitle" xml:space="preserve"><value>What's new:</value></data>
+  <data name="Settings" xml:space="preserve"><value>Settings</value></data>
+  <data name="SettingsLanguage" xml:space="preserve"><value>Language:</value></data>
+  <data name="SettingsGameDir" xml:space="preserve"><value>Game folder:</value></data>
+  <data name="SettingsBrowse" xml:space="preserve"><value>Browse…</value></data>
+  <data name="SettingsBrowseDescription" xml:space="preserve"><value>Choose the game folder</value></data>
+  <data name="SettingsLauncherDir" xml:space="preserve"><value>Launcher folder</value></data>
+  <data name="SettingsGameDirHint" xml:space="preserve"><value>The installed game is not moved: a new folder needs a new download.</value></data>
+  <data name="SettingsSave" xml:space="preserve"><value>Save</value></data>
+  <data name="SettingsUnreadable" xml:space="preserve"><value>Settings unreadable, defaults used: {0}</value></data>
+  <data name="SettingsNotSaved" xml:space="preserve"><value>Settings not saved: {0}</value></data>
+  <data name="SettingsBadFolder" xml:space="preserve"><value>Game folder unusable: {0}</value></data>
+</root>
