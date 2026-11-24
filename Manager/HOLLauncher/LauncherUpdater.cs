@@ -5,8 +5,11 @@ namespace HOLLauncher;
 /** The launcher being fetched: its version (X-Launcher-Version), bytes in the file so far (resumed part included), its size when known. */
 public sealed record LauncherProgress(string Version, long BytesReceived, long? TotalBytes);
 
-/** How a launcher update ended; Version is the new launcher's on success. Messages in the player's language (L16). */
-public sealed record LauncherUpdateResult(bool Success, string Message, string? Version = null);
+/**
+ * How a launcher update ended; Version is the new launcher's on success. Messages in the player's language (L16).
+ * Cancelled: stopped by the token (Cancel, Pause, L18), the .part kept for the next run.
+ */
+public sealed record LauncherUpdateResult(bool Success, string Message, string? Version = null, bool Cancelled = false);
 
 /**
  * The launcher's own update (L7, L-Q6: on its button). GET /launcher/latest is fetched beside the running exe into
@@ -63,7 +66,7 @@ public sealed class LauncherUpdater(HttpClient http, string managerUrl, string e
         }
         catch (OperationCanceledException)
         {
-            return new LauncherUpdateResult(false, Texts.Get("LauncherUpdateCancelled", lang));
+            return new LauncherUpdateResult(false, Texts.Get("LauncherUpdateCancelled", lang), Cancelled: true);
         }
         catch (AccessKeyRefusedException)
         {

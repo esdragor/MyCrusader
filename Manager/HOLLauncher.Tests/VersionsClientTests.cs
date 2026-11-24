@@ -55,6 +55,38 @@ public class VersionsClientTests
         Assert.Equal("", result.Latest!.Notes);
         Assert.Empty(result.Latest.PatchesFrom);
         Assert.Equal("", result.Latest.LauncherVersion);
+        // L21: a manager older than the history: null, not empty (the launcher then shows the latest's notes only).
+        Assert.Null(result.Latest.History);
+    }
+
+    [Fact]
+    public async Task ReadsNotesHistoryAndSkipsBadRows()
+    {
+        var body = """
+            { "format": 1, "version": "0.3.11", "manifest": { "format": 1, "version": "0.3.11", "files": [] },
+              "notes": "Trois.",
+              "history": [
+                { "version": "0.3.11", "published": "2026-11-03T10:00:00Z", "notes": "Trois." },
+                { "version": "0.3.10", "published": "2026-11-02T10:00:00Z", "notes": "" },
+                { "notes": "no version" },
+                "not an object",
+                { "version": "0.3.9", "notes": "Un.", "later": true }
+              ] }
+            """;
+        var result = await Get(FakeHandler.Json(HttpStatusCode.OK, body));
+
+        Assert.Equal(LatestOutcome.Ok, result.Outcome);
+        Assert.Equal([new ReleaseNote("0.3.11", "Trois."), new ReleaseNote("0.3.10", ""), new ReleaseNote("0.3.9", "Un.")],
+            result.Latest!.History);
+    }
+
+    [Fact]
+    public async Task HistoryThatIsNotAListIsIgnored()
+    {
+        var body = """{ "format": 1, "version": "v1", "manifest": { "format": 1, "version": "v1", "files": [] }, "history": 3 }""";
+        var result = await Get(FakeHandler.Json(HttpStatusCode.OK, body));
+        Assert.Equal(LatestOutcome.Ok, result.Outcome);
+        Assert.Null(result.Latest!.History);
     }
 
     [Fact]

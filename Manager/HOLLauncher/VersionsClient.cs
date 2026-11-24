@@ -3,9 +3,16 @@ using HOLUpdate;
 
 namespace HOLLauncher;
 
-/** The answer of GET /versions/latest (PROTOCOL.md, "Versions du jeu"). */
+/**
+ * The answer of GET /versions/latest (PROTOCOL.md, "Versions du jeu"). History (L21): the kept versions' notes, newest
+ * first; null when the manager is older than L21 (no "history" field), the launcher then shows Notes alone.
+ */
 public sealed record LatestVersion(
-    string Version, VersionManifest Manifest, string Notes, IReadOnlyList<string> PatchesFrom, string LauncherVersion);
+    string Version, VersionManifest Manifest, string Notes, IReadOnlyList<string> PatchesFrom, string LauncherVersion,
+    IReadOnlyList<ReleaseNote>? History = null);
+
+/** One version's notes in the history of /versions/latest (L21). */
+public sealed record ReleaseNote(string Version, string Notes);
 
 public enum LatestOutcome
 {
@@ -111,7 +118,23 @@ public sealed class VersionsClient
             patchesFrom.AddRange(rows.EnumerateArray().Where(r => r.ValueKind == JsonValueKind.String).Select(r => r.GetString()!));
         }
         return new LatestVersion(version, VersionManifest.FromJson(manifest.GetRawText()), ReadString(root, "notes") ?? "",
-            patchesFrom, ReadString(root, "launcherVersion") ?? "");
+            patchesFrom, ReadString(root, "launcherVersion") ?? "", ReadHistory(root));
+    }
+
+    /**
+     * L21: "history", null without it. Only news: a bad row is skipped instead of refusing the answer (the update itself
+     * does not depend on it).
+     */
+    private static IReadOnlyList<ReleaseNote>? ReadHistory(JsonElement root)
+    {
+        if (!root.TryGetProperty("history", out var rows) || rows.ValueKind != JsonValueKind.Array)
+        {
+            return null;
+        }
+        return rows.EnumerateArray()
+            .Where(r => r.ValueKind == JsonValueKind.Object && !string.IsNullOrEmpty(ReadString(r, "version")))
+            .Select(r => new ReleaseNote(ReadString(r, "version")!, ReadString(r, "notes") ?? ""))
+            .ToList();
     }
 
     /** ": <error> (<message>)" from the manager's error body, or nothing if the body is not one. */

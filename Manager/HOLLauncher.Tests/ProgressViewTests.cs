@@ -50,6 +50,54 @@ public class ProgressViewTests
     }
 
     [Fact]
+    public void RunningUpdateCanBePaused()
+    {
+        var view = ProgressView.From(new DownloadProgress(1, 4, "a", 0), "fr");
+        Assert.False(view.IsPaused);
+        Assert.True(view.PauseEnabled);
+        Assert.Equal("Pause", view.PauseText("fr"));
+        Assert.True(ProgressView.Starting().PauseEnabled);
+        Assert.True(ProgressView.FromLauncher(new LauncherProgress("2", 0, null)).PauseEnabled);
+    }
+
+    [Fact]
+    public void PausingKeepsTheBarAndDisablesBothButtons()
+    {
+        var view = ProgressView.From(new DownloadProgress(1, 4, "a", 0), "fr").Pausing("fr");
+        Assert.Equal("Mise en pause…", view.Text);
+        Assert.Equal(25, view.Percent);
+        Assert.False(view.CancelEnabled);
+        Assert.False(view.PauseEnabled);
+        Assert.False(view.IsPaused);
+    }
+
+    [Fact]
+    public void PausedKeepsTheLineAndOffersResumeAndCancel()
+    {
+        // The line is the one shown when "Pause" was clicked (its own wording is L16's).
+        var line = ProgressView.From(new DownloadProgress(2, 5, "HeroesOfLiberty.exe", 13_002_342), "fr");
+        var view = line.Paused("fr");
+        Assert.Equal($"En pause ({line.Text}). Ce qui est déjà reçu est gardé : "
+            + "« Reprendre » continue sans le télécharger de nouveau.", view.Text);
+        Assert.Equal(40, view.Percent);
+        Assert.True(view.IsPaused);
+        Assert.True(view.CancelEnabled);
+        Assert.True(view.PauseEnabled);
+        Assert.Equal("Reprendre", view.PauseText("fr"));
+        Assert.Equal("Resume", view.PauseText("en"));
+        Assert.Equal("再開", view.PauseText("ja"));
+        Assert.StartsWith("Paused (File 3/5: HeroesOfLiberty.exe — 12.4 MB). ",
+            ProgressView.From(new DownloadProgress(2, 5, "HeroesOfLiberty.exe", 13_002_342), "en").Paused("en").Text);
+        Assert.Equal("Pausing…", line.Pausing("en").Text);
+    }
+
+    [Fact]
+    public void CancellingDisablesPauseToo()
+    {
+        Assert.False(ProgressView.From(new DownloadProgress(1, 4, "a", 0), "fr").Cancelling("fr").PauseEnabled);
+    }
+
+    [Fact]
     public void LauncherDownloadShowsMegabytesOfTheTotal()
     {
         var view = ProgressView.FromLauncher(new LauncherProgress("2", 13_002_342, 75_183_104), "fr");

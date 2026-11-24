@@ -559,6 +559,7 @@ script de publication (L4) :
 <versions>/release.json                       numéro de la prochaine publication (L14), jamais servi
 <versions>/<v>/manifest.json                   liste des fichiers (HOLUpdate : chemin, taille, SHA-256)
 <versions>/<v>/notes.txt                       nouveautés (facultatif)
+<versions>/<v>/published.txt                   date de publication (UTC) : ordre des versions (L4, L21), jamais servi
 <versions>/<v>/files/<chemin>.gz               fichier compressé (gzip) à la publication
 <versions>/<v>/patches/<depuis>/<chemin>.patch correctif binaire depuis la version <depuis> (L3/L4)
 <versions>/launcher/latest.txt                 version du lanceur
@@ -585,13 +586,28 @@ s'affichent tels quels. Le protocole ne change pas (`protocolVersion` reste 1).
                 "files": [ { "path": "HeroesOfLiberty.exe", "size": 348127232, "sha256": "3f5a…" } ] },
   "notes": "Archers plus rapides.",
   "patchesFrom": [ "2026-10-24", "2026-10-25-a" ],
-  "launcherVersion": "L3"
+  "launcherVersion": "L3",
+  "history": [
+    { "version": "2026-10-25-b", "published": "2026-10-25T18:02:11.5120000Z", "notes": "Archers plus rapides." },
+    { "version": "2026-10-25-a", "published": "2026-10-25T09:40:03.1170000Z", "notes": "" },
+    { "version": "2026-10-24", "published": "2026-10-24T21:15:47.0040000Z", "notes": "Nouvelle carte." }
+  ]
 }
 ```
 
 `version` est le nom du dossier (celui des routes ci-dessous) ; `manifest` est `manifest.json`, relu et vérifié
 (chemins sûrs, empreintes) ; `notes` vide sans `notes.txt` ; `patchesFrom` : les dossiers de `<v>/patches/`, triés ;
 `launcherVersion` vide sans `launcher/latest.txt`.
+
+**`history` (L21)** : les nouveautés de chaque version gardée (celles qui ont un `manifest.json` ; `publish.ps1 -Keep`
+retire les plus anciennes), de la plus récente à la plus ancienne **dans l'ordre de publication** (`published.txt`, à
+défaut la date d'écriture de `manifest.json` ; jamais l'ordre des noms), en commençant par `version` : une version
+publiée après celle de `latest.txt` (remis en arrière à la main) n'y est pas. `notes` vide sans `notes.txt` ;
+`published` en UTC (ISO 8601). Champ **ajouté**, `format` reste 1 : un lanceur plus ancien l'ignore et montre `notes`
+seul ; un gestionnaire plus ancien ne l'envoie pas, le lanceur L21 montre alors `notes` seul. Le lanceur montre les
+nouveautés de chaque version plus récente que la version installée (chacune sous son nom affiché, `V 0.Y.X`) ; si la
+version installée n'est plus dans la liste, toutes celles de la liste et une ligne « nouveautés plus anciennes non
+disponibles » ; à jour ou pas installé : celles de `version` seule.
 
 | `error` | HTTP | Quand |
 |---|---|---|

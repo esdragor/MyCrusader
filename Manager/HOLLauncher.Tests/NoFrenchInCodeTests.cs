@@ -16,6 +16,8 @@ public class NoFrenchInCodeTests
     [
         "\"Français\"", // Texts.LanguageName: French named in French in every language.
         "\"日本語\"", // Texts.LanguageName: Japanese named in Japanese in every language.
+        "\"×\"", // SettingsForm (L19): the multiplication sign between width and height, the same in every language.
+        "} × {", // SettingsForm (L19): a resolution "1920 × 1080", likewise.
     ];
 
     /** French words of the old messages that are plain ASCII ("Serveur injoignable", "Lanceur : version"...). */

@@ -13,9 +13,18 @@ public sealed record SettingsLoad(LauncherSettings Settings, string? Problem);
  * deletes it (UpdatePlan.LauncherOwned).
  * Language: "fr", "en" or "ja" (Texts.Resolve; null: Windows' language). GameDir: the game folder (null: the launcher's
  * folder; --game-dir wins over it, LauncherOptions).
- * Later steps add their own fields (L19 launch options, L23 automatic update): with "with", the window keeps them.
+ * Launch options (L19, LaunchArguments): DisplayMode "windowed" or "fullscreen" (null: the game's own),
+ * ResolutionWidth / ResolutionHeight in pixels (null: the game's own), ExtraArguments the player's free extra arguments
+ * (advanced, null: none). An L15 file has none of them: the game starts without argument, as before.
+ * Later steps add their own fields (L23 automatic update): with "with", the window keeps them.
  */
-public sealed record LauncherSettings(string? Language = null, string? GameDir = null)
+public sealed record LauncherSettings(
+    string? Language = null,
+    string? GameDir = null,
+    string? DisplayMode = null,
+    int? ResolutionWidth = null,
+    int? ResolutionHeight = null,
+    string? ExtraArguments = null)
 {
     public const string FileName = "HOLLauncher.settings.json";
 

@@ -14,9 +14,10 @@ public enum GameState
 }
 
 /**
- * What the window shows (L5b): the game's state, both versions, the news, and whether a newer launcher exists.
- * KeyRefused (L16): the manager answered 401 bad_key, a signal of its own so that the views say it in the player's
- * language (Message stays the technical detail, never compared).
+ * What the window shows (L5b): the game's state, both versions, the news, and whether a newer launcher exists. Notes:
+ * the news since the installed version (ReleaseNotes, L21). KeyRefused (L16): the manager answered 401 bad_key, a
+ * signal of its own so that the views say it in the player's language (Message stays the technical detail, never
+ * compared).
  */
 public sealed record LauncherStatus(
     GameState State,
@@ -42,7 +43,7 @@ public sealed record LauncherStatus(
         var state = installed is null ? GameState.NotInstalled
             : installed == available.Version ? GameState.UpToDate
             : GameState.Outdated;
-        return new LauncherStatus(state, installed, available.Version, available.Notes, launcherCurrent,
+        return new LauncherStatus(state, installed, available.Version, ReleaseNotes.Text(installed, available), launcherCurrent,
             available.LauncherVersion, latest.Message);
     }
 }

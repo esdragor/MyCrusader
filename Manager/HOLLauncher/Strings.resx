@@ -64,4 +64,20 @@
   <data name="GameStarted" xml:space="preserve"><value>Jeu lancé.</value></data>
   <data name="GameStartFailed" xml:space="preserve"><value>Le jeu n'a pas pu être lancé : {0}</value></data>
   <data name="BadCommandLine" xml:space="preserve"><value>Ligne de commande incorrecte : {0}</value></data>
+  <data name="NotesOlderMissing" xml:space="preserve"><value>Les nouveautés des versions plus anciennes ne sont plus disponibles.</value></data>
+  <data name="SettingsLaunch" xml:space="preserve"><value>Lancement du jeu</value></data>
+  <data name="SettingsDisplayMode" xml:space="preserve"><value>Affichage :</value></data>
+  <data name="SettingsGameOwn" xml:space="preserve"><value>Réglage du jeu</value></data>
+  <data name="SettingsWindowed" xml:space="preserve"><value>Fenêtré</value></data>
+  <data name="SettingsFullscreen" xml:space="preserve"><value>Plein écran</value></data>
+  <data name="SettingsResolution" xml:space="preserve"><value>Résolution :</value></data>
+  <data name="SettingsResolutionCustom" xml:space="preserve"><value>Autre…</value></data>
+  <data name="SettingsExtraArguments" xml:space="preserve"><value>Arguments supplémentaires :</value></data>
+  <data name="SettingsExtraArgumentsHint" xml:space="preserve"><value>Avancé : arguments passés tels quels au jeu au lancement (exemple : -nosound).</value></data>
+  <data name="SettingsUnclosedQuote" xml:space="preserve"><value>Arguments supplémentaires : un guillemet " n'est pas fermé.</value></data>
+  <data name="SettingsReservedArguments" xml:space="preserve"><value>Ces arguments supplémentaires contredisent l'affichage ou la résolution choisis, ou sont réservés au lanceur ; retirez-les : {0}</value></data>
+  <data name="Pause" xml:space="preserve"><value>Pause</value></data>
+  <data name="Resume" xml:space="preserve"><value>Reprendre</value></data>
+  <data name="Pausing" xml:space="preserve"><value>Mise en pause…</value></data>
+  <data name="UpdatePaused" xml:space="preserve"><value>En pause ({0}). Ce qui est déjà reçu est gardé : « Reprendre » continue sans le télécharger de nouveau.</value></data>
 </root>

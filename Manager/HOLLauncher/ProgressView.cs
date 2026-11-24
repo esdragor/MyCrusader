@@ -41,4 +41,23 @@ public sealed record ProgressView(string Text, int Percent, bool CancelEnabled)
         => this with { Text = Texts.Get("ProgressCancelling", Texts.LanguageOr(language)), CancelEnabled = false };
 
     private static string Megabytes(long bytes, string language) => Texts.Number(bytes / BytesPerMegabyte, "0.0", language);
+
+    // Pause and resume (L18). Pause cancels the running update (MainForm), what was received is kept on disk;
+    // Resume runs it again and FileDownloader skips or resumes (Range) what is there.
+
+    /** Paused: the bar and the last line stay, "Pause" reads "Resume", "Cancel" ends the pause. */
+    public bool IsPaused { get; init; }
+
+    /** Goes with "Cancel": both off while a stop is under way (Cancelling, Pausing), both on otherwise. */
+    public bool PauseEnabled => CancelEnabled;
+
+    /** L16: a method, not a property, so that the language can be named (null: the one in use). */
+    public string PauseText(string? language = null) => Texts.Get(IsPaused ? "Resume" : "Pause", Texts.LanguageOr(language));
+
+    public ProgressView Pausing(string? language = null)
+        => this with { Text = Texts.Get("Pausing", Texts.LanguageOr(language)), CancelEnabled = false };
+
+    /** Called on the line shown when "Pause" was clicked (not on Pausing's). */
+    public ProgressView Paused(string? language = null)
+        => this with { Text = Texts.FormatIn(Texts.LanguageOr(language), "UpdatePaused", Text), CancelEnabled = true, IsPaused = true };
 }

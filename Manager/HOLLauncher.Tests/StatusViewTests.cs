@@ -70,6 +70,19 @@ public class StatusViewTests
         Assert.Null(view.PlayConfirmation);
     }
 
+    /** L21: three versions published, the first one installed: the box shows the two newer notes, newest first. */
+    [Fact]
+    public void OutdatedShowsTheNotesOfEveryNewerVersion()
+    {
+        ReleaseNote[] history = [new("0.3.11", "Nouvelle carte."), new("0.3.10", "Archers plus rapides."), new("0.3.9", "Un.")];
+        var latest = new LatestVersion("0.3.11", new VersionManifest("0.3.11", []), "Nouvelle carte.", [], "", history);
+
+        var view = StatusView.From(LauncherStatus.Compute("0.3.9", new LatestResult(LatestOutcome.Ok, latest, ""), "1"));
+
+        Assert.True(view.NotesVisible);
+        Assert.Equal("V 0.3.11\r\nNouvelle carte.\r\n\r\nV 0.3.10\r\nArchers plus rapides.", view.Notes);
+    }
+
     [Fact]
     public void NotesShownOnlyWhenPresent()
     {

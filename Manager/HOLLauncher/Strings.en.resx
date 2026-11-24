@@ -64,4 +64,20 @@
   <data name="GameStarted" xml:space="preserve"><value>Game started.</value></data>
   <data name="GameStartFailed" xml:space="preserve"><value>The game could not be started: {0}</value></data>
   <data name="BadCommandLine" xml:space="preserve"><value>Invalid command line: {0}</value></data>
+  <data name="NotesOlderMissing" xml:space="preserve"><value>The notes of older versions are no longer available.</value></data>
+  <data name="SettingsLaunch" xml:space="preserve"><value>Game launch</value></data>
+  <data name="SettingsDisplayMode" xml:space="preserve"><value>Display:</value></data>
+  <data name="SettingsGameOwn" xml:space="preserve"><value>Game setting</value></data>
+  <data name="SettingsWindowed" xml:space="preserve"><value>Windowed</value></data>
+  <data name="SettingsFullscreen" xml:space="preserve"><value>Fullscreen</value></data>
+  <data name="SettingsResolution" xml:space="preserve"><value>Resolution:</value></data>
+  <data name="SettingsResolutionCustom" xml:space="preserve"><value>Custom…</value></data>
+  <data name="SettingsExtraArguments" xml:space="preserve"><value>Extra arguments:</value></data>
+  <data name="SettingsExtraArgumentsHint" xml:space="preserve"><value>Advanced: arguments given as they are to the game when it starts (example: -nosound).</value></data>
+  <data name="SettingsUnclosedQuote" xml:space="preserve"><value>Extra arguments: a " quote is not closed.</value></data>
+  <data name="SettingsReservedArguments" xml:space="preserve"><value>These extra arguments contradict the chosen display or resolution, or are reserved for the launcher; remove them: {0}</value></data>
+  <data name="Pause" xml:space="preserve"><value>Pause</value></data>
+  <data name="Resume" xml:space="preserve"><value>Resume</value></data>
+  <data name="Pausing" xml:space="preserve"><value>Pausing…</value></data>
+  <data name="UpdatePaused" xml:space="preserve"><value>Paused ({0}). What was already received is kept: "Resume" carries on without downloading it again.</value></data>
 </root>

@@ -1,7 +1,10 @@
 namespace HOLLauncher;
 
-/** The end of an update, for the window: success, or an error message for the player. */
-public sealed record UpdateResult(bool Success, string Message);
+/**
+ * The end of an update, for the window: success, or an error message for the player. Cancelled: stopped by the token
+ * (Cancel, Pause or closing, L18), what was received kept for the next run; the window shows its paused state on it.
+ */
+public sealed record UpdateResult(bool Success, string Message, bool Cancelled = false);
 
 /** No room on the game folder's disk for an update (L9): said before anything is downloaded, in the player's language. */
 public sealed class NotEnoughSpaceException(string message) : Exception(message);
@@ -53,7 +56,7 @@ public sealed class GameUpdater(HttpClient http, string? hpatchz = null, Func<st
         }
         catch (OperationCanceledException)
         {
-            return new UpdateResult(false, Texts.Get("GameUpdateCancelled", lang));
+            return new UpdateResult(false, Texts.Get("GameUpdateCancelled", lang), Cancelled: true);
         }
         catch (NotEnoughSpaceException e)
         {
