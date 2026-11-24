@@ -18,9 +18,9 @@ int MoraleRecipientTotal(const TArray<int>& Recipients, int UnitIndex, int Effec
 	FHOLMoraleStateData State;
 	if (Recipients.Contains(UnitIndex))
 	{
-		HOLMorale::Apply(State, HOLMoraleTable::Effect(EffectId));
+		HOLMorale::NativeApply(State, HOLMoraleTable::Effect(EffectId), 0);
 	}
-	return HOLMorale::Total(State, Lever);
+	return HOLMorale::NativeTotal(State, Lever);
 }
 
 // A duel won: the winner's troops within the table's radius get Triumph, one 14 m away does not, a Peasant never, the loser's troops never.
