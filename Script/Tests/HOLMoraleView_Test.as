@@ -14,7 +14,7 @@ HOLMoraleView::FHOLMoraleView MoraleViewInject(const FHOLMoraleStateData& State,
 FHOLMoraleStateData MoraleViewPose(const FHOLMoraleStateData& Before, int Id)
 {
 	FHOLMoraleStateData State = Before;
-	HOLMorale::Apply(State, HOLMoraleTable::Effect(Id));
+	HOLMorale::NativeApply(State, HOLMoraleTable::Effect(Id), 0);
 	return State;
 }
 
@@ -63,7 +63,7 @@ void Test_MoraleViewPeasantNoneAndImmunity(FUnitTest& T)
 	T.AssertFalse(HOLMoraleView::Present(MoraleViewInject(State, true, true)).bShown, "a Peasant shows nothing, ever");
 	T.AssertFalse(HOLMoraleView::Present(MoraleViewInject(FHOLMoraleStateData(), true, false)).bShown, "no effect, no pastille");
 	FHOLMoraleStateData Immune;
-	HOLMorale::GrantImmunity(Immune, 5000);
+	HOLMorale::NativeGrantImmunity(Immune, 5000);
 	const HOLMoraleView::FHOLMoralePastille Gold = HOLMoraleView::Present(MoraleViewInject(Immune, true, false));
 	T.AssertTrue(Gold.bShown, "the immunity alone shows a pastille");
 	T.AssertTrue(Gold.Color.R > Gold.Color.B && Gold.Color.G > Gold.Color.B, "gold: red and green above blue");

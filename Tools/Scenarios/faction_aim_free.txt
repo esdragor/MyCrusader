@@ -44,17 +44,17 @@ hol.Heal.Report
 hol.Mouse.Click FactionBox0
 waitlog FactionAim: aim 0
 hol.Camera.FocusSlot 0
-hol.Camera.TestCursorGround -17035 300
+# REAL gesture (ARWEN-1124c): the real mouse is moved (hol.Mouse.Hover = Slate move event) and the real click lands on the ground (hol.Mouse.Click X Y = move, press, release); viewport 1066x600 under -Hidden, centre 533,300.
+hol.Mouse.Hover 600 380 12
 frames 6
 capture faction_aim_free_aim
-hol.Camera.TestCursorGround -17035 1500
+hol.Mouse.Hover 1030 300 12
 frames 6
 capture faction_aim_free_aim_far
-hol.Camera.TestCursor off
-hol.Camera.FocusSlot 0
-frames 2
-hol.Select.LeftClickGround -17035 300
-waitlog Sacred Light placeholder: golden ring of 600 cm for 5.0 s at (-170
+hol.Mouse.Hover 600 380 12
+frames 6
+hol.Mouse.Click 600 380
+waitlog Sacred Light placeholder: golden ring of 600 cm
 wait 2
 frames 10
 hol.Heal.Report

@@ -1,0 +1,19 @@
+integrate : branche integ-67 creee, 4 rouge(s) appliques
+integrate : build rouges ...
+integrate : tests des rouges ...
+integrate : verts depuis main, rouges retires (reset --hard 9d40517)
+integrate : 7 vert(s) fusionne(s)
+integrate : regen inutile (aucun CSV de table change sans son .uasset dans les verts)
+integrate : build verts ...
+integrate : tests (apres les verts) ...
+integrate : parts net,build ...
+INTEGRATE integ-67 : PASS (1332 s, 2026-11-24 12:23)
+  branche+rouges : PASS (4 cherry-pick, 3 s)
+  build rouges : PASS (191 s)
+  tests rouges : FAIL attendu 2208/2213 tests (217 s)
+  remise a main : PASS (verts depuis main, rouges retires : reset --hard 9d40517)
+  merge verts : PASS (7 merge, 11 s) ; regen: inutile
+  build verts : PASS (253 s)
+  tests verts : PASS 2201/2201 tests (228 s)
+  parts net,build : PASS (426 s)
+  rouges vus : Angelscript.UnitTests.Commands.HOLPlayerOrdersBoard_Test.Test_PlayerOrdersBoardRefusesLockedLaneUnit, Angelscript.UnitTests.Tests.HOLWallLineRules_Test.Test_WallLineFineGridLineIsSeventeenCells, HeroesOfLiberty.Hero.GetHeroUnitId, HeroesOfLiberty.Morale.NecroticRageIsAMoraleEffect, HeroesOfLiberty.Specialization.GetChosenOptionForSlot ; sortie complete : Docs\Integrate_integ-67.log

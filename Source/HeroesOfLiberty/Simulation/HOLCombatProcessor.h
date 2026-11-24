@@ -98,7 +98,7 @@ protected:
 		FHOLCombatFragment* Combat = nullptr;
 		FHOLUnitStateFragment* State = nullptr;
 		/** Its morale effects (null when the entity has none): the damage-taken lever is read from here (GetDamageTakenPercent). */
-		const FHOLMoraleFragment* Morale = nullptr;
+		FHOLMoraleFragment* Morale = nullptr; // read-write: the necrotic rage takes its own effect off at its stop floor
 		FHOLMoveOrderFragment* Order = nullptr;
 		FMassMoveTargetFragment* MoveTarget = nullptr;
 		FMassDesiredMovementFragment* Movement = nullptr;

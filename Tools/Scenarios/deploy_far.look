@@ -1,0 +1,5 @@
+# <nom de capture> | ce que l'utilisateur doit voir
+deploy_far_start | Mangonneau (engin de siege) DEMONTE, case D de la grille = Monter, a DROITE de l'ecran ; la Maison ennemie (rouge) a GAUCHE, tres loin (hors portee de tir) ; aucun ordre encore donne
+deploy_far_walking | 3 s apres le clic droit : le Mangonneau est DEMONTE et en marche vers la Maison (case D = Monter), pas encore a portee
+deploy_far_arrived | apres le premier coup (journal Mangonel hits a building) : le Mangonneau est MONTE (case D = Demonter), a portee de la Maison ennemie, bien plus pres d'elle qu'a deploy_far_walking
+deploy_far_end | 5 s plus tard, meme position, toujours monte (case D = Demonter) ; la Maison ennemie visible

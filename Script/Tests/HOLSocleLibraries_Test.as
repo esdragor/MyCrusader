@@ -204,9 +204,9 @@ void Test_UnitAbilityReadLibraryAgreesWithTable(FUnitTest& T)
 	if (MoraleId >= 0)
 	{
 		FHOLMoraleStateData State;
-		HOLMorale::Apply(State, HOLMoraleTable::Effect(MoraleId));
-		T.AssertEquals(100 + HOLUnitAbilityRead::GetRageDamagePercent(), HOLMorale::Multiplier(State, HOLMorale::LeverDealt), "damage dealt, in percent (Effects.csv)");
-		T.AssertEquals(100 + HOLUnitAbilityRead::GetRageRatePercent(), HOLMorale::Multiplier(State, HOLMorale::LeverRate), "attack rate, in percent (Effects.csv)");
+		HOLMorale::NativeApply(State, HOLMoraleTable::Effect(MoraleId), 0);
+		T.AssertEquals(100 + HOLUnitAbilityRead::GetRageDamagePercent(), HOLMorale::NativeMultiplier(State, HOLMorale::LeverDealt), "damage dealt, in percent (Effects.csv)");
+		T.AssertEquals(100 + HOLUnitAbilityRead::GetRageRatePercent(), HOLMorale::NativeMultiplier(State, HOLMorale::LeverRate), "attack rate, in percent (Effects.csv)");
 	}
 	T.AssertEquals(800, HOLUnitAbilityRead::GetRageIntervalMs(1000), "25 % more blows: 1 000 ms -> 800 ms");
 	T.AssertEquals(1, HOLUnitAbilityRead::GetRageIntervalMs(1), "never under 1 ms");

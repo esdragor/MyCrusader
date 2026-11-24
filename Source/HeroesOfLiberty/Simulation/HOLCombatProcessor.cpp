@@ -271,7 +271,7 @@ void UHOLCombatProcessor::ConfigureQueries(const TSharedRef<FMassEntityManager>&
 	EntityQuery.AddRequirement<FMassMoveTargetFragment>(EMassFragmentAccess::ReadWrite);
 	EntityQuery.AddRequirement<FMassDesiredMovementFragment>(EMassFragmentAccess::ReadWrite);
 	EntityQuery.AddRequirement<FHOLDeployFragment>(EMassFragmentAccess::ReadWrite, EMassFragmentPresence::Optional);
-	EntityQuery.AddRequirement<FHOLMoraleFragment>(EMassFragmentAccess::ReadOnly, EMassFragmentPresence::Optional);
+	EntityQuery.AddRequirement<FHOLMoraleFragment>(EMassFragmentAccess::ReadWrite, EMassFragmentPresence::Optional);
 	EntityQuery.AddConstSharedRequirement<FHOLUnitTypeConstants>(EMassFragmentPresence::All);
 	EntityQuery.AddTagRequirement<FHOLLightUnitTag>(EMassFragmentPresence::All);
 	// F7 lot 3a: a garrisoned unit is no fighter: it strikes nobody and nobody finds it (a target that leaves the list is let go).
@@ -1144,7 +1144,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 		const TArrayView<FMassMoveTargetFragment> MoveTargets = Context.GetMutableFragmentView<FMassMoveTargetFragment>();
 		const TArrayView<FMassDesiredMovementFragment> Movements = Context.GetMutableFragmentView<FMassDesiredMovementFragment>();
 		const TArrayView<FHOLDeployFragment> Deploys = Context.GetMutableFragmentView<FHOLDeployFragment>();
-		const TConstArrayView<FHOLMoraleFragment> Morales = Context.GetFragmentView<FHOLMoraleFragment>();
+		const TArrayView<FHOLMoraleFragment> Morales = Context.GetMutableFragmentView<FHOLMoraleFragment>();
 		const FHOLUnitTypeConstants& Constants = Context.GetConstSharedFragment<FHOLUnitTypeConstants>();
 		MaxRadius = FMath::Max(MaxRadius, Constants.Radius);
 		const bool bHeroes = HOLIsHero(Constants.ArmorCategoryMask);
@@ -2530,12 +2530,11 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 				*Constants.TypeName.ToString(), Fighter.State->OwnerPlayer, Fighters[Target].UnitId, *Fighters[Target].Constants->TypeName.ToString());
 			Combat.TargetBuilding.Reset();
 		}
-		// L4: under the necrotic rage the unit strikes 25 % faster (the CSV value, HOLUnitAbilityRules.h).
+		// L4 / PLAN-MORAL-1120 step 2: the necrotic rage's +25 % cadence is the Rate lever of its morale effect (Effects.csv NecroticRage), read below; RageMs is not read here.
 		const int32 BaseIntervalMs = HOLCombat::ToMilliseconds(Constants.AttackInterval);
-		const int32 RageIntervalMs = Combat.RageMs > 0 ? HOLUnitAbility::GetRageIntervalMs(BaseIntervalMs) : BaseIntervalMs;
 			// PLAN-MORAL-1120 step 5 (S2-a): the Rate lever of the striker's morale (HOLMorale::Multiplier, the one source) shortens (bonus) or lengthens (malus) the time between blows.
 			const int32 MoraleRatePercent = Fighter.Morale ? HOLMorale::Multiplier(Fighter.Morale->State, HOLMorale::LeverRate) : 100;
-			const int32 IntervalMs = FMath::Max(1, RageIntervalMs * 100 / FMath::Max(MoraleRatePercent, 1));
+			const int32 IntervalMs = FMath::Max(1, BaseIntervalMs * 100 / FMath::Max(MoraleRatePercent, 1));
 		if (Target == INDEX_NONE)
 		{
 			// D345.2b: no enemy unit. Its building (ordered, or taken on before), else one it takes on by itself: on an
@@ -3312,19 +3311,24 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 		// An arrow in flight for a long reach; the armour taken off comes from the attack's type (D345), not from the reach.
 		const bool bShot = HOLCombat::IsRangedAttack(Constants.AttackRange);
 		// L4: a blow dealt under the necrotic rage does +40 % and costs the unit 3 health, never taking it under StopHp (20), where the rage ends.
-		const int32 RagePercent = Combat.RageMs > 0 ? HOLUnitAbility::RageDamagePercent : 0;
-		if (RagePercent > 0)
+		// The +40 % is the Dealt lever of the unit's morale (laid by CastRage, row NecroticRage), read once here BEFORE the rage may end on this blow (the last blow keeps it).
+		const int32 MoraleDealtPercent = Fighter.Morale ? HOLMorale::Multiplier(Fighter.Morale->State, HOLMorale::LeverDealt) : 100;
+		const bool bRaging = Combat.RageMs > 0;
+		if (bRaging)
 		{
 			Fighter.State->CurrentHealth -= HOLUnitAbility::GetRageHitCost(Fighter.State->CurrentHealth);
 			if (Fighter.State->CurrentHealth <= static_cast<float>(HOLUnitAbility::RageStopHp))
 			{
 				Combat.RageMs = 0;
+				if (Fighter.Morale)
+				{
+					HOLMorale::RemoveById(Fighter.Morale->State, HOLMoraleTableRows::HOLMoraleNecroticRage);
+				}
 			}
 			Touch(Index);
 		}
 		// PLAN-MORAL-1120 step 5 (S2-a): the Dealt lever of the striker's morale (one source, the rule) scales the blow, as the Taken lever of the victim reduces it.
-			const int32 MoraleDealtPercent = Fighter.Morale ? HOLMorale::Multiplier(Fighter.Morale->State, HOLMorale::LeverDealt) : 100;
-			const float Damage = HOLCombat::GetDamage(Constants, *Enemy.Constants, Combat.Level, GetTalentArmorBonus(Enemy), GetTechnologyAttackPercent(Fighter) + RagePercent, GetTechnologyArmorPercent(Enemy, Constants.AttackType)) * static_cast<float>(MoraleDealtPercent) / 100.f;
+			const float Damage = HOLCombat::GetDamage(Constants, *Enemy.Constants, Combat.Level, GetTalentArmorBonus(Enemy), GetTechnologyAttackPercent(Fighter), GetTechnologyArmorPercent(Enemy, Constants.AttackType)) * static_cast<float>(MoraleDealtPercent) / 100.f;
 		if (bShot)
 		{
 			// An arrow (J7c.2): released now, at the strike's moment of the gesture; it lands on its target after its flight

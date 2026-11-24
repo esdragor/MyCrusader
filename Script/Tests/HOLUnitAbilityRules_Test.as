@@ -75,11 +75,11 @@ void Test_UnitAbilityRageActsOnTheRealMoraleChain(FUnitTest& T)
 	}
 	T.AssertTrue(MoraleId >= 0, "the rage's effect is in the morale table");
 	FHOLMoraleStateData State;
-	T.AssertEquals(100, HOLMorale::Multiplier(State, HOLMorale::LeverDealt), "without the rage: the damage dealt is normal");
-	HOLMorale::Apply(State, HOLMoraleTable::Effect(MoraleId));
-	T.AssertTrue(HOLMorale::Multiplier(State, HOLMorale::LeverDealt) > 100, "with the rage: more damage dealt");
-	T.AssertTrue(HOLMorale::Multiplier(State, HOLMorale::LeverRate) > 100, "with the rage: faster cadence");
-	T.AssertEquals(100, HOLMorale::Multiplier(State, HOLMorale::LeverTaken), "the rage does not protect: the damage taken is normal");
+	T.AssertEquals(100, HOLMorale::NativeMultiplier(State, HOLMorale::LeverDealt), "without the rage: the damage dealt is normal");
+	HOLMorale::NativeApply(State, HOLMoraleTable::Effect(MoraleId), 0);
+	T.AssertTrue(HOLMorale::NativeMultiplier(State, HOLMorale::LeverDealt) > 100, "with the rage: more damage dealt");
+	T.AssertTrue(HOLMorale::NativeMultiplier(State, HOLMorale::LeverRate) > 100, "with the rage: faster cadence");
+	T.AssertEquals(100, HOLMorale::NativeMultiplier(State, HOLMorale::LeverTaken), "the rage does not protect: the damage taken is normal");
 }
 
 // L6a extended (Docs/Rapports/LOT-CPP-socle-factions-1119.md, piece 5): the table says what an ability is aimed at. The existing rage is on its caster

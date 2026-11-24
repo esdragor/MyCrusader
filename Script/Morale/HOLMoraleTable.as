@@ -174,6 +174,6 @@ namespace HOLMoraleTable
 			EffectId = R.Gives;
 			R = Row(R.Gives);
 		}
-		return HOLMorale::MakeEffect(EffectId, R.Dealt, R.Taken, R.Rate, R.DurationMs, R.bAura);
+		return HOLMorale::NativeMakeEffect(EffectId, R.Dealt, R.Taken, R.Rate, R.DurationMs, R.bAura);
 	}
 }

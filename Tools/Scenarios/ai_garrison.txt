@@ -10,6 +10,8 @@
 # Si rien : la ligne du cerveau dit pourquoi (SecondsSinceHit, entrants) ; on ne change pas le seuil.
 waitlog AI brain HOLAIBrain awake
 hol.Sanity.Watch 1
+# RECETTE-1123pd : une ligne par fleche de la tour (M = 1 + occupants, FARAMIR-1123pg / D899)
+hol.Combat.LogBuildingShots 1
 waitlog AI slot 1 step
 hol.Cheat.Resources 1000
 hol.Cheat.Population 200
@@ -40,5 +42,7 @@ waitlog Garrison order: slot 1
 waitlog Garrison: slot 1 puts
 frames 20
 capture ai_garrison_after
+# laisse la tour tirer au moins deux volees apres l'entree (une volee toutes les 1,625 s)
+wait 4
 note 3. Les Archers de l'IA sont entres dans la tour : ils ont disparu de l'ecran (3 places, 3 entres), on n'en voit plus qu'un dehors.
 hol.Test.Sanity

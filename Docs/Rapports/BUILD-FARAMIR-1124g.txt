@@ -1,0 +1,2 @@
+build : LaunchCheck debut (Get-StaleBinaryProblem) : vide (each dll newer than its sources)
+build : PASS (HeroesOfLibertyEditor Development, HeroesOfLiberty-Faramir, 5 s)
