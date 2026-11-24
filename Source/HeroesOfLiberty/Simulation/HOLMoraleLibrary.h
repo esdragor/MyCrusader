@@ -107,6 +107,10 @@ public:
 	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Morale")
 	static int32 NativeTotal(const FHOLMoraleStateData& State, int32 Lever);
 
+	/** The morale orders waiting for the next step of the morale processor (UHOLMoraleProcessor::NumPendingOrders): lets a script test see an order queued and consumed. */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Morale")
+	static int32 NumPendingOrders();
+
 	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Morale")
 	static int32 NativeMultiplier(const FHOLMoraleStateData& State, int32 Lever);
 

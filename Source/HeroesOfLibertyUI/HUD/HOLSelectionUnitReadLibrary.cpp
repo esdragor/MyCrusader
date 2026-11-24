@@ -130,6 +130,7 @@ bool UHOLSelectionUnitReadLibrary::GetUnitSelectionView(const UObject* WorldCont
 			Out.WorkerActivities.Add(ToActivityKind(View.Activity));
 		}
 	}
+	Out.EffectMask = First.EffectMask;
 	Out.bHero = First.bHero;
 	Out.Health = First.Health;
 	Out.MaxHealth = First.MaxHealth;

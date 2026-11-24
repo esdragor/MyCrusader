@@ -47,6 +47,8 @@ struct FHOLUnitView
 	bool bKing = false;
 	/** G6 d: the deploy phase (HOLDeploy::EPhase as a number) of an engine that deploys, -1 for a unit that does not. Solo and server; a client until G6 e. */
 	int32 DeployPhase = -1;
+	/** A2 (S2-c step 9): the morale effects on the unit, one bit per effect row (HOLMorale::EffectMask). A client has them from the last state received; 0 for a unit without effect. */
+	uint16 EffectMask = 0;
 	/** A hero (J8a.1: the Hero armour category). IA2.1: the AI's army leaves him out. */
 	bool bHero = false;
 	/** Unhurt (J7b.4): its health is its type's maximum. */
