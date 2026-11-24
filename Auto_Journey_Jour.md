@@ -11,6 +11,16 @@ Historique du test du 2026-10-30 : `Docs\Archive\Auto_Journey_Test1_2026-10-30.m
 ## Agents du 2026-11-24
 
 fin et mode demandés à 10:38 (fin 14:00, autonome ; priorité Docs\Priorite_Socle_Factions_2026-11-16.md)
+check-list lue (L26) à 10:50 après le nettoyage 0a (commits 5d97eb3, 173d31b, 8da775a) ; veilleur 30 min et alarme 13:45 posés
+Plan de lancement (ETAPE0-1124, 10:5x ; énoncés : `Docs\Rapports\ENONCES-1124.md` ; sync_worktrees tournait à 10:43 : lancer Glorfindel et Haldir seulement après `Docs\Rapports\SYNC-1124-debut.txt` complet ; 3 tâches C++ : E5, E6, E7) :
+- Arwen | integ-37 | ARWEN-1124a : aperçu de visée de Lumière sacrée (REGLAGE 23/11) | sans C++ | ENONCES-1124 section E1
+- Faramir | zone-effect | FARAMIR-1124a : D900 Lumière sacrée hors portée, le héros s'approche puis lance | sans C++ | section E2
+- Celeborn | integ-41 | CELEBORN-1124a : D901 la ligne de palissade saute les cases bloquées | sans C++ | section E3
+- Sauron | integ-63 | SAURON-1124a : PLAN grille fine D898 + D904 (docs seules, aucun code) | sans C++ | section E4
+- Glorfindel | ability-columns | GLORFINDEL-1124a : D891 place du héros lue au pas de simulation (HOLHeroLibrary.cpp:402) | C++ (liaison) | section E5
+- Elrond | integ-25 | ELROND-1124a : D905 libellés du bouton de spécialisation (HOLGameNames.cpp) | C++ (table de textes) | section E6
+- Galadriel | socle-ai | GALADRIEL-1124a : S2-a restes (ordre Morale avant Combat, Rage nécrotique) | C++ (processeur Mass) | section E7
+- Haldir | integ-58 | HALDIR-1124i : intégrateur de recette (pré-vol tower_wood et specialization_slot sur main, puis passes integrate.ps1) | sans C++ | section E8
 
 | Agent | id | Worktree | Tâche | C++ | Lancé | Fini | Résumé |
 |---|---|---|---|---|---|---|---|
