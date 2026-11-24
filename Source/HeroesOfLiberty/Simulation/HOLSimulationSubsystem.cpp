@@ -210,6 +210,12 @@ namespace UE::HeroesOfLiberty::Simulation
 	}
 }
 
+uint64 UHOLSimulationSubsystem::HashFactionState() const
+{
+	// Stub (D894 red): nothing hashed yet.
+	return 14695981039346656037ull;
+}
+
 bool UHOLSimulationSubsystem::DoesSupportWorldType(const EWorldType::Type WorldType) const
 {
 	return WorldType == EWorldType::Game || WorldType == EWorldType::PIE;

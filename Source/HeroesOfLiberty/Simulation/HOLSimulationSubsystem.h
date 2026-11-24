@@ -108,6 +108,12 @@ public:
 	 * between the step's processors and OnStepEnded, so the death steps and the server step are the true ones. The new index.
 	 */
 	int64 AdvanceStepIndexForTests() { return ++StepIndex; }
+
+	/**
+	 * D894: hash of the faction state kept by the game state (the Honor gauge and the power cool-downs of every slot), the "faction" column of
+	 * FPartHashes. A column of its own: the main hash (HashUnits) does not include it. Logged at hol.Simulation.StepHashes >= 2.
+	 */
+	uint64 HashFactionState() const;
 #endif
 
 protected:

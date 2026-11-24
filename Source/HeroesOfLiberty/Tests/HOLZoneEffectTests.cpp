@@ -470,6 +470,40 @@ bool FHOLZoneEffectHonorGuardTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+#include "Simulation/HOLSimulationSubsystem.h"
+
+// D894: the Honor gauge and the power cool-downs of the game state have a column of their own in the step hash (HashFactionState): a change of
+// either, in any slot, changes it; the same state hashes the same; the slot of the value matters.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLSimulationFactionHashTest, "HeroesOfLiberty.Simulation.FactionHashColumn", UE::HeroesOfLiberty::Tests::ZoneEffect::Flags)
+
+bool FHOLSimulationFactionHashTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::ZoneEffect;
+	AHOLGameState* State = nullptr;
+	UWorld* World = OpenWorld(State);
+	UHOLSimulationSubsystem* Simulation = World ? World->GetSubsystem<UHOLSimulationSubsystem>() : nullptr;
+	if (!TestNotNull(TEXT("game state"), State) || !TestNotNull(TEXT("simulation subsystem"), Simulation))
+	{
+		CloseWorld(World);
+		return false;
+	}
+	const uint64 Empty = Simulation->HashFactionState();
+	TestTrue(TEXT("same state, same hash"), Simulation->HashFactionState() == Empty);
+	State->SetFactionResource(0, 7);
+	const uint64 WithGauge = Simulation->HashFactionState();
+	TestTrue(TEXT("a gauge of 7 in slot 0 changes the hash"), WithGauge != Empty);
+	State->SetFactionResource(0, 0);
+	TestTrue(TEXT("the gauge back to 0 gives the first hash again"), Simulation->HashFactionState() == Empty);
+	State->SetFactionResource(1, 7);
+	TestTrue(TEXT("the same gauge in slot 1 is not the same hash as in slot 0"), Simulation->HashFactionState() != WithGauge);
+	State->SetFactionResource(1, 0);
+	State->SetPowerCooldownEndMs(0, 0, 5000);
+	TestTrue(TEXT("a power cool-down in slot 0 changes the hash"), Simulation->HashFactionState() != Empty);
+	State->SetPowerCooldownEndMs(0, 0, 0);
+	TestTrue(TEXT("the cool-down cleared gives the first hash again"), Simulation->HashFactionState() == Empty);
+	CloseWorld(World);
+	return true;
+}
 // D689/D859, Honor of the Dawn from a kill (S1-e): a Dawn spearman (slot 0) kills a 1 hp enemy (slot 1) within 12 m of a Dawn building, by the real combat processor:
 // the Dawn's gauge gains HonorKillGain per enemy that died (counted from the units really gone, never a constant); the enemy slot earns nothing.
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLZoneEffectKillHonorTest, "HeroesOfLiberty.Zone.KillHonor", UE::HeroesOfLiberty::Tests::ZoneEffect::Flags)
