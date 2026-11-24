@@ -1,8 +1,25 @@
 // S4-a: the SERVER part of a faction power cast, ONE source called by the RPC ServerCastFactionPower (the player's order, after its sender check) and by
 // the AI brain (HOLAIBrain::ThinkPowers): the same rule (HOLFactionPowerCast::Decide), the same effect (HOLZoneEffect::StartSacredLight), the same
 // writes (gauge, cool-down). The AI gets no other path and no discount (D688).
+// FARAMIR-1124a (D900, answer C of Q-lumiere-sacree-visee): an aimed cast beyond the range is no longer refused, the hero walks up to the range, then casts.
+struct FHOLFactionApproach
+{
+	bool bNeedsWalk = false;
+	FVector StopPoint = FVector(0.0, 0.0, 0.0);
+}
+
 namespace HOLFactionPowerServer
 {
+	// FARAMIR-1124a STUB (red first): the pure rule of the approach. Origin = the hero's place, Point = the aimed point, RangeCm = the cast range. The walk
+	// stops 50 cm short of the range from the point (so the cast is in range on arrival). THIS STUB NEVER WALKS: the first test is red on purpose.
+	FHOLFactionApproach ApproachPointOf(const FVector& Origin, const FVector& Point, double RangeCm)
+	{
+		FHOLFactionApproach Result;
+		Result.bNeedsWalk = false;
+		Result.StopPoint = Origin;
+		return Result;
+	}
+
 	// True when the power was put down (the effect started FIRST: a failed start costs nothing, then the gauge and the cool-down are written).
 	// GLORFINDEL-1123n: the ONE cast origin of a faction power, for the player AND the AI (it replaces HOLAIPowerCall::OriginOf). A planted banner is the
 	// origin; with none planted (it reads (0, 0): the AI never plants one, the player may not have) the origin is the centre of Own, the caller's points:
