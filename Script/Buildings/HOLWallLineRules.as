@@ -69,9 +69,9 @@ namespace HOLWallLine
 		return Line.Num() * CostPerCell;
 	}
 
-	// ---- Server validation of a line (F4): the same Cells rule, then the refusals. All or nothing: one refusal and no cell is laid.
+	// ---- Server validation of a line (F4): the same Cells rule, then the refusals. Too long and out of the map: all or nothing, no cell is laid. Occupied (D901): the occupied cells are skipped, the others are laid.
 	// Order of the gates: too long (the line BEFORE the cap cut is longer than MaxCells, so a drag is refused, not trimmed), out of the map
-	// (MapMin and MapMax are the first and last valid cell, both included), occupied (a cell of Occupied lies on the line). The values of the
+	// (MapMin and MapMax are the first and last valid cell, both included), occupied (EVERY cell of the line is in Occupied; a partial overlap only skips those cells). The values of the
 	// cap are PARAMETERS (Retours\Q-mur-ligne-longueur.md): no default is coded here. Pure: the caller reads the world (cells under an existing
 	// building, the map size) and passes them in; the terrain, vision and enemy-centre refusals (D22) stay with CheckPlacement.
 	enum EHOLWallLineRefusal
@@ -91,7 +91,7 @@ namespace HOLWallLine
 		EHOLWallLineRefusal Refusal = EHOLWallLineRefusal::Ok;
 		// The first cell that caused the refusal (for TooLong: the first cell past the cap); the start cell when none.
 		FIntPoint BadCell = FIntPoint(0, 0);
-		// D901 (STUB, red first): the cells of the line left out because a building stands on them. Not filled yet.
+		// D901: the cells of the line left out because a building stands on them (holes: not laid, not paid).
 		TArray<FIntPoint> Skipped;
 	}
 
@@ -125,20 +125,29 @@ namespace HOLWallLine
 			}
 		}
 
+		// D901 (the user's answer B): an occupied cell is a hole, not a refusal. The free cells are laid (and paid: the cost is the laid cells), the occupied ones
+		// go to Skipped (the client draws them red). Every cell occupied: nothing to lay, the line is refused as Occupied (BadCell = the first of them).
 		for (int Index = 0; Index < Line.Num(); Index++)
 		{
+			bool bTaken = false;
 			for (int Taken = 0; Taken < Occupied.Num(); Taken++)
 			{
 				if (Occupied[Taken].X == Line[Index].X && Occupied[Taken].Y == Line[Index].Y)
 				{
-					Plan.Refusal = EHOLWallLineRefusal::Occupied;
-					Plan.BadCell = Line[Index];
-					return Plan;
+					bTaken = true;
+					break;
 				}
 			}
+			if (bTaken)
+				Plan.Skipped.Add(Line[Index]);
+			else
+				Plan.Cells.Add(Line[Index]);
 		}
-
-		Plan.Cells = Line;
+		if (Plan.Cells.Num() == 0 && Plan.Skipped.Num() > 0)
+		{
+			Plan.Refusal = EHOLWallLineRefusal::Occupied;
+			Plan.BadCell = Plan.Skipped[0];
+		}
 		return Plan;
 	}
 	// ---- Request adaptation (F4, D345, D867): the pure part of the server RPC ServerPlaceWallLine. D867: NO length cap by default. The cap is read from the cvar
