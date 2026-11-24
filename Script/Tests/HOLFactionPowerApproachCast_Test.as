@@ -91,3 +91,44 @@ void Test_FactionApproachOrderAcceptedWhenHonorIsEnough(FUnitTest& T)
 	T.AssertEquals(OneSpend.Value, Order.NewGaugeValue, "the decision carries the row's price, written only on arrival (D900)");
 	T.AssertTrue(Order.NewGaugeValue < Before, "the price is below the full gauge");
 }
+
+// GLORFINDEL-1124sc (D909): a new order that names the slot's hero cancels its pending cast; an order of other units does not. Step values are COMPUTED by PendingStepOf.
+void Test_FactionHeroOrderCancelsThePendingCast(FUnitTest& T)
+{
+	const int HeroId = 7;
+	TArray<FHOLPendingCast> Pending;
+	HOLFactionPowerServer::SetPending(Pending, MakePending(0, FVector(2000.0, 0.0, 0.0)));
+	TArray<int> Others;
+	Others.Add(3);
+	Others.Add(4);
+	const bool bOthersCancel = HOLFactionPowerServer::CancelPendingOnOrder(Pending, 0, Others, HeroId);
+	T.AssertFalse(bOthersCancel, "an order that does not name the hero cancels nothing");
+	const int StillThere = HOLFactionPowerServer::PendingStepOf(Pending, 0, FVector(1000.0, 0.0, 0.0), 1200.0);
+	T.AssertEquals(2, StillThere, "the cast still waits (in range from 1000 cm) after an order of other units");
+	TArray<int> WithHero = Others;
+	WithHero.Add(HeroId);
+	const bool bHeroCancels = HOLFactionPowerServer::CancelPendingOnOrder(Pending, 0, WithHero, HeroId);
+	T.AssertTrue(bHeroCancels, "an order naming the hero cancels the pending cast");
+	const int Gone = HOLFactionPowerServer::PendingStepOf(Pending, 0, FVector(1000.0, 0.0, 0.0), 1200.0);
+	T.AssertEquals(0, Gone, "the cancelled cast never fires, even in range");
+	const bool bNoHero = HOLFactionPowerServer::CancelPendingOnOrder(Pending, 0, WithHero, -1);
+	T.AssertFalse(bNoHero, "no hero (id -1): nothing to cancel");
+}
+
+// GLORFINDEL-1124sc (D911): a refusal at the ORDER (short Honor) is raised as a notice for its slot, and read back by TakeNoticeFrom; the key is the rule's.
+void Test_FactionRefusalAtTheOrderRaisesANotice(FUnitTest& T)
+{
+	const FVector Point = FVector(2000.0, 0.0, 0.0);
+	const FHOLFactionPowerDecision Short = HOLFactionPowerServer::ApproachDecisionOf(int(EHOLFaction::DawnOrder), 0, 0, 0, 1000, Point);
+	TArray<FHOLPendingNotice> Notices;
+	const bool bRaised = HOLFactionPowerServer::RaiseRefusalNotice(Notices, 2, Short.Refusal);
+	T.AssertTrue(bRaised, "a short Honor at the order raises a notice");
+	const int OtherSlot = HOLFactionPowerServer::TakeNoticeFrom(Notices, 1);
+	T.AssertEquals(0, OtherSlot, "another slot sees nothing");
+	const int Taken = HOLFactionPowerServer::TakeNoticeFrom(Notices, 2);
+	T.AssertEquals(Short.Refusal, Taken, "the owner receives the refusal the rule computed");
+	const FHOLFactionPowerDecision Enough = HOLFactionPowerServer::ApproachDecisionOf(int(EHOLFaction::DawnOrder), 0, HOLDawnValues::HonorCap(), 0, 1000, Point);
+	const bool bAccepted = HOLFactionPowerServer::RaiseRefusalNotice(Notices, 2, Enough.Refusal);
+	T.AssertFalse(bAccepted, "an accepted order raises no notice");
+	T.AssertEquals(0, Notices.Num(), "nothing queued");
+}
