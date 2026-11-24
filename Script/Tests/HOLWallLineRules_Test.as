@@ -500,3 +500,21 @@ void Test_WallLineSkippedCellIsNotPaidNorQueued(FUnitTest& T)
 	T.AssertTrue(Plan.Cells[0].X == 1, "the first laid cell is the first free one (the first order, index 0, obeys Shift)");
 	T.AssertFalse(HOLWallLine::QueueForCell(0, false), "the first LAID cell is not queued without Shift");
 }
+// D898 G1 (PLAN-GRILLE-FINE-1124.md): on the fine grid (4 m tile, SubDivision 4 = 1 m pitch) a drag from x = 50 to x = 1650 on one row covers the cells
+// 0..16 of 100: 17 cells (the 4 m grid gives 5), 17 x 5 Wood = 85. The count is computed by the rule from the two world points, the cost by Cost() over the laid cells.
+void Test_WallLineFineGridLineIsSeventeenCells(FUnitTest& T)
+{
+	TArray<FIntPoint> Taken;
+	HOLWallLine::FHOLWallLinePlan Plan = HOLWallLine::PlanFromRequestFine(0, FVector(50.0, 50.0, 0.0), FVector(1650.0, 50.0, 0.0), 400.0, 4, WallLineMapMin, WallLineMapMax, Taken, 1000);
+	T.AssertTrue(Plan.Refusal == HOLWallLine::EHOLWallLineRefusal::Ok, "the fine line is accepted");
+	T.AssertEquals(17, Plan.Cells.Num(), "(50,50) -> (1650,50) at SubDivision 4: 17 cells of 100");
+	if (Plan.Cells.Num() == 17)
+	{
+		T.AssertTrue(Plan.Cells[0].X == 0 && Plan.Cells[0].Y == 0, "the first cell is (0,0)");
+		T.AssertTrue(Plan.Cells[16].X == 16 && Plan.Cells[16].Y == 0, "the last cell is (16,0)");
+		const int Wood = HOLWallLine::Cost(Plan.Cells[0], Plan.Cells[16], 1000, 5);
+		T.AssertEquals(85, Wood, "17 cells at 5 Wood cost 85");
+	}
+	HOLWallLine::FHOLWallLinePlan Coarse = HOLWallLine::PlanFromRequestFine(0, FVector(50.0, 50.0, 0.0), FVector(1650.0, 50.0, 0.0), 400.0, 1, WallLineMapMin, WallLineMapMax, Taken, 1000);
+	T.AssertEquals(5, Coarse.Cells.Num(), "SubDivision 1 keeps today's 4 m grid: 5 cells");
+}

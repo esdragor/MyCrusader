@@ -211,6 +211,13 @@ namespace HOLWallLine
 		return Validate(FIntPoint(CellOfCoordinate(Start.X, Tile), CellOfCoordinate(Start.Y, Tile)), FIntPoint(CellOfCoordinate(End.X, Tile), CellOfCoordinate(End.Y, Tile)), MapMin, MapMax, Occupied, MaxCells);
 	}
 
+	// ---- Fine grid (D898, G1, PLAN-GRILLE-FINE-1124.md): the line on a pitch of Tile / SubDivision (4 m tile, SubDivision 4 = 1 m cells). Cells are then sub-cells.
+	// MapMin / MapMax stay in 4 m tiles (the caller does not change). STUB (red first): ignores SubDivision, the 4 m plan.
+	FHOLWallLinePlan PlanFromRequestFine(int SenderSlot, FVector Start, FVector End, double Tile, int SubDivision, FIntPoint MapMin, FIntPoint MapMax, const TArray<FIntPoint>& Occupied, int MaxCells)
+	{
+		return PlanFromRequest(SenderSlot, Start, End, Tile, MapMin, MapMax, Occupied, MaxCells);
+	}
+
 	// ---- Drag gesture (F4, client): the cells the drag SHOWS. One source with Validate (it lays exactly these cells when the line is accepted); the C++
 	// controller reads them through UHOLWallLineBridge (HOLWallLineBridge.as), it holds no copy of the rule. STUB (red first): empty.
 	// The wall types the drag is armed for (S3-b): the rows of BuildingTypes.csv placed as a line. The Palisade is the first; the stone Wall and
