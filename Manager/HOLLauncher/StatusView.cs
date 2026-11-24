@@ -3,10 +3,11 @@ using HOLUpdate;
 namespace HOLLauncher;
 
 /**
- * What the window shows, computed from a LauncherStatus (pure, tested): the French texts and which buttons are
- * enabled. "Update the game" runs GameUpdater (L6c); "Update the launcher" runs LauncherUpdater (L7); "Play" follows
+ * What the window shows, computed from a LauncherStatus (pure, tested): the texts and which buttons are enabled.
+ * "Update the game" runs GameUpdater (L6c); "Update the launcher" runs LauncherUpdater (L7); "Play" follows
  * PlayRules (L8): PlayConfirmation is asked before starting the game (null: none). UpdateGameText names that button:
- * "Installer le jeu" when nothing is installed (L9).
+ * "Install the game" when nothing is installed (L9). L16: every text comes from Texts in the given language (null: the
+ * one in use), so a language change rebuilds the view (MainForm reads the status again).
  */
 public sealed record StatusView(
     string InstalledText,
@@ -19,61 +20,68 @@ public sealed record StatusView(
     bool UpdateLauncherEnabled,
     bool RefreshEnabled,
     string? PlayConfirmation = null,
-    string UpdateGameText = StatusView.UpdateGameLabel)
+    string UpdateGameText = "")
 {
-    public const string UpdateGameLabel = "Mettre à jour le jeu";
-
-    /** The same button when nothing is installed (L9: a friend's kit folder): the update downloads everything. */
-    public const string InstallGameLabel = "Installer le jeu";
-
     public bool NotesVisible => Notes != "";
 
-    public static StatusView From(LauncherStatus status)
+    public static StatusView From(LauncherStatus status, string? language = null)
     {
+        var lang = Texts.LanguageOr(language);
         var state = status.State switch
         {
-            GameState.UpToDate => "Le jeu est à jour.",
-            GameState.Outdated => $"Une mise à jour du jeu est disponible ({VersionName.Display(status.Latest!)}).",
-            GameState.NotInstalled => $"Le jeu n'est pas installé ; la version {VersionName.Display(status.Latest!)} est disponible.",
-            _ when status.Message == AccessKeyHandler.BadKeyMessage => status.Message,
-            _ => $"Serveur injoignable : {status.Message}",
+            GameState.UpToDate => Texts.Get("GameUpToDate", lang),
+            GameState.Outdated => Texts.FormatIn(lang, "GameOutdated", VersionName.Display(status.Latest!)),
+            GameState.NotInstalled => Texts.FormatIn(lang, "GameNotInstalled", VersionName.Display(status.Latest!)),
+            // L16: the refused key is a signal of its own (LatestOutcome.BadKey), never a compared text.
+            _ when status.KeyRefused => Texts.Get("BadKey", lang),
+            _ => Texts.FormatIn(lang, "ServerUnreachable", status.Message),
         };
-        var play = PlayRules.Decide(status.State, status.Installed);
+        var play = PlayRules.Decide(status.State, status.Installed, language: lang);
         if (play.StateWarning != "")
         {
             state += " " + play.StateWarning;
         }
-        var launcher = LauncherLine(status.LauncherCurrent);
-        if (status.LauncherUpdateAvailable)
-        {
-            launcher += $" (version {status.LauncherAvailable} disponible)";
-        }
-        return new StatusView(InstalledLine(status.Installed), LatestLine(status.Latest), state, status.Notes, launcher,
+        var launcher = status.LauncherUpdateAvailable
+            ? Texts.FormatIn(lang, "LauncherLineUpdate", status.LauncherCurrent, status.LauncherAvailable)
+            : LauncherLine(status.LauncherCurrent, lang);
+        return new StatusView(InstalledLine(status.Installed, lang), LatestLine(status.Latest, lang), state, status.Notes, launcher,
             PlayEnabled: play.Enabled,
             UpdateGameEnabled: status.State is GameState.Outdated or GameState.NotInstalled,
             UpdateLauncherEnabled: status.LauncherUpdateAvailable,
             RefreshEnabled: true,
             PlayConfirmation: play.Confirmation,
-            UpdateGameText: status.Installed is null ? InstallGameLabel : UpdateGameLabel);
+            UpdateGameText: Texts.Get(status.Installed is null ? "InstallGame" : "UpdateGame", lang));
     }
 
     /** While reading: everything disabled, "Refresh" included. */
-    public static StatusView Loading(string launcherCurrent = LauncherInfo.Version)
-        => new("Version installée : …", "Dernière version : …", "Lecture en cours…", "", LauncherLine(launcherCurrent),
-            false, false, false, false);
+    public static StatusView Loading(string launcherCurrent = LauncherInfo.Version, string? language = null)
+    {
+        var lang = Texts.LanguageOr(language);
+        var pending = Texts.Get("VersionPending", lang);
+        return new(Texts.FormatIn(lang, "InstalledVersion", pending), Texts.FormatIn(lang, "LatestVersion", pending),
+            Texts.Get("StatusLoading", lang), "", LauncherLine(launcherCurrent, lang), false, false, false, false,
+            UpdateGameText: Texts.Get("UpdateGame", lang));
+    }
 
     /** During a game or launcher update: the texts stay, every button is disabled (the update has its own "Cancel"). */
     public static StatusView Updating(StatusView current)
         => current with { PlayEnabled = false, UpdateGameEnabled = false, UpdateLauncherEnabled = false, RefreshEnabled = false };
 
     /** servers.json unreadable (InvalidDataException): shown as the state, only "Refresh" enabled. */
-    public static StatusView Error(string message, string? installed, string launcherCurrent = LauncherInfo.Version)
-        => new(InstalledLine(installed), LatestLine(null), $"Erreur : {message}", "", LauncherLine(launcherCurrent),
-            false, false, false, true);
+    public static StatusView Error(string message, string? installed, string launcherCurrent = LauncherInfo.Version,
+        string? language = null)
+    {
+        var lang = Texts.LanguageOr(language);
+        return new(InstalledLine(installed, lang), LatestLine(null, lang), Texts.FormatIn(lang, "Error", message), "",
+            LauncherLine(launcherCurrent, lang), false, false, false, true,
+            UpdateGameText: Texts.Get(installed is null ? "InstallGame" : "UpdateGame", lang));
+    }
 
-    private static string InstalledLine(string? installed) => $"Version installée : {(installed is null ? "pas installé" : VersionName.Display(installed))}";
+    private static string InstalledLine(string? installed, string lang) => Texts.FormatIn(lang, "InstalledVersion",
+        installed is null ? Texts.Get("VersionNotInstalled", lang) : VersionName.Display(installed));
 
-    private static string LatestLine(string? latest) => $"Dernière version : {(latest is null ? "inconnue" : VersionName.Display(latest))}";
+    private static string LatestLine(string? latest, string lang) => Texts.FormatIn(lang, "LatestVersion",
+        latest is null ? Texts.Get("VersionUnknown", lang) : VersionName.Display(latest));
 
-    private static string LauncherLine(string current) => $"Lanceur : version {current}";
+    private static string LauncherLine(string current, string lang) => Texts.FormatIn(lang, "LauncherLine", current);
 }

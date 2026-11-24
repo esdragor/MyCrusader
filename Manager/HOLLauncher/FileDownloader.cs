@@ -15,8 +15,15 @@ public sealed record DownloadProgress(int FilesDone, int FileCount, string Curre
  */
 public sealed record DownloadResult(PlannedDownload Planned, DownloadKind Kind, string LocalPath);
 
-/** A download that failed: HTTP error, dropped connection (the .part is kept for resuming), or a file that does not match its list. */
-public sealed class UpdateDownloadException(string message, Exception? inner = null) : Exception(message, inner);
+/**
+ * A download that failed: HTTP error, dropped connection (the .part is kept for resuming), or a file that does not match
+ * its list. The message is the technical detail (English), shown inside a translated sentence (L16).
+ */
+public class UpdateDownloadException(string message, Exception? inner = null) : Exception(message, inner);
+
+/** The manager refused the kit's access key (401 bad_key, L11): the updaters say Texts "BadKey" instead (L16). */
+public sealed class AccessKeyRefusedException(string relativeUrl)
+    : UpdateDownloadException($"{relativeUrl}: access key refused (HTTP 401 bad_key)");
 
 /**
  * Fetches the files of an UpdatePlan into a work folder (L6a), laid out as:
@@ -168,7 +175,7 @@ public sealed class FileDownloader
                 }
                 if (AccessKeyHandler.IsBadKey((int)response.StatusCode, error))
                 {
-                    throw new UpdateDownloadException(AccessKeyHandler.BadKeyMessage);
+                    throw new AccessKeyRefusedException(relativeUrl);
                 }
                 throw new UpdateDownloadException($"{relativeUrl}: HTTP {(int)response.StatusCode}{(error is null ? "" : $" {error}")}");
             }

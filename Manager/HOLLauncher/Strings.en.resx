@@ -22,6 +22,73 @@
   <data name="SettingsUnreadable" xml:space="preserve"><value>Settings unreadable, defaults used: {0}</value></data>
   <data name="SettingsNotSaved" xml:space="preserve"><value>Settings not saved: {0}</value></data>
   <data name="SettingsBadFolder" xml:space="preserve"><value>Game folder unusable: {0}</value></data>
+  <data name="Files" xml:space="preserve"><value>Files</value></data>
+  <data name="FilesVerify" xml:space="preserve"><value>Verify / repair the files</value></data>
+  <data name="FilesOpenGame" xml:space="preserve"><value>Open the game folder</value></data>
+  <data name="FilesOpenLogs" xml:space="preserve"><value>Open the logs folder</value></data>
+  <data name="FilesUninstall" xml:space="preserve"><value>Uninstall the game…</value></data>
+  <data name="FilesServersError" xml:space="preserve"><value>Error: {0}</value></data>
+  <data name="RepairChecking" xml:space="preserve"><value>Checking the game files…</value></data>
+  <data name="RepairNotInstalled" xml:space="preserve"><value>The game is not installed: install it first.</value></data>
+  <data name="RepairIntact" xml:space="preserve"><value>All the game files are intact ({0}).</value></data>
+  <data name="RepairDone" xml:space="preserve"><value>{0} file(s) repaired: the game is intact again ({1}).</value></data>
+  <data name="RepairToLatest" xml:space="preserve"><value>The installed version, {0}, is no longer available on the server: the game was repaired to the latest version, {1} ({2} file(s) downloaded).</value></data>
+  <data name="RepairCancelled" xml:space="preserve"><value>Check cancelled: no file was replaced.</value></data>
+  <data name="RepairNoSpace" xml:space="preserve"><value>Not enough disk space: repairing the game needs {0} GB free, the disk of {1} only has {2}. Free some space, then try again.</value></data>
+  <data name="RepairDownloadFailed" xml:space="preserve"><value>Download failed: {0}</value></data>
+  <data name="RepairInterrupted" xml:space="preserve"><value>Repair interrupted: {0}; please run it again.</value></data>
+  <data name="RepairServerUnreachable" xml:space="preserve"><value>Server unreachable: {0}</value></data>
+  <data name="UninstallConfirm" xml:space="preserve"><value>Uninstall Heroes of Liberty from {0}? The game files will be deleted. Kept: the launcher, its settings, hpatchz.exe, servers.json and your own files (the game's settings and logs in HeroesOfLiberty\Saved).</value></data>
+  <data name="UninstallNothing" xml:space="preserve"><value>The game is not installed in {0}: nothing to uninstall.</value></data>
+  <data name="UninstallNoList" xml:space="preserve"><value>The list of the game files is unknown (game installed without the launcher, server unreachable): nothing was deleted. Try again when the server answers.</value></data>
+  <data name="UninstallLocked" xml:space="preserve"><value>{0} is in use: close the game, then try again. Nothing was deleted.</value></data>
+  <data name="UninstallDone" xml:space="preserve"><value>The game is uninstalled ({0} file(s) deleted). The launcher, its settings and your own files are kept.</value></data>
+  <data name="UninstallFailed" xml:space="preserve"><value>Uninstall interrupted: {0}</value></data>
+  <data name="LogsMissing" xml:space="preserve"><value>No game logs yet: {0} does not exist (has the game been started yet?).</value></data>
+  <data name="GameDirMissing" xml:space="preserve"><value>The game folder does not exist: {0}</value></data>
+  <data name="FolderOpenFailed" xml:space="preserve"><value>Cannot open {0}: {1}</value></data>
+  <data name="InstalledVersion" xml:space="preserve"><value>Installed version: {0}</value></data>
+  <data name="LatestVersion" xml:space="preserve"><value>Latest version: {0}</value></data>
+  <data name="VersionNotInstalled" xml:space="preserve"><value>not installed</value></data>
+  <data name="VersionUnknown" xml:space="preserve"><value>unknown</value></data>
+  <data name="VersionPending" xml:space="preserve"><value>…</value></data>
+  <data name="StatusLoading" xml:space="preserve"><value>Loading…</value></data>
+  <data name="GameUpToDate" xml:space="preserve"><value>The game is up to date.</value></data>
+  <data name="GameOutdated" xml:space="preserve"><value>A game update is available ({0}).</value></data>
+  <data name="GameNotInstalled" xml:space="preserve"><value>The game is not installed; version {0} is available.</value></data>
+  <data name="BadKey" xml:space="preserve"><value>Access key refused: this is not the right kit. Ask for it again.</value></data>
+  <data name="ServerUnreachable" xml:space="preserve"><value>Server unreachable: {0}</value></data>
+  <data name="Error" xml:space="preserve"><value>Error: {0}</value></data>
+  <data name="LauncherLine" xml:space="preserve"><value>Launcher: version {0}</value></data>
+  <data name="LauncherLineUpdate" xml:space="preserve"><value>Launcher: version {0} (version {1} available)</value></data>
+  <data name="UpdateGame" xml:space="preserve"><value>Update the game</value></data>
+  <data name="InstallGame" xml:space="preserve"><value>Install the game</value></data>
+  <data name="PlayOutdatedConfirmation" xml:space="preserve"><value>The game is not up to date: the server will refuse this version. Play anyway (solo)?</value></data>
+  <data name="PlaySoloWarning" xml:space="preserve"><value>You can play solo.</value></data>
+  <data name="ProgressStarting" xml:space="preserve"><value>Preparing the update…</value></data>
+  <data name="ProgressFile" xml:space="preserve"><value>File {0}/{1}: {2} — {3} MB</value></data>
+  <data name="ProgressLauncher" xml:space="preserve"><value>Launcher version {0}: {1} MB</value></data>
+  <data name="ProgressLauncherTotal" xml:space="preserve"><value>Launcher version {0}: {1} / {2} MB</value></data>
+  <data name="ProgressCancelling" xml:space="preserve"><value>Cancelling…</value></data>
+  <data name="GameInstalled" xml:space="preserve"><value>The game is installed (version {0}).</value></data>
+  <data name="GameUpdated" xml:space="preserve"><value>The game is up to date (version {0}).</value></data>
+  <data name="GameUpdateCancelled" xml:space="preserve"><value>Update cancelled; it will resume where it stopped.</value></data>
+  <data name="GameDownloadFailed" xml:space="preserve"><value>Download failed: {0}</value></data>
+  <data name="GameUpdateInterrupted" xml:space="preserve"><value>Update interrupted: {0}; please start it again.</value></data>
+  <data name="GameFileInUse" xml:space="preserve"><value>{0} is in use: close the game, then start the update again.</value></data>
+  <data name="NotEnoughSpace" xml:space="preserve"><value>Not enough disk space: version {1} needs {0} GB free, the disk of {2} has only {3} GB. Free some space, then try again.</value></data>
+  <data name="LauncherUpdated" xml:space="preserve"><value>The launcher is now version {0}.</value></data>
+  <data name="LauncherCorrupt" xml:space="preserve"><value>The downloaded launcher is damaged (SHA-256 {0} instead of {1}); it was deleted, please try again.</value></data>
+  <data name="LauncherUpdateCancelled" xml:space="preserve"><value>Launcher update cancelled; it will resume where it stopped.</value></data>
+  <data name="LauncherDownloadFailed" xml:space="preserve"><value>Launcher download failed: {0}</value></data>
+  <data name="LauncherUpdateInterrupted" xml:space="preserve"><value>Launcher update interrupted: {0}; the current launcher is kept.</value></data>
+  <data name="LauncherRestartByHand" xml:space="preserve"><value>{0} Please start it again yourself ({1}).</value></data>
+  <data name="LauncherPathUnknown" xml:space="preserve"><value>Error: the launcher's location is unknown.</value></data>
+  <data name="UpdateCancelled" xml:space="preserve"><value>Update cancelled.</value></data>
+  <data name="GameNotFound" xml:space="preserve"><value>Game not found: {0} does not exist.</value></data>
+  <data name="GameStarted" xml:space="preserve"><value>Game started.</value></data>
+  <data name="GameStartFailed" xml:space="preserve"><value>The game could not be started: {0}</value></data>
+  <data name="BadCommandLine" xml:space="preserve"><value>Invalid command line: {0}</value></data>
   <data name="NotesOlderMissing" xml:space="preserve"><value>The notes of older versions are no longer available.</value></data>
   <data name="SettingsLaunch" xml:space="preserve"><value>Game launch</value></data>
   <data name="SettingsDisplayMode" xml:space="preserve"><value>Display:</value></data>

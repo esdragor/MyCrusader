@@ -9,9 +9,6 @@ public sealed class AccessKeyHandler(Func<ManagerServer?> server) : DelegatingHa
 {
     public const string Header = "X-HOL-Key";
 
-    /** What the player sees when the manager answers 401 bad_key. */
-    public const string BadKeyMessage = "Clé d'accès refusée : le kit n'est pas le bon. Redemandez-le.";
-
     /** The first server of <gameDir>/servers.json; an unreadable file gives none (the window says so elsewhere). */
     public static Func<ManagerServer?> FromGame(string gameDir) => () =>
     {
@@ -41,6 +38,9 @@ public sealed class AccessKeyHandler(Func<ManagerServer?> server) : DelegatingHa
         return base.SendAsync(request, cancellationToken);
     }
 
-    /** True for the manager's 401 with error bad_key. */
+    /**
+     * True for the manager's 401 with error bad_key. L16: it becomes a signal (LatestOutcome.BadKey,
+     * AccessKeyRefusedException); whoever shows it picks the text "BadKey" of Texts.
+     */
     public static bool IsBadKey(int code, string? error) => code == 401 && error == "bad_key";
 }

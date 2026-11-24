@@ -45,6 +45,15 @@ public static class Texts
     public static string FormatIn(string language, string name, params object[] args)
         => string.Format(Culture(language), Get(name, language), args);
 
+    /**
+     * The given language (checked), else the one in use (L16). The views and messages take an optional language so that
+     * tests name theirs instead of depending on the global Language, which another test may be changing in parallel.
+     */
+    public static string LanguageOr(string? language) => language is null ? Language : Checked(language);
+
+    /** A number in the language's own format (L16): 12,4 in French, 12.4 in English and Japanese. */
+    public static string Number(double value, string format, string language) => value.ToString(format, Culture(language));
+
     /** Each language in its own language, as the settings list shows it. */
     public static string LanguageName(string language) => Checked(language) switch
     {

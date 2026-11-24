@@ -21,9 +21,11 @@ public enum LatestOutcome
     Unreachable,
     /** An answer, but an error (404 no_version...) or a body this launcher does not accept. */
     Refused,
+    /** 401 bad_key (L11): the kit's access key is not the manager's; the views say it in the player's language (L16). */
+    BadKey,
 }
 
-/** Latest is set only when Outcome is Ok; Message says why otherwise. */
+/** Latest is set only when Outcome is Ok; Message says why otherwise (technical detail in English, L16). */
 public sealed record LatestResult(LatestOutcome Outcome, LatestVersion? Latest, string Message);
 
 /**
@@ -72,7 +74,7 @@ public sealed class VersionsClient
         }
         if (AccessKeyHandler.IsBadKey(code, ReadErrorCode(body)))
         {
-            return Refused(AccessKeyHandler.BadKeyMessage);
+            return new LatestResult(LatestOutcome.BadKey, null, "HTTP 401 bad_key");
         }
         if (code < 200 || code >= 300)
         {

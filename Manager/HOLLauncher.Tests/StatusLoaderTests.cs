@@ -17,7 +17,7 @@ public class StatusLoaderTests
         dir.Write("HeroesOfLiberty/Version.txt", "v1");
         var handler = FakeHandler.Json(HttpStatusCode.OK, Latest);
 
-        var view = await StatusLoader.LoadAsync(dir.Root, new VersionsClient(new HttpClient(handler)));
+        var view = await StatusLoader.LoadAsync(dir.Root, new VersionsClient(new HttpClient(handler)), language: "fr");
 
         Assert.Equal(new Uri("http://home:7700/versions/latest"), Assert.Single(handler.Requests));
         Assert.Equal("Version installée : v1", view.InstalledText);
@@ -33,7 +33,7 @@ public class StatusLoaderTests
         dir.Write("servers.json", "{ not json");
         var handler = FakeHandler.Json(HttpStatusCode.OK, Latest);
 
-        var view = await StatusLoader.LoadAsync(dir.Root, new VersionsClient(new HttpClient(handler)));
+        var view = await StatusLoader.LoadAsync(dir.Root, new VersionsClient(new HttpClient(handler)), language: "fr");
 
         Assert.Empty(handler.Requests);
         Assert.StartsWith("Erreur : ", view.StateText);
@@ -46,7 +46,7 @@ public class StatusLoaderTests
         using var dir = new TempDir();
         var handler = FakeHandler.Throwing(new HttpRequestException("connection refused"));
 
-        var view = await StatusLoader.LoadAsync(dir.Root, new VersionsClient(new HttpClient(handler)));
+        var view = await StatusLoader.LoadAsync(dir.Root, new VersionsClient(new HttpClient(handler)), language: "fr");
 
         Assert.StartsWith("Serveur injoignable : ", view.StateText);
         Assert.Equal("Version installée : pas installé", view.InstalledText);

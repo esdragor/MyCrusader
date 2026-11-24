@@ -13,12 +13,8 @@ public sealed record PlayDecision(bool Enabled, string? Confirmation, string Sta
  */
 public static class PlayRules
 {
-    public const string OutdatedConfirmation =
-        "Le jeu n'est pas à jour : le serveur refusera cette version. Jouer quand même (en solo) ?";
-
-    public const string SoloWarning = "Vous pouvez jouer en solo.";
-
-    public static PlayDecision Decide(GameState state, string? installed, bool updating = false)
+    /** L16: the texts (PlayOutdatedConfirmation, PlaySoloWarning) in the given language, null: the one in use. */
+    public static PlayDecision Decide(GameState state, string? installed, bool updating = false, string? language = null)
     {
         if (updating || installed is null || state == GameState.NotInstalled)
         {
@@ -26,8 +22,8 @@ public static class PlayRules
         }
         return state switch
         {
-            GameState.Outdated => new PlayDecision(true, OutdatedConfirmation, ""),
-            GameState.Unreachable => new PlayDecision(true, null, SoloWarning),
+            GameState.Outdated => new PlayDecision(true, Texts.Get("PlayOutdatedConfirmation", Texts.LanguageOr(language)), ""),
+            GameState.Unreachable => new PlayDecision(true, null, Texts.Get("PlaySoloWarning", Texts.LanguageOr(language))),
             _ => new PlayDecision(true, null, ""),
         };
     }

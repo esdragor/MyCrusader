@@ -2,8 +2,11 @@ using HOLUpdate;
 
 namespace HOLLauncher;
 
-/** A file of the game is in use (the game is running): nothing was replaced. */
-public sealed class GameLockedException(string message, Exception inner) : Exception(message, inner);
+/** A file of the game is in use (the game is running): nothing was replaced. Path: the file (GameUpdater says it, L16). */
+public sealed class GameLockedException(string path, Exception inner) : Exception($"{path} is in use", inner)
+{
+    public string Path { get; } = path;
+}
 
 /** A file ready to go in place: its entry in the target list and the checked file in the work folder. */
 public sealed record ReadyFile(FileEntry File, string LocalPath);
@@ -66,7 +69,7 @@ public static class UpdateApplier
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException)
         {
-            throw new GameLockedException($"{path} est utilisé : fermez le jeu, puis relancez la mise à jour.", e);
+            throw new GameLockedException(path, e);
         }
     }
 
