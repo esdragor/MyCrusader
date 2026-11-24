@@ -24,13 +24,21 @@ namespace HOLAITower
 	// How many towers a level wants at most.
 	int MaxFor(const FHOLAITowerSettings& Rule, int Level)
 	{
-		return 0;
+		if (Level <= 0)
+		{
+			return Rule.EasyMax;
+		}
+		if (Level == 1)
+		{
+			return Rule.NormalMax;
+		}
+		return Rule.HardMax;
 	}
 
 	// Whether the slot builds a tower now: the level wants more than it has (towers finished or under way), the tier open, an enemy centre to
 	// guard against, a first army, the wood to pay for it.
 	bool WantsTower(const FHOLAITowerSettings& Rule, int Level, int Tier, int Towers, bool bHasEnemyCentre, int Soldiers, int WoodStock, int WoodCost)
 	{
-		return false;
+		return Towers < MaxFor(Rule, Level) && Tier >= Rule.BuildTier && bHasEnemyCentre && Soldiers >= Rule.MinSoldiers && WoodStock >= WoodCost;
 	}
 }

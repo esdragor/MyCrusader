@@ -491,6 +491,17 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 		{
 			ThinkCavalryProduce(PlayerIndex, Step, Summary, Data);
 		}
+		// 3b5. The Watch Tower (point 7, provisional, HOLAITower::WantsTower): the AI had no tower, so its garrison call (ThinkGarrison) had nothing to read in a match.
+		// Gated with the Siege part: a held slot builds nothing new (held scenarios keep their buildings).
+		int TowerBuilder = -1;
+		if (HOLAIHold::Allows(bHeld, EHOLAIHoldPart::Siege))
+		{
+			TowerBuilder = ThinkTowerBuild(PlayerIndex, Step, Summary, Data);
+		}
+		if (TowerBuilder >= 0)
+		{
+			Free.Remove(TowerBuilder);
+		}
 
 		// 3c. The King (IA3.4, Regicide): behind the forum, away from the enemy soldiers that come near him.
 		FHOLAIKingMemory KingMemory;
@@ -1012,6 +1023,55 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 			return -1;
 		}
 		Log(n"LogHOLMatch", f"AI slot {PlayerIndex} step {Step}: build Stable at ({Spot.X}, {Spot.Y}) by #{Builder} (level {Level}, an army of {Summary.Army.Num()})");
+		Sent.Ids.Add(Builder);
+		SentBuilders.Add(PlayerIndex, Sent);
+		return Builder;
+	}
+
+	// The Watch Tower's construction (point 7, provisional, HOLAITower::WantsTower): Normal one, Hard two (finished or under way), with a first army and an enemy
+	// centre; on the enemy side of the centre like the other military buildings; one Peasant sent, not one already sent to a site. Returns that Peasant (-1: none).
+	int ThinkTowerBuild(int PlayerIndex, int64 Step, const FHOLAISummary& Summary, const FHOLAIOpeningData& Data)
+	{
+		int Towers = 0;
+		for (int Index = 0; Index < Summary.Buildings.Num(); Index++)
+		{
+			if (Summary.Buildings[Index].TypeName == n"TowerWood")
+			{
+				Towers++;
+			}
+		}
+		FHOLAITypeFigures Figures;
+		if (!Summary.bHasCentre || !HOLAIOrder::ReadAIBuildingFigures(n"TowerWood", Figures))
+		{
+			return -1;
+		}
+		const int Level = int(HOLAILives::Played(Summary.Level, Data.GameSeconds, HOLAIArmy::DefaultData().Lives));
+		if (!HOLAITower::WantsTower(FHOLAITowerSettings(), Level, Summary.Tier, Towers, Summary.bHasEnemyCentre, Summary.Army.Num(), Summary.Wood.Stock,
+			Figures.CostWood))
+		{
+			return -1;
+		}
+		FHOLAIBuilders Sent;
+		SentBuilders.Find(PlayerIndex, Sent);
+		const int Builder = HOLAIOpening::PickBuilder(Summary, Sent.Ids);
+		if (Builder < 0 || Summary.PeasantIds.Num() < Data.MinPeasantsToBuild || HOLAIOpening::SitesUnderWay(Summary) >= Data.MaxSites)
+		{
+			return -1;
+		}
+		FVector Spot;
+		if (!HOLAIOrder::FindAIPlacement(PlayerIndex, n"TowerWood", HOLAIOpening::MilitaryAnchor(Summary, Data), Data.Rings, Spot))
+		{
+			LogBuildOnce(PlayerIndex, Step, "no spot for TowerWood");
+			return -1;
+		}
+		TArray<int> Builders;
+		Builders.Add(Builder);
+		if (!HOLAIOrder::IssueAIPlaceOrder(PlayerIndex, n"TowerWood", Spot, Builders))
+		{
+			LogBuildOnce(PlayerIndex, Step, "build TowerWood refused");
+			return -1;
+		}
+		Log(n"LogHOLMatch", f"AI slot {PlayerIndex} step {Step}: build TowerWood at ({Spot.X}, {Spot.Y}) by #{Builder} (level {Level}, {Towers} already, an army of {Summary.Army.Num()})");
 		Sent.Ids.Add(Builder);
 		SentBuilders.Add(PlayerIndex, Sent);
 		return Builder;
