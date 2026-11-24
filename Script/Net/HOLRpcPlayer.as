@@ -1527,11 +1527,11 @@ for (FString Command : Commands)
 		FIntPoint MapMin;
 		FIntPoint MapMax;
 		TArray<FIntPoint> Occupied;
-		const double Tile = HOLConstructionRead::GetWallLineWorld(MapMin, MapMax, Occupied);
-		// D898 G5: hol.Wall.SubDivision (default 1 = the 4 m tiles of today, 4 = 1 m sub-cells): the cells are then sub-cells of pitch Tile / SubDivision.
 		const int SubDivision = HOLWallLine::SubDivision();
+		const double Tile = HOLConstructionRead::GetWallLineWorldAtPitch(SubDivision, MapMin, MapMax, Occupied);
+		// D898 G5: hol.Wall.SubDivision (default 1 = the 4 m tiles of today, 4 = 1 m sub-cells): the cells are then sub-cells of pitch Tile / SubDivision.
 		const double Pitch = Tile / double(SubDivision);
-		HOLWallLine::FHOLWallLinePlan Plan = HOLWallLine::PlanFromRequestFine(Slot, FVector(Start.X, Start.Y, Start.Z), FVector(End.X, End.Y, End.Z), Tile, SubDivision, MapMin, MapMax, Occupied, HOLWallLine::MaxLineCells());
+		HOLWallLine::FHOLWallLinePlan Plan = HOLWallLine::PlanFromRequest(Slot, FVector(Start.X, Start.Y, Start.Z), FVector(End.X, End.Y, End.Z), Pitch, MapMin, MapMax, Occupied, HOLWallLine::MaxLineCells());
 		if (Plan.Refusal != HOLWallLine::EHOLWallLineRefusal::Ok)
 		{
 			const int RefusalCode = int(Plan.Refusal);
