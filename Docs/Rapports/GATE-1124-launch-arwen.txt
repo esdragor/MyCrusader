@@ -1,24 +1,22 @@
-Heure PowerShell : 10:55:02  fin dure 14:00  reste 185 min
-PASS temps restant 185 min ; arret dur des agents = 14:00 (jusqu'a +15 min toleres, jamais 15 min trop tot)
+Heure PowerShell : 11:37:21  fin dure 14:00  reste 143 min
+PASS temps restant 143 min ; arret dur des agents = 14:00 (jusqu'a +15 min toleres, jamais 15 min trop tot)
 PASS L19-1 : check-list lue (L26) presente dans la section du jour
 PASS no_window_test : aucun script d outil ne lance d editeur fenetre
 WARN no_window_test : frames waits: 242 in 131 scenario(s) of C:\Users\baudo\Documents\MyCrusader\Tools\Scenarios (default Warn, Retours\Q-frames-refus.md ; Fail: -FrameWaits Fail or HOL_CHECK_FRAMES=fail)
 PASS aucun python/pythonw orphelin
-PASS memoire virtuelle libre 21.8 Go >= 8 Go
-WARN cl.exe d'un autre moteur que C:\UE\UE_5.8_HOL en cours (PID 45968, 46184, 10928) : la machine compile hors de la file de build.ps1, builds et jeux plus lents
-WARN HeroesOfLiberty-Arwen : retard de 1 commit(s) sur main : au debut de la seance lancer Tools\AutoJourney\sync_worktrees.ps1 AVANT le premier lancement
-WARN HeroesOfLiberty-Celeborn : retard de 1 commit(s) sur main : au debut de la seance lancer Tools\AutoJourney\sync_worktrees.ps1 AVANT le premier lancement
-WARN HeroesOfLiberty-Elrond : retard de 1 commit(s) sur main : au debut de la seance lancer Tools\AutoJourney\sync_worktrees.ps1 AVANT le premier lancement
-WARN HeroesOfLiberty-Faramir : retard de 1 commit(s) sur main : au debut de la seance lancer Tools\AutoJourney\sync_worktrees.ps1 AVANT le premier lancement
-WARN HeroesOfLiberty-Galadriel : retard de 1 commit(s) sur main : au debut de la seance lancer Tools\AutoJourney\sync_worktrees.ps1 AVANT le premier lancement
-WARN HeroesOfLiberty-Glorfindel : retard de 1 commit(s) sur main : au debut de la seance lancer Tools\AutoJourney\sync_worktrees.ps1 AVANT le premier lancement
-WARN HeroesOfLiberty-Haldir : retard de 1 commit(s) sur main : au debut de la seance lancer Tools\AutoJourney\sync_worktrees.ps1 AVANT le premier lancement
-WARN HeroesOfLiberty-Sauron : retard de 1 commit(s) sur main : au debut de la seance lancer Tools\AutoJourney\sync_worktrees.ps1 AVANT le premier lancement
-PASS 2 agent(s) C++ (file de build + IN_USE.txt), plafond de 3 respecte : HeroesOfLiberty-Galadriel (file de build), HeroesOfLiberty-Glorfindel (file de build)
+PASS memoire virtuelle libre 28.2 Go >= 8 Go
+PASS aucun cl.exe d'un autre moteur
+WARN HeroesOfLiberty-Arwen : retard de 3 commit(s) sur main : au debut de la seance lancer Tools\AutoJourney\sync_worktrees.ps1 AVANT le premier lancement
+WARN HeroesOfLiberty-Celeborn : retard de 3 commit(s) sur main : au debut de la seance lancer Tools\AutoJourney\sync_worktrees.ps1 AVANT le premier lancement
+WARN HeroesOfLiberty-Elrond : retard de 3 commit(s) sur main : au debut de la seance lancer Tools\AutoJourney\sync_worktrees.ps1 AVANT le premier lancement
+WARN HeroesOfLiberty-Faramir : retard de 3 commit(s) sur main : au debut de la seance lancer Tools\AutoJourney\sync_worktrees.ps1 AVANT le premier lancement
+WARN HeroesOfLiberty-Glorfindel : retard de 3 commit(s) sur main : au debut de la seance lancer Tools\AutoJourney\sync_worktrees.ps1 AVANT le premier lancement
+WARN HeroesOfLiberty-Haldir : retard de 5 commit(s) sur main : au debut de la seance lancer Tools\AutoJourney\sync_worktrees.ps1 AVANT le premier lancement
+PASS 2 agent(s) C++ (file de build + IN_USE.txt), plafond de 3 respecte : HeroesOfLiberty-Galadriel (file de build), HeroesOfLiberty-Sauron (file de build)
 PASS tableau agent -> id -> worktree present (## Agents du 2026-11-24)
 PASS aucun *InProgress.md non suivi
-WARN fichiers suivis modifies dans la copie principale : Auto_Journey_File.md, Docs/SessionEnd.txt, EtapeDefini.md, Placeholders.txt, Retours/E-specialization_slot.md, Retours/E-tower_wood.md
-PASS 33 ligne(s) '[ ]' sans C++ en file (relance possible sans toucher au plafond)
+WARN fichiers suivis modifies dans la copie principale : AubeInProgress.md, Auto_Journey_File.md, Docs/Rapports/GATE-1124-launch-Celeborn.txt, Docs/Rapports/GATE-1124-launch-Elrond.txt, Docs/Rapports/GATE-1124-launch-Faramir.txt, Docs/Rapports/GATE-1124-launch-arwen.txt, Docs/SessionEnd.txt, DuelInProgress.md, EtapeDefini.md, FortificationsInProgress.md, Placeholders.txt
+PASS 26 ligne(s) '[ ]' sans C++ en file (relance possible sans toucher au plafond)
 PASS DLL du worktree du 11-23 17:50 >= dernier commit de code de main du 11-23 17:18
 PASS 0 commit(s) Source de retard sur la DLL du worktree (<= 5)
 => aucun FAIL
