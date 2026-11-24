@@ -133,6 +133,10 @@ namespace HOLMorale
 	// What the step's fingerprint mixes for a unit: 0 when IsEmpty, else a non-zero hash of every effect (id, three levers, time, aura) and of the immunity time.
 	uint64 FingerprintKey(const FHOLMoraleState& State);
 
+	// A2 (S2-c step 9): what the network sends of a unit's effects, one bit per table row: bit R is set while the unit carries the effect of row R
+	// (Effect.Id == R, so a banner and the hero's own aura, one id, are one bit). An effect whose id is outside the 16 bits is not sent; 0 for a unit with none.
+	uint16 EffectMask(const FHOLMoraleState& State);
+
 	// The immunity to the malus for this long; a shorter grant never cuts a longer one.
 	void GrantImmunity(FHOLMoraleState& State, int32 DurationMs);
 

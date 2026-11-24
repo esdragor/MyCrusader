@@ -88,7 +88,7 @@ struct HEROESOFLIBERTY_API FHOLNetUnitState
 	 */
 	static constexpr int32 FrontYawBits = 6;
 	/** Bits of an unhurt unit that carries nothing and does not fight (J7-Q5: 62, D343: 59, D344: 57); the others write the extras below. */
-	static constexpr int32 TotalBits = 2 * HorizontalBits + 2 * VelocityBits + ActivityBits + StepBits + 1 + 1 + 1; // G6 e: + the deploys bit
+	static constexpr int32 TotalBits = 2 * HorizontalBits + 2 * VelocityBits + ActivityBits + StepBits + 1 + 1 + 1 + 1; // G6 e: + the deploys bit; M5 / A2: + the "has effects" bit
 	static constexpr int32 CarriedLoadBits = LoadResourceBits;
 	static constexpr int32 WoundedBits = HealthBits;
 	static constexpr int32 AttackingBits = TargetSlotBits;
@@ -96,6 +96,12 @@ struct HEROESOFLIBERTY_API FHOLNetUnitState
 	/** G6 e: the phase of a unit that deploys, after its "deploys" bit (HOLDeploy::EPhase, 4 values). */
 	static constexpr int32 DeployPhaseBits = 2;
 	static constexpr int32 DeployingBits = DeployPhaseBits;
+	/**
+	 * M5 / A2 (D707): the morale effects on the unit, one bit per effect (HOLMorale effect mask), for every visible unit. One bit says
+	 * whether any is set, then only a unit under an effect writes the mask: a unit without effect pays one bit.
+	 */
+	static constexpr int32 EffectMaskBits = 16;
+	static constexpr int32 EffectsBits = EffectMaskBits;
 
 	UPROPERTY()
 	int16 X = 0;
@@ -155,6 +161,10 @@ struct HEROESOFLIBERTY_API FHOLNetUnitState
 	 */
 	UPROPERTY()
 	bool bGarrisoned = false;
+
+	/** M5 / A2: the morale effects on the unit, one bit each (EffectMaskBits); 0 for a unit without effect (not sent: one bit). A change is a change of action. */
+	UPROPERTY()
+	uint16 EffectMask = 0;
 
 	/** Reduces a state; values out of range are held at the range's edge. */
 	static FHOLNetUnitState Make(const FVector& Position, const FVector& Velocity, EHOLUnitActivity Activity, int64 Step,

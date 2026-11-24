@@ -25,6 +25,7 @@
 #include "Net/HOLUnitReplicator.h"
 #include "Simulation/HOLCombatRules.h"
 #include "Simulation/HOLHeroSheet.h"
+#include "Simulation/HOLMoraleRules.h"
 #include "Simulation/HOLSimulationSettings.h"
 #include "Simulation/HOLUnitTypes.h"
 #include "Simulation/HOLUnitView.h"
@@ -127,8 +128,9 @@ namespace UE::HeroesOfLiberty::Tests::Net
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLNetReductionTest, "HeroesOfLiberty.Net.Reduction", UE::HeroesOfLiberty::Tests::Net::Flags)
 bool FHOLNetReductionTest::RunTest(const FString& Parameters)
 {
-	TestEqual(TEXT("58 bits per state (D301, a load bit of J5, J7-Q5: a 4th activity bit and the full health bit, D343: 7 step bits, D344: 13 per position, G6 e: the deploys bit)"),
-		FHOLNetUnitState::TotalBits, 58);
+	TestEqual(TEXT("59 bits per state (D301, a load bit of J5, J7-Q5: a 4th activity bit and the full health bit, D343: 7 step bits, D344: 13 per position, G6 e: the deploys bit, A2: the has-effects bit)"),
+		FHOLNetUnitState::TotalBits, 59);
+	TestEqual(TEXT("16 bits more for a unit under a morale effect, its mask (A2)"), FHOLNetUnitState::EffectsBits, 16);
 	TestEqual(TEXT("2 bits more for a unit that deploys, its phase (G6 e)"), FHOLNetUnitState::DeployingBits, 2);
 	TestEqual(TEXT("9 bits more for a wounded unit, its exact health (J7-Q5 revised; 8 bits until the Ram's 400)"), FHOLNetUnitState::WoundedBits, 9);
 	TestEqual(TEXT("12 bits more for an attacking one, its target's slot"), FHOLNetUnitState::AttackingBits, 12);
@@ -318,6 +320,22 @@ bool FHOLNetElementFormatTest::RunTest(const FString& Parameters)
 		Engine.SetDeploy(Phase);
 		AllStates.Add(Engine);
 	}
+	// A2 (S2-c step 9): units under morale effects, the mask computed by the rule from a real morale state (HOLMorale::Apply), then sent whole.
+	{
+		HOLMorale::FHOLMoraleState Morale;
+		HOLMorale::Apply(Morale, HOLMorale::MakeEffectFromRow(0));
+		HOLMorale::Apply(Morale, HOLMorale::MakeEffectFromRow(3));
+		const uint16 Mask = HOLMorale::EffectMask(Morale);
+		TestEqual(TEXT("a unit under the effects of rows 0 and 3 carries bits 0 and 3"), static_cast<int32>(Mask), (1 << 0) | (1 << 3));
+		FHOLNetUnitState Marked = FHOLNetUnitState::Make(Here, FVector::ZeroVector, EHOLUnitActivity::Idle, 120);
+		Marked.EffectMask = Mask;
+		AllStates.Add(Marked);
+		FHOLNetUnitState MarkedHurt = WithCombat(FHOLNetUnitState::Make(Here, FVector::ZeroVector, EHOLUnitActivity::Attacking, 121), 40, 100, 5, false, 0.f);
+		MarkedHurt.EffectMask = Mask;
+		AllStates.Add(MarkedHurt);
+		TestEqual(TEXT("a unit without effect carries no bit"), static_cast<int32>(HOLMorale::EffectMask(HOLMorale::FHOLMoraleState())), 0);
+		TestFalse(TEXT("a change of effects is a change of action (sent at once)"), HOLUnitReplication::IsSameAction(Marked, FHOLNetUnitState::Make(Here, FVector::ZeroVector, EHOLUnitActivity::Idle, 120)));
+	}
 	int32 TableMaxHealth = 0;
 	if (const UDataTable* UnitTypes = GetDefault<UHOLSimulationSettings>()->UnitTypesTable.LoadSynchronous(); TestNotNull(TEXT("unit type table"), UnitTypes))
 	{
@@ -379,13 +397,13 @@ bool FHOLNetElementFormatTest::RunTest(const FString& Parameters)
 		SerializeArgs.Source = NetSerializerValuePointer(Quantized);
 		Serializer.Serialize(WriteContext, SerializeArgs);
 		Writer.CommitWrites();
-		TestEqual(TEXT("57 bits on the wire (1 for the health of an unhurt unit), +2 for a carrier, +9 wounded, +12 attacking, +6 facing its front"), Writer.GetPosBits(),
+		TestEqual(TEXT("59 bits on the wire (TotalBits: 1 for the health of an unhurt unit, 1 for the effects), +2 for a carrier, +9 wounded, +12 attacking, +6 facing its front, +2 deploying, +16 under an effect"), Writer.GetPosBits(),
 			static_cast<uint32>(FHOLNetUnitState::TotalBits + (State.bCarrying ? FHOLNetUnitState::CarriedLoadBits : 0)
 				+ (State.bFullHealth ? 0 : FHOLNetUnitState::WoundedBits)
 				+ (State.Activity == EHOLUnitActivity::Attacking ? FHOLNetUnitState::AttackingBits : 0)
 				+ (State.bFacesFront ? FHOLNetUnitState::FacingFrontBits : 0)
-				+ (State.bDeploys ? FHOLNetUnitState::DeployingBits : 0)));
-
+				+ (State.bDeploys ? FHOLNetUnitState::DeployingBits : 0)
+				+ (State.EffectMask != 0 ? FHOLNetUnitState::EffectsBits : 0)));
 		FNetBitStreamReader Reader;
 		Reader.InitBits(Buffer, Writer.GetPosBits());
 		FNetSerializationContext ReadContext(&Reader);
@@ -402,6 +420,7 @@ bool FHOLNetElementFormatTest::RunTest(const FString& Parameters)
 		DequantizeArgs.Target = NetSerializerValuePointer(&Back);
 		Serializer.Dequantize(ReadContext, DequantizeArgs);
 		TestEqual(TEXT("same state after the trip"), Back, State);
+		TestEqual(TEXT("the effect mask is the one sent"), Back.EffectMask, State.EffectMask);
 		TestEqual(TEXT("exact health after the trip (0 unhurt, not sent)"), Back.Health, State.Health);
 	}
 
