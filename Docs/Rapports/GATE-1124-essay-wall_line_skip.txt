@@ -1,0 +1,13 @@
+Heure PowerShell : 12:10:15  fin dure 14:00  reste 110 min
+PASS C:/Users/baudo/Documents/HeroesOfLiberty-Haldir : aucun ecart de code avec main (9d40517)
+PASS worktree propre
+PASS binaire du 12:06 >= dernier commit de code du 10:53
+FAIL E-deploy_far.md : branche 'integ-25' ABSENTE du worktree (son tip n'est pas ancetre de HEAD) : la fusionner ici (git merge integ-25) puis build.ps1, ou jouer l'essai dans un worktree qui la contient
+FAIL E-faction_aim_free.md : branche 'integ-37' ABSENTE du worktree (son tip n'est pas ancetre de HEAD) : la fusionner ici (git merge integ-37) puis build.ps1, ou jouer l'essai dans un worktree qui la contient
+FAIL E-sacred_light_heal.md : branche 'integ-37' ABSENTE du worktree (son tip n'est pas ancetre de HEAD) : la fusionner ici (git merge integ-37) puis build.ps1, ou jouer l'essai dans un worktree qui la contient
+FAIL E-specialization_slot.md : branche 'integ-25' ABSENTE du worktree (son tip n'est pas ancetre de HEAD) : la fusionner ici (git merge integ-25) puis build.ps1, ou jouer l'essai dans un worktree qui la contient
+FAIL E-talents_heal.md : branche 'zone-effect' ABSENTE du worktree (son tip n'est pas ancetre de HEAD) : la fusionner ici (git merge zone-effect) puis build.ps1, ou jouer l'essai dans un worktree qui la contient
+FAIL E-tower_wood.md : branche 'zone-effect' ABSENTE du worktree (son tip n'est pas ancetre de HEAD) : la fusionner ici (git merge zone-effect) puis build.ps1, ou jouer l'essai dans un worktree qui la contient
+FAIL E-wall_line_skip.md : branche 'integ-41' ABSENTE du worktree (son tip n'est pas ancetre de HEAD) : la fusionner ici (git merge integ-41) puis build.ps1, ou jouer l'essai dans un worktree qui la contient
+WARN rappel : l'essai d'un REGLAGE/BUG est rejoue par l'integrateur (geste reel + PNG avant/apres) AVANT cette commande
+=> 7 FAIL
