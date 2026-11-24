@@ -24,6 +24,25 @@ Plan de lancement ETAPE0-1124s (19:2x, énoncés détaillés Docs\Rapports\ENONC
 - Sauron | à créer gate-launcher-1124s | SAURON-1124sa (E8) | OUTIL session_gate -Phase Close : WARN sans ligne « version launcher » (L27-12) | non | suite : liste des essais internes et rouges non vus, no_window_test rejoué
 Alertes étape 0 : (1) charge machine 71 % CPU à 19:19, 37 Go libres, 1 processus dotnet vivant, aucun éditeur ; (2) les 8 worktrees portent encore des noms de branche launcher-* (= main) : créer une branche par chantier avant le 1er commit ; autre session : la séance launcher de l'après-midi (15:00-18:25) a fini, IN_USE tous libres, aucun commit récent hors main ; (3) Retours : 0 Q à répondre, 4 [À ESSAYER] prêts + tower_wood non donné, 2 BUG (melee-spin-sanity, playtest_hero_army-spin) ; Priorite_Socle_Factions_2026-11-16.md est périmée (17:2x du 2026-11-23)
 
+Tableau des agents du soir (FARAMIR-1124sd, 19:5x ; un rapport = Docs\Rapports\<agent>.md) :
+
+| Agent | Worktree | Branche | Sha | État | Build |
+|---|---|---|---|---|---|
+| CLEAN-A / B / C / D | copie principale | main | e6410e8, 6251cdf, af59bcd (D : rien) | nettoyage 0a fait (Jour/Retours, File archivé, index Retours) | sans objet (docs) |
+| ARWEN-1124sa (E5) | HeroesOfLiberty-Arwen | loc-ja-1124s | 8a6fa25 test, ba1cd7e correctif | texte de la Voie A/B suit la culture ; rouge NON VU | NON COMPILÉ (quick_check tests à lancer) |
+| ARWEN-1124sb (E5) | HeroesOfLiberty-Arwen | arwen-1124sb | d8a0b81 | relevé S2-b : aucun bug, test vert seul | quick_check tests 2207/2207 PASS |
+| CELEBORN-1124sa (E3) | HeroesOfLiberty-Celeborn | walls-fine-1124s | 8e47bd1 | scénario wall_fine_block seul, rouge NON VU, correctif C++ place B à écrire | NON COMPILÉ |
+| ELROND-1124sa (E4) | HeroesOfLiberty-Elrond | monk-seal-1124s | 303e2fb | scénario monk_seal, rouge VU 19:29 (timeout étape 24), correctif C++ place B à venir | sans C++, aucun build |
+| FARAMIR-1124sa (E6) | HeroesOfLiberty-Faramir | tower-wood-1124s | 71d4ae9 | pose réelle de tower_wood, preflight PASS, 9 PNG vus | sans objet (scénario) |
+| FARAMIR-1124sb (E6, sans fichier de rapport) | copie principale | main | e86dca3 | Placeholders.txt relu, budget 200 : moyenne 69 par pas, plan F9 | sans objet (docs) |
+| FARAMIR-1124sc (E6) | HeroesOfLiberty-Faramir | faramir-1124sc | eb7e87a | scénario tower_wood_garrison, preflight PASS 28 s, 2 PNG vus | sans objet (scénario) |
+| FARAMIR-1124sd (E6) | HeroesOfLiberty-Faramir | faramir-1124sc | 20349e8 | fiche Retours\E-tower_wood_garrison.md, tableau, cases File cochées | sans objet (docs) |
+| GALADRIEL-1124sa (E1) | HeroesOfLiberty-Galadriel | socle-ai | e0110de test, ceb8c30 correctif | hol.Morale.Report / Clear (place A) ; rouge NON VU | NON COMPILÉ (lot C++ place A) |
+| GALADRIEL-1124sb (E1) | HeroesOfLiberty-Galadriel | socle-ai | fad4af7 | A2 masque d'effets réseau (3 fichiers Net/), sans test | NON COMPILÉ (lot C++ place A) |
+| GLORFINDEL-1124sa (E2) | HeroesOfLiberty-Glorfindel | socle-power-1124s | 399989c rouge, 5b7ddb6 correctif | D908 Honneur dès l'ordre ; rouge séparé | sans C++ ; quick_check tests 2208/2208 |
+| HALDIR-1124sa (E7) | HeroesOfLiberty-Haldir | integ-71 / integ-71r (8dee317, 2733bd4 cités par le rapport ; `git branch --contains` depuis la copie principale ne les trouve pas : à vérifier) | 8dee317, 2733bd4 | passe integ-71 préparée, rouge 8d7eee2 jamais vu, suite (a)(b)(c) non faite | NON COMPILÉ |
+| SAURON-1124sa (E8) | HeroesOfLiberty-Sauron | gate-launcher-1124s | 4e5f00a test, 796138f correctif | session_gate Close : ligne « version launcher » (L27-12) ; gate_test.ps1 complet non lancé | sans C++ |
+
 ### Séance du matin (10:38 -> 14:00)
 fin et mode demandés à 10:38 (fin 14:00, autonome ; priorité Docs\Priorite_Socle_Factions_2026-11-16.md)
 check-list lue (L26) à 10:50 après le nettoyage 0a (commits 5d97eb3, 173d31b, 8da775a) ; veilleur 30 min et alarme 13:45 posés
