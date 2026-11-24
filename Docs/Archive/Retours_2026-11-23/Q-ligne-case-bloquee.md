@@ -1,4 +1,6 @@
-# [À RÉPONDRE] Q-ligne-case-bloquee : une case bloquée sur la ligne de palissade refuse-t-elle TOUTE la ligne ?
+# [RÉPONDU] Q-ligne-case-bloquee : une case bloquée sur la ligne de palissade refuse-t-elle TOUTE la ligne ?
+
+Reponse: B = « Sauter l'obstacle » (utilisateur, 2026-11-23 18:1x, interface de choix, D901)
 
 Contexte : D867 (pas de plafond) et D691 (pose au glisser) ne disent rien du cas d'une case occupée. Le code (HOLWallLineRules.as, Validate, « All or nothing: one refusal and no cell is laid ») refuse TOUTE la ligne dès qu'UNE case est occupée (`refused (3)` = Occupied) : le joueur qui trace sur un arbre ou près d'un bâtiment ne pose rien et ne voit que le fantôme rouge de la case fautive. SAURON-1123pa l'a vu : ligne partant du MainCentre, cellule (-42, -2), aucune fondation.
 

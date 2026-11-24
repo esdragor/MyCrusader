@@ -1,4 +1,6 @@
-# [À RÉPONDRE] Q-lumiere-sacree-visee : quand tu vises hors de portée, que doit faire le jeu ?
+# [RÉPONDU] Q-lumiere-sacree-visee : quand tu vises hors de portée, que doit faire le jeu ?
+
+Reponse: C = « Le héros s'approche » (utilisateur, 2026-11-23 18:1x, interface de choix, D900)
 
 Contexte : tu as demandé (essai faction_click_cast, 2026-11-23 15:59, D897) que la zone de *Lumière sacrée* se pose là où tu cliques, et non au milieu de l'armée. Elle se posera donc jusqu'à 12 m (1200 cm, D890) de ta bannière ou de ton héros ; reste à décider ce qui arrive si tu cliques plus loin que cela.
 

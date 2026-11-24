@@ -1,4 +1,6 @@
-# [À RÉPONDRE] Q-commanderie-batiment : dans quel bâtiment se produisent les 3 unités de commanderie des Templiers ?
+# [RÉPONDU] Q-commanderie-batiment : dans quel bâtiment se produisent les 3 unités de commanderie des Templiers ?
+
+Reponse: A = bâtiment de l'unité copiée (utilisateur, 2026-11-23 18:1x, interface de choix, D902)
 
 Contexte : les 3 unités du palier 1 (Sergent du Temple = Fer, Frère infirmier = Foi, Arbalétrier à pavois = Pierre) existent et ne peuvent plus être produites que par le joueur qui a choisi leur voie. Le GDD § 13.7 (D133, D683) dit « son bâtiment existant » sans le nommer, et aucun bâtiment ne les liste aujourd'hui (la liste de production est dans `BuildingTypes.csv`, colonne `Produces`, pas dans la table des unités).
 
