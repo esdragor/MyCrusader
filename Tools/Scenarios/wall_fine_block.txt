@@ -78,6 +78,8 @@ hol.Units.Move -19000 0 0
 wait 5
 hol.Units.Report 60
 # Lecture : le Paysan de slot 0 le plus a l'ouest (x de depart -19800) : x final > -19400 = il a traverse le trou de 1 m (franchissable) ; sinon infranchissable. Ligne a ecrire au journal : `WALLFINE gap crossed=<0|1>`.
+hol.Wall.GapProbe -19450
+waitlog WALLFINE gap crossed=1
 note 5. Mesure : le Paysan traverse-t-il le trou de 1 sous-case ? (resultat lu au journal, aucune valeur choisie).
 capture wall_fine_gap_after
 hol.Test.Sanity

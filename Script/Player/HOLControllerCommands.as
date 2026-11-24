@@ -452,3 +452,40 @@ void HOLWallPlaceLineCommand(const TArray<FString>& Args)
 	}
 }
 const FConsoleCommand HOLWallPlaceLineConsole("hol.Wall.PlaceLine", n"HOLWallPlaceLineCommand");
+
+// D898 G6 (CELEBORN-1124sh): hol.Wall.GapProbe <LineX> writes "WALLFINE gap crossed=<0|1> unit #<id> at (x, y)" for the NEWEST living Peasant of slot 0 (highest id:
+// the scenario spawns the measured Peasant last). crossed=1 when its x is east of LineX (it started west of the line). A measure, not a choice: the scenario asserts what it read.
+void HOLWallGapProbeCommand(const TArray<FString>& Args)
+{
+	if (Args.Num() < 1 || !HOLControllerCommands::IsNumber(Args[0]))
+	{
+		HOLScriptLog::LogWarning(n"LogHOLMatch", "Usage: hol.Wall.GapProbe <LineX>");
+		return;
+	}
+	const float LineX = HOLControllerCommands::ParseReal(Args[0]);
+	int BestId = -1;
+	FVector BestLocation = FVector::ZeroVector;
+	for (int UnitId = 1; UnitId < 4096; UnitId++)
+	{
+		if (!HOLUnitScript::IsUnitAlive(UnitId))
+			continue;
+		if (HOLUnitScript::GetUnitType(UnitId) != n"Peasant")
+			continue;
+		int Slot = -1;
+		if (!HOLUnitScript::GetUnitOwner(UnitId, Slot) || Slot != 0)
+			continue;
+		FVector Location;
+		if (!HOLUnitScript::GetUnitLocation(UnitId, Location))
+			continue;
+		BestId = UnitId;
+		BestLocation = Location;
+	}
+	if (BestId < 0)
+	{
+		HOLScriptLog::LogWarning(n"LogHOLMatch", "WALLFINE gap: no living Peasant of slot 0");
+		return;
+	}
+	const int Crossed = BestLocation.X > LineX ? 1 : 0;
+	HOLScriptLog::LogDisplay(n"LogHOLMatch", f"WALLFINE gap crossed={Crossed} unit #{BestId} at ({BestLocation.X}, {BestLocation.Y}) line x {LineX}");
+}
+const FConsoleCommand HOLWallGapProbeConsole("hol.Wall.GapProbe", n"HOLWallGapProbeCommand");
