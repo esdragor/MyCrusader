@@ -23,4 +23,15 @@
   <data name="SettingsNotSaved" xml:space="preserve"><value>設定を保存できません：{0}</value></data>
   <data name="SettingsBadFolder" xml:space="preserve"><value>このゲームフォルダーは使用できません：{0}</value></data>
   <data name="NotesOlderMissing" xml:space="preserve"><value>これより古いバージョンの更新内容は表示できません。</value></data>
+  <data name="SettingsLaunch" xml:space="preserve"><value>ゲームの起動</value></data>
+  <data name="SettingsDisplayMode" xml:space="preserve"><value>表示モード：</value></data>
+  <data name="SettingsGameOwn" xml:space="preserve"><value>ゲームの設定</value></data>
+  <data name="SettingsWindowed" xml:space="preserve"><value>ウィンドウ</value></data>
+  <data name="SettingsFullscreen" xml:space="preserve"><value>フルスクリーン</value></data>
+  <data name="SettingsResolution" xml:space="preserve"><value>解像度：</value></data>
+  <data name="SettingsResolutionCustom" xml:space="preserve"><value>カスタム…</value></data>
+  <data name="SettingsExtraArguments" xml:space="preserve"><value>追加の起動引数：</value></data>
+  <data name="SettingsExtraArgumentsHint" xml:space="preserve"><value>上級者向け：起動時にそのままゲームへ渡される引数です（例：-nosound）。</value></data>
+  <data name="SettingsUnclosedQuote" xml:space="preserve"><value>追加の起動引数：" が閉じられていません。</value></data>
+  <data name="SettingsReservedArguments" xml:space="preserve"><value>次の追加引数は、選択した表示モードや解像度と矛盾するか、ランチャー専用です。削除してください：{0}</value></data>
 </root>

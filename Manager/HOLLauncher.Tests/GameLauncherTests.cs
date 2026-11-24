@@ -40,6 +40,58 @@ public class GameLauncherTests
     }
 
     [Fact]
+    public void LaunchOptionsArePassedToTheGame()
+    {
+        using var game = new TempDir();
+        game.Write(GameLauncher.ExeName, "x");
+        var settings = new LauncherSettings(DisplayMode: "fullscreen", ResolutionWidth: 2560, ResolutionHeight: 1440,
+            ExtraArguments: "-nosound -Key=\"a b\"");
+        System.Diagnostics.ProcessStartInfo? started = null;
+        var result = GameLauncher.Start(game.Root, LaunchArguments.For(settings), info =>
+        {
+            started = info;
+            return null;
+        });
+        Assert.True(result.Success, result.Message);
+        Assert.NotNull(started);
+        Assert.Equal(Path.Combine(game.Root, GameLauncher.ExeName), started.FileName);
+        Assert.Equal(game.Root, started.WorkingDirectory);
+        Assert.Equal("-fullscreen -ResX=2560 -ResY=1440 -nosound -Key=\"a b\"", started.Arguments);
+        Assert.Empty(started.ArgumentList);
+    }
+
+    [Fact]
+    public void DefaultSettingsStartTheGameWithoutArgument()
+    {
+        using var game = new TempDir();
+        game.Write(GameLauncher.ExeName, "x");
+        System.Diagnostics.ProcessStartInfo? started = null;
+        GameLauncher.Start(game.Root, LaunchArguments.For(LauncherSettings.Default), info =>
+        {
+            started = info;
+            return null;
+        });
+        Assert.Equal("", started!.Arguments);
+    }
+
+    [Fact]
+    public void QuotedArgumentsReachTheGameVerbatim()
+    {
+        // Unreal reads the raw command line: -Key="a b" must arrive as typed, not re-quoted as "-Key=\"a b\"".
+        using var game = new TempDir();
+        File.Copy(Path.Combine(Environment.SystemDirectory, "cmd.exe"), Path.Combine(game.Root, GameLauncher.ExeName));
+        var result = GameLauncher.Start(game.Root, ["/c", "echo", "-Key=\"a b\"", "-windowed>", "args.txt"]);
+        Assert.True(result.Success, result.Message);
+        var marker = Path.Combine(game.Root, "args.txt");
+        for (var i = 0; i < 100 && !(File.Exists(marker) && new FileInfo(marker).Length > 0); i++)
+        {
+            Thread.Sleep(50);
+        }
+        Thread.Sleep(100);
+        Assert.Equal("-Key=\"a b\" -windowed", File.ReadAllText(marker).Trim());
+    }
+
+    [Fact]
     public void GameReadsServersJsonFromTheFolderTheLauncherReads()
     {
         // The packaged game reads FPaths::RootDir()/servers.json, RootDir being the folder of HeroesOfLiberty.exe

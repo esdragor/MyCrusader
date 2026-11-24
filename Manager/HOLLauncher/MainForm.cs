@@ -4,7 +4,8 @@ namespace HOLLauncher;
  * The launcher's window, kept thin: it reads the status in the background (StatusLoader) and shows the StatusView.
  * "Update the game" runs GameUpdater in the background with a progress bar and "Cancel" (ProgressView); "Update the
  * launcher" runs LauncherUpdater the same way, then starts the new exe with the same arguments and closes (L7);
- * "Play" (L8) asks PlayConfirmation if any (outdated game), starts the game (GameLauncher) and closes the launcher.
+ * "Play" (L8) asks PlayConfirmation if any (outdated game), starts the game (GameLauncher) with the launch options of
+ * the settings (LaunchArguments, L19) and closes the launcher.
  * "Settings" (L15, while nothing runs) opens SettingsForm, saves the choice (LauncherSettings), applies the language
  * (Texts, ApplyTexts) and the game folder (GameFolder.Prepare, new HTTP clients), then reads the status again. The
  * window's fixed texts come from Texts (ApplyTexts); the status texts are still French (StatusView, L16).
@@ -375,7 +376,7 @@ public sealed class MainForm : Form
         {
             return;
         }
-        var result = GameLauncher.Start(Options.GameDir);
+        var result = GameLauncher.Start(Options.GameDir, LaunchArguments.For(settings));
         if (result.Success)
         {
             Close();
