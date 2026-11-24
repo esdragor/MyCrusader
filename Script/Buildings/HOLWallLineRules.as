@@ -275,7 +275,7 @@ namespace HOLWallLine
 	}
 
 	// D898 G5 (PLAN-GRILLE-FINE-1124.md): the server orders of a line: one place-building order per cell of the plan, each carrying the Peasants of BuildersForCell and the queue flag of QueueForCell.
-	// The one rule for ServerPlaceWallLine (HOLRpcPlayer.as) at any SubDivision: a cell is a sub-cell when SubDivision > 1. STUB (red first): no order.
+	// The one rule for ServerPlaceWallLine (HOLRpcPlayer.as) at any SubDivision: a cell is a sub-cell when SubDivision > 1.
 	struct FHOLWallOrder
 	{
 		FIntPoint Cell;
@@ -286,6 +286,14 @@ namespace HOLWallLine
 	TArray<FHOLWallOrder> OrdersForLine(const FHOLWallLinePlan& Plan, const TArray<uint32>& UnitIds, bool bQueue)
 	{
 		TArray<FHOLWallOrder> Orders;
+		for (int Index = 0; Index < Plan.Cells.Num(); Index++)
+		{
+			FHOLWallOrder Order;
+			Order.Cell = Plan.Cells[Index];
+			Order.Builders = BuildersForCell(Index, UnitIds);
+			Order.bQueue = QueueForCell(Index, bQueue);
+			Orders.Add(Order);
+		}
 		return Orders;
 	}
 	// ---- Drag gesture (F4, client): the cells the drag SHOWS. One source with Validate (it lays exactly these cells when the line is accepted); the C++
