@@ -213,16 +213,7 @@ namespace HOLFactionPowerServer
 		{
 			return 0;
 		}
-		for (int Each = 0; Each < Holder.Notices.Num(); Each++)
-		{
-			if (Holder.Notices[Each].Slot == Slot)
-			{
-				const int Refusal = Holder.Notices[Each].Refusal;
-				Holder.Notices.RemoveAt(Each);
-				return Refusal;
-			}
-		}
-		return 0;
+		return TakeNoticeFrom(Holder.Notices, Slot);
 	}
 
 	// GLORFINDEL-1124e (D900): the aimed point is out of range: the hero walks to the stop point of ApproachPointOf, the cast waits for him. Default: the Honor is
