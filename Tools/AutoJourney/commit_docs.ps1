@@ -20,7 +20,7 @@ $Specs = @(':(glob)Auto_Journey*.md', 'EtapeDefini.md', 'Retours', ':(glob)Place
 $UntrackedSkip = '(^|/)[^/]*InProgress\.md$'
 $Only = @($Only | ForEach-Object { $_ -split ',' } | ForEach-Object { $_.Trim().Replace('\', '/') } | Where-Object { $_ })
 if ($Only.Count -gt 0) {
-  $DocRe = '^(Auto_Journey[^/]*\.md|EtapeDefini\.md|Retours/.+|Placeholders[^/]*\.(txt|md)|[^/]*InProgress\.md|Docs/SessionEnd\.txt|Docs/Archive/[^/]+\.(md|txt))$'   # = $Specs
+  $DocRe = '^(Auto_Journey[^/]*\.md|EtapeDefini\.md|Retours/.+|Placeholders[^/]*\.(txt|md)|[^/]*InProgress\.md|Docs/SessionEnd\.txt|Docs/Archive/[^/]+\.(md|txt)|Docs/Priorite_[^/]+\.md)$'   # = $Specs + Docs/Priorite_*.md (survey des priorites, nomme seulement ; SAURON-1124si)
   $bad = @($Only | Where-Object { $_ -notmatch $DocRe })
   if ($bad.Count -gt 0) { Write-Output ("ERREUR : -Only hors des docs (jamais du code ni un autre fichier) : " + ($bad -join ', ')); exit 3 }
   $Specs = @($Only | ForEach-Object { ':(literal)' + $_ })
