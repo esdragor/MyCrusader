@@ -502,7 +502,9 @@ if ($Phase -eq 'Close') {
   if ($jour -and $jour.Contains($m2)) { Say 'PASS' "bilan des lecons present ($m2)" } else { Say 'FAIL' "pas de '$m2' dans Auto_Journey_Jour.md : une ligne par regle de Auto_Journey_Checklist.md, 'appliquee' ou 'non appliquee' + la preuve" }
   # L27-12 (2026-11-24) : le bilan porte une ligne 'version launcher' (version publiee du jeu / du launcher) ; sans elle, WARN qui donne le releve
   # (Saved\Manager\Versions\latest.txt, published.txt s'il existe) a y recopier. Le bilan = Auto_Journey_Jour.md (-JourFile). Test : gate_test.ps1 (L27-12).
-  $vlHit = @(@($jour -split "`r?`n") | Where-Object { $_ -match '(?i)version launcher' })
+  # SAURON-1124sb : on ne lit QUE la section '## Bilan du <date du jour>' (jusqu'au prochain '## '), pas tout le fichier : une vieille ligne d'un autre jour ne compte pas.
+  $vlSec = [regex]::Match([string]$jour, '(?ms)^## Bilan du ' + [regex]::Escape($now.ToString('yyyy-MM-dd')) + '\b.*?(?=^## |\z)').Value
+  $vlHit = @(@($vlSec -split "`r?`n") | Where-Object { $_ -match '(?i)version launcher' })
   if ($vlHit.Count -gt 0) { Say 'PASS' ("L27-12 : ligne 'version launcher' presente au bilan : " + $vlHit[0].Trim().Substring(0, [Math]::Min(100, $vlHit[0].Trim().Length))) }
   else {
     $vlNote = @()
