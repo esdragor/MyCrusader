@@ -561,6 +561,52 @@ après accord de cette session ou après la fusion de ses étapes en cours.
   2026-11-03-f5006b5 ; **`L11-v1` a été retirée** par la limite `-Keep 3`. Archive `Saved\Packages\0.3.0` (2 Go) gardée.
   Non vu : l'affichage « V 0.3.0 » dans un lanceur / un jeu réellement installé depuis cette version.
   **Reprise : L15 (réglages + langue) dans une prochaine session, en suivant ce journal** (tableau L14-L24 plus haut).
+- 2026-11-24 : **L15 lancée** (« continue », session LAUNCHER-1124) dans **Elrond**, branche `launcher-l15` = `main`
+  (8c6e985), `IN_USE.txt` posé ; `dotnet test` de départ vert (27 + 142 + 49 + 353). Choix : `HOLLauncher.settings.json`
+  à côté de l'exe (ajouté à `UpdatePlan.LauncherOwned` : jamais listé, remplacé ni effacé par une mise à jour) avec
+  `language` et `gameDir` (les champs de L19 / L23 viendront avec elles ; champs inconnus ignorés) ; fichier absent =
+  défauts, illisible = défauts + avertissement ; langue = réglage, sinon langue de Windows si fr / en / ja, sinon en ;
+  textes en `.resx` (`Strings.resx` fr neutre, `Strings.en.resx`, `Strings.ja.resx`) ; L15 ne passe en ressources que les
+  textes fixes de la fenêtre et la fenêtre « Réglages » (le reste = L16) ; un nouveau dossier du jeu reçoit une copie de
+  `servers.json` (clé) s'il n'en a pas, le jeu déjà installé n'est pas déplacé.
+- 2026-11-24 : **L15 (cœur) commitée sur `launcher-l15`** (Elrond) : 018beaa (`LauncherSettings`, `GameFolder`, `Texts`,
+  `Strings.resx` / `.en` / `.ja`, `SettingsForm`, bouton « Réglages », `ApplyTexts`, `Program` lit les réglages avant la
+  ligne de commande) + eb4badf (`.gitattributes` : `Manager/HOLLauncher/Strings*.resx merge=union`). `dotnet test` :
+  27 + 183 + 49 + 353 verts (+41 lanceur), 0 avertissement. Non vu à l'écran pour l'instant.
+- 2026-11-24 : **Demande de l'utilisateur : avancer plusieurs étapes en sous-agents.** Lancés en parallèle, chacun sur sa
+  branche partie de `launcher-l15` (eb4badf), `IN_USE.txt` posé, consigne : test rouge d'abord, nouveaux textes en fr / en
+  / ja dans les trois `.resx`, pas de `LauncherInfo.Version`, pas de publication ni de fusion dans `main`, pas d'édition
+  des fichiers de suivi : **L16** textes (Celeborn, `launcher-l16`), **L17** vérifier / réparer, dossiers, désinstaller
+  (Faramir, `launcher-l17`), **L18** pause / reprise (Glorfindel, `launcher-l18`), **L19** options de lancement (Sauron,
+  `launcher-l19`), **L21** historique des nouveautés (Haldir, `launcher-l21`). Gardés pour après la fusion : L20 (rapport +
+  plantage), L22 (apparence), L23 (résident, en dernier), L24 (clôture). La session principale fusionne les branches dans
+  `launcher-l15`, relit, repasse les tests, monte `LauncherInfo.Version` une seule fois.
+- 2026-11-24 : **Défaut trouvé à l'écran et corrigé (L15)** : le lanceur plantait au démarrage (`ArgumentException:
+  unknown launcher language '1'`) : `Texts.Format("WindowTitle", LauncherInfo.Version)` prenait la surcharge
+  `Format(name, language, params args)` (la version, une chaîne, devenait la langue) ; les tests ne le voyaient pas.
+  Corrigé : `Texts.FormatIn(language, name, args)` à part, test de non-régression
+  `FormatWithOneStringArgumentUsesTheCurrentLanguage` ; ce9063b (`launcher-l15`), 184 tests lanceur verts ; les cinq
+  sous-agents prévenus (`git merge launcher-l15`, utiliser `FormatIn`). Vu ensuite : fenêtre principale en japonais
+  (titre et boutons ; lignes d'état encore en français = L16) et fenêtre « Réglages » rendue en fr / en / ja
+  (`DrawToBitmap`, scratchpad). Leçon : lancer l'exe une fois avant de commiter une étape du lanceur.
+- 2026-11-24 : **L21, L19, L18 rendues par les sous-agents, relues et fusionnées dans `launcher-l15`** (Elrond), sans
+  conflit (`.resx` en union) ; `dotnet test` après chaque fusion, final : 30 + 246 + 356 + 50 verts.
+  - **L21** (Haldir, 68efbb7) : `/versions/latest` gagne `history` (versions gardées, ordre de publication par
+    `published.txt` / date du manifeste, jamais par nom, à partir de `latest.txt` ; `notes` de chaque dossier) ;
+    `HOLUpdate/PublishedVersions.cs` (ordre partagé avec HOLPublish) ; lanceur `ReleaseNotes.cs` : en retard = notes de
+    chaque version plus récente que l'installée, la plus récente d'abord, titrées « V 0.Y.X » ; installée absente de
+    l'historique = toutes + « notes plus anciennes indisponibles » ; à jour ou pas installé = dernière seule. Compatible
+    ancien gestionnaire / ancien lanceur. **En production : gestionnaire à reconstruire** (`build_manager.ps1`) ; pas de
+    republication du jeu. PROTOCOL.md à jour.
+  - **L19** (Sauron, be314d1) : réglages `displayMode` (windowed / fullscreen), `resolutionWidth` / `resolutionHeight`
+    (320..16384), `extraArguments` ; `LaunchArguments.For` → `-windowed` / `-fullscreen`, `-ResX= -ResY=`, arguments en plus
+    (guillemets gardés) ; arguments réservés refusés (`-ServersFile=` toujours, mode / résolution s'ils sont choisis) ;
+    `GameLauncher.Start` passe une ligne brute (`ProcessStartInfo.Arguments`, Unreal lit la ligne brute) ; section
+    « Lancement du jeu » dans « Réglages ». Non vu : effet des options dans le vrai jeu.
+  - **L18** (Glorfindel, fb1987f) : bouton Pause / Reprendre à côté d'« Annuler » (jeu et lanceur) ; la reprise par Range
+    existait déjà ; ajouté : un correctif fini ou un fichier déjà corrigé n'est plus retéléchargé ; `Cancelled` dans les
+    résultats. Non vu : le parcours pause / reprise / annuler-en-pause dans la fenêtre.
+  - En cours : L16 (Celeborn), L17 (Faramir), priés de fusionner `launcher-l15` avant de finir.
 - 2026-11-24 ~15:20 : **jeu publié en `0.4.3`** (demande de l'utilisateur, réponse à L27-12 ; copie principale, code =
   main `ff48d76`, seuls des commits de docs après). Découpage proposé à l'utilisateur des travaux depuis la 0.3.0 en
   9 étapes (0.3.1 à 0.3.5, puis Y + 1 à la clôture de la migration D857 : 0.4.0 à 0.4.3) ; seule la 0.4.3 est
@@ -581,3 +627,225 @@ après accord de cette session ou après la fusion de ses étapes en cours.
   **494 / 494 empreintes = manifeste 0.4.3** ; journal du gestionnaire : 45 correctifs (48,5 Mo) + 360 fichiers complets
   (0,8 Mo), tous servis à 90.55.168.58 (passage par la box). La fenêtre reste ouverte après « à jour » (`--update` ne
   ferme pas le lanceur) : fermée à la main. Installation du bureau non touchée.
+- 2026-11-24 : **L20 lancée en sous-agent** (demande de l'utilisateur) dans **Sauron**, branche `launcher-l20` partie de
+  `launcher-l15` (4b776e3, avec L18 / L19 / L21) : bouton « Envoyer un rapport » (zip à donner à la main : journaux
+  récents et dossiers `Saved\Crashes` du jeu, `report.txt` avec versions, machine, réglages ; plafond de taille ; clé
+  d'accès jamais incluse, effacée des textes) ; détection de plantage au démarrage sans C++ (dossiers `Saved\Crashes`
+  plus récents que le dernier contrôle, gardé dans les réglages, et / ou journal sans la ligne de sortie propre) qui
+  propose le rapport.
+- 2026-11-24 : **L17 rendue (Faramir, 27582ed + fusion 2c1b281), relue et fusionnée dans `launcher-l15`** : bouton
+  « Fichiers ▾ » (vérifier / réparer, ouvrir le dossier du jeu, ouvrir les journaux, désinstaller). `GameRepairer`
+  (hache tout le dossier, plan sans correctifs = fichiers abîmés en entier, liste de l'installée si le gestionnaire la
+  sert encore, sinon répare vers la dernière et le dit ; pause / reprise / annuler de L18) ; `GameUninstaller` (efface
+  seulement les fichiers d'une liste, `Version.txt` en dernier, `.holupdate` ; jamais `LauncherOwned` ni fichier
+  inconnu, donc `Saved\` reste ; rien si un fichier est ouvert ; confirmation « Non » par défaut) ; `GameLogs`
+  (`<jeu>\HeroesOfLiberty\Saved\Logs`, sinon `%LOCALAPPDATA%\HeroesOfLiberty\Saved\Logs`, non vérifié sur une
+  version Shipping). `dotnet test` : 30 + 269 + 356 + 50 verts, 0 avertissement. Faramir libre. Non vu : le menu dans la
+  fenêtre.
+- 2026-11-24 : **L16 rendue (Celeborn, 377dd58 + fusion ef063a6) et fusionnée dans `launcher-l15`** (1273ec1) : tout
+  ce que montre le lanceur suit la langue (état, progression « 12,4 Mo » / « 12.4 MB », question de « Jouer »,
+  messages de mise à jour du jeu et du lanceur, lancement du jeu, boîtes de `MainForm`, ligne de commande refusée) ;
+  clé refusée = signal (`LatestOutcome.BadKey`, `LauncherStatus.KeyRefused`, `AccessKeyRefusedException`) et plus une
+  comparaison de texte ; vues et messages prennent une langue facultative (tests sans état global) ; test
+  `NoFrenchInCodeTests` (rouge d'abord, ~40 textes). Restent en anglais, dans une phrase traduite : détails techniques
+  (délai, HTTP, adresse) et messages de Windows / .NET. Conflit `MainForm.ApplyTexts` (L17 + L16) résolu à la main ;
+  la fusion a fait voir un reste de L17 : l'erreur « fichier ouvert » de la réparation était le message anglais de
+  l'exception, passée au texte traduit `GameFileInUse` ; flèche « ▾ » de « Fichiers » admise par le test.
+  `dotnet test` : 30 + 283 + 356 + 50 verts, 0 avertissement ; exe lancé : fenêtre entière en anglais (langue de Windows,
+  sans réglages). Japonais et anglais à faire relire. Celeborn libre. Reste L20 (Sauron) avant la vérification à l'écran
+  de l'ensemble.
+- 2026-11-24 : **L20 rendue (Sauron, fusion 647b50c + c2b151d) et fusionnée dans `launcher-l15`** (avance rapide) :
+  « Envoyer un rapport… » dans le menu « Fichiers ▾ » : zip (journaux ≤ 10, dossiers `Crashes` ≤ 5, plafond 50 Mo
+  non compressés, le plus récent d'abord, journal trop gros = sa fin ; `servers.json` avec `"key": "***"` ; `report.txt`
+  en anglais : versions, dossiers, machine, réglages, état, liste et « laissés de côté ») ; clé effacée de tous les
+  fichiers du zip (UTF-8 et UTF-16, même longueur), test de mutation. Plantage au démarrage : dossier `Saved\Crashes`
+  plus récent que `lastCrashCheckUtc` (sauf Ensure / Stall) ou `HeroesOfLiberty.log` écrit depuis, jeu arrêté, sans
+  « Log file closed » à la fin ; premier démarrage = rien, l'heure seulement ; question Oui / Non → rapport. Doutes : le
+  jeu empaqueté (sans CrashReportClient) écrit-il `Saved\Crashes` (la règle du journal couvre) ; un jeu tué au
+  gestionnaire des tâches compte comme plantage.
+- 2026-11-24 : **Toutes les étapes L15-L21 réunies dans `launcher-l15` (Elrond)**, `LauncherInfo.Version` = "2"
+  (b8bdc70) ; `dotnet test` 30 + 308 + 356 + 50 verts, 0 avertissement ; 31 commits, 67 fichiers au-dessus de `main` ;
+  fusion d'essai avec `main` (74f4587) sans conflit. Vu à l'écran (`DrawToBitmap`) : fenêtre principale et « Réglages »
+  (avec la section « Lancement du jeu ») en fr / en / ja, état réel lu sur le gestionnaire allumé (dernière V 0.4.3).
+  Non vu : parcours pause / reprise, réparation, désinstallation, rapport dans la fenêtre (testés en unitaires), effet
+  des options dans le vrai jeu. Sauron libre. **Attente de l'accord de l'utilisateur pour fusionner dans `main`** ; puis
+  `build_manager.ps1` (route `history` de L21) et une publication pour que les amis aient le lanceur 2 ; ensuite L22,
+  L23, L24.
+- 2026-11-24 : **Fusion dans `main` (accord de l'utilisateur, « go »)** : `launcher-l15` contenait déjà `main` (fusions de
+  `main` faites à 14:52 par la routine d'intégration d'une autre session dans les branches du lanceur) ; tests repassés
+  (30 + 308 + 356 + 50), puis `main` avancé en avance rapide à **b8bdc70**. **Gestionnaire non reconstruit** : celui qui
+  tourne (pid 55644, lancé à 15:03 par une autre session Claude) servait un lanceur ouvert (mise à jour 0.3.0 → 0.4.3 par
+  l'adresse publique à 15:07, éditeur ouvert) ; `build_manager.ps1` refuse tant qu'il tourne, pas arrêté. Vérifié à la
+  place : `dotnet publish` du gestionnaire dans le scratchpad (96 Mo) puis lancé sur 127.0.0.1:7716 contre le vrai
+  `Saved\Manager\Versions` (lecture seule, journaux dans le scratchpad) : `/versions/latest` donne `history` = 0.4.3,
+  0.3.0, 2026-11-03-f5006b5 (sans notes), 2026-10-30-r9, dans l'ordre de publication. Le gestionnaire publié annonce
+  encore `launcherVersion` = 1 : le lanceur 2 n'arrive chez les amis qu'après une publication. **Reste** : quand le
+  gestionnaire est libre, `build_manager.ps1 -Test` et le relancer (`--urls http://0.0.0.0:7700`) ; publication (accord
+  à demander) ; puis L22, L23, L24. Remarque : les notes de 0.4.3 récapitulent déjà depuis 0.3.0 ; avec L21, les notes
+  d'une version peuvent se limiter à ses propres nouveautés.
+- 2026-11-24 : « go » de l'utilisateur pour reconstruire le gestionnaire : vérifié libre (0 salon, 0 serveur, aucune
+  requête depuis 15:07), mais **l'arrêt du gestionnaire (pid 55644, lancé par une autre session) a été refusé par le
+  mode automatique** ; rien n'a été arrêté ni reconstruit. À faire à la main (ou avec une autorisation) : arrêter
+  HOLManager, `powershell -ExecutionPolicy Bypass -File Tools\Manager\build_manager.ps1 -Test`, relancer
+  `Saved\Manager\HOLManager.exe --urls http://0.0.0.0:7700` (ou le raccourci « Gestionnaire HOL »).
+- 2026-11-24 : **Gestionnaire reconstruit** : la session `mycrusader-4f` (publication 0.4.3, e463b40) a arrêté
+  HOLManager et l'a fait savoir ; `build_manager.ps1 -Test` : **PASS** (tests + `Saved\Manager\HOLManager.exe`, 92 Mo,
+  code de `main` e463b40, avec la route `history` de L21). Pas relancé par cette session : l'utilisateur relance
+  `Gestionnaire HOL.bat`. Le jeu publié reste 0.4.3 (`release.json` → prochaine 0.4.4) et annonce le lanceur 1 : le
+  lanceur 2 arrive chez les amis à la prochaine publication.
+- 2026-11-24 : **Lanceur 2 publié** (« go » de l'utilisateur pour donner le lanceur 2 aux amis) : au lieu d'une
+  publication 0.4.4 du jeu (jeu inchangé depuis 0.4.3, paquet de 6 Go), `make_kit.ps1 -ServerUrl
+  http://heroesofliberty.duckdns.org:7700` : **PASS** ; `Versions\launcher\2\HOLLauncher.exe` (63 Mo) + `launcher\latest.txt`
+  = 2 (`launcher\1` gardé) ; kit refait `Saved\Kit\HOLLauncher-kit.zip` (58,3 Mo, clé reprise). Vérifié avec le
+  gestionnaire reconstruit sur 127.0.0.1:7716 : `/versions/latest` = jeu 0.4.3, `launcherVersion` 2, `history` 4. Les
+  lanceurs 1 déjà installés proposeront « Mettre à jour le lanceur » dès que le gestionnaire est relancé
+  (`Gestionnaire HOL.bat`). `release.json` inchangé (prochaine publication du jeu = 0.4.4). Reste : L22, L23, L24.
+- 2026-11-24 : **Retour de l'utilisateur (capture du lanceur 2 en japonais) : « le texte en historique ne suit pas la
+  langue »** (les nouveautés sont écrites en français dans `notes.txt`). Corrigé, **lanceur 3** (Elrond,
+  `launcher-notes-lang`, 170bf89, **dans `main`** en avance rapide) : `GET /versions/latest?lang=<langue>` lit
+  `<v>/notes.<langue>.txt` (deux lettres minuscules, sinon `notes.txt` français, version par version) pour `notes` et
+  `history` ; le lanceur envoie la langue de sa fenêtre à la lecture de l'état (relue après un changement de langue) ;
+  `publish.ps1 -Notes x.txt` publie aussi `x.en.txt` / `x.ja.txt` posés à côté (`notes.en.txt`, `notes.ja.txt`) ;
+  PROTOCOL.md à jour ; tests rouges d'abord (gestionnaire, HOLPublish, lanceur) : 30 + 310 + 357 + 51 verts.
+  `LauncherInfo.Version` = "3". **Traductions des versions publiées** écrites à la main dans
+  `Saved\Manager\Versions\0.4.3\notes.en.txt` / `notes.ja.txt` et `0.3.0\notes.en.txt` / `notes.ja.txt` (noms du jeu
+  repris de `Content/Localization/Game/{en,ja}/Game.po` : Sacred Light / 聖なる光, Necrotic Rage / 死霊の怒り, 戟兵,
+  光の封印, 騎士の挑戦, 呪われた戦士, 暁の加護…). Vérifié de bout en bout : gestionnaire de la branche sur 7716 contre
+  le vrai dossier des versions + jeu d'essai « installé » en 0.3.0, fenêtre rendue en ja / en / fr : historique dans la
+  langue. **Pas fait** : `make_kit.ps1` pour publier le lanceur 3 (refusé par le mode automatique : publication vers
+  les amis sans accord explicite) ; gestionnaire à reconstruire (`build_manager.ps1 -Test`, il faut l'arrêter) pour
+  que `?lang` marche en production ; tant que ce n'est pas fait, les notes restent en français.
+- 2026-11-24 : **Gestionnaire reconstruit par l'utilisateur** (`build_manager.ps1 -Test`, exe du 24/11 15:53, relancé) :
+  vérifié sur 127.0.0.1:7700, `/versions/latest?lang=ja|en|fr` donne les nouveautés de 0.4.3 en japonais / anglais /
+  français, `history` 4 versions, `launcherVersion` 2. Reste : publier le lanceur 3 (`make_kit.ps1`, accord attendu) ;
+  d'ici là, les lanceurs 2 des amis montrent les nouveautés en français.
+- 2026-11-24 : **Lanceur 3 publié par l'utilisateur** (`make_kit.ps1`, kit refait 15:55, `launcher\latest.txt` = 3) ;
+  **vérifié par l'utilisateur : « ça fonctionne »** (nouveautés dans la langue du lanceur). Les amis en lanceur 2 se
+  voient proposer « Mettre à jour le lanceur ». Suivant : L22 (apparence), L23 (zone de notification, mise à jour
+  automatique), L24 (clôture, essai avec un ami).
+- 2026-11-24 : **Nouveautés : traductions obligatoires** (demande de l'utilisateur) : `publish.ps1 -Notes x.txt` refuse
+  (FAIL avant le paquet) un `x.en.txt` ou `x.ja.txt` absent ou vide, HOLPublish aussi (`CheckNotesTranslations`, avant
+  toute écriture) ; tests rouges d'abord (4) : 30 + 310 + 357 + 55 verts ; essai réel de `publish.ps1` (Elrond,
+  dossiers du scratchpad) : ja absent → FAIL, ja vide → FAIL, complet → passe (puis s'arrête sur l'archive absente) ;
+  défaut trouvé par cet essai et corrigé : `[IO.Path]::ChangeExtension($x, $null)` reçoit "" en PowerShell (`n..en.txt`).
+  Règle écrite dans `CLAUDE.md` (« Nouveautés publiées dans toutes les langues »), `Auto_Journey.md` (point 8) et
+  PROTOCOL.md. 33aa166 dans `main`.
+- 2026-11-24 : **Bureau : « Arreter gestionnaire HOL.bat »** (demande de l'utilisateur) → appelle
+  `Tools\Manager\stop_manager.ps1` (e54e36e, `main`) : demande confirmation si `/status` montre des salons ou parties,
+  arrête `Saved\Manager\HOLManager.exe` **par son chemin** avec ses enfants (serveurs de partie), puis le `cmd.exe` parent
+  s'il lance « Gestionnaire… », jamais par titre de fenêtre. **INCIDENT pendant l'essai de la première version** (filtre
+  `taskkill /FI "WINDOWTITLE eq …" /T /F`, sur une fenêtre d'essai « HOLTEST ») : sous Windows Terminal le titre
+  appartient à `WindowsTerminal.exe`, qui a été tué avec tout son arbre : **le vrai gestionnaire (port 7700) et tous les
+  onglets de ce terminal ont été fermés**. Corrigé aussitôt (script par chemin), essayé sur un gestionnaire du
+  scratchpad (port 7716) : lancé seul → arrêté ; lancé par un `cmd` « Gestionnaire_test.bat » → gestionnaire et cmd
+  arrêtés ; rien qui tourne → « not running » ; aucun processus Windows Terminal touché. Leçon : ne jamais tuer par
+  titre de fenêtre (Windows Terminal), toujours par chemin d'exe / PID. L'utilisateur doit relancer
+  `Gestionnaire HOL.bat`.
+- 2026-11-24 : **L22 lancée en sous-agent** (« puis après on continue la L22 ») dans **Glorfindel**, branche `launcher-l22`
+  partie de `main` (e54e36e) : nouveautés en RichTextBox (titres de version en gras, puces, ligne « plus anciennes » en
+  gris italique ; pas de WebView2), bandeau titre / logo, thème clair / sombre / système (réglage `theme`, registre
+  `AppsUseLightTheme`, barre de titre sombre), palette unique, contrastes testés ; rendus `DrawToBitmap` fr / ja, clair /
+  sombre ; logo : celui du jeu s'il existe, sinon titre dessiné = provisoire (ligne de `Placeholders.txt` donnée au
+  rapport). Consigne : jamais de kill par titre de fenêtre ni par nom.
+- 2026-11-24 : **L22 rendue (Glorfindel, aa45a20) et dans `main`** (+ c053c6d : **lanceur 4**) : nouveautés en
+  RichTextBox (`ReleaseNotes.Blocks` → `NewsBlock` titre / texte / puce / écart / « plus anciennes », `NewsFormat`
+  pur et testé : titres « V 0.Y.X » en gras 12,5 pt, vraies puces, ligne « plus anciennes » en italique grisé) ;
+  bandeau « Heroes of Liberty » (Georgia, or sur rouge sombre, sous-titre traduit) ; thème clair / sombre / système
+  (réglage `theme`, registre `AppsUseLightTheme`, barre de titre et barres de défilement sombres, suit un changement de
+  Windows) ; `Palette` unique, contraste ≥ 4,5 testé pour chaque paire (y compris boutons grisés) ; `ThemedButton`
+  dessine ses boutons. Fenêtre 760 × 600, minimum 640 × 600. Pas de logo dans le dépôt : titre en texte = provisoire,
+  ligne ajoutée à `Placeholders.txt` (MENU ET MARQUE). Rendus relus (sombre ja, clair fr, réglages sombres). Tests 30 +
+  349 + 357 + 55 verts, 0 avertissement. Restes : barre de progression et flèches des champs numériques claires en
+  sombre ; changement de thème Windows à chaud non essayé. **Lanceur 4 non publié** (`make_kit.ps1`, accord attendu).
+  Suivant : L23 (zone de notification, mise à jour automatique), L24 (clôture).
+- 2026-11-24 : **Analyse de deux lanceurs du commerce** (captures de l'utilisateur) et **refonte décidée** (« vas y, fais
+  tout », puis retrait du compte à rebours de séance et des salons en direct) : fenêtre en **WPF** (fond illustré plein
+  écran, cadre personnalisé, colonne gauche logo + un seul gros bouton intelligent Installer / Mettre à jour / Jouer /
+  Pause / Reprendre / En cours avec ⚙ (réglages, fichiers, rapport…), progression dessous, ligne « V · Lanceur ·
+  Serveur ● » ; à droite panneau translucide « Informations » : onglets Mises à jour (cartes par version) et Annonces ;
+  liens communauté en icônes ; état « En cours » : le lanceur reste ouvert, réglage `closeOnPlay`). Fond : pas
+  d'illustration dans le projet, captures existantes inutilisables (mannequins, éditeur) → **illustration vectorielle
+  originale en XAML** (provisoire), remplaçable par une image servie par le gestionnaire. Contrat commun
+  `HomeContent.cs` (annonces, liens, fond) sur `launcher-home` (525c6e9, Elrond). **Deux sous-agents** : côté
+  gestionnaire (Haldir, `launcher-home-manager` : `GET /launcher/home?lang=`, `/launcher/home/background` avec cache,
+  outil `home.ps1` / HOLPublish, annonces en fr / en / ja obligatoires, `HomeClient`, cache du fond) ; fenêtre WPF
+  (Glorfindel, `launcher-home-ui`). Lanceur 5 à la fusion.
+- 2026-11-24 : **Refonte, côté gestionnaire rendu** (Haldir, 52006fb, avancé dans `launcher-home`) : format
+  `<versions>/home/` (`HOLUpdate/HomeFiles.cs` : `announcements.json` titre / texte par langue, `links.json`,
+  `background.jpg|png` ≤ 4 Mo), `GET /launcher/home?lang=` (repli français champ par champ, plus récentes d'abord, 20
+  au plus, liens http(s) seulement, fichier abîmé = sa partie vide, jamais 500) et `/launcher/home/background` (ETag,
+  304, derrière la clé) ; outil `Tools\Manager\home.ps1` (→ `HOLPublish home list|add|remove|link|unlink|background`,
+  `add -From <dossier>` exige `title` / `body` en fr / en / ja non vides, sinon FAIL sans rien écrire) ; `HomeClient`
+  (jamais d'exception, vide sinon) + cache `HOLLauncher.home\` (If-None-Match, gardé hors ligne, `LauncherOwned`) ;
+  « home » interdit comme nom de version ; PROTOCOL.md « Accueil du lanceur » ; phrase ajoutée à la règle de
+  `CLAUDE.md` (annonces aussi en trois langues). Tests 47 + 374 + 378 + 78 verts. Haldir libre. La fenêtre WPF
+  (Glorfindel) est priée de fusionner `launcher-home` et de brancher `HomeClient`.
+- 2026-11-24 : **Refonte WPF rendue (Glorfindel : 3bf459c, 90c33e4, e9b7271) et dans `main` : lanceur 5 (6e6a1df)**.
+  Fenêtre WPF à cadre personnalisé (`MainWindow.xaml` + partiels, `SettingsWindow`, `MessageWindow` à la place des
+  MessageBox, `KeyArt.xaml` illustration vectorielle, `Styles.xaml`, `WindowFrame`) ; fenêtres WinForms supprimées ;
+  logique dans des classes pures testées : `PrimaryAction` (En cours / Reprendre / Pause / Un instant / Chargement /
+  Installer / Mettre à jour / Jouer), `HomeMenu` (⚙ : Jouer quand même, Réglages, Vérifier, dossiers, Rapport,
+  Désinstaller, Mettre à jour le lanceur, Actualiser), `HomeCards`, `LinkRules` (http(s) seulement), `FooterLine`,
+  `GameSession` (« En cours » : le lanceur se réduit, attend la fin du jeu, propose le rapport s'il a planté ; réglage
+  `closeOnPlay`), `SettingsModel`, `HomeSource` (→ `HomeClient`), `WpfTheme`, `UiTexts` ; test « pas de français en
+  dur » étendu aux `.xaml`. Rendus relus (mise à jour sombre, annonces clair, pause en taille minimale, réglages ja).
+  Tests 47 + 454 + 378 + 78 verts, 0 avertissement ; exe de publication unique (66 Mo) lancé par le sous-agent.
+  3 lignes ajoutées à `Placeholders.txt` (logo texte, illustration de fond, icônes des liens ; l'ancienne ligne du
+  bandeau L22 remplacée). Ouvert pour l'utilisateur sur `Desktop\HOLLauncher` (pid 52720). Non vu : « En cours » avec un
+  vrai jeu, menu ⚙ en vrai. **Lanceur 5 et gestionnaire non publiés** : à faire avec accord (`build_manager.ps1` pour
+  `/launcher/home`, puis `make_kit.ps1`). Suivant : L23, L24.
+- 2026-11-24 : **Gestionnaire reconstruit et lanceur 5 publié** (« fais le 1 et 3 ») : le gestionnaire ne tournait pas
+  (arrêté par l'incident Windows Terminal) ; `build_manager.ps1 -Test` PASS (92 Mo) ; relance : `Gestionnaire HOL.bat`
+  lancé depuis la session reste bloqué (le `cd /d` du .bat échoue dans l'environnement de Claude, comme aux essais ;
+  marche quand l'utilisateur le lance), cmd fermé par son PID, gestionnaire lancé directement (`HOLManager.exe --urls
+  http://0.0.0.0:7700`, dossier `Saved\Manager`, fenêtre réduite, pid 10152) ; `/status` OK, `/launcher/home?lang=fr`
+  répond (vide : aucune annonce, aucun lien, pas de fond). `make_kit.ps1` PASS : `launcher\5\`, `launcher\latest.txt` = 5,
+  kit refait (58,4 Mo, clé reprise) ; le gestionnaire annonce `launcherVersion` 5 (le 4 n'a jamais été publié). Les
+  amis en lanceur 2 ou 3 se voient proposer « Mettre à jour le lanceur ». Reste : remplir l'accueil (`home.ps1`), L23,
+  L24.
+- 2026-11-24 : **L23 lancée en sous-agent** (« go ») dans **Haldir**, branche `launcher-l23` partie de `main` (6e6a1df,
+  lanceur 5, WPF) : icône dans la zone de notification (Ouvrir, Jouer, Rechercher une mise à jour, Quitter), réglage
+  `minimizeToTray` (fermer = cacher), vérification toutes les N minutes (`checkEveryMinutes`, 30 par défaut), réglage
+  `autoUpdate` off / notify (défaut) / install (jamais pendant que le jeu tourne ; le lanceur seulement signalé),
+  `startWithWindows` (clé Run de HKCU, option `--tray`), une seule instance (mutex par dossier de jeu, la seconde
+  ramène la première), section « Arrière-plan » dans les réglages. Lanceur 6 à la fusion.
+- 2026-11-24 : **L23 rendue (Haldir, b7cbbe3) et dans `main` : lanceur 6 (948d5b9)**. Icône de la zone de notification
+  (`TrayIcon` WinForms `NotifyIcon` + menu WPF : Ouvrir, Jouer, Rechercher une mise à jour, Quitter) ; réglages
+  `minimizeToTray` (faux par défaut), `autoUpdate` off / notify (défaut) / install, `checkEveryMinutes` (30, 5..1440),
+  `startWithWindows` (clé `HKCU\…\Run\HeroesOfLibertyLauncher` = `"<exe>" --tray`, jamais écrite dans les tests),
+  `trayHintShown` ; `BackgroundUpdatePolicy` (rien pendant une partie ; install seulement si le jeu installé est en
+  retard et rien ne tourne ; lanceur seulement signalé, une fois par version) + `CheckSchedule` (horloge injectée) ;
+  une seule instance par dossier de jeu (événement nommé `Local\HeroesOfLibertyLauncher.<hash>`, la seconde ramène la
+  première) ; option `--tray` ; section « Arrière-plan » des réglages. À la fusion : 3 tests de la politique supposaient
+  « 6 » plus récent que le lanceur courant → version « 99 » indépendante ; échec intermittent connu
+  `VersionRoutesTests.LatestWithoutNotesNorLauncherGivesEmptyTexts` (« fichier utilisé ») vu une fois, deux passes
+  vertes ensuite : 47 + 378 + 543 + 78. Rendus relus (réglages sombre fr, menu clair). Ligne ajoutée à
+  `Placeholders.txt` (icône de notification). Non vu : fermer = cacher en vrai (à vérifier par l'utilisateur), clic sur
+  une notification depuis le centre de notifications. **Lanceur 6 non publié.** Suivant : L24 (clôture).
+- 2026-11-24 : **L24 (clôture) en cours** : « go » de l'utilisateur pris pour « publier le lanceur 6 + L24 » ;
+  **publication du lanceur 6 refusée par le mode automatique** (accord explicite requis : « publie »), non faite.
+  Décisions reportées au GDD : **D912** (nouveautés dans la langue du lanceur, traductions obligatoires), **D913**
+  (refonte WPF de l'accueil, séance et « qui joue » retirés par l'utilisateur), **D914** (fonctions L15-L23 et leurs
+  défauts) ; prochain numéro D915 ; § 16.4 (résumé « Serveurs sur le PC ») complété. Reste pour clore : publier le
+  lanceur 6 (accord), essai avec un ami (R8d, à planifier par l'utilisateur), vérifications manuelles (fermer = cacher,
+  « En cours » avec un vrai jeu).
+- 2026-11-24 : **Lanceur 6 publié par l'utilisateur** (`make_kit.ps1` ; premier essai FAIL : fichier `obj\*_wpftmp*` tenu
+  un instant par un autre build, sans doute le C# Dev Kit de VS Code ; plus personne ne le tenait au contrôle Restart
+  Manager ; relancé, PASS) : `launcher\latest.txt` = 6, kit du 24/11 18:05. Le gestionnaire ne tourne pas (arrêté
+  proprement à 17:27, après le démarrage de 17:24) : à relancer par `Gestionnaire HOL.bat` pour que les amis voient le
+  lanceur 6. Reste du chantier : vérifs manuelles (fermer = cacher, « En cours »), essai avec un ami, contenu de
+  l'accueil (`home.ps1`).
+- 2026-11-24 : **Vérif manuelle « fermer = cacher » par l'utilisateur** : d'abord « ça me l'a quitté » (la case n'était
+  pas cochée : défaut faux, fichier de réglages sans `minimizeToTray`), puis **« ok, ça fonctionne »** une fois cochée.
+  Reproduit avant par automatisation (copie du lanceur 6 au scratchpad, UI Automation : Réglages, cocher, Enregistrer,
+  fermer → caché, bulle une fois). Question posée : cocher par défaut ? Défaut noté au passage (non corrigé) : avec
+  `--game-dir` en ligne de commande, « Enregistrer » recopie ce dossier dans `gameDir` des réglages.
+- 2026-11-24 : **Fermer = cacher coché par défaut** (« oui ») : **lanceur 7** (295af6c, `main`) : `TrayMenu.CloseHides`
+  cache sauf `minimizeToTray: false` (absent ou true = cacher, anciens fichiers compris) ; la fenêtre des réglages écrit
+  `false` quand la case est décochée, rien quand elle est cochée ; tests rouges d'abord (4) puis 2 tests de l'ancien
+  défaut alignés ; 47 + 543 + 378 + 78 verts deux fois (l'échec intermittent « latest.txt utilisé » des tests du
+  gestionnaire vu encore une fois sur un autre test : défaut existant à traiter). D914 du GDD mise à jour. **Lanceur 7 non
+  publié** (accord « publie » attendu).
+- 2026-11-24 : **Lanceur 7 publié par l'utilisateur** (kit 18:18, `launcher\latest.txt` = 7) ; gestionnaire relancé et
+  vérifié : jeu 0.4.3, `launcherVersion` 7. Reste du chantier : « En cours » avec un vrai jeu, essai avec un ami (R8d),
+  contenu de l'accueil (`home.ps1`), échec intermittent des tests du gestionnaire (`latest.txt` utilisé).
