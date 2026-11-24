@@ -4,8 +4,8 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: Game\n"
-"POT-Creation-Date: 2026-11-21 19:57\n"
-"PO-Revision-Date: 2026-11-21 19:57\n"
+"POT-Creation-Date: 2026-11-24 10:17\n"
+"PO-Revision-Date: 2026-11-24 10:17\n"
 "Language-Team: \n"
 "Language: ja\n"
 "MIME-Version: 1.0\n"
@@ -1511,6 +1511,20 @@ msgctxt "HOLSiteBanner,Announce10"
 msgid "Sites sacrés : {0} gagne dans 10 secondes"
 msgstr "聖地：{0}が10秒後に勝利"
 
+#. Key:	ToChoose
+#. SourceLocation:	Script/UI/HOLSpecializationSlot.as(137)
+#: Script/UI/HOLSpecializationSlot.as(137)
+msgctxt "HOLSpecializationSlot,ToChoose"
+msgid "Spécialisation : à choisir"
+msgstr "専門化：選択してください"
+
+#. Key:	ChosenVoie
+#. SourceLocation:	Script/UI/HOLSpecializationSlot.as(142)
+#: Script/UI/HOLSpecializationSlot.as(142)
+msgctxt "HOLSpecializationSlot,ChosenVoie"
+msgid "Spécialisation : Voie {0} (palier {1})"
+msgstr "専門化：ルート{0}（段階{1}）"
+
 #. Key:	Food
 #. SourceLocation:	Script/UI/HOLTopBar.as(21)
 #: Script/UI/HOLTopBar.as(21)
@@ -1697,7 +1711,7 @@ msgstr "呪われた戦士は10秒間、戦いに身を投じる：ダメージ+
 #. SourceLocation:	Script/Units/HOLUnitAbilityTable.as(97)
 #: Script/Units/HOLUnitAbilityTable.as(97)
 msgctxt "HOLUnitAbilityTable,DescriptionLightSeal"
-msgid "Le Moine pose un sceau de lumière sur le sol, à 8 m au plus de lui : une zone de 6 m de rayon qui dure 10 s ; recharge de 40 s. (Le ralentissement des ennemis de la zone est une règle de simulation, pas encore branchée.)"
+msgid "Le Moine pose un sceau de lumière sur le sol, à 8 m au plus de lui : une zone de 6 m de rayon qui dure 10 s ; recharge de 40 s. Les ennemis dans la zone sont ralentis : la règle de simulation est lue par le combat."
 msgstr "修道士は自身から8m以内の地面に光の封印を刻む：半径6mの領域が10秒間持続する。再使用まで40秒。（領域内の敵を減速させる効果はシミュレーション規則であり、まだ接続されていない。）"
 
 #. Key:	DescriptionKnightChallenge
@@ -2932,13 +2946,6 @@ msgctxt "HOLGameScreen,PopulationEffect"
 msgid "+{0} population"
 msgstr "人口 +{0}"
 
-#. Key:	ResearchSoonCell
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1166)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1166)
-msgctxt "HOLGameScreen,ResearchSoonCell"
-msgid "{0}\nBientôt"
-msgstr "{0}\n近日公開"
-
 #. Key:	DepositEffect
 #. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(117)
 #: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(117)
@@ -2954,137 +2961,130 @@ msgid ", "
 msgstr "、"
 
 #. Key:	SpecializationRunningEffect
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1181)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1181)
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1184)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1184)
 msgctxt "HOLGameScreen,SpecializationRunningEffect"
 msgid "Déblocage en cours au Forum. Cliquer annule sans coût ; le choix reste ouvert."
 msgstr "町の中心で解放中。クリックすると費用なしでキャンセルされ、選択は保留のままになる。"
 
 #. Key:	SpecializationEffect
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1182)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1182)
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1185)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1185)
 msgctxt "HOLGameScreen,SpecializationEffect"
 msgid "Gratuit. Se débloque au Forum en 30 / 45 / 60 s (palier I / II / III), en parallèle de sa file. Définitif une fois appliqué."
 msgstr "無料。町の中心で30 / 45 / 60秒（段階I / II / III）かけて解放され、生産待ち行列と並行して進む。適用後は確定。"
 
 #. Key:	MarketBuyName
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1210)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1210)
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1213)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1213)
 msgctxt "HOLGameScreen,MarketBuyName"
 msgid "Acheter : {0}"
 msgstr "購入：{0}"
 
 #. Key:	MarketSellName
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1210)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1210)
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1213)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1213)
 msgctxt "HOLGameScreen,MarketSellName"
 msgid "Vendre : {0}"
 msgstr "売却：{0}"
 
 #. Key:	MarketNoBook
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1212)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1212)
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1215)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1215)
 msgctxt "HOLGameScreen,MarketNoBook"
 msgid "Le cours n'est pas encore connu"
 msgstr "相場はまだ不明です"
 
 #. Key:	MarketBuyEffect
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1241)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1241)
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1244)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1244)
 msgctxt "HOLGameScreen,MarketBuyEffect"
 msgid "100 or contre {0} {1}, taxe comprise ; le cours monte à {2}. Maj : 500 or d'un coup"
 msgstr "100ゴールドで{1}を{0}、税込み。相場は{2}に上昇。Shift：500ゴールドを一度に"
 
 #. Key:	MarketSellEffect
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1243)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1243)
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1246)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1246)
 msgctxt "HOLGameScreen,MarketSellEffect"
 msgid "100 {0} contre {1} or, taxe déduite ; le cours baisse à {2}. Maj : 500 {0} d'un coup"
 msgstr "{0}100を{1}ゴールドに、税引き後。相場は{2}に下落。Shift：{0}500を一度に"
 
 #. Key:	UngarrisonAll
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1258)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1258)
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1261)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1261)
 msgctxt "HOLGameScreen,UngarrisonAll"
 msgid "Sortir"
 msgstr "退出"
 
 #. Key:	UngarrisonAllEffect
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1259)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1259)
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1262)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1262)
 msgctxt "HOLGameScreen,UngarrisonAllEffect"
 msgid "Toute la garnison sort du bâtiment"
 msgstr "駐留中の全員が建物から出る"
 
 #. Key:	UngarrisonAllName
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1259)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1259)
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1262)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1262)
 msgctxt "HOLGameScreen,UngarrisonAllName"
 msgid "Sortir tous"
 msgstr "全員退出"
 
 #. Key:	Cancel
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1265)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1265)
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1268)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1268)
 msgctxt "HOLGameScreen,Cancel"
 msgid "Annuler"
 msgstr "キャンセル"
 
 #. Key:	CancelSite
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1266)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1266)
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1269)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1269)
 msgctxt "HOLGameScreen,CancelSite"
 msgid "Annuler la construction"
 msgstr "建設をキャンセル"
 
 #. Key:	AttackMove
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1270)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1270)
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1273)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1273)
 msgctxt "HOLGameScreen,AttackMove"
 msgid "Attaque"
 msgstr "攻撃"
 
 #. Key:	AttackMoveName
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1271)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1271)
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1274)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1274)
 msgctxt "HOLGameScreen,AttackMoveName"
 msgid "Attaque-déplacement"
 msgstr "攻撃移動"
 
 #. Key:	AttackMoveEffect
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1272)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1272)
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1275)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1275)
 msgctxt "HOLGameScreen,AttackMoveEffect"
 msgid "Puis clic au sol : attaque les ennemis en chemin"
 msgstr "続けて地面をクリック：途中の敵を攻撃"
 
 #. Key:	Stop
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1275)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1275)
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1278)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1278)
 msgctxt "HOLGameScreen,Stop"
 msgid "Arrêt"
 msgstr "停止"
 
 #. Key:	StopEffect
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1276)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1276)
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1279)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1279)
 msgctxt "HOLGameScreen,StopEffect"
 msgid "Annule les ordres et le combat"
 msgstr "命令と戦闘を取り消す"
 
 #. Key:	StopName
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1276)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1276)
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1279)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1279)
 msgctxt "HOLGameScreen,StopName"
 msgid "Arrêt"
 msgstr "停止"
-
-#. Key:	Hold
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1279)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1279)
-msgctxt "HOLGameScreen,Hold"
-msgid "Tenir"
-msgstr "待機"
 
 #. Key:	ProducesEffect
 #. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(128)
@@ -3093,142 +3093,149 @@ msgctxt "HOLGameScreen,ProducesEffect"
 msgid "Produit : {0}"
 msgstr "生産：{0}"
 
+#. Key:	Hold
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1282)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1282)
+msgctxt "HOLGameScreen,Hold"
+msgid "Tenir"
+msgstr "待機"
+
 #. Key:	HoldName
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1280)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1280)
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1283)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1283)
 msgctxt "HOLGameScreen,HoldName"
 msgid "Tenir la position"
 msgstr "位置を保持"
 
 #. Key:	HoldEffect
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1281)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1281)
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1284)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1284)
 msgctxt "HOLGameScreen,HoldEffect"
 msgid "N'attaque qu'à portée, ne poursuit pas"
 msgstr "射程内のみ攻撃し、追跡しない"
 
 #. Key:	Deploy
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1288)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1288)
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1291)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1291)
 msgctxt "HOLGameScreen,Deploy"
 msgid "Monter"
 msgstr "展開"
 
 #. Key:	Pack
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1288)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1288)
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1291)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1291)
 msgctxt "HOLGameScreen,Pack"
 msgid "Démonter"
 msgstr "撤収"
 
 #. Key:	DeployName
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1289)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1289)
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1292)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1292)
 msgctxt "HOLGameScreen,DeployName"
 msgid "Monter l'engin"
 msgstr "兵器を展開"
 
 #. Key:	PackName
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1289)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1289)
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1292)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1292)
 msgctxt "HOLGameScreen,PackName"
 msgid "Démonter l'engin"
 msgstr "兵器を撤収"
 
 #. Key:	PackEffect
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1291)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1291)
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1294)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1294)
 msgctxt "HOLGameScreen,PackEffect"
 msgid "Replie l'engin : il ne tire plus, il peut marcher"
 msgstr "兵器を畳む：発射できなくなり、移動できる"
 
 #. Key:	DeployEffect
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1292)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1292)
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1295)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1295)
 msgctxt "HOLGameScreen,DeployEffect"
 msgid "Installe l'engin : il tire, il ne marche plus"
 msgstr "兵器を設置する：発射できるが、移動できない"
 
 #. Key:	BannerShort
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1300)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1300)
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1303)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1303)
 msgctxt "HOLGameScreen,BannerShort"
 msgid "Bannière"
 msgstr "旗"
 
 #. Key:	CloseRanksShort
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1300)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1300)
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1303)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1303)
 msgctxt "HOLGameScreen,CloseRanksShort"
 msgid "Rangs"
 msgstr "隊列"
 
 #. Key:	BannerName
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1301)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1301)
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1304)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1304)
 msgctxt "HOLGameScreen,BannerName"
 msgid "Bannière de l'Aube"
 msgstr "暁の旗"
 
 #. Key:	CloseRanksName
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1301)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1301)
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1304)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1304)
 msgctxt "HOLGameScreen,CloseRanksName"
 msgid "Serrez les rangs"
 msgstr "隊列を固めよ"
 
 #. Key:	BannerEffect
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1303)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1303)
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1306)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1306)
 msgctxt "HOLGameScreen,BannerEffect"
 msgid "Puis clic au sol, à 16 m du héros au plus : son aura (−15 % de dégâts reçus à 12 m) pendant 45 s ; recharge 120 s"
 msgstr "続けて英雄から16 m以内の地面をクリック：45秒間オーラ（12 m以内の被ダメージ −15 %）；再使用 120秒"
 
 #. Key:	CloseRanksEffect
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1304)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1304)
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1307)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1307)
 msgctxt "HOLGameScreen,CloseRanksEffect"
 msgid "Immobilise 15 s les unités à 12 m du héros (formation défensive) : elles restent sur place et reçoivent −25 % de dégâts ; recharge 60 s"
 msgstr "英雄から12 m以内の味方ユニットを15秒間動けなくする（防御陣形）：その場に留まり、被ダメージ −25 %；再使用 60秒"
 
 #. Key:	HeroAbilityLocked
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1309)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1309)
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1312)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1312)
 msgctxt "HOLGameScreen,HeroAbilityLocked"
 msgid "Niveau {0} requis"
 msgstr "レベル {0} が必要"
 
 #. Key:	HeroAbilityCooldown
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1312)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1312)
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1315)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1315)
 msgctxt "HOLGameScreen,HeroAbilityCooldown"
 msgid "{0}\n{1} s"
 msgstr "{0}\n{1}秒"
 
 #. Key:	NecroticRageShort
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1323)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1323)
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1326)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1326)
 msgctxt "HOLGameScreen,NecroticRageShort"
 msgid "Rage"
 msgstr "怒り"
 
 #. Key:	NecroticRageCooldown
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1333)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1333)
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1336)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1336)
 msgctxt "HOLGameScreen,NecroticRageCooldown"
 msgid "{0}\n{1} s"
 msgstr "{0}\n{1}秒"
 
 #. Key:	NecroticRageName
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1340)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1340)
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1343)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1343)
 msgctxt "HOLGameScreen,NecroticRageName"
 msgid "Rage nécrotique"
 msgstr "死霊の怒り"
 
 #. Key:	NecroticRageEffect
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1341)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1341)
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1344)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1344)
 msgctxt "HOLGameScreen,NecroticRageEffect"
 msgid "{0} s : +{1} % de dégâts, +{2} % de cadence, {3} PV perdus par coup porté. Refusée sous {4} PV, elle s'arrête à {5} PV ; recharge {6} s"
 msgstr "{0}秒間：ダメージ+{1}%、攻撃速度+{2}%、攻撃ごとにHP{3}を失う。HPが{4}未満では使用不可、HP{5}で終了。再使用まで{6}秒"
