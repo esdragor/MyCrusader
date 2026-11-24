@@ -26,6 +26,7 @@ param(
   [string]$RetoursDir = '',                # Close, Essay : dossier des Retours\ (defaut : la copie principale)
   [string]$JourFile = '',                  # Launch, Close (L15-1) : Auto_Journey_Jour.md a lire (defaut <copie principale>\Auto_Journey_Jour.md) ; sert aux tests
   [string]$EtapeFile = '',                 # Close (L90 / L12-6) : EtapeDefini.md a relire (defaut <copie principale>\EtapeDefini.md) ; son dossier est le depot git qui porte main
+  [string]$ReportFile = '',               # Report (L14-6) : rapport de l'agent (Docs\Rapports\<AGENT>.md) dont le champ TEST_ROUGE est controle
   [string]$Essay = '',                   # Essay : nom de l'essai (E-<nom>.md de Retours\) dont les branches citees doivent etre dans le worktree ; defaut : tous les E-*.md ouverts
   [double]$MinFreeVirtualGB = 8,           # Launch (L12-1c) : memoire virtuelle libre sous ce seuil = WARN (2026-11-12 : builds et jeux qui echouent faute de memoire)
   [string]$EngineRoot = 'C:\UE\UE_5.8_HOL', # Launch (L12-1c) : un cl.exe dont aucun ancetre ne cite ce moteur = compilation d'un AUTRE moteur (ProjectShiva sur AS_3...) = WARN

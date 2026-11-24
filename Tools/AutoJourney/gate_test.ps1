@@ -177,6 +177,23 @@ Check ($ess -match '(?m)^FAIL .*(binaire|DLL).*(ANCIEN|perim).*Source') 'essay: 
 $rep2 = & powershell -NoProfile -ExecutionPolicy Bypass -File $Gate -Phase Report -Root $Repo | Out-String
 Check (-not ($rep2 -match '(?m)^WARN .*(binaire|DLL).*(ANCIEN|perim)') -and $rep2 -match '(?m)^PASS .*binaire') 'report: binaire plus recent que le fichier -> PASS' $rep2
 
+# --- L14-6 (BILAN-1123pm) : rouges C++ jamais vus. -Phase Report -ReportFile <rapport> refuse un TEST_ROUGE « suppose » sans justification.
+$RepSup = Join-Path $Tmp 'rapport-suppose.md'
+Set-Content -Path $RepSup -Encoding UTF8 -Value "TEST_ROUGE: suppose rouge (commit abc1234) + assertit l'effet : oui   TEST_ROUGE_SEPARE: oui"
+$rsup = & powershell -NoProfile -ExecutionPolicy Bypass -File $Gate -Phase Report -Root $Repo -ReportFile $RepSup | Out-String
+Check ($rsup -match '(?m)^FAIL .*L14-6.*suppos') 'L14-6 report: TEST_ROUGE suppose sans justification -> FAIL' $rsup
+$RepJus = Join-Path $Tmp 'rapport-suppose-justifie.md'
+Set-Content -Path $RepJus -Encoding UTF8 -Value "TEST_ROUGE: suppose rouge (commit abc1234) ; justification : lot C++ non compile, le rouge se verra au build de la session principale"
+$rjus = & powershell -NoProfile -ExecutionPolicy Bypass -File $Gate -Phase Report -Root $Repo -ReportFile $RepJus | Out-String
+Check ($rjus -match '(?m)^WARN .*L14-6.*suppos' -and -not ($rjus -match '(?m)^FAIL .*L14-6')) 'L14-6 report: TEST_ROUGE suppose AVEC justification -> WARN, pas FAIL' $rjus
+$RepVu = Join-Path $Tmp 'rapport-vu.md'
+Set-Content -Path $RepVu -Encoding UTF8 -Value "TEST_ROUGE: vu a 19:41 : 1410/1419 (commit abc1234) + assertit l'effet : oui"
+$rvu = & powershell -NoProfile -ExecutionPolicy Bypass -File $Gate -Phase Report -Root $Repo -ReportFile $RepVu | Out-String
+Check ($rvu -match '(?m)^PASS .*L14-6' -and -not ($rvu -match '(?m)^(FAIL|WARN) .*L14-6')) 'L14-6 report: TEST_ROUGE vu a l execution -> PASS' $rvu
+$RepNone = Join-Path $Tmp 'rapport-introuvable.md'
+$rnone = & powershell -NoProfile -ExecutionPolicy Bypass -File $Gate -Phase Report -Root $Repo -ReportFile $RepNone | Out-String
+Check ($rnone -match '(?m)^FAIL .*L14-6.*introuvable') 'L14-6 report: rapport introuvable -> FAIL' $rnone
+
 # --- L7-8 + L7-6 : Close -Exclude et ligne GESTE / SON des E-*.md
 $Ret = Join-Path $Tmp 'Retours'
 New-Item -ItemType Directory -Path $Ret | Out-Null
