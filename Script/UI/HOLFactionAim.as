@@ -77,6 +77,10 @@ namespace HOLFactionAim
 		Preview.bInRange = Math::Sqrt(Dx * Dx + Dy * Dy) <= AimRangeCm;
 		// PLACEHOLDER colours: green in reach, orange out of reach (the hero will walk to reach it, D900).
 		Preview.Colour = Preview.bInRange ? FLinearColor(0.3, 1.0, 0.3, 1.0) : FLinearColor(1.0, 0.45, 0.1, 1.0);
+		// ARWEN-1124sf: the hero walks to the server's own stop place (ApproachPointOf, D900) when the point is out of reach.
+		const FHOLFactionApproach Walk = HOLFactionPowerServer::ApproachPointOf(Origin, Point, AimRangeCm);
+		Preview.bWalks = Walk.bNeedsWalk;
+		Preview.StopPoint = Walk.StopPoint;
 		return Preview;
 	}
 }
