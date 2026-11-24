@@ -98,3 +98,39 @@ void Test_LedgerPlacesHesitationAtTheRefusersPosition(FUnitTest& T)
 	if (Win >= 0)
 		T.AssertEquals(Won.Arena.CenterX, Orders[Win].CenterXCm, "a won duel keeps the arena's centre");
 }
+
+// F5 (ARWEN-1124e): the morale a duel lays is readable in the journal, one line per order, from the real orders of the real rule: a won duel
+// (Triumph for the winner's camp, Demoralised for the loser's, at the arena's centre) and a refusal (Hesitation at the refuser's place).
+void Test_LedgerDescribesEachMoraleOrder(FUnitTest& T)
+{
+	FHOLDuelSettings S = HOLDuel::Preset();
+	FHOLDuel D = HOLDuel::Respond(S, HOLDuel::Challenge(S, 0, 1), true);
+	D.bHasArena = true;
+	D.Arena = HOLDuel::MakeArena(S, 1000, 2000, 1400, 2400);
+	D = HOLDuel::Advance(S, D, 3000, 0, 40);
+	FHOLDuelEnded Done;
+	Done.Duel = D;
+	Done.Effects = HOLDuel::Effects(S, D);
+	TArray<FHOLDuelEnded> Ended;
+	Ended.Add(Done);
+	TArray<FHOLDuelMoraleOrder> Won = HOLDuelRewards::OrdersOfEnded(S, Ended);
+	FHOLDuel Refused = HOLDuel::Respond(S, HOLDuel::Challenge(S, 2, 3), false);
+	TArray<FHOLDuelMoraleOrder> Refusal = HOLDuelRewards::OrdersAt(S, Refused, 800, -600);
+	int Win = LedgerFindOrder(Won, HOLMoraleTable::Triumph, 1);
+	int Lose = LedgerFindOrder(Won, HOLMoraleTable::Demoralised, 0);
+	int Hes = LedgerFindOrder(Refusal, HOLMoraleTable::Hesitation, 3);
+	T.AssertTrue(Win >= 0 && Lose >= 0 && Hes >= 0, "the real rule gives Triumph, Demoralised and Hesitation orders");
+	if (Win < 0 || Lose < 0 || Hes < 0)
+		return;
+	FString TriumphLine = HOLDuelRewards::DescribeMoraleOrder(Won[Win]);
+	FString DemoralisedLine = HOLDuelRewards::DescribeMoraleOrder(Won[Lose]);
+	FString HesitationLine = HOLDuelRewards::DescribeMoraleOrder(Refusal[Hes]);
+	FString Centre = "at (" + D.Arena.CenterX + ", " + D.Arena.CenterY + ")";
+	T.AssertTrue(TriumphLine.StartsWith("Duel morale: Triumph slot 1 "), "Triumph line names the effect and the winner's slot: " + TriumphLine);
+	T.AssertTrue(TriumphLine.Contains(Centre), "Triumph line gives the arena's centre: " + TriumphLine);
+	T.AssertTrue(TriumphLine.Contains("radius " + Won[Win].RadiusCm + " ms " + Won[Win].DurationMs), "Triumph line gives the radius and the duration: " + TriumphLine);
+	T.AssertTrue(DemoralisedLine.StartsWith("Duel morale: Demoralised slot 0 "), "Demoralised line names the effect and the loser's slot: " + DemoralisedLine);
+	T.AssertTrue(DemoralisedLine.Contains(Centre), "Demoralised line gives the arena's centre: " + DemoralisedLine);
+	T.AssertTrue(HesitationLine.StartsWith("Duel morale: Hesitation slot 3 "), "Hesitation line names the effect and the refuser's slot: " + HesitationLine);
+	T.AssertTrue(HesitationLine.Contains("at (800, -600)"), "Hesitation line gives the refuser's place: " + HesitationLine);
+}

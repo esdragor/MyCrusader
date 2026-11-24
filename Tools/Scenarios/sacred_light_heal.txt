@@ -1,0 +1,44 @@
+# Sacred Light heal PROOF (ARWEN-1124d, RECETTE-1123pa (b)): the zone gives health points back. Dawn (slot 0, human) vs a frozen AI, 5 Men-at-arms next to the hero, ALL WOUNDED to 40 %, Honor 100.
+# Reads the effect, no journal line behind a cvar: hol.Heal.Report prints the health points healed since the start (HOLHealProcessor::TotalHealed, the zone's heal is added at the zone loop), hol.Units.Report lists the units.
+# Measured 2026-11-24: 0.00 -> 705.00 (hero 180 -> 330 / 450, Honor 75 -> 89). BEFORE the cast: healed total 0.00 (waitlog on that exact line). AFTER the cast (real gesture: click the box, click the ground near the wounded, 5 s zone): the total must have risen (waitlog on the exact line).
+waitlog Starting hero of slot 0 spawned at
+hol.AI.ThinkSteps 100000
+hol.Sanity.Watch 1
+frames 10
+hol.Camera.FocusSlot 0
+frames 8
+hol.Cheat.Resources 1000
+hol.Cheat.Population 200
+hol.Units.SpawnHere 5 ManAtArms 0 250
+frames 20
+hol.Cheat.Wound 40
+waitlog Cheat: slot 0 wound to 40 %
+hol.Cheat.Honor 100
+waitlog RpcCheat: honor set to 100 for sender slot 0
+hol.Camera.FocusSlot 0
+wait 2
+frames 8
+hol.Units.Report 12
+hol.Heal.Report
+waitlog Heal report: links 0, healed total 0.00
+hol.Hero.Report
+hol.HUD.Report
+waitlog faction slot: slot gauge 100 / 100 powers SacredLight cost 25
+capture sacred_light_heal_before
+note 1. AVANT : 5 Hommes d'armes et le heros, barres de vie a 40 %, Honneur 100, total soigne 0.00 au journal.
+hol.Mouse.Click FactionBox0
+waitlog FactionAim: aim 0
+hol.Camera.FocusSlot 0
+hol.Mouse.Hover 600 380 12
+frames 6
+hol.Mouse.Click 600 380
+waitlog Sacred Light put down by slot 0
+wait 6
+frames 10
+hol.Units.Report 12
+hol.Heal.Report
+waitlog Heal report: links 0, healed total 705.00
+hol.Hero.Report
+capture sacred_light_heal_after
+note 2. APRES : Lumiere sacree posee (5 s) : barres de vie remontees, journal Heal report avec un total soigne de 705.00 (PV du heros 180 -> 330 / 450).
+hol.Test.Sanity
