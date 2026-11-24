@@ -1,3 +1,3 @@
 # <nom de capture> | ce que l'utilisateur doit voir
 sacred_light_heal_before | 1066x600 : les 5 Hommes d'armes et le heros de l'Aube, barres de vie ENTAMEES (40 %), aucune zone doree ; panneau heros PV 180 / 450 ; panneau de faction : Honneur 100 / 100, case SacredLight prete
-sacred_light_heal_after | 1066x600 : 6 s apres le vrai clic case puis sol (zone de 5 s deja finie) : panneau heros PV 330 / 450 (remonte de 150), barres de vie des Hommes d'armes plus pleines que sur before, Honneur 89 / 100, recharge sur la case
+sacred_light_heal_after | 1066x600 : 6 s apres le vrai clic case puis sol (zone de 5 s deja finie) : panneau heros PV 330 / 450 (remonte de 150), barres de vie des Hommes d'armes plus pleines que sur before, Honneur 90 / 100, recharge sur la case

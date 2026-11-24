@@ -1,6 +1,6 @@
 # Sacred Light heal PROOF (ARWEN-1124d, RECETTE-1123pa (b)): the zone gives health points back. Dawn (slot 0, human) vs a frozen AI, 5 Men-at-arms next to the hero, ALL WOUNDED to 40 %, Honor 100.
 # Reads the effect, no journal line behind a cvar: hol.Heal.Report prints the health points healed since the start (HOLHealProcessor::TotalHealed, the zone's heal is added at the zone loop), hol.Units.Report lists the units.
-# Measured 2026-11-24: 0.00 -> 705.00 (hero 180 -> 330 / 450, Honor 75 -> 89). BEFORE the cast: healed total 0.00 (waitlog on that exact line). AFTER the cast (real gesture: click the box, click the ground near the wounded, 5 s zone): the total must have risen (waitlog on the exact line).
+# Measured 2026-11-24: 0.00 -> 765.00 with the real ground click at -17400 100 (705.00 with the virtual cursor click) (hero 180 -> 330 / 450, Honor 75 -> 89). BEFORE the cast: healed total 0.00 (waitlog on that exact line). AFTER the cast (real gesture: click the box, click the ground near the wounded, 5 s zone): the total must have risen (waitlog on the exact line).
 waitlog Starting hero of slot 0 spawned at
 hol.AI.ThinkSteps 100000
 hol.Sanity.Watch 1
@@ -29,16 +29,15 @@ note 1. AVANT : 5 Hommes d'armes et le heros, barres de vie a 40 %, Honneur 100,
 hol.Mouse.Click FactionBox0
 waitlog FactionAim: aim 0
 hol.Camera.FocusSlot 0
-hol.Mouse.Hover 600 380 12
-frames 6
-hol.Mouse.Click 600 380
+# ARWEN-1124sc (L14-5) : vrai clic gauche au sol par les gestionnaires d'entree (hol.Select.LeftClickGround, appui puis relache), au point -17400 100 (entre le heros -17536 299 et les Paysans -17284 : la zone de 600 cm couvre les blesses ; -16400 0 etait a 9 m, total soigne 0.00) ; la case reste cliquee par le curseur virtuel de Slate.
+hol.Select.LeftClickGround -17400 100
 waitlog Sacred Light put down by slot 0
 wait 6
 frames 10
 hol.Units.Report 12
 hol.Heal.Report
-waitlog Heal report: links 0, healed total 705.00
+waitlog Heal report: links 0, healed total 765.00
 hol.Hero.Report
 capture sacred_light_heal_after
-note 2. APRES : Lumiere sacree posee (5 s) : barres de vie remontees, journal Heal report avec un total soigne de 705.00 (PV du heros 180 -> 330 / 450).
+note 2. APRES : Lumiere sacree posee (5 s) : barres de vie remontees, journal Heal report avec un total soigne de 765.00 (PV du heros 180 -> 330 / 450).
 hol.Test.Sanity
