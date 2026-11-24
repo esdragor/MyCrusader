@@ -65,3 +65,17 @@ void Test_FactionAimPreviewColoursOutOfReach(FUnitTest& T)
 	const double Gap = Math::Abs(Near.Colour.R - Far.Colour.R) + Math::Abs(Near.Colour.G - Far.Colour.G) + Math::Abs(Near.Colour.B - Far.Colour.B);
 	T.AssertTrue(Gap > 0.1, "another colour out of reach");
 }
+
+// ARWEN-1124sf (D900, REGLAGE of the preview): out of reach the preview also gives the place where the hero will stop to cast (the server's ApproachPointOf): on the line from the hero to the point, and from there the point is in reach. In reach, no walk.
+void Test_FactionAimPreviewMarksWhereTheHeroStops(FUnitTest& T)
+{
+	const FVector Origin = FVector(0.0, 0.0, 0.0);
+	const FVector FarPoint = FVector(2000.0, 0.0, 0.0);
+	const FHOLFactionAimPreview Far = HOLFactionAim::PreviewOf(Origin, FarPoint);
+	T.AssertTrue(Far.bWalks, "out of reach the hero walks first");
+	const double Left = Math::Abs(FarPoint.X - Far.StopPoint.X);
+	T.AssertTrue(Left <= HOLFactionAim::AimRangeCm, "from the stop place the aimed point is in reach");
+	T.AssertTrue(Far.StopPoint.X > 0.0 && Far.StopPoint.X < FarPoint.X && Math::Abs(Far.StopPoint.Y) < 0.01, "the stop place is on the line from the hero to the point");
+	const FHOLFactionAimPreview Near = HOLFactionAim::PreviewOf(Origin, FVector(500.0, 0.0, 0.0));
+	T.AssertTrue(!Near.bWalks, "in reach the hero does not walk");
+}

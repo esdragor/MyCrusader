@@ -24,6 +24,9 @@ struct FHOLFactionAimPreview
 	bool bInRange = true;
 	double Radius = 0.0;
 	FLinearColor Colour = FLinearColor(1.0, 1.0, 1.0, 1.0);
+	// ARWEN-1124sf (D900): out of reach the hero walks first; bWalks says so and StopPoint is where he stops (the same rule the server walks him by).
+	bool bWalks = false;
+	FVector StopPoint = FVector(0.0, 0.0, 0.0);
 }
 
 namespace HOLFactionAim
