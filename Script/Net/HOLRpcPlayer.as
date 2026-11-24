@@ -506,6 +506,11 @@ class AHOLRpcPlayer : AHOLScriptRpcPlayerActor
 	UFUNCTION(BlueprintOverride)
 	void Tick(float DeltaSeconds)
 	{
+		// GLORFINDEL-1124e (D900): a Sacred Light cast waits for its hero (HOLFactionPowerServer::PendingCasts); the server ticks it.
+		if (HasAuthority())
+		{
+			HOLFactionPowerServer::TickPendingCasts();
+		}
 		if (bRouteProved && DeferredCommands.Num() > 0 && !HasAuthority())
 		{
 			APlayerController DeferredController = Cast<APlayerController>(GetOwner());
