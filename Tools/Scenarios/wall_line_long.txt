@@ -41,6 +41,11 @@ wait 2
 hol.Build.Report
 note 3. APRES le relache : les fondations de la palissade sont posees sur toute la ligne, une par case, 5 bois par case (le Bois a baisse).
 capture wall_line_long_after
+# RECETTE-1123pd : le Paysan selectionne doit marcher jusqu'a une fondation de la ligne et y travailler (journal HOLBuildProcessor.cpp:942, slot 0 seulement)
+waitlog Construction: slot 0 first work on Palisade
+wait 1
+hol.Build.Report
+capture wall_line_long_build
 hol.Test.Sanity
 note 4. A toi : trace une ligne en diagonale, puis une ligne qui croise un arbre ou un batiment (la case bloquee est sautee, les autres sont posees ; toute la ligne est refusee seulement si toutes les cases sont bloquees).
 quit

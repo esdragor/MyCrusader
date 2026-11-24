@@ -304,7 +304,14 @@ if ($Phase -eq 'Essay') {
     $localBranches = @(git -C $Root branch --format='%(refname:short)' 2>$null)
     foreach ($ef in $eFiles) {
       $etxt = Get-Content $ef.FullName -Raw -Encoding UTF8
-      $named = $true
+      # AX-9 (2026-11-24, HALDIR-1124j ; regle 13 de l'utilisateur 2026-11-14) : une ligne de commande ABREGEE (« meme commande avec », idem, comme ci-dessus)
+      # sans `play.ps1 <nom>` complet = FAIL ; une phrase qui cite l'abreviation pour l'interdire (« jamais ... ») ne compte pas.
+      foreach ($abLine in ($etxt -split "`r?`n")) {
+        if ($abLine -match '(?i)m[e\u00EA]me commande avec|\bidem\b|comme ci-dessus' -and $abLine -match '(?i)commande|lancer|play' -and $abLine -notmatch 'play\.ps1\s+\S+' -and $abLine -notmatch '(?i)jamais') {
+          $abShow = $abLine.Trim(); if ($abShow.Length -gt 70) { $abShow = $abShow.Substring(0, 70) + '...' }
+          Say 'FAIL' ("{0} : commande abregee ({1}) : ecrire la commande play.ps1 <nom> -Root <worktree> EN ENTIER, copiable telle quelle (regle 13)" -f $ef.Name, $abShow); break
+        }
+      }      $named = $true
       $cited = @()
       $bm = [regex]::Match($etxt, '(?mi)^\s*\**branches\s*:\**\s*(.+)$')
       if ($bm.Success) {
