@@ -445,8 +445,13 @@ void AHOLBuilding::ReleaseFootprint()
 FBox2D AHOLBuilding::GetFootprintBounds() const
 {
 	const FHOLBuildingTypeRow* Type = GetType();
-	return HOLConstruction::GetFootprintBounds(FVector2D(GetActorLocation()), Type ? Type->Footprint : FVector2D::ZeroVector,
-		static_cast<float>(GetActorRotation().Yaw));
+	FVector2D Footprint = Type ? Type->Footprint : FVector2D::ZeroVector;
+	// D898 G6: a wall piece is 1/hol.Wall.SubDivision of the row's footprint (same rule as UHOLConstructionSubsystem::SnapFootprint), so the placement check and the occupied cells see the 1 m piece, not a 4 m box.
+	if (Type && HOLConstruction::IsWallPieceType(GetTypeName()))
+	{
+		Footprint /= static_cast<double>(HOLConstruction::GetWallSubDivision());
+	}
+	return HOLConstruction::GetFootprintBounds(FVector2D(GetActorLocation()), Footprint, static_cast<float>(GetActorRotation().Yaw));
 }
 
 FVector2D AHOLBuilding::GetBodySize() const

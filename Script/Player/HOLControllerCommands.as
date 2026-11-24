@@ -409,3 +409,83 @@ const FConsoleCommand HOLVictoryDefeatConsole("hol.Victory.Defeat", n"HOLVictory
 const FConsoleCommand HOLVictoryFallForumConsole("hol.Victory.FallForum", n"HOLVictoryFallForumCommand");
 const FConsoleCommand HOLVictorySkipRuinConsole("hol.Victory.SkipRuin", n"HOLVictorySkipRuinCommand");
 const FConsoleCommand HOLVictoryHoldPresenceConsole("hol.Victory.HoldPresence", n"HOLVictoryHoldPresenceCommand");
+
+// D898 G6 (CELEBORN-1124sg): hol.Wall.PlaceLine <Type> X1 Y1 X2 Y2 [queue 0|1] lays a wall line in world coordinates for every local controller, with its selected Peasants
+// as builders (the same ServerPlaceWallLine the drag release sends). No mouse, no pixel: the scenario states the cells it wants.
+void HOLWallPlaceLineCommand(const TArray<FString>& Args)
+{
+	if (Args.Num() < 5 || Args[0].IsEmpty() || !HOLControllerCommands::IsNumber(Args[1]) || !HOLControllerCommands::IsNumber(Args[2]) || !HOLControllerCommands::IsNumber(Args[3]) || !HOLControllerCommands::IsNumber(Args[4]))
+	{
+		HOLScriptLog::LogWarning(n"LogHOLMatch", "Usage: hol.Wall.PlaceLine <Type> <X1> <Y1> <X2> <Y2> [queue 0|1]");
+		return;
+	}
+	const FName TypeName = FName(Args[0]);
+	const FVector Start = FVector(HOLControllerCommands::ParseReal(Args[1]), HOLControllerCommands::ParseReal(Args[2]), 0.0);
+	const FVector End = FVector(HOLControllerCommands::ParseReal(Args[3]), HOLControllerCommands::ParseReal(Args[4]), 0.0);
+	const bool bQueue = Args.Num() >= 6 && HOLControllerCommands::IsNumber(Args[5]) && HOLControllerCommands::ParseReal(Args[5]) != 0.0;
+	TArray<AHOLPlayerController> Controllers;
+	GetAllActorsOfClass(Controllers);
+	for (AHOLPlayerController Controller : Controllers)
+	{
+		if (!Controller.IsLocalController())
+			continue;
+		AHOLRpcPlayer Rpc = Cast<AHOLRpcPlayer>(HOLRpcBridge::FindPlayerActor(Controller));
+		if (Rpc == nullptr)
+		{
+			HOLScriptLog::LogError(n"LogHOLMatch", "hol.Wall.PlaceLine not sent: no script RPC actor");
+			continue;
+		}
+		TArray<int> SelectedIds;
+		HOLControllerCommand::OwnSelectedUnitIds(Controller, SelectedIds);
+		TArray<uint32> UnitIds;
+		for (int UnitId : SelectedIds)
+			UnitIds.Add(uint32(UnitId));
+		FVector_NetQuantize QuantizedStart;
+		QuantizedStart.X = Start.X;
+		QuantizedStart.Y = Start.Y;
+		QuantizedStart.Z = Start.Z;
+		FVector_NetQuantize QuantizedEnd;
+		QuantizedEnd.X = End.X;
+		QuantizedEnd.Y = End.Y;
+		QuantizedEnd.Z = End.Z;
+		Rpc.ServerPlaceWallLine(TypeName, QuantizedStart, QuantizedEnd, UnitIds, bQueue);
+	}
+}
+const FConsoleCommand HOLWallPlaceLineConsole("hol.Wall.PlaceLine", n"HOLWallPlaceLineCommand");
+
+// D898 G6 (CELEBORN-1124sh): hol.Wall.GapProbe <LineX> writes "WALLFINE gap crossed=<0|1> unit #<id> at (x, y)" for the NEWEST living Peasant of slot 0 (highest id:
+// the scenario spawns the measured Peasant last). crossed=1 when its x is east of LineX (it started west of the line). A measure, not a choice: the scenario asserts what it read.
+void HOLWallGapProbeCommand(const TArray<FString>& Args)
+{
+	if (Args.Num() < 1 || !HOLControllerCommands::IsNumber(Args[0]))
+	{
+		HOLScriptLog::LogWarning(n"LogHOLMatch", "Usage: hol.Wall.GapProbe <LineX>");
+		return;
+	}
+	const float LineX = HOLControllerCommands::ParseReal(Args[0]);
+	int BestId = -1;
+	FVector BestLocation = FVector::ZeroVector;
+	for (int UnitId = 1; UnitId < 4096; UnitId++)
+	{
+		if (!HOLUnitScript::IsUnitAlive(UnitId))
+			continue;
+		if (HOLUnitScript::GetUnitType(UnitId) != n"Peasant")
+			continue;
+		int Slot = -1;
+		if (!HOLUnitScript::GetUnitOwner(UnitId, Slot) || Slot != 0)
+			continue;
+		FVector Location;
+		if (!HOLUnitScript::GetUnitLocation(UnitId, Location))
+			continue;
+		BestId = UnitId;
+		BestLocation = Location;
+	}
+	if (BestId < 0)
+	{
+		HOLScriptLog::LogWarning(n"LogHOLMatch", "WALLFINE gap: no living Peasant of slot 0");
+		return;
+	}
+	const int Crossed = BestLocation.X > LineX ? 1 : 0;
+	HOLScriptLog::LogDisplay(n"LogHOLMatch", f"WALLFINE gap crossed={Crossed} unit #{BestId} at ({BestLocation.X}, {BestLocation.Y}) line x {LineX}");
+}
+const FConsoleCommand HOLWallGapProbeConsole("hol.Wall.GapProbe", n"HOLWallGapProbeCommand");

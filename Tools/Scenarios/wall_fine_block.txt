@@ -1,0 +1,86 @@
+# CELEBORN-1124sa (D898 G6, PLAN-GRILLE-FINE-1124.md l.85-86) : collision et navmesh a 1 m. STUB : le scenario est ROUGE tant que la collision / le navmesh ne suivent pas les pieces de 1 m (lot C++ place B).
+# MESURE (point 1 du plan, D906) : (A) une ligne de 30 sous-cases de 1 m SANS trou entre un Paysan et son but : le Paysan n'arrive PAS (position finale du meme cote que son depart) ;
+# (B) la meme ligne avec UNE sous-case sautee (trou de 1 m) : le resultat (infranchissable ou non) est ENREGISTRE au journal ligne `WALLFINE gap`, ce n'est pas un choix.
+# branches: walls-fine-1124s
+# Geste : comme wall_line_skip (Paysan selectionne, A puis D de la grille, vrai glisser hol.Mouse.Drag, 3,8 cm par pixel, viewport cache 1280x720 : 1 sous-case = ~26 px).
+# Ligne A : x monde -17400, y de -1500 a +1500 (px 245 a 1035). Le Paysan mesure (slot 1, IA gelee) part a (-17800, 0), but (-17000, 0) : la ligne droite fait 8 m (~2 s), le detour par le bout de la ligne fait plus de 30 m : `wait 5` suffit a separer les deux.
+# Ligne B : x monde -19400, deux glisses (px 245 a 627 et 653 a 1035) : le trou de 1 sous-case est a y ~ 0 (px 627 a 653). Le Paysan mesure (slot 0) part a (-19800, 0), but (-19000, 0).
+# A CALIBRER AU PREMIER LANCEMENT (non lance par l'agent, aucun build) : les pixels du glisser (le trou doit faire UNE sous-case) et la vitesse du Paysan (wait 5).
+waitlog Starting hero of slot 0 spawned at
+hol.AI.ThinkSteps 100000
+hol.Cheat.Resources 20000
+hol.Cheat.Population 40
+hol.Cheat.Technology Masonry
+hol.Build.Instant 1
+hol.Wall.MaxLineCells 0
+hol.Wall.SubDivision 4
+frames 10
+# ---- A : ligne pleine, aucun trou
+hol.Units.Spawn 1 -17400 3000 0 Peasant 10
+frames 40
+hol.Test.Sanity
+hol.Camera.Zoom 3
+hol.Camera.Focus -17400 3000
+frames 5
+note 1. Un Paysan (le batisseur) est a l'ecran : tu le selectionnes, puis A (age I), D (Palissade), puis un glisser a la souris le long de la ligne A.
+hol.Camera.TestCursor 0.5 0.5
+hol.Select.ClickUnit -1
+waitlog Selection: Peasant #
+hol.Camera.TestCursor off
+hol.Camera.Focus -17400 0
+frames 60
+hol.Wall.PlaceLine Palisade -17450 -1500 -17450 1500
+waitlog place wall line received by the server
+frames 70
+wait 2
+hol.Build.Report
+# D898 G6 (CELEBORN-1124sd) : la ligne A doit compter 30 pieces de 1 m (centres y = -1450 + 100 k). Rouge observe : 11 pieces (pas de 300, boite de 400 de la voisine, GetFootprintBounds).
+# Les positions testees (y -1350, 150, 1450) n'existent PAS au pas de 300 (y = -1450 + 300 k) : chacune exige le pas de 100. Chaque waitlog relit un Build report neuf.
+hol.Build.Report
+waitlog at (-17450, -1350)
+hol.Build.Report
+waitlog at (-17450, 150)
+hol.Build.Report
+waitlog at (-17450, 1450)
+note 2. La ligne A est posee : 30 sous-cases de 1 m, aucun trou (compte lu au journal `place wall line ... N cell(s)`).
+capture wall_fine_block_line
+hol.Units.Spawn 1 -17800 0 1 Peasant 10
+frames 10
+hol.Units.Report 60
+hol.Units.Move -17000 0 1
+wait 5
+hol.Units.Report 60
+# Lecture : le Paysan de slot 1 doit rester a x < -17400 (meme cote que son depart -17800). Rouge = il est a x > -17400 (il a traverse la ligne de 1 m).
+note 3. Le Paysan de l'IA est au pied de la ligne (cote ouest) : il ne traverse pas, il contourne par le bout (30 m) et n'est pas arrive au but apres 5 s.
+capture wall_fine_block_after
+# ---- B : meme ligne, UNE sous-case sautee
+hol.Units.Spawn 1 -19400 3000 0 Peasant 10
+frames 40
+hol.Camera.Focus -19400 3000
+frames 5
+hol.Camera.TestCursor 0.5 0.5
+hol.Select.ClickUnit -1
+waitlog Selection: Peasant #
+hol.Camera.TestCursor off
+hol.Camera.Focus -19400 0
+frames 40
+hol.Wall.PlaceLine Palisade -19450 -1500 -19450 -105
+frames 20
+hol.Wall.PlaceLine Palisade -19450 5 -19450 1500
+frames 20
+wait 2
+hol.Build.Report
+note 4. La ligne B : deux glisses separes par UN trou de 1 sous-case a y ~ 0 (mesure du point 1 du plan, D906).
+capture wall_fine_gap_line
+hol.Units.Spawn 1 -19800 0 0 Peasant 10
+frames 10
+hol.Units.Move -19000 0 0
+wait 5
+hol.Units.Report 60
+# Lecture : le Paysan de slot 0 le plus a l'ouest (x de depart -19800) : x final > -19400 = il a traverse le trou de 1 m (franchissable) ; sinon infranchissable. Ligne a ecrire au journal : `WALLFINE gap crossed=<0|1>`.
+hol.Wall.GapProbe -19450
+waitlog WALLFINE gap crossed=1
+note 5. Mesure : le Paysan traverse-t-il le trou de 1 sous-case ? (resultat lu au journal, aucune valeur choisie).
+capture wall_fine_gap_after
+hol.Test.Sanity
+quit

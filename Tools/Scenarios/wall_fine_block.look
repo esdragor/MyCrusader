@@ -1,0 +1,8 @@
+# branches: walls-fine-1124s
+# STATUT : LOGIQUE SEULEMENT (stub, non lance : aucun build par l'agent, L27-3) ; geste reel du glisser (modele wall_line_skip), mesure par hol.Units.Report.
+# OBJET attendu : une file de fondations de palissade de 1 m (30 petites boites alignees, pas des cases de 4 m) ; un Paysan colle a la ligne cote ouest qui ne la traverse pas ; sur la 2e ligne, un trou d'UNE petite boite.
+# <nom de capture> | ce que l'utilisateur doit voir
+wall_fine_block_line | ligne A : une file continue de petites fondations (1 m chacune) sur 30 m, sans trou ; le Paysan batisseur au nord
+wall_fine_block_after | ligne A apres 5 s : le Paysan de l'IA est du MEME cote que son depart (ouest), il n'a pas traverse la ligne de 1 m
+wall_fine_gap_line | ligne B : deux files de petites fondations separees par UN trou d'une sous-case (1 m) vers y 0
+wall_fine_gap_after | ligne B apres 5 s : le Paysan est soit de l'autre cote du trou (franchissable), soit bloque du meme cote (infranchissable) : le journal `Units report` dit lequel
