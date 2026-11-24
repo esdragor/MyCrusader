@@ -42,6 +42,38 @@ Tableau des agents du soir (FARAMIR-1124sd, 19:5x ; un rapport = Docs\Rapports\<
 | GLORFINDEL-1124sa (E2) | HeroesOfLiberty-Glorfindel | socle-power-1124s | 399989c rouge, 5b7ddb6 correctif | D908 Honneur dès l'ordre ; rouge séparé | sans C++ ; quick_check tests 2208/2208 |
 | HALDIR-1124sa (E7) | HeroesOfLiberty-Haldir | integ-71 / integ-71r (8dee317, 2733bd4 cités par le rapport ; `git branch --contains` depuis la copie principale ne les trouve pas : à vérifier) | 8dee317, 2733bd4 | passe integ-71 préparée, rouge 8d7eee2 jamais vu, suite (a)(b)(c) non faite | NON COMPILÉ |
 | SAURON-1124sa (E8) | HeroesOfLiberty-Sauron | gate-launcher-1124s | 4e5f00a test, 796138f correctif | session_gate Close : ligne « version launcher » (L27-12) ; gate_test.ps1 complet non lancé | sans C++ |
+| Rapports écrits depuis 19:50 (ELROND-1124sj, 21:1x ; lignes ci-dessous = champs lus dans chaque rapport ; « absente de main » = `git merge-base --is-ancestor` négatif à 21:1x, main e4502ee) | | | | | |
+| ARWEN-1124sd | HeroesOfLiberty-Arwen | arwen-1124sd (absente de main) | 1118093 | relevé S2-b pont du duel : OUI, test de couverture vert, rien à corriger | sans C++, NON COMPILÉ |
+| ARWEN-1124se | HeroesOfLiberty-Arwen | arwen-1124sd / arwen-1124se (absente de main) | ca7352f test, 21bea82 | D905 noms de voies du GDD (VoieNameOf, Templiers 3 options) ; rouge vu 20:00 (2206/2207) | sans C++ ; tests au rapport |
+| ARWEN-1124sf / sg | HeroesOfLiberty-Arwen | arwen-1124sf (absente de main) | f94a172 | vert confirmé par 1124sg : quick_check tests 2207/2207 (20:20) | sans C++ |
+| ARWEN-1124sh | HeroesOfLiberty-Arwen | loc-ja-1124s (absente de main) | b7345ad | C++ : HOLForumMessagesReadLibrary::SetLanguageName (le test ja restait rouge) | NON COMPILÉ (lot C++ à lancer) |
+| ARWEN-1124si | HeroesOfLiberty-Arwen | loc-ja-fix-1124s (absente de main) | 20eec02 (ba1cd7e + b7345ad repris) | branche de correctif ja depuis main | voir rapport |
+| CELEBORN-1124se | HeroesOfLiberty-Celeborn | walls-fine-1124s | aucun commit (5ba723e rouge vu 19:50) | wall_fine_block : rouge vu à 19:50, rien gardé | sans objet (binaire fd56b78 PASS 19:57) |
+| CELEBORN-1124sg | HeroesOfLiberty-Celeborn | walls-fine-1124s (absente de main) | tip 621573a | D898 G6 wall_fine_block : hol.Wall.PlaceLine, GapProbe ; rapport reconstitué par 1124sh | build voir rapport |
+| CELEBORN-1124si | HeroesOfLiberty-Celeborn | walls-g7-1124s (absente de main) | 43db655 test, a54932e correctif, 357b2bb | G7 FillDiagonalGaps ; rouge vu 20:43 (2206/2207) ; question Q-mur-diagonale | sans C++ |
+| CELEBORN-1124sj | HeroesOfLiberty-Celeborn | walls-g7-1124s (absente de main) | 91a4008 test, correctif ensuite | DragCellsFine / FillLine, fantôme fin ; rouge vu 21:00 (2207/2210) | sans C++ |
+| ELROND-1124sd | copie principale | main | 194d5f7 | docs : Placeholders.txt ; le libellé du Sceau n'existe qu'en C++ | sans objet |
+| ELROND-1124se | HeroesOfLiberty-Elrond | monk-seal-1124s (absente de main) | 4508f0a | S1-d : C++ du case LightSeal écrit, non compilé | NON COMPILÉ |
+| ELROND-1124sf | HeroesOfLiberty-Elrond | monk-seal-1124s (absente de main) | e5d68be | E-monk_seal VU À L'ÉCRAN, geste réel ; Placeholders ligne 215 | build e5d68be PASS (au rapport 1124sg) |
+| ELROND-1124sh | HeroesOfLiberty-Elrond | ground-cast-1124s (absente de main) | a4d6a48 | scénario monk_seal_slow : rapport 0,66 PASS, contrôle rouge 0,97 FAIL | sans build |
+| ELROND-1124si | HeroesOfLiberty-Elrond | ground-cast-1124s (absente de main) | 92a739a | pré-vol monk_seal_slow PASS, fin du Sceau à 10 s (rapport 1,00) | sans build |
+| FARAMIR-1124se | HeroesOfLiberty-Faramir | faramir-1124se (absente de main) | bf1f453 test, 7af2352 | S4-b sortie de garnison de l'IA (HOLAIGarrisonExit.as) ; rouge vu 19:59 | sans C++ ; branchement = lot C++ (IssueAIUngarrisonOrder) |
+| FARAMIR-1124sg | HeroesOfLiberty-Faramir | faramir-1124sg (absente de main) | aa19ecf test, e6a21a0 | l'IA construit des tours (HOLAITower.as) ; rouge NON VU ; Q-ai-towers | sans C++ |
+| FARAMIR-1124si | HeroesOfLiberty-Faramir | faramir-1124sg (absente de main) | 2cd8588, 6ba2f1a | scénario ai_tower : timeout corrigé (IA à 0-30 bois) | NON COMPILÉ (DLL plus vieille que HOLBindingsLotTests.cpp) |
+| FARAMIR-1124sj | HeroesOfLiberty-Faramir | faramir-1124sg (absente de main) | 7bf7269 | Tools\Scenarios\ai_tower.txt ; aucune fiche E-ai_tower.md | sans objet |
+| GALADRIEL-1124sc | HeroesOfLiberty-Galadriel | socle-ai (absente de main) | b465fd7 test, df89a15 | S2-c étape 9 masque réseau ; rouge NON VU | NON COMPILÉ (lot C++ place A) |
+| GALADRIEL-1124sd | HeroesOfLiberty-Galadriel | socle-ai (absente de main) | c2cbac6, f48fa47, 0a280c1 | vue client du masque d'effets (FHOLUnitView::EffectMask) ; rouge NON VU | NON COMPILÉ (lot C++ place A+) |
+| GLORFINDEL-1124sb | HeroesOfLiberty-Glorfindel | socle-power-1124s (DANS main) | bfe3fcd rouge, 0da0a6f | D911 message de refus « Honneur insuffisant » (FR/EN/JA) ; rouge vu 19:44 | sans C++ |
+| GLORFINDEL-1124sc / sd | HeroesOfLiberty-Glorfindel | socle-power-1124sc (absente de main) | c0e13b8 | D909 clôture : refactor ; tests lancés 20:23, résultat non vu | sans C++ |
+| GLORFINDEL-1124se | HeroesOfLiberty-Glorfindel | socle-power-1124sc (absente de main) | 4d5b830 test, 8bc37e7 | héros : Garrison / DropOff / ToggleDeploy annulent le sort en attente ; rouge vu 20:38 | tests 2213/2213 |
+| GLORFINDEL-1124sf | HeroesOfLiberty-Glorfindel | socle-power-1124sf (absente de main) | 459f22d | texte de scénario ; point 5 du socle déjà dans main | sans objet |
+| GLORFINDEL-1124sg | copie principale | main | 6f73412 et suivant | Docs\Priorite_Socle_Factions remis à jour ; preflight duel_challenge_accept FAIL (mapSize) | sans objet (docs) |
+| SAURON-1124sc | HeroesOfLiberty-Sauron | gate-launcher-1124s (absente de main) | dc590d1 test | session_gate Close : WARN des essais « geste interne » (L14-5) | sans C++ |
+| SAURON-1124sd | HeroesOfLiberty-Sauron | gate-launcher-1124s (absente de main) | e7a663a test, efec801 | session_gate -Phase Report -ReportFile (L14-6) ; rouge vu | sans C++ |
+| SAURON-1124se | HeroesOfLiberty-Sauron | gate-launcher-1124s (absente de main) | 7da7fb9 test, 0f29c45 | Report : Placeholders et SessionEnd acceptés, -MainDir | sans C++ |
+| SAURON-1124sf | HeroesOfLiberty-Sauron-play (retiré) | play-exit-1124s (absente de main) | c5d33f5 test, 7eb9396 | play.ps1 rend un code non nul sur « Test sequence: timeout » ; rouge vu 20:14 | sans C++ |
+| SAURON-1124sg | HeroesOfLiberty-Sauron | gate-launcher-1124s (absente de main) | eed432d, 13a1f44 | contrôles brief_commun / modèle d'énoncé | sans C++ |
+| SAURON-1124sh | HeroesOfLiberty-Sauron | integrate-dryrun-1124s (absente de main) | a64e80f test, 15068f2 | integrate -DryRun simule les merges (merge-tree) ; rouge vu 20:56 | sans C++ |
 
 ### Séance du matin (10:38 -> 14:00)
 fin et mode demandés à 10:38 (fin 14:00, autonome ; priorité Docs\Priorite_Socle_Factions_2026-11-16.md)
