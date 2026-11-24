@@ -592,3 +592,30 @@ void Test_WallLineFineGridStartAndEndBoxesTouchTheMouseCells(FUnitTest& T)
 			bOnDiagonal = false;
 	T.AssertTrue(bOnDiagonal, "a drag at 30 degrees snaps to the diagonal, one of the 8 directions");
 }
+// D898 G5 (PLAN-GRILLE-FINE-1124.md): the server lays one piece per sub-cell and every selected Peasant gets every piece. A line of 13 sub-cells (pitch 100) with 2 Peasants = 13 x 2 = 26 builder orders;
+// the first piece obeys the Shift of the player (not queued), the next ones queue behind it. The plan is the one the server computes (PlanFromRequestFine at SubDivision 4), the count is the code's.
+void Test_WallLineFineGridOrdersOnePiecePerSubCellForEveryPeasant(FUnitTest& T)
+{
+	TArray<FIntPoint> Taken;
+	TArray<uint32> Peasants;
+	Peasants.Add(7);
+	Peasants.Add(8);
+	HOLWallLine::FHOLWallLinePlan Plan = HOLWallLine::PlanFromRequestFine(0, FVector(50.0, 50.0, 0.0), FVector(1250.0, 50.0, 0.0), 400.0, 4, WallLineMapMin, WallLineMapMax, Taken, 1000);
+	T.AssertEquals(13, Plan.Cells.Num(), "(50,50) -> (1250,50) at 1 m sub-cells: 13 cells");
+	TArray<HOLWallLine::FHOLWallOrder> Orders = HOLWallLine::OrdersForLine(Plan, Peasants, false);
+	T.AssertEquals(13, Orders.Num(), "one order per sub-cell");
+	int BuilderOrders = 0;
+	bool bQueueRule = Orders.Num() > 0;
+	for (int Index = 0; Index < Orders.Num(); Index++)
+	{
+		BuilderOrders += Orders[Index].Builders.Num();
+		if (Orders[Index].bQueue != HOLWallLine::QueueForCell(Index, false))
+			bQueueRule = false;
+	}
+	T.AssertEquals(26, BuilderOrders, "13 pieces x 2 Peasants = 26 builder orders");
+	T.AssertTrue(bQueueRule, "the first piece is not queued, the next ones queue behind it");
+	if (Orders.Num() == 13)
+		T.AssertTrue(Orders[12].Cell.X == 12 && Orders[12].Cell.Y == 0, "the last order is the last sub-cell of the drag");
+	TArray<HOLWallLine::FHOLWallOrder> Shifted = HOLWallLine::OrdersForLine(Plan, Peasants, true);
+	T.AssertTrue(Shifted.Num() > 0 && Shifted[0].bQueue, "Shift held: the first piece queues too");
+}
