@@ -105,10 +105,18 @@ bool FHOLRageMoraleDealtTest::RunTest(const FString& Parameters)
 			RunStep();
 			TestEqual(TEXT("before the cast the warrior's damage lever is neutral"), HOLMorale::Total(WarriorMorale->State, HOLMorale::LeverDealt), 0);
 
+			const int32 EffectsBefore = WarriorMorale->State.Num;
 			TestTrue(TEXT("the cast is accepted"), Units->CastRage(Warrior));
 			TestEqual(TEXT("the cast lays the rage as a morale effect on the Dealt lever (the rule reads the rage's damage percent)"),
 				HOLMorale::Total(WarriorMorale->State, HOLMorale::LeverDealt), HOLUnitAbility::RageDamagePercent);
 			TestTrue(TEXT("... and the combat's multiplier of that lever is above 100"), HOLMorale::Multiplier(WarriorMorale->State, HOLMorale::LeverDealt) > 100);
+			// Step 2 (GALADRIEL-1124c): the +25 % cadence is the same effect's Rate lever (row NecroticRage), read by the combat through
+			// HOLMorale::Multiplier(LeverRate); the combat no longer reads RageMs for the interval, so no Rate lever = no faster blows.
+			TestEqual(TEXT("the cast lays the rage's cadence on the Rate lever (the rule reads the rage's rate percent)"),
+				HOLMorale::Total(WarriorMorale->State, HOLMorale::LeverRate), HOLUnitAbility::RageRatePercent);
+			TestEqual(TEXT("... and the combat's multiplier of the Rate lever is 100 + the rate percent"),
+				HOLMorale::Multiplier(WarriorMorale->State, HOLMorale::LeverRate), 100 + HOLUnitAbility::RageRatePercent);
+			TestEqual(TEXT("the rage is ONE effect (damage and rate together), not two"), WarriorMorale->State.Num, EffectsBefore + 1);
 
 			// The rage ends at StopHp: one health above it, the next blow costs 1 and ends it. The effect leaves with it.
 			WarriorState->CurrentHealth = static_cast<float>(HOLUnitAbility::RageStopHp) + 1.f;
@@ -118,6 +126,7 @@ bool FHOLRageMoraleDealtTest::RunTest(const FString& Parameters)
 			}
 			TestEqual(TEXT("the rage ends at the stop floor"), WarriorCombat->RageMs, 0);
 			TestEqual(TEXT("... and the rage's effect is off the morale fragment (nothing left on the Dealt lever)"), HOLMorale::Total(WarriorMorale->State, HOLMorale::LeverDealt), 0);
+			TestEqual(TEXT("... nor on the Rate lever"), HOLMorale::Total(WarriorMorale->State, HOLMorale::LeverRate), 0);
 		}
 	}
 
