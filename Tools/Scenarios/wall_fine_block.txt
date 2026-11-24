@@ -31,7 +31,9 @@ hol.Select.Grid 0
 hol.Select.Grid 6
 waitlog Placement: Palisade (cost
 hol.Camera.Focus -17400 0
-frames 40
+frames 150
+hol.Camera.Focus -17400 0
+frames 60
 hol.Mouse.LogDragEnd 1
 hol.Mouse.Drag 245 360 1035 360 90
 frames 70
