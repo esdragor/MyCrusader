@@ -19,6 +19,8 @@ public sealed record SettingsLoad(LauncherSettings Settings, string? Problem);
  * LastCrashCheckUtc (L20, CrashDetector): when the launcher last looked for a crash of the game, UTC (null: never, the
  * first start only stores the time). Older files have none.
  * Theme (L22, Themes): "light" or "dark" (null: follow Windows' app theme). Older files have none: they follow Windows.
+ * CloseOnPlay (launcher 5, GameSession): true closes the launcher once the game started (L8's behaviour); null or
+ * false (the default) keeps it open, minimized, watching the game. Older files have none: they stay open.
  * Later steps add their own fields (L23 automatic update): with "with", the window keeps them.
  */
 public sealed record LauncherSettings(
@@ -29,7 +31,8 @@ public sealed record LauncherSettings(
     int? ResolutionHeight = null,
     string? ExtraArguments = null,
     DateTime? LastCrashCheckUtc = null,
-    string? Theme = null)
+    string? Theme = null,
+    bool? CloseOnPlay = null)
 {
     public const string FileName = "HOLLauncher.settings.json";
 

@@ -16,9 +16,10 @@ public class NoFrenchInCodeTests
     [
         "\"Français\"", // Texts.LanguageName: French named in French in every language.
         "\"日本語\"", // Texts.LanguageName: Japanese named in Japanese in every language.
-        "\"×\"", // SettingsForm (L19): the multiplication sign between width and height, the same in every language.
-        "} × {", // SettingsForm (L19): a resolution "1920 × 1080", likewise.
+        "\"×\"", // SettingsWindow (L19): the multiplication sign between width and height, the same in every language.
+        "} × {", // SettingsModel (L19): a resolution "1920 × 1080", likewise.
         "\" ▾\"", // MainForm.Files (L17): the drop-down arrow after the translated "Files", the same in every language.
+        "\" · \"", // FooterLine (launcher 5): the separator of the line under the big button, the same in every language.
     ];
 
     /** French words of the old messages that are plain ASCII ("Serveur injoignable", "Lanceur : version"...). */

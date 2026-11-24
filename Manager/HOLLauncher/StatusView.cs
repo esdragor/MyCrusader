@@ -8,7 +8,18 @@ namespace HOLLauncher;
  * PlayRules (L8): PlayConfirmation is asked before starting the game (null: none). UpdateGameText names that button:
  * "Install the game" when nothing is installed (L9). L16: every text comes from Texts in the given language (null: the
  * one in use), so a language change rebuilds the view (MainForm reads the status again).
+ * Launcher 5 (the home window): Installed and Latest are the raw version names (null: none / unknown) for the footer
+ * line and the release-note cards; Server says whether the last reading reached the manager (the footer's dot);
+ * IsLoading is the reading itself (the primary button waits, PrimaryAction).
  */
+/** Whether the last status reading reached the manager: Unknown while reading (and before the first one). */
+public enum ServerLink
+{
+    Unknown,
+    Reached,
+    Unreachable,
+}
+
 public sealed record StatusView(
     string InstalledText,
     string LatestText,
@@ -20,7 +31,11 @@ public sealed record StatusView(
     bool UpdateLauncherEnabled,
     bool RefreshEnabled,
     string? PlayConfirmation = null,
-    string UpdateGameText = "")
+    string UpdateGameText = "",
+    string? Installed = null,
+    string? Latest = null,
+    ServerLink Server = ServerLink.Unknown,
+    bool IsLoading = false)
 {
     /** L22: the news as blocks for the box (NewsFormat); Notes is their plain text. */
     public string Notes => ReleaseNotes.PlainText(News);
@@ -53,7 +68,10 @@ public sealed record StatusView(
             UpdateLauncherEnabled: status.LauncherUpdateAvailable,
             RefreshEnabled: true,
             PlayConfirmation: play.Confirmation,
-            UpdateGameText: Texts.Get(status.Installed is null ? "InstallGame" : "UpdateGame", lang));
+            UpdateGameText: Texts.Get(status.Installed is null ? "InstallGame" : "UpdateGame", lang),
+            Installed: status.Installed,
+            Latest: status.Latest,
+            Server: status.State == GameState.Unreachable ? ServerLink.Unreachable : ServerLink.Reached);
     }
 
     /** While reading: everything disabled, "Refresh" included. */
@@ -63,7 +81,7 @@ public sealed record StatusView(
         var pending = Texts.Get("VersionPending", lang);
         return new(Texts.FormatIn(lang, "InstalledVersion", pending), Texts.FormatIn(lang, "LatestVersion", pending),
             Texts.Get("StatusLoading", lang), [], LauncherLine(launcherCurrent, lang), false, false, false, false,
-            UpdateGameText: Texts.Get("UpdateGame", lang));
+            UpdateGameText: Texts.Get("UpdateGame", lang), IsLoading: true);
     }
 
     /** During a game or launcher update: the texts stay, every button is disabled (the update has its own "Cancel"). */
@@ -77,7 +95,8 @@ public sealed record StatusView(
         var lang = Texts.LanguageOr(language);
         return new(InstalledLine(installed, lang), LatestLine(null, lang), Texts.FormatIn(lang, "Error", message), [],
             LauncherLine(launcherCurrent, lang), false, false, false, true,
-            UpdateGameText: Texts.Get(installed is null ? "InstallGame" : "UpdateGame", lang));
+            UpdateGameText: Texts.Get(installed is null ? "InstallGame" : "UpdateGame", lang),
+            Installed: installed, Server: ServerLink.Unreachable);
     }
 
     private static string InstalledLine(string? installed, string lang) => Texts.FormatIn(lang, "InstalledVersion",

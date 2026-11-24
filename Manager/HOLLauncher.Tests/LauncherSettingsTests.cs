@@ -147,6 +147,23 @@ public class LauncherSettingsTests
         Assert.DoesNotContain("theme", File.ReadAllText(Path.Combine(dir.Root, LauncherSettings.FileName)));
     }
 
+    /** Launcher 5: closing on "Play" is stored only when chosen; older files have none and stay open. */
+    [Fact]
+    public void CloseOnPlayIsReadBackAndAnOlderFileStaysOpen()
+    {
+        using var dir = new TempDir();
+        var settings = new LauncherSettings(Language: "en", CloseOnPlay: true);
+        settings.Save(dir.Root);
+        Assert.Equal(settings, LauncherSettings.Load(dir.Root).Settings);
+        Assert.Contains("\"closeOnPlay\": true", File.ReadAllText(Path.Combine(dir.Root, LauncherSettings.FileName)));
+
+        dir.Write(LauncherSettings.FileName, "{ \"language\": \"fr\", \"theme\": \"dark\" }");
+        var load = LauncherSettings.Load(dir.Root);
+        Assert.Null(load.Problem);
+        Assert.Null(load.Settings.CloseOnPlay);
+        Assert.Equal(AfterPlay.MinimizeAndWatch, GameSession.Decide(load.Settings.CloseOnPlay));
+    }
+
     [Fact]
     public void L21FileWithoutThemeStillLoadsAndFollowsWindows()
     {

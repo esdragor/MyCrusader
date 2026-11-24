@@ -3,7 +3,11 @@ using System.Diagnostics;
 
 namespace HOLLauncher;
 
-public sealed record LaunchResult(bool Success, string Message);
+/**
+ * Game: the started process (launcher 5: the window watches it until it exits, GameSession; the caller disposes it),
+ * null on failure or when the starter gave none (tests).
+ */
+public sealed record LaunchResult(bool Success, string Message, Process? Game = null);
 
 /**
  * Starts the game (L8): <game dir>\HeroesOfLiberty.exe, the exe of the package's Windows\ folder (Tools\Package), with
@@ -25,7 +29,7 @@ public static class GameLauncher
     }
 
     /**
-     * Starts the game without waiting for it; never throws (a missing exe or a refused start is the message, L16: in the
+     * Starts the game without waiting for it and gives its process; never throws (a missing exe or a refused start is the message, L16: in the
      * given language, null: the one in use). starter replaces Process.Start (tests: what the game would be given).
      */
     public static LaunchResult Start(string gameDir, IReadOnlyList<string>? arguments = null,
@@ -45,8 +49,8 @@ public static class GameLauncher
         };
         try
         {
-            (starter ?? Process.Start)(start)?.Dispose();
-            return new LaunchResult(true, Texts.Get("GameStarted", lang));
+            var game = (starter ?? Process.Start)(start);
+            return new LaunchResult(true, Texts.Get("GameStarted", lang), game);
         }
         catch (Exception e) when (e is Win32Exception or IOException or InvalidOperationException)
         {

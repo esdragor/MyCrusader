@@ -116,4 +116,35 @@
   <data name="ThemeLight" xml:space="preserve"><value>ライト</value></data>
   <data name="ThemeDark" xml:space="preserve"><value>ダーク</value></data>
   <data name="HeaderSubtitle" xml:space="preserve"><value>ゲームランチャー</value></data>
+  <data name="PrimaryLoading" xml:space="preserve"><value>読み込み中…</value></data>
+  <data name="PrimaryBusy" xml:space="preserve"><value>お待ちください…</value></data>
+  <data name="PrimaryRunning" xml:space="preserve"><value>プレイ中</value></data>
+  <data name="PrimaryUpdate" xml:space="preserve"><value>アップデート</value></data>
+  <data name="PlayAnyway" xml:space="preserve"><value>このままプレイ</value></data>
+  <data name="GameRunning" xml:space="preserve"><value>ゲームを実行中です。終了するまでランチャーは待機します。</value></data>
+  <data name="InfoTitle" xml:space="preserve"><value>インフォメーション</value></data>
+  <data name="TabUpdates" xml:space="preserve"><value>アップデート</value></data>
+  <data name="TabAnnouncements" xml:space="preserve"><value>お知らせ</value></data>
+  <data name="NotesNone" xml:space="preserve"><value>表示できるリリースノートはまだありません。</value></data>
+  <data name="AnnouncementMore" xml:space="preserve"><value>詳しく見る</value></data>
+  <data name="AnnouncementDate" xml:space="preserve"><value>yyyy年M月d日</value></data>
+  <data name="LinkWebsite" xml:space="preserve"><value>公式サイト</value></data>
+  <data name="FooterLauncher" xml:space="preserve"><value>ランチャー {0}</value></data>
+  <data name="FooterNotInstalled" xml:space="preserve"><value>ゲーム未インストール</value></data>
+  <data name="FooterServer" xml:space="preserve"><value>サーバー</value></data>
+  <data name="FooterServerOk" xml:space="preserve"><value>サーバーに接続済み：{0}</value></data>
+  <data name="FooterServerDown" xml:space="preserve"><value>サーバーに接続できません：{0}</value></data>
+  <data name="FooterServerPending" xml:space="preserve"><value>サーバー：{0}</value></data>
+  <data name="WindowMinimize" xml:space="preserve"><value>最小化</value></data>
+  <data name="WindowMaximize" xml:space="preserve"><value>最大化</value></data>
+  <data name="WindowRestore" xml:space="preserve"><value>元のサイズに戻す</value></data>
+  <data name="WindowClose" xml:space="preserve"><value>閉じる</value></data>
+  <data name="MoreActions" xml:space="preserve"><value>その他の操作</value></data>
+  <data name="DialogOk" xml:space="preserve"><value>OK</value></data>
+  <data name="DialogYes" xml:space="preserve"><value>はい</value></data>
+  <data name="DialogNo" xml:space="preserve"><value>いいえ</value></data>
+  <data name="SettingsCloseOnPlay" xml:space="preserve"><value>ゲームの起動時にランチャーを閉じる</value></data>
+  <data name="SettingsCloseOnPlayHint" xml:space="preserve"><value>オフの場合、ランチャーは最小化してゲームの終了を待ちます。ゲームが異常終了したときは、すぐにレポートの作成を提案します。</value></data>
+  <data name="SettingsBadSize" xml:space="preserve"><value>サイズは {0} から {1} までの整数で入力してください。</value></data>
+  <data name="SettingsGeneral" xml:space="preserve"><value>一般</value></data>
 </root>

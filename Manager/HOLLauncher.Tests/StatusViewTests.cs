@@ -202,4 +202,19 @@ public class StatusViewTests
     }
 
     private static StatusView Fr(LauncherStatus status) => StatusView.From(status, "fr");
+
+    /** Launcher 5: the raw versions, whether the manager was reached, and the reading itself. */
+    [Fact]
+    public void HomeWindowFields()
+    {
+        var outdated = Fr(Status("0.4.2", "0.4.3"));
+        Assert.Equal(("0.4.2", "0.4.3", ServerLink.Reached, false), (outdated.Installed, outdated.Latest, outdated.Server, outdated.IsLoading));
+        var unreachable = StatusView.From(LauncherStatus.Compute("0.4.2", new LatestResult(LatestOutcome.Unreachable, null, "x"), "1"), "fr");
+        Assert.Equal(("0.4.2", null, ServerLink.Unreachable), (unreachable.Installed, unreachable.Latest, unreachable.Server));
+        var loading = StatusView.Loading(language: "fr");
+        Assert.Equal((true, ServerLink.Unknown), (loading.IsLoading, loading.Server));
+        Assert.Equal(ServerLink.Unreachable, StatusView.Error("x", "0.4.2", language: "fr").Server);
+        Assert.Equal("0.4.2", StatusView.Error("x", "0.4.2", language: "fr").Installed);
+        Assert.Equal(ServerLink.Reached, StatusView.Updating(outdated).Server);
+    }
 }

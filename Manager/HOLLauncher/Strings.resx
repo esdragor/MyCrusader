@@ -116,4 +116,35 @@
   <data name="ThemeLight" xml:space="preserve"><value>Clair</value></data>
   <data name="ThemeDark" xml:space="preserve"><value>Sombre</value></data>
   <data name="HeaderSubtitle" xml:space="preserve"><value>Lanceur du jeu</value></data>
+  <data name="PrimaryLoading" xml:space="preserve"><value>Chargement…</value></data>
+  <data name="PrimaryBusy" xml:space="preserve"><value>Un instant…</value></data>
+  <data name="PrimaryRunning" xml:space="preserve"><value>En cours</value></data>
+  <data name="PrimaryUpdate" xml:space="preserve"><value>Mettre à jour</value></data>
+  <data name="PlayAnyway" xml:space="preserve"><value>Jouer quand même</value></data>
+  <data name="GameRunning" xml:space="preserve"><value>Le jeu est lancé : le lanceur attend qu'il se ferme.</value></data>
+  <data name="InfoTitle" xml:space="preserve"><value>Informations</value></data>
+  <data name="TabUpdates" xml:space="preserve"><value>Mises à jour</value></data>
+  <data name="TabAnnouncements" xml:space="preserve"><value>Annonces</value></data>
+  <data name="NotesNone" xml:space="preserve"><value>Aucune note de version à afficher pour l'instant.</value></data>
+  <data name="AnnouncementMore" xml:space="preserve"><value>En savoir plus</value></data>
+  <data name="AnnouncementDate" xml:space="preserve"><value>d MMMM yyyy</value></data>
+  <data name="LinkWebsite" xml:space="preserve"><value>Site du jeu</value></data>
+  <data name="FooterLauncher" xml:space="preserve"><value>Lanceur {0}</value></data>
+  <data name="FooterNotInstalled" xml:space="preserve"><value>Jeu non installé</value></data>
+  <data name="FooterServer" xml:space="preserve"><value>Serveur</value></data>
+  <data name="FooterServerOk" xml:space="preserve"><value>Serveur joint : {0}</value></data>
+  <data name="FooterServerDown" xml:space="preserve"><value>Serveur injoignable : {0}</value></data>
+  <data name="FooterServerPending" xml:space="preserve"><value>Serveur : {0}</value></data>
+  <data name="WindowMinimize" xml:space="preserve"><value>Réduire</value></data>
+  <data name="WindowMaximize" xml:space="preserve"><value>Agrandir</value></data>
+  <data name="WindowRestore" xml:space="preserve"><value>Restaurer</value></data>
+  <data name="WindowClose" xml:space="preserve"><value>Fermer</value></data>
+  <data name="MoreActions" xml:space="preserve"><value>Plus d'actions</value></data>
+  <data name="DialogOk" xml:space="preserve"><value>OK</value></data>
+  <data name="DialogYes" xml:space="preserve"><value>Oui</value></data>
+  <data name="DialogNo" xml:space="preserve"><value>Non</value></data>
+  <data name="SettingsCloseOnPlay" xml:space="preserve"><value>Fermer le lanceur quand le jeu démarre</value></data>
+  <data name="SettingsCloseOnPlayHint" xml:space="preserve"><value>Sinon, le lanceur se réduit et attend la fin de la partie ; si le jeu plante, il propose aussitôt un rapport.</value></data>
+  <data name="SettingsBadSize" xml:space="preserve"><value>La taille doit être un nombre entier entre {0} et {1}.</value></data>
+  <data name="SettingsGeneral" xml:space="preserve"><value>Général</value></data>
 </root>

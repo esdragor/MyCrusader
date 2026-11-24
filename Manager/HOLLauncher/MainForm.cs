@@ -471,6 +471,7 @@ public sealed partial class MainForm : Form
         var result = GameLauncher.Start(Options.GameDir, LaunchArguments.For(settings));
         if (result.Success)
         {
+            result.Game?.Dispose();
             Close();
             return;
         }

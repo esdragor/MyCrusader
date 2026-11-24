@@ -32,6 +32,10 @@ public class GameLauncherTests
         File.Copy(Path.Combine(Environment.SystemDirectory, "cmd.exe"), exe);
         var result = GameLauncher.Start(game.Root, ["/c", "cd > started.txt"]);
         Assert.True(result.Success, result.Message);
+        // Launcher 5: the started process is given back (the window watches it until it exits).
+        using var started = result.Game;
+        Assert.NotNull(started);
+        Assert.True(started.WaitForExit(10_000));
         var marker = Path.Combine(game.Root, "started.txt");
         for (var i = 0; i < 100 && !(File.Exists(marker) && new FileInfo(marker).Length > 0); i++)
         {
@@ -56,6 +60,7 @@ public class GameLauncherTests
             return null;
         });
         Assert.True(result.Success, result.Message);
+        Assert.Null(result.Game);
         Assert.NotNull(started);
         Assert.Equal(Path.Combine(game.Root, GameLauncher.ExeName), started.FileName);
         Assert.Equal(game.Root, started.WorkingDirectory);
@@ -85,6 +90,7 @@ public class GameLauncherTests
         File.Copy(Path.Combine(Environment.SystemDirectory, "cmd.exe"), Path.Combine(game.Root, GameLauncher.ExeName));
         var result = GameLauncher.Start(game.Root, ["/c", "echo", "-Key=\"a b\"", "-windowed>", "args.txt"]);
         Assert.True(result.Success, result.Message);
+        result.Game?.Dispose();
         var marker = Path.Combine(game.Root, "args.txt");
         for (var i = 0; i < 100 && !(File.Exists(marker) && new FileInfo(marker).Length > 0); i++)
         {
