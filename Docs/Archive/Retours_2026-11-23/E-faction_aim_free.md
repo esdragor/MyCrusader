@@ -26,3 +26,5 @@ Gestes précis :
 Commande complète (règle 13, 2026-11-14) : chaque commande est écrite en entier, copiable telle quelle, jamais « même commande avec… ».
 Lancer UNE commande : `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Haldir\Tools\Scenarios\play.ps1 faction_aim_free -Root C:\Users\baudo\Documents\HeroesOfLiberty-Haldir`
 Durée : environ 3 min. Réponse attendue : `OK`, `BUG: ...` ou `REGLAGE: ...`.
+
+Reponse: OK mais je n'ai pas de previsu (utilisateur, 2026-11-23 18:0x)

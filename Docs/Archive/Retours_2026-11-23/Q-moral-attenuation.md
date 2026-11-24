@@ -1,4 +1,6 @@
-# [À RÉPONDRE] Q-moral-attenuation : un effet de moral doit-il s'estomper peu à peu avant sa fin ?
+# [RÉPONDU] Q-moral-attenuation : un effet de moral doit-il s'estomper peu à peu avant sa fin ?
+
+Reponse: A = pas d'estompe (utilisateur, 2026-11-23 18:1x, interface de choix, D903)
 
 Contexte : le GDD (D125, D706) ne connaît qu'une atténuation venant d'une SOURCE (le Moine Lumineux, Discipline de l'Aube) : elle raccourcit un effet temporaire ou affaiblit une aura, de 75 % au plus. Aucun texte ne dit qu'un effet pose à pleine force perde de la force tout seul avant sa fin ; aujourd'hui Triomphe, Démoralisé, Hésitation et le cri valent leur pleine force jusqu'à la dernière seconde, puis disparaissent d'un coup.
 
