@@ -2530,12 +2530,11 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 				*Constants.TypeName.ToString(), Fighter.State->OwnerPlayer, Fighters[Target].UnitId, *Fighters[Target].Constants->TypeName.ToString());
 			Combat.TargetBuilding.Reset();
 		}
-		// L4: under the necrotic rage the unit strikes 25 % faster (the CSV value, HOLUnitAbilityRules.h).
+		// L4 / PLAN-MORAL-1120 step 2: the necrotic rage's +25 % cadence is the Rate lever of its morale effect (Effects.csv NecroticRage), read below; RageMs is not read here.
 		const int32 BaseIntervalMs = HOLCombat::ToMilliseconds(Constants.AttackInterval);
-		const int32 RageIntervalMs = Combat.RageMs > 0 ? HOLUnitAbility::GetRageIntervalMs(BaseIntervalMs) : BaseIntervalMs;
 			// PLAN-MORAL-1120 step 5 (S2-a): the Rate lever of the striker's morale (HOLMorale::Multiplier, the one source) shortens (bonus) or lengthens (malus) the time between blows.
 			const int32 MoraleRatePercent = Fighter.Morale ? HOLMorale::Multiplier(Fighter.Morale->State, HOLMorale::LeverRate) : 100;
-			const int32 IntervalMs = FMath::Max(1, RageIntervalMs * 100 / FMath::Max(MoraleRatePercent, 1));
+			const int32 IntervalMs = FMath::Max(1, BaseIntervalMs * 100 / FMath::Max(MoraleRatePercent, 1));
 		if (Target == INDEX_NONE)
 		{
 			// D345.2b: no enemy unit. Its building (ordered, or taken on before), else one it takes on by itself: on an
