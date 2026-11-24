@@ -252,6 +252,7 @@ public sealed class PublishTests : IDisposable
     [InlineData("..")]
     [InlineData("../x")]
     [InlineData("launcher")]
+    [InlineData("home")]
     [InlineData("v.tmp")]
     public void InvalidVersionNameIsRefused(string name)
     {

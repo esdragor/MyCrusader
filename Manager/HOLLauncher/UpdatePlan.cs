@@ -47,12 +47,16 @@ public sealed class UpdatePlan
      */
     public const string ServersName = GameServers.FileName;
 
+    /** Launcher 5: the home page's cached key art (HomeClient), a folder beside the launcher's exe. */
+    public const string HomeCachePattern = HomeClient.CacheDirName + "/*";
+
     /**
-     * Files of the launcher or the player (L15: the launcher's settings too), matched on the file name like
-     * ManifestBuilder's exclusions: never in the game's list nor in installed.json, never replaced nor deleted; only a missing servers.json is fetched.
+     * Files of the launcher or the player (L15: the launcher's settings too; launcher 5: its home cache folder), matched
+     * like ManifestBuilder's exclusions (on the file name, on the path from the game folder for a pattern with '/'):
+     * never in the game's list nor in installed.json, never replaced nor deleted; only a missing servers.json is fetched.
      */
     public static readonly IReadOnlyList<string> LauncherOwned =
-        [LauncherPattern, LauncherPartPattern, HpatchzName, ServersName, LauncherSettings.FileName];
+        [LauncherPattern, LauncherPartPattern, HpatchzName, ServersName, LauncherSettings.FileName, HomeCachePattern];
 
     /** ManifestBuilder counts every file under the game folder: the launcher also leaves out its work folder and its own files. */
     public static readonly IReadOnlyList<string> Excludes =
@@ -140,11 +144,12 @@ public sealed class UpdatePlan
         }
     }
 
-    /** LauncherOwned matched on the file name, ignoring case, like ManifestBuilder's exclusions. */
+    /** LauncherOwned matched ignoring case, like ManifestBuilder's exclusions (a pattern with '/' on the whole path). */
     public static bool IsLauncherOwned(string path)
     {
         var name = path[(path.LastIndexOf('/') + 1)..];
-        return LauncherOwned.Any(pattern => FileSystemName.MatchesSimpleExpression(pattern, name, ignoreCase: true));
+        return LauncherOwned.Any(pattern =>
+            FileSystemName.MatchesSimpleExpression(pattern, pattern.Contains('/') ? path : name, ignoreCase: true));
     }
 
     public static string FileUrl(string version, string path) => $"versions/{Escape(version)}/files/{EscapePath(path)}";

@@ -54,7 +54,7 @@ public static class Publisher
         var version = options.Version ?? ReadVersionTxt(game);
         if (!VersionFolder.IsPublishable(version))
         {
-            throw new PublishException($"invalid version name '{version}' (letters, digits, '.', '_', '-'; not 'launcher' nor '*.tmp')");
+            throw new PublishException($"invalid version name '{version}' (letters, digits, '.', '_', '-'; not 'launcher', 'home' nor '*.tmp')");
         }
         var final = Path.Combine(root, version);
         if (Directory.Exists(final) || File.Exists(final))

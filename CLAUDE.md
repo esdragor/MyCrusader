@@ -31,7 +31,9 @@ neuf le regroupe dans le lot C++ de la séance (un build) au lieu d'ouvrir un bu
 Toute publication du jeu avec nouveautés (`Tools\Package\publish.ps1 -Notes x.txt`) fournit **obligatoirement** leurs
 traductions à côté : `x.txt` (français), `x.en.txt`, `x.ja.txt`, toutes non vides ; noms du jeu repris de
 `Content/Localization/Game/{en,ja}/Game.po`. `publish.ps1` (avant le paquet) et HOLPublish refusent (FAIL) sinon ; le
-lanceur montre les nouveautés dans sa langue (`Manager/PROTOCOL.md`, `?lang=`).
+lanceur montre les nouveautés dans sa langue (`Manager/PROTOCOL.md`, `?lang=`). Même règle pour les annonces de
+l'accueil du lanceur (`Tools\Manager\home.ps1 add -From <dossier>` : `title.txt`, `body.txt` et leurs `.en.txt` /
+`.ja.txt`, tous non vides, sinon FAIL et rien n'est écrit).
 
 ## Placeholders.txt à jour (règle permanente)
 

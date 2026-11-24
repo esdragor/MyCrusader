@@ -34,6 +34,9 @@ builder.Services.AddSingleton<IServerLauncher>(sp => new ProcessServerLauncher(s
 // Versions served to the launcher (L2), with their own settings.
 var versionStore = new VersionStore((builder.Configuration.Get<VersionSettings>() ?? new VersionSettings()).ResolveDir());
 builder.Services.AddSingleton(versionStore);
+// Launcher 5: the home page's announcements, links and key art, in <versions>/home/ (PROTOCOL.md, Accueil du lanceur).
+builder.Services.AddSingleton(sp => new HomeStore(Path.Combine(versionStore.Root, HOLUpdate.HomeFiles.DirName),
+    sp.GetRequiredService<ILogger<HomeStore>>()));
 // D481: each new lobby takes the latest published version (latest.txt), else the starting one.
 builder.Services.AddSingleton(sp => new LobbyStore(gameVersion, sp.GetRequiredService<IClock>(),
     launcher: sp.GetRequiredService<IServerLauncher>(), latestVersion: versionStore.LatestName));
@@ -70,6 +73,7 @@ app.Lifetime.ApplicationStopping.Register(() => app.Logger.LogInformation("HOLMa
 app.MapLobbyRoutes();
 app.MapServerRoutes();
 app.MapVersionRoutes();
+app.MapHomeRoutes();
 
 // Closing the console window (CTRL_CLOSE, SIGHUP in .NET) kills the process a few seconds later without the usual
 // shutdown: stop the app and wait for it, so that the game servers still running are stopped (R2.12).

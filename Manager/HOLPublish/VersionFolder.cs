@@ -8,7 +8,7 @@ namespace HOLPublish;
  * The versions folder as laid out in LauncherInProgress.md (L2) and read by HOLManager's VersionStore: <v>/published.txt
  * (UTC date of the publication, never served) gives the order of the versions, read by HOLUpdate.PublishedVersions (the
  * manager reads the same order for the notes history, L21). <v>.tmp is a publication being written; "launcher" holds the
- * launcher's own versions.
+ * launcher's own versions, "home" the launcher's home page (HOLUpdate.HomeFiles, HOLPublish home).
  */
 public static partial class VersionFolder
 {
@@ -33,6 +33,7 @@ public static partial class VersionFolder
         name != null && NamePattern().IsMatch(name) && name.Trim('.').Length > 0
         && !name.EndsWith(TmpSuffix, StringComparison.OrdinalIgnoreCase)
         && !name.Equals("launcher", StringComparison.OrdinalIgnoreCase)
+        && !name.Equals(HomeFiles.DirName, StringComparison.OrdinalIgnoreCase)
         && !name.Equals(Latest, StringComparison.OrdinalIgnoreCase);
 
     /** The published versions (those with a manifest.json), newest first. */

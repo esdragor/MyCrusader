@@ -96,7 +96,7 @@ public sealed class AccessKeyTests : IClassFixture<WebApplicationFactory<Program
     public async Task WithKeyEveryRouteIsGuarded()
     {
         var client = Client(Key);
-        foreach (var route in new[] { "/lobbies", "/versions/latest", "/launcher/latest", "/no-such-route" })
+        foreach (var route in new[] { "/lobbies", "/versions/latest", "/launcher/latest", "/launcher/home", "/launcher/home/background", "/no-such-route" })
         {
             var request = new HttpRequestMessage(HttpMethod.Get, route);
             request.Headers.Add("X-Test-Remote", Remote);

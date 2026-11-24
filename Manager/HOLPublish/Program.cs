@@ -18,6 +18,10 @@ public static class Program
         {
             return ReleaseNumber.Run(args.Skip(1).ToList(), output);
         }
+        if (args.Count > 0 && args[0] == "home")
+        {
+            return HomeCommand.Run(args.Skip(1).ToList(), output);
+        }
         try
         {
             var result = Publisher.Publish(CommandLine.Parse(args));
