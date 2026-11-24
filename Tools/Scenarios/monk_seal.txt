@@ -1,0 +1,30 @@
+# S1-d (D862) Sceau de lumiere du Moine : le Moine selectionne, la touche de la cellule du Sceau puis un clic gauche sur le SOL a 8 m pose une zone de lumiere (rayon 6 m, 10 s, ralentit les ennemis). Geste reel (hol.Select.Grid = la touche de la cellule, puis hol.Select.LeftClickGround), pas d'appel interne.
+# ROUGE TANT QUE le clic de la grille n'est pas branche : aucun cas EHOLGridCommand::LightSeal dans HOLPlayerController.cpp (la touche ne lance rien) ; le dernier waitlog (RpcUnitAbility: Seal of Light put down) n'arrive pas. Le pont C++ manquant = TYPES_A_EXPOSER: pont CallFull LightSeal -> ServerCastUnitAbility (place B).
+# Plain, toi (slot 0) contre une IA gelee (slot 1). 3 minutes au plus.
+waitlog Starting hero of slot 0 spawned at
+hol.AI.ThinkSteps 100000
+hol.Cheat.Population 40
+hol.Camera.FocusNear 4000 0
+frames 2
+hol.Units.SpawnHere 1 Monk 0 50
+waitlog SpawnHere: 1 Monk of slot 0
+hol.Camera.FocusNear 4000 0
+hol.Camera.Zoom 3
+frames 20
+hol.Select.Type Monk last
+waitlog Selection: Monk
+hol.Units.Where 0
+capture monk_seal_before
+note 1. Le Moine est selectionne (le panneau Lumiere sacree, cout 25, est affiche).
+hol.Select.Grid 3
+waitlog Grid: monk seal, click on the ground
+note 2. La touche du Sceau : le Moine attend un clic sur le sol.
+hol.Camera.FocusNear 4000 0
+frames 2
+hol.Select.LeftClickGround -11600 0
+waitlog Scripted left click at
+waitlog RpcUnitAbility: Seal of Light put down by the Monk
+frames 30
+capture monk_seal_zone
+hol.Units.Where 0
+note 3. A toi : Moine selectionne, la touche du Sceau, clic sur le sol a 8 m : une zone de lumiere se pose (provisoire : anneau bleu pale), le Sceau est en recharge.

@@ -1,0 +1,2 @@
+monk_seal_before | Le Moine selectionne, seul au centre : le panneau "Lumiere sacree : cout 25" est affiche au-dessus de sa fiche (ressource insuffisante avant le geste) ; la case R (derniere de la rangee) n'est PAS vide : libelle "Sceau", infobulle "Sceau de lumiere" (rayon 6 m, 10 s, ralentis de 40 %, recharge 40 s) - avant ELROND-1124se cette case etait vide sombre
+monk_seal_zone | Le Moine a pose le Sceau a 8 m : une zone de lumiere (double anneau bleu pale provisoire, rayon 6 m) est visible sur le sol devant lui, le panneau dit "recharge 40 s"

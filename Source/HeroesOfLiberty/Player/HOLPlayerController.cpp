@@ -2781,12 +2781,41 @@ void AHOLPlayerController::ExecuteGridCommand(const FHOLGridCommand& Command)
 		bAttackMoveArmed = false;
 		SetFactionAim(-1, 0.0);
 		bBannerArmed = true;
+		bMonkSealArmed = false;
 		UE_LOG(LogHOLMatch, Display, TEXT("Grid: hero banner, click on the ground"));
 		return;
+	case EHOLGridCommand::LightSeal:
+	{
+		// S1-d (D862, ELROND-1124sb): the Monk's Seal of Light, AoE4's way: the cell or its key, then a left click on the ground (PlantMonkSealAt).
+		// The Monk is the first selected unit of type Monk (the type the grid reads for bMonkUnit); none = nothing armed.
+		uint32 MonkId = 0;
+		for (const uint32 SelectedId : GetOwnSelectedUnits())
+		{
+			FHOLUnitView Selected;
+			if (HOLUnitView::Find(*GetWorld(), SelectedId, Selected) && Selected.TypeName == FName(TEXT("Monk")))
+			{
+				MonkId = SelectedId;
+				break;
+			}
+		}
+		if (MonkId == 0)
+		{
+			return;
+		}
+		EndPlacement();
+		bAttackMoveArmed = false;
+		bBannerArmed = false;
+		SetFactionAim(-1, 0.0);
+		MonkSealUnit = MonkId;
+		bMonkSealArmed = true;
+		UE_LOG(LogHOLMatch, Display, TEXT("Grid: monk seal, click on the ground"));
+		return;
+	}
 	case EHOLGridCommand::AttackMove:
 		// AoE4's way: the key, then a left click on the ground (AttackMoveAt).
 		EndPlacement();
 		bBannerArmed = false;
+		bMonkSealArmed = false;
 		SetFactionAim(-1, 0.0);
 		bAttackMoveArmed = true;
 		UE_LOG(LogHOLMatch, Display, TEXT("Grid: attack-move, click on the ground"));
@@ -3189,6 +3218,23 @@ bool AHOLPlayerController::GetCursorGroundPoint(FVector& OutPoint) const{
 	}
 	const FVector2D Pixels = ToPixels(Fraction);
 	return DeprojectScreenPositionToWorld(Pixels.X, Pixels.Y, Origin, Direction) && RTSCamera->GetGroundPoint(Origin, Direction, OutPoint);
+}
+
+// S1-d (D862, ELROND-1124sb): the left click that puts the Monk's Seal of Light down: the ground point under the cursor, then the script RPC ServerCastUnitAbility (HOLRpcPlayer.as).
+void AHOLPlayerController::PlantMonkSealAt(const FVector2D& ViewportFraction)
+{
+	bMonkSealArmed = false;
+	const uint32 MonkId = MonkSealUnit;
+	MonkSealUnit = 0;
+	const FVector2D Pixels = ToPixels(ViewportFraction);
+	FVector Origin, Direction, Ground;
+	if (MonkId == 0 || !RTSCamera || !DeprojectScreenPositionToWorld(Pixels.X, Pixels.Y, Origin, Direction) || !RTSCamera->GetGroundPoint(Origin, Direction, Ground))
+	{
+		return;
+	}
+	UE_LOG(LogHOLMatch, Display, TEXT("Order: monk seal at (%.0f, %.0f)"), Ground.X, Ground.Y);
+	constexpr int32 LightSealAbilityId = 1; // HOLUnitAbilityTable::LightSeal (Script\Units\HOLUnitAbilityTable.as, UnitAbilities.csv): a change there is made here too.
+	RequestCastUnitAbility(LightSealAbilityId, MonkId, Ground);
 }
 
 void AHOLPlayerController::PlantBannerAt(const FVector2D& ViewportFraction)
@@ -4242,6 +4288,13 @@ namespace HOLRpcScriptRoute_Haldir1117n
 		return CallFull(Controller, nullptr, TEXT("ServerHeroAbility"), TArrayView<const int32>(Args, 1), nullptr, &Location, nullptr, nullptr);
 	}
 
+	// S1-d (D862): the Monk's unit ability (script ServerCastUnitAbility(int AbilityId, int UnitId, FVector Point)): the two ints in declaration order, the point.
+	bool RouteCastUnitAbility(AHOLPlayerController* Controller, const int32 AbilityId, const int32 UnitId, const FVector& Point)
+	{
+		const int32 Args[2] = { AbilityId, UnitId };
+		return CallFull(Controller, nullptr, TEXT("ServerCastUnitAbility"), TArrayView<const int32>(Args, 2), nullptr, &Point, nullptr, nullptr);
+	}
+
 	bool RouteCastRage(AHOLPlayerController* Controller, const TArray<int32>& UnitIds)
 	{
 		return CallFull(Controller, nullptr, TEXT("ServerCastRage"), TArrayView<const int32>(), nullptr, nullptr, nullptr, nullptr, &UnitIds);
@@ -4439,6 +4492,18 @@ void AHOLPlayerController::RequestHeroAbility(const EHOLHeroAbility Ability, con
 	if (!HOLRpcScriptRoute_Haldir1117n::RouteHeroAbility(this, static_cast<int32>(Ability), Location))
 	{
 		HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("HeroAbility"));
+	}
+}
+
+void AHOLPlayerController::RequestCastUnitAbility(const int32 AbilityId, const uint32 UnitId, const FVector& Point)
+{
+	if (IsSpectator() || UnitId == 0)
+	{
+		return;
+	}
+	if (!HOLRpcScriptRoute_Haldir1117n::RouteCastUnitAbility(this, AbilityId, static_cast<int32>(UnitId), Point))
+	{
+		HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("CastUnitAbility"));
 	}
 }
 
@@ -5114,6 +5179,13 @@ void AHOLPlayerController::HandleSelectStarted()
 		PlantBannerAt(Cursor);
 		return;
 	}
+	// Seal of Light aiming (S1-d, D862): a left click on the ground puts it down, never selects.
+	if (bMonkSealArmed && GetCursorFraction(Cursor))
+	{
+		bSelectPressed = false;
+		PlantMonkSealAt(Cursor);
+		return;
+	}
 	// Faction power aiming (D839): a left click on the ground is kept for the script (ConsumeFactionAimClick), never selects.
 	if (FactionAimIndex >= 0)
 	{
@@ -5241,10 +5313,11 @@ void AHOLPlayerController::HandleOrder()
 		EndPlacement();
 		return;
 	}
-	if (bAttackMoveArmed || bBannerArmed || FactionAimIndex >= 0)
+	if (bAttackMoveArmed || bBannerArmed || bMonkSealArmed || FactionAimIndex >= 0)
 	{
 		bAttackMoveArmed = false;
 		bBannerArmed = false;
+		bMonkSealArmed = false;
 		SetFactionAim(-1, 0.0);
 		return;
 	}
@@ -5337,7 +5410,7 @@ void AHOLPlayerController::HandleDeselect()
 	// placement mode first, the selection kept (D313), and closes the chosen age (the user's 1st trial of G.1: an age
 	// chosen without a ghost is closed alone), then the attack-move mode (J7b.3); then it deselects; with nothing
 	// selected, it opens the in-game menu.
-	switch (UHOLGameMenuRulesBridge::NativeGetEscapeAction(bGameMenuOpen, IsPlacing() || ChosenAge != INDEX_NONE || bAttackMoveArmed || bBannerArmed || FactionAimIndex >= 0, HasSelection()))
+	switch (UHOLGameMenuRulesBridge::NativeGetEscapeAction(bGameMenuOpen, IsPlacing() || ChosenAge != INDEX_NONE || bAttackMoveArmed || bBannerArmed || bMonkSealArmed || FactionAimIndex >= 0, HasSelection()))
 	{
 	case EHOLEscapeAction::CloseMenu:
 		return;
@@ -5355,6 +5428,7 @@ void AHOLPlayerController::HandleDeselect()
 		{
 			bAttackMoveArmed = false;
 			bBannerArmed = false;
+			bMonkSealArmed = false;
 			SetFactionAim(-1, 0.0);
 		}
 		return;

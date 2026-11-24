@@ -477,6 +477,8 @@ public:
 	void ScriptEscape();
 	void ScriptRightClick();	/** The banner of the mode planted at a viewport point (a left click, or hol.Select.Banner). */
 	void PlantBannerAt(const FVector2D& ViewportFraction);
+	/** S1-d (D862): the left click that puts the Monk's Seal of Light down (the armed Monk of the grid's LightSeal cell); sends ServerCastUnitAbility. */
+	void PlantMonkSealAt(const FVector2D& ViewportFraction);
 	/** The player's own hero among the units commanded (the active subgroup's, J8c.4); 0 when he is not. */
 	uint32 GetCommandHero() const;
 	/** The ground point under the cursor (the test cursor when set): the banner's aim draws its aura there (J8c.4). */
@@ -570,6 +572,8 @@ public:
 	void RequestHeroAbility(EHOLHeroAbility Ability, FVector Location);
 	/** L4: the grid's button of the necrotic rage: the units named, the server keeps the player's own Damned Warriors (the script RPC actor's ServerCastRage). */
 	void RequestCastRage(TConstArrayView<uint32> UnitIds);
+	/** S1-d (D862): the Monk's unit ability from the grid: the script RPC actor's ServerCastUnitAbility(AbilityId, UnitId, Point). Nothing for a spectator or unit 0. */
+	void RequestCastUnitAbility(int32 AbilityId, uint32 UnitId, const FVector& Point);
 
 	/**
 	 * T3: the player takes the talent of Family (0 Guardian, 1 Captain, 2 Champion for the Dawn Order) in the next row of its hero.
@@ -949,6 +953,9 @@ private:
 	bool bAttackMoveArmed = false;
 	/** Banner aiming (J8c.4): the next left click on the ground plants the hero's banner. */
 	bool bBannerArmed = false;
+	/** S1-d (D862): the grid's Seal of Light cell armed, the next left click on the ground puts it down; MonkSealUnit is the Monk that casts it. */
+	bool bMonkSealArmed = false;
+	uint32 MonkSealUnit = 0;
 	/** Faction power aiming (D839): the aimed power (-1: none), the reach to draw, and the ground click kept for the script. */
 	int32 FactionAimIndex = -1;
 	double FactionAimRangeCm = 800.0;
