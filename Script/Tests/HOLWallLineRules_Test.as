@@ -619,3 +619,31 @@ void Test_WallLineFineGridOrdersOnePiecePerSubCellForEveryPeasant(FUnitTest& T)
 	TArray<HOLWallLine::FHOLWallOrder> Shifted = HOLWallLine::OrdersForLine(Plan, Peasants, true);
 	T.AssertTrue(Shifted.Num() > 0 && Shifted[0].bQueue, "Shift held: the first piece queues too");
 }
+
+// D898 G7: a diagonal line on the fine grid. Pieces of 1 m that touch only by a corner leave a zero-width slit the navmesh can read as a way through (a crossable staircase). The plan the server computes
+// (PlanFromRequestFine at SubDivision 4, drag (50,50) -> (850,850) = 9 diagonal sub-cells) must have every piece sharing an EDGE with the next one (no corner-only contact), and keep the 9 diagonal pieces.
+bool WallLineIsEdgeConnected(const TArray<FIntPoint>& Line)
+{
+	for (int Index = 1; Index < Line.Num(); Index++)
+	{
+		int DX = Line[Index].X - Line[Index - 1].X;
+		int DY = Line[Index].Y - Line[Index - 1].Y;
+		int Manhattan = (DX < 0 ? -DX : DX) + (DY < 0 ? -DY : DY);
+		if (Manhattan != 1)
+			return false;
+	}
+	return true;
+}
+
+void Test_WallLineFineGridDiagonalHasNoCornerOnlyGap(FUnitTest& T)
+{
+	TArray<FIntPoint> Taken;
+	HOLWallLine::FHOLWallLinePlan Plan = HOLWallLine::PlanFromRequestFine(0, FVector(50.0, 50.0, 0.0), FVector(850.0, 850.0, 0.0), 400.0, 4, WallLineMapMin, WallLineMapMax, Taken, 1000);
+	T.AssertEquals(int(HOLWallLine::EHOLWallLineRefusal::Ok), int(Plan.Refusal), "the diagonal drag is accepted");
+	T.AssertTrue(WallLineIsEdgeConnected(Plan.Cells), "every piece of the diagonal shares an edge with the next: no corner-only slit");
+	for (int Step = 0; Step < 9; Step++)
+		T.AssertTrue(WallLineHasCell(Plan.Cells, Step, Step), "the diagonal sub-cell " + Step + " is still laid");
+	T.AssertEquals(17, Plan.Cells.Num(), "9 diagonal pieces + 8 fillers");
+	HOLWallLine::FHOLWallLinePlan Coarse = HOLWallLine::PlanFromRequestFine(0, FVector(50.0, 50.0, 0.0), FVector(850.0, 850.0, 0.0), 400.0, 1, WallLineMapMin, WallLineMapMax, Taken, 1000);
+	T.AssertEquals(3, Coarse.Cells.Num(), "the 4 m plan (SubDivision 1) keeps its bare diagonal, unchanged");
+}

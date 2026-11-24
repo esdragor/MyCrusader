@@ -13,6 +13,8 @@ const FConsoleVariable CVar_WallMaxLineCells("hol.Wall.MaxLineCells", 0);
 
 // D898 (fine grid, G1): the pitch of a wall line is Tile / SubDivision. 1 = the 4 m grid (default until G10 validates the fine grid), 4 = 1 m sub-cells.
 const FConsoleVariable CVar_WallSubDivision("hol.Wall.SubDivision", 1);
+// D898 G7 (Q-mur-diagonale.md, not answered): 1 (the default) = a diagonal line of sub-cells gets a filler piece at each corner so no unit slips between two corner-touching pieces; 0 = the bare diagonal.
+const FConsoleVariable CVar_WallDiagonalFill("hol.Wall.DiagonalFill", 1);
 
 namespace HOLWallLine
 {
@@ -264,7 +266,15 @@ namespace HOLWallLine
 		const TArray<FIntPoint> FineOccupied = ExpandOccupied(Occupied, SubDivision);
 		const FIntPoint FineMin = FIntPoint(MapMin.X * SubDivision, MapMin.Y * SubDivision);
 		const FIntPoint FineMax = FIntPoint(MapMax.X * SubDivision + SubDivision - 1, MapMax.Y * SubDivision + SubDivision - 1);
-		return PlanFromRequest(SenderSlot, Start, End, Tile / double(SubDivision), FineMin, FineMax, FineOccupied, MaxCells);
+		FHOLWallLinePlan FinePlan = PlanFromRequest(SenderSlot, Start, End, Tile / double(SubDivision), FineMin, FineMax, FineOccupied, MaxCells);
+		if (FinePlan.Refusal == EHOLWallLineRefusal::Ok && CVar_WallDiagonalFill.GetInt() != 0)
+			FillDiagonalGaps(FinePlan, FineOccupied);
+		return FinePlan;
+	}
+
+	// D898 G7: STUB (red first), the plan is left as is.
+	void FillDiagonalGaps(FHOLWallLinePlan& Plan, const TArray<FIntPoint>& FineOccupied)
+	{
 	}
 
 	// The setting read by the callers (D898, Q-grille-fine-structure.md, not answered): 1 (the default) = the 4 m grid of today, 4 = 1 m sub-cells. The default moves to 4 at G10.
