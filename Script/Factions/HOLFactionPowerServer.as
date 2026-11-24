@@ -8,8 +8,24 @@ struct FHOLFactionApproach
 	FVector StopPoint = FVector(0.0, 0.0, 0.0);
 }
 
+// FARAMIR-1124b (S2-c, D404): the order Sacred Light hands to the morale bridge (HOLMorale::ClearMalusAround) when the zone is put down.
+struct FHOLSacredLightClearOrder
+{
+	int CenterXCm = 0;
+	int CenterYCm = 0;
+	int RadiusCm = 0;
+	int Slot = 0;
+}
+
 namespace HOLFactionPowerServer
 {
+	// FARAMIR-1124b STUB (red): the clearing order of a Sacred Light put down at Pose by Slot (centre = the pose, radius = the zone's radius, camp = the caster).
+	FHOLSacredLightClearOrder ClearMalusOrderOf(int Slot, const FVector& Pose)
+	{
+		FHOLSacredLightClearOrder Order;
+		return Order;
+	}
+
 	// FARAMIR-1124a: the pure rule of the approach. Origin = the hero's place, Point = the aimed point, RangeCm = the cast range. Beyond the range the hero
 	// walks and stops (RangeCm - 50) cm from the point on the line to it (in range on arrival, the 50 cm absorb the stop's slack); inside, no walk.
 	FHOLFactionApproach ApproachPointOf(const FVector& Origin, const FVector& Point, double RangeCm)
