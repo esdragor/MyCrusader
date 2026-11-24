@@ -34,4 +34,8 @@
   <data name="SettingsExtraArgumentsHint" xml:space="preserve"><value>Advanced: arguments given as they are to the game when it starts (example: -nosound).</value></data>
   <data name="SettingsUnclosedQuote" xml:space="preserve"><value>Extra arguments: a " quote is not closed.</value></data>
   <data name="SettingsReservedArguments" xml:space="preserve"><value>These extra arguments contradict the chosen display or resolution, or are reserved for the launcher; remove them: {0}</value></data>
+  <data name="Pause" xml:space="preserve"><value>Pause</value></data>
+  <data name="Resume" xml:space="preserve"><value>Resume</value></data>
+  <data name="Pausing" xml:space="preserve"><value>Pausing…</value></data>
+  <data name="UpdatePaused" xml:space="preserve"><value>Paused ({0}). What was already received is kept: "Resume" carries on without downloading it again.</value></data>
 </root>

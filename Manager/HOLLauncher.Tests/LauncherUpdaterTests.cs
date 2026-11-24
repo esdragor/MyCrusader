@@ -20,6 +20,9 @@ public class LauncherUpdaterTests
         public string? Sha256 { get; set; } = Sha(NewLauncher);
         public List<(string Path, string? Range)> Requests { get; } = [];
 
+        /** Once: the body stops after Bytes and the player's "Pause" is played (L18). */
+        public (int Bytes, Action Pause)? PauseAt { get; set; }
+
         public HttpClient Client() => new(new FakeHandler(Answer));
 
         private HttpResponseMessage Answer(HttpRequestMessage request)
@@ -34,9 +37,15 @@ public class LauncherUpdaterTests
                 };
             }
             var from = range?.From is { } start ? (int)start : 0;
+            HttpContent content = new ByteArrayContent(Body[from..]);
+            if (PauseAt is { } pause)
+            {
+                PauseAt = null;
+                content = new StreamContent(new PausingStream(Body[from..], pause.Bytes, pause.Pause));
+            }
             var response = new HttpResponseMessage(from > 0 ? HttpStatusCode.PartialContent : HttpStatusCode.OK)
             {
-                Content = new ByteArrayContent(Body[from..]),
+                Content = content,
             };
             response.Headers.Add("X-Launcher-Version", "2");
             if (Sha256 is not null)
@@ -137,6 +146,30 @@ public class LauncherUpdaterTests
     private sealed class ListProgress(List<LauncherProgress> reports) : IProgress<LauncherProgress>
     {
         public void Report(LauncherProgress value) => reports.Add(value);
+    }
+
+    [Fact]
+    public async Task PausedLauncherDownloadResumesWithRange()
+    {
+        var (dir, exe) = RunningLauncher();
+        using var _ = dir;
+        var server = new Server();
+        using var pause = new CancellationTokenSource();
+        server.PauseAt = (1500, pause.Cancel);
+
+        var paused = await new LauncherUpdater(server.Client(), Manager, exe).UpdateAsync(cancel: pause.Token);
+
+        Assert.False(paused.Success);
+        Assert.True(paused.Cancelled);
+        Assert.Equal(OldLauncher, File.ReadAllBytes(exe));
+        Assert.Equal(1500, new FileInfo(In(dir, LauncherUpdater.NewName + ".part")).Length);
+
+        var resumed = await new LauncherUpdater(server.Client(), Manager, exe).UpdateAsync();
+
+        Assert.True(resumed.Success, resumed.Message);
+        Assert.False(resumed.Cancelled);
+        Assert.Equal(NewLauncher, File.ReadAllBytes(exe));
+        Assert.Equal([(string?)null, "1500-"], server.Requests.Select(r => r.Range));
     }
 
     [Fact]
