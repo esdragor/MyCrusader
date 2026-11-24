@@ -706,4 +706,37 @@ bool FHOLFactionWarriorGridTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+// A2 (S2-c step 9), client model: the morale effect mask the server sent with a unit's state (HOLNetUnitState.EffectMask) is in the view the client
+// makes of that unit (UHOLUnitReceptionSubsystem::MakeView -> FHOLUnitView::EffectMask), which is what the script's HOLMoraleView::Read draws from.
+// Real chain: the unit received in a slot, its display entity created, its view made; a unit received without mask has none.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLMoraleMaskClientViewTest, "HeroesOfLiberty.Match.Morale.ClientViewMask", UE::HeroesOfLiberty::Tests::Factions::Flags)
+bool FHOLMoraleMaskClientViewTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::Factions;
+	FWorld Test;
+	if (!TestTrue(TEXT("the test world stands"), Test.IsReady()))
+	{
+		return false;
+	}
+	UHOLUnitReceptionSubsystem* Reception = Test.World->GetSubsystem<UHOLUnitReceptionSubsystem>();
+	if (!TestNotNull(TEXT("the reception subsystem"), Reception))
+	{
+		return false;
+	}
+	FHOLNetUnitState Marked = FHOLNetUnitState::Make(FVector(500.0, 0.0, 0.0), FVector::ZeroVector, EHOLUnitActivity::Idle, 1);
+	Marked.EffectMask = (1 << 0) | (1 << 3); // under the effects of rows 0 and 3
+	const FHOLNetUnitState Plain = FHOLNetUnitState::Make(FVector(600.0, 0.0, 0.0), FVector::ZeroVector, EHOLUnitActivity::Idle, 1);
+	TestTrue(TEXT("the unit under effects is displayed"), Reception->ReceiveUnitForTest(201, Spearman, 0, Marked));
+	TestTrue(TEXT("the unit without effect is displayed"), Reception->ReceiveUnitForTest(202, Spearman, 0, Plain));
+	FHOLUnitView MarkedView;
+	FHOLUnitView PlainView;
+	if (TestTrue(TEXT("the marked view is made"), Reception->GetDisplayedUnit(201, MarkedView))
+		&& TestTrue(TEXT("the plain view is made"), Reception->GetDisplayedUnit(202, PlainView)))
+	{
+		TestEqual(TEXT("the client's view of a unit under effects carries the received mask"), static_cast<int32>(MarkedView.EffectMask), (1 << 0) | (1 << 3));
+		TestEqual(TEXT("the client's view of a unit without effect carries no mask"), static_cast<int32>(PlainView.EffectMask), 0);
+	}
+	return true;
+}
+
 #endif // WITH_DEV_AUTOMATION_TESTS
