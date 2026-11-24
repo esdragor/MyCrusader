@@ -25,7 +25,23 @@ public class TextsTests
         Assert.Equal("Jouer", Texts.Get("Play", "fr"));
         Assert.Equal("Play", Texts.Get("Play", "en"));
         Assert.Equal("プレイ", Texts.Get("Play", "ja"));
-        Assert.Equal("Heroes of Liberty - launcher 7", Texts.Format("WindowTitle", "en", "7"));
+        Assert.Equal("Heroes of Liberty - launcher 7", Texts.FormatIn("en", "WindowTitle", "7"));
+    }
+
+    /** A single string argument is an argument, never the language (crash at start before the fix). */
+    [Fact]
+    public void FormatWithOneStringArgumentUsesTheCurrentLanguage()
+    {
+        var before = Texts.Language;
+        try
+        {
+            Texts.Use("en");
+            Assert.Equal("Heroes of Liberty - launcher 1", Texts.Format("WindowTitle", "1"));
+        }
+        finally
+        {
+            Texts.Use(before);
+        }
     }
 
     [Fact]
