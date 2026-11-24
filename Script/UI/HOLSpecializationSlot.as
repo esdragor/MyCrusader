@@ -137,6 +137,20 @@ namespace HOLSpecializationSlot
 		return NSLOCTEXT("HOLSpecializationSlot", "ToChoose", "Spécialisation : à choisir").ToString();
 	}
 
+	// The name shown for option Option of a faction with OptionCount options. Three options = the Templars (HOLSpecialization::OptionCountOf, D131): their
+	// voies are Fer, Foi, Pierre (D132, GDD 13.7), in the player's language. The other factions keep the letter (A, B) until their names are in the GDD (D905).
+	FString VoieNameOf(int OptionCount, int Option)
+	{
+		if (OptionCount == 3 && Option == 0)
+			return NSLOCTEXT("HOLSpecializationSlot", "VoieFer", "Fer").ToString();
+		if (OptionCount == 3 && Option == 1)
+			return NSLOCTEXT("HOLSpecializationSlot", "VoieFaith", "Foi").ToString();
+		if (OptionCount == 3 && Option == 2)
+			return NSLOCTEXT("HOLSpecializationSlot", "VoieStone", "Pierre").ToString();
+		const FString OptionLetters = "ABC";
+		return OptionLetters.Mid(Option, 1);
+	}
+
 	FString ChosenLineOf(FString OptionName, int Tier)
 	{
 		return NSLOCTEXT("HOLSpecializationSlot", "ChosenVoie", "Spécialisation : Voie {0} (palier {1})").ToString().Replace("{0}", OptionName).Replace("{1}", f"{Tier}");
@@ -156,7 +170,7 @@ namespace HOLSpecializationSlot
 			const int Applied = Tier < View.Chosen.Num() ? View.Chosen[Tier] : HOLSpecialization::None;
 			if (Applied == HOLSpecialization::None)
 				continue;
-			const FString Line = ChosenLineOf(OptionNames.Mid(Applied, 1), Tier);
+			const FString Line = ChosenLineOf(VoieNameOf(OptionCount, Applied), Tier);
 			Result.ChosenTexts.Add(Line);
 			Result.ChosenText = Result.ChosenText.IsEmpty() ? Line : Result.ChosenText + "\n" + Line;
 		}
