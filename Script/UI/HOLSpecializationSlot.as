@@ -142,6 +142,18 @@ namespace HOLSpecializationSlot
 		return NSLOCTEXT("HOLSpecializationSlot", "ChosenVoie", "Spécialisation : Voie {0} (palier {1})").ToString().Replace("{0}", OptionName).Replace("{1}", f"{Tier}");
 	}
 
+	// ARWEN-1124sa (RECETTE-1124b): the panel's line of an option, from the SAME table entries as HOLGameNames.cpp GetSpecializationName (namespace
+	// HOLGameNames, keys SpecializationOptionA/B/C, same French source), so the .po / .locres of every language apply (ja: 段階1のルートA).
+	FString OptionTextOf(int Option, int Tier)
+	{
+		FString Template = NSLOCTEXT("HOLGameNames", "SpecializationOptionA", "Voie A du palier {0}").ToString();
+		if (Option == 1)
+			Template = NSLOCTEXT("HOLGameNames", "SpecializationOptionB", "Voie B du palier {0}").ToString();
+		else if (Option >= 2)
+			Template = NSLOCTEXT("HOLGameNames", "SpecializationOptionC", "Voie C du palier {0}").ToString();
+		return Template.Replace("{0}", f"{Tier}");
+	}
+
 	// The slot's specialization view from what the owner reads (FHOLSpecializationView), the faction tier, whether the Forum is complete
 	// (HOLNomad::HasCompleteForum) and the number of options of the faction (HOLSpecialization::OptionCountOf).
 	FHOLSpecializationSlotView Make(FHOLSpecializationView View, int PlayerTier, bool bForumComplete, int OptionCount)
@@ -169,7 +181,7 @@ namespace HOLSpecializationSlot
 		// The state to choose (D905, Retours/Q-sp3-libelles.md = B): "Spécialisation : à choisir", in the player's language.
 		Result.ButtonText = ToChooseText();
 		for (int Option = 0; Option < OptionCount && Option < 3; Option++)
-			Result.OptionTexts.Add(f"Voie {OptionNames.Mid(Option, 1)} du palier {Result.OpenTier}");
+			Result.OptionTexts.Add(OptionTextOf(Option, Result.OpenTier));
 		Result.bRunning = View.PendingTier == Result.OpenTier && View.PendingOption >= 0;
 		if (!Result.bRunning)
 		{
