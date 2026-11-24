@@ -116,6 +116,40 @@ namespace HOLFactionPowerServer
 		}
 	}
 
+	// GLORFINDEL-1124sc (D909): the rule of the hook. An order of Slot that NAMES the slot's hero (HeroId in OrderedUnitIds) cancels the slot's pending cast; an order that
+	// names other units, or no hero (HeroId < 0), leaves it. True when a pending cast was cancelled. STUB (red): does nothing yet.
+	bool CancelPendingOnOrder(TArray<FHOLPendingCast>& Pending, int Slot, const TArray<int>& OrderedUnitIds, int HeroId)
+	{
+		return false;
+	}
+
+	// GLORFINDEL-1124sc (D909): the hook itself, called by every hero-capable player order of HOLPlayerOrders AFTER it issued its command (BeginApproach's own Move comes
+	// BEFORE its SetPending, so it never cancels the cast it starts). No world subsystem (a detached test) = nothing pending = nothing to do.
+	void NoteHeroOrder(int Slot, const TArray<int>& OrderedUnitIds)
+	{
+	}
+
+	// GLORFINDEL-1124sc (D911): the refusal found AT THE ORDER (BeginApproach) or on arrival is queued as a notice for Slot when it has a text (RefusalNoticeKeyOf). STUB (red).
+	bool RaiseRefusalNotice(TArray<FHOLPendingNotice>& Notices, int Slot, int Refusal)
+	{
+		return false;
+	}
+
+	// GLORFINDEL-1124sc (D911): the refusal of the first notice waiting for Slot in Notices, removed from it (0 = none waiting). TakeNotice reads the holder's list through it.
+	int TakeNoticeFrom(TArray<FHOLPendingNotice>& Notices, int Slot)
+	{
+		for (int Each = 0; Each < Notices.Num(); Each++)
+		{
+			if (Notices[Each].Slot == Slot)
+			{
+				const int Refusal = Notices[Each].Refusal;
+				Notices.RemoveAt(Each);
+				return Refusal;
+			}
+		}
+		return 0;
+	}
+
 	// GLORFINDEL-1124sa (D908): the Honor control AT THE ORDER of an approached cast, a pure rule (no write): the decision measured from the aimed point itself (range 0),
 	// so the row's Honor, level and cool-down rules apply. Writes nothing: the caller pays (at the order with hol.Faction.ApproachPays 1, else on arrival, D900).
 	FHOLFactionPowerDecision ApproachDecisionOf(int Faction, int PowerIndex, int GaugeValue, int CooldownEndMs, int NowMs, const FVector& Point)
