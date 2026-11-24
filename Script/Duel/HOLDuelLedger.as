@@ -87,8 +87,7 @@ class UHOLDuelLedger : UHOLDuelSubsystem
 	FHOLDuelKitSettings KitSettings;
 	TArray<FHOLDuelKit> Kits;
 
-	// D7: the morale orders of the duels that ended, kept for the bridge to the simulation's morale (MoraleInProgress.md M7, not
-	// built yet: nothing applies them to the troops today).
+	// D7: the morale orders of the duels that ended, kept until AdvanceDuels hands them to the bridge (ApplyMoraleOrders, S2-b).
 	TArray<FHOLDuelMoraleOrder> PendingMorale;
 
 	// Where each target stood when it was challenged and when it answered (D866 Q2 = A: Hesitation at the refusing hero's position).
@@ -169,6 +168,12 @@ class UHOLDuelLedger : UHOLDuelSubsystem
 	// checks them through HOLDuel::Start). A hero already in a duel is refused.
 	UFUNCTION(BlueprintOverride)
 	bool BeginDuel(int Challenger, int Target, int AX, int AY, int BX, int BY)
+	{
+		return BeginDuelScript(Challenger, Target, AX, AY, BX, BY);
+	}
+
+	// The body of the override above, a plain script method so a script test can call it (a BlueprintOverride resolves to the C++ base from outside).
+	bool BeginDuelScript(int Challenger, int Target, int AX, int AY, int BX, int BY)
 	{
 		EnsureBook();
 		if (Challenger == Target || HOLDuel::BookInDuel(Book, Challenger) || HOLDuel::BookInDuel(Book, Target))
@@ -309,6 +314,12 @@ class UHOLDuelLedger : UHOLDuelSubsystem
 
 	UFUNCTION(BlueprintOverride)
 	int AdvanceDuels(int DeltaMs, const TArray<int>& Health)
+	{
+		return AdvanceDuelsScript(DeltaMs, Health);
+	}
+
+	// The body of the override above, a plain script method so a script test can call it.
+	int AdvanceDuelsScript(int DeltaMs, const TArray<int>& Health)
 	{
 		EnsureBook();
 		for (int Slot = 0; Slot < Kits.Num(); Slot++)
