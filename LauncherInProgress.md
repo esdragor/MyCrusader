@@ -561,3 +561,23 @@ après accord de cette session ou après la fusion de ses étapes en cours.
   2026-11-03-f5006b5 ; **`L11-v1` a été retirée** par la limite `-Keep 3`. Archive `Saved\Packages\0.3.0` (2 Go) gardée.
   Non vu : l'affichage « V 0.3.0 » dans un lanceur / un jeu réellement installé depuis cette version.
   **Reprise : L15 (réglages + langue) dans une prochaine session, en suivant ce journal** (tableau L14-L24 plus haut).
+- 2026-11-24 ~15:20 : **jeu publié en `0.4.3`** (demande de l'utilisateur, réponse à L27-12 ; copie principale, code =
+  main `ff48d76`, seuls des commits de docs après). Découpage proposé à l'utilisateur des travaux depuis la 0.3.0 en
+  9 étapes (0.3.1 à 0.3.5, puis Y + 1 à la clôture de la migration D857 : 0.4.0 à 0.4.3) ; seule la 0.4.3 est
+  empaquetée, ses `notes.txt` reprennent les 9 blocs (la plus récente d'abord), puisque l'historique L21 n'est pas
+  encore dans `main`. `publish.ps1 -Version 0.4.3 -Notes …` : PASS (package 11,4 min, HOLPublish 457 s, 494 fichiers,
+  384,6 Mo compressés, 107 correctifs) ; `latest.txt` = `0.4.3`, serveur `Saved\Manager\Servers\0.4.3` ; versions gardées
+  0.3.0, 0.4.3, 2026-10-30-r9, 2026-11-03-f5006b5. `release.json` mis à `{"stage":4,"update":4}` à la main
+  (`HOLPublish release set`) : prochaine = `0.4.4`. **Gestionnaire non lancé** (port 7700 fermé au moment de la
+  publication) : les amis ne voient la 0.4.3 qu'une fois `Gestionnaire HOL.bat` lancé. Archive
+  `Saved\Packages\0.4.3` (~2,2 Go) gardée. Non vu : mise à jour réelle d'un lanceur 0.3.0 vers 0.4.3.
+- 2026-11-24 ~15:35 : **gestionnaire lancé** (`Saved\Manager\HOLManager.exe --urls http://0.0.0.0:7700`, comme
+  `Gestionnaire HOL.bat` ; le `.bat` lancé depuis la session Claude ne démarrait rien, exe lancé en tâche de fond de la
+  session) : « latest published: 0.4.3 », clé d'accès active ; `/versions/latest` en local = 200 (version 0.4.3), par
+  l'adresse publique 90.55.168.58:7700 sans clé = 401 (joignable, clé exigée).
+- 2026-11-24 ~15:07 : **essai réel 0.3.0 -> 0.4.3 vert** : copie de l'installation 0.3.0 du bureau (`Desktop\HOLLauncher`, lanceur 1,
+  `servers.json` = adresse DuckDNS, avec clé) dans le scratchpad, `HOLLauncher.exe --update` : fini en ~15 s
+  (`Version.txt` 15:07:13, `installed.json` 15:07:17), `HeroesOfLiberty\Version.txt` = `0.4.3`, `installed.json` en 0.4.3,
+  **494 / 494 empreintes = manifeste 0.4.3** ; journal du gestionnaire : 45 correctifs (48,5 Mo) + 360 fichiers complets
+  (0,8 Mo), tous servis à 90.55.168.58 (passage par la box). La fenêtre reste ouverte après « à jour » (`--update` ne
+  ferme pas le lanceur) : fermée à la main. Installation du bureau non touchée.

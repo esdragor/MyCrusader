@@ -773,7 +773,7 @@ même depuis un worktree). Relire juste avant d'éditer et ne toucher que ses li
 ### Réseau et lanceur *(`NetPlaytestInProgress.md`, `LauncherInProgress.md`)*
 - M6 : R1-R8c, spectateur de salon (SP1, D642), éliminé = spectateur, équipe entière tombée = toute la carte (D646), `MaxServers` 4 (D502), outillage de journaux frais (`Get-FreshLog`) : dans `main` ; reste `quick_check -Parts net,lobby` avec serveur de test recuit, `aitech` et `netspec` non rejoués, `Game.po` à recompiler, bâtiment « ruine » de l'éliminé
 - **Essai E5 avec un ami (R8d), à faire plus tard** : r9 publiée, kit `HOLLauncher-kit.zip` prêt (copie sur le bureau) ; lancer `Gestionnaire HOL.bat`, envoyer le kit, jouer un salon ; seul inconnu : ports UDP 7777-7799 par la box ; ensuite R9.2
-- Lanceur : L0-L14 faits, publié 0.3.0 (2026-11-03) ; reprise = L15 (réglages + langue), plan L14-L24 dans `LauncherInProgress.md` ; périmètre validé (vérifier fichiers, options, désinstaller, mise à jour automatique, fr / en / ja, etc.)
+- Lanceur : L0-L14 faits, publié 0.3.0 (2026-11-03), **puis 0.4.3 (2026-11-24 ~15:20, code de main ff48d76, nouveautés des 9 étapes depuis la 0.3.0 dans un seul notes.txt ; prochaine 0.4.4 ; gestionnaire lancé ~15:35, sert 0.4.3, adresse publique 401 sans clé = joignable ; mise à jour 0.3.0 -> 0.4.3 ESSAYÉE ~15:07 : 15 s, 494/494 empreintes, 48,5 Mo de correctifs)** ; reprise = L15 (réglages + langue), plan L14-L24 dans `LauncherInProgress.md` ; périmètre validé (vérifier fichiers, options, désinstaller, mise à jour automatique, fr / en / ja, etc.)
 
 ### IA *(`AIInProgress.md`)*
 - IA0 à IA3 closes et IA4 (Paysans D572, arbitrage des vies D579, aide aux coéquipiers D571, niveaux Facile / Normal / Difficile / Évolutive, IAQ-S D619-D621) : dans `main`
