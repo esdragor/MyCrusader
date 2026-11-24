@@ -1,0 +1,13 @@
+Heure PowerShell : 12:43:49  fin dure 14:00  reste 76 min
+PASS C:/Users/baudo/Documents/HeroesOfLiberty-Haldir : aucun ecart de code avec main (25e29ab)
+PASS worktree propre
+PASS binaire du 12:33 >= dernier commit de code du 12:08
+PASS E-deploy_far.md : le worktree contient le tip de la branche main
+PASS E-faction_aim_free.md : le worktree contient le tip de la branche main
+PASS E-sacred_light_heal.md : le worktree contient le tip de la branche main
+PASS E-specialization_slot.md : le worktree contient le tip de la branche main
+FAIL E-talents_heal.md : branche 'zone-effect' ABSENTE du worktree (son tip n'est pas ancetre de HEAD) : la fusionner ici (git merge zone-effect) puis build.ps1, ou jouer l'essai dans un worktree qui la contient
+FAIL E-tower_wood.md : branche 'zone-effect' ABSENTE du worktree (son tip n'est pas ancetre de HEAD) : la fusionner ici (git merge zone-effect) puis build.ps1, ou jouer l'essai dans un worktree qui la contient
+FAIL E-wall_line_skip.md : branche 'integ-41' ABSENTE du worktree (son tip n'est pas ancetre de HEAD) : la fusionner ici (git merge integ-41) puis build.ps1, ou jouer l'essai dans un worktree qui la contient
+WARN rappel : l'essai d'un REGLAGE/BUG est rejoue par l'integrateur (geste reel + PNG avant/apres) AVANT cette commande
+=> 3 FAIL

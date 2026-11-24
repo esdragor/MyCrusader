@@ -51,6 +51,8 @@ namespace UE::HeroesOfLiberty::Simulation
 		uint64 Steering = 14695981039346656037ull;
 		uint64 Order = 14695981039346656037ull;
 		uint64 Handles = 14695981039346656037ull;
+		/** D894: the Honor gauge and the power cool-downs of every slot (game state), a column of its own; HashUnits does not include it. */
+		uint64 Faction = 14695981039346656037ull;
 	};
 
 	void MixInto(uint64& Hash, const uint64 Value)
@@ -59,6 +61,39 @@ namespace UE::HeroesOfLiberty::Simulation
 		{
 			Hash = (Hash ^ ((Value >> (Byte * 8)) & 0xFFull)) * 1099511628211ull;
 		}
+	}
+
+	// D894: the Honor gauge (FactionResource) and the power cool-downs (PowerCooldownEndMs) are private to the game state (their accessors too: script
+	// reads them), so the two int32 arrays are read by reflection (the array property, not a call per slot): their size, then their values, in order.
+	void MixInt32Array(uint64& Hash, const AHOLGameState* State, const TCHAR* PropertyName)
+	{
+		const FArrayProperty* Array = FindFProperty<FArrayProperty>(AHOLGameState::StaticClass(), PropertyName);
+		const FIntProperty* Inner = Array ? CastField<FIntProperty>(Array->Inner) : nullptr;
+		if (!Inner)
+		{
+			MixInto(Hash, 0xFFFFFFFFull);
+			return;
+		}
+		FScriptArrayHelper Helper(Array, Array->ContainerPtrToValuePtr<void>(State));
+		MixInto(Hash, static_cast<uint64>(Helper.Num()));
+		for (int32 Index = 0; Index < Helper.Num(); ++Index)
+		{
+			MixInto(Hash, static_cast<uint64>(static_cast<uint32>(Inner->GetPropertyValue(Helper.GetRawPtr(Index)))));
+		}
+	}
+
+	/** D894: FNV-1a over the game state's Honor gauge and power cool-downs, slot by slot (the arrays' lengths first, so a resize shows). */
+	uint64 HashFaction(const UWorld* World)
+	{
+		uint64 Hash = 14695981039346656037ull;
+		const AHOLGameState* State = World ? World->GetGameState<AHOLGameState>() : nullptr;
+		if (!State)
+		{
+			return Hash;
+		}
+		MixInt32Array(Hash, State, TEXT("FactionResource"));
+		MixInt32Array(Hash, State, TEXT("PowerCooldownEndMs"));
+		return Hash;
 	}
 
 	uint64 HashUnits(const UWorld* World, const FMassEntityManager& EntityManager, const bool bDump = false, FPartHashes* Parts = nullptr)
@@ -209,6 +244,11 @@ namespace UE::HeroesOfLiberty::Simulation
 		}
 		return Hash;
 	}
+}
+
+uint64 UHOLSimulationSubsystem::HashFactionState() const
+{
+	return UE::HeroesOfLiberty::Simulation::HashFaction(GetWorld());
 }
 
 bool UHOLSimulationSubsystem::DoesSupportWorldType(const EWorldType::Type WorldType) const
@@ -389,10 +429,11 @@ void UHOLSimulationSubsystem::RunStep()
 			{
 				UE::HeroesOfLiberty::Simulation::FPartHashes Parts;
 				const uint64 MoveHash = UE::HeroesOfLiberty::Simulation::HashUnits(GetWorld(), *EntityManager, false, &Parts);
+				Parts.Faction = UE::HeroesOfLiberty::Simulation::HashFaction(GetWorld());
 				const UHOLCombatProcessor* CombatProcessor = Cast<UHOLCombatProcessor>(Processors[Index]);
-				UE_LOG(LogHOLSimulation, Display, TEXT("Step hash: step %lld after %s %016llx combat %016llx ghost %016llx steering %016llx order %016llx handles %016llx arrows %016llx"),
+				UE_LOG(LogHOLSimulation, Display, TEXT("Step hash: step %lld after %s %016llx combat %016llx ghost %016llx steering %016llx order %016llx handles %016llx arrows %016llx faction %016llx"),
 					StepIndex, *Processors[Index]->GetProcessorName(), MoveHash, Parts.Combat, Parts.Ghost, Parts.Steering, Parts.Order, Parts.Handles,
-					CombatProcessor ? CombatProcessor->HashArrows() : 0ull);
+					CombatProcessor ? CombatProcessor->HashArrows() : 0ull, Parts.Faction);
 			}
 		}
 	}

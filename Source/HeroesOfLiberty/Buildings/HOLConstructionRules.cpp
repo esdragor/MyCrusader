@@ -3,6 +3,7 @@
 #include "Buildings/HOLConstructionRules.h"
 
 #include "Algo/StableSort.h"
+#include "HAL/IConsoleManager.h"
 #include "Buildings/HOLBuildingTypes.h"
 #include "Simulation/HOLSimulationFragments.h"
 #include "Simulation/HOLUnitTypes.h"
@@ -17,6 +18,23 @@ FBox2D HOLConstruction::SnapToGrid(const FVector2D& Point, const FVector2D& Foot
 	// The lower corner on the nearest grid point: the footprint's edges are then on grid lines whatever its size.
 	const FVector2D Corner(FMath::RoundToDouble((Point.X - Half.X) / Grid) * Grid, FMath::RoundToDouble((Point.Y - Half.Y) / Grid) * Grid);
 	return FBox2D(Corner, Corner + Footprint);
+}
+
+FBox2D HOLConstruction::SnapWallPiece(const FVector2D& Point, const FVector2D& Footprint, const double Grid, const int32 SubDivision)
+{
+	const double Divisor = static_cast<double>(FMath::Max(1, SubDivision));
+	return SnapToGrid(Point, Footprint / Divisor, Grid / Divisor);
+}
+
+bool HOLConstruction::IsWallPieceType(const FName TypeName)
+{
+	return TypeName == FName(TEXT("Palisade")) || TypeName == FName(TEXT("StoneWall"));
+}
+
+int32 HOLConstruction::GetWallSubDivision()
+{
+	const IConsoleVariable* Variable = IConsoleManager::Get().FindConsoleVariable(TEXT("hol.Wall.SubDivision"));
+	return Variable ? FMath::Max(1, Variable->GetInt()) : 1;
 }
 
 float HOLConstruction::SnapYaw(const float Yaw)

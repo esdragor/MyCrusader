@@ -92,6 +92,15 @@ namespace HOLConstruction
 	 */
 	HEROESOFLIBERTY_API FBox2D SnapToGrid(const FVector2D& Point, const FVector2D& Footprint, double Grid);
 
+	/** D898 G4: a wall piece on the fine grid: the row's footprint and the grid both divided by SubDivision (1 or less = SnapToGrid unchanged). */
+	HEROESOFLIBERTY_API FBox2D SnapWallPiece(const FVector2D& Point, const FVector2D& Footprint, double Grid, int32 SubDivision);
+
+	/** D898 G4: the wall types that live on the fine grid (the script's HOLWallLine::WallTypes without the gate: its 400 x 100 footprint waits for G10). */
+	HEROESOFLIBERTY_API bool IsWallPieceType(FName TypeName);
+
+	/** D898 G4: the console variable hol.Wall.SubDivision of the script (1 = the 4 m grid of today); 1 when it is absent. */
+	HEROESOFLIBERTY_API int32 GetWallSubDivision();
+
 	/**
 	 * Yaw (degrees) of a building on the grid: the nearest quarter turn, so its footprint stays along the grid lines
 	 * (a main centre facing a diagonal start turns by 45 degrees; a square looks the same).

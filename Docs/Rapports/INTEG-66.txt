@@ -1,0 +1,12 @@
+integrate : branche integ-66 creee, 5 rouge(s) appliques
+integrate : build rouges ...
+INTEGRATE integ-66 : FAIL (build) (476 s, 2026-11-24 12:00)
+  branche+rouges : PASS (5 cherry-pick, 6 s)
+  build rouges : FAIL (code 1, 470 s)
+  tests rouges : NON LANCE
+  remise a main : NON LANCE
+  merge verts : NON LANCE
+  build verts : NON LANCE
+  tests verts : NON LANCE
+  parts net,build : NON LANCE
+  rouges vus : aucun ; sortie complete : Docs\Integrate_integ-66.log

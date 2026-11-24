@@ -506,6 +506,11 @@ class AHOLRpcPlayer : AHOLScriptRpcPlayerActor
 	UFUNCTION(BlueprintOverride)
 	void Tick(float DeltaSeconds)
 	{
+		// GLORFINDEL-1124e (D900): a Sacred Light cast waits for its hero (HOLFactionPowerServer::PendingCasts); the server ticks it.
+		if (HasAuthority())
+		{
+			HOLFactionPowerServer::TickPendingCasts();
+		}
 		if (bRouteProved && DeferredCommands.Num() > 0 && !HasAuthority())
 		{
 			APlayerController DeferredController = Cast<APlayerController>(GetOwner());
@@ -1527,8 +1532,11 @@ for (FString Command : Commands)
 		FIntPoint MapMin;
 		FIntPoint MapMax;
 		TArray<FIntPoint> Occupied;
-		const double Tile = HOLConstructionRead::GetWallLineWorld(MapMin, MapMax, Occupied);
-		HOLWallLine::FHOLWallLinePlan Plan = HOLWallLine::PlanFromRequest(Slot, FVector(Start.X, Start.Y, Start.Z), FVector(End.X, End.Y, End.Z), Tile, MapMin, MapMax, Occupied, HOLWallLine::MaxLineCells());
+		const int SubDivision = HOLWallLine::SubDivision();
+		const double Tile = HOLConstructionRead::GetWallLineWorldAtPitch(SubDivision, MapMin, MapMax, Occupied);
+		// D898 G5: hol.Wall.SubDivision (default 1 = the 4 m tiles of today, 4 = 1 m sub-cells): the cells are then sub-cells of pitch Tile / SubDivision.
+		const double Pitch = Tile / double(SubDivision);
+		HOLWallLine::FHOLWallLinePlan Plan = HOLWallLine::PlanFromRequest(Slot, FVector(Start.X, Start.Y, Start.Z), FVector(End.X, End.Y, End.Z), Pitch, MapMin, MapMax, Occupied, HOLWallLine::MaxLineCells());
 		if (Plan.Refusal != HOLWallLine::EHOLWallLineRefusal::Ok)
 		{
 			const int RefusalCode = int(Plan.Refusal);
@@ -1537,10 +1545,11 @@ for (FString Command : Commands)
 			Log(n"LogHOLMatch", f"RpcOrder: place wall line refused ({RefusalCode}) for sender slot {Slot}, cell ({BadX}, {BadY})");
 			return;
 		}
-		for (int Index = 0; Index < Plan.Cells.Num(); Index++)
+		TArray<HOLWallLine::FHOLWallOrder> Orders = HOLWallLine::OrdersForLine(Plan, UnitIds, bQueue);
+		for (int Index = 0; Index < Orders.Num(); Index++)
 		{
-			const FVector Point = HOLWallLine::CellToPoint(Plan.Cells[Index], Tile, Start.Z);
-			HOLRpcBridge::OrderPlaceBuilding(this, TypeName, Point.X, Point.Y, Point.Z, HOLRpc::OrderIds(HOLWallLine::BuildersForCell(Index, UnitIds)), HOLWallLine::QueueForCell(Index, bQueue));
+			const FVector Point = HOLWallLine::CellToPoint(Orders[Index].Cell, Pitch, Start.Z);
+			HOLRpcBridge::OrderPlaceBuilding(this, TypeName, Point.X, Point.Y, Point.Z, HOLRpc::OrderIds(Orders[Index].Builders), Orders[Index].bQueue);
 		}
 	}
 

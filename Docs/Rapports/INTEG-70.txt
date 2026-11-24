@@ -1,0 +1,16 @@
+integrate : branche integ-70 creee, 0 rouge(s) appliques
+integrate : 1 vert(s) fusionne(s)
+integrate : regen inutile (aucun CSV de table change sans son .uasset dans les verts)
+integrate : build verts SKIP (pas de C++ dans les verts)
+integrate : tests (apres les verts) ...
+integrate : parts net,build ...
+INTEGRATE integ-70 : PASS (720 s, 2026-11-24 13:16)
+  branche+rouges : PASS (0 cherry-pick, 2 s)
+  build rouges : SKIP (pas de rouge)
+  tests rouges : SKIP (pas de rouge)
+  remise a main : SKIP (pas de rouge)
+  merge verts : PASS (1 merge, 5 s) ; regen: inutile
+  build verts : SKIP (pas de C++ dans les verts)
+  tests verts : PASS 2206/2206 tests (295 s)
+  parts net,build : PASS (419 s)
+  rouges vus : aucun ; sortie complete : Docs\Integrate_integ-70.log

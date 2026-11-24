@@ -1,0 +1,29 @@
+  check_placeholders : PASS (49 provisional types, 51 map entries, 168 lines)
+parts: net, netsig3
+engine: C:\UE\UE_5.8_HOL\Engine\Binaries\Win64
+sequence : PASS
+  net combat (client 1): health #11 slot 0: full>147>139>131>123>115 (server: full>151>147>143>139>135>131>127>123>119>115); #12 slot 0: full (server: full); #13 slot 1: full>68>56>44>32>20>8>0 (server: full>68>56>44>32>20>8>0); #14 slot 1: 68>56>44>32>20>8>0 (server: full>68>56>44>32>20>8>0); first Dying at report 16, both Spearmen gone at 18 (0.5 s apart); MaA gap 5 cm
+  manager calls: POST /matches/QC1/listening {"port":7890} | POST /matches/QC1/started {} | POST /matches/QC1/left {"playerName":"Bob","windowSeconds":180,"keepsSeat":false} | POST /matches/QC1/left {"playerName":"Alice","windowSeconds":180,"keepsSeat":false} | POST /matches/QC1/empty {}
+  net arrows (client 1): server released 18, launched 15, in flight 0; arrow landing -> health drop: gaps 7 mean 718 min -12 max 1257 ms
+  net arrows (client 2): server released 18, launched 15, in flight 0; arrow landing -> health drop: gaps 7 mean 722 min -12 max 1287 ms
+net diplomacy : PASS
+net 2 clients : PASS
+net hero sheets : PASS
+net hero return : PASS
+net hero block : PASS
+net hero xp : PASS
+net hero abilities : PASS
+net technologies : PASS
+net signals : PASS
+net specialization : PASS
+net market : PASS
+net duel : PASS
+net volcano : PASS
+net monk : PASS
+net monk hero : PASS
+net monk order : PASS
+net monk vow : PASS
+net siege : PASS
+netsig3 : 53 s (started at 330 s of the run)
+net signals 3 clients : PASS
+quick_check : PASS in 383 s (game launch done at 34 s)

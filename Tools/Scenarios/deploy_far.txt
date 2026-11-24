@@ -1,0 +1,63 @@
+# D877 moitie A (ELROND-1124e, F4) : un engin de siege DEMONTE, envoye par un vrai clic droit sur une Maison ennemie a plus de 2 x sa portee de tir (portee 3000 cm, Maison a ~6500 cm), doit marcher jusqu'a portee, se monter (Deploy: phase 0 -> 1) puis tirer. Geste reel : vraie touche D (hol.UI.Key D, evenement clavier Slate) pour monter puis demonter l'engin, vrai clic gauche pour le selectionner, vrai clic droit au sol (hol.Select.RightClickGround) sur la Maison lointaine. 3 minutes au plus.
+# Plain, toi (slot 0) contre une IA gelee (slot 1). Le cvar doit preceder la naissance de l'engin.
+# branches: integ-25
+waitlog Starting hero of slot 0 spawned at
+hol.AI.ThinkSteps 100000
+hol.Cheat.Resources 5000
+hol.Cheat.Population 40
+hol.Combat.LogHits 1
+hol.Siege.Deployable 1
+hol.Camera.FocusNear 3000 1500
+frames 2
+# Le Mangonneau nait au point EXACT que FocusNear 3000 1500 met au centre de l'ecran (point absolu -13400 1500) : le vrai clic au centre du viewport (533 300, viewport cache 1066x600) le touche.
+hol.Units.Spawn 1 -13400 1500 0 Mangonel 0
+waitunits 7
+frames 20
+hol.Camera.FocusNear 3000 1500
+frames 2
+hol.Mouse.Click 533 300
+waitlog Selection: Mangonel
+frames 20
+hol.HUD.Report
+waitlog D=Deploy
+# La touche D le monte puis le demonte (le cas du joueur : il a joue avec D, puis l'engin est demonte et il l'envoie loin).
+hol.UI.Key D 0 0.1
+waitlog Order: 1 units deploy
+wait 2
+hol.HUD.Report
+waitlog D=Pack
+hol.UI.Key D 0 0.1
+waitlog Order: 1 units pack up
+wait 2
+hol.HUD.Report
+waitlog D=Deploy
+# La Maison ennemie : (3000,-5000) en coordonnees de Cheat, soit ~6500 cm de l'engin (2 x portee 3000 = 6000). Camera entre les deux pour les garder a l'ecran.
+notereset
+hol.Camera.FocusNear 3000 -1750
+hol.Cheat.SpawnBuilding House 1 3000 -5000
+waitlog Cheat: spawned House of slot 1
+frames 20
+hol.Select.Report
+capture deploy_far_start
+note 1. Mangonneau demonte (case D = Monter) a droite, Maison ennemie a gauche, hors portee.
+hol.Camera.FocusNear 3000 -1750
+frames 2
+hol.Select.RightClickGround -13400 -5000
+waitlog Scripted right click at
+waitlog units attack
+wait 3
+hol.Select.Report
+capture deploy_far_walking
+# Rouge attendu tant que le defaut D877 moitie A existe : aucun coup n'arrive (l'engin marche demonte jusqu'au mur, ou ne se monte pas a l'arrivee). waitlog = texte litteral.
+waitlog Mangonel hits a building
+hol.HUD.Report
+waitlog D=Pack
+hol.Select.Report
+capture deploy_far_arrived
+wait 5
+hol.Select.Report
+capture deploy_far_end
+note 2. Attendu : a portee de la Maison, monte (case D = Demonter), il tire seul sur la Maison (coups de 45).
+hol.Test.Sanity
+# Fin reelle du scenario : play.ps1 -Hidden d'un agent se ferme ici.
+quit

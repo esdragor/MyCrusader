@@ -116,6 +116,7 @@ class UHOLDuelLedger : UHOLDuelSubsystem
 		for (int Index = 0; Index < Laid.Num(); Index++)
 		{
 			HOLMorale::ApplyEffectAround(this, Laid[Index].EffectId, Laid[Index].CenterXCm, Laid[Index].CenterYCm, Laid[Index].Slot, Laid[Index].DurationMs, Laid[Index].RadiusCm);
+			Log(HOLDuelRewards::DescribeMoraleOrder(Laid[Index]));
 		}
 	}
 

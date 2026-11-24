@@ -50,6 +50,11 @@ FHOLConstructionBox UHOLConstructionReadLibrary::MakeBox(const FVector2D& Min, c
 	return Out;
 }
 
+FHOLConstructionBox UHOLConstructionReadLibrary::SnapWallPiece(const FVector2D& Point, const FVector2D& Footprint, const double Grid, const int32 SubDivision)
+{
+	return ConstructionRead_FromBox(HOLConstruction::SnapWallPiece(Point, Footprint, Grid, SubDivision));
+}
+
 FHOLConstructionBox UHOLConstructionReadLibrary::SnapToGrid(const FVector2D& Point, const FVector2D& Footprint, const double Grid)
 {
 	return ConstructionRead_FromBox(HOLConstruction::SnapToGrid(Point, Footprint, Grid));
@@ -551,7 +556,13 @@ bool UHOLConstructionReadLibrary::FindFreeFootprint(const FHOLConstructionBox& F
 // NON COMPILE (F4 wall line): see the header. The last cell of a box is the one holding its far edge minus a hair: touching is fine (D311), so a box ending on a cell border does not take that cell.
 double UHOLConstructionReadLibrary::GetWallLineWorld(const UObject* WorldContextObject, FIntPoint& OutMapMin, FIntPoint& OutMapMax, TArray<FIntPoint>& OutOccupied)
 {
+	return GetWallLineWorldAtPitch(WorldContextObject, 1, OutMapMin, OutMapMax, OutOccupied);
+}
+
+double UHOLConstructionReadLibrary::GetWallLineWorldAtPitch(const UObject* WorldContextObject, const int32 SubDivision, FIntPoint& OutMapMin, FIntPoint& OutMapMax, TArray<FIntPoint>& OutOccupied)
+{
 	const double Tile = UHOLBuildingSettings::GetTileSize();
+	const double Pitch = Tile / static_cast<double>(FMath::Max(1, SubDivision));
 	OutMapMin = FIntPoint(-100000, -100000);
 	OutMapMax = FIntPoint(100000, 100000);
 	OutOccupied.Reset();
@@ -565,8 +576,8 @@ double UHOLConstructionReadLibrary::GetWallLineWorld(const UObject* WorldContext
 		const FBox2D Area = Bounds->GetArea();
 		if (Area.bIsValid)
 		{
-			OutMapMin = FIntPoint(FMath::FloorToInt(Area.Min.X / Tile), FMath::FloorToInt(Area.Min.Y / Tile));
-			OutMapMax = FIntPoint(FMath::CeilToInt(Area.Max.X / Tile) - 1, FMath::CeilToInt(Area.Max.Y / Tile) - 1);
+			OutMapMin = FIntPoint(FMath::FloorToInt(Area.Min.X / Pitch), FMath::FloorToInt(Area.Min.Y / Pitch));
+			OutMapMax = FIntPoint(FMath::CeilToInt(Area.Max.X / Pitch) - 1, FMath::CeilToInt(Area.Max.Y / Pitch) - 1);
 		}
 	}
 	for (FHOLBuildingIterator It(World); It; ++It)
@@ -576,10 +587,10 @@ double UHOLConstructionReadLibrary::GetWallLineWorld(const UObject* WorldContext
 			continue;
 		}
 		const FBox2D Box = It->GetFootprintBounds();
-		const int32 MinX = FMath::FloorToInt(Box.Min.X / Tile);
-		const int32 MinY = FMath::FloorToInt(Box.Min.Y / Tile);
-		const int32 MaxX = FMath::CeilToInt(Box.Max.X / Tile) - 1;
-		const int32 MaxY = FMath::CeilToInt(Box.Max.Y / Tile) - 1;
+		const int32 MinX = FMath::FloorToInt(Box.Min.X / Pitch);
+		const int32 MinY = FMath::FloorToInt(Box.Min.Y / Pitch);
+		const int32 MaxX = FMath::CeilToInt(Box.Max.X / Pitch) - 1;
+		const int32 MaxY = FMath::CeilToInt(Box.Max.Y / Pitch) - 1;
 		for (int32 Y = MinY; Y <= MaxY; ++Y)
 		{
 			for (int32 X = MinX; X <= MaxX; ++X)

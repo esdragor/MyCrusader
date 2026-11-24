@@ -81,6 +81,10 @@ public:
 	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Construction")
 	static FHOLConstructionBox MakeBox(const FVector2D& Min, const FVector2D& Max);
 
+	/** HOLConstruction::SnapWallPiece (D898 G4): SnapToGrid with the footprint and the grid divided by SubDivision. */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Construction")
+	static FHOLConstructionBox SnapWallPiece(const FVector2D& Point, const FVector2D& Footprint, double Grid, int32 SubDivision);
+
 	/** HOLConstruction::SnapToGrid. */
 	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Construction")
 	static FHOLConstructionBox SnapToGrid(const FVector2D& Point, const FVector2D& Footprint, double Grid);
@@ -117,6 +121,10 @@ public:
 	 */
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Construction", meta = (WorldContext = "WorldContextObject"))
 	static double GetWallLineWorld(const UObject* WorldContextObject, FIntPoint& OutMapMin, FIntPoint& OutMapMax, TArray<FIntPoint>& OutOccupied);
+
+	/** D898 G4: GetWallLineWorld on the fine grid: the cells (OutMapMin, OutMapMax, OutOccupied) are cells of Tile / SubDivision, the occupied ones from the footprint of every building and every wall piece; returns the 4 m Tile. SubDivision 1 = GetWallLineWorld. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Construction", meta = (WorldContext = "WorldContextObject"))
+	static double GetWallLineWorldAtPitch(const UObject* WorldContextObject, int32 SubDivision, FIntPoint& OutMapMin, FIntPoint& OutMapMax, TArray<FIntPoint>& OutOccupied);
 
 	/** HOLConstruction::IsAgeOpen. */
 	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Construction")

@@ -1,0 +1,18 @@
+# GLORFINDEL-1124e : F3 / D900, le héros s'approche puis lance (NON COMPILÉ, script seulement)
+
+APPELS_DECLARES: ~19 (arrêt à 25 vus)
+HEURE_DEBUT/HEURE_FIN: 11:53 / voir fin de ce rapport (<= 12:08)
+PREMIER_BUILD: sans C++   BUILD: NON COMPILÉ   LAUNCHCHECK_DEBUT: sans C++
+TEST_ROUGE: 66e0be0 (bouchons + 3 tests dans le même commit), assertit l'effet : oui (étape calculée par PendingStepOf : 0/1/2 selon la distance héros-point) ; rouge NON VU à l'exécution. TEST_ROUGE_SEPARE: oui
+COMMITS: 2 (66e0be0 rouge, c74f5bf correctif) + merge main 1f9db33 ; merge_main_fait: oui (premier geste, main 9d40517)
+TESTS: aucun lancé ; à lancer par la session principale : `Tools\quick_check.ps1 -Parts tests` DU worktree Glorfindel, après recompilation (HOLHero::GetHeroUnitId doit exister dans le binaire, sinon les scripts ne compilent pas). Attendu : 66e0be0 rouge sur les 3 tests Test_FactionApproachPendingWaitsThenCastsOnArrival, ...IsPerSlotAndCancelledByAnOrder (le cas 'slot 1 : 0' passe, le cas annulation passe aussi avec le bouchon; le rouge est sur 'attente' et 'remplacement'), ...SecondCastReplacesTheFirst ; c74f5bf vert. TESTS_TAUTOLOGIQUES: 0. TESTS_SCRIPT_AJOUTES: 3 (HOLFactionPowerApproachCast_Test.as). BUILDS_DEMANDES: 1 (le lot C++ de la séance doit contenir GetHeroUnitId, déjà écrit dans HOLHeroLibrary.cpp/.h de ce worktree, jamais compilé). TYPES_A_EXPOSER: HOLHero::GetHeroUnitId(Slot) (binding existant, test C++ HOLSeatBindingTests.cpp) ; crochet C++ « nouvel ordre du héros -> HOLFactionPowerServer::CancelPending(PendingCasts, Slot) » (les ordres du joueur passent par HOLPlayerOrders.cpp, pas par le script).
+ESSAIS: aucun
+QUESTIONS: Retours\Q-lumiere-sacree-approche.md (paiement : défaut à l'arrivée = cvar hol.Faction.ApproachPays 0 ; annulation : défaut tout nouvel ordre annule, expiration 60 s en script)
+FAIT :
+- Script\Factions\HOLFactionPowerServer.as : struct FHOLPendingCast, cvar hol.Faction.ApproachPays (défaut 0 = payer à l'arrivée), PendingStepOf / SetPending / CancelPending (règles pures testées), BeginApproach (HOLPlayerOrders::Move vers ApproachPointOf, vérifie l'Honneur à l'ordre seulement si cvar 1), TickPendingCasts (lancer au point cliqué à l'arrivée, mesuré depuis la position du héros, Honneur écrit une fois ; héros mort ou 60 s : abandon) ; branche dans TryCastPower : refus RefusalOutOfRange + héros vivant (GetHeroUnitId >= 0) -> approche, sinon refus comme avant.
+- Script\Net\HOLRpcPlayer.as : Tick -> TickPendingCasts (autorité).
+RESTE : (1) GetHeroUnitId compilé ; (2) crochet C++ d'annulation (en script seul, expiration 60 s) ; (3) test de chaîne TryCastPower (double de commande absent) ; (4) HOLPlayerOrders.as dit « NOT CALLED BY THE GAME YET » : vérifier que HOLCommandScript::IssueMovePlayer émet bien l'ordre du joueur sans le pont C++ ; (5) un Honneur insuffisant n'est refusé qu'à l'arrivée (cvar 0).
+NON VÉRIFIÉ: tout (aucune compilation script, aucun test, aucun jeu) ; diagnostics AS non relus (DIAGNOSTICS_AS : non vérifié) ; l'ordre des refus de DecideAimed (portée avant ou après Honneur) non relu ; ApproachPointOf placé à Range-50 puis arrivée testée à <= Range : cohérent par construction. Le mot réservé Cast a été évité (Order).
+PROCESSUS_DETACHES: aucun lancé par cet agent
+ANOMALIES_PROCESSUS: aucune ; edit_line -Append EtapeDefini : voir sortie du commit
+GIT_STATUS_PRINCIPALE: non relevé (aucun code édité dans la copie principale ; docs : EtapeDefini.md, Retours\Q-lumiere-sacree-approche.md, ce rapport)
