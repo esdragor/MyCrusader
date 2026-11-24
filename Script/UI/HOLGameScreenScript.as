@@ -2301,6 +2301,9 @@ UHOLScenarioPanelScript ScenarioPanel;
 		const FVector Point = RayStart + RayDirection * Along;
 		const FHOLFactionAimPreview Preview = HOLFactionAim::PreviewOf(bHero ? Origin : Point, Point);
 		System::DrawDebugCircle(FVector(Point.X, Point.Y, Point.Z + 30.0), float(Preview.Radius), 48, Preview.Colour, 0.f, 20.f, FVector(1.0, 0.0, 0.0), FVector(0.0, 1.0, 0.0), false);
+		// ARWEN-1124sf (PLACEHOLDER white 60 cm ring): where the hero will stop to cast when the point is out of reach.
+		if (Preview.bWalks)
+			System::DrawDebugCircle(FVector(Preview.StopPoint.X, Preview.StopPoint.Y, Preview.StopPoint.Z + 30.0), 60.f, 24, FLinearColor(1.0, 1.0, 1.0, 1.0), 0.f, 20.f, FVector(1.0, 0.0, 0.0), FVector(0.0, 1.0, 0.0), false);
 	}
 
 	// Every frame: the ground click the controller kept while a power is aimed (ConsumeFactionAimClick) casts it (or cancels it if no longer ready).
