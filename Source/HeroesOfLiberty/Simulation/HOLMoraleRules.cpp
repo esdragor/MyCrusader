@@ -315,6 +315,11 @@ namespace HOLMorale
 		return State.Num == 0 && State.ImmunityMs == 0;
 	}
 
+	uint16 EffectMask(const FHOLMoraleState& State)
+	{
+		return 0; // RED STUB (A2): the fix reads the effects' ids
+	}
+
 	uint64 FingerprintKey(const FHOLMoraleState& State)
 	{
 		if (IsEmpty(State))
