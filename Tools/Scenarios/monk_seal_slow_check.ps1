@@ -3,12 +3,13 @@
 # Step = x distance between two consecutive lines. A step is IN when both its ends are inside the Seal's zone (x -12200..-11000 on y=300),
 # OUT when both are outside. Ratio = mean IN step / mean OUT step; PASS when it is <= 0.75 (the rule gives 0.60), FAIL otherwise (no Seal: 1.0).
 # Usage: powershell -ExecutionPolicy Bypass -File monk_seal_slow_check.ps1 -Log <HeroesOfLiberty_N.log>
-param([Parameter(Mandatory = $true)] [string] $Log)
+param([Parameter(Mandatory = $true)] [string] $Log, [ValidateSet('slowed', 'free')] [string] $Expect = 'slowed')
 $ZoneMinX = -12200; $ZoneMaxX = -11000
 $Xs = @()
 foreach ($Line in (Select-String -Path $Log -Pattern 'Units where' | ForEach-Object { $_.Line })) {
 	$M = [regex]::Matches($Line, '#(\d+) slot 1 at \((-?\d+), (-?\d+)\) (\w+)')
-	if ($M.Count -gt 0) { $Xs += [int]$M[$M.Count - 1].Groups[2].Value }
+	# the ManAtArms is the only slot-1 unit in its lane (x -14500..-8500); a unit the AI trains later (Peasant) lives at the base, far away
+	foreach ($U in $M) { $X = [int]$U.Groups[2].Value; if ($X -ge -14500 -and $X -le -8500) { $Xs += $X; break } }
 }
 $In = @(); $Out = @()
 for ($i = 1; $i -lt $Xs.Count; ++$i) {
@@ -21,4 +22,5 @@ if ($In.Count -eq 0 -or $Out.Count -eq 0) { "FAIL: no full IN step ($($In.Count)
 $MeanIn = ($In | Measure-Object -Average).Average; $MeanOut = ($Out | Measure-Object -Average).Average
 $Ratio = [math]::Round($MeanIn / $MeanOut, 2)
 "IN steps: $($In -join ', ') (mean $([int]$MeanIn)) ; OUT steps: $($Out -join ', ') (mean $([int]$MeanOut)) ; ratio $Ratio"
+if ($Expect -eq 'free') { if ($Ratio -ge 0.9) { "PASS: the enemy walks at $([int]($Ratio * 100)) % in the zone (Seal over, not slowed)"; exit 0 } else { "FAIL: the enemy walks at $([int]($Ratio * 100)) % in the zone (expected ~100 %, the Seal is still slowing)"; exit 1 } }
 if ($Ratio -le 0.75) { "PASS: the enemy walks at $([int]($Ratio * 100)) % in the zone"; exit 0 } else { "FAIL: the enemy walks at $([int]($Ratio * 100)) % in the zone (expected ~60 %)"; exit 1 }
