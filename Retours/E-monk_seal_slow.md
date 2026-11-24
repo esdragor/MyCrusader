@@ -3,7 +3,8 @@
 STATUT : VU À L'ÉCRAN
 GESTE: réel
 SON: non entendu
-branches: ground-cast-1124s, monk-seal-1124s
+branches: main
+RECETTE 2026-11-24 22:06 sur main e503646 : PASS (preflight PASS ; PNG monk_seal_slow_mid vu : anneau pose, ennemi rouge au bord de l'anneau, recharge 36 s ; journal Units.Where : ManAtArms #14 ~424 cm/s dans la zone contre ~644-707 dehors, rapport ~0,60-0,66)
 
 Pré-vol (2026-11-24 21:01, agent ELROND-1124si, worktree C:\Users\baudo\Documents\HeroesOfLiberty-Elrond, branche ground-cast-1124s) : `preflight.ps1 monk_seal_slow -Root C:\Users\baudo\Documents\HeroesOfLiberty-Elrond -AllowUncommitted` PASS (38 s, 1 PNG) ; puis `monk_seal_slow_end` PASS (52 s, 1 PNG) et `monk_seal_slow_end_control` PASS (48 s, 1 PNG). Journal : `Seal of Light placeholder: pale blue ring of 600 cm for 10.0 s`, lignes `Units where` une par seconde ; `monk_seal_slow_check.ps1 -Log <journal>` donne :
 - monk_seal_slow : pas dedans 423, 428 (moyenne 426) contre 709, 580 dehors (moyenne 644), rapport 0,66, PASS (attendu <= 0,75).

@@ -3,7 +3,8 @@
 STATUT : VU À L'ÉCRAN   (avant / après vus sur 2 PNG, FARAMIR-1124sc 2026-11-24 19:40 ; son non entendu)
 GESTE: réel (vrai clic droit sur la tour via `hol.Select.RightClickGround` ; la tour elle-même est posée par `hol.Cheat.SpawnBuilding`, pas par le geste de pose, couvert par l'essai tower_wood)
 SON: non entendu
-branches: faramir-1124sc (eb7e87a, scénario tower_wood_garrison, worktree HeroesOfLiberty-Faramir ; sur main e86dca3, aucun code touché)
+branches: main
+RECETTE 2026-11-24 22:06 sur main e503646 : PASS (preflight PASS ; 2 PNG vus : 3 Lanciers selectionnes au nord de la tour, panneau Lancier (3), puis plus aucun Lancier, plus de cercles ni de panneau)
 
 Pré-vol (2026-11-24 19:40, agent FARAMIR-1124sc, worktree C:\Users\baudo\Documents\HeroesOfLiberty-Faramir, branche faramir-1124sc, commit eb7e87a sur main e86dca3) : `preflight.ps1 tower_wood_garrison -Root C:\Users\baudo\Documents\HeroesOfLiberty-Faramir -AllowUncommitted` PASS (28 s, 2 PNG, binaire à jour). Journal : `Garrison: slot 0 puts 3 of 3 units in TowerWood` après le vrai clic droit.
 PNG OUVERTS et vus :

@@ -3,7 +3,8 @@
 STATUT : VU À L'ÉCRAN
 GESTE: réel
 SON: non entendu
-branches: monk-seal-1124s
+branches: main
+RECETTE 2026-11-24 22:06 sur main e503646 : PASS (preflight PASS ; 2 PNG vus : case R Sceau non vide, panneau cout 25 ressource insuffisante, puis double anneau bleu + recharge 40 s ; reserve : l'infobulle Sceau de lumiere du .look n'est pas visible sur le PNG, survol non capture)
 
 Pré-vol (2026-11-24 20:02, agent ELROND-1124sc, worktree C:\Users\baudo\Documents\HeroesOfLiberty-Elrond, branche monk-seal-1124s ce2c79e) : `preflight.ps1 monk_seal -Root C:\Users\baudo\Documents\HeroesOfLiberty-Elrond -AllowUncommitted` PASS (32 s, 2 PNG). Journal : `Grid: monk seal, click on the ground`, `Scripted left click at (0.500, 0.299)`, `Zone effect: slot 0 puts a Seal of Light`, `RpcUnitAbility: Seal of Light put down by the Monk 13 of slot 0`.
 PNG OUVERTS et vus :
