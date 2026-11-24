@@ -8,6 +8,18 @@ struct FHOLFactionApproach
 	FVector StopPoint = FVector(0.0, 0.0, 0.0);
 }
 
+// GLORFINDEL-1124e (D900, F3): a cast waiting for its hero to arrive (one per slot). bPaid: the Honor and cool-down were written at the order (hol.Faction.ApproachPays 1).
+struct FHOLPendingCast
+{
+	int Slot = 0;
+	int PowerIndex = 0;
+	FVector Point = FVector(0.0, 0.0, 0.0);
+	bool bPaid = false;
+}
+
+// GLORFINDEL-1124e: the cvar hol.Faction.ApproachPays, default 0 = the Honor is paid on ARRIVAL (nothing before); 1 = paid at the order (Retours/Q-lumiere-sacree-approche.md).
+const FConsoleVariable CVar_FactionApproachPays("hol.Faction.ApproachPays", 0);
+
 // FARAMIR-1124b (S2-c, D404): the order Sacred Light hands to the morale bridge (HOLMorale::ClearMalusAround) when the zone is put down.
 struct FHOLSacredLightClearOrder
 {
@@ -48,6 +60,22 @@ namespace HOLFactionPowerServer
 		Result.bNeedsWalk = true;
 		Result.StopPoint = FVector(Origin.X + Dx / Distance * Walk, Origin.Y + Dy / Distance * Walk, Origin.Z);
 		return Result;
+	}
+
+	// GLORFINDEL-1124e (STUB, red first): the step of the slot's pending cast. 0 = none pending, 1 = the hero still walks, 2 = arrived (within RangeCm of the point): cast now.
+	int PendingStepOf(const TArray<FHOLPendingCast>& Pending, int Slot, const FVector& HeroPlace, double RangeCm)
+	{
+		return 0;
+	}
+
+	// GLORFINDEL-1124e (STUB): a new order of the slot's hero replaces its pending cast; this puts Order in (STUB: does nothing).
+	void SetPending(TArray<FHOLPendingCast>& Pending, const FHOLPendingCast& Order)
+	{
+	}
+
+	// GLORFINDEL-1124e (STUB): any new order of the slot's hero cancels its pending cast.
+	void CancelPending(TArray<FHOLPendingCast>& Pending, int Slot)
+	{
 	}
 
 	// True when the power was put down (the effect started FIRST: a failed start costs nothing, then the gauge and the cool-down are written).
