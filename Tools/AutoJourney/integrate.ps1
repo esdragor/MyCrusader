@@ -100,7 +100,38 @@ if ($DryRun) {
     $Number++
     if ($Step.Skip) { Write-Output "PLAN $Number $($Step.Kind) : SKIP ($($Step.Skip))" } else { Write-Output "PLAN $Number $($Step.Kind) : $($Step.Text)" }
   }
+  # L27-1 (2026-11-24): the DryRun SIMULATES the git part with `git merge-tree --write-tree` (no worktree, no index, no branch touched; only unreachable
+  # objects are written) so a doomed integration fails in seconds, not after a 564 s build (integ-73a) or a 442 s test run (integ-72).
+  $SimFail = @()
+  $RedShas = @($RedList | ForEach-Object { (Git-Out rev-parse "$_^{commit}" | Select-Object -First 1).Trim() })
+  foreach ($RedSha in $RedShas) {
+    # (a) a cherry-picked red needs its parent in main or in the list of reds (integ-73a: red b465fd7, parent fad4af7 absent -> build FAIL)
+    foreach ($ParentSha in @(Git-Out rev-parse "$RedSha^@")) {
+      $ParentSha = $ParentSha.Trim()
+      if ($ParentSha -notmatch '^[0-9a-f]{40}$') { continue }
+      Git-Out merge-base --is-ancestor $ParentSha $MainSha | Out-Null
+      if ($LASTEXITCODE -ne 0 -and ($RedShas -notcontains $ParentSha)) { $SimFail += "rouge $($RedSha.Substring(0, 7)) : son parent $($ParentSha.Substring(0, 7)) n'est ni dans main ni dans la liste des rouges (ajoute-le a -Reds ou fusionne-le dans main)" }
+    }
+  }
+  # (b) the greens merge one after the other from main (the reds are dropped before, L20-6): a conflict between two greens is found here (integ-72)
+  $SimCur = $MainSha
+  foreach ($GreenItem in $GreenList) {
+    $GreenSha = (Git-Out rev-parse "$GreenItem^{commit}" | Select-Object -First 1).Trim()
+    $SimOut = @(Git-Out merge-tree --write-tree --name-only $SimCur $GreenSha)
+    $SimCode = $LASTEXITCODE
+    if ($SimCode -eq 0) {
+      $SimCur = (Git-Out -c user.name=integrate-dryrun -c user.email=integrate-dryrun@localhost commit-tree $SimOut[0].Trim() -p $SimCur -p $GreenSha -m 'integrate -DryRun simulation' | Select-Object -First 1).Trim()
+    } elseif ($SimCode -eq 1) {
+      $SimFiles = @($SimOut | Select-Object -Skip 1 | ForEach-Object { $_.Trim() } | Where-Object { $_ } | Select-Object -First 8)
+      $Blank = [array]::IndexOf(@($SimOut | ForEach-Object { $_.Trim() }), '')
+      if ($Blank -gt 0) { $SimFiles = @($SimOut[1..($Blank - 1)] | ForEach-Object { $_.Trim() } | Where-Object { $_ }) }
+      $SimFail += "vert '$GreenItem' en conflit avec main + les verts precedents ($($GreenList -join ',')) : $($SimFiles -join ', ')"
+      break
+    } else { $SimFail += "vert '$GreenItem' : git merge-tree a echoue (code $SimCode) : $($SimOut -join ' | ')"; break }
+  }
   Write-Output "integrate : DryRun (rien cree, rien lance) ; rouges=$($RedList.Count) verts=$($GreenList.Count) C++ rouges=$RedsCpp verts=$GreensCpp"
+  if ($SimFail.Count) { foreach ($Line in $SimFail) { Write-Output "integrate : DRYRUN FAIL : $Line" }; exit 1 }
+  Write-Output 'integrate : DryRun simulation git : PASS (parents des rouges presents, verts sans conflit)'
   exit 0
 }
 
