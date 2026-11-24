@@ -1,0 +1,18 @@
+﻿=== sync fin 2 18:01:03
+Heure PowerShell : 18:01  main = d7c23ba
+HeroesOfLiberty-Arwen | integ-37 | mis a jour (+2 de main) = d7c23ba
+HeroesOfLiberty-Celeborn | integ-41 | mis a jour (+2 de main) = d7c23ba
+HeroesOfLiberty-Elrond | integ-25 | mis a jour (+2 de main) = d7c23ba
+HeroesOfLiberty-Faramir | zone-effect | mis a jour (+2 de main) = d7c23ba
+HeroesOfLiberty-Galadriel | socle-ai | mis a jour (+2 de main) = d7c23ba
+HeroesOfLiberty-Glorfindel | ability-columns | mis a jour (+2 de main) = 2b3e24d
+HeroesOfLiberty-Haldir | integ-58 | mis a jour (+2 de main) = 66e034b
+HeroesOfLiberty-Sauron | integ-63 | mis a jour (+2 de main) = d7c23ba
+=== gate Close 18:01:14
+
+FAIL L19-1 : la session principale a codé elle-même 15 fois : à confier à des agents (L19-1) (seuil 3, reflog de main 
+et integ-* depuis 2026-11-23)
+     ebdd211 Test: faction aim steps (red stub HOLFactionAim, 2 script tests fail 2097/2099)
+=> 1 FAIL
+
+
