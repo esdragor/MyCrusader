@@ -90,21 +90,35 @@ public class ThemeTests
         Assert.Equal(4.48, Palette.Contrast(Color.FromArgb(0x77, 0x77, 0x77), Color.White), 2);
     }
 
-    /** A disabled button keeps its own readable colours (WinForms would grey its text on any background). */
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void ButtonColoursFollowItsState(bool dark)
+    /** Launcher 5: every brush the XAML names (DynamicResource ...Brush) is made from the palette, in both themes. */
+    [Fact]
+    public void EveryBrushTheWindowsUseComesFromThePalette()
     {
-        var p = dark ? Palette.Dark : Palette.Light;
-        Assert.Equal((p.ButtonBack, p.ButtonText, p.ButtonBorder), ThemedButton.Colors(p, enabled: true, hover: false, pressed: false, accent: false));
-        Assert.Equal(p.ButtonHover, ThemedButton.Colors(p, true, hover: true, pressed: false, accent: false).Back);
-        Assert.Equal(p.ButtonPressed, ThemedButton.Colors(p, true, hover: true, pressed: true, accent: false).Back);
-        Assert.Equal((p.AccentBack, p.AccentText), Pick(ThemedButton.Colors(p, true, false, false, accent: true)));
-        Assert.Equal(p.AccentHover, ThemedButton.Colors(p, true, hover: true, pressed: false, accent: true).Back);
-        var disabled = ThemedButton.Colors(p, enabled: false, hover: true, pressed: true, accent: true);
-        Assert.Equal((p.ButtonDisabledBack, p.ButtonDisabledText), Pick(disabled));
+        var keys = Directory.GetFiles(NoFrenchInCodeTests.LauncherSourceDir(), "*.xaml")
+            .SelectMany(f => System.Text.RegularExpressions.Regex.Matches(File.ReadAllText(f), @"DynamicResource (\w+Brush)\}"))
+            .Select(m => m.Groups[1].Value)
+            .Concat(Directory.GetFiles(NoFrenchInCodeTests.LauncherSourceDir(), "*.cs")
+                .SelectMany(f => System.Text.RegularExpressions.Regex.Matches(File.ReadAllText(f), @"""(\w+Brush)""")).Select(m => m.Groups[1].Value))
+            .ToHashSet();
+        Assert.Contains("PanelBrush", keys);
+        Assert.Contains("CardBrush", keys);
+        foreach (var palette in new[] { Palette.Light, Palette.Dark })
+        {
+            var entries = WpfTheme.Entries(palette).Select(e => e.Key).ToHashSet();
+            Assert.Empty(keys.Except(entries));
+        }
+        Assert.Contains(WpfTheme.Entries(Palette.Dark), e => e.Key == "PanelBrush" && e.Color == Palette.Dark.Surface && e.Opacity < 1);
+        Assert.Contains(WpfTheme.Entries(Palette.Light), e => e.Key == "TextBrush" && e.Color == Palette.Light.Text);
     }
 
-    private static (Color, Color) Pick((Color Back, Color Fore, Color Border) colors) => (colors.Back, colors.Fore);
+    /** The panel over the key art is tested against the worst art behind it (black under light, white under dark). */
+    [Fact]
+    public void PanelIsTestedOverTheWorstArt()
+    {
+        Assert.Equal(Color.FromArgb(0, 0, 0), Palette.Blend(Color.White, Color.Black, 0));
+        Assert.Equal(Color.FromArgb(128, 128, 128), Palette.Blend(Color.White, Color.Black, 0.5));
+        Assert.True(Palette.Luminance(Palette.Light.PanelWorst) < Palette.Luminance(Palette.Light.Surface));
+        Assert.True(Palette.Luminance(Palette.Dark.PanelWorst) > Palette.Luminance(Palette.Dark.Surface));
+        Assert.Contains(Palette.Dark.TextPairs(), p => p.Name == "TextOnPanel" && p.Back == Palette.Dark.PanelWorst);
+    }
 }

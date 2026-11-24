@@ -1,11 +1,10 @@
-using System.Drawing;
 using HOLUpdate;
 
 namespace HOLLauncher.Tests;
 
 /**
- * L22: the "What's new" box is a RichTextBox. ReleaseNotes gives blocks (version headings, text lines, bullet lines,
- * gaps, the "older notes" line) and NewsFormat turns them into styled paragraphs; the structure is tested, not pixels.
+ * L22: ReleaseNotes gives the notes as blocks (version headings, text lines, bullet lines, gaps, the "older notes"
+ * line); launcher 5 makes them cards (HomeCards, HomeCardsTests). The structure is tested, not pixels.
  */
 public class NewsFormatTests
 {
@@ -64,42 +63,6 @@ public class NewsFormatTests
     public void PlainTextWritesBulletsWithADash()
     {
         Assert.Equal("V 0.3.11\r\n- Archers.\r\n\r\nFin.", ReleaseNotes.PlainText([H("V 0.3.11"), B("Archers."), Gap, T("Fin.")]));
-    }
-
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void HeadingsAreBoldAndLargerBulletsAreBulletsOlderMissingIsItalicAndMuted(bool dark)
-    {
-        var palette = dark ? Palette.Dark : Palette.Light;
-        NewsBlock[] blocks = [H("V 0.4.3"), B("Archers."), T("Fin."), Gap, new(NewsKind.OlderMissing, "Plus rien.")];
-
-        var paragraphs = NewsFormat.Paragraphs(blocks, palette);
-
-        Assert.Equal(["V 0.4.3", "Archers.", "Fin.", "", "Plus rien."], paragraphs.Select(p => p.Text));
-        var (heading, bullet, text, gap, older) = (paragraphs[0], paragraphs[1], paragraphs[2], paragraphs[3], paragraphs[4]);
-        Assert.Equal(FontStyle.Bold, heading.Style);
-        Assert.True(heading.Size > text.Size);
-        Assert.Equal(palette.Heading, heading.Color);
-        Assert.Equal("Segoe UI", heading.Family);
-        Assert.False(heading.Bullet);
-        Assert.Null(text.Family);
-        Assert.True(bullet.Bullet);
-        Assert.Equal(FontStyle.Regular, bullet.Style);
-        Assert.Equal(palette.Text, bullet.Color);
-        Assert.False(text.Bullet);
-        Assert.Equal(palette.Text, text.Color);
-        Assert.True(gap.Size <= text.Size);
-        Assert.Equal(FontStyle.Italic, older.Style);
-        Assert.Equal(palette.Muted, older.Color);
-    }
-
-    /** The box's text once filled: one paragraph per block (bullets are drawn by the box, not typed). */
-    [Fact]
-    public void BoxTextIsOneLinePerParagraph()
-    {
-        var paragraphs = NewsFormat.Paragraphs([H("V 0.4.3"), B("Archers."), Gap, T("Fin.")], Palette.Light);
-        Assert.Equal("V 0.4.3\nArchers.\n\nFin.", NewsFormat.BoxText(paragraphs));
     }
 
     /** The status keeps the blocks (the window formats them) and their plain text (the tests, the report). */

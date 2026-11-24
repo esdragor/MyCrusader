@@ -1,3 +1,5 @@
+using System.Windows;
+
 namespace HOLLauncher;
 
 internal static class Program
@@ -9,6 +11,8 @@ internal static class Program
         var launcherDir = AppContext.BaseDirectory;
         var settings = LauncherSettings.Load(launcherDir);
         Texts.Use(Texts.Resolve(settings.Settings.Language, System.Globalization.CultureInfo.CurrentUICulture));
+        // Launcher 5: WPF. The application exists before any window (the styles' pack URIs need it).
+        var app = new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
         LauncherOptions options;
         try
         {
@@ -17,7 +21,7 @@ internal static class Program
         catch (ArgumentException e)
         {
             // L16: the reason stays technical (English), the sentence around it is the player's language.
-            MessageBox.Show(Texts.Format("BadCommandLine", e.Message), "Heroes of Liberty", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            MessageWindow.Show(null, Themes.Current(settings.Settings), Texts.Format("BadCommandLine", e.Message), DialogKind.Error);
             return 2;
         }
         if (Environment.ProcessPath is { } exePath)
@@ -25,8 +29,10 @@ internal static class Program
             // L7: the launcher replaced by the last update, once the one that started this one has closed.
             _ = Task.Run(() => LauncherUpdater.DeleteOldAsync(exePath));
         }
-        ApplicationConfiguration.Initialize();
-        Application.Run(new MainForm(options, launcherDir, settings));
+        var window = new MainWindow(options, launcherDir, settings, new ManagerHomeSource(launcherDir));
+        app.MainWindow = window;
+        app.ShutdownMode = ShutdownMode.OnMainWindowClose;
+        app.Run(window);
         return 0;
     }
 }

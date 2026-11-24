@@ -3,7 +3,8 @@
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net8.0-windows</TargetFramework>
-    <UseWindowsForms>true</UseWindowsForms>
+    <!-- Launcher 5: the home window is WPF (custom chrome, key art, translucent panel); no WinForms left. -->
+    <UseWPF>true</UseWPF>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <!-- L15: Strings.resx is French; Strings.en.resx and Strings.ja.resx become satellite assemblies (Texts.cs). -->
@@ -11,7 +12,7 @@
     <SatelliteResourceLanguages>en;ja</SatelliteResourceLanguages>
   </PropertyGroup>
 
-  <!-- One self-contained exe for players: dotnet publish -c Release -r win-x64 (no trimming: WinForms does not
+  <!-- One self-contained exe for players: dotnet publish -c Release -r win-x64 (no trimming: WPF does not
        support it). -->
   <PropertyGroup Condition="'$(RuntimeIdentifier)' != ''">
     <SelfContained>true</SelfContained>
@@ -24,6 +25,12 @@
 
   <ItemGroup>
     <ProjectReference Include="..\HOLUpdate\HOLUpdate.csproj" />
+  </ItemGroup>
+
+  <!-- WPF's implicit usings leave System.IO and System.Net.Http out (the WinForms ones had them). -->
+  <ItemGroup>
+    <Using Include="System.IO" />
+    <Using Include="System.Net.Http" />
   </ItemGroup>
 
   <ItemGroup>

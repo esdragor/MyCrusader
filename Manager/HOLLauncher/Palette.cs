@@ -1,13 +1,17 @@
 using Microsoft.Win32;
+using Color = System.Drawing.Color;
 
 namespace HOLLauncher;
 
 /**
- * The launcher's colours (L22), in one place: a light and a dark palette, applied by ThemeApplier to both windows, the
- * buttons (ThemedButton), the news box and the "Files" menu. Every text colour is listed with its background in
- * TextPairs so that a test keeps each pair readable (contrast 4.5, WCAG AA), the disabled buttons' included: WinForms
- * draws a disabled button's text in its own grey, which nearly vanishes on a dark background, hence ThemedButton.
- * The header band (HeaderBand) keeps the same deep red and gold in both themes: the game's mark, not a surface.
+ * The launcher's colours (L22), in one place: a light and a dark palette, turned into WPF brushes by WpfTheme for
+ * every window. Every text colour is listed with its background in TextPairs so that a test keeps each pair readable
+ * (contrast 4.5, WCAG AA), the disabled buttons' included.
+ * Launcher 5 (the home window): the custom title bar (Chrome*, CloseHover behind the white close glyph), the
+ * information panel (Surface at PanelOpacity over the key art: its text is tested against the panel blended with the
+ * worst art behind it, black under a light panel, white under a dark one) and its cards (Card, opaque). The texts drawn
+ * straight on the key art (the logo, the state and footer lines) keep the same colours in both themes, like the old
+ * header band: the art is a dusk in both, darkened to ArtShade at the left and bottom where those texts sit.
  */
 public sealed record Palette(
     bool IsDark,
@@ -30,8 +34,23 @@ public sealed record Palette(
     Color AccentBack,
     Color AccentText,
     Color AccentHover,
-    Color MenuSelected)
+    Color MenuSelected,
+    Color ChromeBack,
+    Color ChromeText,
+    Color ChromeHover,
+    Color Card,
+    double PanelOpacity)
 {
+    /** Drawn on the key art, the same in both themes (see above). */
+    public static readonly Color ArtText = Rgb(0xF3EBDD);
+    public static readonly Color ArtMuted = Rgb(0xCFC3AF);
+    public static readonly Color ArtShade = Rgb(0x1A1210);
+    public static readonly Color Gold = Rgb(0xE9C46A);
+    public static readonly Color CloseHover = Rgb(0xC42B1C);
+    public static readonly Color ServerReached = Rgb(0x4CC38A);
+    public static readonly Color ServerUnreachable = Rgb(0xE5484D);
+    public static readonly Color ServerUnknown = Rgb(0x9A9284);
+
     public static readonly Palette Light = new(
         IsDark: false,
         Window: Rgb(0xF4F1EA),
@@ -53,7 +72,12 @@ public sealed record Palette(
         AccentBack: Rgb(0x8A2A22),
         AccentText: Rgb(0xFFFFFF),
         AccentHover: Rgb(0x731F18),
-        MenuSelected: Rgb(0xE6DCCB));
+        MenuSelected: Rgb(0xE6DCCB),
+        ChromeBack: Rgb(0xF4F1EA),
+        ChromeText: Rgb(0x1F1B16),
+        ChromeHover: Rgb(0xE2DBCE),
+        Card: Rgb(0xF8F5EF),
+        PanelOpacity: 0.93);
 
     public static readonly Palette Dark = new(
         IsDark: true,
@@ -76,7 +100,12 @@ public sealed record Palette(
         AccentBack: Rgb(0x9E3229),
         AccentText: Rgb(0xFFFFFF),
         AccentHover: Rgb(0xB23B31),
-        MenuSelected: Rgb(0x433E36));
+        MenuSelected: Rgb(0x433E36),
+        ChromeBack: Rgb(0x15130F),
+        ChromeText: Rgb(0xECE6DC),
+        ChromeHover: Rgb(0x2E2A25),
+        Card: Rgb(0x2D2924),
+        PanelOpacity: 0.88);
 
     /** Every text colour with the background it is drawn on (tests: contrast). */
     public IEnumerable<(string Name, Color Fore, Color Back)> TextPairs() =>
@@ -96,7 +125,29 @@ public sealed record Palette(
         ("AccentTextHover", AccentText, AccentHover),
         ("MenuText", Text, Surface),
         ("MenuSelectedText", Text, MenuSelected),
+        ("MenuDisabledText", ButtonDisabledText, Surface),
+        ("ChromeText", ChromeText, ChromeBack),
+        ("ChromeTextHover", ChromeText, ChromeHover),
+        ("CloseGlyphHover", Color.White, CloseHover),
+        ("TextOnPanel", Text, PanelWorst),
+        ("HeadingOnPanel", Heading, PanelWorst),
+        ("TextOnCard", Text, Card),
+        ("MutedOnCard", Muted, Card),
+        ("HeadingOnCard", Heading, Card),
+        ("ArtText", ArtText, ArtShade),
+        ("ArtMuted", ArtMuted, ArtShade),
+        ("Logo", Gold, ArtShade),
     ];
+
+    /** The panel over the worst key art for its text: black under a light panel, white under a dark one. */
+    public Color PanelWorst => Blend(Surface, IsDark ? Color.White : Color.Black, PanelOpacity);
+
+    /** front drawn at opacity over back. */
+    public static Color Blend(Color front, Color back, double opacity)
+    {
+        static int Mix(byte f, byte b, double o) => (int)Math.Round(f * o + b * (1 - o));
+        return Color.FromArgb(Mix(front.R, back.R, opacity), Mix(front.G, back.G, opacity), Mix(front.B, back.B, opacity));
+    }
 
     /** WCAG 2 contrast ratio, 1 (same) to 21 (black on white). */
     public static double Contrast(Color a, Color b)
