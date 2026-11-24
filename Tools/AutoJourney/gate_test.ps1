@@ -331,6 +331,10 @@ foreach ($k in 'CPP: oui', 'LAUNCHCHECK_DEBUT', 'TESTS_TAUTOLOGIQUES') {
   Check ($r.Contains($k)) "agent_rules: cite '$k'"
   Check ($ajModel.Contains($k)) "Auto_Journey.md modele d'enonce: cite '$k'"
 }
+# 2026-11-24 (L15-10, SAURON-1124sg) : le modele d'enonce ne recopie plus le bloc commun, il renvoie a brief_commun.md qui porte ces champs
+$briefText = Get-Content (Join-Path $Here 'brief_commun.md') -Raw -Encoding UTF8
+Check ($ajModel.Contains('brief_commun.md')) 'Auto_Journey.md modele d''enonce: renvoie a brief_commun.md (L15-10)'
+foreach ($k in 'CPP: oui', 'LAUNCHCHECK_DEBUT', 'TESTS_TAUTOLOGIQUES') { Check ($briefText.Contains($k)) "brief_commun.md: cite '$k'" }
 Check ($ajText -match 'L12-6') 'Auto_Journey.md: fusion = index de Retours, LISEZ-MOI et EtapeDefini dans le meme commit (L12-6)'
 
 # --- L90 (L12-6) : Close WARN quand EtapeDefini.md dit 'pas dans main' pour une branche (ou des commits cites) deja dans main
