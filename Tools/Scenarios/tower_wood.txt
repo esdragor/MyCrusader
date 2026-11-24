@@ -64,7 +64,16 @@ capture tower_wood_during5
 frames 12
 capture tower_wood_during6
 frames 40
-note 3. APRES : plusieurs fleches ont touche, les barres de vie des Lanciers sont entamees.
+# FARAMIR-1124sm (FAIL de recette 1124s) : avant la capture finale, un vrai clic gauche sur un sol vide DESELECTIONNE les Paysans (le panneau de construction se ferme),
+# puis cadrage resserre sur les Lanciers touches (FocusNear entre la tour et eux + zoom) pour que leurs barres de vie soient lisibles.
+hol.Camera.FocusNear 4000 0
+frames 3
+hol.Select.LeftClickGround -12400 1500
+waitlog Scripted left click at
+hol.Camera.FocusNear 4100 -400
+hol.Camera.Zoom 3
+frames 10
+note 3. APRES : plusieurs fleches ont touche, les barres de vie des Lanciers sont entamees (panneau de construction ferme, Lanciers cadres).
 hol.Combat.ArrowReport
 capture tower_wood_after
 hol.Combat.Report 1
