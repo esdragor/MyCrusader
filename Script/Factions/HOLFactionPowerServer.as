@@ -10,13 +10,23 @@ struct FHOLFactionApproach
 
 namespace HOLFactionPowerServer
 {
-	// FARAMIR-1124a STUB (red first): the pure rule of the approach. Origin = the hero's place, Point = the aimed point, RangeCm = the cast range. The walk
-	// stops 50 cm short of the range from the point (so the cast is in range on arrival). THIS STUB NEVER WALKS: the first test is red on purpose.
+	// FARAMIR-1124a: the pure rule of the approach. Origin = the hero's place, Point = the aimed point, RangeCm = the cast range. Beyond the range the hero
+	// walks and stops (RangeCm - 50) cm from the point on the line to it (in range on arrival, the 50 cm absorb the stop's slack); inside, no walk.
 	FHOLFactionApproach ApproachPointOf(const FVector& Origin, const FVector& Point, double RangeCm)
 	{
 		FHOLFactionApproach Result;
-		Result.bNeedsWalk = false;
 		Result.StopPoint = Origin;
+		const double Dx = Point.X - Origin.X;
+		const double Dy = Point.Y - Origin.Y;
+		const double Distance = Math::Sqrt(Dx * Dx + Dy * Dy);
+		if (Distance <= RangeCm || Distance < 1.0)
+		{
+			return Result;
+		}
+		const double StopFromPoint = Math::Max(0.0, RangeCm - 50.0);
+		const double Walk = Distance - StopFromPoint;
+		Result.bNeedsWalk = true;
+		Result.StopPoint = FVector(Origin.X + Dx / Distance * Walk, Origin.Y + Dy / Distance * Walk, Origin.Z);
 		return Result;
 	}
 
