@@ -105,4 +105,10 @@
   <data name="Resume" xml:space="preserve"><value>再開</value></data>
   <data name="Pausing" xml:space="preserve"><value>一時停止しています…</value></data>
   <data name="UpdatePaused" xml:space="preserve"><value>一時停止中（{0}）。受信済みのデータは保存されています。「再開」を押すと、続きからダウンロードします。</value></data>
+  <data name="ReportSend" xml:space="preserve"><value>レポートを送る…</value></data>
+  <data name="ReportSaveTitle" xml:space="preserve"><value>開発者に渡すレポートを保存</value></data>
+  <data name="ReportFilter" xml:space="preserve"><value>ZIP ファイル (*.zip)|*.zip</value></data>
+  <data name="ReportCreated" xml:space="preserve"><value>レポートを作成しました：{0}&#10;このファイルを開発者に渡してください。ランチャーが自動で送信することはありません。ゲームのログとパソコンの情報が含まれます（アクセスキーは含まれません）。</value></data>
+  <data name="ReportFailed" xml:space="preserve"><value>レポートを作成できませんでした：{0}</value></data>
+  <data name="ReportCrashDetected" xml:space="preserve"><value>前回、ゲームが異常終了したようです。開発者向けのレポートを作成しますか？</value></data>
 </root>

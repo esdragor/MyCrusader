@@ -95,6 +95,33 @@ public class LauncherSettingsTests
     }
 
     [Fact]
+    public void LastCrashCheckIsReadBackInUtc()
+    {
+        using var dir = new TempDir();
+        var time = new DateTime(2026, 11, 24, 9, 30, 15, 123, DateTimeKind.Utc);
+        var settings = new LauncherSettings(Language: "en", LastCrashCheckUtc: time);
+        settings.Save(dir.Root);
+        var load = LauncherSettings.Load(dir.Root);
+        Assert.Equal(settings, load.Settings);
+        Assert.Equal(DateTimeKind.Utc, load.Settings.LastCrashCheckUtc!.Value.Kind);
+        Assert.Contains("\"lastCrashCheckUtc\": \"2026-11-24T09:30:15.123Z\"",
+            File.ReadAllText(Path.Combine(dir.Root, LauncherSettings.FileName)));
+    }
+
+    [Fact]
+    public void NoCrashCheckIsNotWrittenAndAnL19FileStillLoads()
+    {
+        using var dir = new TempDir();
+        new LauncherSettings(Language: "fr").Save(dir.Root);
+        Assert.DoesNotContain("lastCrashCheckUtc", File.ReadAllText(Path.Combine(dir.Root, LauncherSettings.FileName)));
+        // The file as L19 writes it: no crash check time.
+        dir.Write(LauncherSettings.FileName, "{\n  \"language\": \"ja\",\n  \"displayMode\": \"windowed\"\n}");
+        var load = LauncherSettings.Load(dir.Root);
+        Assert.Null(load.Problem);
+        Assert.Equal(new LauncherSettings(Language: "ja", DisplayMode: "windowed"), load.Settings);
+    }
+
+    [Fact]
     public void L15FileWithoutLaunchOptionsStillLoads()
     {
         using var dir = new TempDir();

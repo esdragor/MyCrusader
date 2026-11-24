@@ -105,4 +105,10 @@
   <data name="Resume" xml:space="preserve"><value>Resume</value></data>
   <data name="Pausing" xml:space="preserve"><value>Pausing…</value></data>
   <data name="UpdatePaused" xml:space="preserve"><value>Paused ({0}). What was already received is kept: "Resume" carries on without downloading it again.</value></data>
+  <data name="ReportSend" xml:space="preserve"><value>Send a report…</value></data>
+  <data name="ReportSaveTitle" xml:space="preserve"><value>Save the report to give to the developer</value></data>
+  <data name="ReportFilter" xml:space="preserve"><value>Zip archive (*.zip)|*.zip</value></data>
+  <data name="ReportCreated" xml:space="preserve"><value>Report created: {0}&#10;Give this file to the developer: the launcher does not send it anywhere by itself. It holds the game's logs and a description of the computer, without the access key.</value></data>
+  <data name="ReportFailed" xml:space="preserve"><value>The report could not be created: {0}</value></data>
+  <data name="ReportCrashDetected" xml:space="preserve"><value>The game seems to have crashed last time. Create a report for the developer?</value></data>
 </root>

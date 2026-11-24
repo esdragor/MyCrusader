@@ -16,6 +16,8 @@ public sealed record SettingsLoad(LauncherSettings Settings, string? Problem);
  * Launch options (L19, LaunchArguments): DisplayMode "windowed" or "fullscreen" (null: the game's own),
  * ResolutionWidth / ResolutionHeight in pixels (null: the game's own), ExtraArguments the player's free extra arguments
  * (advanced, null: none). An L15 file has none of them: the game starts without argument, as before.
+ * LastCrashCheckUtc (L20, CrashDetector): when the launcher last looked for a crash of the game, UTC (null: never, the
+ * first start only stores the time). Older files have none.
  * Later steps add their own fields (L23 automatic update): with "with", the window keeps them.
  */
 public sealed record LauncherSettings(
@@ -24,7 +26,8 @@ public sealed record LauncherSettings(
     string? DisplayMode = null,
     int? ResolutionWidth = null,
     int? ResolutionHeight = null,
-    string? ExtraArguments = null)
+    string? ExtraArguments = null,
+    DateTime? LastCrashCheckUtc = null)
 {
     public const string FileName = "HOLLauncher.settings.json";
 
@@ -65,9 +68,12 @@ public sealed record LauncherSettings(
     {
         var file = Path.Combine(launcherDir, FileName);
         var part = file + ".part";
-        File.WriteAllText(part, JsonSerializer.Serialize(this, Json));
+        File.WriteAllText(part, ToJson());
         File.Move(part, file, overwrite: true);
     }
+
+    /** The file's text (also shown in the report, ReportBuilder, L20). */
+    public string ToJson() => JsonSerializer.Serialize(this, Json);
 
     /**
      * The GameDir to store for what the player typed: blank or the launcher's folder = null (the default), else the full

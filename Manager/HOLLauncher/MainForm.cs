@@ -76,6 +76,7 @@ public sealed partial class MainForm : Form
         var buttons = new FlowLayoutPanel { Dock = DockStyle.Fill, AutoSize = true, WrapContents = true };
         buttons.Controls.AddRange([play, updateGame, updateLauncher, refresh, settingsButton]);
         AddFilesMenu(buttons); // L17: MainForm.Files.cs
+        AddReportItem(); // L20: MainForm.Report.cs
 
         var layout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, Padding = new Padding(12) };
         layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
@@ -116,6 +117,7 @@ public sealed partial class MainForm : Form
                 MessageBox.Show(this, Texts.Format("SettingsUnreadable", settingsProblem), "Heroes of Liberty",
                     MessageBoxButtons.OK, MessageBoxIcon.Warning);
             }
+            await OfferReportAfterCrashAsync(); // L20
             await RefreshStatusAsync();
         };
         FormClosing += (_, _) => updating?.Cancel(); // the downloaded part stays for the next try
@@ -143,6 +145,7 @@ public sealed partial class MainForm : Form
         cancel.Text = Texts.Get("Cancel");
         pause.Text = progressView.PauseText();
         ApplyFilesTexts();
+        ApplyReportTexts();
     }
 
     /**

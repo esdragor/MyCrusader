@@ -105,4 +105,10 @@
   <data name="Resume" xml:space="preserve"><value>Reprendre</value></data>
   <data name="Pausing" xml:space="preserve"><value>Mise en pause…</value></data>
   <data name="UpdatePaused" xml:space="preserve"><value>En pause ({0}). Ce qui est déjà reçu est gardé : « Reprendre » continue sans le télécharger de nouveau.</value></data>
+  <data name="ReportSend" xml:space="preserve"><value>Envoyer un rapport…</value></data>
+  <data name="ReportSaveTitle" xml:space="preserve"><value>Enregistrer le rapport à donner au développeur</value></data>
+  <data name="ReportFilter" xml:space="preserve"><value>Archive zip (*.zip)|*.zip</value></data>
+  <data name="ReportCreated" xml:space="preserve"><value>Rapport créé : {0}&#10;Donnez ce fichier au développeur : le lanceur ne l'envoie nulle part lui-même. Il contient les journaux du jeu et la description de l'ordinateur, sans la clé d'accès.</value></data>
+  <data name="ReportFailed" xml:space="preserve"><value>Le rapport n'a pas pu être créé : {0}</value></data>
+  <data name="ReportCrashDetected" xml:space="preserve"><value>Le jeu semble s'être arrêté brutalement la dernière fois. Créer un rapport pour le développeur ?</value></data>
 </root>
