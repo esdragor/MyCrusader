@@ -26,6 +26,7 @@ param(
   [string]$RetoursDir = '',                # Close, Essay : dossier des Retours\ (defaut : la copie principale)
   [string]$JourFile = '',                  # Launch, Close (L15-1) : Auto_Journey_Jour.md a lire (defaut <copie principale>\Auto_Journey_Jour.md) ; sert aux tests
   [string]$EtapeFile = '',                 # Close (L90 / L12-6) : EtapeDefini.md a relire (defaut <copie principale>\EtapeDefini.md) ; son dossier est le depot git qui porte main
+  [string]$MainDir = '',                   # Report : copie principale a controler (defaut = la vraie ; sert aux tests de gate_test)
   [string]$ReportFile = '',               # Report (L14-6) : rapport de l'agent (Docs\Rapports\<AGENT>.md) dont le champ TEST_ROUGE est controle
   [string]$Essay = '',                   # Essay : nom de l'essai (E-<nom>.md de Retours\) dont les branches citees doivent etre dans le worktree ; defaut : tous les E-*.md ouverts
   [double]$MinFreeVirtualGB = 8,           # Launch (L12-1c) : memoire virtuelle libre sous ce seuil = WARN (2026-11-12 : builds et jeux qui echouent faute de memoire)
@@ -38,6 +39,7 @@ param(
 $ErrorActionPreference = 'Continue'
 $Branches = @($Branches | ForEach-Object { $_ -split ',' } | Where-Object { $_ })   # -File passe "a,b" comme une seule chaine
 $Main = 'C:\Users\baudo\Documents\MyCrusader'
+if ($MainDir) { $Main = $MainDir }
 $Exclude = @($Exclude | ForEach-Object { $_ -split ',' } | Where-Object { $_ } | ForEach-Object { $_ -replace '^HeroesOfLiberty-', '' })
 if (-not $RetoursDir) { $RetoursDir = "$Main\Retours" }
 if (-not $JourFile) { $JourFile = "$Main\Auto_Journey_Jour.md" }

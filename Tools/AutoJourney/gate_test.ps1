@@ -193,6 +193,22 @@ Check ($rvu -match '(?m)^PASS .*L14-6' -and -not ($rvu -match '(?m)^(FAIL|WARN) 
 $RepNone = Join-Path $Tmp 'rapport-introuvable.md'
 $rnone = & powershell -NoProfile -ExecutionPolicy Bypass -File $Gate -Phase Report -Root $Repo -ReportFile $RepNone | Out-String
 Check ($rnone -match '(?m)^FAIL .*L14-6.*introuvable') 'L14-6 report: rapport introuvable -> FAIL' $rnone
+# --- SAURON-1124sd anomalies : (1) Report refusait Placeholders.txt / Docs\SessionEnd.txt modifies dans la copie principale (Merge les accepte) ; (2) « vu a 10:00 (pas suppose) » donnait un faux FAIL.
+$FakeMain = Join-Path $Tmp 'FakeMain'
+New-Item -ItemType Directory -Path (Join-Path $FakeMain 'Docs') -Force | Out-Null
+git -C $FakeMain init -q 2>$null | Out-Null
+Set-Content -Path (Join-Path $FakeMain 'Placeholders.txt') -Value 'a'
+Set-Content -Path (Join-Path $FakeMain 'Docs\SessionEnd.txt') -Value 'a'
+git -C $FakeMain add . 2>$null | Out-Null
+git -C $FakeMain -c user.name=t -c user.email=t@t commit -q -m docs 2>$null | Out-Null
+Set-Content -Path (Join-Path $FakeMain 'Placeholders.txt') -Value 'b'
+Set-Content -Path (Join-Path $FakeMain 'Docs\SessionEnd.txt') -Value 'b'
+$rdoc = & powershell -NoProfile -ExecutionPolicy Bypass -File $Gate -Phase Report -Root $Repo -MainDir $FakeMain | Out-String
+Check ($rdoc -match '(?m)^PASS .*copie principale : seulement des docs voulus' -and -not ($rdoc -match '(?m)^FAIL .*copie principale')) 'report: Placeholders.txt + Docs\SessionEnd.txt modifies dans la copie principale -> PASS (comme Merge)' $rdoc
+$RepNeg = Join-Path $Tmp 'rapport-vu-pas-suppose.md'
+Set-Content -Path $RepNeg -Encoding UTF8 -Value "TEST_ROUGE: vu a 10:00 (pas suppose) : 3 FAIL sur 3 (commit abc1234) + assertit l'effet : oui"
+$rneg = & powershell -NoProfile -ExecutionPolicy Bypass -File $Gate -Phase Report -Root $Repo -ReportFile $RepNeg | Out-String
+Check ($rneg -match '(?m)^PASS .*L14-6' -and -not ($rneg -match '(?m)^(FAIL|WARN) .*L14-6')) 'L14-6 report: « vu a 10:00 (pas suppose) » -> PASS, pas de faux FAIL' $rneg
 
 # --- L7-8 + L7-6 : Close -Exclude et ligne GESTE / SON des E-*.md
 $Ret = Join-Path $Tmp 'Retours'
