@@ -60,6 +60,28 @@ namespace UE::HeroesOfLiberty::Simulation
 		}
 	}
 
+	/** D894: FNV-1a over the game state's Honor gauge and power cool-downs, slot by slot (the arrays' lengths first, so a resize shows). */
+	uint64 HashFaction(const UWorld* World)
+	{
+		uint64 Hash = 14695981039346656037ull;
+		const AHOLGameState* State = World ? World->GetGameState<AHOLGameState>() : nullptr;
+		if (!State)
+		{
+			return Hash;
+		}
+		MixInto(Hash, static_cast<uint64>(State->FactionResource.Num()));
+		for (const int32 Gauge : State->FactionResource)
+		{
+			MixInto(Hash, static_cast<uint64>(static_cast<uint32>(Gauge)));
+		}
+		MixInto(Hash, static_cast<uint64>(State->PowerCooldownEndMs.Num()));
+		for (const int32 EndMs : State->PowerCooldownEndMs)
+		{
+			MixInto(Hash, static_cast<uint64>(static_cast<uint32>(EndMs)));
+		}
+		return Hash;
+	}
+
 	uint64 HashUnits(const UWorld* World, const FMassEntityManager& EntityManager, const bool bDump = false, FPartHashes* Parts = nullptr)
 	{
 		uint64 Hash = 14695981039346656037ull;
@@ -212,8 +234,7 @@ namespace UE::HeroesOfLiberty::Simulation
 
 uint64 UHOLSimulationSubsystem::HashFactionState() const
 {
-	// Stub (D894 red): nothing hashed yet.
-	return 14695981039346656037ull;
+	return UE::HeroesOfLiberty::Simulation::HashFaction(GetWorld());
 }
 
 bool UHOLSimulationSubsystem::DoesSupportWorldType(const EWorldType::Type WorldType) const
@@ -392,10 +413,11 @@ void UHOLSimulationSubsystem::RunStep()
 			{
 				UE::HeroesOfLiberty::Simulation::FPartHashes Parts;
 				const uint64 MoveHash = UE::HeroesOfLiberty::Simulation::HashUnits(GetWorld(), *EntityManager, false, &Parts);
+				Parts.Faction = UE::HeroesOfLiberty::Simulation::HashFaction(GetWorld());
 				const UHOLCombatProcessor* CombatProcessor = Cast<UHOLCombatProcessor>(Processors[Index]);
-				UE_LOG(LogHOLSimulation, Display, TEXT("Step hash: step %lld after %s %016llx combat %016llx ghost %016llx steering %016llx order %016llx handles %016llx arrows %016llx"),
+				UE_LOG(LogHOLSimulation, Display, TEXT("Step hash: step %lld after %s %016llx combat %016llx ghost %016llx steering %016llx order %016llx handles %016llx arrows %016llx faction %016llx"),
 					StepIndex, *Processors[Index]->GetProcessorName(), MoveHash, Parts.Combat, Parts.Ghost, Parts.Steering, Parts.Order, Parts.Handles,
-					CombatProcessor ? CombatProcessor->HashArrows() : 0ull);
+					CombatProcessor ? CombatProcessor->HashArrows() : 0ull, Parts.Faction);
 			}
 		}
 	}
