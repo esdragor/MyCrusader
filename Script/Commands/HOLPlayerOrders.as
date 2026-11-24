@@ -79,6 +79,18 @@ namespace HOLPlayerOrders
 
 	bool ToggleDeploy(UHOLCommandSubsystem Commands, int PlayerIndex, const TArray<int>& UnitIds)
 	{
+		UHOLFactionPendingHolder Holder = UHOLFactionPendingHolder::Get();
+		if (Holder == nullptr)
+		{
+			TArray<FHOLPendingCast> NoPending;
+			return ToggleDeployFor(Commands, PlayerIndex, UnitIds, NoPending, -1);
+		}
+		return ToggleDeployFor(Commands, PlayerIndex, UnitIds, Holder.Pending, HOLHero::GetHeroUnitId(PlayerIndex));
+	}
+
+	// D909 seam (GLORFINDEL-1124se): the pending list and the slot's hero id are arguments (the wrapper above reads the world's; a detached test passes its own).
+	bool ToggleDeployFor(UHOLCommandSubsystem Commands, int PlayerIndex, const TArray<int>& UnitIds, TArray<FHOLPendingCast>& Pending, int HeroId)
+	{
 		if (Commands == nullptr || !IsAccepted(PlayerIndex, UnitIds.Num()))
 		{
 			return false;
@@ -137,6 +149,18 @@ namespace HOLPlayerOrders
 
 	// DropOff: not one of the player's deposits (bDeposit false): all walk to Point; else the drop-off move (carriers unload, the others walk), Workers filtered by C++ with Shift.
 	bool DropOff(UHOLCommandSubsystem Commands, int PlayerIndex, const TArray<int>& UnitIds, AHOLBuilding Building, const FVector& Point, bool bQueue, bool bDeposit)
+	{
+		UHOLFactionPendingHolder Holder = UHOLFactionPendingHolder::Get();
+		if (Holder == nullptr)
+		{
+			TArray<FHOLPendingCast> NoPending;
+			return DropOffFor(Commands, PlayerIndex, UnitIds, Building, Point, bQueue, bDeposit, NoPending, -1);
+		}
+		return DropOffFor(Commands, PlayerIndex, UnitIds, Building, Point, bQueue, bDeposit, Holder.Pending, HOLHero::GetHeroUnitId(PlayerIndex));
+	}
+
+	// D909 seam (GLORFINDEL-1124se): same as ToggleDeployFor.
+	bool DropOffFor(UHOLCommandSubsystem Commands, int PlayerIndex, const TArray<int>& UnitIds, AHOLBuilding Building, const FVector& Point, bool bQueue, bool bDeposit, TArray<FHOLPendingCast>& Pending, int HeroId)
 	{
 		if (Commands == nullptr || !IsAccepted(PlayerIndex, UnitIds.Num()))
 		{
