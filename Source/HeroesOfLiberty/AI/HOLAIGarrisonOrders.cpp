@@ -39,3 +39,21 @@ bool UHOLAIGarrisonOrderLibrary::IssueAIGarrisonOrder(const UObject* WorldContex
 	Commands->IssueGarrisonOrder(PlayerIndex, Ids, Building);
 	return true;
 }
+
+bool UHOLAIGarrisonOrderLibrary::IssueAIUngarrisonOrder(const UObject* WorldContextObject, const int32 PlayerIndex, AHOLBuilding* Building)
+{
+	UWorld* World = GEngine ? GEngine->GetWorldFromContextObject(WorldContextObject, EGetWorldErrorMode::LogAndReturnNull) : nullptr;
+	if (World && World->GetNetMode() == NM_Client)
+	{
+		UE_LOG(LogHOLMatch, Warning, TEXT("AI ungarrison order refused on a client: the AI runs on the server"));
+		return false;
+	}
+	UHOLCommandSubsystem* Commands = World ? World->GetSubsystem<UHOLCommandSubsystem>() : nullptr;
+	if (!Commands || !Building || PlayerIndex < 0 || PlayerIndex >= FHOLMatchConfig::MaxSlots)
+	{
+		return false;
+	}
+	UE_LOG(LogHOLMatch, Display, TEXT("Ungarrison order: slot %d, every occupant of the building (AI)"), PlayerIndex);
+	Commands->IssueUngarrisonAllOrder(PlayerIndex, Building);
+	return true;
+}
