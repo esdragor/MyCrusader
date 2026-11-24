@@ -2243,6 +2243,34 @@ UHOLScenarioPanelScript ScenarioPanel;
 		ClickFactionBox(3);
 	}
 
+	// A non-negative decimal such as "0.4375" (the test cursor's text), 0 when it is not one.
+	double ParseCursorFraction(const FString& Text)
+	{
+		const FString Digits = "0123456789";
+		double Value = 0.0;
+		double Divisor = 0.0;
+		for (int I = 0; I < Text.Len(); I++)
+		{
+			const FString Ch = Text.Mid(I, 1);
+			if (Ch == ".")
+				Divisor = 1.0;
+			else
+			{
+				const int Digit = Digits.Find(Ch);
+				if (Digit < 0)
+					continue;
+				if (Divisor == 0.0)
+					Value = Value * 10.0 + double(Digit);
+				else
+				{
+					Divisor *= 10.0;
+					Value += double(Digit) / Divisor;
+				}
+			}
+		}
+		return Value;
+	}
+
 	// ARWEN-1124a (REGLAGE 2026-11-23): PLACEHOLDER debug circle under the mouse while a power is aimed (one frame; HOLFactionAim::PreviewOf says radius and colour).
 	// The origin is the hero's place (HOLHero::GetHeroLocation); unknown, the point counts as in reach. The mouse ray meets the plane of the hero's height.
 	void DrawFactionAimPreview(AHOLPlayerController Controller)
@@ -2251,7 +2279,21 @@ UHOLScenarioPanelScript ScenarioPanel;
 		const bool bHero = HOLHero::GetHeroLocation(GetLocalSlot(), Origin);
 		FVector RayStart;
 		FVector RayDirection;
-		if (!Controller.DeprojectMousePositionToWorld(RayStart, RayDirection) || Math::Abs(RayDirection.Z) < 0.0001)
+		// Scripted checks (hol.Camera.TestCursor "X Y" in 0..1): the ray goes through that virtual cursor, as the controller's own reads do; else the real mouse.
+		const FConsoleVariable TestCursorVar("hol.Camera.TestCursor", "");
+		TArray<FString> CursorParts;
+		TestCursorVar.GetString().ParseIntoArray(CursorParts, " ");
+		bool bRay = false;
+		if (CursorParts.Num() == 2)
+		{
+			int SizeX = 0;
+			int SizeY = 0;
+			Controller.GetViewportSize(SizeX, SizeY);
+			bRay = Controller.DeprojectScreenPositionToWorld(float(SizeX) * float(ParseCursorFraction(CursorParts[0])), float(SizeY) * float(ParseCursorFraction(CursorParts[1])), RayStart, RayDirection);
+		}
+		else
+			bRay = Controller.DeprojectMousePositionToWorld(RayStart, RayDirection);
+		if (!bRay || Math::Abs(RayDirection.Z) < 0.0001)
 			return;
 		const double Along = ((bHero ? Origin.Z : 0.0) - RayStart.Z) / RayDirection.Z;
 		if (Along < 0.0)
