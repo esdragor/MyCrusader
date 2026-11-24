@@ -1,0 +1,30 @@
+# Tour de guet en bois (F8 T7) : GARNISON AU GESTE REEL (FARAMIR-1124sc, reste de tower_wood FARAMIR-1124sa, L14-5). Plain, deux joueurs (tower_wood_garrison.json).
+# La tour du joueur est posee par l'aide d'essai hol.Cheat.SpawnBuilding (la pose au geste reel est deja jouee par tower_wood), puis 3 Lanciers du joueur sont selectionnes
+# (hol.Select.Army) et un VRAI clic droit (hol.Select.RightClickGround : appui et relache par les gestionnaires d'entree) sur la tour = ordre de garnison.
+# Entree effective = journal " Garrison: slot 0 puts " (HOLGarrisonSubsystem.cpp:193), comme ai_garrison pour l'IA. Position de la tour : MainCentre -16400 0 + 4000 0 = -12400 0.
+hol.Cheat.Resources 5000
+hol.Cheat.Population 165
+hol.AI.ThinkSteps 100000
+hol.Camera.FocusNear 4000 0
+frames 5
+hol.Cheat.SpawnBuilding TowerWood 0 4000 0
+waitlog Cheat: spawned TowerWood of slot 0
+frames 5
+hol.Camera.FocusNear 5200 0
+hol.Units.SpawnHere 3 Spearman 0 250
+waitunits 3
+hol.Camera.FocusNear 4600 0
+hol.Camera.Zoom 2
+hol.Select.Army
+waitlog Select army: 3 soldiers
+frames 5
+note 1. AVANT : la Tour de guet en bois du joueur et ses 3 Lanciers selectionnes a cote, encore dehors.
+capture tower_wood_garrison_before
+hol.Select.RightClickGround -12400 0
+waitlog Scripted right click at
+waitlog Garrison: slot 0 puts
+frames 20
+note 2. APRES : les Lanciers sont entres dans la tour (3 places) : ils ont disparu de l'ecran, la tour les garde.
+capture tower_wood_garrison_after
+hol.Test.Sanity
+quit
