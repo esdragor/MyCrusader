@@ -423,3 +423,9 @@ bool UHOLHeroLibrary::GetHeroLocation(const UObject* WorldContextObject, const i
 	OutLocation = Step->GetTransform().GetLocation();
 	return true;
 }
+
+int32 UHOLHeroLibrary::GetHeroUnitId(const UObject* WorldContextObject, const int32 Slot)
+{
+	// RED STUB (GLORFINDEL-1124b): compiles, answers "no hero"; the rule follows in the next commit.
+	return -1;
+}

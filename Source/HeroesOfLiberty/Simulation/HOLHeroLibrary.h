@@ -212,4 +212,11 @@ public:
 	 */
 	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Hero", meta = (WorldContext = "WorldContextObject"))
 	static bool GetHeroLocation(const UObject* WorldContextObject, int32 Slot, FVector& OutLocation);
+
+	/**
+	 * GLORFINDEL-1124b (D839: a binding to expose, for D900): the unit id of the slot's living hero (the id the unit table and the orders name him by), the same
+	 * hero GetHeroLocation reads (FindHeroUnit). -1 without a living hero on the map, on a client (no unit table) and without a world. Server and solo.
+	 */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Hero", meta = (WorldContext = "WorldContextObject"))
+	static int32 GetHeroUnitId(const UObject* WorldContextObject, int32 Slot);
 };

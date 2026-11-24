@@ -12,3 +12,9 @@ bool UHOLSpecializationReadLibrary::IsForumCompleteForSlot(const UObject* WorldC
 	UWorld* World = GEngine ? GEngine->GetWorldFromContextObject(WorldContextObject, EGetWorldErrorMode::ReturnNull) : nullptr;
 	return UHOLSpecializationSubsystem::IsForumComplete(World, Slot);
 }
+
+int32 UHOLSpecializationReadLibrary::GetChosenOptionForSlot(const UObject* WorldContextObject, const int32 Slot, const int32 Tier)
+{
+	// RED STUB (GLORFINDEL-1124b): compiles, answers "no option"; the rule follows in the next commit.
+	return -1;
+}
