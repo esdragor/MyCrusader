@@ -23,6 +23,7 @@
 #include "Net/HOLUnitReplicator.h"
 #include "Simulation/HOLCombatRules.h"
 #include "Simulation/HOLDeployProcessor.h"
+#include "Simulation/HOLMoraleRules.h"
 #include "Simulation/HOLSimulationFragments.h"
 #include "Simulation/HOLSimulationSubsystem.h"
 #include "Simulation/HOLUnitSubsystem.h"
@@ -171,6 +172,7 @@ void UHOLUnitReplicationSubsystem::OnWorldBeginPlay(UWorld& InWorld)
 	UnitQuery.AddRequirement<FHOLCombatFragment>(EMassFragmentAccess::ReadOnly);
 	UnitQuery.AddRequirement<FHOLMoveOrderFragment>(EMassFragmentAccess::ReadOnly);
 	UnitQuery.AddRequirement<FHOLDeployFragment>(EMassFragmentAccess::ReadOnly, EMassFragmentPresence::Optional); // G6 e
+	UnitQuery.AddRequirement<FHOLMoraleFragment>(EMassFragmentAccess::ReadOnly, EMassFragmentPresence::Optional); // A2: the morale effects' mask
 	UnitQuery.AddConstSharedRequirement<FHOLUnitTypeConstants>();
 
 	TypeIndices.Reset();
@@ -305,6 +307,7 @@ void UHOLUnitReplicationSubsystem::OnStepEnded(const int64 Step)
 		const TConstArrayView<FHOLCombatFragment> Combats = Context.GetFragmentView<FHOLCombatFragment>();
 		const TConstArrayView<FHOLMoveOrderFragment> Orders = Context.GetFragmentView<FHOLMoveOrderFragment>();
 		const TConstArrayView<FHOLDeployFragment> Deploys = Context.GetFragmentView<FHOLDeployFragment>(); // G6 e: empty for a unit that does not deploy
+		const TConstArrayView<FHOLMoraleFragment> Morales = Context.GetFragmentView<FHOLMoraleFragment>(); // A2: empty for a unit without morale
 		const FHOLUnitTypeConstants& Constants = Context.GetConstSharedFragment<FHOLUnitTypeConstants>();
 		const uint8 TypeIndex = TypeIndices.FindRef(Constants.TypeName);
 		// F7 lot 3e (D693): a garrisoned unit is sent as such (FHOLNetUnitState::SetGarrisoned); its client takes its body off the field.
@@ -383,6 +386,7 @@ void UHOLUnitReplicationSubsystem::OnStepEnded(const int64 Step)
 				FHOLNetUnitState Current = Base;
 				Current.SetCombat(ShownHealth, MaxHealth, TargetSlot, bFacesFront, Order.FrontYaw, bHero);
 				Current.SetDeploy(Deploys.IsEmpty() ? -1 : static_cast<int32>(Deploys[EntityIt].Phase)); // G6 e
+				Current.EffectMask = Morales.IsEmpty() ? 0 : HOLMorale::EffectMask(Morales[EntityIt].State); // A2 (S2-c step 9)
 				Current.SetGarrisoned(bGarrisoned); // F7 lot 3e
 				return Current;
 			};

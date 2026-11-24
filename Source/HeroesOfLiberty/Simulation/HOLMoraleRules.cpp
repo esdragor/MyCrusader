@@ -317,7 +317,16 @@ namespace HOLMorale
 
 	uint16 EffectMask(const FHOLMoraleState& State)
 	{
-		return 0; // RED STUB (A2): the fix reads the effects' ids
+		uint16 Mask = 0;
+		for (int32 Slot = 0; Slot < State.Num && Slot < MaxEffects; ++Slot)
+		{
+			const int32 Id = State.Effects[Slot].Id;
+			if (Id >= 0 && Id < 16)
+			{
+				Mask |= static_cast<uint16>(1u << Id);
+			}
+		}
+		return Mask;
 	}
 
 	uint64 FingerprintKey(const FHOLMoraleState& State)
