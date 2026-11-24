@@ -214,10 +214,23 @@ namespace HOLWallLine
 		return Validate(FIntPoint(CellOfCoordinate(Start.X, Tile), CellOfCoordinate(Start.Y, Tile)), FIntPoint(CellOfCoordinate(End.X, Tile), CellOfCoordinate(End.Y, Tile)), MapMin, MapMax, Occupied, MaxCells);
 	}
 
-	// D898 G2: every occupied 4 m tile becomes SubDivision x SubDivision sub-cells. STUB (red first): empty.
+	// D898 G2: every occupied 4 m tile becomes SubDivision x SubDivision sub-cells (tile (2,0) at 4 = the sub-cells 8..11 x 0..3). SubDivision 1 or less: the tiles as they are.
 	TArray<FIntPoint> ExpandOccupied(const TArray<FIntPoint>& OccupiedTiles, int SubDivision)
 	{
 		TArray<FIntPoint> Result;
+		if (SubDivision <= 1)
+		{
+			Result = OccupiedTiles;
+			return Result;
+		}
+		for (int Tile = 0; Tile < OccupiedTiles.Num(); Tile++)
+		{
+			for (int SubX = 0; SubX < SubDivision; SubX++)
+			{
+				for (int SubY = 0; SubY < SubDivision; SubY++)
+					Result.Add(FIntPoint(OccupiedTiles[Tile].X * SubDivision + SubX, OccupiedTiles[Tile].Y * SubDivision + SubY));
+			}
+		}
 		return Result;
 	}
 
