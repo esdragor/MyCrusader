@@ -2,6 +2,7 @@
 * text=auto eol=crlf
 *.sh text eol=lf
 *InProgress.md merge=union
+Manager/HOLLauncher/Strings*.resx merge=union
 *.uasset binary
 *.umap binary
 *.png binary
