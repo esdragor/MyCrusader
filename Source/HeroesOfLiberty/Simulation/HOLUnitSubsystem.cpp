@@ -10,6 +10,8 @@
 #include "Commands/HOLCommandSubsystem.h"
 #include "Simulation/HOLCombatRules.h"
 #include "Simulation/HOLUnitAbilityRules.h"
+#include "Simulation/HOLMoraleRules.h"
+#include "Simulation/HOLMoraleTableRows.h"
 #include "Siege/HOLSiegeRules.h"
 #include "Avoidance/MassNavigationObstacleTrait.h"
 #include "Animation/AnimSequenceTransformProviderData.h"
@@ -1104,6 +1106,12 @@ bool UHOLUnitSubsystem::CastRage(const uint32 UnitId, const int32 RequiredOwner)
 		return false;
 	}
 	Combat->RageMs = HOLUnitAbility::RageDurationMs;
+	// PLAN-MORAL-1120 Q4 = A (GALADRIEL-1124b step 1): the rage's damage bonus is an effect of the unit's morale (Dealt lever, row NecroticRage); the combat reads the lever.
+	// The Rate lever (+25 %) is still read from RageMs by the combat: next step, no doubling here (Rate 0 in this effect).
+	if (FHOLMoraleFragment* Morale = EntityManager.GetFragmentDataPtr<FHOLMoraleFragment>(Record->Entity))
+	{
+		HOLMorale::Apply(Morale->State, HOLMorale::MakeEffect(HOLMoraleTableRows::HOLMoraleNecroticRage, HOLUnitAbility::RageDamagePercent, 0, 0, HOLUnitAbility::RageDurationMs, false));
+	}
 	Combat->RageCooldownMs = HOLUnitAbility::RageCooldownMs;
 	UE_LOG(LogHOLSimulation, Display, TEXT("Unit ability: #%u %s casts the necrotic rage (%d health)"), UnitId, *Record->TypeName.ToString(), FMath::CeilToInt(State->CurrentHealth));
 	return true;
