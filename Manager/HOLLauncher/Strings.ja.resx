@@ -22,6 +22,31 @@
   <data name="SettingsUnreadable" xml:space="preserve"><value>設定を読み込めないため、既定の設定を使用します：{0}</value></data>
   <data name="SettingsNotSaved" xml:space="preserve"><value>設定を保存できません：{0}</value></data>
   <data name="SettingsBadFolder" xml:space="preserve"><value>このゲームフォルダーは使用できません：{0}</value></data>
+  <data name="Files" xml:space="preserve"><value>ファイル</value></data>
+  <data name="FilesVerify" xml:space="preserve"><value>ファイルを検証・修復</value></data>
+  <data name="FilesOpenGame" xml:space="preserve"><value>ゲームフォルダーを開く</value></data>
+  <data name="FilesOpenLogs" xml:space="preserve"><value>ログフォルダーを開く</value></data>
+  <data name="FilesUninstall" xml:space="preserve"><value>ゲームをアンインストール…</value></data>
+  <data name="FilesServersError" xml:space="preserve"><value>エラー：{0}</value></data>
+  <data name="RepairChecking" xml:space="preserve"><value>ゲームファイルを確認しています…</value></data>
+  <data name="RepairNotInstalled" xml:space="preserve"><value>ゲームがインストールされていません。先にインストールしてください。</value></data>
+  <data name="RepairIntact" xml:space="preserve"><value>ゲームファイルはすべて正常です（{0}）。</value></data>
+  <data name="RepairDone" xml:space="preserve"><value>{0} 個のファイルを修復しました。ゲームは正常な状態に戻りました（{1}）。</value></data>
+  <data name="RepairToLatest" xml:space="preserve"><value>インストール済みのバージョン {0} はサーバーで提供されていないため、最新バージョン {1} として修復しました（{2} 個のファイルをダウンロード）。</value></data>
+  <data name="RepairCancelled" xml:space="preserve"><value>確認を中止しました。ファイルは置き換えられていません。</value></data>
+  <data name="RepairNoSpace" xml:space="preserve"><value>ディスクの空き容量が足りません。修復には {0} GB の空きが必要ですが、{1} のディスクには {2} GB しかありません。空き容量を確保してから再実行してください。</value></data>
+  <data name="RepairDownloadFailed" xml:space="preserve"><value>ダウンロードできません：{0}</value></data>
+  <data name="RepairInterrupted" xml:space="preserve"><value>修復が中断されました：{0}。もう一度実行してください。</value></data>
+  <data name="RepairServerUnreachable" xml:space="preserve"><value>サーバーに接続できません：{0}</value></data>
+  <data name="UninstallConfirm" xml:space="preserve"><value>{0} から Heroes of Liberty をアンインストールしますか？ゲームファイルは削除されます。ランチャー、その設定、hpatchz.exe、servers.json、およびお客様のファイル（HeroesOfLiberty\Saved 内のゲーム設定とログ）は残ります。</value></data>
+  <data name="UninstallNothing" xml:space="preserve"><value>{0} にゲームはインストールされていません。アンインストールするものはありません。</value></data>
+  <data name="UninstallNoList" xml:space="preserve"><value>ゲームファイルの一覧がわかりません（ランチャー以外でインストールされ、サーバーにも接続できません）。何も削除していません。サーバーに接続できるときに再試行してください。</value></data>
+  <data name="UninstallLocked" xml:space="preserve"><value>{0} は使用中です。ゲームを終了してから再試行してください。何も削除していません。</value></data>
+  <data name="UninstallDone" xml:space="preserve"><value>ゲームをアンインストールしました（{0} 個のファイルを削除）。ランチャー、その設定、お客様のファイルは残っています。</value></data>
+  <data name="UninstallFailed" xml:space="preserve"><value>アンインストールが中断されました：{0}</value></data>
+  <data name="LogsMissing" xml:space="preserve"><value>ゲームのログはまだありません。{0} が存在しません（ゲームを起動したことはありますか？）。</value></data>
+  <data name="GameDirMissing" xml:space="preserve"><value>ゲームフォルダーが存在しません：{0}</value></data>
+  <data name="FolderOpenFailed" xml:space="preserve"><value>{0} を開けません：{1}</value></data>
   <data name="NotesOlderMissing" xml:space="preserve"><value>これより古いバージョンの更新内容は表示できません。</value></data>
   <data name="SettingsLaunch" xml:space="preserve"><value>ゲームの起動</value></data>
   <data name="SettingsDisplayMode" xml:space="preserve"><value>表示モード：</value></data>

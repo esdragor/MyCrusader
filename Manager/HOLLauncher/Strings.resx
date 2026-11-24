@@ -22,6 +22,31 @@
   <data name="SettingsUnreadable" xml:space="preserve"><value>Réglages illisibles, réglages par défaut utilisés : {0}</value></data>
   <data name="SettingsNotSaved" xml:space="preserve"><value>Réglages non enregistrés : {0}</value></data>
   <data name="SettingsBadFolder" xml:space="preserve"><value>Dossier du jeu impossible : {0}</value></data>
+  <data name="Files" xml:space="preserve"><value>Fichiers</value></data>
+  <data name="FilesVerify" xml:space="preserve"><value>Vérifier / réparer les fichiers</value></data>
+  <data name="FilesOpenGame" xml:space="preserve"><value>Ouvrir le dossier du jeu</value></data>
+  <data name="FilesOpenLogs" xml:space="preserve"><value>Ouvrir le dossier des journaux</value></data>
+  <data name="FilesUninstall" xml:space="preserve"><value>Désinstaller le jeu…</value></data>
+  <data name="FilesServersError" xml:space="preserve"><value>Erreur : {0}</value></data>
+  <data name="RepairChecking" xml:space="preserve"><value>Vérification des fichiers du jeu…</value></data>
+  <data name="RepairNotInstalled" xml:space="preserve"><value>Le jeu n'est pas installé : installez-le d'abord.</value></data>
+  <data name="RepairIntact" xml:space="preserve"><value>Tous les fichiers du jeu sont intacts ({0}).</value></data>
+  <data name="RepairDone" xml:space="preserve"><value>{0} fichier(s) réparé(s) : le jeu est de nouveau intact ({1}).</value></data>
+  <data name="RepairToLatest" xml:space="preserve"><value>La version installée, {0}, n'est plus disponible sur le serveur : le jeu a été réparé dans la dernière version, {1} ({2} fichier(s) téléchargé(s)).</value></data>
+  <data name="RepairCancelled" xml:space="preserve"><value>Vérification annulée : aucun fichier n'a été remplacé.</value></data>
+  <data name="RepairNoSpace" xml:space="preserve"><value>Espace disque insuffisant : il faut {0} Go libres pour réparer le jeu, le disque de {1} n'en a que {2}. Libérez de la place puis relancez.</value></data>
+  <data name="RepairDownloadFailed" xml:space="preserve"><value>Téléchargement impossible : {0}</value></data>
+  <data name="RepairInterrupted" xml:space="preserve"><value>Réparation interrompue : {0} ; relancez-la.</value></data>
+  <data name="RepairServerUnreachable" xml:space="preserve"><value>Serveur injoignable : {0}</value></data>
+  <data name="UninstallConfirm" xml:space="preserve"><value>Désinstaller Heroes of Liberty de {0} ? Les fichiers du jeu seront supprimés. Restent : le lanceur, ses réglages, hpatchz.exe, servers.json et vos propres fichiers (réglages et journaux du jeu dans HeroesOfLiberty\Saved).</value></data>
+  <data name="UninstallNothing" xml:space="preserve"><value>Le jeu n'est pas installé dans {0} : rien à désinstaller.</value></data>
+  <data name="UninstallNoList" xml:space="preserve"><value>Liste des fichiers du jeu inconnue (jeu installé sans le lanceur, serveur injoignable) : rien n'a été supprimé. Réessayez quand le serveur répond.</value></data>
+  <data name="UninstallLocked" xml:space="preserve"><value>{0} est utilisé : fermez le jeu, puis recommencez. Rien n'a été supprimé.</value></data>
+  <data name="UninstallDone" xml:space="preserve"><value>Le jeu est désinstallé ({0} fichier(s) supprimé(s)). Le lanceur, ses réglages et vos propres fichiers sont gardés.</value></data>
+  <data name="UninstallFailed" xml:space="preserve"><value>Désinstallation interrompue : {0}</value></data>
+  <data name="LogsMissing" xml:space="preserve"><value>Pas encore de journaux du jeu : {0} n'existe pas (le jeu a-t-il déjà été lancé ?).</value></data>
+  <data name="GameDirMissing" xml:space="preserve"><value>Le dossier du jeu n'existe pas : {0}</value></data>
+  <data name="FolderOpenFailed" xml:space="preserve"><value>Impossible d'ouvrir {0} : {1}</value></data>
   <data name="NotesOlderMissing" xml:space="preserve"><value>Les nouveautés des versions plus anciennes ne sont plus disponibles.</value></data>
   <data name="SettingsLaunch" xml:space="preserve"><value>Lancement du jeu</value></data>
   <data name="SettingsDisplayMode" xml:space="preserve"><value>Affichage :</value></data>

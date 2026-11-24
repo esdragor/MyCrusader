@@ -12,9 +12,9 @@ namespace HOLLauncher;
  * "Pause" (L18), beside "Cancel" during either update, cancels the run but keeps the window in its paused state
  * (ProgressView.Paused): "Resume" runs the same update again, which fetches nothing already received (FileDownloader:
  * finished files skipped, a .part resumed with Range); "Cancel" while paused ends it like a cancel. Closing while
- * paused keeps the files too: "Update the game" resumes at the next start.
+ * paused keeps the files too: "Update the game" resumes at the next start. "Files" (L17): MainForm.Files.cs.
  */
-public sealed class MainForm : Form
+public sealed partial class MainForm : Form
 {
     // Both send the key of servers.json to its manager (L11).
     private HttpClient http;
@@ -74,6 +74,7 @@ public sealed class MainForm : Form
 
         var buttons = new FlowLayoutPanel { Dock = DockStyle.Fill, AutoSize = true, WrapContents = true };
         buttons.Controls.AddRange([play, updateGame, updateLauncher, refresh, settingsButton]);
+        AddFilesMenu(buttons); // L17: MainForm.Files.cs
 
         var layout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, Padding = new Padding(12) };
         layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
@@ -140,6 +141,7 @@ public sealed class MainForm : Form
         settingsButton.Text = Texts.Get("Settings");
         cancel.Text = Texts.Get("Cancel");
         pause.Text = progressView.PauseText;
+        ApplyFilesTexts();
     }
 
     /**
@@ -487,6 +489,7 @@ public sealed class MainForm : Form
         updateLauncher.Enabled = view.UpdateLauncherEnabled;
         refresh.Enabled = view.RefreshEnabled;
         settingsButton.Enabled = view.RefreshEnabled;
+        filesButton.Enabled = view.RefreshEnabled;
     }
 
     private static Label NewLabel(string text = "") => new()
