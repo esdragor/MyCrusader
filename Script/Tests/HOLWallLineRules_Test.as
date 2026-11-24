@@ -539,4 +539,56 @@ void Test_WallLineFineGridOccupiedTileSkipsItsSubCells(FUnitTest& T)
 	T.AssertEquals(0, None.Cells.Num(), "nothing laid");
 	HOLWallLine::FHOLWallLinePlan Coarse = HOLWallLine::PlanFromRequestFine(0, FVector(50.0, 50.0, 0.0), FVector(1650.0, 50.0, 0.0), 400.0, 1, WallLineMapMin, WallLineMapMax, Taken, 1000);
 	T.AssertEquals(1, Coarse.Skipped.Num(), "SubDivision 1: the tile is one cell, as today");
+}// D898 G3 (PLAN-GRILLE-FINE-1124.md): start and end under the mouse. The piece box of a cell is [Cell x Pitch, Cell x Pitch + Pitch]: on the line of G1 (pitch 400 / 4 = 100) the first box
+// starts at x = 0 and the last ends at x = 1700, neighbours touch without overlapping (the widths add up to 17 x 100). The diagonal (50,50) -> (850,850) is 9 cells ending at (8,8).
+// The snap to the 8 directions is kept on the fine grid: a drag at 20 degrees stays on the axis, a drag at 30 degrees goes to the diagonal (nearest of the 8 directions).
+void Test_WallLineFineGridStartAndEndBoxesTouchTheMouseCells(FUnitTest& T)
+{
+	TArray<FIntPoint> Taken;
+	const double Pitch = 400.0 / 4.0;
+	HOLWallLine::FHOLWallLinePlan Plan = HOLWallLine::PlanFromRequestFine(0, FVector(50.0, 50.0, 0.0), FVector(1650.0, 50.0, 0.0), 400.0, 4, WallLineMapMin, WallLineMapMax, Taken, 1000);
+	T.AssertEquals(17, Plan.Cells.Num(), "the line of G1: 17 cells");
+	if (Plan.Cells.Num() == 17)
+	{
+		HOLWallLine::FHOLWallPieceBox First = HOLWallLine::PieceBox(Plan.Cells[0], Pitch);
+		HOLWallLine::FHOLWallPieceBox Last = HOLWallLine::PieceBox(Plan.Cells[16], Pitch);
+		T.AssertEquals(0, int(First.MinX), "the first box starts at x = 0");
+		T.AssertEquals(1700, int(Last.MaxX), "the last box ends at x = 1700");
+		double Total = 0.0;
+		bool bTouching = true;
+		for (int Index = 0; Index < 17; Index++)
+		{
+			HOLWallLine::FHOLWallPieceBox Box = HOLWallLine::PieceBox(Plan.Cells[Index], Pitch);
+			Total += Box.MaxX - Box.MinX;
+			if (Index > 0)
+			{
+				HOLWallLine::FHOLWallPieceBox Before = HOLWallLine::PieceBox(Plan.Cells[Index - 1], Pitch);
+				if (Before.MaxX != Box.MinX)
+					bTouching = false;
+			}
+		}
+		T.AssertEquals(1700, int(Total), "the widths add up to 17 x 100");
+		T.AssertTrue(bTouching, "each box starts where the previous one ends: no gap, no overlap");
+		T.AssertEquals(100, int(First.MaxY - First.MinY), "a piece is 100 deep");
+	}
+	HOLWallLine::FHOLWallLinePlan Diagonal = HOLWallLine::PlanFromRequestFine(0, FVector(50.0, 50.0, 0.0), FVector(850.0, 850.0, 0.0), 400.0, 4, WallLineMapMin, WallLineMapMax, Taken, 1000);
+	T.AssertEquals(9, Diagonal.Cells.Num(), "(50,50) -> (850,850): 9 cells");
+	if (Diagonal.Cells.Num() == 9)
+	{
+		T.AssertTrue(Diagonal.Cells[8].X == 8 && Diagonal.Cells[8].Y == 8, "the last cell is (8,8)");
+		HOLWallLine::FHOLWallPieceBox End = HOLWallLine::PieceBox(Diagonal.Cells[8], Pitch);
+		T.AssertTrue(End.MinX == 800.0 && End.MaxX == 900.0 && End.MinY == 800.0 && End.MaxY == 900.0, "the end box is the 100 x 100 square of the cell under the mouse");
+	}
+	HOLWallLine::FHOLWallLinePlan Shallow = HOLWallLine::PlanFromRequestFine(0, FVector(50.0, 50.0, 0.0), FVector(1459.0, 563.0, 0.0), 400.0, 4, WallLineMapMin, WallLineMapMax, Taken, 1000);
+	bool bOnAxis = Shallow.Cells.Num() > 1;
+	for (int Index = 0; Index < Shallow.Cells.Num(); Index++)
+		if (Shallow.Cells[Index].Y != 0)
+			bOnAxis = false;
+	T.AssertTrue(bOnAxis, "a drag at 20 degrees snaps to the axis");
+	HOLWallLine::FHOLWallLinePlan Steep = HOLWallLine::PlanFromRequestFine(0, FVector(50.0, 50.0, 0.0), FVector(1349.0, 800.0, 0.0), 400.0, 4, WallLineMapMin, WallLineMapMax, Taken, 1000);
+	bool bOnDiagonal = Steep.Cells.Num() > 1;
+	for (int Index = 0; Index < Steep.Cells.Num(); Index++)
+		if (Steep.Cells[Index].X != Steep.Cells[Index].Y)
+			bOnDiagonal = false;
+	T.AssertTrue(bOnDiagonal, "a drag at 30 degrees snaps to the diagonal, one of the 8 directions");
 }

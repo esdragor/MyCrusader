@@ -234,6 +234,21 @@ namespace HOLWallLine
 		return Result;
 	}
 
+	// D898 G3: the ground footprint of the wall piece of a cell, in world units. Stub (red step): an empty box.
+	struct FHOLWallPieceBox
+	{
+		double MinX = 0.0;
+		double MinY = 0.0;
+		double MaxX = 0.0;
+		double MaxY = 0.0;
+	}
+
+	FHOLWallPieceBox PieceBox(FIntPoint Cell, double Pitch)
+	{
+		FHOLWallPieceBox Box;
+		return Box;
+	}
+
 	// ---- Fine grid (D898, G1, PLAN-GRILLE-FINE-1124.md): the line on a pitch of Tile / SubDivision (4 m tile, SubDivision 4 = 1 m cells). Cells are then sub-cells.
 	// MapMin / MapMax stay in 4 m tiles (the caller does not change): the last valid tile holds SubDivision sub-cells. SubDivision 1 or less = the 4 m plan, unchanged.
 	// Occupied comes in 4 m tiles (G2: ExpandOccupied makes sub-cells of them); the wall pieces already laid are seen as 4 m tiles until G4.
