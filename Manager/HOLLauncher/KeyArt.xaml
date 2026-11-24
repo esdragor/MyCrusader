@@ -1,0 +1,162 @@
+<!--
+  The home window's key art (launcher 5), an original vector illustration: a dusk sky with stars, a low sun and its
+  glow, layered hills, a castle with lit windows and red and gold banners on a central hill, mist, pines. Drawn on a
+  1600 x 900 canvas, scaled to fill the window (UniformToFill). A placeholder until real key art exists
+  (Placeholders.txt); HomeContent.BackgroundFile replaces it when the host publishes a picture.
+  Generated once by a throwaway script (stars and pines placed at random with a fixed seed), then kept as is.
+-->
+<UserControl x:Class="HOLLauncher.KeyArt"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             IsHitTestVisible="False" ClipToBounds="True">
+  <Viewbox Stretch="UniformToFill">
+    <Canvas Width="1600" Height="900">
+      <!-- Sky -->
+      <Rectangle Width="1600" Height="900">
+        <Rectangle.Fill>
+          <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+            <GradientStop Offset="0" Color="#0B0D2A" />
+            <GradientStop Offset="0.32" Color="#252052" />
+            <GradientStop Offset="0.52" Color="#563064" />
+            <GradientStop Offset="0.66" Color="#9C4A5A" />
+            <GradientStop Offset="0.75" Color="#D7764C" />
+            <GradientStop Offset="0.82" Color="#EFAE62" />
+            <GradientStop Offset="1" Color="#F6C77A" />
+          </LinearGradientBrush>
+        </Rectangle.Fill>
+      </Rectangle>
+      <Canvas>
+
+        <Ellipse Canvas.Left="517.3" Canvas.Top="56.5" Width="1.6" Height="1.6" Fill="#FFF6E8" Opacity="0.26" />
+        <Ellipse Canvas.Left="856.6" Canvas.Top="138.2" Width="1.6" Height="1.6" Fill="#FFF6E8" Opacity="0.58" />
+        <Ellipse Canvas.Left="342.0" Canvas.Top="31.2" Width="3.0" Height="3.0" Fill="#FFF6E8" Opacity="0.27" />
+        <Ellipse Canvas.Left="143.1" Canvas.Top="159.3" Width="4.0" Height="4.0" Fill="#FFF6E8" Opacity="0.22" />
+        <Ellipse Canvas.Left="356.4" Canvas.Top="237.6" Width="1.6" Height="1.6" Fill="#FFF6E8" Opacity="0.32" />
+        <Ellipse Canvas.Left="633.9" Canvas.Top="370.2" Width="1.6" Height="1.6" Fill="#FFF6E8" Opacity="0.17" />
+        <Ellipse Canvas.Left="211.1" Canvas.Top="157.3" Width="4.0" Height="4.0" Fill="#FFF6E8" Opacity="0.22" />
+        <Ellipse Canvas.Left="492.6" Canvas.Top="309.1" Width="2.0" Height="2.0" Fill="#FFF6E8" Opacity="0.13" />
+        <Ellipse Canvas.Left="913.1" Canvas.Top="70.6" Width="1.6" Height="1.6" Fill="#FFF6E8" Opacity="0.5" />
+        <Ellipse Canvas.Left="99.5" Canvas.Top="21.6" Width="2.0" Height="2.0" Fill="#FFF6E8" Opacity="0.52" />
+        <Ellipse Canvas.Left="849.3" Canvas.Top="293.8" Width="3.0" Height="3.0" Fill="#FFF6E8" Opacity="0.26" />
+        <Ellipse Canvas.Left="724.1" Canvas.Top="112.9" Width="2.0" Height="2.0" Fill="#FFF6E8" Opacity="0.52" />
+        <Ellipse Canvas.Left="388.6" Canvas.Top="216.3" Width="4.0" Height="4.0" Fill="#FFF6E8" Opacity="0.32" />
+        <Ellipse Canvas.Left="547.6" Canvas.Top="168.6" Width="4.0" Height="4.0" Fill="#FFF6E8" Opacity="0.56" />
+        <Ellipse Canvas.Left="187.7" Canvas.Top="157.7" Width="2.4" Height="2.4" Fill="#FFF6E8" Opacity="0.24" />
+        <Ellipse Canvas.Left="781.5" Canvas.Top="14.1" Width="1.6" Height="1.6" Fill="#FFF6E8" Opacity="0.69" />
+        <Ellipse Canvas.Left="915.6" Canvas.Top="331.5" Width="2.4" Height="2.4" Fill="#FFF6E8" Opacity="0.16" />
+        <Ellipse Canvas.Left="558.8" Canvas.Top="187.2" Width="3.0" Height="3.0" Fill="#FFF6E8" Opacity="0.19" />
+        <Ellipse Canvas.Left="149.0" Canvas.Top="101.8" Width="1.6" Height="1.6" Fill="#FFF6E8" Opacity="0.23" />
+        <Ellipse Canvas.Left="1120.9" Canvas.Top="244.4" Width="3.0" Height="3.0" Fill="#FFF6E8" Opacity="0.22" />
+        <Ellipse Canvas.Left="616.5" Canvas.Top="253.3" Width="1.6" Height="1.6" Fill="#FFF6E8" Opacity="0.42" />
+        <Ellipse Canvas.Left="567.2" Canvas.Top="230.6" Width="3.0" Height="3.0" Fill="#FFF6E8" Opacity="0.16" />
+        <Ellipse Canvas.Left="1228.2" Canvas.Top="48.1" Width="2.0" Height="2.0" Fill="#FFF6E8" Opacity="0.44" />
+        <Ellipse Canvas.Left="1465.9" Canvas.Top="187.7" Width="2.0" Height="2.0" Fill="#FFF6E8" Opacity="0.33" />
+        <Ellipse Canvas.Left="877.6" Canvas.Top="334.2" Width="3.0" Height="3.0" Fill="#FFF6E8" Opacity="0.27" />
+        <Ellipse Canvas.Left="444.3" Canvas.Top="156.6" Width="2.4" Height="2.4" Fill="#FFF6E8" Opacity="0.46" />
+        <Ellipse Canvas.Left="607.9" Canvas.Top="86.9" Width="1.6" Height="1.6" Fill="#FFF6E8" Opacity="0.3" />
+        <Ellipse Canvas.Left="369.6" Canvas.Top="87.2" Width="3.0" Height="3.0" Fill="#FFF6E8" Opacity="0.62" />
+        <Ellipse Canvas.Left="290.7" Canvas.Top="106.1" Width="2.0" Height="2.0" Fill="#FFF6E8" Opacity="0.4" />
+        <Ellipse Canvas.Left="589.8" Canvas.Top="214.2" Width="2.0" Height="2.0" Fill="#FFF6E8" Opacity="0.39" />
+        <Ellipse Canvas.Left="824.0" Canvas.Top="233.9" Width="1.6" Height="1.6" Fill="#FFF6E8" Opacity="0.29" />
+        <Ellipse Canvas.Left="1391.6" Canvas.Top="359.7" Width="4.0" Height="4.0" Fill="#FFF6E8" Opacity="0.15" />
+        <Ellipse Canvas.Left="636.9" Canvas.Top="37.8" Width="3.0" Height="3.0" Fill="#FFF6E8" Opacity="0.27" />
+        <Ellipse Canvas.Left="106.8" Canvas.Top="78.3" Width="2.0" Height="2.0" Fill="#FFF6E8" Opacity="0.27" />
+        <Ellipse Canvas.Left="959.2" Canvas.Top="36.9" Width="4.0" Height="4.0" Fill="#FFF6E8" Opacity="0.32" />
+        <Ellipse Canvas.Left="161.5" Canvas.Top="137.4" Width="1.6" Height="1.6" Fill="#FFF6E8" Opacity="0.21" />
+        <Ellipse Canvas.Left="331.5" Canvas.Top="141.8" Width="2.4" Height="2.4" Fill="#FFF6E8" Opacity="0.6" />
+        <Ellipse Canvas.Left="962.8" Canvas.Top="179.4" Width="1.6" Height="1.6" Fill="#FFF6E8" Opacity="0.5" />
+        <Ellipse Canvas.Left="1587.5" Canvas.Top="175.6" Width="3.0" Height="3.0" Fill="#FFF6E8" Opacity="0.29" />
+        <Ellipse Canvas.Left="229.4" Canvas.Top="283.7" Width="2.4" Height="2.4" Fill="#FFF6E8" Opacity="0.24" />
+        <Ellipse Canvas.Left="1106.3" Canvas.Top="195.2" Width="2.0" Height="2.0" Fill="#FFF6E8" Opacity="0.51" />
+        <Ellipse Canvas.Left="843.2" Canvas.Top="53.7" Width="4.0" Height="4.0" Fill="#FFF6E8" Opacity="0.71" />
+        <Ellipse Canvas.Left="1212.2" Canvas.Top="112.5" Width="1.6" Height="1.6" Fill="#FFF6E8" Opacity="0.52" />
+        <Ellipse Canvas.Left="416.8" Canvas.Top="138.3" Width="2.0" Height="2.0" Fill="#FFF6E8" Opacity="0.34" />
+        <Ellipse Canvas.Left="354.5" Canvas.Top="203.8" Width="4.0" Height="4.0" Fill="#FFF6E8" Opacity="0.27" />
+        <Ellipse Canvas.Left="355.9" Canvas.Top="307.4" Width="2.0" Height="2.0" Fill="#FFF6E8" Opacity="0.3" />
+        <Ellipse Canvas.Left="1308.3" Canvas.Top="280.2" Width="2.0" Height="2.0" Fill="#FFF6E8" Opacity="0.17" />
+        <Ellipse Canvas.Left="787.7" Canvas.Top="277.0" Width="1.6" Height="1.6" Fill="#FFF6E8" Opacity="0.34" />
+        <Ellipse Canvas.Left="753.6" Canvas.Top="71.6" Width="4.0" Height="4.0" Fill="#FFF6E8" Opacity="0.71" />
+        <Ellipse Canvas.Left="714.4" Canvas.Top="354.9" Width="2.4" Height="2.4" Fill="#FFF6E8" Opacity="0.26" />
+        <Ellipse Canvas.Left="582.4" Canvas.Top="82.8" Width="2.0" Height="2.0" Fill="#FFF6E8" Opacity="0.45" />
+        <Ellipse Canvas.Left="538.4" Canvas.Top="181.4" Width="4.0" Height="4.0" Fill="#FFF6E8" Opacity="0.49" />
+        <Ellipse Canvas.Left="766.4" Canvas.Top="247.3" Width="1.6" Height="1.6" Fill="#FFF6E8" Opacity="0.39" />
+        <Ellipse Canvas.Left="190.8" Canvas.Top="146.6" Width="2.0" Height="2.0" Fill="#FFF6E8" Opacity="0.38" />
+        <Ellipse Canvas.Left="284.4" Canvas.Top="298.7" Width="2.4" Height="2.4" Fill="#FFF6E8" Opacity="0.13" />
+        <Ellipse Canvas.Left="1512.4" Canvas.Top="272.8" Width="3.0" Height="3.0" Fill="#FFF6E8" Opacity="0.23" />
+        <Ellipse Canvas.Left="1513.9" Canvas.Top="274.4" Width="2.0" Height="2.0" Fill="#FFF6E8" Opacity="0.4" />
+        <Ellipse Canvas.Left="42.6" Canvas.Top="223.0" Width="3.0" Height="3.0" Fill="#FFF6E8" Opacity="0.42" />
+        <Ellipse Canvas.Left="232.4" Canvas.Top="312.6" Width="3.0" Height="3.0" Fill="#FFF6E8" Opacity="0.26" />
+        <Ellipse Canvas.Left="559.7" Canvas.Top="207.5" Width="2.0" Height="2.0" Fill="#FFF6E8" Opacity="0.16" />
+        <Ellipse Canvas.Left="1278.2" Canvas.Top="275.2" Width="1.6" Height="1.6" Fill="#FFF6E8" Opacity="0.27" />
+        <Ellipse Canvas.Left="1492.8" Canvas.Top="163.8" Width="2.0" Height="2.0" Fill="#FFF6E8" Opacity="0.51" />
+        <Ellipse Canvas.Left="336.5" Canvas.Top="94.5" Width="2.4" Height="2.4" Fill="#FFF6E8" Opacity="0.45" />
+        <Ellipse Canvas.Left="1219.9" Canvas.Top="121.9" Width="4.0" Height="4.0" Fill="#FFF6E8" Opacity="0.38" />
+        <Ellipse Canvas.Left="208.5" Canvas.Top="344.6" Width="2.4" Height="2.4" Fill="#FFF6E8" Opacity="0.26" />
+        <Ellipse Canvas.Left="1058.0" Canvas.Top="307.7" Width="4.0" Height="4.0" Fill="#FFF6E8" Opacity="0.2" />
+        <Ellipse Canvas.Left="1466.4" Canvas.Top="188.6" Width="4.0" Height="4.0" Fill="#FFF6E8" Opacity="0.22" />
+        <Ellipse Canvas.Left="815.9" Canvas.Top="330.7" Width="2.0" Height="2.0" Fill="#FFF6E8" Opacity="0.22" />
+        <Ellipse Canvas.Left="1240.7" Canvas.Top="55.9" Width="2.0" Height="2.0" Fill="#FFF6E8" Opacity="0.48" />
+        <Ellipse Canvas.Left="1159.1" Canvas.Top="210.3" Width="2.4" Height="2.4" Fill="#FFF6E8" Opacity="0.39" />
+      </Canvas>
+      <!-- Sun glow and disc -->
+      <Ellipse Canvas.Left="420" Canvas.Top="390" Width="900" Height="560">
+        <Ellipse.Fill>
+          <RadialGradientBrush>
+            <GradientStop Offset="0" Color="#E6FFE3A6" />
+            <GradientStop Offset="0.3" Color="#80F4A85C" />
+            <GradientStop Offset="0.7" Color="#20E07850" />
+            <GradientStop Offset="1" Color="#00E07850" />
+          </RadialGradientBrush>
+        </Ellipse.Fill>
+      </Ellipse>
+      <Ellipse Canvas.Left="818" Canvas.Top="600" Width="104" Height="104" Fill="#FFF0C8" Opacity="0.92" />
+      <!-- Clouds -->
+      <Path Fill="#F7B57A" Opacity="0.22" Data="M 120,560 C 260,540 420,548 560,566 C 420,578 240,580 120,560 Z M 1080,520 C 1220,500 1420,506 1560,526 C 1420,540 1200,542 1080,520 Z" />
+      <Path Fill="#3A2550" Opacity="0.55" Data="M 0,300 C 200,270 520,282 700,300 C 520,318 220,322 0,300 Z M 1100,240 C 1260,222 1480,228 1600,240 V 262 C 1460,268 1240,262 1100,240 Z" />
+      <!-- Far mountains -->
+      <Path Fill="#6C3C66" Opacity="0.85" Data="M 0,660 L 90,600 L 170,628 L 280,560 L 380,612 L 470,586 L 560,630 L 660,598 L 760,640 L 1060,640 L 1160,590 L 1260,616 L 1360,566 L 1470,610 L 1600,580 V 900 H 0 Z" />
+      <!-- Mid hills -->
+      <Path Fill="#44264C" Data="M 0,700 C 180,650 330,668 480,690 C 640,712 760,690 900,680 C 1080,668 1240,640 1400,650 C 1500,656 1560,664 1600,668 V 900 H 0 Z" />
+      <!-- Mist -->
+      <Rectangle Canvas.Top="620" Width="1600" Height="150">
+        <Rectangle.Fill>
+          <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+            <GradientStop Offset="0" Color="#00E8A0A0" />
+            <GradientStop Offset="0.5" Color="#38E8A0A0" />
+            <GradientStop Offset="1" Color="#00E8A0A0" />
+          </LinearGradientBrush>
+        </Rectangle.Fill>
+      </Rectangle>
+      <!-- Castle hill, castle, banners and birds: drawn around x 820, shown left of centre (the panel covers the right) -->
+      <Canvas>
+        <Canvas.RenderTransform>
+          <TranslateTransform X="-120" />
+        </Canvas.RenderTransform>
+      <Path Fill="#28172F" Data="M 380,900 C 500,740 620,650 820,636 C 1000,626 1140,700 1280,900 Z" />
+      <!-- Castle -->
+      <Path Fill="#1B0F22" Data="M 690,640 V 572 H 950 V 640 Z M 778,600 V 452 H 862 V 600 Z M 800,456 V 392 H 840 V 456 Z M 682,640 V 502 H 728 V 640 Z M 912,640 V 512 H 956 V 640 Z M 676,504 L 705,436 L 734,504 Z M 906,514 L 934,452 L 962,514 Z M 794,394 L 820,318 L 846,394 Z M 692,572 h 12 v -10 h -12 Z M 712,572 h 12 v -10 h -12 Z M 732,572 h 12 v -10 h -12 Z M 752,572 h 12 v -10 h -12 Z M 772,572 h 12 v -10 h -12 Z M 792,572 h 12 v -10 h -12 Z M 812,572 h 12 v -10 h -12 Z M 832,572 h 12 v -10 h -12 Z M 852,572 h 12 v -10 h -12 Z M 872,572 h 12 v -10 h -12 Z M 892,572 h 12 v -10 h -12 Z M 912,572 h 12 v -10 h -12 Z M 932,572 h 12 v -10 h -12 Z M 778,452 h 10 v -9 h -10 Z M 796,452 h 10 v -9 h -10 Z M 814,452 h 10 v -9 h -10 Z M 832,452 h 10 v -9 h -10 Z M 850,452 h 10 v -9 h -10 Z" />
+      <Path Fill="#0D0711" Data="M 800,640 V 610 A 20,20 0 0 1 840,610 V 640 Z" />
+      <Path Fill="#FFC56E" Data="M 700,540 h 6 v 12 h -6 Z M 710,580 h 6 v 12 h -6 Z M 926,550 h 6 v 12 h -6 Z M 936,590 h 6 v 12 h -6 Z M 794,480 h 7 v 14 h -7 Z M 836,480 h 7 v 14 h -7 Z M 815,520 h 8 v 16 h -8 Z M 816,412 h 6 v 12 h -6 Z M 794,560 h 6 v 11 h -6 Z M 838,560 h 6 v 11 h -6 Z">
+        <Path.Effect>
+          <DropShadowEffect Color="#FFB050" BlurRadius="14" ShadowDepth="0" Opacity="0.9" />
+        </Path.Effect>
+      </Path>
+      <!-- Rim light on the castle's sunward side -->
+      <Path Fill="#E89A5A" Opacity="0.35" Data="M 946,572 h 4 v 68 h -4 Z M 952,512 h 4 v 128 h -4 Z M 858,452 h 4 v 148 h -4 Z M 836,392 h 4 v 64 h -4 Z" />
+      <!-- Banners -->
+      <Path Stroke="#1B0F22" StrokeThickness="2.5" Data="M 705,438 V 400 M 820,320 V 268 M 934,454 V 418" />
+      <Path Fill="#A3322A" Stroke="#E9C46A" StrokeThickness="1.6" Data="M 705,402 C 720.0,397 729.0,406 744.0,402 L 739.5,413.5 L 744.0,425.5 C 729.0,428.5 720.0,421.0 705,424.0 Z M 820,270 C 841.0,265 853.6,274 874.6,270 L 868.3,286.9 L 874.6,303.7 C 853.6,307.9 841.0,297.4 820,301.6 Z M 934,420 C 948.0,415 956.4,424 970.4,420 L 966.2,430.6 L 970.4,441.8 C 956.4,444.6 948.0,437.6 934,440.4 Z" />
+      <!-- Birds -->
+      <Path Stroke="#2A1830" StrokeThickness="2" StrokeLineJoin="Round" Opacity="0.7" Data="M 1040,470 q 8,-7 16,0 q 8,-7 16,0 M 1100,440 q 6,-5 12,0 q 6,-5 12,0 M 990,500 q 5,-4 10,0 q 5,-4 10,0" />
+      </Canvas>
+      <!-- Near hills and pines -->
+      <Path Fill="#160C1C" Data="M 0,900 V 700 C 150,660 300,700 420,760 C 520,810 600,860 640,900 Z" />
+      <Path Fill="#170D1D" Data="M 900,900 C 1100,780 1300,720 1600,700 V 900 Z" />
+
+        <Path Fill="#120914" Data="M 206.2,683.3 L 217.0,628.0 L 227.8,683.3 Z M 299.0,682.4 L 312.8,612.6 L 326.6,682.4 Z M 23.6,700.9 L 32.2,656.1 L 40.7,700.9 Z M 18.6,701.5 L 26.5,660.0 L 34.3,701.5 Z M 179.0,686.3 L 186.3,647.2 L 193.7,686.3 Z M 351.0,694.4 L 358.7,654.1 L 366.3,694.4 Z M 122.5,691.0 L 137.0,617.9 L 151.5,691.0 Z M 237.7,680.5 L 246.4,635.4 L 255.0,680.5 Z M 107.1,692.8 L 118.1,636.5 L 129.1,692.8 Z M 313.9,684.7 L 324.9,628.4 L 335.8,684.7 Z M 95.5,693.8 L 106.6,637.0 L 117.7,693.8 Z M 337.5,692.0 L 351.6,620.6 L 365.8,692.0 Z M 356.0,698.6 L 369.9,628.5 L 383.8,698.6 Z M 78.5,695.5 L 89.0,641.4 L 99.5,695.5 Z M 162.4,687.6 L 172.5,635.4 L 182.6,687.6 Z M 121.0,691.3 L 133.2,629.1 L 145.4,691.3 Z M 168.3,687.1 L 177.1,641.5 L 185.8,687.1 Z M 120.0,691.8 L 128.1,649.4 L 136.1,691.8 Z M 298.8,682.4 L 313.0,610.6 L 327.2,682.4 Z M 251.0,679.4 L 260.9,628.2 L 270.9,679.4 Z M 100.5,693.6 L 108.7,650.7 L 116.9,693.6 Z M 179.6,685.7 L 192.4,620.8 L 205.2,685.7 Z M 32.9,699.6 L 46.7,629.7 L 60.5,699.6 Z M 61.3,697.0 L 73.5,635.0 L 85.7,697.0 Z M 84.8,694.7 L 97.2,631.3 L 109.7,694.7 Z M 387.5,711.4 L 397.7,658.9 L 407.9,711.4 Z" />
+        <Path Fill="#130A16" Data="M 1274.3,781.4 L 1283.3,734.5 L 1292.3,781.4 Z M 1099.8,837.2 L 1108.9,790.0 L 1117.9,837.2 Z M 1229.4,795.5 L 1239.1,745.0 L 1248.9,795.5 Z M 1423.5,742.8 L 1432.7,695.0 L 1441.9,742.8 Z M 1325.7,767.4 L 1334.2,722.8 L 1342.8,767.4 Z M 1562.1,708.7 L 1569.2,670.6 L 1576.4,708.7 Z M 1538.8,714.3 L 1546.8,672.1 L 1554.9,714.3 Z M 1517.6,719.9 L 1524.5,682.9 L 1531.4,719.9 Z M 1191.0,806.7 L 1204.1,740.1 L 1217.3,806.7 Z M 1144.2,822.0 L 1156.2,760.8 L 1168.2,822.0 Z M 1481.8,727.4 L 1494.5,662.8 L 1507.2,727.4 Z M 1404.8,746.4 L 1418.3,678.4 L 1431.7,746.4 Z M 1264.8,784.0 L 1275.2,730.6 L 1285.5,784.0 Z M 1322.8,767.8 L 1332.8,716.0 L 1342.9,767.8 Z M 1224.9,797.3 L 1233.3,753.3 L 1241.7,797.3 Z M 1476.1,730.1 L 1483.8,689.5 L 1491.5,730.1 Z M 1526.2,717.4 L 1534.5,673.7 L 1542.8,717.4 Z M 1062.0,849.9 L 1068.9,812.8 L 1075.9,849.9 Z M 1187.2,808.6 L 1198.1,752.7 L 1209.0,808.6 Z M 1169.6,815.1 L 1177.9,771.6 L 1186.2,815.1 Z M 1118.1,832.2 L 1124.5,797.7 L 1130.9,832.2 Z M 1577.5,704.3 L 1587.0,655.2 L 1596.4,704.3 Z M 1534.2,714.7 L 1545.2,658.3 L 1556.2,714.7 Z M 1071.2,845.5 L 1082.9,785.9 L 1094.6,845.5 Z M 1543.6,711.7 L 1557.2,642.8 L 1570.8,711.7 Z M 1191.1,808.4 L 1198.8,767.9 L 1206.5,808.4 Z" />
+      <!-- Foreground ground -->
+      <Path Fill="#0E0711" Data="M 0,900 V 820 C 300,800 700,830 1000,846 C 1250,858 1450,830 1600,820 V 900 Z" />
+    </Canvas>
+  </Viewbox>
+</UserControl>

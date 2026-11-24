@@ -32,6 +32,8 @@ Build/*/FileOpenOrder/
 # Manager (C#, M6 R2): build outputs
 Manager/**/bin/
 Manager/**/obj/
+# WPF markup compilation temporary project (deleted after the build, left behind if a build is interrupted)
+*_wpftmp.csproj
 
 # Python caches of the editor scripts (Tools/Editor/maps, run by the editor)
 __pycache__/

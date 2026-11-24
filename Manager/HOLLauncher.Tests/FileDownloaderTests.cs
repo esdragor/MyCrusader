@@ -36,6 +36,10 @@ public class FileDownloaderTests
         public Dictionary<string, byte[]> Bodies { get; } = [];
         public bool IgnoreRange { get; set; }
         public int? CutAfter { get; set; }
+
+        /** Once: the body stops after Bytes and the player's "Pause" is played (L18). */
+        public (int Bytes, Action Pause)? PauseAt { get; set; }
+
         public List<(string Path, string? Range)> Requests { get; } = [];
 
         public FakeHandler Handler => new(Answer);
@@ -60,6 +64,11 @@ public class FileDownloaderTests
             {
                 CutAfter = null;
                 stream = new CuttingStream(slice, cut);
+            }
+            if (PauseAt is { } pause)
+            {
+                PauseAt = null;
+                stream = new PausingStream(slice, pause.Bytes, pause.Pause);
             }
             var response = new HttpResponseMessage(from > 0 ? HttpStatusCode.PartialContent : HttpStatusCode.OK)
             {
@@ -241,6 +250,60 @@ public class FileDownloaderTests
 
         Assert.Equal(content, File.ReadAllBytes(result.LocalPath));
         Assert.Empty(server.Requests);
+    }
+
+    [Fact]
+    public async Task FinishedPatchIsNotDownloadedAgain()
+    {
+        using var temp = new TempDir();
+        var patch = Encoding.UTF8.GetBytes("HDIFF-patch-bytes");
+        var file = Entry("Game.exe", Encoding.UTF8.GetBytes("new exe"));
+        temp.Write("patches/Game.exe.patch", patch);
+        var server = new Server();
+
+        var result = await Downloader(server, temp.Root).DownloadAsync(Patch(file));
+
+        Assert.Equal(DownloadKind.Patch, result.Kind);
+        Assert.Equal(patch, File.ReadAllBytes(result.LocalPath));
+        Assert.Empty(server.Requests);
+    }
+
+    [Fact]
+    public async Task FileAlreadyPatchedIsNotDownloadedAgain()
+    {
+        using var temp = new TempDir();
+        var content = Encoding.UTF8.GetBytes("new exe");
+        var file = Entry("Game.exe", content);
+        temp.Write("files/Game.exe", content);
+        var server = new Server();
+
+        var result = await Downloader(server, temp.Root).DownloadAsync(Patch(file));
+
+        Assert.Equal(DownloadKind.Full, result.Kind);
+        Assert.Equal(content, File.ReadAllBytes(result.LocalPath));
+        Assert.Empty(server.Requests);
+    }
+
+    [Fact]
+    public async Task PausedDownloadKeepsItsPartAndResumesWithRange()
+    {
+        using var temp = new TempDir();
+        var content = RandomNumberGenerator.GetBytes(200_000);
+        var file = Entry("Game.exe", content);
+        var server = new Server();
+        server.Bodies["/versions/v2/files/Game.exe"] = Gzip(content);
+        using var pause = new CancellationTokenSource();
+        server.PauseAt = (60_000, pause.Cancel);
+        var downloader = Downloader(server, temp.Root);
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => downloader.DownloadAsync(Full(file), null, pause.Token));
+        var part = Assert.Single(Directory.GetFiles(temp.Root, "*.part", SearchOption.AllDirectories));
+        Assert.Equal(60_000, new FileInfo(part).Length);
+
+        var result = await downloader.DownloadAsync(Full(file));
+
+        Assert.Equal(content, File.ReadAllBytes(result.LocalPath));
+        Assert.Equal([(string?)null, "60000-"], server.Requests.Select(r => r.Range));
     }
 
     [Fact]

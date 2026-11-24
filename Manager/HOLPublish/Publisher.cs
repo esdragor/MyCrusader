@@ -19,6 +19,26 @@ public static class Publisher
     private const string WorkDir = "_work";
     public const string ServerExe = "HeroesOfLibertyServer.exe";
 
+    /** <name>.<language>.txt beside the French notes <name>.txt. */
+    public static string TranslationOf(string notesFile, string language)
+        => Path.ChangeExtension(notesFile, null) + $".{language}.txt";
+
+    /**
+     * The user's rule (2026-11-24): notes are published in every language of the launcher or not at all. Every
+     * translation must be beside the notes file and not blank; the refusal names the missing ones.
+     */
+    public static void CheckNotesTranslations(string notesFile)
+    {
+        var missing = VersionFolder.NotesLanguages.Select(language => TranslationOf(notesFile, language))
+            .Where(file => !File.Exists(file) || string.IsNullOrWhiteSpace(File.ReadAllText(file)))
+            .ToList();
+        if (missing.Count > 0)
+        {
+            throw new PublishException("the notes must be translated in every language of the launcher; missing or empty: "
+                + string.Join(", ", missing));
+        }
+    }
+
     public static PublishResult Publish(PublishOptions options)
     {
         var game = Path.GetFullPath(options.GameDir);
@@ -34,12 +54,16 @@ public static class Publisher
         var version = options.Version ?? ReadVersionTxt(game);
         if (!VersionFolder.IsPublishable(version))
         {
-            throw new PublishException($"invalid version name '{version}' (letters, digits, '.', '_', '-'; not 'launcher' nor '*.tmp')");
+            throw new PublishException($"invalid version name '{version}' (letters, digits, '.', '_', '-'; not 'launcher', 'home' nor '*.tmp')");
         }
         var final = Path.Combine(root, version);
         if (Directory.Exists(final) || File.Exists(final))
         {
             throw new PublishException($"version {version} already published in {root}");
+        }
+        if (options.NotesFile != null)
+        {
+            CheckNotesTranslations(options.NotesFile);
         }
         string? server = null, serverFinal = null;
         if (options.ServerDir != null || options.ServersDir != null)
@@ -84,6 +108,11 @@ public static class Publisher
             if (options.NotesFile != null)
             {
                 File.Copy(options.NotesFile, Path.Combine(tmp, VersionFolder.Notes));
+                // Translations beside it (<name>.en.txt, <name>.ja.txt, checked above): notes.en.txt, notes.ja.txt, served on ?lang=.
+                foreach (var language in VersionFolder.NotesLanguages)
+                {
+                    File.Copy(TranslationOf(options.NotesFile, language), Path.Combine(tmp, VersionFolder.NotesIn(language)));
+                }
             }
             foreach (var file in manifest.Files)
             {

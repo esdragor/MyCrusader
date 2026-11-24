@@ -5,8 +5,11 @@ namespace HOLLauncher;
 /** The launcher being fetched: its version (X-Launcher-Version), bytes in the file so far (resumed part included), its size when known. */
 public sealed record LauncherProgress(string Version, long BytesReceived, long? TotalBytes);
 
-/** How a launcher update ended; Version is the new launcher's on success. Messages in French, shown as they are. */
-public sealed record LauncherUpdateResult(bool Success, string Message, string? Version = null);
+/**
+ * How a launcher update ended; Version is the new launcher's on success. Messages in the player's language (L16).
+ * Cancelled: stopped by the token (Cancel, Pause, L18), the .part kept for the next run.
+ */
+public sealed record LauncherUpdateResult(bool Success, string Message, string? Version = null, bool Cancelled = false);
 
 /**
  * The launcher's own update (L7, L-Q6: on its button). GET /launcher/latest is fetched beside the running exe into
@@ -15,8 +18,9 @@ public sealed record LauncherUpdateResult(bool Success, string Message, string? 
  * becomes HOLLauncher.old.exe and the new one takes its name; a failure in the middle puts the old one back. The
  * window then starts the new exe; HOLLauncher.old.exe is deleted at the next start (DeleteOld). All these names match
  * UpdatePlan.LauncherOwned: a game update never lists, replaces nor deletes them. exePath is injectable (tests).
+ * L16: the messages in the given language (null: the one in use when the update starts).
  */
-public sealed class LauncherUpdater(HttpClient http, string managerUrl, string exePath)
+public sealed class LauncherUpdater(HttpClient http, string managerUrl, string exePath, string? language = null)
 {
     public const string Route = "launcher/latest";
     public const string NewName = "HOLLauncher.new.exe";
@@ -26,6 +30,7 @@ public sealed class LauncherUpdater(HttpClient http, string managerUrl, string e
 
     public async Task<LauncherUpdateResult> UpdateAsync(IProgress<LauncherProgress>? progress = null, CancellationToken cancel = default)
     {
+        var lang = Texts.LanguageOr(language);
         var dir = DirOf(exePath);
         var newPath = Path.Combine(dir, NewName);
         var part = newPath + PartSuffix;
@@ -43,7 +48,7 @@ public sealed class LauncherUpdater(HttpClient http, string managerUrl, string e
                 sha256 = response.Headers.TryGetValues("X-Launcher-Sha256", out var s) ? s.FirstOrDefault()?.ToLowerInvariant() : null;
                 if (string.IsNullOrEmpty(version) || string.IsNullOrEmpty(sha256))
                 {
-                    throw new UpdateDownloadException("réponse sans en-tête X-Launcher-Version ou X-Launcher-Sha256");
+                    throw new UpdateDownloadException("answer without an X-Launcher-Version or X-Launcher-Sha256 header");
                 }
                 kept = start;
                 total = response.Content.Headers.ContentLength is { } length ? start + length : null;
@@ -53,24 +58,27 @@ public sealed class LauncherUpdater(HttpClient http, string managerUrl, string e
             if (hash != sha256)
             {
                 File.Delete(part);
-                return new LauncherUpdateResult(false,
-                    $"Le lanceur téléchargé est abîmé (SHA-256 {hash} au lieu de {sha256}) ; il a été supprimé, réessayez.");
+                return new LauncherUpdateResult(false, Texts.FormatIn(lang, "LauncherCorrupt", hash, sha256!));
             }
             File.Move(part, newPath, overwrite: true);
             SwapIn(exePath, newPath);
-            return new LauncherUpdateResult(true, $"Le lanceur est passé à la version {version}.", version);
+            return new LauncherUpdateResult(true, Texts.FormatIn(lang, "LauncherUpdated", version!), version);
         }
         catch (OperationCanceledException)
         {
-            return new LauncherUpdateResult(false, "Mise à jour du lanceur annulée ; elle reprendra où elle s'est arrêtée.");
+            return new LauncherUpdateResult(false, Texts.Get("LauncherUpdateCancelled", lang), Cancelled: true);
+        }
+        catch (AccessKeyRefusedException)
+        {
+            return new LauncherUpdateResult(false, Texts.Get("BadKey", lang));
         }
         catch (UpdateDownloadException e)
         {
-            return new LauncherUpdateResult(false, $"Téléchargement du lanceur impossible : {e.Message}");
+            return new LauncherUpdateResult(false, Texts.FormatIn(lang, "LauncherDownloadFailed", e.Message));
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException)
         {
-            return new LauncherUpdateResult(false, $"Mise à jour du lanceur interrompue : {e.Message} ; le lanceur actuel est gardé.");
+            return new LauncherUpdateResult(false, Texts.FormatIn(lang, "LauncherUpdateInterrupted", e.Message));
         }
     }
 
@@ -122,9 +130,12 @@ public sealed class LauncherUpdater(HttpClient http, string managerUrl, string e
         return DeleteOld(exePath);
     }
 
-    /** The new launcher gets the same arguments, without --update-launcher (it is the new version already). */
+    /**
+     * The new launcher gets the same arguments, without --update-launcher (it is the new version already) nor --tray
+     * (L23: the player updated from the window, the new launcher shows it).
+     */
     public static IReadOnlyList<string> RestartArguments(IEnumerable<string> args)
-        => args.Where(a => a != UpdateLauncherOption).ToList();
+        => args.Where(a => a != UpdateLauncherOption && a != StartWithWindows.TrayOption).ToList();
 
     private static string DirOf(string exePath) => Path.GetDirectoryName(Path.GetFullPath(exePath))!;
 

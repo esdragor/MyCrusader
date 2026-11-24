@@ -1,0 +1,177 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Launcher texts (L15, Texts.cs). French (neutral). A new text goes into Strings.resx, Strings.en.resx and Strings.ja.resx at once. -->
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <data name="WindowTitle" xml:space="preserve"><value>Heroes of Liberty - lanceur {0}</value></data>
+  <data name="Play" xml:space="preserve"><value>Jouer</value></data>
+  <data name="UpdateLauncher" xml:space="preserve"><value>Mettre à jour le lanceur</value></data>
+  <data name="Refresh" xml:space="preserve"><value>Actualiser</value></data>
+  <data name="Cancel" xml:space="preserve"><value>Annuler</value></data>
+  <data name="NotesTitle" xml:space="preserve"><value>Nouveautés :</value></data>
+  <data name="Settings" xml:space="preserve"><value>Réglages</value></data>
+  <data name="SettingsLanguage" xml:space="preserve"><value>Langue :</value></data>
+  <data name="SettingsGameDir" xml:space="preserve"><value>Dossier du jeu :</value></data>
+  <data name="SettingsBrowse" xml:space="preserve"><value>Parcourir…</value></data>
+  <data name="SettingsBrowseDescription" xml:space="preserve"><value>Choisissez le dossier du jeu</value></data>
+  <data name="SettingsLauncherDir" xml:space="preserve"><value>Dossier du lanceur</value></data>
+  <data name="SettingsGameDirHint" xml:space="preserve"><value>Le jeu installé n'est pas déplacé : un nouveau dossier demande un nouveau téléchargement.</value></data>
+  <data name="SettingsSave" xml:space="preserve"><value>Enregistrer</value></data>
+  <data name="SettingsUnreadable" xml:space="preserve"><value>Réglages illisibles, réglages par défaut utilisés : {0}</value></data>
+  <data name="SettingsNotSaved" xml:space="preserve"><value>Réglages non enregistrés : {0}</value></data>
+  <data name="SettingsBadFolder" xml:space="preserve"><value>Dossier du jeu impossible : {0}</value></data>
+  <data name="Files" xml:space="preserve"><value>Fichiers</value></data>
+  <data name="FilesVerify" xml:space="preserve"><value>Vérifier / réparer les fichiers</value></data>
+  <data name="FilesOpenGame" xml:space="preserve"><value>Ouvrir le dossier du jeu</value></data>
+  <data name="FilesOpenLogs" xml:space="preserve"><value>Ouvrir le dossier des journaux</value></data>
+  <data name="FilesUninstall" xml:space="preserve"><value>Désinstaller le jeu…</value></data>
+  <data name="FilesServersError" xml:space="preserve"><value>Erreur : {0}</value></data>
+  <data name="RepairChecking" xml:space="preserve"><value>Vérification des fichiers du jeu…</value></data>
+  <data name="RepairNotInstalled" xml:space="preserve"><value>Le jeu n'est pas installé : installez-le d'abord.</value></data>
+  <data name="RepairIntact" xml:space="preserve"><value>Tous les fichiers du jeu sont intacts ({0}).</value></data>
+  <data name="RepairDone" xml:space="preserve"><value>{0} fichier(s) réparé(s) : le jeu est de nouveau intact ({1}).</value></data>
+  <data name="RepairToLatest" xml:space="preserve"><value>La version installée, {0}, n'est plus disponible sur le serveur : le jeu a été réparé dans la dernière version, {1} ({2} fichier(s) téléchargé(s)).</value></data>
+  <data name="RepairCancelled" xml:space="preserve"><value>Vérification annulée : aucun fichier n'a été remplacé.</value></data>
+  <data name="RepairNoSpace" xml:space="preserve"><value>Espace disque insuffisant : il faut {0} Go libres pour réparer le jeu, le disque de {1} n'en a que {2}. Libérez de la place puis relancez.</value></data>
+  <data name="RepairDownloadFailed" xml:space="preserve"><value>Téléchargement impossible : {0}</value></data>
+  <data name="RepairInterrupted" xml:space="preserve"><value>Réparation interrompue : {0} ; relancez-la.</value></data>
+  <data name="RepairServerUnreachable" xml:space="preserve"><value>Serveur injoignable : {0}</value></data>
+  <data name="UninstallConfirm" xml:space="preserve"><value>Désinstaller Heroes of Liberty de {0} ? Les fichiers du jeu seront supprimés. Restent : le lanceur, ses réglages, hpatchz.exe, servers.json et vos propres fichiers (réglages et journaux du jeu dans HeroesOfLiberty\Saved).</value></data>
+  <data name="UninstallNothing" xml:space="preserve"><value>Le jeu n'est pas installé dans {0} : rien à désinstaller.</value></data>
+  <data name="UninstallNoList" xml:space="preserve"><value>Liste des fichiers du jeu inconnue (jeu installé sans le lanceur, serveur injoignable) : rien n'a été supprimé. Réessayez quand le serveur répond.</value></data>
+  <data name="UninstallLocked" xml:space="preserve"><value>{0} est utilisé : fermez le jeu, puis recommencez. Rien n'a été supprimé.</value></data>
+  <data name="UninstallDone" xml:space="preserve"><value>Le jeu est désinstallé ({0} fichier(s) supprimé(s)). Le lanceur, ses réglages et vos propres fichiers sont gardés.</value></data>
+  <data name="UninstallFailed" xml:space="preserve"><value>Désinstallation interrompue : {0}</value></data>
+  <data name="LogsMissing" xml:space="preserve"><value>Pas encore de journaux du jeu : {0} n'existe pas (le jeu a-t-il déjà été lancé ?).</value></data>
+  <data name="GameDirMissing" xml:space="preserve"><value>Le dossier du jeu n'existe pas : {0}</value></data>
+  <data name="FolderOpenFailed" xml:space="preserve"><value>Impossible d'ouvrir {0} : {1}</value></data>
+  <data name="InstalledVersion" xml:space="preserve"><value>Version installée : {0}</value></data>
+  <data name="LatestVersion" xml:space="preserve"><value>Dernière version : {0}</value></data>
+  <data name="VersionNotInstalled" xml:space="preserve"><value>pas installé</value></data>
+  <data name="VersionUnknown" xml:space="preserve"><value>inconnue</value></data>
+  <data name="VersionPending" xml:space="preserve"><value>…</value></data>
+  <data name="StatusLoading" xml:space="preserve"><value>Lecture en cours…</value></data>
+  <data name="GameUpToDate" xml:space="preserve"><value>Le jeu est à jour.</value></data>
+  <data name="GameOutdated" xml:space="preserve"><value>Une mise à jour du jeu est disponible ({0}).</value></data>
+  <data name="GameNotInstalled" xml:space="preserve"><value>Le jeu n'est pas installé ; la version {0} est disponible.</value></data>
+  <data name="BadKey" xml:space="preserve"><value>Clé d'accès refusée : le kit n'est pas le bon. Redemandez-le.</value></data>
+  <data name="ServerUnreachable" xml:space="preserve"><value>Serveur injoignable : {0}</value></data>
+  <data name="Error" xml:space="preserve"><value>Erreur : {0}</value></data>
+  <data name="LauncherLine" xml:space="preserve"><value>Lanceur : version {0}</value></data>
+  <data name="LauncherLineUpdate" xml:space="preserve"><value>Lanceur : version {0} (version {1} disponible)</value></data>
+  <data name="UpdateGame" xml:space="preserve"><value>Mettre à jour le jeu</value></data>
+  <data name="InstallGame" xml:space="preserve"><value>Installer le jeu</value></data>
+  <data name="PlayOutdatedConfirmation" xml:space="preserve"><value>Le jeu n'est pas à jour : le serveur refusera cette version. Jouer quand même (en solo) ?</value></data>
+  <data name="PlaySoloWarning" xml:space="preserve"><value>Vous pouvez jouer en solo.</value></data>
+  <data name="ProgressStarting" xml:space="preserve"><value>Préparation de la mise à jour…</value></data>
+  <data name="ProgressFile" xml:space="preserve"><value>Fichier {0}/{1} : {2} — {3} Mo</value></data>
+  <data name="ProgressLauncher" xml:space="preserve"><value>Lanceur version {0} : {1} Mo</value></data>
+  <data name="ProgressLauncherTotal" xml:space="preserve"><value>Lanceur version {0} : {1} / {2} Mo</value></data>
+  <data name="ProgressCancelling" xml:space="preserve"><value>Annulation…</value></data>
+  <data name="GameInstalled" xml:space="preserve"><value>Le jeu est installé (version {0}).</value></data>
+  <data name="GameUpdated" xml:space="preserve"><value>Le jeu est à jour (version {0}).</value></data>
+  <data name="GameUpdateCancelled" xml:space="preserve"><value>Mise à jour annulée ; elle reprendra où elle s'est arrêtée.</value></data>
+  <data name="GameDownloadFailed" xml:space="preserve"><value>Téléchargement impossible : {0}</value></data>
+  <data name="GameUpdateInterrupted" xml:space="preserve"><value>Mise à jour interrompue : {0} ; relancez-la.</value></data>
+  <data name="GameFileInUse" xml:space="preserve"><value>{0} est utilisé : fermez le jeu, puis relancez la mise à jour.</value></data>
+  <data name="NotEnoughSpace" xml:space="preserve"><value>Espace disque insuffisant : il faut {0} Go libres pour la version {1}, le disque de {2} n'en a que {3}. Libérez de la place puis relancez.</value></data>
+  <data name="LauncherUpdated" xml:space="preserve"><value>Le lanceur est passé à la version {0}.</value></data>
+  <data name="LauncherCorrupt" xml:space="preserve"><value>Le lanceur téléchargé est abîmé (SHA-256 {0} au lieu de {1}) ; il a été supprimé, réessayez.</value></data>
+  <data name="LauncherUpdateCancelled" xml:space="preserve"><value>Mise à jour du lanceur annulée ; elle reprendra où elle s'est arrêtée.</value></data>
+  <data name="LauncherDownloadFailed" xml:space="preserve"><value>Téléchargement du lanceur impossible : {0}</value></data>
+  <data name="LauncherUpdateInterrupted" xml:space="preserve"><value>Mise à jour du lanceur interrompue : {0} ; le lanceur actuel est gardé.</value></data>
+  <data name="LauncherRestartByHand" xml:space="preserve"><value>{0} Relancez-le à la main ({1}).</value></data>
+  <data name="LauncherPathUnknown" xml:space="preserve"><value>Erreur : chemin du lanceur inconnu.</value></data>
+  <data name="UpdateCancelled" xml:space="preserve"><value>Mise à jour annulée.</value></data>
+  <data name="GameNotFound" xml:space="preserve"><value>Le jeu est introuvable : {0} n'existe pas.</value></data>
+  <data name="GameStarted" xml:space="preserve"><value>Jeu lancé.</value></data>
+  <data name="GameStartFailed" xml:space="preserve"><value>Le jeu n'a pas pu être lancé : {0}</value></data>
+  <data name="BadCommandLine" xml:space="preserve"><value>Ligne de commande incorrecte : {0}</value></data>
+  <data name="NotesOlderMissing" xml:space="preserve"><value>Les nouveautés des versions plus anciennes ne sont plus disponibles.</value></data>
+  <data name="SettingsLaunch" xml:space="preserve"><value>Lancement du jeu</value></data>
+  <data name="SettingsDisplayMode" xml:space="preserve"><value>Affichage :</value></data>
+  <data name="SettingsGameOwn" xml:space="preserve"><value>Réglage du jeu</value></data>
+  <data name="SettingsWindowed" xml:space="preserve"><value>Fenêtré</value></data>
+  <data name="SettingsFullscreen" xml:space="preserve"><value>Plein écran</value></data>
+  <data name="SettingsResolution" xml:space="preserve"><value>Résolution :</value></data>
+  <data name="SettingsResolutionCustom" xml:space="preserve"><value>Autre…</value></data>
+  <data name="SettingsExtraArguments" xml:space="preserve"><value>Arguments supplémentaires :</value></data>
+  <data name="SettingsExtraArgumentsHint" xml:space="preserve"><value>Avancé : arguments passés tels quels au jeu au lancement (exemple : -nosound).</value></data>
+  <data name="SettingsUnclosedQuote" xml:space="preserve"><value>Arguments supplémentaires : un guillemet " n'est pas fermé.</value></data>
+  <data name="SettingsReservedArguments" xml:space="preserve"><value>Ces arguments supplémentaires contredisent l'affichage ou la résolution choisis, ou sont réservés au lanceur ; retirez-les : {0}</value></data>
+  <data name="Pause" xml:space="preserve"><value>Pause</value></data>
+  <data name="Resume" xml:space="preserve"><value>Reprendre</value></data>
+  <data name="Pausing" xml:space="preserve"><value>Mise en pause…</value></data>
+  <data name="UpdatePaused" xml:space="preserve"><value>En pause ({0}). Ce qui est déjà reçu est gardé : « Reprendre » continue sans le télécharger de nouveau.</value></data>
+  <data name="ReportSend" xml:space="preserve"><value>Envoyer un rapport…</value></data>
+  <data name="ReportSaveTitle" xml:space="preserve"><value>Enregistrer le rapport à donner au développeur</value></data>
+  <data name="ReportFilter" xml:space="preserve"><value>Archive zip (*.zip)|*.zip</value></data>
+  <data name="ReportCreated" xml:space="preserve"><value>Rapport créé : {0}&#10;Donnez ce fichier au développeur : le lanceur ne l'envoie nulle part lui-même. Il contient les journaux du jeu et la description de l'ordinateur, sans la clé d'accès.</value></data>
+  <data name="ReportFailed" xml:space="preserve"><value>Le rapport n'a pas pu être créé : {0}</value></data>
+  <data name="ReportCrashDetected" xml:space="preserve"><value>Le jeu semble s'être arrêté brutalement la dernière fois. Créer un rapport pour le développeur ?</value></data>
+  <data name="SettingsTheme" xml:space="preserve"><value>Thème :</value></data>
+  <data name="ThemeSystem" xml:space="preserve"><value>Comme Windows</value></data>
+  <data name="ThemeLight" xml:space="preserve"><value>Clair</value></data>
+  <data name="ThemeDark" xml:space="preserve"><value>Sombre</value></data>
+  <data name="HeaderSubtitle" xml:space="preserve"><value>Lanceur du jeu</value></data>
+  <data name="PrimaryLoading" xml:space="preserve"><value>Chargement…</value></data>
+  <data name="PrimaryBusy" xml:space="preserve"><value>Un instant…</value></data>
+  <data name="PrimaryRunning" xml:space="preserve"><value>En cours</value></data>
+  <data name="PrimaryUpdate" xml:space="preserve"><value>Mettre à jour</value></data>
+  <data name="PlayAnyway" xml:space="preserve"><value>Jouer quand même</value></data>
+  <data name="GameRunning" xml:space="preserve"><value>Le jeu est lancé : le lanceur attend qu'il se ferme.</value></data>
+  <data name="InfoTitle" xml:space="preserve"><value>Informations</value></data>
+  <data name="TabUpdates" xml:space="preserve"><value>Mises à jour :</value></data>
+  <data name="TabAnnouncements" xml:space="preserve"><value>Annonces</value></data>
+  <data name="NotesNone" xml:space="preserve"><value>Aucune note de version à afficher pour l'instant.</value></data>
+  <data name="AnnouncementMore" xml:space="preserve"><value>En savoir plus</value></data>
+  <data name="AnnouncementDate" xml:space="preserve"><value>d MMMM yyyy</value></data>
+  <data name="LinkWebsite" xml:space="preserve"><value>Site du jeu</value></data>
+  <data name="FooterLauncher" xml:space="preserve"><value>Lanceur {0}</value></data>
+  <data name="FooterNotInstalled" xml:space="preserve"><value>Jeu non installé</value></data>
+  <data name="FooterServer" xml:space="preserve"><value>Serveur</value></data>
+  <data name="FooterServerOk" xml:space="preserve"><value>Serveur joint : {0}</value></data>
+  <data name="FooterServerDown" xml:space="preserve"><value>Serveur injoignable : {0}</value></data>
+  <data name="FooterServerPending" xml:space="preserve"><value>Serveur : {0}</value></data>
+  <data name="WindowMinimize" xml:space="preserve"><value>Réduire</value></data>
+  <data name="WindowMaximize" xml:space="preserve"><value>Agrandir</value></data>
+  <data name="WindowRestore" xml:space="preserve"><value>Restaurer</value></data>
+  <data name="WindowClose" xml:space="preserve"><value>Fermer</value></data>
+  <data name="MoreActions" xml:space="preserve"><value>Plus d'actions</value></data>
+  <data name="DialogOk" xml:space="preserve"><value>OK</value></data>
+  <data name="DialogYes" xml:space="preserve"><value>Oui</value></data>
+  <data name="DialogNo" xml:space="preserve"><value>Non</value></data>
+  <data name="SettingsCloseOnPlay" xml:space="preserve"><value>Fermer le lanceur quand le jeu démarre</value></data>
+  <data name="SettingsCloseOnPlayHint" xml:space="preserve"><value>Sinon, le lanceur se réduit et attend la fin de la partie ; si le jeu plante, il propose aussitôt un rapport.</value></data>
+  <data name="SettingsBadSize" xml:space="preserve"><value>La taille doit être un nombre entier entre {0} et {1}.</value></data>
+  <data name="SettingsGeneral" xml:space="preserve"><value>Général</value></data>
+  <data name="TrayOpen" xml:space="preserve"><value>Ouvrir</value></data>
+  <data name="TrayCheckForUpdates" xml:space="preserve"><value>Rechercher une mise à jour</value></data>
+  <data name="TrayQuit" xml:space="preserve"><value>Quitter</value></data>
+  <data name="TrayHiddenTitle" xml:space="preserve"><value>Le lanceur reste ouvert</value></data>
+  <data name="TrayHiddenText" xml:space="preserve"><value>Il attend dans la zone de notification, près de l'horloge, et vérifie les mises à jour. Clic droit sur son icône pour le quitter.</value></data>
+  <data name="TrayUpdateAvailable" xml:space="preserve"><value>Mise à jour {0} disponible</value></data>
+  <data name="TrayGameAvailable" xml:space="preserve"><value>Heroes of Liberty {0} est disponible</value></data>
+  <data name="TrayClickToOpen" xml:space="preserve"><value>Cliquez ici pour ouvrir le lanceur.</value></data>
+  <data name="TrayLauncherAvailable" xml:space="preserve"><value>Nouveau lanceur disponible ({0})</value></data>
+  <data name="TrayLauncherAvailableText" xml:space="preserve"><value>Ouvrez le lanceur pour le mettre à jour.</value></data>
+  <data name="TrayUpdating" xml:space="preserve"><value>Mise à jour {0} en cours</value></data>
+  <data name="TrayUpdatingText" xml:space="preserve"><value>Téléchargement en arrière-plan ; cliquez ici pour le suivre ou le mettre en pause.</value></data>
+  <data name="TrayUpdateDone" xml:space="preserve"><value>Mise à jour terminée</value></data>
+  <data name="TrayUpdateFailed" xml:space="preserve"><value>La mise à jour a échoué</value></data>
+  <data name="SettingsBackground" xml:space="preserve"><value>Arrière-plan</value></data>
+  <data name="SettingsMinimizeToTray" xml:space="preserve"><value>Réduire dans la zone de notification en fermant la fenêtre</value></data>
+  <data name="SettingsMinimizeToTrayHint" xml:space="preserve"><value>« Quitter » dans le menu de son icône le ferme vraiment. Pendant une partie, fermer la fenêtre quitte le lanceur.</value></data>
+  <data name="SettingsAutoUpdate" xml:space="preserve"><value>Mises à jour :</value></data>
+  <data name="SettingsAutoUpdateOff" xml:space="preserve"><value>Ne pas vérifier</value></data>
+  <data name="SettingsAutoUpdateNotify" xml:space="preserve"><value>Prévenir quand une mise à jour sort</value></data>
+  <data name="SettingsAutoUpdateInstall" xml:space="preserve"><value>Installer automatiquement</value></data>
+  <data name="SettingsCheckEvery" xml:space="preserve"><value>Intervalle :</value></data>
+  <data name="SettingsMinutes" xml:space="preserve"><value>minutes</value></data>
+  <data name="SettingsAutoUpdateHint" xml:space="preserve"><value>Jamais pendant une partie. Un nouveau lanceur est seulement signalé, jamais installé seul.</value></data>
+  <data name="SettingsBadInterval" xml:space="preserve"><value>L'intervalle doit être un nombre entier de minutes entre {0} et {1}.</value></data>
+  <data name="SettingsStartWithWindows" xml:space="preserve"><value>Démarrer avec Windows (dans la zone de notification)</value></data>
+  <data name="SettingsStartWithWindowsFailed" xml:space="preserve"><value>Impossible de modifier le démarrage avec Windows : {0}</value></data>
+</root>

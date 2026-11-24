@@ -3,13 +3,19 @@ using System.Diagnostics;
 
 namespace HOLLauncher;
 
-public sealed record LaunchResult(bool Success, string Message);
+/**
+ * Game: the started process (launcher 5: the window watches it until it exits, GameSession; the caller disposes it),
+ * null on failure or when the starter gave none (tests).
+ */
+public sealed record LaunchResult(bool Success, string Message, Process? Game = null);
 
 /**
  * Starts the game (L8): <game dir>\HeroesOfLiberty.exe, the exe of the package's Windows\ folder (Tools\Package), with
  * the game folder as working folder. No argument by default: the window settings and the player's name are the game's
  * own (saved by the game; -PlayerName= of the playtest .bat only serves two players on one PC). The game then reads
  * servers.json at FPaths::RootDir(), the folder of this exe: the same file GameServers reads.
+ * The player's launch options (L19) are the arguments, built by LaunchArguments.For: Unreal tokens passed as they are
+ * (ProcessStartInfo.Arguments, never ArgumentList, which would re-quote -Key="a b" into a token Unreal cannot read).
  */
 public static class GameLauncher
 {
@@ -22,27 +28,33 @@ public static class GameLauncher
         return File.Exists(exe) ? exe : null;
     }
 
-    /** Starts the game without waiting for it; never throws (a missing exe or a refused start is the message). */
-    public static LaunchResult Start(string gameDir, IReadOnlyList<string>? arguments = null)
+    /**
+     * Starts the game without waiting for it and gives its process; never throws (a missing exe or a refused start is the message, L16: in the
+     * given language, null: the one in use). starter replaces Process.Start (tests: what the game would be given).
+     */
+    public static LaunchResult Start(string gameDir, IReadOnlyList<string>? arguments = null,
+        Func<ProcessStartInfo, Process?>? starter = null, string? language = null)
     {
+        var lang = Texts.LanguageOr(language);
         var exe = FindExe(gameDir);
         if (exe is null)
         {
-            return new LaunchResult(false, $"Le jeu est introuvable : {Path.Combine(gameDir, ExeName)} n'existe pas.");
+            return new LaunchResult(false, Texts.FormatIn(lang, "GameNotFound", Path.Combine(gameDir, ExeName)));
         }
-        var start = new ProcessStartInfo(exe) { UseShellExecute = false, WorkingDirectory = gameDir };
-        foreach (var argument in arguments ?? [])
+        var start = new ProcessStartInfo(exe)
         {
-            start.ArgumentList.Add(argument);
-        }
+            UseShellExecute = false,
+            WorkingDirectory = gameDir,
+            Arguments = LaunchArguments.CommandLine(arguments ?? []),
+        };
         try
         {
-            Process.Start(start)?.Dispose();
-            return new LaunchResult(true, "Jeu lancé.");
+            var game = (starter ?? Process.Start)(start);
+            return new LaunchResult(true, Texts.Get("GameStarted", lang), game);
         }
         catch (Exception e) when (e is Win32Exception or IOException or InvalidOperationException)
         {
-            return new LaunchResult(false, $"Le jeu n'a pas pu être lancé : {e.Message}");
+            return new LaunchResult(false, Texts.FormatIn(lang, "GameStartFailed", e.Message));
         }
     }
 }

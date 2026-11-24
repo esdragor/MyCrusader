@@ -49,4 +49,51 @@ public class LauncherOptionsTests
         Assert.False(LauncherOptions.Parse([], @"C:\Games\HOL").UpdateLauncherAtStart);
         Assert.True(LauncherOptions.Parse(["--update-launcher"], @"C:\Games\HOL").UpdateLauncherAtStart);
     }
+
+    [Fact]
+    public void SettingsGameDirIsUsedWithoutCommandLine()
+    {
+        var options = LauncherOptions.Parse([], @"C:\Games\HOL", new LauncherSettings(GameDir: @"D:\HOL"));
+        Assert.Equal(@"D:\HOL", options.GameDir);
+    }
+
+    [Fact]
+    public void TrayOption()
+    {
+        var plain = LauncherOptions.Parse([], @"C:\Games\HOL");
+        Assert.False(plain.StartInTray);
+        Assert.Null(plain.GameDirArgument);
+        var tray = LauncherOptions.Parse(["--tray"], @"C:\Games\HOL");
+        Assert.True(tray.StartInTray);
+        Assert.Null(tray.GameDirArgument);
+    }
+
+    [Fact]
+    public void GameDirArgumentIsOnlyTheCommandLines()
+    {
+        var settings = new LauncherSettings(GameDir: @"D:\HOL");
+        Assert.Null(LauncherOptions.Parse([], @"C:\Games\HOL", settings).GameDirArgument);
+        Assert.Equal(@"E:\HOL", LauncherOptions.Parse(["--game-dir", @"E:\HOL"], @"C:\Games\HOL", settings).GameDirArgument);
+    }
+
+    [Fact]
+    public void UnknownArgumentNamesTheTrayOption()
+    {
+        var e = Assert.Throws<ArgumentException>(() => LauncherOptions.Parse(["--hidden"], @"C:\Games\HOL"));
+        Assert.Contains("--tray", e.Message);
+    }
+
+    [Fact]
+    public void CommandLineWinsOverSettings()
+    {
+        var options = LauncherOptions.Parse(["--game-dir", @"E:\HOL"], @"C:\Games\HOL", new LauncherSettings(GameDir: @"D:\HOL"));
+        Assert.Equal(@"E:\HOL", options.GameDir);
+    }
+
+    [Fact]
+    public void NoSettingsGameDirMeansTheLauncherFolder()
+    {
+        Assert.Equal(Path.GetFullPath(@"C:\Games\HOL"), LauncherOptions.GameDirFrom(LauncherSettings.Default, @"C:\Games\HOL"));
+        Assert.Equal(@"D:\HOL", LauncherOptions.GameDirFrom(new LauncherSettings(GameDir: @"D:\HOL"), @"C:\Games\HOL"));
+    }
 }

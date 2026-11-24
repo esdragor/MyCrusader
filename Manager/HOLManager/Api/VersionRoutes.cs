@@ -16,9 +16,10 @@ public static class VersionRoutes
 
     public static void MapVersionRoutes(this WebApplication app)
     {
-        app.MapGet("/versions/latest", (VersionStore store) => Answer(() =>
+        // ?lang=<language> (launcher 3): notes and history in that language when translated, else French.
+        app.MapGet("/versions/latest", (VersionStore store, string? lang) => Answer(() =>
         {
-            var latest = store.Latest();
+            var latest = store.Latest(lang);
             return Results.Json(new
             {
                 format = LatestFormat,
@@ -27,6 +28,8 @@ public static class VersionRoutes
                 notes = latest.Notes,
                 patchesFrom = latest.PatchesFrom,
                 launcherVersion = latest.LauncherVersion,
+                // L21: a field added, format stays 1 (an older launcher ignores it and shows "notes" only).
+                history = latest.History.Select(h => new { version = h.Version, published = h.Published, notes = h.Notes }),
             });
         }));
 

@@ -20,6 +20,9 @@ public class LauncherUpdaterTests
         public string? Sha256 { get; set; } = Sha(NewLauncher);
         public List<(string Path, string? Range)> Requests { get; } = [];
 
+        /** Once: the body stops after Bytes and the player's "Pause" is played (L18). */
+        public (int Bytes, Action Pause)? PauseAt { get; set; }
+
         public HttpClient Client() => new(new FakeHandler(Answer));
 
         private HttpResponseMessage Answer(HttpRequestMessage request)
@@ -34,9 +37,15 @@ public class LauncherUpdaterTests
                 };
             }
             var from = range?.From is { } start ? (int)start : 0;
+            HttpContent content = new ByteArrayContent(Body[from..]);
+            if (PauseAt is { } pause)
+            {
+                PauseAt = null;
+                content = new StreamContent(new PausingStream(Body[from..], pause.Bytes, pause.Pause));
+            }
             var response = new HttpResponseMessage(from > 0 ? HttpStatusCode.PartialContent : HttpStatusCode.OK)
             {
-                Content = new ByteArrayContent(Body[from..]),
+                Content = content,
             };
             response.Headers.Add("X-Launcher-Version", "2");
             if (Sha256 is not null)
@@ -140,6 +149,30 @@ public class LauncherUpdaterTests
     }
 
     [Fact]
+    public async Task PausedLauncherDownloadResumesWithRange()
+    {
+        var (dir, exe) = RunningLauncher();
+        using var _ = dir;
+        var server = new Server();
+        using var pause = new CancellationTokenSource();
+        server.PauseAt = (1500, pause.Cancel);
+
+        var paused = await new LauncherUpdater(server.Client(), Manager, exe).UpdateAsync(cancel: pause.Token);
+
+        Assert.False(paused.Success);
+        Assert.True(paused.Cancelled);
+        Assert.Equal(OldLauncher, File.ReadAllBytes(exe));
+        Assert.Equal(1500, new FileInfo(In(dir, LauncherUpdater.NewName + ".part")).Length);
+
+        var resumed = await new LauncherUpdater(server.Client(), Manager, exe).UpdateAsync();
+
+        Assert.True(resumed.Success, resumed.Message);
+        Assert.False(resumed.Cancelled);
+        Assert.Equal(NewLauncher, File.ReadAllBytes(exe));
+        Assert.Equal([(string?)null, "1500-"], server.Requests.Select(r => r.Range));
+    }
+
+    [Fact]
     public async Task NoPublishedLauncherGivesAMessage()
     {
         var (dir, exe) = RunningLauncher();
@@ -152,6 +185,26 @@ public class LauncherUpdaterTests
         Assert.Equal(OldLauncher, File.ReadAllBytes(exe));
     }
 
+    /** L16: the launcher update speaks the player's language; a refused key is said as such. */
+    [Fact]
+    public async Task MessagesFollowTheLanguage()
+    {
+        var (dir, exe) = RunningLauncher();
+        using var _ = dir;
+        using var cancel = new CancellationTokenSource();
+        cancel.Cancel();
+
+        var en = await new LauncherUpdater(new Server().Client(), Manager, exe, "en").UpdateAsync(cancel: cancel.Token);
+        Assert.Equal("Launcher update cancelled; it will resume where it stopped.", en.Message);
+        var ja = await new LauncherUpdater(new Server().Client(), Manager, exe, "ja").UpdateAsync(cancel: cancel.Token);
+        Assert.Equal("ランチャーの更新をキャンセルしました。次回は中断したところから再開します。", ja.Message);
+        var refused = FakeHandler.Json(HttpStatusCode.Unauthorized, "{\"error\":\"bad_key\",\"message\":\"no\"}");
+        var badKey = await new LauncherUpdater(new HttpClient(refused), Manager, exe, "en").UpdateAsync();
+        Assert.False(badKey.Success);
+        Assert.Equal("Access key refused: this is not the right kit. Ask for it again.", badKey.Message);
+        Assert.Equal(OldLauncher, File.ReadAllBytes(exe));
+    }
+
     [Fact]
     public async Task CancelKeepsTheLauncher()
     {
@@ -160,7 +213,7 @@ public class LauncherUpdaterTests
         using var cancel = new CancellationTokenSource();
         cancel.Cancel();
 
-        var result = await new LauncherUpdater(new Server().Client(), Manager, exe).UpdateAsync(cancel: cancel.Token);
+        var result = await new LauncherUpdater(new Server().Client(), Manager, exe, "fr").UpdateAsync(cancel: cancel.Token);
 
         Assert.False(result.Success);
         Assert.Contains("annulée", result.Message);
@@ -236,5 +289,12 @@ public class LauncherUpdaterTests
     {
         Assert.Equal(["--game-dir", @"D:\HOL", "--update"],
             LauncherUpdater.RestartArguments(["--game-dir", @"D:\HOL", "--update-launcher", "--update"]));
+    }
+
+    /** L23: updated from the window, the new launcher shows its window even if this one started in the tray. */
+    [Fact]
+    public void RestartArgumentsDropTray()
+    {
+        Assert.Equal(["--game-dir", @"D:\HOL"], LauncherUpdater.RestartArguments(["--tray", "--game-dir", @"D:\HOL"]));
     }
 }

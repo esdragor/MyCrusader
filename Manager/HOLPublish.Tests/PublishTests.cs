@@ -68,7 +68,11 @@ public sealed class PublishTests : IDisposable
         string? notesFile = null;
         if (notes != null)
         {
-            notesFile = dir.Write(Path.Combine("notes", Guid.NewGuid().ToString("N") + ".txt"), notes);
+            // Translations are mandatory beside the notes (launcher 3): every publication with notes has them.
+            var name = Guid.NewGuid().ToString("N");
+            notesFile = dir.Write(Path.Combine("notes", name + ".txt"), notes);
+            dir.Write(Path.Combine("notes", name + ".en.txt"), "en: " + notes);
+            dir.Write(Path.Combine("notes", name + ".ja.txt"), "ja: " + notes);
         }
         return Publisher.Publish(new PublishOptions(game, Versions, version, notesFile, keep, hdiffz ?? HDiffPatchTool.Hdiffz));
     }
@@ -106,6 +110,75 @@ public sealed class PublishTests : IDisposable
             compressed += new FileInfo(gz).Length;
         }
         Assert.Equal(compressed, result.CompressedBytes);
+    }
+
+    /** The notes' translations beside the notes file (<name>.en.txt, <name>.ja.txt) become notes.en.txt / notes.ja.txt. */
+    [Fact]
+    public void NotesTranslationsBesideTheNotesFileArePublished()
+    {
+        var game = Game("2026-10-25-a", 0);
+        var notes = dir.Write(Path.Combine("notes", "v.txt"), "Archers plus rapides.");
+        dir.Write(Path.Combine("notes", "v.en.txt"), "Faster archers.");
+        dir.Write(Path.Combine("notes", "v.ja.txt"), "弓兵が速くなりました。");
+
+        Publisher.Publish(new PublishOptions(game, Versions, null, notes, 3, HDiffPatchTool.Hdiffz));
+
+        var folder = Path.Combine(Versions, "2026-10-25-a");
+        Assert.Equal("Faster archers.", File.ReadAllText(Path.Combine(folder, "notes.en.txt")));
+        Assert.Equal("弓兵が速くなりました。", File.ReadAllText(Path.Combine(folder, "notes.ja.txt")));
+        var store = new VersionStore(Versions);
+        Assert.Equal("Archers plus rapides.", store.Latest().Notes);
+        Assert.Equal("Faster archers.", store.Latest("en").Notes);
+        Assert.Equal("Faster archers.", Assert.Single(store.Latest("en").History).Notes);
+    }
+
+    /**
+     * The notes must exist in every language of the launcher (user's rule, 2026-11-24): notes without their .en.txt or
+     * .ja.txt, or with an empty one, are refused before anything is written.
+     */
+    [Theory]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(false, false)]
+    public void NotesWithoutEveryTranslationAreRefused(bool english, bool japanese)
+    {
+        var game = Game("2026-10-25-a", 0);
+        var notes = dir.Write(Path.Combine("notes", "v.txt"), "Archers plus rapides.");
+        if (english)
+        {
+            dir.Write(Path.Combine("notes", "v.en.txt"), "Faster archers.");
+        }
+        if (japanese)
+        {
+            dir.Write(Path.Combine("notes", "v.ja.txt"), "弓兵が速くなりました。");
+        }
+
+        var e = Assert.Throws<PublishException>(() =>
+            Publisher.Publish(new PublishOptions(game, Versions, null, notes, 3, HDiffPatchTool.Hdiffz)));
+
+        if (!english)
+        {
+            Assert.Contains("v.en.txt", e.Message);
+        }
+        if (!japanese)
+        {
+            Assert.Contains("v.ja.txt", e.Message);
+        }
+        Assert.False(Directory.Exists(Versions) && Directory.EnumerateFileSystemEntries(Versions).Any());
+    }
+
+    [Fact]
+    public void EmptyTranslationIsRefused()
+    {
+        var game = Game("2026-10-25-a", 0);
+        var notes = dir.Write(Path.Combine("notes", "v.txt"), "Archers plus rapides.");
+        dir.Write(Path.Combine("notes", "v.en.txt"), "Faster archers.");
+        dir.Write(Path.Combine("notes", "v.ja.txt"), "  \r\n");
+
+        var e = Assert.Throws<PublishException>(() =>
+            Publisher.Publish(new PublishOptions(game, Versions, null, notes, 3, HDiffPatchTool.Hdiffz)));
+
+        Assert.Contains("v.ja.txt", e.Message);
     }
 
     [Fact]
@@ -179,6 +252,7 @@ public sealed class PublishTests : IDisposable
     [InlineData("..")]
     [InlineData("../x")]
     [InlineData("launcher")]
+    [InlineData("home")]
     [InlineData("v.tmp")]
     public void InvalidVersionNameIsRefused(string name)
     {
@@ -233,6 +307,24 @@ public sealed class PublishTests : IDisposable
         var rebuilt = Path.Combine(dir.Root, "rebuilt.exe");
         HDiffPatchTool.Apply(Path.Combine(dir.Root, "games", "b", Exe), patch, rebuilt);
         Assert.Equal(latest.Manifest.Files.Single(f => f.Path == Exe).Sha256, ManifestBuilder.Hash(rebuilt));
+    }
+
+    /** L21: each kept version keeps its notes.txt; the manager reads them back as the history, newest first. */
+    [Fact]
+    public void ThreePublicationsGiveTheNotesHistoryOfTheKeptVersions()
+    {
+        Publish(Game("0.3.9", 0), notes: "Un.");
+        Publish(Game("0.3.10", 1));
+        Publish(Game("0.3.11", 2), notes: "Trois.\r\n");
+
+        var history = new VersionStore(Versions).Latest().History;
+
+        Assert.Equal(["0.3.11", "0.3.10", "0.3.9"], history.Select(h => h.Version));
+        Assert.Equal(["Trois.", "", "Un."], history.Select(h => h.Notes));
+
+        Publish(Game("0.3.12", 3), notes: "Quatre.", keep: 1);
+
+        Assert.Equal(["0.3.12", "0.3.11"], new VersionStore(Versions).Latest().History.Select(h => h.Version));
     }
 
     [Fact]

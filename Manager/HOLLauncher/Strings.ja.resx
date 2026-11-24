@@ -1,0 +1,177 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Launcher texts (L15, Texts.cs). Japanese. A new text goes into Strings.resx, Strings.en.resx and Strings.ja.resx at once. -->
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <data name="WindowTitle" xml:space="preserve"><value>Heroes of Liberty - ランチャー {0}</value></data>
+  <data name="Play" xml:space="preserve"><value>プレイ</value></data>
+  <data name="UpdateLauncher" xml:space="preserve"><value>ランチャーを更新</value></data>
+  <data name="Refresh" xml:space="preserve"><value>再読み込み</value></data>
+  <data name="Cancel" xml:space="preserve"><value>キャンセル</value></data>
+  <data name="NotesTitle" xml:space="preserve"><value>新着情報：</value></data>
+  <data name="Settings" xml:space="preserve"><value>設定</value></data>
+  <data name="SettingsLanguage" xml:space="preserve"><value>言語：</value></data>
+  <data name="SettingsGameDir" xml:space="preserve"><value>ゲームフォルダー：</value></data>
+  <data name="SettingsBrowse" xml:space="preserve"><value>参照…</value></data>
+  <data name="SettingsBrowseDescription" xml:space="preserve"><value>ゲームフォルダーを選択してください</value></data>
+  <data name="SettingsLauncherDir" xml:space="preserve"><value>ランチャーのフォルダー</value></data>
+  <data name="SettingsGameDirHint" xml:space="preserve"><value>インストール済みのゲームは移動されません。新しいフォルダーには再ダウンロードが必要です。</value></data>
+  <data name="SettingsSave" xml:space="preserve"><value>保存</value></data>
+  <data name="SettingsUnreadable" xml:space="preserve"><value>設定を読み込めないため、既定の設定を使用します：{0}</value></data>
+  <data name="SettingsNotSaved" xml:space="preserve"><value>設定を保存できません：{0}</value></data>
+  <data name="SettingsBadFolder" xml:space="preserve"><value>このゲームフォルダーは使用できません：{0}</value></data>
+  <data name="Files" xml:space="preserve"><value>ファイル</value></data>
+  <data name="FilesVerify" xml:space="preserve"><value>ファイルを検証・修復</value></data>
+  <data name="FilesOpenGame" xml:space="preserve"><value>ゲームフォルダーを開く</value></data>
+  <data name="FilesOpenLogs" xml:space="preserve"><value>ログフォルダーを開く</value></data>
+  <data name="FilesUninstall" xml:space="preserve"><value>ゲームをアンインストール…</value></data>
+  <data name="FilesServersError" xml:space="preserve"><value>エラー：{0}</value></data>
+  <data name="RepairChecking" xml:space="preserve"><value>ゲームファイルを確認しています…</value></data>
+  <data name="RepairNotInstalled" xml:space="preserve"><value>ゲームがインストールされていません。先にインストールしてください。</value></data>
+  <data name="RepairIntact" xml:space="preserve"><value>ゲームファイルはすべて正常です（{0}）。</value></data>
+  <data name="RepairDone" xml:space="preserve"><value>{0} 個のファイルを修復しました。ゲームは正常な状態に戻りました（{1}）。</value></data>
+  <data name="RepairToLatest" xml:space="preserve"><value>インストール済みのバージョン {0} はサーバーで提供されていないため、最新バージョン {1} として修復しました（{2} 個のファイルをダウンロード）。</value></data>
+  <data name="RepairCancelled" xml:space="preserve"><value>確認を中止しました。ファイルは置き換えられていません。</value></data>
+  <data name="RepairNoSpace" xml:space="preserve"><value>ディスクの空き容量が足りません。修復には {0} GB の空きが必要ですが、{1} のディスクには {2} GB しかありません。空き容量を確保してから再実行してください。</value></data>
+  <data name="RepairDownloadFailed" xml:space="preserve"><value>ダウンロードできません：{0}</value></data>
+  <data name="RepairInterrupted" xml:space="preserve"><value>修復が中断されました：{0}。もう一度実行してください。</value></data>
+  <data name="RepairServerUnreachable" xml:space="preserve"><value>サーバーに接続できません：{0}</value></data>
+  <data name="UninstallConfirm" xml:space="preserve"><value>{0} から Heroes of Liberty をアンインストールしますか？ゲームファイルは削除されます。ランチャー、その設定、hpatchz.exe、servers.json、およびお客様のファイル（HeroesOfLiberty\Saved 内のゲーム設定とログ）は残ります。</value></data>
+  <data name="UninstallNothing" xml:space="preserve"><value>{0} にゲームはインストールされていません。アンインストールするものはありません。</value></data>
+  <data name="UninstallNoList" xml:space="preserve"><value>ゲームファイルの一覧がわかりません（ランチャー以外でインストールされ、サーバーにも接続できません）。何も削除していません。サーバーに接続できるときに再試行してください。</value></data>
+  <data name="UninstallLocked" xml:space="preserve"><value>{0} は使用中です。ゲームを終了してから再試行してください。何も削除していません。</value></data>
+  <data name="UninstallDone" xml:space="preserve"><value>ゲームをアンインストールしました（{0} 個のファイルを削除）。ランチャー、その設定、お客様のファイルは残っています。</value></data>
+  <data name="UninstallFailed" xml:space="preserve"><value>アンインストールが中断されました：{0}</value></data>
+  <data name="LogsMissing" xml:space="preserve"><value>ゲームのログはまだありません。{0} が存在しません（ゲームを起動したことはありますか？）。</value></data>
+  <data name="GameDirMissing" xml:space="preserve"><value>ゲームフォルダーが存在しません：{0}</value></data>
+  <data name="FolderOpenFailed" xml:space="preserve"><value>{0} を開けません：{1}</value></data>
+  <data name="InstalledVersion" xml:space="preserve"><value>インストール済みのバージョン：{0}</value></data>
+  <data name="LatestVersion" xml:space="preserve"><value>最新バージョン：{0}</value></data>
+  <data name="VersionNotInstalled" xml:space="preserve"><value>未インストール</value></data>
+  <data name="VersionUnknown" xml:space="preserve"><value>不明</value></data>
+  <data name="VersionPending" xml:space="preserve"><value>…</value></data>
+  <data name="StatusLoading" xml:space="preserve"><value>読み込み中…</value></data>
+  <data name="GameUpToDate" xml:space="preserve"><value>ゲームは最新の状態です。</value></data>
+  <data name="GameOutdated" xml:space="preserve"><value>ゲームのアップデートがあります（{0}）。</value></data>
+  <data name="GameNotInstalled" xml:space="preserve"><value>ゲームはインストールされていません。バージョン {0} をインストールできます。</value></data>
+  <data name="BadKey" xml:space="preserve"><value>アクセスキーが拒否されました。キットが正しくありません。もう一度入手してください。</value></data>
+  <data name="ServerUnreachable" xml:space="preserve"><value>サーバーに接続できません：{0}</value></data>
+  <data name="Error" xml:space="preserve"><value>エラー：{0}</value></data>
+  <data name="LauncherLine" xml:space="preserve"><value>ランチャー：バージョン {0}</value></data>
+  <data name="LauncherLineUpdate" xml:space="preserve"><value>ランチャー：バージョン {0}（バージョン {1} が利用可能）</value></data>
+  <data name="UpdateGame" xml:space="preserve"><value>ゲームを更新</value></data>
+  <data name="InstallGame" xml:space="preserve"><value>ゲームをインストール</value></data>
+  <data name="PlayOutdatedConfirmation" xml:space="preserve"><value>ゲームが最新ではありません。サーバーはこのバージョンを受け付けません。ソロでプレイしますか？</value></data>
+  <data name="PlaySoloWarning" xml:space="preserve"><value>ソロでプレイできます。</value></data>
+  <data name="ProgressStarting" xml:space="preserve"><value>アップデートを準備中…</value></data>
+  <data name="ProgressFile" xml:space="preserve"><value>ファイル {0}/{1}：{2} — {3} MB</value></data>
+  <data name="ProgressLauncher" xml:space="preserve"><value>ランチャー バージョン {0}：{1} MB</value></data>
+  <data name="ProgressLauncherTotal" xml:space="preserve"><value>ランチャー バージョン {0}：{1} / {2} MB</value></data>
+  <data name="ProgressCancelling" xml:space="preserve"><value>キャンセル中…</value></data>
+  <data name="GameInstalled" xml:space="preserve"><value>ゲームをインストールしました（バージョン {0}）。</value></data>
+  <data name="GameUpdated" xml:space="preserve"><value>ゲームを更新しました（バージョン {0}）。</value></data>
+  <data name="GameUpdateCancelled" xml:space="preserve"><value>アップデートをキャンセルしました。次回は中断したところから再開します。</value></data>
+  <data name="GameDownloadFailed" xml:space="preserve"><value>ダウンロードできません：{0}</value></data>
+  <data name="GameUpdateInterrupted" xml:space="preserve"><value>アップデートが中断されました：{0}。もう一度実行してください。</value></data>
+  <data name="GameFileInUse" xml:space="preserve"><value>{0} は使用中です。ゲームを終了してから、もう一度アップデートしてください。</value></data>
+  <data name="NotEnoughSpace" xml:space="preserve"><value>ディスクの空き容量が足りません。バージョン {1} には {0} GB の空き容量が必要ですが、{2} のディスクには {3} GB しかありません。空き容量を増やしてから、もう一度お試しください。</value></data>
+  <data name="LauncherUpdated" xml:space="preserve"><value>ランチャーをバージョン {0} に更新しました。</value></data>
+  <data name="LauncherCorrupt" xml:space="preserve"><value>ダウンロードしたランチャーが破損しています（SHA-256 が {1} ではなく {0}）。削除しましたので、もう一度お試しください。</value></data>
+  <data name="LauncherUpdateCancelled" xml:space="preserve"><value>ランチャーの更新をキャンセルしました。次回は中断したところから再開します。</value></data>
+  <data name="LauncherDownloadFailed" xml:space="preserve"><value>ランチャーをダウンロードできません：{0}</value></data>
+  <data name="LauncherUpdateInterrupted" xml:space="preserve"><value>ランチャーの更新が中断されました：{0}。現在のランチャーをそのまま使用します。</value></data>
+  <data name="LauncherRestartByHand" xml:space="preserve"><value>{0} ランチャーを手動で起動し直してください（{1}）。</value></data>
+  <data name="LauncherPathUnknown" xml:space="preserve"><value>エラー：ランチャーの場所がわかりません。</value></data>
+  <data name="UpdateCancelled" xml:space="preserve"><value>アップデートをキャンセルしました。</value></data>
+  <data name="GameNotFound" xml:space="preserve"><value>ゲームが見つかりません：{0} が存在しません。</value></data>
+  <data name="GameStarted" xml:space="preserve"><value>ゲームを起動しました。</value></data>
+  <data name="GameStartFailed" xml:space="preserve"><value>ゲームを起動できませんでした：{0}</value></data>
+  <data name="BadCommandLine" xml:space="preserve"><value>コマンドラインが正しくありません：{0}</value></data>
+  <data name="NotesOlderMissing" xml:space="preserve"><value>これより古いバージョンの更新内容は表示できません。</value></data>
+  <data name="SettingsLaunch" xml:space="preserve"><value>ゲームの起動</value></data>
+  <data name="SettingsDisplayMode" xml:space="preserve"><value>表示モード：</value></data>
+  <data name="SettingsGameOwn" xml:space="preserve"><value>ゲームの設定</value></data>
+  <data name="SettingsWindowed" xml:space="preserve"><value>ウィンドウ</value></data>
+  <data name="SettingsFullscreen" xml:space="preserve"><value>フルスクリーン</value></data>
+  <data name="SettingsResolution" xml:space="preserve"><value>解像度：</value></data>
+  <data name="SettingsResolutionCustom" xml:space="preserve"><value>カスタム…</value></data>
+  <data name="SettingsExtraArguments" xml:space="preserve"><value>追加の起動引数：</value></data>
+  <data name="SettingsExtraArgumentsHint" xml:space="preserve"><value>上級者向け：起動時にそのままゲームへ渡される引数です（例：-nosound）。</value></data>
+  <data name="SettingsUnclosedQuote" xml:space="preserve"><value>追加の起動引数：" が閉じられていません。</value></data>
+  <data name="SettingsReservedArguments" xml:space="preserve"><value>次の追加引数は、選択した表示モードや解像度と矛盾するか、ランチャー専用です。削除してください：{0}</value></data>
+  <data name="Pause" xml:space="preserve"><value>一時停止</value></data>
+  <data name="Resume" xml:space="preserve"><value>再開</value></data>
+  <data name="Pausing" xml:space="preserve"><value>一時停止しています…</value></data>
+  <data name="UpdatePaused" xml:space="preserve"><value>一時停止中（{0}）。受信済みのデータは保存されています。「再開」を押すと、続きからダウンロードします。</value></data>
+  <data name="ReportSend" xml:space="preserve"><value>レポートを送る…</value></data>
+  <data name="ReportSaveTitle" xml:space="preserve"><value>開発者に渡すレポートを保存</value></data>
+  <data name="ReportFilter" xml:space="preserve"><value>ZIP ファイル (*.zip)|*.zip</value></data>
+  <data name="ReportCreated" xml:space="preserve"><value>レポートを作成しました：{0}&#10;このファイルを開発者に渡してください。ランチャーが自動で送信することはありません。ゲームのログとパソコンの情報が含まれます（アクセスキーは含まれません）。</value></data>
+  <data name="ReportFailed" xml:space="preserve"><value>レポートを作成できませんでした：{0}</value></data>
+  <data name="ReportCrashDetected" xml:space="preserve"><value>前回、ゲームが異常終了したようです。開発者向けのレポートを作成しますか？</value></data>
+  <data name="SettingsTheme" xml:space="preserve"><value>テーマ：</value></data>
+  <data name="ThemeSystem" xml:space="preserve"><value>Windows の設定に合わせる</value></data>
+  <data name="ThemeLight" xml:space="preserve"><value>ライト</value></data>
+  <data name="ThemeDark" xml:space="preserve"><value>ダーク</value></data>
+  <data name="HeaderSubtitle" xml:space="preserve"><value>ゲームランチャー</value></data>
+  <data name="PrimaryLoading" xml:space="preserve"><value>読み込み中…</value></data>
+  <data name="PrimaryBusy" xml:space="preserve"><value>お待ちください…</value></data>
+  <data name="PrimaryRunning" xml:space="preserve"><value>プレイ中</value></data>
+  <data name="PrimaryUpdate" xml:space="preserve"><value>アップデート</value></data>
+  <data name="PlayAnyway" xml:space="preserve"><value>このままプレイ</value></data>
+  <data name="GameRunning" xml:space="preserve"><value>ゲームを実行中です。終了するまでランチャーは待機します。</value></data>
+  <data name="InfoTitle" xml:space="preserve"><value>インフォメーション</value></data>
+  <data name="TabUpdates" xml:space="preserve"><value>アップデート</value></data>
+  <data name="TabAnnouncements" xml:space="preserve"><value>お知らせ</value></data>
+  <data name="NotesNone" xml:space="preserve"><value>表示できるリリースノートはまだありません。</value></data>
+  <data name="AnnouncementMore" xml:space="preserve"><value>詳しく見る</value></data>
+  <data name="AnnouncementDate" xml:space="preserve"><value>yyyy年M月d日</value></data>
+  <data name="LinkWebsite" xml:space="preserve"><value>公式サイト</value></data>
+  <data name="FooterLauncher" xml:space="preserve"><value>ランチャー {0}</value></data>
+  <data name="FooterNotInstalled" xml:space="preserve"><value>ゲーム未インストール</value></data>
+  <data name="FooterServer" xml:space="preserve"><value>サーバー</value></data>
+  <data name="FooterServerOk" xml:space="preserve"><value>サーバーに接続済み：{0}</value></data>
+  <data name="FooterServerDown" xml:space="preserve"><value>サーバーに接続できません：{0}</value></data>
+  <data name="FooterServerPending" xml:space="preserve"><value>サーバー：{0}</value></data>
+  <data name="WindowMinimize" xml:space="preserve"><value>最小化</value></data>
+  <data name="WindowMaximize" xml:space="preserve"><value>最大化</value></data>
+  <data name="WindowRestore" xml:space="preserve"><value>元のサイズに戻す</value></data>
+  <data name="WindowClose" xml:space="preserve"><value>閉じる</value></data>
+  <data name="MoreActions" xml:space="preserve"><value>その他の操作</value></data>
+  <data name="DialogOk" xml:space="preserve"><value>OK</value></data>
+  <data name="DialogYes" xml:space="preserve"><value>はい</value></data>
+  <data name="DialogNo" xml:space="preserve"><value>いいえ</value></data>
+  <data name="SettingsCloseOnPlay" xml:space="preserve"><value>ゲームの起動時にランチャーを閉じる</value></data>
+  <data name="SettingsCloseOnPlayHint" xml:space="preserve"><value>オフの場合、ランチャーは最小化してゲームの終了を待ちます。ゲームが異常終了したときは、すぐにレポートの作成を提案します。</value></data>
+  <data name="SettingsBadSize" xml:space="preserve"><value>サイズは {0} から {1} までの整数で入力してください。</value></data>
+  <data name="SettingsGeneral" xml:space="preserve"><value>一般</value></data>
+  <data name="TrayOpen" xml:space="preserve"><value>開く</value></data>
+  <data name="TrayCheckForUpdates" xml:space="preserve"><value>アップデートを確認</value></data>
+  <data name="TrayQuit" xml:space="preserve"><value>終了</value></data>
+  <data name="TrayHiddenTitle" xml:space="preserve"><value>ランチャーは実行中です</value></data>
+  <data name="TrayHiddenText" xml:space="preserve"><value>時計の近くの通知領域で待機し、アップデートを確認しています。終了するにはアイコンを右クリックしてください。</value></data>
+  <data name="TrayUpdateAvailable" xml:space="preserve"><value>アップデート {0} が利用可能です</value></data>
+  <data name="TrayGameAvailable" xml:space="preserve"><value>Heroes of Liberty {0} が利用可能です</value></data>
+  <data name="TrayClickToOpen" xml:space="preserve"><value>ここをクリックするとランチャーが開きます。</value></data>
+  <data name="TrayLauncherAvailable" xml:space="preserve"><value>新しいランチャーが利用可能です（{0}）</value></data>
+  <data name="TrayLauncherAvailableText" xml:space="preserve"><value>ランチャーを開いて更新してください。</value></data>
+  <data name="TrayUpdating" xml:space="preserve"><value>アップデート {0} をインストール中</value></data>
+  <data name="TrayUpdatingText" xml:space="preserve"><value>バックグラウンドでダウンロードしています。クリックすると進行状況の確認や一時停止ができます。</value></data>
+  <data name="TrayUpdateDone" xml:space="preserve"><value>アップデートが完了しました</value></data>
+  <data name="TrayUpdateFailed" xml:space="preserve"><value>アップデートに失敗しました</value></data>
+  <data name="SettingsBackground" xml:space="preserve"><value>バックグラウンド</value></data>
+  <data name="SettingsMinimizeToTray" xml:space="preserve"><value>ウィンドウを閉じたら通知領域に最小化する</value></data>
+  <data name="SettingsMinimizeToTrayHint" xml:space="preserve"><value>アイコンのメニューの「終了」で完全に閉じます。ゲーム中にウィンドウを閉じると、ランチャーは終了します。</value></data>
+  <data name="SettingsAutoUpdate" xml:space="preserve"><value>アップデート：</value></data>
+  <data name="SettingsAutoUpdateOff" xml:space="preserve"><value>確認しない</value></data>
+  <data name="SettingsAutoUpdateNotify" xml:space="preserve"><value>アップデートが出たら知らせる</value></data>
+  <data name="SettingsAutoUpdateInstall" xml:space="preserve"><value>自動でインストールする</value></data>
+  <data name="SettingsCheckEvery" xml:space="preserve"><value>確認の間隔：</value></data>
+  <data name="SettingsMinutes" xml:space="preserve"><value>分ごと</value></data>
+  <data name="SettingsAutoUpdateHint" xml:space="preserve"><value>ゲーム中は行いません。新しいランチャーはお知らせのみで、自動ではインストールされません。</value></data>
+  <data name="SettingsBadInterval" xml:space="preserve"><value>間隔は {0} から {1} までの整数（分）で入力してください。</value></data>
+  <data name="SettingsStartWithWindows" xml:space="preserve"><value>Windows の起動時に開始する（通知領域）</value></data>
+  <data name="SettingsStartWithWindowsFailed" xml:space="preserve"><value>Windows の起動時の設定を変更できませんでした: {0}</value></data>
+</root>

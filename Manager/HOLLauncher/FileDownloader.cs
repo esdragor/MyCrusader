@@ -15,8 +15,15 @@ public sealed record DownloadProgress(int FilesDone, int FileCount, string Curre
  */
 public sealed record DownloadResult(PlannedDownload Planned, DownloadKind Kind, string LocalPath);
 
-/** A download that failed: HTTP error, dropped connection (the .part is kept for resuming), or a file that does not match its list. */
-public sealed class UpdateDownloadException(string message, Exception? inner = null) : Exception(message, inner);
+/**
+ * A download that failed: HTTP error, dropped connection (the .part is kept for resuming), or a file that does not match
+ * its list. The message is the technical detail (English), shown inside a translated sentence (L16).
+ */
+public class UpdateDownloadException(string message, Exception? inner = null) : Exception(message, inner);
+
+/** The manager refused the kit's access key (401 bad_key, L11): the updaters say Texts "BadKey" instead (L16). */
+public sealed class AccessKeyRefusedException(string relativeUrl)
+    : UpdateDownloadException($"{relativeUrl}: access key refused (HTTP 401 bad_key)");
 
 /**
  * Fetches the files of an UpdatePlan into a work folder (L6a), laid out as:
@@ -25,7 +32,8 @@ public sealed class UpdateDownloadException(string message, Exception? inner = n
  *   patches/<path>.patch    whole patch (L6b applies it)
  *   patches/<path>.patch.part
  * A .part left by a cut is resumed with Range (206: appended; 200: restarted from zero). A full file already present
- * and matching its list is not fetched again. The HttpClient is given (tests: a fake handler); CreateHttpClient gives
+ * and matching its list is not fetched again, nor (L18, pause and resume) a whole .patch or a file already patched.
+ * The HttpClient is given (tests: a fake handler); CreateHttpClient gives
  * one without a global timeout, since the exe weighs 124 MB gzipped; answers are read as streams.
  */
 public sealed class FileDownloader
@@ -83,8 +91,24 @@ public sealed class FileDownloader
         cancel.ThrowIfCancellationRequested();
         if (planned.Kind == DownloadKind.Patch)
         {
+            // L18: an update paused (or stopped) after this file may run again; nothing already here is fetched again.
+            var built = LocalPath("files", planned.File.Path);
+            if (File.Exists(built) && Matches(built, planned.File))
+            {
+                // Patched (or fetched in full after a failed patch) by an earlier run.
+                return new DownloadResult(planned with { Kind = DownloadKind.Full, RelativeUrl = planned.FullUrl },
+                    DownloadKind.Full, built);
+            }
             var patch = LocalPath("patches", planned.File.Path) + ".patch";
-            if (await FetchAsync(planned.RelativeUrl, patch + ".part", counter, allowPatchNotFound: true, cancel))
+            if (File.Exists(patch))
+            {
+                // Whole: a .patch is only renamed from its .part once fully received. A bad one fails in hpatchz,
+                // then the full file is fetched (GameUpdater).
+                return new DownloadResult(planned, DownloadKind.Patch, patch);
+            }
+            // A full file being received means the patch was missing last time: no need to ask for it again.
+            if (!File.Exists(built + ".gz.part")
+                && await FetchAsync(planned.RelativeUrl, patch + ".part", counter, allowPatchNotFound: true, cancel))
             {
                 File.Move(patch + ".part", patch, overwrite: true);
                 return new DownloadResult(planned, DownloadKind.Patch, patch);
@@ -151,7 +175,7 @@ public sealed class FileDownloader
                 }
                 if (AccessKeyHandler.IsBadKey((int)response.StatusCode, error))
                 {
-                    throw new UpdateDownloadException(AccessKeyHandler.BadKeyMessage);
+                    throw new AccessKeyRefusedException(relativeUrl);
                 }
                 throw new UpdateDownloadException($"{relativeUrl}: HTTP {(int)response.StatusCode}{(error is null ? "" : $" {error}")}");
             }

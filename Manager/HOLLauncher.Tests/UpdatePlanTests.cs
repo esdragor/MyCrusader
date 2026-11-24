@@ -172,4 +172,25 @@ public class UpdatePlanTests
 
         Assert.Equal(["HeroesOfLiberty/Version.txt"], UpdatePlan.ScanGame(game.Root).Files.Select(f => f.Path));
     }
+
+    /** Launcher 5: the home page's cached key art (HOLLauncher.home/) is the launcher's: never scanned, listed nor deleted. */
+    [Fact]
+    public void TheHomeCacheIsTheLaunchers()
+    {
+        using var game = new TempDir();
+        game.Write("HeroesOfLiberty/Version.txt", "v1");
+        game.Write($"{HomeClient.CacheDirName}/background.jpg", "j");
+        game.Write($"{HomeClient.CacheDirName}/background.etag", "\"t\"");
+        Assert.Equal(["HeroesOfLiberty/Version.txt"], UpdatePlan.ScanGame(game.Root).Files.Select(f => f.Path));
+
+        Assert.True(UpdatePlan.IsLauncherOwned("HOLLauncher.home/background.png"));
+        Assert.True(UpdatePlan.IsLauncherOwned("hollauncher.HOME/background.etag"));
+        // Only that folder at the game folder's root: a game file of the same name elsewhere stays the game's.
+        Assert.False(UpdatePlan.IsLauncherOwned("HeroesOfLiberty/HOLLauncher.home/background.png"));
+        Assert.False(UpdatePlan.IsLauncherOwned("background.jpg"));
+
+        var latest = Latest("v2", [new FileEntry("HeroesOfLiberty.exe", 10, HashA), new FileEntry("HOLLauncher.home/background.jpg", 4, HashB)]);
+        var plan = UpdatePlan.Create(VersionManifest.Empty, latest);
+        Assert.Equal(["HeroesOfLiberty.exe"], plan.Downloads.Select(d => d.File.Path));
+    }
 }

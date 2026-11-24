@@ -169,6 +169,10 @@ Un chantier ne se clôt pas sans avoir relu ce fichier.
 - Écran de chargement [rien ?]
 - Icône de l'exécutable / de la fenêtre [rien ?]
 - Lanceur et gestionnaire de salons (interface) [style]
+- Lanceur : logo texte « Heroes / of Liberty » (Palatino, doré) et emblème bouclier-étoile vectoriel, aucun vrai logo ; couleurs des thèmes clair / sombre (Palette.cs, lanceur 5) [style]
+- Lanceur : illustration de fond vectorielle (crépuscule, château, bannières, KeyArt.xaml), tant qu'aucune image n'est publiée par `home.ps1 background` [style]
+- Lanceur : icônes des liens de la communauté (bulle, lecteur vidéo, globe, flèche) génériques [style]
+- Lanceur : icône de la zone de notification (bouclier rouge à étoile dorée dessiné en code, TrayIcon.Draw), pas de vrai logo [style]
 - Image de la page Steam (capsule, captures) [rien]
 
 == SONS ET MUSIQUE

@@ -38,6 +38,25 @@ public class VersionsClientTests
         Assert.Equal(new Uri("http://host:7700/versions/latest"), Assert.Single(handler.Requests));
     }
 
+    /** The notes in the launcher's language: ?lang=<language> (the manager falls back to French). */
+    [Fact]
+    public async Task AsksTheNotesInTheGivenLanguage()
+    {
+        var handler = FakeHandler.Json(HttpStatusCode.OK, Latest);
+        await new VersionsClient(new HttpClient(handler)).GetLatestAsync("http://host:7700/", language: "ja");
+        Assert.Equal(new Uri("http://host:7700/versions/latest?lang=ja"), Assert.Single(handler.Requests));
+    }
+
+    [Fact]
+    public async Task StatusAsksTheNotesInTheViewsLanguage()
+    {
+        using var dir = new TempDir();
+        dir.Write("servers.json", "{ \"servers\": [ { \"url\": \"http://host:7700\" } ] }");
+        var handler = FakeHandler.Json(HttpStatusCode.OK, Latest);
+        await StatusLoader.LoadAsync(dir.Root, new VersionsClient(new HttpClient(handler)), language: "en");
+        Assert.Equal(new Uri("http://host:7700/versions/latest?lang=en"), Assert.Single(handler.Requests));
+    }
+
     [Fact]
     public async Task TrailingSlashOfManagerUrlIsIgnored()
     {
@@ -55,6 +74,38 @@ public class VersionsClientTests
         Assert.Equal("", result.Latest!.Notes);
         Assert.Empty(result.Latest.PatchesFrom);
         Assert.Equal("", result.Latest.LauncherVersion);
+        // L21: a manager older than the history: null, not empty (the launcher then shows the latest's notes only).
+        Assert.Null(result.Latest.History);
+    }
+
+    [Fact]
+    public async Task ReadsNotesHistoryAndSkipsBadRows()
+    {
+        var body = """
+            { "format": 1, "version": "0.3.11", "manifest": { "format": 1, "version": "0.3.11", "files": [] },
+              "notes": "Trois.",
+              "history": [
+                { "version": "0.3.11", "published": "2026-11-03T10:00:00Z", "notes": "Trois." },
+                { "version": "0.3.10", "published": "2026-11-02T10:00:00Z", "notes": "" },
+                { "notes": "no version" },
+                "not an object",
+                { "version": "0.3.9", "notes": "Un.", "later": true }
+              ] }
+            """;
+        var result = await Get(FakeHandler.Json(HttpStatusCode.OK, body));
+
+        Assert.Equal(LatestOutcome.Ok, result.Outcome);
+        Assert.Equal([new ReleaseNote("0.3.11", "Trois."), new ReleaseNote("0.3.10", ""), new ReleaseNote("0.3.9", "Un.")],
+            result.Latest!.History);
+    }
+
+    [Fact]
+    public async Task HistoryThatIsNotAListIsIgnored()
+    {
+        var body = """{ "format": 1, "version": "v1", "manifest": { "format": 1, "version": "v1", "files": [] }, "history": 3 }""";
+        var result = await Get(FakeHandler.Json(HttpStatusCode.OK, body));
+        Assert.Equal(LatestOutcome.Ok, result.Outcome);
+        Assert.Null(result.Latest!.History);
     }
 
     [Fact]
