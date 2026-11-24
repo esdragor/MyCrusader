@@ -565,9 +565,11 @@ script de publication (L4) :
 <versions>/<v>/patches/<depuis>/<chemin>.patch correctif binaire depuis la version <depuis> (L3/L4)
 <versions>/launcher/latest.txt                 version du lanceur
 <versions>/launcher/<lv>/HOLLauncher.exe
+<versions>/home/...                            accueil du lanceur (lanceur 5, section « Accueil du lanceur »)
 ```
 
-Noms de version (`{v}`, `{depuis}`, contenu des `latest.txt`) : `[A-Za-z0-9._-]+`, sauf `.` et `..`.
+Noms de version (`{v}`, `{depuis}`, contenu des `latest.txt`) : `[A-Za-z0-9._-]+`, sauf `.` et `..` ; HOLPublish
+refuse aussi `launcher` et `home` (dossiers du gestionnaire).
 
 **Numérotation (L14).** Les versions publiées par `Tools/Package/publish.ps1` s'appellent `0.Y.X` : `Y` = nombre
 d'étapes validées par l'utilisateur, `X` = numéro de la mise à jour dans l'étape en cours (à partir de 0). Le nom
@@ -648,3 +650,72 @@ complet.
 Envoie `launcher/<lv>/HOLLauncher.exe` (`application/octet-stream`), `Range` comme plus haut, avec deux en-têtes,
 présents aussi sur une réponse 206 : **`X-Launcher-Version`** (`<lv>`) et **`X-Launcher-Sha256`** (empreinte du
 fichier entier, calculée une fois par fichier). Pas de lanceur publié → `launcher_not_found` (404).
+
+## Accueil du lanceur (lanceur 5)
+
+Page d'accueil du lanceur refait : **annonces** de l'hôte, **liens communautaires** (Discord, YouTube, site) et
+**image de fond**. Routes **ajoutées** (`protocolVersion` reste 1), derrière la même clé d'accès que les autres
+(`X-HOL-Key`, 401 `bad_key`) ; la réponse porte son propre `format` (1). Pas de compte à rebours de session ni de
+salons en direct (choix de l'utilisateur, 2026-11-24).
+
+Fichiers de l'hôte, dans le dossier des versions (`<versions>/home/`, à côté de `latest.txt` ; en production
+`Saved\Manager\Versions\home\`), relus à chaque requête (aucun redémarrage) et écrits par
+`Tools\Manager\home.ps1` (`HOLPublish home ...`, format commun : `HOLUpdate.HomeFiles`) :
+
+```
+<versions>/home/announcements.json   [ { "id", "date", "title": {"fr","en","ja"}, "body": {"fr","en","ja"}, "link"? } ]
+<versions>/home/links.json           [ { "kind": "discord|youtube|website|other", "url": "https://..." } ]
+<versions>/home/background.jpg       image de fond facultative (ou background.png ; 4 Mo au plus par l'outil)
+```
+
+`id` : `[A-Za-z0-9._-]`, 64 caractères au plus ; `date` : ISO 8601 (sans décalage = UTC). Un fichier écrit à la main
+peut avoir des commentaires `//`, des virgules finales, et un `title` / `body` simple chaîne (pris comme du français).
+
+### `GET /launcher/home[?lang=<langue>]`
+
+```json
+{
+  "format": 1,
+  "announcements": [
+    { "id": "playtest-3", "date": "2026-11-24T18:00:00Z", "title": "Playtest 3 on Saturday",
+      "body": "See you at 6 pm.\nNew map.", "link": "https://discord.gg/xxxx" },
+    { "id": "bienvenue", "date": "2026-11-01T10:00:00Z", "title": "Welcome", "body": "…", "link": null }
+  ],
+  "links": [ { "kind": "discord", "url": "https://discord.gg/xxxx" }, { "kind": "youtube", "url": "https://youtube.com/@…" } ],
+  "background": "/launcher/home/background"
+}
+```
+
+- **Langue** : chaque texte (`title`, `body`) dans `<langue>` s'il y est et non vide, sinon en français, champ par
+  champ ; `<langue>` comme pour `/versions/latest` (deux lettres minuscules ; autre chose donne le français).
+- **Annonces** : de la plus récente à la plus ancienne (`date`, puis `id`), **20 au plus** (les plus anciennes restent
+  dans le fichier) ; `date` en UTC à la seconde ; `body` garde ses lignes (`\n`) ; `link` : adresse http(s) ou `null`.
+  Une entrée sans `id` valide, sans date lisible ou sans aucun titre est **laissée de côté** (les autres servies) ; un
+  `link` qui n'est pas http(s) est retiré (l'annonce reste).
+- **Liens** : dans l'ordre du fichier ; seulement les adresses http(s) ; `kind` en minuscules, inconnu → `other`.
+- **`background`** : le chemin de la route de l'image (relatif à l'adresse du gestionnaire), `null` sans image (ou
+  si le fichier n'est ni un JPEG ni un PNG, d'après ses premiers octets).
+- **Fichier illisible** (JSON invalide, pas un tableau) : **seule cette partie** est vide, la page reste 200 ; le
+  gestionnaire l'écrit dans son journal (une fois par état du fichier). Pas de dossier `home/` : tout vide.
+
+Un gestionnaire plus ancien répond 404 : le lanceur 5 cache alors ces panneaux.
+
+### `GET /launcher/home/background`
+
+Envoie `home/background.jpg` ou `.png` (le plus récent des deux) en `image/jpeg` / `image/png`, avec **`ETag`**
+(date d'écriture et taille : une nouvelle image change d'étiquette) et **`Last-Modified`** ; `If-None-Match` /
+`If-Modified-Since` correspondants → **304** sans corps. Pas d'image → `no_background` (404).
+
+### Côté lanceur et outil de l'hôte
+
+- **Lanceur** (`HOLLauncher.HomeClient` → `HomeContent`) : jamais d'exception ; 404 (gestionnaire ancien), 401, autre
+  erreur, `format` inconnu ou JSON illisible → contenu vide ; lignes invalides ignorées une à une. Image gardée dans
+  `HOLLauncher.home\` à côté de l'exe du lanceur (`background.jpg|png` et `background.etag`, dossier du lanceur :
+  jamais listé, remplacé ni supprimé par une mise à jour du jeu, `UpdatePlan.LauncherOwned`), redemandée avec
+  `If-None-Match` ; gestionnaire injoignable → annonces et liens vides mais **dernière image gardée** ; échec du seul
+  téléchargement de l'image → dernière image gardée ; `background: null` → image du cache supprimée.
+- **Outil** (`Tools\Manager\home.ps1 list|add|remove|link|unlink|background`, détail en tête du script) : une annonce
+  s'écrit **dans toutes les langues du lanceur** (`title.txt`, `body.txt` en français, `title.en.txt`, `body.en.txt`,
+  `title.ja.txt`, `body.ja.txt`, tous non vides) ou pas du tout (FAIL, rien écrit ; même règle que les nouveautés) ;
+  un titre tient sur une ligne ; un lien par `kind` ; image `.jpg` / `.png` vérifiée sur ses octets, 4 Mo au plus. Un
+  fichier dont l'outil ne pourrait pas tout réécrire (entrée invalide écrite à la main) est refusé, jamais écrasé.
