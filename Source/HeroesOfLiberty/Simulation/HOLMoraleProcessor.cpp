@@ -103,6 +103,49 @@ void UHOLMoraleProcessor::QueueClearMalusAround(const UWorld* World, const int32
 	Order.RadiusCm = RadiusCm;
 	Order.Slot = OrderSlot;
 }
+// STUB (red first, L15-5): the real reading and clearing come in the next commit.
+UHOLMoraleProcessor::FReport UHOLMoraleProcessor::ReportSlot(const UWorld* World, const int32 Slot)
+{
+	return FReport();
+}
+
+int32 UHOLMoraleProcessor::ClearSlot(const UWorld* World, const int32 Slot)
+{
+	return 0;
+}
+
+namespace
+{
+	// hol.Morale.Report <slot> / hol.Morale.Clear <slot>: the two debug commands of the morale (S2-c step 8). The world is the one of the console.
+	FAutoConsoleCommandWithWorldAndArgs ReportCommand(
+		TEXT("hol.Morale.Report"),
+		TEXT("hol.Morale.Report <slot> : logs, for the camp <slot>, each unit's damage-taken percent as the combat reads it, and how many units carry a morale effect."),
+		FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
+		{
+			if (Args.Num() >= 1)
+			{
+				const UHOLMoraleProcessor::FReport Report = UHOLMoraleProcessor::ReportSlot(World, FCString::Atoi(*Args[0]));
+				int32 Worst = 0;
+				for (const int32 Percent : Report.TakenPercents)
+				{
+					Worst = FMath::Abs(Percent) > FMath::Abs(Worst) ? Percent : Worst;
+				}
+				UE_LOG(LogTemp, Display, TEXT("hol.Morale.Report slot %s: %d units, %d with an effect, worst taken percent %d"), *Args[0], Report.TakenPercents.Num(), Report.NumWithEffects, Worst);
+			}
+		}));
+
+	FAutoConsoleCommandWithWorldAndArgs ClearCommand(
+		TEXT("hol.Morale.Clear"),
+		TEXT("hol.Morale.Clear <slot> : puts the morale of every unit of the camp <slot> back to 0 (effects and immunity). Debug."),
+		FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
+		{
+			if (Args.Num() >= 1)
+			{
+				UE_LOG(LogTemp, Display, TEXT("hol.Morale.Clear slot %s: %d units cleared"), *Args[0], UHOLMoraleProcessor::ClearSlot(World, FCString::Atoi(*Args[0])));
+			}
+		}));
+}
+
 void UHOLMoraleProcessor::SetSlotAttenuation(const int32 Slot, const int32 Percent)
 {
 	if (Slot >= 0 && Slot < FHOLMatchConfig::MaxSlots)

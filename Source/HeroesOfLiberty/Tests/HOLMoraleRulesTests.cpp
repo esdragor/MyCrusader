@@ -1210,7 +1210,91 @@ bool FHOLMoraleProcessorClearsTheMalusTest::RunTest(const FString& Parameters)
 	World->DestroyWorld(false);
 	return true;
 }
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLMoraleProcessorStaticStateTest, "HeroesOfLiberty.Morale.ProcessorStaticStateEndsWithTheWorld", UE::HeroesOfLiberty::Tests::MoraleRules::Flags)
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLMoraleReportMatchesCombatTest, "HeroesOfLiberty.Morale.ReportMatchesWhatCombatReads", UE::HeroesOfLiberty::Tests::MoraleRules::Flags)
+
+// PLAN-MORAL-1120 step 8 (S2-c): hol.Morale.Report <slot> gives, per unit, the damage-taken percent the combat reads (HOLMorale::TakenPercent of the
+// unit's fragment, the start of UHOLCombatProcessor::GetDamageTakenPercent); hol.Morale.Clear <slot> puts it back to 0 (effects and immunity). The
+// unit takes a malus through the REAL chain (ApplyEffectAround, the processor's step). RED while ReportSlot / ClearSlot are stubs.
+bool FHOLMoraleReportMatchesCombatTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::MoraleRules;
+	UWorld* World = UWorld::CreateWorld(EWorldType::Game, /*bInformEngineOfWorld*/ false);
+	FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);
+	Context.SetCurrentWorld(World);
+	World->InitializeActorsForPlay(FURL());
+
+	UHOLUnitSubsystem* Units = World->GetSubsystem<UHOLUnitSubsystem>();
+	UHOLSimulationSubsystem* Simulation = World->GetSubsystem<UHOLSimulationSubsystem>();
+	UHOLHeroSubsystem* Heroes = World->GetSubsystem<UHOLHeroSubsystem>();
+	UMassEntitySubsystem* EntitySubsystem = World->GetSubsystem<UMassEntitySubsystem>();
+	if (TestNotNull(TEXT("units"), Units) && TestNotNull(TEXT("simulation"), Simulation) && TestNotNull(TEXT("heroes"), Heroes) && TestNotNull(TEXT("entities"), EntitySubsystem))
+	{
+		Heroes->BindSteps();
+		TSharedPtr<FMassEntityManager> EntityManager = EntitySubsystem->GetMutableEntityManager().AsShared();
+		UHOLMoraleProcessor* Morale = NewObject<UHOLMoraleProcessor>(Simulation);
+		Morale->CallInitialize(Simulation, EntityManager.ToSharedRef());
+		const float StepSeconds = GetDefault<UHOLSimulationSettings>()->GetStepSeconds();
+		int64 Step = 0;
+		const auto RunStep = [Simulation, Units, Morale, &EntityManager, StepSeconds, &Step]
+		{
+			++Step;
+			Simulation->GetOnStepStarted().Broadcast(Step);
+			Units->ServeBirthRequests();
+			FMassProcessingContext ProcessingContext(*EntityManager, StepSeconds);
+			UE::Mass::Executor::Run(*Morale, ProcessingContext);
+			Simulation->GetOnStepEnded().Broadcast(Step);
+		};
+		UHOLMoraleProcessor::SetSlotAttenuation(0, 0);
+		TArray<uint32> Before;
+		Units->GetAllUnitIds(Before);
+		FHOLUnitSpawnRequest Request;
+		Request.TypeName = FName(TEXT("ManAtArms"));
+		Request.Count = 1;
+		Request.OwnerPlayer = 0;
+		Request.Center = FVector(5000.0, 3000.0, 0.0);
+		Units->RequestUnits(Request);
+		Units->ServeBirthRequests();
+		TArray<uint32> After;
+		Units->GetAllUnitIds(After);
+		uint32 Born = 0;
+		for (const uint32 Id : After)
+		{
+			Born = Before.Contains(Id) ? Born : Id;
+		}
+		const FMassEntityHandle Unit = Born != 0 ? Units->FindEntity(Born) : FMassEntityHandle();
+		const HOLMoraleTableRows::FHOLMoraleTableRow* DemoralisedRow = HOLMoraleTableRows::Find(HOLMoraleTableRows::HOLMoraleDemoralised);
+		if (TestTrue(TEXT("a unit was born"), Unit.IsSet()) && TestNotNull(TEXT("the Demoralised row"), DemoralisedRow))
+		{
+			RunStep();
+			const auto CombatRead = [&EntityManager, Unit]() -> int32
+			{
+				const FHOLMoraleFragment* Fragment = EntityManager->GetFragmentDataPtr<FHOLMoraleFragment>(Unit);
+				return Fragment != nullptr ? HOLMorale::TakenPercent(Fragment->State, 0) : MAX_int32;
+			};
+			const int32 PercentWithout = CombatRead();
+			UHOLMoraleLibrary::ApplyEffectAround(World, HOLMoraleTableRows::HOLMoraleDemoralised, 5000, 3000, 0, DemoralisedRow->DurationMs, 1200);
+			RunStep();
+			const int32 PercentWith = CombatRead();
+			TestNotEqual(TEXT("the malus changes what the combat reads"), PercentWith, PercentWithout);
+			const UHOLMoraleProcessor::FReport Report = UHOLMoraleProcessor::ReportSlot(World, 0);
+			if (TestEqual(TEXT("the report lists the one unit of the camp"), Report.TakenPercents.Num(), 1))
+			{
+				TestEqual(TEXT("Report gives the percent the combat reads"), Report.TakenPercents[0], PercentWith);
+			}
+			TestEqual(TEXT("one unit carries an effect"), Report.NumWithEffects, 1);
+			const int32 Cleared = UHOLMoraleProcessor::ClearSlot(World, 0);
+			TestEqual(TEXT("Clear says it took one unit back to 0"), Cleared, 1);
+			TestEqual(TEXT("after Clear the combat reads what it read before the malus"), CombatRead(), PercentWithout);
+			const UHOLMoraleProcessor::FReport After0 = UHOLMoraleProcessor::ReportSlot(World, 0);
+			TestEqual(TEXT("after Clear no unit carries an effect"), After0.NumWithEffects, 0);
+		}
+	}
+
+	GEngine->DestroyWorldContext(World);
+	World->DestroyWorld(false);
+	return true;
+}
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLMoraleProcessorStaticStateTest,"HeroesOfLiberty.Morale.ProcessorStaticStateEndsWithTheWorld", UE::HeroesOfLiberty::Tests::MoraleRules::Flags)
 
 // REVUE-1123pm G1: the attenuation table and the two order queues of the morale processor are statics of the process. What a match leaves there (a camp
 // attenuated 50 %, an order waiting) must be gone when the world ends, and a world that begins must start from a clean table: no attenuation, nothing
