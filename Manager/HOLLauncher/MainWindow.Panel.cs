@@ -250,7 +250,8 @@ public sealed partial class MainWindow
                 image = new BitmapImage();
                 image.BeginInit();
                 image.CacheOption = BitmapCacheOption.OnLoad;
-                image.CreateOptions = BitmapCreateOptions.IgnoreImageCache | BitmapCreateOptions.IgnoreColorProfile;
+                // Not IgnoreImageCache: WPF keys that cache by UriSource and throws for a stream; a stream is never cached.
+                image.CreateOptions = BitmapCreateOptions.IgnoreColorProfile;
                 image.StreamSource = stream;
                 image.EndInit();
                 image.Freeze();
