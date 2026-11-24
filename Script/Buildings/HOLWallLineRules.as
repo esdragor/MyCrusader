@@ -268,22 +268,35 @@ namespace HOLWallLine
 		const FIntPoint FineMax = FIntPoint(MapMax.X * SubDivision + SubDivision - 1, MapMax.Y * SubDivision + SubDivision - 1);
 		FHOLWallLinePlan FinePlan = PlanFromRequest(SenderSlot, Start, End, Tile / double(SubDivision), FineMin, FineMax, FineOccupied, MaxCells);
 		if (FinePlan.Refusal == EHOLWallLineRefusal::Ok && CVar_WallDiagonalFill.GetInt() != 0)
-			FillDiagonalGaps(FinePlan, FineOccupied);
+			FillDiagonalGaps(FinePlan, FineOccupied, MaxCells);
 		return FinePlan;
 	}
 
 	// D898 G7: between two consecutive pieces that touch only by a corner (one step on both axes) a filler piece is laid at (next.X, previous.Y), so the line is edge-connected and no unit slips through the slit.
 	// The filler lies inside the box of the two pieces, so it is inside the map when they are. An occupied filler is skipped like any occupied cell (D901) and listed in Skipped. The cap counts the drag
 	// pieces only (the check came before): a diagonal can hold up to twice that many pieces.
-	void FillDiagonalGaps(FHOLWallLinePlan& Plan, const TArray<FIntPoint>& FineOccupied)
+	// D898 G8: the cap is recounted AFTER the fill (a diagonal holds up to twice its drag pieces): over MaxCells the line is refused TooLong and lays nothing, as Validate refuses a long line.
+	void FillDiagonalGaps(FHOLWallLinePlan& Plan, const TArray<FIntPoint>& FineOccupied, int MaxCells)
+	{
+		Plan.Cells = FillLine(Plan.Cells, FineOccupied, Plan.Skipped);
+		if (Plan.Cells.Num() > MaxCells)
+		{
+			Plan.Refusal = EHOLWallLineRefusal::TooLong;
+			Plan.BadCell = Plan.Cells[MaxCells];
+			Plan.Cells.Empty();
+		}
+	}
+
+	// The one fill rule (server plan and client drag): the line with a filler at each corner-only step; an occupied filler goes to Skipped.
+	TArray<FIntPoint> FillLine(const TArray<FIntPoint>& Line, const TArray<FIntPoint>& FineOccupied, TArray<FIntPoint>& Skipped)
 	{
 		TArray<FIntPoint> Filled;
-		for (int Index = 0; Index < Plan.Cells.Num(); Index++)
+		for (int Index = 0; Index < Line.Num(); Index++)
 		{
 			if (Index > 0)
 			{
-				const FIntPoint Previous = Plan.Cells[Index - 1];
-				const FIntPoint Current = Plan.Cells[Index];
+				const FIntPoint Previous = Line[Index - 1];
+				const FIntPoint Current = Line[Index];
 				const int StepX = Current.X - Previous.X;
 				const int StepY = Current.Y - Previous.Y;
 				if ((StepX == 1 || StepX == -1) && (StepY == 1 || StepY == -1))
@@ -296,14 +309,14 @@ namespace HOLWallLine
 							bTaken = true;
 					}
 					if (bTaken)
-						Plan.Skipped.Add(Filler);
+						Skipped.Add(Filler);
 					else
 						Filled.Add(Filler);
 				}
 			}
-			Filled.Add(Plan.Cells[Index]);
+			Filled.Add(Line[Index]);
 		}
-		Plan.Cells = Filled;
+		return Filled;
 	}
 
 	// The setting read by the callers (D898, Q-grille-fine-structure.md, not answered): 1 (the default) = the 4 m grid of today, 4 = 1 m sub-cells. The default moves to 4 at G10.
@@ -378,13 +391,22 @@ namespace HOLWallLine
 			TArray<FIntPoint> Nothing;
 			return Nothing;
 		}
-		return DragCells(FIntPoint(CellOfCoordinate(Start.X, Tile), CellOfCoordinate(Start.Y, Tile)), FIntPoint(CellOfCoordinate(End.X, Tile), CellOfCoordinate(End.Y, Tile)), MaxCells);
+		return DragCellsFine(FIntPoint(CellOfCoordinate(Start.X, Tile), CellOfCoordinate(Start.Y, Tile)), FIntPoint(CellOfCoordinate(End.X, Tile), CellOfCoordinate(End.Y, Tile)), MaxCells, SubDivision());
 	}
 
-	// D898 G8 STUB (red first): the drag the client shows on the fine grid; today the bare line.
+	// D898 G8: the drag the client shows on the fine grid = the cells the server lays (same FillLine), bounded to one piece past the cap.
 	TArray<FIntPoint> DragCellsFine(FIntPoint Start, FIntPoint End, int MaxCells, int SubDivision)
 	{
-		return DragCells(Start, End, MaxCells);
+		TArray<FIntPoint> Line = DragCells(Start, End, MaxCells);
+		if (SubDivision <= 1 || CVar_WallDiagonalFill.GetInt() == 0)
+			return Line;
+		TArray<FIntPoint> NoOccupied;
+		TArray<FIntPoint> NoSkipped;
+		TArray<FIntPoint> Filled = FillLine(Line, NoOccupied, NoSkipped);
+		TArray<FIntPoint> Shown;
+		for (int Index = 0; Index < Filled.Num() && Index <= MaxCells; Index++)
+			Shown.Add(Filled[Index]);
+		return Shown;
 	}
 
 	// F9 (S3-b, FortificationsInProgress.md): the palisade GATE. PROVISIONAL, no GDD value (D867 neighbours only say: gates are solid, units climb stone walls

@@ -29,10 +29,17 @@ namespace HOLWallGhost
 		return Ghost;
 	}
 
-	// D898 G8 STUB (red first): the ghost on the fine grid; today the bare line.
+	// D898 G8: the ghost on the fine grid draws the filled diagonal the server lays; the cap is counted on it (over the cap = refused, the cell past the cap is the bad one).
 	FHOLWallGhost BuildFine(FIntPoint Start, FIntPoint End, FIntPoint MapMin, FIntPoint MapMax, const TArray<FIntPoint>& Occupied, int MaxCells, int SubDivision)
 	{
-		return Build(Start, End, MapMin, MapMax, Occupied, MaxCells);
+		FHOLWallGhost Ghost = Build(Start, End, MapMin, MapMax, Occupied, MaxCells);
+		Ghost.Cells = HOLWallLine::DragCellsFine(Start, End, MaxCells, SubDivision);
+		if (Ghost.bValid && Ghost.Cells.Num() > MaxCells)
+		{
+			Ghost.bValid = false;
+			Ghost.BadCell = Ghost.Cells[MaxCells];
+		}
+		return Ghost;
 	}
 
 	// From the two ground points the client holds (the press and the cursor), as HOLWallLine::PlanFromRequest reads them.
@@ -44,7 +51,7 @@ namespace HOLWallGhost
 			Nothing.bValid = false;
 			return Nothing;
 		}
-		return Build(FIntPoint(HOLWallLine::CellOfCoordinate(Start.X, Tile), HOLWallLine::CellOfCoordinate(Start.Y, Tile)),
-			FIntPoint(HOLWallLine::CellOfCoordinate(End.X, Tile), HOLWallLine::CellOfCoordinate(End.Y, Tile)), MapMin, MapMax, Occupied, MaxCells);
+		return BuildFine(FIntPoint(HOLWallLine::CellOfCoordinate(Start.X, Tile), HOLWallLine::CellOfCoordinate(Start.Y, Tile)),
+			FIntPoint(HOLWallLine::CellOfCoordinate(End.X, Tile), HOLWallLine::CellOfCoordinate(End.Y, Tile)), MapMin, MapMax, Occupied, MaxCells, HOLWallLine::SubDivision());
 	}
 }
