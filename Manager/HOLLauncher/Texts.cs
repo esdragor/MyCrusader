@@ -36,9 +36,13 @@ public static class Texts
     public static string Get(string name, string language)
         => Resources.GetString(name, Culture(language)) ?? throw new KeyNotFoundException($"no launcher text '{name}'");
 
-    public static string Format(string name, params object[] args) => Format(name, Language, args);
+    public static string Format(string name, params object[] args) => FormatIn(Language, name, args);
 
-    public static string Format(string name, string language, params object[] args)
+    /**
+     * Named apart from Format on purpose: a Format(name, language, params args) overload would take a single string
+     * argument for the language (the launcher crashed at start with Format("WindowTitle", "1")).
+     */
+    public static string FormatIn(string language, string name, params object[] args)
         => string.Format(Culture(language), Get(name, language), args);
 
     /** Each language in its own language, as the settings list shows it. */
