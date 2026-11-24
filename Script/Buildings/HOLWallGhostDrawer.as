@@ -1,6 +1,6 @@
 // The wall drag ghost, drawing (F4 client, HALDIR-1120pc, D839): while the player drags a wall line (AHOLPlayerController::BeginWallDrag ..
 // EndWallDrag), one flat box per cell of the line on the ground, green when the release lays the line, red when the server would refuse it (the
-// refused cell darker apart is not drawn: the whole line is red, as the refusal is all or nothing). The rule is HOLWallGhost::Build
+// refused cell darker apart is not drawn: a refused line is all red; D901: a cell skipped for a building on it is red inside a green line). The rule is HOLWallGhost::Build
 // (HOLWallGhostRules.as, one source with the server's Validate); this file only reads the controller and draws. Script only: the one C++ line is
 // AHOLPlayerController::GetWallDragView (a UFUNCTION). Instanced boxes of the engine cube with M_MatteColor, as the biome decor does.
 
