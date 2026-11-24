@@ -426,6 +426,14 @@ bool UHOLHeroLibrary::GetHeroLocation(const UObject* WorldContextObject, const i
 
 int32 UHOLHeroLibrary::GetHeroUnitId(const UObject* WorldContextObject, const int32 Slot)
 {
-	// RED STUB (GLORFINDEL-1124b): compiles, answers "no hero"; the rule follows in the next commit.
-	return -1;
+	// The hero GetHeroLocation reads (FindHeroUnit), alive on the map; a client has no unit table. One id for the script's walk order (D900).
+	const UWorld* World = GetWorldOf(WorldContextObject);
+	const UHOLUnitSubsystem* Units = World && World->GetNetMode() != NM_Client ? World->GetSubsystem<UHOLUnitSubsystem>() : nullptr;
+	const uint32 HeroId = Units ? Units->FindHeroUnit(Slot) : 0u;
+	FHOLUnitView View;
+	if (HeroId == 0u || !Units->GetUnitView(HeroId, View) || View.Health <= 0)
+	{
+		return -1;
+	}
+	return static_cast<int32>(HeroId);
 }
