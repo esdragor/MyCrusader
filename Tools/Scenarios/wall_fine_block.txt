@@ -41,6 +41,14 @@ waitlog Drag end: foreground=
 waitlog Placement: Palisade wall line (
 wait 2
 hol.Build.Report
+# D898 G6 (CELEBORN-1124sd) : la ligne A doit compter 30 pieces de 1 m (centres y = -1450 + 100 k). Rouge observe : 11 pieces (pas de 300, boite de 400 de la voisine, GetFootprintBounds).
+# Les positions testees (y -1350, 150, 1450) n'existent PAS au pas de 300 (y = -1450 + 300 k) : chacune exige le pas de 100. Chaque waitlog relit un Build report neuf.
+hol.Build.Report
+waitlog at (-17450, -1350)
+hol.Build.Report
+waitlog at (-17450, 150)
+hol.Build.Report
+waitlog at (-17450, 1450)
 note 2. La ligne A est posee : 30 sous-cases de 1 m, aucun trou (compte lu au journal `place wall line ... N cell(s)`).
 capture wall_fine_block_line
 hol.Units.Spawn 1 -17800 0 1 Peasant 10
