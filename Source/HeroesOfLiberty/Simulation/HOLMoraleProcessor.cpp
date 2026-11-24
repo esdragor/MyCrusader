@@ -8,6 +8,7 @@
 #include "Match/HOLMatchConfig.h"
 #include "MassCommonFragments.h"
 #include "MassCommonTypes.h"
+#include "MassEntitySubsystem.h"
 #include "MassExecutionContext.h"
 #include "Simulation/HOLCombatRules.h"
 #include "Simulation/HOLHeroSubsystem.h"
@@ -103,15 +104,58 @@ void UHOLMoraleProcessor::QueueClearMalusAround(const UWorld* World, const int32
 	Order.RadiusCm = RadiusCm;
 	Order.Slot = OrderSlot;
 }
-// STUB (red first, L15-5): the real reading and clearing come in the next commit.
+namespace
+{
+	// Visits the units of the camp Slot between two steps (console side, never per entity per step): the fragment of each, writable.
+	template <typename FVisitor>
+	void ForEachUnitOfSlot(const UWorld* World, const int32 Slot, FVisitor&& Visit)
+	{
+		UMassEntitySubsystem* EntitySubsystem = World != nullptr ? World->GetSubsystem<UMassEntitySubsystem>() : nullptr;
+		if (EntitySubsystem == nullptr)
+		{
+			return;
+		}
+		FMassEntityManager& EntityManager = EntitySubsystem->GetMutableEntityManager();
+		FMassEntityQuery Query(EntityManager.AsShared());
+		Query.AddRequirement<FHOLMoraleFragment>(EMassFragmentAccess::ReadWrite);
+		Query.AddRequirement<FHOLUnitStateFragment>(EMassFragmentAccess::ReadOnly);
+		FMassExecutionContext ExecutionContext(EntityManager);
+		Query.ForEachEntityChunk(ExecutionContext, [Slot, &Visit](FMassExecutionContext& Chunk)
+		{
+			const TArrayView<FHOLMoraleFragment> Fragments = Chunk.GetMutableFragmentView<FHOLMoraleFragment>();
+			const TConstArrayView<FHOLUnitStateFragment> States = Chunk.GetFragmentView<FHOLUnitStateFragment>();
+			for (int32 Index = 0; Index < Fragments.Num(); ++Index)
+			{
+				if (States[Index].OwnerPlayer == Slot)
+				{
+					Visit(Fragments[Index]);
+				}
+			}
+		});
+	}
+}
+
 UHOLMoraleProcessor::FReport UHOLMoraleProcessor::ReportSlot(const UWorld* World, const int32 Slot)
 {
-	return FReport();
+	FReport Report;
+	ForEachUnitOfSlot(World, Slot, [&Report](FHOLMoraleFragment& Fragment)
+	{
+		// The same call GetDamageTakenPercent starts from (HOLCombatProcessor.cpp): the percent of the morale lever alone, before the ford.
+		Report.TakenPercents.Add(HOLMorale::TakenPercent(Fragment.State, 0));
+		Report.NumWithEffects += HOLMorale::IsEmpty(Fragment.State) ? 0 : 1;
+	});
+	return Report;
 }
 
 int32 UHOLMoraleProcessor::ClearSlot(const UWorld* World, const int32 Slot)
 {
-	return 0;
+	int32 NumCleared = 0;
+	ForEachUnitOfSlot(World, Slot, [&NumCleared](FHOLMoraleFragment& Fragment)
+	{
+		NumCleared += HOLMorale::IsEmpty(Fragment.State) && Fragment.State.ImmunityMs <= 0 ? 0 : 1;
+		Fragment.State = HOLMorale::FHOLMoraleState();
+	});
+	return NumCleared;
 }
 
 namespace
