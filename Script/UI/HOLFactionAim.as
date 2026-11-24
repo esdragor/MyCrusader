@@ -18,6 +18,14 @@ struct FHOLFactionAimStep
 	FVector Point = FVector::ZeroVector;
 }
 
+// ARWEN-1124a: what the aim preview draws under the mouse (a circle of the zone's radius; another colour out of the aim's reach).
+struct FHOLFactionAimPreview
+{
+	bool bInRange = true;
+	double Radius = 0.0;
+	FLinearColor Colour = FLinearColor(1.0, 1.0, 1.0, 1.0);
+}
+
 namespace HOLFactionAim
 {
 	// The reach drawn around the hero while a power is aimed (cm); the server decides the real range again (HOLFactionPowerCast::DecideAimed; D890, 1200 cm = HOLDawnPowers::SacredLightRangeCm).
@@ -53,5 +61,12 @@ namespace HOLFactionAim
 		}
 		Step.bSetAim = Step.Click.Action == EHOLFactionClickAction::Launch || Step.Click.Action == EHOLFactionClickAction::Cancel;
 		return Step;
+	}
+
+	// ARWEN-1124a STUB (red first): the preview of the point under the mouse while a power is aimed from Origin.
+	FHOLFactionAimPreview PreviewOf(FVector Origin, FVector Point)
+	{
+		FHOLFactionAimPreview Preview;
+		return Preview;
 	}
 }
