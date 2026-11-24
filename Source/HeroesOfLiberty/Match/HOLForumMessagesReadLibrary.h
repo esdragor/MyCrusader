@@ -128,6 +128,14 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|ForumMessages")
 	static FString SetCultureName(const FString& Culture);
 
+	/**
+	 * Sets the game's language the way hol.UI.Language / Settings > Language do (UKismetInternationalizationLibrary::SetCurrentLanguage,
+	 * not saved): it also loads the culture's localization resources (.locres), which SetCultureName does not (the test editor kept the
+	 * French source text). Returns the previous language name, to put back at the end of the test.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|ForumMessages")
+	static FString SetLanguageName(const FString& Culture);
+
 	/** FHOLForumThread::MaxLines. */
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|ForumMessages")
 	static int32 GetThreadMaxLines();
