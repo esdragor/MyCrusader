@@ -50,6 +50,8 @@ namespace UE::HeroesOfLiberty::Simulation
 		uint64 Steering = 14695981039346656037ull;
 		uint64 Order = 14695981039346656037ull;
 		uint64 Handles = 14695981039346656037ull;
+		/** D894: the Honor gauge and the power cool-downs of every slot (game state), a column of its own; HashUnits does not include it. */
+		uint64 Faction = 14695981039346656037ull;
 	};
 
 	void MixInto(uint64& Hash, const uint64 Value)
