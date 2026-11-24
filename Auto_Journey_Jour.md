@@ -45,6 +45,7 @@ Plan de lancement (ETAPE0-1124, 10:5x ; énoncés : `Docs\Rapports\ENONCES-1124.
 | ARWEN-1124c | 1124c | Arwen (integ-37) | faction_aim_free joué avec le geste RÉEL | non | 11:04 | 11:08 | f483c4b + merge main 1fbf4c0 ; preflight PASS (63 s), 3 PNG vus, GESTE réel, VU À L'ÉCRAN ; sans build |
 | FARAMIR-1124c | 1124c | Faramir (zone-effect) | REVUE-1123pm gênant 4 : retrait du relais HOLMoraleRules.as | non | 11:03 | ~11:11 | ed8cbc9 (refactor, 6 fichiers de test migrés compilés au chargement, 0 erreur, non exécutés) ; pas de build ; merge main non fait |
 | CELEBORN-1124c | 1124c | Celeborn (integ-41) | grille fine étape G1 (D898) | non | 11:05 | 11:08 | 2 commits (6a8b750 rouge, e9cf204 correctif) ; NON COMPILÉ ; test Test_WallLineFineGridLineIsSeventeenCells (17 cases) |
+| CELEBORN-1124d | 1124d | Celeborn (integ-41) | grille fine étape G2 (D898), occupation en sous-cases | non | 11:10 | 11:15 | 2 commits (79d6817 rouge, 6f71391 correctif) ; NON COMPILÉ ; merge main fait ; test Test_WallLineFineGridOccupiedTileSkipsItsSubCells ; 0 erreur Angelscript au chargement |
 | ANOMALIE | - | integ-64 | 11:05 integ-64 conflit au cherry-pick de 8b6fd50 (2 rouges FARAMIR sur HOLFactionPowerServer.as) : passe relancée sans lui | - | 11:05 | - | integrate.ps1 : 6 rouges appliqués, INTEG-64.txt incomplet (tests des rouges) |
 | ANOMALIE | - | Glorfindel | GLORFINDEL build 726 s BUILD LENT : au plus 2 agents C++ (L25-5) | - | 10:54 | 11:10 | build PASS mais 726 s > 3 x médiane 146 s (21 actions, vm 45,3 Go), file Galadriel, Sauron, Glorfindel |
 
