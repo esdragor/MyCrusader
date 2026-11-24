@@ -461,3 +461,42 @@ void Test_WallLineNoSelectionNoBuilders(FUnitTest& T)
 	TArray<uint32> Builders = HOLWallLine::BuildersForCell(1, Nobody);
 	T.AssertEquals(0, Builders.Num(), "nobody selected: no builder is named");
 }
+
+// D901 (user's answer B): a building on the line no longer cancels it. The free cells are laid (and paid), the occupied cell is a hole listed in Skipped.
+void Test_WallLineValidateOccupiedCellIsSkippedNotRefused(FUnitTest& T)
+{
+	TArray<FIntPoint> Taken;
+	Taken.Add(FIntPoint(2, 0));
+	HOLWallLine::FHOLWallLinePlan Plan = HOLWallLine::Validate(FIntPoint(0, 0), FIntPoint(4, 0), WallLineMapMin, WallLineMapMax, Taken, 16);
+	T.AssertTrue(Plan.Refusal == HOLWallLine::EHOLWallLineRefusal::Ok, "one building on a 5-cell line: not refused");
+	T.AssertEquals(4, Plan.Cells.Num(), "the 4 free cells are laid");
+	T.AssertFalse(WallLineHasCell(Plan.Cells, 2, 0), "the occupied cell is not laid");
+	T.AssertTrue(WallLineHasCell(Plan.Cells, 0, 0) && WallLineHasCell(Plan.Cells, 1, 0) && WallLineHasCell(Plan.Cells, 3, 0) && WallLineHasCell(Plan.Cells, 4, 0), "the cells around the hole are laid, in order from the start");
+	T.AssertEquals(1, Plan.Skipped.Num(), "one cell skipped");
+	T.AssertTrue(WallLineHasCell(Plan.Skipped, 2, 0), "the skipped cell is the occupied one (the client draws it red)");
+}
+
+// Every cell of the line occupied: nothing to lay, the line is refused as Occupied (nothing laid, nothing paid).
+void Test_WallLineValidateAllCellsOccupiedLaysNothing(FUnitTest& T)
+{
+	TArray<FIntPoint> Taken;
+	for (int X = 0; X <= 2; X++)
+		Taken.Add(FIntPoint(X, 0));
+	HOLWallLine::FHOLWallLinePlan Plan = HOLWallLine::Validate(FIntPoint(0, 0), FIntPoint(2, 0), WallLineMapMin, WallLineMapMax, Taken, 16);
+	T.AssertTrue(Plan.Refusal == HOLWallLine::EHOLWallLineRefusal::Occupied, "all 3 cells occupied: refused");
+	T.AssertEquals(0, Plan.Cells.Num(), "nothing is laid");
+}
+
+// The cost and the order of the Peasants follow the cells actually laid: a hole at the start shifts the first order to the next free cell.
+void Test_WallLineSkippedCellIsNotPaidNorQueued(FUnitTest& T)
+{
+	TArray<FIntPoint> Taken;
+	Taken.Add(FIntPoint(0, 0));
+	Taken.Add(FIntPoint(3, 0));
+	HOLWallLine::FHOLWallLinePlan Plan = HOLWallLine::Validate(FIntPoint(0, 0), FIntPoint(5, 0), WallLineMapMin, WallLineMapMax, Taken, 16);
+	T.AssertEquals(4, Plan.Cells.Num(), "6 cells, 2 occupied: 4 laid");
+	T.AssertEquals(2, Plan.Skipped.Num(), "two holes");
+	T.AssertEquals(4 * 7, Plan.Cells.Num() * 7, "the price is the laid cells times the price of one cell");
+	T.AssertTrue(Plan.Cells[0].X == 1, "the first laid cell is the first free one (the first order, index 0, obeys Shift)");
+	T.AssertFalse(HOLWallLine::QueueForCell(0, false), "the first LAID cell is not queued without Shift");
+}

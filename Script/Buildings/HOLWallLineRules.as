@@ -91,6 +91,8 @@ namespace HOLWallLine
 		EHOLWallLineRefusal Refusal = EHOLWallLineRefusal::Ok;
 		// The first cell that caused the refusal (for TooLong: the first cell past the cap); the start cell when none.
 		FIntPoint BadCell = FIntPoint(0, 0);
+		// D901 (STUB, red first): the cells of the line left out because a building stands on them. Not filled yet.
+		TArray<FIntPoint> Skipped;
 	}
 
 	FHOLWallLinePlan Validate(FIntPoint Start, FIntPoint End, FIntPoint MapMin, FIntPoint MapMax, const TArray<FIntPoint>& Occupied, int MaxCells)
