@@ -3318,7 +3318,9 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 		if (bRaging)
 		{
 			Fighter.State->CurrentHealth -= HOLUnitAbility::GetRageHitCost(Fighter.State->CurrentHealth);
-			if (Fighter.State->CurrentHealth <= static_cast<float>(HOLUnitAbility::
+			if (Fighter.State->CurrentHealth <= static_cast<float>(HOLUnitAbility::RageStopHp))
+			{
+				Combat.RageMs = 0;
 				if (Fighter.Morale)
 				{
 					HOLMorale::RemoveById(Fighter.Morale->State, HOLMoraleTableRows::HOLMoraleNecroticRage);
