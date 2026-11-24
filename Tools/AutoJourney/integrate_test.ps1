@@ -105,6 +105,29 @@ $P = Run-Plan ($Base + @('-Reds', $RedAs, '-Greens', 'g1,nope'))
 Check ($P.Code -eq 3) 'unknown green branch: exit 3' "code=$($P.Code)"
 Check (($P.Out -join ' ') -match 'nope') 'unknown green branch: named in the message'
 
+# 5b. -DryRun SIMULATES the git part (L27-1, 2026-11-24) instead of only printing the plan.
+#     (a) a red whose parent is neither in main nor in the list: DryRun FAIL (integ-73a: red b465fd7, parent fad4af7 missing -> build FAIL after 564 s).
+#     (b) two greens that conflict with each other: DryRun FAIL naming the file (integ-72: HOLDuelLedger_Test.as, found only after 442 s).
+Git $Repo checkout -q main | Out-Null
+Git $Repo branch chain main | Out-Null
+$ChainParent = CommitOn $Repo 'chain' 'Script/chain.as' "c1`n"
+$ChainRed = CommitOn $Repo 'chain' 'Script/chain.as' "c1`nc2`n"
+Git $Repo branch gc1 main | Out-Null
+Git $Repo branch gc2 main | Out-Null
+CommitOn $Repo 'gc1' 'Script/a.as' 'from-gc1' | Out-Null
+CommitOn $Repo 'gc2' 'Script/a.as' 'from-gc2' | Out-Null
+Git $Repo checkout -q main | Out-Null
+$P = Run-Plan ($Base + @('-Reds', $ChainRed, '-Greens', 'g1'))
+Check ($P.Code -eq 1) 'red whose parent is not in main nor in the list: DryRun exit 1 (FAIL)' "code=$($P.Code) out=$($P.Out -join ' | ')"
+Check (($P.Out -join ' ') -match $ChainParent.Substring(0, 7)) 'missing parent named in the message' ($P.Out -join ' | ')
+$P = Run-Plan ($Base + @('-Reds', "$ChainParent,$ChainRed", '-Greens', 'g1'))
+Check ($P.Code -eq 0) 'red whose parent is in the list: DryRun exit 0' "code=$($P.Code) out=$($P.Out -join ' | ')"
+$P = Run-Plan ($Base + @('-Greens', 'gc1,gc2'))
+Check ($P.Code -eq 1) 'two greens in conflict: DryRun exit 1 (FAIL)' "code=$($P.Code) out=$($P.Out -join ' | ')"
+Check (($P.Out -join ' ') -match 'Script/a\.as') 'conflicting file named in the message' ($P.Out -join ' | ')
+$P = Run-Plan ($Base + @('-Greens', 'g1,g2'))
+Check ($P.Code -eq 0) 'two greens without conflict: DryRun exit 0' "code=$($P.Code) out=$($P.Out -join ' | ')"
+
 # 6. REAL run (git only, -SkipBuildTests) : a red holds a STUB that a later commit of its own branch replaces (case integ-32, 2026-11-20).
 #    The reds only serve to see the tests fail; the greens must merge from main, without the cherry-picked reds -> PASS, no conflict.
 Git $Repo checkout -q main | Out-Null
