@@ -37,7 +37,7 @@ namespace HOLMoraleBlock
 			return Badge;
 		for (int Index = 0; Index < State.Effects.Num(); Index++)
 		{
-			if (HOLMorale::IsMalus(State.Effects[Index]))
+			if (HOLMorale::NativeIsMalus(State.Effects[Index]))
 				Badge.bMalus = true;
 			else
 				Badge.bBonus = true;
@@ -58,7 +58,7 @@ namespace HOLMoraleBlock
 			for (int Index = 0; Index < State.Effects.Num(); Index++)
 			{
 				const FHOLMoraleEffectData Effect = State.Effects[Index];
-				if (HOLMorale::IsMalus(Effect) != bWantMalus)
+				if (HOLMorale::NativeIsMalus(Effect) != bWantMalus)
 					continue;
 				FHOLMoraleLine Line;
 				Line.Id = Effect.Id;

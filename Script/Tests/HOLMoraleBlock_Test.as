@@ -5,7 +5,7 @@ FHOLMoraleStateData MoraleBlockPose(const FHOLMoraleStateData& Before, int Id)
 {
 	FHOLMoraleStateData State = Before;
 	const FHOLMoraleEffectData Effect = HOLMoraleTable::Effect(Id);
-	HOLMorale::Apply(State, Effect);
+	HOLMorale::NativeApply(State, Effect, 0);
 	return State;
 }
 
@@ -68,10 +68,10 @@ void Test_MoraleBlockOwnUnitShowsSecondsLeft(FUnitTest& T)
 	T.AssertEquals((FullMs + 999) / 1000, Lines[0].SecondsLeft, "the full time to start with");
 	T.AssertTrue(Lines[1].bAura, "the aura line says it is an aura");
 	T.AssertEquals(-1, Lines[1].SecondsLeft, "an aura has no time to show");
-	HOLMorale::Tick(State, 12000);
+	HOLMorale::NativeTick(State, 12000);
 	Lines = HOLMoraleBlock::Lines(State, true, false);
 	T.AssertEquals((FullMs - 12000 + 999) / 1000, Lines[0].SecondsLeft, "12 s later, 12 s less");
-	HOLMorale::Tick(State, 500);
+	HOLMorale::NativeTick(State, 500);
 	Lines = HOLMoraleBlock::Lines(State, true, false);
 	T.AssertEquals((FullMs - 12500 + 999) / 1000, Lines[0].SecondsLeft, "a started second still counts");
 }
@@ -94,7 +94,7 @@ void Test_MoraleBlockPeasantShowsNothing(FUnitTest& T)
 {
 	FHOLMoraleStateData State = MoraleBlockPose(FHOLMoraleStateData(), HOLMoraleTable::Triumph);
 	State = MoraleBlockPose(State, HOLMoraleTable::Demoralised);
-	HOLMorale::GrantImmunity(State, 5000);
+	HOLMorale::NativeGrantImmunity(State, 5000);
 	const HOLMoraleBlock::FHOLMoraleBadge Badge = HOLMoraleBlock::Badge(State, true);
 	T.AssertFalse(Badge.bBonus || Badge.bMalus || Badge.bImmune, "a Peasant has no pastille");
 	T.AssertEquals(0, HOLMoraleBlock::Lines(State, true, true).Num(), "a Peasant has no line");
@@ -105,17 +105,17 @@ void Test_MoraleBlockPeasantShowsNothing(FUnitTest& T)
 void Test_MoraleBlockImmunityShowsGold(FUnitTest& T)
 {
 	FHOLMoraleStateData State;
-	HOLMorale::GrantImmunity(State, 5000);
-	const int Refused = HOLMorale::Apply(State, HOLMoraleTable::Effect(HOLMoraleTable::Demoralised));
+	HOLMorale::NativeGrantImmunity(State, 5000);
+	const int Refused = HOLMorale::NativeApply(State, HOLMoraleTable::Effect(HOLMoraleTable::Demoralised), 0);
 	T.AssertEquals(HOLMorale::ApplyBlockedByImmunity, Refused, "the real chain refuses the malus during the immunity");
-	HOLMorale::Apply(State, HOLMoraleTable::Effect(HOLMoraleTable::Triumph));
+	HOLMorale::NativeApply(State, HOLMoraleTable::Effect(HOLMoraleTable::Triumph), 0);
 	const HOLMoraleBlock::FHOLMoraleBadge Badge = HOLMoraleBlock::Badge(State, false);
 	T.AssertTrue(Badge.bImmune, "the gold pastille");
 	T.AssertTrue(Badge.bBonus, "the bonus is posed and shown");
 	T.AssertFalse(Badge.bMalus, "no red pastille: the malus was refused");
 	T.AssertEquals(5, HOLMoraleBlock::ImmunitySeconds(State, true, false), "our unit shows 5 s of immunity");
 	T.AssertEquals(-1, HOLMoraleBlock::ImmunitySeconds(State, false, false), "an enemy unit shows no time");
-	HOLMorale::Tick(State, 5000);
+	HOLMorale::NativeTick(State, 5000);
 	T.AssertFalse(HOLMoraleBlock::Badge(State, false).bImmune, "the gold pastille goes with the immunity");
 }
 
@@ -124,12 +124,12 @@ void Test_MoraleBlockFollowsRemovalAndExpiry(FUnitTest& T)
 {
 	FHOLMoraleStateData State = MoraleBlockPose(FHOLMoraleStateData(), HOLMoraleTable::Triumph);
 	State = MoraleBlockPose(State, HOLMoraleTable::Demoralised);
-	HOLMorale::RemoveMalus(State);
+	HOLMorale::NativeRemoveMalus(State);
 	HOLMoraleBlock::FHOLMoraleBadge Badge = HOLMoraleBlock::Badge(State, false);
 	T.AssertFalse(Badge.bMalus, "the red pastille goes with the malus");
 	T.AssertTrue(Badge.bBonus, "the green one stays");
 	T.AssertEquals(1, HOLMoraleBlock::Lines(State, true, false).Num(), "only the bonus is listed");
-	HOLMorale::Tick(State, HOLMoraleTable::Effect(HOLMoraleTable::Triumph).DurationMs);
+	HOLMorale::NativeTick(State, HOLMoraleTable::Effect(HOLMoraleTable::Triumph).DurationMs);
 	T.AssertFalse(HOLMoraleBlock::Badge(State, false).bBonus, "an expired effect shows no pastille");
 	T.AssertEquals(0, HOLMoraleBlock::Lines(State, true, false).Num(), "and no line");
 }

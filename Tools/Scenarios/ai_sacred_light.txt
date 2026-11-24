@@ -24,6 +24,8 @@ note 1. Devant le forum de l'IA : 6 Hallebardiers et 1 Chevalier vertueux rassem
 hol.AI.HonorSet 100
 hol.Units.SpawnHere 8 ManAtArms 0 250
 hol.Camera.FocusNear 1500 0 enemy
+waitlog banner at (
+waitlog planted
 waitlog Sacred Light cast
 frames 45
 hol.Hero.Report

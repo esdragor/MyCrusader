@@ -18,8 +18,8 @@ void Test_MoraleTableRowsAreWellFormed(FUnitTest& T)
 		T.AssertFalse(Row.SourceKind.IsEmpty(), f"{Row.Key} says where it comes from");
 		T.AssertTrue(Row.RadiusCm >= 0 && Row.DurationMs >= 0, f"{Row.Key}: no negative reach or time");
 		const FHOLMoraleEffectData Effect = HOLMoraleTable::Effect(Id);
-		T.AssertTrue(HOLMorale::HasIntensity(Effect), f"{Row.Key} acts on a lever");
-		T.AssertEquals(Row.bMalusSign, HOLMorale::IsMalus(Effect), f"{Row.Key}: the sign agrees with the levers");
+		T.AssertTrue(HOLMorale::NativeHasIntensity(Effect), f"{Row.Key} acts on a lever");
+		T.AssertEquals(Row.bMalusSign, HOLMorale::NativeIsMalus(Effect), f"{Row.Key}: the sign agrees with the levers");
 		if (Row.Gives < 0)
 		{
 			// Bonus levers all >= 0, malus levers all <= 0 (a mixed effect would be neither).
@@ -68,12 +68,12 @@ void Test_MoraleTableMigratedValues(FUnitTest& T)
 void Test_MoraleTableOneAuraCounts(FUnitTest& T)
 {
 	FHOLMoraleStateData State;
-	HOLMorale::Apply(State, HOLMoraleTable::Effect(HOLMoraleTable::DawnAura));
-	HOLMorale::Apply(State, HOLMoraleTable::Effect(HOLMoraleTable::Banner));
-	T.AssertEquals(1, HOLMorale::Count(State), "the hero's aura and a banner's are one effect");
-	T.AssertEquals(85, HOLMorale::Multiplier(State, HOLMorale::LeverTaken), "15 % less taken: 85 % of the damage, not 70");
-	HOLMorale::Apply(State, HOLMoraleTable::Effect(HOLMoraleTable::CloseRanks));
-	T.AssertEquals(60, HOLMorale::Multiplier(State, HOLMorale::LeverTaken), "the cry on top: 60 % of the damage taken, as GetDamageTakenPercent(true, true)");
+	HOLMorale::NativeApply(State, HOLMoraleTable::Effect(HOLMoraleTable::DawnAura), 0);
+	HOLMorale::NativeApply(State, HOLMoraleTable::Effect(HOLMoraleTable::Banner), 0);
+	T.AssertEquals(1, State.Effects.Num(), "the hero's aura and a banner's are one effect");
+	T.AssertEquals(85, HOLMorale::NativeMultiplier(State, HOLMorale::LeverTaken), "15 % less taken: 85 % of the damage, not 70");
+	HOLMorale::NativeApply(State, HOLMoraleTable::Effect(HOLMoraleTable::CloseRanks), 0);
+	T.AssertEquals(60, HOLMorale::NativeMultiplier(State, HOLMorale::LeverTaken), "the cry on top: 60 % of the damage taken, as GetDamageTakenPercent(true, true)");
 }
 
 // The duel's effects: the times are those of HOLDuelRules.as, Hesitation is much weaker than Demoralised (D16), the malus can be attenuated.
@@ -99,8 +99,8 @@ void Test_MoraleTableDuelEffects(FUnitTest& T)
 void Test_MoraleTableAttenuatesDemoralised(FUnitTest& T)
 {
 	FHOLMoraleStateData State;
-	HOLMorale::Apply(State, HOLMoraleTable::Effect(HOLMoraleTable::Demoralised), 50);
+	HOLMorale::NativeApply(State, HOLMoraleTable::Effect(HOLMoraleTable::Demoralised), 50);
 	T.AssertEquals(HOLMoraleTable::Row(HOLMoraleTable::Demoralised).DurationMs / 2, State.Effects[0].DurationMs, "half the time");
-	HOLMorale::RemoveMalus(State);
-	T.AssertEquals(0, HOLMorale::Count(State), "removed by the soothing");
+	HOLMorale::NativeRemoveMalus(State);
+	T.AssertEquals(0, State.Effects.Num(), "removed by the soothing");
 }
