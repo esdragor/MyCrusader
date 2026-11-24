@@ -1,17 +1,19 @@
-﻿# [À ESSAYER] E-tower_wood (branche zone-effect, PAS ENCORE DANS MAIN) : la Tour de guet en bois lâche une flèche en vol sur 3 Lanciers rouges à 12 m (flèche grossie x3 : fût beige, pointe grise, empennage blanc)
+﻿# [À ESSAYER] E-tower_wood (zone-effect est DANS main depuis integ-63, b5299e5 ; pré-vol rejoué sur main 2026-11-24) : la Tour de guet en bois lâche une flèche en vol sur 3 Lanciers rouges à 12 m (flèche grossie x3 : fût beige, pointe grise, empennage blanc)
 
 STATUT : VU À L'ÉCRAN   (flèche EN VOL vue sur 2 PNG, FARAMIR-1123pe 2026-11-23 ; geste interne, son non entendu)
 GESTE: interne
 SON: non entendu
-branches: zone-effect (e1528ac)
+branches: zone-effect (e1528ac, DANS main depuis integ-63 b5299e5)
 
 AIDES D'ESSAI, PAS LE RENDU DU JEU : le scénario règle `hol.Arrow.Scale 3` (flèche 3 fois plus grosse) et `hol.Arrow.SlowMotion 4` (vol DESSINÉ 4 fois plus long ; les dégâts tombent à l'heure), plus `hol.Combat.LogBuildingShots 1` (une ligne au lancer, pour que le scénario capture à ce moment). Par défaut (1 / 1 / 0) rien ne change : en jeu la flèche d'une tour est 3 fois plus petite et vit ~0,3 s.
+
+Pré-vol HALDIR-1124i (2026-11-24 10:50-10:52, worktree C:\Users\baudo\Documents\HeroesOfLiberty-Haldir = main 173d31b + integ-58, play.ps1 -Hidden via preflight) : preflight.ps1 tower_wood PASS (120 s, 9 PNG, check PASS, aucun warning, binaire à jour). PNG OUVERTS et vus (1066 x 600) : before (la tour de bois seule, bleue, aucun ennemi ni flèche), during (UNE FLÈCHE EN VOL au-dessus du toit de la tour : fût beige ~150 px, pointe grise, empennage blanc ; ~3 Lanciers rouges minuscules à gauche), during2 (la même flèche, plus petite, plus près du Lancier ; petite flèche rouge/sombre au sol près de lui), during3 (plus de grosse flèche ; un Lancier rouge près de la tour, 2 petites flèches plantées), during4 (un Lancier agrandi à gauche, traits sombres = lances), during5 (barre de vie VERTE PLEINE de la tour en haut du toit ; 2 Lanciers, flèches plantées), during6 (idem, Lanciers au contact), after (3e note affichée ; Lanciers rouges en bas à gauche, leurs barres de vie NON lisibles). Flèche EN VOL revue sur main : oui (during, during2). REMARQUE : la caméra de during..after est plus proche de la tour que celle de before (la tour remplit l'écran) ; le scénario le fait, pas un bug de pré-vol. GESTE: interne, SON: non entendu (inchangés : essai de rendu de la flèche, pas de geste ni de son). Commande complète (main, copie à jour) : powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Haldir\Tools\Scenarios\play.ps1 tower_wood -Root C:\Users\baudo\Documents\HeroesOfLiberty-Haldir
 
 Pré-vol FARAMIR-1123pe (2026-11-23 16:55, worktree C:\Users\baudo\Documents\HeroesOfLiberty-Faramir, commit e1528ac ; build PASS 38 s, quick_check tests 2163/2163) : preflight.ps1 tower_wood PASS (37 s, 9 PNG). PNG OUVERTS : tower_wood_before (la tour seule, aucune flèche), tower_wood_during, tower_wood_during2, tower_wood_during3 ; les 5 autres (during4..6, after) NON ouverts par cet agent.
 - tower_wood_during : UNE FLÈCHE EN VOL au-dessus du toit de la tour : fût beige ~190 px de long x ~13 px, pointe grise à gauche, empennage blanc à droite, inclinée vers les Lanciers rouges à gauche (absente de before) ; capture prise ~50 ms (3 images) après la ligne « Combat: building shot step 248 ... flight 171 ms » ; ArrowReport juste avant : en vol 1, lancées 2, atterries 1.
 - tower_wood_during2 (+4 images) : la même flèche, ~90 px, plus près du Lancier de gauche.
 - tower_wood_during3 (+4 images) : plus de flèche nette (un petit objet blanc près du Lancier de gauche, non identifié) ; les petits traits orange près des Lanciers sont leurs barres de vie, les traits sombres leurs lances (pas des flèches).
-NON VÉRIFIÉ : geste réel (le scénario est interne) ; son ; barres de vie lisibles ; la flèche à sa taille réelle (x1, ~20 px, 0,3 s) ; during4..6 et after non ouverts ; le worktree zone-effect n'est pas dans main.
+NON VÉRIFIÉ : geste réel (le scénario est interne) ; son ; barres de vie lisibles ; la flèche à sa taille réelle (x1, ~20 px, 0,3 s) ; during4..6 et after non ouverts ; le worktree zone-effect n'est plus nécessaire (dans main).
 Commande complète : powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Faramir\Tools\Scenarios\play.ps1 tower_wood -Root C:\Users\baudo\Documents\HeroesOfLiberty-Faramir
 Durée : environ 1 min. Réponse attendue : OK, BUG: ... ou REGLAGE: ....
 
