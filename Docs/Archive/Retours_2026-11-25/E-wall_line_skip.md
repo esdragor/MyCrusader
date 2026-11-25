@@ -15,3 +15,5 @@ NON VÉRIFIÉ : son (sans objet) ; le cas « toutes les cases bloquées = refus 
 Commande complète : `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Haldir\Tools\Scenarios\play.ps1 wall_line_skip -Root C:\Users\baudo\Documents\HeroesOfLiberty-Haldir`
 (le worktree Haldir contient main 9d40517 : le correctif est dans main 9d40517, compilé)
 Durée : environ 2 min. Réponse attendue : `OK`, `BUG: ...` ou `REGLAGE: ...`.
+Recette RECETTE-1125mc sur main 7922539 (2026-11-25 13:50, worktree Celeborn, binaire 12:37, preflight PASS, 2 PNG ouverts) : PASS. wall_line_skip_during : file de dalles vertes plates, 2 dalles rouges sous la Maison (cadre filaire), ligne acceptee ; wall_line_skip_after : 7 fondations (4 a gauche, 3 a droite), trou net a la place de la Maison, plus de dalle verte ou rouge ; Bois 20150 -> 20115 = 7 x 5.
+Reponse: OK (2026-11-25 14:0x, joue par l utilisateur sur main 7922539, dans la conversation)

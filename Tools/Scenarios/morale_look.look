@@ -1,4 +1,4 @@
 # <nom de capture> | ce que l'utilisateur doit voir
 morale_look_before | Le Guerrier damne des Legions selectionne (clic sur son corps), le bloc du bas donne son nom et ses statistiques, AUCUNE pastille de moral (pas de rond vert), aucune teinte rouge
-morale_look_during | Apres la touche E (rage necrotique) : le Guerrier damne teinte rouge sombre et, dans le bloc de selection, la pastille de moral : un rond vert suivi du nom de l'effet, sans secondes
+morale_look_during | Apres la touche E (rage necrotique) : le Guerrier damne (~80 px) teinte rouge sombre, donc VIOLET sur le bleu du joueur (il est bleu avant et apres), et, dans le bloc de selection, la pastille de moral : un rond vert suivi du nom de l'effet, sans secondes
 morale_look_after | Apres les 10 s de rage : le Guerrier damne sans teinte, la pastille de moral a disparu du bloc de selection

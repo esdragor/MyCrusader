@@ -19,7 +19,7 @@ frames 40
 # 1. La Caserne, cliquee pour de vrai : la grille propose le Guerrier damne (case E).
 hol.Camera.FocusNear 2500 2500
 frames 2
-hol.Select.ClickGround -12200 2600
+hol.Select.ClickGround -13800 2600
 frames 10
 hol.HUD.Report
 hol.UI.Key E 0 0.1
@@ -35,6 +35,8 @@ hol.Camera.FocusNear 2500 2500
 frames 2
 # 3. Clic gauche sur le corps du guerrier : le bloc de selection, SANS pastille de moral (aucun effet).
 hol.Select.ClickUnit -1
+hol.Camera.Zoom 12
+frames 10
 frames 10
 hol.HUD.Report
 waitlog HUD selection name:
