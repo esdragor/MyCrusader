@@ -58,6 +58,22 @@ namespace HOLCommandGridAction
 	int GetAimBanner() { return 101; }
 	int GetAimSeal() { return 102; }
 
+	// The farthest whole cm the server lets the hero plant his Banner (HOLHeroAbilityRead::CanPlantBanner is the ONE source, no copied 1600; found by halving, as HOLAIPowerCall does).
+	int GetBannerReachCm()
+	{
+		int Low = 0;
+		int High = 100000;
+		while (Low < High)
+		{
+			const int Mid = (Low + High + 1) / 2;
+			if (HOLHeroAbilityRead::CanPlantBanner(float(Mid)))
+				Low = Mid;
+			else
+				High = Mid - 1;
+		}
+		return Low;
+	}
+
 	// G-2 rest (GLORFINDEL-1125mb): Decide plus the cost checks. STUB of the red: answers Decide's verdict without checking the cost.
 	FHOLGridActionView DecideCosted(const FHOLGridActionContext& Context, const FHOLGridCostFacts& Facts, const FHOLGridCommandView& Command)
 	{
@@ -115,6 +131,8 @@ namespace HOLCommandGridAction
 			{
 				Result.Kind = EHOLGridActionKind::Arm;
 				Result.AimMode = GetAimBanner();
+				// ELROND-1125me: the Banner's own reach; 0 left the controller's last range (the Seal's 800 cm) in the aura report and the aim.
+				Result.RangeCm = GetBannerReachCm();
 				Result.Report = n"Banner";
 			}
 			else
