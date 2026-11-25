@@ -24,4 +24,18 @@ namespace HOLArtSound
 		const FString ArtPath = PathFor(Context, TypeName, Faction, Slot);
 		return ArtPath.IsEmpty() ? TableAsset : ArtPath;
 	}
+
+	// AR6-b: at most this many typed combat sounds (attack, death) playing at once, so 200 units striking do not start 200 sounds.
+	const int MaxCombatVoices = 8;
+	// A typed combat sound is counted as playing for this long (seconds) after it starts.
+	const float CombatVoiceSeconds = 1.0;
+
+	// Voice limit (pure): VoiceEnds holds the end times of the voices still counted. Drops the ended ones (<= Now), then starts a voice
+	// (appends Now + Length, returns true) only while fewer than Limit are playing; returns false (nothing appended) when full.
+	bool TryStartVoice(TArray<float>& VoiceEnds, float Now, float Length, int Limit)
+	{
+		// AR6-b stub (red): no limit yet.
+		VoiceEnds.Add(Now + Length);
+		return true;
+	}
 }

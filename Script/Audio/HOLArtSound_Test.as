@@ -37,3 +37,32 @@ void Test_ArtSoundBeforeTheTable(FUnitTest& T)
 	T.AssertEquals(FromArt, "/Game/Art/Buildings/Barracks/S_Select.S_Select", "the art asset's sound before the table");
 	T.AssertEquals(FromTable, "/Game/Audio/Kenney/table.table", "no art sound: the table's");
 }
+
+// AR6-b: 200 units striking at once start at most MaxCombatVoices typed combat sounds (count computed by the limiter, not copied).
+void Test_ArtSoundVoiceLimit(FUnitTest& T)
+{
+	TArray<float> Ends;
+	int Started = 0;
+	for (int Index = 0; Index < 200; Index++)
+	{
+		if (HOLArtSound::TryStartVoice(Ends, 10.0, HOLArtSound::CombatVoiceSeconds, HOLArtSound::MaxCombatVoices))
+			Started++;
+	}
+	const int Playing = Ends.Num();
+	T.AssertEquals(Started, HOLArtSound::MaxCombatVoices, "200 strikes at once: only the voice limit starts");
+	T.AssertEquals(Playing, HOLArtSound::MaxCombatVoices, "the counted voices stay at the limit");
+}
+
+// AR6-b: a voice frees its place when it ends: full at 0.5 s, room again at 1.5 s (the ended ones dropped).
+void Test_ArtSoundVoiceFreesWithTime(FUnitTest& T)
+{
+	TArray<float> Ends;
+	for (int Index = 0; Index < 3; Index++)
+		HOLArtSound::TryStartVoice(Ends, 0.0, 1.0, 3);
+	const bool bWhileFull = HOLArtSound::TryStartVoice(Ends, 0.5, 1.0, 3);
+	const bool bAfterEnd = HOLArtSound::TryStartVoice(Ends, 1.5, 1.0, 3);
+	const int Playing = Ends.Num();
+	T.AssertFalse(bWhileFull, "three playing, limit three: refused");
+	T.AssertTrue(bAfterEnd, "the three ended: a new voice starts");
+	T.AssertEquals(Playing, 1, "only the new voice is counted");
+}
