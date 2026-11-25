@@ -2,7 +2,7 @@
 
 STATUT : LOGIQUE SEULEMENT   (captures vues ; le trait « doré » du talent n'est pas net sur talents_heal_boosted : le trait y paraît vert)
 recette: RECETTE-1121sb FAIL sur main a7833ea (Sauron) : jauge SacredLight au-dessus du bloc heros OK (base, cell, boosted), aucun ++ sur l'Arbre de talents OK, MAIS talents_heal_boosted : trait de soin VERT (pixels or 255,215,60 = 0, verts 414 contre 431 en base), pas de ++ : le talent Mains du guerisseur (pris, 2 talents) ne dore pas le trait. Statut reste LOGIQUE SEULEMENT (geste interne).
-GESTE: interne
+GESTE: interne (ARWEN-1125b 15:49 : clics souris REELS hol.Mouse.Click sur HeroTalentButton et les cases ; touche T non injectable ; derniere fermeture encore hol.HUD.Click TalentKey ; reste interne tant que T / fermeture ne sont pas reels)
 SON: non entendu
 branches: zone-effect
 

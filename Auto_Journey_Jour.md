@@ -31,6 +31,17 @@ Tableau des agents, plan de lancement ETAPE0-1125m, avances de main et anomalies
 
 | Agent | Worktree | Branche | Commits | Tache | C++ |
 | ETAPE0-1125a | HeroesOfLiberty-MyCrusader | main | - | etape 0 lecture seule : plan de lancement + enonces (priorite Socle Factions) ; exception gate : DLL copie principale perimee, agent sans build ni scenario | sans C++ |
+| ARWEN-1125a | HeroesOfLiberty-Arwen | spec-voie-1125m | - | Produces des 3 unites de commanderie (D893 etape 3 / D902), C:\Users\baudo\Documents\MyCrusader\Docs\Rapports\ENONCES-1125a.md section 1.1 | sans C++ |
+| CELEBORN-1125a | HeroesOfLiberty-Celeborn | wall-long-fix-1125m | - | D915 prix des murs grille fine, C:\Users\baudo\Documents\MyCrusader\Docs\Rapports\ENONCES-1125a.md section 1.2 | sans C++ |
+| GALADRIEL-1125a | HeroesOfLiberty-Galadriel | morale-look-fix-1125m | - | D918 tours de guet IA 1/1/2, C:\Users\baudo\Documents\MyCrusader\Docs\Rapports\ENONCES-1125a.md section 1.3 | sans C++ |
+| SAURON-1125a | HeroesOfLiberty-Sauron | integ-82 | - | effet KnightChallenge (Aube A7, place C++ 1), C:\Users\baudo\Documents\MyCrusader\Docs\Rapports\ENONCES-1125a.md section 1.4 | C++ : raison dite dans la tache |
+| ARWEN-1125b | HeroesOfLiberty-Arwen | spec-voie-1125m | - | A1 E-talents_heal geste reel, C:\Users\baudo\Documents\MyCrusader\Docs\Rapports\ENONCES-1125a-v2.md | sans C++ |
+| CELEBORN-1125b | HeroesOfLiberty-Celeborn | wall-long-fix-1125m | - | C1 branchement porte G10, C:\Users\baudo\Documents\MyCrusader\Docs\Rapports\ENONCES-1125a-v2.md | sans C++ |
+| GALADRIEL-1125b | HeroesOfLiberty-Galadriel | morale-look-fix-1125m | - | G1 commentaire HOLAIBrain + scenario ai_tower_easy, C:\Users\baudo\Documents\MyCrusader\Docs\Rapports\ENONCES-1125a-v2.md | sans C++ |
+| SAURON-1125b | HeroesOfLiberty-Sauron | knight-challenge-1125a | - | S1 activation KnightChallenge (AS + liaison CastKnightChallenge), ENONCES-1125a-v2.md | C++ : raison dite dans la tache |
+| ARWEN-1125c | HeroesOfLiberty-Arwen | spec-voie-1125m | - | Reste ARWEN-1125b : cause du preflight FAIL(1) talents_heal, PNG, fiche E | sans C++ |
+| GALADRIEL-1125c | HeroesOfLiberty-Galadriel | morale-look-fix-1125m | - | diagnostic BUG-ai_peasant-spin (persiste avec 17e7722 dans main) + recadrage ai_tower_easy | sans C++ |
+| CELEBORN-1125c | HeroesOfLiberty-Celeborn | wall-long-fix-1125m | - | lot C++ murs : prix D915 dans DoPlaceBuilding + liaisons porte G10 (lecture pieces, DestroyBuilding) | C++ : raison dite dans la tache |
 
 ## Bilan du 2026-11-25 matin
 
