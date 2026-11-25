@@ -24,6 +24,8 @@ struct FHOLArrowLaunch
 	/** The shooter's unit type (AR9, AR-Q5): its row's Projectile is the mesh drawn (SM_Bolt for the Crossbowman); none or
 	 *  empty: SM_Arrow. Known on every machine (the client has the shooter's type): nothing more is sent. */
 	FName ShooterType;
+	/** AR0-a3: the shooter's owner slot: its faction's art asset (DA_Art_<Type>_<Faction>) gives the projectile and the smoke; INDEX_NONE: the common one. */
+	int32 ShooterSlot = INDEX_NONE;
 };
 
 /**
@@ -127,7 +129,7 @@ private:
 	static constexpr double MaxGapSeconds = 2.0;
 
 	/** The index of the mesh drawing a shot of this type in Meshes (its component made at its first shot); INDEX_NONE: none. */
-	int32 FindOrAddGroup(FName ShooterType);
+	int32 FindOrAddGroup(FName ShooterType, FName ShooterFaction);
 
 	/**
 	 * The index of the group drawing this mesh (its component made on the first call); INDEX_NONE: no mesh or no world.
@@ -136,7 +138,7 @@ private:
 	int32 FindOrAddMeshGroup(UStaticMesh* Mesh, int32 NumCustomData = 0);
 
 	/** The group drawing the muzzle smoke of this type (INDEX_NONE: the type has none), looked up once. */
-	int32 FindOrAddSmokeGroup(FName ShooterType);
+	int32 FindOrAddSmokeGroup(FName ShooterType, FName ShooterFaction);
 
 	TArray<FArrow> Arrows;
 	/** The projectile meshes met so far and their instances, side by side (AR9). */
@@ -146,10 +148,10 @@ private:
 	TArray<TObjectPtr<UInstancedStaticMeshComponent>> Instances;
 	UPROPERTY(Transient)
 	TObjectPtr<AActor> InstancesOwner;
-	/** Each shooter type's group (INDEX_NONE: its mesh missing, warned once). */
-	TMap<FName, int32> GroupByType;
-	/** Each shooter type's smoke group (INDEX_NONE: none). */
-	TMap<FName, int32> SmokeGroupByType;
+	/** Each (shooter type, faction)'s group (INDEX_NONE: its mesh missing, warned once). */
+	TMap<TPair<FName, FName>, int32> GroupByType;
+	/** Each (shooter type, faction)'s smoke group (INDEX_NONE: none). */
+	TMap<TPair<FName, FName>, int32> SmokeGroupByType;
 	TArray<FPuff> Puffs;
 	FVector LastSmokeOrigin = FVector::ZeroVector;
 	int64 Launched = 0;

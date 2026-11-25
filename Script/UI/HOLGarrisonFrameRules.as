@@ -28,8 +28,8 @@ namespace HOLGarrisonFrameRules
 	{
 		if (TypeKey == "")
 			return "";
-		// D924 (AR0-a2): the type's art asset icon first (DA_Art_<Type>), the conventional path below.
-		const FString ArtIcon = UHOLArtVisualRegistry::GetArtIconPath(nullptr, FName(TypeKey), NAME_None);
+		// D924 (AR0-a2, AR0-a3): the art asset icon first (DA_Art_<Type>_<Faction> of the occupant owner's faction, then DA_Art_<Type>), the conventional path below.
+		const FString ArtIcon = UHOLArtVisualRegistry::GetArtIconPath(nullptr, FName(TypeKey), FactionKey != "" ? FName(FactionKey) : NAME_None);
 		if (ArtIcon != "")
 			return ArtIcon;
 		return f"/Game/UI/Icons/Units/T_Unit_{TypeKey}.T_Unit_{TypeKey}";
@@ -51,7 +51,7 @@ namespace HOLGarrisonFrameRules
 			FHOLGarrisonButtonView Button;
 			Button.UnitId = View.PortraitUnitIds[Index];
 			Button.TypeKey = Index < OccupantTypes.Num() ? OccupantTypes[Index] : "";
-			Button.IconPath = UnitIconPath(Button.TypeKey);
+			Button.IconPath = UnitIconPath(Button.TypeKey, OwnerFaction);
 			Button.Label = Button.TypeKey != "" ? Button.TypeKey : f"{Button.UnitId}";
 			Buttons.Add(Button);
 		}
