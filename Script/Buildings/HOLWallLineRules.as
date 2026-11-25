@@ -536,6 +536,18 @@ namespace HOLWallLine
 		return GateReplacedCells(Cell, bAlongX, SubDivision, GateOwner, StandingCells, StandingTypes, StandingOwners);
 	}
 
+	// D898 G10 (CELEBORN-1125d): the indices (into the Standing* arrays) of the buildings a gate pose must retire first: the FINISHED palisade pieces of the same seat under the gate. STUB (red): retires nothing.
+	TArray<int> GateRetireIndices(FName TypeName, FVector Point, double Pitch, int SubDivision, bool bAlongX, int GateOwner, const TArray<FIntPoint>& StandingCells, const TArray<FName>& StandingTypes, const TArray<int>& StandingOwners, const TArray<bool>& Finished)
+	{
+		TArray<int> None;
+		return None;
+	}
+
+	// hol.Wall.GateAlongLine (CELEBORN-1125d). STUB (red): never along the line.
+	bool GateAlongX(FVector Start, FVector End)
+	{
+		return false;
+	}
 	// A gate lets its owner's units through (other seats meet a solid building, D691 / D867 neighbours: walls and gates are solid for the enemy).
 	bool GatePassesUnit(FName GateType, int GateOwner, int UnitOwner)
 	{
