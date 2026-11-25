@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Kismet/BlueprintFunctionLibrary.h"
+class UHOLUnitSubsystem;
 #include "HOLUnitAbilityReadLibrary.generated.h"
 
 /**
@@ -65,4 +66,16 @@ public:
 	/** HOLUnitAbility::IsRageEffectEnded: over by time, or because the unit is at (or under) the stop floor. */
 	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|UnitAbility")
 	static bool IsRageEffectEnded(int32 StartMs, int32 NowMs, float Health);
+
+	/** SAURON-1125b (Dawn A7): the simulation step index of the units' world, for the script rule of the Knight's challenge (0 without a simulation). */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|UnitAbility")
+	static int64 GetSimulationStep(const UHOLUnitSubsystem* Units);
+
+	/** SAURON-1125b: one simulation step in whole milliseconds (the script divides a duration by it; 0 without a simulation). */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|UnitAbility")
+	static int32 GetSimulationStepMs(const UHOLUnitSubsystem* Units);
+
+	/** SAURON-1125b: UHOLUnitSubsystem::CastKnightChallenge, the liaison of the script rule HOLKnightChallenge (no rule here). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|UnitAbility")
+	static bool CastKnightChallenge(UHOLUnitSubsystem* Units, int32 UnitId, int32 RequiredOwner, int64 EndStep, int32 RadiusCm, int32 CooldownMs);
 };

@@ -1,14 +1,14 @@
 // What the AI does with the Watch Tower (point 7 of Priorite_Socle_Factions, FARAMIR-1124sg): when it builds one. Until now the AI built no tower
 // at all (no `TowerWood` in the AI scripts), so its garrison call (HOLAIGarrisonCall.as) had no tower to read in a match. Pure choice, tested alone
 // in script (HOLAITower_Test.as); the brain reads the summary and calls it (HOLAIBrain::ThinkTowerBuild), as for the Stable (HOLAICavalry.as, whose
-// shape this follows). The numbers are PROVISIONAL, not a design decision: a setting each (Retours\Q-ai-towers.md), so that the answer changes a value.
+// shape this follows). The quantities are the answer of D918 (Easy 1, Normal 1, Hard 2); the other numbers stay PROVISIONAL, one setting each.
 //
 // The levels are those the slot PLAYS now (0 Easy, 1 Normal, 2 Hard); any other number counts as Hard.
 
 struct FHOLAITowerSettings
 {
-	// How many Watch Towers (finished or under way) a level wants: Easy none, Normal one, Hard two.
-	int EasyMax = 0;
+	// How many Watch Towers (finished or under way) a level wants: Easy one, Normal one, Hard two (D918, answer B of Retours\Q-ai-towers.md).
+	int EasyMax = 1;
 	int NormalMax = 1;
 	int HardMax = 2;
 

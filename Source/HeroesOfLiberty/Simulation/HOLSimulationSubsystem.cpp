@@ -191,6 +191,11 @@ namespace UE::HeroesOfLiberty::Simulation
 				{
 					MixInto(Parts->Combat, (static_cast<uint64>(static_cast<uint32>(Combat->RageMs)) << 32) | static_cast<uint32>(Combat->RageCooldownMs));
 				}
+				if (Combat->KnightChallengeCooldownMs != 0) // SAURON-1125b: only a Knight that challenged changes the hash
+				{
+					MixInto(Parts->Combat, (static_cast<uint64>(static_cast<uint32>(Combat->KnightChallengeCooldownMs)) << 32) | static_cast<uint32>(Combat->ChallengeRadiusCm));
+					MixInto(Parts->Combat, static_cast<uint64>(Combat->ChallengeEndStep));
+				}
 				MixInto(Parts->Combat, (Combat->bAttacking ? 1u : 0u) | (Combat->bApproaching ? 2u : 0u) | (Combat->bAttackMoveDetour ? 4u : 0u) | (Combat->bOrderedTarget ? 8u : 0u));
 				MixInto(Parts->Combat, BitCast<uint64>(Combat->ApproachPoint.X));
 				MixInto(Parts->Combat, BitCast<uint64>(Combat->ApproachPoint.Y));
