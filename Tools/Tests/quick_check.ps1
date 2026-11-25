@@ -2115,7 +2115,7 @@ if ($Parts -contains "camera") {
                 "hol.Hero.SetXP 0 1300", "waitlog Hero level: slot 0 level 1 -> 4", "wait 0.3", "hol.HUD.Report",
                 "hol.Select.Grid 1", "hol.Camera.TestCursorGround $($AuraHero[0] + 1000) $($AuraHero[1])", "frames 3", "hol.Select.Report", "capture build_hero_aim",
                 "hol.Camera.TestCursorGround $($AuraHero[0] + 1800) $($AuraHero[1])", "frames 3", "hol.Select.Report", "capture build_hero_aim_far", "hol.Camera.TestCursor 0.5 0.5",
-                "hol.Select.Banner $($AuraHero[0] + 1000) $($AuraHero[1])", "waitlog plants his banner", "wait 0.3", "hol.HUD.Report", "hol.Select.Report", "hol.Hero.BannerDisplay", "capture build_hero_banner_rings", "hol.Camera.Focus $($AuraHero[0] + 1000) $($AuraHero[1])", "hol.Camera.Zoom 12", "frames 3", "capture build_hero_banner", "hol.Camera.Zoom -12", "hol.Camera.Focus $($AuraHero -join ' ')",
+                "hol.Select.Grid 1", "hol.Select.LeftClickGround $($AuraHero[0] + 1000) $($AuraHero[1])", "waitlog plants his banner", "wait 0.3", "hol.HUD.Report", "hol.Select.Report", "hol.Hero.BannerDisplay", "capture build_hero_banner_rings", "hol.Camera.Focus $($AuraHero[0] + 1000) $($AuraHero[1])", "hol.Camera.Zoom 12", "frames 3", "capture build_hero_banner", "hol.Camera.Zoom -12", "hol.Camera.Focus $($AuraHero -join ' ')",
                 "hol.Units.Remove 0 0 60000 0 Hero", "hol.Hero.ResetAbilities 0", "hol.Hero.SetXP 0 0", "wait 0.3",
                 "hol.Camera.FocusSlot 0", "frames 3", "hol.Select.Click 0.5 0.5", "waitlog Selection: MainCentre of slot 0 (own)"
             Key Escape
@@ -4850,9 +4850,10 @@ if (($Parts -contains "build") -and ($Parts -contains "camera")) {
     $CrySeconds = if (($GridCase -join "`n") -match "Grid: hero cry not ready \((\d+) s\)") { [int]$Matches[1] } else { -1 }
     $Checks["A again: refused by the grid, $CrySeconds s left (59 or 60)"] = $CrySeconds -ge 59 -and $CrySeconds -le 60
     $Planted = if (($GridCase -join "`n") -match "Hero ability: slot 0 plants his banner at \((-?\d+), (-?\d+)\)") { @([int]$Matches[1], [int]$Matches[2]) } else { $null }
-    $Checks["level 4: Z then a left click 10 m from him plants the banner there (at $($Planted -join ', '), 30 cm at most off)"] =
-        [bool]($GridCase | Select-String -SimpleMatch "Grid: hero banner, click on the ground" -Quiet) -and ($null -ne $Planted) -and
-        ([Math]::Abs($Planted[0] - ($BuildHero[0] + 1000)) -le 30) -and ([Math]::Abs($Planted[1] - $BuildHero[1]) -le 30)
+    # 100 cm: clic pixel, mesuré 58 cm (DIAG-1125me)
+    $Checks["level 4: Z then a left click 10 m from him plants the banner there (at $($Planted -join ', '), 100 cm at most off)"] =
+        [bool]($GridCase | Select-String -SimpleMatch "(Banner), click on the ground" -Quiet) -and ($null -ne $Planted) -and
+        ([Math]::Abs($Planted[0] - ($BuildHero[0] + 1000)) -le 100) -and ([Math]::Abs($Planted[1] - $BuildHero[1]) -le 100)
     # J8c.4 loop 2: the HUD at the four reports (selected, after the cry, level 4, banner planted).
     $GridReports = @($GridCase | Select-String -SimpleMatch "HUD report:" | ForEach-Object { $_.Line })
     $GridCells = @($GridCase | Select-String -SimpleMatch "HUD cells:" | ForEach-Object { $_.Line })

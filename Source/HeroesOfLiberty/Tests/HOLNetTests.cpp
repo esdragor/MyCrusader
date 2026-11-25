@@ -130,7 +130,8 @@ bool FHOLNetReductionTest::RunTest(const FString& Parameters)
 {
 	TestEqual(TEXT("59 bits per state (D301, a load bit of J5, J7-Q5: a 4th activity bit and the full health bit, D343: 7 step bits, D344: 13 per position, G6 e: the deploys bit, A2: the has-effects bit)"),
 		FHOLNetUnitState::TotalBits, 59);
-	TestEqual(TEXT("16 bits more for a unit under a morale effect, its mask (A2)"), FHOLNetUnitState::EffectsBits, 16);
+	TestEqual(TEXT("16 bits more for a unit under a morale effect, its mask (A2), and 8 for the seconds left (R1, bEffectSecondsOnWire)"),
+		FHOLNetUnitState::EffectsBits, 16 + (FHOLNetUnitState::bEffectSecondsOnWire ? 8 : 0));
 	TestEqual(TEXT("2 bits more for a unit that deploys, its phase (G6 e)"), FHOLNetUnitState::DeployingBits, 2);
 	TestEqual(TEXT("9 bits more for a wounded unit, its exact health (J7-Q5 revised; 8 bits until the Ram's 400)"), FHOLNetUnitState::WoundedBits, 9);
 	TestEqual(TEXT("12 bits more for an attacking one, its target's slot"), FHOLNetUnitState::AttackingBits, 12);
@@ -329,6 +330,14 @@ bool FHOLNetElementFormatTest::RunTest(const FString& Parameters)
 		TestEqual(TEXT("a unit under the effects of rows 0 and 3 carries bits 0 and 3"), static_cast<int32>(Mask), (1 << 0) | (1 << 3));
 		FHOLNetUnitState Marked = FHOLNetUnitState::Make(Here, FVector::ZeroVector, EHOLUnitActivity::Idle, 120);
 		Marked.EffectMask = Mask;
+		// R1: the longest temporary effect decides the seconds left (12.5 s rounds up to 13; an aura counts for none).
+		HOLMorale::FHOLMoraleState Timed = Morale;
+		Timed.Effects[0].bAura = false;
+		Timed.Effects[0].DurationMs = 12500;
+		Timed.Effects[1].bAura = false;
+		Timed.Effects[1].DurationMs = 4000;
+		Marked.EffectSecondsLeft = HOLMorale::LongestSecondsLeft(Timed);
+		TestEqual(TEXT("R1: the longest temporary effect gives the seconds left (12.5 s rounds up to 13)"), static_cast<int32>(Marked.EffectSecondsLeft), 13);
 		AllStates.Add(Marked);
 		FHOLNetUnitState MarkedHurt = WithCombat(FHOLNetUnitState::Make(Here, FVector::ZeroVector, EHOLUnitActivity::Attacking, 121), 40, 100, 5, false, 0.f);
 		MarkedHurt.EffectMask = Mask;
@@ -397,7 +406,7 @@ bool FHOLNetElementFormatTest::RunTest(const FString& Parameters)
 		SerializeArgs.Source = NetSerializerValuePointer(Quantized);
 		Serializer.Serialize(WriteContext, SerializeArgs);
 		Writer.CommitWrites();
-		TestEqual(TEXT("59 bits on the wire (TotalBits: 1 for the health of an unhurt unit, 1 for the effects), +2 for a carrier, +9 wounded, +12 attacking, +6 facing its front, +2 deploying, +16 under an effect"), Writer.GetPosBits(),
+		TestEqual(TEXT("59 bits on the wire (TotalBits: 1 for the health of an unhurt unit, 1 for the effects), +2 for a carrier, +9 wounded, +12 attacking, +6 facing its front, +2 deploying, +24 under an effect (16 mask + 8 seconds, R1)"), Writer.GetPosBits(),
 			static_cast<uint32>(FHOLNetUnitState::TotalBits + (State.bCarrying ? FHOLNetUnitState::CarriedLoadBits : 0)
 				+ (State.bFullHealth ? 0 : FHOLNetUnitState::WoundedBits)
 				+ (State.Activity == EHOLUnitActivity::Attacking ? FHOLNetUnitState::AttackingBits : 0)
@@ -421,6 +430,7 @@ bool FHOLNetElementFormatTest::RunTest(const FString& Parameters)
 		Serializer.Dequantize(ReadContext, DequantizeArgs);
 		TestEqual(TEXT("same state after the trip"), Back, State);
 		TestEqual(TEXT("the effect mask is the one sent"), Back.EffectMask, State.EffectMask);
+		TestEqual(TEXT("R1: the seconds left are the ones sent"), Back.EffectSecondsLeft, State.EffectSecondsLeft);
 		TestEqual(TEXT("exact health after the trip (0 unhurt, not sent)"), Back.Health, State.Health);
 	}
 

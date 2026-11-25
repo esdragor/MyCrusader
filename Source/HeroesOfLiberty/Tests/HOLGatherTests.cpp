@@ -729,4 +729,68 @@ bool FHOLGatherIncomeTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+// BUG-ai_peasant-spin: a Peasant whose walk ends short of its spot at a source whose massif is full (nothing else to go to)
+// must stand before it, not take a new spot of the same ring and walk round the source for ever (the AI's Peasant #7 of
+// ai_tower: 1520 cm of path for 0 net in 8 s). The real chain: the player-order queue, the order processor, the gathering at
+// the fixed step; no movement runs, so the walk's end is set on the unit's move fragment each step (its walk ended, the
+// spot taken: it stands where it is, outside the arrival gap).
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLGatherFullMassifTest, "HeroesOfLiberty.Gather.FullMassifNoSpin", UE::HeroesOfLiberty::Tests::Gather::Flags)
+bool FHOLGatherFullMassifTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::GatherFarm;
+	FFarmWorld Test;
+	if (!TestTrue(TEXT("test world ready"), Test.IsReady()))
+	{
+		return false;
+	}
+	UWorld& World = *Test.World;
+	const int32 Bush = Test.Sources->AddSource(HOLSourceTypeNames::BerryBush, FVector(8000.0, 0.0, 0.0));
+	const uint32 Picker = Test.PlacePeasant(0);
+	const FHOLUnitTypeConstants* Constants = Test.GetConstants(Picker);
+	if (!TestTrue(TEXT("a lone bush (its massif: itself), a Peasant and its constants"), Bush != INDEX_NONE && Picker && Constants))
+	{
+		return false;
+	}
+	const FHOLSource& Source = Test.Sources->GetSources()[Bush];
+	// 4 m short of the ring: far outside the arrival gap.
+	const FVector2D Short = FVector2D(Source.Location) + FVector2D(-1.0, 0.0) * (Source.Radius + Constants->Radius + 400.0);
+	Test.SetDown(Picker, Short);
+	TestTrue(TEXT("slot 0's order to the bush"), HOLPlayerOrders::Gather(World, 0, TArray<uint32>({ Picker }), Bush));
+
+	const float StepSeconds = GetDefault<UHOLSimulationSettings>()->GetStepSeconds();
+	int32 WalksIssued = 0;
+	for (int32 Step = 0; Step < 120; ++Step)
+	{
+		{
+			FMassProcessingContext ProcessingContext(Test.EntityManager, StepSeconds);
+			UE::Mass::Executor::Run(*Test.Orders, ProcessingContext);
+		}
+		// Its walk ended where it stood, as if the spot had been taken: a new serial, then no phase.
+		const FMassEntityHandle Entity = Test.Units->FindEntity(Picker);
+		const FHOLGatherFragment* Gather = Test.GetGather(Picker);
+		FHOLMoveOrderFragment* Move = Test.EntityManager->IsEntityValid(Entity) ? Test.EntityManager->GetFragmentDataPtr<FHOLMoveOrderFragment>(Entity) : nullptr;
+		if (Gather && Move && Gather->bWalkIssued)
+		{
+			++WalksIssued;
+			Move->OrderSerial = Gather->OrderSerialBefore + 1;
+			Move->Phase = EHOLMovePhase::None;
+		}
+		{
+			FMassProcessingContext ProcessingContext(Test.EntityManager, StepSeconds);
+			UE::Mass::Executor::Run(*Test.Gather, ProcessingContext);
+		}
+	}
+	const FHOLGatherFragment* Gather = Test.GetGather(Picker);
+	if (!TestNotNull(TEXT("its gather fragment"), Gather))
+	{
+		return false;
+	}
+	AddInfo(FString::Printf(TEXT("walks given in 6 s: %d, phase %d"), WalksIssued, static_cast<int32>(Gather->Phase)));
+	TestTrue(TEXT("it does not walk round the full source any more: it stands (not going to its source)"),
+		Gather->Phase != EHOLGatherPhase::ToSource);
+	TestTrue(TEXT("it never took a place it did not reach (not gathering)"), Gather->Phase != EHOLGatherPhase::Gathering);
+	TestTrue(*FString::Printf(TEXT("few walks, not one every few steps (%d)"), WalksIssued), WalksIssued <= 8);
+	TestEqual(TEXT("its load kept (empty)"), static_cast<int32>(Gather->Load.Amount), 0);
+	return true;
+}
 #endif

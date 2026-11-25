@@ -58,7 +58,8 @@ void Test_CGAHeroAbility(FUnitTest& T)
 	FHOLGridCommandView Cooling = HOLCommandGridRules::GetCommand(Hero, HOLCommandGridRules::GetHeroAbilityCell(1));
 	T.AssertTrue(Cooling.bGreyed, "the chain greys Close Ranks while it cools down");
 	FHOLGridActionView CoolingVerdict = HOLCommandGridAction::Decide(Nothing, Cooling);
-	T.AssertTrue(CoolingVerdict.Kind == EHOLGridActionKind::None, "a greyed hero ability does nothing");
+	T.AssertTrue(CoolingVerdict.Kind == EHOLGridActionKind::Refuse, "a greyed hero ability is refused (the player keeps his notice)");
+	T.AssertEquals(n"cry", CoolingVerdict.Report, "the refusal of Close Ranks is told as the cry");
 }
 
 // HeroesOfLiberty.CommandGridAction.OrdersAndSweep
@@ -110,4 +111,79 @@ void Test_CGAOrdersAndSweep(FUnitTest& T)
 	FHOLGridCommandView Nothing2;
 	FHOLGridActionView NoneVerdict = HOLCommandGridAction::Decide(WithMonk, Nothing2);
 	T.AssertTrue(NoneVerdict.Kind == EHOLGridActionKind::None, "the empty cell does nothing");
+}
+
+FHOLResources CGAXRes(int Food, int Wood, int Stone, int Gold)
+{
+	FHOLResources Out;
+	Out.Food = Food;
+	Out.Wood = Wood;
+	Out.Stone = Stone;
+	Out.Gold = Gold;
+	return Out;
+}
+
+// HeroesOfLiberty.CommandGridAction.BuildRefused (GLORFINDEL-1125mb: Build's resource refusal, CheckBuildAnswer)
+void Test_CGABuildRefused(FUnitTest& T)
+{
+	FHOLGridCommandView Build;
+	Build.Command = EHOLGridCommandKind::Build;
+	FHOLGridActionContext Nothing;
+	FHOLGridCostFacts Poor;
+	Poor.Stock = CGAXRes(500, 50, 500, 500);
+	Poor.Cost = CGAXRes(0, 100, 0, 0);
+	FHOLGridActionView Refused = HOLCommandGridAction::DecideCosted(Nothing, Poor, Build);
+	T.AssertTrue(Refused.Kind == EHOLGridActionKind::Refuse, "50 wood for a 100-wood building: the click is refused, no placement");
+	T.AssertTrue(Refused.Feedback.Kind == EHOLCommandFeedbackKind::NotEnoughResources, "the refusal says not enough resources");
+	T.AssertTrue(Refused.Feedback.Resource == EHOLResource::Wood, "the missing resource is the wood");
+
+	FHOLGridCostFacts Rich = Poor;
+	Rich.Stock = CGAXRes(500, 100, 500, 500);
+	FHOLGridActionView Placed = HOLCommandGridAction::DecideCosted(Nothing, Rich, Build);
+	T.AssertTrue(Placed.Kind == EHOLGridActionKind::Place, "exactly the cost in stock: the building is placed");
+}
+
+// HeroesOfLiberty.CommandGridAction.ProduceResearchTrade (G-2 rest: the three kinds of G-5 have a verdict)
+void Test_CGAProduceResearchTrade(FUnitTest& T)
+{
+	FHOLGridActionContext Nothing;
+	FHOLGridCostFacts Facts;
+	Facts.Stock = CGAXRes(500, 500, 500, 500);
+	Facts.Cost = CGAXRes(50, 0, 0, 0);
+	Facts.QueueLength = 0;
+	Facts.MaxQueue = 5;
+	Facts.PopulationUsed = 1;
+	Facts.PopulationCap = 10;
+
+	FHOLGridCommandView Produce;
+	Produce.Command = EHOLGridCommandKind::Produce;
+	FHOLGridActionView Queued = HOLCommandGridAction::DecideCosted(Nothing, Facts, Produce);
+	T.AssertTrue(Queued.Kind == EHOLGridActionKind::Send, "an affordable unit with room in the queue is sent to the building");
+
+	FHOLGridCostFacts Full = Facts;
+	Full.QueueLength = 5;
+	FHOLGridActionView FullVerdict = HOLCommandGridAction::DecideCosted(Nothing, Full, Produce);
+	T.AssertTrue(FullVerdict.Kind == EHOLGridActionKind::Refuse, "a full queue refuses");
+	T.AssertTrue(FullVerdict.Feedback.Kind == EHOLCommandFeedbackKind::QueueFull, "the refusal says queue full");
+
+	FHOLGridCostFacts Broke = Facts;
+	Broke.Stock = CGAXRes(10, 500, 500, 500);
+	FHOLGridActionView BrokeVerdict = HOLCommandGridAction::DecideCosted(Nothing, Broke, Produce);
+	T.AssertTrue(BrokeVerdict.Kind == EHOLGridActionKind::Refuse, "10 food for a 50-food unit refuses");
+	T.AssertTrue(BrokeVerdict.Feedback.Resource == EHOLResource::Food, "the missing resource is the food");
+
+	FHOLGridCostFacts Crowded = Facts;
+	Crowded.PopulationUsed = 10;
+	FHOLGridActionView CrowdedVerdict = HOLCommandGridAction::DecideCosted(Nothing, Crowded, Produce);
+	T.AssertTrue(CrowdedVerdict.Kind == EHOLGridActionKind::Send, "a full population only waits in the queue (Blocks): still sent");
+
+	FHOLGridCommandView Research;
+	Research.Command = EHOLGridCommandKind::Research;
+	FHOLGridActionView ResearchVerdict = HOLCommandGridAction::Decide(Nothing, Research);
+	T.AssertTrue(ResearchVerdict.Kind == EHOLGridActionKind::Send, "a research is sent to the building");
+
+	FHOLGridCommandView Trade;
+	Trade.Command = EHOLGridCommandKind::Trade;
+	FHOLGridActionView TradeVerdict = HOLCommandGridAction::Decide(Nothing, Trade);
+	T.AssertTrue(TradeVerdict.Kind == EHOLGridActionKind::Send, "a market trade is sent");
 }

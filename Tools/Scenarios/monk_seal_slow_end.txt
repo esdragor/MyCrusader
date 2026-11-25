@@ -14,7 +14,7 @@ frames 20
 hol.Select.Type Monk last
 waitlog Selection: Monk
 hol.Select.Grid 3
-waitlog Grid: monk seal, click on the ground
+waitlog Grid: armed mode 102
 hol.Camera.FocusNear 4000 0
 frames 2
 hol.Select.LeftClickGround -11600 0

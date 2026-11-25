@@ -46,6 +46,12 @@ hol.Arrow.SlowMotion 4
 hol.Camera.FocusNear 5200 0
 hol.Units.SpawnHere 3 Spearman 1 250
 waitunits 8
+# FARAMIR-1125md : capture neuve lancers_all, prise des que les 3 Lanciers sont poses (a ~12 m de la tour, AVANT le 1er tir du step ~221 et avant qu'ils arrivent derriere le bloc de la tour : au step ~254 deux d'entre eux etaient deja au pied de la tour, masques, journal 1125md). Zoom 1, centre entre la tour (4000) et les Lanciers (5200) : tour + 3 Lanciers dans le cadre. Puis on revient au cadrage de during.
+hol.Camera.FocusNear 4600 0
+hol.Camera.Zoom 1
+frames 1
+hol.Units.Where 1
+capture tower_wood_lancers_all
 hol.Camera.FocusNear 4600 0
 hol.Camera.Zoom 2
 note 2. Trois Lanciers rouges a 12 m de la tour (dans sa portee de 30 m) : elle lache une fleche.
@@ -70,19 +76,25 @@ hol.Camera.FocusNear 4000 0
 frames 3
 hol.Select.LeftClickGround -12400 1500
 waitlog Scripted left click at
-# FARAMIR-1125ma : le cadrage 4100 -400 Zoom 3 ne montrait PAS les Lanciers (PNG 1125 : la tour remplit l'ecran, Lanciers hors cadre). Les Lanciers finissent en bas a gauche de la tour (during5) : balayage de 3 cadrages (Zoom 2, deux decalages vers -Y, puis vue large Zoom 1).
-hol.Camera.FocusNear 4200 -800
+# FARAMIR-1125mb : after2/after3 recadres vers -X (3300) car la tour etait coupee au bord droit et les Lanciers en bas ; FARAMIR-1125ma : le cadrage 4100 -400 Zoom 3 ne montrait PAS les Lanciers (PNG 1125 : la tour remplit l'ecran, Lanciers hors cadre). Les Lanciers finissent en bas a gauche de la tour (during5) : balayage de 3 cadrages (Zoom 2, deux decalages vers -Y, puis vue large Zoom 1).
+hol.Camera.FocusNear 3500 -1000
 hol.Camera.Zoom 2
 frames 10
 note 3. APRES : plusieurs fleches ont touche, les barres de vie des Lanciers sont entamees (panneau de construction ferme, Lanciers cadres).
+# FARAMIR-1125mc : instant fixe pour la barre de vie = juste apres un coup (waitlog sur la ligne de degats), puis 2 images, au lieu de N images apres le cadrage.
+# FARAMIR-1125mc : le 3e Lancier (#7) est celui qui atteint la tour (journal 1125mc : #7 en (-11954, 81), Attacking, au pied de la tour, donc en haut a droite / sous le bandeau, HORS des cadrages after) ; #6 et #8 restent a ~13 m. La barre de vie ne s affiche que sur l unite qui vient d etre touchee : on guette donc un coup sur #7, et after2 / after3 le cadrent.
+waitlog lands on #7
+frames 2
+# FARAMIR-1125mc : ou sont les 3 Lanciers (slot 1) a cet instant : position et PV de chacun (journal), pour retrouver le 3e.
+hol.Units.Where 1
 hol.Combat.ArrowReport
 capture tower_wood_after
-hol.Camera.FocusNear 4000 -1600
-frames 3
+hol.Camera.FocusNear 4400 -100
+frames 1
 capture tower_wood_after2
-hol.Camera.FocusNear 4300 -800
+hol.Camera.FocusNear 3900 -450
 hol.Camera.Zoom 1
-frames 3
+frames 1
 capture tower_wood_after3
 hol.Combat.Report 1
 quit

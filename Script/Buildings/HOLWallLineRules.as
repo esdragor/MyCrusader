@@ -420,7 +420,20 @@ namespace HOLWallLine
 			TArray<FIntPoint> Nothing;
 			return Nothing;
 		}
-		return DragCellsFine(FIntPoint(CellOfCoordinate(Start.X, Tile), CellOfCoordinate(Start.Y, Tile)), FIntPoint(CellOfCoordinate(End.X, Tile), CellOfCoordinate(End.Y, Tile)), MaxCells, SubDivision());
+		return DragCellsFromPointsAt(Start, End, Tile, SubDivision(), MaxCells);
+	}
+
+	// D898 G8 (CELEBORN-1125md): the drag from the two ground points at an explicit SubDivision: the cells are read at the PITCH Tile / SubDivision, as PlanFromRequestFine reads them.
+	TArray<FIntPoint> DragCellsFromPointsAt(FVector Start, FVector End, double Tile, int SubDivision, int MaxCells)
+	{
+		if (Tile <= 0.0)
+		{
+			TArray<FIntPoint> Nothing;
+			return Nothing;
+		}
+		const int Divide = SubDivision < 1 ? 1 : SubDivision;
+		const double Pitch = Tile / double(Divide);
+		return DragCellsFine(FIntPoint(CellOfCoordinate(Start.X, Pitch), CellOfCoordinate(Start.Y, Pitch)), FIntPoint(CellOfCoordinate(End.X, Pitch), CellOfCoordinate(End.Y, Pitch)), MaxCells, Divide);
 	}
 
 	// D898 G8: the drag the client shows on the fine grid = the cells the server lays (same FillLine), bounded to one piece past the cap.
@@ -456,6 +469,41 @@ namespace HOLWallLine
 		return ExistingOwner == GateOwner && ExistingType == n"Palisade";
 	}
 
+	// D898 G10 (PLAN-GRILLE-FINE-1124.md): the sub-cells a gate laid at Cell covers = the SubDivision sub-cells of its 4 m tile in a row along X (bAlongX) or along Y.
+	TArray<FIntPoint> GateCells(FIntPoint Cell, bool bAlongX, int SubDivision)
+	{
+		TArray<FIntPoint> Covered;
+		const int Count = SubDivision < 1 ? 1 : SubDivision;
+		const int Axis = bAlongX ? Cell.X : Cell.Y;
+		const int Start = Axis - (((Axis % Count) + Count) % Count);
+		for (int Index = 0; Index < Count; Index++)
+		{
+			if (bAlongX)
+				Covered.Add(FIntPoint(Start + Index, Cell.Y));
+			else
+				Covered.Add(FIntPoint(Cell.X, Start + Index));
+		}
+		return Covered;
+	}
+
+	// The standing pieces (parallel arrays: cell, type, owner) the gate replaces: only the covered sub-cells holding a piece GateReplaces accepts (the palisade of the SAME seat).
+	TArray<FIntPoint> GateReplacedCells(FIntPoint Cell, bool bAlongX, int SubDivision, int GateOwner, const TArray<FIntPoint>& StandingCells, const TArray<FName>& StandingTypes, const TArray<int>& StandingOwners)
+	{
+		TArray<FIntPoint> Replaced;
+		TArray<FIntPoint> Covered = GateCells(Cell, bAlongX, SubDivision);
+		for (int CoveredIndex = 0; CoveredIndex < Covered.Num(); CoveredIndex++)
+		{
+			for (int Standing = 0; Standing < StandingCells.Num() && Standing < StandingTypes.Num() && Standing < StandingOwners.Num(); Standing++)
+			{
+				if (StandingCells[Standing].X == Covered[CoveredIndex].X && StandingCells[Standing].Y == Covered[CoveredIndex].Y && GateReplaces(StandingTypes[Standing], StandingOwners[Standing], GateOwner))
+				{
+					Replaced.Add(Covered[CoveredIndex]);
+					break;
+				}
+			}
+		}
+		return Replaced;
+	}
 	// A gate lets its owner's units through (other seats meet a solid building, D691 / D867 neighbours: walls and gates are solid for the enemy).
 	bool GatePassesUnit(FName GateType, int GateOwner, int UnitOwner)
 	{
