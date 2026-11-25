@@ -40,7 +40,9 @@ waitlog Specialization: slot 0 tier 1 option 1 applied
 hol.Spec.Report
 waitlog Specialization state slot 0 local: pending tier 0 option
 waitlog chosen 1 -1 -1
-frames 8
+frames 30
+hol.HUD.Report
+waitlog HUD cells
 # Geste reel 2 : le MEME vrai clic est maintenant accepte : la premiere unite de la file (1 dans la file) puis elle sort.
 hol.Mouse.Click GridCell01
 waitlog Mouse click GridCell01 x1 at
