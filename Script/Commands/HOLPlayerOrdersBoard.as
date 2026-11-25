@@ -177,7 +177,7 @@ class UHOLPlayerOrdersBoardScript : UHOLPlayerOrdersBoard
 	int QueueProductionAnswer(int PlayerIndex, AHOLBuilding Building, FName TypeName)
 	{
 		// D893 step 3: a lane unit the seat has not unlocked is refused by the server (the seat's own read and faction, as the specialization board keeps them).
-		UHOLSpecializationBoardScript Seats = Cast<UHOLSpecializationBoardScript>(UHOLSpecializationSubsystem::Get());
+		UHOLSpecializationBoardScript Seats = UHOLSpecializationBoardScript::Get();
 		if (Seats == nullptr)
 			return HOLPlayerOrdersBoard::AnswerQueueProduction(QueueOfWorld(), PlayerIndex, Building, TypeName);
 		return HOLPlayerOrdersBoard::AnswerQueueProductionFor(QueueOfWorld(), PlayerIndex, Building, TypeName, Seats.SeatView(PlayerIndex), EHOLFaction(Seats.SeatFactionOf(PlayerIndex)));
