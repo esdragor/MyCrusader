@@ -93,3 +93,17 @@ void Test_MoraleViewReadWithMaskGivesOneEffectPerBit(FUnitTest& T)
 	const HOLMoraleView::FHOLMoraleView Peasant = HOLMoraleView::Read(0, true, true, Mask);
 	T.AssertFalse(HOLMoraleView::Present(Peasant).bShown, "a Peasant still shows nothing with a mask (D705)");
 }
+
+// A unit read through the replicated mask: only the ids travel, so the client does NOT know the time left (HOLMoraleView.as header). The pastille must
+// not invent one: the full DurationMs of the table row shown on our unit would be a false countdown (default A of Q-moral-duree-client: no seconds).
+void Test_MoraleViewReadOwnUnitShowsNoInventedSeconds(FUnitTest& T)
+{
+	const HOLMoraleView::FHOLMoraleView View = HOLMoraleView::Read(0, true, false, 1 << HOLMoraleTable::CloseRanks);
+	const HOLMoraleView::FHOLMoralePastille Pastille = HOLMoraleView::Present(View);
+	T.AssertTrue(Pastille.bShown, "the masked own unit shows the pastille");
+	const int FullSeconds = HOLMoraleBlock::SecondsOf(HOLMoraleTable::Effect(HOLMoraleTable::CloseRanks).DurationMs);
+	T.AssertFalse(Pastille.Text.Contains(f"{FullSeconds} s"), "the replicated mask carries no time left: no invented countdown");
+	const HOLMoraleView::FHOLMoralePastille Enemy = HOLMoraleView::Present(HOLMoraleView::Read(0, false, false, 1 << HOLMoraleTable::Demoralised));
+	T.AssertTrue(Enemy.bShown, "the masked enemy unit shows the pastille");
+	T.AssertFalse(Enemy.Text.Contains(" s"), "an enemy unit never shows a time");
+}
