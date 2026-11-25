@@ -1,0 +1,62 @@
+# GALADRIEL-1125mc (moral S2, sans C++) : l'EFFET du moral VISIBLE sur une unite. Le Guerrier damne des Legions lance sa rage necrotique : c'est un effet de moral
+# (NecroticRage, ligne de la table de moral, GALADRIEL-1124b/c). Quand on clique le guerrier, le bloc de selection montre la pastille de moral (HOLMoraleView, masque
+# d'effets du serveur ou du solo, R2) : un rond vert et le nom de l'effet. Avant la rage : pas de pastille. Pendant : la pastille, plus la teinte rouge sombre du guerrier.
+# Apres les 10 s : la pastille repart. Pas de compte a rebours en secondes sur la pastille (le masque ne porte que les ids, defaut A de Q-moral-duree-client).
+# Gestes reels : touche E (Slate) pour produire puis pour lancer la rage, clic gauche sur le corps (hol.Select.ClickUnit).
+waitlog Starting hero of slot 0 spawned at
+hol.AI.ThinkSteps 100000
+hol.Cheat.Resources 5000
+hol.Cheat.Population 60
+hol.Hero.SetXP 0 3000
+hol.Prod.BuildTime 2
+frames 2
+hol.Camera.FocusNear 2500 2500
+hol.Cheat.SpawnBuilding Barracks 0 2500 2500
+waitlog Cheat: spawned Barracks of slot 0
+hol.Camera.FocusNear 2500 2500
+hol.Camera.Zoom -3
+frames 40
+# 1. La Caserne, cliquee pour de vrai : la grille propose le Guerrier damne (case E).
+hol.Select.ClickGround -12200 2600
+frames 10
+hol.HUD.Report
+hol.UI.Key E 0 0.1
+waitlog Key pressed: E
+waitlog Production: DamnedWarrior of slot 0 done
+frames 30
+# 2. Un Lancier de l'Aube (slot 1) tout pres, pour que la rage serve.
+hol.Camera.FocusNear 2500 3300
+frames 2
+hol.Units.SpawnHere 1 Spearman 1 100
+waitlog SpawnHere: 1 Spearman of slot 1
+hol.Camera.FocusNear 2500 2500
+frames 2
+# 3. Clic gauche sur le corps du guerrier : le bloc de selection, SANS pastille de moral (aucun effet).
+hol.Select.ClickUnit -1
+frames 10
+hol.HUD.Report
+waitlog HUD selection name:
+hol.Morale.Report 0
+frames 10
+capture morale_look_before
+note 1. Le Guerrier damne est selectionne (clic sur son corps) : le bloc du bas donne son nom et ses statistiques, aucune pastille de moral, aucune teinte.
+# 4. La vraie touche E de la case Rage : l'effet de moral NecroticRage est pose.
+hol.UI.Key E 0 0.1
+waitlog Key pressed: E
+waitlog Grid: necrotic rage
+waitlog Rage order: slot 0 queued for 1 units
+waitlog casts the necrotic rage
+wait 1
+hol.HUD.Report
+hol.Morale.Report 0
+capture morale_look_during
+note 2. Apres la touche E : le guerrier est teinte rouge sombre et le bloc de selection porte la pastille de moral, un rond vert suivi du nom de l'effet (rage necrotique), sans secondes.
+# 5. Les 10 s de rage passees, l'effet est retire : la pastille repart.
+wait 11
+hol.HUD.Report
+hol.Morale.Report 0
+capture morale_look_after
+hol.Test.Sanity
+note 3. La rage est finie : plus de teinte, plus de pastille de moral dans le bloc de selection (l'effet de moral a ete retire).
+# Fin reelle du scenario : un play.ps1 -Hidden d'agent se ferme ici.
+quit
