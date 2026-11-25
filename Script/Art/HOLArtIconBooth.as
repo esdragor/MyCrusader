@@ -6,7 +6,7 @@
 // AR5-b : fond neutre = mur uni (cube du moteur) pose debout derriere l'objet, face a la camera, plus un degagement des arbres
 // a la mesure du champ (3000 cm, 6000 pour un batiment).
 // Bornes : batiment = bornes de l'acteur pose ; unite = vrai maillage du DA_Art x MeshScale (HOLArtIconRules::UnitBounds) ; source = Radius /
-// Height de SourceTypes, montree par une forme d'attente (AddSource pas expose au script dans main).
+// Height de SourceTypes ; AR5-c : vraie source du registre (HOLSourceAdd::AddNeutralSource), plus de forme d'attente.
 // Journal : "Art icon: wrote <fichier> type=<T> family=<F> height=<h>" par type, "Art icon: refused <T>" si hors tables,
 // puis "Art icon: done count=<n>".
 
@@ -36,10 +36,12 @@ class AHOLArtIconBooth : AActor
 	int Wait = 0;
 	int Written = 0;
 	int Index = 0;
+	int Total = 0;
 
 	void Start(const TArray<FName>& Types)
 	{
 		Queue = Types;
+		Total = Types.Num();
 		Capture.bCaptureEveryFrame = false;
 		Capture.bCaptureOnMovement = false;
 		Capture.CaptureSource = ESceneCaptureSource::SCS_FinalColorLDR;
@@ -69,7 +71,7 @@ class AHOLArtIconBooth : AActor
 		}
 		if (Queue.Num() == 0)
 		{
-			Log(n"LogHOLMatch", f"Art icon: done count={Written}");
+			Log(n"LogHOLMatch", f"Art icon: done count={Written} types={Total}");
 			DestroyActor();
 			return;
 		}
@@ -107,7 +109,7 @@ class AHOLArtIconBooth : AActor
 		}
 		else
 		{
-			bMade = true;
+			// AR5-c: a real source of the registry (HOLSourceAdd::AddNeutralSource, in main since integ-88-art), everyone's, its table amount.
 		}
 		if (!bMade)
 		{
@@ -167,10 +169,6 @@ class AHOLArtIconBooth : AActor
 		else if (Family == "Sources")
 		{
 			SourceBounds(Height, Radius);
-			StandIn.SetStaticMesh(Cast<UStaticMesh>(LoadObject(nullptr, "/Engine/BasicShapes/Cylinder.Cylinder")));
-			StandIn.SetWorldLocation(Spot + FVector(0.0, 0.0, Height * 0.5));
-			StandIn.SetWorldScale3D(FVector(Radius * 2.0, Radius * 2.0, Height) * 0.01);
-			StandIn.SetVisibility(true);
 		}
 		const FHOLArtIconShot Shot = HOLArtIconRules::Shot(Family, Height, Radius);
 		const FVector Eye = Spot + Shot.CameraOffset;
