@@ -149,21 +149,25 @@ namespace HOLArtTry
 	}
 
 	// AR4-b: what Type is: "Unit", "Building", "Source" (a row of the source table) or "" (unknown).
+	// Read on the three type tables themselves (the paths of hol.Art.Gallery), the same outside a match (tests) and in it.
+	bool IsRowOf(const FString& TablePath, const FString& Type)
+	{
+		UDataTable Table = Cast<UDataTable>(LoadObject(nullptr, TablePath));
+		if (Table == nullptr)
+			return false;
+		TArray<FName> Names;
+		Table.GetRowNames(Names);
+		return Names.Contains(FName(Type));
+	}
+
 	FString KindOf(const FString& Type)
 	{
-		FHOLUnitTypeSummary Row;
-		if (HOLProductionTables::FindUnitType(FName(Type), Row))
+		if (IsRowOf("/Game/Units/UnitTypes.UnitTypes", Type))
 			return "Unit";
-		if (HOLCommandGridRead::IsTypeInTable(FName(Type)))
+		if (IsRowOf("/Game/Buildings/BuildingTypes.BuildingTypes", Type))
 			return "Building";
-		UDataTable Sources = Cast<UDataTable>(LoadObject(nullptr, "/Game/Resources/SourceTypes.SourceTypes"));
-		if (Sources != nullptr)
-		{
-			TArray<FName> Names;
-			Sources.GetRowNames(Names);
-			if (Names.Contains(FName(Type)))
-				return "Source";
-		}
+		if (IsRowOf("/Game/Resources/SourceTypes.SourceTypes", Type))
+			return "Source";
 		return "";
 	}
 
