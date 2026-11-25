@@ -20,7 +20,7 @@ void Test_SeatHeroUnitId(FUnitTest& T)
 		if (HeroUnit > 0)
 		{
 			T.AssertEquals(HeroUnit, HOLHero::GetHeroUnitId(0), "the slot's hero is named by the id the unit table gave him");
-			T.AssertEquals(0, HOLHero::GetHeroUnitId(1), "another slot has no hero: -1"); // RED-1125s: -1 is right
+			T.AssertEquals(-1, HOLHero::GetHeroUnitId(1), "another slot has no hero: -1");
 		}
 		T.AssertEquals(-1, HOLHero::GetHeroUnitId(-1), "a slot out of range: -1");
 	}
@@ -48,7 +48,7 @@ void Test_SeatChosenOptionForSlot(FUnitTest& T)
 			View.Chosen.Add(0);
 			T.AssertTrue(HOLTestWorld::SetPlayerSpecialization(Seat, View), "the server side writes the seat's view");
 			T.AssertEquals(2, HOLSpecializationRead::GetChosenOptionForSlot(2, 1), "tier 1: the applied option, read by slot");
-			T.AssertEquals(5, HOLSpecializationRead::GetChosenOptionForSlot(2, 2), "tier 2: no option yet"); // RED-1125s: -1 is right
+			T.AssertEquals(-1, HOLSpecializationRead::GetChosenOptionForSlot(2, 2), "tier 2: no option yet");
 			T.AssertEquals(0, HOLSpecializationRead::GetChosenOptionForSlot(2, 3), "tier 3: option 0 is an option");
 			T.AssertEquals(-1, HOLSpecializationRead::GetChosenOptionForSlot(2, 9), "a tier out of range: -1");
 			T.AssertEquals(-1, HOLSpecializationRead::GetChosenOptionForSlot(5, 1), "a slot without a player state: -1");

@@ -477,7 +477,7 @@ public:
 	static bool SetPlayerSpecialization(AHOLPlayerState* Player, const FHOLSpecializationView& View);
 
 	/**
-	 * CLAUDE-1125s: a player controller born in the test world (SpawnActor, no BeginPlay, no viewport), as HOLFactionAimTests.cpp made it, so the
+	 * CLAUDE-1125s: a player controller born in the test world (SpawnActor, no BeginPlay, no viewport), so the
 	 * script tests the controller's own state (armed mode, faction aim, Escape, right click, wanted cursor). TESTS only; null without a world.
 	 */
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")

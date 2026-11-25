@@ -21,7 +21,7 @@ void Test_ControllerAimStateAndEscape(FUnitTest& T)
 
 		Controller.SetFactionAim(2, 800.0);
 		T.AssertEquals(2, Controller.GetFactionAim(), "the aim of power 2 is armed");
-		T.AssertTrue(Controller.GetFactionAimRangeCm() == 801.0, "with the reach it was given"); // RED-1125s: 800 is right
+		T.AssertTrue(Controller.GetFactionAimRangeCm() == 800.0, "with the reach it was given");
 
 		Controller.SetFactionAim(0, 650.0);
 		T.AssertEquals(0, Controller.GetFactionAim(), "aiming another power switches the aim");
@@ -64,7 +64,7 @@ void Test_ControllerArmedModeCursor(FUnitTest& T)
 		Controller.SetArmedMode(HOLCommandGridAction::GetAimAttackMove(), 0.0, 0);
 		T.AssertTrue(Controller.IsAttackMoveArmed(), "the grid's attack-move is the attack-move armed");
 		T.AssertFalse(Controller.IsBannerArmed(), "it is not the banner");
-		T.AssertEquals(Arrow, Controller.GetWantedMouseCursorIndex(), "Q waits for its point: the red attack cross"); // RED-1125s: Cross is right
+		T.AssertEquals(Cross, Controller.GetWantedMouseCursorIndex(), "Q waits for its point: the red attack cross");
 
 		Controller.SetArmedMode(HOLCommandGridAction::GetAimBanner(), 1600.0, 0);
 		T.AssertTrue(Controller.IsBannerArmed(), "the grid's banner is the banner armed");

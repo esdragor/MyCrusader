@@ -450,7 +450,7 @@ public:
 	bool IsAttackMoveArmed() const { return FactionAimIndex == GridAttackMoveMode; }
 	/**
 	 * The grid's armed modes as the script numbers them (HOLCommandGridAction::GetAimAttackMove / GetAimBanner, Script\Player\HOLCommandGridAction.as;
-	 * a change there is made here too). The grid arms them through SetArmedMode (G-5a); HeroesOfLiberty.Grid.ArmedModeCursor arms them by number.
+	 * a change there is made here too). The grid arms them through SetArmedMode (G-5a); Script/Tests/HOLControllerArmedMode_Test.as checks them through the script's own GetAim* numbers.
 	 */
 	static constexpr int32 GridAttackMoveMode = 100;
 	static constexpr int32 GridBannerMode = 101;
