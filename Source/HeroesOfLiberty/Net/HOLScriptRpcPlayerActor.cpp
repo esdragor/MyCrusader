@@ -3,6 +3,8 @@
 #include "Net/HOLScriptRpcPlayerActor.h"
 
 #include "Commands/HOLCommandSubsystem.h"
+#include "Buildings/HOLBuilding.h"
+#include "Buildings/HOLConstructionSubsystem.h"
 #include "Engine/World.h"
 #include "EngineUtils.h"
 #include "GameFramework/PlayerController.h"
@@ -449,10 +451,10 @@ bool UHOLRpcBridgeLibrary::OrderGather(AActor* RpcActor, const TArray<int32>& Un
 	return Controller != nullptr;
 }
 
-bool UHOLRpcBridgeLibrary::OrderPlaceBuilding(AActor* RpcActor, const FName TypeName, const double X, const double Y, const double Z, const TArray<int32>& UnitIds, const bool bQueue)
+bool UHOLRpcBridgeLibrary::OrderPlaceBuilding(AActor* RpcActor, const FName TypeName, const double X, const double Y, const double Z, const TArray<int32>& UnitIds, const bool bQueue, const int32 CostPercent, const int32 CostCellIndex)
 {
 	AHOLPlayerController* Controller = HOLRpcBridgeL1_Haldir1117o::OwnerController(RpcActor);
-	if (Controller) { Controller->DoPlaceBuilding(TypeName, FVector_NetQuantize(FVector(X, Y, Z)), HOLRpcBridgeL2Orders_Elrond1118f::ToIds(UnitIds), bQueue); }
+	if (Controller) { Controller->DoPlaceBuilding(TypeName, FVector_NetQuantize(FVector(X, Y, Z)), HOLRpcBridgeL2Orders_Elrond1118f::ToIds(UnitIds), bQueue, CostPercent, CostCellIndex); }
 	return Controller != nullptr;
 }
 
@@ -489,6 +491,19 @@ bool UHOLRpcBridgeLibrary::OrderUngarrisonUnit(AActor* RpcActor, const int32 Uni
 	AHOLPlayerController* Controller = HOLRpcBridgeL1_Haldir1117o::OwnerController(RpcActor);
 	if (Controller) { Controller->DoUngarrisonUnit(static_cast<uint32>(UnitId)); }
 	return Controller != nullptr;
+}
+
+bool UHOLRpcBridgeLibrary::OrderRemoveOwnBuilding(AActor* RpcActor, AHOLBuilding* Building)
+{
+	const int32 Slot = GetSenderSlot(RpcActor);
+	UWorld* World = RpcActor ? RpcActor->GetWorld() : nullptr;
+	UHOLConstructionSubsystem* Construction = World ? World->GetSubsystem<UHOLConstructionSubsystem>() : nullptr;
+	if (!Construction || !Building || Slot == INDEX_NONE || static_cast<int32>(Building->GetOwnerPlayer()) != Slot || !Building->IsFinished())
+	{
+		return false;
+	}
+	UHOLConstructionSubsystem::DestroyBuilding(*Building);
+	return true;
 }
 
 bool UHOLRpcBridgeLibrary::OrderCancelBuilding(AActor* RpcActor, AHOLBuilding* Building)

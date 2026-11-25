@@ -8,6 +8,8 @@
 #include "Match/HOLResources.h"
 #include "HOLConstructionReadLibrary.generated.h"
 
+class AHOLBuilding;
+
 /** A box on the ground plane for the script (FBox2D is not exposed). bValid false (the default) = no box (e.g. no map limit); the functions below and MakeBox give valid ones. Lengths in cm. */
 USTRUCT(BlueprintType)
 struct HEROESOFLIBERTY_API FHOLConstructionBox
@@ -125,6 +127,14 @@ public:
 	/** D898 G4: GetWallLineWorld on the fine grid: the cells (OutMapMin, OutMapMax, OutOccupied) are cells of Tile / SubDivision, the occupied ones from the footprint of every building and every wall piece; returns the 4 m Tile. SubDivision 1 = GetWallLineWorld. */
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Construction", meta = (WorldContext = "WorldContextObject"))
 	static double GetWallLineWorldAtPitch(const UObject* WorldContextObject, int32 SubDivision, FIntPoint& OutMapMin, FIntPoint& OutMapMax, TArray<FIntPoint>& OutOccupied);
+
+	/**
+	 * G10 (gate on a wall line, CELEBORN-1125b): every building the world holds as one row per building: its cell on the grid of pitch Tile / SubDivision (the cell of the
+	 * centre of its footprint), its type name, its owner slot, the building itself and whether it is finished. The script filters (a palisade, a gate, the player's own);
+	 * this reads, it decides nothing. Read on the machine that calls it (the server for ServerPlaceWallLine).
+	 */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Construction", meta = (WorldContext = "WorldContextObject"))
+	static void GetStandingBuildingCells(const UObject* WorldContextObject, int32 SubDivision, TArray<FIntPoint>& OutCells, TArray<FName>& OutTypes, TArray<int32>& OutOwners, TArray<AHOLBuilding*>& OutBuildings, TArray<bool>& OutFinished);
 
 	/** HOLConstruction::IsAgeOpen. */
 	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Construction")

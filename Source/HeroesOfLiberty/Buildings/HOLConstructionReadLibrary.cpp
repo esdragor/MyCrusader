@@ -553,6 +553,34 @@ bool UHOLConstructionReadLibrary::FindFreeFootprint(const FHOLConstructionBox& F
 	return bFound;
 }
 
+void UHOLConstructionReadLibrary::GetStandingBuildingCells(const UObject* WorldContextObject, const int32 SubDivision, TArray<FIntPoint>& OutCells, TArray<FName>& OutTypes, TArray<int32>& OutOwners, TArray<AHOLBuilding*>& OutBuildings, TArray<bool>& OutFinished)
+{
+	OutCells.Reset();
+	OutTypes.Reset();
+	OutOwners.Reset();
+	OutBuildings.Reset();
+	OutFinished.Reset();
+	const double Pitch = UHOLBuildingSettings::GetTileSize() / static_cast<double>(FMath::Max(1, SubDivision));
+	const UWorld* World = GEngine ? GEngine->GetWorldFromContextObject(WorldContextObject, EGetWorldErrorMode::ReturnNull) : nullptr;
+	if (!World)
+	{
+		return;
+	}
+	for (FHOLBuildingIterator It(World); It; ++It)
+	{
+		if (!It->GetType())
+		{
+			continue;
+		}
+		const FVector2D Centre = It->GetFootprintBounds().GetCenter();
+		OutCells.Add(FIntPoint(FMath::FloorToInt(Centre.X / Pitch), FMath::FloorToInt(Centre.Y / Pitch)));
+		OutTypes.Add(It->GetTypeName());
+		OutOwners.Add(static_cast<int32>(It->GetOwnerPlayer()));
+		OutBuildings.Add(*It);
+		OutFinished.Add(It->IsFinished());
+	}
+}
+
 // NON COMPILE (F4 wall line): see the header. The last cell of a box is the one holding its far edge minus a hair: touching is fine (D311), so a box ending on a cell border does not take that cell.
 double UHOLConstructionReadLibrary::GetWallLineWorld(const UObject* WorldContextObject, FIntPoint& OutMapMin, FIntPoint& OutMapMax, TArray<FIntPoint>& OutOccupied)
 {

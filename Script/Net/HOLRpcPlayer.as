@@ -1530,7 +1530,7 @@ for (FString Command : Commands)
 			Log(n"LogHOLMatch", f"RpcOrder: place building refused ({Refusal}) for sender slot {Slot}");
 			return;
 		}
-		HOLRpcBridge::OrderPlaceBuilding(this, TypeName, Point.X, Point.Y, Point.Z, HOLRpc::OrderIds(UnitIds), bQueue);
+		HOLRpcBridge::OrderPlaceBuilding(this, TypeName, Point.X, Point.Y, Point.Z, HOLRpc::OrderIds(UnitIds), bQueue, 100, 0);
 	}
 
 	// F4: a wall line dragged from Start to End. The pure part (seat, finite points, length cap hol.Wall.MaxLineCells, map, occupied cells) is HOLWallLine::PlanFromRequest;
@@ -1566,7 +1566,7 @@ for (FString Command : Commands)
 		for (int Index = 0; Index < Orders.Num(); Index++)
 		{
 			const FVector Point = HOLWallLine::CellToPoint(Orders[Index].Cell, Pitch, Start.Z);
-			HOLRpcBridge::OrderPlaceBuilding(this, TypeName, Point.X, Point.Y, Point.Z, HOLRpc::OrderIds(Orders[Index].Builders), Orders[Index].bQueue);
+			HOLRpcBridge::OrderPlaceBuilding(this, TypeName, Point.X, Point.Y, Point.Z, HOLRpc::OrderIds(Orders[Index].Builders), Orders[Index].bQueue, HOLWallLine::LinePercent(), Index);
 		}
 	}
 
