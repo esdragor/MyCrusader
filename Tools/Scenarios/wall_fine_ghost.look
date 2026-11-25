@@ -1,0 +1,6 @@
+# branches: walls-g8-1125m
+# STATUT : a voir (geste reel du glisser, modele wall_line_long ; play.ps1 -Hidden).
+# OBJET attendu : PENDANT, une file de petits fantomes verts plats d'1 m (une sous-case chacun, serres) du point d'appui au curseur ; APRES, une file de petites fondations d'1 m, les fantomes ont disparu.
+# <nom de capture> | ce que l'utilisateur doit voir
+wall_fine_ghost_during | pendant le glisser (3/4) : une file de petits fantomes verts plats de 1 m, serres, de l'appui au curseur ; pas de boites de 4 m, aucun fantome rouge
+wall_fine_ghost_after | apres le relache : les fantomes ont disparu, une file de petites fondations d'1 m les remplace sur toute la ligne

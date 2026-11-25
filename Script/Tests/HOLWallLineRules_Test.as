@@ -733,3 +733,65 @@ void Test_WallLineFineFillsBeforeRemovingOccupiedCells(FUnitTest& T)
 	for (int Index = 0; Index < Plan.Skipped.Num(); Index++)
 		T.AssertTrue(WallLineHasCell(Ghost.Skipped, Plan.Skipped[Index].X, Plan.Skipped[Index].Y), "the ghost draws red the skipped piece " + Index);
 }
+
+// D898 G10 (F9 gates on the fine grid): a gate laid on the 4 m tile of the sub-cell (5,0) along X covers the sub-cells 4..7 of the row 0, and replaces exactly the standing palisade
+// of the SAME seat there: not the neighbours (3,0), (8,0), not the row 1, not a stone wall piece, and nothing for a gate of another seat. The pieces come from GateCells + GateReplaces (the real chain).
+void Test_WallLineGateReplacesTheFourAlignedSubCells(FUnitTest& T)
+{
+	TArray<FIntPoint> Cells;
+	TArray<FName> Types;
+	TArray<int> Owners;
+	for (int X = 3; X <= 8; X++)
+	{
+		Cells.Add(FIntPoint(X, 0));
+		Types.Add(n"Palisade");
+		Owners.Add(0);
+	}
+	Cells.Add(FIntPoint(5, 1));
+	Types.Add(n"Palisade");
+	Owners.Add(0);
+	TArray<FIntPoint> Covered = HOLWallLine::GateCells(FIntPoint(5, 0), true, 4);
+	T.AssertEquals(4, Covered.Num(), "a gate on the 1 m grid is 4 sub-cells wide");
+	TArray<FIntPoint> Replaced = HOLWallLine::GateReplacedCells(FIntPoint(5, 0), true, 4, 0, Cells, Types, Owners);
+	T.AssertEquals(4, Replaced.Num(), "the gate replaces the 4 aligned palisade sub-cells and no other");
+	for (int X = 4; X <= 7; X++)
+		T.AssertTrue(WallLineHasCell(Replaced, X, 0), "the sub-cell " + X + " of the gate's tile is replaced");
+	T.AssertFalse(WallLineHasCell(Replaced, 3, 0), "the neighbour (3,0) is not replaced");
+	T.AssertFalse(WallLineHasCell(Replaced, 8, 0), "the neighbour (8,0) is not replaced");
+	T.AssertFalse(WallLineHasCell(Replaced, 5, 1), "the next row is not replaced");
+	TArray<FIntPoint> OtherSeat = HOLWallLine::GateReplacedCells(FIntPoint(5, 0), true, 4, 1, Cells, Types, Owners);
+	T.AssertEquals(0, OtherSeat.Num(), "the gate of another seat replaces nothing");
+	Types[2] = n"StoneWall";
+	TArray<FIntPoint> WithStone = HOLWallLine::GateReplacedCells(FIntPoint(5, 0), true, 4, 0, Cells, Types, Owners);
+	T.AssertEquals(3, WithStone.Num(), "a stone wall piece under the gate is not replaced (GateReplaces: palisade only)");
+	TArray<FIntPoint> Column = HOLWallLine::GateCells(FIntPoint(2, 6), false, 4);
+	T.AssertEquals(4, Column.Num(), "a gate along Y covers 4 sub-cells");
+	T.AssertTrue(WallLineHasCell(Column, 2, 4) && WallLineHasCell(Column, 2, 7), "the column 2 sub-cells 4..7 (aligned on the tile of 6)");
+}
+
+// D898 G8 (CELEBORN-1125md): what the controller reads through the bridge (DragCells -> DragCellsFromPoints) at SubDivision 4: the (50,50)-(850,850) drag on the 400 tile is read at the 100 pitch = the 17 sub-cells the server lays
+// (the bug read the points at the 400 tile and showed 5 pieces).
+void Test_WallLineDragCellsFromPointsReadsTheFinePitch(FUnitTest& T)
+{
+	TArray<FIntPoint> Shown = HOLWallLine::DragCellsFromPointsAt(FVector(50.0, 50.0, 0.0), FVector(850.0, 850.0, 0.0), 400.0, 4, 1000);
+	T.AssertEquals(17, Shown.Num(), "the drag shows the 9 diagonal sub-cells + 8 fillers");
+	T.AssertTrue(WallLineHasCell(Shown, 8, 8), "the far end sub-cell (8,8) is shown, not the 4 m tile (2,2)");
+	T.AssertTrue(WallLineIsEdgeConnected(Shown), "the shown line has no corner-only slit");
+	TArray<FIntPoint> Taken;
+	HOLWallLine::FHOLWallLinePlan Plan = HOLWallLine::PlanFromRequestFine(0, FVector(50.0, 50.0, 0.0), FVector(850.0, 850.0, 0.0), 400.0, 4, WallLineMapMin, WallLineMapMax, Taken, 1000);
+	T.AssertEquals(Plan.Cells.Num(), Shown.Num(), "the drag shows as many cells as the server lays");
+	TArray<FIntPoint> Coarse = HOLWallLine::DragCellsFromPointsAt(FVector(50.0, 50.0, 0.0), FVector(850.0, 850.0, 0.0), 400.0, 1, 1000);
+	T.AssertEquals(3, Coarse.Num(), "SubDivision 1 keeps the bare 4 m diagonal");
+}
+
+// D898 G8 (CELEBORN-1125md): the ghost from the ground points at SubDivision 4 draws the 17 sub-cells and lists the skipped one (the filler (4,3) on the occupied tile (1,0)) as the server plan does: it is drawn red.
+void Test_WallGhostFromPointsFineListsTheSkippedFiller(FUnitTest& T)
+{
+	TArray<FIntPoint> Taken;
+	Taken.Add(FIntPoint(1, 0));
+	HOLWallGhost::FHOLWallGhost Ghost = HOLWallGhost::BuildFromPointsAt(FVector(50.0, 50.0, 0.0), FVector(850.0, 850.0, 0.0), 400.0, 4, FIntPoint(0, 0), FIntPoint(99, 99), Taken, 1000);
+	HOLWallLine::FHOLWallLinePlan Plan = HOLWallLine::PlanFromRequestFine(0, FVector(50.0, 50.0, 0.0), FVector(850.0, 850.0, 0.0), 400.0, 4, WallLineMapMin, WallLineMapMax, Taken, 1000);
+	T.AssertEquals(17, Ghost.Cells.Num(), "the ghost draws the 17 sub-cells");
+	T.AssertTrue(WallLineHasCell(Ghost.Skipped, 4, 3), "the skipped filler (4,3) is listed: drawn red");
+	T.AssertEquals(Plan.Skipped.Num(), Ghost.Skipped.Num(), "the ghost holes are the server holes");
+}
