@@ -36,6 +36,14 @@ UNIT_FIELDS = [
     ("BuildPlayRate", "float", "bOverrideBuildPlayRate"),
     ("AttackSequence", "int", "bOverrideAttackSequence"),
     ("FallSequence", "int", "bOverrideFallSequence"),
+    # AR0-d2: by resource ("(Food=4,Wood=2,Stone=3,Gold=3)") and the props.
+    ("GatherSequences", "sequences", "bOverrideGatherSequences"),
+    ("CarryWalkSequences", "sequences", "bOverrideCarryWalkSequences"),
+    ("CarryIdleSequences", "sequences", "bOverrideCarryIdleSequences"),
+    ("GatherProps", "props", "bOverrideGatherProps"),
+    ("CarryProps", "props", "bOverrideCarryProps"),
+    ("BuildProp", "int", "bOverrideBuildProp"),
+    ("AttackProp", "int", "bOverrideAttackProp"),
     ("Projectile", "path", None),
     ("MuzzleSmoke", "path", None),
 ]
@@ -79,6 +87,16 @@ def soft_path(text):
     return path
 
 
+def resource_struct(kind, text):
+    """FHOLResourceSequences / FHOLResourceProps from the CSV's "(Food=4,Wood=2,Stone=3,Gold=3)"."""
+    value = unreal.HOLResourceSequences() if kind == "sequences" else unreal.HOLResourceProps()
+    for pair in text.strip().strip("()").split(","):
+        if pair.strip():
+            key, number = pair.split("=")
+            value.set_editor_property(key.strip().lower(), int(float(number)))
+    return value
+
+
 def read_rows(file_name):
     with open(os.path.join(DATA_DIR, file_name), "r", encoding="utf-8", newline="") as csv_file:
         return [row for row in csv.DictReader(csv_file) if row.get("Name", "").strip()]
@@ -117,6 +135,10 @@ def fill(asset, type_name, row, fields):
             set_property(asset, column, value)
         elif kind == "path":
             set_property(asset, column, soft_path(cell))
+        elif kind in ("sequences", "props"):
+            if cell:
+                set_property(asset, column, resource_struct(kind, cell))
+            set_property(asset, toggle, bool(cell))
         else:
             if cell:
                 set_property(asset, column, int(float(cell)) if kind == "int" else float(cell))
