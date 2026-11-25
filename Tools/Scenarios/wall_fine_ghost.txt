@@ -26,7 +26,8 @@ hol.Camera.TestCursor off
 hol.Select.Grid 0
 hol.Select.Grid 6
 waitlog Placement: Palisade (cost
-hol.Camera.Focus -17400 0
+# Camera a (-19400, 0) (sol libre, comme wall_fine_block ligne B) : a (-17400, 0) le glisser du viewport 1280x720 de play.ps1 traversait le MainCentre (-16400, 0) et le cachait (vu 11:15).
+hol.Camera.Focus -19400 0
 frames 40
 hol.Mouse.LogDragEnd 1
 # Glisser : appui en (200, 360), relache en (1000, 360), 90 images ; ~3000 cm = ~30 sous-cases de 1 m. Capture pendant apres 70 images sur 90 (aux trois quarts du glisser).
