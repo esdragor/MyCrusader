@@ -890,3 +890,47 @@ void Test_WallGhostFromPointsFineListsTheSkippedFiller(FUnitTest& T)
 	T.AssertTrue(WallLineHasCell(Ghost.Skipped, 4, 3), "the skipped filler (4,3) is listed: drawn red");
 	T.AssertEquals(Plan.Skipped.Num(), Ghost.Skipped.Num(), "the ghost holes are the server holes");
 }
+
+// D898 G10 (CELEBORN-1125f): a gate laid ALONE (ServerPlaceBuilding: one point, no drawn line) on finished palisades of its seat retires them first. The indices are CALCULATED by the rule from the standing pieces: a row
+// along X, a column along Y (the gate takes the axis that holds the wall), an unfinished piece, another seat and a non-gate type stay out.
+void Test_IsolatedGatePoseRetiresTheFinishedPalisadesUnderIt(FUnitTest& T)
+{
+	TArray<FIntPoint> Cells;
+	TArray<FName> Types;
+	TArray<int> Owners;
+	TArray<bool> Finished;
+	for (int X = 4; X <= 7; X++)
+	{
+		Cells.Add(FIntPoint(X, 0));
+		Types.Add(n"Palisade");
+		Owners.Add(0);
+		Finished.Add(true);
+	}
+	for (int Y = 12; Y <= 15; Y++)
+	{
+		Cells.Add(FIntPoint(20, Y));
+		Types.Add(n"Palisade");
+		Owners.Add(0);
+		Finished.Add(true);
+	}
+	const FVector OnRow = HOLWallLine::CellToPoint(FIntPoint(5, 0), 100.0, 0.0);
+	const FVector OnColumn = HOLWallLine::CellToPoint(FIntPoint(20, 13), 100.0, 0.0);
+	TArray<int> RowIndices = HOLWallLine::GatePoseRetireIndices(n"PalisadeGate", OnRow, 100.0, 4, 0, Cells, Types, Owners, Finished);
+	T.AssertEquals(4, RowIndices.Num(), "a gate alone on a finished row along X retires its 4 sub-cell pieces");
+	for (int Index = 0; Index < RowIndices.Num(); Index++)
+		T.AssertTrue(Cells[RowIndices[Index]].Y == 0, "a piece retired by the row gate is on the row");
+	TArray<int> ColumnIndices = HOLWallLine::GatePoseRetireIndices(n"PalisadeGate", OnColumn, 100.0, 4, 0, Cells, Types, Owners, Finished);
+	T.AssertEquals(4, ColumnIndices.Num(), "a gate alone on a finished column along Y retires its 4 sub-cell pieces");
+	for (int Index = 0; Index < ColumnIndices.Num(); Index++)
+		T.AssertTrue(Cells[ColumnIndices[Index]].X == 20, "a piece retired by the column gate is on the column");
+	Finished[1] = false;
+	TArray<int> Unfinished = HOLWallLine::GatePoseRetireIndices(n"PalisadeGate", OnRow, 100.0, 4, 0, Cells, Types, Owners, Finished);
+	T.AssertEquals(3, Unfinished.Num(), "a piece not finished is kept (the removal order refuses it)");
+	Finished[1] = true;
+	Owners[2] = 1;
+	TArray<int> OtherSeat = HOLWallLine::GatePoseRetireIndices(n"PalisadeGate", OnRow, 100.0, 4, 0, Cells, Types, Owners, Finished);
+	T.AssertEquals(3, OtherSeat.Num(), "a palisade of another seat is kept");
+	Owners[2] = 0;
+	TArray<int> ByPalisade = HOLWallLine::GatePoseRetireIndices(n"Palisade", OnRow, 100.0, 4, 0, Cells, Types, Owners, Finished);
+	T.AssertEquals(0, ByPalisade.Num(), "laying a palisade alone retires nothing");
+}

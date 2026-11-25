@@ -555,6 +555,13 @@ namespace HOLWallLine
 		return Indices;
 	}
 
+	// D898 G10 (CELEBORN-1125f): the isolated pose (ServerPlaceBuilding: one Point, no drawn line, so no direction): the buildings a gate laid at Point must retire first. The gate lies along the axis whose covered
+	// sub-cells hold the most FINISHED palisade pieces of its seat (a tie lies along X); nothing for a type that is not a gate. The same rule as GateRetireIndices (one source), the world is read by the caller.
+	TArray<int> GatePoseRetireIndices(FName TypeName, FVector Point, double Pitch, int SubDivision, int GateOwner, const TArray<FIntPoint>& StandingCells, const TArray<FName>& StandingTypes, const TArray<int>& StandingOwners, const TArray<bool>& Finished)
+	{
+		TArray<int> None;
+		return None;
+	}
 	// hol.Wall.GateAlongLine (CELEBORN-1125d, default 1): the gate follows the drawn line (a drag along X lays it along X, along Y along Y); 0 = perpendicular to the line.
 	bool GateAlongX(FVector Start, FVector End)
 	{
