@@ -3802,16 +3802,30 @@ void AHOLPlayerController::DoCheatResources(const FHOLResources Amount)
 	{
 		return;
 	}
-	AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
-	if (!HOLPlayerState)
+	// Every slot of the match gets the amount (FARAMIR-1124si: the AI slot stayed at 0-30 wood and the scenario timed out); the caller's own state is the fallback.
+	TArray<AHOLPlayerState*> Targets;
+	if (const AGameStateBase* HOLMatchState = GetWorld() ? GetWorld()->GetGameState() : nullptr)
 	{
-		return;
+		for (APlayerState* Other : HOLMatchState->PlayerArray)
+		{
+			if (AHOLPlayerState* OtherHOL = Cast<AHOLPlayerState>(Other))
+			{
+				Targets.AddUnique(OtherHOL);
+			}
+		}
 	}
-	FHOLResources Stock = HOLPlayerState->GetResources();
-	Stock += Amount;
-	Stock = FHOLResources(FMath::Max(0, Stock.Food), FMath::Max(0, Stock.Wood), FMath::Max(0, Stock.Stone), FMath::Max(0, Stock.Gold));
-	HOLPlayerState->SetResources(Stock);
-	UE_LOG(LogHOLMatch, Display, TEXT("Cheat: slot %d resources, now %s"), HOLPlayerState->GetPlayerIndex(), *HOLPlayerState->DescribeEconomy());
+	if (AHOLPlayerState* OwnState = GetHOLPlayerState())
+	{
+		Targets.AddUnique(OwnState);
+	}
+	for (AHOLPlayerState* HOLPlayerState : Targets)
+	{
+		FHOLResources Stock = HOLPlayerState->GetResources();
+		Stock += Amount;
+		Stock = FHOLResources(FMath::Max(0, Stock.Food), FMath::Max(0, Stock.Wood), FMath::Max(0, Stock.Stone), FMath::Max(0, Stock.Gold));
+		HOLPlayerState->SetResources(Stock);
+		UE_LOG(LogHOLMatch, Display, TEXT("Cheat: slot %d resources, now %s"), HOLPlayerState->GetPlayerIndex(), *HOLPlayerState->DescribeEconomy());
+	}
 #endif
 }
 
