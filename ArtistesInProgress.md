@@ -11,6 +11,22 @@ Distinct de `PlaceholdersInProgress.md` (la liste de ce qui est provisoire et l'
 l'outil, `Placeholders.txt` reste la liste) et de `VisualInProgress.md` / `AnimationsInProgress.md` / les chantiers audio
 (qui produisent des assets ; ce chantier fait l'atelier où un humain les branche).
 
+## Reprise (« Continue ArtistInProgress ») — état au 2026-11-25 fin de soirée
+
+- **main = 763a86f** : D924 (DA_Art par type), D925 (seule source du visuel, colonnes CSV retirées), D926 (Git LFS + verrous pour les nouveaux fichiers d'art) tranchées ;
+  dans main : table visuelle + lecteurs avec faction, 51 DA_Art, manifeste ArtVisuals.csv, galerie (`hol.Art.Gallery`, `.Light`, `.Focus`, `.Lab`), `hol.Art.Try`,
+  menus d'éditeur (Vérifier, Créer le DA_Art), cabine d'icônes + 51 icônes importées (icône vue dans la garnison), animations par référence, Docs\ARTISTES.md.
+- **Premier geste** : lire `Docs\Rapports\SAURON-1125ar12.md` (AR6-c, sons, en vol à l'arrêt, branche `art-sound-1125ar` dans le worktree Sauron : AR6-a / AR6-b verts, rouge AR6-c 5dde138) ;
+  si vert : l'intégrer (`integrate.ps1` dans un worktree libre, puis `merge --ff-only` sur main) ; sinon reprendre AR6-c.
+- **Suite, dans l'ordre** (estimation 3 à 4 h) :
+  1. **AR7-c Git LFS (D926)** : `.gitattributes` (`Content/Art/** filter=lfs diff=lfs merge=lfs -text lockable` + FBX / PSD / textures sources), test qu'un fichier neuf sous Content/Art part en pointeur LFS, section Git de ARTISTES.md (lock / unlock, Source Control Git LFS 2). Côté utilisateur : `git lfs install` sur chaque poste, quota LFS GitHub.
+  2. **Binaires précompilés pour un artiste sans Visual Studio** : poser d'abord la question (zip de l'éditeur compilé / passage par le lanceur / binaires dans le dépôt).
+  3. **AR6 sons** : fin d'AR6-c et intégration (ordre, attaque, mort, construction par type ; limite de 8 voix).
+  4. **Finitions** : fond neutre des icônes d'unités et de sources (encore sur l'herbe) ; « See in the Workshop » qui lance vraiment la partie (petit module C++ d'éditeur) ; durée de l'aide de `hol.Art.Lab` (30 s, à juger par l'utilisateur).
+  5. **Essais** à rejouer sur main avant de les donner : `Retours\E-art_gallery.md`, `E-art_icon.md`, `E-art_lab.md` ; `E-art_editor_menus.md` à jouer par l'utilisateur à l'écran.
+- Hors outillage (asset à faire, pas un lot de ce chantier) : fumée de l'Arquebusier trop petite (tir invisible dans art_try).
+- Worktrees de ce chantier (tous libres sauf Sauron, AR6-c) : Glorfindel, Haldir, Sauron, Celeborn. Leçon de la nuit : ne pas juger une partie net lancée pendant que d'autres builds tournent (relancer d'abord).
+
 ## État de départ (relevé du 2026-11-25, par lecture)
 
 - Le visuel vit dans les CSV, colonnes mêlées aux règles : `Tools/Data/UnitTypes.csv` (`Mesh`, `MeshYawOffset`,
@@ -293,3 +309,4 @@ ressource), appelé juste après `Row->ToConstants(TypeName)` :
   - **Reste du chantier** : AR6-c puis intégration des sons ; icônes des unités / sources encore sur l'herbe ; « See in the Workshop » sans lancement de partie (liaison C++ d'éditeur) ; tir de l'Arquebusier invisible dans art_try (fumée provisoire de 20 cm) ; dessins d'artiste pour tout.
 - 2026-11-25 fin de soirée (CLAUDE-1125ar) : **AQ-3 = A** (réponse de l'utilisateur), GDD **D926** : Git LFS + verrous pour `Content/Art/**` et les fichiers sources d'art, historique non réécrit. **Prochaine étape (AR7-c, non commencée, arrêt demandé)** : `.gitattributes` (+ `git lfs install` sur chaque poste), vérifier que les 51 DA_Art déjà commités restent lisibles (ils ne passent pas en LFS rétroactivement, seuls les nouveaux fichiers), section Git de `Docs\ARTISTES.md` (lock / unlock, Source Control Git LFS 2 dans l'éditeur), test qu'un fichier neuf sous Content/Art part bien en pointeur LFS.
 - 2026-11-25 fin de soirée (CLAUDE-1125ar, après l'arrêt : clôture de l'élément en vol) : **integ-93-art DANS main (763a86f)** : AR5-e (icônes importées en Texture2D, champ Icon des 51 DA_Art, icône vue dans la garnison) + AR1-e (`hol.Art.Lab`) ; tests 2318/2318, parties net,build PASS (aucun rouge) ; avance rapide d'abord refusée (commits de docs de main après le départ de l'intégration) : main fusionné dans integ-93-art (docs seulement, 763a86f) puis ff. Reste EN VOL : SAURON-1125ar12 AR6-c (sons, art-sound-1125ar, rouge 5dde138).
+- 2026-11-25 23:47 SAURON-1125ar12 FAIT AR6-c (1) : merge main 9388fbd ; rouge 5dde138 (UHOLCombatSoundSubsystem + test Mass HeroesOfLiberty.Combat.SoundEvents, vu 23:39 : tests 2318/2320) ; correctif (voir sha suivant) : Attack par coup (melee + tir) dans HOLCombatProcessor, Death par corps dans HOLCorpse::Lay, HOLGameScreenScript.HandleCombatSound -> HOLAudioPlayer.PlayCombat ; vert 23:46 2320/2320. RESTE : (2) son d'ordre par type (point script sur la route C++ des ordres cote client), (3) son de construction debut / fin par type, tirs des batiments sans son ; piege : modifier un .as pendant un quick_check fait echouer ce quick_check (rechargement a chaud). Branche art-sound-1125ar prete.
