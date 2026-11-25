@@ -100,3 +100,12 @@ void Test_ArtTryKnowsSourceTypes(FUnitTest& T)
 	T.AssertEquals(HOLArtTry::KindOf("Arquebusier"), "Unit", "Arquebusier is a unit");
 	T.AssertEquals(HOLArtTry::KindOf("Arquebusir"), "", "a misspelt type is unknown");
 }
+
+// AR4-b (CELEBORN-1125ar6): the first shot of art_try is an event (log line), due when a ranged copy has an enemy within its range.
+void Test_ArtTryFirstShotDueWhenRangedCopyHasEnemyInRange(FUnitTest& T)
+{
+	T.AssertTrue(HOLArtTry::FirstShotDue(1500.0, 1), "an Arquebusier (range 15 m) with one enemy in range: the first shot");
+	T.AssertFalse(HOLArtTry::FirstShotDue(1500.0, 0), "no enemy in range: no shot yet");
+	T.AssertFalse(HOLArtTry::FirstShotDue(100.0, 1), "a melee copy in contact: no shot");
+	T.AssertTrue(HOLArtTry::FirstShotDue(HOLArtTry::RangedMinRange(), 2), "the least ranged range counts");
+}

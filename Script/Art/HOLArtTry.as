@@ -155,6 +155,15 @@ namespace HOLArtTry
 		return OwnSelected >= Wanted;
 	}
 
+	// AR4-b (CELEBORN-1125ar6): art_try captures the shot on an event, not after a fixed wait (12 s = melee, the 1.6 s puff of powder already gone).
+	// The first shot is due when a ranged copy (attack range of at least RangedMinRange cm) has an enemy within its range: the selector,
+	// once the copies are selected, logs "hol.Art.Try: first shot" then (waitlog of art_try). A melee copy in contact is no shot.
+	float RangedMinRange() { return 300.0; }
+	bool FirstShotDue(float AttackRange, int EnemiesInRange)
+	{
+		return false;
+	}
+
 	// AR4-b: what Type is: "Unit", "Building", "Source" (a row of the source table) or "" (unknown).
 	// Read on the three type tables themselves (the paths of hol.Art.Gallery), the same outside a match (tests) and in it.
 	bool IsRowOf(const FString& TablePath, const FString& Type)
