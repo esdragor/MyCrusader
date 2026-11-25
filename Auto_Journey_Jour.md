@@ -66,6 +66,7 @@ check-list lue (L28) à 09:50 après le nettoyage 0a (commits f14ace8, 4865afe, 
 - Lignes sans fiche a ce jour (agents en cours, ligne du tableau inchangee) : GLORFINDEL-1125mc, ELROND-1125md, CELEBORN-1125md, ARWEN-1125md, DIAG-1125mb, FARAMIR-1125md, DOCS-1125mb.
 - EtapeDefini (L28-4) : ligne ABSENTE pour ARWEN-1125ma, ELROND-1125mb, GLORFINDEL-1125mb, RECETTE-1125ma, SAURON-1125mc, DIAG-1125ma ; pas encore de ligne (agents en cours) : DIAG-1125mb, FARAMIR-1125md, ELROND-1125md, CELEBORN-1125md, ARWEN-1125md, DOCS-1125mb. Present (par nom d agent) pour les 19 autres ; CELEBORN-1125mb et 1125mc partagent la ligne 1119.
 | FARAMIR-1125me | HeroesOfLiberty-Faramir | tower-wood-3rd-1125m | - | Socle IA S4 : rejouer le scenario ai_tower (timeout corrige par wait 55, jamais rejoue), preflight, PNG ouverts, fiche E si PASS ; branche neuve ai-tower-1125m | sans C++ |
+| DOCS-1125mc | HeroesOfLiberty-Sauron | tools-1125m | - | EtapeDefini : lignes manquantes (L28-4) d'ARWEN-1125ma, ELROND-1125mb, GLORFINDEL-1125mb, RECETTE-1125ma, SAURON-1125mc, DIAG-1125ma depuis leurs rapports | sans C++ |
 
 ## Séances du 2026-11-24 (archivées le 2026-11-25 par CLEAN-A-1125m)
 
