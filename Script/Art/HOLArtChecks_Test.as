@@ -71,3 +71,56 @@ void Test_ArtAssetPathFromFamily(FUnitTest& T)
 	Checks.Add(HOLArtChecks::CheckArtFolder("/Game/Meshes"));
 	T.AssertFalse(HOLArtChecks::AllPass(Checks), "one red line");
 }
+
+// AR2-b: the triangle budget from the folder (a skinned unit is held to the unit budget too).
+void Test_ArtCheckTriangleBudgetFromFolder(FUnitTest& T)
+{
+	const int Unit = HOLArtChecks::TriangleBudget("/Game/Art/Units/Spearman/SKM_Spearman.SKM_Spearman");
+	const int Building = HOLArtChecks::TriangleBudget("/Game/Art/Buildings/Forum/SM_Forum.SM_Forum");
+	T.AssertTrue(Unit == HOLArtChecks::MaxUnitTriangles, "a unit's mesh: " + Unit);
+	T.AssertTrue(Building == HOLArtChecks::MaxBuildingTriangles, "a building's mesh: " + Building);
+	T.AssertFalse(HOLArtChecks::CheckTriangles(9000, Unit).bPass, "a 9000-triangle unit is over");
+	T.AssertTrue(HOLArtChecks::CheckTriangles(9000, Building).bPass, "a 9000-triangle building is under");
+}
+
+// AR2-b: Projectile / MuzzleSmoke: empty is fine, set must load and be a StaticMesh, its pivot inside its bounds.
+void Test_ArtCheckShotAssets(FUnitTest& T)
+{
+	T.AssertTrue(HOLArtChecks::CheckShotField("Projectile", false, false, false).bPass, "a melee unit: no projectile");
+	T.AssertTrue(HOLArtChecks::CheckShotField("Projectile", true, true, true).bPass, "an arrow mesh");
+	const FHOLArtCheck Broken = HOLArtChecks::CheckShotField("Projectile", true, false, false);
+	T.AssertFalse(Broken.bPass, "set but does not load");
+	T.AssertTrue(Broken.Line.Contains("Projectile"), "the line names the field: " + Broken.Line);
+	T.AssertFalse(HOLArtChecks::CheckShotField("MuzzleSmoke", true, true, false).bPass, "loads but is not a StaticMesh");
+
+	T.AssertTrue(HOLArtChecks::CheckShotPivot("Projectile", FVector(-50.f, -1.f, -1.f), FVector(50.f, 1.f, 1.f)).bPass, "an arrow around its pivot");
+	const FHOLArtCheck Offset = HOLArtChecks::CheckShotPivot("MuzzleSmoke", FVector(100.f, -10.f, -10.f), FVector(200.f, 10.f, 10.f));
+	T.AssertFalse(Offset.bPass, "a smoke one metre off its pivot");
+	T.AssertTrue(Offset.Line.Contains("MuzzleSmoke"), "the line names the field: " + Offset.Line);
+}
+
+// AR2-b: an AnimSequence under /Game/Art/<Family>/<Type>/ is checked against its type's SkinnedMesh.
+void Test_ArtCheckAnimSequence(FUnitTest& T)
+{
+	T.AssertTrue(HOLArtChecks::TypeFromArtPath("/Game/Art/Units/Spearman/Anims") == n"Spearman", "type from a sub-folder");
+	T.AssertTrue(HOLArtChecks::TypeFromArtPath("/Game/Art/Buildings/Forum") == n"Forum", "type from its folder");
+	T.AssertTrue(HOLArtChecks::TypeFromArtPath("/Game/Art/Units") == NAME_None, "a family folder has no type");
+	T.AssertTrue(HOLArtChecks::TypeFromArtPath("/Game/Meshes/Spearman") == NAME_None, "outside /Game/Art/");
+
+	const FString Skel = "/Game/Art/Units/Spearman/SK_Spearman.SK_Spearman";
+	T.AssertTrue(HOLArtChecks::CheckSkeleton(Skel, Skel).bPass, "same skeleton");
+	T.AssertFalse(HOLArtChecks::CheckSkeleton(Skel, "/Game/Art/Units/Archer/SK_Archer.SK_Archer").bPass, "another type's skeleton");
+	T.AssertFalse(HOLArtChecks::CheckSkeleton(Skel, "").bPass, "no SkinnedMesh to compare with");
+
+	T.AssertTrue(HOLArtChecks::CheckAnimLength(1.2f).bPass, "a 1.2 s walk");
+	T.AssertFalse(HOLArtChecks::CheckAnimLength(0.f).bPass, "an empty clip");
+	T.AssertFalse(HOLArtChecks::CheckAnimLength(HOLArtChecks::MaxAnimSeconds + 1.f).bPass, "over the length bound");
+	T.AssertTrue(HOLArtChecks::CheckAnimFrames(30).bPass, "30 frames");
+	T.AssertFalse(HOLArtChecks::CheckAnimFrames(1).bPass, "a single pose");
+}
+
+// AR2-b: "See in the Workshop" gives the full console line, ready to paste.
+void Test_ArtTryCommandLine(FUnitTest& T)
+{
+	T.AssertEquals("hol.Art.Try Arquebusier 1", HOLArtChecks::TryCommand(n"Arquebusier"), "one Arquebusier");
+}

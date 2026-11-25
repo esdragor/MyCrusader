@@ -104,6 +104,56 @@ namespace HOLArtChecks
 		return ArtRoot + FamilyName + "/" + Type + "/" + Name;
 	}
 
+	// AR2-b: PROVISIONAL bounds of an animation clip (Placeholders.txt).
+	const float MaxAnimSeconds = 10.f;
+	const int MinAnimFrames = 2;
+
+	// The triangle budget of a mesh from its folder: a unit's under /Art/Units/, a building's otherwise.
+	int TriangleBudget(FString PathName)
+	{
+		return 0; // AR2-b stub (red first)
+	}
+
+	// Projectile / MuzzleSmoke of a DA_Art: empty is fine (a melee unit), set must load and be a StaticMesh.
+	FHOLArtCheck CheckShotField(FString Field, bool bSet, bool bLoaded, bool bStaticMesh)
+	{
+		return Make(true, Field); // AR2-b stub (red first)
+	}
+
+	// A projectile or a smoke is spawned at the muzzle: its pivot (0, 0, 0) must sit inside its bounds.
+	FHOLArtCheck CheckShotPivot(FString Field, FVector BoundsMin, FVector BoundsMax)
+	{
+		return Make(true, Field); // AR2-b stub (red first)
+	}
+
+	// The type of an asset from its folder: /Game/Art/<Family>/<Type>[/...] (None outside that layout).
+	FName TypeFromArtPath(FString PackagePath)
+	{
+		return NAME_None; // AR2-b stub (red first)
+	}
+
+	// An animation plays on the skeleton of its type's SkinnedMesh (MeshSkeleton empty: no DA_Art or no SkinnedMesh).
+	FHOLArtCheck CheckSkeleton(FString AnimSkeleton, FString MeshSkeleton)
+	{
+		return Make(true, AnimSkeleton); // AR2-b stub (red first)
+	}
+
+	FHOLArtCheck CheckAnimLength(float Seconds)
+	{
+		return Make(true, "length"); // AR2-b stub (red first)
+	}
+
+	FHOLArtCheck CheckAnimFrames(int Frames)
+	{
+		return Make(true, "frames"); // AR2-b stub (red first)
+	}
+
+	// "See in the Workshop": the console line to type in a running Plain match.
+	FString TryCommand(FName TypeName)
+	{
+		return ""; // AR2-b stub (red first)
+	}
+
 	bool AllPass(const TArray<FHOLArtCheck>& Checks)
 	{
 		for (const FHOLArtCheck& Check : Checks)
