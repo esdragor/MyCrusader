@@ -45,6 +45,7 @@
 #include "Match/HOLChatSubsystem.h"
 #include "Match/HOLSpecializationSubsystem.h"
 #include "Player/HOLGameMenuRulesBridge.h"
+#include "Player/HOLGridActionBridge.h"
 #include "Player/HOLWallLineBridge.h"
 #include "Player/HOLFollowBridge.h"
 #include "Buildings/HOLConstructionReadLibrary.h"
@@ -2625,6 +2626,24 @@ void AHOLPlayerController::ExecuteGridCommand(const FHOLGridCommand& Command)
 	{
 		return;
 	}
+	// G-4 (ELROND-1125ma): the script's grid-action rule (HOLGridActionBridge) is asked first. Only an Arm answer is acted on here (the one
+	// armed mode, SetArmedMode, the click is then the script's); every other answer, or no script class, leaves the switch below in charge until G-5.
+	{
+		TArray<int32> SelectedIds;
+		for (const uint32 SelectedId : GetOwnSelectedUnits())
+		{
+			SelectedIds.Add(static_cast<int32>(SelectedId));
+		}
+		FHOLGridActionAnswer Answer;
+		if (UHOLGridActionBridge::NativeDecideGridAction(static_cast<int32>(Command.Command), static_cast<int32>(Command.Ability), Command.bGreyed,
+				Command.CooldownSeconds, Command.TypeName, SelectedIds, Answer)
+			&& Answer.Kind == HOLGridActionKind::Arm && Answer.AimMode >= 0)
+		{
+			SetArmedMode(Answer.AimMode, Answer.RangeCm, Answer.UnitId);
+			UE_LOG(LogHOLMatch, Display, TEXT("Grid: armed mode %d (%s), click on the ground"), Answer.AimMode, *Answer.Report.ToString());
+			return;
+		}
+	}
 	const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
 	switch (Command.Command)
 	{
@@ -3164,6 +3183,7 @@ void AHOLPlayerController::SetFactionAim(int32 Index, double RangeCm)
 	if (Index < 0)
 	{
 		FactionAimIndex = -1;
+		ArmedUnitId = 0;
 		return;
 	}
 	// One mode at a time: the aim takes over placement, a chosen age, attack-move and the banner.
@@ -3174,6 +3194,7 @@ void AHOLPlayerController::SetFactionAim(int32 Index, double RangeCm)
 	SetChosenAge(INDEX_NONE);
 	bAttackMoveArmed = false;
 	bBannerArmed = false;
+	bMonkSealArmed = false;
 	FactionAimIndex = Index;
 }
 
@@ -3197,6 +3218,27 @@ bool AHOLPlayerController::ConsumeFactionAimClick(FVector& OutPoint, int32& OutI
 	OutPoint = FactionAimPoint;
 	OutIndex = FactionAimIndex;
 	return true;
+}
+
+void AHOLPlayerController::SetArmedMode(const int32 Mode, const double RangeCm, const int32 UnitId)
+{
+	SetFactionAim(Mode, RangeCm);
+	ArmedUnitId = Mode >= 0 ? UnitId : 0;
+}
+
+int32 AHOLPlayerController::GetArmedMode() const
+{
+	return FactionAimIndex;
+}
+
+int32 AHOLPlayerController::GetArmedUnitId() const
+{
+	return ArmedUnitId;
+}
+
+bool AHOLPlayerController::ConsumeArmedClick(FVector& OutPoint, int32& OutMode)
+{
+	return ConsumeFactionAimClick(OutPoint, OutMode);
 }
 
 void AHOLPlayerController::ScriptEscape()
