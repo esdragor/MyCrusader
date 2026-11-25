@@ -266,6 +266,11 @@ namespace HOLArtVisual
 		}
 	}
 
+	int32 FindSequenceIndex(const UAnimSequenceTransformProviderData* Provider, const TSoftObjectPtr<UAnimSequence>& Animation)
+	{
+		return INDEX_NONE; // AR3-a stub (red commit): the lookup comes with the fix.
+	}
+
 	bool HasFactionAsset(const UWorld* World, const FName TypeName, const FName FactionKey)
 	{
 		return FindFaction(World, TypeName, FactionKey) != nullptr;

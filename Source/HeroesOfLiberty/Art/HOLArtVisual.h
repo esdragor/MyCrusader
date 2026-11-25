@@ -11,8 +11,28 @@
 class UStaticMesh;
 class USkeletalMesh;
 class UTexture2D;
+class UAnimSequence;
 class UAnimSequenceTransformProviderData;
 struct FHOLUnitTypeConstants;
+
+/** AR3-a: one animation by reference per resource (gathering, walking with a load, standing with a load). */
+USTRUCT(BlueprintType)
+struct HEROESOFLIBERTY_API FHOLResourceAnimations
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Resources")
+	TSoftObjectPtr<UAnimSequence> Food;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Resources")
+	TSoftObjectPtr<UAnimSequence> Wood;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Resources")
+	TSoftObjectPtr<UAnimSequence> Stone;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Resources")
+	TSoftObjectPtr<UAnimSequence> Gold;
+};
 
 /** Whether the art of a type is still a placeholder or the final one (D924; read by the manifest, AR0-b). */
 UENUM(BlueprintType)
@@ -169,6 +189,35 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Props", meta = (EditCondition = "bOverrideAttackProp", ClampMin = "0", ClampMax = "8"))
 	int32 AttackProp = 0;
 
+	/**
+	 * AR3-a: each state's animation by reference. At the Mass type registration its number is looked up in GetSequences()
+	 * of the resolved AnimationProvider and replaces the number above; empty = the number; set but absent from the
+	 * provider = an error naming (type, state, sequence) and the number is kept (HOLArtVisual::ResolveAnimations).
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Animations")
+	TSoftObjectPtr<UAnimSequence> IdleAnimation;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Animations")
+	TSoftObjectPtr<UAnimSequence> WalkAnimation;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Animations")
+	TSoftObjectPtr<UAnimSequence> AttackAnimation;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Animations")
+	TSoftObjectPtr<UAnimSequence> FallAnimation;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Animations")
+	TSoftObjectPtr<UAnimSequence> BuildAnimation;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Animations")
+	FHOLResourceAnimations GatherAnimations;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Animations")
+	FHOLResourceAnimations CarryWalkAnimations;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Animations")
+	FHOLResourceAnimations CarryIdleAnimations;
+
 	/** Arrow and muzzle smoke of a ranged unit (read by HOLArrowSubsystem, not yet wired: AR0-a RESTE). */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Shot")
 	FSoftObjectPath Projectile;
@@ -259,6 +308,9 @@ namespace HOLArtVisual
 	 * (HOLUnitSubsystem): the common asset of the type, then the faction's over it, field by field.
 	 */
 	HEROESOFLIBERTY_API void Apply(const UWorld* World, FHOLUnitTypeConstants& Constants, FName TypeName, FName FactionKey);
+
+	/** AR3-a: the number of Animation in Provider's GetSequences(), INDEX_NONE when it is not there (or either is empty). */
+	HEROESOFLIBERTY_API int32 FindSequenceIndex(const UAnimSequenceTransformProviderData* Provider, const TSoftObjectPtr<UAnimSequence>& Animation);
 
 	/** Whether the faction has an asset of its own for the type (it may then get its own Mass type without an override row). */
 	HEROESOFLIBERTY_API bool HasFactionAsset(const UWorld* World, FName TypeName, FName FactionKey);
