@@ -47,6 +47,8 @@ void UHOLNetUnitDisplayProcessor::ConfigureQueries(const TSharedRef<FMassEntityM
 	EntityQuery.AddRequirement<FHOLNetUnitDisplayFragment>(EMassFragmentAccess::ReadWrite);
 	EntityQuery.AddRequirement<FTransformFragment>(EMassFragmentAccess::ReadWrite);
 	EntityQuery.AddRequirement<FHOLPreviousTransformFragment>(EMassFragmentAccess::ReadWrite);
+	// AR0-a4: the owner's slot of a shooter (its faction's projectile).
+	EntityQuery.AddRequirement<FHOLUnitStateFragment>(EMassFragmentAccess::ReadOnly);
 	EntityQuery.AddConstSharedRequirement<FHOLUnitTypeConstants>();
 }
 
@@ -72,6 +74,7 @@ void UHOLNetUnitDisplayProcessor::Execute(FMassEntityManager& EntityManager, FMa
 		const bool bShooter = ArrowDisplay && HOLCombat::IsRangedAttack(Constants.AttackRange);
 		const int32 IntervalMs = HOLCombat::ToMilliseconds(Constants.AttackInterval);
 		const TArrayView<FHOLNetUnitDisplayFragment> Displays = Context.GetMutableFragmentView<FHOLNetUnitDisplayFragment>();
+		const TConstArrayView<FHOLUnitStateFragment> UnitStates = Context.GetFragmentView<FHOLUnitStateFragment>();
 		const TArrayView<FTransformFragment> Transforms = Context.GetMutableFragmentView<FTransformFragment>();
 		const TArrayView<FHOLPreviousTransformFragment> PreviousTransforms = Context.GetMutableFragmentView<FHOLPreviousTransformFragment>();
 
@@ -152,7 +155,7 @@ void UHOLNetUnitDisplayProcessor::Execute(FMassEntityManager& EntityManager, FMa
 					Launch.From = Drawn.GetLocation();
 					Launch.To = FVector(Wall.X, Wall.Y, Drawn.GetLocation().Z);
 					Launch.FlightMs = HOLCombat::GetArrowFlightMilliseconds(FVector2D(Launch.From), Wall, HOLCombat::GetArrowSpeed());
-					Launch.ShooterType = Constants.TypeName;
+					HOLArrowLaunches::SetUnitShooter(Launch, Constants.TypeName, UnitStates[EntityIt].OwnerPlayer);
 					ArrowDisplay->Launch(Launch);
 					continue;
 				}
@@ -166,7 +169,7 @@ void UHOLNetUnitDisplayProcessor::Execute(FMassEntityManager& EntityManager, FMa
 				Launch.Target = Target;
 				Launch.FlightMs = HOLCombat::GetArrowFlightMilliseconds(FVector2D(Launch.From), FVector2D(Launch.To), HOLCombat::GetArrowSpeed());
 				// Its type's projectile (AR9): the bolt of a Crossbowman, known here as on the server; nothing more received.
-				Launch.ShooterType = Constants.TypeName;
+				HOLArrowLaunches::SetUnitShooter(Launch, Constants.TypeName, UnitStates[EntityIt].OwnerPlayer);
 				ArrowDisplay->Launch(Launch);
 			}
 			// Its gesture's phase (UHOLInterpolatedInstancesProcessor): its next release, from the clock's present.

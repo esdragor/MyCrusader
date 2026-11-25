@@ -123,3 +123,29 @@ void Test_GarrisonFrameUnitIconPathReadsTheOwnersFactionFirst(FUnitTest& T)
 		T.AssertEquals(Buttons[0].IconPath, "/Game/Art/Units/Spearman/T_Icon_Spearman_Legions.T_Icon_Spearman_Legions", "the button of a Legions building's occupant: the Legions icon");
 }
 
+void Test_GarrisonFrameOwnerFactionKeyGivesTheFactionsIcon(FUnitTest& T)
+{
+	// AR0-a4: the frame reads its local player's faction index (AHOLGameState::GetSlotFaction) as a key: a Legions player sees his occupants' Legions icon.
+	UHOLArtVisualRegistry::ClearTestArtVisuals();
+	UHOLArtVisualRegistry::AddTestArtVisualIcon(n"Spearman", NAME_None, "/Game/Art/Units/Spearman/T_Icon_Spearman.T_Icon_Spearman");
+	UHOLArtVisualRegistry::AddTestArtVisualIcon(n"Spearman", n"Legions", "/Game/Art/Units/Spearman/T_Icon_Spearman_Legions.T_Icon_Spearman_Legions");
+	TArray<int> Occupants;
+	Occupants.Add(12);
+	TArray<FString> OneType;
+	OneType.Add("Spearman");
+	FHOLGarrisonView View = HOLGarrisonFrameRules::ViewFor(Occupants, 5, true, true);
+	const FString LegionsKey = HOLGarrisonFrameRules::OwnerFactionKey(int(EHOLFaction::BlackLegions));
+	const FString DawnKey = HOLGarrisonFrameRules::OwnerFactionKey(int(EHOLFaction::DawnOrder));
+	const FString NoKey = HOLGarrisonFrameRules::OwnerFactionKey(-1);
+	TArray<FHOLGarrisonButtonView> LegionsButtons = HOLGarrisonFrameRules::ButtonsFor(View, OneType, LegionsKey);
+	TArray<FHOLGarrisonButtonView> DawnButtons = HOLGarrisonFrameRules::ButtonsFor(View, OneType, DawnKey);
+	UHOLArtVisualRegistry::ClearTestArtVisuals();
+	T.AssertEquals(LegionsButtons.Num(), 1, "one occupant: one button");
+	T.AssertEquals(DawnButtons.Num(), 1, "one occupant: one button (Dawn)");
+	if (LegionsButtons.Num() == 1 && DawnButtons.Num() == 1)
+	{
+		T.AssertEquals(LegionsButtons[0].IconPath, "/Game/Art/Units/Spearman/T_Icon_Spearman_Legions.T_Icon_Spearman_Legions", "a Legions player's occupant: the Legions icon");
+		T.AssertEquals(DawnButtons[0].IconPath, "/Game/Art/Units/Spearman/T_Icon_Spearman.T_Icon_Spearman", "a Dawn player's occupant: the common icon (no Dawn variant)");
+	}
+	T.AssertEquals(NoKey, "", "no slot: no faction key");
+}

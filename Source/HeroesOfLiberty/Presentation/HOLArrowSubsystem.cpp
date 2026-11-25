@@ -376,3 +376,18 @@ void UHOLArrowSubsystem::Tick(float DeltaTime)
 		}
 	}
 }
+
+namespace HOLArrowLaunches
+{
+	void SetUnitShooter(FHOLArrowLaunch& Launch, const FName UnitType, const int32 OwnerSlot)
+	{
+		Launch.ShooterType = UnitType;
+		// AR0-a4 RED STUB: the owner's slot is not passed yet.
+	}
+
+	void SetBuildingShooter(FHOLArrowLaunch& Launch, const FName BuildingType, const int32 OwnerSlot)
+	{
+		// AR0-a4 RED STUB: neither the building type nor its owner's slot passed yet (SM_Arrow).
+		Launch.ShooterType = NAME_None;
+	}
+}

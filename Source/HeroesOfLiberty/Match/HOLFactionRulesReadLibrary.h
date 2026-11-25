@@ -98,4 +98,8 @@ public:
 	 */
 	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|FactionRules")
 	static FString GetSlotStartType(const FString& RolesText, const FString& OverridesText, int32 Slot, const FString& Role);
+
+	/** AR0-a4: HOLFactionRules::GetFactionKey: the key (Dawn, Legions...) of an EHOLFaction index (AHOLGameState::GetSlotFaction); the Dawn's out of the enum. */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|FactionRules")
+	static FString GetFactionKey(int32 FactionIndex);
 };

@@ -29,6 +29,19 @@ struct FHOLArrowLaunch
 };
 
 /**
+ * AR0-a4: the shooter of a launch drawn without a simulation fighter at hand: a unit's arrow on a client (HOLNetUnitDisplay,
+ * from its replicated state) and a building's arrow (a tower: HOLCombatProcessor in solo / host, AHOLBuilding::OnRep_ArrowShot
+ * on a client). Both pass the owner's slot, whose faction's art asset (DA_Art_<Type>_<Faction>) gives the projectile.
+ */
+namespace HOLArrowLaunches
+{
+	/** A unit's arrow: its type (its row's Projectile, its art asset's) and its owner's slot. */
+	HEROESOFLIBERTY_API void SetUnitShooter(FHOLArrowLaunch& Launch, FName UnitType, int32 OwnerSlot);
+	/** A building's arrow: the building type's art asset (DA_Art_<Building>_<Faction>, then DA_Art_<Building>) gives its projectile, of its owner's faction; none: SM_Arrow. */
+	HEROESOFLIBERTY_API void SetBuildingShooter(FHOLArrowLaunch& Launch, FName BuildingType, int32 OwnerSlot);
+}
+
+/**
  * The arrows in flight (J7c.2b), drawn on a displaying machine only (solo, host, client; never a dedicated server): one
  * instanced static mesh per projectile mesh (AR9: the shooter type's Projectile, SM_Arrow or SM_Bolt; no shadow, D258), no
  * actor per arrow, nothing replicated (Q4). The same flight for all of them (speed and arc, AR-Q5).
@@ -52,6 +65,8 @@ public:
 
 	int32 GetInFlightCount() const { return Arrows.Num(); }
 	int64 GetLaunchedCount() const { return Launched; }
+	/** AR0-a4 (tests): the mesh the Index-th arrow in flight is drawn with (its group's), or null. */
+	const UStaticMesh* GetInFlightMesh(int32 Index) const { return Arrows.IsValidIndex(Index) && Meshes.IsValidIndex(Arrows[Index].Group) ? Meshes[Arrows[Index].Group].Get() : nullptr; }
 	int64 GetLandedCount() const { return Landed; }
 	int64 GetGapCount() const { return GapCount; }
 	double GetGapMeanMs() const { return GapCount > 0 ? GapSumMs / GapCount : 0.0; }
