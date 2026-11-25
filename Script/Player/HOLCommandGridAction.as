@@ -106,7 +106,20 @@ namespace HOLCommandGridAction
 		FHOLGridActionView Result;
 		if (Command.bGreyed)
 		{
-			// A greyed cell (hero ability not unlocked or cooling down, age not reached) does nothing.
+			// A greyed cell (age not reached) does nothing. A greyed HERO ABILITY (not unlocked, cooling down) is REFUSED, not ignored (HALDIR-1125md: G-5a made it None,
+			// so the player's notice of refusal was lost): the Report is the old journal word (banner / cry), the bridge writes the old line.
+			if (Command.Command == EHOLGridCommandKind::HeroAbility)
+			{
+				Result.Kind = EHOLGridActionKind::Refuse;
+				if (Command.Ability == 2)
+				{
+					Result.Report = n"banner";
+				}
+				else
+				{
+					Result.Report = n"cry";
+				}
+			}
 			return Result;
 		}
 		EHOLGridCommandKind Kind = Command.Command;
