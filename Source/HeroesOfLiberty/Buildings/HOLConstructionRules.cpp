@@ -31,6 +31,12 @@ bool HOLConstruction::IsWallPieceType(const FName TypeName)
 	return TypeName == FName(TEXT("Palisade")) || TypeName == FName(TEXT("StoneWall"));
 }
 
+FVector2D HOLConstruction::GetPieceFootprint(const FName TypeName, const FVector2D& Footprint, const int32 SubDivision)
+{
+	// STUB (red first): the footprint unchanged.
+	return Footprint;
+}
+
 int32 HOLConstruction::GetWallSubDivision()
 {
 	const IConsoleVariable* Variable = IConsoleManager::Get().FindConsoleVariable(TEXT("hol.Wall.SubDivision"));

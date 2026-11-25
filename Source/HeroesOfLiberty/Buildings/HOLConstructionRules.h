@@ -98,6 +98,9 @@ namespace HOLConstruction
 	/** D898 G4: the wall types that live on the fine grid (the script's HOLWallLine::WallTypes without the gate: its 400 x 100 footprint waits for G10). */
 	HEROESOFLIBERTY_API bool IsWallPieceType(FName TypeName);
 
+	/** ELROND-1125mf: the footprint a piece of type TypeName really covers: a wall piece (IsWallPieceType) is the row's Footprint divided by SubDivision (1 or less = unchanged), any other type keeps Footprint. The one rule behind the placement bounds AND the visible shapes (foundation, ghost, rubble), so a 1 m piece is not drawn as a 4 m box. */
+	HEROESOFLIBERTY_API FVector2D GetPieceFootprint(FName TypeName, const FVector2D& Footprint, int32 SubDivision);
+
 	/** D898 G4: the console variable hol.Wall.SubDivision of the script (1 = the 4 m grid of today); 1 when it is absent. */
 	HEROESOFLIBERTY_API int32 GetWallSubDivision();
 
