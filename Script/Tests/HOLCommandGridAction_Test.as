@@ -58,7 +58,8 @@ void Test_CGAHeroAbility(FUnitTest& T)
 	FHOLGridCommandView Cooling = HOLCommandGridRules::GetCommand(Hero, HOLCommandGridRules::GetHeroAbilityCell(1));
 	T.AssertTrue(Cooling.bGreyed, "the chain greys Close Ranks while it cools down");
 	FHOLGridActionView CoolingVerdict = HOLCommandGridAction::Decide(Nothing, Cooling);
-	T.AssertTrue(CoolingVerdict.Kind == EHOLGridActionKind::None, "a greyed hero ability does nothing");
+	T.AssertTrue(CoolingVerdict.Kind == EHOLGridActionKind::Refuse, "a greyed hero ability is refused (the player keeps his notice)");
+	T.AssertEquals(n"cry", CoolingVerdict.Report, "the refusal of Close Ranks is told as the cry");
 }
 
 // HeroesOfLiberty.CommandGridAction.OrdersAndSweep
