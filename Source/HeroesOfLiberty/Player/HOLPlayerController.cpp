@@ -2626,23 +2626,117 @@ void AHOLPlayerController::ExecuteGridCommand(const FHOLGridCommand& Command)
 	{
 		return;
 	}
-	// G-4 (ELROND-1125ma): the script's grid-action rule (HOLGridActionBridge) is asked first. Only an Arm answer is acted on here (the one
-	// armed mode, SetArmedMode, the click is then the script's); every other answer, or no script class, leaves the switch below in charge until G-5.
+	// G-5a (GLORFINDEL-1125md, D839): what these cells do is the script's rule (HOLGridActionBridge -> HOLCommandGridAction::Decide), no twin in a switch:
+	// Arm = the one armed mode (SetArmedMode, the click is then the script's, HOLGridGroundClick), None = nothing (greyed cell, Seal without a Monk),
+	// Send = this function only EXECUTES the request. Not covered by the script yet, still decided in the switch below: Produce, Research, Trade,
+	// Build (their refusals and quotes need the stock / queue / market facts the bridge does not carry: DecideCosted is not reachable from the bridge).
+	switch (Command.Command)
 	{
+	case EHOLGridCommand::HeroAbility:
+	case EHOLGridCommand::LightSeal:
+	case EHOLGridCommand::AttackMove:
+	case EHOLGridCommand::Stop:
+	case EHOLGridCommand::Hold:
+	case EHOLGridCommand::NecroticRage:
+	case EHOLGridCommand::Deploy:
+	case EHOLGridCommand::UngarrisonAll:
+	case EHOLGridCommand::CancelConstruction:
+	case EHOLGridCommand::Specialize:
+	case EHOLGridCommand::CancelSpecialization:
+	{
+		// The facts the rule reads: the own selection; for the Seal the Monks only (the rule takes the first id as the caster, the old switch took the first Monk).
 		TArray<int32> SelectedIds;
 		for (const uint32 SelectedId : GetOwnSelectedUnits())
 		{
+			if (Command.Command == EHOLGridCommand::LightSeal)
+			{
+				FHOLUnitView Selected;
+				if (!HOLUnitView::Find(*GetWorld(), SelectedId, Selected) || Selected.TypeName != FName(TEXT("Monk")))
+				{
+					continue;
+				}
+			}
 			SelectedIds.Add(static_cast<int32>(SelectedId));
 		}
 		FHOLGridActionAnswer Answer;
-		if (UHOLGridActionBridge::NativeDecideGridAction(static_cast<int32>(Command.Command), static_cast<int32>(Command.Ability), Command.bGreyed,
-				Command.CooldownSeconds, Command.TypeName, SelectedIds, Answer)
-			&& Answer.Kind == HOLGridActionKind::Arm && Answer.AimMode >= 0)
+		if (!UHOLGridActionBridge::NativeDecideGridAction(static_cast<int32>(Command.Command), static_cast<int32>(Command.Ability), Command.bGreyed,
+				Command.CooldownSeconds, Command.TypeName, SelectedIds, Answer))
 		{
-			SetArmedMode(Answer.AimMode, Answer.RangeCm, Answer.UnitId);
-			UE_LOG(LogHOLMatch, Display, TEXT("Grid: armed mode %d (%s), click on the ground"), Answer.AimMode, *Answer.Report.ToString());
+			UE_LOG(LogHOLMatch, Warning, TEXT("Grid: no script class answers the grid action (command %d), nothing done"), static_cast<int32>(Command.Command));
 			return;
 		}
+		if (Answer.Kind == HOLGridActionKind::Arm)
+		{
+			if (Answer.AimMode >= 0)
+			{
+				SetArmedMode(Answer.AimMode, Answer.RangeCm, Answer.UnitId);
+				UE_LOG(LogHOLMatch, Display, TEXT("Grid: armed mode %d (%s), click on the ground"), Answer.AimMode, *Answer.Report.ToString());
+			}
+			return;
+		}
+		if (Answer.Kind != HOLGridActionKind::Send)
+		{
+			UE_CLOG(Command.Command == EHOLGridCommand::HeroAbility, LogHOLMatch, Display, TEXT("Grid: hero ability %d not ready (%d s)"), static_cast<int32>(Command.Ability),
+				Command.CooldownSeconds);
+			return;
+		}
+		// Send: the execution only.
+		switch (Command.Command)
+		{
+		case EHOLGridCommand::HeroAbility:
+			UE_LOG(LogHOLMatch, Display, TEXT("Grid: hero cry"));
+			RequestHeroAbility(EHOLHeroAbility::CloseRanks, FVector::ZeroVector);
+			return;
+		case EHOLGridCommand::Stop:
+		case EHOLGridCommand::Hold:
+		{
+			// The active subgroup's units (Tab), all of them for « Tous ».
+			const TArray<uint32> Own = GetCommandUnits();
+			UE_LOG(LogHOLMatch, Display, TEXT("Order: %d units %s"), Own.Num(), Command.Command == EHOLGridCommand::Hold ? TEXT("hold position") : TEXT("stop"));
+			SetArmedMode(-1, 0.0, 0);
+			RequestStopUnits(Own, Command.Command == EHOLGridCommand::Hold);
+			return;
+		}
+		case EHOLGridCommand::NecroticRage:
+			UE_LOG(LogHOLMatch, Display, TEXT("Grid: necrotic rage"));
+			RequestCastRage(GetOwnSelectedUnits());
+			return;
+		case EHOLGridCommand::Deploy:
+		{
+			const TArray<uint32> Own = GetCommandUnits();
+			UE_LOG(LogHOLMatch, Display, TEXT("Order: %d units %s"), Own.Num(), Command.bPack ? TEXT("pack up") : TEXT("deploy"));
+			SetArmedMode(-1, 0.0, 0);
+			RequestToggleDeploy(Own);
+			return;
+		}
+		case EHOLGridCommand::UngarrisonAll:
+			// D813 (Q-garrison-ui Q1 C): the Sortir tous cell or its key sends the selected building's whole garrison out.
+			UHOLControllerCommandLibrary::RequestUngarrisonAllSelected(this);
+			return;
+		case EHOLGridCommand::CancelConstruction:
+		{
+			// The site selected alone, or a subgroup's only building.
+			TArray<AHOLBuilding*> Buildings;
+			GetCommandBuildings(Buildings);
+			if (Buildings.Num() == 1)
+			{
+				RequestCancelBuilding(Buildings[0]);
+			}
+			return;
+		}
+		case EHOLGridCommand::Specialize:
+			// SP3 (D332, D684): the Forum's cell asks the server's board (ServerStartSpecialization); the other option replaces the running one.
+			RequestSpecialization(Command.Tier, Command.Option);
+			return;
+		case EHOLGridCommand::CancelSpecialization:
+			RequestCancelSpecialization();
+			return;
+		default:
+			return;
+		}
+	}
+	default:
+		break;
 	}
 	const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
 	switch (Command.Command)
@@ -2781,110 +2875,7 @@ void AHOLPlayerController::ExecuteGridCommand(const FHOLGridCommand& Command)
 		BeginPlacement(Command.TypeName);
 		return;
 	}
-	case EHOLGridCommand::HeroAbility:
-		// J8c.4: greyed (below its level, cooling down), nothing sent; the cry at once, the banner a left click on the ground
-		// (PlantBannerAt). The server checks it all again.
-		if (Command.bGreyed)
-		{
-			UE_LOG(LogHOLMatch, Display, TEXT("Grid: hero %s not ready (%d s)"), Command.Ability == EHOLHeroAbility::Banner ? TEXT("banner") : TEXT("cry"),
-				Command.CooldownSeconds);
-			return;
-		}
-		if (Command.Ability == EHOLHeroAbility::CloseRanks)
-		{
-			UE_LOG(LogHOLMatch, Display, TEXT("Grid: hero cry"));
-			RequestHeroAbility(EHOLHeroAbility::CloseRanks, FVector::ZeroVector);
-			return;
-		}
-		EndPlacement();
-		bAttackMoveArmed = false;
-		SetFactionAim(-1, 0.0);
-		bBannerArmed = true;
-		bMonkSealArmed = false;
-		UE_LOG(LogHOLMatch, Display, TEXT("Grid: hero banner, click on the ground"));
-		return;
-	case EHOLGridCommand::LightSeal:
-	{
-		// S1-d (D862, ELROND-1124sb): the Monk's Seal of Light, AoE4's way: the cell or its key, then a left click on the ground (PlantMonkSealAt).
-		// The Monk is the first selected unit of type Monk (the type the grid reads for bMonkUnit); none = nothing armed.
-		uint32 MonkId = 0;
-		for (const uint32 SelectedId : GetOwnSelectedUnits())
-		{
-			FHOLUnitView Selected;
-			if (HOLUnitView::Find(*GetWorld(), SelectedId, Selected) && Selected.TypeName == FName(TEXT("Monk")))
-			{
-				MonkId = SelectedId;
-				break;
-			}
-		}
-		if (MonkId == 0)
-		{
-			return;
-		}
-		EndPlacement();
-		bAttackMoveArmed = false;
-		bBannerArmed = false;
-		SetFactionAim(-1, 0.0);
-		MonkSealUnit = MonkId;
-		bMonkSealArmed = true;
-		UE_LOG(LogHOLMatch, Display, TEXT("Grid: monk seal, click on the ground"));
-		return;
-	}
-	case EHOLGridCommand::AttackMove:
-		// AoE4's way: the key, then a left click on the ground (AttackMoveAt).
-		EndPlacement();
-		bBannerArmed = false;
-		bMonkSealArmed = false;
-		SetFactionAim(-1, 0.0);
-		bAttackMoveArmed = true;
-		UE_LOG(LogHOLMatch, Display, TEXT("Grid: attack-move, click on the ground"));
-		return;
-	case EHOLGridCommand::Stop:
-	case EHOLGridCommand::Hold:
-	{
-		// The active subgroup's units (Tab), all of them for « Tous ».
-		const TArray<uint32> Own = GetCommandUnits();
-		UE_LOG(LogHOLMatch, Display, TEXT("Order: %d units %s"), Own.Num(), Command.Command == EHOLGridCommand::Hold ? TEXT("hold position") : TEXT("stop"));
-		bAttackMoveArmed = false;
-		RequestStopUnits(Own, Command.Command == EHOLGridCommand::Hold);
-		return;
-	}
-	case EHOLGridCommand::NecroticRage:
-	{
-		UE_LOG(LogHOLMatch, Display, TEXT("Grid: necrotic rage"));
-		RequestCastRage(GetOwnSelectedUnits());
-		return;
-	}
-	case EHOLGridCommand::Deploy:
-	{
-		const TArray<uint32> Own = GetCommandUnits();
-		UE_LOG(LogHOLMatch, Display, TEXT("Order: %d units %s"), Own.Num(), Command.bPack ? TEXT("pack up") : TEXT("deploy"));
-		bAttackMoveArmed = false;
-		RequestToggleDeploy(Own);
-		return;
-	}
-	case EHOLGridCommand::UngarrisonAll:
-		// D813 (Q-garrison-ui Q1 C): the Sortir tous cell or its key sends the selected building's whole garrison out.
-		UHOLControllerCommandLibrary::RequestUngarrisonAllSelected(this);
-		return;
-	case EHOLGridCommand::CancelConstruction:
-	{
-		// The site selected alone, or a subgroup's only building.
-		TArray<AHOLBuilding*> Buildings;
-		GetCommandBuildings(Buildings);
-		if (Buildings.Num() == 1)
-		{
-			RequestCancelBuilding(Buildings[0]);
-		}
-		return;
-	}
-	case EHOLGridCommand::Specialize:
-		// SP3 (D332, D684): the Forum's cell asks the server's board (ServerStartSpecialization); the other option replaces the running one.
-		RequestSpecialization(Command.Tier, Command.Option);
-		return;
-	case EHOLGridCommand::CancelSpecialization:
-		RequestCancelSpecialization();
-		return;
+
 	default:
 		return;
 	}
