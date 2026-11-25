@@ -13,7 +13,7 @@ namespace HOLKnightChallenge
 
 	// The cast the Knight's button makes: the values of the table row (D839, one source), the end step by the rule above, then the C++ liaison
 	// writes the Knight's combat fragment (it refuses another type, a dead Knight, another owner, a running cool-down).
-	bool Cast(UHOLUnitSubsystem Units, int UnitId, int RequiredOwner)
+	bool CastChallenge(UHOLUnitSubsystem Units, int UnitId, int RequiredOwner)
 	{
 		const int StepMs = HOLUnitAbilityRead::GetSimulationStepMs(Units);
 		if (StepMs <= 0)
