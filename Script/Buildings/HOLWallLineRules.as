@@ -457,10 +457,19 @@ namespace HOLWallLine
 	}
 
 	// D898 G10 (PLAN-GRILLE-FINE-1124.md): the sub-cells a gate laid at Cell covers = the SubDivision sub-cells of its 4 m tile in a row along X (bAlongX) or along Y.
-	// STUB (red first): covers nothing, replaces nothing.
 	TArray<FIntPoint> GateCells(FIntPoint Cell, bool bAlongX, int SubDivision)
 	{
 		TArray<FIntPoint> Covered;
+		const int Count = SubDivision < 1 ? 1 : SubDivision;
+		const int Axis = bAlongX ? Cell.X : Cell.Y;
+		const int Start = Axis - (((Axis % Count) + Count) % Count);
+		for (int Index = 0; Index < Count; Index++)
+		{
+			if (bAlongX)
+				Covered.Add(FIntPoint(Start + Index, Cell.Y));
+			else
+				Covered.Add(FIntPoint(Cell.X, Start + Index));
+		}
 		return Covered;
 	}
 
@@ -468,6 +477,18 @@ namespace HOLWallLine
 	TArray<FIntPoint> GateReplacedCells(FIntPoint Cell, bool bAlongX, int SubDivision, int GateOwner, const TArray<FIntPoint>& StandingCells, const TArray<FName>& StandingTypes, const TArray<int>& StandingOwners)
 	{
 		TArray<FIntPoint> Replaced;
+		TArray<FIntPoint> Covered = GateCells(Cell, bAlongX, SubDivision);
+		for (int CoveredIndex = 0; CoveredIndex < Covered.Num(); CoveredIndex++)
+		{
+			for (int Standing = 0; Standing < StandingCells.Num() && Standing < StandingTypes.Num() && Standing < StandingOwners.Num(); Standing++)
+			{
+				if (StandingCells[Standing].X == Covered[CoveredIndex].X && StandingCells[Standing].Y == Covered[CoveredIndex].Y && GateReplaces(StandingTypes[Standing], StandingOwners[Standing], GateOwner))
+				{
+					Replaced.Add(Covered[CoveredIndex]);
+					break;
+				}
+			}
+		}
 		return Replaced;
 	}
 	// A gate lets its owner's units through (other seats meet a solid building, D691 / D867 neighbours: walls and gates are solid for the enemy).
