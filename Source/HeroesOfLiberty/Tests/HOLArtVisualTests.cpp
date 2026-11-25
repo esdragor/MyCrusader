@@ -4,6 +4,8 @@
 // (GetTemplateKey) read the art asset through the single resolver, field by field, the CSV row as the last level.
 
 #include "Art/HOLArtVisual.h"
+#include "Animation/AnimSequence.h"
+#include "Animation/AnimSequenceTransformProviderData.h"
 #include "Engine/Engine.h"
 #include "Engine/StaticMesh.h"
 #include "Engine/World.h"
@@ -76,7 +78,7 @@ namespace UE::HeroesOfLiberty::Tests::ArtVisual
 	}
 }
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLArtVisualEmptyAssetTest, "HeroesOfLiberty.Art.Visual.EmptyAssetKeepsCsv", UE::HeroesOfLiberty::Tests::ArtVisual::Flags)
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLArtVisualEmptyAssetTest, "HeroesOfLiberty.Art.Visual.EmptyAssetKeepsNeutral", UE::HeroesOfLiberty::Tests::ArtVisual::Flags)
 bool FHOLArtVisualEmptyAssetTest::RunTest(const FString& Parameters)
 {
 	using namespace UE::HeroesOfLiberty::Tests::ArtVisual;
@@ -86,21 +88,26 @@ bool FHOLArtVisualEmptyAssetTest::RunTest(const FString& Parameters)
 	{
 		return false;
 	}
-	const FHOLUnitTypeConstants Csv = Row->ToConstants(Spearman);
-	const FName LegionsKeyBefore = Test.Units->GetTemplateKey(Spearman, Legions);
-	HOLArtVisual::AddTestEntry(MakeAsset(Spearman, NAME_None, TEXT("DA_Art_Spearman")));
-	HOLArtVisual::AddTestEntry(MakeAsset(Spearman, Legions, TEXT("DA_Art_Spearman_Legions")));
-	const FHOLUnitTypeConstants* Built = TemplateConstants(*Test.Units, Spearman, NAME_None);
-	if (!TestNotNull(TEXT("the Spearman's Mass template is built"), Built))
+	// AR0-d2 (3): the row carries no visual field any more; the art asset is the only source, an empty one leaves the
+	// neutral value (no mesh, scale and play rate of the row's neutral constants), never the old CSV's.
+	const FHOLUnitTypeConstants Neutral = Row->ToConstants(Spearman);
+	FHOLUnitTypeConstants Real = Row->ToConstants(Spearman);
+	HOLArtVisual::Apply(Test.World, Real, Spearman, NAME_None);
+	if (!TestFalse(TEXT("before: the real DA_Art_Spearman gives a mesh (the test can tell an empty asset apart)"), Real.Mesh.IsNull()))
 	{
 		return false;
 	}
-	TestEqual(TEXT("an empty art asset keeps the CSV's mesh"), Built->Mesh.ToString(), Csv.Mesh.ToString());
-	TestEqual(TEXT("... its skinned mesh"), Built->SkinnedMesh.ToString(), Csv.SkinnedMesh.ToString());
-	TestEqual(TEXT("... its animation provider"), Built->AnimationProvider.ToString(), Csv.AnimationProvider.ToString());
-	TestEqual(TEXT("... its scale"), Built->MeshScale, Csv.MeshScale);
-	TestEqual(TEXT("... its yaw"), Built->MeshYawOffset, Csv.MeshYawOffset);
-	TestEqual(TEXT("... its walk play rate"), Built->WalkPlayRate, Csv.WalkPlayRate);
+	const FName LegionsKeyBefore = Test.Units->GetTemplateKey(Spearman, Legions);
+	HOLArtVisual::AddTestEntry(MakeAsset(Spearman, NAME_None, TEXT("DA_Art_Spearman")));
+	HOLArtVisual::AddTestEntry(MakeAsset(Spearman, Legions, TEXT("DA_Art_Spearman_Legions")));
+	FHOLUnitTypeConstants Built = Row->ToConstants(Spearman);
+	HOLArtVisual::Apply(Test.World, Built, Spearman, NAME_None);
+	TestTrue(TEXT("an empty art asset gives no mesh (neutral, no fallback on the row)"), Built.Mesh.IsNull());
+	TestTrue(TEXT("... no skinned mesh"), Built.SkinnedMesh.IsNull());
+	TestTrue(TEXT("... no animation provider"), Built.AnimationProvider.IsNull());
+	TestEqual(TEXT("... the neutral scale"), Built.MeshScale, Neutral.MeshScale);
+	TestEqual(TEXT("... the neutral yaw"), Built.MeshYawOffset, Neutral.MeshYawOffset);
+	TestEqual(TEXT("... the neutral walk play rate"), Built.WalkPlayRate, Neutral.WalkPlayRate);
 	TestEqual(TEXT("an empty faction asset gives the faction no Mass type of its own (the CRC sees no change)"), Test.Units->GetTemplateKey(Spearman, Legions), LegionsKeyBefore);
 	return true;
 }
@@ -135,6 +142,105 @@ bool FHOLArtVisualMeshTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("the registered type's scale is the art asset's"), Built->MeshScale, Csv.MeshScale * 2.f + 0.5f);
 	TestEqual(TEXT("a field the asset leaves empty falls back to the CSV (skinned mesh)"), Built->SkinnedMesh.ToString(), Csv.SkinnedMesh.ToString());
 	TestEqual(TEXT("... and its walk sequence"), Built->WalkSequence, Csv.WalkSequence);
+	return true;
+}
+
+namespace UE::HeroesOfLiberty::Tests::ArtVisual
+{
+	/** AR3-a: a copy of the real DA_Art_Spearman (its provider and numbers), registered in its place; null when there is none. */
+	UHOLArtVisual* CopyRealSpearman(FAutomationTestBase& Test, const UWorld* World, const UAnimSequenceTransformProviderData*& OutProvider)
+	{
+		const UHOLArtVisual* Real = HOLArtVisual::Find(World, Spearman, NAME_None);
+		OutProvider = Real ? Real->AnimationProvider.LoadSynchronous() : nullptr;
+		if (!Test.TestNotNull(TEXT("the real DA_Art_Spearman"), Real) || !Test.TestNotNull(TEXT("... with its animation provider"), OutProvider)
+			|| !Test.TestTrue(TEXT("... of at least 3 sequences"), OutProvider->GetSequences().Num() >= 3))
+		{
+			return nullptr;
+		}
+		UHOLArtVisual* Copy = DuplicateObject<UHOLArtVisual>(Real, GetTransientPackage(), MakeUniqueObjectName(GetTransientPackage(), UHOLArtVisual::StaticClass(), TEXT("DA_Art_Spearman")));
+		return Copy;
+	}
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLArtVisualAnimationReferenceTest, "HeroesOfLiberty.Art.Visual.AnimationReferenceGivesItsNumber", UE::HeroesOfLiberty::Tests::ArtVisual::Flags)
+bool FHOLArtVisualAnimationReferenceTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::ArtVisual;
+	FWorld Test;
+	const UAnimSequenceTransformProviderData* Provider = nullptr;
+	UHOLArtVisual* Asset = Test.Units ? CopyRealSpearman(*this, Test.World, Provider) : nullptr;
+	if (!Asset)
+	{
+		return false;
+	}
+	// Before: the constants the real DA_Art_Spearman gives (the same resolver, before the copy replaces it).
+	const FHOLUnitTypeRow* Row = Test.Units->FindTypeRow(Spearman);
+	if (!TestNotNull(TEXT("the real unit type table has a Spearman"), Row))
+	{
+		return false;
+	}
+	FHOLUnitTypeConstants BeforeValue = Row->ToConstants(Spearman);
+	HOLArtVisual::Apply(Test.World, BeforeValue, Spearman, NAME_None);
+	const FHOLUnitTypeConstants* Before = &BeforeValue;
+	// The sequence of the provider that no number points to yet (computed, never typed): the last one unless it is the walk's.
+	const TArray<FAnimSequenceTransformProviderSequence>& Sequences = Provider->GetSequences();
+	const int32 Target = Sequences.Num() - 1 != Before->WalkSequence ? Sequences.Num() - 1 : Sequences.Num() - 2;
+	const int32 WalkBefore = Before->WalkSequence;
+	const int32 WoodBefore = Before->GatherSequences.Wood;
+	if (!TestNotEqual(TEXT("before: the walk number is not the target (the test can tell them apart)"), WalkBefore, Target)
+		|| !TestNotNull(TEXT("the target sequence has an animation"), static_cast<UAnimSequence*>(Sequences[Target].Sequence)))
+	{
+		return false;
+	}
+	Asset->WalkAnimation = TSoftObjectPtr<UAnimSequence>(FSoftObjectPath(static_cast<UAnimSequence*>(Sequences[Target].Sequence)));
+	Asset->GatherAnimations.Wood = Asset->WalkAnimation;
+	HOLArtVisual::AddTestEntry(Asset);
+
+	const FHOLUnitTypeConstants* Built = TemplateConstants(*Test.Units, Spearman, NAME_None);
+	if (!TestNotNull(TEXT("the Spearman's Mass template is built"), Built))
+	{
+		return false;
+	}
+	TestEqual(TEXT("a walk animation by reference gives its number in the provider at registration"), Built->WalkSequence, Target);
+	TestEqual(TEXT("... and a gathering one by resource (wood)"), Built->GatherSequences.Wood, Target);
+	TestEqual(TEXT("an empty reference keeps the number (idle)"), Built->IdleSequence, Before->IdleSequence);
+	TestNotEqual(TEXT("(the wood gathering number changed from before)"), WoodBefore, Target);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLArtVisualAnimationMissingTest, "HeroesOfLiberty.Art.Visual.AnimationReferenceMissingFallsBack", UE::HeroesOfLiberty::Tests::ArtVisual::Flags)
+bool FHOLArtVisualAnimationMissingTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::ArtVisual;
+	FWorld Test;
+	const UAnimSequenceTransformProviderData* Provider = nullptr;
+	UHOLArtVisual* Asset = Test.Units ? CopyRealSpearman(*this, Test.World, Provider) : nullptr;
+	if (!Asset)
+	{
+		return false;
+	}
+	// Before: the constants the real DA_Art_Spearman gives (the same resolver, before the copy replaces it).
+	const FHOLUnitTypeRow* Row = Test.Units->FindTypeRow(Spearman);
+	if (!TestNotNull(TEXT("the real unit type table has a Spearman"), Row))
+	{
+		return false;
+	}
+	FHOLUnitTypeConstants BeforeValue = Row->ToConstants(Spearman);
+	HOLArtVisual::Apply(Test.World, BeforeValue, Spearman, NAME_None);
+	const FHOLUnitTypeConstants* Before = &BeforeValue;
+	const int32 AttackBefore = Before->AttackSequence;
+	// An animation that no provider holds (made in memory): the reference is set but absent from the TP_*.
+	UAnimSequence* Stranger = NewObject<UAnimSequence>(GetTransientPackage(), TEXT("AR3a_StrangerAttack"));
+	Asset->AttackAnimation = TSoftObjectPtr<UAnimSequence>(FSoftObjectPath(Stranger));
+	HOLArtVisual::AddTestEntry(Asset);
+
+	AddExpectedError(TEXT("Spearman.*Attack.*AR3a_StrangerAttack"), EAutomationExpectedErrorFlags::Contains, 0);
+	const FHOLUnitTypeConstants* Built = TemplateConstants(*Test.Units, Spearman, NAME_None);
+	if (!TestNotNull(TEXT("the Spearman's Mass template is built"), Built))
+	{
+		return false;
+	}
+	TestEqual(TEXT("an absent reference falls back on the number"), Built->AttackSequence, AttackBefore);
 	return true;
 }
 

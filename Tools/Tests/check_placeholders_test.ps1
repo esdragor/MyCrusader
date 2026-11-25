@@ -96,9 +96,13 @@ Add-Content -Path (Join-Path $D "placeholders_map.csv") -Value "GhostType,UnitTy
 $R = Invoke-Tool $D
 $Checks["map entry for a type gone from the tables: FAIL naming it"] = ($R.Code -ne 0 -and $R.Text -match "GhostType")
 
-# 8. A new building with a REAL mesh (not the mannequin, not empty) needs no line: PASS.
+# 8. AR0-d2: the CSV Mesh no longer decides. A new building copied from a row with a real CSV Mesh, but no Final DA_Art
+# in the manifest, is provisional: no entry = FAIL naming it.
 $D = New-Case "real_mesh"; Add-Row $D "BuildingTypes" "MainCentre" "FakeForum"; $R = Invoke-Tool $D
-$Checks["new building with a real model, no entry: PASS (not provisional)"] = ($R.Code -eq 0)
+$Checks["new building with a CSV Mesh but no Final DA_Art, no entry: FAIL naming it"] = ($R.Code -ne 0 -and $R.Text -match "FakeForum")
+# 8b. ...and once its DA_Art is Final with fields set, it needs no line: PASS.
+Add-Art $D "FakeForum" "" "Buildings" "Final"; $R = Invoke-Tool $D
+$Checks["same building once its DA_Art is Final with fields: PASS"] = ($R.Code -eq 0)
 
 # 9. quick_check calls the checker (static) so it runs at every commit.
 $Quick = Get-Content (Join-Path $Root "Tools\Tests\quick_check.ps1") -Raw
@@ -140,6 +144,12 @@ Add-Row $D "UnitTypes" "Spearman" "FakeUnit"; $R = Invoke-Tool $D (Join-Path $D 
 $Checks["manifest absent: new mannequin unit FAIL naming it"] = ($R.Code -ne 0 -and $R.Text -match "FakeUnit")
 $R = Invoke-Tool $D
 $Checks["manifest header only: new mannequin unit FAIL naming it"] = ($R.Code -ne 0 -and $R.Text -match "FakeUnit")
+
+# 16. AR0-d2: a DA_Art marked Final that sets no field (empty asset = neutral fallback) is still provisional.
+$D = New-Case "final_no_field"; Remove-Listing $D "Spearman"
+Add-Content -Path (Join-Path $D "ArtVisuals.csv") -Value "Spearman,,Units,/Game/Art/Units/Spearman/DA_Art_Spearman,,Final" -Encoding UTF8
+$R = Invoke-Tool $D
+$Checks["Final DA_Art with no field set, no line: FAIL naming Spearman"] = ($R.Code -ne 0 -and $R.Text -match "Spearman")
 
 Remove-Item $Work -Recurse -Force
 $Failed = @($Checks.Keys | Where-Object { -not $Checks[$_] })

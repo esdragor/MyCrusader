@@ -9,6 +9,7 @@
 #include "MassEntitySubsystem.h"
 #include "MassExecutor.h"
 #include "MassProcessingContext.h"
+#include "Art/HOLArtVisual.h"
 #include "Misc/AutomationTest.h"
 #include "Simulation/HOLCombatProcessor.h"
 #include "Simulation/HOLCombatRules.h"
@@ -83,31 +84,34 @@ bool FHOLHeroTypeTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("10 against buildings"), Hero->BuildingAttack, 10);
 	TestEqual(TEXT("... every 2.1 s"), Hero->BuildingAttackInterval, 2.1f);
 	TestEqual(TEXT("... from a melee building reach"), Hero->BuildingAttackRange, ManAtArms->BuildingAttackRange);
+	const auto DressedArt = [](const FHOLUnitTypeRow& Row, const TCHAR* Type) { FHOLUnitTypeConstants C = Row.ToConstants(Type); HOLArtVisual::Apply(nullptr, C, Type, NAME_None); return C; };
+	const FHOLUnitTypeConstants HeroArt = DressedArt(*Hero, TEXT("Hero"));
+	const FHOLUnitTypeConstants ManAtArmsArt = DressedArt(*ManAtArms, TEXT("ManAtArms"));
 	// Outside population, produced nowhere (J8a-Q2).
 	TestEqual(TEXT("Outside the population"), Hero->Population, 0);
 	TestTrue(TEXT("Free"), Hero->Cost.Food == 0 && Hero->Cost.Wood == 0 && Hero->Cost.Stone == 0 && Hero->Cost.Gold == 0);
 	TestTrue(TEXT("No gathering, nothing carried"), Hero->GatherRates.Food <= 0.f && Hero->GatherRates.Wood <= 0.f
 		&& Hero->GatherRates.Stone <= 0.f && Hero->GatherRates.Gold <= 0.f && Hero->CarryCapacity == 0);
-	TestEqual(TEXT("No building gesture"), Hero->BuildSequence, -1);
+	TestEqual(TEXT("No building gesture"), HeroArt.BuildSequence, -1);
 	// Body: 1.2 times the others' (J8a-Q3).
 	TestEqual(TEXT("Body radius 72 cm (1.2 x 60)"), Hero->Radius, 72.f);
-	TestEqual(TEXT("Mesh scale 1.8 (1.2 x 1.5)"), Hero->MeshScale, 1.8f);
-	TestEqual(TEXT("... the Man-at-arms' times 1.2"), Hero->MeshScale, ManAtArms->MeshScale * 1.2f, 1.e-4f);
+	TestEqual(TEXT("Mesh scale 1.8 (1.2 x 1.5)"), HeroArt.MeshScale, 1.8f);
+	TestEqual(TEXT("... the Man-at-arms' times 1.2"), HeroArt.MeshScale, ManAtArmsArt.MeshScale * 1.2f, 1.e-4f);
 	// His own skinned mesh (J8a.2: SKM_Hero, the paladin pieces of soldier_props.py) and provider (TP_Hero), playing the
 	// Man-at-arms' gestures; the walk slowed by the scale (D234).
-	TestEqual(TEXT("His own skinned mesh"), Hero->SkinnedMesh.ToSoftObjectPath(),
+	TestEqual(TEXT("His own skinned mesh"), HeroArt.SkinnedMesh,
 		FSoftObjectPath(TEXT("/Game/Units/Mannequin/SKM_Hero.SKM_Hero")));
-	TestEqual(TEXT("... and his own animation provider"), Hero->AnimationProvider.ToSoftObjectPath(),
+	TestEqual(TEXT("... and his own animation provider"), HeroArt.AnimationProvider,
 		FSoftObjectPath(TEXT("/Game/Units/Mannequin/TP_Hero.TP_Hero")));
-	const USkeletalMesh* HeroMesh = Hero->SkinnedMesh.LoadSynchronous();
-	const USkeletalMesh* ManAtArmsMesh = ManAtArms->SkinnedMesh.LoadSynchronous();
+	const USkeletalMesh* HeroMesh = Cast<USkeletalMesh>(HeroArt.SkinnedMesh.TryLoad());
+	const USkeletalMesh* ManAtArmsMesh = Cast<USkeletalMesh>(ManAtArmsArt.SkinnedMesh.TryLoad());
 	if (TestNotNull(TEXT("SKM_Hero loads"), HeroMesh) && TestNotNull(TEXT("... SKM_ManAtArms too"), ManAtArmsMesh))
 	{
 		TestEqual(TEXT("SKM_Hero: the Man-at-arms' LODs"), HeroMesh->GetLODNum(), ManAtArmsMesh->GetLODNum());
 		TestEqual(TEXT("... the same skeleton"), HeroMesh->GetSkeleton(), ManAtArmsMesh->GetSkeleton());
 	}
-	const UAnimSequenceTransformProviderData* HeroProvider = Hero->AnimationProvider.LoadSynchronous();
-	const UAnimSequenceTransformProviderData* ManAtArmsProvider = ManAtArms->AnimationProvider.LoadSynchronous();
+	const UAnimSequenceTransformProviderData* HeroProvider = Cast<UAnimSequenceTransformProviderData>(HeroArt.AnimationProvider.TryLoad());
+	const UAnimSequenceTransformProviderData* ManAtArmsProvider = Cast<UAnimSequenceTransformProviderData>(ManAtArmsArt.AnimationProvider.TryLoad());
 	if (TestNotNull(TEXT("TP_Hero loads"), HeroProvider) && TestNotNull(TEXT("... TP_ManAtArms too"), ManAtArmsProvider))
 	{
 		TestTrue(TEXT("TP_Hero drives SKM_Hero"), HeroProvider->GetSkinnedAsset() == HeroMesh);
@@ -120,11 +124,11 @@ bool FHOLHeroTypeTest::RunTest(const FString& Parameters)
 		}
 		TestTrue(TEXT("TP_Hero: the Man-at-arms' 6 sequences, same order"), bSame);
 	}
-	TestTrue(TEXT("... his idle, walk, strike and fall"), Hero->IdleSequence == ManAtArms->IdleSequence
-		&& Hero->WalkSequence == ManAtArms->WalkSequence && Hero->AttackSequence == ManAtArms->AttackSequence
-		&& Hero->FallSequence == ManAtArms->FallSequence);
-	TestEqual(TEXT("Walk play rate: the Man-at-arms' / 1.2 (longer stride, same speed)"), Hero->WalkPlayRate,
-		ManAtArms->WalkPlayRate / 1.2f, 0.01f);
+	TestTrue(TEXT("... his idle, walk, strike and fall"), HeroArt.IdleSequence == ManAtArmsArt.IdleSequence
+		&& HeroArt.WalkSequence == ManAtArmsArt.WalkSequence && HeroArt.AttackSequence == ManAtArmsArt.AttackSequence
+		&& HeroArt.FallSequence == ManAtArmsArt.FallSequence);
+	TestEqual(TEXT("Walk play rate: the Man-at-arms' / 1.2 (longer stride, same speed)"), HeroArt.WalkPlayRate,
+		ManAtArmsArt.WalkPlayRate / 1.2f, 0.01f);
 
 	const FHOLUnitTypeConstants Constants = Hero->ToConstants(TEXT("Hero"));
 	TestTrue(TEXT("Its constants carry the Hero category"), HOLIsHero(Constants.ArmorCategoryMask));

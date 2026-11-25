@@ -235,11 +235,11 @@ AHOLSourceField::FTypeDisplay& AHOLSourceField::GetOrMakeTypeDisplay(const uint8
 	}
 	FTypeDisplay& Display = TypeDisplays.Add(TypeIndex);
 
-	// D924 (AR0-a2): the type's art asset mesh first (a source has no faction: the common asset), the CSV row's last.
+	// D924 (AR0-a2): the type's art asset mesh first (a source has no faction: the common asset), none = the provisional shape (AR0-d2 point 3: no CSV Mesh).
 	const UHOLSourceSubsystem* Sources = GetWorld() ? GetWorld()->GetSubsystem<UHOLSourceSubsystem>() : nullptr;
 	const FName SourceTypeName = Sources && Sources->GetTypeNames().IsValidIndex(TypeIndex) ? Sources->GetTypeNames()[TypeIndex] : NAME_None;
-	const TSoftObjectPtr<UStaticMesh> VisualMesh(SourceTypeName.IsNone() ? Type.Mesh.ToSoftObjectPath()
-		: HOLArtVisual::ResolveMesh(GetWorld(), SourceTypeName, NAME_None, Type.Mesh.ToSoftObjectPath()));
+	const TSoftObjectPtr<UStaticMesh> VisualMesh(SourceTypeName.IsNone() ? FSoftObjectPath()
+		: HOLArtVisual::ResolveMesh(GetWorld(), SourceTypeName, NAME_None, FSoftObjectPath()));
 	// AR0-a3: a resource has no faction (no owner): its mesh is always the common DA_Art_<Type>, never a faction variant.
 	UStaticMesh* FinalMesh = VisualMesh.IsNull() ? nullptr : VisualMesh.LoadSynchronous();
 	if (!VisualMesh.IsNull() && !FinalMesh)

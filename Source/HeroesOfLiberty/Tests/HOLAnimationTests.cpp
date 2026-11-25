@@ -1,6 +1,7 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "Animation/AnimSequence.h"
+#include "Art/HOLArtVisual.h"
 #include "Animation/AnimSequenceTransformProviderData.h"
 #include "Engine/SkinnedAsset.h"
 #include "Engine/DataTable.h"
@@ -12,6 +13,21 @@
 #include "Simulation/HOLUnitTypes.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
+
+namespace UE::HeroesOfLiberty::Tests::ArtDressed
+{
+	/** D925 (AR0-d2): the type's constants as registered: its row's (visual fields neutral), dressed by /Game/Art/Units/<Type>/DA_Art_<Type>. */
+	inline FHOLUnitTypeConstants Dressed(const FHOLUnitTypeRow& Row, const TCHAR* TypeName)
+	{
+		FHOLUnitTypeConstants Constants = Row.ToConstants(TypeName);
+		const FString Name = FString::Printf(TEXT("DA_Art_%s"), TypeName);
+		if (const UHOLArtVisual* Art = LoadObject<UHOLArtVisual>(nullptr, *FString::Printf(TEXT("/Game/Art/Units/%s/%s.%s"), TypeName, *Name, *Name), nullptr, LOAD_NoWarn | LOAD_Quiet))
+		{
+			Art->ApplyTo(Constants);
+		}
+		return Constants;
+	}
+}
 
 // J5c.1, J5c.2 and J6a.4 checks: the animation and the prop a client shows on a unit (D234, HOLUnitAnimation::Choose) and
 // the Peasant's sequences and props in the type table and its animation provider.
@@ -369,7 +385,7 @@ bool FHOLAnimationTableTest::RunTest(const FString& Parameters)
 	{
 		return false;
 	}
-	const FHOLUnitTypeConstants Constants = Peasant->ToConstants(TEXT("Peasant"));
+	const FHOLUnitTypeConstants Constants = UE::HeroesOfLiberty::Tests::ArtDressed::Dressed(*Peasant, TEXT("Peasant"));
 	const FHOLUnitTypeConstants Expected = MakePeasant();
 	TestTrue(TEXT("gathering sequences reach the shared fragment"), Constants.GatherSequences == Expected.GatherSequences);
 	TestTrue(TEXT("carrying walks reach the shared fragment"), Constants.CarryWalkSequences == Expected.CarryWalkSequences);
@@ -388,10 +404,10 @@ bool FHOLAnimationTableTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("strike prop: the knife"), Constants.AttackProp, Expected.AttackProp);
 	TestEqual(TEXT("fall sequence (J7b.5)"), Constants.FallSequence, Expected.FallSequence);
 	// The props live in the Peasant's own mesh, drawn with the material that hides all but the one named (J5c.2).
-	TestEqual(TEXT("Peasant's mesh"), Peasant->SkinnedMesh.ToSoftObjectPath().GetAssetName(), TEXT("SKM_Peasant"));
+	TestEqual(TEXT("Peasant's mesh"), Constants.SkinnedMesh.GetAssetName(), TEXT("SKM_Peasant"));
 
 	// The provider plays them by index: each index is the sequence made for it (Tools/Editor/make_skinned_mannequin.py).
-	const UAnimSequenceTransformProviderData* Provider = Peasant->AnimationProvider.LoadSynchronous();
+	const UAnimSequenceTransformProviderData* Provider = Cast<UAnimSequenceTransformProviderData>(Constants.AnimationProvider.TryLoad());
 	if (!TestNotNull(TEXT("Peasant's animation provider"), Provider))
 	{
 		return false;
@@ -420,7 +436,7 @@ bool FHOLAnimationTableTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("striking"), SequenceName(Constants.AttackSequence), TEXT("A_Peasant_Attack"));
 	// Sequences 0-7 are the soldiers' provider's, in its order (the same indices for both meshes).
 	const FHOLUnitTypeRow* LightInfantryRow = UnitTypes->FindRow<FHOLUnitTypeRow>(TEXT("LightInfantry"), TEXT("Animation test"));
-	const UAnimSequenceTransformProviderData* SoldierProvider = LightInfantryRow ? LightInfantryRow->AnimationProvider.LoadSynchronous() : nullptr;
+	const UAnimSequenceTransformProviderData* SoldierProvider = LightInfantryRow ? Cast<UAnimSequenceTransformProviderData>(UE::HeroesOfLiberty::Tests::ArtDressed::Dressed(*LightInfantryRow, TEXT("LightInfantry")).AnimationProvider.TryLoad()) : nullptr;
 	if (TestNotNull(TEXT("soldiers' animation provider"), SoldierProvider))
 	{
 		const TArray<FAnimSequenceTransformProviderSequence>& Shared = SoldierProvider->GetSequences();
@@ -439,11 +455,12 @@ bool FHOLAnimationTableTest::RunTest(const FString& Parameters)
 		const FHOLUnitTypeRow* Row = UnitTypes->FindRow<FHOLUnitTypeRow>(Soldier, TEXT("Animation test"));
 		if (TestNotNull(*FString::Printf(TEXT("%s in the unit type table"), Soldier), Row))
 		{
-			TestTrue(*FString::Printf(TEXT("%s: idle 0, walk 1, no gesture, carrying walk, loaded idle, building nor prop"), Soldier), Row->IdleSequence == 0
-				&& Row->WalkSequence == 1 && Row->GatherSequences == FHOLResourceSequences() && Row->CarryWalkSequences == FHOLResourceSequences()
-				&& Row->CarryIdleSequences == FHOLResourceSequences() && Row->GatherProps == FHOLResourceProps() && Row->CarryProps == FHOLResourceProps()
-				&& Row->BuildSequence == INDEX_NONE && Row->BuildProp == 0 && Row->AttackSequence == INDEX_NONE && Row->AttackProp == 0 && Row->FallSequence == INDEX_NONE);
-			TestEqual(*FString::Printf(TEXT("%s keeps the mannequin's mesh"), Soldier), Row->SkinnedMesh.ToSoftObjectPath().GetAssetName(),
+			const FHOLUnitTypeConstants Art = UE::HeroesOfLiberty::Tests::ArtDressed::Dressed(*Row, Soldier);
+			TestTrue(*FString::Printf(TEXT("%s: idle 0, walk 1, no gesture, carrying walk, loaded idle, building nor prop"), Soldier), Art.IdleSequence == 0
+				&& Art.WalkSequence == 1 && Art.GatherSequences == FHOLResourceSequences() && Art.CarryWalkSequences == FHOLResourceSequences()
+				&& Art.CarryIdleSequences == FHOLResourceSequences() && Art.GatherProps == FHOLResourceProps() && Art.CarryProps == FHOLResourceProps()
+				&& Art.BuildSequence == INDEX_NONE && Art.BuildProp == 0 && Art.AttackSequence == INDEX_NONE && Art.AttackProp == 0 && Art.FallSequence == INDEX_NONE);
+			TestEqual(*FString::Printf(TEXT("%s keeps the mannequin's mesh"), Soldier), Art.SkinnedMesh.GetAssetName(),
 				TEXT("SKM_Mannequin_Classic"));
 		}
 	}
@@ -469,13 +486,14 @@ bool FHOLAnimationTableTest::RunTest(const FString& Parameters)
 		{
 			continue;
 		}
-		TestEqual(*FString::Printf(TEXT("%s: its own mesh"), Soldier.Name), Row->SkinnedMesh.ToSoftObjectPath().GetAssetName(), FString(Soldier.Mesh));
-		TestTrue(*FString::Printf(TEXT("%s: idle 2, walk 3, no gesture, carrying walk, loaded idle, building nor prop"), Soldier.Name), Row->IdleSequence == 2
-			&& Row->WalkSequence == 3 && Row->GatherSequences == FHOLResourceSequences() && Row->CarryWalkSequences == FHOLResourceSequences()
-			&& Row->CarryIdleSequences == FHOLResourceSequences() && Row->GatherProps == FHOLResourceProps() && Row->CarryProps == FHOLResourceProps()
-			&& Row->BuildSequence == INDEX_NONE && Row->BuildProp == 0);
-		TestTrue(*FString::Printf(TEXT("%s: strike 4, fall 5"), Soldier.Name), Row->AttackSequence == 4 && Row->AttackProp == 0 && Row->FallSequence == 5);
-		const UAnimSequenceTransformProviderData* SoldierOwn = Row->AnimationProvider.LoadSynchronous();
+		const FHOLUnitTypeConstants Art = UE::HeroesOfLiberty::Tests::ArtDressed::Dressed(*Row, Soldier.Name);
+		TestEqual(*FString::Printf(TEXT("%s: its own mesh"), Soldier.Name), Art.SkinnedMesh.GetAssetName(), FString(Soldier.Mesh));
+		TestTrue(*FString::Printf(TEXT("%s: idle 2, walk 3, no gesture, carrying walk, loaded idle, building nor prop"), Soldier.Name), Art.IdleSequence == 2
+			&& Art.WalkSequence == 3 && Art.GatherSequences == FHOLResourceSequences() && Art.CarryWalkSequences == FHOLResourceSequences()
+			&& Art.CarryIdleSequences == FHOLResourceSequences() && Art.GatherProps == FHOLResourceProps() && Art.CarryProps == FHOLResourceProps()
+			&& Art.BuildSequence == INDEX_NONE && Art.BuildProp == 0);
+		TestTrue(*FString::Printf(TEXT("%s: strike 4, fall 5"), Soldier.Name), Art.AttackSequence == 4 && Art.AttackProp == 0 && Art.FallSequence == 5);
+		const UAnimSequenceTransformProviderData* SoldierOwn = Cast<UAnimSequenceTransformProviderData>(Art.AnimationProvider.TryLoad());
 		if (TestNotNull(*FString::Printf(TEXT("%s's animation provider"), Soldier.Name), SoldierOwn))
 		{
 			const TArray<FAnimSequenceTransformProviderSequence>& Own = SoldierOwn->GetSequences();

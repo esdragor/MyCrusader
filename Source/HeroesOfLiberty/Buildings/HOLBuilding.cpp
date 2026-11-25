@@ -1239,7 +1239,7 @@ void AHOLBuilding::BuildGhostShape(const FHOLBuildingTypeRow& Type)
 TSoftObjectPtr<UStaticMesh> AHOLBuilding::GetVisualMesh(const FHOLBuildingTypeRow& Type) const
 {
 	return TSoftObjectPtr<UStaticMesh>(HOLArtVisual::ResolveMesh(GetWorld(), TypeName,
-		HOLFactionRules::GetSlotFactionKey(GetWorld(), OwnerPlayer), Type.Mesh.ToSoftObjectPath()));
+		HOLFactionRules::GetSlotFactionKey(GetWorld(), OwnerPlayer), FSoftObjectPath()));
 }
 
 void AHOLBuilding::BuildFinalMesh(const FHOLBuildingTypeRow& Type)
