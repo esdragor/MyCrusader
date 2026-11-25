@@ -185,7 +185,7 @@ private:
 	TMap<FKey, const UHOLArtVisual*> Map;
 
 	UPROPERTY()
-	TArray<TObjectPtr<const UHOLArtVisual>> Loaded;
+	TArray<TObjectPtr<UHOLArtVisual>> Loaded;
 
 	TArray<FString> Errors;
 };
