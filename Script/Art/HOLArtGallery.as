@@ -48,7 +48,7 @@ namespace HOLArtGallery
 	double Spacing(const FString& Family)
 	{
 		if (Family == "Units")
-			return 500.0;
+			return 800.0;
 		if (Family == "Buildings")
 			return 2200.0;
 		return 1200.0;
@@ -91,7 +91,7 @@ namespace HOLArtGallery
 				Text = Text.Mid(Open + 1, Last - Open - 1);
 			}
 		}
-		return Text;
+		return Text.Replace("\\'", "'");
 	}
 
 	double ToNumber(const FString& Text)
@@ -108,13 +108,13 @@ namespace HOLArtGallery
 		}
 		TArray<FName> Names;
 		Table.GetRowNames(Names);
-		TArray<FString> Shown = Table.GetDataTableColumnAsString(n"DisplayName");
+		TArray<FString> Shown = Table.GetColumnAsString(n"DisplayName");
 		TArray<FString> Radii;
 		TArray<FString> Heights;
 		if (Family == "Sources")
 		{
-			Radii = Table.GetDataTableColumnAsString(n"Radius");
-			Heights = Table.GetDataTableColumnAsString(n"Height");
+			Radii = Table.GetColumnAsString(n"Radius");
+			Heights = Table.GetColumnAsString(n"Height");
 		}
 		const double Step = Spacing(Family);
 		const int Across = Columns(Family);
@@ -129,7 +129,7 @@ namespace HOLArtGallery
 			{
 				Place.DisplayName = Names[K].ToString();
 			}
-			Place.Location = FVector(Left + Step * double(K % Across), GalleryStartY - Step * double(K / Across), 0.0);
+			Place.Location = FVector(Left + Step * double(K % Across), GalleryStartY - Step * double(Math::IntegerDivisionTrunc(K, Across)), 0.0);
 			if (K < Radii.Num())
 				Place.Radius = ToNumber(Radii[K]);
 			if (K < Heights.Num())
@@ -158,12 +158,12 @@ namespace HOLArtGallery
 		if (Shown == nullptr)
 			return;
 		Shown.Label.SetText(FText::FromString(f"{Place.TypeName.ToString()}\n{Place.DisplayName}{Extra}"));
-		Shown.Label.SetWorldSize(Place.Family == "Buildings" ? 130.0 : 70.0);
+		Shown.Label.SetWorldSize(Place.Family == "Buildings" ? 150.0 : 60.0);
 		Shown.Label.SetTextRenderColor(FColor::Yellow);
 		Shown.Label.SetCastShadow(false);
 		// Flat on the ground in front of the object (towards the camera, south), read from above.
 		Shown.Label.SetWorldLocation(Place.Location + FVector(0.0, -Ahead, 15.0));
-		Shown.Label.SetWorldRotation(FRotator(90.0, -90.0, 0.0));
+		Shown.Label.SetWorldRotation(FRotator(90.0, 180.0, 0.0));
 		Shown.StandIn.SetCollisionEnabled(ECollisionEnabled::NoCollision);
 		Shown.StandIn.SetCastShadow(false);
 		if (Place.Family == "Sources")

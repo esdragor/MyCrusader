@@ -4,7 +4,7 @@
 frames 40
 panel hide
 hol.Combat.Enabled 0
-hol.Camera.Focus -8000 -3500
+hol.Camera.Focus -8000 -4200
 hol.Camera.Zoom 1
 frames 30
 hol.Art.Gallery All
@@ -14,13 +14,13 @@ capture ag_units
 note Unites : un exemplaire de chaque ligne de UnitTypes, etiquete au sol. Entree = batiments.
 waitkey Entree : batiments
 hol.Camera.Focus 0 -5500
-hol.Camera.Zoom 3
+hol.Camera.Zoom 0
 frames 40
 capture ag_buildings
 note Batiments : un exemplaire de chaque ligne de BuildingTypes, etiquete au sol. Entree = sources.
 waitkey Entree : sources
 hol.Camera.Focus 8000 -3600
-hol.Camera.Zoom 2
+hol.Camera.Zoom 1
 frames 40
 capture ag_sources
 note Sources : une forme d'attente par ligne de SourceTypes (AddSource pas encore expose au script). Fin.
