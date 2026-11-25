@@ -2,6 +2,8 @@
 
 #include "Net/HOLUnitReceptionSubsystem.h"
 
+#include "Art/HOLArtVisual.h"
+
 #include "Engine/NetConnection.h"
 #include "Engine/NetDriver.h"
 #include "Engine/World.h"
@@ -569,6 +571,16 @@ void UHOLUnitReceptionSubsystem::SetGarrisonedTag(FMassEntityManager& EntityMana
 	}
 }
 
+float UHOLUnitReceptionSubsystem::GetArtMeshScale(const FName TypeName, const FName FactionKey, const float RowValue) const
+{
+	const TPair<FName, FName> Key(TypeName, FactionKey);
+	if (const float* Known = ArtMeshScales.Find(Key))
+	{
+		return *Known;
+	}
+	return ArtMeshScales.Add(Key, HOLArtVisual::ResolveMeshScale(GetWorld(), TypeName, FactionKey, RowValue));
+}
+
 bool UHOLUnitReceptionSubsystem::MakeView(const FSlot& Slot, FHOLUnitView& OutView) const
 {
 	const UMassEntitySubsystem* EntitySubsystem = GetWorld()->GetSubsystem<UMassEntitySubsystem>();
@@ -605,7 +617,8 @@ bool UHOLUnitReceptionSubsystem::MakeView(const FSlot& Slot, FHOLUnitView& OutVi
 	if (const FHOLUnitTypeRow* Row = Units ? Units->FindTypeRowFor(OutView.TypeName, Slot.OwnerPlayer) : nullptr)
 	{
 		OutView.Radius = Row->Radius;
-		OutView.MeshScale = Row->MeshScale;
+		// D924 (AR0-a2): the art asset's scale (the owner's faction, then the common one), the CSV row's as the last level.
+		OutView.MeshScale = GetArtMeshScale(OutView.TypeName, HOLFactionRules::GetSlotFactionKey(GetWorld(), Slot.OwnerPlayer), Row->MeshScale);
 		OutView.CarryCapacity = Row->CarryCapacity;
 		OutView.bRanged = HOLCombat::IsRangedAttack(Row->AttackRange);
 		OutView.bSiege = Row->HasArmorCategory(EHOLArmorCategory::Siege);

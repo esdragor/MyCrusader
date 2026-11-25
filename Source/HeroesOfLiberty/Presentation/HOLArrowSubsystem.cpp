@@ -2,6 +2,7 @@
 
 #include "Presentation/HOLArrowSubsystem.h"
 
+#include "Art/HOLArtVisual.h"
 #include "Components/InstancedStaticMeshComponent.h"
 #include "Engine/StaticMesh.h"
 #include "Engine/World.h"
@@ -86,9 +87,11 @@ UStaticMesh* UHOLArrowSubsystem::GetProjectileMesh(const FName ShooterType)
 	const UHOLSimulationSettings* Settings = GetDefault<UHOLSimulationSettings>();
 	const UDataTable* UnitTypes = Settings ? Settings->UnitTypesTable.LoadSynchronous() : nullptr;
 	const FHOLUnitTypeRow* Row = UnitTypes && !ShooterType.IsNone() ? UnitTypes->FindRow<FHOLUnitTypeRow>(ShooterType, TEXT("Arrows"), false) : nullptr;
-	if (Row && !Row->Projectile.IsNull())
+	// D924 (AR0-a2): the art asset of the shooter type first (no faction known here: the common one), the CSV row last.
+	const TSoftObjectPtr<UStaticMesh> Projectile(HOLArtVisual::ResolveProjectile(GetWorld(), ShooterType, NAME_None, Row ? Row->Projectile.ToSoftObjectPath() : FSoftObjectPath()));
+	if (!Projectile.IsNull())
 	{
-		if (UStaticMesh* Mesh = Row->Projectile.LoadSynchronous())
+		if (UStaticMesh* Mesh = Projectile.LoadSynchronous())
 		{
 			return Mesh;
 		}
@@ -101,7 +104,8 @@ UStaticMesh* UHOLArrowSubsystem::GetMuzzleSmokeMesh(const FName ShooterType)
 	const UHOLSimulationSettings* Settings = GetDefault<UHOLSimulationSettings>();
 	const UDataTable* UnitTypes = Settings ? Settings->UnitTypesTable.LoadSynchronous() : nullptr;
 	const FHOLUnitTypeRow* Row = UnitTypes && !ShooterType.IsNone() ? UnitTypes->FindRow<FHOLUnitTypeRow>(ShooterType, TEXT("Arrows"), false) : nullptr;
-	return Row && !Row->MuzzleSmoke.IsNull() ? Row->MuzzleSmoke.LoadSynchronous() : nullptr;
+	const TSoftObjectPtr<UStaticMesh> Smoke(HOLArtVisual::ResolveMuzzleSmoke(GetWorld(), ShooterType, NAME_None, Row ? Row->MuzzleSmoke.ToSoftObjectPath() : FSoftObjectPath()));
+	return Smoke.IsNull() ? nullptr : Smoke.LoadSynchronous();
 }
 
 const UInstancedStaticMeshComponent* UHOLArrowSubsystem::GetInstances(const UStaticMesh* Mesh) const

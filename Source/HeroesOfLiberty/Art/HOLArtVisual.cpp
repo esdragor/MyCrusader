@@ -6,6 +6,8 @@
 #include "AssetRegistry/IAssetRegistry.h"
 #include "Engine/Engine.h"
 #include "Engine/GameInstance.h"
+#include "Engine/Texture2D.h"
+#include "UObject/Package.h"
 #include "Engine/World.h"
 #include "Match/HOLFactionRules.h"
 #include "Modules/ModuleManager.h"
@@ -111,6 +113,26 @@ UHOLArtVisual* UHOLArtVisualRegistry::FindArtVisual(const UObject* WorldContextO
 	return const_cast<UHOLArtVisual*>(Own ? Own : HOLArtVisual::Find(World, TypeName, NAME_None));
 }
 
+FString UHOLArtVisualRegistry::GetArtIconPath(const UObject* WorldContextObject, const FName TypeName, const FName Faction)
+{
+	// AR0-a2 red stub: no icon read from the asset yet.
+	return FString();
+}
+
+void UHOLArtVisualRegistry::AddTestArtVisualIcon(const FName TypeName, const FName Faction, const FString& IconPath)
+{
+	UHOLArtVisual* Asset = NewObject<UHOLArtVisual>(GetTransientPackage());
+	Asset->TypeName = TypeName;
+	Asset->Faction = Faction;
+	Asset->Icon = TSoftObjectPtr<UTexture2D>(FSoftObjectPath(IconPath));
+	HOLArtVisual::AddTestEntry(Asset);
+}
+
+void UHOLArtVisualRegistry::ClearTestArtVisuals()
+{
+	HOLArtVisual::ClearTestEntries();
+}
+
 void UHOLArtVisualRegistry::BuildMap(const TArray<const UHOLArtVisual*>& Assets, TMap<FKey, const UHOLArtVisual*>& OutMap, TArray<FString>& OutErrors)
 {
 	for (const UHOLArtVisual* Asset : Assets)
@@ -191,6 +213,32 @@ namespace HOLArtVisual
 	bool HasFactionAsset(const UWorld* World, const FName TypeName, const FName FactionKey)
 	{
 		return FindFaction(World, TypeName, FactionKey) != nullptr;
+	}
+
+	// AR0-a2 red stubs: the CSV row's value, every asset ignored (the fix walks faction -> common -> fallback).
+	FSoftObjectPath ResolveMesh(const UWorld* World, const FName TypeName, const FName FactionKey, const FSoftObjectPath& Fallback)
+	{
+		return Fallback;
+	}
+
+	float ResolveMeshScale(const UWorld* World, const FName TypeName, const FName FactionKey, const float Fallback)
+	{
+		return Fallback;
+	}
+
+	FSoftObjectPath ResolveProjectile(const UWorld* World, const FName TypeName, const FName FactionKey, const FSoftObjectPath& Fallback)
+	{
+		return Fallback;
+	}
+
+	FSoftObjectPath ResolveMuzzleSmoke(const UWorld* World, const FName TypeName, const FName FactionKey, const FSoftObjectPath& Fallback)
+	{
+		return Fallback;
+	}
+
+	FSoftObjectPath ResolveIcon(const UWorld* World, const FName TypeName, const FName FactionKey, const FSoftObjectPath& Fallback)
+	{
+		return Fallback;
 	}
 
 	void AddTestEntry(UHOLArtVisual* Asset)

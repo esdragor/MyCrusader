@@ -89,3 +89,15 @@ void Test_GarrisonFrameButtonsTolerateAShortTypeListAndAnotherPlayersBuilding(FU
 	TArray<FHOLGarrisonButtonView> None = HOLGarrisonFrameRules::ButtonsFor(Other, OneType);
 	T.AssertEquals(None.Num(), 0, "another player's building: no button");
 }
+// D924 (AR0-a2): the occupant's icon is the type's art asset icon (DA_Art_<Type>.Icon) when it sets one, the conventional path otherwise.
+void Test_GarrisonFrameUnitIconPathReadsTheArtAssetFirst(FUnitTest& T)
+{
+	UHOLArtVisualRegistry::ClearTestArtVisuals();
+	UHOLArtVisualRegistry::AddTestArtVisualIcon(n"Spearman", NAME_None, "/Game/Art/Units/Spearman/T_Icon_Spearman.T_Icon_Spearman");
+	const FString FromAsset = HOLGarrisonFrameRules::UnitIconPath("Spearman");
+	const FString Conventional = HOLGarrisonFrameRules::UnitIconPath("Archer");
+	UHOLArtVisualRegistry::ClearTestArtVisuals();
+	T.AssertEquals(FromAsset, "/Game/Art/Units/Spearman/T_Icon_Spearman.T_Icon_Spearman", "a type whose art asset sets an icon: that icon");
+	T.AssertEquals(Conventional, "/Game/UI/Icons/Units/T_Unit_Archer.T_Unit_Archer", "a type without art asset: the conventional path");
+}
+

@@ -175,6 +175,20 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "HOL|Art", meta = (WorldContext = "WorldContextObject"))
 	static UHOLArtVisual* FindArtVisual(const UObject* WorldContextObject, FName TypeName, FName Faction);
 
+	/**
+	 * Script (AR0-a2): the icon path of a type's art asset (the faction's, then the common one), empty when none sets it.
+	 * A null context reads the running game world (the interface rules have none at hand); test entries answer in any world.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "HOL|Art")
+	static FString GetArtIconPath(const UObject* WorldContextObject, FName TypeName, FName Faction);
+
+	/** Script tests: an in-memory asset of (type, faction) whose Icon is IconPath, answering until ClearTestArtVisuals. */
+	UFUNCTION(BlueprintCallable, Category = "HOL|Art|Tests")
+	static void AddTestArtVisualIcon(FName TypeName, FName Faction, const FString& IconPath);
+
+	UFUNCTION(BlueprintCallable, Category = "HOL|Art|Tests")
+	static void ClearTestArtVisuals();
+
 	/** Builds the (type, faction) map of the assets; a key met twice = one error naming both files, the first one kept. */
 	static void BuildMap(const TArray<const UHOLArtVisual*>& Assets, TMap<FKey, const UHOLArtVisual*>& OutMap, TArray<FString>& OutErrors);
 
@@ -203,6 +217,16 @@ namespace HOLArtVisual
 
 	/** Whether the faction has an asset of its own for the type (it may then get its own Mass type without an override row). */
 	HEROESOFLIBERTY_API bool HasFactionAsset(const UWorld* World, FName TypeName, FName FactionKey);
+
+	/**
+	 * D924 (AR0-a2): one field of the art for the readers outside the Mass constants (reception, arrows, buildings, sources,
+	 * icon), field by field: the faction's asset, then the type's common asset, then Fallback (the CSV row's value).
+	 */
+	HEROESOFLIBERTY_API FSoftObjectPath ResolveMesh(const UWorld* World, FName TypeName, FName FactionKey, const FSoftObjectPath& Fallback);
+	HEROESOFLIBERTY_API float ResolveMeshScale(const UWorld* World, FName TypeName, FName FactionKey, float Fallback);
+	HEROESOFLIBERTY_API FSoftObjectPath ResolveProjectile(const UWorld* World, FName TypeName, FName FactionKey, const FSoftObjectPath& Fallback);
+	HEROESOFLIBERTY_API FSoftObjectPath ResolveMuzzleSmoke(const UWorld* World, FName TypeName, FName FactionKey, const FSoftObjectPath& Fallback);
+	HEROESOFLIBERTY_API FSoftObjectPath ResolveIcon(const UWorld* World, FName TypeName, FName FactionKey, const FSoftObjectPath& Fallback);
 
 	/** Tests: an asset made in memory (NewObject) answers for its (TypeName, Faction) in every world, until cleared. */
 	HEROESOFLIBERTY_API void AddTestEntry(UHOLArtVisual* Asset);
