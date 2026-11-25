@@ -2,6 +2,8 @@
 
 #include "Art/HOLArtVisual.h"
 
+#include "Animation/AnimSequence.h"
+#include "Animation/AnimSequenceTransformProviderData.h"
 #include "AssetRegistry/AssetRegistryModule.h"
 #include "AssetRegistry/IAssetRegistry.h"
 #include "Misc/PackageName.h"
@@ -251,6 +253,8 @@ namespace HOLArtVisual
 		return FactionKey.IsNone() ? LoadCommon(TypeName) : nullptr;
 	}
 
+	void ResolveAnimations(const UHOLArtVisual* Common, const UHOLArtVisual* Own, FHOLUnitTypeConstants& Constants, FName TypeName);
+
 	void Apply(const UWorld* World, FHOLUnitTypeConstants& Constants, const FName TypeName, const FName FactionKey)
 	{
 		// Field by field: the type's common asset over the CSV row, then the faction's over both.
@@ -264,6 +268,114 @@ namespace HOLArtVisual
 		{
 			Own->ApplyTo(Constants);
 		}
+		// AR3-a: the animations by reference, field by field the same way, looked up in the provider resolved above.
+		ResolveAnimations(Common, Own != Common ? Own : nullptr, Constants, TypeName);
+	}
+
+	int32 FindSequenceIndex(const UAnimSequenceTransformProviderData* Provider, const TSoftObjectPtr<UAnimSequence>& Animation)
+	{
+		if (!Provider || Animation.IsNull())
+		{
+			return INDEX_NONE;
+		}
+		const FSoftObjectPath Path = Animation.ToSoftObjectPath();
+		const TArray<FAnimSequenceTransformProviderSequence>& Sequences = Provider->GetSequences();
+		for (int32 Index = 0; Index < Sequences.Num(); ++Index)
+		{
+			const UAnimSequence* Sequence = Sequences[Index].Sequence;
+			if (Sequence && FSoftObjectPath(Sequence) == Path)
+			{
+				return Index;
+			}
+		}
+		return INDEX_NONE;
+	}
+
+	/** AR3-a: the references a level sets over the ones below (an empty one leaves the level below in place). */
+	struct FAnimationRefs
+	{
+		TSoftObjectPtr<UAnimSequence> Idle, Walk, Attack, Fall, Build;
+		FHOLResourceAnimations Gather, CarryWalk, CarryIdle;
+
+		void Overlay(const UHOLArtVisual& Asset)
+		{
+			const auto Set = [](TSoftObjectPtr<UAnimSequence>& Target, const TSoftObjectPtr<UAnimSequence>& Value)
+			{
+				if (!Value.IsNull())
+				{
+					Target = Value;
+				}
+			};
+			const auto SetResources = [&Set](FHOLResourceAnimations& Target, const FHOLResourceAnimations& Value)
+			{
+				Set(Target.Food, Value.Food);
+				Set(Target.Wood, Value.Wood);
+				Set(Target.Stone, Value.Stone);
+				Set(Target.Gold, Value.Gold);
+			};
+			Set(Idle, Asset.IdleAnimation);
+			Set(Walk, Asset.WalkAnimation);
+			Set(Attack, Asset.AttackAnimation);
+			Set(Fall, Asset.FallAnimation);
+			Set(Build, Asset.BuildAnimation);
+			SetResources(Gather, Asset.GatherAnimations);
+			SetResources(CarryWalk, Asset.CarryWalkAnimations);
+			SetResources(CarryIdle, Asset.CarryIdleAnimations);
+		}
+
+		/** Each reference set gives its number in the provider; one absent = a named error, the number kept. */
+		void Resolve(FHOLUnitTypeConstants& Constants, const FName TypeName) const
+		{
+			const UAnimSequenceTransformProviderData* Provider = nullptr;
+			const auto One = [&Provider, &Constants, TypeName](const TCHAR* State, const TSoftObjectPtr<UAnimSequence>& Animation, int32& Number)
+			{
+				if (Animation.IsNull())
+				{
+					return;
+				}
+				if (!Provider)
+				{
+					Provider = Cast<UAnimSequenceTransformProviderData>(Constants.AnimationProvider.TryLoad());
+				}
+				const int32 Index = FindSequenceIndex(Provider, Animation);
+				if (Index == INDEX_NONE)
+				{
+					UE_LOG(LogHOLArt, Error, TEXT("Art of '%s': the %s animation %s is not in the sequences of %s; its number %d is kept"),
+						*TypeName.ToString(), State, *Animation.ToString(), *Constants.AnimationProvider.ToString(), Number);
+					return;
+				}
+				Number = Index;
+			};
+			const auto Resources = [&One](const TCHAR* State, const FHOLResourceAnimations& Animations, FHOLResourceSequences& Numbers)
+			{
+				One(*FString::Printf(TEXT("%s Food"), State), Animations.Food, Numbers.Food);
+				One(*FString::Printf(TEXT("%s Wood"), State), Animations.Wood, Numbers.Wood);
+				One(*FString::Printf(TEXT("%s Stone"), State), Animations.Stone, Numbers.Stone);
+				One(*FString::Printf(TEXT("%s Gold"), State), Animations.Gold, Numbers.Gold);
+			};
+			One(TEXT("Idle"), Idle, Constants.IdleSequence);
+			One(TEXT("Walk"), Walk, Constants.WalkSequence);
+			One(TEXT("Attack"), Attack, Constants.AttackSequence);
+			One(TEXT("Fall"), Fall, Constants.FallSequence);
+			One(TEXT("Build"), Build, Constants.BuildSequence);
+			Resources(TEXT("Gather"), Gather, Constants.GatherSequences);
+			Resources(TEXT("CarryWalk"), CarryWalk, Constants.CarryWalkSequences);
+			Resources(TEXT("CarryIdle"), CarryIdle, Constants.CarryIdleSequences);
+		}
+	};
+
+	void ResolveAnimations(const UHOLArtVisual* Common, const UHOLArtVisual* Own, FHOLUnitTypeConstants& Constants, const FName TypeName)
+	{
+		FAnimationRefs Animations;
+		if (Common)
+		{
+			Animations.Overlay(*Common);
+		}
+		if (Own)
+		{
+			Animations.Overlay(*Own);
+		}
+		Animations.Resolve(Constants, TypeName);
 	}
 
 	bool HasFactionAsset(const UWorld* World, const FName TypeName, const FName FactionKey)
