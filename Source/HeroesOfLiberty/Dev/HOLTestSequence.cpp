@@ -23,6 +23,9 @@
 #include "Player/HOLPlayerController.h"
 #include "Simulation/HOLUnitSubsystem.h"
 #include "UnrealClient.h"
+#if WITH_EDITOR
+#include "ShaderCompiler.h"
+#endif
 
 /**
  * Runs a file of steps one after the other, each as soon as the one before is done, for the scripted checks
@@ -37,6 +40,8 @@
  *   waitplayers <N>      waits for the game world to know N players (a client waits for the others to join)
  *   waitunits <N>        waits for N units at least: simulated (solo, server) or displayed (client, D271)
  *   waitidle <N>         waits for the local player to have N idle workers at least, as the HUD counts them (J5b, D307)
+ *   waitshaders [Seconds] waits for the shader compiler to have no job left (default 60 s; then goes on with a warning): a capture
+ *                        of a thing drawn for the first time is not grey ("Shaders en préparation"); editor builds only
  *   waitui               waits for the interface to be still: a screen just opened or closed has finished fading
  *   capture <Name>       screenshot with the interface to Saved/Screenshots/HOL/<Name>.png, waits for the file;
  *                        logs "Test capture: <Name> (menu=X modal=Y)", the screens shown, for the script to check
@@ -139,7 +144,7 @@ namespace UE::HeroesOfLiberty::Dev
 		FString Verb = Step;
 		Step.Split(TEXT(" "), &Verb, nullptr);
 		return Verb == TEXT("wait") || Verb == TEXT("waitclock") || Verb == TEXT("waitlog") || Verb == TEXT("waitunits") || Verb == TEXT("waitidle")
-			|| Verb == TEXT("waitmap") || Verb == TEXT("waitplayers");
+			|| Verb == TEXT("waitshaders") || Verb == TEXT("waitmap") || Verb == TEXT("waitplayers");
 	}
 
 	TAutoConsoleVariable<int32> CVarTestSkipWaitRendering(
@@ -365,7 +370,35 @@ namespace UE::HeroesOfLiberty::Dev
 				const TFunction<bool()>& IsBusy = HOLTestHooks::IsInterfaceBusy();
 				bDone = ++FramesWaited > WaitUIMinFrames && !(IsBusy && IsBusy());
 			}
-			else if (Verb == TEXT("capture") && FramesDrawn < CaptureDrawnFrames)
+			else if (Verb == TEXT("waitshaders"))
+				{
+					// A new thing seen for the first time is grey ("Shaders en préparation") until its shaders are compiled: waits for the
+					// shader compiling manager to have no job left. The frames before it looks: a material is queued when first drawn.
+					// The timeout (default 60 s, in the step's own argument) does not fail the run: it logs and goes on.
+					const double ShaderTimeout = Rest.TrimStartAndEnd().IsNumeric() ? FCString::Atod(*Rest) : StepTimeoutSeconds;
+					StepTimeout = ShaderTimeout + StepTimeoutSeconds;
+					++FramesWaited;
+#if WITH_EDITOR
+					const int32 RemainingJobs = GShaderCompilingManager ? GShaderCompilingManager->GetNumRemainingJobs() : 0;
+#else
+					const int32 RemainingJobs = 0;
+#endif
+					if (FramesWaited > WaitUIMinFrames && RemainingJobs <= 0)
+					{
+						UE_LOG(LogHOLTest, Display, TEXT("waitshaders: done after %d frames"), FramesWaited);
+						bDone = true;
+					}
+					else if (Waited >= ShaderTimeout)
+					{
+						UE_LOG(LogHOLTest, Warning, TEXT("waitshaders: timeout after %d frames (%d jobs left)"), FramesWaited, RemainingJobs);
+						bDone = true;
+					}
+					else
+					{
+						bDone = false;
+					}
+				}
+				else if (Verb == TEXT("capture") && FramesDrawn < CaptureDrawnFrames)
 			{
 				// The world drawn again a few frames first (it was not while the sequence waited).
 				bDone = false;
