@@ -645,6 +645,27 @@ Check ($s8a -match '(?m)^FAIL .*L28-8.*\b2\b') 'L28-8 launch: 2 worktrees hors m
 $s8b = & powershell -NoProfile -ExecutionPolicy Bypass -File $Gate -Phase Launch -End 23:59 -Root $S8Root -WorktreeRepo $S8Repo -MaxWorktrees 2 | Out-String
 Check ($s8b -match '(?m)^PASS .*L28-8' -and -not ($s8b -match '(?m)^FAIL .*L28-8')) 'L28-8 launch: 2 worktrees hors main pour un plafond de 2 -> PASS, aucun FAIL' $s8b
 & git -C $S8Repo worktree prune 2>&1 | Out-Null
+# --- L28-1 (SAURON-1125mb) : Launch FAIL au-dela de 2 builds en file quand le dernier (le plus recent) tourne depuis plus de 5 min ; quick_check / preflight comptes dans le message
+$B1Q = Join-Path $Tmp 'b1queue'; $B1W = Join-Path $Tmp 'b1wts'
+New-Item -ItemType Directory -Path $B1Q, $B1W | Out-Null
+$b1Self = (Get-Process -Id $PID).StartTime.Ticks
+function New-B1Ticket([string]$Name, [string]$Id, [int]$AgeMin) {
+  $st = (Get-Date).AddMinutes(-$AgeMin).ToString('o')
+  $tk = [ordered]@{ id = $Id; root = "x:\$Name"; worktree = "HeroesOfLiberty-$Name"; pid = $PID; pidStart = $b1Self; parentPid = 0; parentStart = 0; priority = 'normal'; requested = $st; state = 'compiling'; started = $st }
+  [IO.File]::WriteAllText((Join-Path $B1Q "$Id.json"), ($tk | ConvertTo-Json), (New-Object Text.UTF8Encoding($false)))
+}
+function Run-B1 { & powershell -NoProfile -ExecutionPolicy Bypass -File $Gate -Phase Launch -End 23:59 -NoCpp -QueueDir $B1Q -WorktreesDir $B1W | Out-String }
+New-B1Ticket 'B1' 'bb01' 12; New-B1Ticket 'B2' 'bb02' 11; New-B1Ticket 'B3' 'bb03' 10
+$b1a = Run-B1
+Check ($b1a -match '(?m)^FAIL .*L28-1.*\b3\b') 'L28-1 launch: 3 builds dont le dernier depuis 10 min -> FAIL avec le compte 3' $b1a
+Get-ChildItem $B1Q -File | Remove-Item -Force
+New-B1Ticket 'B1' 'bb01' 12; New-B1Ticket 'B2' 'bb02' 11; New-B1Ticket 'B3' 'bb03' 1
+$b1b = Run-B1
+Check ($b1b -match '(?m)^PASS .*L28-1' -and -not ($b1b -match '(?m)^FAIL .*L28-1')) 'L28-1 launch: 3 builds mais le dernier demarre depuis 1 min -> PASS, aucun FAIL' $b1b
+Get-ChildItem $B1Q -File | Remove-Item -Force
+New-B1Ticket 'B1' 'bb01' 12; New-B1Ticket 'B2' 'bb02' 11
+$b1c = Run-B1
+Check ($b1c -match '(?m)^PASS .*L28-1' -and -not ($b1c -match '(?m)^FAIL .*L28-1')) 'L28-1 launch: 2 builds anciens (pas plus de 2) -> PASS, aucun FAIL' $b1c
 # --- L28-3 (SAURON-1125mb) : Report FAIL si une ligne Sanity / waitlog / capture est retiree d'un scenario (diff main...HEAD) et si TESTS vaut 0/0
 $S3Repo = Join-Path $Tmp 'HeroesOfLiberty-S3'
 New-Item -ItemType Directory -Path (Join-Path $S3Repo 'Tools\Scenarios') -Force | Out-Null
