@@ -152,7 +152,7 @@ namespace HOLArtTry
 	// the copies reach the pick candidates only at a later simulation step. The selector boxes again until the own selection holds every copy.
 	bool SelectionDone(int OwnSelected, int Wanted)
 	{
-		return true;
+		return OwnSelected >= Wanted;
 	}
 
 	// AR4-b: what Type is: "Unit", "Building", "Source" (a row of the source table) or "" (unknown).
@@ -296,6 +296,7 @@ namespace HOLArtTry
 			if (Selector != nullptr)
 			{
 				Selector.Controller = Controller;
+				Selector.Wanted = Count;
 				Selector.Command = f"hol.Select.BoxGround {Math::RoundToInt(Low.X - Margin)} {Math::RoundToInt(Low.Y - Margin)} {Math::RoundToInt(High.X + Margin)} {Math::RoundToInt(High.Y + Margin)}";
 			}
 		}
@@ -308,6 +309,7 @@ class AHOLArtTrySelector : AActor
 {
 	AHOLPlayerController Controller;
 	FString Command;
+	int Wanted = 0;
 	int Ticks = 0;
 
 	UFUNCTION(BlueprintOverride)
@@ -317,12 +319,23 @@ class AHOLArtTrySelector : AActor
 		Ticks++;
 		if (!HOLArtTry::SelectionDue(Ticks - 1))
 			return;
-		if (Controller != nullptr && !Command.IsEmpty())
+		if (Controller == nullptr || Command.IsEmpty())
 		{
-			System::ExecuteConsoleCommand(Command, Controller);
-			Log(n"LogHOLMatch", f"hol.Art.Try: selected after {Ticks - 1} frame(s): {Command}");
+			DestroyActor();
+			return;
 		}
-		DestroyActor();
+		// CELEBORN-1125ar5: the copies reach the pick candidates a few simulation steps after their birth (the first box found none):
+		// box again every 6 frames until the own selection holds every copy (HOLArtTry::SelectionDone), 240 frames at most.
+		if ((Ticks - 2) % 6 != 0)
+			return;
+		System::ExecuteConsoleCommand(Command, Controller);
+		TArray<int> SelectedIds;
+		HOLControllerCommand::OwnSelectedUnitIds(Controller, SelectedIds);
+		if (HOLArtTry::SelectionDone(SelectedIds.Num(), Wanted) || Ticks > 240)
+		{
+			Log(n"LogHOLMatch", f"hol.Art.Try: selected after {Ticks - 1} frame(s): {SelectedIds.Num()} of {Wanted} copies, {Command}");
+			DestroyActor();
+		}
 	}
 }
 

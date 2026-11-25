@@ -9,19 +9,19 @@ hol.Camera.Zoom 3
 frames 30
 note 1. hol.Art.Try Arquebusier 5 : cinq Arquebusiers bleus sont poses a cote du Forum, aucun sur un autre ni dans le Forum, selectionnes, la camera sur eux.
 capture art_try_placed
-# Une cible : un Homme d'armes ennemi 32 m a l'est du Forum (immobile, IA gelee).
-hol.Camera.FocusNear 3200 0
+# Une cible : un Homme d'armes ennemi 28 m a l'est du Forum (immobile, IA gelee) ; AR4-b (CELEBORN-1125ar5) : 32 m et 6 s ne suffisaient pas, aucun tir vu.
+hol.Camera.FocusNear 2800 0
 frames 2
 hol.Units.SpawnHere 1 ManAtArms 1 100
 waitlog SpawnHere: 1 ManAtArms of slot 1
-# Vrai clic droit au sol 20 m a l'est du Forum : la selection (les 5 Arquebusiers) y marche ; arrives a 12 m de l'Homme d'armes, ils tirent.
+# Vrai clic droit au sol 20 m a l'est du Forum : la selection (les 5 Arquebusiers) y marche ; arrives a 8 m de l'Homme d'armes (portee 15 m), ils tirent.
 hol.Camera.FocusNear 2000 0
 frames 2
 hol.Select.OrderNear 2000 0
 wait 2
 note 2. Clic droit : les cinq Arquebusiers marchent vers l'est.
 capture art_try_march
-wait 6
+wait 12
 note 3. Arrives a portee, ils tirent sur l'Homme d'armes (fumee, PV qui baissent).
 hol.Camera.FocusNear 2600 0
 frames 2

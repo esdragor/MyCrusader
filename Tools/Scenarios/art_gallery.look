@@ -1,3 +1,3 @@
 ag_units | Unites : un exemplaire de chaque ligne de UnitTypes en grille, chacune avec son etiquette jaune au sol (nom de type, nom affiche)
 ag_buildings | Batiments : un exemplaire de chaque ligne de BuildingTypes en grille, chacun avec son etiquette jaune au sol
-ag_sources | Sources : une forme d'attente (cylindre) par ligne de SourceTypes, avec son etiquette jaune au sol
+ag_sources | Sources : la vraie source (filon d'or, filon de pierre, arbre, baies...) de chaque ligne de SourceTypes en grille, aucun cylindre, avec son etiquette jaune au sol
