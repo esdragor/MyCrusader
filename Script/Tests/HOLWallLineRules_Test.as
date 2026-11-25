@@ -768,3 +768,30 @@ void Test_WallLineGateReplacesTheFourAlignedSubCells(FUnitTest& T)
 	T.AssertEquals(4, Column.Num(), "a gate along Y covers 4 sub-cells");
 	T.AssertTrue(WallLineHasCell(Column, 2, 4) && WallLineHasCell(Column, 2, 7), "the column 2 sub-cells 4..7 (aligned on the tile of 6)");
 }
+
+// D898 G8 (CELEBORN-1125md): what the controller reads through the bridge (DragCells -> DragCellsFromPoints) at SubDivision 4: the (50,50)-(850,850) drag on the 400 tile is read at the 100 pitch = the 17 sub-cells the server lays
+// (the bug read the points at the 400 tile and showed 5 pieces).
+void Test_WallLineDragCellsFromPointsReadsTheFinePitch(FUnitTest& T)
+{
+	TArray<FIntPoint> Shown = HOLWallLine::DragCellsFromPointsAt(FVector(50.0, 50.0, 0.0), FVector(850.0, 850.0, 0.0), 400.0, 4, 1000);
+	T.AssertEquals(17, Shown.Num(), "the drag shows the 9 diagonal sub-cells + 8 fillers");
+	T.AssertTrue(WallLineHasCell(Shown, 8, 8), "the far end sub-cell (8,8) is shown, not the 4 m tile (2,2)");
+	T.AssertTrue(WallLineIsEdgeConnected(Shown), "the shown line has no corner-only slit");
+	TArray<FIntPoint> Taken;
+	HOLWallLine::FHOLWallLinePlan Plan = HOLWallLine::PlanFromRequestFine(0, FVector(50.0, 50.0, 0.0), FVector(850.0, 850.0, 0.0), 400.0, 4, WallLineMapMin, WallLineMapMax, Taken, 1000);
+	T.AssertEquals(Plan.Cells.Num(), Shown.Num(), "the drag shows as many cells as the server lays");
+	TArray<FIntPoint> Coarse = HOLWallLine::DragCellsFromPointsAt(FVector(50.0, 50.0, 0.0), FVector(850.0, 850.0, 0.0), 400.0, 1, 1000);
+	T.AssertEquals(3, Coarse.Num(), "SubDivision 1 keeps the bare 4 m diagonal");
+}
+
+// D898 G8 (CELEBORN-1125md): the ghost from the ground points at SubDivision 4 draws the 17 sub-cells and lists the skipped one (the filler (4,3) on the occupied tile (1,0)) as the server plan does: it is drawn red.
+void Test_WallGhostFromPointsFineListsTheSkippedFiller(FUnitTest& T)
+{
+	TArray<FIntPoint> Taken;
+	Taken.Add(FIntPoint(1, 0));
+	HOLWallGhost::FHOLWallGhost Ghost = HOLWallGhost::BuildFromPointsAt(FVector(50.0, 50.0, 0.0), FVector(850.0, 850.0, 0.0), 400.0, 4, FIntPoint(0, 0), FIntPoint(99, 99), Taken, 1000);
+	HOLWallLine::FHOLWallLinePlan Plan = HOLWallLine::PlanFromRequestFine(0, FVector(50.0, 50.0, 0.0), FVector(850.0, 850.0, 0.0), 400.0, 4, WallLineMapMin, WallLineMapMax, Taken, 1000);
+	T.AssertEquals(17, Ghost.Cells.Num(), "the ghost draws the 17 sub-cells");
+	T.AssertTrue(WallLineHasCell(Ghost.Skipped, 4, 3), "the skipped filler (4,3) is listed: drawn red");
+	T.AssertEquals(Plan.Skipped.Num(), Ghost.Skipped.Num(), "the ghost holes are the server holes");
+}

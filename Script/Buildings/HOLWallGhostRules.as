@@ -64,6 +64,14 @@ namespace HOLWallGhost
 		return Ghost;
 	}
 
+	// D898 G8 (CELEBORN-1125md): the ghost from the two ground points at an explicit SubDivision, cells read at the pitch Tile / SubDivision. STUB (red first): an invalid empty ghost.
+	FHOLWallGhost BuildFromPointsAt(FVector Start, FVector End, double Tile, int SubDivision, FIntPoint MapMin, FIntPoint MapMax, const TArray<FIntPoint>& Occupied, int MaxCells)
+	{
+		FHOLWallGhost Nothing;
+		Nothing.bValid = false;
+		return Nothing;
+	}
+
 	// From the two ground points the client holds (the press and the cursor), as HOLWallLine::PlanFromRequest reads them.
 	FHOLWallGhost BuildFromPoints(FVector Start, FVector End, double Tile, FIntPoint MapMin, FIntPoint MapMax, const TArray<FIntPoint>& Occupied, int MaxCells)
 	{

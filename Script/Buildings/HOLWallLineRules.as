@@ -423,6 +423,14 @@ namespace HOLWallLine
 		return DragCellsFine(FIntPoint(CellOfCoordinate(Start.X, Tile), CellOfCoordinate(Start.Y, Tile)), FIntPoint(CellOfCoordinate(End.X, Tile), CellOfCoordinate(End.Y, Tile)), MaxCells, SubDivision());
 	}
 
+	// D898 G8 (CELEBORN-1125md): the drag from the two ground points at an explicit SubDivision: the cells are read at the PITCH Tile / SubDivision, as PlanFromRequestFine reads them.
+	// STUB (red first): empty.
+	TArray<FIntPoint> DragCellsFromPointsAt(FVector Start, FVector End, double Tile, int SubDivision, int MaxCells)
+	{
+		TArray<FIntPoint> Nothing;
+		return Nothing;
+	}
+
 	// D898 G8: the drag the client shows on the fine grid = the cells the server lays (same FillLine), bounded to one piece past the cap.
 	TArray<FIntPoint> DragCellsFine(FIntPoint Start, FIntPoint End, int MaxCells, int SubDivision)
 	{
