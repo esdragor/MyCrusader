@@ -31,6 +31,11 @@ namespace HOLGridActionBridgeScript
 		Answer.RangeCm = Verdict.RangeCm;
 		Answer.UnitId = Verdict.UnitId >= 0 ? Verdict.UnitId : 0;
 		Answer.Report = Verdict.Report;
+		if (Verdict.Kind == EHOLGridActionKind::Refuse && CellView.Command == EHOLGridCommandKind::HeroAbility)
+		{
+			// The line the C++ switch wrote before G-5a (read by quick_check, scenario build hero grid).
+			HOLScriptLog::LogDisplay(n"LogHOLMatch", f"Grid: hero {Verdict.Report.ToString()} not ready ({CooldownSeconds} s)");
+		}
 		return Answer;
 	}
 }
