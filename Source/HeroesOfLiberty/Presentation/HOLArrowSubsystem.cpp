@@ -84,11 +84,8 @@ TStatId UHOLArrowSubsystem::GetStatId() const
 UStaticMesh* UHOLArrowSubsystem::GetProjectileMesh(const FName ShooterType)
 {
 	// The shooter type's Projectile column (AR9); the arrow when it is empty or the type unknown.
-	const UHOLSimulationSettings* Settings = GetDefault<UHOLSimulationSettings>();
-	const UDataTable* UnitTypes = Settings ? Settings->UnitTypesTable.LoadSynchronous() : nullptr;
-	const FHOLUnitTypeRow* Row = UnitTypes && !ShooterType.IsNone() ? UnitTypes->FindRow<FHOLUnitTypeRow>(ShooterType, TEXT("Arrows"), false) : nullptr;
-	// D924 (AR0-a2): the art asset of the shooter type first (no faction known here: the common one), the CSV row last.
-	const TSoftObjectPtr<UStaticMesh> Projectile(HOLArtVisual::ResolveProjectile(GetWorld(), ShooterType, NAME_None, Row ? Row->Projectile.ToSoftObjectPath() : FSoftObjectPath()));
+	// D924 (AR0-a2): the art asset of the shooter type first (no faction known here: the common one), none (D925) last: the arrow.
+	const TSoftObjectPtr<UStaticMesh> Projectile(HOLArtVisual::ResolveProjectile(GetWorld(), ShooterType, NAME_None, FSoftObjectPath()));
 	if (!Projectile.IsNull())
 	{
 		if (UStaticMesh* Mesh = Projectile.LoadSynchronous())
@@ -101,10 +98,7 @@ UStaticMesh* UHOLArrowSubsystem::GetProjectileMesh(const FName ShooterType)
 
 UStaticMesh* UHOLArrowSubsystem::GetMuzzleSmokeMesh(const FName ShooterType)
 {
-	const UHOLSimulationSettings* Settings = GetDefault<UHOLSimulationSettings>();
-	const UDataTable* UnitTypes = Settings ? Settings->UnitTypesTable.LoadSynchronous() : nullptr;
-	const FHOLUnitTypeRow* Row = UnitTypes && !ShooterType.IsNone() ? UnitTypes->FindRow<FHOLUnitTypeRow>(ShooterType, TEXT("Arrows"), false) : nullptr;
-	const TSoftObjectPtr<UStaticMesh> Smoke(HOLArtVisual::ResolveMuzzleSmoke(GetWorld(), ShooterType, NAME_None, Row ? Row->MuzzleSmoke.ToSoftObjectPath() : FSoftObjectPath()));
+	const TSoftObjectPtr<UStaticMesh> Smoke(HOLArtVisual::ResolveMuzzleSmoke(GetWorld(), ShooterType, NAME_None, FSoftObjectPath()));
 	return Smoke.IsNull() ? nullptr : Smoke.LoadSynchronous();
 }
 

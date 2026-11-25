@@ -61,10 +61,12 @@ namespace UE::HeroesOfLiberty::Tests::ArtMigration
 
 #include "HOLArtMigrationFrozen.inl"
 
-	/** The constants registered for the type: its row's, the visual fields left neutral (the art asset not applied). */
+	/** The constants registered for the type: its row's (the visual fields neutral), dressed by its art asset. */
 	FHOLUnitTypeConstants Registered(const FHOLUnitTypeRow& Row, const FName TypeName)
 	{
-		return Row.ToConstants(TypeName);
+		FHOLUnitTypeConstants Constants = Row.ToConstants(TypeName);
+		HOLArtVisual::Apply(nullptr, Constants, TypeName, NAME_None);
+		return Constants;
 	}
 
 	/** The test entries cleared on both ends (the loaded assets stay out of the other tests). */
