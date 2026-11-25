@@ -1,10 +1,10 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 // D925 (AR0-d1): the one-shot migration of the art out of the CSV rows into /Game/Art/<Units|Buildings|Sources>/<Type>/
-// DA_Art_<Type> keeps every type as it is: for each row of the unit table, the constants built from the CSV equal (CRC, as
-// HOLUnitSubsystem::GetTemplateKey compares them) the constants built from the row with its visual fields emptied and then
-// dressed by the type's asset loaded from /Game/Art (HOLArtVisual::Apply); the same for the arrows' projectile and smoke,
-// and for the mesh of every building and every source. Mass simulation test (D838): the Mass type registration reads them.
+// DA_Art_<Type> keeps every type as it was: AR0-d2 (D925) removed the visual columns of the unit table, so the reference is
+// FROZEN (HOLArtMigrationFrozen.inl, the CSV's values before the removal, by type and field) and compared to the constants
+// the game registers for the type, and to the arrows' projectile and smoke; the mesh of every building and every source
+// is still compared to its row. Mass simulation test (D838): the Mass type registration reads them.
 
 #include "Art/HOLArtVisual.h"
 #include "Buildings/HOLBuildingTypes.h"
@@ -14,8 +14,7 @@
 #include "Resources/HOLSourceTypes.h"
 #include "Simulation/HOLSimulationSettings.h"
 #include "Simulation/HOLUnitTypes.h"
-#include "StructUtils/StructView.h"
-#include "StructUtils/StructUtilsTypes.h"
+#include "UObject/UnrealType.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
 
@@ -53,41 +52,19 @@ namespace UE::HeroesOfLiberty::Tests::ArtMigration
 		return Asset;
 	}
 
-	uint32 Crc(const FHOLUnitTypeConstants& Constants)
+	struct FFrozenVisual
 	{
-		return UE::StructUtils::GetStructInstanceCrc32(FConstStructView::Make(Constants));
-	}
+		const TCHAR* Type;
+		const TCHAR* Field;
+		const TCHAR* Value;
+	};
 
-	/** The unit row with every field the art asset carries put back to the row's defaults (the CSV column emptied). */
-	FHOLUnitTypeRow WithoutVisual(const FHOLUnitTypeRow& Row)
+#include "HOLArtMigrationFrozen.inl"
+
+	/** The constants registered for the type: its row's, the visual fields left neutral (the art asset not applied). */
+	FHOLUnitTypeConstants Registered(const FHOLUnitTypeRow& Row, const FName TypeName)
 	{
-		const FHOLUnitTypeRow Empty;
-		FHOLUnitTypeRow Out = Row;
-		Out.Mesh = Empty.Mesh;
-		Out.MeshYawOffset = Empty.MeshYawOffset;
-		Out.MeshScale = Empty.MeshScale;
-		Out.SkinnedMesh = Empty.SkinnedMesh;
-		Out.AnimationProvider = Empty.AnimationProvider;
-		Out.IdleSequence = Empty.IdleSequence;
-		Out.WalkSequence = Empty.WalkSequence;
-		Out.WalkPlayRate = Empty.WalkPlayRate;
-		Out.GatherPlayRate = Empty.GatherPlayRate;
-		Out.CarryWalkPlayRate = Empty.CarryWalkPlayRate;
-		Out.BuildSequence = Empty.BuildSequence;
-		Out.BuildPlayRate = Empty.BuildPlayRate;
-		Out.AttackSequence = Empty.AttackSequence;
-		Out.FallSequence = Empty.FallSequence;
-		// AR0-d2: the sequences by resource and the props move to the asset too.
-		Out.GatherSequences = Empty.GatherSequences;
-		Out.CarryWalkSequences = Empty.CarryWalkSequences;
-		Out.CarryIdleSequences = Empty.CarryIdleSequences;
-		Out.GatherProps = Empty.GatherProps;
-		Out.CarryProps = Empty.CarryProps;
-		Out.BuildProp = Empty.BuildProp;
-		Out.AttackProp = Empty.AttackProp;
-		Out.Projectile = Empty.Projectile;
-		Out.MuzzleSmoke = Empty.MuzzleSmoke;
-		return Out;
+		return Row.ToConstants(TypeName);
 	}
 
 	/** The test entries cleared on both ends (the loaded assets stay out of the other tests). */
@@ -113,32 +90,65 @@ bool FHOLArtMigrationKeepsEveryTypeTest::RunTest(const FString& Parameters)
 		return false;
 	}
 
-	int32 NumUnits = 0;
+	TMap<FName, FHOLUnitTypeConstants> Constants;
 	for (const TPair<FName, uint8*>& Pair : Units->GetRowMap())
 	{
-		const FName TypeName = Pair.Key;
-		const FHOLUnitTypeRow& Row = *reinterpret_cast<const FHOLUnitTypeRow*>(Pair.Value);
-		if (!LoadArt(*this, TEXT("Units"), TypeName))
+		if (LoadArt(*this, TEXT("Units"), Pair.Key))
 		{
-			continue;
+			Constants.Add(Pair.Key, Registered(*reinterpret_cast<const FHOLUnitTypeRow*>(Pair.Value), Pair.Key));
 		}
-		const FHOLUnitTypeConstants Csv = Row.ToConstants(TypeName);
-		FHOLUnitTypeConstants Migrated = WithoutVisual(Row).ToConstants(TypeName);
-		HOLArtVisual::Apply(nullptr, Migrated, TypeName, NAME_None);
-		const FString Type = TypeName.ToString();
-		TestEqual(FString::Printf(TEXT("%s: mesh"), *Type), Migrated.Mesh.ToString(), Csv.Mesh.ToString());
-		TestEqual(FString::Printf(TEXT("%s: skinned mesh"), *Type), Migrated.SkinnedMesh.ToString(), Csv.SkinnedMesh.ToString());
-		TestEqual(FString::Printf(TEXT("%s: animation provider"), *Type), Migrated.AnimationProvider.ToString(), Csv.AnimationProvider.ToString());
-		if (!TestEqual(FString::Printf(TEXT("%s: the migrated constants (CRC) are the CSV's"), *Type), Crc(Migrated), Crc(Csv)))
-		{
-			continue;
-		}
-		TestEqual(FString::Printf(TEXT("%s: projectile"), *Type),
-			HOLArtVisual::ResolveProjectile(nullptr, TypeName, NAME_None, FSoftObjectPath()).ToString(), PathOf(Row.Projectile).ToString());
-		TestEqual(FString::Printf(TEXT("%s: muzzle smoke"), *Type),
-			HOLArtVisual::ResolveMuzzleSmoke(nullptr, TypeName, NAME_None, FSoftObjectPath()).ToString(), PathOf(Row.MuzzleSmoke).ToString());
-		++NumUnits;
 	}
+
+	const UScriptStruct* Struct = FHOLUnitTypeConstants::StaticStruct();
+	TSet<FName> FrozenTypes;
+	int32 NumFields = 0;
+	for (const FFrozenVisual& Frozen : FrozenVisuals)
+	{
+		const FName TypeName(Frozen.Type);
+		const FString Field(Frozen.Field);
+		const FString Label = FString::Printf(TEXT("%s: %s"), Frozen.Type, Frozen.Field);
+		FrozenTypes.Add(TypeName);
+		if (Field == TEXT("Projectile") || Field == TEXT("MuzzleSmoke"))
+		{
+			FSoftObjectPath Expected;
+			if (*Frozen.Value)
+			{
+				TBaseStructure<FSoftObjectPath>::Get()->ImportText(Frozen.Value, &Expected, nullptr, PPF_None, GWarn, TEXT("SoftObjectPath"));
+			}
+			const FSoftObjectPath Actual = Field == TEXT("Projectile")
+				? HOLArtVisual::ResolveProjectile(nullptr, TypeName, NAME_None, FSoftObjectPath())
+				: HOLArtVisual::ResolveMuzzleSmoke(nullptr, TypeName, NAME_None, FSoftObjectPath());
+			TestEqual(Label, Actual.ToString(), Expected.ToString());
+			++NumFields;
+			continue;
+		}
+		const FHOLUnitTypeConstants* Actual = Constants.Find(TypeName);
+		const FProperty* Property = Struct->FindPropertyByName(FName(Frozen.Field));
+		if (!TestNotNull(*FString::Printf(TEXT("%s: registered"), *Label), Actual) || !TestNotNull(*FString::Printf(TEXT("%s: a constant"), *Label), Property))
+		{
+			continue;
+		}
+		FHOLUnitTypeConstants Expected;
+		if (*Frozen.Value && !Property->ImportText_Direct(Frozen.Value, Property->ContainerPtrToValuePtr<void>(&Expected), nullptr, PPF_None))
+		{
+			AddError(FString::Printf(TEXT("%s: the frozen text '%s' does not import"), *Label, Frozen.Value));
+			continue;
+		}
+		if (!Property->Identical_InContainer(&Expected, Actual))
+		{
+			FString ExpectedText;
+			FString ActualText;
+			Property->ExportTextItem_InContainer(ExpectedText, &Expected, nullptr, nullptr, PPF_None);
+			Property->ExportTextItem_InContainer(ActualText, Actual, nullptr, nullptr, PPF_None);
+			AddError(FString::Printf(TEXT("%s: %s, frozen %s"), *Label, *ActualText, *ExpectedText));
+		}
+		++NumFields;
+	}
+	for (const TPair<FName, uint8*>& Pair : Units->GetRowMap())
+	{
+		TestTrue(FString::Printf(TEXT("%s: has its frozen reference"), *Pair.Key.ToString()), FrozenTypes.Contains(Pair.Key));
+	}
+	TestEqual(TEXT("every frozen field is checked"), NumFields, static_cast<int32>(UE_ARRAY_COUNT(FrozenVisuals)));
 
 	const auto CheckMeshes = [this](const UDataTable& Table, const TCHAR* Folder, const auto* RowType)
 	{
@@ -156,7 +166,7 @@ bool FHOLArtMigrationKeepsEveryTypeTest::RunTest(const FString& Parameters)
 	CheckMeshes(*Buildings, TEXT("Buildings"), static_cast<const FHOLBuildingTypeRow*>(nullptr));
 	CheckMeshes(*Sources, TEXT("Sources"), static_cast<const FHOLSourceTypeRow*>(nullptr));
 
-	TestEqual(TEXT("every unit type keeps its constants"), NumUnits, Units->GetRowMap().Num());
+	TestEqual(TEXT("every unit type keeps its constants"), Constants.Num(), Units->GetRowMap().Num());
 	return true;
 }
 

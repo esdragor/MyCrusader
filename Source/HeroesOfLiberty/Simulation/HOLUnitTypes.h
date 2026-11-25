@@ -713,27 +713,7 @@ inline FHOLUnitTypeConstants FHOLUnitTypeRow::ToConstants(const FName TypeName) 
 	Constants.Speed = Speed;
 	Constants.MaxHealth = MaxHealth;
 	Constants.AvoidanceDistance = AvoidanceDistance;
-	Constants.Mesh = Mesh.ToSoftObjectPath();
-	Constants.MeshYawOffset = MeshYawOffset;
-	Constants.MeshScale = MeshScale;
-	Constants.SkinnedMesh = SkinnedMesh.ToSoftObjectPath();
-	Constants.AnimationProvider = AnimationProvider.ToSoftObjectPath();
-	Constants.IdleSequence = IdleSequence;
-	Constants.WalkSequence = WalkSequence;
-	Constants.WalkPlayRate = WalkPlayRate;
-	Constants.GatherSequences = GatherSequences;
-	Constants.GatherPlayRate = GatherPlayRate;
-	Constants.CarryWalkSequences = CarryWalkSequences;
-	Constants.CarryWalkPlayRate = CarryWalkPlayRate;
-	Constants.CarryIdleSequences = CarryIdleSequences;
-	Constants.GatherProps = GatherProps;
-	Constants.CarryProps = CarryProps;
-	Constants.BuildSequence = BuildSequence;
-	Constants.BuildPlayRate = BuildPlayRate;
-	Constants.BuildProp = BuildProp;
-	Constants.AttackSequence = AttackSequence;
-	Constants.AttackProp = AttackProp;
-	Constants.FallSequence = FallSequence;
+	// D925 (AR0-d2): the visual fields stay neutral here; the type's art asset dresses them (HOLArtVisual::Apply).
 	Constants.GatherRates = GatherRates;
 	Constants.CarryCapacity = CarryCapacity;
 	for (const EHOLArmorCategory Category : ArmorCategories)
