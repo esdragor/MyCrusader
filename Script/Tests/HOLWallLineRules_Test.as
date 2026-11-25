@@ -793,6 +793,33 @@ void Test_WallLineGateReplacesTheFourAlignedSubCells(FUnitTest& T)
 	T.AssertTrue(WallLineHasCell(Column, 2, 4) && WallLineHasCell(Column, 2, 7), "the column 2 sub-cells 4..7 (aligned on the tile of 6)");
 }
 
+// D898 G10 pose side (CELEBORN-1125b): the pose of a gate at a world point retires the 4 aligned palisade sub-cells of its seat; a palisade, a stone wall or a gate of another seat retires nothing.
+// The point comes from CellToPoint (the pose's own conversion), the cells from the real chain IsGateType + CellOfCoordinate + GateCells + GateReplaces. Not the RPC itself (needs a seat and a world).
+void Test_WallLineGatePoseRetiresTheStandingPalisade(FUnitTest& T)
+{
+	TArray<FIntPoint> Cells;
+	TArray<FName> Types;
+	TArray<int> Owners;
+	for (int X = 3; X <= 8; X++)
+	{
+		Cells.Add(FIntPoint(X, 0));
+		Types.Add(n"Palisade");
+		Owners.Add(0);
+	}
+	const FVector Point = HOLWallLine::CellToPoint(FIntPoint(5, 0), 100.0, 0.0);
+	TArray<FIntPoint> Retired = HOLWallLine::GateRetiredCells(n"PalisadeGate", Point, 100.0, 4, true, 0, Cells, Types, Owners);
+	T.AssertEquals(4, Retired.Num(), "the gate pose retires the 4 aligned palisade sub-cells");
+	T.AssertFalse(WallLineHasCell(Retired, 3, 0), "the neighbour (3,0) stays");
+	T.AssertFalse(WallLineHasCell(Retired, 8, 0), "the neighbour (8,0) stays");
+	TArray<FIntPoint> ByPalisade = HOLWallLine::GateRetiredCells(n"Palisade", Point, 100.0, 4, true, 0, Cells, Types, Owners);
+	T.AssertEquals(0, ByPalisade.Num(), "laying a palisade retires nothing");
+	TArray<FIntPoint> OtherSeat = HOLWallLine::GateRetiredCells(n"PalisadeGate", Point, 100.0, 4, true, 1, Cells, Types, Owners);
+	T.AssertEquals(0, OtherSeat.Num(), "the gate of another seat retires nothing");
+	Types[2] = n"StoneWall";
+	TArray<FIntPoint> WithStone = HOLWallLine::GateRetiredCells(n"PalisadeGate", Point, 100.0, 4, true, 0, Cells, Types, Owners);
+	T.AssertEquals(3, WithStone.Num(), "a stone wall piece under the gate stays");
+}
+
 // D898 G8 (CELEBORN-1125md): what the controller reads through the bridge (DragCells -> DragCellsFromPoints) at SubDivision 4: the (50,50)-(850,850) drag on the 400 tile is read at the 100 pitch = the 17 sub-cells the server lays
 // (the bug read the points at the 400 tile and showed 5 pieces).
 void Test_WallLineDragCellsFromPointsReadsTheFinePitch(FUnitTest& T)

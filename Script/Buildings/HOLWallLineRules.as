@@ -525,6 +525,17 @@ namespace HOLWallLine
 		}
 		return Replaced;
 	}
+	// D898 G10, the pose side (CELEBORN-1125b): what ServerPlaceWallLine / ServerPlaceBuilding must retire when TypeName is laid at Point (world, pitch = tile / SubDivision): the standing palisade sub-cells
+	// of the same seat under a GATE, and nothing for any other type. The caller still needs two C++ bridges (read the standing pieces: cell, type, owner; retire one): see CELEBORN-1125b RESTE.
+	TArray<FIntPoint> GateRetiredCells(FName TypeName, FVector Point, double Pitch, int SubDivision, bool bAlongX, int GateOwner, const TArray<FIntPoint>& StandingCells, const TArray<FName>& StandingTypes, const TArray<int>& StandingOwners)
+	{
+		TArray<FIntPoint> None;
+		if (!IsGateType(TypeName))
+			return None;
+		const FIntPoint Cell = FIntPoint(CellOfCoordinate(Point.X, Pitch), CellOfCoordinate(Point.Y, Pitch));
+		return GateReplacedCells(Cell, bAlongX, SubDivision, GateOwner, StandingCells, StandingTypes, StandingOwners);
+	}
+
 	// A gate lets its owner's units through (other seats meet a solid building, D691 / D867 neighbours: walls and gates are solid for the enemy).
 	bool GatePassesUnit(FName GateType, int GateOwner, int UnitOwner)
 	{
