@@ -136,6 +136,23 @@ namespace HOLArtTry
 		}
 	}
 
+	// AR4-b: the selection of the copies waits for the frame after their birth (Mass units are not there in the frame they are asked for).
+	bool SelectionDue(int FramesSinceBirth)
+	{
+		return true;
+	}
+
+	// AR4-b: what Type is: "Unit", "Building", "Source" (a row of the source table) or "" (unknown).
+	FString KindOf(const FString& Type)
+	{
+		FHOLUnitTypeSummary Row;
+		if (HOLProductionTables::FindUnitType(FName(Type), Row))
+			return "Unit";
+		if (HOLCommandGridRead::IsTypeInTable(FName(Type)))
+			return "Building";
+		return "";
+	}
+
 	void Say(const FString& Line, bool bWarning)
 	{
 		Print(Line, 8.0);

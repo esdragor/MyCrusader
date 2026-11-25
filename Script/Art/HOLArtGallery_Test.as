@@ -91,3 +91,54 @@ void Test_ArtGalleryFamilyFilter(FUnitTest& T)
 	}
 	T.AssertTrue(Only.Num() > 0 && bNamed, "every source place carries its display name from the table");
 }
+
+// AR1-b: one capture frames a whole family (HOLArtGallery::FamilyFrame), within what the camera shows zoomed out.
+void ArtGalleryCheckFrame(FUnitTest& T, const TArray<FHOLArtGalleryPlace>& Places, const FString& Family)
+{
+	FVector Centre;
+	double Width = 0.0;
+	HOLArtGallery::FamilyFrame(Places, Family, Centre, Width);
+	int Seen = 0;
+	int Outside = 0;
+	for (const FHOLArtGalleryPlace& Place : Places)
+	{
+		if (Place.Family != Family)
+			continue;
+		Seen++;
+		if (Math::Abs(Place.Location.X - Centre.X) > Width * 0.5 || Math::Abs(Place.Location.Y - Centre.Y) > Width * 0.5)
+			Outside++;
+	}
+	T.AssertTrue(Seen > 0, f"{Family}: the family has places");
+	T.AssertEquals(Outside, 0, f"{Family}: places outside the frame centred on {Centre.ToString()} of side {Width}");
+	T.AssertTrue(Width > 0.0 && Width <= HOLArtGallery::MaxFrameWidth(), f"{Family}: frame side {Width} within one capture");
+}
+
+void Test_ArtGalleryFamilyFrameHoldsEveryPlace(FUnitTest& T)
+{
+	TArray<FHOLArtGalleryPlace> Places;
+	HOLArtGallery::PlanGrid("All", Places);
+	ArtGalleryCheckFrame(T, Places, "Units");
+	ArtGalleryCheckFrame(T, Places, "Buildings");
+	ArtGalleryCheckFrame(T, Places, "Sources");
+}
+
+// AR1-b: a player's Forum standing on the unit grid pushes the families away, each kept whole.
+void Test_ArtGalleryGridKeepsAwayFromBase(FUnitTest& T)
+{
+	TArray<FHOLArtGalleryPlace> Places;
+	HOLArtGallery::PlanGrid("All", Places);
+	T.AssertTrue(Places.Num() > 1, "the gallery has places");
+	if (Places.Num() < 2)
+		return;
+	const FVector Base = Places[0].Location;
+	const FVector Gap = Places[1].Location - Places[0].Location;
+	HOLArtGallery::KeepAwayFrom(Places, Base, HOLArtGallery::MinBaseDistance());
+	int Near = 0;
+	for (const FHOLArtGalleryPlace& Place : Places)
+	{
+		if (FVector(Place.Location.X - Base.X, Place.Location.Y - Base.Y, 0.0).Size() < HOLArtGallery::MinBaseDistance())
+			Near++;
+	}
+	T.AssertEquals(Near, 0, "places within MinBaseDistance of the Forum");
+	T.AssertTrue((Places[1].Location - Places[0].Location).Equals(Gap, 1.0), "the unit grid moved whole");
+}

@@ -6,6 +6,7 @@
 #include "Match/HOLResources.h"
 #include "Resources/HOLSourceGrid.h"
 #include "Subsystems/WorldSubsystem.h"
+#include "Kismet/BlueprintFunctionLibrary.h"
 #include "HOLSourceSubsystem.generated.h"
 
 class AHOLSourceChunk;
@@ -191,3 +192,22 @@ private:
 	/** F6d: the chunks everybody receives are in use (no fog, or the fog off). */
 	bool bGlobalReplication = false;
 };
+
+/**
+ * AddSource for Angelscript (namespace HOLSourceAdd there; AR1-b hol.Art.Gallery, AR4-b hol.Art.Try): the subsystem's
+ * AddSource is a plain C++ member, not callable from script.
+ */
+UCLASS()
+class HEROESOFLIBERTY_API UHOLSourceAddLibrary : public UBlueprintFunctionLibrary
+{
+	GENERATED_BODY()
+
+public:
+	/**
+	 * Server: everyone's source of the type TypeName on Location (its ground point), holding Amount (the type's amount when
+	 * negative). Its index, -1 if the type is unknown, there is no source subsystem or this is not the server.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Resources", meta = (WorldContext = "WorldContextObject"))
+	static int32 AddNeutralSource(const UObject* WorldContextObject, FName TypeName, FVector Location, int32 Amount = -1);
+};
+

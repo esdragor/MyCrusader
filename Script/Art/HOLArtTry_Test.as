@@ -76,3 +76,19 @@ void Test_ArtTryUnknownTypeListsCloseTypes(FUnitTest& T)
 	const TArray<FString> Exact = HOLArtTry::NearTypes("peasant", Known);
 	T.AssertTrue(Exact.Num() >= 1 && Exact[0] == "Peasant", "the case-blind match comes first");
 }
+
+// AR4-b: the copies are selected one frame after their birth, never in the frame they are made.
+void Test_ArtTrySelectionWaitsOneFrame(FUnitTest& T)
+{
+	T.AssertFalse(HOLArtTry::SelectionDue(0), "not in the frame of the birth");
+	T.AssertTrue(HOLArtTry::SelectionDue(1), "the frame after the birth");
+}
+
+// AR4-b: a source type (row of SourceTypes) is placeable like a unit or a building.
+void Test_ArtTryKnowsSourceTypes(FUnitTest& T)
+{
+	T.AssertEquals(HOLArtTry::KindOf("GoldVein"), "Source", "GoldVein is a source");
+	T.AssertEquals(HOLArtTry::KindOf("Tree"), "Source", "Tree is a source");
+	T.AssertEquals(HOLArtTry::KindOf("Arquebusier"), "Unit", "Arquebusier is a unit");
+	T.AssertEquals(HOLArtTry::KindOf("Arquebusir"), "", "a misspelt type is unknown");
+}

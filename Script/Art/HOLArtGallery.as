@@ -175,6 +175,29 @@ namespace HOLArtGallery
 			Shown.StandIn.SetWorldScale3D(FVector(Wide, Wide, High) * 0.01);
 		}
 	}
+
+	// AR1-b: the widest side one capture shows whole (cm, camera zoomed out), and the least distance from a player's Forum.
+	double MaxFrameWidth()
+	{
+		return 12000.0;
+	}
+
+	double MinBaseDistance()
+	{
+		return 6000.0;
+	}
+
+	// AR1-b: the square that one capture of Family frames (centre, side): every place of the family inside it.
+	void FamilyFrame(const TArray<FHOLArtGalleryPlace>& Places, const FString& Family, FVector& OutCentre, double& OutWidth)
+	{
+		OutCentre = FVector::ZeroVector;
+		OutWidth = 0.0;
+	}
+
+	// AR1-b: moves each family away (whole, its grid kept) until none of its places is within MinDistance of Base.
+	void KeepAwayFrom(TArray<FHOLArtGalleryPlace>& Places, FVector Base, double MinDistance)
+	{
+	}
 }
 
 void HOLArtGalleryCommand(const TArray<FString>& Args)
