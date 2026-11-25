@@ -28,6 +28,10 @@ namespace HOLGarrisonFrameRules
 	{
 		if (TypeKey == "")
 			return "";
+		// D924 (AR0-a2): the type's art asset icon first (DA_Art_<Type>), the conventional path below.
+		const FString ArtIcon = UHOLArtVisualRegistry::GetArtIconPath(nullptr, FName(TypeKey), NAME_None);
+		if (ArtIcon != "")
+			return ArtIcon;
 		return f"/Game/UI/Icons/Units/T_Unit_{TypeKey}.T_Unit_{TypeKey}";
 	}
 

@@ -115,8 +115,20 @@ UHOLArtVisual* UHOLArtVisualRegistry::FindArtVisual(const UObject* WorldContextO
 
 FString UHOLArtVisualRegistry::GetArtIconPath(const UObject* WorldContextObject, const FName TypeName, const FName Faction)
 {
-	// AR0-a2 red stub: no icon read from the asset yet.
-	return FString();
+	const UWorld* World = GEngine ? GEngine->GetWorldFromContextObject(WorldContextObject, EGetWorldErrorMode::ReturnNull) : nullptr;
+	if (!World && GEngine)
+	{
+		// The interface rules have no context at hand: the running game world (a client has one).
+		for (const FWorldContext& Context : GEngine->GetWorldContexts())
+		{
+			if ((Context.WorldType == EWorldType::Game || Context.WorldType == EWorldType::PIE) && Context.World())
+			{
+				World = Context.World();
+				break;
+			}
+		}
+	}
+	return HOLArtVisual::ResolveIcon(World, TypeName, Faction, FSoftObjectPath()).ToString();
 }
 
 void UHOLArtVisualRegistry::AddTestArtVisualIcon(const FName TypeName, const FName Faction, const FString& IconPath)
@@ -215,31 +227,73 @@ namespace HOLArtVisual
 		return FindFaction(World, TypeName, FactionKey) != nullptr;
 	}
 
-	// AR0-a2 red stubs: the CSV row's value, every asset ignored (the fix walks faction -> common -> fallback).
+	/** Field by field (AR0-a2): the faction's asset when it sets the field, then the type's common asset, then Fallback. */
+	template <typename TValue, typename TRead>
+	TValue ResolveField(const UWorld* World, const FName TypeName, const FName FactionKey, const TValue& Fallback, TRead Read)
+	{
+		TValue Value = Fallback;
+		if (const UHOLArtVisual* Own = FindFaction(World, TypeName, FactionKey))
+		{
+			if (Read(*Own, Value))
+			{
+				return Value;
+			}
+		}
+		if (const UHOLArtVisual* Common = Find(World, TypeName, NAME_None))
+		{
+			if (Read(*Common, Value))
+			{
+				return Value;
+			}
+		}
+		return Fallback;
+	}
+
 	FSoftObjectPath ResolveMesh(const UWorld* World, const FName TypeName, const FName FactionKey, const FSoftObjectPath& Fallback)
 	{
-		return Fallback;
+		return ResolveField(World, TypeName, FactionKey, Fallback, [](const UHOLArtVisual& Asset, FSoftObjectPath& Out)
+		{
+			Out = Asset.Mesh.ToSoftObjectPath();
+			return !Asset.Mesh.IsNull();
+		});
 	}
 
 	float ResolveMeshScale(const UWorld* World, const FName TypeName, const FName FactionKey, const float Fallback)
 	{
-		return Fallback;
+		return ResolveField(World, TypeName, FactionKey, Fallback, [](const UHOLArtVisual& Asset, float& Out)
+		{
+			Out = Asset.MeshScale;
+			return Asset.bOverrideMeshScale;
+		});
 	}
 
 	FSoftObjectPath ResolveProjectile(const UWorld* World, const FName TypeName, const FName FactionKey, const FSoftObjectPath& Fallback)
 	{
-		return Fallback;
+		return ResolveField(World, TypeName, FactionKey, Fallback, [](const UHOLArtVisual& Asset, FSoftObjectPath& Out)
+		{
+			Out = Asset.Projectile;
+			return !Asset.Projectile.IsNull();
+		});
 	}
 
 	FSoftObjectPath ResolveMuzzleSmoke(const UWorld* World, const FName TypeName, const FName FactionKey, const FSoftObjectPath& Fallback)
 	{
-		return Fallback;
+		return ResolveField(World, TypeName, FactionKey, Fallback, [](const UHOLArtVisual& Asset, FSoftObjectPath& Out)
+		{
+			Out = Asset.MuzzleSmoke;
+			return !Asset.MuzzleSmoke.IsNull();
+		});
 	}
 
 	FSoftObjectPath ResolveIcon(const UWorld* World, const FName TypeName, const FName FactionKey, const FSoftObjectPath& Fallback)
 	{
-		return Fallback;
+		return ResolveField(World, TypeName, FactionKey, Fallback, [](const UHOLArtVisual& Asset, FSoftObjectPath& Out)
+		{
+			Out = Asset.Icon.ToSoftObjectPath();
+			return !Asset.Icon.IsNull();
+		});
 	}
+
 
 	void AddTestEntry(UHOLArtVisual* Asset)
 	{
