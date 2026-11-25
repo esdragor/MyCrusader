@@ -47,6 +47,7 @@
 #include "Match/HOLPlayerColors.h"
 #include "Match/HOLPlayerState.h"
 #include "Player/HOLGameMenuRulesBridge.h"
+#include "Player/HOLGridFaceBridge.h"
 #include "Player/HOLPlayerController.h"
 #include "Resources/HOLSourceSubsystem.h"
 #include "Resources/HOLSourceTypes.h"
@@ -1297,62 +1298,39 @@ void UHOLGameScreen::RefreshGrid(const AHOLBuilding* OwnBuilding, const bool bOw
 					: LOCTEXT("DeployEffect", "Installe l'engin : il tire, il ne marche plus"));
 			break;
 		}
-		case EHOLGridCommand::HeroAbility:
-		{
-			// J8c.4 (J8c-Q4): the hero's cry (A) and banner (Z). Greyed below its level (the level in its tooltip) or cooling
-			// down (the seconds left under its name, J8-Q5: the owner's alone); still clickable, the click does nothing.
-			const bool bBanner = Command.Ability == EHOLHeroAbility::Banner;
-			const FText Short = bBanner ? LOCTEXT("BannerShort", "Bannière") : LOCTEXT("CloseRanksShort", "Rangs");
-			const FText Name = bBanner ? LOCTEXT("BannerName", "Bannière de l'Aube") : LOCTEXT("CloseRanksName", "Serrez les rangs");
-			FText Effect = bBanner
-				? LOCTEXT("BannerEffect", "Puis clic au sol, à 16 m du héros au plus : son aura (−15 % de dégâts reçus à 12 m) pendant 45 s ; recharge 120 s")
-				: LOCTEXT("CloseRanksEffect", "Immobilise 15 s les unités à 12 m du héros (formation défensive) : elles restent sur place et reçoivent −25 % de dégâts ; recharge 60 s");
-			const bool bLocked = !HOLHeroAbility::IsUnlocked(Command.Ability, PlayerState
-				? UHOLHeroLibrary::GetHeroLevel(PlayerController, PlayerState->GetPlayerIndex()) : 0);
-			if (bLocked)
+			case EHOLGridCommand::HeroAbility:
+			case EHOLGridCommand::LightSeal:
+			case EHOLGridCommand::NecroticRage:
 			{
-				Effect = FText::Format(LOCTEXT("HeroAbilityLocked", "Niveau {0} requis"), FText::AsNumber(HOLHeroAbility::GetUnlockLevel(Command.Ability)));
-			}
-			GridCell->SetCommand(Command.CooldownSeconds > 0 && !bLocked
-				? FText::Format(LOCTEXT("HeroAbilityCooldown", "{0}\n{1} s"), Short, FText::AsNumber(Command.CooldownSeconds)) : Short,
-				Command.bGreyed ? EHOLGridCellState::Greyed : EHOLGridCellState::Ready);
-			GridCell->SetTooltip(Name, FHOLResources(), FHOLResources(), Effect);
-			break;
-		}
-		case EHOLGridCommand::LightSeal:
-		{
-			// S1-d (D862, ELROND-1124se): the Monk's Seal of Light (cell R), modelled on NecroticRage. A text cell (no icon yet: Placeholders.txt);
-			// the seconds left of the cool-down (the slot's PowerCooldownEndMs 0, the one ServerCastUnitAbility writes) show under the label and
-			// grey the cell. The numbers in the tooltip are HOLZoneEffect's; the range (8 m) and the cool-down (40 s) are the UnitAbilities table's.
-			FText SealLabel = LOCTEXT("LightSealShort", "Sceau");
-			EHOLGridCellState SealCellState = Command.bGreyed ? EHOLGridCellState::Greyed : EHOLGridCellState::Ready;
-			const AHOLGameState* SealState = GetWorld() ? GetWorld()->GetGameState<AHOLGameState>() : nullptr;
-			if (SealState && PlayerState)
-			{
-				constexpr int32 SealCooldownIndex = 0; // HOLRpcPlayer.as ServerCastUnitAbility: SealCooldownIndex.
-				const int32 NowMs = FMath::FloorToInt(GetWorld()->GetTimeSeconds() * 1000.0);
-				const int32 SealLeftMs = SealState->GetPowerCooldownEndMs(PlayerState->GetPlayerIndex(), SealCooldownIndex) - NowMs;
-				if (SealLeftMs > 0)
+				// G-5b (SAURON-1125md, D839): the FACE of these three cells (label, greyed or ready, tooltip) is the script's rule
+				// HOLCommandGridFace::GetCellFace (Script/Player/HOLCommandGridFace.as, through UHOLGridFaceBridge); the C++ only reads the facts
+				// the rule cannot see (cool-down seconds, hero level, the simulation's numbers) and keeps SetCommand / SetTooltip.
+				int32 FaceCooldownSeconds = 0;
+				int32 FaceUnlockLevel = 0;
+				TArray<int32> FaceNumbers;
+				if (Command.Command == EHOLGridCommand::HeroAbility)
 				{
-					SealLabel = FText::Format(LOCTEXT("LightSealCooldown", "{0}\n{1} s"), SealLabel, FText::AsNumber(FMath::CeilToInt(SealLeftMs / 1000.f)));
-					SealCellState = EHOLGridCellState::Greyed;
+					// J8c.4: locked below its level (the level shows in its tooltip, J8-Q5: the owner's alone).
+					const bool bLocked = !HOLHeroAbility::IsUnlocked(Command.Ability, PlayerState
+						? UHOLHeroLibrary::GetHeroLevel(PlayerController, PlayerState->GetPlayerIndex()) : 0);
+					FaceUnlockLevel = bLocked ? HOLHeroAbility::GetUnlockLevel(Command.Ability) : 0;
 				}
-			}
-			GridCell->SetCommand(SealLabel, SealCellState);
-			GridCell->SetTooltip(LOCTEXT("LightSealName", "Sceau de lumière"), FHOLResources(), FHOLResources(),
-				FText::Format(LOCTEXT("LightSealEffect", "Puis clic au sol, à 8 m du Moine au plus : une zone de {0} m de rayon pendant {1} s ; les ennemis dedans sont ralentis de {2} % ; recharge 40 s"),
-					FText::AsNumber(HOLZoneEffect::LightSealRadiusCm / 100), FText::AsNumber(HOLZoneEffect::LightSealDurationMs / 1000),
-					FText::AsNumber(HOLZoneEffect::LightSealSlowPercent)));
-			break;
-		}
-		case EHOLGridCommand::NecroticRage:
-			{
-				// L4 (Q-legions-l4 Q2 = A): the Damned Warriors' necrotic rage, cast at once (GDD 11.1 "Rage nécrotique"); the numbers in its
-				// tooltip are the simulation's own constants (HOLUnitAbilityRules.h, kept equal to UnitAbilities.csv by Combat.DamnedWarrior.RageConstants).
-				// No icon yet (a text cell, like the hero's abilities: Placeholders.txt).
-				// hol.Rage.Visual 3 or 4 (default 4, D772): the cell shows the seconds left of the rage, then of the recharge, and is greyed meanwhile.
-					FText RageLabel = LOCTEXT("NecroticRageShort", "Rage");
-					EHOLGridCellState RageCellState = EHOLGridCellState::Ready;
+				else if (Command.Command == EHOLGridCommand::LightSeal)
+				{
+					// S1-d: the seconds left of the Seal's cool-down (the slot's PowerCooldownEndMs 0, the one ServerCastUnitAbility writes).
+					const AHOLGameState* SealState = GetWorld() ? GetWorld()->GetGameState<AHOLGameState>() : nullptr;
+					if (SealState && PlayerState)
+					{
+						constexpr int32 SealCooldownIndex = 0; // HOLRpcPlayer.as ServerCastUnitAbility: SealCooldownIndex.
+						const int32 NowMs = FMath::FloorToInt(GetWorld()->GetTimeSeconds() * 1000.0);
+						const int32 SealLeftMs = SealState->GetPowerCooldownEndMs(PlayerState->GetPlayerIndex(), SealCooldownIndex) - NowMs;
+						FaceCooldownSeconds = SealLeftMs > 0 ? FMath::CeilToInt(SealLeftMs / 1000.f) : 0;
+					}
+					FaceNumbers = { HOLZoneEffect::LightSealRadiusCm / 100, HOLZoneEffect::LightSealDurationMs / 1000, HOLZoneEffect::LightSealSlowPercent };
+				}
+				else
+				{
+					// L4 / hol.Rage.Visual 3 or 4 (default 4, D772): the seconds left of the rage, then of the recharge, of the first selected unit cooling down.
 					if (HOLRageVisual::HasIcon(HOLRageVisual::GetMode()) && PlayerController)
 					{
 						for (const uint32 RageUnitId : PlayerController->GetOwnSelectedUnits())
@@ -1361,18 +1339,26 @@ void UHOLGameScreen::RefreshGrid(const AHOLBuilding* OwnBuilding, const bool bOw
 							int32 RageCooldownMs = 0;
 							if (HOLRageVisual::GetRageState(PlayerController->GetWorld(), RageUnitId, RageMs, RageCooldownMs) && RageCooldownMs > 0)
 							{
-								RageLabel = FText::Format(LOCTEXT("NecroticRageCooldown", "{0}\n{1} s"), RageLabel, FText::AsNumber(FMath::CeilToInt((RageMs > 0 ? RageMs : RageCooldownMs) / 1000.f)));
-								RageCellState = EHOLGridCellState::Greyed;
+								FaceCooldownSeconds = FMath::CeilToInt((RageMs > 0 ? RageMs : RageCooldownMs) / 1000.f);
 								break;
 							}
 						}
 					}
-					GridCell->SetCommand(RageLabel, RageCellState);
-				GridCell->SetTooltip(LOCTEXT("NecroticRageName", "Rage nécrotique"), FHOLResources(), FHOLResources(),
-					FText::Format(LOCTEXT("NecroticRageEffect", "{0} s : +{1} % de dégâts, +{2} % de cadence, {3} PV perdus par coup porté. Refusée sous {4} PV, elle s'arrête à {5} PV ; recharge {6} s"),
-						FText::AsNumber(HOLUnitAbility::RageDurationMs / 1000), FText::AsNumber(HOLUnitAbility::RageDamagePercent), FText::AsNumber(HOLUnitAbility::RageRatePercent),
-						FText::AsNumber(HOLUnitAbility::RageHpCostPerHit), FText::AsNumber(HOLUnitAbility::RageMinHp), FText::AsNumber(HOLUnitAbility::RageStopHp),
-						FText::AsNumber(HOLUnitAbility::RageCooldownMs / 1000)));
+					// The simulation's own constants (HOLUnitAbilityRules.h, kept equal to UnitAbilities.csv by Combat.DamnedWarrior.RageConstants).
+					FaceNumbers = { HOLUnitAbility::RageDurationMs / 1000, HOLUnitAbility::RageDamagePercent, HOLUnitAbility::RageRatePercent,
+						HOLUnitAbility::RageHpCostPerHit, HOLUnitAbility::RageMinHp, HOLUnitAbility::RageStopHp, HOLUnitAbility::RageCooldownMs / 1000 };
+				}
+				FHOLGridFaceAnswer Face;
+				if (UHOLGridFaceBridge::NativeGetCellFace(static_cast<int32>(Command.Command), static_cast<int32>(Command.Ability), Command.bGreyed,
+					Command.CooldownSeconds, FaceCooldownSeconds, FaceUnlockLevel, FaceNumbers, Face))
+				{
+					GridCell->SetCommand(Face.Label, Face.State == HOLGridFaceState::Greyed ? EHOLGridCellState::Greyed : EHOLGridCellState::Ready);
+					GridCell->SetTooltip(Face.TooltipName, FHOLResources(), FHOLResources(), Face.TooltipEffect);
+				}
+				else
+				{
+					GridCell->ClearUnit(); // no script class: no C++ twin of the rule, the cell stays empty
+				}
 				break;
 			}
 		default:
