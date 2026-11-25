@@ -33,6 +33,10 @@ check-list lue (L28) à 09:50 après le nettoyage 0a (commits f14ace8, 4865afe, 
 | FARAMIR-1125ma | HeroesOfLiberty-Faramir | tower-wood-look-1124sm | - | tower_wood : recadrer le .look, preflight, fiche E-tower_wood (file l.13) ; C:\Users\baudo\Documents\MyCrusader\Docs\Rapports\ENONCES-1125m.md section 2 (Faramir) | sans C++ |
 | ARWEN-1125ma | HeroesOfLiberty-Arwen | arwen-duel-1124sk | - | E-sacred_light_heal au geste reel (file l.83) puis duel_challenge_accept (l.12) ; C:\Users\baudo\Documents\MyCrusader\Docs\Rapports\ENONCES-1125m.md section 2 (Arwen) | sans C++ |
 | SAURON-1125ma | HeroesOfLiberty-Sauron | tools-1124sk | - | Outillage session_gate L28-4, L28-8, L28-1, L28-3 (file l.22-25) ; C:\Users\baudo\Documents\MyCrusader\Docs\Rapports\ENONCES-1125m.md section 2 (Sauron) | sans C++ |
+| ARWEN-1125mb | HeroesOfLiberty-Arwen | arwen-duel-1124sk | - | duel_challenge_accept : remplacer les wait 3 fixes par une attente d'arrivee des heros (waitlog), preflight PASS, 3 PNG ouverts ; reste de C:\Users\baudo\Documents\MyCrusader\Docs\Rapports\ARWEN-1125ma.md | sans C++ |
+| GALADRIEL-1125mb | HeroesOfLiberty-Galadriel | morale-solo-1124sf | - | Moral S2 sans C++ : HOLMoraleView::Read reel puis scenario morale_look (Docs\Priorite_Socle_Factions_2026-11-16.md section 3, MoraleInProgress.md etapes 10) ; binaire a jour (build PASS 10:1x) | sans C++ |
+| ELROND-1125mb | HeroesOfLiberty-Elrond | ground-cast-1124s | - | Grille AS : merge duel-frame-1124sj (HOLCommandGridAction.as de Glorfindel) dans ground-cast-1124s, sous-classe script de UHOLGridActionBridge qui appelle Decide et remplit FHOLGridActionAnswer, contexte aligne (Ability, bGreyed, SelectedUnitIds) ; test script + scripts compiled 0 erreur | sans C++ |
+| ARWEN-1125mc | HeroesOfLiberty-Arwen | arwen-duel-1124sk | - | Ligne 84 de Auto_Journey_File.md (traductions D911 dans Game.po en/ja : verifier, completer) puis premiere ligne [ ] suivante de la section Arwen de la file | sans C++ |
 
 ## Séances du 2026-11-24 (archivées le 2026-11-25 par CLEAN-A-1125m)
 
