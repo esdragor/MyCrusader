@@ -76,18 +76,19 @@ hol.Camera.Zoom 2
 frames 10
 note 3. APRES : plusieurs fleches ont touche, les barres de vie des Lanciers sont entamees (panneau de construction ferme, Lanciers cadres).
 # FARAMIR-1125mc : instant fixe pour la barre de vie = juste apres un coup (waitlog sur la ligne de degats), puis 2 images, au lieu de N images apres le cadrage.
-waitlog lands on
+# FARAMIR-1125mc : le 3e Lancier (#7) est celui qui atteint la tour (journal 1125mc : #7 en (-11954, 81), Attacking, au pied de la tour, donc en haut a droite / sous le bandeau, HORS des cadrages after) ; #6 et #8 restent a ~13 m. La barre de vie ne s affiche que sur l unite qui vient d etre touchee : on guette donc un coup sur #7, et after2 / after3 le cadrent.
+waitlog lands on #7
 frames 2
 # FARAMIR-1125mc : ou sont les 3 Lanciers (slot 1) a cet instant : position et PV de chacun (journal), pour retrouver le 3e.
 hol.Units.Where 1
 hol.Combat.ArrowReport
 capture tower_wood_after
-hol.Camera.FocusNear 3300 -1300
-frames 3
+hol.Camera.FocusNear 4400 -100
+frames 1
 capture tower_wood_after2
-hol.Camera.FocusNear 3300 -900
+hol.Camera.FocusNear 3900 -450
 hol.Camera.Zoom 1
-frames 3
+frames 1
 capture tower_wood_after3
 hol.Combat.Report 1
 quit
