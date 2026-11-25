@@ -33,6 +33,8 @@ param(
   [string]$EngineRoot = 'C:\UE\UE_5.8_HOL', # Launch (L12-1c) : un cl.exe dont aucun ancetre ne cite ce moteur = compilation d'un AUTRE moteur (ProjectShiva sur AS_3...) = WARN
   [int]$MaxMainCodeCommits = 3,           # Close (L19-1) : plus de N commits de code de la session principale = FAIL (1 a N = WARN)
   [string]$WorktreeRepo = '',             # Launch (L28-8) : depot dont on compte les worktrees (defaut : la copie principale) ; sert aux tests
+  [int]$MaxBuilds = 2,                   # Launch (L28-1) : builds en file au-dela desquels, si le dernier tourne depuis plus de $MaxBuildMinutes min, FAIL
+  [int]$MaxBuildMinutes = 5,
   [int]$MaxWorktrees = 8,                 # Launch (L28-8) : worktrees hors copie principale connus ; au-dela = FAIL (SAURON-1124sf en avait cree un neuf)
   [string]$AgentName = '',                # Launch (L19-1) : nom de l'agent a lancer ; NETTOYAGE-* et ETAPE0-* (lances avant la lecture de la check-list) = WARN au lieu de FAIL
   [Parameter(ValueFromRemainingArguments=$true)][string[]]$ScenarioNames = @(),   # noms de scenarios apres -Scenarios : acceptes et ignores (jamais pris pour une heure)
@@ -166,6 +168,27 @@ if ($Phase -eq 'Launch') {
     if ($b9 -gt 0) { Say 'WARN' "$n9 : retard de $b9 commit(s) sur main : au debut de la seance lancer Tools\AutoJourney\sync_worktrees.ps1 AVANT le premier lancement" }
   }
 
+  # L28-1 (SAURON-1125mb) : charge de la machine = builds en file (tickets vivants de build.ps1) + quick_check + preflight en cours ; FAIL au-dela de $MaxBuilds builds
+  # quand le dernier (le plus recent) tourne depuis plus de $MaxBuildMinutes min (la file est bouchee : un agent de plus la ralentit encore)
+  $l281Ages = @()
+  foreach ($l281f in @(Get-ChildItem $QueueDir -Filter '*.json' -ErrorAction SilentlyContinue)) {
+    try {
+      $l281t = Get-Content $l281f.FullName -Raw | ConvertFrom-Json
+      $l281ok = $false
+      try { $l281p = Get-Process -Id ([int]$l281t.pid) -ErrorAction Stop; $l281ok = (-not $l281t.pidStart) -or ([math]::Abs($l281p.StartTime.Ticks - [int64]$l281t.pidStart) -lt 20000000) } catch { }
+      if (-not $l281ok) { continue }
+      $l281s = if ($l281t.started) { [datetime]$l281t.started } elseif ($l281t.requested) { [datetime]$l281t.requested } else { $null }
+      if ($l281s) { $l281Ages += ,[double]((Get-Date) - $l281s).TotalMinutes }
+    } catch { }
+  }
+  $l281Procs = @(Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object { $_.ProcessId -ne $PID -and $_.CommandLine })
+  $l281Qc = @($l281Procs | Where-Object { $_.CommandLine -match 'quick_check\.ps1' }).Count
+  $l281Pf = @($l281Procs | Where-Object { $_.CommandLine -match '(?<![\w])preflight\.ps1' }).Count
+  $l281N = $l281Ages.Count
+  $l281Last = if ($l281N) { [int](($l281Ages | Measure-Object -Minimum).Minimum) } else { 0 }
+  $l281Msg = "$l281N build(s) en file (dernier demarre il y a $l281Last min), $l281Qc quick_check, $l281Pf preflight en cours"
+  if ($l281N -gt $MaxBuilds -and $l281Last -gt $MaxBuildMinutes) { Say 'FAIL' "L28-1 : $l281Msg : plus de $MaxBuilds builds et le dernier tourne depuis plus de $MaxBuildMinutes min, la machine est saturee ; attendre la fin d'un build avant de lancer un agent" }
+  else { Say 'PASS' "L28-1 : $l281Msg (plafond $MaxBuilds builds / $MaxBuildMinutes min)" }
   # Plafond de 3 agents C++ (regle 10) : worktrees DISTINCTS qui ont un ticket vivant dans la file de build.ps1 (proprietaire en vie ; un -Wait peut en poser deux)
   # + worktrees dont IN_USE.txt est OCCUPE (1re ligne non vide contient 'OCCUPE') ET porte la ligne 'CPP: oui' (L13-2, 2026-11-13 : le TEXTE libre
   # citant 'C++' faisait compter Haldir et Sauron, sans C++, faux FAIL vu 3 fois). FAIL pour un agent C++, WARN avec -NoCpp (L11-7).
@@ -271,6 +294,20 @@ if ($Phase -eq 'Report') {
     }
   }}
 
+# L28-3 (SAURON-1125mb) : Report FAIL si une ligne Sanity / waitlog / capture est retiree d'un scenario (diff main...HEAD de -Root sur *.scn et Tools/Scenarios/*.ps1 ;
+# une ligne seulement modifiee, dont le texte reparait dans les lignes ajoutees, n'est pas retiree) et si le champ TESTS du rapport vaut 0/0
+if ($Phase -eq 'Report' -and $Root -and (Test-Path $Root)) {
+  $l283Diff = @(git -C $Root diff 'main...HEAD' -U0 -- '*.scn' 'Tools/Scenarios/*.ps1' 2>$null)
+  $l283Add = @($l283Diff | Where-Object { $_ -match '^\+(?!\+\+)' } | ForEach-Object { $_.Substring(1).Trim() })
+  $l283Gone = @($l283Diff | Where-Object { $_ -match '^-(?!--)' } | ForEach-Object { $_.Substring(1).Trim() } | Where-Object { $_ -match '(?i)\b(sanity|waitlog|capture)\b' -and ($l283Add -notcontains $_) })
+  if ($l283Gone.Count -gt 0) { Say 'FAIL' ("L28-3 : ligne(s) Sanity / waitlog / capture retiree(s) d'un scenario (le test ne verifie plus rien) : " + (($l283Gone | Select-Object -First 3) -join ' ; ')) }
+  else { Say 'PASS' 'L28-3 : aucune ligne Sanity / waitlog / capture retiree des scenarios' }
+}
+if ($Phase -eq 'Report' -and $ReportFile -and (Test-Path $ReportFile)) {
+  $l283T = @(Get-Content $ReportFile -Encoding UTF8 | Where-Object { $_ -match '^\s*TESTS\s*:' }) | Select-Object -First 1
+  if ($l283T -and $l283T -match '(?<![\d/])0\s*/\s*0(?![\d/])') { Say 'FAIL' ("L28-3 : TESTS vaut 0/0 (aucun test lance) : " + $l283T.Trim()) }
+  elseif ($l283T) { Say 'PASS' 'L28-3 : TESTS ne vaut pas 0/0' }
+}
 # L28-4 (SAURON-1125ma) : le rapport de l'agent (Docs\Rapports\<AGENT>.md) et sa ligne d'EtapeDefini doivent exister, sinon FAIL (l'agent suivant commencerait par le rattrapage)
 if ($Phase -eq 'Report' -and $AgentName) {
   $l284Rap = Join-Path $Main ('Docs\Rapports\' + $AgentName + '.md')
