@@ -1096,7 +1096,7 @@ GESTURES.update({"spear_fall": SPEAR_FALL_PROPOSED, "maa_fall": MAA_FALL_PROPOSE
 # his left: the left hand under the fore-stock behind the prod, the right hand at the trigger in front of the right
 # hip, the elbows low and close to the body; the loaded bolt (id 5, ik_hand_r) in the groove, the bolt quiver (id 6) on
 # the right hip. Idle on A_SW_Idle (breathing and sway of the base), walk on A_SW_Unarmed_Walk with the same carry
-# (hands_frame "chest", steady_chest like the soldiers' walks); WalkPlayRate = 720 / 168.2 = 4.28 (UnitTypes.csv, AR5).
+# (hands_frame "chest", steady_chest like the soldiers' walks); WalkPlayRate = 720 / 168.2 = 4.28 (DA_Art, AR5).
 CROSSBOW_TOOL = {"kind": "crossbow", "hands": 2, "handle_length": sp.CROSSBOW_LENGTH,
                  "knob_offset": sp.CROSSBOW_LEFT_GRIP, "hand_spacing": sp.CROSSBOW_HAND_SPACING,
                  "edge": (0.0, 0.0, 1.0)}  # the groove up: lying flat
