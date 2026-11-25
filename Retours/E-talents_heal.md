@@ -4,7 +4,7 @@ STATUT : VU A L'ECRAN   (ARWEN-1125c 15:5x : preflight PASS, 3 PNG ouverts et vu
 recette: RECETTE-1121sb FAIL sur main a7833ea (Sauron) : jauge SacredLight au-dessus du bloc heros OK (base, cell, boosted), aucun ++ sur l'Arbre de talents OK, MAIS talents_heal_boosted : trait de soin VERT (pixels or 255,215,60 = 0, verts 414 contre 431 en base), pas de ++ : le talent Mains du guerisseur (pris, 2 talents) ne dore pas le trait. Statut reste LOGIQUE SEULEMENT (geste interne).
 GESTE: reel (ARWEN-1125c 15:54 : TOUS les clics sont des clics souris reels hol.Mouse.Click : HeroTalentButton, HeroTalentCell_2_1, HeroTalentCell_3_1 et la fermeture TalentWindowClose (log 'Mouse click TalentWindowClose x1 at 598,142: on SButton') ; seule la touche T est remplacee par le bouton de rappel HeroTalentButton, T n'est pas injectable (UHOLScriptScreen::NativeTick, C++, lot C++) ; commit 33dcd9b, branche spec-voie-1125m)
 SON: non entendu
-branches: zone-effect
+branches: main
 
 Pré-vol (2026-11-21 19:36, agent FARAMIR-1121se, worktree C:\Users\baudo\Documents\HeroesOfLiberty-Faramir, tip 64a212a) : `preflight.ps1 talents_heal -Root C:\Users\baudo\Documents\HeroesOfLiberty-Faramir` PASS (40 s, 3 PNG, plus de FAIL « HUD overlap HeroPanel x FactionPanel »).
 PNG OUVERTS et vus :

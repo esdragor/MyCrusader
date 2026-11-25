@@ -3,7 +3,7 @@
 STATUT : VU À L'ÉCRAN   (GALADRIEL-1125f 2026-11-25 16:4x, tip 4f3c147 compilé : preflight PASS x2 (109 s et 110 s), PNG ouvert x2, bloc de la tour au centre du cadrage 1600 0 enemy = (14800, 0) du journal ; reconnu par la position, même gabarit provisoire que les maisons)
 GESTE: interne      (aucun geste : on regarde l'IA jouer ; Lanciers posés par `hol.Units.SpawnHere`, caméra par `hol.Camera.FocusNear`)
 SON: sans objet
-branches: morale-look-fix-1125m
+branches: main
 
 Pré-vol (2026-11-25 16:03, agent GALADRIEL-1125d, worktree C:\Users\baudo\Documents\HeroesOfLiberty-Galadriel, tip 1acb6a2) : `preflight.ps1 ai_tower_easy -Root C:\Users\baudo\Documents\HeroesOfLiberty-Galadriel` PASS (111 s, 1 PNG, audit Sanity OK : 1536 pas, 18 unités suivies, 0 arrêt > 0,5 s).
 Journal : `AI slot 1 step 1114: build TowerWood at (14800.0, 0.0) by #11 (level 0, 0 already, an army of 5)` puis `Construction: slot 1 finished TowerWood at (14800, 0)` ; `Camera near: (14800, 0)` (le repère `enemy` de `hol.Camera.FocusNear` est MIROIR : 16400 - dx, donc `1600 0 enemy`).
