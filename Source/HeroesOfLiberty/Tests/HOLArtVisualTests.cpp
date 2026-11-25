@@ -76,7 +76,7 @@ namespace UE::HeroesOfLiberty::Tests::ArtVisual
 	}
 }
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLArtVisualEmptyAssetTest, "HeroesOfLiberty.Art.Visual.EmptyAssetKeepsCsv", UE::HeroesOfLiberty::Tests::ArtVisual::Flags)
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLArtVisualEmptyAssetTest, "HeroesOfLiberty.Art.Visual.EmptyAssetKeepsNeutral", UE::HeroesOfLiberty::Tests::ArtVisual::Flags)
 bool FHOLArtVisualEmptyAssetTest::RunTest(const FString& Parameters)
 {
 	using namespace UE::HeroesOfLiberty::Tests::ArtVisual;
@@ -86,21 +86,26 @@ bool FHOLArtVisualEmptyAssetTest::RunTest(const FString& Parameters)
 	{
 		return false;
 	}
-	const FHOLUnitTypeConstants Csv = Row->ToConstants(Spearman);
-	const FName LegionsKeyBefore = Test.Units->GetTemplateKey(Spearman, Legions);
-	HOLArtVisual::AddTestEntry(MakeAsset(Spearman, NAME_None, TEXT("DA_Art_Spearman")));
-	HOLArtVisual::AddTestEntry(MakeAsset(Spearman, Legions, TEXT("DA_Art_Spearman_Legions")));
-	const FHOLUnitTypeConstants* Built = TemplateConstants(*Test.Units, Spearman, NAME_None);
-	if (!TestNotNull(TEXT("the Spearman's Mass template is built"), Built))
+	// AR0-d2 (3): the row carries no visual field any more; the art asset is the only source, an empty one leaves the
+	// neutral value (no mesh, scale and play rate of the row's neutral constants), never the old CSV's.
+	const FHOLUnitTypeConstants Neutral = Row->ToConstants(Spearman);
+	FHOLUnitTypeConstants Real = Row->ToConstants(Spearman);
+	HOLArtVisual::Apply(Test.World, Real, Spearman, NAME_None);
+	if (!TestFalse(TEXT("before: the real DA_Art_Spearman gives a mesh (the test can tell an empty asset apart)"), Real.Mesh.IsNull()))
 	{
 		return false;
 	}
-	TestEqual(TEXT("an empty art asset keeps the CSV's mesh"), Built->Mesh.ToString(), Csv.Mesh.ToString());
-	TestEqual(TEXT("... its skinned mesh"), Built->SkinnedMesh.ToString(), Csv.SkinnedMesh.ToString());
-	TestEqual(TEXT("... its animation provider"), Built->AnimationProvider.ToString(), Csv.AnimationProvider.ToString());
-	TestEqual(TEXT("... its scale"), Built->MeshScale, Csv.MeshScale);
-	TestEqual(TEXT("... its yaw"), Built->MeshYawOffset, Csv.MeshYawOffset);
-	TestEqual(TEXT("... its walk play rate"), Built->WalkPlayRate, Csv.WalkPlayRate);
+	const FName LegionsKeyBefore = Test.Units->GetTemplateKey(Spearman, Legions);
+	HOLArtVisual::AddTestEntry(MakeAsset(Spearman, NAME_None, TEXT("DA_Art_Spearman")));
+	HOLArtVisual::AddTestEntry(MakeAsset(Spearman, Legions, TEXT("DA_Art_Spearman_Legions")));
+	FHOLUnitTypeConstants Built = Row->ToConstants(Spearman);
+	HOLArtVisual::Apply(Test.World, Built, Spearman, NAME_None);
+	TestTrue(TEXT("an empty art asset gives no mesh (neutral, no fallback on the row)"), Built.Mesh.IsNull());
+	TestTrue(TEXT("... no skinned mesh"), Built.SkinnedMesh.IsNull());
+	TestTrue(TEXT("... no animation provider"), Built.AnimationProvider.IsNull());
+	TestEqual(TEXT("... the neutral scale"), Built.MeshScale, Neutral.MeshScale);
+	TestEqual(TEXT("... the neutral yaw"), Built.MeshYawOffset, Neutral.MeshYawOffset);
+	TestEqual(TEXT("... the neutral walk play rate"), Built.WalkPlayRate, Neutral.WalkPlayRate);
 	TestEqual(TEXT("an empty faction asset gives the faction no Mass type of its own (the CRC sees no change)"), Test.Units->GetTemplateKey(Spearman, Legions), LegionsKeyBefore);
 	return true;
 }

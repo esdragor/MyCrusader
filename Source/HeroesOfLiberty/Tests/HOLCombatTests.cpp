@@ -1,6 +1,7 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "Algo/Reverse.h"
+#include "Art/HOLArtVisual.h"
 #include "Buildings/HOLBuildingTypes.h"
 #include "Buildings/HOLConstructionRules.h"
 #include "Components/InstancedStaticMeshComponent.h"
@@ -27,6 +28,21 @@
 #include "Simulation/HOLUnitView.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
+
+namespace UE::HeroesOfLiberty::Tests::ArtDressedCombat
+{
+	/** D925 (AR0-d2): the type's constants as registered: its row's (visual fields neutral), dressed by /Game/Art/Units/<Type>/DA_Art_<Type>. */
+	inline FHOLUnitTypeConstants Dressed(const FHOLUnitTypeRow& Row, const TCHAR* TypeName)
+	{
+		FHOLUnitTypeConstants Constants = Row.ToConstants(TypeName);
+		const FString Name = FString::Printf(TEXT("DA_Art_%s"), TypeName);
+		if (const UHOLArtVisual* Art = LoadObject<UHOLArtVisual>(nullptr, *FString::Printf(TEXT("/Game/Art/Units/%s/%s.%s"), TypeName, *Name, *Name), nullptr, LOAD_NoWarn | LOAD_Quiet))
+		{
+			Art->ApplyTo(Constants);
+		}
+		return Constants;
+	}
+}
 
 // J7b.1 checks (J7-Q4): the pure rules of the melee (damage, cadence, reach, target choice), on the table's numbers.
 namespace UE::HeroesOfLiberty::Tests::Combat
@@ -495,8 +511,8 @@ bool FHOLCombatCrossbowmanTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("Crossbowman: 22 s"), Row->BuildTime, 22.f);
 	TestEqual(TEXT("Crossbowman: population 1"), Row->Population, 1);
 	TestTrue(TEXT("Crossbowman: ripostes, as the Archer"), Row->Ripostes);
-	TestEqual(TEXT("Crossbowman: walk play rate 4.28 (720 / 168.2)"), Row->WalkPlayRate, 4.28f);
-	TestEqual(TEXT("Crossbowman: mesh scale as the Archer"), Row->MeshScale, 1.5f);
+	TestEqual(TEXT("Crossbowman: walk play rate 4.28 (720 / 168.2)"), UE::HeroesOfLiberty::Tests::ArtDressedCombat::Dressed(*Row, TEXT("Crossbowman")).WalkPlayRate, 4.28f);
+	TestEqual(TEXT("Crossbowman: mesh scale as the Archer"), UE::HeroesOfLiberty::Tests::ArtDressedCombat::Dressed(*Row, TEXT("Crossbowman")).MeshScale, 1.5f);
 	return true;
 }
 
@@ -515,9 +531,9 @@ bool FHOLCombatProjectilesTest::RunTest(const FString& Parameters)
 	{
 		return false;
 	}
-	TestEqual(TEXT("Archer's projectile: SM_Arrow"), Archer->Projectile.ToSoftObjectPath().ToString(), FString(TEXT("/Game/Units/Props/SM_Arrow.SM_Arrow")));
-	TestEqual(TEXT("Crossbowman's projectile: SM_Bolt"), Crossbowman->Projectile.ToSoftObjectPath().ToString(), FString(TEXT("/Game/Units/Props/SM_Bolt.SM_Bolt")));
-	TestTrue(TEXT("Man-at-arms: no projectile"), ManAtArms->Projectile.IsNull());
+	TestEqual(TEXT("Archer's projectile: SM_Arrow"), HOLArtVisual::ResolveProjectile(nullptr, TEXT("Archer"), NAME_None, FSoftObjectPath()).ToString(), FString(TEXT("/Game/Units/Props/SM_Arrow.SM_Arrow")));
+	TestEqual(TEXT("Crossbowman's projectile: SM_Bolt"), HOLArtVisual::ResolveProjectile(nullptr, TEXT("Crossbowman"), NAME_None, FSoftObjectPath()).ToString(), FString(TEXT("/Game/Units/Props/SM_Bolt.SM_Bolt")));
+	TestTrue(TEXT("Man-at-arms: no projectile"), HOLArtVisual::ResolveProjectile(nullptr, TEXT("ManAtArms"), NAME_None, FSoftObjectPath()).IsNull());
 
 	UWorld* World = UWorld::CreateWorld(EWorldType::Game, /*bInformEngineOfWorld*/ false);
 	FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);
@@ -572,11 +588,11 @@ bool FHOLCombatMuzzleSmokeTest::RunTest(const FString& Parameters)
 	{
 		return false;
 	}
-	TestEqual(TEXT("Arquebusier's projectile: SM_Bullet"), Arquebusier->Projectile.ToSoftObjectPath().ToString(), FString(TEXT("/Game/Units/Props/SM_Bullet.SM_Bullet")));
-	TestEqual(TEXT("Arquebusier's muzzle smoke: SM_PowderSmoke"), Arquebusier->MuzzleSmoke.ToSoftObjectPath().ToString(),
+	TestEqual(TEXT("Arquebusier's projectile: SM_Bullet"), HOLArtVisual::ResolveProjectile(nullptr, TEXT("Arquebusier"), NAME_None, FSoftObjectPath()).ToString(), FString(TEXT("/Game/Units/Props/SM_Bullet.SM_Bullet")));
+	TestEqual(TEXT("Arquebusier's muzzle smoke: SM_PowderSmoke"), HOLArtVisual::ResolveMuzzleSmoke(nullptr, TEXT("Arquebusier"), NAME_None, FSoftObjectPath()).ToString(),
 		FString(TEXT("/Game/Units/Props/SM_PowderSmoke.SM_PowderSmoke")));
-	TestTrue(TEXT("Crossbowman: no muzzle smoke"), Crossbowman->MuzzleSmoke.IsNull());
-	TestTrue(TEXT("Archer: no muzzle smoke"), Archer->MuzzleSmoke.IsNull());
+	TestTrue(TEXT("Crossbowman: no muzzle smoke"), HOLArtVisual::ResolveMuzzleSmoke(nullptr, TEXT("Crossbowman"), NAME_None, FSoftObjectPath()).IsNull());
+	TestTrue(TEXT("Archer: no muzzle smoke"), HOLArtVisual::ResolveMuzzleSmoke(nullptr, TEXT("Archer"), NAME_None, FSoftObjectPath()).IsNull());
 
 	UWorld* World = UWorld::CreateWorld(EWorldType::Game, /*bInformEngineOfWorld*/ false);
 	FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);

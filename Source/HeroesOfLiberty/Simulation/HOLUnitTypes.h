@@ -106,7 +106,7 @@ struct HEROESOFLIBERTY_API FHOLAttackBonus
  * one, or walking with a load of it. INDEX_NONE (-1): none, the unit plays its idle or walk instead. Written
  * "(Food=4,Wood=2,Stone=3,Gold=3)" in the table, like GatherRates.
  */
-USTRUCT()
+USTRUCT(BlueprintType)
 struct HEROESOFLIBERTY_API FHOLResourceSequences
 {
 	GENERATED_BODY()
@@ -152,7 +152,7 @@ struct HEROESOFLIBERTY_API FHOLResourceSequences
  * of gold, 7 hammer (the builder's, BuildProp), 8 knife (the Peasant's strike, AttackProp). 0: none. At most MaxId: a vertex of the mesh names the props it belongs to by the bits of one byte. Written
  * "(Food=3,Wood=4,Stone=5,Gold=6)" in the table, like GatherRates.
  */
-USTRUCT()
+USTRUCT(BlueprintType)
 struct HEROESOFLIBERTY_API FHOLResourceProps
 {
 	GENERATED_BODY()
@@ -443,111 +443,8 @@ struct HEROESOFLIBERTY_API FHOLUnitTypeRow : public FTableRowBase
 	UPROPERTY(EditAnywhere, Category = "Avoidance", meta = (ClampMin = "0", ForceUnits = "cm"))
 	float AvoidanceDistance = 250.f;
 
-	/** Mesh drawn as an instance (M2 draws the instances per type and per player, D226). */
-	UPROPERTY(EditAnywhere, Category = "Presentation")
-	TSoftObjectPtr<UStaticMesh> Mesh;
-
-	/** Yaw (deg) added to the drawn instance: the mesh does not necessarily face Mass' forward (+X). */
-	UPROPERTY(EditAnywhere, Category = "Presentation")
-	float MeshYawOffset = -90.f;
-
-	/**
-	 * Drawing scale of the mesh (J3, user's choice: x1.5). RTS units are drawn larger than life so they read next to the
-	 * buildings; Radius is set to match in the table, and the walk is slowed by the same factor so the feet do not slide.
-	 */
-	UPROPERTY(EditAnywhere, Category = "Presentation", meta = (ClampMin = "0.1"))
-	float MeshScale = 1.f;
-
-	/**
-	 * Instanced skeletal mesh (D232): when set, the unit is drawn animated and Mesh is not used. Its mesh must be
-	 * built with "Optimize for Instancing" (Tools/Editor/make_skinned_mannequin.py).
-	 */
-	UPROPERTY(EditAnywhere, Category = "Presentation")
-	TSoftObjectPtr<USkeletalMesh> SkinnedMesh;
-
-	/** GPU animation of SkinnedMesh: its sequences are the ones the presentation plays (D234). */
-	UPROPERTY(EditAnywhere, Category = "Presentation")
-	TSoftObjectPtr<UAnimSequenceTransformProviderData> AnimationProvider;
-
-	/** Index of the idle sequence in AnimationProvider. */
-	UPROPERTY(EditAnywhere, Category = "Presentation", meta = (ClampMin = "0"))
-	int32 IdleSequence = 0;
-
-	/** Index of the walk sequence in AnimationProvider. */
-	UPROPERTY(EditAnywhere, Category = "Presentation", meta = (ClampMin = "0"))
-	int32 WalkSequence = 1;
-
-	/** Play rate of the walk, so the stride matches Speed and the feet do not slide (D234). */
-	UPROPERTY(EditAnywhere, Category = "Presentation", meta = (ClampMin = "0.01"))
-	float WalkPlayRate = 1.f;
-
-	/**
-	 * Sequence played gathering each resource at its source (J5c.1: axe, pick, picking berries), whatever the speed: a
-	 * gatherer pushed aside keeps working. -1: none, it stands idle.
-	 */
-	UPROPERTY(EditAnywhere, Category = "Presentation")
-	FHOLResourceSequences GatherSequences;
-
-	/** Play rate of the gathering sequences (a gesture, not a stride: the mesh scale does not change it). */
-	UPROPERTY(EditAnywhere, Category = "Presentation", meta = (ClampMin = "0.01"))
-	float GatherPlayRate = 1.f;
-
-	/** Walk played carrying a load of each resource (J5c.1), in place of WalkSequence. -1: the plain walk. */
-	UPROPERTY(EditAnywhere, Category = "Presentation")
-	FHOLResourceSequences CarryWalkSequences;
-
-	/** Play rate of the carrying walks, set as WalkPlayRate is (Speed / the walk's planted-foot speed, D234). */
-	UPROPERTY(EditAnywhere, Category = "Presentation", meta = (ClampMin = "0.01"))
-	float CarryWalkPlayRate = 1.f;
-
-	/**
-	 * Idle played standing with a load of each resource (J5c.2: the load stays held, at the play rate of the idle), in
-	 * place of IdleSequence. -1: the plain idle (and no load shown).
-	 */
-	UPROPERTY(EditAnywhere, Category = "Presentation")
-	FHOLResourceSequences CarryIdleSequences;
-
-	/**
-	 * Prop of SkinnedMesh shown while gathering each resource (J5c.2: axe for wood, pickaxe for stone and gold, bare hands
-	 * for berries). 0: none.
-	 */
-	UPROPERTY(EditAnywhere, Category = "Presentation")
-	FHOLResourceProps GatherProps;
-
-	/** Prop shown carrying a load of each resource, walking or standing (J5c.2: basket, logs, hottes). 0: none. */
-	UPROPERTY(EditAnywhere, Category = "Presentation")
-	FHOLResourceProps CarryProps;
-
-	/**
-	 * Sequence played working at a site (J6a.4: the Peasant's hammering), whatever the speed, as a gathering gesture. -1:
-	 * none, it stands idle.
-	 */
-	UPROPERTY(EditAnywhere, Category = "Presentation", meta = (ClampMin = "-1"))
-	int32 BuildSequence = INDEX_NONE;
-
-	/** Play rate of BuildSequence (a gesture: the mesh scale does not change it). */
-	UPROPERTY(EditAnywhere, Category = "Presentation", meta = (ClampMin = "0.01"))
-	float BuildPlayRate = 1.f;
-
-	/** Prop of SkinnedMesh shown while building (J6a.4: the hammer, 7). 0: none. */
-	UPROPERTY(EditAnywhere, Category = "Presentation", meta = (ClampMin = "0", ClampMax = "8"))
-	int32 BuildProp = 0;
-
-	/**
-	 * Sequence played striking (J7b.5: the activity Attacking), looped at the attack cadence: its play rate is its length over
-	 * AttackInterval, and its loop starts so that its hit (HOLUnitAnimation::GetStrikeHitShare of the loop) falls on the
-	 * server's. -1: none, it plays its idle.
-	 */
-	UPROPERTY(EditAnywhere, Category = "Presentation", meta = (ClampMin = "-1"))
-	int32 AttackSequence = INDEX_NONE;
-
-	/** Prop of SkinnedMesh shown while striking (J7b: the Peasant's knife, 8), the others hidden. 0: none. */
-	UPROPERTY(EditAnywhere, Category = "Presentation", meta = (ClampMin = "0", ClampMax = "8"))
-	int32 AttackProp = 0;
-
-	/** Sequence played once while dying (J7b.5: the activity Dying, ~1 s), then held on its last frame. -1: none. */
-	UPROPERTY(EditAnywhere, Category = "Presentation", meta = (ClampMin = "-1"))
-	int32 FallSequence = INDEX_NONE;
+	// D925 (AR0-d2): the visual fields (mesh, scale, animations, props, projectile, smoke) are no longer columns of the
+	// row: the type's art asset /Game/Art/Units/<Type>/DA_Art_<Type> carries them (HOLArtVisual::Apply).
 
 	/** What producing one unit costs (J3, D283), taken when it is queued. Read by the production, not by Mass. */
 	UPROPERTY(EditAnywhere, Category = "Production")
@@ -687,21 +584,6 @@ struct HEROESOFLIBERTY_API FHOLUnitTypeRow : public FTableRowBase
 	UPROPERTY(EditAnywhere, Category = "Combat", meta = (ClampMin = "0", ForceUnits = "cm"))
 	float DamageRedirectRadius = 0.f;
 
-	/**
-	 * The projectile drawn in flight for its shots (AR9, AR-Q5): SM_Arrow for the Archer, SM_Bolt for the Crossbowman, the
-	 * same flight for both. Read by the arrow display only (UHOLArrowSubsystem, by the shooter's type), never by the
-	 * simulation; empty (the melee types): SM_Arrow.
-	 */
-	UPROPERTY(EditAnywhere, Category = "Presentation")
-	TSoftObjectPtr<UStaticMesh> Projectile;
-
-	/**
-	 * The puff of powder smoke drawn at the muzzle at each of its shots (Arquebusier: SM_PowderSmoke). Read by the arrow display
-	 * only (UHOLArrowSubsystem, by the shooter's type), never by the simulation; empty (every other type): no smoke.
-	 */
-	UPROPERTY(EditAnywhere, Category = "Presentation")
-	TSoftObjectPtr<UStaticMesh> MuzzleSmoke;
-
 	FHOLUnitTypeConstants ToConstants(FName TypeName) const;
 };
 
@@ -713,27 +595,7 @@ inline FHOLUnitTypeConstants FHOLUnitTypeRow::ToConstants(const FName TypeName) 
 	Constants.Speed = Speed;
 	Constants.MaxHealth = MaxHealth;
 	Constants.AvoidanceDistance = AvoidanceDistance;
-	Constants.Mesh = Mesh.ToSoftObjectPath();
-	Constants.MeshYawOffset = MeshYawOffset;
-	Constants.MeshScale = MeshScale;
-	Constants.SkinnedMesh = SkinnedMesh.ToSoftObjectPath();
-	Constants.AnimationProvider = AnimationProvider.ToSoftObjectPath();
-	Constants.IdleSequence = IdleSequence;
-	Constants.WalkSequence = WalkSequence;
-	Constants.WalkPlayRate = WalkPlayRate;
-	Constants.GatherSequences = GatherSequences;
-	Constants.GatherPlayRate = GatherPlayRate;
-	Constants.CarryWalkSequences = CarryWalkSequences;
-	Constants.CarryWalkPlayRate = CarryWalkPlayRate;
-	Constants.CarryIdleSequences = CarryIdleSequences;
-	Constants.GatherProps = GatherProps;
-	Constants.CarryProps = CarryProps;
-	Constants.BuildSequence = BuildSequence;
-	Constants.BuildPlayRate = BuildPlayRate;
-	Constants.BuildProp = BuildProp;
-	Constants.AttackSequence = AttackSequence;
-	Constants.AttackProp = AttackProp;
-	Constants.FallSequence = FallSequence;
+	// D925 (AR0-d2): the visual fields stay neutral here; the type's art asset dresses them (HOLArtVisual::Apply).
 	Constants.GatherRates = GatherRates;
 	Constants.CarryCapacity = CarryCapacity;
 	for (const EHOLArmorCategory Category : ArmorCategories)

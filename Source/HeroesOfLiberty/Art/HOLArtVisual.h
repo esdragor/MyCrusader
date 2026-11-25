@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "Engine/DataAsset.h"
 #include "Subsystems/GameInstanceSubsystem.h"
+#include "Simulation/HOLUnitTypes.h"
 #include "HOLArtVisual.generated.h"
 
 class UStaticMesh;
@@ -123,6 +124,50 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Sequences", meta = (EditCondition = "bOverrideCarryWalkPlayRate"))
 	float CarryWalkPlayRate = 1.f;
+
+	/** AR0-d2: gathering, walking with a load and standing with a load, by resource (J5c), each set with one toggle. */
+	UPROPERTY(EditAnywhere, Category = "Art|Sequences", meta = (InlineEditConditionToggle))
+	bool bOverrideGatherSequences = false;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Sequences", meta = (EditCondition = "bOverrideGatherSequences"))
+	FHOLResourceSequences GatherSequences;
+
+	UPROPERTY(EditAnywhere, Category = "Art|Sequences", meta = (InlineEditConditionToggle))
+	bool bOverrideCarryWalkSequences = false;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Sequences", meta = (EditCondition = "bOverrideCarryWalkSequences"))
+	FHOLResourceSequences CarryWalkSequences;
+
+	UPROPERTY(EditAnywhere, Category = "Art|Sequences", meta = (InlineEditConditionToggle))
+	bool bOverrideCarryIdleSequences = false;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Sequences", meta = (EditCondition = "bOverrideCarryIdleSequences"))
+	FHOLResourceSequences CarryIdleSequences;
+
+	/** AR0-d2: props (ids of the mesh's vertex bits, 0: none) gathering and carrying each resource, building, striking. */
+	UPROPERTY(EditAnywhere, Category = "Art|Props", meta = (InlineEditConditionToggle))
+	bool bOverrideGatherProps = false;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Props", meta = (EditCondition = "bOverrideGatherProps"))
+	FHOLResourceProps GatherProps;
+
+	UPROPERTY(EditAnywhere, Category = "Art|Props", meta = (InlineEditConditionToggle))
+	bool bOverrideCarryProps = false;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Props", meta = (EditCondition = "bOverrideCarryProps"))
+	FHOLResourceProps CarryProps;
+
+	UPROPERTY(EditAnywhere, Category = "Art|Props", meta = (InlineEditConditionToggle))
+	bool bOverrideBuildProp = false;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Props", meta = (EditCondition = "bOverrideBuildProp", ClampMin = "0", ClampMax = "8"))
+	int32 BuildProp = 0;
+
+	UPROPERTY(EditAnywhere, Category = "Art|Props", meta = (InlineEditConditionToggle))
+	bool bOverrideAttackProp = false;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Props", meta = (EditCondition = "bOverrideAttackProp", ClampMin = "0", ClampMax = "8"))
+	int32 AttackProp = 0;
 
 	/** Arrow and muzzle smoke of a ranged unit (read by HOLArrowSubsystem, not yet wired: AR0-a RESTE). */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Shot")

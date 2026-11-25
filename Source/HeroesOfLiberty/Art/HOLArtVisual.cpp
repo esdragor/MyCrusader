@@ -4,6 +4,7 @@
 
 #include "AssetRegistry/AssetRegistryModule.h"
 #include "AssetRegistry/IAssetRegistry.h"
+#include "Misc/PackageName.h"
 #include "Engine/Engine.h"
 #include "Engine/GameInstance.h"
 #include "Engine/Texture2D.h"
@@ -62,6 +63,13 @@ void UHOLArtVisual::ApplyTo(FHOLUnitTypeConstants& Constants) const
 	Set(bOverrideBuildPlayRate, Constants.BuildPlayRate, BuildPlayRate);
 	Set(bOverrideGatherPlayRate, Constants.GatherPlayRate, GatherPlayRate);
 	Set(bOverrideCarryWalkPlayRate, Constants.CarryWalkPlayRate, CarryWalkPlayRate);
+	Set(bOverrideGatherSequences, Constants.GatherSequences, GatherSequences);
+	Set(bOverrideCarryWalkSequences, Constants.CarryWalkSequences, CarryWalkSequences);
+	Set(bOverrideCarryIdleSequences, Constants.CarryIdleSequences, CarryIdleSequences);
+	Set(bOverrideGatherProps, Constants.GatherProps, GatherProps);
+	Set(bOverrideCarryProps, Constants.CarryProps, CarryProps);
+	Set(bOverrideBuildProp, Constants.BuildProp, BuildProp);
+	Set(bOverrideAttackProp, Constants.AttackProp, AttackProp);
 }
 
 void UHOLArtVisualRegistry::Initialize(FSubsystemCollectionBase& Collection)
@@ -196,6 +204,36 @@ namespace HOLArtVisual
 		}
 	}
 
+	/** The type's common asset /Game/Art/<Units|Buildings|Sources>/<Type>/DA_Art_<Type>, loaded on demand; null if absent. */
+	static const UHOLArtVisual* LoadCommon(const FName TypeName)
+	{
+		static TSet<FName> Missing;
+		if (TypeName.IsNone() || Missing.Contains(TypeName))
+		{
+			return nullptr;
+		}
+		const FString Type = TypeName.ToString();
+		const FString Name = TEXT("DA_Art_") + Type;
+		for (const TCHAR* Folder : { TEXT("Units"), TEXT("Buildings"), TEXT("Sources") })
+		{
+			const FString Package = FString::Printf(TEXT("/Game/Art/%s/%s/%s"), Folder, *Type, *Name);
+			const FString Object = FString::Printf(TEXT("%s.%s"), *Package, *Name);
+			if (UHOLArtVisual* Found = FindObject<UHOLArtVisual>(nullptr, *Object))
+			{
+				return Found;
+			}
+			if (FPackageName::DoesPackageExist(Package))
+			{
+				if (UHOLArtVisual* Loaded = LoadObject<UHOLArtVisual>(nullptr, *Object, nullptr, LOAD_NoWarn | LOAD_Quiet))
+				{
+					return Loaded;
+				}
+			}
+		}
+		Missing.Add(TypeName);
+		return nullptr;
+	}
+
 	const UHOLArtVisual* Find(const UWorld* World, const FName TypeName, const FName FactionKey)
 	{
 		if (const TStrongObjectPtr<UHOLArtVisual>* Entry = TestEntries().Find(UHOLArtVisualRegistry::FKey(TypeName, FactionKey)))
@@ -204,7 +242,13 @@ namespace HOLArtVisual
 		}
 		const UGameInstance* GameInstance = World ? World->GetGameInstance() : nullptr;
 		const UHOLArtVisualRegistry* Registry = GameInstance ? GameInstance->GetSubsystem<UHOLArtVisualRegistry>() : nullptr;
-		return Registry ? Registry->Find(TypeName, FactionKey) : nullptr;
+		if (Registry)
+		{
+			return Registry->Find(TypeName, FactionKey);
+		}
+		// D925 (AR0-d2): a world without a game instance (tests, tools) reads the common asset from /Game/Art itself, the
+		// row no longer carrying the visual fields.
+		return FactionKey.IsNone() ? LoadCommon(TypeName) : nullptr;
 	}
 
 	void Apply(const UWorld* World, FHOLUnitTypeConstants& Constants, const FName TypeName, const FName FactionKey)
