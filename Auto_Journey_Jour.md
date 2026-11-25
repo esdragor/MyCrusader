@@ -24,6 +24,16 @@ check-list lue (L28) à 09:50 après le nettoyage 0a (commits f14ace8, 4865afe, 
 - Sauron (tools-1124sk) : lancer outillage session_gate L28-4, L28-8, L28-1, L28-3 (file l.22-25) ; sans C++
 - ALERTE : main contient du C++ NOT COMPILED (f48fa47, 0a280c1, 3d484c6, 8ffb822) : build + tests de main par la session principale avant le build d Elrond ; Priorite_Socle_Factions périmée (branches dans main sauf loc-ja-1124s)
 
+| Agent | Worktree | Branche | Commits | Tache | C++ |
+| GLORFINDEL-1125ma | HeroesOfLiberty-Glorfindel | duel-frame-1124sj | - | Grille en AS G-1 puis G-2/G-3 : HOLCommandGridAction.as + test rouge LightSeal d'abord ; C:\Users\baudo\Documents\MyCrusader\Docs\Rapports\ENONCES-1125m.md sections 1 et 2 (Glorfindel) | sans C++ |
+| ELROND-1125ma | HeroesOfLiberty-Elrond | ground-cast-1124s | - | Grille en AS G-4 : crochet C++ minimal (pont script, un seul mode arme, liaisons Request*) en UN lot, raison D839 liaison ; C:\Users\baudo\Documents\MyCrusader\Docs\Rapports\ENONCES-1125m.md section 1.4 et 2 (Elrond) | C++ : raison dite dans la tache |
+| GALADRIEL-1125ma | HeroesOfLiberty-Galadriel | morale-solo-1124sf | - | Lot C++ socle : Deinitialize->ResetHonor, hol.Cheat.Resources tous slots (HOLPlayerController.cpp ~3752 seulement), merge loc-ja-1124s ; C:\Users\baudo\Documents\MyCrusader\Docs\Rapports\ENONCES-1125m.md section 2 (Galadriel) | C++ : raison dite dans la tache |
+| HALDIR-1125ma | HeroesOfLiberty-Haldir | integ-76 | - | INTEGRATEUR integ-77 : tools-1124si puis arwen-1124sd (integrate.ps1 -DryRun d'abord) ; C:\Users\baudo\Documents\MyCrusader\Docs\Rapports\ENONCES-1125m.md section 2 (Haldir) | sans C++ |
+| CELEBORN-1125ma | HeroesOfLiberty-Celeborn | walls-g7-1124s | - | D904 cout des murs N sous-cases x prix (file l.92) ; C:\Users\baudo\Documents\MyCrusader\Docs\Rapports\ENONCES-1125m.md section 2 (Celeborn) | sans C++ |
+| FARAMIR-1125ma | HeroesOfLiberty-Faramir | tower-wood-look-1124sm | - | tower_wood : recadrer le .look, preflight, fiche E-tower_wood (file l.13) ; C:\Users\baudo\Documents\MyCrusader\Docs\Rapports\ENONCES-1125m.md section 2 (Faramir) | sans C++ |
+| ARWEN-1125ma | HeroesOfLiberty-Arwen | arwen-duel-1124sk | - | E-sacred_light_heal au geste reel (file l.83) puis duel_challenge_accept (l.12) ; C:\Users\baudo\Documents\MyCrusader\Docs\Rapports\ENONCES-1125m.md section 2 (Arwen) | sans C++ |
+| SAURON-1125ma | HeroesOfLiberty-Sauron | tools-1124sk | - | Outillage session_gate L28-4, L28-8, L28-1, L28-3 (file l.22-25) ; C:\Users\baudo\Documents\MyCrusader\Docs\Rapports\ENONCES-1125m.md section 2 (Sauron) | sans C++ |
+
 ## Séances du 2026-11-24 (archivées le 2026-11-25 par CLEAN-A-1125m)
 
 - Tableaux d'agents (matin 10:38 -> 14:00 et soir 19:13 -> 23:15), bilans du 2026-11-24 et du soir, « Lecons appliquees 2026-11-24 » et « 2026-11-24 soir », plan de lancement et alertes étape 0 du soir : copiés tels quels dans `Docs\Archive\Auto_Journey_Jour_2026-11-24_archive_2026-11-25.md` (les résumés des séances du 2026-11-23, déjà archivés, y sont aussi : `Docs\Archive\Auto_Journey_Jour_Retours_2026-11-24_soir_archive_2026-11-24.md`, `Docs\Archive\Auto_Journey_Jour_2026-11-23_apres-midi_archive_2026-11-24.md`, `Docs\Archive\Auto_Journey_Jour_2026-11-23_matin_archive_2026-11-23.md`).
