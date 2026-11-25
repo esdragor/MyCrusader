@@ -1166,6 +1166,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 				}
 			}
 			HOLHeroAbility::Tick(Combats[EntityIt].RageCooldownMs, StepMs);
+			HOLHeroAbility::Tick(Combats[EntityIt].KnightChallengeCooldownMs, StepMs);
 			if (bHeroes && States[EntityIt].CurrentHealth > 0.f && Combats[EntityIt].DeathStep < 0)
 			{
 				const FVector Location = Transforms[EntityIt].GetTransform().GetLocation();

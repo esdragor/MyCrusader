@@ -1,7 +1,13 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
+#include "Engine/Engine.h"
+#include "Engine/World.h"
+#include "MassEntitySubsystem.h"
 #include "Misc/AutomationTest.h"
 #include "Simulation/HOLCombatRules.h"
+#include "Simulation/HOLSimulationFragments.h"
+#include "Simulation/HOLUnitSubsystem.h"
+#include "Simulation/HOLUnitTypes.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
 
@@ -62,4 +68,63 @@ bool FHOLKnightChallengeTargetsTheKnightTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+// SAURON-1125b (Dawn A7, D919): the cast, the C++ liaison of the script rule (HOLKnightChallenge.as). CastKnightChallenge writes the end step, the radius and
+// the cool-down on the Knight's combat fragment; it refuses another type, another owner, and a second cast during the cool-down (45 s in the table row).
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLKnightChallengeCastTest, "HeroesOfLiberty.Combat.KnightChallengeCast", EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FHOLKnightChallengeCastTest::RunTest(const FString& Parameters)
+{
+	UWorld* World = UWorld::CreateWorld(EWorldType::Game, /*bInformEngineOfWorld*/ false);
+	FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);
+	Context.SetCurrentWorld(World);
+	World->InitializeActorsForPlay(FURL());
+
+	UHOLUnitSubsystem* Units = World->GetSubsystem<UHOLUnitSubsystem>();
+	UMassEntitySubsystem* EntitySubsystem = World->GetSubsystem<UMassEntitySubsystem>();
+	if (TestNotNull(TEXT("units"), Units) && TestNotNull(TEXT("entities"), EntitySubsystem))
+	{
+		const auto Place = [Units](const FName Type, const int32 Owner, const FVector& Location)
+		{
+			TArray<uint32> Before;
+			Units->GetAllUnitIds(Before);
+			FHOLUnitSpawnRequest Request;
+			Request.TypeName = Type;
+			Request.Count = 1;
+			Request.OwnerPlayer = static_cast<uint8>(Owner);
+			Request.Center = Location;
+			Units->RequestUnits(Request);
+			Units->ServeBirthRequests();
+			TArray<uint32> After;
+			Units->GetAllUnitIds(After);
+			uint32 Born = 0;
+			for (const uint32 Id : After)
+			{
+				Born = Before.Contains(Id) ? Born : Id;
+			}
+			return Born;
+		};
+		const uint32 Knight = Place(FName(TEXT("VirtuousKnight")), 0, FVector(0.0, 0.0, 0.0));
+		const uint32 Peasant = Place(FName(TEXT("Peasant")), 0, FVector(300.0, 0.0, 0.0));
+		FMassEntityManager& EntityManager = EntitySubsystem->GetMutableEntityManager();
+		const FMassEntityHandle KnightEntity = Knight != 0 ? Units->FindEntity(Knight) : FMassEntityHandle();
+		FHOLCombatFragment* Combat = KnightEntity.IsSet() ? EntityManager.GetFragmentDataPtr<FHOLCombatFragment>(KnightEntity) : nullptr;
+		if (TestTrue(TEXT("a Knight of slot 0 and a Peasant of slot 0"), Combat && Peasant != 0))
+		{
+			TestFalse(TEXT("no challenge before the cast"), Combat->ChallengeEndStep > 0);
+			TestFalse(TEXT("another type does not challenge"), Units->CastKnightChallenge(Peasant, 0, 160, 800.f, 45000));
+			TestFalse(TEXT("another owner is refused"), Units->CastKnightChallenge(Knight, 1, 160, 800.f, 45000));
+			TestTrue(TEXT("the cast is accepted"), Units->CastKnightChallenge(Knight, 0, 160, 800.f, 45000));
+			TestEqual(TEXT("the end step is written"), Combat->ChallengeEndStep, static_cast<int64>(160));
+			TestEqual(TEXT("the radius is written"), Combat->ChallengeRadiusCm, 800.f);
+			TestEqual(TEXT("the cool-down is written"), Combat->KnightChallengeCooldownMs, 45000);
+			TestFalse(TEXT("a second cast during the cool-down is refused"), Units->CastKnightChallenge(Knight, 0, 320, 800.f, 45000));
+			TestEqual(TEXT("... and changes nothing"), Combat->ChallengeEndStep, static_cast<int64>(160));
+			Combat->KnightChallengeCooldownMs = 0;
+			TestTrue(TEXT("the cast is accepted again once the cool-down is over"), Units->CastKnightChallenge(Knight, 0, 320, 800.f, 45000));
+		}
+	}
+
+	GEngine->DestroyWorldContext(World);
+	World->DestroyWorld(false);
+	return true;
+}
 #endif // WITH_DEV_AUTOMATION_TESTS

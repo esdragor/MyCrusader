@@ -131,6 +131,13 @@ public:
 	 */
 	bool CastRage(uint32 UnitId, int32 RequiredOwner = INDEX_NONE);
 
+	/**
+	 * SAURON-1125b (Dawn A7, D919): the Virtuous Knight's challenge, the LIAISON of the script rule (HOLKnightChallenge.as computes EndStep from the table row).
+	 * Refused (false) for another type, a dying unit, another owner, during the cool-down, or on a client; otherwise writes ChallengeEndStep, ChallengeRadiusCm and
+	 * KnightChallengeCooldownMs on the Knight's combat fragment (the combat reads them: HOLCombat::FCandidate::bChallengesMe).
+	 */
+	bool CastKnightChallenge(uint32 UnitId, int32 RequiredOwner, int64 EndStep, float RadiusCm, int32 CooldownMs);
+
 	/** Entity of a unit identifier (D223); an invalid handle when the unit is gone. */
 	FMassEntityHandle FindEntity(uint32 UnitId) const;
 	/** Identifier of an entity, 0 when it is not a unit (the reverse table of D223). */

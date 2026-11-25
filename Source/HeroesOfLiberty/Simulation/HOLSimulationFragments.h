@@ -543,6 +543,12 @@ struct HEROESOFLIBERTY_API FHOLCombatFragment : public FMassFragment
 	int32 RageCooldownMs = 0;
 
 	/**
+	 * SAURON-1125b (Dawn A7, D919): milliseconds before the Knight can challenge again (counted down each step by the combat processor, from the cast).
+	 * Set by UHOLUnitSubsystem::CastKnightChallenge, which also writes ChallengeEndStep / ChallengeRadiusCm; part of the fingerprint only when not zero.
+	 */
+	int32 KnightChallengeCooldownMs = 0;
+
+	/**
 	 * D581: the share of its walk it takes, in percent (HOLHeroAbility::GetCloseRanksSpeedPercent): 100, but under its hero's cry
 	 * (0 held in place, Pas de l'Aube 50). Written by the combat processor each step; the movement processor (UHOLFullSpeedProcessor) applies it.
 	 */
