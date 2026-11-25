@@ -4852,7 +4852,7 @@ if (($Parts -contains "build") -and ($Parts -contains "camera")) {
     $Planted = if (($GridCase -join "`n") -match "Hero ability: slot 0 plants his banner at \((-?\d+), (-?\d+)\)") { @([int]$Matches[1], [int]$Matches[2]) } else { $null }
     # 100 cm: clic pixel, mesuré 58 cm (DIAG-1125me)
     $Checks["level 4: Z then a left click 10 m from him plants the banner there (at $($Planted -join ', '), 100 cm at most off)"] =
-        [bool]($GridCase | Select-String -SimpleMatch "Grid: hero banner, click on the ground" -Quiet) -and ($null -ne $Planted) -and
+        [bool]($GridCase | Select-String -SimpleMatch "(Banner), click on the ground" -Quiet) -and ($null -ne $Planted) -and
         ([Math]::Abs($Planted[0] - ($BuildHero[0] + 1000)) -le 100) -and ([Math]::Abs($Planted[1] - $BuildHero[1]) -le 100)
     # J8c.4 loop 2: the HUD at the four reports (selected, after the cry, level 4, banner planted).
     $GridReports = @($GridCase | Select-String -SimpleMatch "HUD report:" | ForEach-Object { $_.Line })
