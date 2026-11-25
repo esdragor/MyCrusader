@@ -206,6 +206,11 @@ Les seuils (triangles, matériaux) sont provisoires : ils seront revus quand le 
 
 Lancez le jeu depuis l'éditeur (Play), ouvrez la console (touche `²` ou `~`) et tapez :
 
+- **`hol.Art.Lab`** (le plus simple, à taper en premier) : dans une partie Plain en cours, une seule commande pose tout
+  l'atelier : combat coupé, construction rapide et ressources, galerie complète (`hol.Art.Gallery All`, forêt dégagée),
+  éclairage Herbe fraîche, caméra sur la galerie des unités, et l'aide des commandes `hol.Art.*` affichée à l'écran.
+  `hol.Art.Lab Neige` (ou `Steppe sèche`, `Automne`, `Forêt sombre`) choisit un autre éclairage ; les commandes
+  ci-dessous restent disponibles une par une.
 - `hol.Art.Gallery` : dans une partie normale, pose un exemplaire de chaque objet du jeu (lu dans les tableaux du jeu :
   un objet ajouté y apparaît tout seul), loin de votre Forum, combat coupé, avec son nom interne et son nom en jeu écrits
   au sol. `hol.Art.Gallery Units` (ou `Buildings`, `Sources`, `All`) n'en montre qu'une famille ;
