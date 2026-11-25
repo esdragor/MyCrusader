@@ -251,6 +251,20 @@ void HOLArtGalleryCommand(const TArray<FString>& Args)
 		return;
 	}
 	System::ExecuteConsoleCommand("hol.Combat.Enabled 0");
+	// CELEBORN-1125ar6: no forest of the map in the grid: the scenery and the standing wood sources around each family's frame are taken away first
+	// (hol.Decor.ClearNear ... Trees), before the gallery's own sources are put.
+	TArray<FString> Cleared;
+	Cleared.Add("Units");
+	Cleared.Add("Buildings");
+	Cleared.Add("Sources");
+	for (const FString& Each : Cleared)
+	{
+		FVector Middle;
+		double Side = 0.0;
+		HOLArtGallery::FamilyFrame(Places, Each, Middle, Side);
+		if (Side > 0.0)
+			System::ExecuteConsoleCommand(f"hol.Decor.ClearNear {Math::RoundToInt(Middle.X)} {Math::RoundToInt(Middle.Y)} {Math::RoundToInt(0.75 * Side)} Trees");
+	}
 	TArray<AHOLArtGalleryLabel> Existing;
 	GetAllActorsOfClass(Existing);
 	for (AHOLArtGalleryLabel Old : Existing)
@@ -300,6 +314,8 @@ void HOLArtGalleryCommand(const TArray<FString>& Args)
 void HOLArtGalleryFrameCommand(const TArray<FString>& Args)
 {
 	const FString Family = Args.Num() >= 1 ? Args[0] : "Units";
+	// CELEBORN-1125ar6: a grid deeper than one frame (Buildings) is shown in two captures: North or South moves the camera a quarter of the side.
+	const FString Part = Args.Num() >= 2 ? Args[1] : "";
 	TArray<FHOLArtGalleryPlace> Places;
 	HOLArtGallery::PlanAwayFromBase("All", Places);
 	FVector Centre;
@@ -310,8 +326,10 @@ void HOLArtGalleryFrameCommand(const TArray<FString>& Args)
 		Log(n"LogHOLMatch", f"Art gallery frame: unknown family {Family} (Units, Buildings, Sources)");
 		return;
 	}
+	const double Shift = Part.ToLower() == "north" ? 0.25 * Width : (Part.ToLower() == "south" ? -0.25 * Width : 0.0);
+	Centre.Y += Shift;
 	System::ExecuteConsoleCommand(f"hol.Camera.Focus {Math::RoundToInt(Centre.X)} {Math::RoundToInt(Centre.Y)}");
-	Log(n"LogHOLMatch", f"Art gallery frame: family={Family} centre=({Math::RoundToInt(Centre.X)}, {Math::RoundToInt(Centre.Y)}) side={Math::RoundToInt(Width)}");
+	Log(n"LogHOLMatch", f"Art gallery frame: family={Family} part={Part.IsEmpty() ? "Whole" : Part} centre=({Math::RoundToInt(Centre.X)}, {Math::RoundToInt(Centre.Y)}) side={Math::RoundToInt(Width)}");
 }
 
 const FConsoleCommand HOLArtGalleryConsole("hol.Art.Gallery", n"HOLArtGalleryCommand");

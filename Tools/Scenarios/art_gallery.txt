@@ -14,10 +14,15 @@ frames 60
 capture ag_units
 note Unites : un exemplaire de chaque ligne de UnitTypes, etiquete au sol. Entree = batiments.
 waitkey Entree : batiments
-hol.Art.GalleryFrame Buildings
-waitlog Art gallery frame: family=Buildings
+# CELEBORN-1125ar6 : la grille des batiments (rangees de 22 m) ne tient pas dans un cadre : deux captures, moitie nord puis moitie sud.
+hol.Art.GalleryFrame Buildings North
+waitlog Art gallery frame: family=Buildings part=North
 frames 40
 capture ag_buildings
+hol.Art.GalleryFrame Buildings South
+waitlog Art gallery frame: family=Buildings part=South
+frames 40
+capture ag_buildings_south
 note Batiments : un exemplaire de chaque ligne de BuildingTypes, etiquete au sol. Entree = sources.
 waitkey Entree : sources
 hol.Art.GalleryFrame Sources

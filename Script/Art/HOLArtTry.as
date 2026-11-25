@@ -161,7 +161,7 @@ namespace HOLArtTry
 	float RangedMinRange() { return 300.0; }
 	bool FirstShotDue(float AttackRange, int EnemiesInRange)
 	{
-		return false;
+		return AttackRange >= RangedMinRange() && EnemiesInRange > 0;
 	}
 
 	// AR4-b: what Type is: "Unit", "Building", "Source" (a row of the source table) or "" (unknown).
@@ -343,8 +343,41 @@ class AHOLArtTrySelector : AActor
 		if (HOLArtTry::SelectionDone(SelectedIds.Num(), Wanted) || Ticks > 240)
 		{
 			Log(n"LogHOLMatch", f"hol.Art.Try: selected after {Ticks - 1} frame(s): {SelectedIds.Num()} of {Wanted} copies, {Command}");
+			// CELEBORN-1125ar6: the selector then watches the copies for the first shot (art_try waits for its line, not a fixed time).
+			AHOLArtTryShotWatch Watch = Cast<AHOLArtTryShotWatch>(SpawnActor(AHOLArtTryShotWatch::StaticClass(), GetActorLocation()));
+			if (Watch != nullptr)
+				Watch.CopyIds = SelectedIds;
 			DestroyActor();
 		}
+	}
+}
+
+// AR4-b (CELEBORN-1125ar6): logs "hol.Art.Try: first shot" once, the first frame a ranged copy has an enemy within its attack range
+// (HOLArtTry::FirstShotDue; the range is between the bodies' edges, the search radius adds two unit radii); leaves after it or 3600 frames.
+class AHOLArtTryShotWatch : AActor
+{
+	TArray<int> CopyIds;
+	int Ticks = 0;
+
+	UFUNCTION(BlueprintOverride)
+	void Tick(float DeltaTime)
+	{
+		Ticks++;
+		for (int Id : CopyIds)
+		{
+			const float Range = HOLUnitScript::GetAttackRange(Id);
+			TArray<int> EnemyIds;
+			TArray<FVector> EnemyPlaces;
+			HOLUnitScript::GetEnemiesNear(Id, Range + 2.0 * HOLArtTry::UnitRadius(), EnemyIds, EnemyPlaces);
+			if (HOLArtTry::FirstShotDue(Range, EnemyIds.Num()))
+			{
+				Log(n"LogHOLMatch", f"hol.Art.Try: first shot: copy #{Id} (range {Math::RoundToInt(Range)} cm) has {EnemyIds.Num()} enemy(ies) in range after {Ticks} frame(s)");
+				DestroyActor();
+				return;
+			}
+		}
+		if (CopyIds.Num() == 0 || Ticks > 3600)
+			DestroyActor();
 	}
 }
 

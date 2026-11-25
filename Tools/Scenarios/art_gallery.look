@@ -1,3 +1,4 @@
 ag_units | Unites : un exemplaire de chaque ligne de UnitTypes en grille, chacune avec son etiquette jaune au sol (nom de type, nom affiche)
-ag_buildings | Batiments : un exemplaire de chaque ligne de BuildingTypes en grille, chacun avec son etiquette jaune au sol
+ag_buildings | Batiments, moitie nord de la grille : les premieres rangees entieres de BuildingTypes, chacun avec son etiquette jaune au sol, aucune foret du terrain dans la grille
+ag_buildings_south | Batiments, moitie sud de la grille : les dernieres rangees entieres (Siege, Barracks, MainCentre...), chacun avec son etiquette jaune, aucune foret du terrain dans la grille
 ag_sources | Sources : la vraie source (filon d'or, filon de pierre, arbre, baies...) de chaque ligne de SourceTypes en grille, aucun cylindre, avec son etiquette jaune au sol

@@ -14,18 +14,21 @@ hol.Camera.FocusNear 2800 0
 frames 2
 hol.Units.SpawnHere 1 ManAtArms 1 100
 waitlog SpawnHere: 1 ManAtArms of slot 1
-# Vrai clic droit au sol 20 m a l'est du Forum : la selection (les 5 Arquebusiers) y marche ; arrives a 8 m de l'Homme d'armes (portee 15 m), ils tirent.
-hol.Camera.FocusNear 2000 0
+# Vrai clic droit au sol 15 m a l'est du Forum : la selection (les 5 Arquebusiers) y marche ; arrives a 13 m de l'Homme d'armes (portee 15 m), ils tirent avant le contact (CELEBORN-1125ar6 : 20 m = 8 m, trop pres).
+hol.Camera.FocusNear 1500 0
 frames 2
-hol.Select.OrderNear 2000 0
+hol.Select.OrderNear 1500 0
 wait 2
 note 2. Clic droit : les cinq Arquebusiers marchent vers l'est.
 capture art_try_march
-wait 12
-note 3. Arrives a portee, ils tirent sur l'Homme d'armes (fumee, PV qui baissent).
-hol.Camera.FocusNear 2600 0
-frames 2
+# AR4-b (CELEBORN-1125ar6) : capture sur l'evenement (ligne du premier tir), pas apres une attente fixe (12 s = melee, fumee eteinte).
+hol.Camera.FocusNear 2300 0
+waitlog hol.Art.Try: first shot
+frames 3
+note 3. Arrives a portee, ils tirent sur l'Homme d'armes (fumee de poudre devant les canons).
 capture art_try_fire
+frames 20
+capture art_try_fire_late
 # AR4-b : une ressource posee a cote du Forum (vraie source, a tous).
 hol.Art.Try GoldVein 1
 waitlog hol.Art.Try: 1 GoldVein of slot 0 next to the Forum
