@@ -3,6 +3,8 @@
 #include "Buildings/HOLBuilding.h"
 
 #include "AI/NavigationSystemBase.h"
+#include "Art/HOLArtVisual.h"
+#include "Match/HOLFactionRules.h"
 #include "Buildings/HOLBuildingTypes.h"
 #include "Buildings/HOLConstructionRules.h"
 #include "Buildings/HOLRubble.h"
@@ -927,12 +929,14 @@ void AHOLBuilding::RefreshVisuals()
 				BuildFoundationShape(*Type);
 			}
 			PieceParent = RiseRoot;
-			if (Type->Mesh.IsNull() && Type->Walkable)
+			// D924 (AR0-a2): the art asset's mesh first (owner's faction, then common), the CSV row's last.
+			const bool bNoMesh = GetVisualMesh(*Type).IsNull();
+			if (bNoMesh && Type->Walkable)
 			{
 				// Walked over (IA1.2 F8, the farm): a flat field.
 				BuildFieldShape(*Type);
 			}
-			else if (Type->Mesh.IsNull())
+			else if (bNoMesh)
 			{
 				BuildProvisionalShape(*Type);
 			}
@@ -1232,12 +1236,19 @@ void AHOLBuilding::BuildGhostShape(const FHOLBuildingTypeRow& Type)
 	}
 }
 
+TSoftObjectPtr<UStaticMesh> AHOLBuilding::GetVisualMesh(const FHOLBuildingTypeRow& Type) const
+{
+	return TSoftObjectPtr<UStaticMesh>(HOLArtVisual::ResolveMesh(GetWorld(), TypeName,
+		HOLFactionRules::GetSlotFactionKey(GetWorld(), OwnerPlayer), Type.Mesh.ToSoftObjectPath()));
+}
+
 void AHOLBuilding::BuildFinalMesh(const FHOLBuildingTypeRow& Type)
 {
-	UStaticMesh* Mesh = Type.Mesh.LoadSynchronous();
+	const TSoftObjectPtr<UStaticMesh> VisualMesh = GetVisualMesh(Type);
+	UStaticMesh* Mesh = VisualMesh.LoadSynchronous();
 	if (!Mesh)
 	{
-		UE_LOG(LogHOLMatch, Error, TEXT("Building type %s: mesh %s not found"), *TypeName.ToString(), *Type.Mesh.ToString());
+		UE_LOG(LogHOLMatch, Error, TEXT("Building type %s: mesh %s not found"), *TypeName.ToString(), *VisualMesh.ToString());
 		return;
 	}
 	UStaticMeshComponent* Piece = NewObject<UStaticMeshComponent>(this);

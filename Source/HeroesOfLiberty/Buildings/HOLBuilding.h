@@ -72,6 +72,9 @@ public:
 
 	FName GetTypeName() const { return TypeName; }
 	uint8 GetOwnerPlayer() const { return OwnerPlayer; }
+
+	/** D924 (AR0-a2): the mesh drawn for the type: the owner's faction art asset, then the common one, then the CSV row's (Type.Mesh). */
+	TSoftObjectPtr<UStaticMesh> GetVisualMesh(const struct FHOLBuildingTypeRow& Type) const;
 	uint8 GetColorIndex() const { return ColorIndex; }
 
 	/** The row of its type, or null (logged) if missing. */
