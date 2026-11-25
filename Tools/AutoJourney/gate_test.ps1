@@ -686,6 +686,21 @@ Check ($s3b -match '(?m)^FAIL .*L28-3.*0/0') 'L28-3 report: TESTS vaut 0/0 -> FA
 & git -C $S3Repo -c user.name=t -c user.email=t@t commit -q -am 'drop sanity' 2>&1 | Out-Null
 $s3c = & powershell -NoProfile -ExecutionPolicy Bypass -File $Gate -Phase Report -Root $S3Repo -MainDir $S4Main -ReportFile $S3Rep | Out-String
 Check ($s3c -match '(?m)^FAIL .*L28-3.*Sanity unit_alive') 'L28-3 report: ligne Sanity retiree du .scn -> FAIL qui cite la ligne' $s3c
+# --- L28-8 (SAURON-1125me) : faux FAIL "9 worktrees pour un plafond de 8" : la copie principale ne compte pas, une ligne prunable non plus
+$S9Repo = Join-Path $Tmp 'S9Repo'
+New-Item -ItemType Directory -Path $S9Repo -Force | Out-Null
+& git -C $S9Repo init -q 2>&1 | Out-Null
+& git -C $S9Repo -c user.name=t -c user.email=t@t commit -q --allow-empty -m init 2>&1 | Out-Null
+foreach ($s9n in 1..8) { & git -C $S9Repo worktree add -q (Join-Path $Tmp "S9-w$s9n") -b "s9-w$s9n" 2>&1 | Out-Null }
+$S9Root = Join-Path $Tmp 'HeroesOfLiberty-S9'
+New-Item -ItemType Directory -Path $S9Root -Force | Out-Null
+$s9a = & powershell -NoProfile -ExecutionPolicy Bypass -File $Gate -Phase Launch -End 23:59 -Root $S9Root -WorktreeRepo $S9Repo -MaxWorktrees 8 | Out-String
+Check ($s9a -match '(?m)^PASS .*L28-8.*\b8 worktrees' -and -not ($s9a -match '(?m)^FAIL .*L28-8')) 'L28-8 launch: copie principale + 8 worktrees pour un plafond de 8 -> PASS (principale non comptee)' $s9a
+& git -C $S9Repo worktree add -q (Join-Path $Tmp 'S9-w9') -b 's9-w9' 2>&1 | Out-Null
+Remove-Item -Recurse -Force (Join-Path $Tmp 'S9-w9') -ErrorAction SilentlyContinue
+$s9b = & powershell -NoProfile -ExecutionPolicy Bypass -File $Gate -Phase Launch -End 23:59 -Root $S9Root -WorktreeRepo $S9Repo -MaxWorktrees 8 | Out-String
+Check ($s9b -match '(?m)^PASS .*L28-8.*\b8 worktrees' -and -not ($s9b -match '(?m)^FAIL .*L28-8')) 'L28-8 launch: 8 worktrees + 1 prunable (dossier disparu) pour un plafond de 8 -> PASS (prunable non compte)' $s9b
+& git -C $S9Repo worktree prune 2>&1 | Out-Null
 Remove-Item -Recurse -Force $Tmp -ErrorAction SilentlyContinue
 Write-Output ("=> {0} PASS, {1} FAIL ({2} s)" -f $Passes, $Fails, [int]((Get-Date) - $T0).TotalSeconds)
 if ($Fails -gt 0) { exit 1 } else { exit 0 }

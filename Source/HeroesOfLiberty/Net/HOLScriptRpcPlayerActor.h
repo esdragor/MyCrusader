@@ -213,9 +213,17 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Rpc")
 	static bool OrderGather(AActor* RpcActor, const TArray<int32>& UnitIds, int32 SourceIndex, bool bQueue);
 
+	/**
+	 * G10 (gate on a wall line): the sender's own FINISHED building is removed at once, before the gate is laid in its place (UHOLConstructionSubsystem::DestroyBuilding: rubble stays 10 s
+	 * and blocks nothing). Refused (false, nothing happens) for a building that is not the sender's, not finished, or null. The refund rule is NOT decided here (DestroyBuilding refunds the
+	 * production queue, a finished building nothing): a question for the design, see Retours.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Rpc")
+	static bool OrderRemoveOwnBuilding(AActor* RpcActor, AHOLBuilding* Building);
+
 	/** TypeName is the FName of the building type; the builders are UnitIds. */
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Rpc")
-	static bool OrderPlaceBuilding(AActor* RpcActor, FName TypeName, double X, double Y, double Z, const TArray<int32>& UnitIds, bool bQueue);
+	static bool OrderPlaceBuilding(AActor* RpcActor, FName TypeName, double X, double Y, double Z, const TArray<int32>& UnitIds, bool bQueue, int32 CostPercent, int32 CostCellIndex);
 
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Rpc")
 	static bool OrderBuildUnits(AActor* RpcActor, const TArray<int32>& UnitIds, AHOLBuilding* Building, bool bQueue);

@@ -191,7 +191,16 @@ namespace HOLCombat
 		bool bRipostes = false;
 		/** S4 (SQ1 = B, D614): false for the Ram (no attack on units): it never takes a unit on by itself, only buildings. */
 		bool bCanAttackUnits = true;
+		/** SAURON-1125e (D919 reading): a hero seeker is never provoked by the Knight's challenge. */
+		bool bIsHero = false;
 	};
+
+	/**
+	 * SAURON-1125e (Dawn A7, D919): whether a Knight at KnightPosition, whose challenge ends at EndStep with a zone of RadiusCm, holds a seeker at
+	 * SeekerPosition at StepIndex: the challenge lasts, the seeker stands in the zone, and it is not a hero. The single source of the flag
+	 * FCandidate::bChallengesMe and of the Knights added as candidates beyond the search radius.
+	 */
+	HEROESOFLIBERTY_API bool IsChallengedBy(const FVector2D& SeekerPosition, bool bSeekerIsHero, const FVector2D& KnightPosition, int64 EndStep, float RadiusCm, int64 StepIndex);
 
 	/** S4 (D614): whether Other lies within an area of Radius cm around Centre (centre to centre, the circle's edge in). */
 	inline bool IsInArea(const FVector2D& Centre, const FVector2D& Other, const float Radius)
@@ -219,6 +228,11 @@ namespace HOLCombat
 		 * sets it under hol.Combat.PreferFreeTarget): one with a place comes first, the current target first among the full.
 		 */
 		bool bNoPlace = false;
+		/**
+		 * SAURON-1125a (Dawn A7, D919): this candidate is a Knight whose challenge (8 m, 8 s) holds the seeker: set by the processor while the
+		 * challenge lasts and the seeker stands in the zone (never for a hero seeker). ChooseTarget takes it before everything else.
+		 */
+		bool bChallengesMe = false;
 	};
 
 	/**

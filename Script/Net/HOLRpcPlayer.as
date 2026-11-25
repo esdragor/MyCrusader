@@ -1530,7 +1530,30 @@ for (FString Command : Commands)
 			Log(n"LogHOLMatch", f"RpcOrder: place building refused ({Refusal}) for sender slot {Slot}");
 			return;
 		}
-		HOLRpcBridge::OrderPlaceBuilding(this, TypeName, Point.X, Point.Y, Point.Z, HOLRpc::OrderIds(UnitIds), bQueue);
+		// D898 G10 (CELEBORN-1125f): a gate laid alone (the real gesture is this RPC, not the wall line) retires the finished palisades of the seat under it BEFORE it is laid, as ServerPlaceWallLine does (HOLWallLine::GatePoseRetireIndices = GateRetireIndices, one source).
+		if (HOLWallLine::IsGateType(TypeName))
+		{
+			FIntPoint MapMin;
+			FIntPoint MapMax;
+			TArray<FIntPoint> Occupied;
+			const int SubDivision = HOLWallLine::SubDivision();
+			const double Pitch = HOLConstructionRead::GetWallLineWorldAtPitch(SubDivision, MapMin, MapMax, Occupied) / double(SubDivision);
+			TArray<FIntPoint> StandingCells;
+			TArray<FName> StandingTypes;
+			TArray<int> StandingOwners;
+			TArray<AHOLBuilding> StandingBuildings;
+			TArray<bool> StandingFinished;
+			HOLConstructionRead::GetStandingBuildingCells(SubDivision, StandingCells, StandingTypes, StandingOwners, StandingBuildings, StandingFinished);
+			TArray<int> ToRetire = HOLWallLine::GatePoseRetireIndices(TypeName, FVector(Point.X, Point.Y, Point.Z), Pitch, SubDivision, Slot, StandingCells, StandingTypes, StandingOwners, StandingFinished);
+			int Removed = 0;
+			for (int RetireIndex = 0; RetireIndex < ToRetire.Num(); RetireIndex++)
+			{
+				if (HOLRpcBridge::OrderRemoveOwnBuilding(this, StandingBuildings[ToRetire[RetireIndex]]))
+					Removed++;
+			}
+			Log(n"LogHOLMatch", f"RpcOrder: gate pose retires {Removed} palisade pieces for sender slot {Slot}");
+		}
+		HOLRpcBridge::OrderPlaceBuilding(this, TypeName, Point.X, Point.Y, Point.Z, HOLRpc::OrderIds(UnitIds), bQueue, 100, 0);
 	}
 
 	// F4: a wall line dragged from Start to End. The pure part (seat, finite points, length cap hol.Wall.MaxLineCells, map, occupied cells) is HOLWallLine::PlanFromRequest;
@@ -1563,10 +1586,39 @@ for (FString Command : Commands)
 			return;
 		}
 		TArray<HOLWallLine::FHOLWallOrder> Orders = HOLWallLine::OrdersForLine(Plan, UnitIds, bQueue);
+		// D898 G10 (CELEBORN-1125d): a gate replaces the finished palisades of the seat under it: they are removed BEFORE the gate is laid (the cells would be taken otherwise).
+		if (HOLWallLine::IsGateType(TypeName))
+		{
+			TArray<FIntPoint> StandingCells;
+			TArray<FName> StandingTypes;
+			TArray<int> StandingOwners;
+			TArray<AHOLBuilding> StandingBuildings;
+			TArray<bool> StandingFinished;
+			HOLConstructionRead::GetStandingBuildingCells(SubDivision, StandingCells, StandingTypes, StandingOwners, StandingBuildings, StandingFinished);
+			const bool bGateAlongX = HOLWallLine::GateAlongX(FVector(Start.X, Start.Y, Start.Z), FVector(End.X, End.Y, End.Z));
+			TArray<int> ToRetire;
+			for (int Index = 0; Index < Orders.Num(); Index++)
+			{
+				const FVector GatePoint = HOLWallLine::CellToPoint(Orders[Index].Cell, Pitch, Start.Z);
+				TArray<int> Found = HOLWallLine::GateRetireIndices(TypeName, GatePoint, Pitch, SubDivision, bGateAlongX, Slot, StandingCells, StandingTypes, StandingOwners, StandingFinished);
+				for (int FoundIndex = 0; FoundIndex < Found.Num(); FoundIndex++)
+				{
+					if (!ToRetire.Contains(Found[FoundIndex]))
+						ToRetire.Add(Found[FoundIndex]);
+				}
+			}
+			int Removed = 0;
+			for (int RetireIndex = 0; RetireIndex < ToRetire.Num(); RetireIndex++)
+			{
+				if (HOLRpcBridge::OrderRemoveOwnBuilding(this, StandingBuildings[ToRetire[RetireIndex]]))
+					Removed++;
+			}
+			Log(n"LogHOLMatch", f"RpcOrder: gate line retires {Removed} palisade pieces for sender slot {Slot}");
+		}
 		for (int Index = 0; Index < Orders.Num(); Index++)
 		{
 			const FVector Point = HOLWallLine::CellToPoint(Orders[Index].Cell, Pitch, Start.Z);
-			HOLRpcBridge::OrderPlaceBuilding(this, TypeName, Point.X, Point.Y, Point.Z, HOLRpc::OrderIds(Orders[Index].Builders), Orders[Index].bQueue);
+			HOLRpcBridge::OrderPlaceBuilding(this, TypeName, Point.X, Point.Y, Point.Z, HOLRpc::OrderIds(Orders[Index].Builders), Orders[Index].bQueue, HOLWallLine::LinePercent(), Index);
 		}
 	}
 

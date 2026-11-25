@@ -85,8 +85,10 @@ $wts = Get-ChildItem $WorktreesDir -Directory -Filter 'HeroesOfLiberty-*' | Sele
 # L28-8 (SAURON-1125ma) : `git worktree list` ne doit pas depasser les worktrees connus (hors copie principale)
 if ($Phase -eq 'Launch') {
   $l288Repo = if ($WorktreeRepo) { $WorktreeRepo } else { $Main }
-  $l288 = @(git -C $l288Repo worktree list --porcelain 2>$null | Where-Object { $_ -match '^worktree ' })
-  $l288N = [Math]::Max(0, $l288.Count - 1)
+  # SAURON-1125me : blocs `--porcelain` separes par une ligne vide ; le 1er bloc = copie principale (non comptee) ; un bloc `prunable` ou `bare` non plus
+  $l288Lines = @(git -C $l288Repo worktree list --porcelain 2>$null)
+  $l288Blocks = @(($l288Lines -join "`n") -split "(?:\r?\n){2,}" | Where-Object { $_ -match '(?m)^worktree ' })
+  $l288N = @($l288Blocks | Select-Object -Skip 1 | Where-Object { $_ -notmatch '(?m)^(prunable|bare)(\s|$)' }).Count
   if ($l288N -gt $MaxWorktrees) { Say 'FAIL' "L28-8 : $l288N worktrees (hors copie principale) pour un plafond de $MaxWorktrees : un agent en a cree un neuf ; reutiliser un worktree existant ou 'git worktree remove'" } else { Say 'PASS' "L28-8 : $l288N worktrees (plafond $MaxWorktrees)" }
 }
 if ($Phase -eq 'Launch') {

@@ -450,6 +450,22 @@ void UHOLConstructionSubsystem::Place(const FHOLConstructionCommand& Order, AHOL
 			Centre = Footprint.GetCenter();
 			Refusal = static_cast<int32>(CheckPlacement(*World, Footprint, Order.PlayerIndex));
 			Cost = UHOLBuildingSettings::GetBuildCost(World, Order.TypeName, Order.PlayerIndex);
+			if (Order.CostPercent != 100)
+			{
+				// D915: a cell of a wall line pays its share of the line's total, rounded up on the total (see FHOLConstructionCommand::CostPercent).
+				const int64 Percent = FMath::Max(0, Order.CostPercent);
+				const int64 Rank = FMath::Max(0, Order.CostCellIndex);
+				auto Share = [Percent, Rank](const int32 Price) -> int32
+				{
+					const int64 Upto = (int64(Price) * Percent * (Rank + 1) + 99) / 100;
+					const int64 Before = (int64(Price) * Percent * Rank + 99) / 100;
+					return static_cast<int32>(Upto - Before);
+				};
+				Cost.Food = Share(Cost.Food);
+				Cost.Wood = Share(Cost.Wood);
+				Cost.Stone = Share(Cost.Stone);
+				Cost.Gold = Share(Cost.Gold);
+			}
 		}
 		Stock = PlayerState.GetResources();
 		Verdict = UHOLConstructionBoard::AskPlace(World, bBuildable, bBuildable && HOLFactionRules::IsBuildingOpenTo(World, Order.TypeName, Order.PlayerIndex),
