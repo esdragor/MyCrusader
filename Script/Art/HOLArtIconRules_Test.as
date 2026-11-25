@@ -150,3 +150,43 @@ void Test_ArtIconUnitFramedFromItsRealMesh(FUnitTest& T)
 	}
 	T.AssertTrue(Checked > 0, f"at least one unit type has a real mesh ({Checked} checked)");
 }
+
+// AR5-d: a building is framed on its BuildingTypes footprint and height (AR5-c cut the Barracks left and right): the 8 corners
+// of the box (footprint X by Y, ground to Height), read here from the table, are inside the field of the shot made from BuildingBounds.
+void Test_ArtIconBuildingFramedOnItsFootprint(FUnitTest& T)
+{
+	UDataTable Table = Cast<UDataTable>(LoadObject(nullptr, "/Game/Buildings/BuildingTypes.BuildingTypes"));
+	T.AssertTrue(Table != nullptr, "BuildingTypes loads");
+	if (Table == nullptr)
+		return;
+	TArray<FName> Names;
+	Table.GetRowNames(Names);
+	TArray<FString> Footprints = Table.GetColumnAsString(n"Footprint");
+	TArray<FString> Heights = Table.GetColumnAsString(n"Height");
+	int Checked = 0;
+	bool bBarracks = false;
+	for (int Row = 0; Row < Names.Num() && Row < Footprints.Num() && Row < Heights.Num(); Row++)
+	{
+		const FVector2D Foot = HOLArtGallery::FootprintOf(Footprints[Row]);
+		const double Top = String::Conv_StringToDouble(Heights[Row]);
+		if (Foot.X <= 0.0 || Foot.Y <= 0.0 || Top <= 0.0)
+			continue;
+		double H = 0.0;
+		double R = 0.0;
+		const bool bFound = HOLArtIconRules::BuildingBounds(Names[Row], H, R);
+		const FHOLArtIconShot Shot = HOLArtIconRules::Shot("Buildings", H, R);
+		const double Half = Math::Cos(Math::DegreesToRadians(Shot.FieldOfView * 0.5));
+		double Worst = 1.0;
+		for (int C = 0; C < 8; C++)
+		{
+			const FVector Corner = FVector((C % 2 == 0 ? -0.5 : 0.5) * Foot.X, (Math::IntegerDivisionTrunc(C, 2) % 2 == 0 ? -0.5 : 0.5) * Foot.Y, C < 4 ? 0.0 : Top);
+			Worst = Math::Min(Worst, ArtIconCosTo(Shot, Corner));
+		}
+		T.AssertTrue(bFound && Worst > Half,
+			f"{Names[Row].ToString()}: footprint {Foot.X}x{Foot.Y} height {Top}, worst corner cos {Worst} inside half field cos {Half} (found {bFound}, bounds {H} / {R})");
+		if (Names[Row] == n"Barracks")
+			bBarracks = true;
+		Checked += 1;
+	}
+	T.AssertTrue(bBarracks && Checked > 1, f"the Barracks and the other buildings checked ({Checked})");
+}

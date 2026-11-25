@@ -139,6 +139,14 @@ namespace HOLArtIconRules
 		return true;
 	}
 
+	// AR5-d: a building type's bounds from its BuildingTypes row (Footprint, Height), not from the placed actor (AR5-c cut the
+	// Barracks): Height = its Height column, Radius = half the diagonal of its footprint (the corners stay in the frame).
+	bool BuildingBounds(FName TypeName, double& OutHeight, double& OutRadius)
+	{
+		OutHeight = 100.0;
+		OutRadius = 100.0;
+		return false;
+	}
 	// Fixed angle and field for the family; the distance makes the bounds (Height tall, Radius wide) fill the frame.
 	FHOLArtIconShot Shot(const FString& Family, double Height, double Radius)
 	{
