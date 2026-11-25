@@ -11,3 +11,5 @@ Options :
 
 Recommandation : A (le plus petit changement, rétablit ce que le repli sur l'Aube permettait par accident).
 Valeur par défaut codée : AUCUNE (la classe de permission a refusé l'édition de la colonne, qui est une décision de design) ; la ligne à changer est `Tools\Data\BuildingTypes.csv`, ligne `Chapel`, colonne `Faction` (`Dawn` -> `Dawn;Templars`), puis régénérer `Content\Buildings\BuildingTypes.uasset` depuis le CSV (éditeur, file de build vide).
+
+Reponse: A, Chapel Faction = Dawn;Templars (2026-11-25 18:1x, DOCS-1125c, GDD D920)

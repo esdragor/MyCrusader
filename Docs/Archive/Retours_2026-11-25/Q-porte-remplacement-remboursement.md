@@ -10,3 +10,5 @@ Contexte : poser une porte (PalisadeGate) sur une palissade finie du même camp 
 Recommandation : B (une part, p. ex. la même que la part de sous-case), car A punit le joueur qui améliore son mur et C ouvre un aller-retour.
 
 Valeur par défaut codée : A, aucun remboursement (rien à changer dans le code tant que la réponse n'est pas donnée ; le remboursement s'ajoutera derrière un cvar en une ligne).
+
+Reponse: B, remboursement d'une part du prix (p. ex. la part de sous-case) des palissades retirees par une porte (2026-11-25 18:1x, DOCS-1125c, GDD D921)

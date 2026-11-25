@@ -17,3 +17,5 @@ Question 2 : libellé court de la case (sous le nom complet « Défi du Chevalie
 - B. « Défi du Chevalier » en entier (long pour la case).
 - Autre.
 Recommandation : A. Valeur par défaut codée : « Défi » (+ recharge en secondes sous le libellé, comme la Rage), infobulle tirée de la ligne `KnightChallenge` (8 s, 8 m, 45 s lus par `HOLDawnValues`).
+
+Reponse: Q1 = case T (cell 4), Q2 = libelle court « Defi » ; deja le defaut code de la question (2026-11-25 18:1x, DOCS-1125c, GDD D923)

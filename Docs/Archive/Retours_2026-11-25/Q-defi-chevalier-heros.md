@@ -8,3 +8,5 @@ Valeur codée : les héros ne sont pas provoqués (`FSeeker::bIsHero`, `HOLComba
 - Autre.
 
 Recommandation : A (un héros qui choisit ses duels est déjà géré par le mode duel).
+
+Reponse: A, les heros ennemis ne sont pas provoques ; deja le defaut code, rien a changer (2026-11-25 18:1x, DOCS-1125c, GDD D922)
