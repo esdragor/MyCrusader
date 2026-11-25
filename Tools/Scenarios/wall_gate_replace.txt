@@ -31,8 +31,8 @@ hol.Mouse.LogDragEnd 1
 hol.Mouse.Drag 200 360 1000 360 90
 waitlog Drag end: foreground=
 waitlog RpcOrder: place wall line received by the server
-waitlog Construction: slot 0 first work on Palisade
-wait 6
+waitlog Construction: slot 0 finished Palisade at (-19400, 1800)
+wait 1
 hol.Build.Report
 note 2. AVANT : la palissade est finie sur la ligne (les murs pleins, pas des fondations) ; le Bois de la barre de ressources a baisse de 5 par case.
 capture wall_gate_replace_before
@@ -42,6 +42,8 @@ hol.Select.Grid 0
 hol.Select.Grid 10
 waitlog Placement: PalisadeGate (cost
 frames 20
+# 1125e : un geste reel de porte est UNE pose isolee (ServerPlaceBuilding), pas une ligne, et le fantome quitte la palissade ("moved beside the building") : la porte tombe a COTE et le waitlog "gate line retires" ci-dessous ne vient pas = ROUGE (voir CELEBORN-1125e.md).
+hol.Mouse.LogDragEnd 1
 hol.Mouse.Drag 480 360 620 360 60
 frames 40
 note 3. PENDANT le glisser de la porte : le fantome de la porte sur les cases de la palissade finie.
