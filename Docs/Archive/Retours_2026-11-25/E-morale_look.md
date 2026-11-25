@@ -3,6 +3,7 @@
 GESTE: réel (touche E par un événement clavier Slate pour produire puis lancer la rage ; clic sur le corps par hol.Select.ClickUnit, chemin du clic souris)
 SON: non entendu (-nosound)
 branches: morale-look-1125m, morale-look-fix-1125m
+Reponse: OK (2026-11-25 14:3x, joue par l utilisateur ; branche morale-look-fix-1125m, entree dans main par la passe integ-82 en cours)
 statut: VU À L'ÉCRAN (3 PNG ouverts par l'agent 14:05 : Guerrier ~80 px, violet pendant la rage, bleu avant/après ; GALADRIEL-1125mf, commit 90bad92)
 
 Joueur : quand le Guerrier damné lance sa rage nécrotique (un effet de moral), le bloc de sélection montre une pastille de moral verte « Rage nécrotique », sans secondes ; elle disparaît à la fin de la rage.
