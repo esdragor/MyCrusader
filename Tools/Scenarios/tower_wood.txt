@@ -46,6 +46,12 @@ hol.Arrow.SlowMotion 4
 hol.Camera.FocusNear 5200 0
 hol.Units.SpawnHere 3 Spearman 1 250
 waitunits 8
+# FARAMIR-1125md : capture neuve lancers_all, prise des que les 3 Lanciers sont poses (a ~12 m de la tour, AVANT le 1er tir du step ~221 et avant qu'ils arrivent derriere le bloc de la tour : au step ~254 deux d'entre eux etaient deja au pied de la tour, masques, journal 1125md). Zoom 1, centre entre la tour (4000) et les Lanciers (5200) : tour + 3 Lanciers dans le cadre. Puis on revient au cadrage de during.
+hol.Camera.FocusNear 4600 0
+hol.Camera.Zoom 1
+frames 1
+hol.Units.Where 1
+capture tower_wood_lancers_all
 hol.Camera.FocusNear 4600 0
 hol.Camera.Zoom 2
 note 2. Trois Lanciers rouges a 12 m de la tour (dans sa portee de 30 m) : elle lache une fleche.

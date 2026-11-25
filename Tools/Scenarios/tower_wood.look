@@ -1,5 +1,6 @@
 # <nom de capture> | ce que l'utilisateur doit voir
 tower_wood_before | la Tour de guet en bois du joueur seule au centre de l'ecran, aucun ennemi, aucune fleche
+tower_wood_lancers_all | cadrage Zoom 1 (4600 0) pris des que les 3 Lanciers rouges sont poses (journal : #6, #7, #8 a ~11-13 m de la tour, Idle / Moving) : la tour (socle bleu, toit bleu clair, base grise) en bas au centre ET les TROIS Lanciers rouges (#6, #7, #8) en haut au centre, tous trois visibles sans masque par le bloc de la tour (deux se chevauchent a moitie, un a gauche) ; la 1re fleche de la tour (fut beige, pointe grise) est deja en vol au-dessus du toit
 tower_wood_during | UNE FLECHE EN VOL entre la tour et le Lancier rouge, ~190 px de long mesures sur le PNG (hol.Arrow.Scale 3, zoom 2 ; en jeu x1 elle est 3 fois plus petite), prise juste apres la ligne "Combat: building shot" ; ArrowReport juste avant : in flight 1
 tower_wood_during2 | 4 images plus tard : la meme fleche en vol (hol.Arrow.SlowMotion 4 : ~1,2 s de vol), plus pres du Lancier
 tower_wood_during3 | 4 images de plus : fleche en vol tout pres du Lancier, ou deja plantee
