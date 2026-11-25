@@ -18,6 +18,16 @@ struct FHOLArtGalleryPlace
 	FVector Location;
 	double Radius = 0.0;
 	double Height = 0.0;
+	// AR1-c: a building's ground footprint (cm, X by Y), read from the Footprint column of BuildingTypes; 0 for units and sources.
+	double FootprintX = 0.0;
+	double FootprintY = 0.0;
+}
+
+// AR1-c: the scale marks of the gallery (one actor, one instanced part per kind of mark).
+class AHOLArtGalleryMarks : AActor
+{
+	UPROPERTY(DefaultComponent, RootComponent)
+	USceneComponent Root;
 }
 
 class AHOLArtGalleryLabel : AActor
@@ -96,6 +106,53 @@ namespace HOLArtGallery
 		return String::Conv_StringToDouble(Text);
 	}
 
+	// AR1-c: the kinds of scale mark (one colour each): the footprint outline, a 4 m tile line, a sub-cell line, the Height pole.
+	const int MarkOutline = 0;
+	const int MarkTile = 1;
+	const int MarkSub = 2;
+	const int MarkHeight = 3;
+
+	// AR1-c: the height of the reference figure standing beside each object (cm): a man of 1,80 m.
+	double ReferenceHeightCm()
+	{
+		return 180.0;
+	}
+
+	// The number after Key in an exported struct ("(X=1600.0,Y=1600.0)"), up to the next comma or closing bracket; 0 without Key.
+	double NumberAfter(const FString& Text, const FString& Key)
+	{
+		return 0.0;
+	}
+
+	// AR1-c: the footprint (cm) of an exported Footprint cell of BuildingTypes.
+	FVector2D FootprintOf(const FString& Exported)
+	{
+		return FVector2D(NumberAfter(Exported, "X="), NumberAfter(Exported, "Y="));
+	}
+
+	// AR1-c: where the 1,80 m reference stands: beside the object, on its +Y side (the right of the screen, the camera looking towards +X),
+	// clear of a building's footprint or of a unit's / source's radius.
+	FVector ScaleBarBase(const FHOLArtGalleryPlace& Place)
+	{
+		return Place.Location;
+	}
+
+	// AR1-c: the ground lines of a building (none for a unit or a source): its footprint outline, the lines of the construction grid
+	// inside it (4 m tiles of Tile cm, sub-cells of Tile / SubDivision), and the vertical Height pole at its near right corner.
+	void MarkLines(const FHOLArtGalleryPlace& Place, double Tile, int SubDivision, TArray<FVector>& OutStarts, TArray<FVector>& OutEnds, TArray<int>& OutKinds)
+	{
+		OutStarts.Reset();
+		OutEnds.Reset();
+		OutKinds.Reset();
+	}
+
+	// AR1-c (hol.Art.Light): the index of a biome of the game's table (HOLBiome::At(I).Key for I < HOLBiome::Count, any case, or its index),
+	// -1 for the map's own look ("default", "map"), -2 for a name the game does not know.
+	int BiomeIndexFromName(const FString& Name)
+	{
+		return -2;
+	}
+
 	void PlanFamily(const FString& Family, TArray<FHOLArtGalleryPlace>& OutPlaces)
 	{
 		UDataTable Table = Cast<UDataTable>(LoadObject(nullptr, TablePath(Family)));
@@ -108,9 +165,15 @@ namespace HOLArtGallery
 		TArray<FString> Shown = Table.GetColumnAsString(n"DisplayName");
 		TArray<FString> Radii;
 		TArray<FString> Heights;
+		TArray<FString> Footprints;
 		if (Family == "Sources")
 		{
 			Radii = Table.GetColumnAsString(n"Radius");
+			Heights = Table.GetColumnAsString(n"Height");
+		}
+		else if (Family == "Buildings")
+		{
+			Footprints = Table.GetColumnAsString(n"Footprint");
 			Heights = Table.GetColumnAsString(n"Height");
 		}
 		const double Step = Spacing(Family);
@@ -131,7 +194,14 @@ namespace HOLArtGallery
 				Place.Radius = ToNumber(Radii[K]);
 			if (K < Heights.Num())
 				Place.Height = ToNumber(Heights[K]);
+			if (K < Footprints.Num())
+			{
+				const FVector2D Size = FootprintOf(Footprints[K]);
+				Place.FootprintX = Size.X;
+				Place.FootprintY = Size.Y;
+			}
 			OutPlaces.Add(Place);
+
 		}
 	}
 
