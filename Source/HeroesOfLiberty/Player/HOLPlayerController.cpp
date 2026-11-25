@@ -933,7 +933,7 @@ void AHOLPlayerController::PlayerTick(const float DeltaTime)
 		HOLTestHooks::PressBackKey();
 	}
 	// The red attack cursor while Q waits for its point (A.2): every way out of the mode brings the arrow back.
-	const EMouseCursor::Type Cursor = HOLCommandGrid::GetMouseCursor(bAttackMoveArmed, IsPlacing());
+	const EMouseCursor::Type Cursor = GetWantedMouseCursor();
 	if (IsLocalController() && CurrentMouseCursor != Cursor)
 	{
 		CurrentMouseCursor = Cursor;
@@ -3220,6 +3220,11 @@ void AHOLPlayerController::SetArmedMode(const int32 Mode, const double RangeCm, 
 int32 AHOLPlayerController::GetArmedMode() const
 {
 	return FactionAimIndex;
+}
+
+EMouseCursor::Type AHOLPlayerController::GetWantedMouseCursor() const
+{
+	return HOLCommandGrid::GetMouseCursor(bAttackMoveArmed, IsPlacing());
 }
 
 int32 AHOLPlayerController::GetArmedUnitId() const

@@ -47,6 +47,15 @@ HOLMarket::FBook UHOLMarketSubsystem::NewBook(const UWorld* World, const HOLMark
 	return HOLMarket::FBook();
 }
 
+HOLMarket::FTrade UHOLMarketSubsystem::Quote(const UWorld* World, const HOLMarket::FSettings& Settings, const HOLMarket::FBook& Book, const int32 Resource, const int32 Lots, const bool bBuy)
+{
+	// CLAUDE-1125s red stub: refuses every quote (the correction asks the script board).
+	HOLMarket::FTrade Refused;
+	Refused.Reason = FName(TEXT("board"));
+	Refused.Book = Book;
+	return Refused;
+}
+
 HOLMarket::FTrade UHOLMarketSubsystem::Apply(const UWorld* World, const HOLMarket::FSettings& Settings, const HOLMarket::FBook& Book, const FHOLResources& Stock, const EHOLResource Resource, const int32 Lots, const bool bBuy, FHOLResources& OutStock)
 {
 	OutStock = Stock;

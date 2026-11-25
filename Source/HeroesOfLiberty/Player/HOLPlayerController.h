@@ -447,6 +447,8 @@ public:
 	 * queued); a right click or Escape leaves it.
 	 */
 	bool IsAttackMoveArmed() const { return bAttackMoveArmed; }
+	/** The cursor this controller wants (PlayerTick applies it): the red attack cross while the attack-move waits for its point, else the arrow (A.2). */
+	EMouseCursor::Type GetWantedMouseCursor() const;
 	/** The attack-move of the mode at a viewport point (a left click, or hol.Select.AttackMove). */
 	void AttackMoveAt(const FVector2D& ViewportFraction, bool bQueue);
 	/** Scripted checks: a real left click at a viewport point, as the input's press and release (hol.Select.LeftClickGround). */

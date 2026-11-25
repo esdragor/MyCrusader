@@ -32,6 +32,13 @@ public:
 	static HOLMarket::FBook Recover(const UWorld* World, const HOLMarket::FSettings& Settings, const HOLMarket::FBook& Book, int32 Intervals);
 
 	/**
+	 * The quote of Lots lots at the settings' tax, whatever the player's stock: the same script rule as Apply (HOLMarket::Apply of the script, Sell or
+	 * BuyWithGold), so the grid's Trade cell shows what the server will charge (CLAUDE-1125s, D836 point 4: no C++ copy of Sell / BuyWithGold).
+	 * A refused quote with Reason "board" (an error logged once) when the world has no script board.
+	 */
+	static HOLMarket::FTrade Quote(const UWorld* World, const HOLMarket::FSettings& Settings, const HOLMarket::FBook& Book, int32 Resource, int32 Lots, bool bBuy);
+
+	/**
 	 * One trade on a player's stock, the script's rule (HOLMarket::Apply of Script/Economy/HOLMarketRules.as, MIG-C++-FINAL) with the stock moved here as the
 	 * C++ Apply did: OutStock is Stock changed (Stock itself when refused). A refused trade with Reason "board" (and an error logged) when the world has no script board.
 	 */
