@@ -1,0 +1,28 @@
+# art_try (AR4-a, CELEBORN-1125ar2) : hol.Art.Try Arquebusier 5 pose 5 Arquebusiers a toi a cote du Forum (places libres), les selectionne, met la camera dessus, active construction rapide et +1000 ressources ; puis un vrai clic droit (hol.Select.OrderNear) les fait marcher vers un Homme d'armes ennemi, qu'ils tirent une fois a portee (15 m). 3 minutes au plus.
+# Plain, toi (slot 0) contre une IA gelee (slot 1).
+waitlog Starting hero of slot 0 spawned at
+hol.AI.ThinkSteps 100000
+hol.Art.Try Arquebusier 5
+waitlog hol.Art.Try: 5 Arquebusier of slot 0 next to the Forum
+hol.Camera.Zoom 3
+frames 30
+note 1. hol.Art.Try Arquebusier 5 : cinq Arquebusiers bleus sont poses a cote du Forum, aucun sur un autre ni dans le Forum, selectionnes, la camera sur eux.
+capture art_try_placed
+# Une cible : un Homme d'armes ennemi 32 m a l'est du Forum (immobile, IA gelee).
+hol.Camera.FocusNear 3200 0
+frames 2
+hol.Units.SpawnHere 1 ManAtArms 1 100
+waitlog SpawnHere: 1 ManAtArms of slot 1
+# Vrai clic droit au sol 20 m a l'est du Forum : la selection (les 5 Arquebusiers) y marche ; arrives a 12 m de l'Homme d'armes, ils tirent.
+hol.Camera.FocusNear 2000 0
+frames 2
+hol.Select.OrderNear 2000 0
+wait 2
+note 2. Clic droit : les cinq Arquebusiers marchent vers l'est.
+capture art_try_march
+wait 6
+note 3. Arrives a portee, ils tirent sur l'Homme d'armes (fumee, PV qui baissent).
+hol.Camera.FocusNear 2600 0
+frames 2
+capture art_try_fire
+note 4. A toi : hol.Art.Try <Type> [N] (unite, batiment) ; un type mal ecrit (hol.Art.Try Arquebusir) affiche les types proches.
