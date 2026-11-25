@@ -15,6 +15,7 @@
 class AHOLBuilding;
 class AHOLGameState;
 class AHOLPlayerState;
+class AHOLPlayerController;
 class UWorld;
 class UHOLAIBrainSubsystem;
 
@@ -474,4 +475,11 @@ public:
 	 */
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
 	static bool SetPlayerSpecialization(AHOLPlayerState* Player, const FHOLSpecializationView& View);
+
+	/**
+	 * CLAUDE-1125s: a player controller born in the test world (SpawnActor, no BeginPlay, no viewport), as HOLFactionAimTests.cpp made it, so the
+	 * script tests the controller's own state (armed mode, faction aim, Escape, right click, wanted cursor). TESTS only; null without a world.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
+	static AHOLPlayerController* SpawnPlayerController(UHOLTestWorldHandle* TestWorld);
 };
