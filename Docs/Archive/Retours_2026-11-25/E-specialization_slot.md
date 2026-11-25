@@ -22,3 +22,4 @@ Durée : environ 1 min. Réponse attendue : `OK`, `BUG: ...` ou `REGLAGE: ...`.
 
 Recette HALDIR-1124m (2026-11-24, dans main 25e29ab, worktree C:\Users\baudo\Documents\HeroesOfLiberty-Haldir, build PASS) : PASS culture ja (bouton de specialisation, barre et voies visibles, voie A affichee apres choix)
 Lancer UNE commande : `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Haldir\Tools\Scenarios\play.ps1 specialization_slot -Root C:\Users\baudo\Documents\HeroesOfLiberty-Haldir`
+Reponse: OK (2026-11-25 18:3x, DOCS-1125d) : essai joué par l'utilisateur ; reporté dans SpecializationInProgress.md, fiche archivée.

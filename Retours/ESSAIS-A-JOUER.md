@@ -3,15 +3,15 @@
 **A JOUER MAINTENANT : 0 (aucun essai donne, d'apres Auto_Journey_Retours.md, main = e503646 + branches integ-82 ; recompte DOCS-1125mg 14:3x). PRETS A DONNER (VU A L ECRAN, geste reel, rejoues sur main) : E-monk_seal_slow, E-tower_wood_garrison (hors compte), E-deploy_far, E-specialization_slot (recette HALDIR-1124m, RECETTE-1124b). A refaire avant de donner : E-duel_challenge_accept (recette 1124s FAIL) et E-wall_fine_ghost (recette 1125mf FAIL). LOGIQUE SEULEMENT : E-talents_heal, E-wall_fine_block, E-playtest_hero_army. E-deploy : PAS PRET (geste interne). Questions sans reponse : 0.** Etat d apres les fiches elles-memes.
 Les essais et questions repondus sont archives dans Docs\Archive\Retours_2026-11-25\ (E-faction_aim_free, E-sacred_light_heal, E-wall_line_skip, E-monk_seal, E-tower_wood, E-morale_look, E-market_quote (OK, CLAUDE-1125s) et 5 Q-*, D915 a D919), Docs\Archive\Retours_2026-11-24\, Docs\Archive\Retours_2026-11-23\, Docs\Archive\Retours_2026-11-22\, Docs\Archive\Retours_2026-11-21\, Docs\Archive\Retours_2026-11-20\ et Docs\Archive\Retours_2026-11-19\.
 
-## Fiches E-* dans Retours\ (10)
+## Fiches E-* dans Retours\ (10 listees ; recompte DOCS-1125d 18:5x : 9 fiches reelles, E-ai_tower_easy, E-talents_heal et E-specialization_slot archivees OK, E-spec_voie_queue non listee ici)
 - E-monk_seal_slow.md : [A ESSAYER], VU A L ECRAN, geste reel ; un ennemi qui traverse la zone du Sceau marche a environ 66 % de sa vitesse.
 - E-tower_wood_garrison.md : [A ESSAYER], VU A L ECRAN, geste reel (clic droit sur la tour, tour posee par cheat), FARAMIR-1124sc.
-- E-deploy_far.md : [A ESSAYER], VU A L ECRAN, geste reel (ELROND-1124e), D877 moitie A, defaut non reproduit.
-- E-specialization_slot.md : [A ESSAYER], VU A L ECRAN, geste reel, D905 ; constat : en japonais les voies du palier 1 restent en francais.
+- E-deploy_far.md : [A ESSAYER], VU A L ECRAN, geste reel (ELROND-1124e), D877 moitie A ; BUG de l'utilisateur 18:3x (DOCS-1125d) : le scenario ne s'est jamais lance depuis la commande donnee (worktree Haldir) ; ligne [ ] en tete de Auto_Journey_File.md ; fiche gardee avec sa Reponse.
+- (archivee 2026-11-25 par DOCS-1125d, jouee OK) E-specialization_slot.md : dans Docs\Archive\Retours_2026-11-25\ ; constat japonais Voie A/B du palier 1 a corriger avant 0.4.4.
 - E-duel_challenge_accept.md : [A ESSAYER], VU A L ECRAN (cadrage corrige GLORFINDEL-1124sj, commit 5016cef), geste interne, recette 1124s FAIL ; a rejouer avant de donner.
 - E-wall_fine_ghost.md : [A ESSAYER], VU A L ECRAN, geste interne pour la selection (glisser reel) ; recette 1125mc et 1125mf FAIL : fondations apres relache ~4 m de large pour un pas d'1 m ; a rejouer apres le correctif (branche wall-footprint-1125m).
 - E-wall_fine_block.md : [A ESSAYER] en titre, LOGIQUE SEULEMENT (geste interne hol.Wall.PlaceLine, 1 PNG sur 4 ouvert), branche walls-fine-1124s pas dans main ; mesure : un trou de 1 m est franchissable.
-- E-talents_heal.md : [A ESSAYER] en titre, LOGIQUE SEULEMENT (geste interne, recette 1121sb FAIL : le trait dore n'est pas net) ; manque : trait +/++ hors DrawDebugString (D886, C++), geste reel, son.
+- (archivee 2026-11-25 par DOCS-1125d, jouee OK) E-talents_heal.md : dans Docs\Archive\Retours_2026-11-25\ ; reserve : trait +/++ encore en DrawDebugString (D886, C++).
 - E-deploy.md : [PAS PRET, D877 CODE DANS MAIN, GESTE INTERNE] ; manque : pre-vol sur une copie a jour de main, selection et camera au geste reel, recette independante.
 - E-playtest_hero_army.md : LOGIQUE SEULEMENT (audit Sanity, D641) ; ne pas jouer ; manque : correctif de la melee (BUG-playtest_hero_army-spin.md) et cadrage A/B.
 
