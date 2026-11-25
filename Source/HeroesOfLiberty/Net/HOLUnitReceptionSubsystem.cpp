@@ -617,8 +617,8 @@ bool UHOLUnitReceptionSubsystem::MakeView(const FSlot& Slot, FHOLUnitView& OutVi
 	if (const FHOLUnitTypeRow* Row = Units ? Units->FindTypeRowFor(OutView.TypeName, Slot.OwnerPlayer) : nullptr)
 	{
 		OutView.Radius = Row->Radius;
-		// D924 (AR0-a2): the art asset's scale (the owner's faction, then the common one), the CSV row's as the last level.
-		OutView.MeshScale = GetArtMeshScale(OutView.TypeName, HOLFactionRules::GetSlotFactionKey(GetWorld(), Slot.OwnerPlayer), Row->MeshScale);
+		// D924 (AR0-a2): the art asset's scale (the owner's faction, then the common one), 1 as the last level (D925: no visual column in the row).
+		OutView.MeshScale = GetArtMeshScale(OutView.TypeName, HOLFactionRules::GetSlotFactionKey(GetWorld(), Slot.OwnerPlayer), 1.f);
 		OutView.CarryCapacity = Row->CarryCapacity;
 		OutView.bRanged = HOLCombat::IsRangedAttack(Row->AttackRange);
 		OutView.bSiege = Row->HasArmorCategory(EHOLArmorCategory::Siege);

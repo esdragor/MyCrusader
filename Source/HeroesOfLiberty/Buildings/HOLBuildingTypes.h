@@ -84,9 +84,8 @@ struct HEROESOFLIBERTY_API FHOLBuildingTypeRow : public FTableRowBase
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Building", meta = (ClampMin = "0"))
 	int32 RangedArmor = 40;
 
-	/** Final model; empty = the provisional shape of D261 (a block and a tower, the top at the owner's colour). */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Presentation")
-	TSoftObjectPtr<UStaticMesh> Mesh;
+	// AR0-d2 (3): no Mesh column any more; the final model is the type's DA_Art (HOLArtVisual::ResolveMesh), none = the
+	// provisional shape of D261 (a block and a tower, the top at the owner's colour).
 
 	/** Population places the building gives its owner (D83: the centres give a base, the houses add to it). */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Production", meta = (ClampMin = "0"))
@@ -155,7 +154,7 @@ struct HEROESOFLIBERTY_API FHOLBuildingTypeRow : public FTableRowBase
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gathering")
 	FName Source;
 
-	/** Its provisional shape while Mesh is empty (AR-Q2b): the block and tower of D261 by default. */
+	/** Its provisional shape while its DA_Art has no mesh (AR-Q2b): the block and tower of D261 by default. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Presentation")
 	EHOLBuildingShape Shape = EHOLBuildingShape::BlockAndTower;
 
