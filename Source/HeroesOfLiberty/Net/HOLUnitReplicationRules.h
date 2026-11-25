@@ -101,7 +101,13 @@ struct HEROESOFLIBERTY_API FHOLNetUnitState
 	 * whether any is set, then only a unit under an effect writes the mask: a unit without effect pays one bit.
 	 */
 	static constexpr int32 EffectMaskBits = 16;
-	static constexpr int32 EffectsBits = EffectMaskBits;
+	/**
+	 * R1 (Q-moral-duree-client, default B): the seconds left of the longest temporary effect, one byte after the mask (whole seconds, held at 255), for a unit under an effect
+	 * only. ONE LINE to change: false = option A (no seconds on the wire, the pastille shows none), the wire then goes back to 16 bits under an effect.
+	 */
+	static constexpr bool bEffectSecondsOnWire = true;
+	static constexpr int32 EffectSecondsBits = 8;
+	static constexpr int32 EffectsBits = EffectMaskBits + (bEffectSecondsOnWire ? EffectSecondsBits : 0);
 
 	UPROPERTY()
 	int16 X = 0;
