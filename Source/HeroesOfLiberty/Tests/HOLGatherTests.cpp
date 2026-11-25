@@ -793,4 +793,115 @@ bool FHOLGatherFullMassifTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("its load kept (empty)"), static_cast<int32>(Gather->Load.Amount), 0);
 	return true;
 }
+
+// BUG-ai_peasant-spin (GALADRIEL-1125c/e): a full massif, gatherers that ARRIVE on their spot and are pushed off it by the
+// neighbours (the Peasants of the ring) walk round the source for ever: every arrival resets Misses and UnreachableWalks,
+// so neither the exit of 17e7722 (3 missed arrivals in a row) nor MaxUnreachableWalks ever counts. The path of each one
+// over the last 8 s must stay within 2 x its net displacement + 300 cm (or it stands still).
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLGatherPushedBackTest, "HeroesOfLiberty.Gather.PushedBackNoSpin", UE::HeroesOfLiberty::Tests::Gather::Flags)
+bool FHOLGatherPushedBackTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::GatherFarm;
+	FFarmWorld Test;
+	if (!TestTrue(TEXT("test world ready"), Test.IsReady()))
+	{
+		return false;
+	}
+	UWorld& World = *Test.World;
+	const int32 Bush = Test.Sources->AddSource(HOLSourceTypeNames::BerryBush, FVector(8000.0, 0.0, 0.0));
+	if (!TestTrue(TEXT("a lone bush (its massif: itself)"), Bush != INDEX_NONE))
+	{
+		return false;
+	}
+	const FHOLSource& Source = Test.Sources->GetSources()[Bush];
+	constexpr int32 Crowd = 6;
+	TArray<uint32> Pickers;
+	for (int32 Index = 0; Index < Crowd; ++Index)
+	{
+		const uint32 Picker = Test.PlacePeasant(0);
+		const FHOLUnitTypeConstants* Constants = Test.GetConstants(Picker);
+		if (!TestTrue(TEXT("a Peasant and its constants"), Picker && Constants))
+		{
+			return false;
+		}
+		// Round the source, 4 m short of its ring: far outside the arrival gap.
+		const double Angle = 2.0 * PI * Index / Crowd;
+		Test.SetDown(Picker, FVector2D(Source.Location) + FVector2D(FMath::Cos(Angle), FMath::Sin(Angle)) * (Source.Radius + Constants->Radius + 400.0));
+		Pickers.Add(Picker);
+	}
+	TestTrue(TEXT("slot 0's order to the bush"), HOLPlayerOrders::Gather(World, 0, Pickers, Bush));
+
+	const auto LocationOf = [&Test](const uint32 UnitId)
+	{
+		const FMassEntityHandle Entity = Test.Units->FindEntity(UnitId);
+		const FTransformFragment* Transform = Test.EntityManager->IsEntityValid(Entity) ? Test.EntityManager->GetFragmentDataPtr<FTransformFragment>(Entity) : nullptr;
+		return Transform ? FVector2D(Transform->GetTransform().GetLocation()) : FVector2D::ZeroVector;
+	};
+	constexpr int32 TotalSteps = 400;
+	constexpr int32 WindowSteps = 160;
+	TArray<double> Path;
+	TArray<FVector2D> WindowStart;
+	Path.Init(0.0, Crowd);
+	WindowStart.Init(FVector2D::ZeroVector, Crowd);
+	TArray<FVector2D> Last;
+	for (const uint32 Picker : Pickers)
+	{
+		Last.Add(LocationOf(Picker));
+	}
+	for (int32 Step = 0; Step < TotalSteps; ++Step)
+	{
+		{
+			const float StepSeconds = GetDefault<UHOLSimulationSettings>()->GetStepSeconds();
+			FMassProcessingContext ProcessingContext(Test.EntityManager, StepSeconds);
+			UE::Mass::Executor::Run(*Test.Orders, ProcessingContext);
+		}
+		for (int32 Index = 0; Index < Crowd; ++Index)
+		{
+			// Its walk to the source ends ON its spot (an arrival that succeeds: Misses and UnreachableWalks go back to 0).
+			const FMassEntityHandle Entity = Test.Units->FindEntity(Pickers[Index]);
+			const FHOLGatherFragment* Gather = Test.GetGather(Pickers[Index]);
+			FHOLMoveOrderFragment* Move = Test.EntityManager->IsEntityValid(Entity) ? Test.EntityManager->GetFragmentDataPtr<FHOLMoveOrderFragment>(Entity) : nullptr;
+			if (Gather && Move && Gather->Phase == EHOLGatherPhase::ToSource && Gather->bWalkIssued)
+			{
+				Move->OrderSerial = Gather->OrderSerialBefore + 1;
+				Move->Phase = EHOLMovePhase::None;
+				Test.SetDown(Pickers[Index], FVector2D(Gather->Spot));
+			}
+		}
+		{
+			const float StepSeconds = GetDefault<UHOLSimulationSettings>()->GetStepSeconds();
+			FMassProcessingContext ProcessingContext(Test.EntityManager, StepSeconds);
+			UE::Mass::Executor::Run(*Test.Gather, ProcessingContext);
+		}
+		for (int32 Index = 0; Index < Crowd; ++Index)
+		{
+			// Then a passer-by of the crowded ring pushes the one standing on its spot 2 m off it (D292: more than 120 cm).
+			const FHOLGatherFragment* Gather = Test.GetGather(Pickers[Index]);
+			const FHOLUnitTypeConstants* Constants = Test.GetConstants(Pickers[Index]);
+			if (Gather && Constants && Gather->Phase == EHOLGatherPhase::Gathering)
+			{
+				const FVector2D Away = (LocationOf(Pickers[Index]) - FVector2D(Source.Location)).GetSafeNormal();
+				Test.SetDown(Pickers[Index], FVector2D(Source.Location) + Away * (Source.Radius + Constants->Radius + 200.0));
+			}
+			const FVector2D Now = LocationOf(Pickers[Index]);
+			if (Step == TotalSteps - WindowSteps)
+			{
+				WindowStart[Index] = Last[Index];
+			}
+			if (Step >= TotalSteps - WindowSteps)
+			{
+				Path[Index] += FVector2D::Distance(Last[Index], Now);
+			}
+			Last[Index] = Now;
+		}
+	}
+	for (int32 Index = 0; Index < Crowd; ++Index)
+	{
+		const double Net = FVector2D::Distance(WindowStart[Index], Last[Index]);
+		AddInfo(FString::Printf(TEXT("gatherer %d: %.0f cm walked in the last 8 s for %.0f cm net"), Index, Path[Index], Net));
+		TestTrue(*FString::Printf(TEXT("gatherer %d does not walk round the full source (%.0f cm for %.0f cm net)"), Index, Path[Index], Net),
+			Path[Index] <= 2.0 * Net + 300.0);
+	}
+	return true;
+}
 #endif
