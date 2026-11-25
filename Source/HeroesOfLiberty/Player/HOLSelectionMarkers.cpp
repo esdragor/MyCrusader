@@ -814,7 +814,9 @@ void AHOLSelectionMarkers::UpdateAuraRings()
 		}
 		// The banner aimed: its reach around the hero, its aura under the cursor (red out of reach: the server would refuse it).
 		FVector Aim;
-		if (Hero && PlayerController->IsBannerArmed())
+		// ELROND-1125me: the grid arms the Banner as mode 101 (HOLCommandGridAction::GetAimBanner, script), no longer through bBannerArmed.
+		constexpr int32 GridBannerMode = 101;
+		if (Hero && (PlayerController->IsBannerArmed() || PlayerController->GetArmedMode() == GridBannerMode))
 		{
 			AddCircle(HeroPoint, HOLHeroAbility::BannerPlantRange, ReachRingWidth, ReachRingColor, Hero->Location.Z);
 			Parts.Add(FString::Printf(TEXT("reach %.0f"), HOLHeroAbility::BannerPlantRange));
