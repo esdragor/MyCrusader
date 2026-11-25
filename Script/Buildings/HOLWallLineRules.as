@@ -81,6 +81,13 @@ namespace HOLWallLine
 		return Stock - Plan.Cells.Num() * CostPerCell;
 	}
 
+	// D915 (fine grid, wall price): the total price of a line of sub-cells. PricePerTile is the price of one 4 m tile (palisade 5 Wood), Percent the share paid per sub-cell (hol.Wall.SubCellCostPercent, 25 = a quarter).
+	// STUB (red first): the old full price per cell.
+	int CostOfLine(const FHOLWallLinePlan& Plan, int PricePerTile, int Percent)
+	{
+		return Plan.Cells.Num() * PricePerTile;
+	}
+
 	// ---- Server validation of a line (F4): the same Cells rule, then the refusals. Too long and out of the map: all or nothing, no cell is laid. Occupied (D901): the occupied cells are skipped, the others are laid.
 	// Order of the gates: too long (the line BEFORE the cap cut is longer than MaxCells, so a drag is refused, not trimmed), out of the map
 	// (MapMin and MapMax are the first and last valid cell, both included), occupied (EVERY cell of the line is in Occupied; a partial overlap only skips those cells). The values of the
