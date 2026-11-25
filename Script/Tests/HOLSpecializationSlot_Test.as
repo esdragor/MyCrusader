@@ -59,6 +59,21 @@ void Test_SpecializationSlotTemplarsShowThreeOptions(FUnitTest& T)
 	T.AssertEquals("Voie C du palier 1", View.OptionTexts[2], "the third option is Voie C");
 }
 
+// ARWEN-1124sa (RECETTE-1124b): the panel's lines are the game's text table's (HOLGameNames SpecializationOptionA/B/C), so in the Japanese culture they
+// read the .po's 段階{0}のルートA, not the French source (the lines were built with an f-string, never localized).
+void Test_SpecializationSlotOptionTextsFollowTheCulture(FUnitTest& T)
+{
+	// SetLanguageName (not SetCultureName) also loads the ja .locres, like Settings > Language.
+	FString Previous = HOLForumMessagesRead::SetLanguageName("ja");
+	FHOLSpecializationState State = HOLSpecialization::NewStateFor(EHOLFaction::Templars);
+	FHOLSpecializationSlotView View = HOLSpecializationSlot::Make(SpecializationSlotTest::ViewOf(State), 1, true, HOLSpecialization::OptionCountOf(EHOLFaction::Templars));
+	HOLForumMessagesRead::SetLanguageName(Previous);
+	T.AssertEquals(3, View.OptionTexts.Num(), "three options for the Templars");
+	T.AssertEquals("段階1のルートA", View.OptionTexts[0], "ja: the table's text of option A");
+	T.AssertEquals("段階1のルートB", View.OptionTexts[1], "ja: the table's text of option B");
+	T.AssertEquals("段階1のルートC", View.OptionTexts[2], "ja: the table's text of option C");
+}
+
 void Test_SpecializationSlotBarCountsDownWhileTheUnlockRuns(FUnitTest& T)
 {
 	FHOLSpecializationState State = HOLSpecialization::NewState(2);
