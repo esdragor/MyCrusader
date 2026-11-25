@@ -41,6 +41,7 @@
 #include "Match/HOLFactionRules.h"
 #include "Match/HOLForumRules.h"
 #include "Match/HOLGameState.h"
+#include "Match/HOLMarketSubsystem.h"
 #include "Siege/HOLSiegeRules.h"
 #include "Siege/HOLDeployRules.h"
 #include "Simulation/HOLUnitTierSubsystem.h"
@@ -1226,30 +1227,32 @@ void UHOLGameScreen::RefreshGrid(const AHOLBuilding* OwnBuilding, const bool bOw
 				const HOLMarket::FBook Book = BoundTableState->GetMarketBook();
 				ShownMarketPrices.Reset();
 				ShownMarketPrices.Append(Book.Prices, HOLMarket::BookSize);
-				const int32 Huge = 1000000;
 				// The rate is always for 100 of what is given up (the user's correction, 2026-11-01): buying, 100 gold against X of
-				// the good; selling, 100 of the good against Y gold. The same lot the click sends (BuyWithGold / Sell, one lot).
-				const HOLMarket::FTrade Quote = Command.bBuy ? HOLMarket::BuyWithGold(MarketSettings, Book, Good, 1, Huge, MarketSettings.FeePercent)
-					: HOLMarket::Sell(MarketSettings, Book, Good, 1, Huge, MarketSettings.FeePercent);
-				const int32 Received = Command.bBuy ? Quote.Units : Quote.Gold;
-				if (Command.bBuy)
+				// the good; selling, 100 of the good against Y gold. The same lot the click sends, priced by the script's rule the
+				// server applies (UHOLMarketSubsystem::Quote, D836 point 4); refused (no script board), the price stays unknown.
+				const HOLMarket::FTrade Quote = UHOLMarketSubsystem::Quote(GetWorld(), MarketSettings, Book, Good, 1, Command.bBuy);
+				if (Quote.bOk)
 				{
-					Cost.Gold = HOLMarket::Lot;
+					const int32 Received = Command.bBuy ? Quote.Units : Quote.Gold;
+					if (Command.bBuy)
+					{
+						Cost.Gold = HOLMarket::Lot;
+					}
+					else
+					{
+						Cost[Command.Resource] = HOLMarket::Lot;
+					}
+					// D781 (the user's REGLAGE on the trial `market`, 2026-11-11): under the good's name, « +X » then the logo of what is
+					// received (the good bought, gold for a sale); no « 100 or = X » any more (the rate stays in the tooltip).
+					Gain = HOLCommandGrid::GetTradeGain(Command.Resource, Command.bBuy, Received);
+					bQuoted = true;
+					Effect = Command.bBuy
+						? FText::Format(LOCTEXT("MarketBuyEffect", "100 or contre {0} {1}, taxe comprise ; le cours monte à {2}. Maj : 500 or d'un coup"),
+							FText::AsNumber(Received), GetResourceNameInText(Command.Resource), FText::AsNumber(Quote.Book.Prices[Good]))
+						: FText::Format(LOCTEXT("MarketSellEffect", "100 {0} contre {1} or, taxe déduite ; le cours baisse à {2}. Maj : 500 {0} d'un coup"),
+							GetResourceNameInText(Command.Resource), FText::AsNumber(Received), FText::AsNumber(Quote.Book.Prices[Good]));
+					bGreyed = !(GetMissing(Stock, Cost) == FHOLResources());
 				}
-				else
-				{
-					Cost[Command.Resource] = HOLMarket::Lot;
-				}
-				// D781 (the user's REGLAGE on the trial `market`, 2026-11-11): under the good's name, « +X » then the logo of what is
-				// received (the good bought, gold for a sale); no « 100 or = X » any more (the rate stays in the tooltip).
-				Gain = HOLCommandGrid::GetTradeGain(Command.Resource, Command.bBuy, Received);
-				bQuoted = true;
-				Effect = Command.bBuy
-					? FText::Format(LOCTEXT("MarketBuyEffect", "100 or contre {0} {1}, taxe comprise ; le cours monte à {2}. Maj : 500 or d'un coup"),
-						FText::AsNumber(Received), GetResourceNameInText(Command.Resource), FText::AsNumber(Quote.Book.Prices[Good]))
-					: FText::Format(LOCTEXT("MarketSellEffect", "100 {0} contre {1} or, taxe déduite ; le cours baisse à {2}. Maj : 500 {0} d'un coup"),
-						GetResourceNameInText(Command.Resource), FText::AsNumber(Received), FText::AsNumber(Quote.Book.Prices[Good]));
-				bGreyed = !(GetMissing(Stock, Cost) == FHOLResources());
 			}
 			GridCell->SetCommand(Label, bGreyed ? EHOLGridCellState::Greyed : EHOLGridCellState::Ready);
 			if (bQuoted)

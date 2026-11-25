@@ -14,10 +14,10 @@
  * Script/Economy/HOLMarketRules.as and HOLTributeRules.as) for the calls that are made rarely: the return of the book to rest (every
  * RecoverEverySeconds, HOLMarket::Recover) and the tribute's settlement (once per Tribute order, HOLTribute::Settle, which applies HOLTribute::Received). Abstract: only a script
  * subclass is born. There is no C++ copy of these rules any more: without a script board (no script compiled) the static calls are inert and
- * safe (the book is returned unchanged, a tribute is refused) and log an error. Left in C++: the Slate quote
- * (HOLGameScreen), the taxes of the diplomacy library, HOLPlayerController and HOLAIOrders. The trade itself is now the script's too (UHOLMarketSubsystem::Apply -> HOLMarket::Apply of the script, once per
- * Trade order / Market click, MIG-C++-FINAL); the C++ copies HOLMarket::Apply and Buy are gone (MIG-CPP-Market); Sell/BuyWithGold remain
- * for the Slate quote (HOLGameScreen) and the C++ tests of the table chain; NewBook is the script's too (UHOLMarketSubsystem::NewBook, once per match, HOLGameState::ResetMarketBook).
+ * safe (the book is returned unchanged, a tribute is refused) and log an error. Left in C++: the taxes of the diplomacy library, HOLPlayerController
+ * and HOLAIOrders. The trade itself is now the script's too (UHOLMarketSubsystem::Apply -> HOLMarket::Apply of the script, once per
+ * Trade order / Market click, MIG-C++-FINAL), and so is the grid's Trade cell quote (UHOLMarketSubsystem::Quote, CLAUDE-1125s): there is no C++
+ * copy of Sell / BuyWithGold / Buy / Apply any more; NewBook is the script's too (UHOLMarketSubsystem::NewBook, once per match, HOLGameState::ResetMarketBook).
  */
 UCLASS(Abstract)
 class HEROESOFLIBERTY_API UHOLMarketSubsystem : public UWorldSubsystem

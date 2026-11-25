@@ -446,7 +446,13 @@ public:
 	 * Attack-move mode (J7b.3, the grid's A): the next left click on the ground sends the selected soldiers there (Shift:
 	 * queued); a right click or Escape leaves it.
 	 */
-	bool IsAttackMoveArmed() const { return bAttackMoveArmed; }
+	bool IsAttackMoveArmed() const { return FactionAimIndex == GridAttackMoveMode; }
+	/**
+	 * The grid's armed modes as the script numbers them (HOLCommandGridAction::GetAimAttackMove / GetAimBanner, Script\Player\HOLCommandGridAction.as;
+	 * a change there is made here too). The grid arms them through SetArmedMode (G-5a); HeroesOfLiberty.Grid.ArmedModeCursor arms them by number.
+	 */
+	static constexpr int32 GridAttackMoveMode = 100;
+	static constexpr int32 GridBannerMode = 101;
 	/** The cursor this controller wants (PlayerTick applies it): the red attack cross while the attack-move waits for its point, else the arrow (A.2). */
 	EMouseCursor::Type GetWantedMouseCursor() const;
 	/** The attack-move of the mode at a viewport point (a left click, or hol.Select.AttackMove). */
@@ -459,7 +465,7 @@ public:
 	 * Banner aiming (J8c.4, the grid's Z with the hero commanded): the next left click on the ground plants it there (the
 	 * server checks the reach); a right click or Escape leaves it.
 	 */
-	bool IsBannerArmed() const { return bBannerArmed; }
+	bool IsBannerArmed() const { return FactionAimIndex == GridBannerMode; }
 	/**
 	 * Faction power aiming (D839, GALADRIEL-1120f): the aim of the faction power Index (-1: none). While it is armed a left click on
 	 * the ground never selects: it is kept for the script (ConsumeFactionAimClick), which casts or cancels. Escape, a right click
@@ -495,8 +501,6 @@ public:
 	void ScriptEscape();
 	void ScriptRightClick();	/** The banner of the mode planted at a viewport point (a left click, or hol.Select.Banner). */
 	void PlantBannerAt(const FVector2D& ViewportFraction);
-	/** S1-d (D862): the left click that puts the Monk's Seal of Light down (the armed Monk of the grid's LightSeal cell); sends ServerCastUnitAbility. */
-	void PlantMonkSealAt(const FVector2D& ViewportFraction);
 	/** The player's own hero among the units commanded (the active subgroup's, J8c.4); 0 when he is not. */
 	uint32 GetCommandHero() const;
 	/** The ground point under the cursor (the test cursor when set): the banner's aim draws its aura there (J8c.4). */
@@ -967,13 +971,6 @@ private:
 	FVector2D LastClickPixels = FVector2D::ZeroVector;
 	/** Right button held (J7a.4): where it was pressed; its release orders there, or along the drag. */
 	bool bOrderPressed = false;
-	/** Attack-move mode (J7b.3): the next left click on the ground gives the order. */
-	bool bAttackMoveArmed = false;
-	/** Banner aiming (J8c.4): the next left click on the ground plants the hero's banner. */
-	bool bBannerArmed = false;
-	/** S1-d (D862): the grid's Seal of Light cell armed, the next left click on the ground puts it down; MonkSealUnit is the Monk that casts it. */
-	bool bMonkSealArmed = false;
-	uint32 MonkSealUnit = 0;
 	/** Faction power aiming (D839): the aimed power (-1: none), the reach to draw, and the ground click kept for the script. */
 	int32 FactionAimIndex = -1;
 	double FactionAimRangeCm = 800.0;

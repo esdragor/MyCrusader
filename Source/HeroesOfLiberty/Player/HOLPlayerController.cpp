@@ -770,14 +770,14 @@ void AHOLPlayerController::BeginPlay()
 	{
 		SetChosenAge(HOLCommandGrid::GetChosenAgeAfter(ChosenAge, EHOLAgeEvent::SelectionChanged));
 		// No soldier left to give the attack-move to (A.2): its mode ends, and its red cursor with it.
-		if (bAttackMoveArmed && GetOwnSelectedSoldiers().IsEmpty())
+		if (IsAttackMoveArmed() && GetOwnSelectedSoldiers().IsEmpty())
 		{
-			bAttackMoveArmed = false;
+			SetArmedMode(-1, 0.0, 0);
 		}
 		// No hero commanded any more (J8c.4): no banner to plant.
-		if (bBannerArmed && GetCommandHero() == 0)
+		if (IsBannerArmed() && GetCommandHero() == 0)
 		{
-			bBannerArmed = false;
+			SetArmedMode(-1, 0.0, 0);
 		}
 	});
 	if (!IsLocalController())
@@ -1721,8 +1721,6 @@ void AHOLPlayerController::CycleSubgroup()
 		const int32 Active = FMath::Max(0, Subgroups.IndexOfByPredicate([this](const FHOLSubgroup& Subgroup) { return !Subgroup.bAll && Subgroup.TypeName == ActiveUnitType; }));
 		const int32 Next = (Active + 1) % Subgroups.Num();
 		ActiveUnitType = Subgroups[Next].bAll ? NAME_None : Subgroups[Next].TypeName;
-		bAttackMoveArmed = false;
-		bBannerArmed = false;
 		SetFactionAim(-1, 0.0);
 		UE_LOG(LogHOLMatch, Display, TEXT("Subgroup: %s (%d of %d)"), *DescribeSubgroup(), Next + 1, Subgroups.Num());
 		OnSelectionChanged.Broadcast();
@@ -3122,7 +3120,10 @@ TArray<uint32> AHOLPlayerController::GetOwnSelectedSoldiers() const
 
 void AHOLPlayerController::AttackMoveAt(const FVector2D& ViewportFraction, const bool bQueue)
 {
-	bAttackMoveArmed = false;
+	if (IsAttackMoveArmed())
+	{
+		SetArmedMode(-1, 0.0, 0);
+	}
 	const FVector2D Pixels = ToPixels(ViewportFraction);
 	FVector Origin, Direction, Ground;
 	// The soldiers of the active subgroup (Tab), all of them for « Tous ».
@@ -3183,9 +3184,6 @@ void AHOLPlayerController::SetFactionAim(int32 Index, double RangeCm)
 		EndPlacement();
 	}
 	SetChosenAge(INDEX_NONE);
-	bAttackMoveArmed = false;
-	bBannerArmed = false;
-	bMonkSealArmed = false;
 	FactionAimIndex = Index;
 }
 
@@ -3224,7 +3222,7 @@ int32 AHOLPlayerController::GetArmedMode() const
 
 EMouseCursor::Type AHOLPlayerController::GetWantedMouseCursor() const
 {
-	return HOLCommandGrid::GetMouseCursor(bAttackMoveArmed, IsPlacing());
+	return HOLCommandGrid::GetMouseCursor(IsAttackMoveArmed(), IsPlacing());
 }
 
 int32 AHOLPlayerController::GetArmedUnitId() const
@@ -3258,26 +3256,12 @@ bool AHOLPlayerController::GetCursorGroundPoint(FVector& OutPoint) const{
 	return DeprojectScreenPositionToWorld(Pixels.X, Pixels.Y, Origin, Direction) && RTSCamera->GetGroundPoint(Origin, Direction, OutPoint);
 }
 
-// S1-d (D862, ELROND-1124sb): the left click that puts the Monk's Seal of Light down: the ground point under the cursor, then the script RPC ServerCastUnitAbility (HOLRpcPlayer.as).
-void AHOLPlayerController::PlantMonkSealAt(const FVector2D& ViewportFraction)
-{
-	bMonkSealArmed = false;
-	const uint32 MonkId = MonkSealUnit;
-	MonkSealUnit = 0;
-	const FVector2D Pixels = ToPixels(ViewportFraction);
-	FVector Origin, Direction, Ground;
-	if (MonkId == 0 || !RTSCamera || !DeprojectScreenPositionToWorld(Pixels.X, Pixels.Y, Origin, Direction) || !RTSCamera->GetGroundPoint(Origin, Direction, Ground))
-	{
-		return;
-	}
-	UE_LOG(LogHOLMatch, Display, TEXT("Order: monk seal at (%.0f, %.0f)"), Ground.X, Ground.Y);
-	constexpr int32 LightSealAbilityId = 1; // HOLUnitAbilityTable::LightSeal (Script\Units\HOLUnitAbilityTable.as, UnitAbilities.csv): a change there is made here too.
-	RequestCastUnitAbility(LightSealAbilityId, MonkId, Ground);
-}
-
 void AHOLPlayerController::PlantBannerAt(const FVector2D& ViewportFraction)
 {
-	bBannerArmed = false;
+	if (IsBannerArmed())
+	{
+		SetArmedMode(-1, 0.0, 0);
+	}
 	const FVector2D Pixels = ToPixels(ViewportFraction);
 	FVector Origin, Direction, Ground;
 	if (GetCommandHero() == 0 || !RTSCamera || !DeprojectScreenPositionToWorld(Pixels.X, Pixels.Y, Origin, Direction) || !RTSCamera->GetGroundPoint(Origin, Direction, Ground))
@@ -5195,15 +5179,13 @@ void AHOLPlayerController::HandleSelectStarted()
 		return;
 	}
 	// D357: defeated with a mode armed, the mode is left and the click only selects (to watch).
-	if (IsSpectator() && (IsPlacing() || bAttackMoveArmed || bBannerArmed || FactionAimIndex >= 0 || ChosenAge != INDEX_NONE))
+	if (IsSpectator() && (IsPlacing() || FactionAimIndex >= 0 || ChosenAge != INDEX_NONE))
 	{
 		if (IsPlacing())
 		{
 			EndPlacement();
 		}
 		SetChosenAge(INDEX_NONE);
-		bAttackMoveArmed = false;
-		bBannerArmed = false;
 		SetFactionAim(-1, 0.0);
 	}
 	// In placement mode a left click places (J6a.3): it never selects nor starts a box.
@@ -5216,29 +5198,8 @@ void AHOLPlayerController::HandleSelectStarted()
 		}
 		return;
 	}
-	// In attack-move mode a left click gives the order (J7b.3), never selects.
-	FVector2D Cursor;
-	if (bAttackMoveArmed && GetCursorFraction(Cursor))
-	{
-		bSelectPressed = false;
-		AttackMoveAt(Cursor, bSelectAddHeld);
-		return;
-	}
-	// Banner aiming (J8c.4): a left click plants it, never selects.
-	if (bBannerArmed && GetCursorFraction(Cursor))
-	{
-		bSelectPressed = false;
-		PlantBannerAt(Cursor);
-		return;
-	}
-	// Seal of Light aiming (S1-d, D862): a left click on the ground puts it down, never selects.
-	if (bMonkSealArmed && GetCursorFraction(Cursor))
-	{
-		bSelectPressed = false;
-		PlantMonkSealAt(Cursor);
-		return;
-	}
-	// Faction power aiming (D839): a left click on the ground is kept for the script (ConsumeFactionAimClick), never selects.
+	// Faction power aiming (D839) and the grid's armed modes (attack-move 100, banner 101, Seal 102, G-3 / G-5a): a left click on the
+	// ground is kept for the script (ConsumeFactionAimClick / ConsumeArmedClick, HOLGridGroundClick.as), never selects.
 	if (FactionAimIndex >= 0)
 	{
 		bSelectPressed = false;
@@ -5266,7 +5227,7 @@ void AHOLPlayerController::ScriptLeftClick(const FVector2D& ViewportFraction)
 	IConsoleVariable* const TestCursor = UE::HeroesOfLiberty::Player::CVarTestCursor.AsVariable();
 	const FString Former = TestCursor->GetString();
 	TestCursor->Set(*FString::Printf(TEXT("%.4f %.4f"), ViewportFraction.X, ViewportFraction.Y), ECVF_SetByConsole);
-	UE_LOG(LogHOLMatch, Display, TEXT("Scripted left click at (%.3f, %.3f), armed attack-move: %s"), ViewportFraction.X, ViewportFraction.Y, bAttackMoveArmed ? TEXT("yes") : TEXT("no"));
+	UE_LOG(LogHOLMatch, Display, TEXT("Scripted left click at (%.3f, %.3f), armed attack-move: %s"), ViewportFraction.X, ViewportFraction.Y, IsAttackMoveArmed() ? TEXT("yes") : TEXT("no"));
 	HandleSelectStarted();
 	HandleSelectCompleted();
 	TestCursor->Set(*Former, ECVF_SetByConsole);
@@ -5277,7 +5238,7 @@ void AHOLPlayerController::ScriptRightClickAt(const FVector2D& ViewportFraction)
 	IConsoleVariable* const TestCursor = UE::HeroesOfLiberty::Player::CVarTestCursor.AsVariable();
 	const FString Former = TestCursor->GetString();
 	TestCursor->Set(*FString::Printf(TEXT("%.4f %.4f"), ViewportFraction.X, ViewportFraction.Y), ECVF_SetByConsole);
-	UE_LOG(LogHOLMatch, Display, TEXT("Scripted right click at (%.3f, %.3f), armed attack-move: %s, placing: %s"), ViewportFraction.X, ViewportFraction.Y, bAttackMoveArmed ? TEXT("yes") : TEXT("no"), IsPlacing() ? TEXT("yes") : TEXT("no"));
+	UE_LOG(LogHOLMatch, Display, TEXT("Scripted right click at (%.3f, %.3f), armed attack-move: %s, placing: %s"), ViewportFraction.X, ViewportFraction.Y, IsAttackMoveArmed() ? TEXT("yes") : TEXT("no"), IsPlacing() ? TEXT("yes") : TEXT("no"));
 	// The mouse's two handlers, in order: the press leaves an armed mode (placement, attack-move, banner, faction aim) or arms the order, the release gives it.
 	HandleOrder();
 	HandleOrderCompleted();
@@ -5365,11 +5326,8 @@ void AHOLPlayerController::HandleOrder()
 		EndPlacement();
 		return;
 	}
-	if (bAttackMoveArmed || bBannerArmed || bMonkSealArmed || FactionAimIndex >= 0)
+	if (FactionAimIndex >= 0)
 	{
-		bAttackMoveArmed = false;
-		bBannerArmed = false;
-		bMonkSealArmed = false;
 		SetFactionAim(-1, 0.0);
 		return;
 	}
@@ -5462,7 +5420,7 @@ void AHOLPlayerController::HandleDeselect()
 	// placement mode first, the selection kept (D313), and closes the chosen age (the user's 1st trial of G.1: an age
 	// chosen without a ghost is closed alone), then the attack-move mode (J7b.3); then it deselects; with nothing
 	// selected, it opens the in-game menu.
-	switch (UHOLGameMenuRulesBridge::NativeGetEscapeAction(bGameMenuOpen, IsPlacing() || ChosenAge != INDEX_NONE || bAttackMoveArmed || bBannerArmed || bMonkSealArmed || FactionAimIndex >= 0, HasSelection()))
+	switch (UHOLGameMenuRulesBridge::NativeGetEscapeAction(bGameMenuOpen, IsPlacing() || ChosenAge != INDEX_NONE || FactionAimIndex >= 0, HasSelection()))
 	{
 	case EHOLEscapeAction::CloseMenu:
 		return;
@@ -5478,9 +5436,6 @@ void AHOLPlayerController::HandleDeselect()
 		}
 		else
 		{
-			bAttackMoveArmed = false;
-			bBannerArmed = false;
-			bMonkSealArmed = false;
 			SetFactionAim(-1, 0.0);
 		}
 		return;

@@ -47,13 +47,45 @@ HOLMarket::FBook UHOLMarketSubsystem::NewBook(const UWorld* World, const HOLMark
 	return HOLMarket::FBook();
 }
 
+namespace
+{
+	HOLMarket::FTrade RefusedForBoard(const HOLMarket::FBook& Book)
+	{
+		HOLMarket::FTrade Refused;
+		Refused.Reason = FName(TEXT("board"));
+		Refused.Book = Book;
+		return Refused;
+	}
+
+	/** The board's answer as the rule's trade; a refused one keeps the book given. */
+	HOLMarket::FTrade FromBoard(const FHOLMarketBridgeTrade& Done, const HOLMarket::FBook& Given)
+	{
+		HOLMarket::FTrade Trade;
+		Trade.bOk = Done.bOk;
+		Trade.Reason = Done.Reason.IsEmpty() ? FName() : FName(*Done.Reason);
+		Trade.Gold = Done.Gold;
+		Trade.Units = Done.Units;
+		Trade.Book = Trade.bOk ? UHOLMarketSubsystem::FromBridge(Done.Book) : Given;
+		return Trade;
+	}
+}
+
 HOLMarket::FTrade UHOLMarketSubsystem::Quote(const UWorld* World, const HOLMarket::FSettings& Settings, const HOLMarket::FBook& Book, const int32 Resource, const int32 Lots, const bool bBuy)
 {
-	// CLAUDE-1125s red stub: refuses every quote (the correction asks the script board).
-	HOLMarket::FTrade Refused;
-	Refused.Reason = FName(TEXT("board"));
-	Refused.Book = Book;
-	return Refused;
+	UHOLMarketSubsystem* Board = Find(World);
+	if (!Board)
+	{
+		// The grid asks at every refresh: said once, not at every frame.
+		static bool bSaid = false;
+		if (!bSaid)
+		{
+			bSaid = true;
+			UE_LOG(LogTemp, Error, TEXT("Market: no script board in this world, the quote is refused (Script/Economy/HOLMarketBoardScript.as did not compile?)"));
+		}
+		return RefusedForBoard(Book);
+	}
+	// What is given up is not counted: the quote is the price of the lot, the cell is greyed apart when the stock is short.
+	return FromBoard(Board->TradeNow(ToBridge(Settings), ToBridge(Book), Resource, Lots, bBuy, MAX_int32), Book);
 }
 
 HOLMarket::FTrade UHOLMarketSubsystem::Apply(const UWorld* World, const HOLMarket::FSettings& Settings, const HOLMarket::FBook& Book, const FHOLResources& Stock, const EHOLResource Resource, const int32 Lots, const bool bBuy, FHOLResources& OutStock)
@@ -63,21 +95,11 @@ HOLMarket::FTrade UHOLMarketSubsystem::Apply(const UWorld* World, const HOLMarke
 	if (!Board)
 	{
 		UE_LOG(LogTemp, Error, TEXT("Market: no script board in this world, the trade is refused (Script/Economy/HOLMarketBoardScript.as did not compile?)"));
-		HOLMarket::FTrade Refused;
-		Refused.Reason = FName(TEXT("board"));
-		Refused.Book = Book;
-		return Refused;
+		return RefusedForBoard(Book);
 	}
-	const FHOLMarketBridgeTrade Done = Board->TradeNow(ToBridge(Settings), ToBridge(Book), static_cast<int32>(Resource), Lots, bBuy, bBuy ? Stock.Gold : Stock[Resource]);
-	HOLMarket::FTrade Trade;
-	Trade.bOk = Done.bOk;
-	Trade.Reason = Done.Reason.IsEmpty() ? FName() : FName(*Done.Reason);
-	Trade.Gold = Done.Gold;
-	Trade.Units = Done.Units;
-	Trade.Book = FromBridge(Done.Book);
+	const HOLMarket::FTrade Trade = FromBoard(Board->TradeNow(ToBridge(Settings), ToBridge(Book), static_cast<int32>(Resource), Lots, bBuy, bBuy ? Stock.Gold : Stock[Resource]), Book);
 	if (!Trade.bOk)
 	{
-		Trade.Book = Book;
 		return Trade;
 	}
 	OutStock[Resource] += bBuy ? Trade.Units : -Trade.Units;
