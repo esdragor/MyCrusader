@@ -15,3 +15,4 @@ Rejeu 4f3c147 (GALADRIEL-1125f, 16:34-16:43) : 2 runs preflight ai_tower_easy, P
 Commande complète (règle 13, 2026-11-14) :
 Lancer UNE commande : `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Galadriel\Tools\Scenarios\play.ps1 ai_tower_easy -Root C:\Users\baudo\Documents\HeroesOfLiberty-Galadriel`
 Durée : environ 2 min. Réponse attendue : `OK`, `BUG: ...` ou `REGLAGE: ...`.
+recette 8d79aaa : PASS 17:22 (GLORFINDEL-1125d, Haldir integ-85 = main 8d79aaa) : preflight ai_tower_easy PASS (sanity OK, 0 spin au journal), PNG ai_tower_easy_built ouvert : bloc a toit rouge (gabarit provisoire des maisons) au centre du cadrage (14800, 0) entre 3 Lanciers et le Forum ; journal step 1114 build TowerWood at (14800,0) level 0, foundation payee W 100, finished apres 352 pas. Tour reconnue par la position seule (pas de silhouette propre).
