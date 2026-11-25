@@ -176,6 +176,16 @@ et la marche en 3), qui pointerait alors dans **votre** liste : choisissez donc 
 posez votre propre Animation Provider. Les fiches livrées ont déjà leurs animations choisies (`Tools\Editor\art_visual_io.py`).
 **Check for the game** sur la fiche (section 9) signale un numéro hors de votre liste.
 
+### Sons de la fiche
+
+La fiche a cinq emplacements de son (catégorie **Art > Sounds**) : **Selection Sound** (l'objet est sélectionné),
+**Order Sound** (il reçoit un ordre), **Attack Sound**, **Death Sound**, et **Construction Sound** pour un bâtiment.
+Glissez-y un son importé (Sound Wave ou Sound Cue) rangé dans le dossier de l'objet. Un emplacement vide garde le son
+actuel du jeu (sa table de sons). Comme pour le reste de la fiche, la variante de faction passe d'abord, puis la fiche
+commune, emplacement par emplacement. **Check for the game** (section 9) signale un son posé qui ne se charge pas.
+Aujourd'hui le jeu joue le son de **sélection d'un bâtiment** (fiche commune) ; les autres emplacements sont lus par le
+jeu au fur et à mesure qu'ils sont branchés.
+
 ## 7. Licences
 
 N'importez que :
@@ -256,7 +266,7 @@ Ces points sont en préparation ; ce guide sera mis à jour quand ils seront dan
   et **Muzzle Smoke** et des triangles d'un Skeletal Mesh, et **See in the Workshop** (affiche la commande `hol.Art.Try`
   à taper pour voir l'objet).
 - **Icônes** : une commande qui photographie chaque objet sous le même angle pour en faire l'icône.
-- **Sons** dans la fiche.
+- **Sons** de la fiche : ordre, attaque, mort et construction branchés en jeu (la sélection d'un bâtiment l'est déjà).
 
 ---
 

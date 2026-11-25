@@ -55,6 +55,35 @@ class UHOLAudioPlayer : UObject
 		return true;
 	}
 
+	// AR6-a: the sound of a type (Slot = Selection, Order...): its art asset's sound when one is set (HOLArtSound), played at 100 % within the
+	// event's cooldown; else the table's cue of Event (-1 = no cue: silent). True when a sound was started.
+	bool PlayTyped(int Event, FName TypeName, FName Faction, FName Slot)
+	{
+		const FString ArtPath = HOLArtSound::PathFor(this, TypeName, Faction, Slot);
+		if (ArtPath.IsEmpty())
+			return Play(Event);
+		Prepare();
+		const int NowMs = int(Gameplay::GetTimeSeconds() * 1000.0);
+		if (HOLAudio::IsValid(Event))
+		{
+			if (LastMs[Event] >= 0 && NowMs - LastMs[Event] < HOLAudio::CueFor(Event).CooldownMs)
+				return false;
+		}
+		USoundBase Sound = Cast<USoundBase>(LoadObject(nullptr, ArtPath));
+		if (Sound == nullptr)
+		{
+			Log(n"LogHOLMatch", f"cue missing art {TypeName} {Slot} asset {ArtPath}");
+			return Play(Event);
+		}
+		Gameplay::PlaySound2D(Sound, 1.0, 1.0);
+		if (HOLAudio::IsValid(Event))
+			LastMs[Event] = NowMs;
+		PlayedCount++;
+		LastLine = f"cue played art {TypeName} {Slot} asset {ArtPath}";
+		Log(n"LogHOLMatch", LastLine);
+		return true;
+	}
+
 	// Loads and plays the plan's sound in 2D, logs it. False (and "cue missing" in the log) when the sound wave cannot be loaded.
 	bool Start(FHOLAudioPlan Plan)
 	{

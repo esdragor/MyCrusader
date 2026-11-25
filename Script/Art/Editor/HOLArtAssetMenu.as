@@ -135,6 +135,12 @@ namespace HOLArtEditor
 		Checks.Add(HOLArtChecks::CheckLoaded("AnimationProvider", !Visual.AnimationProvider.IsNull(), Provider != nullptr));
 		Checks.Add(HOLArtChecks::CheckLoaded("Icon", !Visual.Icon.IsNull(), Visual.Icon.EditorOnlyLoadSynchronous() != nullptr));
 		Checks.Add(HOLArtChecks::CheckLoaded("Portrait", !Visual.Portrait.IsNull(), Visual.Portrait.EditorOnlyLoadSynchronous() != nullptr));
+		// AR6-a: a sound set in the asset must load (empty = the sound table).
+		Checks.Add(HOLArtChecks::CheckLoaded("SelectionSound", !Visual.SelectionSound.IsNull(), Visual.SelectionSound.EditorOnlyLoadSynchronous() != nullptr));
+		Checks.Add(HOLArtChecks::CheckLoaded("OrderSound", !Visual.OrderSound.IsNull(), Visual.OrderSound.EditorOnlyLoadSynchronous() != nullptr));
+		Checks.Add(HOLArtChecks::CheckLoaded("AttackSound", !Visual.AttackSound.IsNull(), Visual.AttackSound.EditorOnlyLoadSynchronous() != nullptr));
+		Checks.Add(HOLArtChecks::CheckLoaded("DeathSound", !Visual.DeathSound.IsNull(), Visual.DeathSound.EditorOnlyLoadSynchronous() != nullptr));
+		Checks.Add(HOLArtChecks::CheckLoaded("ConstructionSound", !Visual.ConstructionSound.IsNull(), Visual.ConstructionSound.EditorOnlyLoadSynchronous() != nullptr));
 		const int Count = Provider != nullptr ? Provider.GetSequences().Num() : 0;
 		Checks.Add(HOLArtChecks::CheckSequence("Idle", Visual.bOverrideIdleSequence, Visual.IdleSequence, Count, false));
 		Checks.Add(HOLArtChecks::CheckSequence("Walk", Visual.bOverrideWalkSequence, Visual.WalkSequence, Count, false));

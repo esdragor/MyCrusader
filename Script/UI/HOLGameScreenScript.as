@@ -286,9 +286,10 @@ UHOLScenarioPanelScript ScenarioPanel;
 	UFUNCTION(BlueprintOverride)
 	void BuildingSelected(const FString& TypeName)
 	{
+		// AR6-a: the building's art asset sound first (common asset: the C++ screen gives no faction), then its family's table cue.
 		const int Event = HOLAudioBuildings::SelectEventFor(TypeName);
-		if (Event >= 0)
-			Sound(Event);
+		if (Audio != nullptr)
+			Audio.PlayTyped(Event, FName(TypeName), NAME_None, n"Selection");
 	}
 	bool bVolcanoShown = false;
 
