@@ -13,6 +13,16 @@ Historique du test du 2026-10-30 : `Docs\Archive\Auto_Journey_Test1_2026-10-30.m
 ### Séance du matin (09:42 -> 13:00, autonome)
 fin et mode demandés à 09:43 (fin 13:00, autonome ; priorité Docs\Priorite_Socle_Factions_2026-11-16.md + demande du jour : choix de l'action d'une case de grille de HOLPlayerController.cpp / HOLGameScreen.cpp passé en Angelscript)
 check-list lue (L28) à 09:50 après le nettoyage 0a (commits f14ace8, 4865afe, 2c1f67a, 5ea8d2e) ; veilleur 30 min (xx:13 / xx:43) et alarme 12:45 posés ; sync_worktrees à 09:45 : tous à jour
+### Plan de lancement ETAPE0-1125m (10:0x ; énoncés : Docs\Rapports\ENONCES-1125m.md ; C++ : 2 places, Elrond + Galadriel ; intégrateur : HALDIR ; demande du jour : grille de commandes en script G-1 à G-6)
+- Glorfindel (duel-frame-1124sj) : lancer G-1/G-2/G-3 : test rouge puis règle script `HOLCommandGridAction` (Decide LightSeal puis tous les cas de ExecuteGridCommand, clic au sol) ; sans C++
+- Elrond (ground-cast-1124s) : lancer G-4 : crochet C++ de la grille (pont script de ExecuteGridCommand, un seul mode armé, liaisons Request*), UN build ; C++ OUI (place 1, raison D839 liaison)
+- Galadriel (morale-solo-1124sf) : lancer lot C++ socle : Deinitialize -> ResetHonor, hol.Cheat.Resources tous slots, merge loc-ja-1124s (SetLanguageName), UN build ; C++ OUI (place 2)
+- Haldir (integ-76) : lancer INTEGRATEUR integ-77 : tools-1124si puis arwen-1124sd (conflit HOLDuelLedger_Test.as) ; pas de branche C++ avant son build vert ; sans C++
+- Celeborn (walls-g7-1124s) : lancer D904 coût des murs N sous-cases x prix (file l.92) ; sans C++
+- Faramir (tower-wood-look-1124sm) : lancer tower_wood : recadrer .look, pré-vol, E-tower_wood (file l.13) ; sans C++
+- Arwen (arwen-duel-1124sk) : lancer E-sacred_light_heal au geste réel (file l.83), puis duel_challenge_accept (l.12) ; sans C++
+- Sauron (tools-1124sk) : lancer outillage session_gate L28-4, L28-8, L28-1, L28-3 (file l.22-25) ; sans C++
+- ALERTE : main contient du C++ NOT COMPILED (f48fa47, 0a280c1, 3d484c6, 8ffb822) : build + tests de main par la session principale avant le build d Elrond ; Priorite_Socle_Factions périmée (branches dans main sauf loc-ja-1124s)
 
 ## Séances du 2026-11-24 (archivées le 2026-11-25 par CLEAN-A-1125m)
 
