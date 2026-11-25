@@ -6,6 +6,8 @@
 # Si rien : la ligne du cerveau dit pourquoi (no spot for TowerWood / build TowerWood refused) ; on ne change pas la regle.
 waitlog AI brain HOLAIBrain awake
 hol.Sanity.Watch 1
+hol.Gather.LogWalks 1
+hol.Gather.LogDeposits 1
 waitlog AI slot 1 step
 hol.Cheat.Resources 1000
 hol.Cheat.Population 200
@@ -23,5 +25,7 @@ hol.Camera.FocusNear 14800 0
 frames 30
 capture ai_tower_built
 note 2. La Tour de guet en bois que l'IA a posee et achevee elle-meme, pres de son forum.
+hol.Gather.Report 1
 hol.Test.Sanity
+hol.Gather.Report 1
 hol.HUD.Report
