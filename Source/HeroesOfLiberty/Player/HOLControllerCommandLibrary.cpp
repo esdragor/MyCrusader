@@ -387,7 +387,7 @@ bool UHOLControllerCommandLibrary::NoteTributeNotice(const UObject* WorldContext
 
 namespace
 {
-	TArray<uint32> ToUnitIds(const TArray<int32>& Ids)
+	TArray<uint32> ControllerToUnitIds(const TArray<int32>& Ids)
 	{
 		TArray<uint32> Result;
 		for (const int32 Id : Ids)
@@ -468,7 +468,7 @@ bool UHOLControllerCommandLibrary::OwnUnitIdsOfType(AHOLPlayerController* Contro
 
 bool UHOLControllerCommandLibrary::SelectUnitIds(AHOLPlayerController* Controller, const TArray<int32>& Ids)
 {
-	if (Controller) { Controller->SetUnitSelection(ToUnitIds(Ids)); }
+	if (Controller) { Controller->SetUnitSelection(ControllerToUnitIds(Ids)); }
 	return Controller != nullptr;
 }
 
@@ -546,43 +546,43 @@ int32 UHOLControllerCommandLibrary::FindGatherSource(AHOLPlayerController* Contr
 
 bool UHOLControllerCommandLibrary::RequestAttackMoveUnits(AHOLPlayerController* Controller, const TArray<int32>& Ids, const double X, const double Y, const bool bShift)
 {
-	if (Controller) { Controller->RequestAttackMove(ToUnitIds(Ids), FVector(X, Y, 0.), bShift); }
+	if (Controller) { Controller->RequestAttackMove(ControllerToUnitIds(Ids), FVector(X, Y, 0.), bShift); }
 	return Controller != nullptr;
 }
 
 bool UHOLControllerCommandLibrary::RequestMoveUnitsInLineOf(AHOLPlayerController* Controller, const TArray<int32>& Ids, const double X1, const double Y1, const double X2, const double Y2, const bool bWidth, const bool bShift)
 {
-	if (Controller) { Controller->RequestMoveUnitsInLine(ToUnitIds(Ids), FVector(X1, Y1, 0.), FVector(X2, Y2, 0.), bWidth, bShift); }
+	if (Controller) { Controller->RequestMoveUnitsInLine(ControllerToUnitIds(Ids), FVector(X1, Y1, 0.), FVector(X2, Y2, 0.), bWidth, bShift); }
 	return Controller != nullptr;
 }
 
 bool UHOLControllerCommandLibrary::RequestAttackBuildingUnits(AHOLPlayerController* Controller, const TArray<int32>& Ids, AHOLBuilding* Building, const bool bShift)
 {
-	if (Controller && Building) { Controller->RequestAttackBuilding(ToUnitIds(Ids), Building, bShift); }
+	if (Controller && Building) { Controller->RequestAttackBuilding(ControllerToUnitIds(Ids), Building, bShift); }
 	return Controller && Building;
 }
 
 bool UHOLControllerCommandLibrary::RequestGatherSourceUnits(AHOLPlayerController* Controller, const TArray<int32>& Ids, const int32 SourceIndex, const bool bShift)
 {
-	if (Controller) { Controller->RequestGatherUnits(ToUnitIds(Ids), SourceIndex, bShift); }
+	if (Controller) { Controller->RequestGatherUnits(ControllerToUnitIds(Ids), SourceIndex, bShift); }
 	return Controller != nullptr;
 }
 
 bool UHOLControllerCommandLibrary::RequestDropOffUnitsAt(AHOLPlayerController* Controller, const TArray<int32>& Ids, AHOLBuilding* Building, const bool bShift)
 {
-	if (Controller && Building) { Controller->RequestDropOffUnits(ToUnitIds(Ids), Building, Building->GetActorLocation(), bShift); }
+	if (Controller && Building) { Controller->RequestDropOffUnits(ControllerToUnitIds(Ids), Building, Building->GetActorLocation(), bShift); }
 	return Controller && Building;
 }
 
 bool UHOLControllerCommandLibrary::RequestBuildSiteUnits(AHOLPlayerController* Controller, const TArray<int32>& Ids, AHOLBuilding* Site, const bool bShift)
 {
-	if (Controller && Site) { Controller->RequestBuildUnits(ToUnitIds(Ids), Site, bShift); }
+	if (Controller && Site) { Controller->RequestBuildUnits(ControllerToUnitIds(Ids), Site, bShift); }
 	return Controller && Site;
 }
 
 bool UHOLControllerCommandLibrary::RequestGarrisonUnitsIn(AHOLPlayerController* Controller, const TArray<int32>& Ids, AHOLBuilding* Building)
 {
-	if (Controller && Building) { Controller->RequestGarrisonUnits(ToUnitIds(Ids), Building); }
+	if (Controller && Building) { Controller->RequestGarrisonUnits(ControllerToUnitIds(Ids), Building); }
 	return Controller && Building;
 }
 

@@ -11,7 +11,7 @@
 
 namespace
 {
-	TArray<uint32> ToUnitIds(const TArray<int32>& Ids)
+	TArray<uint32> ScriptToUnitIds(const TArray<int32>& Ids)
 	{
 		TArray<uint32> Out;
 		Out.Reserve(Ids.Num());
@@ -76,7 +76,7 @@ void UHOLCommandScriptLibrary::IssueMove(UHOLCommandSubsystem* Commands, const T
 {
 	if (Commands)
 	{
-		Commands->IssueMoveOrder(ToUnitIds(UnitIds), Target, PlayerIndex, bFromTask, FVector2D::ZeroVector, false, bQueue);
+		Commands->IssueMoveOrder(ScriptToUnitIds(UnitIds), Target, PlayerIndex, bFromTask, FVector2D::ZeroVector, false, bQueue);
 	}
 }
 
@@ -84,7 +84,7 @@ void UHOLCommandScriptLibrary::IssueAttack(UHOLCommandSubsystem* Commands, const
 {
 	if (Commands)
 	{
-		Commands->IssueCombatOrder(ToUnitIds(UnitIds), EHOLOrderKind::Attack, static_cast<uint32>(TargetUnitId), PlayerIndex, bQueue);
+		Commands->IssueCombatOrder(ScriptToUnitIds(UnitIds), EHOLOrderKind::Attack, static_cast<uint32>(TargetUnitId), PlayerIndex, bQueue);
 	}
 }
 
@@ -92,7 +92,7 @@ void UHOLCommandScriptLibrary::IssueAttackMove(UHOLCommandSubsystem* Commands, c
 {
 	if (Commands)
 	{
-		Commands->IssueAttackMoveOrder(ToUnitIds(UnitIds), Target, PlayerIndex, bQueue);
+		Commands->IssueAttackMoveOrder(ScriptToUnitIds(UnitIds), Target, PlayerIndex, bQueue);
 	}
 }
 
@@ -100,7 +100,7 @@ void UHOLCommandScriptLibrary::IssueStop(UHOLCommandSubsystem* Commands, const T
 {
 	if (Commands)
 	{
-		Commands->IssueCombatOrder(ToUnitIds(UnitIds), EHOLOrderKind::Stop, 0, PlayerIndex);
+		Commands->IssueCombatOrder(ScriptToUnitIds(UnitIds), EHOLOrderKind::Stop, 0, PlayerIndex);
 	}
 }
 
@@ -108,7 +108,7 @@ void UHOLCommandScriptLibrary::IssueHold(UHOLCommandSubsystem* Commands, const T
 {
 	if (Commands)
 	{
-		Commands->IssueCombatOrder(ToUnitIds(UnitIds), EHOLOrderKind::Hold, 0, PlayerIndex);
+		Commands->IssueCombatOrder(ScriptToUnitIds(UnitIds), EHOLOrderKind::Hold, 0, PlayerIndex);
 	}
 }
 
@@ -116,7 +116,7 @@ void UHOLCommandScriptLibrary::IssueAttackBuilding(UHOLCommandSubsystem* Command
 {
 	if (Commands)
 	{
-		Commands->IssueAttackBuildingOrder(ToUnitIds(UnitIds), Building, PlayerIndex, bQueue);
+		Commands->IssueAttackBuildingOrder(ScriptToUnitIds(UnitIds), Building, PlayerIndex, bQueue);
 	}
 }
 
@@ -124,7 +124,7 @@ void UHOLCommandScriptLibrary::IssueDropOffMove(UHOLCommandSubsystem* Commands, 
 {
 	if (Commands)
 	{
-		Commands->IssueDropOffMoveOrder(ToUnitIds(UnitIds), Building, Point, PlayerIndex, bQueue);
+		Commands->IssueDropOffMoveOrder(ScriptToUnitIds(UnitIds), Building, Point, PlayerIndex, bQueue);
 	}
 }
 
@@ -132,7 +132,7 @@ void UHOLCommandScriptLibrary::IssueQueuedWork(UHOLCommandSubsystem* Commands, c
 {
 	if (Commands)
 	{
-		Commands->IssueQueuedWorkOrder(ToUnitIds(UnitIds), SourceIndex, Building, Location, PlayerIndex);
+		Commands->IssueQueuedWorkOrder(ScriptToUnitIds(UnitIds), SourceIndex, Building, Location, PlayerIndex);
 	}
 }
 
@@ -141,7 +141,7 @@ void UHOLCommandScriptLibrary::IssueMovePlayer(UHOLCommandSubsystem* Commands, c
 	if (Commands)
 	{
 		const UHOLCommandSubsystem::FPlayerOrderScope PlayerOrder(*Commands);
-		Commands->IssueMoveOrder(ToUnitIds(UnitIds), Target, PlayerIndex, /*bFromTask*/ false, FrontLine, bFrontWidth, bQueue);
+		Commands->IssueMoveOrder(ScriptToUnitIds(UnitIds), Target, PlayerIndex, /*bFromTask*/ false, FrontLine, bFrontWidth, bQueue);
 	}
 }
 
@@ -150,7 +150,7 @@ void UHOLCommandScriptLibrary::IssueAttackPlayer(UHOLCommandSubsystem* Commands,
 	if (Commands)
 	{
 		const UHOLCommandSubsystem::FPlayerOrderScope PlayerOrder(*Commands);
-		Commands->IssueCombatOrder(ToUnitIds(UnitIds), EHOLOrderKind::Attack, static_cast<uint32>(TargetUnitId), PlayerIndex, bQueue);
+		Commands->IssueCombatOrder(ScriptToUnitIds(UnitIds), EHOLOrderKind::Attack, static_cast<uint32>(TargetUnitId), PlayerIndex, bQueue);
 	}
 }
 
@@ -159,7 +159,7 @@ void UHOLCommandScriptLibrary::IssueAttackMovePlayer(UHOLCommandSubsystem* Comma
 	if (Commands)
 	{
 		const UHOLCommandSubsystem::FPlayerOrderScope PlayerOrder(*Commands);
-		Commands->IssueAttackMoveOrder(ToUnitIds(UnitIds), Target, PlayerIndex, bQueue);
+		Commands->IssueAttackMoveOrder(ScriptToUnitIds(UnitIds), Target, PlayerIndex, bQueue);
 	}
 }
 
@@ -168,7 +168,7 @@ void UHOLCommandScriptLibrary::IssueAttackBuildingPlayer(UHOLCommandSubsystem* C
 	if (Commands)
 	{
 		const UHOLCommandSubsystem::FPlayerOrderScope PlayerOrder(*Commands);
-		Commands->IssueAttackBuildingOrder(ToUnitIds(UnitIds), Building, PlayerIndex, bQueue);
+		Commands->IssueAttackBuildingOrder(ScriptToUnitIds(UnitIds), Building, PlayerIndex, bQueue);
 	}
 }
 
@@ -177,7 +177,7 @@ void UHOLCommandScriptLibrary::IssueStopPlayer(UHOLCommandSubsystem* Commands, c
 	if (Commands)
 	{
 		const UHOLCommandSubsystem::FPlayerOrderScope PlayerOrder(*Commands);
-		Commands->IssueCombatOrder(ToUnitIds(UnitIds), bHold ? EHOLOrderKind::Hold : EHOLOrderKind::Stop, 0, PlayerIndex);
+		Commands->IssueCombatOrder(ScriptToUnitIds(UnitIds), bHold ? EHOLOrderKind::Hold : EHOLOrderKind::Stop, 0, PlayerIndex);
 	}
 }
 
@@ -186,7 +186,7 @@ void UHOLCommandScriptLibrary::IssueToggleDeployPlayer(UHOLCommandSubsystem* Com
 	if (Commands)
 	{
 		const UHOLCommandSubsystem::FPlayerOrderScope PlayerOrder(*Commands);
-		Commands->IssueCombatOrder(ToUnitIds(UnitIds), EHOLOrderKind::ToggleDeploy, 0, PlayerIndex);
+		Commands->IssueCombatOrder(ScriptToUnitIds(UnitIds), EHOLOrderKind::ToggleDeploy, 0, PlayerIndex);
 	}
 }
 
@@ -199,7 +199,7 @@ void UHOLCommandScriptLibrary::IssueGather(UHOLCommandSubsystem* Commands, const
 {
 	if (Commands)
 	{
-		Commands->IssueGatherOrder(ToUnitIds(UnitIds), SourceIndex, PlayerIndex, bQueue);
+		Commands->IssueGatherOrder(ScriptToUnitIds(UnitIds), SourceIndex, PlayerIndex, bQueue);
 	}
 }
 
@@ -207,7 +207,7 @@ void UHOLCommandScriptLibrary::IssueDropOff(UHOLCommandSubsystem* Commands, cons
 {
 	if (Commands)
 	{
-		Commands->IssueDropOffOrder(ToUnitIds(UnitIds), Building, PlayerIndex, bQueue);
+		Commands->IssueDropOffOrder(ScriptToUnitIds(UnitIds), Building, PlayerIndex, bQueue);
 	}
 }
 
@@ -216,7 +216,7 @@ void UHOLCommandScriptLibrary::IssueBuild(UHOLCommandSubsystem* Commands, const 
 	if (Commands)
 	{
 		FHOLBuildOrder Order;
-		Order.UnitIds = ToUnitIds(UnitIds);
+		Order.UnitIds = ScriptToUnitIds(UnitIds);
 		Order.Building = Building;
 		Order.SourceIndex = SourceIndex;
 		Order.PlayerIndex = PlayerIndex;
@@ -276,7 +276,7 @@ void UHOLCommandScriptLibrary::IssuePlace(UHOLCommandSubsystem* Commands, const 
 		Command.PlayerIndex = PlayerIndex;
 		Command.TypeName = TypeName;
 		Command.Location = Location;
-		Command.UnitIds = ToUnitIds(UnitIds);
+		Command.UnitIds = ScriptToUnitIds(UnitIds);
 		Command.bQueue = bQueue;
 		Commands->IssueConstructionOrder(Command);
 	}
@@ -298,7 +298,7 @@ void UHOLCommandScriptLibrary::IssueGarrison(UHOLCommandSubsystem* Commands, con
 {
 	if (Commands)
 	{
-		Commands->IssueGarrisonOrder(PlayerIndex, ToUnitIds(UnitIds), Building);
+		Commands->IssueGarrisonOrder(PlayerIndex, ScriptToUnitIds(UnitIds), Building);
 	}
 }
 
@@ -314,7 +314,7 @@ void UHOLCommandScriptLibrary::IssueRage(UHOLCommandSubsystem* Commands, const i
 {
 	if (Commands)
 	{
-		Commands->IssueRageOrder(PlayerIndex, ToUnitIds(UnitIds));
+		Commands->IssueRageOrder(PlayerIndex, ScriptToUnitIds(UnitIds));
 	}
 }
 
@@ -323,7 +323,7 @@ void UHOLCommandScriptLibrary::IssueGatherPlayer(UHOLCommandSubsystem* Commands,
 	if (Commands)
 	{
 		const UHOLCommandSubsystem::FPlayerOrderScope PlayerOrder(*Commands);
-		Commands->IssueGatherOrder(ToUnitIds(UnitIds), SourceIndex, PlayerIndex, bQueue);
+		Commands->IssueGatherOrder(ScriptToUnitIds(UnitIds), SourceIndex, PlayerIndex, bQueue);
 	}
 }
 
@@ -332,7 +332,7 @@ void UHOLCommandScriptLibrary::IssueQueuedWorkPlayer(UHOLCommandSubsystem* Comma
 	if (Commands)
 	{
 		const UHOLCommandSubsystem::FPlayerOrderScope PlayerOrder(*Commands);
-		Commands->IssueQueuedWorkOrder(ToUnitIds(UnitIds), SourceIndex, Building, Location, PlayerIndex);
+		Commands->IssueQueuedWorkOrder(ScriptToUnitIds(UnitIds), SourceIndex, Building, Location, PlayerIndex);
 	}
 }
 
@@ -342,7 +342,7 @@ void UHOLCommandScriptLibrary::IssueBuildPlayer(UHOLCommandSubsystem* Commands, 
 	{
 		const UHOLCommandSubsystem::FPlayerOrderScope PlayerOrder(*Commands);
 		FHOLBuildOrder Order;
-		Order.UnitIds = ToUnitIds(UnitIds);
+		Order.UnitIds = ScriptToUnitIds(UnitIds);
 		Order.Building = Building;
 		Order.PlayerIndex = PlayerIndex;
 		Order.bQueue = bQueue;
@@ -355,7 +355,7 @@ void UHOLCommandScriptLibrary::IssueDropOffMovePlayer(UHOLCommandSubsystem* Comm
 	if (Commands)
 	{
 		const UHOLCommandSubsystem::FPlayerOrderScope PlayerOrder(*Commands);
-		Commands->IssueDropOffMoveOrder(ToUnitIds(UnitIds), Building, Point, PlayerIndex, bQueue);
+		Commands->IssueDropOffMoveOrder(ScriptToUnitIds(UnitIds), Building, Point, PlayerIndex, bQueue);
 	}
 }
 
