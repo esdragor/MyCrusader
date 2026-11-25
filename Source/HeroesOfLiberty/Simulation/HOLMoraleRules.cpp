@@ -329,6 +329,19 @@ namespace HOLMorale
 		return Mask;
 	}
 
+	uint8 LongestSecondsLeft(const FHOLMoraleState& State)
+	{
+		int32 LongestMs = 0;
+		for (int32 Slot = 0; Slot < State.Num && Slot < MaxEffects; ++Slot)
+		{
+			if (!State.Effects[Slot].bAura)
+			{
+				LongestMs = FMath::Max(LongestMs, State.Effects[Slot].DurationMs);
+			}
+		}
+		return static_cast<uint8>(FMath::Clamp(FMath::DivideAndRoundUp(LongestMs, 1000), 0, 255));
+	}
+
 	uint64 FingerprintKey(const FHOLMoraleState& State)
 	{
 		if (IsEmpty(State))

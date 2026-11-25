@@ -387,6 +387,7 @@ void UHOLUnitReplicationSubsystem::OnStepEnded(const int64 Step)
 				Current.SetCombat(ShownHealth, MaxHealth, TargetSlot, bFacesFront, Order.FrontYaw, bHero);
 				Current.SetDeploy(Deploys.IsEmpty() ? -1 : static_cast<int32>(Deploys[EntityIt].Phase)); // G6 e
 				Current.EffectMask = Morales.IsEmpty() ? 0 : HOLMorale::EffectMask(Morales[EntityIt].State); // A2 (S2-c step 9)
+				Current.EffectSecondsLeft = Morales.IsEmpty() ? 0 : HOLMorale::LongestSecondsLeft(Morales[EntityIt].State); // R1
 				Current.SetGarrisoned(bGarrisoned); // F7 lot 3e
 				return Current;
 			};

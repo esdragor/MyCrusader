@@ -473,6 +473,22 @@ public:
 	/** The ground click the aim kept (point and aimed power); true once, then it is emptied. The aim itself stays armed. */
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Faction")
 	bool ConsumeFactionAimClick(FVector& OutPoint, int32& OutIndex);
+	/**
+	 * G-4 (ELROND-1125ma): the ONE armed mode ("then a click on the ground") as the script names it; it is the faction aim above under a
+	 * general name (no second field). Mode >= 0 arms it (the script picks the number, faction powers keep 0..), -1 leaves it. UnitId: the
+	 * unit that will cast (the Monk of the Seal), 0 none. Escape, a right click, the spectator and any other mode's arming leave it.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|GridAction")
+	void SetArmedMode(int32 Mode, double RangeCm, int32 UnitId);
+	/** The armed mode (-1: none). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|GridAction")
+	int32 GetArmedMode() const;
+	/** The unit given to the last SetArmedMode (0: none). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|GridAction")
+	int32 GetArmedUnitId() const;
+	/** The ground click the armed mode kept (point and mode); true once, then emptied (ConsumeFactionAimClick). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|GridAction")
+	bool ConsumeArmedClick(FVector& OutPoint, int32& OutMode);
 	/** Scripted checks: the Escape key (HandleDeselect), and a right click press (HandleOrder). */
 	void ScriptEscape();
 	void ScriptRightClick();	/** The banner of the mode planted at a viewport point (a left click, or hol.Select.Banner). */
@@ -960,6 +976,8 @@ private:
 	int32 FactionAimIndex = -1;
 	double FactionAimRangeCm = 800.0;
 	bool bFactionAimClicked = false;
+	/** G-4: the unit given to SetArmedMode (the Monk of the Seal), 0 none. */
+	int32 ArmedUnitId = 0;
 	FVector FactionAimPoint = FVector::ZeroVector;	/** The builders' age chosen to the keys (the user's 1st trial of G.1; INDEX_NONE: none). */
 	int32 ChosenAge = INDEX_NONE;
 	void SetChosenAge(int32 Age);

@@ -50,6 +50,23 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|ControllerCommand")
 	static bool RequestCastRageOfSelection(AHOLPlayerController* Controller);
 
+	// G-4 (ELROND-1125ma): the Request<X> and the cursor read the script's grid-action rule needs (false without a controller or for a spectator).
+	/** Controller->RequestHeroAbility(Ability, (X, Y, Z)): Ability = EHOLHeroAbility as an int (the banner at the point, the cry at 0). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|ControllerCommand")
+	static bool RequestHeroAbilityAt(AHOLPlayerController* Controller, int32 Ability, double X, double Y, double Z);
+	/** Controller->RequestCastUnitAbility(AbilityId, UnitId, (X, Y, Z)) (the Monk's Seal of Light: the id read from HOLUnitAbilityTable). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|ControllerCommand")
+	static bool RequestCastUnitAbilityAt(AHOLPlayerController* Controller, int32 AbilityId, int32 UnitId, double X, double Y, double Z);
+	/** Controller->RequestStopUnits(Ids, bHold): stop, or hold position. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|ControllerCommand")
+	static bool RequestStopUnitIds(AHOLPlayerController* Controller, const TArray<int32>& Ids, bool bHold);
+	/** Controller->RequestToggleDeploy(Ids): the Mount / Dismount button. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|ControllerCommand")
+	static bool RequestToggleDeployIds(AHOLPlayerController* Controller, const TArray<int32>& Ids);
+	/** Controller->GetCursorGroundPoint: the ground point under the cursor; false when none. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|ControllerCommand")
+	static bool GetCursorGroundPointOf(AHOLPlayerController* Controller, double& OutX, double& OutY, double& OutZ);
+
 	/** Controller->RequestRallyPoint(FVector(X, Y, 0)) (hol.Prod.Rally): the selected own building, the point in cm. */
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|ControllerCommand")
 	static bool RequestRallyPointAt(AHOLPlayerController* Controller, double X, double Y);

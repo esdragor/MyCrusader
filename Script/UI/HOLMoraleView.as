@@ -12,6 +12,8 @@ namespace HOLMoraleView
 		bool bAvailable = false;
 		bool bOwn = false;
 		bool bPeasant = false;
+		// True only when the view carries the real time left of its effects; the replicated mask has none, so Read leaves it false (no invented countdown).
+		bool bTimeKnown = false;
 		FHOLMoraleStateData State;
 	}
 
@@ -59,7 +61,7 @@ namespace HOLMoraleView
 		if (!View.bAvailable)
 			return Result;
 		const HOLMoraleBlock::FHOLMoraleBadge Badge = HOLMoraleBlock::Badge(View.State, View.bPeasant);
-		const TArray<HOLMoraleBlock::FHOLMoraleLine> Lines = HOLMoraleBlock::Lines(View.State, View.bOwn, View.bPeasant);
+		const TArray<HOLMoraleBlock::FHOLMoraleLine> Lines = HOLMoraleBlock::Lines(View.State, View.bOwn && View.bTimeKnown, View.bPeasant);
 		if (Lines.Num() == 0 && !Badge.bImmune)
 			return Result;
 		FString Text = "";

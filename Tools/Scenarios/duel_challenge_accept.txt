@@ -9,21 +9,24 @@ hol.Units.Move -250 1050 0
 hol.Units.Move 250 1050 1
 # La caméra suit la marche (les héros partent à -15900, vitesse 697 cm/s) : l'utilisateur voit les unités autour du héros.
 wait 3
-hol.Camera.Focus -13500 400
+quiet hol.Camera.Focus -13500 400
 wait 3
-hol.Camera.Focus -11400 400
-hol.Test.SanityMotion 8
+quiet hol.Camera.Focus -11400 400
+quiet hol.Test.SanityMotion 8
 wait 3
-hol.Camera.Focus -9300 400
+quiet hol.Camera.Focus -9300 400
 wait 3
-hol.Camera.Focus -7200 400
+quiet hol.Camera.Focus -7200 400
 wait 3
-hol.Camera.Focus -5100 400
+quiet hol.Camera.Focus -5100 400
 wait 3
-hol.Camera.Focus -3000 400
+quiet hol.Camera.Focus -3000 400
 wait 3
-hol.Camera.Focus -900 400
-wait 3
+quiet hol.Camera.Focus -900 400
+# Arrivee (1125mb) : on attend les deux blocs au lieu d'un delai fixe. Les commandes de marche ci-dessus sont en quiet : la marque du journal reste au Move, donc la ligne d'arrivee deja ecrite est vue.
+# Le bloc du slot 0 (chemin 17212 cm, le plus long) arrive apres 5xx pas ; celui du slot 1 (15403 cm) apres 4xx : attendre le 5xx = les deux heros sont la. (1125ma : defi a l'etape 505, refuse too_far, arrivee a 510.)
+waitlog Block march: arrived after 0 steps of form-up and 5
+wait 1
 # Cadrage (1124sj) : milieu des deux groupes (0 1050, herbe degagee a droite des arbres), zoom avant pour voir les deux heros ; les Paysans restent en arriere, hors de l'anneau.
 hol.Camera.Focus 0 1050
 hol.Camera.Zoom 2

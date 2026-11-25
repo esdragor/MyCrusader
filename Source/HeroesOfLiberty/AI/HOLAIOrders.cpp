@@ -69,7 +69,7 @@ namespace
 	}
 
 	/** Script's int32 identifiers back to the simulation's uint32 (a negative one names no unit: 0). */
-	TArray<uint32> ToUnitIds(const TArray<int32>& UnitIds)
+	TArray<uint32> AIOrdersToUnitIds(const TArray<int32>& UnitIds)
 	{
 		TArray<uint32> Ids;
 		Ids.Reserve(UnitIds.Num());
@@ -85,14 +85,14 @@ bool UHOLAIOrderLibrary::IssueAIGatherOrder(const UObject* WorldContextObject, c
 	const bool bQueue)
 {
 	UWorld* World = GetAuthorityWorld(WorldContextObject);
-	return World && HOLPlayerOrders::Gather(*World, PlayerIndex, ToUnitIds(UnitIds), SourceIndex, bQueue);
+	return World && HOLPlayerOrders::Gather(*World, PlayerIndex, AIOrdersToUnitIds(UnitIds), SourceIndex, bQueue);
 }
 
 bool UHOLAIOrderLibrary::IssueAIMoveOrder(const UObject* WorldContextObject, const int32 PlayerIndex, const TArray<int32>& UnitIds, const FVector Target,
 	const bool bQueue)
 {
 	UWorld* World = GetAuthorityWorld(WorldContextObject);
-	return World && HOLPlayerOrders::Move(*World, PlayerIndex, ToUnitIds(UnitIds), Target, bQueue);
+	return World && HOLPlayerOrders::Move(*World, PlayerIndex, AIOrdersToUnitIds(UnitIds), Target, bQueue);
 }
 
 
@@ -146,14 +146,14 @@ bool UHOLAIOrderLibrary::IssueAIAttackMoveOrder(const UObject* WorldContextObjec
 	const bool bQueue)
 {
 	UWorld* World = GetAuthorityWorld(WorldContextObject);
-	return World && HOLPlayerOrders::AttackMove(*World, PlayerIndex, ToUnitIds(UnitIds), Target, bQueue);
+	return World && HOLPlayerOrders::AttackMove(*World, PlayerIndex, AIOrdersToUnitIds(UnitIds), Target, bQueue);
 }
 
 bool UHOLAIOrderLibrary::IssueAIAttackUnitOrder(const UObject* WorldContextObject, const int32 PlayerIndex, const TArray<int32>& UnitIds, const int32 TargetUnitId,
 	const bool bQueue)
 {
 	UWorld* World = GetAuthorityWorld(WorldContextObject);
-	return World && TargetUnitId >= 0 && HOLPlayerOrders::Attack(*World, PlayerIndex, ToUnitIds(UnitIds), static_cast<uint32>(TargetUnitId), bQueue);
+	return World && TargetUnitId >= 0 && HOLPlayerOrders::Attack(*World, PlayerIndex, AIOrdersToUnitIds(UnitIds), static_cast<uint32>(TargetUnitId), bQueue);
 }
 
 bool UHOLAIOrderLibrary::IssueAIAttackBuildingOrder(const UObject* WorldContextObject, const int32 PlayerIndex, const TArray<int32>& UnitIds,
@@ -163,7 +163,7 @@ bool UHOLAIOrderLibrary::IssueAIAttackBuildingOrder(const UObject* WorldContextO
 	// An enemy's building as well as any other: the order's processor refuses one of the units' own camp. INDEX_NONE (the server's
 	// own orders every unit obeys) is refused by the queue's slot check, as for the other AI orders.
 	AHOLBuilding* Building = World ? FindBuildingAt(*World, INDEX_NONE, BuildingLocation) : nullptr;
-	return Building && HOLPlayerOrders::AttackBuilding(*World, PlayerIndex, ToUnitIds(UnitIds), Building, bQueue);
+	return Building && HOLPlayerOrders::AttackBuilding(*World, PlayerIndex, AIOrdersToUnitIds(UnitIds), Building, bQueue);
 }
 
 int32 UHOLAIOrderLibrary::CheckAIPlacement(const UObject* WorldContextObject, const int32 PlayerIndex, const FName TypeName, const FVector Point)
@@ -233,7 +233,7 @@ bool UHOLAIOrderLibrary::IssueAIPlaceOrder(const UObject* WorldContextObject, co
 			Refusal < 0 ? TEXT("not a building to place") : UHOLConstructionSubsystem::DescribeRefusal(static_cast<EHOLPlacementRefusal>(Refusal)));
 		return false;
 	}
-	return HOLPlayerOrders::Place(*World, PlayerIndex, TypeName, Point, ToUnitIds(UnitIds), bQueue);
+	return HOLPlayerOrders::Place(*World, PlayerIndex, TypeName, Point, AIOrdersToUnitIds(UnitIds), bQueue);
 }
 
 bool UHOLAIOrderLibrary::IssueAIBuildOrder(const UObject* WorldContextObject, const int32 PlayerIndex, const FVector BuildingLocation,
@@ -241,7 +241,7 @@ bool UHOLAIOrderLibrary::IssueAIBuildOrder(const UObject* WorldContextObject, co
 {
 	UWorld* World = GetAuthorityWorld(WorldContextObject);
 	AHOLBuilding* Building = World ? FindOwnBuilding(*World, PlayerIndex, BuildingLocation) : nullptr;
-	return Building && HOLPlayerOrders::Build(*World, PlayerIndex, ToUnitIds(UnitIds), Building, bQueue);
+	return Building && HOLPlayerOrders::Build(*World, PlayerIndex, AIOrdersToUnitIds(UnitIds), Building, bQueue);
 }
 
 bool UHOLAIOrderLibrary::IssueAIProduceOrder(const UObject* WorldContextObject, const int32 PlayerIndex, const FVector BuildingLocation, const FName TypeName)

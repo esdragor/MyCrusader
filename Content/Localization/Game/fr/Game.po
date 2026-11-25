@@ -4773,3 +4773,31 @@ msgctxt "HOLTitleScreen,Quit"
 msgid "Quitter"
 msgstr "Quitter"
 
+
+#. Key:	PowerRefusedHonor
+#. SourceLocation:	Script/Factions/HOLFactionPowerServer.as(1)
+#: Script/Factions/HOLFactionPowerServer.as(1)
+msgctxt "HOLFactionSlot,PowerRefusedHonor"
+msgid "Honneur insuffisant"
+msgstr "Honneur insuffisant"
+
+#. Key:	VoieFer
+#. SourceLocation:	Script/UI/HOLSpecializationSlot.as(145)
+#: Script/UI/HOLSpecializationSlot.as(145)
+msgctxt "HOLSpecializationSlot,VoieFer"
+msgid "Fer"
+msgstr "Fer"
+
+#. Key:	VoieFaith
+#. SourceLocation:	Script/UI/HOLSpecializationSlot.as(147)
+#: Script/UI/HOLSpecializationSlot.as(147)
+msgctxt "HOLSpecializationSlot,VoieFaith"
+msgid "Foi"
+msgstr "Foi"
+
+#. Key:	VoieStone
+#. SourceLocation:	Script/UI/HOLSpecializationSlot.as(149)
+#: Script/UI/HOLSpecializationSlot.as(149)
+msgctxt "HOLSpecializationSlot,VoieStone"
+msgid "Pierre"
+msgstr "Pierre"

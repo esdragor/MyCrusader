@@ -2,6 +2,7 @@
 
 #include "Match/HOLForumMessagesReadLibrary.h"
 
+#include "HAL/IConsoleManager.h"
 #include "Internationalization/Culture.h"
 #include "Internationalization/Internationalization.h"
 #include "Kismet/KismetInternationalizationLibrary.h"
@@ -105,7 +106,30 @@ FString UHOLForumMessagesReadLibrary::SetLanguageName(const FString& Culture)
 {
 	// As FScopedLanguage (HOLGameNamesTests.cpp): the previous language is read first, SaveToConfig is false.
 	const FString Previous = FInternationalization::Get().GetCurrentLanguage()->GetName();
+
+	// HALDIR-1125mb (DIAG-1125mb): the test editor (UnrealEditor-Cmd) is not FApp::IsGame(), so SetCurrentLanguage changes the language but does not load the
+	// game's .locres unless Localization.ForceLoadGameLocalizationInEditor is 1 (TextLocalizationManager.cpp). The cvar is raised for this one switch only and
+	// its value is put back at return (a global 1 turned two other tests red: the process language is en-US and they read the French source text).
+	// The language the process started in (the first Previous seen) is the one the editor already shows without the game .locres: switching BACK to it
+	// (the restore call of a test) must not force the load, or the French-source tests that run after would read the English .locres.
+	static FString BaselineLanguage;
+	if (BaselineLanguage.IsEmpty())
+	{
+		BaselineLanguage = Previous;
+	}
+	const bool bForceGameLocalization = !Culture.Equals(BaselineLanguage, ESearchCase::IgnoreCase);
+
+	IConsoleVariable* ForceLoad = IConsoleManager::Get().FindConsoleVariable(TEXT("Localization.ForceLoadGameLocalizationInEditor"));
+	const int32 PreviousForceLoad = ForceLoad ? ForceLoad->GetInt() : 0;
+	if (ForceLoad && bForceGameLocalization)
+	{
+		ForceLoad->Set(1, ECVF_SetByCode);
+	}
 	UKismetInternationalizationLibrary::SetCurrentLanguage(Culture, /*SaveToConfig*/ false);
+	if (ForceLoad && bForceGameLocalization)
+	{
+		ForceLoad->Set(PreviousForceLoad, ECVF_SetByCode);
+	}
 	return Previous;
 }
 

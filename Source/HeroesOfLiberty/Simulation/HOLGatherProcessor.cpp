@@ -567,8 +567,16 @@ void UHOLGatherProcessor::Advance(const FStepContext& Step, FGatherer& Gatherer)
 			{
 				Gather.SourceIndex = Other;
 				Gather.Spot = Spot;
+				Gather.Misses = 0;
+				return;
 			}
+			// Its massif is full (BUG-ai_peasant-spin): no other source to go to, and a new spot of the same ring only sends
+			// it round the source again (the walk ends, the spot is taken, 190 cm to and fro, never given up). It stands before
+			// the source as an idle worker, its load kept; the AI's brain sends it to a free source.
 			Gather.Misses = 0;
+			++Counters.NoSpotStops;
+			StandBeforeSource(Step, Gatherer, *Source);
+			return;
 		}
 		return;
 	}
