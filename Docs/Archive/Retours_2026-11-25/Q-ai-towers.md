@@ -12,3 +12,5 @@ Options :
 Recommandation : A (la quantité seule varie avec le niveau, comme la cavalerie).
 
 Valeur par défaut codée : A, dans `FHOLAITowerSettings` (`EasyMax`, `NormalMax`, `HardMax`, `MinSoldiers`, `BuildTier`) de `Script\AI\HOLAITower.as` : une ligne à changer.
+
+Reponse: B (2026-11-25 13:0x, DOCS-1125me, GDD D918)

@@ -12,3 +12,5 @@ Recommandation : A (étanche tout de suite, sans C++), B plus tard si l'escalier
 
 Valeur par défaut codée : A, derrière `hol.Wall.DiagonalFill` (1 = remplissage, 0 = diagonale nue).
 Reste à mesurer (lot C++, G7 scénario `wall_fine_diagonal`) : la fente de coin est-elle réellement franchie par le Paysan ?
+
+Reponse: B (2026-11-25 13:0x, DOCS-1125me, GDD D917)

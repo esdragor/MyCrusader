@@ -12,3 +12,5 @@ Que subit un ennemi défié pendant 8 s ?
 
 Recommandation : A (un effet lisible, cohérent avec le nom « Défi », le ralentissement est déjà le rôle du Sceau).
 Valeur par défaut codée : A (provocation seule), un réglage d'une ligne (`UnitAbilities.csv`, colonne `Effect` quand elle existera pour cette ligne ; sinon une constante dans `CastKnightChallenge`).
+
+Reponse: A (2026-11-25 13:0x, DOCS-1125me, GDD D919)
