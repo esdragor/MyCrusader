@@ -12,7 +12,8 @@
 param(
     [string] $DataDir = (Join-Path $PSScriptRoot "Data"),
     [string] $MapFile = (Join-Path $PSScriptRoot "Data\placeholders_map.csv"),
-    [string] $PlaceholdersFile = (Join-Path $PSScriptRoot "..\Placeholders.txt")
+    [string] $PlaceholdersFile = (Join-Path $PSScriptRoot "..\Placeholders.txt"),
+    [string] $ManifestFile = (Join-Path $PSScriptRoot "Data\ArtVisuals.csv")
 )
 $ErrorActionPreference = "Stop"
 $Problems = New-Object System.Collections.Generic.List[string]
