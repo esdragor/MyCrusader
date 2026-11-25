@@ -64,12 +64,19 @@ namespace HOLWallGhost
 		return Ghost;
 	}
 
-	// D898 G8 (CELEBORN-1125md): the ghost from the two ground points at an explicit SubDivision, cells read at the pitch Tile / SubDivision. STUB (red first): an invalid empty ghost.
+	// D898 G8 (CELEBORN-1125md): the ghost from the two ground points at an explicit SubDivision, cells read at the pitch Tile / SubDivision.
 	FHOLWallGhost BuildFromPointsAt(FVector Start, FVector End, double Tile, int SubDivision, FIntPoint MapMin, FIntPoint MapMax, const TArray<FIntPoint>& Occupied, int MaxCells)
 	{
-		FHOLWallGhost Nothing;
-		Nothing.bValid = false;
-		return Nothing;
+		if (Tile <= 0.0)
+		{
+			FHOLWallGhost Nothing;
+			Nothing.bValid = false;
+			return Nothing;
+		}
+		const int Divide = SubDivision < 1 ? 1 : SubDivision;
+		const double Pitch = Tile / double(Divide);
+		return BuildFine(FIntPoint(HOLWallLine::CellOfCoordinate(Start.X, Pitch), HOLWallLine::CellOfCoordinate(Start.Y, Pitch)),
+			FIntPoint(HOLWallLine::CellOfCoordinate(End.X, Pitch), HOLWallLine::CellOfCoordinate(End.Y, Pitch)), MapMin, MapMax, Occupied, MaxCells, Divide);
 	}
 
 	// From the two ground points the client holds (the press and the cursor), as HOLWallLine::PlanFromRequest reads them.
@@ -81,7 +88,6 @@ namespace HOLWallGhost
 			Nothing.bValid = false;
 			return Nothing;
 		}
-		return BuildFine(FIntPoint(HOLWallLine::CellOfCoordinate(Start.X, Tile), HOLWallLine::CellOfCoordinate(Start.Y, Tile)),
-			FIntPoint(HOLWallLine::CellOfCoordinate(End.X, Tile), HOLWallLine::CellOfCoordinate(End.Y, Tile)), MapMin, MapMax, Occupied, MaxCells, HOLWallLine::SubDivision());
+		return BuildFromPointsAt(Start, End, Tile, HOLWallLine::SubDivision(), MapMin, MapMax, Occupied, MaxCells);
 	}
 }

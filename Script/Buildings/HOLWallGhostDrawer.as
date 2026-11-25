@@ -86,7 +86,9 @@ class UHOLWallGhostDrawer : UScriptWorldSubsystem
 			BadBoxes = MakeBoxes(n"WallGhostBad", WallGhostRed);
 		}
 
-		FIntPoint EndCell = FIntPoint(HOLWallLine::CellOfCoordinate(End.X, Tile), HOLWallLine::CellOfCoordinate(End.Y, Tile));
+		const int Divide = HOLWallLine::SubDivision() < 1 ? 1 : HOLWallLine::SubDivision();
+		const double Pitch = Tile / double(Divide);
+		FIntPoint EndCell = FIntPoint(HOLWallLine::CellOfCoordinate(End.X, Pitch), HOLWallLine::CellOfCoordinate(End.Y, Pitch));
 		if (EndCell.X == LastEnd.X && EndCell.Y == LastEnd.Y)
 		{
 			return;
@@ -97,10 +99,10 @@ class UHOLWallGhostDrawer : UScriptWorldSubsystem
 		UInstancedStaticMeshComponent Shown = Ghost.bValid ? GoodBoxes : BadBoxes;
 		GoodBoxes.ClearInstances();
 		BadBoxes.ClearInstances();
-		const float Side = float(Tile) / 100.0f * 0.92f;
+		const float Side = float(Pitch) / 100.0f * 0.92f;
 		for (int Index = 0; Index < Ghost.Cells.Num(); Index++)
 		{
-			FVector At = HOLWallLine::CellToPoint(Ghost.Cells[Index], Tile, Start.Z + 8.0);
+			FVector At = HOLWallLine::CellToPoint(Ghost.Cells[Index], Pitch, Start.Z + 8.0);
 			bool bHole = false;
 			for (int Hole = 0; Hole < Ghost.Skipped.Num(); Hole++)
 			{
