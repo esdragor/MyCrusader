@@ -121,6 +121,7 @@ namespace HOLBiome
 		{
 		case DrySteppe:
 			B.Key = "dry_steppe";
+			B.Name = "Steppe sèche";
 			B.GroundAR = 115; B.GroundAG = 145; B.GroundAB = 55;
 			B.GroundBR = 300; B.GroundBG = 200; B.GroundBB = 85;
 			B.GroundCR = 60; B.GroundCG = 45; B.GroundCB = 30;
@@ -133,6 +134,7 @@ namespace HOLBiome
 			break;
 		case Autumn:
 			B.Key = "autumn";
+			B.Name = "Automne";
 			B.GroundAR = 150; B.GroundAG = 95; B.GroundAB = 40;
 			B.GroundBR = 230; B.GroundBG = 130; B.GroundBB = 50;
 			B.GroundCR = 70; B.GroundCG = 50; B.GroundCB = 35;
@@ -145,6 +147,7 @@ namespace HOLBiome
 			break;
 		case DarkForest:
 			B.Key = "dark_forest";
+			B.Name = "Forêt sombre";
 			B.GroundAR = 45; B.GroundAG = 75; B.GroundAB = 40;
 			B.GroundBR = 90; B.GroundBG = 100; B.GroundBB = 45;
 			B.GroundCR = 40; B.GroundCG = 38; B.GroundCB = 32;
@@ -157,6 +160,7 @@ namespace HOLBiome
 			break;
 		case Snow:
 			B.Key = "snow";
+			B.Name = "Neige";
 			B.GroundAR = 550; B.GroundAG = 580; B.GroundAB = 620;
 			B.GroundBR = 400; B.GroundBG = 430; B.GroundBB = 480;
 			B.GroundCR = 250; B.GroundCG = 280; B.GroundCB = 320;
@@ -171,6 +175,7 @@ namespace HOLBiome
 			break;
 		default:
 			B.Key = "fresh_grass";
+			B.Name = "Herbe fraîche";
 			B.GroundAR = 90; B.GroundAG = 150; B.GroundAB = 50;
 			B.GroundBR = 200; B.GroundBG = 220; B.GroundBB = 80;
 			B.GroundCR = 60; B.GroundCG = 60; B.GroundCB = 40;

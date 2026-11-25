@@ -194,44 +194,74 @@ namespace HOLArtGallery
 		}
 	}
 
-	// AR1-c (hol.Art.Light): the index of a biome of the game's table (HOLBiome::At(I).Key for I < HOLBiome::Count, any case, or its index),
+	// AR1-d: a biome name folded for the console: any case, accents dropped, "_" and "-" read as spaces ("Forêt sombre" = "foret sombre"
+	// = "FORET_SOMBRE").
+	FString FoldBiomeName(const FString& Text)
+	{
+		FString Out = Text.ToLower();
+		Out = Out.Replace("_", " ").Replace("-", " ");
+		Out = Out.Replace("é", "e").Replace("è", "e").Replace("ê", "e").Replace("É", "e").Replace("È", "e").Replace("Ê", "e");
+		Out = Out.Replace("î", "i").Replace("Î", "i").Replace("ô", "o").Replace("Ô", "o").Replace("à", "a").Replace("â", "a").Replace("À", "a").Replace("Â", "a");
+		return Out;
+	}
+
+	// AR1-c (hol.Art.Light): the index of a biome of the game's table (HOLBiome::At(I).Key for I < HOLBiome::Count, or its index), and
+	// (AR1-d) the name the game shows for it (HOLBiome::At(I).Name, "Herbe fraîche", "Forêt sombre"...), any case, with or without accents;
 	// -1 for the map's own look ("default", "map"), -2 for a name the game does not know.
 	int BiomeIndexFromName(const FString& Name)
 	{
-		const FString Wanted = Name.ToLower();
+		const FString Wanted = FoldBiomeName(Name);
 		if (Wanted == "default" || Wanted == "map")
 			return -1;
 		for (int I = 0; I < HOLBiome::Count; I++)
 		{
-			if (HOLBiome::At(I).Key.ToLower() == Wanted || f"{I}" == Wanted)
+			const FHOLBiome Biome = HOLBiome::At(I);
+			if (FoldBiomeName(Biome.Key) == Wanted || f"{I}" == Wanted || (!Biome.Name.IsEmpty() && FoldBiomeName(Biome.Name) == Wanted))
 				return I;
 		}
 		return -2;
 	}
 
-	// AR1-c: the 4 m tile of the construction grid (UHOLBuildingSettings::TileSize, HOLBuildingTypes.h; not readable from a
-	// namespace function) and the sub-cells shown: hol.Wall.SubDivision, or the 1 m sub-cells of the fine grid (D898 G5) when it is 1.
+	// AR1-d: the 4 m tile of the construction grid where the game reads it (UHOLBuildingSettings::GetTileSize through
+	// HOLConstructionRead::GetSettingTileSize), and its sub-cells as the construction grid cuts them (hol.Wall.SubDivision, 1 = none).
 	double GalleryTileCm()
 	{
-		return 400.0;
+		return HOLConstructionRead::GetSettingTileSize();
 	}
 
 	int GallerySubDivision()
 	{
 		const int Game = HOLWallLine::SubDivision();
-		return Game > 1 ? Game : 4;
+		return Game < 1 ? 1 : Game;
 	}
 
 	// AR1-d: the outline drawn around each ground label (copies of the text shifted by these offsets, in cm on the label's plane, in
-	// LabelOutlineColour) so that a yellow label stays readable on the white of the snow biome.
+	// LabelOutlineColour, just under it) so that a yellow label stays readable on the white of the snow biome.
 	FLinearColor LabelOutlineColour()
 	{
-		return FLinearColor(1.0f, 1.0f, 0.0f, 1.0f);
+		return FLinearColor(0.02f, 0.02f, 0.02f, 1.0f);
 	}
 
 	void LabelOutlineOffsets(double WorldSize, TArray<FVector2D>& OutOffsets)
 	{
 		OutOffsets.Reset();
+		const double Step = Math::Max(2.0, WorldSize * 0.06);
+		for (int DX = -1; DX <= 1; DX++)
+		{
+			for (int DY = -1; DY <= 1; DY++)
+			{
+				if (DX != 0 || DY != 0)
+					OutOffsets.Add(FVector2D(Step * double(DX), Step * double(DY)));
+			}
+		}
+	}
+
+	// AR1-d: the width (cm) an object takes on the ground: a building's footprint, a unit's or a source's diameter.
+	double GroundWidth(const FHOLArtGalleryPlace& Place)
+	{
+		if (Place.Family == "Buildings")
+			return Math::Max(Place.FootprintX, Place.FootprintY);
+		return 2.0 * Math::Max(Place.Radius, 60.0);
 	}
 
 	// AR1-d (hol.Art.Focus <Type>): the close view of one object of the gallery and its 1,80 m figure: the centre between the object
@@ -240,6 +270,16 @@ namespace HOLArtGallery
 	{
 		OutCentre = FVector::ZeroVector;
 		OutSide = 0.0;
+		const FString Wanted = Type.ToLower();
+		for (const FHOLArtGalleryPlace& Place : Places)
+		{
+			if (Place.TypeName.ToString().ToLower() != Wanted)
+				continue;
+			const FVector Bar = ScaleBarBase(Place);
+			OutCentre = (Place.Location + Bar) * 0.5;
+			OutSide = GroundWidth(Place) + 600.0;
+			return true;
+		}
 		return false;
 	}
 
@@ -314,13 +354,30 @@ namespace HOLArtGallery
 		AHOLArtGalleryLabel Shown = Cast<AHOLArtGalleryLabel>(SpawnActor(AHOLArtGalleryLabel::StaticClass(), Place.Location));
 		if (Shown == nullptr)
 			return;
-		Shown.Label.SetText(FText::FromString(f"{Place.TypeName.ToString()}\n{Place.DisplayName}{Extra}"));
-		Shown.Label.SetWorldSize(Place.Family == "Buildings" ? 150.0 : (Place.Family == "Sources" ? 90.0 : 60.0));
+		const FText Words = FText::FromString(f"{Place.TypeName.ToString()}\n{Place.DisplayName}{Extra}");
+		const double Size = Place.Family == "Buildings" ? 150.0 : (Place.Family == "Sources" ? 90.0 : 60.0);
+		const FVector At = Place.Location + FVector(0.0, -Ahead, 15.0);
+		Shown.Label.SetText(Words);
+		Shown.Label.SetWorldSize(Size);
 		Shown.Label.SetTextRenderColor(FColor::Yellow);
 		Shown.Label.SetCastShadow(false);
 		// Flat on the ground in front of the object (towards the camera, south), read from above.
-		Shown.Label.SetWorldLocation(Place.Location + FVector(0.0, -Ahead, 15.0));
+		Shown.Label.SetWorldLocation(At);
 		Shown.Label.SetWorldRotation(FRotator(90.0, 180.0, 0.0));
+		// AR1-d: a dark outline (shifted copies just under the text) keeps it readable on the snow.
+		TArray<FVector2D> Offsets;
+		LabelOutlineOffsets(Size, Offsets);
+		const FColor Dark = LabelOutlineColour().ToFColor(true);
+		for (int K = 0; K < Offsets.Num(); K++)
+		{
+			UTextRenderComponent Rim = UTextRenderComponent::Create(Shown, FName(f"LabelOutline_{K}"));
+			Rim.SetText(Words);
+			Rim.SetWorldSize(Size);
+			Rim.SetTextRenderColor(Dark);
+			Rim.SetCastShadow(false);
+			Rim.SetWorldLocation(At + FVector(Offsets[K].X, Offsets[K].Y, -2.0));
+			Rim.SetWorldRotation(FRotator(90.0, 180.0, 0.0));
+		}
 	}
 
 	// AR1-b: the widest side one capture shows whole (cm, camera zoomed out), and the least distance from a player's Forum.
@@ -549,7 +606,14 @@ void HOLArtGalleryCommand(const TArray<FString>& Args)
 // UHOLBiomeApplier (Script\Biomes\HOLBiomeApplier.as), which logs "Biome expect: key=..." when it has set it.
 void HOLArtLightCommand(const TArray<FString>& Args)
 {
-	const FString Name = Args.Num() >= 1 ? Args[0] : "";
+	// AR1-d: the shown names have spaces ("Herbe fraîche"): every word of the command is the name.
+	FString Name = "";
+	for (int K = 0; K < Args.Num(); K++)
+	{
+		if (K > 0)
+			Name += " ";
+		Name += Args[K];
+	}
 	const int Index = HOLArtGallery::BiomeIndexFromName(Name);
 	if (Index == -2)
 	{
@@ -593,7 +657,29 @@ void HOLArtGalleryFrameCommand(const TArray<FString>& Args)
 	Log(n"LogHOLMatch", f"Art gallery frame: family={Family} part={PartName} centre=({Math::RoundToInt(Centre.X)}, {Math::RoundToInt(Centre.Y)}) side={Math::RoundToInt(Width)}");
 }
 
+// hol.Art.Focus <Type> [ZoomSteps=14] (AR1-d): the camera close on one object of the gallery and its 1,80 m figure
+// (HOLArtGallery::FocusOn): hol.Camera.Focus on the point between them, then hol.Camera.Zoom (zoomed out first, then ZoomSteps closer).
+void HOLArtFocusCommand(const TArray<FString>& Args)
+{
+	const FString Type = Args.Num() >= 1 ? Args[0] : "";
+	const int Steps = Args.Num() >= 2 ? String::Conv_StringToInt(Args[1]) : 14;
+	TArray<FHOLArtGalleryPlace> Places;
+	HOLArtGallery::PlanAwayFromBase("All", Places);
+	FVector Centre;
+	double Side = 0.0;
+	if (!HOLArtGallery::FocusOn(Places, Type, Centre, Side))
+	{
+		Log(n"LogHOLMatch", f"Art focus: unknown type {Type} (a row of UnitTypes, BuildingTypes or SourceTypes)");
+		return;
+	}
+	System::ExecuteConsoleCommand(f"hol.Camera.Focus {Math::RoundToInt(Centre.X)} {Math::RoundToInt(Centre.Y)}");
+	System::ExecuteConsoleCommand("hol.Camera.Zoom -40");
+	System::ExecuteConsoleCommand(f"hol.Camera.Zoom {Steps}");
+	Log(n"LogHOLMatch", f"Art focus: type={Type} centre=({Math::RoundToInt(Centre.X)}, {Math::RoundToInt(Centre.Y)}) side={Math::RoundToInt(Side)} zoom={Steps}");
+}
+
 const FConsoleCommand HOLArtGalleryConsole("hol.Art.Gallery", n"HOLArtGalleryCommand");
+const FConsoleCommand HOLArtFocusConsole("hol.Art.Focus", n"HOLArtFocusCommand");
 const FConsoleCommand HOLArtGalleryFrameConsole("hol.Art.GalleryFrame", n"HOLArtGalleryFrameCommand");
 const FConsoleCommand HOLArtLightConsole("hol.Art.Light", n"HOLArtLightCommand");
 

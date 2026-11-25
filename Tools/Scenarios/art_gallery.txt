@@ -36,13 +36,18 @@ hol.Art.GalleryFrame Buildings South
 waitlog Art gallery frame: family=Buildings part=South
 frames 40
 capture ag_marks
-hol.Art.Light dry_steppe
+hol.Art.Light Steppe seche
 waitlog Biome expect: key=dry_steppe
 frames 40
 capture ag_light_steppe
-hol.Art.Light snow
+hol.Art.Light Neige
 waitlog Biome expect: key=snow
 frames 40
 capture ag_light_snow
+# AR1-d (CELEBORN-1125ar9) : noms des biomes tels que le jeu les affiche ; etiquettes cernees de noir lisibles sur la neige ; vue rapprochee d un batiment et de sa barre 1,80 m (hol.Art.Focus).
+hol.Art.Focus MainCentre
+waitlog Art focus: type=MainCentre
+frames 40
+capture ag_focus
 hol.Art.Light default
 note Reperes et eclairages : barre rouge 1,80 m, emprise, grille, Height ; Steppe seche puis Neige. Fin.
