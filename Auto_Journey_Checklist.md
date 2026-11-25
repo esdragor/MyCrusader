@@ -277,3 +277,18 @@ Origines : T2 = test 2 du 2026-10-30 ; Q = « Qualité des essais » du 2026-11-
 | L28-7 | budget de la principale probablement > 300k (~70 lancements, gate Launch fait à la main) | `launch_agent.ps1` (dans main, fcd3250) à chaque lancement ; `/context` demandé à l'utilisateur en une ligne à mi-séance | PRINCIPALE + OUTIL |
 | L28-8 | worktree neuf créé par SAURON-1124sf (HeroesOfLiberty-Sauron-play, retiré par SAURON-1124sg) | le gate Launch donne WARN / FAIL si `git worktree list` dépasse les 8 worktrees connus | GATE |
 | L28-9 | plafond d'essais dépassé : 8 fiches [À ESSAYER] pour 6 (Q11) | l'agent de docs de clôture trie et ne laisse que les 6 plus utiles | AGENT DOCS |
+
+## L29 : séance du 2026-11-25 après-midi (autonome 15:04 -> 18:10)
+
+| ID | Constat (preuve, 2026-11-25 après-midi) | Règle / contrôle à mettre en place | Où |
+|---|---|---|---|
+| L29-1 | budget de la principale 276,5k à 16:51, clôture ~1 h avant la fin | points 1-5 appliqués (ca593e2, 32bf45e) ; contrôle /context à mi-séance, seuil <= 150k | PRINCIPALE + OUTIL |
+| L29-2 | énoncés « sans C++ » qui exigeaient du C++ (SAURON-1125d bouton Chevalier, CELEBORN-1125b porte G10, CELEBORN-1125e fantôme) : 3 agents sans code | le préparateur suit la chaîne d'appel (Grep jusqu'au premier .cpp) avant d'écrire « sans C++ » | ÉTAPE 0 + PRÉPARATEUR |
+| L29-3 | correctif C++ du spin sur hypothèse non mesurée (4f3c147, build 438 s) ; cause = faux positif Sanity trouvé au 4e agent (GALADRIEL-1125g) | bug de cause inconnue : run instrumenté (journaux, compteurs) d'abord, aucun correctif avant une cause vue au journal (règle 7 dès le 1er correctif) | AGENT + PRÉPARATEUR |
+| L29-4 | commit de données qui retire une capacité (fc3b85f : les Templiers ne posent plus la Chapelle) au milieu de spec-voie-1125m : 10 commits non intégrables ; le classifieur a refusé de coder le défaut | un changement qui retire une capacité va sur une branche à part ou derrière un cvar, question posée avant le commit | AGENT + ÉNONCÉ |
+| L29-5 | commande d'essai mal formée donnée (deploy_far : play.ps1 du worktree, autre ordre) ; gate Essay PASS sans lancer la commande ; « le scénario ne s'est jamais lancé » | commandes générées par un seul outil ; le gate Essay valide la commande exacte de la fiche | OUTIL + GATE |
+| L29-6 | la sync de fin a fusionné main dans tests-bindings-1125s (Faramir, session étrangère) alors qu'au début elle l'avait sautée | `sync_worktrees.ps1` saute tout worktree « pris » par une autre session dans IN_USE.txt | OUTIL |
+| L29-7 | « premier Edit avant le 8e appel » non tenu (9e, 15e, 19e) ; récidive L20-8 / L28-5 | l'énoncé donne le fichier:ligne du premier Edit (ou un TODO pré-écrit par le préparateur) | ÉNONCÉ + PRÉPARATEUR |
+| L29-8 | commits de docs emportant des lignes d'autres sessions (EtapeDefini, Jour) et EtapeDefini passé en LF | `commit_docs.ps1 -Only` avec diff limité à ses lignes ; `eol_check` avant le commit d'EtapeDefini.md | OUTIL + AGENT |
+
+À garder (a marché le 2026-11-25 après-midi) : 3 passes `integrate.ps1` vertes du premier coup grâce à `-DryRun` ; recette jouée depuis le worktree d'intégration compilé (Haldir) ; préparateur à vagues (PREP v2/v3).

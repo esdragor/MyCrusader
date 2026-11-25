@@ -80,6 +80,7 @@ Tableau des agents, plan de lancement ETAPE0-1125m, avances de main et anomalies
 - hors main : 4f3c147 (spin du Paysan, C++ ; GALADRIEL-1125g : faux positif Sanity), c113cf1 (son rouge), fc3b85f, 743e78f, 736f246, 6cbbdbe (Arwen), ad48ac2 (L28-8, Glorfindel)
 - reste : bouton du Chevalier et fantôme de porte (C++ HOLPlayerController, après Faramir), touche T non injectable, budget de la principale (5 points en tête de la file)
 - version launcher : dernière version = Saved\Manager\Versions\latest.txt = 0.4.3 (Saved\Manager\Versions\0.4.3\published.txt = 2026-11-24 13:51Z, soit 14:51) ; 155 commits de Source\, Script\, Content\ ou Config\ dans main depuis ; verdict nouvelle version : OUI (contenu neuf : tours de l'IA, prix des murs, porte qui remplace la palissade, effet du Défi du Chevalier ; main 8d79aaa build PASS, tests 2266/2266, recette 3 PASS), NON publiée ce jour (pas de publish.ps1, Chapelle des Templiers non tranchée) ; la ligne [À RÉPONDRE] « Nouvelle version du launcher ? » est déjà dans Auto_Journey_Retours.md (section 2), à mettre à jour avec ces chiffres
+- Leçons L29-1 à L29-8 inscrites (demande de l'utilisateur) : tableau « L29 » en fin d'`Auto_Journey_Checklist.md`, 6 lignes d'outils dans `Auto_Journey_File.md` (DOCS-1125e)
 
 ### Lecons appliquees 2026-11-25 apres-midi
 - T2-1 : appliquee : etape 0 faite par ETAPE0-1125a (Docs\Rapports\ETAPE0-1125a.md, ENONCES-1125a.md), plan de lancement ecrit au Jour
