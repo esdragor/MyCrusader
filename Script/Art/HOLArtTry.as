@@ -13,7 +13,7 @@ namespace HOLArtTry
 	// The Forum's footprint radius used to keep clear of it (cm); the type table's footprint is not exposed to script.
 	float ForumRadius()
 	{
-		return 800.0;
+		return 1300.0;
 	}
 
 	float UnitRadius()
@@ -241,12 +241,13 @@ namespace HOLArtTry
 			Sum += Place;
 		}
 		const FVector Centre = Sum / Count;
+		// The camera first: hol.Select.BoxGround projects its ground corners on the screen, off-screen corners select nothing (art_try 1125ar2).
+		System::ExecuteConsoleCommand(f"hol.Camera.Focus {Math::RoundToInt(Centre.X)} {Math::RoundToInt(Centre.Y)}", Controller);
 		if (bUnit)
 		{
 			const float Margin = 2.0 * ObjectRadius;
 			System::ExecuteConsoleCommand(f"hol.Select.BoxGround {Math::RoundToInt(Low.X - Margin)} {Math::RoundToInt(Low.Y - Margin)} {Math::RoundToInt(High.X + Margin)} {Math::RoundToInt(High.Y + Margin)}", Controller);
 		}
-		System::ExecuteConsoleCommand(f"hol.Camera.Focus {Math::RoundToInt(Centre.X)} {Math::RoundToInt(Centre.Y)}", Controller);
 		Say(f"hol.Art.Try: {Count} {Type} of slot {Slot} next to the Forum around ({Math::RoundToInt(Centre.X)}, {Math::RoundToInt(Centre.Y)}); fast build on, +1000 resources", false);
 	}
 }
