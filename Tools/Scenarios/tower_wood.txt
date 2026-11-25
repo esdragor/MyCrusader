@@ -70,17 +70,17 @@ hol.Camera.FocusNear 4000 0
 frames 3
 hol.Select.LeftClickGround -12400 1500
 waitlog Scripted left click at
-# FARAMIR-1125ma : le cadrage 4100 -400 Zoom 3 ne montrait PAS les Lanciers (PNG 1125 : la tour remplit l'ecran, Lanciers hors cadre). Les Lanciers finissent en bas a gauche de la tour (during5) : balayage de 3 cadrages (Zoom 2, deux decalages vers -Y, puis vue large Zoom 1).
-hol.Camera.FocusNear 4200 -800
+# FARAMIR-1125mb : after2/after3 recadres vers -X (3300) car la tour etait coupee au bord droit et les Lanciers en bas ; FARAMIR-1125ma : le cadrage 4100 -400 Zoom 3 ne montrait PAS les Lanciers (PNG 1125 : la tour remplit l'ecran, Lanciers hors cadre). Les Lanciers finissent en bas a gauche de la tour (during5) : balayage de 3 cadrages (Zoom 2, deux decalages vers -Y, puis vue large Zoom 1).
+hol.Camera.FocusNear 3500 -1000
 hol.Camera.Zoom 2
 frames 10
 note 3. APRES : plusieurs fleches ont touche, les barres de vie des Lanciers sont entamees (panneau de construction ferme, Lanciers cadres).
 hol.Combat.ArrowReport
 capture tower_wood_after
-hol.Camera.FocusNear 4000 -1600
+hol.Camera.FocusNear 3300 -1300
 frames 3
 capture tower_wood_after2
-hol.Camera.FocusNear 4300 -800
+hol.Camera.FocusNear 3300 -900
 hol.Camera.Zoom 1
 frames 3
 capture tower_wood_after3
