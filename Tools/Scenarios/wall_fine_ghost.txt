@@ -1,0 +1,45 @@
+# CELEBORN-1125mf (G8 a l'ecran) : les FANTOMES du trace de palissade sur la grille fine (hol.Wall.SubDivision 4), vus PENDANT le glisser puis APRES le relache. Toi (slot 0, Aube) contre une IA gelee (slot 1). 3 minutes au plus.
+# branches: walls-g8-1125m
+# Geste : modele wall_line_long (Paysan selectionne par hol.Select.ClickUnit, A puis D = hol.Select.Grid 0 puis 6, vrai glisser hol.Mouse.Drag, un deplacement par image). Viewport cache 1280x720, ~3,8 cm par pixel : 1 sous-case de 1 m = ~26 px.
+# Attendu PENDANT le glisser : un fantome plat PAR SOUS-CASE (carres de 1 m, serres), pas par case de 4 m ; vert sur sol libre. Attendu APRES : une fondation par sous-case (compte lu au journal `place wall line ... N cell(s)`).
+# Camera centree sur (-17400, 0), glisser a y ecran 360 : meme sol libre que wall_line_long (10 m a l'ouest du MainCentre).
+waitlog Starting hero of slot 0 spawned at
+hol.AI.ThinkSteps 100000
+hol.Cheat.Resources 20000
+hol.Cheat.Population 40
+hol.Cheat.Technology Masonry
+hol.Build.Instant 1
+hol.Wall.MaxLineCells 0
+hol.Wall.SubDivision 4
+frames 2
+hol.Units.Spawn 1 -17400 3000 0 Peasant 10
+frames 40
+hol.Test.Sanity
+hol.Camera.Zoom 3
+hol.Camera.Focus -17400 3000
+frames 5
+note 1. Un Paysan est a l'ecran : tu le selectionnes, puis la touche A (age I) et la touche D (Palissade) de la grille, puis un glisser a la souris sur la grille fine (sous-cases de 1 m).
+hol.Camera.TestCursor 0.5 0.5
+hol.Select.ClickUnit -1
+waitlog Selection: Peasant #
+hol.Camera.TestCursor off
+hol.Select.Grid 0
+hol.Select.Grid 6
+waitlog Placement: Palisade (cost
+hol.Camera.Focus -17400 0
+frames 40
+hol.Mouse.LogDragEnd 1
+# Glisser : appui en (200, 360), relache en (1000, 360), 90 images ; ~3000 cm = ~30 sous-cases de 1 m. Capture pendant apres 70 images sur 90 (aux trois quarts du glisser).
+hol.Mouse.Drag 200 360 1000 360 90
+frames 70
+note 2. PENDANT le glisser : une file de petits fantomes verts de 1 m (une sous-case chacun, serres), de ton point d'appui au curseur ; pas de grosses boites de 4 m ; aucun fantome rouge.
+capture wall_fine_ghost_during
+waitlog Drag end: foreground=
+waitlog Placement: Palisade wall line (
+waitlog RpcOrder: place wall line received by the server
+wait 2
+hol.Build.Report
+note 3. APRES le relache : les fantomes ont disparu, remplaces par des fondations de 1 m (une par sous-case, 5 bois chacune, le Bois a baisse).
+capture wall_fine_ghost_after
+hol.Test.Sanity
+quit
