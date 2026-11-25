@@ -137,6 +137,9 @@ namespace HOLMorale
 	// (Effect.Id == R, so a banner and the hero's own aura, one id, are one bit). An effect whose id is outside the 16 bits is not sent; 0 for a unit with none.
 	uint16 EffectMask(const FHOLMoraleState& State);
 
+	// R1: the time left of the temporary effect (not an aura) that lasts longest, in whole seconds rounded up, held at 255; 0 when the unit has none.
+	uint8 LongestSecondsLeft(const FHOLMoraleState& State);
+
 	// The immunity to the malus for this long; a shorter grant never cuts a longer one.
 	void GrantImmunity(FHOLMoraleState& State, int32 DurationMs);
 

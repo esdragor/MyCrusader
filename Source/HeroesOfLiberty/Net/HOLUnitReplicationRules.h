@@ -101,7 +101,13 @@ struct HEROESOFLIBERTY_API FHOLNetUnitState
 	 * whether any is set, then only a unit under an effect writes the mask: a unit without effect pays one bit.
 	 */
 	static constexpr int32 EffectMaskBits = 16;
-	static constexpr int32 EffectsBits = EffectMaskBits;
+	/**
+	 * R1 (Q-moral-duree-client, default B): the seconds left of the longest temporary effect, one byte after the mask (whole seconds, held at 255), for a unit under an effect
+	 * only. ONE LINE to change: false = option A (no seconds on the wire, the pastille shows none), the wire then goes back to 16 bits under an effect.
+	 */
+	static constexpr bool bEffectSecondsOnWire = true;
+	static constexpr int32 EffectSecondsBits = 8;
+	static constexpr int32 EffectsBits = EffectMaskBits + (bEffectSecondsOnWire ? EffectSecondsBits : 0);
 
 	UPROPERTY()
 	int16 X = 0;
@@ -165,6 +171,10 @@ struct HEROESOFLIBERTY_API FHOLNetUnitState
 	/** M5 / A2: the morale effects on the unit, one bit each (EffectMaskBits); 0 for a unit without effect (not sent: one bit). A change is a change of action. */
 	UPROPERTY()
 	uint16 EffectMask = 0;
+
+	/** R1 (Q-moral-duree-client, default B): the whole seconds left of the temporary effect that lasts longest (HOLMorale::LongestSecondsLeft), 0 when none; sent with the mask only. Not part of IsSameAction (one change per second would be traffic). */
+	UPROPERTY()
+	uint8 EffectSecondsLeft = 0;
 
 	/** Reduces a state; values out of range are held at the range's edge. */
 	static FHOLNetUnitState Make(const FVector& Position, const FVector& Velocity, EHOLUnitActivity Activity, int64 Step,

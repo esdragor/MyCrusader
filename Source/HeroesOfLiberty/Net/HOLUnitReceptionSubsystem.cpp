@@ -644,6 +644,7 @@ bool UHOLUnitReceptionSubsystem::MakeView(const FSlot& Slot, FHOLUnitView& OutVi
 	OutView.DeployPhase = Slot.State.GetDeployPhase();
 	// A2 (S2-c step 9): the morale effects the server sent with the state (HOLMoraleView::Read draws from it).
 	OutView.EffectMask = Slot.State.EffectMask;
+	OutView.EffectSecondsLeft = Slot.State.EffectSecondsLeft; // R1
 	return true;
 }
 

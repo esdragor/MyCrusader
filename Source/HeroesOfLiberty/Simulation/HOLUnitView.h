@@ -49,6 +49,8 @@ struct FHOLUnitView
 	int32 DeployPhase = -1;
 	/** A2 (S2-c step 9): the morale effects on the unit, one bit per effect row (HOLMorale::EffectMask). A client has them from the last state received; 0 for a unit without effect. */
 	uint16 EffectMask = 0;
+	/** R1: the whole seconds left of the temporary effect that lasts longest (HOLMorale::LongestSecondsLeft); a client has it from the last state received, 0 without effect or while a slow refresh has not come. */
+	uint8 EffectSecondsLeft = 0;
 	/** A hero (J8a.1: the Hero armour category). IA2.1: the AI's army leaves him out. */
 	bool bHero = false;
 	/** Unhurt (J7b.4): its health is its type's maximum. */
