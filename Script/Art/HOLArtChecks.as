@@ -25,64 +25,92 @@ namespace HOLArtChecks
 	{
 		FHOLArtCheck Check;
 		Check.bPass = bPass;
-		Check.Line = Line;
+		Check.Line = (bPass ? "[OK] " : "[KO] ") + Line;
 		return Check;
 	}
 
 	FHOLArtCheck CheckPivot(float BoundsMinZ)
 	{
-		return Make(false, "");
+		const bool bPass = Math::Abs(BoundsMinZ) <= PivotToleranceCm;
+		return Make(bPass, "pivot on the ground: bottom of the bounds at " + BoundsMinZ + " cm (tolerance " + PivotToleranceCm + ")");
 	}
 
 	FHOLArtCheck CheckMaterialSlots(int Slots)
 	{
-		return Make(false, "");
+		const bool bPass = Slots >= 1 && Slots <= MaxMaterialSlots;
+		return Make(bPass, "material slots: " + Slots + " (1 to " + MaxMaterialSlots + ")");
 	}
 
 	FHOLArtCheck CheckTriangles(int Triangles, int Budget)
 	{
-		return Make(false, "");
+		return Make(Triangles <= Budget, "triangles (LOD 0): " + Triangles + " (budget " + Budget + ")");
 	}
 
 	FHOLArtCheck CheckMeshPrefix(FString AssetName, bool bSkeletal)
 	{
-		return Make(false, "");
+		const FString Prefix = bSkeletal ? "SKM_" : "SM_";
+		return Make(AssetName.StartsWith(Prefix), "name " + AssetName + " starts with " + Prefix);
 	}
 
 	FHOLArtCheck CheckArtFolder(FString PackagePath)
 	{
-		return Make(false, "");
+		const bool bPass = (PackagePath + "/").StartsWith(ArtRoot);
+		return Make(bPass, "folder " + PackagePath + " under " + ArtRoot);
 	}
 
 	FHOLArtCheck CheckTypeName(FName TypeName, const TArray<FName>& KnownTypes)
 	{
-		return Make(false, "");
+		const bool bPass = TypeName != NAME_None && KnownTypes.Contains(TypeName);
+		return Make(bPass, "TypeName " + TypeName.ToString() + " in the unit, building or source tables");
 	}
 
 	FHOLArtCheck CheckLoaded(FString Field, bool bSet, bool bLoaded)
 	{
-		return Make(false, "");
+		if (!bSet)
+			return Make(true, Field + ": empty, falls back to the next level");
+		return Make(bLoaded, Field + (bLoaded ? ": loads" : ": set but does not load"));
 	}
 
 	FHOLArtCheck CheckSequence(FString Field, bool bOverride, int Sequence, int SequenceCount, bool bOptional)
 	{
-		return Make(false, "");
+		if (!bOverride)
+			return Make(true, Field + " sequence: not overridden, the CSV's");
+		const bool bLeftOut = Sequence == -1 && bOptional;
+		const bool bPass = bLeftOut || (Sequence >= 0 && Sequence < SequenceCount);
+		return Make(bPass, Field + " sequence " + Sequence + " in the provider's " + SequenceCount + " sequences");
 	}
 
 	// The family folder of a type: Units, Buildings or Sources (empty when the type is in no table).
 	FString Family(bool bUnit, bool bBuilding, bool bSource)
 	{
+		if (bUnit)
+			return "Units";
+		if (bBuilding)
+			return "Buildings";
+		if (bSource)
+			return "Sources";
 		return "";
 	}
 
 	// /Game/Art/<Family>/<Type>/DA_Art_<Type>[_<Faction>] (D924).
 	FString ArtAssetPath(FString FamilyName, FName TypeName, FName Faction)
 	{
-		return "";
+		if (FamilyName.IsEmpty() || TypeName == NAME_None)
+			return "";
+		const FString Type = TypeName.ToString();
+		FString Name = "DA_Art_" + Type;
+		if (Faction != NAME_None)
+			Name += "_" + Faction.ToString();
+		return ArtRoot + FamilyName + "/" + Type + "/" + Name;
 	}
 
 	bool AllPass(const TArray<FHOLArtCheck>& Checks)
 	{
-		return false;
+		for (const FHOLArtCheck& Check : Checks)
+		{
+			if (!Check.bPass)
+				return false;
+		}
+		return true;
 	}
 }
