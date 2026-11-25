@@ -168,6 +168,12 @@ namespace HOLCombat
 		};
 	}
 
+	bool IsChallengedBy(const FVector2D& SeekerPosition, const bool bSeekerIsHero, const FVector2D& KnightPosition, const int64 EndStep, const float RadiusCm, const int64 StepIndex)
+	{
+		// STUB (red first, SAURON-1125e): the effect comes with the fix.
+		return false;
+	}
+
 	int32 ChooseTarget(const FSeeker& Seeker, const TConstArrayView<FCandidate> Candidates)
 	{
 		// SAURON-1125a (Dawn A7, D919): a challenging Knight comes before everything, wherever it stands (the processor set the flag only

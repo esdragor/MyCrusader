@@ -68,6 +68,39 @@ bool FHOLKnightChallengeTargetsTheKnightTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+// SAURON-1125e (Dawn A7, D919): (a) a hero seeker is not provoked; (b) a Knight beyond the seeker's search radius but inside the challenge
+// zone challenges it (the processor adds such a Knight as a candidate with this very predicate); a Knight outside the zone, a challenge
+// over, or a hero seeker: not challenged.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLKnightChallengeReachTest, "HeroesOfLiberty.Combat.KnightChallengeReach", EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FHOLKnightChallengeReachTest::RunTest(const FString& Parameters)
+{
+	const FVector2D Seeker(0.0, 0.0);
+	const FVector2D Knight(0.0, 700.0); // beyond a 400 cm search radius, inside the 800 cm zone
+	TestTrue(TEXT("A Knight at 700 cm of a 800 cm zone, the challenge lasting, challenges a soldier"), HOLCombat::IsChallengedBy(Seeker, false, Knight, 160, 800.f, 100));
+	TestFalse(TEXT("... not beyond the zone"), HOLCombat::IsChallengedBy(Seeker, false, FVector2D(0.0, 900.0), 160, 800.f, 100));
+	TestFalse(TEXT("... not once the challenge is over"), HOLCombat::IsChallengedBy(Seeker, false, Knight, 160, 800.f, 160));
+	TestFalse(TEXT("... never a hero"), HOLCombat::IsChallengedBy(Seeker, true, Knight, 160, 800.f, 100));
+
+	// The choice itself: an enemy hero at 700 cm is not provoked (it keeps its nearer ally), a soldier is, whichever flag the processor sets.
+	HOLCombat::FSeeker Hero;
+	Hero.AggressionRadius = 400.f;
+	Hero.bIsHero = true;
+	TArray<HOLCombat::FCandidate> Candidates;
+	HOLCombat::FCandidate& Ally = Candidates.AddDefaulted_GetRef();
+	Ally.Id = 1;
+	Ally.Position = FVector2D(150.0, 0.0);
+	Ally.bIsCurrentTarget = true;
+	HOLCombat::FCandidate& Challenger = Candidates.AddDefaulted_GetRef();
+	Challenger.Id = 2;
+	Challenger.Position = Knight;
+	Challenger.bChallengesMe = true;
+	TestEqual(TEXT("A hero seeker keeps its ally, the Knight does not provoke it"), HOLCombat::ChooseTarget(Hero, Candidates), 0);
+	HOLCombat::FSeeker Soldier = Hero;
+	Soldier.bIsHero = false;
+	TestEqual(TEXT("A soldier takes the Knight"), HOLCombat::ChooseTarget(Soldier, Candidates), 1);
+	return true;
+}
+
 // SAURON-1125b (Dawn A7, D919): the cast, the C++ liaison of the script rule (HOLKnightChallenge.as). CastKnightChallenge writes the end step, the radius and
 // the cool-down on the Knight's combat fragment; it refuses another type, another owner, and a second cast during the cool-down (45 s in the table row).
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLKnightChallengeCastTest, "HeroesOfLiberty.Combat.KnightChallengeCast", EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
