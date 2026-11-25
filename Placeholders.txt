@@ -74,6 +74,7 @@ Un chantier ne se clôt pas sans avoir relu ce fichier.
 - Chapelle de campagne Aube [à venir]
 - Académie [à venir]
 - Palissade (ligne de table provisoire, GLORFINDEL-1123b : 1 case, 400 PV, 5 bois, 5 s, aucun maillage ni icone ; valeurs derriere BuildingTypes.csv, Retours\Q-palissade.md) [à venir]
+- Fondation de palissade tracee sur la grille fine (SubDivision 4, CELEBORN-1125mg) : le maillage de la fondation fait ~4 m de large pour un pas d'1 m (le fantome fait 1 m), les fondations se chevauchent en treillis ; empreinte du maillage a reduire au pas fin [forme]
 - Porte de palissade (ligne de table provisoire, CELEBORN-1123j : 1 case, 400 PV, 10 bois, 8 s, emplacement de grille 10, aucun maillage ni icone ; valeurs derriere BuildingTypes.csv, Retours\Q-porte-palissade.md) [à venir]
 - Mur de pierre (ligne de table provisoire, CELEBORN-1123l : 1 case, 1200 PV, 10 pierre, 8 s, palier 1, emplacement de grille 7, non praticable, aucun maillage ni icone ; valeurs derriere BuildingTypes.csv, Retours\Q-mur.md) [à venir]
 - Tour de guet en bois [à venir]
