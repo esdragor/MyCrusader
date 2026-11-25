@@ -67,8 +67,13 @@ Une case vide (ou une case à cocher décochée) = le jeu garde ce qu'il montre 
 - **Fall Sequence** : numéro de la mort (chute).
 - **Build Sequence** : numéro de l'animation de construction ; **Build Play Rate** : sa vitesse.
 - **Gather Play Rate** : vitesse des animations de récolte ; **Carry Walk Play Rate** : vitesse de la marche chargée.
-  Les animations de récolte, de marche chargée et de repos chargé elles-mêmes (une par ressource) ne sont pas encore
-  dans la fiche : demandez à l'équipe de les brancher.
+- **Gather / Carry Walk / Carry Idle Sequences** : numéros de la récolte, de la marche chargée et du repos chargé, un par
+  ressource (Food, Wood, Stone, Gold).
+
+**Animations** (unités seulement ; la façon conseillée, section 6)
+- **Idle / Walk / Attack / Fall / Build Animation** : l'Anim Sequence elle-même de chaque état, choisie dans la liste.
+- **Gather / Carry Walk / Carry Idle Animations** : la même chose par ressource.
+- Une animation choisie remplace le numéro de la même ligne ; une case vide garde le numéro.
 
 **Tir** (unités à distance)
 - **Projectile** : le modèle de la flèche, du carreau ou de la balle.
@@ -136,12 +141,20 @@ Data**, et chaque état de l'unité joue un numéro de cette liste.
    entrée porte le numéro 0, la deuxième le 1, etc.
 4. **Piège : Layers doit avoir au moins une entrée.** Ajoutez une entrée (laissée par défaut) à **Layers**. Sans elle,
    rien ne joue, sans message clair.
-5. Dans la fiche `DA_Art_<Type>` : **Animation Provider** = ce `TP_<Type>`, puis cochez chaque séquence et donnez son
-   numéro dans votre liste (Idle = repos, Walk = marche, Attack = attaque, Fall = mort, Build = construction).
+5. Dans la fiche `DA_Art_<Type>` : **Animation Provider** = ce `TP_<Type>`, puis, dans **Animations**, choisissez
+   l'animation de chaque état (Idle Animation = repos, Walk Animation = marche, Attack Animation = attaque, Fall
+   Animation = mort, Build Animation = construction ; Gather / Carry Walk / Carry Idle Animations = récolte, marche
+   chargée, repos chargé, par ressource). **Vous choisissez l'animation, plus son numéro** : au lancement, le jeu
+   retrouve lui-même sa place dans la liste du `TP_<Type>`, même si vous réordonnez la liste.
 
-Une séquence non cochée garde le numéro actuel de l'unité (par exemple l'Archer a aujourd'hui le repos en 2 et la marche
-en 3), qui pointera alors dans **votre** liste : cochez donc toutes les séquences dès que vous posez votre propre
-Animation Provider.
+Une animation choisie mais **absente** de la liste du `TP_<Type>` : le jeu écrit une erreur dans le journal qui nomme
+l'unité, l'état et l'animation (`Art of 'Archer': the Walk animation ... is not in the sequences of ...`) et garde le
+numéro de la ligne **Séquences**. Ajoutez alors l'animation à la liste, ou choisissez-en une qui y est.
+
+Une case d'animation vide garde le numéro (section 3, **Séquences**) : l'ancienne façon marche encore. Un état sans
+animation choisie ni numéro coché garde le numéro actuel de l'unité (par exemple l'Archer a aujourd'hui le repos en 2
+et la marche en 3), qui pointerait alors dans **votre** liste : choisissez donc l'animation de chaque état dès que vous
+posez votre propre Animation Provider. Les fiches livrées ont déjà leurs animations choisies (`Tools\Editor\art_visual_io.py`).
 
 ## 7. Licences
 
