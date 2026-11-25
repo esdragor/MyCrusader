@@ -456,6 +456,20 @@ namespace HOLWallLine
 		return ExistingOwner == GateOwner && ExistingType == n"Palisade";
 	}
 
+	// D898 G10 (PLAN-GRILLE-FINE-1124.md): the sub-cells a gate laid at Cell covers = the SubDivision sub-cells of its 4 m tile in a row along X (bAlongX) or along Y.
+	// STUB (red first): covers nothing, replaces nothing.
+	TArray<FIntPoint> GateCells(FIntPoint Cell, bool bAlongX, int SubDivision)
+	{
+		TArray<FIntPoint> Covered;
+		return Covered;
+	}
+
+	// The standing pieces (parallel arrays: cell, type, owner) the gate replaces: only the covered sub-cells holding a piece GateReplaces accepts (the palisade of the SAME seat).
+	TArray<FIntPoint> GateReplacedCells(FIntPoint Cell, bool bAlongX, int SubDivision, int GateOwner, const TArray<FIntPoint>& StandingCells, const TArray<FName>& StandingTypes, const TArray<int>& StandingOwners)
+	{
+		TArray<FIntPoint> Replaced;
+		return Replaced;
+	}
 	// A gate lets its owner's units through (other seats meet a solid building, D691 / D867 neighbours: walls and gates are solid for the enemy).
 	bool GatePassesUnit(FName GateType, int GateOwner, int UnitOwner)
 	{
