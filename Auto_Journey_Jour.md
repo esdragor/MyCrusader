@@ -87,6 +87,141 @@ check-list lue (L28) à 09:50 après le nettoyage 0a (commits f14ace8, 4865afe, 
 | SAURON-1125me | HeroesOfLiberty-Sauron | tools-1124sk | - | L28-8 faux FAIL : session_gate compte 9 worktrees pour 8 hors copie principale ; test rouge puis correctif, branche tools-l288-1125m depuis main | sans C++ |
 | HALDIR-1125mc | HeroesOfLiberty-Haldir | pre-81 | - | pre-81 build FAIL HOLCommandScriptLibrary.cpp(153-189) C2264 ToUnitIds ; renommer sur la branche fautive, merge dans pre-81 | C++ : raison dite dans la tache |
 | ELROND-1125me | HeroesOfLiberty-Elrond | integ-80 | - | Banniere mode arme 101 : Aura rings et DrawFactionAimPreview lisent la portee 1600 et non 800 ; branche grid-banner-1125m depuis grid-g5a-1125m ; build hero grid | sans C++ |
+| HALDIR-1125md | HeroesOfLiberty-Haldir | integ-81 | - | integ-81 build hero grid : refus de case grisee (Z niveau 1, A en recharge) non signale depuis G-5a + tolerance 30 cm du clic ; correctif script sur grid-refuse-1125m (depuis grid-banner-1125m), merge dans integ-81, rejouer -Parts build | sans C++ |
+| DOCS-1125md | HeroesOfLiberty-Sauron | tools-l288-1125m | - | Bilan de seance 2026-11-25 matin dans Auto_Journey_Jour.md : bilan, ### Lecons appliquees 2026-11-25, ligne version launcher (L27-12), Retours a jour (plafond 6 essais), file cochee | sans C++ |
+
+## Bilan du 2026-11-25 matin
+
+Séance autonome 09:42 -> 13:00, ARRÊTÉE PAR L'UTILISATEUR vers 11:30 (tokens) ; bilan écrit par DOCS-1125md (12:2x) depuis le tableau ci-dessus, `Docs\Rapports\*-1125m*.md` et `git log main` ; point de reprise : ligne « ARRÊT DEMANDÉ » de la section « Séance du matin » (main = 1f63056 + docs 4f8ed4d).
+- Demande du jour : grille de commandes en Angelscript. État G-1..G-6 : G-1 et G-2 faits et DANS main (integ-78 1f63056) : `HOLCommandGridAction::Decide` répond Lumière sacrée, capacités de héros, ordres, Build (rouge 3421414 vu 10:05, correctif c3765bd) ; G-2 reste `DecideCosted` (Build refusé, Produce/Research/Trade, GLORFINDEL-1125mb 9ad0480 / 029e737, rouge vu 10:33, vert et scripts compiled non lus) ; G-3 clic au sol en script, branche grid-g3-1125m (8e98223, 13cb4a2 ; rouge vu 10:33, 2239/2241) ; G-4 pont C++ `UHOLGridActionBridge` (ELROND-1125ma 0ff98f8, compilé ensuite par la principale) + `UHOLGridActionScript` (02db9d5, 5e70d39, 0cfbbde ; rouge vu 10:17, 2237/2239) ; G-5a `ExecuteGridCommand` exécute toute réponse du script, branche grid-g5a-1125m (a493984, d0914fd ; compilé PASS, non testé) ; G-5b `HOLGameScreen.cpp` lit `HOLCommandGridFace`, branche grid-g5b-1125m (ce38e14, NON COMPILÉ) ; G-6 aspect de la case en script, branche grid-face-1125m (rouge dc624c0, correctif a904da7). G-3 à G-6 ne sont PAS dans main (pre-81 et integ-81 non fusionnées).
+- Socle : D904 coût des murs N sous-cases x prix dans main (4ccf4b8, bcb4adb), G8 fantômes sur la grille fine (walls-g8-1125m, E-wall_fine_ghost VU À L'ÉCRAN, geste interne), G10 portes rouge 4ba5ec2 / correctif a99f9ad (vert non relu) ; moral : morale_look (branche morale-look-1125m, VU, pastille sans secondes) et R1 C++ (morale-r1-1125m, NON COMPILÉ, correction HOLNetTests.cpp(339) par GALADRIEL-1125me) ; duel_challenge_accept corrigé (01ee4bf : défi 572, accepté 591, duel fini) ; Voie de spécialisation spec-voie-1125m (bed4c66 vert) hors pre-81, D902 NON fait (patch au scratchpad ARWEN-1125mf) ; tower_wood : recette RECETTE-1125ma FAIL (cadrages after / after3), tower-wood-3rd-1125m : 3e Lancier #7 encore masqué.
+- Avances de main : 4f6ddc4 (integ-77, arbre identique à main) puis 1f63056 (integ-78 : duel-frame-1124sj, walls-g7-1124s, tools-1124sk, tower-wood-look-1124sm) ; ensuite docs seulement (1d2a2bc, 2c59065, b5df23a, 0dffa2c, 018ead0, 4f8ed4d) ; aucune avance après integ-78 (integ-79, 80 et 81 non entrées).
+- integ-79 (79af31d) FAIL `Test_SpecializationSlotOptionTextsFollowTheCulture` : l'hypothèse « traductions VoieFer/Faith/Stone absentes de Game.po » était FAUSSE (DIAG-1125mb) ; cause : `UnrealEditor-Cmd` (quick_check tests) n'est pas `FApp::IsGame()`, donc `SetLanguageName("ja")` change la langue sans charger le .locres du jeu (TextLocalizationManager.cpp:539/973/1247) ; correctif C++ `loc-fix-1125m` d86163c (HALDIR-1125mb : cvar `Localization.ForceLoadGameLocalizationInEditor` levée le temps du changement), NON COMPILÉ.
+- integ-80 (18e0e46) : tests 2246/2246 PASS mais `-Parts build` (scénario hero grid) FAIL ; cause (DIAG-1125me, DIAG-1125md arrêté avant verdict) : vraie régression de grid-g3-1125m, `hol.Select.Banner` (HOLPlayerController.cpp:261) ne clique que si `IsBannerArmed()` et Z n'arme plus `bBannerArmed` (mode 101), l'aperçu de portée de la bannière lit 800 au lieu de 1600 (Aura rings, DrawFactionAimPreview), tolérance de 30 cm du clic trop fine ; correctifs grid-banner-1125m (d7cb82d, 27c56f2) et f265ae7 (quick_check clique le mode 101 par `hol.Select.LeftClickGround`).
+- integ-81 (8345675) : pre-81 build FAIL C2084 / C2264, 3 helpers `ToUnitIds` identiques en namespace anonyme (HOLAIOrders.cpp, HOLCommandScriptLibrary.cpp, HOLControllerCommandLibrary.cpp) dans le même paquet unity, renommés par fichier (ba8d05c, HALDIR-1125mc, non compilé) ; refus de case grisée (Z niveau 1, A en recharge) non signalé depuis G-5a, correctif grid-refuse-1125m (b7d7c80, HALDIR-1125md) ; build et tests de integ-81 NON relancés à l'arrêt.
+- Anomalies : (1) gate_test complet tué par le `stray_processes -Stop` de SAURON-1125mc (10:4x) ; (2) rejeu DIAG-1125mc : gate_test exit 1 parce que la branche du worktree Sauron a été changée par la principale PENDANT le run (reflog 10:34 tools-1125m, 10:55 grid-g5b-1125m, ce38e14 à 11:01) : `session_gate.ps1` relu d'une branche sans L28, erreur `Match ... input null` (session_gate.ps1:542) ; gate_test complet jamais vert ; (3) faux FAIL L28-8 : le gate Launch compte 9 worktrees pour 8 hors copie principale (SAURON-1125me, tools-l288-1125m ; 9e compte non reproduit) ; (4) exception `-NoGate` accordée par l'utilisateur (portée non écrite dans les rapports lus : à confirmer par la principale) ; (5) arrêt de l'utilisateur vers 11:30 ; (6) lignes EtapeDefini absentes pour 6 agents (L28-4, rattrapées par DOCS-1125mc 018ead0) et fiche absente pour FARAMIR-1125ma ; (7) 3 agents arrêtés sans rapport complet : GLORFINDEL-1125me, DIAG-1125md, ARWEN-1125mg.
+- Questions : 3 `AskUserQuestion` = lancement seulement (fin, mode, lancement), 0 question de travail ; 1 `Q-*.md` neuve (Q-mur-prix-sous-case, défaut prix plein). Budget de la principale NON relevé par `/context` (objectif 300k non mesuré).
+- version launcher : latest.txt = 0.4.3 (`Saved\Manager\Versions\0.4.3\published.txt` = 2026-11-24 13:51Z, soit 14:51 ; release.json stage 4 / update 4) ; 69 commits de `Source\`, `Script\`, `Content\` ou `Config\` dans main depuis cette heure (grille script G-1/G-2, D904, moral R2...) ; verdict nouvelle version : OUI (contenu neuf), NON publiée ce jour (binaire de main non validé après integ-80, aucune avance de main depuis 1f63056) ; la ligne « Nouvelle version du launcher ? » reste dans `Auto_Journey_Retours.md` pour l'utilisateur.
+- Retours : 6 `[À ESSAYER]` au plus (L28-9) : monk_seal_slow et tower_wood_garrison sortis du compte (prêts mais NON DONNÉS) dans `Auto_Journey_Retours.md` ; en-tête recompté : 6 essais (faction_aim_free, wall_line_skip, deploy_far, specialization_slot, monk_seal, sacred_light_heal) ; non comptés : morale_look (branche hors main), wall_fine_ghost et duel_challenge_accept (geste interne), tower_wood (recette FAIL), wall_fine_block, talents_heal, playtest_hero_army (LOGIQUE SEULEMENT).
+
+### Lecons appliquees 2026-11-25
+- T2-1 : appliquee : ETAPE0-1125m (`Docs\Rapports\ETAPE0-1125m.md`, `ENONCES-1125m.md`), plan de lancement écrit au Jour (« Plan de lancement ETAPE0-1125m »)
+- T2-2 : appliquee : 8 worktrees lancés d'emblée (Glorfindel, Elrond, Galadriel, Haldir, Celeborn, Faramir, Arwen, Sauron), plan de lancement du Jour
+- L3-12 : appliquee : étape 0 faite (ETAPE0-1125m), non sautée
+- L5-7 : non vérifié : aucune trace écrite de la question « dossiers non suivis » ; beaucoup de fichiers non suivis dans `Docs\Rapports` à ce bilan
+- L4-1, L4-3 : appliquee : fin 13:00 et mode autonome demandés à 09:43, alarme 12:45 et veilleur 30 min (xx:13 / xx:43) posés (Jour, Séance du matin) ; l'utilisateur a arrêté la séance vers 11:30, aucune prolongation demandée
+- L3-8, L4-9, Q5, L1-14 : appliquee : intégrateur HALDIR nommé au plan (integ-77 à integ-81), recette RECETTE-1125ma sur main 1f63056 (verdict FAIL tower_wood)
+- L3-9 : non vérifié : appels d'outils de la principale non relevés
+- L1-1, L3-6, L4-7, L5-3 : non vérifié : non relevé dans cette séance (arrêt de l'utilisateur vers 11:30, gate Close non lancé avant ce bilan)
+- L5-6 : non vérifié : non relevé dans cette séance (arrêt de l'utilisateur vers 11:30, gate Close non lancé avant ce bilan)
+- L3-11, L5-5 : non vérifié : non relevé dans cette séance (arrêt de l'utilisateur vers 11:30, gate Close non lancé avant ce bilan)
+- L3-7, L1-4 : non vérifié : non relevé dans cette séance (arrêt de l'utilisateur vers 11:30, gate Close non lancé avant ce bilan)
+- T2-4 : appliquee : 1 `Q-*.md` neuve (Q-mur-prix-sous-case, Celeborn, défaut prix plein codé), 2 questions au plus par chantier
+- Q5, L5-4 : non appliquee : une seule recette indépendante (RECETTE-1125ma, tower_wood FAIL) ; morale_look, wall_fine_ghost et duel_challenge_accept non rejoués par un autre agent
+- Q8 : non vérifié : non relevé dans cette séance (arrêt de l'utilisateur vers 11:30, gate Close non lancé avant ce bilan)
+- Q11 : appliquee : 6 `[À ESSAYER]` dans `Auto_Journey_Retours.md` après tri de DOCS-1125md (8 avant : monk_seal_slow et tower_wood_garrison sortis du compte)
+- L1-3 : non vérifié : `merge_main_fait` relevé seulement pour HALDIR-1125mb (non, hors consigne) ; autres rapports non recomptés
+- L6-2 : non vérifié : non relevé dans cette séance (arrêt de l'utilisateur vers 11:30, gate Close non lancé avant ce bilan)
+- L6-4 : non vérifié : non relevé dans cette séance (arrêt de l'utilisateur vers 11:30, gate Close non lancé avant ce bilan)
+- L6-6 : non vérifié : non relevé dans cette séance (arrêt de l'utilisateur vers 11:30, gate Close non lancé avant ce bilan)
+- L1-12 : non vérifié : non relevé dans cette séance (arrêt de l'utilisateur vers 11:30, gate Close non lancé avant ce bilan)
+- L3-3 : non vérifié : non relevé dans cette séance (arrêt de l'utilisateur vers 11:30, gate Close non lancé avant ce bilan)
+- L7-7 : non vérifié : non relevé dans cette séance (arrêt de l'utilisateur vers 11:30, gate Close non lancé avant ce bilan)
+- L8-4 : non vérifié : non relevé dans cette séance (arrêt de l'utilisateur vers 11:30, gate Close non lancé avant ce bilan)
+- L8-8 : non vérifié : non relevé dans cette séance (arrêt de l'utilisateur vers 11:30, gate Close non lancé avant ce bilan)
+- L9-1 : non vérifié : non relevé dans cette séance (arrêt de l'utilisateur vers 11:30, gate Close non lancé avant ce bilan)
+- L9-6 : non vérifié : non relevé dans cette séance (arrêt de l'utilisateur vers 11:30, gate Close non lancé avant ce bilan)
+- L9-8 : non vérifié : non relevé dans cette séance (arrêt de l'utilisateur vers 11:30, gate Close non lancé avant ce bilan)
+- L9-9 : non vérifié : non relevé dans cette séance (arrêt de l'utilisateur vers 11:30, gate Close non lancé avant ce bilan)
+- L10-2 : non vérifié : non relevé dans cette séance (arrêt de l'utilisateur vers 11:30, gate Close non lancé avant ce bilan)
+- L10-3 : non vérifié : non relevé dans cette séance (arrêt de l'utilisateur vers 11:30, gate Close non lancé avant ce bilan)
+- L11-3 : non vérifié : non relevé dans cette séance (arrêt de l'utilisateur vers 11:30, gate Close non lancé avant ce bilan)
+- L11-4 : non vérifié : non relevé dans cette séance (arrêt de l'utilisateur vers 11:30, gate Close non lancé avant ce bilan)
+- L11-8 : non vérifié : non relevé dans cette séance (arrêt de l'utilisateur vers 11:30, gate Close non lancé avant ce bilan)
+- L11-9 : non vérifié : non relevé dans cette séance (arrêt de l'utilisateur vers 11:30, gate Close non lancé avant ce bilan)
+- L11-10, L10-5, L9-7 : non vérifié : non relevé dans cette séance (arrêt de l'utilisateur vers 11:30, gate Close non lancé avant ce bilan)
+- L11-11 : non vérifié : non relevé dans cette séance (arrêt de l'utilisateur vers 11:30, gate Close non lancé avant ce bilan)
+- L11-12 : non vérifié : non relevé dans cette séance (arrêt de l'utilisateur vers 11:30, gate Close non lancé avant ce bilan)
+- L11-13 : non vérifié : non relevé dans cette séance (arrêt de l'utilisateur vers 11:30, gate Close non lancé avant ce bilan)
+- L12-1 : appliquee : sync_worktrees à 09:45, tous les worktrees à jour avant les lancements
+- L12-1b : non vérifié : non relevé dans cette séance (arrêt de l'utilisateur vers 11:30, gate Close non lancé avant ce bilan)
+- L13-1 : non vérifié : non relevé dans cette séance (arrêt de l'utilisateur vers 11:30, gate Close non lancé avant ce bilan)
+- L13-4 : non vérifié : non relevé dans cette séance (arrêt de l'utilisateur vers 11:30, gate Close non lancé avant ce bilan)
+- L13-5 : non vérifié : non relevé dans cette séance (arrêt de l'utilisateur vers 11:30, gate Close non lancé avant ce bilan)
+- L13-6 : non vérifié : non relevé dans cette séance (arrêt de l'utilisateur vers 11:30, gate Close non lancé avant ce bilan)
+- L13-7 : non vérifié : non relevé dans cette séance (arrêt de l'utilisateur vers 11:30, gate Close non lancé avant ce bilan)
+- L14-2 : non vérifié : non relevé dans cette séance (arrêt de l'utilisateur vers 11:30, gate Close non lancé avant ce bilan)
+- L14-4 : appliquee : 3 `AskUserQuestion`, lancement seulement
+- L14-5 : non vérifié : non relevé dans cette séance (arrêt de l'utilisateur vers 11:30, gate Close non lancé avant ce bilan)
+- L14-9 : non vérifié : non relevé dans cette séance (arrêt de l'utilisateur vers 11:30, gate Close non lancé avant ce bilan)
+- L14-10 : non vérifié : non relevé dans cette séance (arrêt de l'utilisateur vers 11:30, gate Close non lancé avant ce bilan)
+- L14-11 : non vérifié : non relevé dans cette séance (arrêt de l'utilisateur vers 11:30, gate Close non lancé avant ce bilan)
+- L15-6 : non vérifié : non relevé dans cette séance (arrêt de l'utilisateur vers 11:30, gate Close non lancé avant ce bilan)
+- L15-7 : appliquee : ligne de file 83 déjà fermée dite au premier appel (ARWEN-1125ma) ; aucune ligne prenable dite par SAURON-1125mc
+- L15-8 : non vérifié : non relevé dans cette séance (arrêt de l'utilisateur vers 11:30, gate Close non lancé avant ce bilan)
+- L15-9 : non vérifié : non relevé dans cette séance (arrêt de l'utilisateur vers 11:30, gate Close non lancé avant ce bilan)
+- L16-1 : non vérifié : non relevé dans cette séance (arrêt de l'utilisateur vers 11:30, gate Close non lancé avant ce bilan)
+- L16-2 : non vérifié : non relevé dans cette séance (arrêt de l'utilisateur vers 11:30, gate Close non lancé avant ce bilan)
+- L16-3 : appliquee : 4f6ddc4 (integ-77) et 1f63056 (integ-78) par integrate.ps1 ; integ-79 à integ-81 non entrées dans main
+- L16-4 : non vérifié : non relevé dans cette séance (arrêt de l'utilisateur vers 11:30, gate Close non lancé avant ce bilan)
+- L16-5 : non vérifié : non relevé dans cette séance (arrêt de l'utilisateur vers 11:30, gate Close non lancé avant ce bilan)
+- L16-6 : non vérifié : non relevé dans cette séance (arrêt de l'utilisateur vers 11:30, gate Close non lancé avant ce bilan)
+- L16-7 : non vérifié : non relevé dans cette séance (arrêt de l'utilisateur vers 11:30, gate Close non lancé avant ce bilan)
+- L16-8 : non vérifié : non relevé dans cette séance (arrêt de l'utilisateur vers 11:30, gate Close non lancé avant ce bilan)
+- L17-a : non vérifié : non relevé dans cette séance (arrêt de l'utilisateur vers 11:30, gate Close non lancé avant ce bilan)
+- L17-b : non vérifié : non relevé dans cette séance (arrêt de l'utilisateur vers 11:30, gate Close non lancé avant ce bilan)
+- L17-c : non vérifié : non relevé dans cette séance (arrêt de l'utilisateur vers 11:30, gate Close non lancé avant ce bilan)
+- L18-a : non vérifié : non relevé dans cette séance (arrêt de l'utilisateur vers 11:30, gate Close non lancé avant ce bilan)
+- L18-b : non vérifié : non relevé dans cette séance (arrêt de l'utilisateur vers 11:30, gate Close non lancé avant ce bilan)
+- L18-c : non vérifié : non relevé dans cette séance (arrêt de l'utilisateur vers 11:30, gate Close non lancé avant ce bilan)
+- L18-d : non vérifié : non relevé dans cette séance (arrêt de l'utilisateur vers 11:30, gate Close non lancé avant ce bilan)
+- L18-e : appliquee : tests puis correctifs en deux commits (GLORFINDEL 3421414 / c3765bd, CELEBORN 4ccf4b8 / bcb4adb, SAURON-1125ma)
+- L18-f : non vérifié : non relevé dans cette séance (arrêt de l'utilisateur vers 11:30, gate Close non lancé avant ce bilan)
+- L19-1 : non vérifié : gate Close non lancé avant ce bilan ; la principale a lancé elle-même gate_test, builds et diagnostics
+- L19-4 : non vérifié : non relevé dans cette séance (arrêt de l'utilisateur vers 11:30, gate Close non lancé avant ce bilan)
+- L19-5 : non vérifié : non relevé dans cette séance (arrêt de l'utilisateur vers 11:30, gate Close non lancé avant ce bilan)
+- L19-6 : appliquee : 0 `AskUserQuestion` de travail, 1 `Q-*.md` laissée dans Retours\ avec défaut codé
+- L19-7 : non vérifié : non relevé dans cette séance (arrêt de l'utilisateur vers 11:30, gate Close non lancé avant ce bilan)
+- L20-2 : non vérifié : non relevé dans cette séance (arrêt de l'utilisateur vers 11:30, gate Close non lancé avant ce bilan)
+- L20-4 : non vérifié : non relevé dans cette séance (arrêt de l'utilisateur vers 11:30, gate Close non lancé avant ce bilan)
+- L20-5 : non appliquee : build incrémental avant rapport non fait par les agents C++ (voir L24-3)
+- L20-7 : appliquee : rouges vus 10:02 à 10:33 (2234/2237, 2237/2239, 2238/2240, 2239/2241) ; verts non relus pour GLORFINDEL-1125mb et CELEBORN-1125mc
+- L20-8 : non vérifié : non relevé dans cette séance (arrêt de l'utilisateur vers 11:30, gate Close non lancé avant ce bilan)
+- L21-1 : appliquee : 3 `AskUserQuestion` (lancement seulement : fin, mode, lancement), 0 pour une question de travail
+- L21-2 : non vérifié : non relevé dans cette séance (arrêt de l'utilisateur vers 11:30, gate Close non lancé avant ce bilan)
+- L21-3 : non vérifié : D902 non fait, aucune ligne neuve de BuildingTypes.csv
+- L22-1 : non appliquee : GLORFINDEL-1125mb : vert et scripts compiled non lus ; CELEBORN-1125mc : vert non relu
+- L22-3 : appliquee : DIAG-1125me : attente de `quick_check` périmée identifiée (f265ae7 : hero grid clique le mode 101 par hol.Select.LeftClickGround)
+- L22-4 : appliquee : ARWEN-1125ma (ligne 83 déjà fermée) et GALADRIEL-1125ma (ResetHonor déjà fait, 8c2bbf3) ont dit « déjà dans main » avant tout code
+- L22-5 : non vérifié : non relevé dans cette séance (arrêt de l'utilisateur vers 11:30, gate Close non lancé avant ce bilan)
+- L23-1 : appliquee : 3 `AskUserQuestion` au lancement seulement, 0 pendant la séance
+- L24-3 : non appliquee : lots C++ écrits sans build : ELROND-1125ma, GALADRIEL-1125ma / md, GLORFINDEL-1125md, SAURON-1125md, HALDIR-1125mb / mc NON COMPILÉS ; erreurs vues ensuite : HOLNetTests.cpp(339) C4002 / C2816, ToUnitIds C2084 / C2264
+- L24-4 : non vérifié : non relevé dans cette séance (arrêt de l'utilisateur vers 11:30, gate Close non lancé avant ce bilan)
+- L24-5 : non vérifié : non relevé dans cette séance (arrêt de l'utilisateur vers 11:30, gate Close non lancé avant ce bilan)
+- L25-4 : non vérifié : non relevé dans cette séance (arrêt de l'utilisateur vers 11:30, gate Close non lancé avant ce bilan)
+- L25-5 : non vérifié : non relevé dans cette séance (arrêt de l'utilisateur vers 11:30, gate Close non lancé avant ce bilan)
+- L25-6 : appliquee : fin 13:00 et mode demandés à 09:43 (Jour, Séance du matin)
+- L26-1 : non appliquee : valeur de `/context` de la principale non relevée (budget non relevé, objectif 300k non mesuré)
+- L27-1 : non vérifié : non relevé dans cette séance (arrêt de l'utilisateur vers 11:30, gate Close non lancé avant ce bilan)
+- L27-2 : non vérifié : non relevé dans cette séance (arrêt de l'utilisateur vers 11:30, gate Close non lancé avant ce bilan)
+- L27-3 : appliquee : aucun agent C++ n'a lancé de build ; builds par la principale et par les passes d'intégration
+- L27-4 : non vérifié : non relevé dans cette séance (arrêt de l'utilisateur vers 11:30, gate Close non lancé avant ce bilan)
+- L27-5 : non vérifié : non relevé dans cette séance (arrêt de l'utilisateur vers 11:30, gate Close non lancé avant ce bilan)
+- L27-6 : non vérifié : non relevé dans cette séance (arrêt de l'utilisateur vers 11:30, gate Close non lancé avant ce bilan)
+- L27-7 : non vérifié : non relevé dans cette séance (arrêt de l'utilisateur vers 11:30, gate Close non lancé avant ce bilan)
+- L27-8 : non vérifié : non relevé dans cette séance (arrêt de l'utilisateur vers 11:30, gate Close non lancé avant ce bilan)
+- L27-9 : non vérifié : non relevé dans cette séance (arrêt de l'utilisateur vers 11:30, gate Close non lancé avant ce bilan)
+- L27-10 : non appliquee : `/context` non relevé à la clôture (voir L26-1)
+- L27-11 : non vérifié : non relevé dans cette séance (arrêt de l'utilisateur vers 11:30, gate Close non lancé avant ce bilan)
+- L28-1 : appliquee : outil livré par SAURON-1125mb (e8b323d 379b63b f5d5df0 06ca7d0, dans main par integ-78 1f63056) ; effet non constaté : gate_test complet jamais vert
+- L28-2 : appliquee : `integrate.ps1 -DryRun` lancé avant integ-77 (FAIL conflit gate_test.ps1, résolu à la main) et sur pre-81 (sans conflit) ; grille de commandes en Angelscript engagée (G-1 à G-6)
+- L28-3 : appliquee : outil livré par SAURON-1125mb (rouge vu 10:25 / 10:28, dans main par integ-78)L28-4|non appliquee : lignes EtapeDefini absentes pour ARWEN-1125ma, ELROND-1125mb, GLORFINDEL-1125mb, RECETTE-1125ma, SAURON-1125mc, DIAG-1125ma (rattrapées par DOCS-1125mc, 018ead0) ; pas de fiche FARAMIR-1125ma
+- L28-4 : non vérifié : non relevé dans cette séance (arrêt de l'utilisateur vers 11:30, gate Close non lancé avant ce bilan)
+- L28-5 : non vérifié : non relevé dans cette séance (arrêt de l'utilisateur vers 11:30, gate Close non lancé avant ce bilan)
+- L28-6 : non appliquee : une seule recette (RECETTE-1125ma sur 1f63056) ; aucune après integ-79, 80 et 81
+- L28-7 : non appliquee : `/context` de la principale non relevé ; usage de `launch_agent.ps1` non relevé
+- L28-8 : non appliquee : faux FAIL du gate Launch (9 worktrees comptés pour 8), correctif SAURON-1125me (tools-l288-1125m), gate_test complet non rejoué
+- L28-9 : appliquee : DOCS-1125md a ramené les `[À ESSAYER]` de Retours de 8 à 6 (monk_seal_slow, tower_wood_garrison hors compte), en-tête recompté
 
 ## Séances du 2026-11-24 (archivées le 2026-11-25 par CLEAN-A-1125m)
 
