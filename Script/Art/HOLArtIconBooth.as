@@ -3,7 +3,9 @@
 // (HOLArtIconRules::Shot : meme angle et meme champ pour toute une famille, distance selon la hauteur des bornes), capture
 // 256x256 (SceneCaptureComponent2D, couleur finale LDR) exportee en PNG dans Saved\ArtIcons\T_Unit_<Type>.png (ou
 // T_Building_ / T_Source_). Import en Texture2D (/Game/UI/Icons/Units/T_Unit_<Type>) : plus tard, dans l'editeur.
-// Bornes : batiment = bornes de l'acteur pose ; unite = bornes fixes de la famille (entites Mass, pas d'acteur) ; source = Radius /
+// AR5-b : fond neutre = mur uni (cube du moteur) pose debout derriere l'objet, face a la camera, plus un degagement des arbres
+// a la mesure du champ (3000 cm, 6000 pour un batiment).
+// Bornes : batiment = bornes de l'acteur pose ; unite = vrai maillage du DA_Art x MeshScale (HOLArtIconRules::UnitBounds) ; source = Radius /
 // Height de SourceTypes, montree par une forme d'attente (AddSource pas expose au script dans main).
 // Journal : "Art icon: wrote <fichier> type=<T> family=<F> height=<h>" par type, "Art icon: refused <T>" si hors tables,
 // puis "Art icon: done count=<n>".
@@ -22,6 +24,10 @@ class AHOLArtIconBooth : AActor
 
 	UPROPERTY(DefaultComponent)
 	UStaticMeshComponent StandIn;
+
+	// AR5-b: plain wall behind the object, facing the camera (neutral background, no tree or decor in the frame).
+	UPROPERTY(DefaultComponent)
+	UStaticMeshComponent Backdrop;
 
 	TArray<FName> Queue;
 	FName Current = NAME_None;
@@ -43,6 +49,10 @@ class AHOLArtIconBooth : AActor
 		Key.SetCastShadows(false);
 		StandIn.SetCollisionEnabled(ECollisionEnabled::NoCollision);
 		StandIn.SetVisibility(false);
+		Backdrop.SetStaticMesh(Cast<UStaticMesh>(LoadObject(nullptr, "/Engine/BasicShapes/Cube.Cube")));
+		Backdrop.SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		Backdrop.SetCastShadow(false);
+		Backdrop.SetVisibility(false);
 	}
 
 	UFUNCTION(BlueprintOverride)
@@ -81,7 +91,8 @@ class AHOLArtIconBooth : AActor
 		const double RowY = Family == "Units" ? -6000.0 : (Family == "Sources" ? -7500.0 : -9500.0);
 		Spot = FVector(-6000.0 + 2500.0 * double(Index % 6), RowY - 4500.0 * double(Math::IntegerDivisionTrunc(Index, 6)), 0.0);
 		Index += 1;
-		System::ExecuteConsoleCommand(f"hol.Decor.ClearNear {Math::RoundToInt(Spot.X)} {Math::RoundToInt(Spot.Y)} 1200 Trees");
+		const int Clear = Family == "Buildings" ? 6000 : 3000;
+		System::ExecuteConsoleCommand(f"hol.Decor.ClearNear {Math::RoundToInt(Spot.X)} {Math::RoundToInt(Spot.Y)} {Clear} Trees");
 		StandIn.SetVisibility(false);
 		bool bMade = false;
 		AHOLPlayerController Controller = Cast<AHOLPlayerController>(Gameplay::GetPlayerController(0));
@@ -149,6 +160,10 @@ class AHOLArtIconBooth : AActor
 				}
 			}
 		}
+		else if (Family == "Units")
+		{
+			HOLArtIconRules::UnitBounds(Current, Height, Radius);
+		}
 		else if (Family == "Sources")
 		{
 			SourceBounds(Height, Radius);
@@ -161,6 +176,14 @@ class AHOLArtIconBooth : AActor
 		const FVector Eye = Spot + Shot.CameraOffset;
 		Capture.SetWorldLocationAndRotation(Eye, Shot.Rotation);
 		Capture.FOVAngle = Shot.FieldOfView;
+		// The wall stands behind the object (past its bounds), upright, as wide and tall as twice the camera's reach.
+		const double Yaw = Math::DegreesToRadians(Shot.Rotation.Yaw);
+		const FVector Flat = FVector(Math::Cos(Yaw), Math::Sin(Yaw), 0.0);
+		const double Gap = Radius * 1.5 + 200.0;
+		const double Side = (Shot.Distance + Gap) * 2.0;
+		Backdrop.SetWorldLocationAndRotation(Spot + Flat * Gap + FVector(0.0, 0.0, Side * 0.5 - 50.0), FRotator(0.0, Shot.Rotation.Yaw, 0.0));
+		Backdrop.SetWorldScale3D(FVector(0.1, Side * 0.01, Side * 0.01));
+		Backdrop.SetVisibility(true);
 		Key.SetWorldLocation(Eye + FVector(0.0, 0.0, Shot.Distance * 0.5));
 		Capture.CaptureScene();
 		const FString File = HOLArtIconRules::FileName(Family, Current);

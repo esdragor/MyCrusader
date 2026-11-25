@@ -79,7 +79,64 @@ namespace HOLArtIconRules
 	{
 		OutHeight = 180.0;
 		OutRadius = 40.0;
-		return false;
+		FString Skinned;
+		FString Static;
+		double Scale = 1.0;
+		UDataTable Table = Cast<UDataTable>(LoadObject(nullptr, TablePath("Units")));
+		if (Table == nullptr)
+			return false;
+		TArray<FName> Names;
+		Table.GetRowNames(Names);
+		const int Row = Names.FindIndex(TypeName);
+		if (Row < 0)
+			return false;
+		// The row may have lost its visual columns (AR0-d2 moves them to the DA_Art): a missing column reads empty.
+		TArray<FString> SkinnedColumn = Table.GetColumnAsString(n"SkinnedMesh");
+		TArray<FString> MeshColumn = Table.GetColumnAsString(n"Mesh");
+		TArray<FString> ScaleColumn = Table.GetColumnAsString(n"MeshScale");
+		if (Row < SkinnedColumn.Num())
+			Skinned = SkinnedColumn[Row];
+		if (Row < MeshColumn.Num())
+			Static = MeshColumn[Row];
+		if (Row < ScaleColumn.Num())
+			Scale = String::Conv_StringToDouble(ScaleColumn[Row]);
+		const FString Type = TypeName.ToString();
+		UHOLArtVisual Art = Cast<UHOLArtVisual>(LoadObject(nullptr, f"/Game/Art/Units/{Type}/DA_Art_{Type}.DA_Art_{Type}"));
+		if (Art != nullptr)
+		{
+			if (!Art.SkinnedMesh.IsNull())
+				Skinned = Art.SkinnedMesh.ToString();
+			if (!Art.Mesh.IsNull())
+				Static = Art.Mesh.ToString();
+			if (Art.bOverrideMeshScale)
+				Scale = Art.MeshScale;
+		}
+		FVector Low;
+		FVector High;
+		USkeletalMesh Body = Skinned.IsEmpty() || Skinned == "None" ? nullptr : Cast<USkeletalMesh>(LoadObject(nullptr, Skinned));
+		UStaticMesh Mesh = Static.IsEmpty() || Static == "None" ? nullptr : Cast<UStaticMesh>(LoadObject(nullptr, Static));
+		if (Body != nullptr)
+		{
+			const FBoxSphereBounds Bounds = Body.GetBounds();
+			Low = Bounds.Origin - Bounds.BoxExtent;
+			High = Bounds.Origin + Bounds.BoxExtent;
+		}
+		else if (Mesh != nullptr)
+		{
+			const FBox Box = Mesh.GetBoundingBox();
+			Low = Box.Min;
+			High = Box.Max;
+		}
+		else
+		{
+			return false;
+		}
+		if (Scale <= 0.0 || High.Z <= 0.0)
+			return false;
+		OutHeight = High.Z * Scale;
+		const double Wide = Math::Max(Math::Max(Math::Abs(Low.X), Math::Abs(High.X)), Math::Max(Math::Abs(Low.Y), Math::Abs(High.Y)));
+		OutRadius = Math::Max(Wide * Scale, 1.0);
+		return true;
 	}
 
 	// Fixed angle and field for the family; the distance makes the bounds (Height tall, Radius wide) fill the frame.

@@ -1,0 +1,15 @@
+# Cabine d'icones, TOUS les types (ArtistesInProgress.md, lot AR5-b) : hol.Art.Icon All pose chaque type de UnitTypes, BuildingTypes
+# et SourceTypes seul devant un mur uni (fond neutre), camera fixe par famille, unite cadree sur son vrai maillage (DA_Art x MeshScale).
+# Un PNG par type dans Saved\ArtIcons (T_Unit_ / T_Building_ / T_Source_<Type>.png) ; journal "Art icon: done count=N". 3 minutes au plus.
+frames 40
+panel hide
+hol.Combat.Enabled 0
+hol.Art.Icon All
+waitlog family=Buildings
+waitlog family=Sources
+waitlog Art icon: done
+hol.Camera.Focus -6000 -7500
+hol.Camera.Zoom 1
+frames 40
+capture ai_all
+note Cabine : tous les types captures un par un devant un mur uni. Les PNG sont dans Saved\ArtIcons. Fin.
