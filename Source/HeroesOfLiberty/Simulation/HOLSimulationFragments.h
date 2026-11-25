@@ -489,6 +489,13 @@ struct HEROESOFLIBERTY_API FHOLCombatFragment : public FMassFragment
 	/** Step of the last hit it took (LastAttacker set then): forgotten HOLCombat::LastAttackerMemoryMs later without a new one (EtapeDefini S); -1: none. */
 	int64 LastHitStep = -1;
 
+	/**
+	 * SAURON-1125a (Dawn A7, D919): the Knight's challenge. While the simulation step is below ChallengeEndStep (-1: none), the enemies of the
+	 * Knight within ChallengeRadiusCm of it take it before any other target (HOLCombat::FCandidate::bChallengesMe). Set by the ability's start.
+	 */
+	int64 ChallengeEndStep = -1;
+	float ChallengeRadiusCm = 0.f;
+
 	/** Where its target stood when it last walked towards it: a new walk once the target moved away from there. */
 	FVector2D ApproachPoint = FVector2D::ZeroVector;
 
