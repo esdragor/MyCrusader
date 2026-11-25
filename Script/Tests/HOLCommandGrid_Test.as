@@ -1064,3 +1064,46 @@ void Test_GridUngarrisonAllCellOfAGarrisonedBuilding(FUnitTest& T)
 	Units.bGarrisonOccupied = true;
 	T.AssertTrue(HOLCommandGridRules::GetCommand(Units, Cell).Command != EHOLGridCommandKind::UngarrisonAll, "units selected, no building: no Sortir tous cell");
 }
+// D893 (ARWEN-1125f, A3): the three units of tier 1 of the Templars (Sergent du Temple, Frere infirmier, Arbaletrier a pavois) need NO technology.
+// Every value is READ from the compiled tables: the producers through HOLCommandGridRead::GetProducesOf (the list the command grid shows), the tier
+// through the rule's column reader, the technologies from the text of Tools/Data/Technologies.csv (no row may name one of the three in its name, its
+// Requires or its Stats). A unit that stays locked behind a technology fails here.
+void Test_TemplarTierOneUnitsNeedNoTechnology(FUnitTest& T)
+{
+	TArray<FName> Units;
+	Units.Add(n"TempleSergeant");
+	Units.Add(n"InfirmaryBrother");
+	Units.Add(n"PaviseCrossbowman");
+	TArray<FName> Producers;
+	Producers.Add(n"Barracks");
+	Producers.Add(n"ArcheryRange");
+	Producers.Add(n"Chapel");
+	Producers.Add(n"Stable");
+	Producers.Add(n"SiegeWorkshop");
+	Producers.Add(n"MainCentre");
+
+	FString TechText;
+	const bool bRead = HOLMatchConfigRead::LoadProjectFileText("Tools/Data/Technologies.csv", TechText);
+	T.AssertTrue(bRead, "Tools/Data/Technologies.csv is there");
+
+	for (int Unit = 0; Unit < Units.Num(); Unit++)
+	{
+		const FString Label = Units[Unit].ToString();
+		bool bProduced = false;
+		for (int Producer = 0; Producer < Producers.Num(); Producer++)
+		{
+			TArray<FName> Produces = HOLCommandGridRead::GetProducesOf(Producers[Producer]);
+			if (Produces.Contains(Units[Unit]))
+			{
+				bProduced = true;
+			}
+		}
+		T.AssertTrue(bProduced, Label + ": a building of the table produces it (the grid lists it)");
+		const int MinTier = HOLUnitTierRules::GetUnitMinTier(Units[Unit]);
+		T.AssertTrue(MinTier >= 0 && MinTier <= 1, Label + ": the tier column is 0 or 1 (the palier 1), not a later tier");
+		if (bRead)
+		{
+			T.AssertFalse(TechText.Contains(Units[Unit].ToString()), Label + ": no technology row names it (nothing unlocks or locks it)");
+		}
+	}
+}
