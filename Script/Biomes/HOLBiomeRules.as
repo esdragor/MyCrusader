@@ -15,6 +15,8 @@ struct FHOLBiome
 {
 	// The identifier the lobby, the match rules and Maps.csv speak of ("fresh_grass"): stable, never translated.
 	FString Key;
+	// AR1-d: the name the game shows for it (French, accents kept); hol.Art.Light accepts it.
+	FString Name;
 
 	// The ground (M_GroundVaried parameters, per mille).
 	int GroundAR = 0;

@@ -222,6 +222,27 @@ namespace HOLArtGallery
 		return Game > 1 ? Game : 4;
 	}
 
+	// AR1-d: the outline drawn around each ground label (copies of the text shifted by these offsets, in cm on the label's plane, in
+	// LabelOutlineColour) so that a yellow label stays readable on the white of the snow biome.
+	FLinearColor LabelOutlineColour()
+	{
+		return FLinearColor(1.0f, 1.0f, 0.0f, 1.0f);
+	}
+
+	void LabelOutlineOffsets(double WorldSize, TArray<FVector2D>& OutOffsets)
+	{
+		OutOffsets.Reset();
+	}
+
+	// AR1-d (hol.Art.Focus <Type>): the close view of one object of the gallery and its 1,80 m figure: the centre between the object
+	// and the figure, and the side (cm) the view must show whole. False for a type the gallery does not hold.
+	bool FocusOn(const TArray<FHOLArtGalleryPlace>& Places, const FString& Type, FVector& OutCentre, double& OutSide)
+	{
+		OutCentre = FVector::ZeroVector;
+		OutSide = 0.0;
+		return false;
+	}
+
 	void PlanFamily(const FString& Family, TArray<FHOLArtGalleryPlace>& OutPlaces)
 	{
 		UDataTable Table = Cast<UDataTable>(LoadObject(nullptr, TablePath(Family)));
