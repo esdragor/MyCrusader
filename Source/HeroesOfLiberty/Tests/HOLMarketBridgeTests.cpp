@@ -149,7 +149,9 @@ bool FHOLMarketGridQuoteTest::RunTest(const FString& Parameters)
 		TestTrue(TEXT("the server's purchase of the same lot is the quote (goods)"), Bought.bOk && Bought.Units == BuyFood.Units && Bought.Gold == BuyFood.Gold);
 	}
 
-	// No world, no board: refused, nothing invented, the book given back.
+	// No world, no board: refused, nothing invented, the book given back. The error is said once per process (the grid asks at every
+	// refresh), so it is expected here without a count (-1: every matching message, none required).
+	AddExpectedError(TEXT("no script board in this world, the quote is refused"), EAutomationExpectedErrorFlags::Contains, -1);
 	HOLMarket::FBook Given;
 	Given.Prices[0] = 91;
 	const HOLMarket::FTrade NoBoard = UHOLMarketSubsystem::Quote(nullptr, UE::HeroesOfLiberty::Tests::MarketBridge::StandardSettings(), Given, 0, 1, false);
