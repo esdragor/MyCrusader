@@ -1235,7 +1235,7 @@ void Test_Construction_Tables(FUnitTest& T)
 		T.AssertTrue(ConNear(Chapel.BuildTime, 30.0), "Chapel: 30 s for one builder");
 		T.AssertEquals(1500, Chapel.MaxHealth, "Chapel: 1 500 health");
 		T.AssertEquals(0, Chapel.PopulationProvided, "Chapel: no population");
-		T.AssertTrue(Chapel.Produces.Num() == 1 && Chapel.Produces[0] == n"Monk", "Chapel: produces the Monk");
+		T.AssertTrue(Chapel.Produces.Num() == 2 && Chapel.Produces[0] == n"Monk" && Chapel.Produces[1] == n"InfirmaryBrother", "Chapel: produces the Monk then the Infirmary Brother (D902, Q-commanderie-batiment = A)");
 		T.AssertEquals(0, HOLConstructionRead::GetBuildingTypeAccepts(Chapel).Num(), "Chapel: takes no resource");
 		T.AssertFalse(Chapel.Walkable, "Chapel: not walkable");
 	}

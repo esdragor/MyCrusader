@@ -591,7 +591,8 @@ void Test_CGTables(FUnitTest& T)
 	T.AssertTrue(HOLCommandGridRules::GetCommand(Barracks, 2).Command == EHOLGridCommandKind::Produce && HOLCommandGridRules::GetCommand(Barracks, 2).TypeName == n"ManAtArms", "Barracks, E: produce a Man-at-arms");
 	T.AssertTrue(HOLCommandGridRules::GetCommand(Barracks, 3).Command == EHOLGridCommandKind::Produce && HOLCommandGridRules::GetCommand(Barracks, 3).TypeName == n"DamnedWarrior", "Barracks, R: produce a Damned Warrior (L4)");
 	T.AssertTrue(HOLCommandGridRules::GetCommand(Barracks, 4).Command == EHOLGridCommandKind::Produce && HOLCommandGridRules::GetCommand(Barracks, 4).TypeName == n"VirtuousKnight", "Barracks, T: produce a Virtuous Knight (D864; the Dawn's grid is then A Halberdier, Z Man-at-arms, E Virtuous Knight through FilterProduces)");
-	for (int Cell = 5; Cell < HOLCommandGridRules::GetNumCells(); Cell++)
+	T.AssertTrue(HOLCommandGridRules::GetCommand(Barracks, 5).Command == EHOLGridCommandKind::Produce && HOLCommandGridRules::GetCommand(Barracks, 5).TypeName == n"TempleSergeant", "Barracks, cell 5: produce a Temple Sergeant (D902; the lane check is the server seat check)");
+	for (int Cell = 6; Cell < HOLCommandGridRules::GetNumCells(); Cell++)
 	{
 		T.AssertTrue(HOLCommandGridRules::GetCommand(Barracks, Cell).Command == EHOLGridCommandKind::None, "Barracks: the other cells are empty");
 	}
@@ -608,7 +609,8 @@ void Test_CGTables(FUnitTest& T)
 	Range.bBuildingFinished = true;
 	Range.Produces = HOLCommandGridRead::GetProducesOf(n"ArcheryRange");
 	T.AssertTrue(HOLCommandGridRules::GetCommand(Range, 0).TypeName == n"Archer" && HOLCommandGridRules::GetCommand(Range, 1).TypeName == n"Crossbowman" && HOLCommandGridRules::GetCommand(Range, 2).TypeName == n"Arquebusier", "Archery range: A Archer, Z Crossbowman, E Arquebusier");
-	for (int Cell = 3; Cell < HOLCommandGridRules::GetNumCells(); Cell++)
+	T.AssertTrue(HOLCommandGridRules::GetCommand(Range, 3).Command == EHOLGridCommandKind::Produce && HOLCommandGridRules::GetCommand(Range, 3).TypeName == n"PaviseCrossbowman", "Archery range, cell 3: produce a Pavise Crossbowman (D902)");
+	for (int Cell = 4; Cell < HOLCommandGridRules::GetNumCells(); Cell++)
 	{
 		T.AssertTrue(HOLCommandGridRules::GetCommand(Range, Cell).Command == EHOLGridCommandKind::None, "Archery range: the other cells are empty");
 	}
@@ -632,7 +634,8 @@ void Test_CGTables(FUnitTest& T)
 	Chapel.bBuildingFinished = true;
 	Chapel.Produces = HOLCommandGridRead::GetProducesOf(n"Chapel");
 	T.AssertTrue(HOLCommandGridRules::GetCommand(Chapel, 0).Command == EHOLGridCommandKind::Produce && HOLCommandGridRules::GetCommand(Chapel, 0).TypeName == n"Monk", "Chapel, A: produce a Monk");
-	for (int Cell = 1; Cell < HOLCommandGridRules::GetNumCells(); Cell++)
+	T.AssertTrue(HOLCommandGridRules::GetCommand(Chapel, 1).Command == EHOLGridCommandKind::Produce && HOLCommandGridRules::GetCommand(Chapel, 1).TypeName == n"InfirmaryBrother", "Chapel, cell 1: produce an Infirmary Brother (D902; the lane check is the server seat check)");
+	for (int Cell = 2; Cell < HOLCommandGridRules::GetNumCells(); Cell++)
 	{
 		T.AssertTrue(HOLCommandGridRules::GetCommand(Chapel, Cell).Command == EHOLGridCommandKind::None, "Chapel: the other cells are empty");
 	}

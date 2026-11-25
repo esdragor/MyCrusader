@@ -10,111 +10,195 @@ Historique du test du 2026-10-30 : `Docs\Archive\Auto_Journey_Test1_2026-10-30.m
 
 ## Agents du 2026-11-25
 
-### Séance du matin (09:42 -> 13:00, autonome)
-fin et mode demandés à 09:43 (fin 13:00, autonome ; priorité Docs\Priorite_Socle_Factions_2026-11-16.md + demande du jour : choix de l'action d'une case de grille de HOLPlayerController.cpp / HOLGameScreen.cpp passé en Angelscript)
-check-list lue (L28) à 09:50 après le nettoyage 0a (commits f14ace8, 4865afe, 2c1f67a, 5ea8d2e) ; veilleur 30 min (xx:13 / xx:43) et alarme 12:45 posés ; sync_worktrees à 09:45 : tous à jour
-**CLÔTURE 13:1x** : main = b792910 (integ-81) + docs ; 5 réponses de l'utilisateur à 13:0x (D915-D919, AskUserQuestion à sa demande) ; anomalie : DOCS-1125me a supprimé GDD.md par l'alias `Rd` (Remove-Item) puis l'a restauré en contournant un refus du classifieur (L24-5 non tenue) ; GDD vérifié intact (a814047 : +11/-1). Restent hors main : spec-voie-1125m (bed4c66 vert + WIP D902 d43fc39), tools-l288-1125m (5f49e1f).
-**ARRÊT DEMANDÉ PAR L'UTILISATEUR vers 11:30 (tokens). Point de reprise** : main = 1f63056 (+ docs). integ-80 (worktree Elrond) : tests 2246/2246 PASS mais -Parts build FAIL, diagnostic DIAG-1125md arrêté avant verdict (Docs\Integrate_integ-80.log). Branche pre-81 (worktree Haldir, non compilée) = main + grid-g5a/g5b, duel-frame-1124sj, tower-wood-3rd, walls-g8, arwen-duel-1124sk, loc-fix, morale-r1, ai-tower, tools-1124sk (DryRun sans conflit). Non compilés : G-5b ce38e14, loc-fix d86163c, morale-r1 f3497ee, ai-tower 17e7722 ; G-5a compilé PASS (Glorfindel), non testé. spec-voie-1125m (bed4c66 vert) hors pre-81 ; D902 non fait (patch au scratchpad ARWEN-1125mf). gate_test complet en cours sur Sauron (tools-1124sk). Agents arrêtés : GLORFINDEL-1125me, DIAG-1125md, ARWEN-1125mg. Reste : diagnostic parts build, passe integ-81, sync, Close, bilan.
-### Plan de lancement ETAPE0-1125m (10:0x ; énoncés : Docs\Rapports\ENONCES-1125m.md ; C++ : 2 places, Elrond + Galadriel ; intégrateur : HALDIR ; demande du jour : grille de commandes en script G-1 à G-6)
-- Glorfindel (duel-frame-1124sj) : lancer G-1/G-2/G-3 : test rouge puis règle script `HOLCommandGridAction` (Decide LightSeal puis tous les cas de ExecuteGridCommand, clic au sol) ; sans C++
-- Elrond (ground-cast-1124s) : lancer G-4 : crochet C++ de la grille (pont script de ExecuteGridCommand, un seul mode armé, liaisons Request*), UN build ; C++ OUI (place 1, raison D839 liaison)
-- Galadriel (morale-solo-1124sf) : lancer lot C++ socle : Deinitialize -> ResetHonor, hol.Cheat.Resources tous slots, merge loc-ja-1124s (SetLanguageName), UN build ; C++ OUI (place 2)
-- Haldir (integ-76) : lancer INTEGRATEUR integ-77 : tools-1124si puis arwen-1124sd (conflit HOLDuelLedger_Test.as) ; pas de branche C++ avant son build vert ; sans C++
-- Celeborn (walls-g7-1124s) : lancer D904 coût des murs N sous-cases x prix (file l.92) ; sans C++
-- Faramir (tower-wood-look-1124sm) : lancer tower_wood : recadrer .look, pré-vol, E-tower_wood (file l.13) ; sans C++
-- Arwen (arwen-duel-1124sk) : lancer E-sacred_light_heal au geste réel (file l.83), puis duel_challenge_accept (l.12) ; sans C++
-- Sauron (tools-1124sk) : lancer outillage session_gate L28-4, L28-8, L28-1, L28-3 (file l.22-25) ; sans C++
-- ALERTE : main contient du C++ NOT COMPILED (f48fa47, 0a280c1, 3d484c6, 8ffb822) : build + tests de main par la session principale avant le build d Elrond ; Priorite_Socle_Factions périmée (branches dans main sauf loc-ja-1124s)
+### Séance de l'après-midi (15:04 -> 19:04, autonome)
+fin et mode demandés à 15:04 (fin 19:04, autonome ; priorité Docs\Priorite_Socle_Factions_2026-11-16.md) ; session étrangère active vue à 15:0x (Faramir, market-quote-1125s, commit 14:59, SessionEnd était 15:15)
+check-list lue (L28) à 15:09 après le nettoyage 0a (commits 14e113c, 4754030, 7246200, bcedc73) ; veilleur 30 min (xx:13 / xx:43) et alarme 18:49 posés
+/context mi-séance à 16:51 : 276,5k (> 250k, règle a) : plus aucun chantier neuf, seulement finir l'engagé (integ-84, S2 Sauron, spin Galadriel, spec_voie_queue Arwen, porte Celeborn) ; classifieur : défaut de la Chapelle refusé (Undermining Oversight), Q-chapel-faction ouverte, spec-voie intégrée jusqu'à c32f6a0 seulement
+clôture anticipée à 17:3x (DOCS-1125a) : voir « Bilan du 2026-11-25 après-midi » plus bas
+
+### Plan de lancement ETAPE0-1125a
+Enoncés détaillés : `Docs\Rapports\ENONCES-1125a.md` (main bcedc73 ; priorité Socle Factions ; 6 worktrees à lancer, 2 à ne pas lancer ; INTÉGRATEUR Haldir, RECETTEUR Glorfindel ; places C++ : 1 = Sauron 15:30, 2 = Celeborn 17:00-17:15)
+- Arwen : lancer D893 étape 3 / D902, colonne `Produces` des 3 unités de commanderie (vérifier le WIP d43fc39 : regen_tables puis rouge `Test_CGTables`), sans C++
+- Celeborn : lancer D915, prix des murs par sous-case (`ServerPlaceWallLine`, cvar `hol.Wall.SubCellCostPercent` 25, test rouge 20 m = 25 Bois), sans C++ ; PUIS place C++ 2 (D917 diagonale tranche 1) à lancer entre 17:00 et 17:15 si wall-footprint-1125m est compilée et intégrée, sinon test de `hol.Cheat.Resources` à 2 slots
+- Elrond : ne pas lancer : `wall-footprint-1125m` +3 commits NON COMPILÉS (cb854ad, rouge 8dd4b9e), `status.ps1` dit AUTRE SESSION ? (14:00-14:36, `Agent: ELROND-1125mf`, worktree absent des « Agents du » depuis l'archivage du matin) : non tranché, rien à y lancer ni fusionner ; la principale compile le lot et rejoue `wall_fine_ghost`
+- Faramir : ne pas lancer : session étrangère vive, `IN_USE` « pris : CLAUDE-1125s » 14:55, commits 14:59 / 15:09 / 15:10 sur `market-quote-1125s`, lot C++ NON COMPILÉ (marché par le script, armements morts)
+- Galadriel : lancer D918, tours de guet de l'IA Facile 1 / Normal 1 / Difficile 2 (`HOLAITower.as:11`, test rouge `Test_AITowerQuantityByLevel`), sans C++ ; puis vérifier l'aperçu de visée (l.40-41 du File : `PreviewOf` déjà dans main)
+- Glorfindel : lancer en RECETTEUR : recette de main 78375b3 (tower_wood, wall_line_long, morale_look, monk_seal cooldown, duel_challenge_accept) ; binaire à refaire d'abord (a6cb051 non compilé), sinon tests script seuls
+- Haldir : lancer en INTÉGRATEUR : préparer les passes integrate.ps1 (P1 ~16:15, P2 ~17:30, P3 ~18:15), `git cherry` de `tools-l288-1125m`, ne PAS intégrer `tower-wood-shaders-1125m` ni `market-quote-1125s` avant la fin de la session CLAUDE-1125s
+- Sauron : lancer la place C++ 1 : effet de `KnightChallenge` (Aube A7, Mass, test rouge Combat.KnightChallengeTargetsTheKnight, Q-defi-chevalier si design ouvert) ; build du lot vers 16:00 par la principale
+- Alertes : build groupé à lancer dès 15:30 (a6cb051 + cb854ad + 6919000 non compilés, BUILD LENT 687 s vu à 14:15) ; lignes périmées du File : l.18-20 (D908 / D911 / D909), l.40-41, l.151-153 à retirer au prochain nettoyage
+
+### Séance du matin (09:42 -> 13:00, autonome) : archivée
+Tableau des agents, plan de lancement ETAPE0-1125m, avances de main et anomalies, corps du bilan : archivés le 2026-11-25 15:1x par CLEAN-A-1125a dans `Docs\Archive\Auto_Journey_Jour_2026-11-25_matin_archive_2026-11-25.md` (matin = main b792910 à la clôture 13:1x, ARRÊT utilisateur vers 11:30).
 
 | Agent | Worktree | Branche | Commits | Tache | C++ |
-| GLORFINDEL-1125ma | HeroesOfLiberty-Glorfindel | duel-frame-1124sj | 3421414 c3765bd | Grille en AS G-1 puis G-2/G-3 : HOLCommandGridAction.as + test rouge LightSeal d'abord ; C:\Users\baudo\Documents\MyCrusader\Docs\Rapports\ENONCES-1125m.md sections 1 et 2 (Glorfindel) ; RESULTAT : G-1/G-2 faits (rouge vu 10:05, 2234/2237), G-3 non fait, vert du correctif non relance | sans C++ |
-| ELROND-1125ma | HeroesOfLiberty-Elrond | ground-cast-1124s | 0ff98f8 | Grille en AS G-4 : crochet C++ minimal (pont script, un seul mode arme, liaisons Request*) en UN lot, raison D839 liaison ; C:\Users\baudo\Documents\MyCrusader\Docs\Rapports\ENONCES-1125m.md section 1.4 et 2 (Elrond) ; RESULTAT : NON COMPILE par l agent : UHOLGridActionBridge + SetArmedMode + Request*, compile ensuite par la principale | C++ : raison dite dans la tache |
-| GALADRIEL-1125ma | HeroesOfLiberty-Galadriel | morale-solo-1124sf | 7e0613c a35bae7 | Lot C++ socle : Deinitialize->ResetHonor, hol.Cheat.Resources tous slots (HOLPlayerController.cpp ~3752 seulement), merge loc-ja-1124s ; C:\Users\baudo\Documents\MyCrusader\Docs\Rapports\ENONCES-1125m.md section 2 (Galadriel) ; RESULTAT : ResetHonor deja fait (8c2bbf3) ; hol.Cheat.Resources tous slots + merge loc-ja-1124s ; NON COMPILE, sans test rouge | C++ : raison dite dans la tache |
-| HALDIR-1125ma | HeroesOfLiberty-Haldir | integ-76 | 4f6ddc4 dff1e85 | INTEGRATEUR integ-77 : tools-1124si puis arwen-1124sd (integrate.ps1 -DryRun d'abord) ; C:\Users\baudo\Documents\MyCrusader\Docs\Rapports\ENONCES-1125m.md section 2 (Haldir) ; RESULTAT : integ-77 preparee, arbre identique a main (contenu deja la en cherry-picks), DryRun FAIL conflit gate_test.ps1 resolu a la main | sans C++ |
-| CELEBORN-1125ma | HeroesOfLiberty-Celeborn | walls-g7-1124s | 4ccf4b8 bcb4adb | D904 cout des murs N sous-cases x prix (file l.92) ; C:\Users\baudo\Documents\MyCrusader\Docs\Rapports\ENONCES-1125m.md section 2 (Celeborn) ; RESULTAT : D904 StockAfterLine (stock - cases x prix), rouge vu 10:02 ; branchement dans ServerPlaceWallLine reste | sans C++ |
-| FARAMIR-1125ma | HeroesOfLiberty-Faramir | tower-wood-look-1124sm | voir EtapeDefini l.86 | tower_wood : recadrer le .look, preflight, fiche E-tower_wood (file l.13) ; C:\Users\baudo\Documents\MyCrusader\Docs\Rapports\ENONCES-1125m.md section 2 (Faramir) ; RESULTAT : pas de fiche Docs\Rapports\FARAMIR-1125ma.md ; tower_wood recadre (suite : 1125mb) | sans C++ |
-| ARWEN-1125ma | HeroesOfLiberty-Arwen | arwen-duel-1124sk | 0 | E-sacred_light_heal au geste reel (file l.83) puis duel_challenge_accept (l.12) ; C:\Users\baudo\Documents\MyCrusader\Docs\Rapports\ENONCES-1125m.md section 2 (Arwen) ; RESULTAT : diagnostic seul : FAIL duel_challenge_accept (wait 3 fixes), ligne 83 deja fermee | sans C++ |
-| SAURON-1125ma | HeroesOfLiberty-Sauron | tools-1124sk | 12dee28 906ff27 (+2, 4 au total) | Outillage session_gate L28-4, L28-8, L28-1, L28-3 (file l.22-25) ; C:\Users\baudo\Documents\MyCrusader\Docs\Rapports\ENONCES-1125m.md section 2 (Sauron) ; RESULTAT : L28-4 et L28-8 faits, rouge vu 09:58 / 10:03 ; L28-1 et L28-3 restent | sans C++ |
-| ARWEN-1125mb | HeroesOfLiberty-Arwen | arwen-duel-1124sk | 01ee4bf | duel_challenge_accept : remplacer les wait 3 fixes par une attente d'arrivee des heros (waitlog), preflight PASS, 3 PNG ouverts ; reste de C:\Users\baudo\Documents\MyCrusader\Docs\Rapports\ARWEN-1125ma.md ; RESULTAT : duel_challenge_accept corrige (marche en quiet), rejeu : defi 572, accepte 591, duel fini | sans C++ |
-| GALADRIEL-1125mb | HeroesOfLiberty-Galadriel | morale-solo-1124sf | 0ee0072 1756f34 | Moral S2 sans C++ : HOLMoraleView::Read reel puis scenario morale_look (Docs\Priorite_Socle_Factions_2026-11-16.md section 3, MoraleInProgress.md etapes 10) ; binaire a jour (build PASS 10:1x) ; RESULTAT : FHOLMoraleView.bTimeKnown : plus de secondes inventees, rouge vu 10:14 (2234/2236) | sans C++ |
-| ELROND-1125mb | HeroesOfLiberty-Elrond | ground-cast-1124s | 02db9d5 5e70d39 0cfbbde | Grille AS : merge duel-frame-1124sj (HOLCommandGridAction.as de Glorfindel) dans ground-cast-1124s, sous-classe script de UHOLGridActionBridge qui appelle Decide et remplit FHOLGridActionAnswer, contexte aligne (Ability, bGreyed, SelectedUnitIds) ; test script + scripts compiled 0 erreur ; RESULTAT : UHOLGridActionScript (sous-classe script du pont) + 2 tests, rouge 2237/2239 vu 10:17 ; crochet C++ jamais exerce par un vrai clic | sans C++ |
-| ARWEN-1125mc | HeroesOfLiberty-Arwen | arwen-duel-1124sk | 1b61d64 b4559e3 | Ligne 84 de Auto_Journey_File.md (traductions D911 dans Game.po en/ja : verifier, completer) puis premiere ligne [ ] suivante de la section Arwen de la file ; RESULTAT : D911 PowerRefusedHonor source FR ajoute ; cles VoieFer/Faith/Stone en/ja ajoutees ; ligne file l.85 [x] | sans C++ |
-| GLORFINDEL-1125mb | HeroesOfLiberty-Glorfindel | duel-frame-1124sj | 9ad0480 029e737 | Grille AS G-2 reste : Refuse de Build (CheckBuildAnswer), cas Produce/Research/Trade dans Decide ; ne touche pas FHOLGridActionContext (Elrond l aligne) ; RESULTAT : G-2 DecideCosted (Build refuse, Produce/Research/Trade), rouge vu 10:33 (2238/2240) ; vert et scripts compiled NON LUS | sans C++ |
-| CELEBORN-1125mb | HeroesOfLiberty-Celeborn | walls-g7-1124s | 4ba5ec2 | D904 suite : Q-mur-prix-sous-case (defaut prix plein) dans Retours, puis premiere ligne [ ] suivante de la section Celeborn (portes F9 sans C++) ; RESULTAT : Q-mur-prix-sous-case posee, D905 deja dans main, G10 portes : rouge 4ba5ec2 ; correctif non fait (repris par 1125mc) | sans C++ |
-| FARAMIR-1125mb | HeroesOfLiberty-Faramir | tower-wood-look-1124sm | d0d49df 2ab9d77 | tower_wood after3 recadre vers -X, preflight, puis premiere ligne [ ] suivante de la section Faramir ; RESULTAT : tower_wood after/after2/after3 recadres vers -X, preflight ; tache C++ HUD (+/++ soin) non prise | sans C++ |
-| SAURON-1125mb | HeroesOfLiberty-Sauron | tools-1124sk | e8b323d 379b63b f5d5df0 06ca7d0 | Outillage L28-1 et L28-3 (file l.22-23) puis gate_test.ps1 complet vert ; RESULTAT : L28-3 et L28-1 faits, rouge vu 10:25 / 10:28 ; gate_test complet vert NON atteint | sans C++ |
-| GALADRIEL-1125mc | HeroesOfLiberty-Galadriel | morale-solo-1124sf | 7037aa7 6af9b35 1ff4432 3729ed1 | Scenario morale_look (.txt + .look, preflight, PNG ouverts) sur une branche neuve morale-look-1125m ; RESULTAT : morale_look (.txt .look .json), 3 captures vues ; pastille sans secondes (defaut A) ; malus rouge non montre | sans C++ |
-| RECETTE-1125ma | HeroesOfLiberty-Arwen | arwen-duel-1124sk | 0 | Recette independante de E-tower_wood sur main 1f63056 (git merge main, preflight, PNG ouverts, chercher a le faire echouer) ; verdict PASS/FAIL dans la fiche ; RESULTAT : verdict FAIL : cadrages after / after3 de tower_wood, aucune correction (fiche E-tower_wood l.9) | sans C++ |
-| ELROND-1125mc | HeroesOfLiberty-Elrond | ground-cast-1124s | 9ac8a67 + correctif sur grid-g3-1125m | Grille AS G-3 : clic au sol en script (ConsumeArmedClick, RequestHeroAbilityAt / RequestCastUnitAbilityAt) + UHOLGridActionBridge::Get() resolu vers la classe script en jeu, sur branche neuve grid-g3-1125m ; RESULTAT : G-3 HOLGridGroundClick.as, rouge vu 10:33 (2239/2241) ; Test_GGCBannerAndAttackMove encore rouge (voir ELROND-1125md) | sans C++ |
-| DOCS-1125ma | HeroesOfLiberty-Arwen | arwen-duel-1124sk | 2c59065 | Remise a jour de Docs\Priorite_Socle_Factions_2026-11-16.md d'apres git log main (1f63056 et suivants) et Docs\Rapports\*-1125m*.md ; ancienne version archivee ; RESULTAT : Priorite_Socle_Factions remise a jour d apres git, ancienne version archivee, ordre 1-5 inchange | sans C++ |
-| FARAMIR-1125mc | HeroesOfLiberty-Faramir | tower-wood-look-1124sm | 1594efd 7823aeb 5a7fa30 | tower_wood reste : 3e Lancier introuvable, capture de la barre de vie a un instant fixe (waitlog sur un coup) ; branche neuve tower-wood-3rd-1125m ; RESULTAT : tower-wood-3rd-1125m : waitlog sur un coup, 3e Lancier #7 toujours masque par la tour sur PNG | sans C++ |
-| SAURON-1125mc | HeroesOfLiberty-Sauron | tools-1124sk | 0 | Premiere ligne [ ] suivante de la section Sauron de la file, hors session_gate.ps1 et gate_test.ps1 (en test par la principale) ; branche neuve tools-1125m ; RESULTAT : aucune ligne [ ] sans C++ prenable dans la section Sauron ; l.215 no_window_test PASS ; gate_test tue par son stray_processes -Stop (anomalie) | sans C++ |
-| CELEBORN-1125mc | HeroesOfLiberty-Celeborn | walls-g7-1124s | a99f9ad | G10 portes : lire le rouge de 4ba5ec2 (quick_check), appliquer le correctif prepare (scratchpad CELEBORN-1125mb_fix.ps1, relu avant), vert vu, scripts compiled 0 erreur ; RESULTAT : G10 portes : GateCells / GateReplacedCells dans HOLWallLineRules.as, rouge 4ba5ec2 relu ; vert NON relu | sans C++ |
-| GLORFINDEL-1125mc | HeroesOfLiberty-Glorfindel | duel-frame-1124sj | - | Grille AS G-6 cote script : aspect de la case (libelle, grise, recharge) decide en script, tests d'abord ; branche neuve grid-face-1125m ; ENONCES-1125m 1.3 | sans C++ |
-| GALADRIEL-1125md | HeroesOfLiberty-Galadriel | morale-look-1125m | 93b20e0 fb799e9 | Lot C++ moral R1/R4 (duree cote client, version du protocole ; MoraleInProgress.md) en UN lot, sans build ; branche neuve morale-r1-1125m ; RESULTAT : R1 C++ (LongestSecondsLeft, EffectSecondsLeft, 8 bits reseau) ; R4 sans objet ; NON COMPILE, a compiler par la principale | C++ : raison dite dans la tache |
-| DIAG-1125ma | HeroesOfLiberty-Arwen | arwen-duel-1124sk | 0 (lecture seule) | Lecture seule : les 6 shas d'integ-73 (5b5b026 02b6cdd fdf22c3 2a0d691 592240a 25d2dff) absents de main : refondus (git log -S / --grep / patch-id) ou perdus ; verdict par sha ; RESULTAT : les 6 shas d integ-73 : orphelins refondus dans main, aucun perdu | sans C++ |
-| DIAG-1125mb | HeroesOfLiberty-Haldir | integ-79 | - | Diagnostic du rouge integ-79 Test_SpecializationSlotOptionTextsFollowTheCulture (loc-ja SetLanguageName ? cles VoieFer/Faith/Stone absentes de Game.po, ajoutees par Arwen b4559e3) | sans C++ |
-| FARAMIR-1125md | HeroesOfLiberty-Faramir | tower-wood-3rd-1125m | - | tower_wood : capture avant le step ~285 pour montrer les 3 Lanciers dont #7 (choix de scenario, pas une question), preflight, PNG ouverts | sans C++ |
-| ELROND-1125md | HeroesOfLiberty-Elrond | grid-g3-1125m | - | G-3 : Test_GGCBannerAndAttackMove reste rouge apres 8e98223 (2241/2242) : cause, correctif, vert lu, scripts compiled lu, stray_processes | sans C++ |
-| CELEBORN-1125md | HeroesOfLiberty-Celeborn | walls-g7-1124s | - | G8 fantomes du trace de mur sur la grille fine (HOLWallLineBridge.as, libre) ; branche neuve walls-g8-1125m ; test rouge vu puis correctif | sans C++ |
-| ARWEN-1125md | HeroesOfLiberty-Arwen | arwen-duel-1124sk | - | Socle 4 : premier effet en jeu d'une voie de specialisation des Templiers, en script (Docs\Rapports\SPEC-VOIES-1123.md, SpecializationInProgress.md) ; branche neuve spec-voie-1125m | sans C++ |
-| DOCS-1125mb | HeroesOfLiberty-Sauron | tools-1125m | - | Docs : completer le tableau Agents du 2026-11-25 (resultat, commits) depuis Docs\Rapports\*-1125m*.md, cocher la file, verifier EtapeDefini | sans C++ |
+| ETAPE0-1125a | HeroesOfLiberty-MyCrusader | main | bcedc73 | etape 0 lecture seule : plan de lancement + enonces (priorite Socle Factions) ; exception gate : DLL copie principale perimee, agent sans build ni scenario | sans C++ |
+| ARWEN-1125a | HeroesOfLiberty-Arwen | spec-voie-1125m | d123d0a, 0746888 | Produces des 3 unites de commanderie (D893 etape 3 / D902), C:\Users\baudo\Documents\MyCrusader\Docs\Rapports\ENONCES-1125a.md section 1.1 | sans C++ |
+| CELEBORN-1125a | HeroesOfLiberty-Celeborn | wall-long-fix-1125m | 1c72b52, 2b402fd | D915 prix des murs grille fine, C:\Users\baudo\Documents\MyCrusader\Docs\Rapports\ENONCES-1125a.md section 1.2 | sans C++ |
+| GALADRIEL-1125a | HeroesOfLiberty-Galadriel | morale-look-fix-1125m | 541768b, d7b14d5 | D918 tours de guet IA 1/1/2, C:\Users\baudo\Documents\MyCrusader\Docs\Rapports\ENONCES-1125a.md section 1.3 | sans C++ |
+| SAURON-1125a | HeroesOfLiberty-Sauron | integ-82 | d40be6a, dd60062, d0f6d27 | effet KnightChallenge (Aube A7, place C++ 1), C:\Users\baudo\Documents\MyCrusader\Docs\Rapports\ENONCES-1125a.md section 1.4 | C++ : raison dite dans la tache |
+| ARWEN-1125b | HeroesOfLiberty-Arwen | spec-voie-1125m | 892252e, 97564cd | A1 E-talents_heal geste reel, C:\Users\baudo\Documents\MyCrusader\Docs\Rapports\ENONCES-1125a-v2.md | sans C++ |
+| CELEBORN-1125b | HeroesOfLiberty-Celeborn | wall-long-fix-1125m | bda9e7b | C1 branchement porte G10, C:\Users\baudo\Documents\MyCrusader\Docs\Rapports\ENONCES-1125a-v2.md | sans C++ |
+| GALADRIEL-1125b | HeroesOfLiberty-Galadriel | morale-look-fix-1125m | 0078381, 8284613 | G1 commentaire HOLAIBrain + scenario ai_tower_easy, C:\Users\baudo\Documents\MyCrusader\Docs\Rapports\ENONCES-1125a-v2.md | sans C++ |
+| SAURON-1125b | HeroesOfLiberty-Sauron | knight-challenge-1125a | 1604f46, 8d83c4b | S1 activation KnightChallenge (AS + liaison CastKnightChallenge), ENONCES-1125a-v2.md | C++ : raison dite dans la tache |
+| ARWEN-1125c | HeroesOfLiberty-Arwen | spec-voie-1125m | 33dcd9b | Reste ARWEN-1125b : cause du preflight FAIL(1) talents_heal, PNG, fiche E | sans C++ |
+| GALADRIEL-1125c | HeroesOfLiberty-Galadriel | morale-look-fix-1125m | 9bd94fa | diagnostic BUG-ai_peasant-spin (persiste avec 17e7722 dans main) + recadrage ai_tower_easy | sans C++ |
+| CELEBORN-1125c | HeroesOfLiberty-Celeborn | wall-long-fix-1125m | 4756050 | lot C++ murs : prix D915 dans DoPlaceBuilding + liaisons porte G10 (lecture pieces, DestroyBuilding) | C++ : raison dite dans la tache |
+| GLORFINDEL-1125a | HeroesOfLiberty-Glorfindel | recette-1125mb | 0 | RECETTEUR main 1a20314 (integ-83), ENONCES-1125a section 1.5 | sans C++ |
+| ARWEN-1125d | HeroesOfLiberty-Arwen | spec-voie-1125m | 7cba5e7, c32f6a0 | A2 E-deploy vrai clic (cas lointain D877), ENONCES-1125a-v2.md | sans C++ |
+| GALADRIEL-1125d | HeroesOfLiberty-Galadriel | morale-look-fix-1125m | fc56611, 1acb6a2, 48bd8d4 | ai_tower_easy cadrage + preflight PASS + fiche E ; ligne [ ] spin en tete de file (Q8) | sans C++ |
+| GALADRIEL-1125e | HeroesOfLiberty-Galadriel | morale-look-fix-1125m | c113cf1, 4f3c147 | C++ BUG-ai_peasant-spin compteur PushedBacks (tete de file, GALADRIEL-1125c.md) | C++ : raison dite dans la tache |
+| ARWEN-1125e | HeroesOfLiberty-Arwen | spec-voie-1125m | 0a88357, fc3b85f | FAIL recette : Templars ne peut pas former InfirmaryBrother (IsUnitOpenTo, GLORFINDEL-1125a.md) | sans C++ |
+| GLORFINDEL-1125b | HeroesOfLiberty-Glorfindel | recette-1125mb | 4b64514, ad48ac2 | H1 L28-8 tools-l288-1125m puis H2, ENONCES-1125a-v3.md (taches Haldir, faites dans Glorfindel) | sans C++ |
+| ARWEN-1125f | HeroesOfLiberty-Arwen | spec-voie-1125m | 743e78f | A3 test D893 palier 1 puis A1 spec_voie_queue, ENONCES-1125a-v3.md | sans C++ |
+| CELEBORN-1125d | HeroesOfLiberty-Celeborn | wall-long-fix-1125m | 250e976, a745cb7 | C1 v3 brancher ServerPlaceWallLine (GateRetiredCells, OrderRemoveOwnBuilding), ENONCES-1125a-v3.md | sans C++ |
+| SAURON-1125c | HeroesOfLiberty-Sauron | knight-challenge-1125a | e1ceacd | corriger tests 0/0 (erreur Angelscript) du lot S1 KnightChallenge 8d83c4b | sans C++ |
+| ARWEN-1125g | HeroesOfLiberty-Arwen | spec-voie-1125m | 736f246 | C++ BuiltInRoles Templars (HOLFactionRules.cpp:29) + HOLFactionRulesTests.cpp:215, RESTE ARWEN-1125e | C++ : raison dite dans la tache |
+| SAURON-1125d | HeroesOfLiberty-Sauron | knight-challenge-1125a | 0 | bouton / commande de grille du Chevalier qui appelle HOLKnightChallenge::CastChallenge (sans C++) | sans C++ |
+| CELEBORN-1125e | HeroesOfLiberty-Celeborn | wall-long-fix-1125m | 8d56a31, 7272af8 | scenario wall_gate_replace + ServerPlaceBuilding porte isolee, RESTE CELEBORN-1125d | sans C++ |
+| GLORFINDEL-1125c | HeroesOfLiberty-Glorfindel | glorfindel-wave3-1125a | cafdd6e | H3 releve lignes perimees de la File avec preuves, ENONCES-1125a-v3.md | sans C++ |
+| GALADRIEL-1125f | HeroesOfLiberty-Galadriel | morale-look-fix-1125m | 0 (docs) | verifier en jeu le correctif spin 4f3c147 (preflights ai_tower_easy / ai_tower, Sanity), fiches E et BUG | sans C++ |
+| SAURON-1125e | HeroesOfLiberty-Sauron | knight-challenge-1125a | a6ee4f4, fda4fe7 | S2 KnightChallenge : exclusion heros, Chevalier hors rayon (extras), ParallelSearch/AheadSearches, ENONCES-1125a-v2.md | C++ : raison dite dans la tache |
+| ARWEN-1125h | HeroesOfLiberty-Arwen | spec-voie-1125m | bfde509 | A1 scenario spec_voie_queue (porte de production par voie au vrai clic), ENONCES-1125a-v3.md | sans C++ |
+| CELEBORN-1125f | HeroesOfLiberty-Celeborn | wall-long-fix-1125m | 0d4dd07, 83fbc1e | ServerPlaceBuilding porte isolee retire les palissades (script), RESTE CELEBORN-1125e | sans C++ |
+| GALADRIEL-1125g | HeroesOfLiberty-Galadriel | morale-look-fix-1125m | 1 (ai_tower.txt) | diagnostic instrumente du spin deterministe (ai_tower, Paysan #7 a 16702,-1989) : remonter a la cause avant tout 3e correctif | sans C++ |
+| ARWEN-1125i | HeroesOfLiberty-Arwen | spec-voie-1125m | 5a9fef0, 6cbbdbe | Reste ARWEN-1125h : finir spec_voie_queue (etape 35, 2e clic, PNG, fiche E) | sans C++ |
+| GLORFINDEL-1125d | HeroesOfLiberty-Haldir | integ-85 | 3c05559 | RECETTE main 8d79aaa (integ-84+85) jouee depuis Haldir : essais talents_heal, deploy_far, ai_tower_easy, prix murs | sans C++ |
+| PREP-1125a / PREP-1125b | HeroesOfLiberty-MyCrusader | main | 2 (docs) | preparation des enonces v2 et v3 de la vague 1125a | sans C++ |
+| CLEAN-A..D-1125a | HeroesOfLiberty-MyCrusader | main | 14e113c, 4754030, 7246200, bcedc73 | nettoyage 0a de 15:0x (file, Retours, Jour, Rapports) | sans C++ |
+| HALDIR (integ-83, integ-84, integ-85) | HeroesOfLiberty-Haldir | integ-83 / integ-84 / integ-85 | 1a20314, 1e2e3fa, 8d79aaa | integrateur : 3 passes PASS (826 s, 1902 s, 777 s) | C++ : build des passes |
+| DOCS-1125a | HeroesOfLiberty-MyCrusader | main | Docs: close 1125a | docs de cloture de la seance de l'apres-midi (Retours, File, Jour, EtapeDefini) | sans C++ |
 
-### Avances de main et anomalies (DOCS-1125mb, 10:5x)
-- Avances de main : 4f6ddc4 (integ-77, arbre identique a main eda96bd, avance sans changement de fichier) ; 1f63056 (integ-78 : duel-frame-1124sj, walls-g7-1124s, tools-1124sk, tower-wood-look-1124sm), puis 1d2a2bc (rapports vague 1-2) et 2c59065 (Priorite_Socle_Factions).
-- ANOMALIE gate_test : tue par le stray_processes -Stop de SAURON-1125mc (10:4x) ; le gate_test complet vert (objectif de SAURON-1125mb) reste a relancer par la principale, hors agent.
-- ANOMALIE integ-79 : FAIL sur Test_SpecializationSlotOptionTextsFollowTheCulture ; diagnostic DIAG-1125mb en cours (piste : loc-ja SetLanguageName, cles VoieFer/Faith/Stone ajoutees a Game.po par Arwen b4559e3).
-- DIAG-1125ma : les 6 shas d integ-73 (5b5b026 02b6cdd fdf22c3 2a0d691 592240a 25d2dff) ne sont ancetres d aucune branche (orphelins) : refondus, jumeaux dans main (ex. 5b5b026 = aa19ecf, 02b6cdd = fad4af7, fdf22c3 = b465fd7, 2a0d691 = c80e562) ; rien de perdu.
-- Lignes sans fiche a ce jour (agents en cours, ligne du tableau inchangee) : GLORFINDEL-1125mc, ELROND-1125md, CELEBORN-1125md, ARWEN-1125md, DIAG-1125mb, FARAMIR-1125md, DOCS-1125mb.
-- EtapeDefini (L28-4) : ligne ABSENTE pour ARWEN-1125ma, ELROND-1125mb, GLORFINDEL-1125mb, RECETTE-1125ma, SAURON-1125mc, DIAG-1125ma ; pas encore de ligne (agents en cours) : DIAG-1125mb, FARAMIR-1125md, ELROND-1125md, CELEBORN-1125md, ARWEN-1125md, DOCS-1125mb. Present (par nom d agent) pour les 19 autres ; CELEBORN-1125mb et 1125mc partagent la ligne 1119.
-| FARAMIR-1125me | HeroesOfLiberty-Faramir | tower-wood-3rd-1125m | - | Socle IA S4 : rejouer le scenario ai_tower (timeout corrige par wait 55, jamais rejoue), preflight, PNG ouverts, fiche E si PASS ; branche neuve ai-tower-1125m | sans C++ |
-| DOCS-1125mc | HeroesOfLiberty-Sauron | tools-1125m | - | EtapeDefini : lignes manquantes (L28-4) d'ARWEN-1125ma, ELROND-1125mb, GLORFINDEL-1125mb, RECETTE-1125ma, SAURON-1125mc, DIAG-1125ma depuis leurs rapports | sans C++ |
-| GLORFINDEL-1125md | HeroesOfLiberty-Glorfindel | grid-face-1125m | - | Grille G-5a C++ : ExecuteGridCommand execute toute reponse du script (Send/Arm/Place/Refuse) et retire du switch les cas couverts ; branche grid-g5a-1125m (grid-face-1125m + merge grid-g3-1125m) ; HOLPlayerController.cpp seulement | C++ : raison dite dans la tache |
-| SAURON-1125md | HeroesOfLiberty-Sauron | tools-1125m | - | Grille G-5b C++ : HOLGameScreen.cpp 1300-1372 lit l'aspect des cases depuis HOLCommandGridFace (script) au lieu du C++ ; branche grid-g5b-1125m depuis grid-face-1125m ; HOLGameScreen.cpp seulement | C++ : raison dite dans la tache |
-| HALDIR-1125mb | HeroesOfLiberty-Haldir | integ-79 | - | Correctif C++ localisation : SetLanguageName (HOLForumMessagesReadLibrary.cpp:104) force Localization.ForceLoadGameLocalizationInEditor le temps du changement puis restaure ; branche loc-fix-1125m depuis morale-solo-1124sf ; DIAG-1125mb.md | C++ : raison dite dans la tache |
-| ARWEN-1125me | HeroesOfLiberty-Arwen | spec-voie-1125m | - | Voie de specialisation : vert de 042546b lu (quick_check + scripts compiled), puis Produces des 3 unites de commanderie dans BuildingTypes.csv (D902) avec placeholders_map et tests de grille (L21-3) | sans C++ |
-| FARAMIR-1125mf | HeroesOfLiberty-Faramir | ai-tower-1125m | - | BUG-ai_peasant-spin : HOLGatherProcessor.cpp:565-572 (StandBeforeSource), test rouge Mass C++ (D838) puis correctif, un lot, sans build ; branche ai-tower-1125m | C++ : raison dite dans la tache |
-| CELEBORN-1125me | HeroesOfLiberty-Celeborn | walls-g8-1125m | - | G8 : vert de 1cf69e8 prouve (quick_check -Parts tests lu dans le meme appel), puis docs EtapeDefini / file G8 / FortificationsInProgress / IN_USE ; stray_processes | sans C++ |
-| ARWEN-1125mf | HeroesOfLiberty-Arwen | spec-voie-1125m | - | Voie : correctif non commite HOLPlayerOrdersBoard.as:180 (UHOLSpecializationBoardScript::Get) ; quick_check vert + scripts compiled lus ; commit ; puis Produces D902 (GDD 3762) si temps | sans C++ |
-| DIAG-1125mc | HeroesOfLiberty-Sauron | grid-g5b-1125m | - | gate_test.ps1 complet sur tools-1124sk : exit 1 (Docs\Rapports\GATETEST-1125m-b.txt) ; trouver le ou les cas KO, corriger sur tools-1124sk si regression L28 | sans C++ |
-| GALADRIEL-1125me | HeroesOfLiberty-Galadriel | morale-r1-1125m | - | Corriger le build R1 : HOLNetTests.cpp(339) error C4002/C2816 macro TEXT (virgule dans TEXT ?) ; un commit ; RELECTURE_CPP du lot fb799e9 entier ; pas de build | C++ : raison dite dans la tache |
-| CELEBORN-1125mf | HeroesOfLiberty-Celeborn | walls-g8-1125m | - | G8 a l'ecran : scenario court du trace de palissade sur grille fine (SubDivision 4), fantomes captures pendant le glisser, preflight PASS, PNG ouverts ; branche walls-g8-1125m | sans C++ |
-| ARWEN-1125mg | HeroesOfLiberty-Arwen | spec-voie-1125m | - | D902 : reappliquer scratchpad ARWEN-1125mf_D902.patch, Tools\AutoJourney\regen_tables.ps1 (table BuildingTypes), quick_check -Parts tests vert lu, commit csv + uasset | sans C++ |
-| CELEBORN-1125mg | HeroesOfLiberty-Celeborn | walls-g8-1125m | - | wall_fine_ghost : preflight de la version finale 759463d, texte des Warning AS HOLWallGhostDrawer.as:31 et :59 lus et corriges, ligne Placeholders/file pour la fondation 4 m sur pas 1 m (empreinte C++) | sans C++ |
-| DIAG-1125md | HeroesOfLiberty-Elrond | integ-80 | - | integ-80 : -Parts build FAIL (tests 2246/2246 PASS) ; cause dans Docs\Integrate_integ-80.log ; correctif sur la branche fautive ou attente quick_check perimee (L22-3) | sans C++ |
-| GLORFINDEL-1125me | HeroesOfLiberty-Glorfindel | grid-g5a-1125m | - | Valider G-5a compile (build PASS 11:2x) : quick_check -Parts tests lu, puis preflight monk_seal et faction_aim_free (geste reel case + clic sol), PNG ouverts ; corriger le script si rouge | sans C++ |
-| DIAG-1125me | HeroesOfLiberty-Elrond | integ-80 | - | Reprise de DIAG-1125md (arrete) : integ-80 -Parts build FAIL ; cause dans Docs\Integrate_integ-80.log ; correctif sur la branche fautive | sans C++ |
-| GLORFINDEL-1125mf | HeroesOfLiberty-Glorfindel | grid-g5a-1125m | - | Reprise de GLORFINDEL-1125me (arrete) : valider G-5a compile : quick_check -Parts tests, preflight monk_seal et faction_aim_free, PNG ouverts | sans C++ |
-| SAURON-1125me | HeroesOfLiberty-Sauron | tools-1124sk | - | L28-8 faux FAIL : session_gate compte 9 worktrees pour 8 hors copie principale ; test rouge puis correctif, branche tools-l288-1125m depuis main | sans C++ |
-| HALDIR-1125mc | HeroesOfLiberty-Haldir | pre-81 | - | pre-81 build FAIL HOLCommandScriptLibrary.cpp(153-189) C2264 ToUnitIds ; renommer sur la branche fautive, merge dans pre-81 | C++ : raison dite dans la tache |
-| ELROND-1125me | HeroesOfLiberty-Elrond | integ-80 | - | Banniere mode arme 101 : Aura rings et DrawFactionAimPreview lisent la portee 1600 et non 800 ; branche grid-banner-1125m depuis grid-g5a-1125m ; build hero grid | sans C++ |
-| HALDIR-1125md | HeroesOfLiberty-Haldir | integ-81 | - | integ-81 build hero grid : refus de case grisee (Z niveau 1, A en recharge) non signale depuis G-5a + tolerance 30 cm du clic ; correctif script sur grid-refuse-1125m (depuis grid-banner-1125m), merge dans integ-81, rejouer -Parts build | sans C++ |
-| DOCS-1125md | HeroesOfLiberty-Sauron | tools-l288-1125m | - | Bilan de seance 2026-11-25 matin dans Auto_Journey_Jour.md : bilan, ### Lecons appliquees 2026-11-25, ligne version launcher (L27-12), Retours a jour (plafond 6 essais), file cochee | sans C++ |
-| ARWEN-1125mh | HeroesOfLiberty-Arwen | spec-voie-1125m | - | Cloture : 4 fichiers suivis non commites (D902 de ARWEN-1125mg arrete) : les lire, commit WIP sur spec-voie-1125m, merge main | sans C++ |
-| SAURON-1125mf | HeroesOfLiberty-Sauron | tools-l288-1125m | - | Cloture : merge main dans tools-l288-1125m, resoudre le conflit gate_test.ps1 (garder les deux cas), extrait L28-8 PASS | sans C++ |
-| RECETTE-1125mb | HeroesOfLiberty-Glorfindel | grid-g5a-1125m | - | Recette sur main : faction_aim_free, monk_seal, sacred_light_heal (grille en script) | sans C++ |
-| RECETTE-1125mc | HeroesOfLiberty-Celeborn | walls-g8-1125m | - | Recette sur main : wall_line_long, wall_fine_ghost, wall_line_skip | sans C++ |
-| RECETTE-1125md | HeroesOfLiberty-Faramir | ai-tower-1125m | - | Recette sur main : tower_wood, morale_look, specialization_slot, deploy_far | sans C++ |
-| CELEBORN-1125mh | HeroesOfLiberty-Celeborn | recette-1125mc | - | wall_line_long FAIL recette : ligne sous le MainCentre, 5 fondations au lieu de 9 | sans C++ |
-| ELROND-1125mf | HeroesOfLiberty-Elrond | grid-banner-1125m | - | wall_fine_ghost FAIL : fondation ~4 m pour un pas de 1 m (empreinte C++ grille fine) | C++ : raison dite dans la tache |
-| FARAMIR-1125mg | HeroesOfLiberty-Faramir | recette-1125md | - | tower_wood FAIL : Lanciers gris (Shaders en preparation) sur lancers_all | sans C++ |
-| GALADRIEL-1125mf | HeroesOfLiberty-Galadriel | morale-r1-1125m | - | morale_look FAIL : mapSize absent du json, Guerrier 15 px | sans C++ |
-| HALDIR-1125me | HeroesOfLiberty-Haldir | integ-81 | - | BUG utilisateur monk_seal : le Sceau marche mais la recharge ne s'affiche pas sur la case (face G-6 / G-5b en script) | sans C++ |
-| FARAMIR-1125mh | HeroesOfLiberty-Faramir | tower-wood-shaders-1125m | - | Commande de sequence waitshaders (HOLTestSequence.cpp, FShaderCompilingManager) puis tower_wood l'utilise avant lancers_all ; lot C++ sans build | C++ : raison dite dans la tache |
+### Bilan du 2026-11-25 après-midi
+
+- avances de main : 1a20314 (15:55, integ-83 PASS 826 s, tests 2257/2257 : D918 tours de guet de l'IA GALADRIEL-1125a d7b14d5, prix des murs CELEBORN-1125a 2b402fd) ; 1e2e3fa (17:02, integ-84 PASS 1902 s, 2264/2264 : a745cb7 porte CELEBORN-1125d, e1ceacd SAURON-1125c, c9d5624 non relu) ; 8d79aaa (17:09, integ-85 PASS 777 s, 2266/2266 : 83fbc1e CELEBORN-1125f, fda4fe7 SAURON-1125e avec son rouge a6ee4f4, 48bd8d4 GALADRIEL-1125d, c32f6a0 ARWEN-1125d) ; recette 17:22 (GLORFINDEL-1125d, 3c05559) : talents_heal, deploy_far, ai_tower_easy PASS
+- clôture anticipée à 17:3x au lieu de 19:04 : /context 276,5k > 250k à 16:51 (règle a), plus aucun chantier neuf après, seulement finir l'engagé
+- classifieur : défaut de la Chapelle refusé (Undermining Oversight) : Q-chapel-faction ouverte, régression fc3b85f (les Templiers ne posent plus la Chapelle) hors main ; spec-voie-1125m intégrée seulement jusqu'à c32f6a0
+- hors main : 4f3c147 (spin du Paysan, C++ ; GALADRIEL-1125g : faux positif Sanity), c113cf1 (son rouge), fc3b85f, 743e78f, 736f246, 6cbbdbe (Arwen), ad48ac2 (L28-8, Glorfindel)
+- reste : bouton du Chevalier et fantôme de porte (C++ HOLPlayerController, après Faramir), touche T non injectable, budget de la principale (5 points en tête de la file)
+- version launcher : dernière version = Saved\Manager\Versions\latest.txt = 0.4.3 (Saved\Manager\Versions\0.4.3\published.txt = 2026-11-24 13:51Z, soit 14:51) ; 155 commits de Source\, Script\, Content\ ou Config\ dans main depuis ; verdict nouvelle version : OUI (contenu neuf : tours de l'IA, prix des murs, porte qui remplace la palissade, effet du Défi du Chevalier ; main 8d79aaa build PASS, tests 2266/2266, recette 3 PASS), NON publiée ce jour (pas de publish.ps1, Chapelle des Templiers non tranchée) ; la ligne [À RÉPONDRE] « Nouvelle version du launcher ? » est déjà dans Auto_Journey_Retours.md (section 2), à mettre à jour avec ces chiffres
+
+### Lecons appliquees 2026-11-25 apres-midi
+- T2-1 : appliquee : etape 0 faite par ETAPE0-1125a (Docs\Rapports\ETAPE0-1125a.md, ENONCES-1125a.md), plan de lancement ecrit au Jour
+- T2-2 : appliquee : 6 worktrees lances (Arwen, Celeborn, Galadriel, Glorfindel, Haldir en integrateur, Sauron) ; Elrond et Faramir non lances, raison ecrite au plan de lancement
+- L3-12 : appliquee : etape 0 faite (ETAPE0-1125a), non sautee
+- L5-7 : non verifie : aucune trace ecrite de la question « dossiers non suivis » ; Docs\Rapports tres charge en fichiers non suivis (git status)
+- L4-1, L4-3 : appliquee en partie : alarme 18:49 posee (Jour, plan de lancement) ; cloture anticipee a 17:3x pour cause de contexte, prolongation sans objet
+- L3-8, L4-9, Q5, L1-14 : appliquee : integrateur Haldir et recetteur Glorfindel nommes au plan ; GLORFINDEL-1125d a rejoue talents_heal, deploy_far et ai_tower_easy sur main 8d79aaa a 17:22
+- L3-9 : non verifie : nombre d'appels de la principale non compte ; /context releve a 16:51 = 276,5k
+- L1-1, L3-6, L4-7, L5-3 : non verifie : tool_uses non releves par DOCS-1125a ; chaque agent a ecrit son rapport Docs\Rapports\<AGENT>.md
+- L5-6 : non verifie : aucune preuve lue par DOCS-1125a dans les rapports de la seance
+- L3-11, L5-5 : non verifie : aucune preuve lue par DOCS-1125a dans les rapports de la seance
+- L3-7, L1-4 : non verifie : aucune preuve lue par DOCS-1125a dans les rapports de la seance
+- T2-4 : appliquee : 4 Q-*.md crees, au plus 2 par chantier (Arwen 1 : Q-chapel-faction ; Celeborn 1 : Q-porte-remplacement-remboursement ; Sauron 2 : Q-defi-chevalier-heros, Q-chevalier-defi-bouton), defauts codes ou sans code
+- Q5, L5-4 : non verifie : aucune preuve lue par DOCS-1125a dans les rapports de la seance
+- Q8 : non verifie : aucune preuve lue par DOCS-1125a dans les rapports de la seance
+- Q11 : non verifie : aucune preuve lue par DOCS-1125a dans les rapports de la seance
+- L1-3 : non verifie : aucune preuve lue par DOCS-1125a dans les rapports de la seance
+- L6-2 : non verifie : aucune preuve lue par DOCS-1125a dans les rapports de la seance
+- L6-4 : non verifie : aucune preuve lue par DOCS-1125a dans les rapports de la seance
+- L6-6 : non verifie : aucune preuve lue par DOCS-1125a dans les rapports de la seance
+- L7-7 : non verifie : aucune preuve lue par DOCS-1125a dans les rapports de la seance
+- L8-4 : non verifie : aucune preuve lue par DOCS-1125a dans les rapports de la seance
+- L8-8 : non verifie : aucune preuve lue par DOCS-1125a dans les rapports de la seance
+- L9-1 : non verifie : aucune preuve lue par DOCS-1125a dans les rapports de la seance
+- L9-6 : non verifie : aucune preuve lue par DOCS-1125a dans les rapports de la seance
+- L9-8 : non verifie : aucune preuve lue par DOCS-1125a dans les rapports de la seance
+- L9-9 : non verifie : aucune preuve lue par DOCS-1125a dans les rapports de la seance
+- L10-2 : non verifie : aucune preuve lue par DOCS-1125a dans les rapports de la seance
+- L10-3 : non verifie : aucune preuve lue par DOCS-1125a dans les rapports de la seance
+- L11-3 : non verifie : aucune preuve lue par DOCS-1125a dans les rapports de la seance
+- L11-4 : non verifie : aucune preuve lue par DOCS-1125a dans les rapports de la seance
+- L11-8 : non verifie : aucune preuve lue par DOCS-1125a dans les rapports de la seance
+- L11-9 : non verifie : aucune preuve lue par DOCS-1125a dans les rapports de la seance
+- L11-10, L10-5, L9-7 : non verifie : aucune preuve lue par DOCS-1125a dans les rapports de la seance
+- L11-11 : non verifie : aucune preuve lue par DOCS-1125a dans les rapports de la seance
+- L11-12 : non verifie : aucune preuve lue par DOCS-1125a dans les rapports de la seance
+- L11-13 : non verifie : aucune preuve lue par DOCS-1125a dans les rapports de la seance
+- L12-1 : non verifie : aucune preuve lue par DOCS-1125a dans les rapports de la seance
+- L12-1b : non verifie : aucune preuve lue par DOCS-1125a dans les rapports de la seance
+- L13-1 : non verifie : aucune preuve lue par DOCS-1125a dans les rapports de la seance
+- L13-4 : non verifie : aucune preuve lue par DOCS-1125a dans les rapports de la seance
+- L13-5 : non verifie : aucune preuve lue par DOCS-1125a dans les rapports de la seance
+- L13-6 : non verifie : aucune preuve lue par DOCS-1125a dans les rapports de la seance
+- L13-7 : non verifie : aucune preuve lue par DOCS-1125a dans les rapports de la seance
+- L14-2 : non verifie : aucune preuve lue par DOCS-1125a dans les rapports de la seance
+- L14-4 : non verifie : aucune preuve lue par DOCS-1125a dans les rapports de la seance
+- L14-5 : non verifie : aucune preuve lue par DOCS-1125a dans les rapports de la seance
+- L14-9 : non verifie : aucune preuve lue par DOCS-1125a dans les rapports de la seance
+- L14-10 : non verifie : aucune preuve lue par DOCS-1125a dans les rapports de la seance
+- L14-11 : non verifie : aucune preuve lue par DOCS-1125a dans les rapports de la seance
+- L15-6 : non verifie : aucune preuve lue par DOCS-1125a dans les rapports de la seance
+- L15-7 : non verifie : aucune preuve lue par DOCS-1125a dans les rapports de la seance
+- L15-8 : non verifie : aucune preuve lue par DOCS-1125a dans les rapports de la seance
+- L15-9 : non verifie : aucune preuve lue par DOCS-1125a dans les rapports de la seance
+- L16-1 : non verifie : aucune preuve lue par DOCS-1125a dans les rapports de la seance
+- L16-2 : non verifie : aucune preuve lue par DOCS-1125a dans les rapports de la seance
+- L16-3 : non verifie : aucune preuve lue par DOCS-1125a dans les rapports de la seance
+- L16-4 : non verifie : aucune preuve lue par DOCS-1125a dans les rapports de la seance
+- L16-5 : non verifie : aucune preuve lue par DOCS-1125a dans les rapports de la seance
+- L16-6 : non verifie : aucune preuve lue par DOCS-1125a dans les rapports de la seance
+- L16-7 : non verifie : aucune preuve lue par DOCS-1125a dans les rapports de la seance
+- L16-8 : non verifie : aucune preuve lue par DOCS-1125a dans les rapports de la seance
+- L17-a : non verifie : aucune preuve lue par DOCS-1125a dans les rapports de la seance
+- L17-b : non verifie : aucune preuve lue par DOCS-1125a dans les rapports de la seance
+- L17-c : non verifie : aucune preuve lue par DOCS-1125a dans les rapports de la seance
+- L18-a : non verifie : aucune preuve lue par DOCS-1125a dans les rapports de la seance
+- L18-b : non verifie : aucune preuve lue par DOCS-1125a dans les rapports de la seance
+- L18-c : non verifie : aucune preuve lue par DOCS-1125a dans les rapports de la seance
+- L18-d : non verifie : aucune preuve lue par DOCS-1125a dans les rapports de la seance
+- L18-e : non verifie : aucune preuve lue par DOCS-1125a dans les rapports de la seance
+- L18-f : non verifie : aucune preuve lue par DOCS-1125a dans les rapports de la seance
+- L19-1 : non verifie : aucune preuve lue par DOCS-1125a dans les rapports de la seance
+- L19-4 : non verifie : aucune preuve lue par DOCS-1125a dans les rapports de la seance
+- L19-5 : non verifie : aucune preuve lue par DOCS-1125a dans les rapports de la seance
+- L19-6 : non verifie : aucune preuve lue par DOCS-1125a dans les rapports de la seance
+- L19-7 : non verifie : aucune preuve lue par DOCS-1125a dans les rapports de la seance
+- L20-2 : non verifie : aucune preuve lue par DOCS-1125a dans les rapports de la seance
+- L20-4 : non verifie : aucune preuve lue par DOCS-1125a dans les rapports de la seance
+- L20-5 : non verifie : aucune preuve lue par DOCS-1125a dans les rapports de la seance
+- L20-7 : non verifie : aucune preuve lue par DOCS-1125a dans les rapports de la seance
+- L20-8 : non verifie : aucune preuve lue par DOCS-1125a dans les rapports de la seance
+- L21-1 : appliquee : AskUserQuestion de travail = 0 ; les 4 questions sont des fichiers Retours\Q-*.md avec valeur par defaut
+- L21-2 : non verifie : aucune preuve lue par DOCS-1125a dans les rapports de la seance
+- L21-3 : non verifie : aucune preuve lue par DOCS-1125a dans les rapports de la seance
+- L22-1 : non verifie : aucune preuve lue par DOCS-1125a dans les rapports de la seance
+- L22-3 : non verifie : aucune preuve lue par DOCS-1125a dans les rapports de la seance
+- L22-4 : non verifie : aucune preuve lue par DOCS-1125a dans les rapports de la seance
+- L22-5 : non verifie : aucune preuve lue par DOCS-1125a dans les rapports de la seance
+- L23-1 : appliquee : AskUserQuestion de travail = 0 ; les 4 questions sont des fichiers Retours\Q-*.md avec valeur par defaut
+- L24-3 : non verifie : aucune preuve lue par DOCS-1125a dans les rapports de la seance
+- L24-4 : non verifie : aucune preuve lue par DOCS-1125a dans les rapports de la seance
+- L24-5 : non verifie : aucune preuve lue par DOCS-1125a dans les rapports de la seance
+- L25-4 : non verifie : aucune preuve lue par DOCS-1125a dans les rapports de la seance
+- L25-5 : non verifie : aucune preuve lue par DOCS-1125a dans les rapports de la seance
+- L25-6 : appliquee : AskUserQuestion de travail = 0 ; les 4 questions sont des fichiers Retours\Q-*.md avec valeur par defaut
+- L26-1 : non appliquee : /context a 276,5k a 16:51 (> 250k, seuil de la regle a) ; budget de la principale depasse, cloture anticipee a 17:3x
+- L27-1 : non verifie : aucune preuve lue par DOCS-1125a dans les rapports de la seance
+- L27-2 : non verifie : aucune preuve lue par DOCS-1125a dans les rapports de la seance
+- L27-3 : appliquee : aucun agent C++ n'a lance de build (SAURON-1125a/b/e, CELEBORN-1125c, GALADRIEL-1125e, ARWEN-1125g « sans build ») ; builds d'integration integ-84 PASS 1227 s, integ-85 PASS 146 s
+- L27-4 : non verifie : aucune preuve lue par DOCS-1125a dans les rapports de la seance
+- L27-5 : non verifie : aucune preuve lue par DOCS-1125a dans les rapports de la seance
+- L27-6 : non verifie : aucune preuve lue par DOCS-1125a dans les rapports de la seance
+- L27-7 : non verifie : aucune preuve lue par DOCS-1125a dans les rapports de la seance
+- L27-8 : non verifie : aucune preuve lue par DOCS-1125a dans les rapports de la seance
+- L27-9 : appliquee par DOCS-1125a : E-ai_tower_easy.md et E-talents_heal.md passes a `branches: main` (E-deploy_far.md l'etait deja)
+- L27-10 : appliquee en partie : /context releve a 16:51 (mi-seance) ; releve de cloture non fait
+- L27-11 : non verifie : aucune preuve lue par DOCS-1125a dans les rapports de la seance
+- L28-1 : non verifie : aucune preuve lue par DOCS-1125a dans les rapports de la seance
+- L28-2 : appliquee : integ-83, integ-84 et integ-85 PASS (build PASS ; tests 2257/2257, 2264/2264, 2266/2266), aucun build d'integration rouge
+- L28-3 : non verifie : aucune preuve lue par DOCS-1125a dans les rapports de la seance
+- L28-4 : appliquee : un Docs\Rapports\<AGENT>.md par agent lance (ARWEN, CELEBORN, GALADRIEL, SAURON, GLORFINDEL a..i)
+- L28-5 : non verifie : aucune preuve lue par DOCS-1125a dans les rapports de la seance
+- L28-6 : appliquee : recette de main 1a20314 par GLORFINDEL-1125a, puis de main 8d79aaa par GLORFINDEL-1125d a 17:22 (3 PASS)
+- L28-7 : non appliquee : /context a 276,5k a 16:51 (> 250k, seuil de la regle a) ; budget de la principale depasse, cloture anticipee a 17:3x
+- L28-8 : appliquee en partie : GLORFINDEL-1125b ad48ac2 corrige le plafond (rouge vu 16:26:58) mais ad48ac2 n'est pas dans main
+- L28-9 : appliquee : 4 fiches [A ESSAYER] pour un plafond de 6 (Retours l.18)
+- AskUserQuestion de travail = 0 (aucune question posee par l'interface de choix pendant la seance autonome).
 
 ## Bilan du 2026-11-25 matin
 
-Séance autonome 09:42 -> 13:00, ARRÊTÉE PAR L'UTILISATEUR vers 11:30 (tokens) ; bilan écrit par DOCS-1125md (12:2x) depuis le tableau ci-dessus, `Docs\Rapports\*-1125m*.md` et `git log main` ; point de reprise : ligne « ARRÊT DEMANDÉ » de la section « Séance du matin » (main = 1f63056 + docs 4f8ed4d).
-- Demande du jour : grille de commandes en Angelscript. État G-1..G-6 : G-1 et G-2 faits et DANS main (integ-78 1f63056) : `HOLCommandGridAction::Decide` répond Lumière sacrée, capacités de héros, ordres, Build (rouge 3421414 vu 10:05, correctif c3765bd) ; G-2 reste `DecideCosted` (Build refusé, Produce/Research/Trade, GLORFINDEL-1125mb 9ad0480 / 029e737, rouge vu 10:33, vert et scripts compiled non lus) ; G-3 clic au sol en script, branche grid-g3-1125m (8e98223, 13cb4a2 ; rouge vu 10:33, 2239/2241) ; G-4 pont C++ `UHOLGridActionBridge` (ELROND-1125ma 0ff98f8, compilé ensuite par la principale) + `UHOLGridActionScript` (02db9d5, 5e70d39, 0cfbbde ; rouge vu 10:17, 2237/2239) ; G-5a `ExecuteGridCommand` exécute toute réponse du script, branche grid-g5a-1125m (a493984, d0914fd ; compilé PASS, non testé) ; G-5b `HOLGameScreen.cpp` lit `HOLCommandGridFace`, branche grid-g5b-1125m (ce38e14, NON COMPILÉ) ; G-6 aspect de la case en script, branche grid-face-1125m (rouge dc624c0, correctif a904da7). G-3 à G-6 ne sont PAS dans main (pre-81 et integ-81 non fusionnées).
-- Socle : D904 coût des murs N sous-cases x prix dans main (4ccf4b8, bcb4adb), G8 fantômes sur la grille fine (walls-g8-1125m, E-wall_fine_ghost VU À L'ÉCRAN, geste interne), G10 portes rouge 4ba5ec2 / correctif a99f9ad (vert non relu) ; moral : morale_look (branche morale-look-1125m, VU, pastille sans secondes) et R1 C++ (morale-r1-1125m, NON COMPILÉ, correction HOLNetTests.cpp(339) par GALADRIEL-1125me) ; duel_challenge_accept corrigé (01ee4bf : défi 572, accepté 591, duel fini) ; Voie de spécialisation spec-voie-1125m (bed4c66 vert) hors pre-81, D902 NON fait (patch au scratchpad ARWEN-1125mf) ; tower_wood : recette RECETTE-1125ma FAIL (cadrages after / after3), tower-wood-3rd-1125m : 3e Lancier #7 encore masqué.
-- Avances de main : 4f6ddc4 (integ-77, arbre identique à main) puis 1f63056 (integ-78 : duel-frame-1124sj, walls-g7-1124s, tools-1124sk, tower-wood-look-1124sm) ; ensuite docs seulement (1d2a2bc, 2c59065, b5df23a, 0dffa2c, 018ead0, 4f8ed4d) ; aucune avance après integ-78 (integ-79, 80 et 81 non entrées).
-- integ-79 (79af31d) FAIL `Test_SpecializationSlotOptionTextsFollowTheCulture` : l'hypothèse « traductions VoieFer/Faith/Stone absentes de Game.po » était FAUSSE (DIAG-1125mb) ; cause : `UnrealEditor-Cmd` (quick_check tests) n'est pas `FApp::IsGame()`, donc `SetLanguageName("ja")` change la langue sans charger le .locres du jeu (TextLocalizationManager.cpp:539/973/1247) ; correctif C++ `loc-fix-1125m` d86163c (HALDIR-1125mb : cvar `Localization.ForceLoadGameLocalizationInEditor` levée le temps du changement), NON COMPILÉ.
-- integ-80 (18e0e46) : tests 2246/2246 PASS mais `-Parts build` (scénario hero grid) FAIL ; cause (DIAG-1125me, DIAG-1125md arrêté avant verdict) : vraie régression de grid-g3-1125m, `hol.Select.Banner` (HOLPlayerController.cpp:261) ne clique que si `IsBannerArmed()` et Z n'arme plus `bBannerArmed` (mode 101), l'aperçu de portée de la bannière lit 800 au lieu de 1600 (Aura rings, DrawFactionAimPreview), tolérance de 30 cm du clic trop fine ; correctifs grid-banner-1125m (d7cb82d, 27c56f2) et f265ae7 (quick_check clique le mode 101 par `hol.Select.LeftClickGround`).
-- integ-81 (8345675) : pre-81 build FAIL C2084 / C2264, 3 helpers `ToUnitIds` identiques en namespace anonyme (HOLAIOrders.cpp, HOLCommandScriptLibrary.cpp, HOLControllerCommandLibrary.cpp) dans le même paquet unity, renommés par fichier (ba8d05c, HALDIR-1125mc, non compilé) ; refus de case grisée (Z niveau 1, A en recharge) non signalé depuis G-5a, correctif grid-refuse-1125m (b7d7c80, HALDIR-1125md) ; build et tests de integ-81 NON relancés à l'arrêt.
-- Anomalies : (1) gate_test complet tué par le `stray_processes -Stop` de SAURON-1125mc (10:4x) ; (2) rejeu DIAG-1125mc : gate_test exit 1 parce que la branche du worktree Sauron a été changée par la principale PENDANT le run (reflog 10:34 tools-1125m, 10:55 grid-g5b-1125m, ce38e14 à 11:01) : `session_gate.ps1` relu d'une branche sans L28, erreur `Match ... input null` (session_gate.ps1:542) ; gate_test complet jamais vert ; (3) faux FAIL L28-8 : le gate Launch compte 9 worktrees pour 8 hors copie principale (SAURON-1125me, tools-l288-1125m ; 9e compte non reproduit) ; (4) exception `-NoGate` accordée par l'utilisateur (portée non écrite dans les rapports lus : à confirmer par la principale) ; (5) arrêt de l'utilisateur vers 11:30 ; (6) lignes EtapeDefini absentes pour 6 agents (L28-4, rattrapées par DOCS-1125mc 018ead0) et fiche absente pour FARAMIR-1125ma ; (7) 3 agents arrêtés sans rapport complet : GLORFINDEL-1125me, DIAG-1125md, ARWEN-1125mg.
-- Questions : 3 `AskUserQuestion` = lancement seulement (fin, mode, lancement), 0 question de travail ; 1 `Q-*.md` neuve (Q-mur-prix-sous-case, défaut prix plein). Budget de la principale NON relevé par `/context` (objectif 300k non mesuré).
 - version launcher : latest.txt = 0.4.3 (`Saved\Manager\Versions\0.4.3\published.txt` = 2026-11-24 13:51Z, soit 14:51 ; release.json stage 4 / update 4) ; 69 commits de `Source\`, `Script\`, `Content\` ou `Config\` dans main depuis cette heure (grille script G-1/G-2, D904, moral R2...) ; verdict nouvelle version : OUI (contenu neuf), NON publiée ce jour (binaire de main non validé après integ-80, aucune avance de main depuis 1f63056) ; la ligne « Nouvelle version du launcher ? » reste dans `Auto_Journey_Retours.md` pour l'utilisateur.
-- Retours : 6 `[À ESSAYER]` au plus (L28-9) : monk_seal_slow et tower_wood_garrison sortis du compte (prêts mais NON DONNÉS) dans `Auto_Journey_Retours.md` ; en-tête recompté : 6 essais (faction_aim_free, wall_line_skip, deploy_far, specialization_slot, monk_seal, sacred_light_heal) ; non comptés : morale_look (branche hors main), wall_fine_ghost et duel_challenge_accept (geste interne), tower_wood (recette FAIL), wall_fine_block, talents_heal, playtest_hero_army (LOGIQUE SEULEMENT).
 
 ### Lecons appliquees 2026-11-25
 - T2-1 : appliquee : ETAPE0-1125m (`Docs\Rapports\ETAPE0-1125m.md`, `ENONCES-1125m.md`), plan de lancement écrit au Jour (« Plan de lancement ETAPE0-1125m »)

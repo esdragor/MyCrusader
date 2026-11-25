@@ -48,6 +48,12 @@ waitlog units attack
 wait 3
 hol.Select.Report
 capture deploy_far_walking
+# ARWEN-1125d (D877 moitie A, cas lointain) : la ligne du moteur 'Deploy: #N phase 0 -> 1 (order ...' (HOLDeployProcessor.cpp) doit apparaitre APRES l'ordre lointain, sans second ordre (RECETTE-1121se : aucune ligne). Le waitlog est place APRES les deux montages a la touche D du debut : il n'attend que les lignes neuves. Rouge = timeout ici. Capture PENDANT le montage (L19-5) : 0,3 s apres la ligne, la case D dit Montage... (pas encore Demonter).
+waitlog Deploy:
+wait 0.3
+hol.HUD.Report
+hol.Select.Report
+capture deploy_far_mounting
 # Rouge attendu tant que le defaut D877 moitie A existe : aucun coup n'arrive (l'engin marche demonte jusqu'au mur, ou ne se monte pas a l'arrivee). waitlog = texte litteral.
 waitlog Mangonel hits a building
 hol.HUD.Report
