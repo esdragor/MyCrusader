@@ -7,6 +7,7 @@ HOLMoraleView::FHOLMoraleView MoraleViewInject(const FHOLMoraleStateData& State,
 	View.bAvailable = true;
 	View.bOwn = bOwn;
 	View.bPeasant = bPeasant;
+	View.bTimeKnown = true;
 	View.State = State;
 	return View;
 }
