@@ -76,10 +76,12 @@ bool FHOLArtVisualReceptionScaleTest::RunTest(const FString& Parameters)
 	Own->bOverrideMeshScale = true;
 	Own->MeshScale = 3.f;
 
-	// The reception's own reader (MakeView's MeshScale), the CSV row's value given as the last level.
+	// The reception's own reader (MakeView's MeshScale), the neutral scale given as the last level.
 	TestEqual(TEXT("a Spearman of no faction: the common asset's scale"), Reception->GetArtMeshScale(Spearman, NAME_None, 1.f), 2.5f);
 	TestEqual(TEXT("a Legions Spearman: his faction's asset's scale"), Reception->GetArtMeshScale(Spearman, Legions, 1.f), 3.f);
-	TestEqual(TEXT("an Archer, no asset: the CSV row's scale"), Reception->GetArtMeshScale(Archer, NAME_None, 1.25f), 1.25f);
+	// AR0-d2 (3): an asset that sets no scale leaves the neutral one (the reception gives 1), never a CSV row's.
+	MakeAsset(Archer, NAME_None, TEXT("DA_Art_Archer"));
+	TestEqual(TEXT("an Archer whose asset sets no scale: the neutral scale"), Reception->GetArtMeshScale(Archer, NAME_None, 1.f), 1.f);
 	TestEqual(TEXT("asked again: the cached scale"), Reception->GetArtMeshScale(Spearman, Legions, 1.f), 3.f);
 	return true;
 }
