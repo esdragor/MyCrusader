@@ -618,6 +618,20 @@ $vl2 = Run-C
 Check ($vl2 -match '(?m)^WARN .*L27-12.*version launcher' -and -not ($vl2 -match '(?m)^PASS .*L27-12')) 'L27-12 close: vieille ligne version launcher d un autre jour (bilan du jour sans la ligne) -> WARN' $vl2
 foreach ($wn in 'A', 'B', 'Arwen') { & git -C $CR worktree remove --force (Join-Path $CW "HeroesOfLiberty-$wn") 2>&1 | Out-Null }
 
+# --- L28-4 (SAURON-1125ma) : Report FAIL si Docs\Rapports\<AGENT>.md ou la ligne EtapeDefini de l'agent manque (l'agent suivant commencerait par le rattrapage)
+$S4Main = Join-Path $Tmp 'S4Main'
+New-Item -ItemType Directory -Path (Join-Path $S4Main 'Docs\Rapports') -Force | Out-Null
+$S4Root = Join-Path $Tmp 'HeroesOfLiberty-S4'
+New-Item -ItemType Directory -Path $S4Root -Force | Out-Null
+[IO.File]::WriteAllText((Join-Path $S4Main 'EtapeDefini.md'), "# Etape`r`n`r`n- autre agent : fait`r`n", $NoBom)
+$s4a = & powershell -NoProfile -ExecutionPolicy Bypass -File $Gate -Phase Report -Root $S4Root -MainDir $S4Main -AgentName 'ZZTEST-1' | Out-String
+Check ($s4a -match '(?m)^FAIL .*L28-4.*rapport' -and $s4a -match '(?m)^FAIL .*L28-4.*EtapeDefini') 'L28-4 report: rapport ET ligne EtapeDefini absents -> 2 FAIL' $s4a
+[IO.File]::WriteAllText((Join-Path $S4Main 'Docs\Rapports\ZZTEST-1.md'), "APPELS_DECLARES: 1`r`n", $NoBom)
+$s4b = & powershell -NoProfile -ExecutionPolicy Bypass -File $Gate -Phase Report -Root $S4Root -MainDir $S4Main -AgentName 'ZZTEST-1' | Out-String
+Check ($s4b -match '(?m)^PASS .*L28-4.*rapport' -and $s4b -match '(?m)^FAIL .*L28-4.*EtapeDefini') 'L28-4 report: rapport present, ligne EtapeDefini absente -> PASS rapport + FAIL EtapeDefini' $s4b
+[IO.File]::WriteAllText((Join-Path $S4Main 'EtapeDefini.md'), "# Etape`r`n`r`n- ZZTEST-1 : fait`r`n", $NoBom)
+$s4c = & powershell -NoProfile -ExecutionPolicy Bypass -File $Gate -Phase Report -Root $S4Root -MainDir $S4Main -AgentName 'ZZTEST-1' | Out-String
+Check ($s4c -match '(?m)^PASS .*L28-4.*rapport' -and $s4c -match '(?m)^PASS .*L28-4.*EtapeDefini' -and -not ($s4c -match '(?m)^FAIL .*L28-4')) 'L28-4 report: rapport et ligne EtapeDefini presents -> 2 PASS, aucun FAIL' $s4c
 Remove-Item -Recurse -Force $Tmp -ErrorAction SilentlyContinue
 Write-Output ("=> {0} PASS, {1} FAIL ({2} s)" -f $Passes, $Fails, [int]((Get-Date) - $T0).TotalSeconds)
 if ($Fails -gt 0) { exit 1 } else { exit 0 }
