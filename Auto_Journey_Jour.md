@@ -68,6 +68,8 @@ Tableau des agents, plan de lancement ETAPE0-1125m, avances de main et anomalies
 | CLEAN-A..D-1125a | HeroesOfLiberty-MyCrusader | main | 14e113c, 4754030, 7246200, bcedc73 | nettoyage 0a de 15:0x (file, Retours, Jour, Rapports) | sans C++ |
 | HALDIR (integ-83, integ-84, integ-85) | HeroesOfLiberty-Haldir | integ-83 / integ-84 / integ-85 | 1a20314, 1e2e3fa, 8d79aaa | integrateur : 3 passes PASS (826 s, 1902 s, 777 s) | C++ : build des passes |
 | DOCS-1125a | HeroesOfLiberty-MyCrusader | main | Docs: close 1125a | docs de cloture de la seance de l'apres-midi (Retours, File, Jour, EtapeDefini) | sans C++ |
+| TOOLS-1125a | HeroesOfLiberty-Glorfindel | glorfindel-wave3-1125a | - | points 2,3,5 budget : launch_agent enonce fichier + after_commit.ps1 | sans C++ |
+| DOCS-1125b | HeroesOfLiberty-MyCrusader | main | - | points 1,3,4 budget : hook L19-1, resume Auto_Journey, brief_commun | sans C++ |
 
 ### Bilan du 2026-11-25 après-midi
 
