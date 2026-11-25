@@ -12,6 +12,7 @@ Historique du test du 2026-10-30 : `Docs\Archive\Auto_Journey_Test1_2026-10-30.m
 
 ### Séance du matin (09:42 -> 13:00, autonome)
 fin et mode demandés à 09:43 (fin 13:00, autonome ; priorité Docs\Priorite_Socle_Factions_2026-11-16.md + demande du jour : choix de l'action d'une case de grille de HOLPlayerController.cpp / HOLGameScreen.cpp passé en Angelscript)
+check-list lue (L28) à 09:50 après le nettoyage 0a (commits f14ace8, 4865afe, 2c1f67a, 5ea8d2e) ; veilleur 30 min (xx:13 / xx:43) et alarme 12:45 posés ; sync_worktrees à 09:45 : tous à jour
 
 ## Séances du 2026-11-24 (archivées le 2026-11-25 par CLEAN-A-1125m)
 
