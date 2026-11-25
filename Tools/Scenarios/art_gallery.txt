@@ -30,3 +30,19 @@ waitlog Art gallery frame: family=Sources
 frames 40
 capture ag_sources
 note Sources : une vraie source par ligne de SourceTypes (HOLSourceAdd::AddNeutralSource), etiquetee au sol. Fin.
+# AR1-c (CELEBORN-1125ar7) : reperes d'echelle (barre rouge 1,80 m a cote de chaque objet ; pour un batiment contour cyan de l'emprise Footprint, lignes blanches des cases de 4 m, grises des sous-cases, poteau orange de la hauteur Height) puis deux eclairages de biome (hol.Art.Light).
+waitkey Entree : reperes d'echelle et eclairages
+hol.Art.GalleryFrame Buildings South
+waitlog Art gallery frame: family=Buildings part=South
+frames 40
+capture ag_marks
+hol.Art.Light dry_steppe
+waitlog Biome expect: key=dry_steppe
+frames 40
+capture ag_light_steppe
+hol.Art.Light snow
+waitlog Biome expect: key=snow
+frames 40
+capture ag_light_snow
+hol.Art.Light default
+note Reperes et eclairages : barre rouge 1,80 m, emprise, grille, Height ; Steppe seche puis Neige. Fin.

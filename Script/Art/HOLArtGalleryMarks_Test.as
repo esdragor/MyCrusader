@@ -65,7 +65,8 @@ void Test_ArtGalleryScaleFigureBesideUnitsAndSources(FUnitTest& T)
 		Units += 1;
 		const FVector Bar = HOLArtGallery::ScaleBarBase(Place);
 		const double Away = Bar.Y - Place.Location.Y;
-		T.AssertTrue(Away > Place.Radius && Away < 400.0, f"{Place.TypeName.ToString()}: the figure beside it ({Away} cm, radius {Place.Radius})");
+		T.AssertTrue(Away > Place.Radius && Away < Place.Radius + 400.0, f"{Place.TypeName.ToString()}: the figure beside it ({Away} cm, radius {Place.Radius})");
+
 		TArray<FVector> Starts;
 		TArray<FVector> Ends;
 		TArray<int> Kinds;

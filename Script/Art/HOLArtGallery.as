@@ -121,7 +121,21 @@ namespace HOLArtGallery
 	// The number after Key in an exported struct ("(X=1600.0,Y=1600.0)"), up to the next comma or closing bracket; 0 without Key.
 	double NumberAfter(const FString& Text, const FString& Key)
 	{
-		return 0.0;
+		int Start = -1;
+		for (int K = 0; K + Key.Len() <= Text.Len(); K++)
+		{
+			if (Text.Mid(K, Key.Len()) == Key)
+			{
+				Start = K + Key.Len();
+				break;
+			}
+		}
+		if (Start < 0)
+			return 0.0;
+		int Stop = Start;
+		while (Stop < Text.Len() && Text.Mid(Stop, 1) != "," && Text.Mid(Stop, 1) != ")")
+			Stop++;
+		return ToNumber(Text.Mid(Start, Stop - Start));
 	}
 
 	// AR1-c: the footprint (cm) of an exported Footprint cell of BuildingTypes.
@@ -134,7 +148,8 @@ namespace HOLArtGallery
 	// clear of a building's footprint or of a unit's / source's radius.
 	FVector ScaleBarBase(const FHOLArtGalleryPlace& Place)
 	{
-		return Place.Location;
+		const double Half = Place.Family == "Buildings" ? Place.FootprintY * 0.5 : Math::Max(Place.Radius, 60.0);
+		return Place.Location + FVector(0.0, Half + 100.0, 0.0);
 	}
 
 	// AR1-c: the ground lines of a building (none for a unit or a source): its footprint outline, the lines of the construction grid
@@ -144,13 +159,67 @@ namespace HOLArtGallery
 		OutStarts.Reset();
 		OutEnds.Reset();
 		OutKinds.Reset();
+		if (Place.FootprintX <= 0.0 || Place.FootprintY <= 0.0 || Tile <= 0.0)
+			return;
+		const int Sub = SubDivision < 1 ? 1 : SubDivision;
+		const double Pitch = Tile / double(Sub);
+		const double HalfX = Place.FootprintX * 0.5;
+		const double HalfY = Place.FootprintY * 0.5;
+		const FVector C = Place.Location;
+		// Lines of constant X (across the footprint along Y), the two ends being the outline.
+		const int StepsX = Math::RoundToInt(Place.FootprintX / Pitch);
+		for (int K = 0; K <= StepsX; K++)
+		{
+			const double X = C.X - HalfX + Pitch * double(K);
+			OutStarts.Add(FVector(X, C.Y - HalfY, C.Z));
+			OutEnds.Add(FVector(X, C.Y + HalfY, C.Z));
+			OutKinds.Add(K == 0 || K == StepsX ? MarkOutline : (K % Sub == 0 ? MarkTile : MarkSub));
+		}
+		// Lines of constant Y.
+		const int StepsY = Math::RoundToInt(Place.FootprintY / Pitch);
+		for (int K = 0; K <= StepsY; K++)
+		{
+			const double Y = C.Y - HalfY + Pitch * double(K);
+			OutStarts.Add(FVector(C.X - HalfX, Y, C.Z));
+			OutEnds.Add(FVector(C.X + HalfX, Y, C.Z));
+			OutKinds.Add(K == 0 || K == StepsY ? MarkOutline : (K % Sub == 0 ? MarkTile : MarkSub));
+		}
+		// The Height pole at the near right corner (towards the camera, -X; on the figure's side, +Y).
+		if (Place.Height > 0.0)
+		{
+			const FVector Corner = FVector(C.X - HalfX, C.Y + HalfY, C.Z);
+			OutStarts.Add(Corner);
+			OutEnds.Add(Corner + FVector(0.0, 0.0, Place.Height));
+			OutKinds.Add(MarkHeight);
+		}
 	}
 
 	// AR1-c (hol.Art.Light): the index of a biome of the game's table (HOLBiome::At(I).Key for I < HOLBiome::Count, any case, or its index),
 	// -1 for the map's own look ("default", "map"), -2 for a name the game does not know.
 	int BiomeIndexFromName(const FString& Name)
 	{
+		const FString Wanted = Name.ToLower();
+		if (Wanted == "default" || Wanted == "map")
+			return -1;
+		for (int I = 0; I < HOLBiome::Count; I++)
+		{
+			if (HOLBiome::At(I).Key.ToLower() == Wanted || f"{I}" == Wanted)
+				return I;
+		}
 		return -2;
+	}
+
+	// AR1-c: the 4 m tile of the construction grid (UHOLBuildingSettings::TileSize, HOLBuildingTypes.h; not readable from a
+	// namespace function) and the sub-cells shown: hol.Wall.SubDivision, or the 1 m sub-cells of the fine grid (D898 G5) when it is 1.
+	double GalleryTileCm()
+	{
+		return 400.0;
+	}
+
+	int GallerySubDivision()
+	{
+		const int Game = HOLWallLine::SubDivision();
+		return Game > 1 ? Game : 4;
 	}
 
 	void PlanFamily(const FString& Family, TArray<FHOLArtGalleryPlace>& OutPlaces)
@@ -299,6 +368,79 @@ namespace HOLArtGallery
 		}
 	}
 
+	// AR1-c: draws the scale marks of every place (old marks removed first): the red 1,80 m figure beside each object, and for a
+	// building its footprint outline (cyan), the 4 m tile lines (white), the sub-cell lines (grey) and its Height pole (orange).
+	void DrawMarks(const TArray<FHOLArtGalleryPlace>& Places)
+	{
+		TArray<AHOLArtGalleryMarks> Old;
+		GetAllActorsOfClass(Old);
+		for (AHOLArtGalleryMarks Each : Old)
+		{
+			Each.DestroyActor();
+		}
+		AHOLArtGalleryMarks Marks = Cast<AHOLArtGalleryMarks>(SpawnActor(AHOLArtGalleryMarks::StaticClass(), FVector::ZeroVector));
+		if (Marks == nullptr)
+			return;
+		const double Tile = GalleryTileCm();
+		const int Sub = GallerySubDivision();
+		UStaticMesh Cube = Cast<UStaticMesh>(LoadObject(nullptr, "/Engine/BasicShapes/Cube.Cube"));
+		UStaticMesh Pole = Cast<UStaticMesh>(LoadObject(nullptr, "/Engine/BasicShapes/Cylinder.Cylinder"));
+		UMaterialInterface Matte = Cast<UMaterialInterface>(LoadObject(nullptr, "/Game/Rendering/M_MatteColor.M_MatteColor"));
+		TArray<FLinearColor> Colours;
+		Colours.Add(FLinearColor(0.0f, 0.8f, 1.0f, 1.0f));
+		Colours.Add(FLinearColor(1.0f, 1.0f, 1.0f, 1.0f));
+		Colours.Add(FLinearColor(0.45f, 0.45f, 0.45f, 1.0f));
+		Colours.Add(FLinearColor(1.0f, 0.45f, 0.0f, 1.0f));
+		Colours.Add(FLinearColor(0.9f, 0.05f, 0.05f, 1.0f));
+		TArray<UHierarchicalInstancedStaticMeshComponent> Parts;
+		for (int Kind = 0; Kind < Colours.Num(); Kind++)
+		{
+			UHierarchicalInstancedStaticMeshComponent Part = UHierarchicalInstancedStaticMeshComponent::Create(Marks, FName(f"GalleryMark_{Kind}"));
+			Part.SetStaticMesh(Kind >= MarkHeight ? Pole : Cube);
+			Part.SetCollisionEnabled(ECollisionEnabled::NoCollision);
+			Part.SetCollisionProfileName(n"NoCollision");
+			Part.SetGenerateOverlapEvents(false);
+			Part.SetCastShadow(false);
+			UMaterialInstanceDynamic Paint = Part.CreateDynamicMaterialInstance(0, Matte);
+			if (Paint != nullptr)
+				Paint.SetVectorParameterValue(n"Color", Colours[Kind]);
+			Parts.Add(Part);
+		}
+		int Lines = 0;
+		int Figures = 0;
+		for (const FHOLArtGalleryPlace& Place : Places)
+		{
+			TArray<FVector> Starts;
+			TArray<FVector> Ends;
+			TArray<int> Kinds;
+			MarkLines(Place, Tile, Sub, Starts, Ends, Kinds);
+			for (int K = 0; K < Kinds.Num(); K++)
+			{
+				const FVector A = Starts[K];
+				const FVector B = Ends[K];
+				const FVector Middle = (A + B) * 0.5;
+				const double Length = (B - A).Size();
+				if (Kinds[K] == MarkHeight)
+				{
+					Parts[MarkHeight].AddInstance(FTransform(FRotator::ZeroRotator, Middle, FVector(0.25, 0.25, Length / 100.0)), true);
+				}
+				else
+				{
+					const double Thick = Kinds[K] == MarkOutline ? 0.3 : (Kinds[K] == MarkTile ? 0.15 : 0.06);
+					const bool bAlongX = Math::Abs(B.X - A.X) > Math::Abs(B.Y - A.Y);
+					const FVector Scale = bAlongX ? FVector(Length / 100.0, Thick, 0.04) : FVector(Thick, Length / 100.0, 0.04);
+					Parts[Kinds[K]].AddInstance(FTransform(FRotator::ZeroRotator, Middle + FVector(0.0, 0.0, 6.0 + 2.0 * double(Kinds[K])), Scale), true);
+				}
+				Lines++;
+			}
+			// The 1,80 m figure: a red bar (the engine cylinder is 1 m tall and centred).
+			const FVector Foot = ScaleBarBase(Place);
+			Parts[4].AddInstance(FTransform(FRotator::ZeroRotator, Foot + FVector(0.0, 0.0, ReferenceHeightCm() * 0.5), FVector(0.35, 0.35, ReferenceHeightCm() / 100.0)), true);
+			Figures++;
+		}
+		Log(n"LogHOLMatch", f"Art gallery marks: figures={Figures} lines={Lines} tile={Math::RoundToInt(Tile)} sub={Sub}");
+	}
+
 	// The gallery as made: planned, then kept away from the local player's Forum (when there is one).
 	void PlanAwayFromBase(const FString& Family, TArray<FHOLArtGalleryPlace>& OutPlaces)
 	{
@@ -377,7 +519,33 @@ void HOLArtGalleryCommand(const TArray<FString>& Args)
 			Log(n"LogHOLMatch", f"Art gallery: refused {Place.Family} {Place.TypeName.ToString()}");
 		}
 	}
+	HOLArtGallery::DrawMarks(Places);
 	Log(n"LogHOLMatch", f"Art gallery: family={Family} places={Places.Num()} units={Units} buildings={Buildings} sources={Sources} refused={Refused}");
+}
+
+// hol.Art.Light <Biome> (AR1-c): the light, haze, ground and decor of one biome of the game (HOLBiome keys: fresh_grass, dry_steppe,
+// autumn, dark_forest, snow, or its index; default = the map's own), through what the game already uses: hol.Biome.Index read by
+// UHOLBiomeApplier (Script\Biomes\HOLBiomeApplier.as), which logs "Biome expect: key=..." when it has set it.
+void HOLArtLightCommand(const TArray<FString>& Args)
+{
+	const FString Name = Args.Num() >= 1 ? Args[0] : "";
+	const int Index = HOLArtGallery::BiomeIndexFromName(Name);
+	if (Index == -2)
+	{
+		FString Known = "default";
+		for (int I = 0; I < HOLBiome::Count; I++)
+		{
+			Known += ", ";
+			Known += HOLBiome::At(I).Key;
+		}
+		Log(n"LogHOLMatch", f"Art light: unknown biome {Name} (known: {Known})");
+		return;
+	}
+	System::ExecuteConsoleCommand(f"hol.Biome.Index {Index}");
+	FString Shown = "default";
+	if (Index >= 0)
+		Shown = HOLBiome::At(Index).Key;
+	Log(n"LogHOLMatch", f"Art light: biome={Shown} index={Index}");
 }
 
 // hol.Art.GalleryFrame <Units|Buildings|Sources> (AR1-b): the camera on the centre of that family's frame (HOLArtGallery::FamilyFrame).
@@ -406,3 +574,5 @@ void HOLArtGalleryFrameCommand(const TArray<FString>& Args)
 
 const FConsoleCommand HOLArtGalleryConsole("hol.Art.Gallery", n"HOLArtGalleryCommand");
 const FConsoleCommand HOLArtGalleryFrameConsole("hol.Art.GalleryFrame", n"HOLArtGalleryFrameCommand");
+const FConsoleCommand HOLArtLightConsole("hol.Art.Light", n"HOLArtLightCommand");
+
