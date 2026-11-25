@@ -28,9 +28,9 @@ class UHOLWallGhostDrawer : UScriptWorldSubsystem
 	// The cursor cell last drawn (the boxes are rebuilt only when it moves).
 	FIntPoint LastEnd = FIntPoint(-2147483647, -2147483647);
 
-	UInstancedStaticMeshComponent MakeBoxes(FName Name, FLinearColor Color)
+	UInstancedStaticMeshComponent MakeBoxes(FName PartName, FLinearColor Color)
 	{
-		UInstancedStaticMeshComponent Part = UInstancedStaticMeshComponent::Create(Layer, Name);
+		UInstancedStaticMeshComponent Part = UInstancedStaticMeshComponent::Create(Layer, PartName);
 		Part.SetStaticMesh(Cast<UStaticMesh>(LoadObject(nullptr, "/Engine/BasicShapes/Cube.Cube")));
 		Part.SetCollisionEnabled(ECollisionEnabled::NoCollision);
 		Part.SetCollisionProfileName(n"NoCollision");
