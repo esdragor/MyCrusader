@@ -12,9 +12,25 @@ Historique du test du 2026-10-30 : `Docs\Archive\Auto_Journey_Test1_2026-10-30.m
 
 ### Séance de l'après-midi (15:04 -> 19:04, autonome)
 fin et mode demandés à 15:04 (fin 19:04, autonome ; priorité Docs\Priorite_Socle_Factions_2026-11-16.md) ; session étrangère active vue à 15:0x (Faramir, market-quote-1125s, commit 14:59, SessionEnd était 15:15)
+check-list lue (L28) à 15:09 après le nettoyage 0a (commits 14e113c, 4754030, 7246200, bcedc73) ; veilleur 30 min (xx:13 / xx:43) et alarme 18:49 posés
+
+### Plan de lancement ETAPE0-1125a
+Enoncés détaillés : `Docs\Rapports\ENONCES-1125a.md` (main bcedc73 ; priorité Socle Factions ; 6 worktrees à lancer, 2 à ne pas lancer ; INTÉGRATEUR Haldir, RECETTEUR Glorfindel ; places C++ : 1 = Sauron 15:30, 2 = Celeborn 17:00-17:15)
+- Arwen : lancer D893 étape 3 / D902, colonne `Produces` des 3 unités de commanderie (vérifier le WIP d43fc39 : regen_tables puis rouge `Test_CGTables`), sans C++
+- Celeborn : lancer D915, prix des murs par sous-case (`ServerPlaceWallLine`, cvar `hol.Wall.SubCellCostPercent` 25, test rouge 20 m = 25 Bois), sans C++ ; PUIS place C++ 2 (D917 diagonale tranche 1) à lancer entre 17:00 et 17:15 si wall-footprint-1125m est compilée et intégrée, sinon test de `hol.Cheat.Resources` à 2 slots
+- Elrond : ne pas lancer : `wall-footprint-1125m` +3 commits NON COMPILÉS (cb854ad, rouge 8dd4b9e), `status.ps1` dit AUTRE SESSION ? (14:00-14:36, `Agent: ELROND-1125mf`, worktree absent des « Agents du » depuis l'archivage du matin) : non tranché, rien à y lancer ni fusionner ; la principale compile le lot et rejoue `wall_fine_ghost`
+- Faramir : ne pas lancer : session étrangère vive, `IN_USE` « pris : CLAUDE-1125s » 14:55, commits 14:59 / 15:09 / 15:10 sur `market-quote-1125s`, lot C++ NON COMPILÉ (marché par le script, armements morts)
+- Galadriel : lancer D918, tours de guet de l'IA Facile 1 / Normal 1 / Difficile 2 (`HOLAITower.as:11`, test rouge `Test_AITowerQuantityByLevel`), sans C++ ; puis vérifier l'aperçu de visée (l.40-41 du File : `PreviewOf` déjà dans main)
+- Glorfindel : lancer en RECETTEUR : recette de main 78375b3 (tower_wood, wall_line_long, morale_look, monk_seal cooldown, duel_challenge_accept) ; binaire à refaire d'abord (a6cb051 non compilé), sinon tests script seuls
+- Haldir : lancer en INTÉGRATEUR : préparer les passes integrate.ps1 (P1 ~16:15, P2 ~17:30, P3 ~18:15), `git cherry` de `tools-l288-1125m`, ne PAS intégrer `tower-wood-shaders-1125m` ni `market-quote-1125s` avant la fin de la session CLAUDE-1125s
+- Sauron : lancer la place C++ 1 : effet de `KnightChallenge` (Aube A7, Mass, test rouge Combat.KnightChallengeTargetsTheKnight, Q-defi-chevalier si design ouvert) ; build du lot vers 16:00 par la principale
+- Alertes : build groupé à lancer dès 15:30 (a6cb051 + cb854ad + 6919000 non compilés, BUILD LENT 687 s vu à 14:15) ; lignes périmées du File : l.18-20 (D908 / D911 / D909), l.40-41, l.151-153 à retirer au prochain nettoyage
 
 ### Séance du matin (09:42 -> 13:00, autonome) : archivée
 Tableau des agents, plan de lancement ETAPE0-1125m, avances de main et anomalies, corps du bilan : archivés le 2026-11-25 15:1x par CLEAN-A-1125a dans `Docs\Archive\Auto_Journey_Jour_2026-11-25_matin_archive_2026-11-25.md` (matin = main b792910 à la clôture 13:1x, ARRÊT utilisateur vers 11:30).
+
+| Agent | Worktree | Branche | Commits | Tache | C++ |
+| ETAPE0-1125a | HeroesOfLiberty-MyCrusader | main | - | etape 0 lecture seule : plan de lancement + enonces (priorite Socle Factions) ; exception gate : DLL copie principale perimee, agent sans build ni scenario | sans C++ |
 
 ## Bilan du 2026-11-25 matin
 
