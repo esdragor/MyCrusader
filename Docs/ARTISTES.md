@@ -78,6 +78,10 @@ Une case vide (ou une case à cocher décochée) = le jeu garde ce qu'il montre 
 **Interface**
 - **Icon** : l'icône de l'unité (Texture 2D) dans le cadre de garnison. Vide : le jeu prend
   `/Game/UI/Icons/Units/T_Unit_<Type>` s'il existe. Lue dans la fiche commune seulement.
+  Chemins des icônes de la cabine (AR5-e, `Tools\Editor\import_art_icons.py`, depuis `Saved\ArtIcons` du scénario `art_icon_all`) :
+  unités `/Game/UI/Icons/Units/T_Unit_<Type>`, bâtiments `/Game/UI/Icons/Buildings/T_Building_<Type>`, sources
+  `/Game/UI/Icons/Sources/T_Source_<Type>` ; réglages d'icône d'interface (sans mip, compression UserInterface2D, sRGB, groupe UI) ;
+  le script remplit aussi Icon de la fiche commune du type. Pour une icône dessinée à la main : même nom, même dossier.
 - **Portrait** : réservé, le jeu ne l'affiche pas encore.
 
 **Registre**
