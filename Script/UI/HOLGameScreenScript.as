@@ -286,10 +286,20 @@ UHOLScenarioPanelScript ScenarioPanel;
 	UFUNCTION(BlueprintOverride)
 	void BuildingSelected(const FString& TypeName)
 	{
-		// AR6-a: the building's art asset sound first (common asset: the C++ screen gives no faction), then its family's table cue.
+		// AR6-a: the building's art asset sound first, then its family's table cue. AR6-b: the local player's faction variant
+		// (DA_Art_<Type>_<Faction>, HOLFactionRulesRead::GetFactionKey of his slot's faction), field by field over the common asset.
 		const int Event = HOLAudioBuildings::SelectEventFor(TypeName);
 		if (Audio != nullptr)
-			Audio.PlayTyped(Event, FName(TypeName), NAME_None, n"Selection");
+			Audio.PlayTyped(Event, FName(TypeName), LocalFactionName(), n"Selection");
+	}
+
+	// AR6-b: the local player's faction key (FName, NAME_None without a slot or a game state).
+	FName LocalFactionName()
+	{
+		AHOLGameState State = Cast<AHOLGameState>(Gameplay::GetGameState());
+		const int Slot = GetLocalSlot();
+		const int FactionIndex = State != nullptr && Slot >= 0 ? State.GetSlotFaction(Slot) : -1;
+		return FactionIndex < 0 ? NAME_None : FName(HOLFactionRulesRead::GetFactionKey(FactionIndex));
 	}
 	bool bVolcanoShown = false;
 

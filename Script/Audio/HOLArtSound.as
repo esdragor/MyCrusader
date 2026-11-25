@@ -34,7 +34,13 @@ namespace HOLArtSound
 	// (appends Now + Length, returns true) only while fewer than Limit are playing; returns false (nothing appended) when full.
 	bool TryStartVoice(TArray<float>& VoiceEnds, float Now, float Length, int Limit)
 	{
-		// AR6-b stub (red): no limit yet.
+		for (int Index = VoiceEnds.Num() - 1; Index >= 0; Index--)
+		{
+			if (VoiceEnds[Index] <= Now)
+				VoiceEnds.RemoveAt(Index);
+		}
+		if (VoiceEnds.Num() >= Limit)
+			return false;
 		VoiceEnds.Add(Now + Length);
 		return true;
 	}
