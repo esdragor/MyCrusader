@@ -4,11 +4,11 @@
 // with its type name and its display name. A type added to a table shows up on its own.
 // Families side by side along X, rows going south (-Y) from GalleryStartY (the review spot of hol.Forum.Review, away from the
 // map centre ring of trees): Units centred on X = -8000, Buildings on X = 0, Sources on X = +8000.
-// Units: SpawnUnitsAround (slot 0, the player). Buildings: HOLRpcBridge::CheatSpawnBuilding (slot 0). Sources: the source
-// subsystem's AddSource is not callable from script (no UFUNCTION): each source type is shown by a STAND-IN cylinder of its table
-// footprint (Radius, Height) until AddSource is exposed (lot C++ groupe) ; the label says so.
+// Units: SpawnUnitsAround (slot 0, the player). Buildings: HOLRpcBridge::CheatSpawnBuilding (slot 0). Sources: real sources of the
+// registry, everyone's (HOLSourceAdd::AddNeutralSource, AR1-b). Each family moves whole away from the local Forum (MinBaseDistance);
+// hol.Art.GalleryFrame <Family> puts the camera on one family's frame (one capture per family).
 // Log: "Art gallery: family=<F> places=<N> units=<n> buildings=<n> sources=<n> refused=<n>", one line per refused type.
-// Calling it again removes the labels and stand-ins (not the units and buildings already made).
+// Calling it again removes the labels (not the units, buildings and sources already made).
 
 struct FHOLArtGalleryPlace
 {
@@ -27,9 +27,6 @@ class AHOLArtGalleryLabel : AActor
 
 	UPROPERTY(DefaultComponent)
 	UTextRenderComponent Label;
-
-	UPROPERTY(DefaultComponent)
-	UStaticMeshComponent StandIn;
 }
 
 namespace HOLArtGallery
@@ -158,22 +155,12 @@ namespace HOLArtGallery
 		if (Shown == nullptr)
 			return;
 		Shown.Label.SetText(FText::FromString(f"{Place.TypeName.ToString()}\n{Place.DisplayName}{Extra}"));
-		Shown.Label.SetWorldSize(Place.Family == "Buildings" ? 150.0 : 60.0);
+		Shown.Label.SetWorldSize(Place.Family == "Buildings" ? 150.0 : (Place.Family == "Sources" ? 90.0 : 60.0));
 		Shown.Label.SetTextRenderColor(FColor::Yellow);
 		Shown.Label.SetCastShadow(false);
 		// Flat on the ground in front of the object (towards the camera, south), read from above.
 		Shown.Label.SetWorldLocation(Place.Location + FVector(0.0, -Ahead, 15.0));
 		Shown.Label.SetWorldRotation(FRotator(90.0, 180.0, 0.0));
-		Shown.StandIn.SetCollisionEnabled(ECollisionEnabled::NoCollision);
-		Shown.StandIn.SetCastShadow(false);
-		if (Place.Family == "Sources")
-		{
-			Shown.StandIn.SetStaticMesh(Cast<UStaticMesh>(LoadObject(nullptr, "/Engine/BasicShapes/Cylinder.Cylinder")));
-			const double Wide = Math::Max(Place.Radius, 30.0) * 2.0;
-			const double High = Math::Max(Place.Height, 50.0);
-			Shown.StandIn.SetWorldLocation(Place.Location + FVector(0.0, 0.0, High * 0.5));
-			Shown.StandIn.SetWorldScale3D(FVector(Wide, Wide, High) * 0.01);
-		}
 	}
 
 	// AR1-b: the widest side one capture shows whole (cm, camera zoomed out), and the least distance from a player's Forum.
@@ -192,11 +179,64 @@ namespace HOLArtGallery
 	{
 		OutCentre = FVector::ZeroVector;
 		OutWidth = 0.0;
+		FVector Low;
+		FVector High;
+		int Seen = 0;
+		for (const FHOLArtGalleryPlace& Place : Places)
+		{
+			if (Place.Family != Family)
+				continue;
+			Low = Seen == 0 ? Place.Location : FVector(Math::Min(Low.X, Place.Location.X), Math::Min(Low.Y, Place.Location.Y), 0.0);
+			High = Seen == 0 ? Place.Location : FVector(Math::Max(High.X, Place.Location.X), Math::Max(High.Y, Place.Location.Y), 0.0);
+			Seen++;
+		}
+		if (Seen == 0)
+			return;
+		OutCentre = FVector((Low.X + High.X) * 0.5, (Low.Y + High.Y) * 0.5, 0.0);
+		OutWidth = Math::Max(High.X - Low.X, High.Y - Low.Y) + Spacing(Family);
 	}
 
 	// AR1-b: moves each family away (whole, its grid kept) until none of its places is within MinDistance of Base.
 	void KeepAwayFrom(TArray<FHOLArtGalleryPlace>& Places, FVector Base, double MinDistance)
 	{
+		TArray<FString> Families;
+		Families.Add("Units");
+		Families.Add("Buildings");
+		Families.Add("Sources");
+		for (const FString& Family : Families)
+		{
+			FVector Centre;
+			double Width = 0.0;
+			FamilyFrame(Places, Family, Centre, Width);
+			FVector Away = FVector(Centre.X - Base.X, Centre.Y - Base.Y, 0.0);
+			Away = Away.Size() < 1.0 ? FVector(0.0, -1.0, 0.0) : Away.GetSafeNormal();
+			for (int Step = 0; Step < 100; Step++)
+			{
+				bool bNear = false;
+				for (const FHOLArtGalleryPlace& Place : Places)
+				{
+					if (Place.Family == Family && FVector(Place.Location.X - Base.X, Place.Location.Y - Base.Y, 0.0).Size() < MinDistance)
+						bNear = true;
+				}
+				if (!bNear)
+					break;
+				for (int K = 0; K < Places.Num(); K++)
+				{
+					if (Places[K].Family == Family)
+						Places[K].Location += Away * 500.0;
+				}
+			}
+		}
+	}
+
+	// The gallery as made: planned, then kept away from the local player's Forum (when there is one).
+	void PlanAwayFromBase(const FString& Family, TArray<FHOLArtGalleryPlace>& OutPlaces)
+	{
+		PlanGrid(Family, OutPlaces);
+		AHOLPlayerController Controller = Cast<AHOLPlayerController>(Gameplay::GetPlayerController(0));
+		FVector Forum;
+		if (Controller != nullptr && HOLControllerRead::PointNearMainCentre(Controller, 0.0, 0.0, false, Forum))
+			KeepAwayFrom(OutPlaces, Forum, MinBaseDistance());
 	}
 }
 
@@ -204,7 +244,7 @@ void HOLArtGalleryCommand(const TArray<FString>& Args)
 {
 	const FString Family = Args.Num() >= 1 ? Args[0] : "All";
 	TArray<FHOLArtGalleryPlace> Places;
-	HOLArtGallery::PlanGrid(Family, Places);
+	HOLArtGallery::PlanAwayFromBase(Family, Places);
 	if (Places.Num() == 0)
 	{
 		Log(n"LogHOLMatch", f"Art gallery: family={Family} places=0 (usage hol.Art.Gallery [Units|Buildings|Sources|All])");
@@ -241,9 +281,11 @@ void HOLArtGalleryCommand(const TArray<FString>& Args)
 		}
 		else
 		{
-			bMade = true;
-			HOLArtGallery::PutLabel(Place, Math::Max(Place.Radius, 30.0) + 120.0, "\n(forme d attente)");
-			Sources += 1;
+			// AR1-b: a real source of the registry (HOLSourceAdd::AddNeutralSource), everyone's, its table amount.
+			bMade = HOLSourceAdd::AddNeutralSource(Place.TypeName, Place.Location, -1) >= 0;
+			// The label south of the source by its radius plus a margin: a tall tree (7,5 m) seen from the south hides what is behind it.
+			HOLArtGallery::PutLabel(Place, Math::Max(Place.Radius, 30.0) + 250.0, bMade ? "" : "\n(non pose)");
+			Sources += bMade ? 1 : 0;
 		}
 		if (!bMade)
 		{
@@ -254,4 +296,23 @@ void HOLArtGalleryCommand(const TArray<FString>& Args)
 	Log(n"LogHOLMatch", f"Art gallery: family={Family} places={Places.Num()} units={Units} buildings={Buildings} sources={Sources} refused={Refused}");
 }
 
+// hol.Art.GalleryFrame <Units|Buildings|Sources> (AR1-b): the camera on the centre of that family's frame (HOLArtGallery::FamilyFrame).
+void HOLArtGalleryFrameCommand(const TArray<FString>& Args)
+{
+	const FString Family = Args.Num() >= 1 ? Args[0] : "Units";
+	TArray<FHOLArtGalleryPlace> Places;
+	HOLArtGallery::PlanAwayFromBase("All", Places);
+	FVector Centre;
+	double Width = 0.0;
+	HOLArtGallery::FamilyFrame(Places, Family, Centre, Width);
+	if (Width <= 0.0)
+	{
+		Log(n"LogHOLMatch", f"Art gallery frame: unknown family {Family} (Units, Buildings, Sources)");
+		return;
+	}
+	System::ExecuteConsoleCommand(f"hol.Camera.Focus {Math::RoundToInt(Centre.X)} {Math::RoundToInt(Centre.Y)}");
+	Log(n"LogHOLMatch", f"Art gallery frame: family={Family} centre=({Math::RoundToInt(Centre.X)}, {Math::RoundToInt(Centre.Y)}) side={Math::RoundToInt(Width)}");
+}
+
 const FConsoleCommand HOLArtGalleryConsole("hol.Art.Gallery", n"HOLArtGalleryCommand");
+const FConsoleCommand HOLArtGalleryFrameConsole("hol.Art.GalleryFrame", n"HOLArtGalleryFrameCommand");

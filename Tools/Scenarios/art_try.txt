@@ -4,6 +4,7 @@ waitlog Starting hero of slot 0 spawned at
 hol.AI.ThinkSteps 100000
 hol.Art.Try Arquebusier 5
 waitlog hol.Art.Try: 5 Arquebusier of slot 0 next to the Forum
+waitlog hol.Art.Try: selected after
 hol.Camera.Zoom 3
 frames 30
 note 1. hol.Art.Try Arquebusier 5 : cinq Arquebusiers bleus sont poses a cote du Forum, aucun sur un autre ni dans le Forum, selectionnes, la camera sur eux.
@@ -25,4 +26,9 @@ note 3. Arrives a portee, ils tirent sur l'Homme d'armes (fumee, PV qui baissent
 hol.Camera.FocusNear 2600 0
 frames 2
 capture art_try_fire
+# AR4-b : une ressource posee a cote du Forum (vraie source, a tous).
+hol.Art.Try GoldVein 1
+waitlog hol.Art.Try: 1 GoldVein of slot 0 next to the Forum
+frames 30
+capture art_try_source
 note 4. A toi : hol.Art.Try <Type> [N] (unite, batiment) ; un type mal ecrit (hol.Art.Try Arquebusir) affiche les types proches.

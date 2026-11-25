@@ -1,26 +1,27 @@
 # Galerie de l'Atelier (ArtistesInProgress.md, lot AR1-a) : hol.Art.Gallery All pose un exemplaire de chaque type des tables (unites, batiments, sources)
 # en grille loin du Forum, combat coupe, chaque objet etiquete au sol (nom de type, nom affiche). Entree = famille suivante. 3 minutes au plus.
-# Plain, toi contre une IA. Unites autour de X -8000, batiments autour de X 0, sources (formes d'attente) autour de X +8000, a partir de Y -3000 vers le sud.
+# Plain, toi contre une IA. Unites autour de X -8000, batiments autour de X 0, sources (vraies, AR1-b) autour de X +8000 ; chaque famille eloignee du Forum (60 m), une capture par famille (hol.Art.GalleryFrame).
 frames 40
 panel hide
 hol.Combat.Enabled 0
-hol.Camera.Focus -8000 -4200
-hol.Camera.Zoom 1
+hol.Camera.Zoom -20
 frames 30
 hol.Art.Gallery All
 waitlog Art gallery: family=
+hol.Art.GalleryFrame Units
+waitlog Art gallery frame: family=Units
 frames 60
 capture ag_units
 note Unites : un exemplaire de chaque ligne de UnitTypes, etiquete au sol. Entree = batiments.
 waitkey Entree : batiments
-hol.Camera.Focus 0 -5500
-hol.Camera.Zoom 0
+hol.Art.GalleryFrame Buildings
+waitlog Art gallery frame: family=Buildings
 frames 40
 capture ag_buildings
 note Batiments : un exemplaire de chaque ligne de BuildingTypes, etiquete au sol. Entree = sources.
 waitkey Entree : sources
-hol.Camera.Focus 8000 -3600
-hol.Camera.Zoom 1
+hol.Art.GalleryFrame Sources
+waitlog Art gallery frame: family=Sources
 frames 40
 capture ag_sources
-note Sources : une forme d'attente par ligne de SourceTypes (AddSource pas encore expose au script). Fin.
+note Sources : une vraie source par ligne de SourceTypes (HOLSourceAdd::AddNeutralSource), etiquetee au sol. Fin.
