@@ -830,7 +830,7 @@ private:
 	void DoToggleDeploy(const TArray<uint32>& UnitIds);
 	void DoMoveUnitsInLine(const TArray<uint32>& UnitIds, FVector_NetQuantize Start, FVector_NetQuantize End, bool bWidth, bool bQueue);
 	void DoGatherUnits(const TArray<uint32>& UnitIds, int32 SourceIndex, bool bQueue);
-	void DoPlaceBuilding(FName TypeName, FVector_NetQuantize Point, const TArray<uint32>& UnitIds, bool bQueue);
+	void DoPlaceBuilding(FName TypeName, FVector_NetQuantize Point, const TArray<uint32>& UnitIds, bool bQueue, int32 CostPercent = 100, int32 CostCellIndex = 0);
 	void DoBuildUnits(const TArray<uint32>& UnitIds, AHOLBuilding* Building, bool bQueue);
 	void DoDropOffUnits(const TArray<uint32>& UnitIds, AHOLBuilding* Building, FVector_NetQuantize Point, bool bQueue);
 	void DoGarrisonUnits(const TArray<uint32>& UnitIds, AHOLBuilding* Building);

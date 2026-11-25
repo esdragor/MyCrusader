@@ -793,6 +793,77 @@ void Test_WallLineGateReplacesTheFourAlignedSubCells(FUnitTest& T)
 	T.AssertTrue(WallLineHasCell(Column, 2, 4) && WallLineHasCell(Column, 2, 7), "the column 2 sub-cells 4..7 (aligned on the tile of 6)");
 }
 
+// D898 G10 pose side (CELEBORN-1125b): the pose of a gate at a world point retires the 4 aligned palisade sub-cells of its seat; a palisade, a stone wall or a gate of another seat retires nothing.
+// The point comes from CellToPoint (the pose's own conversion), the cells from the real chain IsGateType + CellOfCoordinate + GateCells + GateReplaces. Not the RPC itself (needs a seat and a world).
+void Test_WallLineGatePoseRetiresTheStandingPalisade(FUnitTest& T)
+{
+	TArray<FIntPoint> Cells;
+	TArray<FName> Types;
+	TArray<int> Owners;
+	for (int X = 3; X <= 8; X++)
+	{
+		Cells.Add(FIntPoint(X, 0));
+		Types.Add(n"Palisade");
+		Owners.Add(0);
+	}
+	const FVector Point = HOLWallLine::CellToPoint(FIntPoint(5, 0), 100.0, 0.0);
+	TArray<FIntPoint> Retired = HOLWallLine::GateRetiredCells(n"PalisadeGate", Point, 100.0, 4, true, 0, Cells, Types, Owners);
+	T.AssertEquals(4, Retired.Num(), "the gate pose retires the 4 aligned palisade sub-cells");
+	T.AssertFalse(WallLineHasCell(Retired, 3, 0), "the neighbour (3,0) stays");
+	T.AssertFalse(WallLineHasCell(Retired, 8, 0), "the neighbour (8,0) stays");
+	TArray<FIntPoint> ByPalisade = HOLWallLine::GateRetiredCells(n"Palisade", Point, 100.0, 4, true, 0, Cells, Types, Owners);
+	T.AssertEquals(0, ByPalisade.Num(), "laying a palisade retires nothing");
+	TArray<FIntPoint> OtherSeat = HOLWallLine::GateRetiredCells(n"PalisadeGate", Point, 100.0, 4, true, 1, Cells, Types, Owners);
+	T.AssertEquals(0, OtherSeat.Num(), "the gate of another seat retires nothing");
+	Types[2] = n"StoneWall";
+	TArray<FIntPoint> WithStone = HOLWallLine::GateRetiredCells(n"PalisadeGate", Point, 100.0, 4, true, 0, Cells, Types, Owners);
+	T.AssertEquals(3, WithStone.Num(), "a stone wall piece under the gate stays");
+}
+
+// D898 G10 (CELEBORN-1125d): the order of a gate pose = which standing buildings are removed BEFORE the gate is laid. The expected set is CALCULATED by GateCells + GateRetiredCells (the retired cells), then
+// narrowed to the FINISHED pieces: an unfinished palisade (OrderRemoveOwnBuilding refuses it), a palisade of another seat and a stone wall stay.
+void Test_GatePlacementRetiresOnlyFinishedOwnPalisades(FUnitTest& T)
+{
+	TArray<FIntPoint> Cells;
+	TArray<FName> Types;
+	TArray<int> Owners;
+	TArray<bool> Finished;
+	for (int X = 3; X <= 8; X++)
+	{
+		Cells.Add(FIntPoint(X, 0));
+		Types.Add(n"Palisade");
+		Owners.Add(0);
+		Finished.Add(true);
+	}
+	const FVector Point = HOLWallLine::CellToPoint(FIntPoint(5, 0), 100.0, 0.0);
+	TArray<FIntPoint> Retired = HOLWallLine::GateRetiredCells(n"PalisadeGate", Point, 100.0, 4, true, 0, Cells, Types, Owners);
+	TArray<int> Indices = HOLWallLine::GateRetireIndices(n"PalisadeGate", Point, 100.0, 4, true, 0, Cells, Types, Owners, Finished);
+	T.AssertEquals(Retired.Num(), Indices.Num(), "every retired sub-cell of a finished own palisade gives one building to remove");
+	for (int Index = 0; Index < Indices.Num(); Index++)
+		T.AssertTrue(WallLineHasCell(Retired, Cells[Indices[Index]].X, Cells[Indices[Index]].Y), "each index to remove is on a sub-cell the gate covers");
+	Finished[4] = false;
+	TArray<int> Unfinished = HOLWallLine::GateRetireIndices(n"PalisadeGate", Point, 100.0, 4, true, 0, Cells, Types, Owners, Finished);
+	T.AssertEquals(Retired.Num() - 1, Unfinished.Num(), "a palisade piece not finished is kept (the removal order refuses it)");
+	Finished[4] = true;
+	Owners[2] = 1;
+	TArray<FIntPoint> RetiredOther = HOLWallLine::GateRetiredCells(n"PalisadeGate", Point, 100.0, 4, true, 0, Cells, Types, Owners);
+	TArray<int> OtherSeat = HOLWallLine::GateRetireIndices(n"PalisadeGate", Point, 100.0, 4, true, 0, Cells, Types, Owners, Finished);
+	T.AssertEquals(RetiredOther.Num(), OtherSeat.Num(), "a palisade of another seat is kept");
+	T.AssertEquals(Retired.Num() - 1, OtherSeat.Num(), "the other seat piece took one out of the retired set");
+	TArray<int> ByPalisade = HOLWallLine::GateRetireIndices(n"Palisade", Point, 100.0, 4, true, 0, Cells, Types, Owners, Finished);
+	T.AssertEquals(0, ByPalisade.Num(), "laying a palisade retires nothing");
+}
+
+// D898 G10 (CELEBORN-1125d): hol.Wall.GateAlongLine (default 1): the gate follows the drawn line: a drag along X lays the gate along X, a drag along Y along Y. The default is read from the cvar, not copied.
+void Test_GateAlongLineDefaultFollowsTheDrawnLine(FUnitTest& T)
+{
+	const FConsoleVariable Setting("hol.Wall.GateAlongLine", 1);
+	const bool bAlongSetting = Setting.GetInt() != 0;
+	const bool bHorizontal = HOLWallLine::GateAlongX(FVector(0.0, 0.0, 0.0), FVector(800.0, 100.0, 0.0));
+	const bool bVertical = HOLWallLine::GateAlongX(FVector(0.0, 0.0, 0.0), FVector(100.0, 800.0, 0.0));
+	T.AssertEquals(bAlongSetting, bHorizontal, "by default a drag along X lays the gate along X");
+	T.AssertEquals(!bAlongSetting, bVertical, "by default a drag along Y lays the gate along Y");
+}
 // D898 G8 (CELEBORN-1125md): what the controller reads through the bridge (DragCells -> DragCellsFromPoints) at SubDivision 4: the (50,50)-(850,850) drag on the 400 tile is read at the 100 pitch = the 17 sub-cells the server lays
 // (the bug read the points at the 400 tile and showed 5 pieces).
 void Test_WallLineDragCellsFromPointsReadsTheFinePitch(FUnitTest& T)
