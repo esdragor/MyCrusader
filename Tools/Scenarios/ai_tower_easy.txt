@@ -17,7 +17,7 @@ waitunits 5
 note 1. L'IA Facile n'a aucune tour, mais 5 Lanciers : elle va en poser une toute seule (journal : build TowerWood, level 0).
 waitlog build TowerWood at
 waitlog Construction: slot 1 finished TowerWood
-hol.Camera.FocusNear -1600 0 enemy
+hol.Camera.FocusNear 1600 0 enemy
 frames 30
 capture ai_tower_easy_built
 note 2. La Tour de guet en bois que l'IA Facile a posee et achevee elle-meme, pres de son forum.
