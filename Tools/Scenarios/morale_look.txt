@@ -17,6 +17,8 @@ hol.Camera.FocusNear 2500 2500
 hol.Camera.Zoom -3
 frames 40
 # 1. La Caserne, cliquee pour de vrai : la grille propose le Guerrier damne (case E).
+hol.Camera.FocusNear 2500 2500
+frames 2
 hol.Select.ClickGround -12200 2600
 frames 10
 hol.HUD.Report
@@ -53,7 +55,8 @@ capture morale_look_during
 note 2. Apres la touche E : le guerrier est teinte rouge sombre et le bloc de selection porte la pastille de moral, un rond vert suivi du nom de l'effet (rage necrotique), sans secondes.
 # 5. Les 10 s de rage passees, l'effet est retire : la pastille repart.
 wait 11
-hol.HUD.Report
+hol.HUD.Report 1
+waitlog HUD overlap:
 hol.Morale.Report 0
 capture morale_look_after
 hol.Test.Sanity
