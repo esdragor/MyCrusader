@@ -148,6 +148,13 @@ namespace HOLArtTry
 		return FramesSinceBirth >= 1;
 	}
 
+	// AR4-b (CELEBORN-1125ar5): the box of hol.Select.BoxGround one frame after the birth found no unit (no "Select: box" line in the log, the hero panel stayed):
+	// the copies reach the pick candidates only at a later simulation step. The selector boxes again until the own selection holds every copy.
+	bool SelectionDone(int OwnSelected, int Wanted)
+	{
+		return true;
+	}
+
 	// AR4-b: what Type is: "Unit", "Building", "Source" (a row of the source table) or "" (unknown).
 	// Read on the three type tables themselves (the paths of hol.Art.Gallery), the same outside a match (tests) and in it.
 	bool IsRowOf(const FString& TablePath, const FString& Type)

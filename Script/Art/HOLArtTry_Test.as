@@ -84,6 +84,14 @@ void Test_ArtTrySelectionWaitsOneFrame(FUnitTest& T)
 	T.AssertTrue(HOLArtTry::SelectionDue(1), "the frame after the birth");
 }
 
+// AR4-b (CELEBORN-1125ar5): the selection is done only when the own selection holds every copy (the first box may find none of them).
+void Test_ArtTrySelectionWaitsForEveryCopy(FUnitTest& T)
+{
+	T.AssertFalse(HOLArtTry::SelectionDone(0, 5), "the box found none of the five copies: box again");
+	T.AssertFalse(HOLArtTry::SelectionDone(3, 5), "three of five: box again");
+	T.AssertTrue(HOLArtTry::SelectionDone(5, 5), "the five copies are selected");
+}
+
 // AR4-b: a source type (row of SourceTypes) is placeable like a unit or a building.
 void Test_ArtTryKnowsSourceTypes(FUnitTest& T)
 {
