@@ -17,7 +17,7 @@ hol.Units.Where 0
 capture monk_seal_before
 note 1. Le Moine est selectionne (le panneau Lumiere sacree, cout 25, est affiche).
 hol.Select.Grid 3
-waitlog Grid: monk seal, click on the ground
+waitlog Grid: armed mode 102
 note 2. La touche du Sceau : le Moine attend un clic sur le sol.
 hol.Camera.FocusNear 4000 0
 frames 2
