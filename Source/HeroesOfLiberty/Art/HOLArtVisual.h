@@ -58,68 +58,68 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Body")
 	TSoftObjectPtr<UAnimSequenceTransformProviderData> AnimationProvider;
 
-	UPROPERTY(EditAnywhere, Category = "Art|Body", meta = (InlineEditConditionToggle))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Body", meta = (InlineEditConditionToggle))
 	bool bOverrideMeshYawOffset = false;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Body", meta = (EditCondition = "bOverrideMeshYawOffset"))
 	float MeshYawOffset = -90.f;
 
-	UPROPERTY(EditAnywhere, Category = "Art|Body", meta = (InlineEditConditionToggle))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Body", meta = (InlineEditConditionToggle))
 	bool bOverrideMeshScale = false;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Body", meta = (EditCondition = "bOverrideMeshScale"))
 	float MeshScale = 1.f;
 
 	/** Sequences (v1: numbers in the AnimationProvider's list, as the CSV's); each with its toggle (off = next level). */
-	UPROPERTY(EditAnywhere, Category = "Art|Sequences", meta = (InlineEditConditionToggle))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Sequences", meta = (InlineEditConditionToggle))
 	bool bOverrideIdleSequence = false;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Sequences", meta = (EditCondition = "bOverrideIdleSequence"))
 	int32 IdleSequence = 0;
 
-	UPROPERTY(EditAnywhere, Category = "Art|Sequences", meta = (InlineEditConditionToggle))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Sequences", meta = (InlineEditConditionToggle))
 	bool bOverrideWalkSequence = false;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Sequences", meta = (EditCondition = "bOverrideWalkSequence"))
 	int32 WalkSequence = 1;
 
-	UPROPERTY(EditAnywhere, Category = "Art|Sequences", meta = (InlineEditConditionToggle))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Sequences", meta = (InlineEditConditionToggle))
 	bool bOverrideWalkPlayRate = false;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Sequences", meta = (EditCondition = "bOverrideWalkPlayRate"))
 	float WalkPlayRate = 1.f;
 
-	UPROPERTY(EditAnywhere, Category = "Art|Sequences", meta = (InlineEditConditionToggle))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Sequences", meta = (InlineEditConditionToggle))
 	bool bOverrideAttackSequence = false;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Sequences", meta = (EditCondition = "bOverrideAttackSequence"))
 	int32 AttackSequence = INDEX_NONE;
 
-	UPROPERTY(EditAnywhere, Category = "Art|Sequences", meta = (InlineEditConditionToggle))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Sequences", meta = (InlineEditConditionToggle))
 	bool bOverrideFallSequence = false;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Sequences", meta = (EditCondition = "bOverrideFallSequence"))
 	int32 FallSequence = INDEX_NONE;
 
-	UPROPERTY(EditAnywhere, Category = "Art|Sequences", meta = (InlineEditConditionToggle))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Sequences", meta = (InlineEditConditionToggle))
 	bool bOverrideBuildSequence = false;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Sequences", meta = (EditCondition = "bOverrideBuildSequence"))
 	int32 BuildSequence = INDEX_NONE;
 
-	UPROPERTY(EditAnywhere, Category = "Art|Sequences", meta = (InlineEditConditionToggle))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Sequences", meta = (InlineEditConditionToggle))
 	bool bOverrideBuildPlayRate = false;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Sequences", meta = (EditCondition = "bOverrideBuildPlayRate"))
 	float BuildPlayRate = 1.f;
 
-	UPROPERTY(EditAnywhere, Category = "Art|Sequences", meta = (InlineEditConditionToggle))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Sequences", meta = (InlineEditConditionToggle))
 	bool bOverrideGatherPlayRate = false;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Sequences", meta = (EditCondition = "bOverrideGatherPlayRate"))
 	float GatherPlayRate = 1.f;
 
-	UPROPERTY(EditAnywhere, Category = "Art|Sequences", meta = (InlineEditConditionToggle))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Sequences", meta = (InlineEditConditionToggle))
 	bool bOverrideCarryWalkPlayRate = false;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Sequences", meta = (EditCondition = "bOverrideCarryWalkPlayRate"))
