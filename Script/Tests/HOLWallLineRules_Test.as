@@ -518,6 +518,22 @@ void Test_WallLineFineGridLineIsSeventeenCells(FUnitTest& T)
 	HOLWallLine::FHOLWallLinePlan Coarse = HOLWallLine::PlanFromRequestFine(0, FVector(50.0, 50.0, 0.0), FVector(1650.0, 50.0, 0.0), 400.0, 1, WallLineMapMin, WallLineMapMax, Taken, 1000);
 	T.AssertEquals(5, Coarse.Cells.Num(), "SubDivision 1 keeps today's 4 m grid: 5 cells");
 }
+// D904 (the wall cost): a line of 12 sub-cells (fine grid, drag from x = 50 to x = 1150 on one row) at 5 Wood a cell costs 12 x 5 = 60: stock 100 Wood -> 40.
+// The count of cells comes from the plan the rule computes from the two world points, the stock from StockAfterLine (neither is typed by hand).
+void Test_WallLineCostIsNSubCellsTimesPrice(FUnitTest& T)
+{
+	TArray<FIntPoint> Taken;
+	HOLWallLine::FHOLWallLinePlan Plan = HOLWallLine::PlanFromRequestFine(0, FVector(50.0, 50.0, 0.0), FVector(1150.0, 50.0, 0.0), 400.0, 4, WallLineMapMin, WallLineMapMax, Taken, 1000);
+	T.AssertEquals(12, Plan.Cells.Num(), "the drag covers 12 sub-cells");
+	const int Left = HOLWallLine::StockAfterLine(100, Plan, 5);
+	T.AssertEquals(40, Left, "100 Wood, 12 sub-cells at 5: 40 left");
+	TArray<FIntPoint> Hole;
+	Hole.Add(FIntPoint(1, 0));
+	HOLWallLine::FHOLWallLinePlan Holed = HOLWallLine::PlanFromRequestFine(0, FVector(50.0, 50.0, 0.0), FVector(1150.0, 50.0, 0.0), 400.0, 4, WallLineMapMin, WallLineMapMax, Hole, 1000);
+	const int LeftHoled = HOLWallLine::StockAfterLine(100, Holed, 5);
+	T.AssertEquals(100 - Holed.Cells.Num() * 5, LeftHoled, "an occupied tile is a hole: only the laid sub-cells are paid");
+	T.AssertEquals(100, HOLWallLine::StockAfterLine(100, Plan, 0), "a free cell leaves the stock whole");
+}
 // D898 G2 (PLAN-GRILLE-FINE-1124.md): the occupied cells come in 4 m tiles (what GetWallLineWorld rends) and the rule expands each into SubDivision x SubDivision sub-cells.
 // The 4 m tile (2,0) on the line of G1 covers the sub-cells 8..11 of the row 0: 4 holes, 13 laid and paid (13 x 5 = 65); every tile of the line taken = Occupied, nothing laid.
 void Test_WallLineFineGridOccupiedTileSkipsItsSubCells(FUnitTest& T)
