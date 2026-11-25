@@ -634,7 +634,8 @@ void Test_CGTables(FUnitTest& T)
 	Chapel.bBuildingFinished = true;
 	Chapel.Produces = HOLCommandGridRead::GetProducesOf(n"Chapel");
 	T.AssertTrue(HOLCommandGridRules::GetCommand(Chapel, 0).Command == EHOLGridCommandKind::Produce && HOLCommandGridRules::GetCommand(Chapel, 0).TypeName == n"Monk", "Chapel, A: produce a Monk");
-	for (int Cell = 1; Cell < HOLCommandGridRules::GetNumCells(); Cell++)
+	T.AssertTrue(HOLCommandGridRules::GetCommand(Chapel, 1).Command == EHOLGridCommandKind::Produce && HOLCommandGridRules::GetCommand(Chapel, 1).TypeName == n"InfirmaryBrother", "Chapel, cell 1: produce an Infirmary Brother (D902; the lane check is the server seat check)");
+	for (int Cell = 2; Cell < HOLCommandGridRules::GetNumCells(); Cell++)
 	{
 		T.AssertTrue(HOLCommandGridRules::GetCommand(Chapel, Cell).Command == EHOLGridCommandKind::None, "Chapel: the other cells are empty");
 	}
