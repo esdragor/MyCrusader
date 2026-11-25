@@ -1,26 +1,48 @@
 # Galerie de l'Atelier (ArtistesInProgress.md, lot AR1-a) : hol.Art.Gallery All pose un exemplaire de chaque type des tables (unites, batiments, sources)
 # en grille loin du Forum, combat coupe, chaque objet etiquete au sol (nom de type, nom affiche). Entree = famille suivante. 3 minutes au plus.
-# Plain, toi contre une IA. Unites autour de X -8000, batiments autour de X 0, sources (formes d'attente) autour de X +8000, a partir de Y -3000 vers le sud.
+# Plain, toi contre une IA. Unites autour de X -8000, batiments autour de X 0, sources (vraies, AR1-b) autour de X +8000 ; chaque famille eloignee du Forum (60 m), une capture par famille (hol.Art.GalleryFrame).
 frames 40
 panel hide
 hol.Combat.Enabled 0
-hol.Camera.Focus -8000 -4200
-hol.Camera.Zoom 1
+hol.Camera.Zoom -20
 frames 30
 hol.Art.Gallery All
 waitlog Art gallery: family=
+hol.Art.GalleryFrame Units
+waitlog Art gallery frame: family=Units
 frames 60
 capture ag_units
 note Unites : un exemplaire de chaque ligne de UnitTypes, etiquete au sol. Entree = batiments.
 waitkey Entree : batiments
-hol.Camera.Focus 0 -5500
-hol.Camera.Zoom 0
+# CELEBORN-1125ar6 : la grille des batiments (rangees de 22 m) ne tient pas dans un cadre : deux captures, moitie nord puis moitie sud.
+hol.Art.GalleryFrame Buildings North
+waitlog Art gallery frame: family=Buildings part=North
 frames 40
 capture ag_buildings
+hol.Art.GalleryFrame Buildings South
+waitlog Art gallery frame: family=Buildings part=South
+frames 40
+capture ag_buildings_south
 note Batiments : un exemplaire de chaque ligne de BuildingTypes, etiquete au sol. Entree = sources.
 waitkey Entree : sources
-hol.Camera.Focus 8000 -3600
-hol.Camera.Zoom 1
+hol.Art.GalleryFrame Sources
+waitlog Art gallery frame: family=Sources
 frames 40
 capture ag_sources
-note Sources : une forme d'attente par ligne de SourceTypes (AddSource pas encore expose au script). Fin.
+note Sources : une vraie source par ligne de SourceTypes (HOLSourceAdd::AddNeutralSource), etiquetee au sol. Fin.
+# AR1-c (CELEBORN-1125ar7) : reperes d'echelle (barre rouge 1,80 m a cote de chaque objet ; pour un batiment contour cyan de l'emprise Footprint, lignes blanches des cases de 4 m, grises des sous-cases, poteau orange de la hauteur Height) puis deux eclairages de biome (hol.Art.Light).
+waitkey Entree : reperes d'echelle et eclairages
+hol.Art.GalleryFrame Buildings South
+waitlog Art gallery frame: family=Buildings part=South
+frames 40
+capture ag_marks
+hol.Art.Light dry_steppe
+waitlog Biome expect: key=dry_steppe
+frames 40
+capture ag_light_steppe
+hol.Art.Light snow
+waitlog Biome expect: key=snow
+frames 40
+capture ag_light_snow
+hol.Art.Light default
+note Reperes et eclairages : barre rouge 1,80 m, emprise, grille, Height ; Steppe seche puis Neige. Fin.

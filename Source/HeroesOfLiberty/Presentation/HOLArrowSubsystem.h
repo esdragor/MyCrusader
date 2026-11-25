@@ -24,7 +24,22 @@ struct FHOLArrowLaunch
 	/** The shooter's unit type (AR9, AR-Q5): its row's Projectile is the mesh drawn (SM_Bolt for the Crossbowman); none or
 	 *  empty: SM_Arrow. Known on every machine (the client has the shooter's type): nothing more is sent. */
 	FName ShooterType;
+	/** AR0-a3: the shooter's owner slot: its faction's art asset (DA_Art_<Type>_<Faction>) gives the projectile and the smoke; INDEX_NONE: the common one. */
+	int32 ShooterSlot = INDEX_NONE;
 };
+
+/**
+ * AR0-a4: the shooter of a launch drawn without a simulation fighter at hand: a unit's arrow on a client (HOLNetUnitDisplay,
+ * from its replicated state) and a building's arrow (a tower: HOLCombatProcessor in solo / host, AHOLBuilding::OnRep_ArrowShot
+ * on a client). Both pass the owner's slot, whose faction's art asset (DA_Art_<Type>_<Faction>) gives the projectile.
+ */
+namespace HOLArrowLaunches
+{
+	/** A unit's arrow: its type (its row's Projectile, its art asset's) and its owner's slot. */
+	HEROESOFLIBERTY_API void SetUnitShooter(FHOLArrowLaunch& Launch, FName UnitType, int32 OwnerSlot);
+	/** A building's arrow: the building type's art asset (DA_Art_<Building>_<Faction>, then DA_Art_<Building>) gives its projectile, of its owner's faction; none: SM_Arrow. */
+	HEROESOFLIBERTY_API void SetBuildingShooter(FHOLArrowLaunch& Launch, FName BuildingType, int32 OwnerSlot);
+}
 
 /**
  * The arrows in flight (J7c.2b), drawn on a displaying machine only (solo, host, client; never a dedicated server): one
@@ -50,6 +65,8 @@ public:
 
 	int32 GetInFlightCount() const { return Arrows.Num(); }
 	int64 GetLaunchedCount() const { return Launched; }
+	/** AR0-a4 (tests): the mesh the Index-th arrow in flight is drawn with (its group's), or null. */
+	const UStaticMesh* GetInFlightMesh(int32 Index) const { return Arrows.IsValidIndex(Index) && Meshes.IsValidIndex(Arrows[Index].Group) ? Meshes[Arrows[Index].Group].Get() : nullptr; }
 	int64 GetLandedCount() const { return Landed; }
 	int64 GetGapCount() const { return GapCount; }
 	double GetGapMeanMs() const { return GapCount > 0 ? GapSumMs / GapCount : 0.0; }
@@ -63,11 +80,14 @@ public:
 	 */
 	void NoteHealthDrop(const FMassEntityHandle& Target);
 
-	/** The mesh drawn for a shot of this unit type (AR9): its row's Projectile, else SM_Arrow; null if neither loads. */
-	UStaticMesh* GetProjectileMesh(FName ShooterType);
+	/**
+	 * The mesh drawn for a shot of this unit type (AR9): its art asset's Projectile (AR0-a3: DA_Art_<Type>_<Faction> of the
+	 * shooter's faction, then DA_Art_<Type>), else its row's Projectile, else SM_Arrow; null if none loads.
+	 */
+	UStaticMesh* GetProjectileMesh(FName ShooterType, FName ShooterFaction = NAME_None);
 
-	/** The puff drawn at the muzzle at a shot of this unit type: its row's MuzzleSmoke (the Arquebusier's); null when empty. */
-	UStaticMesh* GetMuzzleSmokeMesh(FName ShooterType);
+	/** The puff drawn at the muzzle at a shot of this unit type: its art asset's (faction, then common), else its row's MuzzleSmoke (the Arquebusier's); null when empty. */
+	UStaticMesh* GetMuzzleSmokeMesh(FName ShooterType, FName ShooterFaction = NAME_None);
 
 	/**
 	 * Where a puff appears, from the shooter's ground position: MuzzleForward cm ahead of him (toward his target) and
@@ -124,7 +144,7 @@ private:
 	static constexpr double MaxGapSeconds = 2.0;
 
 	/** The index of the mesh drawing a shot of this type in Meshes (its component made at its first shot); INDEX_NONE: none. */
-	int32 FindOrAddGroup(FName ShooterType);
+	int32 FindOrAddGroup(FName ShooterType, FName ShooterFaction);
 
 	/**
 	 * The index of the group drawing this mesh (its component made on the first call); INDEX_NONE: no mesh or no world.
@@ -133,7 +153,7 @@ private:
 	int32 FindOrAddMeshGroup(UStaticMesh* Mesh, int32 NumCustomData = 0);
 
 	/** The group drawing the muzzle smoke of this type (INDEX_NONE: the type has none), looked up once. */
-	int32 FindOrAddSmokeGroup(FName ShooterType);
+	int32 FindOrAddSmokeGroup(FName ShooterType, FName ShooterFaction);
 
 	TArray<FArrow> Arrows;
 	/** The projectile meshes met so far and their instances, side by side (AR9). */
@@ -143,10 +163,10 @@ private:
 	TArray<TObjectPtr<UInstancedStaticMeshComponent>> Instances;
 	UPROPERTY(Transient)
 	TObjectPtr<AActor> InstancesOwner;
-	/** Each shooter type's group (INDEX_NONE: its mesh missing, warned once). */
-	TMap<FName, int32> GroupByType;
-	/** Each shooter type's smoke group (INDEX_NONE: none). */
-	TMap<FName, int32> SmokeGroupByType;
+	/** Each (shooter type, faction)'s group (INDEX_NONE: its mesh missing, warned once). */
+	TMap<TPair<FName, FName>, int32> GroupByType;
+	/** Each (shooter type, faction)'s smoke group (INDEX_NONE: none). */
+	TMap<TPair<FName, FName>, int32> SmokeGroupByType;
 	TArray<FPuff> Puffs;
 	FVector LastSmokeOrigin = FVector::ZeroVector;
 	int64 Launched = 0;

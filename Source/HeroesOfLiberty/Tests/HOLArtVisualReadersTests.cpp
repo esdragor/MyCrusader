@@ -107,6 +107,76 @@ bool FHOLArtVisualArrowsTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLArtVisualArrowsFactionTest, "HeroesOfLiberty.Art.Visual.ArrowsReadShooterFactionFirst", UE::HeroesOfLiberty::Tests::ArtVisualReaders::Flags)
+
+bool FHOLArtVisualArrowsFactionTest::RunTest(const FString& Parameters)
+{
+	// AR0-a3: the shooter's faction variant (DA_Art_<Type>_<Faction>) first, the common asset for another faction.
+	using namespace UE::HeroesOfLiberty::Tests::ArtVisualReaders;
+	FReadersWorld Game;
+	UHOLArrowSubsystem* Display = Game.World->GetSubsystem<UHOLArrowSubsystem>();
+	const UStaticMesh* Cone = Cast<UStaticMesh>(ConeMesh.TryLoad());
+	const UStaticMesh* Cube = Cast<UStaticMesh>(CubeMesh.TryLoad());
+	const UStaticMesh* Sphere = Cast<UStaticMesh>(SphereMesh.TryLoad());
+	if (!TestNotNull(TEXT("arrow display in a game world"), Display) || !TestNotNull(TEXT("engine cone"), Cone) || !TestNotNull(TEXT("engine cube"), Cube) || !TestNotNull(TEXT("engine sphere"), Sphere))
+	{
+		return false;
+	}
+	UHOLArtVisual* Common = MakeAsset(Archer, NAME_None, TEXT("DA_Art_Archer"));
+	Common->Projectile = ConeMesh;
+	Common->MuzzleSmoke = ConeMesh;
+	UHOLArtVisual* Own = MakeAsset(Archer, Legions, TEXT("DA_Art_Archer_Legions"));
+	Own->Projectile = SphereMesh;
+	Own->MuzzleSmoke = CubeMesh;
+
+	TestTrue(TEXT("a Legions Archer shoots his faction's projectile"), Display->GetProjectileMesh(Archer, Legions) == Sphere);
+	TestTrue(TEXT("a Legions Archer's muzzle smoke is his faction's"), Display->GetMuzzleSmokeMesh(Archer, Legions) == Cube);
+	TestTrue(TEXT("an Archer of another faction shoots the common projectile"), Display->GetProjectileMesh(Archer, TEXT("Dawn")) == Cone);
+	TestTrue(TEXT("an Archer of no faction: the common muzzle smoke"), Display->GetMuzzleSmokeMesh(Archer) == Cone);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLArtVisualClientAndTowerArrowsTest, "HeroesOfLiberty.Art.Visual.ClientAndTowerArrowsReadOwnersFaction", UE::HeroesOfLiberty::Tests::ArtVisualReaders::Flags)
+
+bool FHOLArtVisualClientAndTowerArrowsTest::RunTest(const FString& Parameters)
+{
+	// AR0-a4: a client's unit arrow (HOLNetUnitDisplay) and a tower's arrow (HOLCombatProcessor, AHOLBuilding::OnRep_ArrowShot) name their shooter through
+	// HOLArrowLaunches with the owner's slot; the arrow drawn by UHOLArrowSubsystem is the projectile of that slot's faction variant. A world without a launch
+	// configuration reads every slot as the Dawn (HOLFactionRules::GetSlotFactionKey): the variant read here is the Dawn's, the common asset the other one.
+	using namespace UE::HeroesOfLiberty::Tests::ArtVisualReaders;
+	FReadersWorld Game;
+	UHOLArrowSubsystem* Display = Game.World->GetSubsystem<UHOLArrowSubsystem>();
+	const UStaticMesh* Sphere = Cast<UStaticMesh>(SphereMesh.TryLoad());
+	if (!TestNotNull(TEXT("arrow display in a game world"), Display) || !TestNotNull(TEXT("engine sphere"), Sphere))
+	{
+		return false;
+	}
+	const FName Dawn(TEXT("Dawn"));
+	const FName Tower(TEXT("ArtTestArrowTower"));
+	MakeAsset(Archer, NAME_None, TEXT("DA_Art_Archer"))->Projectile = ConeMesh;
+	MakeAsset(Archer, Dawn, TEXT("DA_Art_Archer_Dawn"))->Projectile = SphereMesh;
+	MakeAsset(Tower, NAME_None, TEXT("DA_Art_ArtTestArrowTower"))->Projectile = ConeMesh;
+	MakeAsset(Tower, Dawn, TEXT("DA_Art_ArtTestArrowTower_Dawn"))->Projectile = SphereMesh;
+
+	FHOLArrowLaunch UnitShot;
+	UnitShot.From = FVector(0.0, 0.0, 100.0);
+	UnitShot.To = FVector(1000.0, 0.0, 100.0);
+	UnitShot.FlightMs = 1000;
+	FHOLArrowLaunch TowerShot = UnitShot;
+	HOLArrowLaunches::SetUnitShooter(UnitShot, Archer, 0);
+	HOLArrowLaunches::SetBuildingShooter(TowerShot, Tower, 0);
+	const int32 Before = Display->GetInFlightCount();
+	Display->Launch(UnitShot);
+	Display->Launch(TowerShot);
+	if (!TestEqual(TEXT("two arrows in flight"), Display->GetInFlightCount(), Before + 2))
+	{
+		return false;
+	}
+	TestTrue(TEXT("a client's Archer arrow: his owner's faction projectile"), Display->GetInFlightMesh(Before) == Sphere);
+	TestTrue(TEXT("a tower's arrow: the projectile of the tower's art asset, its owner's faction"), Display->GetInFlightMesh(Before + 1) == Sphere);
+	return true;
+}
+
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLArtVisualBuildingMeshTest, "HeroesOfLiberty.Art.Visual.BuildingMeshFactionThenCommonThenCsv", UE::HeroesOfLiberty::Tests::ArtVisualReaders::Flags)
 
 bool FHOLArtVisualBuildingMeshTest::RunTest(const FString& Parameters)

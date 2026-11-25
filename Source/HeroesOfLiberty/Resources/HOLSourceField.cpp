@@ -240,6 +240,7 @@ AHOLSourceField::FTypeDisplay& AHOLSourceField::GetOrMakeTypeDisplay(const uint8
 	const FName SourceTypeName = Sources && Sources->GetTypeNames().IsValidIndex(TypeIndex) ? Sources->GetTypeNames()[TypeIndex] : NAME_None;
 	const TSoftObjectPtr<UStaticMesh> VisualMesh(SourceTypeName.IsNone() ? Type.Mesh.ToSoftObjectPath()
 		: HOLArtVisual::ResolveMesh(GetWorld(), SourceTypeName, NAME_None, Type.Mesh.ToSoftObjectPath()));
+	// AR0-a3: a resource has no faction (no owner): its mesh is always the common DA_Art_<Type>, never a faction variant.
 	UStaticMesh* FinalMesh = VisualMesh.IsNull() ? nullptr : VisualMesh.LoadSynchronous();
 	if (!VisualMesh.IsNull() && !FinalMesh)
 	{
