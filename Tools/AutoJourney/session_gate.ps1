@@ -32,6 +32,8 @@ param(
   [double]$MinFreeVirtualGB = 8,           # Launch (L12-1c) : memoire virtuelle libre sous ce seuil = WARN (2026-11-12 : builds et jeux qui echouent faute de memoire)
   [string]$EngineRoot = 'C:\UE\UE_5.8_HOL', # Launch (L12-1c) : un cl.exe dont aucun ancetre ne cite ce moteur = compilation d'un AUTRE moteur (ProjectShiva sur AS_3...) = WARN
   [int]$MaxMainCodeCommits = 3,           # Close (L19-1) : plus de N commits de code de la session principale = FAIL (1 a N = WARN)
+  [string]$WorktreeRepo = '',             # Launch (L28-8) : depot dont on compte les worktrees (defaut : la copie principale) ; sert aux tests
+  [int]$MaxWorktrees = 8,                 # Launch (L28-8) : worktrees hors copie principale connus ; au-dela = FAIL (SAURON-1124sf en avait cree un neuf)
   [string]$AgentName = '',                # Launch (L19-1) : nom de l'agent a lancer ; NETTOYAGE-* et ETAPE0-* (lances avant la lecture de la check-list) = WARN au lieu de FAIL
   [Parameter(ValueFromRemainingArguments=$true)][string[]]$ScenarioNames = @(),   # noms de scenarios apres -Scenarios : acceptes et ignores (jamais pris pour une heure)
   [int]$MinMinutes = 5  # 2026-11-05 : l'utilisateur prefere finir 15 min APRES l'heure que 15 min avant (sauf consigne contraire dans le prompt de lancement) ; l'ancien seuil de 20 min laissait la seance vide
@@ -78,6 +80,13 @@ if ($endNote) { Say 'WARN' "SessionEnd : $endNote" }
 if (-not $QueueDir) { $QueueDir = "$Main\Docs\BuildQueue.state" }
 $wts = Get-ChildItem $WorktreesDir -Directory -Filter 'HeroesOfLiberty-*' | Select-Object -ExpandProperty FullName
 
+# L28-8 (SAURON-1125ma) : `git worktree list` ne doit pas depasser les worktrees connus (hors copie principale)
+if ($Phase -eq 'Launch') {
+  $l288Repo = if ($WorktreeRepo) { $WorktreeRepo } else { $Main }
+  $l288 = @(git -C $l288Repo worktree list --porcelain 2>$null | Where-Object { $_ -match '^worktree ' })
+  $l288N = [Math]::Max(0, $l288.Count - 1)
+  if ($l288N -gt $MaxWorktrees) { Say 'FAIL' "L28-8 : $l288N worktrees (hors copie principale) pour un plafond de $MaxWorktrees : un agent en a cree un neuf ; reutiliser un worktree existant ou 'git worktree remove'" } else { Say 'PASS' "L28-8 : $l288N worktrees (plafond $MaxWorktrees)" }
+}
 if ($Phase -eq 'Launch') {
   if ($left -lt $MinMinutes) { Say 'FAIL' ("il reste {0} min (< {1}) : AUCUN lancement d'agent" -f $left, $MinMinutes) }
   else { Say 'PASS' ("temps restant {0} min ; arret dur des agents = {1} (jusqu'a +15 min toleres, jamais 15 min trop tot)" -f $left, $endAt.ToString('HH:mm')) }
