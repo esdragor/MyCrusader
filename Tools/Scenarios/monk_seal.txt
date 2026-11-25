@@ -28,3 +28,9 @@ frames 30
 capture monk_seal_zone
 hol.Units.Where 0
 note 3. A toi : Moine selectionne, la touche du Sceau, clic sur le sol a 8 m : une zone de lumiere se pose (provisoire : anneau bleu pale), le Sceau est en recharge.
+# HALDIR-1125me (BUG 2026-11-25 14:0x : le Sceau marche mais la recharge ne s'affiche pas) : le HUD relit la case R avec le temps (lecture 4 fois par seconde), la case dit Sceau + secondes et est grisee.
+frames 90
+hol.HUD.Report
+waitlog R=LightSeal greyed
+capture monk_seal_cooldown
+note 4. La case R montre le decompte de la recharge (ex. Sceau 38 s) et est grisee.
