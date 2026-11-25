@@ -11,7 +11,6 @@ hol.Cheat.Population 200
 hol.Camera.FocusNear 2800 0 enemy
 # L'IA a 0 bois (cheat de ressources = slot 0 seulement) : on la laisse recolter 110 s AVANT les Lanciers (TowerWood = 100 bois)
 wait 55
-wait 55
 frames 2
 hol.Units.SpawnHere 5 Spearman 1 500
 waitunits 5
