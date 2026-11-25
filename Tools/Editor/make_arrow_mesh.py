@@ -2,7 +2,7 @@
 with "--bolt", /Game/Units/Props/SM_Bolt instead, the Crossbowman's bolt in flight (AR-Q5, AR6); with "--bullet",
 /Game/Units/Props/SM_Bullet, the Arquebusier's ball (a dark ball with a pale trail, drawn through UHOLArrowSubsystem's
 ArrowScale 1.5 x 4 x 4, so the mesh ellipsoid is 6 x 2.25 x 2.25 cm: ~18 cm across in flight); with "--smoke",
-/Game/Units/Props/SM_PowderSmoke, the puff at the muzzle at each shot (UnitTypes.csv MuzzleSmoke): a 50 cm ball, centred, in
+/Game/Units/Props/SM_PowderSmoke, the puff at the muzzle at each shot (DA_Art_Arquebusier MuzzleSmoke, art_visual_io.py): a 50 cm ball, centred, in
 the translucent /Game/Units/Props/M_PowderSmoke (make_smoke_material.py, to run first; its opacity is per-instance data 0).
 
 SM_Arrow, ~78 cm (soldier_props.ARROW_LENGTH, make_arrow): a thin wooden shaft, an iron point, three white fletchings.
