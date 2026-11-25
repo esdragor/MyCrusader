@@ -1,0 +1,57 @@
+# Porte posee SUR une palissade finie (D898 G10, CELEBORN-1125d/e) : la porte remplace les palissades du meme camp sous elle (ServerPlaceWallLine : GateRetireIndices puis OrderRemoveOwnBuilding, puis la pose). Toi (slot 0, Aube) contre une IA gelee (slot 1). 3 minutes au plus.
+# branches: wall-long-fix-1125m
+# Geste : un Paysan est selectionne (hol.Select.ClickUnit), A (age I) puis D (hol.Select.Grid 0 puis 6 = Palissade), un vrai glisser hol.Mouse.Drag ; puis A (hol.Select.Grid 0) et la touche de la Porte (hol.Select.Grid 10, BuildGridSlot 10 de PalisadeGate), un second glisser COURT par-dessus la palissade finie.
+# Meme cadrage que wall_line_long : camera (-19200, 0), glisser y ecran 360, pixels du viewport cache 1280x720 (~3,8 cm par pixel, une case = ~92 px au zoom 3).
+# Lecture au journal : `gate line retires N palisade pieces` (N > 0 = les palissades sous la porte ont ete retirees) ; le Bois est lu au HUD des captures et par hol.Build.Report.
+waitlog Starting hero of slot 0 spawned at
+hol.AI.ThinkSteps 100000
+hol.Cheat.Resources 20000
+hol.Cheat.Population 40
+hol.Cheat.Technology Masonry
+hol.Build.Instant 1
+hol.Wall.MaxLineCells 0
+frames 2
+hol.Units.Spawn 1 -19200 3000 0 Peasant 10
+frames 40
+hol.Test.Sanity
+hol.Camera.Zoom 3
+hol.Camera.Focus -19200 3000
+frames 5
+note 1. Un Paysan est a l'ecran : tu le selectionnes, puis A puis D (Palissade), puis un glisser a la souris le long de la ligne.
+hol.Camera.TestCursor 0.5 0.5
+hol.Select.ClickUnit -1
+waitlog Selection: Peasant #
+hol.Camera.TestCursor off
+hol.Select.Grid 0
+hol.Select.Grid 6
+waitlog Placement: Palisade (cost
+hol.Camera.Focus -19200 0
+frames 40
+hol.Mouse.LogDragEnd 1
+hol.Mouse.Drag 200 360 1000 360 90
+waitlog Drag end: foreground=
+waitlog RpcOrder: place wall line received by the server
+waitlog Construction: slot 0 first work on Palisade
+wait 6
+hol.Build.Report
+note 2. AVANT : la palissade est finie sur la ligne (les murs pleins, pas des fondations) ; le Bois de la barre de ressources a baisse de 5 par case.
+capture wall_gate_replace_before
+hol.Test.Sanity
+# Seconde pose : la Porte, par-dessus le milieu de la palissade finie (x ecran 480 a 620 : 2 a 3 cases).
+hol.Select.Grid 0
+hol.Select.Grid 10
+waitlog Placement: PalisadeGate (cost
+frames 20
+hol.Mouse.Drag 480 360 620 360 60
+frames 40
+note 3. PENDANT le glisser de la porte : le fantome de la porte sur les cases de la palissade finie.
+capture wall_gate_replace_during
+waitlog Drag end: foreground=
+waitlog RpcOrder: gate line retires
+waitlog RpcOrder: place wall line received by the server
+wait 6
+hol.Build.Report
+note 4. APRES : la porte remplace les murs sous elle (un passage dans la palissade), les murs a gauche et a droite restent ; le Bois = avant moins le prix des portes (10 par case), aucun remboursement des murs retires.
+capture wall_gate_replace_after
+hol.Test.Sanity
+quit
