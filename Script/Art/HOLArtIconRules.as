@@ -145,7 +145,23 @@ namespace HOLArtIconRules
 	{
 		OutHeight = 100.0;
 		OutRadius = 100.0;
-		return false;
+		UDataTable Table = Cast<UDataTable>(LoadObject(nullptr, TablePath("Buildings")));
+		if (Table == nullptr)
+			return false;
+		TArray<FName> Names;
+		Table.GetRowNames(Names);
+		const int Row = Names.FindIndex(TypeName);
+		TArray<FString> Footprints = Table.GetColumnAsString(n"Footprint");
+		TArray<FString> Heights = Table.GetColumnAsString(n"Height");
+		if (Row < 0 || Row >= Footprints.Num() || Row >= Heights.Num())
+			return false;
+		const FVector2D Foot = HOLArtGallery::FootprintOf(Footprints[Row]);
+		const double Top = String::Conv_StringToDouble(Heights[Row]);
+		if (Foot.X <= 0.0 || Foot.Y <= 0.0 || Top <= 0.0)
+			return false;
+		OutHeight = Top;
+		OutRadius = 0.5 * Math::Sqrt(Foot.X * Foot.X + Foot.Y * Foot.Y);
+		return true;
 	}
 	// Fixed angle and field for the family; the distance makes the bounds (Height tall, Radius wide) fill the frame.
 	FHOLArtIconShot Shot(const FString& Family, double Height, double Radius)

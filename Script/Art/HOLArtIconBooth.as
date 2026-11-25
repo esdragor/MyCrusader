@@ -29,13 +29,18 @@ class AHOLArtIconBooth : AActor
 	UPROPERTY(DefaultComponent)
 	UStaticMeshComponent Backdrop;
 
+	// AR5-d: plain floor under a building (neutral ground, not the owner's coloured ground nor the grass).
+	UPROPERTY(DefaultComponent)
+	UStaticMeshComponent Floor;
+
 	TArray<FName> Queue;
 	FName Current = NAME_None;
 	FString Family;
 	FVector Spot;
 	int Wait = 0;
 	int Written = 0;
-	int Index = 0;
+	// AR5-d: one spot counter per family (AR5-c shared one: the sources, last of 51, went 6 rows down).
+	TMap<FString, int> IndexOf;
 	int Total = 0;
 
 	void Start(const TArray<FName>& Types)
@@ -55,6 +60,10 @@ class AHOLArtIconBooth : AActor
 		Backdrop.SetCollisionEnabled(ECollisionEnabled::NoCollision);
 		Backdrop.SetCastShadow(false);
 		Backdrop.SetVisibility(false);
+		Floor.SetStaticMesh(Backdrop.StaticMesh);
+		Floor.SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		Floor.SetCastShadow(false);
+		Floor.SetVisibility(false);
 	}
 
 	UFUNCTION(BlueprintOverride)
@@ -88,14 +97,22 @@ class AHOLArtIconBooth : AActor
 			Log(n"LogHOLMatch", f"Art icon: refused {Current.ToString()} (in no type table)");
 			return;
 		}
-		// One clear spot per type, one row per family south-west of the map centre (units Y -6000, sources -7500, buildings -9500),
-		// away from the Forum and the gallery; a second call of the same family reuses its spots.
-		const double RowY = Family == "Units" ? -6000.0 : (Family == "Sources" ? -7500.0 : -9500.0);
-		Spot = FVector(-6000.0 + 2500.0 * double(Index % 6), RowY - 4500.0 * double(Math::IntegerDivisionTrunc(Index, 6)), 0.0);
-		Index += 1;
+		// One clear spot per type, south-west of the map centre, away from the Forum and the gallery; a second call of the same
+		// family reuses its spots. AR5-d: own counter per family; units rows from Y -6000 (21 types: 4 rows of 6, X step 2500),
+		// sources half-way between the unit rows (Y -8250, X shifted 1250), buildings below the units (Y -23000, 5 a row, X step 3000).
+		int Index = 0;
+		IndexOf.Find(Family, Index);
+		IndexOf.Add(Family, Index + 1);
+		if (Family == "Buildings")
+			Spot = FVector(-6000.0 + 3000.0 * double(Index % 5), -23000.0 - 4500.0 * double(Math::IntegerDivisionTrunc(Index, 5)), 0.0);
+		else if (Family == "Sources")
+			Spot = FVector(-4750.0 + 2500.0 * double(Index % 6), -8250.0 - 4500.0 * double(Math::IntegerDivisionTrunc(Index, 6)), 0.0);
+		else
+			Spot = FVector(-6000.0 + 2500.0 * double(Index % 6), -6000.0 - 4500.0 * double(Math::IntegerDivisionTrunc(Index, 6)), 0.0);
 		const int Clear = Family == "Buildings" ? 6000 : 3000;
 		System::ExecuteConsoleCommand(f"hol.Decor.ClearNear {Math::RoundToInt(Spot.X)} {Math::RoundToInt(Spot.Y)} {Clear} Trees");
 		StandIn.SetVisibility(false);
+		Floor.SetVisibility(false);
 		bool bMade = false;
 		AHOLPlayerController Controller = Cast<AHOLPlayerController>(Gameplay::GetPlayerController(0));
 		if (Family == "Units")
@@ -110,6 +127,8 @@ class AHOLArtIconBooth : AActor
 		else
 		{
 			// AR5-c: a real source of the registry (HOLSourceAdd::AddNeutralSource, in main since integ-88-art), everyone's, its table amount.
+			// AR5-d: the call itself (8517f28 removed the stand-in's bMade = true without writing it: every source "not placed").
+			bMade = HOLSourceAdd::AddNeutralSource(Current, Spot, -1) >= 0;
 		}
 		if (!bMade)
 		{
@@ -142,6 +161,8 @@ class AHOLArtIconBooth : AActor
 	{
 		double Height = 180.0;
 		double Radius = 60.0;
+		double Ground = Spot.Z;
+		bool bFloor = false;
 		if (Family == "Buildings")
 		{
 			TArray<AHOLBuilding> Buildings;
@@ -159,8 +180,19 @@ class AHOLArtIconBooth : AActor
 					Building.GetActorBounds(false, Origin, Extent);
 					Height = Math::Max(Extent.Z * 2.0, 100.0);
 					Radius = Math::Max(Math::Max(Extent.X, Extent.Y), 100.0);
+					Ground = Building.GetActorLocation().Z;
+					Spot = FVector(Building.GetActorLocation().X, Building.GetActorLocation().Y, Spot.Z);
 				}
 			}
+			// AR5-d: framed on its BuildingTypes footprint (half diagonal) and Height; the actor's bounds cut the Barracks.
+			double TableHeight = 0.0;
+			double TableRadius = 0.0;
+			if (HOLArtIconRules::BuildingBounds(Current, TableHeight, TableRadius))
+			{
+				Height = TableHeight;
+				Radius = TableRadius;
+			}
+			bFloor = true;
 		}
 		else if (Family == "Units")
 		{
@@ -182,6 +214,10 @@ class AHOLArtIconBooth : AActor
 		Backdrop.SetWorldLocationAndRotation(Spot + Flat * Gap + FVector(0.0, 0.0, Side * 0.5 - 50.0), FRotator(0.0, Shot.Rotation.Yaw, 0.0));
 		Backdrop.SetWorldScale3D(FVector(0.1, Side * 0.01, Side * 0.01));
 		Backdrop.SetVisibility(true);
+		// A thin plain slab whose top is 5 cm above the building's ground point (hides the coloured ground under it).
+		Floor.SetWorldLocationAndRotation(FVector(Spot.X, Spot.Y, Ground + 4.0), FRotator(0.0, Shot.Rotation.Yaw, 0.0));
+		Floor.SetWorldScale3D(FVector(Side * 0.01, Side * 0.01, 0.02));
+		Floor.SetVisibility(bFloor);
 		Key.SetWorldLocation(Eye + FVector(0.0, 0.0, Shot.Distance * 0.5));
 		Capture.CaptureScene();
 		const FString File = HOLArtIconRules::FileName(Family, Current);
