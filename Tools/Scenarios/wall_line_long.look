@@ -4,4 +4,4 @@
 # <nom de capture> | ce que l'utilisateur doit voir
 wall_line_long_during | pendant le glisser (bouton tenu, aux trois quarts du glisser) : 7 a 8 boites vertes plates (environ 90 px chacune) alignees horizontalement vers y=360, du point d'appui (x=200) au curseur ; aucune boite rouge ; la barre de ressources montre encore le Bois d'avant
 wall_line_long_build | une seconde apres que le Paysan a commence a travailler sur la ligne : le Paysan (silhouette, environ 40 px de haut) DANS ou contre une fondation de palissade de la ligne, la ligne de fondations toujours visible a cote
-wall_line_long_after |apres le relache : 9 fondations de palissade (environ 92 px de pas, la derniere coupee par le bord droit) sur la meme ligne, plus aucune boite verte ; le Bois de la barre de ressources a baisse de 5 par case
+wall_line_long_after |apres le relache : 9 a 10 fondations de palissade (selon le cadrage de la camera, 9 mesure une fois, 10 une autre : Bois -45 ou -50) (environ 92 px de pas, la derniere coupee par le bord droit) sur la meme ligne, plus aucune boite verte ; le Bois de la barre de ressources a baisse de 5 par case
