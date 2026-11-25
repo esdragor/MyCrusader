@@ -16,22 +16,79 @@ struct FHOLArtIconShot
 
 namespace HOLArtIconRules
 {
-	// BOUCHON (commit rouge) : le correctif lit les tables.
+	const double Pitch = -25.0;
+	// The camera stands south-west of the object and looks north-east (three-quarter view, same for every type).
+	const double Yaw = 45.0;
+	const double FieldOfView = 30.0;
+	// Room around the object inside the frame (1.0 = the bounds touch the edge).
+	const double Margin = 1.3;
+
+	FString TablePath(const FString& Family)
+	{
+		if (Family == "Units")
+			return "/Game/Units/UnitTypes.UnitTypes";
+		if (Family == "Buildings")
+			return "/Game/Buildings/BuildingTypes.BuildingTypes";
+		return "/Game/Resources/SourceTypes.SourceTypes";
+	}
+
+	bool TableHas(const FString& Family, FName TypeName)
+	{
+		UDataTable Table = Cast<UDataTable>(LoadObject(nullptr, TablePath(Family)));
+		if (Table == nullptr)
+			return false;
+		TArray<FName> Names;
+		Table.GetRowNames(Names);
+		return Names.Contains(TypeName);
+	}
+
+	// "Units", "Buildings", "Sources", or "" when the type is in no table (first table wins).
 	FString FamilyOf(FName TypeName)
 	{
+		if (TableHas("Units", TypeName))
+			return "Units";
+		if (TableHas("Buildings", TypeName))
+			return "Buildings";
+		if (TableHas("Sources", TypeName))
+			return "Sources";
 		return "";
 	}
 
-	// BOUCHON (commit rouge).
+	FString Prefix(const FString& Family)
+	{
+		if (Family == "Units")
+			return "T_Unit_";
+		if (Family == "Buildings")
+			return "T_Building_";
+		if (Family == "Sources")
+			return "T_Source_";
+		return "";
+	}
+
 	FString FileName(const FString& Family, FName TypeName)
 	{
-		return "";
+		const FString Head = Prefix(Family);
+		if (Head.IsEmpty() || TypeName == NAME_None)
+			return "";
+		return Head + TypeName.ToString() + ".png";
 	}
 
-	// BOUCHON (commit rouge).
+	// Fixed angle and field for the family; the distance makes the bounds (Height tall, Radius wide) fill the frame.
 	FHOLArtIconShot Shot(const FString& Family, double Height, double Radius)
 	{
 		FHOLArtIconShot Out;
+		Out.Rotation = FRotator(Pitch, Yaw, 0.0);
+		Out.FieldOfView = FieldOfView;
+		const double Tall = Math::Max(Height, 1.0);
+		const double Wide = Math::Max(Radius, 1.0);
+		// Half the size seen by the camera: the bounding sphere of the box (Height x 2 Radius), so any angle fits.
+		const double HalfSize = Math::Sqrt(Tall * Tall * 0.25 + Wide * Wide);
+		Out.Distance = HalfSize * Margin / Math::Tan(Math::DegreesToRadians(FieldOfView * 0.5));
+		Out.LookAt = FVector(0.0, 0.0, Tall * 0.5);
+		const double P = Math::DegreesToRadians(Pitch);
+		const double Y = Math::DegreesToRadians(Yaw);
+		const FVector Ahead = FVector(Math::Cos(P) * Math::Cos(Y), Math::Cos(P) * Math::Sin(Y), Math::Sin(P));
+		Out.CameraOffset = Out.LookAt - Ahead * Out.Distance;
 		return Out;
 	}
 }
