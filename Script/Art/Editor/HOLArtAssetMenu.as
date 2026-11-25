@@ -61,7 +61,7 @@ namespace HOLArtEditor
 
 	void AddCommon(TArray<FHOLArtCheck>& Checks, UObject Asset, bool bSkeletal)
 	{
-		Checks.Add(HOLArtChecks::CheckMeshPrefix(Asset.GetName(), bSkeletal));
+		Checks.Add(HOLArtChecks::CheckMeshPrefix(Asset.GetName().ToString(), bSkeletal));
 		Checks.Add(HOLArtChecks::CheckArtFolder(FPaths::GetPath(Asset.GetPathName())));
 	}
 
@@ -75,7 +75,7 @@ namespace HOLArtEditor
 		Checks.Add(HOLArtChecks::CheckTriangles(Mesh.GetNumTriangles(0),
 			bUnitFolder ? HOLArtChecks::MaxUnitTriangles : HOLArtChecks::MaxBuildingTriangles));
 		AddCommon(Checks, Mesh, false);
-		Report(Mesh.GetName(), Checks);
+		Report(Mesh.GetName().ToString(), Checks);
 	}
 
 	void CheckSkeletalMesh(USkeletalMesh Mesh)
@@ -85,7 +85,7 @@ namespace HOLArtEditor
 		Checks.Add(HOLArtChecks::CheckPivot(Bounds.Origin.Z - Bounds.BoxExtent.Z));
 		Checks.Add(HOLArtChecks::CheckMaterialSlots(Mesh.GetMaterials().Num()));
 		AddCommon(Checks, Mesh, true);
-		Report(Mesh.GetName(), Checks);
+		Report(Mesh.GetName().ToString(), Checks);
 	}
 
 	void CheckArtVisual(UHOLArtVisual Visual)
@@ -93,22 +93,23 @@ namespace HOLArtEditor
 		TArray<FHOLArtCheck> Checks;
 		Checks.Add(HOLArtChecks::CheckTypeName(Visual.TypeName, AllTypeNames()));
 		Checks.Add(HOLArtChecks::CheckArtFolder(FPaths::GetPath(Visual.GetPathName())));
-		Checks.Add(HOLArtChecks::CheckLoaded("Mesh", !Visual.Mesh.IsNull(), Visual.Mesh.LoadSynchronous() != nullptr));
-		Checks.Add(HOLArtChecks::CheckLoaded("SkinnedMesh", !Visual.SkinnedMesh.IsNull(), Visual.SkinnedMesh.LoadSynchronous() != nullptr));
-		UAnimSequenceTransformProviderData Provider = Visual.AnimationProvider.LoadSynchronous();
+		// The script bind of TSoftObjectPtr loads through EditorOnlyLoadSynchronous (const, editor only), not LoadSynchronous.
+		Checks.Add(HOLArtChecks::CheckLoaded("Mesh", !Visual.Mesh.IsNull(), Visual.Mesh.EditorOnlyLoadSynchronous() != nullptr));
+		Checks.Add(HOLArtChecks::CheckLoaded("SkinnedMesh", !Visual.SkinnedMesh.IsNull(), Visual.SkinnedMesh.EditorOnlyLoadSynchronous() != nullptr));
+		UAnimSequenceTransformProviderData Provider = Visual.AnimationProvider.EditorOnlyLoadSynchronous();
 		Checks.Add(HOLArtChecks::CheckLoaded("AnimationProvider", !Visual.AnimationProvider.IsNull(), Provider != nullptr));
-		Checks.Add(HOLArtChecks::CheckLoaded("Icon", !Visual.Icon.IsNull(), Visual.Icon.LoadSynchronous() != nullptr));
-		Checks.Add(HOLArtChecks::CheckLoaded("Portrait", !Visual.Portrait.IsNull(), Visual.Portrait.LoadSynchronous() != nullptr));
+		Checks.Add(HOLArtChecks::CheckLoaded("Icon", !Visual.Icon.IsNull(), Visual.Icon.EditorOnlyLoadSynchronous() != nullptr));
+		Checks.Add(HOLArtChecks::CheckLoaded("Portrait", !Visual.Portrait.IsNull(), Visual.Portrait.EditorOnlyLoadSynchronous() != nullptr));
 		const int Count = Provider != nullptr ? Provider.GetSequences().Num() : 0;
 		Checks.Add(HOLArtChecks::CheckSequence("Idle", Visual.bOverrideIdleSequence, Visual.IdleSequence, Count, false));
 		Checks.Add(HOLArtChecks::CheckSequence("Walk", Visual.bOverrideWalkSequence, Visual.WalkSequence, Count, false));
 		Checks.Add(HOLArtChecks::CheckSequence("Attack", Visual.bOverrideAttackSequence, Visual.AttackSequence, Count, true));
 		Checks.Add(HOLArtChecks::CheckSequence("Fall", Visual.bOverrideFallSequence, Visual.FallSequence, Count, true));
 		Checks.Add(HOLArtChecks::CheckSequence("Build", Visual.bOverrideBuildSequence, Visual.BuildSequence, Count, true));
-		Report(Visual.GetName(), Checks);
+		Report(Visual.GetName().ToString(), Checks);
 	}
 
-	// Creates the DA_Art through the editor's Python; MeshField = "mesh" / "skinned_mesh" / "" (nothing to set).
+	// Creates the DA_Art through the editor's Python (UPythonScriptLibrary is bound as the PythonScript:: namespace); MeshField = "mesh" / "skinned_mesh" / "" (nothing to set).
 	void CreateArtVisual(FName TypeName, FName Faction, FString MeshField, UObject Mesh)
 	{
 		const FString Path = HOLArtChecks::ArtAssetPath(FamilyOf(TypeName), TypeName, Faction);
@@ -131,7 +132,7 @@ namespace HOLArtEditor
 		if (!MeshField.IsEmpty() && Mesh != nullptr)
 			Py += "  a.set_editor_property('" + MeshField + "', unreal.load_asset('" + Mesh.GetPathName() + "'))\n";
 		Py += "  unreal.EditorAssetLibrary.save_loaded_asset(a)\n  unreal.log('HOL Art: created '+p)\n";
-		const bool bRan = UPythonScriptLibrary::ExecutePythonCommand(Py);
+		const bool bRan = PythonScript::ExecutePythonCommand(Py);
 		Print((bRan ? "DA_Art: " : "DA_Art not created (Python failed): ") + Path, 8.f, bRan ? FLinearColor::Green : FLinearColor::Red);
 	}
 }
