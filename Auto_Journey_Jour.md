@@ -72,6 +72,7 @@ Tableau des agents, plan de lancement ETAPE0-1125m, avances de main et anomalies
 | DOCS-1125b | HeroesOfLiberty-MyCrusader | main | - | points 1,3,4 budget : hook L19-1, resume Auto_Journey, brief_commun | sans C++ |
 
 ### Bilan du 2026-11-25 après-midi
+**CLÔTURE 18:07** : main = 32bf45e (outils du budget, points 1-5 demandés par l'utilisateur : ca593e2 + tools-budget-1125a, gate_test 143/143) ; sync de fin faite ; session_gate Close : 2 FAIL ACCEPTÉS (exception écrite) : Arwen +10 (Templars fc3b85f..6cbbdbe, attend Q-chapel-faction) et Galadriel +5 (4f3c147 spin = faux positif Sanity, non intégré) ; Elrond / Faramir exclus (session étrangère ; la sync a fusionné main dans tests-bindings-1125s de Faramir) ; Merge gate non relancé pour tools-budget-1125a (outils seuls, diff Source/Script/Config vide).
 
 - avances de main : 1a20314 (15:55, integ-83 PASS 826 s, tests 2257/2257 : D918 tours de guet de l'IA GALADRIEL-1125a d7b14d5, prix des murs CELEBORN-1125a 2b402fd) ; 1e2e3fa (17:02, integ-84 PASS 1902 s, 2264/2264 : a745cb7 porte CELEBORN-1125d, e1ceacd SAURON-1125c, c9d5624 non relu) ; 8d79aaa (17:09, integ-85 PASS 777 s, 2266/2266 : 83fbc1e CELEBORN-1125f, fda4fe7 SAURON-1125e avec son rouge a6ee4f4, 48bd8d4 GALADRIEL-1125d, c32f6a0 ARWEN-1125d) ; recette 17:22 (GLORFINDEL-1125d, 3c05559) : talents_heal, deploy_far, ai_tower_easy PASS
 - clôture anticipée à 17:3x au lieu de 19:04 : /context 276,5k > 250k à 16:51 (règle a), plus aucun chantier neuf après, seulement finir l'engagé
