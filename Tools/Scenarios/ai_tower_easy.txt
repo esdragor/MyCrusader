@@ -1,0 +1,26 @@
+# GALADRIEL-1125b (point 7, D918, partie naturelle) : l'IA FACILE POSE d'elle-meme une Tour de guet en bois (HOLAITower::WantsTower, EasyMax 1) et l'acheve
+# Plain, toi (slot 0) contre une IA Facile (slot 1). Copie de ai_tower (Normale) avec le niveau Facile ; aucun TowerWood n'est pose par le scenario : seule l'IA decide.
+# Rouge avant d7b14d5 (EasyMax 0 : aucune tour pour le niveau Facile), vert apres.
+# Journal attendu : << AI slot 1 step S: build TowerWood at (x, y) by #N (level 0, 0 already, an army of 5) >>, puis << Construction: slot 1 finished TowerWood >>.
+# Si rien : la ligne du cerveau dit pourquoi (no spot for TowerWood / build TowerWood refused) ; on ne change pas la regle.
+waitlog AI brain HOLAIBrain awake
+hol.Sanity.Watch 1
+waitlog AI slot 1 step
+hol.Cheat.Resources 1000
+hol.Cheat.Population 200
+hol.Camera.FocusNear 2800 0 enemy
+# L'IA a 0 bois (cheat de ressources = slot 0 seulement) : on la laisse recolter 110 s AVANT les Lanciers (TowerWood = 100 bois)
+wait 55
+wait 55
+frames 2
+hol.Units.SpawnHere 5 Spearman 1 500
+waitunits 5
+note 1. L'IA Facile n'a aucune tour, mais 5 Lanciers : elle va en poser une toute seule (journal : build TowerWood, level 0).
+waitlog build TowerWood at
+waitlog Construction: slot 1 finished TowerWood
+hol.Camera.FocusNear 14800 0
+frames 30
+capture ai_tower_easy_built
+note 2. La Tour de guet en bois que l'IA Facile a posee et achevee elle-meme, pres de son forum.
+hol.Test.Sanity
+hol.HUD.Report
