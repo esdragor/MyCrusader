@@ -111,47 +111,64 @@ namespace HOLArtChecks
 	// The triangle budget of a mesh from its folder: a unit's under /Art/Units/, a building's otherwise.
 	int TriangleBudget(FString PathName)
 	{
-		return 0; // AR2-b stub (red first)
+		return PathName.Contains("/Art/Units/") ? MaxUnitTriangles : MaxBuildingTriangles;
 	}
 
 	// Projectile / MuzzleSmoke of a DA_Art: empty is fine (a melee unit), set must load and be a StaticMesh.
 	FHOLArtCheck CheckShotField(FString Field, bool bSet, bool bLoaded, bool bStaticMesh)
 	{
-		return Make(true, Field); // AR2-b stub (red first)
+		if (!bSet)
+			return Make(true, Field + ": empty, no shot asset");
+		if (!bLoaded)
+			return Make(false, Field + ": set but does not load");
+		return Make(bStaticMesh, Field + (bStaticMesh ? ": a StaticMesh" : ": loads but is not a StaticMesh"));
 	}
 
 	// A projectile or a smoke is spawned at the muzzle: its pivot (0, 0, 0) must sit inside its bounds.
 	FHOLArtCheck CheckShotPivot(FString Field, FVector BoundsMin, FVector BoundsMax)
 	{
-		return Make(true, Field); // AR2-b stub (red first)
+		const float Tol = PivotToleranceCm;
+		const bool bInside = BoundsMin.X <= Tol && BoundsMin.Y <= Tol && BoundsMin.Z <= Tol
+			&& BoundsMax.X >= -Tol && BoundsMax.Y >= -Tol && BoundsMax.Z >= -Tol;
+		return Make(bInside, Field + " pivot inside its bounds " + BoundsMin.ToString() + " .. " + BoundsMax.ToString());
 	}
 
 	// The type of an asset from its folder: /Game/Art/<Family>/<Type>[/...] (None outside that layout).
 	FName TypeFromArtPath(FString PackagePath)
 	{
-		return NAME_None; // AR2-b stub (red first)
+		const FString Padded = PackagePath + "/";
+		if (!Padded.StartsWith(ArtRoot))
+			return NAME_None;
+		// Game / Art / <Family> / <Type> [/ ...]
+		TArray<FString> Parts;
+		Padded.ParseIntoArray(Parts, "/", true);
+		if (Parts.Num() < 4)
+			return NAME_None;
+		return FName(Parts[3]);
 	}
 
 	// An animation plays on the skeleton of its type's SkinnedMesh (MeshSkeleton empty: no DA_Art or no SkinnedMesh).
 	FHOLArtCheck CheckSkeleton(FString AnimSkeleton, FString MeshSkeleton)
 	{
-		return Make(true, AnimSkeleton); // AR2-b stub (red first)
+		if (MeshSkeleton.IsEmpty())
+			return Make(false, "skeleton " + AnimSkeleton + ": no SkinnedMesh in the type's DA_Art to compare with");
+		return Make(AnimSkeleton == MeshSkeleton, "skeleton " + AnimSkeleton + " is the SkinnedMesh's " + MeshSkeleton);
 	}
 
 	FHOLArtCheck CheckAnimLength(float Seconds)
 	{
-		return Make(true, "length"); // AR2-b stub (red first)
+		return Make(Seconds > 0.f && Seconds <= MaxAnimSeconds, "length " + Seconds + " s (0 to " + MaxAnimSeconds + ")");
 	}
 
 	FHOLArtCheck CheckAnimFrames(int Frames)
 	{
-		return Make(true, "frames"); // AR2-b stub (red first)
+		return Make(Frames >= MinAnimFrames, "frames: " + Frames + " (at least " + MinAnimFrames + ")");
 	}
 
 	// "See in the Workshop": the console line to type in a running Plain match.
 	FString TryCommand(FName TypeName)
 	{
-		return ""; // AR2-b stub (red first)
+		return "hol.Art.Try " + TypeName.ToString() + " 1";
 	}
 
 	bool AllPass(const TArray<FHOLArtCheck>& Checks)
