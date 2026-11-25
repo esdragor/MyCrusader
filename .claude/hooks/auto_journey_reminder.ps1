@@ -17,7 +17,7 @@ if (Test-Path $checklist) {
 
 $text = @"
 RAPPEL AUTO_JOURNEY (hook du projet, lecon L19-1 du 2026-11-20) :
-1. Lire $checklist EN ENTIER apres le nettoyage 0a et AVANT le premier lancement d'agent de travail ; ecrire dans Auto_Journey_Jour.md la ligne 'check-list lue ($last)'.
+1. NE PAS lire $checklist toi-meme : l'agent de l'etape 0 la lit EN ENTIER (apres le nettoyage 0a, AVANT le premier agent de travail) et te rend 30 lignes ; la principale lit Auto_Journey_Resume.md (40 lignes) au lieu d'Auto_Journey.md ; ecrire dans Auto_Journey_Jour.md la ligne 'check-list lue par ETAPE0 ($last)'.
 2. La session principale est le CHEF D'ORCHESTRE : elle lance les agents, lit leurs rapports de 10 lignes, tient le tableau des agents, lance build.ps1 / quick_check en UNE commande d'arriere-plan et avance main.
 3. Tout le reste va a un SOUS-AGENT : correction d'une erreur de compilation vue a l'integration, diagnostic d'un rouge, retouche d'un outil ou d'un scenario, pre-vols et lecture des PNG, fiches E et Q, en-tete des Retours, enregistrement des reponses.
 4. Chemins ABSOLUS pour toute ecriture [IO.File] (le repertoire du processus est la copie principale).
