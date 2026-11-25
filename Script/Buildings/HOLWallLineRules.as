@@ -15,6 +15,8 @@ const FConsoleVariable CVar_WallMaxLineCells("hol.Wall.MaxLineCells", 0);
 const FConsoleVariable CVar_WallSubDivision("hol.Wall.SubDivision", 1);
 // D898 G7 (Q-mur-diagonale.md, not answered): 1 (the default) = a diagonal line of sub-cells gets a filler piece at each corner so no unit slips between two corner-touching pieces; 0 = the bare diagonal.
 const FConsoleVariable CVar_WallDiagonalFill("hol.Wall.DiagonalFill", 1);
+// D915 (fine grid, wall price): the share of the 4 m tile price paid per 1 m sub-cell (25 = a quarter: a 20 m palisade = 25 Wood), the rounding is up on the total of the line. 100 = the full price per sub-cell.
+const FConsoleVariable CVar_WallSubCellCostPercent("hol.Wall.SubCellCostPercent", 25);
 
 namespace HOLWallLine
 {
@@ -82,10 +84,22 @@ namespace HOLWallLine
 	}
 
 	// D915 (fine grid, wall price): the total price of a line of sub-cells. PricePerTile is the price of one 4 m tile (palisade 5 Wood), Percent the share paid per sub-cell (hol.Wall.SubCellCostPercent, 25 = a quarter).
-	// STUB (red first): the old full price per cell.
+	// The percentage rounds UP on the TOTAL of the line (not per sub-cell): 10 sub-cells at 5 Wood and 25 percent = 12.5 -> 13. Holes are not in Plan.Cells, so they are not paid (D901).
 	int CostOfLine(const FHOLWallLinePlan& Plan, int PricePerTile, int Percent)
 	{
-		return Plan.Cells.Num() * PricePerTile;
+		if (Percent <= 0 || PricePerTile <= 0)
+			return 0;
+		const int Total = Plan.Cells.Num() * PricePerTile * Percent;
+		return (Total + 99) / 100;
+	}
+
+	// The percent of the tile price paid per cell: hol.Wall.SubCellCostPercent (default 25) on the fine grid, 100 on the 4 m grid (a cell is a whole tile). The server reads it for ServerPlaceWallLine.
+	int LinePercent()
+	{
+		if (SubDivision() <= 1)
+			return 100;
+		const int Value = CVar_WallSubCellCostPercent.GetInt();
+		return Value < 0 ? 0 : Value;
 	}
 
 	// ---- Server validation of a line (F4): the same Cells rule, then the refusals. Too long and out of the map: all or nothing, no cell is laid. Occupied (D901): the occupied cells are skipped, the others are laid.
