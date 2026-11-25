@@ -62,6 +62,13 @@ void UHOLArtVisual::ApplyTo(FHOLUnitTypeConstants& Constants) const
 	Set(bOverrideBuildPlayRate, Constants.BuildPlayRate, BuildPlayRate);
 	Set(bOverrideGatherPlayRate, Constants.GatherPlayRate, GatherPlayRate);
 	Set(bOverrideCarryWalkPlayRate, Constants.CarryWalkPlayRate, CarryWalkPlayRate);
+	Set(bOverrideGatherSequences, Constants.GatherSequences, GatherSequences);
+	Set(bOverrideCarryWalkSequences, Constants.CarryWalkSequences, CarryWalkSequences);
+	Set(bOverrideCarryIdleSequences, Constants.CarryIdleSequences, CarryIdleSequences);
+	Set(bOverrideGatherProps, Constants.GatherProps, GatherProps);
+	Set(bOverrideCarryProps, Constants.CarryProps, CarryProps);
+	Set(bOverrideBuildProp, Constants.BuildProp, BuildProp);
+	Set(bOverrideAttackProp, Constants.AttackProp, AttackProp);
 }
 
 void UHOLArtVisualRegistry::Initialize(FSubsystemCollectionBase& Collection)

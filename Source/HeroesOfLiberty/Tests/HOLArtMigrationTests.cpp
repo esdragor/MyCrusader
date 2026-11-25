@@ -77,6 +77,14 @@ namespace UE::HeroesOfLiberty::Tests::ArtMigration
 		Out.BuildPlayRate = Empty.BuildPlayRate;
 		Out.AttackSequence = Empty.AttackSequence;
 		Out.FallSequence = Empty.FallSequence;
+		// AR0-d2: the sequences by resource and the props move to the asset too.
+		Out.GatherSequences = Empty.GatherSequences;
+		Out.CarryWalkSequences = Empty.CarryWalkSequences;
+		Out.CarryIdleSequences = Empty.CarryIdleSequences;
+		Out.GatherProps = Empty.GatherProps;
+		Out.CarryProps = Empty.CarryProps;
+		Out.BuildProp = Empty.BuildProp;
+		Out.AttackProp = Empty.AttackProp;
 		Out.Projectile = Empty.Projectile;
 		Out.MuzzleSmoke = Empty.MuzzleSmoke;
 		return Out;

@@ -106,7 +106,7 @@ struct HEROESOFLIBERTY_API FHOLAttackBonus
  * one, or walking with a load of it. INDEX_NONE (-1): none, the unit plays its idle or walk instead. Written
  * "(Food=4,Wood=2,Stone=3,Gold=3)" in the table, like GatherRates.
  */
-USTRUCT()
+USTRUCT(BlueprintType)
 struct HEROESOFLIBERTY_API FHOLResourceSequences
 {
 	GENERATED_BODY()
@@ -152,7 +152,7 @@ struct HEROESOFLIBERTY_API FHOLResourceSequences
  * of gold, 7 hammer (the builder's, BuildProp), 8 knife (the Peasant's strike, AttackProp). 0: none. At most MaxId: a vertex of the mesh names the props it belongs to by the bits of one byte. Written
  * "(Food=3,Wood=4,Stone=5,Gold=6)" in the table, like GatherRates.
  */
-USTRUCT()
+USTRUCT(BlueprintType)
 struct HEROESOFLIBERTY_API FHOLResourceProps
 {
 	GENERATED_BODY()
