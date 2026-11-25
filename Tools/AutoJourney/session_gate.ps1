@@ -262,6 +262,14 @@ if ($Phase -eq 'Report') {
     }
   }}
 
+# L28-4 (SAURON-1125ma) : le rapport de l'agent (Docs\Rapports\<AGENT>.md) et sa ligne d'EtapeDefini doivent exister, sinon FAIL (l'agent suivant commencerait par le rattrapage)
+if ($Phase -eq 'Report' -and $AgentName) {
+  $l284Rap = Join-Path $Main ('Docs\Rapports\' + $AgentName + '.md')
+  if ((Test-Path $l284Rap) -and (Get-Item $l284Rap).Length -gt 0) { Say 'PASS' "L28-4 : rapport present : $l284Rap" } else { Say 'FAIL' "L28-4 : rapport absent ou vide : $l284Rap (ecrire les 13 champs de agent_rules.md)" }
+  $l284Etape = if ($EtapeFile) { $EtapeFile } else { Join-Path $Main 'EtapeDefini.md' }
+  $l284Hit = if (Test-Path $l284Etape) { @(Get-Content $l284Etape -Encoding UTF8 | Where-Object { $_ -match ('(?i)' + [regex]::Escape($AgentName)) }) } else { @() }
+  if ($l284Hit.Count -gt 0) { Say 'PASS' "L28-4 : ligne EtapeDefini de $AgentName presente" } else { Say 'FAIL' "L28-4 : aucune ligne EtapeDefini pour $AgentName dans $l284Etape (ajouter la ligne avant le rapport)" }
+}
 if ($Phase -eq 'Merge') {
   # L9-5 : des docs non commites de la copie principale ont bloque l'avance rapide deux fois ; du CODE modifie dans la copie principale ne doit jamais s'y trouver
   $mr = if ($MainRoot) { $MainRoot } else { $Main }
