@@ -339,6 +339,13 @@ struct HEROESOFLIBERTY_API FHOLGatherFragment : public FMassFragment
 	/** Walks to its source in a row whose path ended short of the spot (out of reach: shut in by buildings, J6b.2). */
 	uint8 UnreachableWalks = 0;
 
+	/**
+	 * Times in a row it was pushed off its spot after arriving on it (Gathering -> ToSource, D292), none gathered since
+	 * (BUG-ai_peasant-spin): an arrival that succeeds resets Misses and UnreachableWalks, so a full massif's ring of
+	 * Peasants pushing each other made it walk round the source for ever. At 3: another spot, else it stands idle.
+	 */
+	uint8 PushedBacks = 0;
+
 	/** The walk to Spot is asked for (it starts at the next step, through the order queue). */
 	bool bWalkIssued = false;
 

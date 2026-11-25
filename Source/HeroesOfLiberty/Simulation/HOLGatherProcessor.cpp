@@ -601,6 +601,25 @@ void UHOLGatherProcessor::Advance(const FStepContext& Step, FGatherer& Gatherer)
 			// Pushed away by a passer-by (D292): back to its spot.
 			Gather.Phase = EHOLGatherPhase::ToSource;
 			Gather.bWalkIssued = false;
+			// Pushed back again and again without a single unit gathered (BUG-ai_peasant-spin): the arrivals that succeed
+			// reset Misses, so count the pushes themselves; as for the missed arrivals, another spot of its massif, else it
+			// stands before the source as an idle worker.
+			if (++Gather.PushedBacks >= MaxSourceMisses)
+			{
+				Gather.PushedBacks = 0;
+				FVector Spot;
+				const int32 Other = FindMassifSpot(Step, Gatherer, Gather.SourceIndex, Spot);
+				if (Other != INDEX_NONE)
+				{
+					Gather.SourceIndex = Other;
+					Gather.Spot = Spot;
+					Gather.Misses = 0;
+					return;
+				}
+				Gather.Misses = 0;
+				++Counters.NoSpotStops;
+				StandBeforeSource(Step, Gatherer, *Source);
+			}
 			return;
 		}
 		// Its type's rate (IA1.2: a farm field's RateScale; 1 for the map's sources), and an endless one never runs out.
@@ -616,6 +635,7 @@ void UHOLGatherProcessor::Advance(const FStepContext& Step, FGatherer& Gatherer)
 		{
 			// The registry's own count (it leaves the map at 0); Source is changed in place.
 			Step.Sources->Take(Gather.SourceIndex, Taken);
+			Gather.PushedBacks = 0;
 		}
 		if (Lost > 0 && LogDeposits != 0)
 		{
@@ -879,6 +899,7 @@ void UHOLGatherProcessor::OnSourceGone(const FStepContext& Step, FGatherer& Gath
 	FHOLGatherFragment& Gather = Gatherer.Gather;
 	Gather.bWalkIssued = false;
 	Gather.Misses = 0;
+	Gather.PushedBacks = 0;
 	// The nearest source of its massif with a free spot, from the used-up one outward (a tree felled: the nearest free tree
 	// of the wood), else of a nearby grove (D309 point 6), claimed until its walk there, its spot found again then (D309).
 	// The source's resource: it may still carry another one (D306).
@@ -1115,6 +1136,7 @@ void UHOLGatherProcessor::Stop(FGatherer& Gatherer)
 	Gatherer.Gather.bWalkIssued = false;
 	Gatherer.Gather.Misses = 0;
 	Gatherer.Gather.UnreachableWalks = 0;
+	Gatherer.Gather.PushedBacks = 0;
 }
 
 void UHOLGatherProcessor::IssueWalk(const FStepContext& Step, FGatherer& Gatherer, const FVector& Spot)
