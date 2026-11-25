@@ -133,7 +133,7 @@ def write_asset_animations(asset, problems):
     type_name = str(asset.get_editor_property("type_name"))
     written = 0
     for state, number_field, reference_field in STATES:
-        if not asset.get_editor_property("b_override_" + number_field):
+        if not asset.get_editor_property("override_" + number_field):
             continue
         if not is_unset(asset.get_editor_property(reference_field)):
             continue
@@ -142,7 +142,7 @@ def write_asset_animations(asset, problems):
             asset.set_editor_property(reference_field, animation)
             written += 1
     for state, numbers_field, references_field in RESOURCE_SETS:
-        if not asset.get_editor_property("b_override_" + numbers_field):
+        if not asset.get_editor_property("override_" + numbers_field):
             continue
         numbers = asset.get_editor_property(numbers_field)
         references = asset.get_editor_property(references_field)
