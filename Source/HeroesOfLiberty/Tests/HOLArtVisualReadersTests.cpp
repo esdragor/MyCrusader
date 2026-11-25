@@ -107,6 +107,35 @@ bool FHOLArtVisualArrowsTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLArtVisualArrowsFactionTest, "HeroesOfLiberty.Art.Visual.ArrowsReadShooterFactionFirst", UE::HeroesOfLiberty::Tests::ArtVisualReaders::Flags)
+
+bool FHOLArtVisualArrowsFactionTest::RunTest(const FString& Parameters)
+{
+	// AR0-a3: the shooter's faction variant (DA_Art_<Type>_<Faction>) first, the common asset for another faction.
+	using namespace UE::HeroesOfLiberty::Tests::ArtVisualReaders;
+	FReadersWorld Game;
+	UHOLArrowSubsystem* Display = Game.World->GetSubsystem<UHOLArrowSubsystem>();
+	const UStaticMesh* Cone = Cast<UStaticMesh>(ConeMesh.TryLoad());
+	const UStaticMesh* Cube = Cast<UStaticMesh>(CubeMesh.TryLoad());
+	const UStaticMesh* Sphere = Cast<UStaticMesh>(SphereMesh.TryLoad());
+	if (!TestNotNull(TEXT("arrow display in a game world"), Display) || !TestNotNull(TEXT("engine cone"), Cone) || !TestNotNull(TEXT("engine cube"), Cube) || !TestNotNull(TEXT("engine sphere"), Sphere))
+	{
+		return false;
+	}
+	UHOLArtVisual* Common = MakeAsset(Archer, NAME_None, TEXT("DA_Art_Archer"));
+	Common->Projectile = ConeMesh;
+	Common->MuzzleSmoke = ConeMesh;
+	UHOLArtVisual* Own = MakeAsset(Archer, Legions, TEXT("DA_Art_Archer_Legions"));
+	Own->Projectile = SphereMesh;
+	Own->MuzzleSmoke = CubeMesh;
+
+	TestTrue(TEXT("a Legions Archer shoots his faction's projectile"), Display->GetProjectileMesh(Archer, Legions) == Sphere);
+	TestTrue(TEXT("a Legions Archer's muzzle smoke is his faction's"), Display->GetMuzzleSmokeMesh(Archer, Legions) == Cube);
+	TestTrue(TEXT("an Archer of another faction shoots the common projectile"), Display->GetProjectileMesh(Archer, TEXT("Dawn")) == Cone);
+	TestTrue(TEXT("an Archer of no faction: the common muzzle smoke"), Display->GetMuzzleSmokeMesh(Archer) == Cone);
+	return true;
+}
+
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLArtVisualBuildingMeshTest, "HeroesOfLiberty.Art.Visual.BuildingMeshFactionThenCommonThenCsv", UE::HeroesOfLiberty::Tests::ArtVisualReaders::Flags)
 
 bool FHOLArtVisualBuildingMeshTest::RunTest(const FString& Parameters)

@@ -24,7 +24,7 @@ namespace HOLGarrisonFrameRules
 
 	// The icon of a unit type (D874: the occupant's button shows the type's icon, Q-garrison-portrait A). The texture is looked up by this path; no unit
 	// icon is drawn yet (Placeholders.txt), so the button then falls back to the label. Empty for an unknown type (empty key).
-	FString UnitIconPath(const FString& TypeKey)
+	FString UnitIconPath(const FString& TypeKey, const FString& FactionKey = "")
 	{
 		if (TypeKey == "")
 			return "";
@@ -43,7 +43,7 @@ namespace HOLGarrisonFrameRules
 
 	// The buttons of a view: one per portrait, in order. OccupantTypes is parallel to the view's occupants (FHOLBuildingSelView.GarrisonOccupantTypes);
 	// a type missing or empty (this machine does not know the unit) gives no icon path and the unit id as label.
-	TArray<FHOLGarrisonButtonView> ButtonsFor(const FHOLGarrisonView& View, const TArray<FString>& OccupantTypes)
+	TArray<FHOLGarrisonButtonView> ButtonsFor(const FHOLGarrisonView& View, const TArray<FString>& OccupantTypes, const FString& OwnerFaction = "")
 	{
 		TArray<FHOLGarrisonButtonView> Buttons;
 		for (int Index = 0; Index < View.PortraitUnitIds.Num(); Index++)

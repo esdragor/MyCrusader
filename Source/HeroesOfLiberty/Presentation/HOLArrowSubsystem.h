@@ -63,11 +63,14 @@ public:
 	 */
 	void NoteHealthDrop(const FMassEntityHandle& Target);
 
-	/** The mesh drawn for a shot of this unit type (AR9): its row's Projectile, else SM_Arrow; null if neither loads. */
-	UStaticMesh* GetProjectileMesh(FName ShooterType);
+	/**
+	 * The mesh drawn for a shot of this unit type (AR9): its art asset's Projectile (AR0-a3: DA_Art_<Type>_<Faction> of the
+	 * shooter's faction, then DA_Art_<Type>), else its row's Projectile, else SM_Arrow; null if none loads.
+	 */
+	UStaticMesh* GetProjectileMesh(FName ShooterType, FName ShooterFaction = NAME_None);
 
-	/** The puff drawn at the muzzle at a shot of this unit type: its row's MuzzleSmoke (the Arquebusier's); null when empty. */
-	UStaticMesh* GetMuzzleSmokeMesh(FName ShooterType);
+	/** The puff drawn at the muzzle at a shot of this unit type: its art asset's (faction, then common), else its row's MuzzleSmoke (the Arquebusier's); null when empty. */
+	UStaticMesh* GetMuzzleSmokeMesh(FName ShooterType, FName ShooterFaction = NAME_None);
 
 	/**
 	 * Where a puff appears, from the shooter's ground position: MuzzleForward cm ahead of him (toward his target) and

@@ -81,7 +81,7 @@ TStatId UHOLArrowSubsystem::GetStatId() const
 	RETURN_QUICK_DECLARE_CYCLE_STAT(UHOLArrowSubsystem, STATGROUP_Tickables);
 }
 
-UStaticMesh* UHOLArrowSubsystem::GetProjectileMesh(const FName ShooterType)
+UStaticMesh* UHOLArrowSubsystem::GetProjectileMesh(const FName ShooterType, const FName ShooterFaction)
 {
 	// The shooter type's Projectile column (AR9); the arrow when it is empty or the type unknown.
 	const UHOLSimulationSettings* Settings = GetDefault<UHOLSimulationSettings>();
@@ -99,7 +99,7 @@ UStaticMesh* UHOLArrowSubsystem::GetProjectileMesh(const FName ShooterType)
 	return LoadObject<UStaticMesh>(nullptr, ArrowMeshPath);
 }
 
-UStaticMesh* UHOLArrowSubsystem::GetMuzzleSmokeMesh(const FName ShooterType)
+UStaticMesh* UHOLArrowSubsystem::GetMuzzleSmokeMesh(const FName ShooterType, const FName ShooterFaction)
 {
 	const UHOLSimulationSettings* Settings = GetDefault<UHOLSimulationSettings>();
 	const UDataTable* UnitTypes = Settings ? Settings->UnitTypesTable.LoadSynchronous() : nullptr;
