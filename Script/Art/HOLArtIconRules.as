@@ -73,6 +73,15 @@ namespace HOLArtIconRules
 		return Head + TypeName.ToString() + ".png";
 	}
 
+	// AR5-b: a unit's bounds from its REAL mesh (the type's DA_Art first, then the UnitTypes row; skinned mesh before the static
+	// one, as drawn by Mass) times its MeshScale (DA_Art override, then the row). False when the type has no mesh.
+	bool UnitBounds(FName TypeName, double& OutHeight, double& OutRadius)
+	{
+		OutHeight = 180.0;
+		OutRadius = 40.0;
+		return false;
+	}
+
 	// Fixed angle and field for the family; the distance makes the bounds (Height tall, Radius wide) fill the frame.
 	FHOLArtIconShot Shot(const FString& Family, double Height, double Radius)
 	{

@@ -73,3 +73,80 @@ void Test_ArtIconShotSameFramingPerFamilyScaledByHeight(FUnitTest& T)
 	const FHOLArtIconShot UnitB = HOLArtIconRules::Shot("Units", 180.0, 40.0);
 	T.AssertTrue(UnitA.Distance > 0.0 && UnitA.CameraOffset.Equals(UnitB.CameraOffset, 0.01), "two units of the same bounds get the same frame");
 }
+
+// AR5-b: the top of a unit type's real mesh as Mass draws it, read here straight from the assets (DA_Art_<Type> under
+// /Game/Art/Units/<Type>/, then the UnitTypes row): skinned mesh first, then the static one, box top x MeshScale. -1 = no mesh.
+double ArtIconRealUnitTop(FName TypeName)
+{
+	UDataTable Table = Cast<UDataTable>(LoadObject(nullptr, "/Game/Units/UnitTypes.UnitTypes"));
+	if (Table == nullptr)
+		return -1.0;
+	TArray<FName> Names;
+	Table.GetRowNames(Names);
+	const int Row = Names.FindIndex(TypeName);
+	if (Row < 0)
+		return -1.0;
+	// The row may have lost its visual columns (AR0-d2 moves them to the DA_Art): a missing column reads empty.
+	TArray<FString> SkinnedColumn = Table.GetColumnAsString(n"SkinnedMesh");
+	TArray<FString> MeshColumn = Table.GetColumnAsString(n"Mesh");
+	TArray<FString> ScaleColumn = Table.GetColumnAsString(n"MeshScale");
+	FString Skinned = Row < SkinnedColumn.Num() ? SkinnedColumn[Row] : "";
+	FString Static = Row < MeshColumn.Num() ? MeshColumn[Row] : "";
+	double Scale = Row < ScaleColumn.Num() ? String::Conv_StringToDouble(ScaleColumn[Row]) : 1.0;
+	const FString Type = TypeName.ToString();
+	UHOLArtVisual Art = Cast<UHOLArtVisual>(LoadObject(nullptr, f"/Game/Art/Units/{Type}/DA_Art_{Type}.DA_Art_{Type}"));
+	if (Art != nullptr)
+	{
+		if (!Art.SkinnedMesh.IsNull())
+			Skinned = Art.SkinnedMesh.ToString();
+		if (!Art.Mesh.IsNull())
+			Static = Art.Mesh.ToString();
+		if (Art.bOverrideMeshScale)
+			Scale = Art.MeshScale;
+	}
+	USkeletalMesh Body = Skinned.IsEmpty() || Skinned == "None" ? nullptr : Cast<USkeletalMesh>(LoadObject(nullptr, Skinned));
+	if (Body != nullptr)
+	{
+		const FBoxSphereBounds Bounds = Body.GetBounds();
+		return (Bounds.Origin.Z + Bounds.BoxExtent.Z) * Scale;
+	}
+	UStaticMesh Mesh = Static.IsEmpty() || Static == "None" ? nullptr : Cast<UStaticMesh>(LoadObject(nullptr, Static));
+	if (Mesh == nullptr)
+		return -1.0;
+	return Mesh.GetBoundingBox().Max.Z * Scale;
+}
+
+void Test_ArtIconUnitFramedFromItsRealMesh(FUnitTest& T)
+{
+	// Arquebusier: the bounds height is the top of its real mesh (AR5-a cut its head with a fixed 180 cm).
+	double Height = 0.0;
+	double Radius = 0.0;
+	const bool bFound = HOLArtIconRules::UnitBounds(n"Arquebusier", Height, Radius);
+	const double Top = ArtIconRealUnitTop(n"Arquebusier");
+	T.AssertTrue(bFound && Top > 0.0 && Math::Abs(Height - Top) <= Top * 0.01 + 0.5 && Radius > 0.0,
+		f"Arquebusier: bounds height {Height} = real mesh top {Top} (found {bFound}, radius {Radius})");
+
+	// Every unit type with a mesh: head (real top) and feet inside the field of the shot made from UnitBounds.
+	UDataTable Table = Cast<UDataTable>(LoadObject(nullptr, "/Game/Units/UnitTypes.UnitTypes"));
+	TArray<FName> Names;
+	if (Table != nullptr)
+		Table.GetRowNames(Names);
+	int Checked = 0;
+	for (FName Type : Names)
+	{
+		const double RealTop = ArtIconRealUnitTop(Type);
+		if (RealTop <= 0.0)
+			continue;
+		double H = 0.0;
+		double R = 0.0;
+		HOLArtIconRules::UnitBounds(Type, H, R);
+		const FHOLArtIconShot Shot = HOLArtIconRules::Shot("Units", H, R);
+		const double Half = Math::Cos(Math::DegreesToRadians(Shot.FieldOfView * 0.5));
+		const double Head = ArtIconCosTo(Shot, FVector(0.0, 0.0, RealTop));
+		const double Feet = ArtIconCosTo(Shot, FVector(0.0, 0.0, 0.0));
+		T.AssertTrue(Head > Half && Feet > Half && Math::Abs(H - RealTop) <= RealTop * 0.01 + 0.5,
+			f"{Type.ToString()}: head z={RealTop} (cos {Head}) and feet (cos {Feet}) in field (cos {Half}), bounds height {H}");
+		Checked += 1;
+	}
+	T.AssertTrue(Checked > 0, f"at least one unit type has a real mesh ({Checked} checked)");
+}
