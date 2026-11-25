@@ -13,9 +13,14 @@ shadow (set on the component, D258).
 Run (no window):
   UnrealEditor-Cmd.exe <project> -run=pythonscript -script="<this file> [--bolt]" -unattended -nullrhi -nosplash -nosound
 """
+import os
 import sys
 
 import unreal
+
+sys.dont_write_bytecode = True  # no __pycache__ in Tools/Editor
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import art_visual_io  # noqa: E402  (AR0-d2 3b: the shared writer of the DA_Art fields)
 
 BOLT = "--bolt" in sys.argv[1:]
 BULLET = "--bullet" in sys.argv[1:]
@@ -23,6 +28,13 @@ SMOKE = "--smoke" in sys.argv[1:]
 FOLDER = "/Game/Units/Props"
 TARGET_PATH = FOLDER + ("/SM_PowderSmoke" if SMOKE else "/SM_Bullet" if BULLET else "/SM_Bolt" if BOLT else "/SM_Arrow")
 PARENT = "/Game/Rendering/M_MatteColor"
+# The art assets that draw this mesh (D925): type -> DA_Art field (formerly the Projectile / MuzzleSmoke columns).
+ART_FIELDS = {
+    FOLDER + "/SM_Arrow": [("Archer", "Projectile")],
+    FOLDER + "/SM_Bolt": [("Crossbowman", "Projectile"), ("PaviseCrossbowman", "Projectile")],
+    FOLDER + "/SM_Bullet": [("Arquebusier", "Projectile")],
+    FOLDER + "/SM_PowderSmoke": [("Arquebusier", "MuzzleSmoke")],
+}
 LENGTH = 35.0 if BOLT else 78.0
 COLORS = {"MI_ArrowWood": (0.42, 0.27, 0.13), "MI_ArrowIron": (0.30, 0.30, 0.32), "MI_ArrowFeather": (0.89, 0.87, 0.82)}
 if BULLET:
@@ -121,3 +133,7 @@ unreal.EditorAssetLibrary.save_loaded_asset(static_mesh)
 bounds = static_mesh.get_bounding_box()
 unreal.log("%s mesh created at %s (%d triangles, bounds %s to %s)" % ("Smoke" if SMOKE else "Bullet" if BULLET else "Bolt" if BOLT else "Arrow", TARGET_PATH,
            static_mesh.get_num_triangles(0), bounds.min, bounds.max))
+
+# AR0-d2 (3b, D925): the mesh goes into the art asset of every type that draws it (DA_Art_<Type>), never into a CSV.
+for type_name, field in ART_FIELDS[TARGET_PATH]:
+    art_visual_io.set_art_field("Units", type_name, field, TARGET_PATH + "." + TARGET_PATH.rsplit("/", 1)[1])
