@@ -92,6 +92,15 @@ check-list lue (L28) à 09:50 après le nettoyage 0a (commits f14ace8, 4865afe, 
 | DOCS-1125md | HeroesOfLiberty-Sauron | tools-l288-1125m | - | Bilan de seance 2026-11-25 matin dans Auto_Journey_Jour.md : bilan, ### Lecons appliquees 2026-11-25, ligne version launcher (L27-12), Retours a jour (plafond 6 essais), file cochee | sans C++ |
 | ARWEN-1125mh | HeroesOfLiberty-Arwen | spec-voie-1125m | - | Cloture : 4 fichiers suivis non commites (D902 de ARWEN-1125mg arrete) : les lire, commit WIP sur spec-voie-1125m, merge main | sans C++ |
 | SAURON-1125mf | HeroesOfLiberty-Sauron | tools-l288-1125m | - | Cloture : merge main dans tools-l288-1125m, resoudre le conflit gate_test.ps1 (garder les deux cas), extrait L28-8 PASS | sans C++ |
+| RECETTE-1125mb | HeroesOfLiberty-Glorfindel | grid-g5a-1125m | - | Recette sur main : faction_aim_free, monk_seal, sacred_light_heal (grille en script) | sans C++ |
+| RECETTE-1125mc | HeroesOfLiberty-Celeborn | walls-g8-1125m | - | Recette sur main : wall_line_long, wall_fine_ghost, wall_line_skip | sans C++ |
+| RECETTE-1125md | HeroesOfLiberty-Faramir | ai-tower-1125m | - | Recette sur main : tower_wood, morale_look, specialization_slot, deploy_far | sans C++ |
+| CELEBORN-1125mh | HeroesOfLiberty-Celeborn | recette-1125mc | - | wall_line_long FAIL recette : ligne sous le MainCentre, 5 fondations au lieu de 9 | sans C++ |
+| ELROND-1125mf | HeroesOfLiberty-Elrond | grid-banner-1125m | - | wall_fine_ghost FAIL : fondation ~4 m pour un pas de 1 m (empreinte C++ grille fine) | C++ : raison dite dans la tache |
+| FARAMIR-1125mg | HeroesOfLiberty-Faramir | recette-1125md | - | tower_wood FAIL : Lanciers gris (Shaders en preparation) sur lancers_all | sans C++ |
+| GALADRIEL-1125mf | HeroesOfLiberty-Galadriel | morale-r1-1125m | - | morale_look FAIL : mapSize absent du json, Guerrier 15 px | sans C++ |
+| HALDIR-1125me | HeroesOfLiberty-Haldir | integ-81 | - | BUG utilisateur monk_seal : le Sceau marche mais la recharge ne s'affiche pas sur la case (face G-6 / G-5b en script) | sans C++ |
+| FARAMIR-1125mh | HeroesOfLiberty-Faramir | tower-wood-shaders-1125m | - | Commande de sequence waitshaders (HOLTestSequence.cpp, FShaderCompilingManager) puis tower_wood l'utilise avant lancers_all ; lot C++ sans build | C++ : raison dite dans la tache |
 
 ## Bilan du 2026-11-25 matin
 
