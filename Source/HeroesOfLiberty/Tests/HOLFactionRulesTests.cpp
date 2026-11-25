@@ -212,7 +212,7 @@ bool FHOLFactionRealChainTest::RunTest(const FString& Parameters)
 			TestEqual(TEXT("the Legions' Spearman: what is not overridden stays the table's (health)"), LegionsSpearman->MaxHealth, BaseSpearman->MaxHealth);
 		}
 		TestTrue(TEXT("the Dawn's Spearman is the table's own row"), Test.Units->FindTypeRow(Spearman, Dawn) == BaseSpearman);
-		TestTrue(TEXT("a faction with no rows reads as the Dawn"), Test.Units->FindTypeRow(Spearman, FName(TEXT("Templars"))) == BaseSpearman);
+		TestTrue(TEXT("a faction with no rows reads as the Dawn"), Test.Units->FindTypeRow(Spearman, FName(TEXT("Unlisted"))) == BaseSpearman);
 		TestFalse(TEXT("the table's own row is untouched by the Legions'"), BaseSpearman->Cost == FixtureCost);
 
 		// The cost a player pays: the production's, by the payer's faction (slot 0 Dawn, slot 1 Legions).
