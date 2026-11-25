@@ -984,7 +984,7 @@ void UHOLCombatProcessor::ReleaseBuildingArrows(const UWorld& World, const int64
 				Launch.To = Enemy.Location;
 				Launch.Target = Enemy.Entity;
 				Launch.FlightMs = FlightMs;
-				Launch.ShooterType = NAME_None;
+				HOLArrowLaunches::SetBuildingShooter(Launch, Step.Building->GetTypeName(), Step.OwnerPlayer);
 				ArrowDisplay->Launch(Launch);
 			}
 		}
@@ -2848,6 +2848,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 						Launch.To = FVector(Aim.X, Aim.Y, Fighter.Location.Z);
 						Launch.FlightMs = FlightMs;
 						Launch.ShooterType = Constants.TypeName;
+						Launch.ShooterSlot = Fighter.State->OwnerPlayer;
 						ArrowDisplay->Launch(Launch);
 					}
 					continue;
@@ -3401,6 +3402,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 				Launch.Target = Enemy.Entity;
 				Launch.FlightMs = FlightMs;
 				Launch.ShooterType = Constants.TypeName;
+				Launch.ShooterSlot = Fighter.State->OwnerPlayer;
 				ArrowDisplay->Launch(Launch);
 			}
 			if (Combat.FirstHitStep < 0)

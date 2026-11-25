@@ -111,6 +111,14 @@ class UHOLGarrisonFrame : UObject
 		Handlers.Add(Handler);
 	}
 
+	// AR0-a4: the local player's faction (AHOLGameState::GetSlotFaction of his slot, an EHOLFaction index); -1 without a slot or a state.
+	int LocalFactionIndex()
+	{
+		AHOLGameState State = Cast<AHOLGameState>(Gameplay::GetGameState());
+		const int Slot = Screen != nullptr ? Screen.GetLocalSlot() : -1;
+		return State != nullptr && Slot >= 0 ? State.GetSlotFaction(Slot) : -1;
+	}
+
 	// The selected building's garrison, each time the selection is read: the counter, one button per occupant, the row hidden when HOLGarrisonFrameRules draws nothing.
 	void Refresh(const TArray<int>& OccupantUnitIds, const TArray<FString>& OccupantTypes, int Slots, bool bOwn, bool bFinished)
 	{
@@ -120,7 +128,10 @@ class UHOLGarrisonFrame : UObject
 		bRowShown = View.CounterText != "";
 		Row.SetVisibility(bRowShown ? ESlateVisibility::SelfHitTestInvisible : ESlateVisibility::Collapsed);
 		Counter.SetText(FText::FromString(View.CounterText));
-		ButtonViews = HOLGarrisonFrameRules::ButtonsFor(View, OccupantTypes);
+		// AR0-a4: the occupants are the building owner's units, and the row is drawn for an own building only (ViewFor): their owner is the local player,
+		// whose faction's icons (DA_Art_<Type>_<Faction>) the buttons show.
+		const FString OwnerFaction = bOwn ? HOLGarrisonFrameRules::OwnerFactionKey(LocalFactionIndex()) : "";
+		ButtonViews = HOLGarrisonFrameRules::ButtonsFor(View, OccupantTypes, OwnerFaction);
 		AllButton.SetVisibility(View.bShowUngarrisonAll ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
 		while (Buttons.Num() < View.PortraitUnitIds.Num())
 			AddPortrait();

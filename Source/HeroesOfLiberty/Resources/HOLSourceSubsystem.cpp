@@ -578,3 +578,14 @@ FString UHOLSourceSubsystem::MakeReport() const
 		bAuthority ? TEXT("server") : TEXT("client"), NumStanding, NumKnown, *FString::Join(PerType, TEXT(", ")),
 		Field ? Field->GetNumShown() : 0, Field ? Field->GetNumNavCylinders() : 0);
 }
+
+int32 UHOLSourceAddLibrary::AddNeutralSource(const UObject* WorldContextObject, const FName TypeName, const FVector Location, const int32 Amount)
+{
+	UWorld* World = GEngine ? GEngine->GetWorldFromContextObject(WorldContextObject, EGetWorldErrorMode::ReturnNull) : nullptr;
+	UHOLSourceSubsystem* Sources = World ? World->GetSubsystem<UHOLSourceSubsystem>() : nullptr;
+	if (!Sources || !Sources->HasAuthority())
+	{
+		return INDEX_NONE;
+	}
+	return Sources->AddSource(TypeName, Location, Amount < 0 ? INDEX_NONE : Amount);
+}

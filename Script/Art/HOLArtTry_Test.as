@@ -76,3 +76,36 @@ void Test_ArtTryUnknownTypeListsCloseTypes(FUnitTest& T)
 	const TArray<FString> Exact = HOLArtTry::NearTypes("peasant", Known);
 	T.AssertTrue(Exact.Num() >= 1 && Exact[0] == "Peasant", "the case-blind match comes first");
 }
+
+// AR4-b: the copies are selected one frame after their birth, never in the frame they are made.
+void Test_ArtTrySelectionWaitsOneFrame(FUnitTest& T)
+{
+	T.AssertFalse(HOLArtTry::SelectionDue(0), "not in the frame of the birth");
+	T.AssertTrue(HOLArtTry::SelectionDue(1), "the frame after the birth");
+}
+
+// AR4-b (CELEBORN-1125ar5): the selection is done only when the own selection holds every copy (the first box may find none of them).
+void Test_ArtTrySelectionWaitsForEveryCopy(FUnitTest& T)
+{
+	T.AssertFalse(HOLArtTry::SelectionDone(0, 5), "the box found none of the five copies: box again");
+	T.AssertFalse(HOLArtTry::SelectionDone(3, 5), "three of five: box again");
+	T.AssertTrue(HOLArtTry::SelectionDone(5, 5), "the five copies are selected");
+}
+
+// AR4-b: a source type (row of SourceTypes) is placeable like a unit or a building.
+void Test_ArtTryKnowsSourceTypes(FUnitTest& T)
+{
+	T.AssertEquals(HOLArtTry::KindOf("GoldVein"), "Source", "GoldVein is a source");
+	T.AssertEquals(HOLArtTry::KindOf("Tree"), "Source", "Tree is a source");
+	T.AssertEquals(HOLArtTry::KindOf("Arquebusier"), "Unit", "Arquebusier is a unit");
+	T.AssertEquals(HOLArtTry::KindOf("Arquebusir"), "", "a misspelt type is unknown");
+}
+
+// AR4-b (CELEBORN-1125ar6): the first shot of art_try is an event (log line), due when a ranged copy has an enemy within its range.
+void Test_ArtTryFirstShotDueWhenRangedCopyHasEnemyInRange(FUnitTest& T)
+{
+	T.AssertTrue(HOLArtTry::FirstShotDue(1500.0, 1), "an Arquebusier (range 15 m) with one enemy in range: the first shot");
+	T.AssertFalse(HOLArtTry::FirstShotDue(1500.0, 0), "no enemy in range: no shot yet");
+	T.AssertFalse(HOLArtTry::FirstShotDue(100.0, 1), "a melee copy in contact: no shot");
+	T.AssertTrue(HOLArtTry::FirstShotDue(HOLArtTry::RangedMinRange(), 2), "the least ranged range counts");
+}
