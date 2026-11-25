@@ -58,6 +58,7 @@ sys.path.insert(0, TOOLS_DIR)
 import anim_rig  # noqa: E402
 import peasant_props  # noqa: E402
 import soldier_props  # noqa: E402
+import art_visual_io  # noqa: E402  (AR0-d2 3b, D925: the mesh and provider go into the types' DA_Art)
 
 SOURCE_MESH = "/Game/Units/Mannequin/SKM_Mannequin_Classic"
 SOURCE_PROVIDER = "/Game/Units/Mannequin/TP_Mannequin_Classic"
@@ -67,7 +68,7 @@ PROVIDER_NAME = "TP_Peasant"
 MATERIAL_FOLDER = "/Game/Units/Materials"
 MATERIAL_NAME = "M_UnitPlayerColorProps"
 PEASANT_ANIMATIONS = "/Game/Units/Mannequin/Animations/"
-# Appended after TP_Mannequin_Classic's sequences (indices 8, 9, 10 in Tools/Data/UnitTypes.csv, CarryIdleSequences;
+# Appended after TP_Mannequin_Classic's sequences (indices 8, 9, 10 in the DA_Art CarryIdleSequences;
 # 11, BuildSequence). Add at the end only: an index that moves changes what the Peasant plays.
 PEASANT_SEQUENCES = [
     PEASANT_ANIMATIONS + "A_Peasant_IdleCarryFood",   # 8 standing with food
@@ -542,6 +543,9 @@ def make_provider(mesh, name=PROVIDER_NAME, extra=PEASANT_SEQUENCES, base_count=
         raise RuntimeError("%s read back differs: %s" % (path, ", ".join(s.get_name() for s in saved)))
     log("%s : %d sequences sur %s (%s)" % (path, len(entries), mesh.get_name(),
                                          ", ".join("%d %s" % (i, s.get_name()) for i, s in enumerate(sequences))))
+    for type_name in art_visual_io.SKINNED_TYPES.get(mesh.get_name(), ()):
+        art_visual_io.set_art_field("Units", type_name, "SkinnedMesh", mesh.get_path_name())
+        art_visual_io.set_art_field("Units", type_name, "AnimationProvider", provider.get_path_name())
     return provider
 
 
