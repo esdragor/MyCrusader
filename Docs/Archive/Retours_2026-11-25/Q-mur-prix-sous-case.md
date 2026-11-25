@@ -12,3 +12,5 @@ Options :
 Recommandation : A pour l'instant (c'est la réponse écrite D904 B, ne pas la réinterpréter sans toi) ; B si l'essai `wall_line_long` montre des murs trop chers pour un tracé de 20 à 40 m.
 
 Valeur par défaut codée : A (prix plein). Réglage : le prix par sous-case passé à `StockAfterLine` (CostPerCell) ; à brancher derrière un cvar `hol.Wall.SubCellCostPercent` (100 = prix plein, 25 = B, 6 = C) lors du branchement de la déduction dans `ServerPlaceWallLine` (HOLRpcPlayer.as:1540), une ligne à changer.
+
+Reponse: B (2026-11-25 13:0x, DOCS-1125me, GDD D915)

@@ -11,3 +11,5 @@ Options :
 Recommandation : B (le plus utile pour un coût borné).
 
 VALEUR PAR DÉFAUT CODÉE (GALADRIEL-1125md, branche morale-r1-1125m) : B, derrière `HOLUnitReplication::FHOLNetUnitState::bEffectSecondsOnWire` (`HOLUnitReplicationRules.h`, une ligne : `false` = option A, le fil revient à 16 bits sous effet). L'immunité (C) n'est pas codée. Le champ n'entre pas dans `IsSameAction` (un changement par seconde serait du trafic) : le client reçoit donc la valeur avec le prochain état envoyé, pas à chaque seconde.
+
+Reponse: B (2026-11-25 13:0x, DOCS-1125me, GDD D916)
