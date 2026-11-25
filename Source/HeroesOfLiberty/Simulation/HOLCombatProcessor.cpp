@@ -1166,6 +1166,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 				}
 			}
 			HOLHeroAbility::Tick(Combats[EntityIt].RageCooldownMs, StepMs);
+			HOLHeroAbility::Tick(Combats[EntityIt].KnightChallengeCooldownMs, StepMs);
 			if (bHeroes && States[EntityIt].CurrentHealth > 0.f && Combats[EntityIt].DeathStep < 0)
 			{
 				const FVector Location = Transforms[EntityIt].GetTransform().GetLocation();
@@ -1451,6 +1452,16 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 		return Zone > 0.0 ? FMath::Max(ContactReach, Zone) : ContactReach;
 	};
 	const bool bParallelAhead = ParallelAhead != 0 && bDenseGrid;
+	// SAURON-1125e (Dawn A7, D919): the Knights whose challenge lasts this step (usually none), listed once: a seeker beyond its search radius
+	// still takes them as candidates (AddChallengers below), in the serial search and in the one made ahead alike.
+	TArray<int32> ChallengerFighters;
+	for (int32 Index = 0; Index < Fighters.Num(); ++Index)
+	{
+		if (Fighters[Index].Combat->ChallengeEndStep > StepIndex && Fighters[Index].State->CurrentHealth > 0)
+		{
+			ChallengerFighters.Add(Index);
+		}
+	}
 	if (bDenseGrid)
 	{
 		AheadSlotOfFighter.Init(INDEX_NONE, Fighters.Num());
@@ -2139,12 +2150,13 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 			Seeker.bRipostes = Constants.bRipostes;
 			Seeker.Mode = Combat.Mode == EHOLCombatMode::Hold ? HOLCombat::ESeekMode::Hold
 				: Combat.Mode == EHOLCombatMode::AttackMove ? HOLCombat::ESeekMode::AttackMove : HOLCombat::ESeekMode::Auto;
+			Seeker.bIsHero = HOLIsHero(Constants.ArmorCategoryMask); // SAURON-1125e: a hero is not provoked by the Knight's challenge
 			const float SearchRadius = HOLCombat::GetSearchRadius(Seeker);
 			// J7c.4, S3: its target standing in reach, ChooseTarget keeps it whatever the others. With a search radius, the
 			// candidates hold it once (the grid, or the extras below: alive, of another side); ChooseTarget then does not
 			// give up at its start, and returns at it (in reach and current), the only candidate that can return early, the
 			// ones before it only ranked. So the scan is spared; it changes nothing (the candidates are the step's scratch).
-			const bool bKeepTarget = bFast && Target != INDEX_NONE && SearchRadius > 0.f
+			const bool bKeepTarget = bFast && ChallengerFighters.Num() == 0 && Target != INDEX_NONE && SearchRadius > 0.f
 				&& Fighters[Target].State->CurrentHealth > 0 && Fighters[Target].Camp != Fighter.Camp && IsSeenBy(Fighter, Fighters[Target]) && CanTouch(Fighter, Fighters[Target])
 				&& HOLCombat::IsInRange(Position, Seeker.Radius, FVector2D(Fighters[Target].Location), Fighters[Target].Constants->Radius, Seeker.AttackRange);
 			int32 NewTarget = Target;
@@ -2177,6 +2189,8 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 					Candidate.bAttacksMe = Enemy.Combat->Target == Fighter.Entity || Enemy.Entity == Combat.LastAttacker;
 					Candidate.bIsCurrentTarget = Other == Target;
 					Candidate.AttackerCount = Enemy.Combat->AttackerCount - (Other == Target ? 1 : 0);
+					// SAURON-1125a / 1125e (Dawn A7, D919): a Knight whose challenge lasts and whose zone holds the seeker (never a hero seeker).
+					Candidate.bChallengesMe = HOLCombat::IsChallengedBy(Position, Seeker.bIsHero, FVector2D(Enemy.Location), Enemy.Combat->ChallengeEndStep, Enemy.Combat->ChallengeRadiusCm, StepIndex);
 					// Counted once a step, the first time needed (a melee out of its reach only: in reach, it is hit now).
 					if (bPreferFree && !Seeker.bRanged
 						&& !HOLCombat::IsInRange(Position, Seeker.Radius, Candidate.Position, Candidate.Radius, Seeker.AttackRange))
@@ -2187,6 +2201,21 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 					if (bFast)
 					{
 						SeenStamp[Other] = SearchStamp;
+					}
+				};
+				// SAURON-1125e (Dawn A7, D919): the Knights whose challenge holds this seeker, candidates wherever they stand (beyond its search
+				// radius too, as the current target and the last attacker are), the ones already listed left as they are; before every ChooseTarget.
+				const auto AddChallengers = [&]()
+				{
+					for (const int32 Other : ChallengerFighters)
+					{
+						const FFighter& Knight = Fighters[Other];
+						if (Other != Index && Knight.Camp != Fighter.Camp && Knight.State->CurrentHealth > 0 && Seeker.bCanAttackUnits
+							&& HOLCombat::IsChallengedBy(Position, Seeker.bIsHero, FVector2D(Knight.Location), Knight.Combat->ChallengeEndStep, Knight.Combat->ChallengeRadiusCm, StepIndex)
+							&& !CandidateFighters.Contains(Other))
+						{
+							AddCandidate(Other);
+						}
 					}
 				};
 				// Perf (hol.Combat.ParallelSearch): the choice made ahead, its target and last attacker the same (the same
@@ -2236,6 +2265,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 								AddCandidate(Extra);
 							}
 						}
+						AddChallengers();
 						const int32 Best = HOLCombat::ChooseTarget(Seeker, Candidates);
 						Weighed = Best == INDEX_NONE ? INDEX_NONE : CandidateFighters[Best];
 						NewTarget = Weighed;
@@ -2314,6 +2344,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 				}
 				if (!bWeighed || ParallelSearch == 2)
 				{
+					AddChallengers();
 					const int32 Chosen = HOLCombat::ChooseTarget(Seeker, Candidates);
 					NewTarget = Chosen == INDEX_NONE ? INDEX_NONE : CandidateFighters[Chosen];
 					if (bWeighed && NewTarget != Weighed)

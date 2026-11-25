@@ -1117,6 +1117,30 @@ bool UHOLUnitSubsystem::CastRage(const uint32 UnitId, const int32 RequiredOwner)
 	return true;
 }
 
+bool UHOLUnitSubsystem::CastKnightChallenge(const uint32 UnitId, const int32 RequiredOwner, const int64 EndStep, const float RadiusCm, const int32 CooldownMs)
+{
+	static const FName KnightType(TEXT("VirtuousKnight"));
+	const FHOLUnitRecord* Record = Units.Find(UnitId);
+	UMassEntitySubsystem* EntitySubsystem = GetWorld() ? GetWorld()->GetSubsystem<UMassEntitySubsystem>() : nullptr;
+	if (!Record || Record->bDying || Record->TypeName != KnightType || !EntitySubsystem || GetWorld()->GetNetMode() == NM_Client)
+	{
+		return false;
+	}
+	FMassEntityManager& EntityManager = EntitySubsystem->GetMutableEntityManager();
+	const FHOLUnitStateFragment* State = EntityManager.GetFragmentDataPtr<FHOLUnitStateFragment>(Record->Entity);
+	FHOLCombatFragment* Combat = EntityManager.GetFragmentDataPtr<FHOLCombatFragment>(Record->Entity);
+	if (!State || !Combat || Combat->DeathStep >= 0 || State->CurrentHealth <= 0.f || (RequiredOwner != INDEX_NONE && State->OwnerPlayer != RequiredOwner)
+		|| Combat->KnightChallengeCooldownMs > 0)
+	{
+		return false;
+	}
+	Combat->ChallengeEndStep = EndStep;
+	Combat->ChallengeRadiusCm = RadiusCm;
+	Combat->KnightChallengeCooldownMs = CooldownMs;
+	UE_LOG(LogHOLSimulation, Display, TEXT("Unit ability: #%u %s challenges (until step %lld, %.0f cm)"), UnitId, *Record->TypeName.ToString(), EndStep, RadiusCm);
+	return true;
+}
+
 FMassEntityHandle UHOLUnitSubsystem::FindEntity(const uint32 UnitId) const
 {
 	const FHOLUnitRecord* Record = Units.Find(UnitId);

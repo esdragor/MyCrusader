@@ -15,6 +15,10 @@ const FConsoleVariable CVar_WallMaxLineCells("hol.Wall.MaxLineCells", 0);
 const FConsoleVariable CVar_WallSubDivision("hol.Wall.SubDivision", 1);
 // D898 G7 (Q-mur-diagonale.md, not answered): 1 (the default) = a diagonal line of sub-cells gets a filler piece at each corner so no unit slips between two corner-touching pieces; 0 = the bare diagonal.
 const FConsoleVariable CVar_WallDiagonalFill("hol.Wall.DiagonalFill", 1);
+// D898 G10 (CELEBORN-1125d, sense not decided): 1 (the default) = a gate laid by a wall drag runs along the drawn line; 0 = across it.
+const FConsoleVariable CVar_WallGateAlongLine("hol.Wall.GateAlongLine", 1);
+// D915 (fine grid, wall price): the share of the 4 m tile price paid per 1 m sub-cell (25 = a quarter: a 20 m palisade = 25 Wood), the rounding is up on the total of the line. 100 = the full price per sub-cell.
+const FConsoleVariable CVar_WallSubCellCostPercent("hol.Wall.SubCellCostPercent", 25);
 
 namespace HOLWallLine
 {
@@ -79,6 +83,25 @@ namespace HOLWallLine
 	int StockAfterLine(int Stock, const FHOLWallLinePlan& Plan, int CostPerCell)
 	{
 		return Stock - Plan.Cells.Num() * CostPerCell;
+	}
+
+	// D915 (fine grid, wall price): the total price of a line of sub-cells. PricePerTile is the price of one 4 m tile (palisade 5 Wood), Percent the share paid per sub-cell (hol.Wall.SubCellCostPercent, 25 = a quarter).
+	// The percentage rounds UP on the TOTAL of the line (not per sub-cell): 10 sub-cells at 5 Wood and 25 percent = 12.5 -> 13. Holes are not in Plan.Cells, so they are not paid (D901).
+	int CostOfLine(const FHOLWallLinePlan& Plan, int PricePerTile, int Percent)
+	{
+		if (Percent <= 0 || PricePerTile <= 0)
+			return 0;
+		const int Total = Plan.Cells.Num() * PricePerTile * Percent;
+		return (Total + 99) / 100;
+	}
+
+	// The percent of the tile price paid per cell: hol.Wall.SubCellCostPercent (default 25) on the fine grid, 100 on the 4 m grid (a cell is a whole tile). The server reads it for ServerPlaceWallLine.
+	int LinePercent()
+	{
+		if (SubDivision() <= 1)
+			return 100;
+		const int Value = CVar_WallSubCellCostPercent.GetInt();
+		return Value < 0 ? 0 : Value;
 	}
 
 	// ---- Server validation of a line (F4): the same Cells rule, then the refusals. Too long and out of the map: all or nothing, no cell is laid. Occupied (D901): the occupied cells are skipped, the others are laid.
@@ -503,6 +526,55 @@ namespace HOLWallLine
 			}
 		}
 		return Replaced;
+	}
+	// D898 G10, the pose side (CELEBORN-1125b): what ServerPlaceWallLine / ServerPlaceBuilding must retire when TypeName is laid at Point (world, pitch = tile / SubDivision): the standing palisade sub-cells
+	// of the same seat under a GATE, and nothing for any other type. The caller still needs two C++ bridges (read the standing pieces: cell, type, owner; retire one): see CELEBORN-1125b RESTE.
+	TArray<FIntPoint> GateRetiredCells(FName TypeName, FVector Point, double Pitch, int SubDivision, bool bAlongX, int GateOwner, const TArray<FIntPoint>& StandingCells, const TArray<FName>& StandingTypes, const TArray<int>& StandingOwners)
+	{
+		TArray<FIntPoint> None;
+		if (!IsGateType(TypeName))
+			return None;
+		const FIntPoint Cell = FIntPoint(CellOfCoordinate(Point.X, Pitch), CellOfCoordinate(Point.Y, Pitch));
+		return GateReplacedCells(Cell, bAlongX, SubDivision, GateOwner, StandingCells, StandingTypes, StandingOwners);
+	}
+
+	// D898 G10 (CELEBORN-1125d): the indices (into the Standing* arrays) of the buildings a gate pose must retire first: the FINISHED palisade pieces of the same seat under the gate
+	// (the sub-cells come from GateRetiredCells; OrderRemoveOwnBuilding refuses a building not finished, so those stay). Each index once.
+	TArray<int> GateRetireIndices(FName TypeName, FVector Point, double Pitch, int SubDivision, bool bAlongX, int GateOwner, const TArray<FIntPoint>& StandingCells, const TArray<FName>& StandingTypes, const TArray<int>& StandingOwners, const TArray<bool>& Finished)
+	{
+		TArray<int> Indices;
+		TArray<FIntPoint> Retired = GateRetiredCells(TypeName, Point, Pitch, SubDivision, bAlongX, GateOwner, StandingCells, StandingTypes, StandingOwners);
+		for (int RetiredIndex = 0; RetiredIndex < Retired.Num(); RetiredIndex++)
+		{
+			for (int Standing = 0; Standing < StandingCells.Num() && Standing < StandingTypes.Num() && Standing < StandingOwners.Num() && Standing < Finished.Num(); Standing++)
+			{
+				if (StandingCells[Standing].X == Retired[RetiredIndex].X && StandingCells[Standing].Y == Retired[RetiredIndex].Y && GateReplaces(StandingTypes[Standing], StandingOwners[Standing], GateOwner) && Finished[Standing] && !Indices.Contains(Standing))
+					Indices.Add(Standing);
+			}
+		}
+		return Indices;
+	}
+
+	// D898 G10 (CELEBORN-1125f): the isolated pose (ServerPlaceBuilding: one Point, no drawn line, so no direction): the buildings a gate laid at Point must retire first. The gate lies along the axis whose covered
+	// sub-cells hold the most FINISHED palisade pieces of its seat (a tie lies along X); nothing for a type that is not a gate. The same rule as GateRetireIndices (one source), the world is read by the caller.
+	TArray<int> GatePoseRetireIndices(FName TypeName, FVector Point, double Pitch, int SubDivision, int GateOwner, const TArray<FIntPoint>& StandingCells, const TArray<FName>& StandingTypes, const TArray<int>& StandingOwners, const TArray<bool>& Finished)
+	{
+		TArray<int> Best;
+		if (!IsGateType(TypeName))
+			return Best;
+		for (int Axis = 0; Axis < 2; Axis++)
+		{
+			TArray<int> Found = GateRetireIndices(TypeName, Point, Pitch, SubDivision, Axis == 0, GateOwner, StandingCells, StandingTypes, StandingOwners, Finished);
+			if (Found.Num() > Best.Num())
+				Best = Found;
+		}
+		return Best;
+	}
+	// hol.Wall.GateAlongLine (CELEBORN-1125d, default 1): the gate follows the drawn line (a drag along X lays it along X, along Y along Y); 0 = perpendicular to the line.
+	bool GateAlongX(FVector Start, FVector End)
+	{
+		const bool bDragAlongX = Math::Abs(End.X - Start.X) >= Math::Abs(End.Y - Start.Y);
+		return CVar_WallGateAlongLine.GetInt() != 0 ? bDragAlongX : !bDragAlongX;
 	}
 	// A gate lets its owner's units through (other seats meet a solid building, D691 / D867 neighbours: walls and gates are solid for the enemy).
 	bool GatePassesUnit(FName GateType, int GateOwner, int UnitOwner)

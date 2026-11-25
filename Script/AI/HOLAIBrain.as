@@ -1039,7 +1039,7 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 		return Builder;
 	}
 
-	// The Watch Tower's construction (point 7, provisional, HOLAITower::WantsTower): Normal one, Hard two (finished or under way), with a first army and an enemy
+	// The Watch Tower's construction (point 7, provisional, HOLAITower::WantsTower): Easy one, Normal one, Hard two (finished or under way), with a first army and an enemy
 	// centre; on the enemy side of the centre like the other military buildings; one Peasant sent, not one already sent to a site. Returns that Peasant (-1: none).
 	int ThinkTowerBuild(int PlayerIndex, int64 Step, const FHOLAISummary& Summary, const FHOLAIOpeningData& Data)
 	{

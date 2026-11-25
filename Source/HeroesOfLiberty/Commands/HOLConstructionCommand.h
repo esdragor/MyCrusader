@@ -34,6 +34,40 @@ struct FHOLConstructionCommand
 	 */
 	TArray<uint32> UnitIds;
 	bool bQueue = false;
+	/**
+	 * Place (D915, wall line on the fine grid): the share of the type's price this cell pays (100 = the whole price, 25 = a quarter) and its
+	 * rank in the line. The price of cell N is Ceil(Price * Percent * (N + 1) / 100) - Ceil(Price * Percent * N / 100): the cells of a line sum
+	 * to the percentage rounded UP on the TOTAL (HOLWallLine::CostOfLine), not per cell. Default: a lone building pays its whole price.
+	 */
+	int32 CostPercent = 100;
+	int32 CostCellIndex = 0;
+};
+
+/**
+ * The price a place order carries (D915). DoPlaceBuilding opens it around HOLPlayerOrders::Place; the script board's answer runs inside that call
+ * (synchronous, game thread) and UHOLCommandScriptLibrary::IssuePlace reads it into the command. Outside a scope: the whole price.
+ */
+struct FHOLPlaceCostScope
+{
+	FHOLPlaceCostScope(const int32 InPercent, const int32 InCellIndex) : PreviousPercent(Percent), PreviousCellIndex(CellIndex)
+	{
+		Percent = InPercent;
+		CellIndex = InCellIndex;
+	}
+	~FHOLPlaceCostScope()
+	{
+		Percent = PreviousPercent;
+		CellIndex = PreviousCellIndex;
+	}
+	FHOLPlaceCostScope(const FHOLPlaceCostScope&) = delete;
+	FHOLPlaceCostScope& operator=(const FHOLPlaceCostScope&) = delete;
+
+	static inline int32 Percent = 100;
+	static inline int32 CellIndex = 0;
+
+private:
+	int32 PreviousPercent;
+	int32 PreviousCellIndex;
 };
 
 /**

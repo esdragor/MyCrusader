@@ -13,6 +13,7 @@
 #include "Match/HOLMarketSubsystem.h"
 #include "Simulation/HOLUnitTypes.h"
 #include "Commands/HOLCommandSubsystem.h"
+#include "Commands/HOLConstructionCommand.h"
 #include "Commands/HOLPlayerOrders.h"
 #include "Containers/Ticker.h"
 #include "Dev/HOLTestHooks.h"
@@ -3678,11 +3679,13 @@ void AHOLPlayerController::RequestCancelBuilding(AHOLBuilding* Building)
 	}
 }
 
-void AHOLPlayerController::DoPlaceBuilding(const FName TypeName, const FVector_NetQuantize Point, const TArray<uint32>& UnitIds, const bool bQueue)
+void AHOLPlayerController::DoPlaceBuilding(const FName TypeName, const FVector_NetQuantize Point, const TArray<uint32>& UnitIds, const bool bQueue, const int32 CostPercent, const int32 CostCellIndex)
 {
 	// The order names the player: it pays and owns the foundation (D288); the server checks everything again.
 	if (const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState())
 	{
+		// D915: the share of the price this cell of a wall line pays (100 / 0 for a lone building); the script board reads it inside Place.
+		const FHOLPlaceCostScope PriceScope(CostPercent, CostCellIndex);
 		HOLPlayerOrders::Place(*GetWorld(), HOLPlayerState->GetPlayerIndex(), TypeName, Point, UnitIds, bQueue);
 	}
 }

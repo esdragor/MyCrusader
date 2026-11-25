@@ -278,6 +278,8 @@ void UHOLCommandScriptLibrary::IssuePlace(UHOLCommandSubsystem* Commands, const 
 		Command.Location = Location;
 		Command.UnitIds = ScriptToUnitIds(UnitIds);
 		Command.bQueue = bQueue;
+		Command.CostPercent = FHOLPlaceCostScope::Percent;
+		Command.CostCellIndex = FHOLPlaceCostScope::CellIndex;
 		Commands->IssueConstructionOrder(Command);
 	}
 }

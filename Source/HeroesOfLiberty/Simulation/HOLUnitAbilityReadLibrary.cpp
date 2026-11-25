@@ -2,7 +2,10 @@
 
 #include "Simulation/HOLUnitAbilityReadLibrary.h"
 
+#include "Simulation/HOLSimulationSettings.h"
+#include "Simulation/HOLSimulationSubsystem.h"
 #include "Simulation/HOLUnitAbilityRules.h"
+#include "Simulation/HOLUnitSubsystem.h"
 
 FName UHOLUnitAbilityReadLibrary::GetRageUnitType() { return HOLUnitAbility::RageUnitType; }
 int32 UHOLUnitAbilityReadLibrary::GetRageDurationMs() { return HOLUnitAbility::RageDurationMs; }
@@ -42,3 +45,22 @@ bool UHOLUnitAbilityReadLibrary::IsRageEffectEnded(const int32 StartMs, const in
 {
 	return HOLUnitAbility::IsRageEffectEnded(StartMs, NowMs, Health);
 }
+int64 UHOLUnitAbilityReadLibrary::GetSimulationStep(const UHOLUnitSubsystem* Units)
+{
+	const UWorld* World = Units ? Units->GetWorld() : nullptr;
+	const UHOLSimulationSubsystem* Simulation = World ? World->GetSubsystem<UHOLSimulationSubsystem>() : nullptr;
+	return Simulation ? Simulation->GetStepIndex() : 0;
+}
+
+int32 UHOLUnitAbilityReadLibrary::GetSimulationStepMs(const UHOLUnitSubsystem* Units)
+{
+	const UWorld* World = Units ? Units->GetWorld() : nullptr;
+	const UHOLSimulationSubsystem* Simulation = World ? World->GetSubsystem<UHOLSimulationSubsystem>() : nullptr;
+	return Simulation ? FMath::RoundToInt(Simulation->GetStepSeconds() * 1000.f) : 0;
+}
+
+bool UHOLUnitAbilityReadLibrary::CastKnightChallenge(UHOLUnitSubsystem* Units, const int32 UnitId, const int32 RequiredOwner, const int64 EndStep, const int32 RadiusCm, const int32 CooldownMs)
+{
+	return Units && Units->CastKnightChallenge(static_cast<uint32>(UnitId), RequiredOwner, EndStep, static_cast<float>(RadiusCm), CooldownMs);
+}
+
