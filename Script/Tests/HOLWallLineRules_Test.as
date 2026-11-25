@@ -534,6 +534,30 @@ void Test_WallLineCostIsNSubCellsTimesPrice(FUnitTest& T)
 	T.AssertEquals(100 - Holed.Cells.Num() * 5, LeftHoled, "an occupied tile is a hole: only the laid sub-cells are paid");
 	T.AssertEquals(100, HOLWallLine::StockAfterLine(100, Plan, 0), "a free cell leaves the stock whole");
 }
+// D915 (fine grid, wall price): a sub-cell of 1 m costs a quarter of the 4 m tile price (hol.Wall.SubCellCostPercent, default 25). A line of 20 sub-cells of a 5 Wood palisade:
+// 20 x 5 x 25 / 100 = 25 Wood (1.25 per sub-cell), NOT 100: stock 100 -> 75. The rounding is on the TOTAL (up), not per sub-cell. Holes (D901) are not paid.
+void Test_WallLineCostsAQuarterPerSubCell(FUnitTest& T)
+{
+	TArray<FIntPoint> Taken;
+	HOLWallLine::FHOLWallLinePlan Plan = HOLWallLine::PlanFromRequestFine(0, FVector(50.0, 50.0, 0.0), FVector(1950.0, 50.0, 0.0), 400.0, 4, WallLineMapMin, WallLineMapMax, Taken, 1000);
+	T.AssertEquals(20, Plan.Cells.Num(), "the drag covers 20 sub-cells");
+	const int Cost = HOLWallLine::CostOfLine(Plan, 5, 25);
+	T.AssertEquals(75, 100 - Cost, "100 Wood, 20 sub-cells of a 5 Wood palisade at 25 percent: 75 left");
+	// 10 sub-cells: 10 x 5 x 25 / 100 = 12.5 -> 13 (rounded up on the total).
+	HOLWallLine::FHOLWallLinePlan Short = HOLWallLine::PlanFromRequestFine(0, FVector(50.0, 50.0, 0.0), FVector(950.0, 50.0, 0.0), 400.0, 4, WallLineMapMin, WallLineMapMax, Taken, 1000);
+	T.AssertEquals(10, Short.Cells.Num(), "the short drag covers 10 sub-cells");
+	const int ShortCost = HOLWallLine::CostOfLine(Short, 5, 25);
+	T.AssertEquals(13, ShortCost, "12.5 rounds up to 13 on the total");
+	const int FullCost = HOLWallLine::CostOfLine(Short, 5, 100);
+	T.AssertEquals(50, FullCost, "100 percent = the full price per cell");
+	// A hole is not paid: the tile (2,0) holds 4 sub-cells of the row.
+	TArray<FIntPoint> Hole;
+	Hole.Add(FIntPoint(2, 0));
+	HOLWallLine::FHOLWallLinePlan Holed = HOLWallLine::PlanFromRequestFine(0, FVector(50.0, 50.0, 0.0), FVector(1950.0, 50.0, 0.0), 400.0, 4, WallLineMapMin, WallLineMapMax, Hole, 1000);
+	const int HoledCost = HOLWallLine::CostOfLine(Holed, 5, 25);
+	T.AssertTrue(HoledCost < Cost, "a line with a hole costs less than the whole line");
+	T.AssertEquals((Holed.Cells.Num() * 5 * 25 + 99) / 100, HoledCost, "only the laid sub-cells are paid");
+}
 // D898 G2 (PLAN-GRILLE-FINE-1124.md): the occupied cells come in 4 m tiles (what GetWallLineWorld rends) and the rule expands each into SubDivision x SubDivision sub-cells.
 // The 4 m tile (2,0) on the line of G1 covers the sub-cells 8..11 of the row 0: 4 holes, 13 laid and paid (13 x 5 = 65); every tile of the line taken = Occupied, nothing laid.
 void Test_WallLineFineGridOccupiedTileSkipsItsSubCells(FUnitTest& T)
