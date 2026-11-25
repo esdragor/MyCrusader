@@ -29,6 +29,11 @@ void Test_GGCBannerAndAttackMove(FUnitTest& T)
 	FHOLGridContextView Hero;
 	Hero.bOwnUnits = true;
 	Hero.bHero = true;
+	// Like Test_GABAbilitiesAndOrders: a hero below the ability's level (or with no cooldown entries) has the Banner greyed, which arms nothing.
+	Hero.HeroLevel = 99;
+	Hero.HeroCooldownSeconds.Add(0);
+	Hero.HeroCooldownSeconds.Add(0);
+	Hero.HeroCooldownSeconds.Add(0);
 	TArray<int> Selected;
 	Selected.Add(3);
 	Selected.Add(4);
