@@ -252,8 +252,6 @@ Ces points sont en préparation ; ce guide sera mis à jour quand ils seront dan
 - **Fin des colonnes d'art dans les tableaux** : aujourd'hui le tableau des unités garde encore ses anciennes colonnes de
   modèle et d'animations, derrière la fiche (la fiche passe en premier). Elles vont disparaître, de même que le modèle
   des bâtiments et des ressources dans leurs tableaux : la fiche restera la seule source de l'art.
-- **Animations de récolte et de port dans la fiche** (une par ressource), et **animations désignées par leur fichier**
-  plutôt que par un numéro dans la liste.
 - **Menu sur une Anim Sequence** (« Check for the game » : squelette, durée, nombre d'images), contrôle de **Projectile**
   et **Muzzle Smoke** et des triangles d'un Skeletal Mesh, et **See in the Workshop** (affiche la commande `hol.Art.Try`
   à taper pour voir l'objet).
