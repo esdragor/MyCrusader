@@ -1530,6 +1530,29 @@ for (FString Command : Commands)
 			Log(n"LogHOLMatch", f"RpcOrder: place building refused ({Refusal}) for sender slot {Slot}");
 			return;
 		}
+		// D898 G10 (CELEBORN-1125f): a gate laid alone (the real gesture is this RPC, not the wall line) retires the finished palisades of the seat under it BEFORE it is laid, as ServerPlaceWallLine does (HOLWallLine::GatePoseRetireIndices = GateRetireIndices, one source).
+		if (HOLWallLine::IsGateType(TypeName))
+		{
+			FIntPoint MapMin;
+			FIntPoint MapMax;
+			TArray<FIntPoint> Occupied;
+			const int SubDivision = HOLWallLine::SubDivision();
+			const double Pitch = HOLConstructionRead::GetWallLineWorldAtPitch(SubDivision, MapMin, MapMax, Occupied) / double(SubDivision);
+			TArray<FIntPoint> StandingCells;
+			TArray<FName> StandingTypes;
+			TArray<int> StandingOwners;
+			TArray<AHOLBuilding> StandingBuildings;
+			TArray<bool> StandingFinished;
+			HOLConstructionRead::GetStandingBuildingCells(SubDivision, StandingCells, StandingTypes, StandingOwners, StandingBuildings, StandingFinished);
+			TArray<int> ToRetire = HOLWallLine::GatePoseRetireIndices(TypeName, FVector(Point.X, Point.Y, Point.Z), Pitch, SubDivision, Slot, StandingCells, StandingTypes, StandingOwners, StandingFinished);
+			int Removed = 0;
+			for (int RetireIndex = 0; RetireIndex < ToRetire.Num(); RetireIndex++)
+			{
+				if (HOLRpcBridge::OrderRemoveOwnBuilding(this, StandingBuildings[ToRetire[RetireIndex]]))
+					Removed++;
+			}
+			Log(n"LogHOLMatch", f"RpcOrder: gate pose retires {Removed} palisade pieces for sender slot {Slot}");
+		}
 		HOLRpcBridge::OrderPlaceBuilding(this, TypeName, Point.X, Point.Y, Point.Z, HOLRpc::OrderIds(UnitIds), bQueue, 100, 0);
 	}
 

@@ -559,8 +559,16 @@ namespace HOLWallLine
 	// sub-cells hold the most FINISHED palisade pieces of its seat (a tie lies along X); nothing for a type that is not a gate. The same rule as GateRetireIndices (one source), the world is read by the caller.
 	TArray<int> GatePoseRetireIndices(FName TypeName, FVector Point, double Pitch, int SubDivision, int GateOwner, const TArray<FIntPoint>& StandingCells, const TArray<FName>& StandingTypes, const TArray<int>& StandingOwners, const TArray<bool>& Finished)
 	{
-		TArray<int> None;
-		return None;
+		TArray<int> Best;
+		if (!IsGateType(TypeName))
+			return Best;
+		for (int Axis = 0; Axis < 2; Axis++)
+		{
+			TArray<int> Found = GateRetireIndices(TypeName, Point, Pitch, SubDivision, Axis == 0, GateOwner, StandingCells, StandingTypes, StandingOwners, Finished);
+			if (Found.Num() > Best.Num())
+				Best = Found;
+		}
+		return Best;
 	}
 	// hol.Wall.GateAlongLine (CELEBORN-1125d, default 1): the gate follows the drawn line (a drag along X lays it along X, along Y along Y); 0 = perpendicular to the line.
 	bool GateAlongX(FVector Start, FVector End)
