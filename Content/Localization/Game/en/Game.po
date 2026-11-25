@@ -4780,3 +4780,24 @@ msgstr "Quit"
 msgctxt "HOLFactionSlot,PowerRefusedHonor"
 msgid "Honneur insuffisant"
 msgstr "Not enough Honor"
+
+#. Key:	VoieFer
+#. SourceLocation:	Script/UI/HOLSpecializationSlot.as(145)
+#: Script/UI/HOLSpecializationSlot.as(145)
+msgctxt "HOLSpecializationSlot,VoieFer"
+msgid "Fer"
+msgstr "Iron"
+
+#. Key:	VoieFaith
+#. SourceLocation:	Script/UI/HOLSpecializationSlot.as(147)
+#: Script/UI/HOLSpecializationSlot.as(147)
+msgctxt "HOLSpecializationSlot,VoieFaith"
+msgid "Foi"
+msgstr "Faith"
+
+#. Key:	VoieStone
+#. SourceLocation:	Script/UI/HOLSpecializationSlot.as(149)
+#: Script/UI/HOLSpecializationSlot.as(149)
+msgctxt "HOLSpecializationSlot,VoieStone"
+msgid "Pierre"
+msgstr "Stone"
