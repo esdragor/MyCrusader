@@ -1166,6 +1166,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 				}
 			}
 			HOLHeroAbility::Tick(Combats[EntityIt].RageCooldownMs, StepMs);
+			HOLHeroAbility::Tick(Combats[EntityIt].KnightChallengeCooldownMs, StepMs);
 			if (bHeroes && States[EntityIt].CurrentHealth > 0.f && Combats[EntityIt].DeathStep < 0)
 			{
 				const FVector Location = Transforms[EntityIt].GetTransform().GetLocation();
@@ -2177,6 +2178,9 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 					Candidate.bAttacksMe = Enemy.Combat->Target == Fighter.Entity || Enemy.Entity == Combat.LastAttacker;
 					Candidate.bIsCurrentTarget = Other == Target;
 					Candidate.AttackerCount = Enemy.Combat->AttackerCount - (Other == Target ? 1 : 0);
+					// SAURON-1125a (Dawn A7, D919): a Knight whose challenge lasts and whose zone holds the seeker. (Hero seekers excluded: TODO, see the report.)
+					Candidate.bChallengesMe = Enemy.Combat->ChallengeEndStep > StepIndex
+						&& FVector2D::DistSquared(FVector2D(Enemy.Location), Position) <= FMath::Square(static_cast<double>(Enemy.Combat->ChallengeRadiusCm));
 					// Counted once a step, the first time needed (a melee out of its reach only: in reach, it is hit now).
 					if (bPreferFree && !Seeker.bRanged
 						&& !HOLCombat::IsInRange(Position, Seeker.Radius, Candidate.Position, Candidate.Radius, Seeker.AttackRange))

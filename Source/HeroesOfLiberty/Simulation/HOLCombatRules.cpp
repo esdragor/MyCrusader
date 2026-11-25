@@ -170,6 +170,40 @@ namespace HOLCombat
 
 	int32 ChooseTarget(const FSeeker& Seeker, const TConstArrayView<FCandidate> Candidates)
 	{
+		// SAURON-1125a (Dawn A7, D919): a challenging Knight comes before everything, wherever it stands (the processor set the flag only
+		// inside the zone, while the challenge lasts, never for a hero): the nearest one, by the usual distance then id. A unit that cannot
+		// attack units is not provoked; on hold, only a Knight in reach.
+		if (Seeker.bCanAttackUnits)
+		{
+			int32 Challenger = INDEX_NONE;
+			double ChallengerDistance = 0.;
+			for (int32 Index = 0; Index < Candidates.Num(); ++Index)
+			{
+				const FCandidate& Candidate = Candidates[Index];
+				if (!Candidate.bChallengesMe || Candidate.bIsBuilding)
+				{
+					continue;
+				}
+				const double DistanceSquared = FVector2D::DistSquared(Seeker.Position, Candidate.Position);
+				if (Seeker.Mode == ESeekMode::Hold)
+				{
+					const double Reach = static_cast<double>(Seeker.Radius) + static_cast<double>(Candidate.Radius) + FMath::Max(static_cast<double>(Seeker.AttackRange), 0.);
+					if (DistanceSquared > Reach * Reach)
+					{
+						continue;
+					}
+				}
+				if (Challenger == INDEX_NONE || DistanceSquared < ChallengerDistance || (DistanceSquared == ChallengerDistance && Candidate.Id < Candidates[Challenger].Id))
+				{
+					Challenger = Index;
+					ChallengerDistance = DistanceSquared;
+				}
+			}
+			if (Challenger != INDEX_NONE)
+			{
+				return Challenger;
+			}
+		}
 		const float SearchRadius = GetSearchRadius(Seeker);
 		// V5.1: no search radius but a riposte (the King): only an enemy attacking it, wherever it stands.
 		// V5.3: on hold too (in reach only), never an enemy not attacking it.
