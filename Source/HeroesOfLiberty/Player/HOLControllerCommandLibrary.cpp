@@ -97,6 +97,69 @@ bool UHOLControllerCommandLibrary::IsSpectatorController(AHOLPlayerController* C
 	return Controller && Controller->IsSpectator();
 }
 
+bool UHOLControllerCommandLibrary::RequestHeroAbilityAt(AHOLPlayerController* Controller, const int32 Ability, const double X, const double Y, const double Z)
+{
+	if (!Controller || Controller->IsSpectator())
+	{
+		return false;
+	}
+	Controller->RequestHeroAbility(static_cast<EHOLHeroAbility>(Ability), FVector(X, Y, Z));
+	return true;
+}
+
+bool UHOLControllerCommandLibrary::RequestCastUnitAbilityAt(AHOLPlayerController* Controller, const int32 AbilityId, const int32 UnitId, const double X, const double Y, const double Z)
+{
+	if (!Controller || Controller->IsSpectator())
+	{
+		return false;
+	}
+	Controller->RequestCastUnitAbility(AbilityId, static_cast<uint32>(UnitId), FVector(X, Y, Z));
+	return true;
+}
+
+bool UHOLControllerCommandLibrary::RequestStopUnitIds(AHOLPlayerController* Controller, const TArray<int32>& Ids, const bool bHold)
+{
+	if (!Controller || Controller->IsSpectator())
+	{
+		return false;
+	}
+	TArray<uint32> Units;
+	for (const int32 Id : Ids)
+	{
+		Units.Add(static_cast<uint32>(Id));
+	}
+	Controller->RequestStopUnits(Units, bHold);
+	return true;
+}
+
+bool UHOLControllerCommandLibrary::RequestToggleDeployIds(AHOLPlayerController* Controller, const TArray<int32>& Ids)
+{
+	if (!Controller || Controller->IsSpectator())
+	{
+		return false;
+	}
+	TArray<uint32> Units;
+	for (const int32 Id : Ids)
+	{
+		Units.Add(static_cast<uint32>(Id));
+	}
+	Controller->RequestToggleDeploy(Units);
+	return true;
+}
+
+bool UHOLControllerCommandLibrary::GetCursorGroundPointOf(AHOLPlayerController* Controller, double& OutX, double& OutY, double& OutZ)
+{
+	FVector Point;
+	if (!Controller || !Controller->GetCursorGroundPoint(Point))
+	{
+		return false;
+	}
+	OutX = Point.X;
+	OutY = Point.Y;
+	OutZ = Point.Z;
+	return true;
+}
+
 bool UHOLControllerCommandLibrary::RequestCastRageOfSelection(AHOLPlayerController* Controller)
 {
 	if (!Controller)
