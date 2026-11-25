@@ -38,8 +38,8 @@ namespace HOLGarrisonFrameRules
 	// AR0-a4: the faction key (Dawn, Legions...) the occupants' icons are read with, from the owner's EHOLFaction index (GetSlotFaction); none (-1): "".
 	FString OwnerFactionKey(int FactionIndex)
 	{
-		// RED STUB (AR0-a4): no key yet.
-		return "";
+		// HOLFactionRules::GetFactionKey stays the one source of the keys (C++, exposed as HOLFactionRulesRead::GetFactionKey).
+		return FactionIndex < 0 ? "" : HOLFactionRulesRead::GetFactionKey(FactionIndex);
 	}
 
 	// The text of the "Sortir tous" button (the grid cell's name of the GDD).

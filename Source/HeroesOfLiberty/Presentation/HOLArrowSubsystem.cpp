@@ -382,12 +382,13 @@ namespace HOLArrowLaunches
 	void SetUnitShooter(FHOLArrowLaunch& Launch, const FName UnitType, const int32 OwnerSlot)
 	{
 		Launch.ShooterType = UnitType;
-		// AR0-a4 RED STUB: the owner's slot is not passed yet.
+		Launch.ShooterSlot = OwnerSlot;
 	}
 
 	void SetBuildingShooter(FHOLArrowLaunch& Launch, const FName BuildingType, const int32 OwnerSlot)
 	{
-		// AR0-a4 RED STUB: neither the building type nor its owner's slot passed yet (SM_Arrow).
-		Launch.ShooterType = NAME_None;
+		// The building type is not a unit row: its art asset alone can give a projectile (DA_Art_<Building>_<Faction>, DA_Art_<Building>), else SM_Arrow as before.
+		Launch.ShooterType = BuildingType;
+		Launch.ShooterSlot = OwnerSlot;
 	}
 }
