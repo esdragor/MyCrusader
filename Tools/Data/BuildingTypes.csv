@@ -10,7 +10,7 @@ Sanctuary,Sanctuaire de l'Aube,"(X=1200.0,Y=1200.0)",600,1500,40,,0,,1,,"(Food=0
 ArcheryRange,Champ de tir,"(X=1200.0,Y=1200.0)",600,1500,40,,0,"(""Archer"",""Crossbowman"",""Arquebusier"",""PaviseCrossbowman"")",5,,"(Food=0,Wood=150,Stone=0,Gold=0)",20,5,0,Military,False,,Range,3200,Common,0,0,0,0,False
 Market,Marché,"(X=1200.0,Y=1200.0)",500,1500,40,,0,,1,,"(Food=0,Wood=150,Stone=0,Gold=0)",20,0,1,Economic,False,,BlockAndTower,2000,Common,0,0,0,0,False
 SiegeWorkshop,Atelier de siège,"(X=1200.0,Y=1200.0)",600,1500,40,,0,"(""Ram"",""Mangonel"")",5,,"(Food=0,Wood=175,Stone=0,Gold=0)",25,4,1,Military,False,,BlockAndTower,3200,Common,0,0,0,0,False
-Chapel,Chapelle,"(X=1200.0,Y=1200.0)",600,1500,40,,0,"(""Monk"")",5,,"(Food=0,Wood=200,Stone=0,Gold=0)",30,5,1,Military,False,,BlockAndTower,3200,Dawn,0,0,0,0,False
+Chapel,Chapelle,"(X=1200.0,Y=1200.0)",600,1500,40,,0,"(""Monk"",""InfirmaryBrother"")",5,,"(Food=0,Wood=200,Stone=0,Gold=0)",30,5,1,Military,False,,BlockAndTower,3200,Dawn,0,0,0,0,False
 Stable,Écurie,"(X=1200.0,Y=1200.0)",600,1500,40,,0,"(""LightCavalry"")",5,,"(Food=0,Wood=150,Stone=0,Gold=0)",20,6,1,Military,False,,BlockAndTower,3200,Common,0,0,0,0,False
 Forge,Forge,"(X=1200.0,Y=1200.0)",600,1500,40,,0,,5,,"(Food=0,Wood=150,Stone=0,Gold=0)",25,8,1,Technological,False,,BlockAndTower,3200,Common,0,0,0,0,False
 SecondaryCentre,Centre secondaire,"(X=1600.0,Y=1600.0)",1000,2400,40,/Game/Buildings/Forum/SM_Forum.SM_Forum,10,"(""Peasant"")",5,"(Food,Wood,Stone,Gold)","(Food=0,Wood=150,Stone=400,Gold=0)",150,1,1,Economic,False,,BlockAndTower,6400,Common,0,0,0,0,False
