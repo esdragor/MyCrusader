@@ -32,7 +32,8 @@ void Test_Building_TypesMainCentre(FUnitTest& T)
 	T.AssertTrue(MainCentre.Footprint.X == 1600.0 && MainCentre.Footprint.Y == 1600.0, "16 x 16 m: 4 x 4 tiles of 4 m (D261, D311, D344)");
 	T.AssertEquals(1000.0f, MainCentre.Height, "~10 m high (D261)");
 	T.AssertTrue(MainCentre.MaxHealth > 0, "health points");
-	T.AssertFalse(MainCentre.Mesh.IsNull(), "the Forum has its model: SM_Forum, composed from the kit");
+	UHOLArtVisual MainCentreArt = UHOLArtVisualRegistry::FindArtVisual(n"MainCentre", NAME_None);
+	T.AssertTrue(MainCentreArt != nullptr && !MainCentreArt.Mesh.IsNull(), "the Forum has its model: SM_Forum, composed from the kit (its DA_Art)");
 }
 
 // HeroesOfLiberty.Buildings.Types (house): the provisional shape, no final mesh yet.
@@ -45,7 +46,8 @@ void Test_Building_TypesHouseProvisional(FUnitTest& T)
 	{
 		return;
 	}
-	T.AssertTrue(House.Mesh.IsNull(), "provisional shape: no final mesh yet");
+	UHOLArtVisual HouseArt = UHOLArtVisualRegistry::FindArtVisual(n"House", NAME_None);
+	T.AssertTrue(HouseArt == nullptr || HouseArt.Mesh.IsNull(), "provisional shape: no final mesh yet (its DA_Art)");
 }
 
 // HeroesOfLiberty.Buildings.Walkable (table half): the farm is walked over, the mill is not. (The BlocksNavigation rule half is
