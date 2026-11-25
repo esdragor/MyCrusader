@@ -327,7 +327,8 @@ void HOLArtGalleryFrameCommand(const TArray<FString>& Args)
 		return;
 	}
 	const double Shift = Part.ToLower() == "north" ? 0.25 * Width : (Part.ToLower() == "south" ? -0.25 * Width : 0.0);
-	Centre.Y += Shift;
+	// The match camera looks towards +X (top of the screen = +X, ag_buildings 1125ar6): the halves are along X.
+	Centre.X += Shift;
 	const FString PartName = Part.IsEmpty() ? "Whole" : Part;
 	System::ExecuteConsoleCommand(f"hol.Camera.Focus {Math::RoundToInt(Centre.X)} {Math::RoundToInt(Centre.Y)}");
 	Log(n"LogHOLMatch", f"Art gallery frame: family={Family} part={PartName} centre=({Math::RoundToInt(Centre.X)}, {Math::RoundToInt(Centre.Y)}) side={Math::RoundToInt(Width)}");
