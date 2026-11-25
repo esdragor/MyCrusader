@@ -28,7 +28,8 @@ notereset 1/3 : siege Templier sans voie, Chapelle selectionnee, grille de comma
 # Geste reel 1 : sans voie, le vrai clic sur la case du Frere infirmier est REFUSE par la porte du serveur.
 hol.Mouse.Click GridCell01
 waitlog Mouse click GridCell01 x1 at
-waitlog RpcEconomy: queue received by the server: slot 0 type InfirmaryBrother
+# Le refus ne journalise rien (AskQueueProduction renvoie 0 sans log) et la ligne RpcEconomy n'existe pas en -game : attente par images (30, sous le seuil FrameWaits).
+frames 30
 wait 2
 frames 8
 capture spec_voie_queue_refused
