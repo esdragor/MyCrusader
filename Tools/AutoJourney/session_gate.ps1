@@ -104,9 +104,9 @@ if ($Phase -eq 'Launch') {
     $clRead = $false; $clIn = $false
     foreach ($crow in @(Get-Content $JourFile -Encoding UTF8 -ErrorAction SilentlyContinue)) {
       if ($crow -match '^##\s') { $clIn = ($crow.Trim() -eq ('## Agents du ' + $now.ToString('yyyy-MM-dd'))); continue }
-      if ($clIn -and $crow -match ('check-list lue \(L' + $clN + '\)')) { $clRead = $true; break }
+      if ($clIn -and $crow -match ('check-list lue (?:par ETAPE0 )?\(L' + $clN + '\)')) { $clRead = $true; break }   # 2026-11-25 (DOCS-1125b) : la principale ne lit plus la check-list, l'agent de l'etape 0 la lit
     }
-    $clMsg = "lis Auto_Journey_Checklist.md (derni{0}re le{1}on L{2}) et {3}cris 'check-list lue (L{2})' dans Auto_Journey_Jour.md avant le premier agent de travail" -f [char]0xE8, [char]0xE7, $clN, [char]0xE9
+    $clMsg = "fais lire Auto_Journey_Checklist.md (derni{0}re le{1}on L{2}) par l'agent ETAPE0 et {3}cris 'check-list lue par ETAPE0 (L{2})' (ou l'ancienne ligne 'check-list lue (L{2})') dans Auto_Journey_Jour.md avant le premier agent de travail" -f [char]0xE8, [char]0xE7, $clN, [char]0xE9
     if ($clRead) { Say 'PASS' "L19-1 : check-list lue (L$clN) presente dans la section du jour" }
     elseif ($AgentName -match '^(NETTOYAGE|ETAPE0)-') { Say 'WARN' ("L19-1 : $AgentName lance avant la lecture de la check-list (exempte) ; " + $clMsg) }
     else { Say 'FAIL' ("L19-1 : " + $clMsg) }

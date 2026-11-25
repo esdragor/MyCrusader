@@ -539,6 +539,9 @@ Check ($l2 -match '(?m)^FAIL .*check-list') 'L19-1 launch: ligne check-list lue 
 Set-LJour 'check-list lue (L19) a 08:50'
 $l3 = Run-L
 Check ($l3 -match '(?m)^PASS .*check-list' -and -not ($l3 -match '(?m)^FAIL .*check-list')) 'L19-1 launch: check-list lue (L19) -> PASS' $l3
+Set-LJour 'check-list lue par ETAPE0 (L19)'
+$l3b = Run-L
+Check ($l3b -match '(?m)^PASS .*check-list' -and -not ($l3b -match '(?m)^FAIL .*check-list')) 'L19-1 launch (2026-11-25): check-list lue par ETAPE0 (L19) -> PASS' $l3b
 Set-LJour 'aucune lecture'
 $l4 = Run-L @('-AgentName', 'NETTOYAGE-1120a')
 Check ($l4 -match '(?m)^WARN .*check-list' -and -not ($l4 -match '(?m)^FAIL .*check-list')) 'L19-1 launch: agent NETTOYAGE-* sans lecture -> WARN seulement' $l4
