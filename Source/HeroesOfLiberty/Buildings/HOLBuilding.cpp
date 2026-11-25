@@ -445,13 +445,15 @@ void AHOLBuilding::ReleaseFootprint()
 FBox2D AHOLBuilding::GetFootprintBounds() const
 {
 	const FHOLBuildingTypeRow* Type = GetType();
-	FVector2D Footprint = Type ? Type->Footprint : FVector2D::ZeroVector;
 	// D898 G6: a wall piece is 1/hol.Wall.SubDivision of the row's footprint (same rule as UHOLConstructionSubsystem::SnapFootprint), so the placement check and the occupied cells see the 1 m piece, not a 4 m box.
-	if (Type && HOLConstruction::IsWallPieceType(GetTypeName()))
-	{
-		Footprint /= static_cast<double>(HOLConstruction::GetWallSubDivision());
-	}
+	const FVector2D Footprint = Type ? HOLConstruction::GetPieceFootprint(GetTypeName(), Type->Footprint, HOLConstruction::GetWallSubDivision()) : FVector2D::ZeroVector;
 	return HOLConstruction::GetFootprintBounds(FVector2D(GetActorLocation()), Footprint, static_cast<float>(GetActorRotation().Yaw));
+}
+
+FVector2D AHOLBuilding::GetVisualPieceSize(const FHOLBuildingTypeRow& Type) const
+{
+	// ELROND-1125mf: the visible shapes (foundation, ghost, rubble, provisional) of a wall piece cover its 1/SubDivision footprint, as its placement bounds do (GetFootprintBounds); they drew the 4 m row footprint, so the pieces of a fine line overlapped in a lattice.
+	return UHOLBuildingSettings::GetVisualSize(HOLConstruction::GetPieceFootprint(GetTypeName(), Type.Footprint, HOLConstruction::GetWallSubDivision()));
 }
 
 FVector2D AHOLBuilding::GetBodySize() const
@@ -847,7 +849,7 @@ float AHOLBuilding::GetTargetRise() const
 void AHOLBuilding::BuildRubbleShape(const FHOLBuildingTypeRow& Type)
 {
 	TArray<AHOLRubble::FLookPiece> Heap;
-	AHOLRubble::GetLookPieces(UHOLBuildingSettings::GetVisualSize(Type.Footprint), ColorIndex, Heap);
+	AHOLRubble::GetLookPieces(GetVisualPieceSize(Type), ColorIndex, Heap);
 	for (const AHOLRubble::FLookPiece& Piece : Heap)
 	{
 		if (UStaticMeshComponent* Component = AddPiece(CubeMesh, Piece.Size, 0.f, Piece.Color, /*bOwnerColor*/ false))
@@ -1000,7 +1002,7 @@ void AHOLBuilding::BuildProvisionalShape(const FHOLBuildingTypeRow& Type)
 	// than the tower, wear the owner's colour, as they are what the RTS camera sees from above; unlit, so that the colour
 	// is the same everywhere (a lit cone showed a dark side, an unlit one read as a flat disc). Its visible size, a little
 	// inset in its tiles and wider than its body (D324 refined).
-	const FVector2D Footprint = UHOLBuildingSettings::GetVisualSize(Type.Footprint);
+	const FVector2D Footprint = GetVisualPieceSize(Type);
 	const float Height = Type.Height;
 	const float BaseHeight = Height * BaseHeightRatio;
 	const float CapThickness = Height * CapThicknessRatio;
@@ -1161,8 +1163,8 @@ void AHOLBuilding::BuildFoundationShape(const FHOLBuildingTypeRow& Type)
 
 	// Flat and clearly unfinished (J6a.3): packed earth over the footprint, its edges at the owner's colour (unlit, the
 	// colour seen from the RTS camera), a wooden stake at each corner. Units walk over it until its first work (D312). Under
-	// the building's visible shape (D324 refined).
-	const FVector2D Footprint = UHOLBuildingSettings::GetVisualSize(Type.Footprint);
+	// the building's visible shape (D324 refined). A wall piece is 1/SubDivision of its row (ELROND-1125mf).
+	const FVector2D Footprint = GetVisualPieceSize(Type);
 	AddPiece(CubeMesh, FVector(Footprint, FoundationSlabHeight), 0.f, FoundationSlabColor, false);
 	const double Border = FMath::Min(static_cast<double>(FoundationBorderWidth), Footprint.GetMin() * 0.25);
 	const FVector AlongX(Footprint.X, Border, FoundationBorderHeight);
@@ -1192,7 +1194,7 @@ void AHOLBuilding::BuildGhostShape(const FHOLBuildingTypeRow& Type)
 {
 	// Planned, not started (J6a.4, the user's choice): drawn as the placement ghost is, a frame on the ground and the edges
 	// of the volume, light at the owner's colour; no slab before the first work. The building's visible shape (D324 refined).
-	const FVector2D Footprint = UHOLBuildingSettings::GetVisualSize(Type.Footprint);
+	const FVector2D Footprint = GetVisualPieceSize(Type);
 	const FVector2D Half = Footprint * 0.5;
 	const float Height = Type.Height;
 	const auto Move = [](UStaticMeshComponent* Piece, const FVector& Offset)

@@ -33,7 +33,10 @@ bool HOLConstruction::IsWallPieceType(const FName TypeName)
 
 FVector2D HOLConstruction::GetPieceFootprint(const FName TypeName, const FVector2D& Footprint, const int32 SubDivision)
 {
-	// STUB (red first): the footprint unchanged.
+	if (SubDivision > 1 && IsWallPieceType(TypeName))
+	{
+		return Footprint / static_cast<double>(SubDivision);
+	}
 	return Footprint;
 }
 
