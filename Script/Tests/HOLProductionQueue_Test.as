@@ -151,7 +151,7 @@ void Test_Production_Tables(FUnitTest& T)
 	if (bBarracks)
 	{
 		T.AssertEquals(1, Barracks.Category, "Barracks: military (F1, D30)");
-		T.AssertTrue(Barracks.Produces.Num() == 5 && Barracks.Produces[0] == n"Spearman" && Barracks.Produces[1] == n"Halberdier" && Barracks.Produces[2] == n"ManAtArms" && Barracks.Produces[3] == n"DamnedWarrior" && Barracks.Produces[4] == n"VirtuousKnight", "Barracks: produces the Spearman (Legions), the Halberdier (Dawn, D858), the Man-at-arms, the Damned Warrior then the Virtuous Knight (Dawn, D864)");
+		T.AssertTrue(Barracks.Produces.Num() == 6 && Barracks.Produces[5] == n"TempleSergeant" && Barracks.Produces[0] == n"Spearman" && Barracks.Produces[1] == n"Halberdier" && Barracks.Produces[2] == n"ManAtArms" && Barracks.Produces[3] == n"DamnedWarrior" && Barracks.Produces[4] == n"VirtuousKnight", "Barracks: produces the Spearman (Legions), the Halberdier (Dawn, D858), the Man-at-arms, the Damned Warrior then the Virtuous Knight (Dawn, D864)");
 		T.AssertEquals(0, Barracks.PopulationProvided, "Barracks: gives no population");
 		T.AssertEquals(0, Barracks.AcceptsCount, "Barracks: not a deposit");
 	}
@@ -162,7 +162,7 @@ void Test_Production_Tables(FUnitTest& T)
 	if (bRange)
 	{
 		T.AssertEquals(1, ArcheryRange.Category, "Archery range: military (F1, D30)");
-		T.AssertTrue(ArcheryRange.Produces.Num() == 3 && ArcheryRange.Produces[0] == n"Archer" && ArcheryRange.Produces[1] == n"Crossbowman" && ArcheryRange.Produces[2] == n"Arquebusier", "Archery range: produces the Archer, the Crossbowman then the Arquebusier (G3)");
+		T.AssertTrue(ArcheryRange.Produces.Num() == 4 && ArcheryRange.Produces[3] == n"PaviseCrossbowman" && ArcheryRange.Produces[0] == n"Archer" && ArcheryRange.Produces[1] == n"Crossbowman" && ArcheryRange.Produces[2] == n"Arquebusier", "Archery range: produces the Archer, the Crossbowman then the Arquebusier (G3)");
 		for (int Index = 0; Index < ArcheryRange.Produces.Num(); ++Index)
 		{
 			FHOLUnitTypeSummary Produced;

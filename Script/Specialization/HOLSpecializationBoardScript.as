@@ -150,8 +150,20 @@ class UHOLSpecializationBoardScript : UHOLSpecializationSubsystem
 		return HOLSiteOption::NomadMinDistanceCm(RadiusCm);
 	}
 
+	// D893 step 3 (server read, ARWEN-1125md): the seat Slot may produce UnitType: HOLSpecUnlock::CanProduce on the seat's own read (SeatView) and faction (a lane unit only for the seat that CHOSE its lane at tier 1).
+	bool SeatMayProduce(int Slot, FName UnitType)
+	{
+		return HOLSpecUnlock::CanProduce(UnitType, SeatView(Slot), EHOLFaction(SeatFactionOf(Slot)));
+	}
+
 	UFUNCTION(BlueprintOverride)
 	FHOLSpecializationView ViewSpecialization(int Slot)
+	{
+		return SeatView(Slot);
+	}
+
+	// What the seat Slot's owner reads (public: the production gate and script tests call it; the event above returns it).
+	FHOLSpecializationView SeatView(int Slot)
 	{
 		FHOLSpecializationView View;
 		View.Chosen.Add(-1);
