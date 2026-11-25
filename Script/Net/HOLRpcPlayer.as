@@ -1563,6 +1563,35 @@ for (FString Command : Commands)
 			return;
 		}
 		TArray<HOLWallLine::FHOLWallOrder> Orders = HOLWallLine::OrdersForLine(Plan, UnitIds, bQueue);
+		// D898 G10 (CELEBORN-1125d): a gate replaces the finished palisades of the seat under it: they are removed BEFORE the gate is laid (the cells would be taken otherwise).
+		if (HOLWallLine::IsGateType(TypeName))
+		{
+			TArray<FIntPoint> StandingCells;
+			TArray<FName> StandingTypes;
+			TArray<int> StandingOwners;
+			TArray<AHOLBuilding> StandingBuildings;
+			TArray<bool> StandingFinished;
+			HOLConstructionRead::GetStandingBuildingCells(SubDivision, StandingCells, StandingTypes, StandingOwners, StandingBuildings, StandingFinished);
+			const bool bGateAlongX = HOLWallLine::GateAlongX(FVector(Start.X, Start.Y, Start.Z), FVector(End.X, End.Y, End.Z));
+			TArray<int> ToRetire;
+			for (int Index = 0; Index < Orders.Num(); Index++)
+			{
+				const FVector GatePoint = HOLWallLine::CellToPoint(Orders[Index].Cell, Pitch, Start.Z);
+				TArray<int> Found = HOLWallLine::GateRetireIndices(TypeName, GatePoint, Pitch, SubDivision, bGateAlongX, Slot, StandingCells, StandingTypes, StandingOwners, StandingFinished);
+				for (int FoundIndex = 0; FoundIndex < Found.Num(); FoundIndex++)
+				{
+					if (!ToRetire.Contains(Found[FoundIndex]))
+						ToRetire.Add(Found[FoundIndex]);
+				}
+			}
+			int Removed = 0;
+			for (int RetireIndex = 0; RetireIndex < ToRetire.Num(); RetireIndex++)
+			{
+				if (HOLRpcBridge::OrderRemoveOwnBuilding(this, StandingBuildings[ToRetire[RetireIndex]]))
+					Removed++;
+			}
+			Log(n"LogHOLMatch", f"RpcOrder: gate line retires {Removed} palisade pieces for sender slot {Slot}");
+		}
 		for (int Index = 0; Index < Orders.Num(); Index++)
 		{
 			const FVector Point = HOLWallLine::CellToPoint(Orders[Index].Cell, Pitch, Start.Z);
