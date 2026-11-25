@@ -357,14 +357,25 @@ class AHOLArtTrySelector : AActor
 class AHOLArtTryShotWatch : AActor
 {
 	TArray<int> CopyIds;
+	TArray<FVector> LastPlaces;
 	int Ticks = 0;
 
 	UFUNCTION(BlueprintOverride)
 	void Tick(float DeltaTime)
 	{
 		Ticks++;
-		for (int Id : CopyIds)
+		// A copy on a move order does not shoot (art_try 1125ar6: in range at frame 63, the puff at frame 256 on arrival): only a stopped copy counts.
+		if (LastPlaces.Num() != CopyIds.Num())
+			LastPlaces.SetNum(CopyIds.Num());
+		for (int K = 0; K < CopyIds.Num(); K++)
 		{
+			const int Id = CopyIds[K];
+			FVector Place;
+			const bool bKnown = HOLUnitScript::GetUnitLocation(Id, Place);
+			const bool bStopped = bKnown && Ticks > 1 && FVector(Place.X - LastPlaces[K].X, Place.Y - LastPlaces[K].Y, 0.0).Size() < 1.0;
+			LastPlaces[K] = Place;
+			if (!bStopped)
+				continue;
 			const float Range = HOLUnitScript::GetAttackRange(Id);
 			TArray<int> EnemyIds;
 			TArray<FVector> EnemyPlaces;

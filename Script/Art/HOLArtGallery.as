@@ -328,8 +328,9 @@ void HOLArtGalleryFrameCommand(const TArray<FString>& Args)
 	}
 	const double Shift = Part.ToLower() == "north" ? 0.25 * Width : (Part.ToLower() == "south" ? -0.25 * Width : 0.0);
 	Centre.Y += Shift;
+	const FString PartName = Part.IsEmpty() ? "Whole" : Part;
 	System::ExecuteConsoleCommand(f"hol.Camera.Focus {Math::RoundToInt(Centre.X)} {Math::RoundToInt(Centre.Y)}");
-	Log(n"LogHOLMatch", f"Art gallery frame: family={Family} part={Part.IsEmpty() ? "Whole" : Part} centre=({Math::RoundToInt(Centre.X)}, {Math::RoundToInt(Centre.Y)}) side={Math::RoundToInt(Width)}");
+	Log(n"LogHOLMatch", f"Art gallery frame: family={Family} part={PartName} centre=({Math::RoundToInt(Centre.X)}, {Math::RoundToInt(Centre.Y)}) side={Math::RoundToInt(Width)}");
 }
 
 const FConsoleCommand HOLArtGalleryConsole("hol.Art.Gallery", n"HOLArtGalleryCommand");
