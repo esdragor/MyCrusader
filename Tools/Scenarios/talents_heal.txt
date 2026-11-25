@@ -1,4 +1,5 @@
 # Mains du guerisseur (T4b, Capitaine rangee 3, D111 : Moines dans l'aura, soins +20 %) : un Moine soigne des Hommes d'armes blesses dans l'aura de ton heros, d'abord sans le talent (trait vert « + »), puis apres l'avoir pris (touche T puis clic sur la case Capitaine de la rangee 3 : trait dore « ++ »), Q-talents-heal-visual option A.
+# ARWEN-1125b (geste reel) : hol.Mouse.Click <widget> = vrai clic souris sur le widget (modele chat_input) ; la touche T n est pas injectable (lue dans UHOLScriptScreen::NativeTick), on clique la ligne de talents (TalentKey).
 # Plain, toi (slot 0) contre une IA (slot 1), talents_heal.json (copie de talents.json) : 5 Paysans et un heros chacun. 2 points de talent (XP 600) : rangee 2 (Boucliers leves, sans lien avec le soin) puis rangee 3 (Mains du guerisseur). Trois minutes au plus, aucune attente morte.
 waitlog Starting hero of slot 0 spawned at
 waitlog Starting hero of slot 1 spawned at
@@ -8,14 +9,14 @@ frames 10
 hol.Hero.SetXP 0 600
 wait 1
 frames 8
-hol.HUD.Click TalentKey
+hol.Mouse.Click TalentKey
 wait 1
 frames 8
-hol.HUD.Click HeroTalentCell_2_1
+hol.Mouse.Click HeroTalentCell_2_1
 waitlog Hero talent order: slot 0 family 1 at step
 wait 1
 frames 4
-hol.HUD.Click TalentKey
+hol.Mouse.Click TalentKey
 wait 1
 frames 4
 hol.Units.Spawn 4 -17000 450 0 ManAtArms 250
@@ -35,10 +36,10 @@ capture talents_heal_base
 hol.Cheat.Wound 100
 waitlog Cheat: slot 0 wound to 100 %
 wait 1
-hol.HUD.Click TalentKey
+hol.Mouse.Click TalentKey
 wait 1
 frames 8
-hol.HUD.Click HeroTalentCell_3_1
+hol.Mouse.Click HeroTalentCell_3_1
 waitlog Hero talent order: slot 0 family 1 at step
 wait 1
 frames 8
@@ -48,7 +49,7 @@ frames 4
 hol.HUD.Report 1
 frames 2
 capture talents_heal_cell
-hol.HUD.Click TalentKey
+hol.Mouse.Click TalentKey
 wait 1
 frames 4
 hol.Cheat.Wound 50
