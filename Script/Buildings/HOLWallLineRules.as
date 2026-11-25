@@ -74,6 +74,13 @@ namespace HOLWallLine
 		return Line.Num() * CostPerCell;
 	}
 
+	// D904: the stock left after paying a wall line: every laid cell (sub-cell on the fine grid) is a foundation and costs the current price of one cell, so the line
+	// costs N x price, deducted from the stock (the cells left out as holes, D901, are not laid and not paid).
+	int StockAfterLine(int Stock, const FHOLWallLinePlan& Plan, int CostPerCell)
+	{
+		return Stock - Plan.Cells.Num() * CostPerCell;
+	}
+
 	// ---- Server validation of a line (F4): the same Cells rule, then the refusals. Too long and out of the map: all or nothing, no cell is laid. Occupied (D901): the occupied cells are skipped, the others are laid.
 	// Order of the gates: too long (the line BEFORE the cap cut is longer than MaxCells, so a drag is refused, not trimmed), out of the map
 	// (MapMin and MapMax are the first and last valid cell, both included), occupied (EVERY cell of the line is in Occupied; a partial overlap only skips those cells). The values of the
