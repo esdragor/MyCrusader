@@ -2,7 +2,7 @@
 # branches: main
 # Geste : un Paysan est selectionne (hol.Select.ClickUnit), A (age I) puis D (hol.Select.Grid 0 puis 6 = la touche de la Palissade dans la grille du Paysan), puis un vrai glisser de souris hol.Mouse.Drag (appui, un deplacement par image, relache). Une ligne = une fondation de 5 bois par case (D892), les Paysans les bâtissent ensuite.
 # play.ps1 -Hidden ne pose PAS hol.Camera.TestCursor 0.5 0.5 pour un scenario a hol.Mouse.Drag (SAURON-1123pb) : la souris reelle est lue. Le viewport cache fait 1280x720 : le glisser est en pixels de ce viewport.
-# Camera centree sur (-17400, 0) : le glisser (y ecran 360) tombe sur x monde ~ -17400, a 10 m a l'ouest du MainCentre (-16400, 0), sur du sol libre : une case bloquee est SAUTEE (D901 : les autres cases sont posees, la case occupee reste un trou ; toutes bloquees = refus Occupied : HOLWallLineRules.as Validate).
+# Camera centree sur (-19200, 0) : le glisser (y ecran 360) tombe sur x monde ~ -18200 (le sol a y ecran 360 est ~10 m a l.est du foyer de la camera : avec le foyer a -17400 le glisser tombait sur x = -16400, EN PLEIN SOUS le MainCentre, 5 cases au lieu de 9, RECETTE-1125mc), a ~18 m a l.ouest du MainCentre (-16400, 0), sur du sol libre : une case bloquee est SAUTEE (D901 : les autres cases sont posees, la case occupee reste un trou ; toutes bloquees = refus Occupied : HOLWallLineRules.as Validate).
 waitlog Starting hero of slot 0 spawned at
 hol.AI.ThinkSteps 100000
 hol.Cheat.Resources 20000
@@ -11,11 +11,11 @@ hol.Cheat.Technology Masonry
 hol.Build.Instant 1
 hol.Wall.MaxLineCells 0
 frames 2
-hol.Units.Spawn 1 -17400 3000 0 Peasant 10
+hol.Units.Spawn 1 -19200 3000 0 Peasant 10
 frames 40
 hol.Test.Sanity
 hol.Camera.Zoom 3
-hol.Camera.Focus -17400 3000
+hol.Camera.Focus -19200 3000
 frames 5
 note 1. Un Paysan est a l'ecran : tu le selectionnes, puis la touche A (age I) et la touche D (Palissade) de la grille, puis un glisser a la souris.
 # Selection du Paysan : le curseur virtuel au centre le temps du clic (ClickUnit vise le Paysan projete), puis rendu a la vraie souris pour le glisser.
@@ -26,7 +26,7 @@ hol.Camera.TestCursor off
 hol.Select.Grid 0
 hol.Select.Grid 6
 waitlog Placement: Palisade (cost
-hol.Camera.Focus -17400 0
+hol.Camera.Focus -19200 0
 frames 40
 hol.Mouse.LogDragEnd 1
 # Glisser : appui en (200, 360), relache en (1000, 360), 90 images (pixels du viewport cache 1280x720) ; a ~3,8 cm par pixel : ~3000 cm, soit 7 a 8 cases de 4 m. La capture pendant (apres 70 images sur 90) tombe aux trois quarts du glisser (6 a 7 boites ; a 30 images elle n'en montrait que 4).

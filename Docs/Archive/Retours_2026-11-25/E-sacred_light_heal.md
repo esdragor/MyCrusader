@@ -17,3 +17,5 @@ Durée : environ 1 min. Réponse attendue : `OK`, `BUG: ...` ou `REGLAGE: ...`.
 
 Recette HALDIR-1124m (2026-11-24, dans main 25e29ab, worktree C:\Users\baudo\Documents\HeroesOfLiberty-Haldir, build PASS) : PASS (PV heros 330/450 sur after, Honneur 89/100, recharge 14 s ; zone doree finie)
 Lancer UNE commande : `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Haldir\Tools\Scenarios\play.ps1 sacred_light_heal -Root C:\Users\baudo\Documents\HeroesOfLiberty-Haldir`
+Recette RECETTE-1125mb sur main 7922539 : PASS (preflight PASS 38 s, 2 PNG ouverts : heros PV 180/450 jauge 100/100 prete, puis PV 330/450 jauge 90/100 recharge 14 s ; journal Heal report healed total 0.00 puis 765.00 apres cast au sol (-17399, 97) ; reserve : barres de vie par soldat illisibles, la bulle du scenario sur after affiche encore la note 1 AVANT)
+Reponse: OK (2026-11-25 14:0x, joue par l utilisateur sur main 7922539, dans la conversation)

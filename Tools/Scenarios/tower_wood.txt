@@ -50,6 +50,8 @@ waitunits 8
 hol.Camera.FocusNear 4600 0
 hol.Camera.Zoom 1
 frames 1
+# FARAMIR-1125mh : les 3 Lanciers sortaient gris (Shaders en preparation) ; on attend la fin de la compilation des shaders avant la capture.
+waitshaders 60
 hol.Units.Where 1
 capture tower_wood_lancers_all
 hol.Camera.FocusNear 4600 0
