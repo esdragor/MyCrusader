@@ -311,10 +311,21 @@ UHOLScenarioPanelScript ScenarioPanel;
 		return Audio.Play(Event);
 	}
 
+	UFUNCTION()
+	void HandleCombatSound(FName TypeName, FName Faction, FName Slot, FVector Location)
+	{
+		if (Audio != nullptr)
+			Audio.PlayCombat(TypeName, Faction, Slot, Location);
+	}
+
 	UFUNCTION(BlueprintOverride)
 	void OnInitialized()
 	{
 		Audio = Cast<UHOLAudioPlayer>(NewObject(this, UHOLAudioPlayer));
+		// AR6-c: a blow or a death of the simulation (UHOLCombatSoundSubsystem, never on a dedicated server) plays the type's art sound.
+		UHOLCombatSoundSubsystem CombatSounds = UHOLCombatSoundSubsystem::Get();
+		if (CombatSounds != nullptr)
+			CombatSounds.OnCombatSound.AddUFunction(this, n"HandleCombatSound");
 		UOverlay Frame = Cast<UOverlay>(ConstructWidget(UOverlay, n"ScriptFrame"));
 		SetRootWidget(Frame);
 		BuildHeroBlock(Frame);
