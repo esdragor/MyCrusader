@@ -45,7 +45,7 @@ waitlog Biome expect: key=snow
 frames 40
 capture ag_light_snow
 # AR1-d (CELEBORN-1125ar9) : noms des biomes tels que le jeu les affiche ; etiquettes cernees de noir lisibles sur la neige ; vue rapprochee d un batiment et de sa barre 1,80 m (hol.Art.Focus).
-hol.Art.Focus MainCentre
+hol.Art.Focus MainCentre 8
 waitlog Art focus: type=MainCentre
 frames 40
 capture ag_focus
