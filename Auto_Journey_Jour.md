@@ -42,6 +42,17 @@ Tableau des agents, plan de lancement ETAPE0-1125m, avances de main et anomalies
 | ARWEN-1125c | HeroesOfLiberty-Arwen | spec-voie-1125m | - | Reste ARWEN-1125b : cause du preflight FAIL(1) talents_heal, PNG, fiche E | sans C++ |
 | GALADRIEL-1125c | HeroesOfLiberty-Galadriel | morale-look-fix-1125m | - | diagnostic BUG-ai_peasant-spin (persiste avec 17e7722 dans main) + recadrage ai_tower_easy | sans C++ |
 | CELEBORN-1125c | HeroesOfLiberty-Celeborn | wall-long-fix-1125m | - | lot C++ murs : prix D915 dans DoPlaceBuilding + liaisons porte G10 (lecture pieces, DestroyBuilding) | C++ : raison dite dans la tache |
+| GLORFINDEL-1125a | HeroesOfLiberty-Glorfindel | recette-1125mb | - | RECETTEUR main 1a20314 (integ-83), ENONCES-1125a section 1.5 | sans C++ |
+| ARWEN-1125d | HeroesOfLiberty-Arwen | spec-voie-1125m | - | A2 E-deploy vrai clic (cas lointain D877), ENONCES-1125a-v2.md | sans C++ |
+| GALADRIEL-1125d | HeroesOfLiberty-Galadriel | morale-look-fix-1125m | - | ai_tower_easy cadrage + preflight PASS + fiche E ; ligne [ ] spin en tete de file (Q8) | sans C++ |
+| GALADRIEL-1125e | HeroesOfLiberty-Galadriel | morale-look-fix-1125m | - | C++ BUG-ai_peasant-spin compteur PushedBacks (tete de file, GALADRIEL-1125c.md) | C++ : raison dite dans la tache |
+| ARWEN-1125e | HeroesOfLiberty-Arwen | spec-voie-1125m | - | FAIL recette : Templars ne peut pas former InfirmaryBrother (IsUnitOpenTo, GLORFINDEL-1125a.md) | sans C++ |
+| GLORFINDEL-1125b | HeroesOfLiberty-Glorfindel | recette-1125mb | - | H1 L28-8 tools-l288-1125m puis H2, ENONCES-1125a-v3.md (taches Haldir, faites dans Glorfindel) | sans C++ |
+| ARWEN-1125f | HeroesOfLiberty-Arwen | spec-voie-1125m | - | A3 test D893 palier 1 puis A1 spec_voie_queue, ENONCES-1125a-v3.md | sans C++ |
+| CELEBORN-1125d | HeroesOfLiberty-Celeborn | wall-long-fix-1125m | - | C1 v3 brancher ServerPlaceWallLine (GateRetiredCells, OrderRemoveOwnBuilding), ENONCES-1125a-v3.md | sans C++ |
+| SAURON-1125c | HeroesOfLiberty-Sauron | knight-challenge-1125a | - | corriger tests 0/0 (erreur Angelscript) du lot S1 KnightChallenge 8d83c4b | sans C++ |
+| ARWEN-1125g | HeroesOfLiberty-Arwen | spec-voie-1125m | - | C++ BuiltInRoles Templars (HOLFactionRules.cpp:29) + HOLFactionRulesTests.cpp:215, RESTE ARWEN-1125e | C++ : raison dite dans la tache |
+| SAURON-1125d | HeroesOfLiberty-Sauron | knight-challenge-1125a | - | bouton / commande de grille du Chevalier qui appelle HOLKnightChallenge::CastChallenge (sans C++) | sans C++ |
 
 ## Bilan du 2026-11-25 matin
 

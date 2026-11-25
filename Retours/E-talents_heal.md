@@ -1,8 +1,8 @@
 # [À ESSAYER] E-talents_heal : prendre des talents avec le Paladin-Commandant et voir la jauge de faction (SacredLight) rester AU-DESSUS du bloc héros, sans le recouvrir, puis le trait de soin du Moine doré (« ++ ») après le talent « Mains du guérisseur »
 
-STATUT : LOGIQUE SEULEMENT   (captures vues ; le trait « doré » du talent n'est pas net sur talents_heal_boosted : le trait y paraît vert)
+STATUT : VU A L'ECRAN   (ARWEN-1125c 15:5x : preflight PASS, 3 PNG ouverts et vus : base = '+' vert du Moine (recadre x4), cell = fenetre Arbre de talents, Mains du guerisseur doree, bulle '+20 %', aucun '++' sur la fenetre, boosted = '++' dore ; reste : son non entendu, trait +/++ en DrawDebugString (D886, C++))
 recette: RECETTE-1121sb FAIL sur main a7833ea (Sauron) : jauge SacredLight au-dessus du bloc heros OK (base, cell, boosted), aucun ++ sur l'Arbre de talents OK, MAIS talents_heal_boosted : trait de soin VERT (pixels or 255,215,60 = 0, verts 414 contre 431 en base), pas de ++ : le talent Mains du guerisseur (pris, 2 talents) ne dore pas le trait. Statut reste LOGIQUE SEULEMENT (geste interne).
-GESTE: interne (ARWEN-1125b 15:49 : clics souris REELS hol.Mouse.Click sur HeroTalentButton et les cases ; touche T non injectable ; derniere fermeture encore hol.HUD.Click TalentKey ; reste interne tant que T / fermeture ne sont pas reels)
+GESTE: reel (ARWEN-1125c 15:54 : TOUS les clics sont des clics souris reels hol.Mouse.Click : HeroTalentButton, HeroTalentCell_2_1, HeroTalentCell_3_1 et la fermeture TalentWindowClose (log 'Mouse click TalentWindowClose x1 at 598,142: on SButton') ; seule la touche T est remplacee par le bouton de rappel HeroTalentButton, T n'est pas injectable (UHOLScriptScreen::NativeTick, C++, lot C++) ; commit 33dcd9b, branche spec-voie-1125m)
 SON: non entendu
 branches: zone-effect
 
