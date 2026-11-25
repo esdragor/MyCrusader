@@ -13,6 +13,7 @@ Historique du test du 2026-10-30 : `Docs\Archive\Auto_Journey_Test1_2026-10-30.m
 ### Séance de l'après-midi (15:04 -> 19:04, autonome)
 fin et mode demandés à 15:04 (fin 19:04, autonome ; priorité Docs\Priorite_Socle_Factions_2026-11-16.md) ; session étrangère active vue à 15:0x (Faramir, market-quote-1125s, commit 14:59, SessionEnd était 15:15)
 check-list lue (L28) à 15:09 après le nettoyage 0a (commits 14e113c, 4754030, 7246200, bcedc73) ; veilleur 30 min (xx:13 / xx:43) et alarme 18:49 posés
+/context mi-séance à 16:51 : 276,5k (> 250k, règle a) : plus aucun chantier neuf, seulement finir l'engagé (integ-84, S2 Sauron, spin Galadriel, spec_voie_queue Arwen, porte Celeborn) ; classifieur : défaut de la Chapelle refusé (Undermining Oversight), Q-chapel-faction ouverte, spec-voie intégrée jusqu'à c32f6a0 seulement
 
 ### Plan de lancement ETAPE0-1125a
 Enoncés détaillés : `Docs\Rapports\ENONCES-1125a.md` (main bcedc73 ; priorité Socle Factions ; 6 worktrees à lancer, 2 à ne pas lancer ; INTÉGRATEUR Haldir, RECETTEUR Glorfindel ; places C++ : 1 = Sauron 15:30, 2 = Celeborn 17:00-17:15)
@@ -53,6 +54,14 @@ Tableau des agents, plan de lancement ETAPE0-1125m, avances de main et anomalies
 | SAURON-1125c | HeroesOfLiberty-Sauron | knight-challenge-1125a | - | corriger tests 0/0 (erreur Angelscript) du lot S1 KnightChallenge 8d83c4b | sans C++ |
 | ARWEN-1125g | HeroesOfLiberty-Arwen | spec-voie-1125m | - | C++ BuiltInRoles Templars (HOLFactionRules.cpp:29) + HOLFactionRulesTests.cpp:215, RESTE ARWEN-1125e | C++ : raison dite dans la tache |
 | SAURON-1125d | HeroesOfLiberty-Sauron | knight-challenge-1125a | - | bouton / commande de grille du Chevalier qui appelle HOLKnightChallenge::CastChallenge (sans C++) | sans C++ |
+| CELEBORN-1125e | HeroesOfLiberty-Celeborn | wall-long-fix-1125m | - | scenario wall_gate_replace + ServerPlaceBuilding porte isolee, RESTE CELEBORN-1125d | sans C++ |
+| GLORFINDEL-1125c | HeroesOfLiberty-Glorfindel | glorfindel-wave3-1125a | - | H3 releve lignes perimees de la File avec preuves, ENONCES-1125a-v3.md | sans C++ |
+| GALADRIEL-1125f | HeroesOfLiberty-Galadriel | morale-look-fix-1125m | - | verifier en jeu le correctif spin 4f3c147 (preflights ai_tower_easy / ai_tower, Sanity), fiches E et BUG | sans C++ |
+| SAURON-1125e | HeroesOfLiberty-Sauron | knight-challenge-1125a | - | S2 KnightChallenge : exclusion heros, Chevalier hors rayon (extras), ParallelSearch/AheadSearches, ENONCES-1125a-v2.md | C++ : raison dite dans la tache |
+| ARWEN-1125h | HeroesOfLiberty-Arwen | spec-voie-1125m | - | A1 scenario spec_voie_queue (porte de production par voie au vrai clic), ENONCES-1125a-v3.md | sans C++ |
+| CELEBORN-1125f | HeroesOfLiberty-Celeborn | wall-long-fix-1125m | - | ServerPlaceBuilding porte isolee retire les palissades (script), RESTE CELEBORN-1125e | sans C++ |
+| GALADRIEL-1125g | HeroesOfLiberty-Galadriel | morale-look-fix-1125m | - | diagnostic instrumente du spin deterministe (ai_tower, Paysan #7 a 16702,-1989) : remonter a la cause avant tout 3e correctif | sans C++ |
+| ARWEN-1125i | HeroesOfLiberty-Arwen | spec-voie-1125m | - | Reste ARWEN-1125h : finir spec_voie_queue (etape 35, 2e clic, PNG, fiche E) | sans C++ |
 
 ## Bilan du 2026-11-25 matin
 
