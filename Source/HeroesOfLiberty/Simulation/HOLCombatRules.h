@@ -219,6 +219,11 @@ namespace HOLCombat
 		 * sets it under hol.Combat.PreferFreeTarget): one with a place comes first, the current target first among the full.
 		 */
 		bool bNoPlace = false;
+		/**
+		 * SAURON-1125a (Dawn A7, D919): this candidate is a Knight whose challenge (8 m, 8 s) holds the seeker: set by the processor while the
+		 * challenge lasts and the seeker stands in the zone (never for a hero seeker). ChooseTarget takes it before everything else.
+		 */
+		bool bChallengesMe = false;
 	};
 
 	/**
