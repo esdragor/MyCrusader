@@ -1,0 +1,17 @@
+# Cabine d'icones de l'Atelier (ArtistesInProgress.md, lot AR5-a) : hol.Art.Icon <Type> pose le type seul sur une zone degagee,
+# camera et lumiere fixes, capture 256x256 exportee en PNG dans Saved\ArtIcons\T_Unit_<Type>.png (T_Building_ / T_Source_).
+# Plain, toi contre une IA. 3 types : Arquebusier, Barracks, la premiere source de SourceTypes (All = tous les types). 3 minutes au plus.
+frames 40
+panel hide
+hol.Combat.Enabled 0
+hol.Art.Icon Arquebusier
+waitlog type=Arquebusier
+hol.Art.Icon Barracks
+waitlog type=Barracks
+hol.Art.Icon FirstSource
+waitlog family=Sources
+hol.Camera.Focus -6000 -7500
+hol.Camera.Zoom 1
+frames 40
+capture ai_booth
+note Cabine : Arquebusier, Caserne et une source poses chacun sur sa place degagee. Les PNG sont dans Saved\ArtIcons. Fin.

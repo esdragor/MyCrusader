@@ -8,6 +8,7 @@
 #include "Engine/StaticMeshActor.h"
 #include "Engine/World.h"
 #include "Materials/MaterialInstanceConstant.h"
+#include "MassVisualizer.h"
 #include "Misc/AutomationTest.h"
 #include "Resources/HOLSourceSubsystem.h"
 #include "Resources/HOLSourceTypes.h"
@@ -139,6 +140,42 @@ bool FHOLDecorClearSourcesTest::RunTest(const FString& Parameters)
 			TestEqual(TEXT("no wood source left within the radius"), CountNear(*World, Origin, Radius, true).Sources, 0);
 			TestEqual(TEXT("a second call takes nothing"), ClearNear(*World, Origin, Radius, true).Total(), 0);
 		}
+	}
+	GEngine->DestroyWorldContext(World);
+	World->DestroyWorld(false);
+	return true;
+}
+
+// AR5-c (GLORFINDEL-1125ar5): hol.Art.Icon All crashed at its 14th type (Assertion Index < ArrayNum, Array.h:1339, in
+// UInstancedStaticMeshComponent::SetPreviousTransformById from UMassVisualizationComponent::EndVisualChanges): the booth's
+// hol.Decor.ClearNear took the instance of the Ram (a Mass unit drawn by the Mass visualizer's instanced meshes) 2500 cm from the
+// next spot, behind Mass's back. Effect: an instance of the Mass visualizer within the radius stays after ClearNear (Mass owns it).
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLDecorClearMassVisualsTest, "HeroesOfLiberty.Dev.DecorClearMassVisuals", UE::HeroesOfLiberty::Tests::DecorClear::Flags)
+bool FHOLDecorClearMassVisualsTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Decor;
+
+	UWorld* World = UWorld::CreateWorld(EWorldType::Game, /*bInformEngineOfWorld*/ false);
+	FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);
+	Context.SetCurrentWorld(World);
+	World->InitializeActorsForPlay(FURL());
+
+	UStaticMesh* Cube = LoadObject<UStaticMesh>(nullptr, TEXT("/Engine/BasicShapes/Cube.Cube"));
+	AMassVisualizer* Visualizer = World->SpawnActor<AMassVisualizer>();
+	if (TestNotNull(TEXT("the engine's cube"), Cube) && TestNotNull(TEXT("a Mass visualizer"), Visualizer))
+	{
+		// A Mass unit's visual: one instance of an instanced mesh of the Mass visualizer, 300 cm from the point.
+		UInstancedStaticMeshComponent* UnitVisuals = NewObject<UInstancedStaticMeshComponent>(Visualizer);
+		UnitVisuals->SetMobility(EComponentMobility::Movable);
+		UnitVisuals->SetStaticMesh(Cube);
+		UnitVisuals->SetupAttachment(Visualizer->GetRootComponent());
+		UnitVisuals->RegisterComponent();
+		UnitVisuals->AddInstance(FTransform(FVector(300.0, 0.0, 0.0)), /*bWorldSpace*/ true);
+
+		const FDecorCount Taken = ClearNear(*World, FVector2D(0.0, 0.0), 3000.0, true);
+		TestEqual(TEXT("EFFECT: the Mass unit's visual instance stays (Mass owns it)"), UnitVisuals->GetInstanceCount(), 1);
+		TestEqual(TEXT("ClearNear takes no instance of the Mass visualizer"), Taken.Instances, 0);
+		TestEqual(TEXT("CountNear does not count the Mass visualizer's instances as decor"), CountNear(*World, FVector2D(0.0, 0.0), 3000.0).Instances, 0);
 	}
 	GEngine->DestroyWorldContext(World);
 	World->DestroyWorld(false);
