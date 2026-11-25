@@ -3838,13 +3838,17 @@ void AHOLPlayerController::DoCheatResources(const FHOLResources Amount)
 	{
 		return;
 	}
-	// Every slot of the match gets the amount (FARAMIR-1124si: the AI slot stayed at 0-30 wood and the scenario timed out); the caller's own state is the fallback.
+	// The caller's own slot gets the amount, and every AI slot of the launch config too (FARAMIR-1124si: the AI slot stayed at
+	// 0-30 wood and the scenario timed out). Never another human's slot (CELEBORN-1125ar10: 7e0613c gave Bob's gold cheats to
+	// Alice too, net 2 clients counted 4 army cheats of 2 and net hero return saw Alice's gold fall to 0 then 1000).
 	TArray<AHOLPlayerState*> Targets;
-	if (const AGameStateBase* HOLMatchState = GetWorld() ? GetWorld()->GetGameState() : nullptr)
+	if (const AHOLGameState* HOLMatchState = GetWorld() ? GetWorld()->GetGameState<AHOLGameState>() : nullptr)
 	{
+		const TArray<FHOLMatchSlot>& LaunchSlots = HOLMatchState->GetLaunchConfig().Slots;
 		for (APlayerState* Other : HOLMatchState->PlayerArray)
 		{
-			if (AHOLPlayerState* OtherHOL = Cast<AHOLPlayerState>(Other))
+			AHOLPlayerState* OtherHOL = Cast<AHOLPlayerState>(Other);
+			if (OtherHOL && LaunchSlots.IsValidIndex(OtherHOL->GetPlayerIndex()) && LaunchSlots[OtherHOL->GetPlayerIndex()].State == EHOLSlotState::AI)
 			{
 				Targets.AddUnique(OtherHOL);
 			}
