@@ -48,3 +48,13 @@ void Test_GGCBannerAndAttackMove(FUnitTest& T)
 	FHOLGridGroundOrder FactionPower = HOLGridGroundClick::OnGroundClick(3, 0, FVector(0.0, 0.0, 0.0), Selected);
 	T.AssertTrue(FactionPower.Kind == EHOLGridGroundKind::None, "a faction power's mode (below 100) is not the grid's");
 }
+
+// HeroesOfLiberty.GridGroundClick.BridgeGetIsTheScriptClass
+// The C++ hook finds its script rule through UHOLGridActionBridge::Get(): it must be the script subclass, and its DecideGridAction (the override the hook calls) must arm the Seal.
+void Test_GGCBridgeGetIsTheScriptClass(FUnitTest& T)
+{
+	UHOLGridActionBridge Bridge = UHOLGridActionBridge::Get();
+	T.AssertTrue(Bridge != nullptr, "Get() finds a bridge instance");
+	UHOLGridActionScript ScriptBridge = Cast<UHOLGridActionScript>(Bridge);
+	T.AssertTrue(ScriptBridge != nullptr, "the instance Get() gives is the script class UHOLGridActionScript");
+}

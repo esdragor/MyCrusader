@@ -2310,9 +2310,15 @@ UHOLScenarioPanelScript ScenarioPanel;
 	UFUNCTION(BlueprintOverride)
 	void Tick(FGeometry MyGeometry, float32 InDeltaTime)
 	{
+		AHOLPlayerController Controller = Cast<AHOLPlayerController>(GetOwningPlayer());
+		// ELROND-1125mc (G-3): an armed grid mode (100 attack-move, 101 Banner, 102 Seal) is the grid's, not a faction power's.
+		if (Controller != nullptr && Controller.GetFactionAim() >= HOLCommandGridAction::GetAimAttackMove())
+		{
+			HOLGridGroundClick::ConsumeGridGroundClick(Controller);
+			return;
+		}
 		if (!FactionView.bVisible)
 			return;
-		AHOLPlayerController Controller = Cast<AHOLPlayerController>(GetOwningPlayer());
 		if (Controller == nullptr || Controller.GetFactionAim() < 0)
 			return;
 		DrawFactionAimPreview(Controller);
