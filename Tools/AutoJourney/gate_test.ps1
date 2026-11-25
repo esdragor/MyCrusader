@@ -632,6 +632,19 @@ Check ($s4b -match '(?m)^PASS .*L28-4.*rapport' -and $s4b -match '(?m)^FAIL .*L2
 [IO.File]::WriteAllText((Join-Path $S4Main 'EtapeDefini.md'), "# Etape`r`n`r`n- ZZTEST-1 : fait`r`n", $NoBom)
 $s4c = & powershell -NoProfile -ExecutionPolicy Bypass -File $Gate -Phase Report -Root $S4Root -MainDir $S4Main -AgentName 'ZZTEST-1' | Out-String
 Check ($s4c -match '(?m)^PASS .*L28-4.*rapport' -and $s4c -match '(?m)^PASS .*L28-4.*EtapeDefini' -and -not ($s4c -match '(?m)^FAIL .*L28-4')) 'L28-4 report: rapport et ligne EtapeDefini presents -> 2 PASS, aucun FAIL' $s4c
+# --- L28-8 (SAURON-1125ma) : Launch FAIL si `git worktree list` depasse le plafond de worktrees connus (SAURON-1124sf en avait cree un neuf)
+$S8Repo = Join-Path $Tmp 'S8Repo'
+New-Item -ItemType Directory -Path $S8Repo -Force | Out-Null
+& git -C $S8Repo init -q 2>&1 | Out-Null
+& git -C $S8Repo -c user.name=t -c user.email=t@t commit -q --allow-empty -m init 2>&1 | Out-Null
+foreach ($s8n in 'w1', 'w2') { & git -C $S8Repo worktree add -q (Join-Path $Tmp "S8-$s8n") -b "s8-$s8n" 2>&1 | Out-Null }
+$S8Root = Join-Path $Tmp 'HeroesOfLiberty-S8'
+New-Item -ItemType Directory -Path $S8Root -Force | Out-Null
+$s8a = & powershell -NoProfile -ExecutionPolicy Bypass -File $Gate -Phase Launch -End 23:59 -Root $S8Root -WorktreeRepo $S8Repo -MaxWorktrees 1 | Out-String
+Check ($s8a -match '(?m)^FAIL .*L28-8.*\b2\b') 'L28-8 launch: 2 worktrees hors main pour un plafond de 1 -> FAIL avec le compte 2' $s8a
+$s8b = & powershell -NoProfile -ExecutionPolicy Bypass -File $Gate -Phase Launch -End 23:59 -Root $S8Root -WorktreeRepo $S8Repo -MaxWorktrees 2 | Out-String
+Check ($s8b -match '(?m)^PASS .*L28-8' -and -not ($s8b -match '(?m)^FAIL .*L28-8')) 'L28-8 launch: 2 worktrees hors main pour un plafond de 2 -> PASS, aucun FAIL' $s8b
+& git -C $S8Repo worktree prune 2>&1 | Out-Null
 Remove-Item -Recurse -Force $Tmp -ErrorAction SilentlyContinue
 Write-Output ("=> {0} PASS, {1} FAIL ({2} s)" -f $Passes, $Fails, [int]((Get-Date) - $T0).TotalSeconds)
 if ($Fails -gt 0) { exit 1 } else { exit 0 }
