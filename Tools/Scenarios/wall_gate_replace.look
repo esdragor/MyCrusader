@@ -1,0 +1,7 @@
+# branches: wall-long-fix-1125m
+# STATUT : geste reel (Paysan selectionne, A puis D, glisser de souris ; puis A puis la Porte, second glisser) ; play.ps1 -Hidden garde la souris reelle (SAURON-1123pb).
+# OBJET attendu : une palissade FINIE (murs pleins) alignee horizontalement, puis une PORTE posee sur le milieu de cette palissade : les murs sous la porte ont disparu (un passage / la porte), les murs a gauche et a droite restent. Viewport cache 1066x600, zoom 3 : une case de 4 m = environ 92 px de pas.
+# <nom de capture> | ce que l'utilisateur doit voir
+wall_gate_replace_before | une file de murs de palissade finis (pas de fondations) de x=200 a x=1000 environ sur y=360, aucun trou ; le Bois de la barre de ressources a baisse (5 par case)
+wall_gate_replace_during | pendant le glisser de la porte (bouton tenu) : le fantome de la porte (vert) sur 2 a 3 cases au milieu de la palissade finie, la palissade toujours entiere autour
+wall_gate_replace_after | apres le relache : la porte (ou son chantier) sur les cases du milieu de la palissade, les murs de la palissade ont disparu SOUS la porte, ceux de gauche et de droite sont toujours la ; le Bois a baisse du prix des portes (10 par case) sans remboursement des murs
