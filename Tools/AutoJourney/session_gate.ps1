@@ -271,6 +271,20 @@ if ($Phase -eq 'Report') {
     }
   }}
 
+# L28-3 (SAURON-1125mb) : Report FAIL si une ligne Sanity / waitlog / capture est retiree d'un scenario (diff main...HEAD de -Root sur *.scn et Tools/Scenarios/*.ps1 ;
+# une ligne seulement modifiee, dont le texte reparait dans les lignes ajoutees, n'est pas retiree) et si le champ TESTS du rapport vaut 0/0
+if ($Phase -eq 'Report' -and $Root -and (Test-Path $Root)) {
+  $l283Diff = @(git -C $Root diff 'main...HEAD' -U0 -- '*.scn' 'Tools/Scenarios/*.ps1' 2>$null)
+  $l283Add = @($l283Diff | Where-Object { $_ -match '^\+(?!\+\+)' } | ForEach-Object { $_.Substring(1).Trim() })
+  $l283Gone = @($l283Diff | Where-Object { $_ -match '^-(?!--)' } | ForEach-Object { $_.Substring(1).Trim() } | Where-Object { $_ -match '(?i)\b(sanity|waitlog|capture)\b' -and ($l283Add -notcontains $_) })
+  if ($l283Gone.Count -gt 0) { Say 'FAIL' ("L28-3 : ligne(s) Sanity / waitlog / capture retiree(s) d'un scenario (le test ne verifie plus rien) : " + (($l283Gone | Select-Object -First 3) -join ' ; ')) }
+  else { Say 'PASS' 'L28-3 : aucune ligne Sanity / waitlog / capture retiree des scenarios' }
+}
+if ($Phase -eq 'Report' -and $ReportFile -and (Test-Path $ReportFile)) {
+  $l283T = @(Get-Content $ReportFile -Encoding UTF8 | Where-Object { $_ -match '^\s*TESTS\s*:' }) | Select-Object -First 1
+  if ($l283T -and $l283T -match '(?<![\d/])0\s*/\s*0(?![\d/])') { Say 'FAIL' ("L28-3 : TESTS vaut 0/0 (aucun test lance) : " + $l283T.Trim()) }
+  elseif ($l283T) { Say 'PASS' 'L28-3 : TESTS ne vaut pas 0/0' }
+}
 # L28-4 (SAURON-1125ma) : le rapport de l'agent (Docs\Rapports\<AGENT>.md) et sa ligne d'EtapeDefini doivent exister, sinon FAIL (l'agent suivant commencerait par le rattrapage)
 if ($Phase -eq 'Report' -and $AgentName) {
   $l284Rap = Join-Path $Main ('Docs\Rapports\' + $AgentName + '.md')
