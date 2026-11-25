@@ -168,12 +168,17 @@ namespace HOLCombat
 		};
 	}
 
+	bool IsChallengedBy(const FVector2D& SeekerPosition, const bool bSeekerIsHero, const FVector2D& KnightPosition, const int64 EndStep, const float RadiusCm, const int64 StepIndex)
+	{
+		return !bSeekerIsHero && EndStep > StepIndex && FVector2D::DistSquared(KnightPosition, SeekerPosition) <= FMath::Square(static_cast<double>(RadiusCm));
+	}
+
 	int32 ChooseTarget(const FSeeker& Seeker, const TConstArrayView<FCandidate> Candidates)
 	{
 		// SAURON-1125a (Dawn A7, D919): a challenging Knight comes before everything, wherever it stands (the processor set the flag only
 		// inside the zone, while the challenge lasts, never for a hero): the nearest one, by the usual distance then id. A unit that cannot
 		// attack units is not provoked; on hold, only a Knight in reach.
-		if (Seeker.bCanAttackUnits)
+		if (Seeker.bCanAttackUnits && !Seeker.bIsHero)
 		{
 			int32 Challenger = INDEX_NONE;
 			double ChallengerDistance = 0.;
