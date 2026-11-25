@@ -4,7 +4,8 @@
 // DA_Art_<Type> keeps every type as it was: AR0-d2 (D925) removed the visual columns of the unit table, so the reference is
 // FROZEN (HOLArtMigrationFrozen.inl, the CSV's values before the removal, by type and field) and compared to the constants
 // the game registers for the type, and to the arrows' projectile and smoke; the mesh of every building and every source
-// is still compared to its row. Mass simulation test (D838): the Mass type registration reads them.
+// (Mesh column removed by AR0-d2 point 3) is compared to its frozen value too. Mass simulation test (D838): the Mass type
+// registration reads them.
 
 #include "Art/HOLArtVisual.h"
 #include "Buildings/HOLBuildingTypes.h"
@@ -152,21 +153,28 @@ bool FHOLArtMigrationKeepsEveryTypeTest::RunTest(const FString& Parameters)
 	}
 	TestEqual(TEXT("every frozen field is checked"), NumFields, static_cast<int32>(UE_ARRAY_COUNT(FrozenVisuals)));
 
-	const auto CheckMeshes = [this](const UDataTable& Table, const TCHAR* Folder, const auto* RowType)
+	// AR0-d2 (3): the Mesh column of the building and source tables is removed. The reference is FROZEN (the CSV's Mesh
+	// before the removal: the forum on both centres, every other building and every source empty) and compared to what the
+	// game draws for the type from the row alone (the art asset over the neutral fallback, the reader's call).
+	const TMap<FName, FString> FrozenMeshes = {
+		{FName(TEXT("MainCentre")), TEXT("/Game/Buildings/Forum/SM_Forum.SM_Forum")},
+		{FName(TEXT("SecondaryCentre")), TEXT("/Game/Buildings/Forum/SM_Forum.SM_Forum")},
+	};
+	int32 NumFrozenMeshes = 0;
+	const auto CheckMeshes = [this, &FrozenMeshes, &NumFrozenMeshes](const UDataTable& Table, const UScriptStruct* RowStruct, const TCHAR* Label)
 	{
-		using FRow = std::remove_const_t<std::remove_pointer_t<decltype(RowType)>>;
+		TestNull(FString::Printf(TEXT("%s: the row has no Mesh column any more"), Label), RowStruct->FindPropertyByName(TEXT("Mesh")));
 		for (const TPair<FName, uint8*>& Pair : Table.GetRowMap())
 		{
-			const FRow& Row = *reinterpret_cast<const FRow*>(Pair.Value);
-			if (LoadArt(*this, Folder, Pair.Key))
-			{
-				TestEqual(FString::Printf(TEXT("%s: mesh"), *Pair.Key.ToString()),
-					HOLArtVisual::ResolveMesh(nullptr, Pair.Key, NAME_None, FSoftObjectPath()).ToString(), Row.Mesh.ToSoftObjectPath().ToString());
-			}
+			const FString* Frozen = FrozenMeshes.Find(Pair.Key);
+			NumFrozenMeshes += Frozen ? 1 : 0;
+			TestEqual(FString::Printf(TEXT("%s: mesh"), *Pair.Key.ToString()),
+				HOLArtVisual::ResolveMesh(nullptr, Pair.Key, NAME_None, FSoftObjectPath()).ToString(), Frozen ? *Frozen : FString());
 		}
 	};
-	CheckMeshes(*Buildings, TEXT("Buildings"), static_cast<const FHOLBuildingTypeRow*>(nullptr));
-	CheckMeshes(*Sources, TEXT("Sources"), static_cast<const FHOLSourceTypeRow*>(nullptr));
+	CheckMeshes(*Buildings, FHOLBuildingTypeRow::StaticStruct(), TEXT("Buildings"));
+	CheckMeshes(*Sources, FHOLSourceTypeRow::StaticStruct(), TEXT("Sources"));
+	TestEqual(TEXT("every frozen mesh is checked"), NumFrozenMeshes, FrozenMeshes.Num());
 
 	TestEqual(TEXT("every unit type keeps its constants"), Constants.Num(), Units->GetRowMap().Num());
 	return true;

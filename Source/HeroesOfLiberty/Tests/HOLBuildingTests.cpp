@@ -1,5 +1,6 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
+#include "Art/HOLArtVisual.h"
 #include "Buildings/HOLBuilding.h"
 #include "Buildings/HOLBuildingTypes.h"
 #include "Components/BoxComponent.h"
@@ -287,7 +288,7 @@ bool FHOLBuildingArcheryRangeTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("age 0"), Range->Age, 0);
 	TestEqual(TEXT("no population"), Range->PopulationProvided, 0);
 	TestTrue(TEXT("no deposit"), Range->Accepts.IsEmpty());
-	TestTrue(TEXT("no final mesh: its provisional shape"), Range->Mesh.IsNull());
+	TestTrue(TEXT("no final mesh: its provisional shape"), HOLArtVisual::ResolveMesh(nullptr, HOLBuildingTypeNames::ArcheryRange, NAME_None, FSoftObjectPath()).IsNull());
 	TestTrue(TEXT("its shape: a range (AR-Q2b)"), Range->Shape == EHOLBuildingShape::Range);
 	TestTrue(TEXT("the Barracks keeps the block and tower (D261)"), Barracks->Shape == EHOLBuildingShape::BlockAndTower);
 
@@ -917,7 +918,7 @@ bool FHOLBuildingFarmShapeTest::RunTest(const FString& Parameters)
 	{
 		return false;
 	}
-	TestTrue(TEXT("the farm: walked over, no mesh (table)"), Farm->Walkable && Farm->Mesh.IsNull());
+	TestTrue(TEXT("the farm: walked over, no mesh (table)"), Farm->Walkable && HOLArtVisual::ResolveMesh(nullptr, HOLBuildingTypeNames::Farm, NAME_None, FSoftObjectPath()).IsNull());
 	// What the health bar and the selection marker read (HOLSelectionMarkers): as low as the field.
 	TestTrue(FString::Printf(TEXT("the farm's height in the table (%.0f cm) under %.0f cm"), Farm->Height, AHOLBuilding::FieldMaxHeight),
 		Farm->Height > 0.f && Farm->Height < AHOLBuilding::FieldMaxHeight);

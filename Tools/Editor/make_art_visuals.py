@@ -3,7 +3,7 @@
 For every type named in Tools/Data/UnitTypes.csv, BuildingTypes.csv and SourceTypes.csv (the Name column only: the
 CSV carries no visual column any more), the asset /Game/Art/<Units|Buildings|Sources>/<Type>/DA_Art_<Type>
 (UHOLArtVisual) is created EMPTY when it does not exist: the type's name, no faction, no visual field (the neutral
-fallback: the provisional shape), Status Placeholder. An existing asset is never rewritten (the artists' work stays).
+fallback: the provisional shape), Status Placeholder. An existing asset is never rewritten (the artists' work stays); its manifest Status is read in it (Final kept).
 Tools/Data/ArtVisuals.csv, the art manifest (Type,Faction,Family,Asset,Fields,Status; check_placeholders.ps1), keeps
 its lines and gains one line per created asset.
 Run hidden (the editor quits when done):
@@ -59,6 +59,14 @@ def create_empty(family, type_name):
     return path
 
 
+def asset_status(path):
+    """The manifest Status of a DA_Art, read in the asset: Final when its Status is Final, else Provisoire."""
+    asset = unreal.EditorAssetLibrary.load_asset(path)
+    if asset is not None and asset.get_editor_property("status") == unreal.HOLArtStatus.FINAL:
+        return "Final"
+    return "Provisoire"
+
+
 def main():
     manifest = read_manifest()
     listed = {(row[0], row[1], row[2]) for row in manifest if len(row) >= 3}
@@ -68,10 +76,16 @@ def main():
             path = create_empty(family, type_name)
             if path:
                 created += 1
+            asset_path = "%s/%s/%s/DA_Art_%s" % (ART_ROOT, family, type_name, type_name)
+            status = asset_status(asset_path)
             if (type_name, "", family) not in listed:
-                asset_path = "%s/%s/%s/DA_Art_%s" % (ART_ROOT, family, type_name, type_name)
-                manifest.append([type_name, "", family, asset_path, "", "Provisoire"])
+                manifest.append([type_name, "", family, asset_path, "", status])
                 listed.add((type_name, "", family))
+            else:
+                # The asset is the truth: an artist's Final is kept, never set back to Provisoire.
+                for row in manifest:
+                    if len(row) >= 6 and (row[0], row[1], row[2]) == (type_name, "", family):
+                        row[5] = status
     with open(MANIFEST_PATH, "w", encoding="utf-8", newline="") as csv_file:
         writer = csv.writer(csv_file, lineterminator="\n")
         writer.writerow(MANIFEST_HEADER)

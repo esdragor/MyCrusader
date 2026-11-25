@@ -1,6 +1,7 @@
 # regen_tables.ps1 (L20-9, 2026-11-20) : regenere les .uasset UnitTypes / BuildingTypes depuis les CSV de Tools\Data.
 # Les deux scripts Python tournent dans UnrealEditor-Cmd.exe (sans fenetre : -nullrhi -nosound -unattended), l'un apres l'autre :
-#   make_unit_types.py puis make_building_types.py (commande qui a marche le 2026-11-20 a 16:29).
+#   make_unit_types.py puis make_building_types.py (commande qui a marche le 2026-11-20 a 16:29), puis make_source_types.py
+#   (SourceTypes, ajoute par HALDIR-1125ar7 : colonne Mesh retiree, AR0-d2 point 3).
 # Usage : powershell -ExecutionPolicy Bypass -File regen_tables.ps1 -Root <worktree> [-DryRun] [-Engine <dossier du moteur>]
 #   -DryRun : imprime les deux commandes, ne lance rien. Sans -DryRun : lance l'editeur (Regle 13 d'agent_rules : seul, file de build vide).
 # Code de sortie : 0 = les deux scripts ont reussi (ou DryRun), 1 = -Root / uproject / editeur introuvable, 2 = un script a echoue.
@@ -20,7 +21,8 @@ $LogDir = Join-Path $Root 'Saved\Logs'
 
 $Steps = @(
   @{ Name = 'unit';     Script = (Join-Path $Root 'Tools\Editor\make_unit_types.py') },
-  @{ Name = 'building'; Script = (Join-Path $Root 'Tools\Editor\make_building_types.py') }
+  @{ Name = 'building'; Script = (Join-Path $Root 'Tools\Editor\make_building_types.py') },
+  @{ Name = 'source';   Script = (Join-Path $Root 'Tools\Editor\make_source_types.py') }
 )
 $Code = 0
 foreach ($s in $Steps) {
