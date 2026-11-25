@@ -4,25 +4,35 @@ waitlog Starting hero of slot 0 spawned at
 hol.AI.ThinkSteps 100000
 hol.Art.Try Arquebusier 5
 waitlog hol.Art.Try: 5 Arquebusier of slot 0 next to the Forum
+waitlog hol.Art.Try: selected after
 hol.Camera.Zoom 3
 frames 30
 note 1. hol.Art.Try Arquebusier 5 : cinq Arquebusiers bleus sont poses a cote du Forum, aucun sur un autre ni dans le Forum, selectionnes, la camera sur eux.
 capture art_try_placed
-# Une cible : un Homme d'armes ennemi 32 m a l'est du Forum (immobile, IA gelee).
-hol.Camera.FocusNear 3200 0
+# Une cible : un Homme d'armes ennemi 28 m a l'est du Forum (immobile, IA gelee) ; AR4-b (CELEBORN-1125ar5) : 32 m et 6 s ne suffisaient pas, aucun tir vu.
+# CELEBORN-1125ar6 : 40 m (a 28 m il etait a portee des copies des sa naissance, avant le clic).
+hol.Camera.FocusNear 4000 0
 frames 2
 hol.Units.SpawnHere 1 ManAtArms 1 100
 waitlog SpawnHere: 1 ManAtArms of slot 1
-# Vrai clic droit au sol 20 m a l'est du Forum : la selection (les 5 Arquebusiers) y marche ; arrives a 12 m de l'Homme d'armes, ils tirent.
-hol.Camera.FocusNear 2000 0
-frames 2
-hol.Select.OrderNear 2000 0
-wait 2
-note 2. Clic droit : les cinq Arquebusiers marchent vers l'est.
-capture art_try_march
-wait 6
-note 3. Arrives a portee, ils tirent sur l'Homme d'armes (fumee, PV qui baissent).
+# Vrai clic droit au sol 26 m a l'est du Forum : la selection (les 5 Arquebusiers) y marche ; arretes a 14 m de l'Homme d'armes (portee 15 m), ils tirent avant le contact (CELEBORN-1125ar6 : un Arquebusier en marche ne tire pas).
 hol.Camera.FocusNear 2600 0
 frames 2
+hol.Select.OrderNear 2600 0
+wait 1
+note 2. Clic droit : les cinq Arquebusiers marchent vers l'est.
+capture art_try_march
+# AR4-b (CELEBORN-1125ar6) : capture sur l'evenement (ligne du premier tir), pas apres une attente fixe (12 s = melee, fumee eteinte).
+hol.Camera.FocusNear 3000 0
+waitlog hol.Art.Try: first shot
+frames 3
+note 3. Arrives a portee, ils tirent sur l'Homme d'armes (fumee de poudre devant les canons).
 capture art_try_fire
+frames 20
+capture art_try_fire_late
+# AR4-b : une ressource posee a cote du Forum (vraie source, a tous).
+hol.Art.Try GoldVein 1
+waitlog hol.Art.Try: 1 GoldVein of slot 0 next to the Forum
+frames 30
+capture art_try_source
 note 4. A toi : hol.Art.Try <Type> [N] (unite, batiment) ; un type mal ecrit (hol.Art.Try Arquebusir) affiche les types proches.

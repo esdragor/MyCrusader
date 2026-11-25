@@ -414,7 +414,7 @@ void AHOLBuilding::ShowArrowShot(uint16 OldCount)
 	Launch.From = FVector(GetFootprintBounds().GetCenter(), Row->Height);
 	Launch.To = ArrowShotTo;
 	Launch.FlightMs = ArrowShotFlightMs;
-	Launch.ShooterType = NAME_None;
+	HOLArrowLaunches::SetBuildingShooter(Launch, GetTypeName(), GetOwnerPlayer());
 	for (int32 Shot = 0; Shot < Released; ++Shot)
 	{
 		ArrowDisplay->Launch(Launch);

@@ -3,14 +3,18 @@
 Ce guide est pour vous si vous faites des modèles, des animations ou des icônes pour le jeu et que vous travaillez
 seulement dans l'éditeur Unreal. Vous n'avez pas besoin de lire le code, ni de toucher aux tableaux du jeu, ni de lancer
 de script. Chaque affirmation de ce guide a été vérifiée dans le projet ; les références techniques sont en fin de
-document, pour les développeurs.
+document, pour les développeurs. Ce qui n'est pas encore dans le jeu est regroupé à la section 12 (« À venir »).
 
 ## 1. Le principe en une phrase
 
-Chaque objet du jeu (une unité, un bâtiment, une ressource) peut avoir **une fiche d'art** : un petit fichier de
-l'éditeur nommé `DA_Art_<Type>`. Vous y posez votre modèle, vos animations, votre icône. Le jeu lit cette fiche avant
-tout le reste. Une case laissée vide garde ce que le jeu montre aujourd'hui (le modèle provisoire) : vous pouvez donc
-livrer un corps sans ses animations, ou une icône seule.
+Chaque objet du jeu (une unité, un bâtiment, une ressource) a **une fiche d'art** : un petit fichier de l'éditeur nommé
+`DA_Art_<Type>`. Vous y posez votre modèle, vos animations, votre icône. Le jeu lit cette fiche avant tout le reste. Une
+case laissée vide garde ce que le jeu montre aujourd'hui (le modèle provisoire) : vous pouvez donc livrer un corps sans
+ses animations, ou une icône seule.
+
+Les fiches des 51 objets actuels existent déjà, remplies avec l'art provisoire (mannequins, formes simples) et marquées
+provisoires : vous **ouvrez** la fiche de votre objet et vous remplacez ce qu'elle contient. La fiche est la seule
+source de l'art d'un objet : on ne touche plus aux tableaux du jeu pour changer un modèle.
 
 ## 2. Où ranger ses fichiers
 
@@ -22,7 +26,7 @@ Tout votre travail va sous le dossier `Art` du Content Browser, un sous-dossier 
 | Bâtiments | `/Game/Art/Buildings/<Type>/` | `/Game/Art/Buildings/Barracks/` |
 | Ressources (arbres, filons...) | `/Game/Art/Sources/<Type>/` | `/Game/Art/Sources/GoldVein/` |
 
-`<Type>` est le nom interne de l'objet, en anglais. La commande `hol.Art.Gallery` (section 9) écrit au-dessus de chaque
+`<Type>` est le nom interne de l'objet, en anglais. La commande `hol.Art.Gallery` (section 10) écrit au-dessus de chaque
 objet son nom interne puis son nom en jeu. Les noms actuels :
 
 - **Unités** : LightInfantry, LightInfantryNanite, Archer, Peasant, Zombie, Spearman, ManAtArms, DamnedWarrior, King,
@@ -37,13 +41,20 @@ Dans ce dossier : vos maillages (`SM_` pour un modèle fixe, `SKM_` pour un mod�
 matériaux, animations, et la fiche `DA_Art_<Type>`. **Le jeu ne cherche les fiches que sous `/Game/Art`**, et seul ce
 dossier les emporte dans le jeu publié : une fiche rangée ailleurs est ignorée.
 
-## 3. Créer la fiche d'un objet
+## 3. Créer ou ouvrir la fiche d'un objet
 
-1. Dans le dossier de l'objet : clic droit > **Data Asset** (rubrique « Miscellaneous »), classe **HOLArtVisual**.
-2. La nommer `DA_Art_<Type>` (par exemple `DA_Art_Spearman`).
-3. L'ouvrir et remplir **Type Name** avec le nom interne (`Spearman`). C'est ce champ qui compte, pas le nom du fichier.
-4. Laisser **Faction** vide (la fiche vaut pour toutes les factions), sauf pour une variante (section 4).
-5. Remplir les cases voulues, enregistrer.
+La fiche de chaque objet actuel existe déjà (section 1) : ouvrez `DA_Art_<Type>` dans le dossier de l'objet. Pour un
+objet neuf, deux façons :
+
+- **Par le menu (conseillé)** : clic droit sur votre Static Mesh ou votre Skeletal Mesh > rubrique **HOL Art** >
+  **Create the DA_Art of this type**. L'éditeur demande **Type Name** (et **Faction**, à laisser vide sauf variante,
+  section 4). Il crée `DA_Art_<Type>` dans le bon dossier (`/Game/Art/<Famille>/<Type>/`), y pose votre modèle et
+  l'enregistre ; un message vert en bas de l'écran donne son chemin. Un nom inconnu des tableaux du jeu ne crée rien
+  (message rouge) ; une fiche qui existe déjà n'est pas écrasée.
+- **À la main** : dans le dossier de l'objet, clic droit > **Data Asset** (rubrique « Miscellaneous »), classe
+  **HOLArtVisual** ; la nommer `DA_Art_<Type>` (par exemple `DA_Art_Spearman`) ; remplir **Type Name** avec le nom
+  interne (`Spearman`) : c'est ce champ qui compte, pas le nom du fichier ; laisser **Faction** vide (la fiche vaut pour
+  toutes les factions), sauf pour une variante (section 4).
 
 Deux fiches pour le même objet et la même faction sont une erreur : le jeu garde la première et écrit dans son journal
 (catégorie `LogHOLArt`) un message qui nomme les deux fichiers. Une fiche sans Type Name est signalée de la même façon.
@@ -68,16 +79,15 @@ Une case vide (ou une case à cocher décochée) = le jeu garde ce qu'il montre 
 - **Build Sequence** : numéro de l'animation de construction ; **Build Play Rate** : sa vitesse.
 - **Gather Play Rate** : vitesse des animations de récolte ; **Carry Walk Play Rate** : vitesse de la marche chargée.
   Les animations de récolte, de marche chargée et de repos chargé elles-mêmes (une par ressource) ne sont pas encore
-  dans la fiche : demandez à l'équipe de les brancher.
+  dans la fiche (section 12) : demandez à l'équipe de les brancher.
 
-**Tir** (unités à distance)
+**Tir** (unités à distance, et bâtiments qui tirent comme la tour de bois)
 - **Projectile** : le modèle de la flèche, du carreau ou de la balle.
 - **Muzzle Smoke** : la fumée à la sortie du canon (Arquebusier).
-- Ces deux champs ne sont lus que dans la fiche commune : une variante de faction ne les change pas encore.
 
 **Interface**
 - **Icon** : l'icône de l'unité (Texture 2D) dans le cadre de garnison. Vide : le jeu prend
-  `/Game/UI/Icons/Units/T_Unit_<Type>` s'il existe. Lue dans la fiche commune seulement.
+  `/Game/UI/Icons/Units/T_Unit_<Type>` s'il existe.
 - **Portrait** : réservé, le jeu ne l'affiche pas encore.
 
 **Registre**
@@ -89,12 +99,19 @@ Une case vide (ou une case à cocher décochée) = le jeu garde ce qu'il montre 
 Sept unités des Légions sont la même unité que celle de l'Aube, avec un autre nom ; elles ont aujourd'hui le même corps.
 Pour leur donner le leur, créez une seconde fiche dans le même dossier :
 
-- nom : `DA_Art_<Type>_Legions` (par exemple `DA_Art_Spearman_Legions`) ;
-- **Type Name** : le même que l'unité de l'Aube (`Spearman`) ;
-- **Faction** : `Legions`.
+- par le menu : clic droit sur la fiche commune `DA_Art_<Type>` > **HOL Art** > **Create the faction variant of this
+  DA_Art**, puis donnez la faction (`Legions`) ;
+- ou à la main : nom `DA_Art_<Type>_Legions` (par exemple `DA_Art_Spearman_Legions`), **Type Name** le même que l'unité
+  de l'Aube (`Spearman`), **Faction** `Legions`.
 
 Le jeu cherche, case par case : la fiche de la faction, puis la fiche commune de l'objet, puis ce qu'il montre
 aujourd'hui. Une variante peut donc ne remplir que **Skinned Mesh** et garder les animations de la fiche commune.
+
+La variante vaut pour **toutes** les cases d'une unité, y compris **Projectile**, **Muzzle Smoke** et **Icon** : la
+flèche d'un archer squelette, la fumée d'un tireur des Légions et l'icône d'une unité des Légions dans la garnison
+viennent de la variante si elle les remplit. C'est la faction du **propriétaire** qui compte (celle du tireur, ou du
+joueur qui possède le bâtiment) ; cela vaut aussi pour la flèche d'une tour : `DA_Art_TowerWood_Legions` puis
+`DA_Art_TowerWood`. Les ressources (arbres, filons) n'ont pas de faction : seule leur fiche commune compte.
 
 | Nom en jeu (Légions) | Type Name | Fichier |
 |---|---|---|
@@ -111,8 +128,10 @@ Le Zombie (`Zombie`) et le Guerrier damné (`DamnedWarrior`) sont des unités à
 
 ## 5. Conventions de modélisation
 
-- **Unité de mesure** : 1 unité Unreal = 1 cm. Un humain fait environ 180 unités de haut.
-- **Pivot** : au sol, entre les pieds (au centre de la base pour un bâtiment ou une ressource).
+- **Unité de mesure** : 1 unité Unreal = 1 cm. Un humain fait environ 180 unités de haut (la barre de 1,80 m de la
+  galerie, section 10, sert d'étalon).
+- **Pivot** : au sol, entre les pieds (au centre de la base pour un bâtiment ou une ressource). Le menu **Check for the
+  game** (section 9) le vérifie.
 - **Axe avant** : faites regarder le modèle vers l'axe X de l'éditeur.
 - **Rotation -90 et échelle 1,5 des unités actuelles** : les unités provisoires sont le mannequin d'Unreal, qui regarde
   vers l'axe Y et qui est petit pour la caméra du jeu. Le jeu le tourne donc de -90 degrés et l'agrandit : 1,5 pour un
@@ -122,7 +141,7 @@ Le Zombie (`Zombie`) et le Guerrier damné (`DamnedWarrior`) sont des unités à
     laissez la case décochée ;
   - modèle déjà à la taille voulue en jeu : cochez **Mesh Scale** et mettez 1 ; modèle à l'échelle du mannequin :
     laissez la case décochée.
-  Ces deux réglages ne concernent que les unités. Vérifiez toujours le résultat en jeu (section 9).
+  Ces deux réglages ne concernent que les unités. Vérifiez toujours le résultat en jeu (section 10).
 
 ## 6. Animations
 
@@ -141,7 +160,7 @@ Data**, et chaque état de l'unité joue un numéro de cette liste.
 
 Une séquence non cochée garde le numéro actuel de l'unité (par exemple l'Archer a aujourd'hui le repos en 2 et la marche
 en 3), qui pointera alors dans **votre** liste : cochez donc toutes les séquences dès que vous posez votre propre
-Animation Provider.
+Animation Provider. **Check for the game** sur la fiche (section 9) signale un numéro hors de votre liste.
 
 ## 7. Licences
 
@@ -158,67 +177,120 @@ registre, envoyez ces informations à l'équipe avec votre livraison.
 ## 8. Provisoire ou final
 
 - **Status = Placeholder** (par défaut) : votre travail est un essai, l'objet reste compté comme provisoire.
-- **Status = Final** : l'objet est terminé. Prévenez l'équipe : sa ligne sort alors de `Placeholders.txt` (la liste de
-  tout ce qui est provisoire dans le jeu, une ligne par objet, par exemple « Lancier Légion (Lancier squelette)
-  [mannequin] »). Une fiche `Final` dont la ligne reste dans cette liste fait échouer le contrôle automatique du projet.
+- **Status = Final** : l'objet est terminé. **Prévenez l'équipe** : elle passe l'objet à `Final` dans la liste des
+  fiches du projet (`Tools\Data\ArtVisuals.csv`, une ligne par fiche, colonne Status `Provisoire` ou `Final`) et retire
+  sa ligne de `Placeholders.txt` (la liste de tout ce qui est provisoire dans le jeu, une ligne par objet, par exemple
+  « Lancier Légion (Lancier squelette) [mannequin] »).
 
-## 9. Voir son travail
+Le contrôle automatique du projet (`check_placeholders`) lit ces deux listes :
+- un objet n'est **final** que si **toutes** ses fiches (la commune et chaque variante de faction) sont `Final` dans la
+  liste des fiches ; une seule fiche encore `Provisoire` le laisse provisoire ;
+- un objet final dont la ligne reste dans `Placeholders.txt` fait **échouer** le contrôle ;
+- un objet provisoire qui n'a pas de ligne dans `Placeholders.txt` le fait aussi échouer.
+
+## 9. Vérifier dans l'éditeur (clic droit > HOL Art > Check for the game)
+
+Clic droit sur un **Static Mesh**, un **Skeletal Mesh** ou une fiche **DA_Art** (classe HOLArtVisual) > rubrique **HOL
+Art** > **Check for the game**. Le résultat s'écrit dans l'Output Log, une ligne par règle, `[OK]` ou `[KO]` (les `[KO]`
+en rouge), avec un résumé vert ou rouge en bas de l'écran.
+
+| Sur | Ce qui est vérifié |
+|---|---|
+| Static Mesh | pivot au sol (bas du modèle à 0, à 2 cm près) ; 1 à 4 emplacements de matériau ; triangles (LOD 0) : 8 000 au plus sous `/Art/Units/`, 40 000 ailleurs ; nom qui commence par `SM_` ; rangé sous `/Game/Art/` |
+| Skeletal Mesh | pivot au sol ; 1 à 4 emplacements de matériau ; nom qui commence par `SKM_` ; rangé sous `/Game/Art/` |
+| Fiche DA_Art | Type Name connu des tableaux du jeu ; rangée sous `/Game/Art/` ; chaque case remplie (Mesh, Skinned Mesh, Animation Provider, Icon, Portrait) s'ouvre bien ; chaque séquence cochée (Idle, Walk, Attack, Fall, Build) est un numéro de votre liste d'animations |
+
+Les seuils (triangles, matériaux) sont provisoires : ils seront revus quand le vrai art arrivera.
+
+## 10. Voir son travail
 
 Lancez le jeu depuis l'éditeur (Play), ouvrez la console (touche `²` ou `~`) et tapez :
 
-- `hol.Art.Gallery` : pose tous les objets du jeu côte à côte, avec leur nom interne et leur nom en jeu ;
-  `hol.Art.Gallery Units` (ou `Buildings`, `Sources`, `All`) n'en montre qu'une famille.
-- `hol.Art.Try <Type> [N]` : dans une partie normale déjà lancée, pose N exemplaires de l'objet à côté de votre Forum,
-  avec construction rapide et +1000 ressources, pour le voir jouer (par exemple `hol.Art.Try Spearman 5`). Un nom
-  inconnu affiche les noms proches. Les ressources ne se posent pas encore ainsi.
+- `hol.Art.Gallery` : dans une partie normale, pose un exemplaire de chaque objet du jeu (lu dans les tableaux du jeu :
+  un objet ajouté y apparaît tout seul), loin de votre Forum, combat coupé, avec son nom interne et son nom en jeu écrits
+  au sol. `hol.Art.Gallery Units` (ou `Buildings`, `Sources`, `All`) n'en montre qu'une famille ;
+  `hol.Art.GalleryFrame Units` (ou `Buildings`, `Sources`) place la caméra sur une famille. Les ressources sont de vraies
+  ressources du jeu. **Repères d'échelle** à côté de chaque objet :
+  - une **barre de 1,80 m** (un homme debout) ;
+  - pour un bâtiment : le **contour de son emprise** au sol, la **grille** des cases de 4 m et de leurs sous-cases à
+    l'intérieur, et un **poteau** à un coin qui monte à la hauteur prévue du bâtiment.
+- `hol.Art.Light <biome>` : montre la galerie sous la lumière, la brume, le sol et le décor d'un biome du jeu :
+  `fresh_grass`, `dry_steppe`, `autumn`, `dark_forest`, `snow` (ou son numéro) ; `hol.Art.Light default` revient à
+  l'aspect de la carte. Un nom inconnu ne change rien et écrit la liste des noms dans l'Output Log.
+- `hol.Art.Try <Type> [N]` : dans une partie normale déjà lancée, pose N exemplaires (1 à 50) de l'objet à côté de votre
+  Forum, avec construction rapide et +1000 ressources, pour le voir jouer (par exemple `hol.Art.Try Spearman 5`). Les
+  unités posées sont **sélectionnées** et la caméra va sur elles : un clic droit les fait marcher ou attaquer. Un
+  bâtiment est posé fini ; une ressource (par exemple `hol.Art.Try GoldVein`) est posée avec sa quantité normale. Un nom
+  inconnu affiche les noms proches.
 
 Les fiches sont lues au démarrage du jeu : après un enregistrement, arrêtez puis relancez Play.
 
-## 10. Taille des fichiers et travail à plusieurs
+## 11. Taille des fichiers et travail à plusieurs
 
 Le projet est sur GitHub : **un fichier de plus de 100 Mo est refusé**. Gardez chaque fichier sous cette limite
 (textures en 2048 ou moins, fichiers sources lourds hors du projet). Il n'y a pas encore de verrou de fichier : prévenez
 l'équipe avant de modifier une fiche ou un modèle qu'un autre a pu toucher (un `.uasset` ne se fusionne pas).
 
+## 12. À venir (pas encore dans le jeu)
+
+Ces points sont en préparation ; ce guide sera mis à jour quand ils seront dans le jeu.
+
+- **Fin des colonnes d'art dans les tableaux** : aujourd'hui le tableau des unités garde encore ses anciennes colonnes de
+  modèle et d'animations, derrière la fiche (la fiche passe en premier). Elles vont disparaître, de même que le modèle
+  des bâtiments et des ressources dans leurs tableaux : la fiche restera la seule source de l'art.
+- **Animations de récolte et de port dans la fiche** (une par ressource), et **animations désignées par leur fichier**
+  plutôt que par un numéro dans la liste.
+- **Menu sur une Anim Sequence** (« Check for the game » : squelette, durée, nombre d'images), contrôle de **Projectile**
+  et **Muzzle Smoke** et des triangles d'un Skeletal Mesh, et **See in the Workshop** (affiche la commande `hol.Art.Try`
+  à taper pour voir l'objet).
+- **Icônes** : une commande qui photographie chaque objet sous le même angle pour en faire l'icône.
+- **Sons** dans la fiche.
+
 ---
 
-## Notes pour les agents (vérification, fichier:ligne, base 84ad66f sauf mention)
+## Notes pour les agents (vérification, fichier:ligne, base `main` 0f81c1e)
 
-1. Fiche = `UHOLArtVisual : UPrimaryDataAsset`, champs et défauts : `Source/HeroesOfLiberty/Art/HOLArtVisual.h:31-155`
-   (TypeName :44, Faction :48, Mesh :52, SkinnedMesh :55, AnimationProvider :58, MeshYawOffset :60-64, MeshScale :66-70,
-   séquences :73-125, Projectile/MuzzleSmoke :129-132, Icon/Portrait :135-138, Status/Author/License/SourceUrl :142-151).
-2. Champ vide ou case décochée = inchangé : `HOLArtVisual.cpp:35-64` (`IsNull`, lambda `Set` sur `bOverride*`).
-3. Recherche sous `/Game/Art` seulement : `HOLArtVisual.cpp:22`, `:74`, `:82` ; cuisson : `Config/DefaultGame.ini:196-197`
-   (`PrimaryAssetTypesToScan`, `CookRule=AlwaysCook`). Registre = `UGameInstanceSubsystem` (`HOLArtVisual.h:161-169`),
-   d'où « relancez Play ».
-4. Doublon / TypeName vide : `HOLArtVisual.cpp:158`, `:164`, journal `LogHOLArt` `:17`, `:98`.
-5. Repli faction -> commun -> CSV : `HOLArtVisual.h:24-28`, `:221-229` ; unités : `HOLUnitSubsystem.cpp:333` (CRC de
-   faction), `:406` (enregistrement). Faction `Legions` = clé de `Tools/Data/FactionOverrides.csv`, résolue par
-   `HOLFactionRules::ResolveKey` (`HOLArtVisual.cpp:194`).
-6. Faction NON lue (NAME_None) : flèches `Presentation/HOLArrowSubsystem.cpp:91`, `:107` ; icône
-   `Script/UI/HOLGarrisonFrameRules.as:32`, repli `T_Unit_<Type>` `:35` ; ressources `Resources/HOLSourceField.cpp:242`.
-   Bâtiments : `Buildings/HOLBuilding.cpp:1241` (ResolveMesh). Portrait : aucune lecture dans `HOLArtVisual.cpp`.
-7. 7 unités des Légions : `Tools/Data/FactionOverrides.csv:2,4,6,8,10,12,14` (lignes `DisplayName`).
-   Zombie / DamnedWarrior = lignes propres de `Tools/Data/UnitTypes.csv`.
-8. Noms internes : 1re colonne de `Tools/Data/UnitTypes.csv`, `BuildingTypes.csv`, `SourceTypes.csv`.
-9. -90 / échelles : colonnes `MeshYawOffset` (8) et `MeshScale` (9) de `UnitTypes.csv` (toutes -90 ; 1.5, Hero 1.8,
-   LightCavalry 2.25, Ram 3.75, Mangonel 4.5) ; appliqué en rotation de lacet : `HOLUnitSubsystem.cpp:537`.
-   « Mannequin regarde vers Y » : convention du mannequin UE5, déduite de l'offset -90, non vue à l'écran.
-10. Séquences de l'Archer (Idle 2, Walk 3) : colonnes 12-13 de `UnitTypes.csv`. Séquences par ressource (`Gather*`,
-    `CarryWalk*`, `CarryIdle*`, colonnes 15-19) absentes de la fiche.
-11. Transform Provider : `C:\UE\UE_5.8_HOL\Engine\Source\Editor\UnrealEd\Private\Factories\TransformProviderFactory.cpp:32`,
-    `:111` (choix de classe) ; `Layers` : `Engine\Source\Runtime\Engine\Classes\Animation\AnimSequenceTransformProviderData.h:662`,
-    `InitLayerPools` `Private\Animation\AnimSequenceTransformProviderData.cpp:1426` ; modèle :
-    `Tools/Editor/make_skinned_mannequin.py:148` (« The runtime needs at least one layer »).
-12. Registre de licences : `Docs/assets_art.csv:1` (en-tête) ; règle CC0 / licence écrite : `Placeholders.txt` étiquette
-    `[kit]` et `ArtistesInProgress.md` (AR2, AR7).
-13. Final et Placeholders : branche `art-manifest-1125ar` (AR0-b, 49af701), `Tools/check_placeholders.ps1:13-14`, `:30`
-    (manifeste `Tools/Data/ArtVisuals.csv`, pas encore écrit par l'éditeur). Exemple de ligne : `Placeholders.txt:20`.
-14. `hol.Art.Gallery` : branche `art-gallery-1125ar` (9d2e9f0), `Script/Art/HOLArtGallery.as:1`, `:160` (étiquette
-    nom interne + nom en jeu), `:234`. `hol.Art.Try` : branche `art-try-1125ar` (e5fd62e), `Script/Art/HOLArtTry.as:1-2`,
-    `:183` (ressource non posée), `:192` (noms proches), `:199` (partie Plain requise). Absents de la base 84ad66f :
-    disponibles après l'intégration des branches AR.
-15. Console : `Config/DefaultInput.ini:95-96` (Tilde, ²). GitHub 100 Mo et absence de LFS : `.gitattributes:6-14`
-    (`binary`, aucun `lockable`).
-16. NON VÉRIFIÉ : libellé exact du menu « Data Asset » / « Transform Provider Data » dans l'éditeur 5.8 ; pivot et axe
-    avant des bâtiments et ressources (aucune correction de lacet ni d'échelle lue pour eux) ; rien vu à l'écran.
+1. Fiche = `UHOLArtVisual : UPrimaryDataAsset`, `Source/HeroesOfLiberty/Art/HOLArtVisual.h` ; `EHOLArtStatus`
+   Placeholder / Final `:18-21`, défaut Placeholder `:142`. Champ vide ou case décochée = inchangé :
+   `HOLArtVisual.cpp:35-64`. Recherche sous `/Game/Art` seulement et cuisson : `HOLArtVisual.cpp:22`, `:74`, `:82`,
+   `Config/DefaultGame.ini:196-197`. Doublon / TypeName vide : `HOLArtVisual.cpp:158`, `:164` (`LogHOLArt`).
+   (lignes de `HOLArtVisual.cpp` reprises de la note précédente, base 84ad66f, non relues sur 0f81c1e)
+2. 51 fiches existantes : `Tools/Data/ArtVisuals.csv` (51 lignes hors en-tête, toutes `Provisoire`) et 51
+   `Content/Art/**/DA_Art_*.uasset` ; écrites par `Tools/Editor/make_art_visuals.py:5-7`, Status Placeholder `:126`,
+   manifeste `Provisoire` `:139` (le relancer réécrit le manifeste en `Provisoire` : un `Final` posé à la main serait
+   perdu). D925 (GDD) : DA_Art seule source après retrait des colonnes.
+3. Menus d'éditeur : `Script/Art/Editor/HOLArtAssetMenu.as:140-186` (`UScriptAssetMenuExtension`, Category « HOL Art »,
+   SupportedClasses UStaticMesh `:142`, USkeletalMesh `:159`, UHOLArtVisual `:176` ; « Check for the game » `:144`,
+   `:161`, `:178` ; « Create the DA_Art of this type » `:150`, `:167` ; « Create the faction variant of this DA_Art »
+   `:184`). Création par Python, refus type inconnu `:112-120`, fiche existante non écrasée `:126`, message `:136`.
+   Contrôles : `CheckStaticMesh` `:68-79`, `CheckSkeletalMesh` `:81-89` (pas de triangles), `CheckArtVisual` `:91-110`,
+   `AddCommon` `:62-66`, rapport `Log` + `Print` `:41-58`. Règles et seuils : `Script/Art/HOLArtChecks.as:16-22`
+   (pivot 2 cm, 4 matériaux, 8000 / 40000 triangles, `/Game/Art/`), `:24-64`, chemin `:96-104`.
+4. Variante de faction : Projectile / MuzzleSmoke `Source/HeroesOfLiberty/Presentation/HOLArrowSubsystem.cpp:85-108`
+   (ShooterFaction), `SetUnitShooter` `:382` ; client `Net/HOLNetUnitDisplay.cpp:158`, `:172` ; tour
+   `Buildings/HOLBuilding.cpp:417` (`SetBuildingShooter`, slot propriétaire). Icône : `Script/UI/HOLGarrisonFrameRules.as:27-35`
+   (DA_Art faction puis commun puis `T_Unit_<Type>`), `OwnerFactionKey` `:39-42`, appel `Script/UI/HOLGarrisonFrame.as:133`.
+   Ressources sans faction : `Resources/HOLSourceField.cpp:238-242` (NAME_None). Portrait : aucune lecture dans
+   `Source/HeroesOfLiberty/**/*.cpp` (grep). 7 unités des Légions : `Tools/Data/FactionOverrides.csv:2,4,6,8,10,12,14`.
+5. Provisoire / final : `Tools/check_placeholders.ps1:12-15` (manifeste, Status Provisoire|Final), `:30-36` (final =
+   toutes les lignes du type Final), `:42-47` (non final : Mesh CSV vide ou mannequin sans ligne = problème), `:51-52`
+   (final encore listé = problème). Dans 0f81c1e le jugement « provisoire » lit encore `Row.Mesh` du CSV (`:43-44`).
+6. Galerie : `Script/Art/HOLArtGallery.as:1-11` (tables, combat coupé, vraies sources `HOLSourceAdd::AddNeutralSource`,
+   `hol.Art.GalleryFrame`), repères `:109-119` (contour, case 4 m, sous-case, poteau ; barre `ReferenceHeightCm` 180),
+   `:141-195` (emprise `Footprint`, grille, poteau `Height`), `hol.Art.Light` `:197-202`, `:526-577` (clés HOLBiome via
+   `hol.Biome.Index` `:544` ; nom inconnu = ligne `LogHOLMatch` « Art light: unknown biome » `:533-541`).
+7. `hol.Art.Try` : `Script/Art/HOLArtTry.as:1-5` (unité sélectionnée + caméra, bâtiment fini, source à sa quantité),
+   sélection répétée jusqu'aux N copies `:146-156`, N borné 1..50 `:219`, partie Plain requise `:244`, FastBuild +
+   Resources 1000 `:247-248`, noms proches `:237`.
+8. Noms internes : 1re colonne de `Tools/Data/UnitTypes.csv`, `BuildingTypes.csv`, `SourceTypes.csv`. -90 / échelles :
+   colonnes `MeshYawOffset` / `MeshScale` de `UnitTypes.csv` (encore présentes dans 0f81c1e, en-tête ligne 1).
+9. Transform Provider et `Layers` : `TransformProviderFactory.cpp:32`, `:111`, `AnimSequenceTransformProviderData.h:662`,
+   `Tools/Editor/make_skinned_mannequin.py:148` (note précédente, non relue). Console : `Config/DefaultInput.ini:95-96`.
+   100 Mo / pas de LFS : `.gitattributes:6-14`. Registre de licences : `Docs/assets_art.csv:1`.
+10. À venir, branches hors de `main` 0f81c1e (`git merge-base --is-ancestor`) : `art-strip-1125ar` (retrait des colonnes,
+    champs par ressource, check_placeholders par DA_Art), `art-editor2-1125ar` (menu AnimSequence, See in the Workshop,
+    contrôles Projectile / MuzzleSmoke / triangles SkeletalMesh), `art-anim-1125ar` (animations par référence),
+    `art-icons-1125ar` (`hol.Art.Icon`), `art-scripts-1125ar` ; sons (AR6) non commencés.
+11. NON VÉRIFIÉ : libellés des menus de l'éditeur 5.8 (« Data Asset », « Transform Provider Data ») et apparence réelle
+    du menu « HOL Art » et de la boîte de saisie Type Name / Faction (lus dans le script, pas vus à l'écran) ; pivot et
+    axe avant des bâtiments et ressources ; rien vu à l'écran pour ce guide.
