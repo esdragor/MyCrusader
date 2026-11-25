@@ -15,3 +15,5 @@ NON VÉRIFIÉ : la cellule du Sceau n'est pas visible dans la grille (touche tes
 Commande complète :
 `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Elrond\Tools\Scenarios\play.ps1 monk_seal -Root C:\Users\baudo\Documents\HeroesOfLiberty-Elrond`
 Durée : environ 1 min. Réponse attendue : `OK`, `BUG: ...` ou `REGLAGE: ...`.
+Recette RECETTE-1125mb sur main 7922539 : PASS avec reserve (preflight PASS 25 s, 2 PNG ouverts : case R Sceau non vide, panneau cout 25 ressource insuffisante, puis double anneau bleu pale rayon 6 m a 8 m du Moine et recharge 40 s, journal Grid: armed mode 102 (LightSeal) + Zone effect Seal of Light ; reserve : le .look promet l infobulle Sceau de lumiere (rayon 6 m, 10 s, 40 %) or elle n est PAS sur le PNG (survol non capture) - .look a corriger ou survol a capturer ; texte Shaders en preparation visible sur before ; WARN preflight sans HUD overlap ni Sanity)
+Reponse: BUG: le Sceau marche mais la recharge ne s affiche pas (2026-11-25 14:0x, joue par l utilisateur sur main 7922539, dans la conversation ; correctif en cours : HALDIR-1125me)

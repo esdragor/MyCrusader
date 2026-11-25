@@ -20,3 +20,5 @@ Durée : environ 3 min. Réponse attendue : `OK`, `BUG: ...` ou `REGLAGE: ...`.
 
 Recette HALDIR-1124m (2026-11-24, dans main 25e29ab, worktree C:\Users\baudo\Documents\HeroesOfLiberty-Haldir, build PASS) : PASS (4 PNG vus : cercle de visee VERT a portee puis ORANGE hors portee, zone doree + Honneur 84/100 apres le lancer)
 Lancer UNE commande : `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Haldir\Tools\Scenarios\play.ps1 faction_aim_free -Root C:\Users\baudo\Documents\HeroesOfLiberty-Haldir`
+Recette RECETTE-1125mb sur main 7922539 : PASS (preflight PASS 106 s, 4 PNG ouverts : cercle VERT de 6 m sous la souris a portee, ORANGE (centre a droite, hors anneau de 12 m) au loin, zone doree + Honneur 84/100 + PV heros 245/450 + recharge 18 s apres le lancer ; reserve : sur aim_far un petit anneau blanc isole a (912,333) a ~120 px du centre du cercle orange (curseur reel annonce a 1030,300), cause non identifiee ; barres de vie par soldat illisibles)
+Reponse: OK (2026-11-25 14:0x, joue par l utilisateur sur main 7922539, dans la conversation)
