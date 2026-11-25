@@ -10,6 +10,7 @@
 #include "EngineUtils.h"
 #include "HAL/IConsoleManager.h"
 #include "HeroesOfLibertyLog.h"
+#include "MassVisualizer.h"
 #include "Materials/MaterialInterface.h"
 #include "Resources/HOLSourceField.h"
 #include "Resources/HOLSourceSubsystem.h"
@@ -69,7 +70,9 @@ namespace UE::HeroesOfLiberty::Decor
 			{
 				Count.Actors += IsGroveActor(*Shape) && IsWithin(Shape->GetActorLocation(), At, Radius);
 			}
-			if (Actor->IsA<AHOLSourceField>())
+			// The Mass visualizer's instanced meshes draw the Mass units: Mass owns their instance ids (AR5-c: removing one here made
+			// UMassVisualizationComponent::EndVisualChanges assert, Array.h:1339, on its next frame), so they are never decor.
+			if (Actor->IsA<AHOLSourceField>() || Actor->IsA<AMassVisualizer>())
 			{
 				continue;
 			}
@@ -105,7 +108,9 @@ namespace UE::HeroesOfLiberty::Decor
 					Grove.Add(Actor);
 				}
 			}
-			if (Actor->IsA<AHOLSourceField>())
+			// The Mass visualizer's instanced meshes draw the Mass units: Mass owns their instance ids (AR5-c: removing one here made
+			// UMassVisualizationComponent::EndVisualChanges assert, Array.h:1339, on its next frame), so they are never decor.
+			if (Actor->IsA<AHOLSourceField>() || Actor->IsA<AMassVisualizer>())
 			{
 				continue;
 			}
