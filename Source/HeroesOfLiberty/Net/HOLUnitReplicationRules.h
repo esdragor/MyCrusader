@@ -166,6 +166,10 @@ struct HEROESOFLIBERTY_API FHOLNetUnitState
 	UPROPERTY()
 	uint16 EffectMask = 0;
 
+	/** R1 (Q-moral-duree-client, default B): the whole seconds left of the temporary effect that lasts longest (HOLMorale::LongestSecondsLeft), 0 when none; sent with the mask only. Not part of IsSameAction (one change per second would be traffic). */
+	UPROPERTY()
+	uint8 EffectSecondsLeft = 0;
+
 	/** Reduces a state; values out of range are held at the range's edge. */
 	static FHOLNetUnitState Make(const FVector& Position, const FVector& Velocity, EHOLUnitActivity Activity, int64 Step,
 		EHOLResource LoadResource = EHOLResource::Food, int32 LoadAmount = 0, EHOLResource GatherResource = EHOLResource::Food);

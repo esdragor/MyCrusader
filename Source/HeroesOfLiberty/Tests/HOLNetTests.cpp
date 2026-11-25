@@ -329,7 +329,14 @@ bool FHOLNetElementFormatTest::RunTest(const FString& Parameters)
 		TestEqual(TEXT("a unit under the effects of rows 0 and 3 carries bits 0 and 3"), static_cast<int32>(Mask), (1 << 0) | (1 << 3));
 		FHOLNetUnitState Marked = FHOLNetUnitState::Make(Here, FVector::ZeroVector, EHOLUnitActivity::Idle, 120);
 		Marked.EffectMask = Mask;
-		AllStates.Add(Marked);
+		// R1: the longest temporary effect decides the seconds left (12.5 s rounds up to 13; an aura counts for none).
+		HOLMorale::FHOLMoraleState Timed = Morale;
+		Timed.Effects[0].bAura = false;
+		Timed.Effects[0].DurationMs = 12500;
+		Timed.Effects[1].bAura = false;
+		Timed.Effects[1].DurationMs = 4000;
+		Marked.EffectSecondsLeft = HOLMorale::LongestSecondsLeft(Timed);
+		TestEqual(TEXT(
 		FHOLNetUnitState MarkedHurt = WithCombat(FHOLNetUnitState::Make(Here, FVector::ZeroVector, EHOLUnitActivity::Attacking, 121), 40, 100, 5, false, 0.f);
 		MarkedHurt.EffectMask = Mask;
 		AllStates.Add(MarkedHurt);
@@ -421,6 +428,7 @@ bool FHOLNetElementFormatTest::RunTest(const FString& Parameters)
 		Serializer.Dequantize(ReadContext, DequantizeArgs);
 		TestEqual(TEXT("same state after the trip"), Back, State);
 		TestEqual(TEXT("the effect mask is the one sent"), Back.EffectMask, State.EffectMask);
+		TestEqual(TEXT("R1: the seconds left are the ones sent"), Back.EffectSecondsLeft, State.EffectSecondsLeft);
 		TestEqual(TEXT("exact health after the trip (0 unhurt, not sent)"), Back.Health, State.Health);
 	}
 

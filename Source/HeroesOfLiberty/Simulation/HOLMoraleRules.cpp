@@ -329,6 +329,11 @@ namespace HOLMorale
 		return Mask;
 	}
 
+	uint8 LongestSecondsLeft(const FHOLMoraleState& State)
+	{
+		return 0; // R1 stub (red first): the real rule comes in the next commit
+	}
+
 	uint64 FingerprintKey(const FHOLMoraleState& State)
 	{
 		if (IsEmpty(State))
