@@ -6,4 +6,6 @@ tower_wood_during3 | 4 images de plus : fleche en vol tout pres du Lancier, ou d
 tower_wood_during4 | 12 images de plus : fleche en vol ou plantee, un Lancier au contact de la tour
 tower_wood_during5 | 12 images de plus : fleche en vol ou plantee
 tower_wood_during6 | 12 images de plus : fleche en vol ou plantee (Lanciers au contact)
-tower_wood_after | panneau de construction FERME (plus de Paysan selectionne), 2 Lanciers rouges cadres au centre-gauche de l'ecran a cote de la tour de bois (la 3e hors cadre) ; au moins une petite barre de vie orange (entamee, rouge-orange et non verte) au-dessus d'un Lancier ; pas de panneau au bord gauche autre que celui de la faction
+tower_wood_after | cadrage Zoom 2 decale vers -Y : panneau de construction FERME (plus de Paysan selectionne), les Lanciers rouges VISIBLES a cote de la tour de bois, au moins une petite barre de vie orange (entamee, rouge-orange et non verte) lisible au-dessus d'un Lancier ; pas de panneau au bord gauche autre que celui de la faction
+tower_wood_after2 | meme scene, camera decalee encore vers -Y (4000 -1600) : Lanciers et leurs barres de vie, tour a droite
+tower_wood_after3 | meme scene, vue large Zoom 1 : la tour ET les Lanciers rouges dans le meme cadre
