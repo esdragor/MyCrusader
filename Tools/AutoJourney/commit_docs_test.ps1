@@ -129,6 +129,41 @@ $o6 = & powershell -NoProfile -ExecutionPolicy Bypass -File $Tool -Root $Repo -O
 Check ($LASTEXITCODE -eq 3 -and (Git $Repo rev-parse HEAD | Out-String).Trim() -eq $HeadP2) '-Only Docs/Autre.md (hors Priorite_*): refuse code 3, aucun commit' $o6
 Git $Repo checkout -q -- Docs/Autre.md Docs/Priorite_X.md | Out-Null   # l'etat du depot jetable sert encore aux cas session_gate ci-dessous
 
+# --- L29-8 (2026-11-26, SAURON-1126m) : des commits de docs emportaient les lignes d'autres sessions (EtapeDefini.md, Auto_Journey_Jour.md) et
+# EtapeDefini.md est reparti avec des fins de ligne melees. -Lines "<texte>||<texte>" (avec -Only d'UN fichier) ne commite que les blocs modifies qui
+# portent un de ces textes ; le reste reste modifie dans l'arbre. EtapeDefini.md passe par eol_check.ps1 -Fix avant l'add (arbre en CRLF, blob en LF).
+Put $Repo '.gitattributes' "* text=auto eol=crlf`n"
+Git $Repo add .gitattributes | Out-Null
+Git $Repo commit -q -m 'attributes' -- .gitattributes | Out-Null
+Put $Repo 'EtapeDefini.md' "head`r`nmine: v1`r`nmiddle`r`nother: v1`r`nend`r`n"
+Git $Repo add EtapeDefini.md | Out-Null
+Git $Repo commit -q -m 'etape base' -- EtapeDefini.md | Out-Null
+Put $Repo 'EtapeDefini.md' "head`r`nmine: v2 SAURON`r`nmiddle`r`nother: v2 AUTRE-SESSION`r`nend`r`n"
+$HeadL = (Git $Repo rev-parse HEAD | Out-String).Trim()
+$oL = & powershell -NoProfile -ExecutionPolicy Bypass -File $Tool -Root $Repo -Only 'EtapeDefini.md' -Lines 'mine: v2 SAURON' -Message 'Docs: my line' | Out-String
+$cL = $LASTEXITCODE
+$blobL = (Git $Repo show 'HEAD:EtapeDefini.md' | Out-String)
+Check ($cL -eq 0 -and (Git $Repo rev-list --count "$HeadL..HEAD" | Out-String).Trim() -eq '1') '-Lines: un commit cree' "code=$cL out=$oL"
+Check ($blobL -match 'mine: v2 SAURON' -and $blobL -match 'other: v1' -and $blobL -notmatch 'AUTRE-SESSION') '-Lines: le commit contient MA ligne et PAS celle de l''autre session (git show HEAD:EtapeDefini.md)' $blobL
+$wtL = [IO.File]::ReadAllText((Join-Path $Repo 'EtapeDefini.md'))
+Check ($wtL -match 'AUTRE-SESSION' -and (Git $Repo status --short -- EtapeDefini.md | Out-String) -match '^ M EtapeDefini\.md') '-Lines: la ligne de l''autre session reste dans l''arbre, non commitee' $wtL
+$HeadL2 = (Git $Repo rev-parse HEAD | Out-String).Trim()
+$oL2 = & powershell -NoProfile -ExecutionPolicy Bypass -File $Tool -Root $Repo -Only 'EtapeDefini.md,Auto_Journey_File.md' -Lines 'x' | Out-String
+Check ($LASTEXITCODE -ne 0 -and (Git $Repo rev-parse HEAD | Out-String).Trim() -eq $HeadL2) '-Lines avec deux fichiers: refuse, code non nul, aucun commit' $oL2
+$oL3 = & powershell -NoProfile -ExecutionPolicy Bypass -File $Tool -Root $Repo -Only 'EtapeDefini.md' -Lines 'texte qui n existe nulle part' | Out-String
+Check ($LASTEXITCODE -ne 0 -and (Git $Repo rev-parse HEAD | Out-String).Trim() -eq $HeadL2) '-Lines dont aucun texte n''est trouve: refuse, code non nul, aucun commit' $oL3
+Git $Repo checkout -q -- EtapeDefini.md | Out-Null
+
+# cas B : EtapeDefini.md a fins de ligne MELEES dans l'arbre (LF seul au milieu) : apres commit_docs, l'arbre est en CRLF partout et le blob sans CR
+Put $Repo 'EtapeDefini.md' "head`r`nmine: v3 EOL`nmiddle`r`nother: v1`nend`r`n"
+$oB = & powershell -NoProfile -ExecutionPolicy Bypass -File $Tool -Root $Repo -Only 'EtapeDefini.md' -Message 'Docs: eol' | Out-String
+$cB = $LASTEXITCODE
+$blobB = (Git $Repo show 'HEAD:EtapeDefini.md' | Out-String)
+$eolB = (Git $Repo ls-files --eol -- EtapeDefini.md | Out-String)
+Check ($cB -eq 0 -and $blobB -match 'mine: v3 EOL' -and $blobB -notmatch "`r") 'EtapeDefini.md a fins melees: commite, blob sans CR' "out=$oB blob=$blobB"
+Check ($eolB -match 'w/crlf' -and $eolB -notmatch 'w/(mixed|lf)') 'EtapeDefini.md a fins melees: arbre remis en CRLF (eol_check -Fix avant l''add)' $eolB
+Check (-not (Git $Repo diff --stat -- EtapeDefini.md | Out-String).Trim()) 'EtapeDefini.md a fins melees: aucun diff restant sur le fichier' (Git $Repo diff --stat -- EtapeDefini.md | Out-String)
+
 # --- Pas un depot git
 $NoGit = Join-Path $Tmp 'plain'
 New-Item -ItemType Directory -Path $NoGit | Out-Null
