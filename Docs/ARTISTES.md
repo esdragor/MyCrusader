@@ -5,6 +5,29 @@ seulement dans l'éditeur Unreal. Vous n'avez pas besoin de lire le code, ni de 
 de script. Chaque affirmation de ce guide a été vérifiée dans le projet ; les références techniques sont en fin de
 document, pour les développeurs. Ce qui n'est pas encore dans le jeu est regroupé à la section 12 (« À venir »).
 
+## 0. Installer son poste (une fois)
+
+Pas besoin de Visual Studio ni de compiler : l'équipe range dans le projet l'éditeur du jeu déjà compilé.
+
+1. Installez **Git** (https://git-scm.com) et **Git LFS** (https://git-lfs.com), puis tapez dans un terminal :
+   `git lfs install`.
+2. Récupérez le projet : `git clone <adresse donnée par l'équipe> HeroesOfLiberty`.
+3. **Le moteur** : l'équipe vous donne le zip du moteur « UE 5.8 HOL ». Décompressez-le (par exemple dans
+   `C:\UE\UE_5.8_HOL`), puis, dans un terminal ouvert dans le dossier du projet :
+   `powershell -ExecutionPolicy Bypass -File Tools\Art\register_engine.ps1 -EnginePath C:\UE\UE_5.8_HOL`.
+   Si l'éditeur ne démarre pas ensuite, installez une fois `Engine\Extras\Redist\en-us\vc_redist.x64.exe` du moteur.
+4. Ouvrez l'éditeur en double-cliquant **`OpenEditor.cmd`**, à la racine du projet. Pas le fichier `.uproject` : le
+   script met d'abord en place l'éditeur compilé.
+
+Chaque jour : `git pull`, puis `OpenEditor.cmd`. Ce qu'il peut vous dire :
+
+| Message | Que faire |
+|---|---|
+| « moteur … introuvable » | refaites l'étape 3 |
+| « faites pour un autre moteur » | demandez le zip du moteur à jour |
+| « WARN le code C++ a changé après ces DLL » | l'éditeur s'ouvre quand même ; demandez la publication des DLL et n'enregistrez pas de fiche en attendant |
+| l'éditeur propose de reconstruire (« rebuild ») des modules | répondez **Non** et prévenez l'équipe |
+
 ## 1. Le principe en une phrase
 
 Chaque objet du jeu (une unité, un bâtiment, une ressource) a **une fiche d'art** : un petit fichier de l'éditeur nommé
@@ -353,3 +376,14 @@ Ces points sont en préparation ; ce guide sera mis à jour quand ils seront dan
 11. NON VÉRIFIÉ : libellés des menus de l'éditeur 5.8 (« Data Asset », « Transform Provider Data ») et apparence réelle
     du menu « HOL Art » et de la boîte de saisie Type Name / Faction (lus dans le script, pas vus à l'écran) ; pivot et
     axe avant des bâtiments et ressources ; rien vu à l'écran pour ce guide.
+12. Kit d'éditeur des artistes (D927, section 0) : **après chaque intégration dans `main` qui touche le C++**, depuis le
+    worktree d'intégration compilé : `Tools\Art\publish_editor_binaries.ps1 -From <worktree> -Root <worktree>` (copie
+    `UnrealEditor.modules` et les DLL qu'il nomme vers `ArtistBinaries\Win64`, écrit `source_commit.txt` ; refuse un C++
+    non commité et une DLL plus vieille que le dernier commit de son module `Source/<Module>`, UBT ne reliant que les
+    modules changés), puis commiter `ArtistBinaries` (LFS, ~14 Mo par publication). `OpenEditor.cmd` ->
+    `Tools\Art\open_editor.ps1` (moteur par `EngineAssociation` dans `HKCU:\Software\Epic Games\Unreal Engine\Builds`,
+    BuildId du kit = BuildId du moteur, recopie dans `Binaries\Win64` sauf poste de dev `Intermediate\Build` sans `-Force`,
+    WARN si un commit C++ n'est pas ancêtre de `source_commit.txt`). Moteur une fois : `Tools\Art\register_engine.ps1`.
+    Pas dans `Binaries\Win64` directement : chaque build y réécrit les DLL (arbres sales dans tous les worktrees). Test :
+    `Tools\Tests\artist_binaries_test.ps1` (dossiers temporaires ; `--template=` : le hook modèle `reference-transaction`
+    de `~\.git-templates` interroge les verrous du distant au clonage et bloque sans fin). Zip du moteur : pas encore d'outil.

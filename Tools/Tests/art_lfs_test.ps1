@@ -39,6 +39,14 @@ foreach ($path in @('Content/Units/UnitTypes.uasset', 'Content/Knight/Probe.fbx'
     Assert-Attr $path 'lockable' 'unspecified'
 }
 
+# 2b. Editor kit of the artists (D927): LFS without lock (only the main session writes it), its source commit stays text.
+foreach ($path in @('ArtistBinaries/Win64/UnrealEditor-HeroesOfLiberty.dll', 'ArtistBinaries/Win64/UnrealEditor.modules')) {
+    Assert-Attr $path 'filter' 'lfs'
+    Assert-Attr $path 'lockable' 'unspecified'
+}
+Assert-Attr 'ArtistBinaries/Win64/source_commit.txt' 'filter' 'unspecified'
+    Assert-Attr 'ArtistBinaries/Win64/source_commit.txt' 'diff' 'unspecified'
+
 # 3. Every tracked art file is a pointer in HEAD.
 $tracked = @(& git.exe -C $Root ls-files -- Content/Art ArtSource 2>&1 | ForEach-Object { "$_" } | Where-Object { $_ -and $_ -notmatch '(^|/)\.gitkeep$|README' })
 $pointers = @{}
