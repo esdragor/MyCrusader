@@ -306,6 +306,14 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "HOL|Art|Tests")
 	static void AddTestArtVisualSound(FName TypeName, FName Faction, FName Slot, const FString& SoundPath);
 
+	/**
+	 * AR6-e (hol.Art.TrySound): sets the sound Slot of the asset of exactly (TypeName, Faction) to SoundPath IN MEMORY only, never saved.
+	 * The first call copies the loaded asset (DuplicateObject into the transient package, every field kept) as a test entry; the next
+	 * ones change that copy (the slots add up); ClearTestArtVisuals drops it. False: empty path, unknown slot, no asset of that key.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "HOL|Art", meta = (WorldContext = "WorldContextObject"))
+	static bool TryArtVisualSound(const UObject* WorldContextObject, FName TypeName, FName Faction, FName Slot, const FString& SoundPath);
+
 	UFUNCTION(BlueprintCallable, Category = "HOL|Art|Tests")
 	static void ClearTestArtVisuals();
 

@@ -51,7 +51,11 @@ namespace HOLArtLab
 		Out += "hol.Art.Focus <Type> [Zoom] : vue rapprochee d'un objet et de sa barre de 1,80 m\n";
 		Out += "hol.Art.Light <Biome|default> : eclairage d'un biome (Herbe fraiche, Steppe seche, Automne, Foret sombre, Neige)\n";
 		Out += "hol.Art.Try <Type> [N] : poser N exemplaires d'un type pres du Forum\n";
-		Out += "hol.Art.Icon [Type|All] : exporter l'icone 256 px d'un type (Saved\\ArtIcons)";
+		Out += "hol.Art.Icon [Type|All] : exporter l'icone 256 px d'un type (Saved\\ArtIcons)
+";
+		Out += "hol.Art.Listen <Type> [Faction] : ecouter les 5 sons de la fiche (art, table, muet, jamais joue)
+";
+		Out += "hol.Art.TrySound <Type> <Slot> <chemin du son> [Faction] : essayer un son en memoire (jamais enregistre)";
 		return Out;
 	}
 
