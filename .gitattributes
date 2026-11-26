@@ -17,3 +17,7 @@ Manager/HOLLauncher/Strings*.resx merge=union
 # Historique non reecrit (pas de git lfs migrate) ; test : Tools\Tests\art_lfs_test.ps1 ; mode d'emploi : Docs\ARTISTES.md section 11.
 Content/Art/** filter=lfs diff=lfs merge=lfs -text lockable
 ArtSource/** filter=lfs diff=lfs merge=lfs -text lockable
+# Kit d'editeur des artistes (D927) : DLL d'editeur du projet publiees par Tools\Art\publish_editor_binaries.ps1, recopiees par OpenEditor.cmd ;
+# LFS sans verrou (seule la session principale les ecrit) ; le commit source reste du texte lisible.
+ArtistBinaries/** filter=lfs diff=lfs merge=lfs -text
+ArtistBinaries/Win64/source_commit.txt -filter -diff -merge text

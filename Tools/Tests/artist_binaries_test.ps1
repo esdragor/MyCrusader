@@ -36,13 +36,16 @@ try {
 
     # Developer repo: committed C++, then a build (DLLs newer than the commit).
     $Dev = Join-Path $Temp 'dev'
-    New-Item -ItemType Directory -Force (Join-Path $Dev 'Source') | Out-Null
+    New-Item -ItemType Directory -Force (Join-Path $Dev 'Source\HeroesOfLiberty'), (Join-Path $Dev 'Source\HeroesOfLibertyUI') | Out-Null
     Git -C $Dev init -q --template=
     Git -C $Dev config user.email t@t; Git -C $Dev config user.name t; Git -C $Dev config core.autocrlf false
     Set-Content (Join-Path $Dev '.gitignore') @('Binaries/', 'Intermediate/')
     Set-Content (Join-Path $Dev 'HeroesOfLiberty.uproject') '{ "EngineAssociation": "UE Test HOL" }'
-    Set-Content (Join-Path $Dev 'Source\A.cpp') 'int A;'
+    Set-Content (Join-Path $Dev 'Source\HeroesOfLiberty\A.cpp') 'int A;'
+    Set-Content (Join-Path $Dev 'Source\HeroesOfLibertyUI\U.cpp') 'int U;'
+    $env:GIT_AUTHOR_DATE = $env:GIT_COMMITTER_DATE = (Get-Date).AddDays(-2).ToString('yyyy-MM-ddTHH:mm:ss')
     Git -C $Dev add -A; Git -C $Dev commit -q -m code
+    Remove-Item Env:GIT_AUTHOR_DATE, Env:GIT_COMMITTER_DATE
     $DevBin = Join-Path $Dev 'Binaries\Win64'
     Write-Modules $DevBin 'build-A'
     Set-Content (Join-Path $DevBin 'UnrealEditor-HeroesOfLiberty.dll') 'dll-main-v1'
@@ -65,15 +68,19 @@ try {
     Git -C $Dev add -A; Git -C $Dev commit -q -m kit
 
     # 2. Refused: DLLs older than the last C++ commit.
-    Set-Content (Join-Path $Dev 'Source\A.cpp') 'int A2;'
+    Set-Content (Join-Path $Dev 'Source\HeroesOfLiberty\A.cpp') 'int A2;'
     Git -C $Dev add -A; Git -C $Dev commit -q -m code2
     Get-ChildItem $DevBin | ForEach-Object { $_.LastWriteTime = (Get-Date).AddDays(-1) }
     $r = Run-Script $Publish @('-From', $Dev, '-Root', $Dev, '-DryRun')
     Check 'publish refuses DLLs older than the C++' (($r.Code -eq 1) -and ($r.Out -match 'FAIL')) "(code $($r.Code): $($r.Out))"
+    # 2b. Accepted: UBT relinks only the changed module; the UI DLL stays older than the last C++ commit but newer than its own module.
+    (Get-Item (Join-Path $DevBin 'UnrealEditor-HeroesOfLiberty.dll')).LastWriteTime = $future
+    $r = Run-Script $Publish @('-From', $Dev, '-Root', $Dev, '-DryRun')
+    Check 'publish accepts an untouched module whose DLL was not relinked' ($r.Code -eq 0) "(code $($r.Code): $($r.Out))"
     Get-ChildItem $DevBin | ForEach-Object { $_.LastWriteTime = $future }
 
     # 3. Refused: C++ not committed.
-    Set-Content (Join-Path $Dev 'Source\A.cpp') 'int A3;'
+    Set-Content (Join-Path $Dev 'Source\HeroesOfLiberty\A.cpp') 'int A3;'
     $r = Run-Script $Publish @('-From', $Dev, '-Root', $Dev, '-DryRun')
     Check 'publish refuses uncommitted C++' (($r.Code -eq 1) -and ($r.Out -match 'FAIL')) "(code $($r.Code): $($r.Out))"
     Git -C $Dev checkout -q -- Source
@@ -109,7 +116,7 @@ try {
 
     # 7. C++ changed after the kit: warning, still opens.
     Git -C $Art config user.email t@t; Git -C $Art config user.name t
-    Set-Content (Join-Path $Art 'Source\A.cpp') 'int A4;'
+    Set-Content (Join-Path $Art 'Source\HeroesOfLiberty\A.cpp') 'int A4;'
     Git -C $Art add -A; Git -C $Art commit -q -m code4
     $r = Run-Script $Open @('-Root', $Art, '-EngineRoot', $Engine, '-DryRun')
     Check 'open warns when C++ is newer than the kit' (($r.Code -eq 0) -and ($r.Out -match 'WARN') -and ($r.Out -match 'LAUNCH')) "(code $($r.Code): $($r.Out))"
