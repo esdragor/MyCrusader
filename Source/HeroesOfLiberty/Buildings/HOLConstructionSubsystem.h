@@ -87,9 +87,6 @@ public:
 	 */
 	static void DestroyBuilding(AHOLBuilding& Building);
 
-	/** D921 (FARAMIR-1126m3): credits the owner's slot with Percent % of the building's table cost (per resource, rounded down: HOLWallLine::GateRefundOf's rounding), then DestroyBuilding. Returns what was credited. Server only. */
-	static FHOLResources RemoveWithRefundPercent(AHOLBuilding& Building, int32 Percent);
-
 	/**
 	 * Server only: every item of Building's production queue cancelled and refunded in full to its owner's stock (as a
 	 * cancel, the head too; D345.2a on a destruction, V2-Q3 on a main forum's fall). Returns the refund.

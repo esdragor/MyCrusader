@@ -664,22 +664,6 @@ FHOLResources UHOLConstructionSubsystem::RefundProductionQueue(AHOLBuilding& Bui
 	return Refund;
 }
 
-FHOLResources UHOLConstructionSubsystem::RemoveWithRefundPercent(AHOLBuilding& Building, const int32 Percent)
-{
-	FHOLResources Credit;
-	UWorld* World = Building.GetWorld();
-	const FHOLBuildingTypeRow* Type = Building.GetType();
-	if (World && Type && Percent > 0)
-	{
-		// The table's cost (no formula of its own): Percent % of each resource, rounded down, so a refund never exceeds what was paid.
-		Credit = FHOLResources((Type->Cost.Food * Percent) / 100, (Type->Cost.Wood * Percent) / 100, (Type->Cost.Stone * Percent) / 100, (Type->Cost.Gold * Percent) / 100);
-		FHOLResources Stock;
-		AHOLGameState::AddSlotStock(*World, Building.GetOwnerPlayer(), Credit, Stock);
-	}
-	DestroyBuilding(Building);
-	return Credit;
-}
-
 void UHOLConstructionSubsystem::DestroyBuilding(AHOLBuilding& Building)
 {
 	UWorld* World = Building.GetWorld();

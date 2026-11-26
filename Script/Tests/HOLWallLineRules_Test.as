@@ -960,28 +960,3 @@ void Test_GateRefundsAShareOfTheRetiredPalisades(FUnitTest& T)
 	T.AssertEquals(7, HOLWallLine::GateRefundOf(6, 5, 25), "6 x 5 x 25 / 100 = 7.5 -> 7, never more than paid");
 	T.AssertEquals(25, HOLWallLine::GateRefundPercent(), "the cvar default is 25");
 }
-// D921 binding (FARAMIR-1126m3): removing an own finished building through the RPC bridge credits the owner's slot with Percent % of the building's table cost, rounded down per resource
-// (the same rounding as GateRefundOf), the stock taken from the REAL path (UHOLConstructionSubsystem::RemoveWithRefundPercent, the one the bridge calls). 0 percent = the old behaviour.
-void Test_RemovedBuildingCreditsAShareOfItsCost(FUnitTest& T)
-{
-	UHOLTestWorldHandle TestWorld = HOLTestWorld::CreateTestWorld();
-	T.AssertTrue(TestWorld != nullptr, "a test world is created");
-	if (TestWorld == nullptr)
-		return;
-	AHOLGameState State = HOLTestWorld::SpawnGameState(TestWorld, 0, 0);
-	AHOLBuilding Reference = HOLTestWorld::SpawnBuilding(TestWorld, n"House", 1, FVector(3000.0, 0.0, 0.0), EHOLConstructionState::Foundation);
-	AHOLBuilding House = HOLTestWorld::SpawnBuilding(TestWorld, n"House", 1, FVector(0.0, 3000.0, 0.0), EHOLConstructionState::Finished);
-	T.AssertTrue(State != nullptr && Reference != nullptr && House != nullptr, "game state and two houses");
-	if (State == nullptr || Reference == nullptr || House == nullptr)
-		return;
-	FHOLResources Cost = HOLTestWorld::GetBuildingCancelRefund(Reference);
-	T.AssertTrue(Cost.Wood >= 4, "a house costs some wood (the table's, read through the cancel refund of a bare foundation)");
-	FHOLResources Seed;
-	T.AssertTrue(HOLTestWorld::AddSlotStock(TestWorld, 1, Seed), "the slot of the owner has a stock");
-	FHOLResources Before = HOLTestWorld::GetSlotStock(TestWorld, 1);
-	HOLTestWorld::RemoveBuildingWithRefundPercent(House, 25);
-	FHOLResources After = HOLTestWorld::GetSlotStock(TestWorld, 1);
-	const int Expected = HOLWallLine::GateRefundOf(1, Cost.Wood, 25);
-	T.AssertTrue(Expected > 0, "the expected credit is not zero (the stub credits nothing)");
-	T.AssertEquals(Expected, After.Wood - Before.Wood, "25 percent of the wood of the removed building is credited to its owner");
-}

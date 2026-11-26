@@ -719,16 +719,6 @@ void UHOLTestWorldLibrary::DestroyBuildingWithRefund(AHOLBuilding* Building)
 #endif
 }
 
-void UHOLTestWorldLibrary::RemoveBuildingWithRefundPercent(AHOLBuilding* Building, const int32 Percent)
-{
-#if WITH_DEV_AUTOMATION_TESTS
-	if (Building)
-	{
-		UHOLConstructionSubsystem::RemoveWithRefundPercent(*Building, Percent);
-	}
-#endif
-}
-
 int32 UHOLTestWorldLibrary::GetSlotLevel(UHOLTestWorldHandle* TestWorld, const int32 Slot)
 {
 #if WITH_DEV_AUTOMATION_TESTS
