@@ -67,6 +67,18 @@ namespace HOLCommandGridFace
 			Result.TooltipEffect = FText::FromString("Puis clic au sol, à 8 m du Moine au plus : une zone de " + NumberAt(Facts, 0) + " m de rayon pendant "
 				+ NumberAt(Facts, 1) + " s ; les ennemis dedans sont ralentis de " + NumberAt(Facts, 2) + " % ; recharge 40 s");
 		}
+		else if (Command.Command == EHOLGridCommandKind::KnightChallenge)
+		{
+			// D923: label "Defi" with the seconds left under it, full name in the tooltip; the numbers (8 m, 8 s, 45 s) are the table row KnightChallenge (UnitAbilities.csv).
+			Result.Label = WithCooldown(NSLOCTEXT("HOLCommandGridFace", "KnightChallengeShort", "Défi"), Facts.CooldownSeconds);
+			if (Facts.CooldownSeconds > 0)
+			{
+				Result.State = EHOLGridFaceState::Greyed;
+			}
+			Result.ReportName = n"KnightChallenge";
+			Result.TooltipName = NSLOCTEXT("HOLCommandGridFace", "KnightChallengeName", "Défi du Chevalier");
+			Result.TooltipEffect = HOLUnitAbilityTable::Description(HOLUnitAbilityTable::KnightChallenge);
+		}
 		else if (Command.Command == EHOLGridCommandKind::NecroticRage)
 		{
 			Result.Label = WithCooldown(NSLOCTEXT("HOLCommandGridFace", "NecroticRageShort", "Rage"), Facts.CooldownSeconds);

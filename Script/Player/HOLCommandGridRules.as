@@ -48,7 +48,7 @@ namespace HOLCommandGridRules
 		return 3;
 	}
 
-	// D923 (Q-chevalier-defi-bouton = T, GDD D923): the Virtuous Knight's Defi cell (T, cell 4, right after the Seal's R); the ONLY place of this choice. STUB of the red: the cell is not mapped yet.
+	// D923 (Q-chevalier-defi-bouton = T, GDD D923): the Virtuous Knight's Defi cell (T, cell 4, right after the Seal's R); the ONLY place of this choice.
 	int GetKnightChallengeCell()
 	{
 		return 4;
@@ -221,6 +221,11 @@ namespace HOLCommandGridRules
 		if (Context.bMonkUnit && Cell == GetMonkSealCell())
 		{
 			Result.Command = EHOLGridCommandKind::LightSeal;
+			return Result;
+		}
+		if (Context.bKnightUnit && Cell == GetKnightChallengeCell())
+		{
+			Result.Command = EHOLGridCommandKind::KnightChallenge;
 			return Result;
 		}
 		if (Context.bRageUnit && Cell == GetRageCell())

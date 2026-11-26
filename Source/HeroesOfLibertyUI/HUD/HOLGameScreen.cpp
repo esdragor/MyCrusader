@@ -1096,6 +1096,7 @@ void UHOLGameScreen::RefreshGrid(const AHOLBuilding* OwnBuilding, const bool bOw
 		ShownGridTypes[Cell] = !bGridShown ? NAME_None : Command.Command == EHOLGridCommand::CancelConstruction ? CancelName
 			: Command.Command == EHOLGridCommand::NecroticRage ? FName(TEXT("NecroticRage"))
 			: Command.Command == EHOLGridCommand::LightSeal ? FName(TEXT("LightSeal"))
+			: Command.Command == EHOLGridCommand::KnightChallenge ? FName(TEXT("KnightChallenge"))
 			: Command.Command == EHOLGridCommand::Specialize || Command.Command == EHOLGridCommand::CancelSpecialization ? HOLCommandGrid::GetReportName(Command)
 : Command.Command == EHOLGridCommand::HeroAbility ? FName(Command.Ability == EHOLHeroAbility::Banner ? TEXT("Banner") : TEXT("CloseRanks"))
 			: Command.Command == EHOLGridCommand::Trade ? FName(*FString::Printf(TEXT("%s%s"), Command.bBuy ? TEXT("Buy") : TEXT("Sell"),
@@ -1304,6 +1305,7 @@ void UHOLGameScreen::RefreshGrid(const AHOLBuilding* OwnBuilding, const bool bOw
 		}
 			case EHOLGridCommand::HeroAbility:
 			case EHOLGridCommand::LightSeal:
+			case EHOLGridCommand::KnightChallenge:
 			case EHOLGridCommand::NecroticRage:
 			{
 				// G-5b (SAURON-1125md, D839): the FACE of these three cells (label, greyed or ready, tooltip) is the script's rule
@@ -1318,6 +1320,11 @@ void UHOLGameScreen::RefreshGrid(const AHOLBuilding* OwnBuilding, const bool bOw
 					const bool bLocked = !HOLHeroAbility::IsUnlocked(Command.Ability, PlayerState
 						? UHOLHeroLibrary::GetHeroLevel(PlayerController, PlayerState->GetPlayerIndex()) : 0);
 					FaceUnlockLevel = bLocked ? HOLHeroAbility::GetUnlockLevel(Command.Ability) : 0;
+				}
+				else if (Command.Command == EHOLGridCommand::KnightChallenge)
+				{
+					// D923: the seconds left of the Defi are not read yet (the Knight's cool-down lives on its combat fragment, no client read): the face shows the label without seconds.
+					FaceNumbers.Reset();
 				}
 				else if (Command.Command == EHOLGridCommand::LightSeal)
 				{

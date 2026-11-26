@@ -2643,6 +2643,7 @@ void AHOLPlayerController::ExecuteGridCommand(const FHOLGridCommand& Command)
 	{
 	case EHOLGridCommand::HeroAbility:
 	case EHOLGridCommand::LightSeal:
+	case EHOLGridCommand::KnightChallenge:
 	case EHOLGridCommand::AttackMove:
 	case EHOLGridCommand::Stop:
 	case EHOLGridCommand::Hold:
@@ -2657,10 +2658,10 @@ void AHOLPlayerController::ExecuteGridCommand(const FHOLGridCommand& Command)
 		TArray<int32> SelectedIds;
 		for (const uint32 SelectedId : GetOwnSelectedUnits())
 		{
-			if (Command.Command == EHOLGridCommand::LightSeal)
+			if (Command.Command == EHOLGridCommand::LightSeal || Command.Command == EHOLGridCommand::KnightChallenge)
 			{
 				FHOLUnitView Selected;
-				if (!HOLUnitView::Find(*GetWorld(), SelectedId, Selected) || Selected.TypeName != FName(TEXT("Monk")))
+				if (!HOLUnitView::Find(*GetWorld(), SelectedId, Selected) || Selected.TypeName != FName(Command.Command == EHOLGridCommand::LightSeal ? TEXT("Monk") : TEXT("VirtuousKnight")))
 				{
 					continue;
 				}
@@ -2706,6 +2707,14 @@ void AHOLPlayerController::ExecuteGridCommand(const FHOLGridCommand& Command)
 			RequestStopUnits(Own, Command.Command == EHOLGridCommand::Hold);
 			return;
 		}
+		case EHOLGridCommand::KnightChallenge:
+			// D923: the Knight's Defi, no aim: the script's answer names the ability (HOLUnitAbilityTable) and the caster; the server's ServerCastUnitAbility casts it (HOLKnightChallenge::CastChallenge).
+			UE_LOG(LogHOLMatch, Display, TEXT("Grid: knight challenge (ability %d, Knight %d)"), Answer.AbilityId, Answer.UnitId);
+			if (Answer.AbilityId >= 0 && Answer.UnitId > 0)
+			{
+				RequestCastUnitAbility(Answer.AbilityId, static_cast<uint32>(Answer.UnitId), FVector::ZeroVector);
+			}
+			return;
 		case EHOLGridCommand::NecroticRage:
 			UE_LOG(LogHOLMatch, Display, TEXT("Grid: necrotic rage"));
 			RequestCastRage(GetOwnSelectedUnits());

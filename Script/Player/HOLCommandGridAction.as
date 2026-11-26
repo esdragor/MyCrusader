@@ -142,6 +142,18 @@ namespace HOLCommandGridAction
 			Result.UnitId = Context.MonkUnitId;
 			Result.Report = n"LightSeal";
 		}
+		else if (Kind == EHOLGridCommandKind::KnightChallenge)
+		{
+			// D923: the Knight's Defi is cast at once, without aim: Send, the table's ability id and the first selected Knight as caster (a cooling down Defi is greyed: nothing, above).
+			if (!Context.bKnightUnit || Context.KnightUnitId < 0)
+			{
+				return Result;
+			}
+			Result.Kind = EHOLGridActionKind::Send;
+			Result.AbilityId = HOLUnitAbilityTable::KnightChallenge;
+			Result.UnitId = Context.KnightUnitId;
+			Result.Report = n"KnightChallenge";
+		}
 		else if (Kind == EHOLGridCommandKind::HeroAbility)
 		{
 			// Close Ranks is sent at once; the Banner waits for the ground (HOLCommandGridRules::HeroAbilityBanner = 2).
