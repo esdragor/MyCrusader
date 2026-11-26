@@ -59,6 +59,12 @@ int32 UHOLUnitAbilityReadLibrary::GetSimulationStepMs(const UHOLUnitSubsystem* U
 	return Simulation ? FMath::RoundToInt(Simulation->GetStepSeconds() * 1000.f) : 0;
 }
 
+UHOLUnitSubsystem* UHOLUnitAbilityReadLibrary::GetUnitSubsystemOf(const AActor* WorldActor)
+{
+	UWorld* World = WorldActor ? WorldActor->GetWorld() : nullptr;
+	return World ? World->GetSubsystem<UHOLUnitSubsystem>() : nullptr;
+}
+
 bool UHOLUnitAbilityReadLibrary::CastKnightChallenge(UHOLUnitSubsystem* Units, const int32 UnitId, const int32 RequiredOwner, const int64 EndStep, const int32 RadiusCm, const int32 CooldownMs)
 {
 	return Units && Units->CastKnightChallenge(static_cast<uint32>(UnitId), RequiredOwner, EndStep, static_cast<float>(RadiusCm), CooldownMs);

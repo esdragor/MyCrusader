@@ -1103,9 +1103,21 @@ for (FString Command : Commands)
 	void ServerCastUnitAbility(int AbilityId, int UnitId, FVector Point)
 	{
 		const int Slot = HOLRpcBridge::GetSenderSlot(this);
-		if (Slot < 0 || AbilityId != HOLUnitAbilityTable::LightSeal)
+		if (Slot < 0 || (AbilityId != HOLUnitAbilityTable::LightSeal && AbilityId != HOLUnitAbilityTable::KnightChallenge))
 		{
 			Log(n"LogHOLMatch", f"RpcUnitAbility: cast refused, slot {Slot} ability {AbilityId}");
+			return;
+		}
+		if (AbilityId == HOLUnitAbilityTable::KnightChallenge)
+		{
+			// D923: the Knight's Defi, no aim: the script rule casts it (it refuses another type, a dead Knight, another owner, a running cool-down).
+			UHOLUnitSubsystem Units = HOLUnitAbilityRead::GetUnitSubsystemOf(this);
+			if (Units == nullptr || !HOLKnightChallenge::CastChallenge(Units, UnitId, Slot))
+			{
+				Log(n"LogHOLMatch", f"RpcUnitAbility: Knight challenge refused for unit {UnitId}, slot {Slot}");
+				return;
+			}
+			Log(n"LogHOLMatch", f"RpcUnitAbility: Knight challenge cast by the Knight {UnitId} of slot {Slot}");
 			return;
 		}
 		AHOLGameState State = Cast<AHOLGameState>(Gameplay::GetGameState());

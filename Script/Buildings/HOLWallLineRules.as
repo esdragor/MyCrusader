@@ -19,6 +19,8 @@ const FConsoleVariable CVar_WallDiagonalFill("hol.Wall.DiagonalFill", 1);
 const FConsoleVariable CVar_WallGateAlongLine("hol.Wall.GateAlongLine", 1);
 // D915 (fine grid, wall price): the share of the 4 m tile price paid per 1 m sub-cell (25 = a quarter: a 20 m palisade = 25 Wood), the rounding is up on the total of the line. 100 = the full price per sub-cell.
 const FConsoleVariable CVar_WallSubCellCostPercent("hol.Wall.SubCellCostPercent", 25);
+// D921 (Q-porte-remplacement-remboursement = B): the share of the tile price a gate refunds per palisade piece it retires (25 default, 0 = no refund, the behaviour before D921).
+const FConsoleVariable CVar_WallGateRefundPercent("hol.Wall.GateRefundPercent", 25);
 
 namespace HOLWallLine
 {
@@ -102,6 +104,21 @@ namespace HOLWallLine
 			return 100;
 		const int Value = CVar_WallSubCellCostPercent.GetInt();
 		return Value < 0 ? 0 : Value;
+	}
+
+	// D921 (Q-porte-remplacement-remboursement = B): the share of the 4 m tile price refunded per palisade piece a gate retires, hol.Wall.GateRefundPercent (default 25, 0 = the old behaviour: nothing refunded).
+	int GateRefundPercent()
+	{
+		const int Value = CVar_WallGateRefundPercent.GetInt();
+		return Value < 0 ? 0 : Value;
+	}
+
+	// D921: the refund for the pieces a gate retires: Pieces x PricePerTile x Percent / 100, rounded DOWN (the line price rounds up on the total, so a refund never exceeds what was paid).
+	int GateRefundOf(int RetiredPieces, int PricePerTile, int Percent)
+	{
+		if (RetiredPieces <= 0 || PricePerTile <= 0 || Percent <= 0)
+			return 0;
+		return (RetiredPieces * PricePerTile * Percent) / 100;
 	}
 
 	// ---- Server validation of a line (F4): the same Cells rule, then the refusals. Too long and out of the map: all or nothing, no cell is laid. Occupied (D901): the occupied cells are skipped, the others are laid.

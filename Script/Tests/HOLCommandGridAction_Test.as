@@ -187,3 +187,33 @@ void Test_CGAProduceResearchTrade(FUnitTest& T)
 	FHOLGridActionView TradeVerdict = HOLCommandGridAction::Decide(Nothing, Trade);
 	T.AssertTrue(TradeVerdict.Kind == EHOLGridActionKind::Send, "a market trade is sent");
 }
+// D923 (FARAMIR-1126m3): the Knight's Defi button. The chain gives the KnightChallenge command at the cell GetKnightChallengeCell (T, cell 4) for a selection with a Virtuous Knight;
+// the verdict is a Send (no aim) carrying the ability id of HOLUnitAbilityTable and the Knight as caster; a greyed (cooling down) Defi does nothing; without a Knight, nothing.
+// HeroesOfLiberty.CommandGridAction.KnightChallenge
+void Test_CGAKnightChallenge(FUnitTest& T)
+{
+	FHOLGridContextView Selection;
+	Selection.bOwnUnits = true;
+	Selection.bKnightUnit = true;
+	int ChallengeCell = HOLCommandGridRules::GetKnightChallengeCell();
+	FHOLGridCommandView Command = HOLCommandGridRules::GetCommand(Selection, ChallengeCell);
+	T.AssertTrue(Command.Command == EHOLGridCommandKind::KnightChallenge, "the chain gives the Knight's Defi command for a selection with a Virtuous Knight");
+	T.AssertTrue(ChallengeCell != HOLCommandGridRules::GetMonkSealCell(), "the Defi never shares the cell of the Seal");
+
+	FHOLGridActionContext WithKnight;
+	WithKnight.bKnightUnit = true;
+	WithKnight.KnightUnitId = 9;
+	FHOLGridActionView Verdict = HOLCommandGridAction::Decide(WithKnight, Command);
+	T.AssertTrue(Verdict.Kind == EHOLGridActionKind::Send, "a Knight is selected: the Defi is sent at once, nothing to aim");
+	T.AssertEquals(HOLUnitAbilityTable::KnightChallenge, Verdict.AbilityId, "the ability id is the table's");
+	T.AssertEquals(9, Verdict.UnitId, "the caster is the selected Knight");
+
+	FHOLGridActionContext NoKnight;
+	FHOLGridActionView Refused = HOLCommandGridAction::Decide(NoKnight, Command);
+	T.AssertTrue(Refused.Kind == EHOLGridActionKind::None, "no Knight selected: nothing happens");
+
+	FHOLGridCommandView Grey = Command;
+	Grey.bGreyed = true;
+	FHOLGridActionView GreyVerdict = HOLCommandGridAction::Decide(WithKnight, Grey);
+	T.AssertTrue(GreyVerdict.Kind == EHOLGridActionKind::None, "a Defi cooling down does nothing");
+}

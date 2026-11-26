@@ -22,6 +22,9 @@ namespace HOLGridActionBridgeScript
 		{
 			Context.bMonkUnit = true;
 			Context.MonkUnitId = SelectedUnitIds[0];
+			// D923: the C++ keeps only the Virtuous Knights' ids for the Defi's cell, as it keeps the Monks' for the Seal's.
+			Context.bKnightUnit = true;
+			Context.KnightUnitId = SelectedUnitIds[0];
 		}
 
 		FHOLGridActionView Verdict = HOLCommandGridAction::Decide(Context, CellView);
@@ -30,6 +33,7 @@ namespace HOLGridActionBridgeScript
 		Answer.AimMode = Verdict.AimMode;
 		Answer.RangeCm = Verdict.RangeCm;
 		Answer.UnitId = Verdict.UnitId >= 0 ? Verdict.UnitId : 0;
+		Answer.AbilityId = Verdict.AbilityId;
 		Answer.Report = Verdict.Report;
 		if (Verdict.Kind == EHOLGridActionKind::Refuse && CellView.Command == EHOLGridCommandKind::HeroAbility)
 		{

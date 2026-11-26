@@ -20,6 +20,9 @@ struct FHOLGridActionContext
 	bool bMonkUnit = false;
 	// The id of the first selected Monk (the caster of the Seal of Light), -1 when none.
 	int MonkUnitId = -1;
+	// D923: a Virtuous Knight is selected and the first of them (the caster of the Challenge), -1 when none.
+	bool bKnightUnit = false;
+	int KnightUnitId = -1;
 }
 
 struct FHOLGridActionView
@@ -31,6 +34,8 @@ struct FHOLGridActionView
 	int RangeCm = 0;
 	// For Arm of the Seal: the casting unit.
 	int UnitId = -1;
+	// For Send of a unit ability without aim (D923, the Knight's challenge): its id in HOLUnitAbilityTable, -1 none; the caster is UnitId.
+	int AbilityId = -1;
 	// The short name of the cell's action for hol.HUD.Report / the journal.
 	FName Report;
 	// For Refuse: why (HOLCommandGridKeys::CheckBuild / CheckProduction), for hol.HUD.Report through HOLCommandGridKeys::Describe.
@@ -136,6 +141,18 @@ namespace HOLCommandGridAction
 			Result.RangeCm = Row.RangeCm;
 			Result.UnitId = Context.MonkUnitId;
 			Result.Report = n"LightSeal";
+		}
+		else if (Kind == EHOLGridCommandKind::KnightChallenge)
+		{
+			// D923: the Knight's Defi is cast at once, without aim: Send, the table's ability id and the first selected Knight as caster (a cooling down Defi is greyed: nothing, above).
+			if (!Context.bKnightUnit || Context.KnightUnitId < 0)
+			{
+				return Result;
+			}
+			Result.Kind = EHOLGridActionKind::Send;
+			Result.AbilityId = HOLUnitAbilityTable::KnightChallenge;
+			Result.UnitId = Context.KnightUnitId;
+			Result.Report = n"KnightChallenge";
 		}
 		else if (Kind == EHOLGridCommandKind::HeroAbility)
 		{

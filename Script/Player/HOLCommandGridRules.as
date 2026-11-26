@@ -48,6 +48,12 @@ namespace HOLCommandGridRules
 		return 3;
 	}
 
+	// D923 (Q-chevalier-defi-bouton = T, GDD D923): the Virtuous Knight's Defi cell (T, cell 4, right after the Seal's R); the ONLY place of this choice.
+	int GetKnightChallengeCell()
+	{
+		return 4;
+	}
+
 	// GetRageCell / GetHeroAbilityCell (cpp 136-143): the rage on E (cell 2); the cry on A, the banner on Z; the aura has no cell.
 	int GetRageCell()
 	{
@@ -215,6 +221,11 @@ namespace HOLCommandGridRules
 		if (Context.bMonkUnit && Cell == GetMonkSealCell())
 		{
 			Result.Command = EHOLGridCommandKind::LightSeal;
+			return Result;
+		}
+		if (Context.bKnightUnit && Cell == GetKnightChallengeCell())
+		{
+			Result.Command = EHOLGridCommandKind::KnightChallenge;
 			return Result;
 		}
 		if (Context.bRageUnit && Cell == GetRageCell())

@@ -28,6 +28,7 @@ enum class EHOLGridCommandKind : uint8
 	CancelSpecialization,
 	UngarrisonAll,
 	LightSeal,
+	KnightChallenge,
 };
 
 /** EHOLCommandFeedback as a UENUM, same order. */
@@ -123,6 +124,8 @@ struct FHOLGridContextView
 	bool bRageUnit = false;
 	UPROPERTY(BlueprintReadWrite, Category = "HeroesOfLiberty|CommandGrid")
 	bool bMonkUnit = false;
+	UPROPERTY(BlueprintReadWrite, Category = "HeroesOfLiberty|CommandGrid")
+	bool bKnightUnit = false;
 	UPROPERTY(BlueprintReadWrite, Category = "HeroesOfLiberty|CommandGrid")
 	bool bPrimaryForum = false;
 	/** FHOLGridContext::HeroCooldownSeconds[3], indexed by the hero ability number (GetHeroAbilityAura / CloseRanks / Banner); a missing entry is 0. */

@@ -29,6 +29,9 @@ struct HEROESOFLIBERTY_API FHOLGridActionAnswer
 	/** Arm: the unit that will cast (the Monk of the Seal), 0 none; read back with AHOLPlayerController::GetArmedUnitId. */
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "HOL|GridAction")
 	int32 UnitId = 0;
+	/** Send of a unit ability without aim (D923, the Knight's challenge): the ability id from HOLUnitAbilityTable (the script's, no constant copied in C++), -1 none; the caster is UnitId. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "HOL|GridAction")
+	int32 AbilityId = -1;
 	/** The report name of the action (journal / hol.HUD.Report). */
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "HOL|GridAction")
 	FName Report;

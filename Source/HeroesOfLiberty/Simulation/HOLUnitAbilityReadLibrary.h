@@ -78,4 +78,8 @@ public:
 	/** SAURON-1125b: UHOLUnitSubsystem::CastKnightChallenge, the liaison of the script rule HOLKnightChallenge (no rule here). */
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|UnitAbility")
 	static bool CastKnightChallenge(UHOLUnitSubsystem* Units, int32 UnitId, int32 RequiredOwner, int64 EndStep, int32 RadiusCm, int32 CooldownMs);
+
+	/** D923 (FARAMIR-1126m3): the unit subsystem of the actor's world (nullptr without one), for the script RPC that casts the Knight's challenge (HOLKnightChallenge::CastChallenge takes it). */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|UnitAbility")
+	static UHOLUnitSubsystem* GetUnitSubsystemOf(const AActor* WorldActor);
 };
