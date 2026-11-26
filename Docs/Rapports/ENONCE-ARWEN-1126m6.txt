@@ -1,0 +1,9 @@
+Tu es ARWEN-1126m6 (Vrai clic Slate (hol.Mouse.Click) ne sélectionne plus rien alors que hol.Select.Click marche : essayer hol.Mouse.Down/Up séparés, puis UE_LOG en tête de HandleSelectStarted/HandleSelectCompleted (HOLPlayerController.cpp:864-868, :5196), un build, scénario arwen_pick ; correctif si la cause est vue, sinon rapport exact.). Lis C:\Users\baudo\Documents\MyCrusader\Tools\AutoJourney\brief_commun.md puis agent_rules.md et applique-les.
+ARRÊT DUR à 16:14 (Get-Date PowerShell lu juste avant ; 30 min ou 45 appels, deux tâches de ta file à enchaîner ; le premier seuil atteint).
+Worktree C:\Users\baudo\Documents\HeroesOfLiberty-Arwen (branche integ-100b) ; C++ : raison dite dans la tache.
+Lis la fin de ton *InProgress.md dans C:\Users\baudo\Documents\HeroesOfLiberty-Arwen et ta ligne de C:\Users\baudo\Documents\MyCrusader\Auto_Journey_File.md.
+TÂCHE : Vrai clic Slate (hol.Mouse.Click) ne sélectionne plus rien alors que hol.Select.Click marche : essayer hol.Mouse.Down/Up séparés, puis UE_LOG en tête de HandleSelectStarted/HandleSelectCompleted (HOLPlayerController.cpp:864-868, :5196), un build, scénario arwen_pick ; correctif si la cause est vue, sinon rapport exact. ; premier Edit avant le 6e appel ; rouge VU puis correctif en deux commits.
+Fichiers déjà pris par un autre agent de la vague : voir Auto_Journey_Jour.md (L21-2).
+Commits en anglais, derniere ligne "Agent: ARWEN-1126m6", jamais de push ni de fusion dans main.
+Rapport : C:\Users\baudo\Documents\MyCrusader\Docs\Rapports\ARWEN-1126m6.md (13 champs d'agent_rules.md), reponse finale de 6 lignes.
+Nouvelle branche depuis main 77b857a. Contexte : Docs\Rapports\ARWEN-1126m5.md. Dernier lancement C++ 17:00, butoir 17:45.

@@ -1,0 +1,9 @@
+Tu es ELROND-1126m3 (Première tâche [ ] C++ de la file d'Elrond (Auto_Journey_File.md), priorité Docs\Priorite_Socle_Factions_2026-11-16.md ; NE PAS toucher HOLPlayerController.cpp (lot n°3 de Faramir). Nouvelle branche depuis main 77b857a, rouge vu puis correctif, un build.). Lis C:\Users\baudo\Documents\MyCrusader\Tools\AutoJourney\brief_commun.md puis agent_rules.md et applique-les.
+ARRÊT DUR à 14:45 (Get-Date PowerShell lu juste avant ; 30 min ou 45 appels, deux tâches de ta file à enchaîner ; le premier seuil atteint).
+Worktree C:\Users\baudo\Documents\HeroesOfLiberty-Elrond (branche wall-footprint-1125m) ; C++ : raison dite dans la tache.
+Lis la fin de ton *InProgress.md dans C:\Users\baudo\Documents\HeroesOfLiberty-Elrond et ta ligne de C:\Users\baudo\Documents\MyCrusader\Auto_Journey_File.md.
+TÂCHE : Première tâche [ ] C++ de la file d'Elrond (Auto_Journey_File.md), priorité Docs\Priorite_Socle_Factions_2026-11-16.md ; NE PAS toucher HOLPlayerController.cpp (lot n°3 de Faramir). Nouvelle branche depuis main 77b857a, rouge vu puis correctif, un build. ; premier Edit avant le 6e appel ; rouge VU puis correctif en deux commits.
+Fichiers déjà pris par un autre agent de la vague : voir Auto_Journey_Jour.md (L21-2).
+Commits en anglais, derniere ligne "Agent: ELROND-1126m3", jamais de push ni de fusion dans main.
+Rapport : C:\Users\baudo\Documents\MyCrusader\Docs\Rapports\ELROND-1126m3.md (13 champs d'agent_rules.md), reponse finale de 6 lignes.
+wall-footprint-1125m 1d0f093 est prête pour la passe suivante : ne pas la modifier. Contexte : Docs\Rapports\ELROND-1126m2.md.

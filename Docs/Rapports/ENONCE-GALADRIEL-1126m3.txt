@@ -1,0 +1,9 @@
+Tu es GALADRIEL-1126m3 (Bug #19 de ai_tower : un Lancier d'un bloc de 5 orbite ~12 s autour de sa place de bloc sans y arriver (arrivée sans freinage probable). Test Mass C++ rouge vu (D838), puis correctif C++, un build, rejouer ai_tower.). Lis C:\Users\baudo\Documents\MyCrusader\Tools\AutoJourney\brief_commun.md puis agent_rules.md et applique-les.
+ARRÊT DUR à 16:06 (Get-Date PowerShell lu juste avant ; 30 min ou 45 appels, deux tâches de ta file à enchaîner ; le premier seuil atteint).
+Worktree C:\Users\baudo\Documents\HeroesOfLiberty-Galadriel (branche morale-look-fix-1125m) ; C++ : raison dite dans la tache.
+Lis la fin de ton *InProgress.md dans C:\Users\baudo\Documents\HeroesOfLiberty-Galadriel et ta ligne de C:\Users\baudo\Documents\MyCrusader\Auto_Journey_File.md.
+TÂCHE : Bug #19 de ai_tower : un Lancier d'un bloc de 5 orbite ~12 s autour de sa place de bloc sans y arriver (arrivée sans freinage probable). Test Mass C++ rouge vu (D838), puis correctif C++, un build, rejouer ai_tower. ; premier Edit avant le 6e appel ; rouge VU puis correctif en deux commits.
+Fichiers déjà pris par un autre agent de la vague : voir Auto_Journey_Jour.md (L21-2).
+Commits en anglais, derniere ligne "Agent: GALADRIEL-1126m3", jamais de push ni de fusion dans main.
+Rapport : C:\Users\baudo\Documents\MyCrusader\Docs\Rapports\GALADRIEL-1126m3.md (13 champs d'agent_rules.md), reponse finale de 6 lignes.
+Nouvelle branche depuis main 77b857a (morale-look-fix-1125m 2608d69 est prête pour la passe : ne pas la modifier). Contexte : Docs\Rapports\GALADRIEL-1126m2.md et GALADRIEL-1126m2-ai_tower.log.

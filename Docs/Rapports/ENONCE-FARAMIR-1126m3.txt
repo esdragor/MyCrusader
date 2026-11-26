@@ -1,0 +1,9 @@
+Tu es FARAMIR-1126m3 (Lot C++ n°3 sur gate-refund-1126m2 (git merge main 77b857a d'abord) : tâche C:\Users\baudo\Documents\MyCrusader\Docs\Rapports\TACHE-CPP3-1126m.md (G-5 restes Produce/Research/Trade/Build, bouton du Chevalier T D923 + touche T injectable, liaison du crédit D921 au retrait). Un seul agent sur HOLPlayerController.cpp. Rouge vu puis correctif, un build pour le lot.). Lis C:\Users\baudo\Documents\MyCrusader\Tools\AutoJourney\brief_commun.md puis agent_rules.md et applique-les.
+ARRÊT DUR à 14:44 (Get-Date PowerShell lu juste avant ; 30 min ou 45 appels, deux tâches de ta file à enchaîner ; le premier seuil atteint).
+Worktree C:\Users\baudo\Documents\HeroesOfLiberty-Faramir (branche gate-refund-1126m2) ; C++ : raison dite dans la tache.
+Lis la fin de ton *InProgress.md dans C:\Users\baudo\Documents\HeroesOfLiberty-Faramir et ta ligne de C:\Users\baudo\Documents\MyCrusader\Auto_Journey_File.md.
+TÂCHE : Lot C++ n°3 sur gate-refund-1126m2 (git merge main 77b857a d'abord) : tâche C:\Users\baudo\Documents\MyCrusader\Docs\Rapports\TACHE-CPP3-1126m.md (G-5 restes Produce/Research/Trade/Build, bouton du Chevalier T D923 + touche T injectable, liaison du crédit D921 au retrait). Un seul agent sur HOLPlayerController.cpp. Rouge vu puis correctif, un build pour le lot. ; premier Edit avant le 6e appel ; rouge VU puis correctif en deux commits.
+Fichiers déjà pris par un autre agent de la vague : voir Auto_Journey_Jour.md (L21-2).
+Commits en anglais, derniere ligne "Agent: FARAMIR-1126m3", jamais de push ni de fusion dans main.
+Rapport : C:\Users\baudo\Documents\MyCrusader\Docs\Rapports\FARAMIR-1126m3.md (13 champs d'agent_rules.md), reponse finale de 6 lignes.
+Contexte : Docs\Rapports\FARAMIR-1126m2.md, Docs\Rapports\PREP-1126m.md. Dernier lancement C++ 17:00.

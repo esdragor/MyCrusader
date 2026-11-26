@@ -1,0 +1,9 @@
+Tu es ARWEN-1126m4 (Sans C++, binaire d'Arwen = code de main 77b857a : (1) fiche Retours\E-spec_voie_queue.md (modèle Tools\AutoJourney\E_template.md, commande exacte validée par session_gate -Phase Essay), (2) rejeu de deploy_far -Hidden (BUG deploy_far, File l.11 ; Docs\Rapports\FARAMIR-1126m.md), fiche à jour selon le résultat.). Lis C:\Users\baudo\Documents\MyCrusader\Tools\AutoJourney\brief_commun.md puis agent_rules.md et applique-les.
+ARRÊT DUR à 14:49 (Get-Date PowerShell lu juste avant ; 30 min ou 45 appels, deux tâches de ta file à enchaîner ; le premier seuil atteint).
+Worktree C:\Users\baudo\Documents\HeroesOfLiberty-Arwen (branche integ-100b) ; sans C++.
+Lis la fin de ton *InProgress.md dans C:\Users\baudo\Documents\HeroesOfLiberty-Arwen et ta ligne de C:\Users\baudo\Documents\MyCrusader\Auto_Journey_File.md.
+TÂCHE : Sans C++, binaire d'Arwen = code de main 77b857a : (1) fiche Retours\E-spec_voie_queue.md (modèle Tools\AutoJourney\E_template.md, commande exacte validée par session_gate -Phase Essay), (2) rejeu de deploy_far -Hidden (BUG deploy_far, File l.11 ; Docs\Rapports\FARAMIR-1126m.md), fiche à jour selon le résultat. ; premier Edit avant le 6e appel ; rouge VU puis correctif en deux commits.
+Fichiers déjà pris par un autre agent de la vague : voir Auto_Journey_Jour.md (L21-2).
+Commits en anglais, derniere ligne "Agent: ARWEN-1126m4", jamais de push ni de fusion dans main.
+Rapport : C:\Users\baudo\Documents\MyCrusader\Docs\Rapports\ARWEN-1126m4.md (13 champs d'agent_rules.md), reponse finale de 6 lignes.
+Mettre à jour Auto_Journey_Retours.md (ligne de la fiche E), EtapeDefini.md, Auto_Journey_File.md.
