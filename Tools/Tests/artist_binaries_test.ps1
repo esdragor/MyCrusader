@@ -51,6 +51,8 @@ try {
     Set-Content (Join-Path $DevBin 'UnrealEditor-HeroesOfLiberty.dll') 'dll-main-v1'
     Set-Content (Join-Path $DevBin 'UnrealEditor-HeroesOfLibertyUI.dll') 'dll-ui-v1'
     Set-Content (Join-Path $DevBin 'UnrealEditor-HeroesOfLiberty.pdb') 'pdb'
+    Set-Content (Join-Path $DevBin 'HeroesOfLibertyEditor.target') '{ "TargetName": "HeroesOfLibertyEditor" }'
+    Set-Content (Join-Path $DevBin 'HeroesOfLiberty.target') '{ "TargetName": "HeroesOfLiberty" }'
     $future = (Get-Date).AddMinutes(5)
     Get-ChildItem $DevBin | ForEach-Object { $_.LastWriteTime = $future }
     $devSha = (& git.exe -C $Dev rev-parse HEAD).Trim()
@@ -63,6 +65,9 @@ try {
     Check 'publish copies the UI DLL' (Test-Path (Join-Path $kit 'UnrealEditor-HeroesOfLibertyUI.dll'))
     Check 'publish copies UnrealEditor.modules' (Test-Path (Join-Path $kit 'UnrealEditor.modules'))
     Check 'publish leaves the pdb out' (-not (Test-Path (Join-Path $kit 'UnrealEditor-HeroesOfLiberty.pdb')))
+    # The editor of a code project asks to build when <Project>Editor.target is missing ("Missing target file", seen 2026-11-26).
+    Check 'publish copies the editor target' (Test-Path (Join-Path $kit 'HeroesOfLibertyEditor.target'))
+    Check 'publish leaves the game target out' (-not (Test-Path (Join-Path $kit 'HeroesOfLiberty.target')))
     $stamp = if (Test-Path (Join-Path $kit 'source_commit.txt')) { @(Get-Content (Join-Path $kit 'source_commit.txt'))[0] } else { '' }
     Check 'publish writes the source commit' ($stamp -eq $devSha) "(got '$stamp', want '$devSha')"
     Git -C $Dev add -A; Git -C $Dev commit -q -m kit
@@ -96,6 +101,7 @@ try {
     Check 'open exit 0' ($r.Code -eq 0) "(code $($r.Code): $($r.Out))"
     Check 'open copies the DLL into Binaries\Win64' ((Get-Content (Join-Path $Art 'Binaries\Win64\UnrealEditor-HeroesOfLiberty.dll') -ErrorAction SilentlyContinue) -eq 'dll-main-v1')
     Check 'open copies UnrealEditor.modules' (Test-Path (Join-Path $Art 'Binaries\Win64\UnrealEditor.modules'))
+    Check 'open copies the editor target' (Test-Path (Join-Path $Art 'Binaries\Win64\HeroesOfLibertyEditor.target'))
     Check 'open names the launch' ($r.Out -match 'LAUNCH .*UnrealEditor\.exe.*HeroesOfLiberty\.uproject') "($($r.Out))"
     Check 'open does not warn on an up-to-date kit' ($r.Out -notmatch 'WARN') "($($r.Out))"
 
@@ -112,6 +118,13 @@ try {
     Check 'open keeps local DLLs on a dev machine' ((Get-Content (Join-Path $Art 'Binaries\Win64\UnrealEditor-HeroesOfLiberty.dll')) -eq 'dll-local') "($($r.Out))"
     $r = Run-Script $Open @('-Root', $Art, '-EngineRoot', $Engine, '-DryRun', '-Force')
     Check 'open -Force copies anyway' ((Get-Content (Join-Path $Art 'Binaries\Win64\UnrealEditor-HeroesOfLiberty.dll')) -eq 'dll-main-v1') "($($r.Out))"
+    Remove-Item -Recurse -Force (Join-Path $Art 'Intermediate')
+    # 6b. The editor itself runs UBT -Mode=QueryTargets, which writes Intermediate\Build\BuildRules on an artist machine too
+    # (seen 2026-11-26): that is not a development machine, the kit is still copied.
+    New-Item -ItemType Directory -Force (Join-Path $Art 'Intermediate\Build\BuildRules') | Out-Null
+    Set-Content (Join-Path $Art 'Binaries\Win64\UnrealEditor-HeroesOfLiberty.dll') 'dll-old-kit'
+    $r = Run-Script $Open @('-Root', $Art, '-EngineRoot', $Engine, '-DryRun')
+    Check 'open still copies after the editor wrote Intermediate\Build\BuildRules' ((Get-Content (Join-Path $Art 'Binaries\Win64\UnrealEditor-HeroesOfLiberty.dll')) -eq 'dll-main-v1') "($($r.Out))"
     Remove-Item -Recurse -Force (Join-Path $Art 'Intermediate')
 
     # 7. C++ changed after the kit: warning, still opens.
