@@ -44,7 +44,8 @@ foreach ($path in @('ArtistBinaries/Win64/UnrealEditor-HeroesOfLiberty.dll', 'Ar
     Assert-Attr $path 'filter' 'lfs'
     Assert-Attr $path 'lockable' 'unspecified'
 }
-Assert-Attr 'ArtistBinaries/Win64/source_commit.txt' 'filter' 'unset'
+Assert-Attr 'ArtistBinaries/Win64/source_commit.txt' 'filter' 'unspecified'
+    Assert-Attr 'ArtistBinaries/Win64/source_commit.txt' 'diff' 'unspecified'
 
 # 3. Every tracked art file is a pointer in HEAD.
 $tracked = @(& git.exe -C $Root ls-files -- Content/Art ArtSource 2>&1 | ForEach-Object { "$_" } | Where-Object { $_ -and $_ -notmatch '(^|/)\.gitkeep$|README' })
