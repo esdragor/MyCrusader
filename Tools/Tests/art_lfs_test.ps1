@@ -61,7 +61,7 @@ try {
     & git.exe -C $Root add -f -- $probeRel 2>&1 | Out-Null
     $first = @(& git.exe -C $Root cat-file -p ":$probeRel" 2>&1 | ForEach-Object { "$_" })[0]
     if ($first -eq 'version https://git-lfs.github.com/spec/v1') { Ok "new file $probeRel stored as an LFS pointer" }
-    else { Fail "new file $probeRel stored raw (first line '$first')" }
+    else { Fail "new file $probeRel stored raw (not an LFS pointer)" }
 } finally {
     if ($null -eq $oldIndex) { Remove-Item Env:GIT_INDEX_FILE -ErrorAction SilentlyContinue } else { $env:GIT_INDEX_FILE = $oldIndex }
     Remove-Item -Recurse -Force $probeDir -ErrorAction SilentlyContinue
