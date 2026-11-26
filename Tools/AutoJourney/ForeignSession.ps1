@@ -30,3 +30,17 @@ function Get-ForeignSessionNote([string]$Dir, [string]$JourFile, [double]$Hours 
     $at = [DateTimeOffset]::FromUnixTimeSeconds([int64]$p[0]).LocalDateTime.ToString('HH:mm')
     return ("autre session ? {0} commit(s) de moins de {1} h hors de main (dernier {2} a {3} : {4}) et worktree absent des sections '## Agents du' d'aujourd'hui/hier ({5})" -f $recent.Count, $Hours, $p[1], $at, $p[2], $(if ($JourFile) { Split-Path $JourFile -Leaf } else { 'pas de fichier' }))
 }
+# L29-6 (2026-11-26, SAURON-1126m) : un worktree est « pris » quand la 1re ligne de son IN_USE.txt commence par OCCUPE (un agent y travaille),
+# ou, avec $SkipReadyBranches (defaut ON : une ligne a changer, sync_worktrees.ps1), quand elle annonce une branche PRETE / PRETES
+# (« libre : X fini ... BRANCHE PRETE pour integrate.ps1 » : la branche attend l'integration, y fusionner main la deplace sous elle).
+# Cas vu : la sync de fin a fusionne main dans tests-bindings-1125s (Faramir) alors qu'elle l'avait sautee au debut.
+# Renvoie $null (libre ou pas d'IN_USE.txt) ou une phrase « pris : <1re ligne> ».
+function Get-InUseTakenNote([string]$Dir, [bool]$SkipReadyBranches = $true) {
+    $f = Join-Path $Dir 'IN_USE.txt'
+    if (-not (Test-Path -LiteralPath $f)) { return $null }
+    $first = [string](@(Get-Content -LiteralPath $f -Encoding UTF8 -TotalCount 1)[0])
+    $first = $first.Trim()
+    if ($first -match '^OCCUPE\b') { return "pris : $first" }
+    if ($SkipReadyBranches -and $first -match '(?i)\bPR.TES?\b') { return "pris : $first" }
+    return $null
+}
