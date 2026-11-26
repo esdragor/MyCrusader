@@ -210,8 +210,18 @@ La fiche a cinq emplacements de son (catégorie **Art > Sounds**) : **Selection 
 Glissez-y un son importé (Sound Wave ou Sound Cue) rangé dans le dossier de l'objet. Un emplacement vide garde le son
 actuel du jeu (sa table de sons). Comme pour le reste de la fiche, la variante de faction passe d'abord, puis la fiche
 commune, emplacement par emplacement. **Check for the game** (section 9) signale un son posé qui ne se charge pas.
-Aujourd'hui le jeu joue le son de **sélection d'un bâtiment** (fiche commune) ; les autres emplacements sont lus par le
-jeu au fur et à mesure qu'ils sont branchés.
+Quand chaque emplacement sonne :
+
+| Emplacement | Quand | Comment |
+|---|---|---|
+| Selection Sound | vous sélectionnez un bâtiment | à plat (2D), au volume plein |
+| Order Sound | vous donnez un ordre (clic droit, A + clic, ordre en ligne) : la première unité commandée répond | à plat, seulement chez vous |
+| Attack Sound | chaque coup ou tir d'une unité, chaque salve d'une tour (une fois par salve) ; aussi chez un joueur en réseau | dans le monde (3D), au plus 8 sons de combat à la fois |
+| Death Sound | une unité tombe | dans le monde (3D), même limite |
+| Construction Sound | vous posez la fondation d'un bâtiment, puis quand sa construction se termine | à plat, seulement chez vous |
+
+Sans son d'artiste, les ordres, les coups, les morts et la fin de construction restent **muets** (choix fait pour le jeu) ;
+seule la sélection d'un bâtiment a déjà un son provisoire. Pour entendre votre son : `hol.Art.Try <Type>` (section 10).
 
 ## 7. Licences
 
@@ -387,3 +397,10 @@ Ces points sont en préparation ; ce guide sera mis à jour quand ils seront dan
     Pas dans `Binaries\Win64` directement : chaque build y réécrit les DLL (arbres sales dans tous les worktrees). Test :
     `Tools\Tests\artist_binaries_test.ps1` (dossiers temporaires ; `--template=` : le hook modèle `reference-transaction`
     de `~\.git-templates` interroge les verrous du distant au clonage et bloque sans fin). Zip du moteur : pas encore d'outil.
+13. Sons de la fiche (AR6-d) : `UHOLCombatSoundSubsystem` (`Presentation/HOLCombatSoundSubsystem.h`) : `OnCombatSound`
+    (coups `HOLCombatProcessor`, salve de tour près de `RecordArrowShot`, client : `UHOLNetUnitDisplayProcessor` rejoue la
+    cadence de toute unité qui frappe, `AHOLBuilding::ShowArrowShot`) et `OnOrderSound` (`AHOLPlayerController` : `OrderAt`,
+    `AttackMoveAt`, `OrderLineAt`, `RequestPlaceBuilding` / `RequestPlaceWallLine` = Kind `Place`) ; script :
+    `HOLGameScreenScript.HandleOrderSound` (journal « Order sound: <Kind> <Type> »), fin de construction dans
+    `RefreshMinorAlerts` (`GetLastFinishedBuildingType`) ; tests `HeroesOfLiberty.Audio.OrderSoundEvents`,
+    `HeroesOfLiberty.Combat.BuildingShotSound`, `HOLArtSound_Test`, `HOLMinorEvents_Test`.
