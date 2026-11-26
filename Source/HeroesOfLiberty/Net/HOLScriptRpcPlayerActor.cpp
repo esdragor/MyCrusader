@@ -4,6 +4,8 @@
 
 #include "Commands/HOLCommandSubsystem.h"
 #include "Buildings/HOLBuilding.h"
+#include "Buildings/HOLBuildingTypes.h"
+#include "Buildings/HOLConstructionRules.h"
 #include "Buildings/HOLConstructionSubsystem.h"
 #include "Engine/World.h"
 #include "EngineUtils.h"
@@ -503,6 +505,25 @@ bool UHOLRpcBridgeLibrary::OrderRemoveOwnBuilding(AActor* RpcActor, AHOLBuilding
 		return false;
 	}
 	UHOLConstructionSubsystem::DestroyBuilding(*Building);
+	return true;
+}
+
+bool UHOLRpcBridgeLibrary::OrderRemoveOwnBuildingRefund(AActor* RpcActor, AHOLBuilding* Building, const int32 RefundPercent)
+{
+	const int32 Slot = GetSenderSlot(RpcActor);
+	UWorld* World = RpcActor ? RpcActor->GetWorld() : nullptr;
+	UHOLConstructionSubsystem* Construction = World ? World->GetSubsystem<UHOLConstructionSubsystem>() : nullptr;
+	if (!Construction || !Building || Slot == INDEX_NONE || static_cast<int32>(Building->GetOwnerPlayer()) != Slot || !Building->IsFinished())
+	{
+		return false;
+	}
+	// The cost is read before the building is gone.
+	const FHOLResources Cost = UHOLBuildingSettings::GetBuildCost(World, Building->GetTypeName(), Building->GetOwnerPlayer());
+	const FHOLResources Refund = HOLConstruction::GetPercentRefund(Cost, RefundPercent);
+	UHOLConstructionSubsystem::DestroyBuilding(*Building);
+	FHOLResources Stock;
+	const bool bCredited = AHOLGameState::AddSlotStock(*World, Slot, Refund, Stock);
+	UE_LOG(LogHOLCommands, Display, TEXT("Building removed with refund: slot %d, %d %% of %s = %s (%s)"), Slot, RefundPercent, *Cost.ToString(), *Refund.ToString(), bCredited ? *Stock.ToString() : TEXT("no stock"));
 	return true;
 }
 

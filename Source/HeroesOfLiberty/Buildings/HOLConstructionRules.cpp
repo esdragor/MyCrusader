@@ -393,8 +393,9 @@ FHOLResources HOLConstruction::GetCancelRefund(const FHOLResources& Cost, const 
 
 FHOLResources HOLConstruction::GetPercentRefund(const FHOLResources& Cost, const int32 Percent)
 {
-	// STUB (red first, ELROND-1126m3): gives nothing back.
-	return FHOLResources();
+	const int32 Clamped = FMath::Clamp(Percent, 0, 100);
+	const auto Share = [Clamped](const int32 Amount) { return static_cast<int32>((static_cast<int64>(FMath::Max(Amount, 0)) * Clamped + 99) / 100); };
+	return FHOLResources(Share(Cost.Food), Share(Cost.Wood), Share(Cost.Stone), Share(Cost.Gold));
 }
 
 FBox2D HOLConstruction::GetFootprintBounds(const FVector2D& Centre, const FVector2D& Footprint, const float Yaw)
