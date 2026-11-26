@@ -382,7 +382,29 @@ if ($Phase -eq 'Essay') {
           $abShow = $abLine.Trim(); if ($abShow.Length -gt 70) { $abShow = $abShow.Substring(0, 70) + '...' }
           Say 'FAIL' ("{0} : commande abregee ({1}) : ecrire la commande play.ps1 <nom> -Root <worktree> EN ENTIER, copiable telle quelle (regle 13)" -f $ef.Name, $abShow); break
         }
-      }      $named = $true
+      }
+      # FARAMIR-1126m, L29-5 (BUG deploy_far, 2026-11-25 : « le scenario ne s'est jamais lance », play.ps1 d'un worktree en rebuild) : on valide la commande EXACTE de la fiche
+      # (derniere ligne "Lancer UNE commande :") : play.ps1 du MEME worktree que son -Root, -Root de la commande = -Root du gate, scenario present dans ce worktree.
+      $cmdLines = @(($etxt -split "`r?`n") | Where-Object { $_ -match '^\s*Lancer UNE commande\s*:' })
+      if ($cmdLines.Count -gt 0) {
+        $cmd = $cmdLines[-1]
+        $cmdPlay = [regex]::Match($cmd, '(?i)-File\s+["'']?([^\s"'']+play\.ps1)')
+        $cmdName = [regex]::Match($cmd, '(?i)play\.ps1["'']?\s+(?:-Name\s+)?["'']?([A-Za-z0-9_]+)')
+        $cmdRoot = [regex]::Match($cmd, '(?i)-Root\s+["'']?([^\s"''`]+)')
+        $normP = { param($p) if ($p) { ($p.Trim().TrimEnd('\', '/', '`') -replace '/', '\').ToLowerInvariant() } else { '' } }
+        $rootGate = & $normP ((Resolve-Path $Root).Path)
+        if (-not $cmdPlay.Success -or -not $cmdRoot.Success -or -not $cmdName.Success) { Say 'FAIL' ("{0} : commande illisible (attendu : powershell -ExecutionPolicy Bypass -File <worktree>\Tools\Scenarios\play.ps1 <nom> -Root <worktree>)" -f $ef.Name) }
+        else {
+          $cr = & $normP $cmdRoot.Groups[1].Value
+          $cp = & $normP $cmdPlay.Groups[1].Value
+          $cmdOk = $true
+          if ($cr -ne $rootGate) { $cmdOk = $false; Say 'FAIL' ("{0} : le -Root de la commande differe du -Root du gate ({1} / {2}) : la commande donnee n'est pas celle du worktree verifie" -f $ef.Name, $cmdRoot.Groups[1].Value, $Root) }
+          if ($cp -ne ($cr + '\tools\scenarios\play.ps1')) { $cmdOk = $false; Say 'FAIL' ("{0} : play.ps1 d'un autre worktree que son -Root ({1} avec -Root {2}) : un worktree en rebuild ne lance rien (deploy_far 2026-11-25)" -f $ef.Name, $cmdPlay.Groups[1].Value, $cmdRoot.Groups[1].Value) }
+          if (-not (Test-Path (Join-Path $Root ('Tools\Scenarios\' + $cmdName.Groups[1].Value + '.txt')))) { $cmdOk = $false; Say 'FAIL' ("{0} : scenario {1} introuvable dans {2}\Tools\Scenarios : la commande ne lancerait rien" -f $ef.Name, $cmdName.Groups[1].Value, $Root) }
+          if ($cmdOk) { Say 'PASS' ("{0} : commande exacte valide ({1} -Root {2}, scenario {3} present)" -f $ef.Name, 'play.ps1', $Root, $cmdName.Groups[1].Value) }
+        }
+      }
+      $named = $true
       $cited = @()
       $bm = [regex]::Match($etxt, '(?mi)^\s*\**branches\s*:\**\s*(.+)$')
       if ($bm.Success) {
