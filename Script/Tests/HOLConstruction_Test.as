@@ -1455,3 +1455,15 @@ void Test_Construction_WallPieceSubGrid(FUnitTest& T)
 	T.AssertTrue(ConNearV(House.Min, FVector2D(800.0, -400.0)), "SubDivision 1: the 4 m grid of today");
 	T.AssertTrue(ConNearV(ConSize(House), FVector2D(600.0, 600.0)), "SubDivision 1: size kept");
 }
+
+// D921 (ELROND-1126m3): what a gate gives back for the palisades it removes = a percentage of their cost, each resource rounded up. RED FIRST: GetPercentRefund was a stub (nothing back).
+void Test_Construction_PercentRefund(FUnitTest& T)
+{
+	FHOLResources Palisade = ConRes(0, 5, 0, 0);
+	T.AssertTrue(ConResEq(HOLConstructionRead::GetPercentRefund(Palisade, 25), ConRes(0, 2, 0, 0)), "25 % of 5 Wood: 2 back (1.25 rounded up)");
+	T.AssertTrue(ConResEq(HOLConstructionRead::GetPercentRefund(ConRes(10, 10, 4, 0), 25), ConRes(3, 3, 1, 0)), "25 % of 10/10/4/0: 3/3/1/0, each resource rounded up");
+	T.AssertTrue(ConResEq(HOLConstructionRead::GetPercentRefund(Palisade, 0), ConRes(0, 0, 0, 0)), "0 %: the old behaviour, nothing back");
+	T.AssertTrue(ConResEq(HOLConstructionRead::GetPercentRefund(Palisade, 100), Palisade), "100 %: all back");
+	T.AssertTrue(ConResEq(HOLConstructionRead::GetPercentRefund(Palisade, 250), Palisade), "above 100 %: clamped to all back");
+	T.AssertTrue(ConResEq(HOLConstructionRead::GetPercentRefund(Palisade, -5), ConRes(0, 0, 0, 0)), "below 0 %: nothing back");
+}

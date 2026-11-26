@@ -259,6 +259,12 @@ namespace HOLConstruction
 	HEROESOFLIBERTY_API FHOLResources GetCancelRefund(const FHOLResources& Cost, EHOLConstructionState State, int64 Work, int64 TotalWork);
 
 	/**
+	 * D921 (a gate replacing palisades): Percent (0..100, clamped) of Cost given back, each resource rounded UP (5 Wood at 25 % -> 2). The credit of a removed finished building,
+	 * which DestroyBuilding never gives (OrderRemoveOwnBuildingRefund).
+	 */
+	HEROESOFLIBERTY_API FHOLResources GetPercentRefund(const FHOLResources& Cost, int32 Percent);
+
+	/**
 	 * The ground box a footprint of size Footprint covers, centred on Centre and turned by Yaw (degrees): the footprint
 	 * itself on the grid's quarter turns (a turned square is the same square), its bounds otherwise.
 	 */

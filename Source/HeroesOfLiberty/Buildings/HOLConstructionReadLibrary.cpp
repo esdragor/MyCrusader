@@ -202,6 +202,11 @@ FHOLResources UHOLConstructionReadLibrary::GetCancelRefund(const FHOLResources& 
 	return HOLConstruction::GetCancelRefund(Cost, static_cast<EHOLConstructionState>(State), Work, TotalWork);
 }
 
+FHOLResources UHOLConstructionReadLibrary::GetPercentRefund(const FHOLResources& Cost, const int32 Percent)
+{
+	return HOLConstruction::GetPercentRefund(Cost, Percent);
+}
+
 FHOLConstructionBox UHOLConstructionReadLibrary::GetFootprintBounds(const FVector2D& Centre, const FVector2D& Footprint, const float Yaw)
 {
 	return ConstructionRead_FromBox(HOLConstruction::GetFootprintBounds(Centre, Footprint, Yaw));

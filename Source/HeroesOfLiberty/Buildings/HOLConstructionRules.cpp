@@ -391,6 +391,12 @@ FHOLResources HOLConstruction::GetCancelRefund(const FHOLResources& Cost, const 
 	return CanCancel(State) ? GetRefund(Cost, Work, TotalWork) : FHOLResources();
 }
 
+FHOLResources HOLConstruction::GetPercentRefund(const FHOLResources& Cost, const int32 Percent)
+{
+	// STUB (red first, ELROND-1126m3): gives nothing back.
+	return FHOLResources();
+}
+
 FBox2D HOLConstruction::GetFootprintBounds(const FVector2D& Centre, const FVector2D& Footprint, const float Yaw)
 {
 	double Sin = 0.0, Cos = 1.0;

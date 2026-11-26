@@ -212,6 +212,10 @@ public:
 	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Construction")
 	static FHOLResources GetCancelRefund(const FHOLResources& Cost, int32 State, int64 Work, int64 TotalWork);
 
+	/** HOLConstruction::GetPercentRefund. */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Construction")
+	static FHOLResources GetPercentRefund(const FHOLResources& Cost, int32 Percent);
+
 	/** HOLConstruction::GetFootprintBounds. */
 	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Construction")
 	static FHOLConstructionBox GetFootprintBounds(const FVector2D& Centre, const FVector2D& Footprint, float Yaw);
