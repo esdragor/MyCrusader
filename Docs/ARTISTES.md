@@ -223,6 +223,10 @@ Quand chaque emplacement sonne :
 Sans son d'artiste, les ordres, les coups, les morts et la fin de construction restent **muets** (choix fait pour le jeu) ;
 seule la sélection d'un bâtiment a déjà un son provisoire. Pour entendre votre son : `hol.Art.Try <Type>` (section 10).
 
+**Écouter et essayer sans enregistrer** (console, partie lancée) :
+- `hol.Art.Listen <Type> [Faction]` écrit, pour chacun des 5 emplacements, ce que le jeu joue : `art <chemin>` (le son de la fiche), `table <son>` (le son par défaut du jeu), `silent` (rien), ou `never played for this family` (le jeu ne sonne jamais cet emplacement pour ce genre d'objet : la sélection d'une unité, la construction d'une unité, tout son d'une ressource) ; puis il joue les sons audibles l'un après l'autre.
+- `hol.Art.TrySound <Type> <Selection|Order|Attack|Death|Construction> <chemin du son> [Faction]` pose un son dans la fiche **en mémoire seulement** : la fiche n'est jamais enregistrée, tout disparaît en quittant. Exemple : `hol.Art.TrySound ManAtArms Attack /Game/Audio/Kenney/impact-sounds/SW_impactMetal_heavy_000.SW_impactMetal_heavy_000`, puis faites combattre un Homme d'armes. Quand le son vous plaît, posez-le pour de bon dans la fiche (champ du même nom) et enregistrez.
+
 ## 7. Licences
 
 N'importez que :
@@ -404,3 +408,4 @@ Ces points sont en préparation ; ce guide sera mis à jour quand ils seront dan
     `HOLGameScreenScript.HandleOrderSound` (journal « Order sound: <Kind> <Type> »), fin de construction dans
     `RefreshMinorAlerts` (`GetLastFinishedBuildingType`) ; tests `HeroesOfLiberty.Audio.OrderSoundEvents`,
     `HeroesOfLiberty.Combat.BuildingShotSound`, `HOLArtSound_Test`, `HOLMinorEvents_Test`.
+14. AR6-e (SAURON-1126s2) : `Script/Art/HOLArtListen.as` (règles pures `Slots`, `SlotPlayedFor`, `TableCueFor`, `Diagnostic`, `TrySoundRefusal` ; tests `HOLArtListen_Test.as` ; commandes `hol.Art.Listen`, `hol.Art.TrySound` ; acteur `AHOLArtListenActor`, sons à 1,2 s d'écart). Liaison `UHOLArtVisualRegistry::TryArtVisualSound` (`Source/HeroesOfLiberty/Art/HOLArtVisual.h/.cpp`) : copie transitoire `DuplicateObject` de la fiche chargée, posée en entrée de test, emplacements cumulés, jamais la fiche elle-même. Preuve : `Tools/Scenarios/art_listen` (play.ps1 -Hidden, 76 s). Trouvé : la sélection d'une UNITÉ n'a aucun son dans le jeu (seul `BuildingSelected` sonne).
