@@ -11,6 +11,19 @@ Historique du test du 2026-10-30 : `Docs\Archive\Auto_Journey_Test1_2026-10-30.m
 ## Agents du 2026-11-26
 
 - fin et mode demandés à 10:58 : fin 18:00 (`Docs\SessionEnd.txt`), mode autonome ; priorité de la séance : `Docs\Priorite_Socle_Factions_2026-11-16.md` (demande de l'utilisateur)
+- check-list lue par ETAPE0 (L29) à 11:10 ; plan : `Docs\Rapports\ETAPE0-1126m.md` ; nettoyage 0a : fd0e0c6, 3189336, 577d066, f3721d5, 5dc2318 ; sync 11:04 (Elrond en conflit HOLBuilding.cpp)
+
+| Agent | Worktree | Branche | Commits | Tache | C++ |
+| ARWEN-1126m | HeroesOfLiberty-Arwen | spec-voie-1125m | - | D920 : Chapel Faction Dawn -> Dawn;Templars dans BuildingTypes.csv, régénérer le .uasset ; puis préparer à la fusion fc3b85f, 743e78f, 6cbbdbe et le scénario spec_voie_queue. Données + script, sans C++. | sans C++ |
+| PREP-1126m | HeroesOfLiberty-Sauron | art-sound2-1126ar | - | Préparateur (lecture dans Sauron, écriture des docs en chemins absolus dans C:\Users\baudo\Documents\MyCrusader) : refaire le relevé de Docs\Priorite_Socle_Factions_2026-11-16.md (archive avant), corriger les lignes périmées de Auto_Journey_File.md, écrire les tâches détaillées de CELEBORN (D921 + G10), SAURON (L29-6, L29-8) et du C++ n°3 (G-5 + D923 bouton T) dans Docs\Rapports\TACHE-<AGENT>-1126m.md | sans C++ |
+| SAURON-1126m | HeroesOfLiberty-Sauron | art-sound2-1126ar | - | Outils L29-6 (sync_worktrees saute les worktrees pris) et L29-8 (commit_docs -Only), avec leurs tests. Sans C++. Nouvelle branche tools-l29-1126m depuis main. | sans C++ |
+| INTEG-1126m | HeroesOfLiberty-Haldir | integ-97-art | - | Passe d'intégration integ-100 : integrate.ps1 -DryRun puis fusion dans main de market-quote-1125s puis tests-bindings-1125s (build + tests verts, session_gate -Phase Merge sans FAIL, D888 : fusion locale, jamais de push). | sans C++ |
+| ARWEN-1126m2 | HeroesOfLiberty-Arwen | spec-voie-1125m | - | Pré-vol de spec_voie_queue (Tools\Scenarios\preflight.ps1 spec_voie_queue) sur spec-voie-1125m 3e268ca : voir la case Frère infirmier dans la Chapelle d'un siège Templier, lire les PNG ; corriger le scénario si rouge ; puis 2e tâche de la file d'Arwen. Sans C++. | sans C++ |
+| FARAMIR-1126m | HeroesOfLiberty-Faramir | tests-bindings-1125s | - | BUG deploy_far (Auto_Journey_File.md l.11, Reponse: de Retours), puis L29-5 (gate Essay valide la commande exacte de la fiche E). Script, sans C++. | sans C++ |
+| ELROND-1126m | HeroesOfLiberty-Elrond | wall-footprint-1125m | - | Fusionner main (CONFLIT Source/HeroesOfLiberty/Buildings/HOLBuilding.cpp : main 23d2e99 audio, 39eb1d4 et fb6a757 colonne Mesh), garder les deux côtés, un build, puis finir l'empreinte de pièce de mur Tile/SubDivision (cb854ad, 8dd4b9e) et rejouer wall_fine_ghost. C++ n°1. | C++ : raison dite dans la tache |
+| GALADRIEL-1126m | HeroesOfLiberty-Galadriel | morale-look-fix-1125m | - | BUG-ai_peasant-spin : run instrumenté d'abord (L29-3, replay ai_tower avec Sanity), puis selon le résultat intégrer 4f3c147 (C++ PushedBacks) ou corriger l'audit Sanity. C++ n°2. | C++ : raison dite dans la tache |
+| SAURON-1126m2 | HeroesOfLiberty-Sauron | tools-l29-1126m | - | Les 2 premières tâches [ ] sans C++ de la file de Sauron (Auto_Journey_File.md), en priorité celles de Docs\Priorite_Socle_Factions_2026-11-16.md (relevé 99a1306). Nouvelle branche depuis main. | sans C++ |
+| ARWEN-1126m3 | HeroesOfLiberty-Arwen | spec-voie-1125m | - | BUG : un siège Templier sans voie met le Frère infirmier en file au vrai clic (preuve spec_voie_queue_refused.png, journal queued InfirmaryBrother avant la voie Foi ; la porte HOLPlayerOrders.as:214 n'est pas sur le chemin du clic). Trouver le chemin du clic, test rouge vu, correctif en script ; si une liaison C++ est nécessaire, s'arrêter et la décrire. Puis rejouer spec_voie_queue. | sans C++ |
 
 ## Séances du 2026-11-25 (archivées le 2026-11-26 par CLEAN-A-1126m)
 
