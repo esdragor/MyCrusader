@@ -148,7 +148,7 @@ class AHOLArtIconBooth : AActor
 	{
 		FHitResult Hit;
 		TArray<AActor> Ignored;
-		const bool bHit = System::LineTraceSingle(this, FVector(At.X, At.Y, 50000.0), FVector(At.X, At.Y, -50000.0), ETraceTypeQuery::TraceTypeQuery1,
+		const bool bHit = System::LineTraceSingle(FVector(At.X, At.Y, 50000.0), FVector(At.X, At.Y, -50000.0), ETraceTypeQuery::TraceTypeQuery1,
 			false, Ignored, EDrawDebugTrace::None, Hit, true);
 		return bHit ? Hit.ImpactPoint.Z : At.Z;
 	}
