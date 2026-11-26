@@ -110,6 +110,37 @@ try {
     [IO.File]::WriteAllText((Join-Path $Main 'Auto_Journey_Jour.md'), ("## Agents du " + (Get-Date -Format 'yyyy-MM-dd') + "`r`n`r`n| Agent | id | worktree |`r`n|---|---|---|`r`n| TESTEUR-1114a | a1 | HeroesOfLiberty-T |`r`n"))
     $o = Sync @('-NoBuild')
     Check ($o -match 'mis a jour' -and $o -notmatch 'autre session') 'sync: a listed worktree is merged' $o
+
+    # L29-6 (2026-11-26) : la sync de fin a fusionne main dans tests-bindings-1125s (Faramir) alors qu'elle l'avait sautee au debut.
+    # Un worktree dont IN_USE.txt dit OCCUPE, ou dit « libre » mais annonce une branche PRETE (elle attend integrate.ps1), est « pris » :
+    # ni fusion ni build. Un « libre : ... » sans mention est fusionne comme avant. L'EFFET est juge sur git rev-parse HEAD.
+    Write-Output '--- 9. worktrees taken through IN_USE.txt (OCCUPE / branche PRETE) are skipped, a plain libre one is merged'
+    $taken = @(
+        @{ N = 'U1'; Line = 'OCCUPE par TEST-1 (2026-11-26 11:00) : une tache'; Skip = $true },
+        @{ N = 'U2'; Line = 'libre : X fini 2026-11-26 (DEUX BRANCHES PRETES pour integrate.ps1)'; Skip = $true },
+        @{ N = 'U3'; Line = 'libre : Y fini 2026-11-26 10:00 (rien a signaler)'; Skip = $false }
+    )
+    foreach ($t in $taken) {
+        $t.Dir = Join-Path $Docs ('HeroesOfLiberty-' + $t.N)
+        RunGit $Main @('worktree', 'add', $t.Dir, '-b', ('b-' + $t.N)) | Out-Null
+    }
+    Commit-OnMain 'Docs\after_taken.md' 'later' 'main moves after the worktrees were cut'
+    foreach ($t in $taken) {
+        [IO.File]::WriteAllText((Join-Path $t.Dir 'IN_USE.txt'), ($t.Line + "`r`nCPP: non`r`n"))
+        $t.Before = (RunGit $t.Dir @('rev-parse', 'HEAD') | Out-String).Trim()
+    }
+    $o = Sync @('-NoBuild')
+    foreach ($t in $taken) {
+        $after = (RunGit $t.Dir @('rev-parse', 'HEAD') | Out-String).Trim()
+        $line = @($o -split "`r?`n" | Where-Object { $_ -match ('HeroesOfLiberty-' + $t.N + ' \|') }) -join ' '
+        if ($t.Skip) {
+            Check ($after -eq $t.Before) ("IN_USE '" + $t.Line.Substring(0, 12) + "': HEAD unchanged (main NOT merged)") "before $($t.Before) after $after"
+            Check ($line -match 'SAUTE' -and $line -match 'pris') ("IN_USE '" + $t.Line.Substring(0, 12) + "': line says SAUTE ... pris") $line
+        } else {
+            Check ($after -ne $t.Before) 'IN_USE libre without mention: main merged (HEAD moved)' "before $($t.Before) after $after"
+            Check ($line -match 'mis a jour' -and $line -notmatch 'pris') 'IN_USE libre without mention: reported as mis a jour' $line
+        }
+    }
 } catch {
     $Fails++; Write-Output ('FAIL exception : ' + $_)
 } finally {
