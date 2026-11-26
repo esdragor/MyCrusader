@@ -19,6 +19,7 @@ void Test_RuntimeLoadAcceptsAnExistingModel(FUnitTest& T)
 
 void Test_RuntimeLoadPackageName(FUnitTest& T)
 {
-	T.AssertEquals("spearmanstatic", HOLArtRuntimeLoad::PackageNameOf("C:\B0\spearman_static.glb"), "letters and digits of the base name");
-	T.AssertEquals("SoiArmourA", HOLArtRuntimeLoad::PackageNameOf("Content/Knight/Soi_Armour_A.fbx"), "slashes too");
+	T.AssertEquals("spearmanstatic", HOLArtRuntimeLoad::PackageNameOf("C:\\B0\\spearman_static.glb"), "letters and digits of the base name, after the last backslash");
+	T.AssertEquals("SoiArmourA", HOLArtRuntimeLoad::PackageNameOf("Content/Knight/Soi_Armour_A.fbx"), "after the last slash too");
+	T.AssertEquals("forum", HOLArtRuntimeLoad::PackageNameOf("C:/B0/forum.glb"), "the name the packaged trial of 2026-11-26 lost (every name came out Model)");
 }

@@ -138,11 +138,11 @@ void HOLArtRuntimeLoadCommand(const TArray<FString>& Args)
 	int Swapped = 0;
 	for (AHOLBuilding Building : Buildings)
 	{
-		TArray<UStaticMeshComponent> Pieces;
-		Building.GetComponentsByClass(Pieces);
-		for (UStaticMeshComponent Piece : Pieces)
+		TArray<UActorComponent> Found = Building.GetComponentsByClass(UStaticMeshComponent);
+		for (UActorComponent Component : Found)
 		{
-			if (Piece.StaticMesh == nullptr || !Piece.IsVisible())
+			UStaticMeshComponent Piece = Cast<UStaticMeshComponent>(Component);
+			if (Piece == nullptr || Piece.StaticMesh == nullptr || !Piece.IsVisible())
 				continue;
 			Piece.SetStaticMesh(FirstMesh);
 			Swapped++;
