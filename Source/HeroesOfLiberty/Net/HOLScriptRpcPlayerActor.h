@@ -221,6 +221,13 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Rpc")
 	static bool OrderRemoveOwnBuilding(AActor* RpcActor, AHOLBuilding* Building);
 
+	/**
+	 * D921: as OrderRemoveOwnBuilding (same guards), and the sender's stock is credited RefundPercent % (0..100, each resource rounded up, HOLConstruction::GetPercentRefund) of the
+	 * table cost of the removed building. 0 gives the old behaviour (nothing back). The percentage is decided by the script (cvar hol.Wall.GateRefundPercent), not here.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Rpc")
+	static bool OrderRemoveOwnBuildingRefund(AActor* RpcActor, AHOLBuilding* Building, int32 RefundPercent);
+
 	/** TypeName is the FName of the building type; the builders are UnitIds. */
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Rpc")
 	static bool OrderPlaceBuilding(AActor* RpcActor, FName TypeName, double X, double Y, double Z, const TArray<int32>& UnitIds, bool bQueue, int32 CostPercent, int32 CostCellIndex);
