@@ -72,6 +72,10 @@ struct FHOLMinorEventsWatch
 	UPROPERTY(BlueprintReadWrite, Category = "HeroesOfLiberty|UI")
 	FVector2D LastBuildingLocation = FVector2D::ZeroVector;
 
+	/** AR6-d: the type of the last building seen finished (its ConstructionSound rings at the end of the build), NAME_None before one. */
+	UPROPERTY(BlueprintReadWrite, Category = "HeroesOfLiberty|UI")
+	FName LastBuildingType = NAME_None;
+
 	/** The ground place of the last research's building: not known on a client yet (no replicated record of which building researched), stays zero. */
 	UPROPERTY(BlueprintReadWrite, Category = "HeroesOfLiberty|UI")
 	FVector2D LastResearchBuildingLocation = FVector2D::ZeroVector;
@@ -290,6 +294,10 @@ public:
 	 */
 	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|UI")
 	bool GetMinorEventsNow(int32& OutBuildingsFinished, int32& OutResearchesDone, FVector2D& OutLastBuildingLocation, FVector2D& OutLastResearchBuildingLocation) const;
+
+	/** AR6-d: the type of the last building of the shown player seen finished by GetMinorEventsNow (NAME_None before one). */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|UI")
+	FName GetLastFinishedBuildingType() const;
 
 	/**
 	 * The rule of GetMinorEventsNow, on given data (script tests call it): Watch takes FinishedBuildings (the player's finished ones) and the number

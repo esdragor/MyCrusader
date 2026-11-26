@@ -44,4 +44,17 @@ namespace HOLArtSound
 		VoiceEnds.Add(Now + Length);
 		return true;
 	}
+
+	// AR6-d: the table's event of an order of Kind (UHOLCombatSoundSubsystem's kinds: Move, Attack, Gather, Build, Garrison; Place = a foundation laid,
+	// no table cue), -1 for no event. RED STUB.
+	int OrderEventFor(FName Kind)
+	{
+		return -1;
+	}
+
+	// AR6-d: the art asset's slot an order of Kind rings: Construction for a foundation laid, Order otherwise. RED STUB.
+	FName OrderSlotFor(FName Kind)
+	{
+		return NAME_None;
+	}
 }

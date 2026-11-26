@@ -66,3 +66,23 @@ void Test_ArtSoundVoiceFreesWithTime(FUnitTest& T)
 	T.AssertTrue(bAfterEnd, "the three ended: a new voice starts");
 	T.AssertEquals(Playing, 1, "only the new voice is counted");
 }
+
+// AR6-d: an order's kind gives the table's order event (the five are silent by the user's choice: only an art asset's Order sound is heard).
+void Test_ArtSoundOrderEventForKind(FUnitTest& T)
+{
+	T.AssertEquals(HOLAudioEvent::OrderMove, HOLArtSound::OrderEventFor(n"Move"), "Move order");
+	T.AssertEquals(HOLAudioEvent::OrderAttack, HOLArtSound::OrderEventFor(n"Attack"), "Attack order");
+	T.AssertEquals(HOLAudioEvent::OrderGather, HOLArtSound::OrderEventFor(n"Gather"), "Gather order");
+	T.AssertEquals(HOLAudioEvent::OrderBuild, HOLArtSound::OrderEventFor(n"Build"), "Build order");
+	T.AssertEquals(HOLAudioEvent::OrderGarrison, HOLArtSound::OrderEventFor(n"Garrison"), "Garrison order");
+	T.AssertEquals(-1, HOLArtSound::OrderEventFor(n"Place"), "a foundation laid has no table cue");
+	T.AssertEquals(-1, HOLArtSound::OrderEventFor(n"Dance"), "an unknown kind has none");
+}
+
+// AR6-d: a foundation laid rings the building's Construction sound, every other order the unit's Order sound.
+void Test_ArtSoundOrderSlotForKind(FUnitTest& T)
+{
+	T.AssertTrue(HOLArtSound::OrderSlotFor(n"Place") == n"Construction", "Place -> Construction");
+	T.AssertTrue(HOLArtSound::OrderSlotFor(n"Move") == n"Order", "Move -> Order");
+	T.AssertTrue(HOLArtSound::OrderSlotFor(n"Garrison") == n"Order", "Garrison -> Order");
+}
