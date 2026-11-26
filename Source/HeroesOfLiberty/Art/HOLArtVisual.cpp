@@ -182,6 +182,34 @@ void UHOLArtVisualRegistry::AddTestArtVisualSound(const FName TypeName, const FN
 	HOLArtVisual::AddTestEntry(Asset);
 }
 
+bool UHOLArtVisualRegistry::TryArtVisualSound(const UObject* WorldContextObject, const FName TypeName, const FName Faction, const FName Slot, const FString& SoundPath)
+{
+	if (SoundPath.IsEmpty() || TypeName.IsNone())
+	{
+		return false;
+	}
+	const UWorld* World = GEngine ? GEngine->GetWorldFromContextObject(WorldContextObject, EGetWorldErrorMode::ReturnNull) : nullptr;
+	const UHOLArtVisual* Found = HOLArtVisual::Find(World, TypeName, Faction);
+	if (Found == nullptr)
+	{
+		return false;
+	}
+	// A test entry already (a former try): change it; else a transient copy of the loaded asset, never the asset itself.
+	UHOLArtVisual* Target = Found->GetOutermost() == GetTransientPackage() ? const_cast<UHOLArtVisual*>(Found)
+		: DuplicateObject<UHOLArtVisual>(Found, GetTransientPackage());
+	TSoftObjectPtr<USoundBase>* Sound = Target ? SoundSlot(*Target, Slot) : nullptr;
+	if (Sound == nullptr)
+	{
+		return false;
+	}
+	*Sound = TSoftObjectPtr<USoundBase>(FSoftObjectPath(SoundPath));
+	if (Target != Found)
+	{
+		HOLArtVisual::AddTestEntry(Target);
+	}
+	return true;
+}
+
 void UHOLArtVisualRegistry::ClearTestArtVisuals()
 {
 	HOLArtVisual::ClearTestEntries();

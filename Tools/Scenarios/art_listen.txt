@@ -1,0 +1,35 @@
+# Sons de la fiche (AR6-e, SAURON-1126s2) : hol.Art.TrySound pose en memoire (jamais enregistre) des sons Kenney dans les fiches de l'Homme d'armes (Order, Attack, Death) et de la Tour de guet en bois (Attack) ;
+# hol.Art.Listen ManAtArms ecrit la table d'ecoute ; un VRAI clic droit fait sonner l'ordre ; deux Hommes d'armes de slot 0 contre un de slot 1 font sonner coups et mort ; une tour ennemie (tire a vide) fait sonner sa salve.
+# Plain, toi (slot 0) contre une IA gelee (slot 1). Points absolus comme order_sound.txt (FocusNear 3000 1500 = point -13400 1500).
+waitlog Starting hero of slot 0 spawned at
+hol.AI.ThinkSteps 100000
+hol.Art.TrySound ManAtArms Order /Game/Audio/Kenney/interface-sounds/SW_confirmation_001.SW_confirmation_001
+waitlog Art try sound: ManAtArms Order
+hol.Art.TrySound ManAtArms Attack /Game/Audio/Kenney/impact-sounds/SW_impactMetal_heavy_000.SW_impactMetal_heavy_000
+waitlog Art try sound: ManAtArms Attack
+hol.Art.TrySound ManAtArms Death /Game/Audio/Kenney/impact-sounds/SW_impactWood_medium_000.SW_impactWood_medium_000
+waitlog Art try sound: ManAtArms Death
+hol.Art.TrySound TowerWood Attack /Game/Audio/Kenney/impact-sounds/SW_impactBell_heavy_004.SW_impactBell_heavy_004
+waitlog Art try sound: TowerWood Attack
+hol.Art.TrySound ManAtArms Shout /Game/Audio/Kenney/interface-sounds/SW_confirmation_001.SW_confirmation_001
+waitlog Art try sound refused: unknown slot Shout
+hol.Art.Listen ManAtArms
+waitlog Art listen: ManAtArms Selection never played for this family
+waitlog Art listen: ManAtArms Attack art /Game/Audio/Kenney/impact-sounds/SW_impactMetal_heavy_000
+waitlog Art listen: played ManAtArms Death art
+hol.Camera.FocusNear 3000 1500
+frames 2
+hol.Units.Spawn 2 -13400 1500 0 ManAtArms 0
+frames 20
+hol.Select.Type ManAtArms last
+waitlog Select type ManAtArms:
+hol.Select.RightClickGround -13400 1300
+waitlog Order sound: Move ManAtArms
+waitlog cue played art ManAtArms Order
+hol.Units.Spawn 1 -13250 1300 1 ManAtArms 0
+waitlog cue played art ManAtArms Attack
+waitlog cue played art ManAtArms Death
+hol.Cheat.SpawnBuilding TowerWood 1 3700 1500
+waitlog Cheat: spawned TowerWood of slot 1
+waitlog cue played art TowerWood Attack
+quit
