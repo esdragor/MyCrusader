@@ -237,6 +237,12 @@ int QueueProductionRefusal(int SenderSlot, bool bHasBuilding)
 	return EconomySeatRefusal(SenderSlot, bHasBuilding);
 }
 
+// STUB (red first, ARWEN-1126m3): the lane gate of the RPC, not written yet.
+int QueueProductionLaneRefusal(UHOLSpecializationBoardScript Seats, int SenderSlot, FName TypeName)
+{
+	return 0;
+}
+
 // ServerCancelProduction: seat, building, then 3 a negative queue index.
 int CancelProductionRefusal(int SenderSlot, bool bHasBuilding, int Index)
 {
