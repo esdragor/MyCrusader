@@ -1,6 +1,7 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "Player/HOLPlayerController.h"
+#include "Presentation/HOLCombatSoundSubsystem.h"
 #include "Siege/HOLDeployRules.h"
 #include "Player/HOLAttackCursor.h"
 #include "Player/HOLControllerCommandLibrary.h"
@@ -1459,6 +1460,7 @@ void AHOLPlayerController::OrderAt(const FVector2D& ViewportFraction, const bool
 		UE_LOG(LogHOLMatch, Display, TEXT("Order: %d units build %s%s"), Own.Num(), *DescribeBuilding(Site), bShift ? TEXT(", queued") : TEXT(""));
 		RequestBuildUnits(Own, Site, bShift);
 		OnOrderGiven.Broadcast(Site->GetActorLocation());
+		UHOLCombatSoundSubsystem::RaiseOrder(GetWorld(), UHOLCombatSoundSubsystem::BuildKind, Own, Site->GetActorLocation()); // AR6-d
 		return;
 	}
 	// IA1.2 F7: one of the player's farms finished under the cursor, no source drawn over it: its field is the source
@@ -1499,6 +1501,7 @@ void AHOLPlayerController::OrderAt(const FVector2D& ViewportFraction, const bool
 				bShift ? TEXT(", queued") : TEXT(""));
 			RequestAttackUnit(Own, UnderId, bShift);
 			OnAttackOrderGiven.Broadcast(Under.Location);
+			UHOLCombatSoundSubsystem::RaiseOrder(GetWorld(), UHOLCombatSoundSubsystem::AttackKind, Own, Under.Location); // AR6-d
 			return;
 		}
 		// GLORFINDEL-1122e: FindTargetAt only gathers the hostile units, so an ally's body is looked for on its own (FindAllyAt: the
@@ -1519,6 +1522,7 @@ void AHOLPlayerController::OrderAt(const FVector2D& ViewportFraction, const bool
 				bShift ? TEXT(", queued") : TEXT(""));
 			RequestHealUnit(Own, AllyId, bShift);
 			OnOrderGiven.Broadcast(Under.Location);
+			UHOLCombatSoundSubsystem::RaiseOrder(GetWorld(), UHOLCombatSoundSubsystem::MoveKind, Own, Under.Location); // AR6-d: a heal answers as a move
 			return;
 		}
 		// Follow (GDD 7.3, D818 Q1 C, GLORFINDEL-1121sk): an ally's unit under the cursor, outside the selection: the selected units become its bodyguards (the script rule,
@@ -1537,6 +1541,7 @@ void AHOLPlayerController::OrderAt(const FVector2D& ViewportFraction, const bool
 			{
 				UE_LOG(LogHOLMatch, Display, TEXT("Order: %d units follow #%u %s of slot %d"), Own.Num(), FollowId, *Under.TypeName.ToString(), Under.OwnerPlayer);
 				OnOrderGiven.Broadcast(Under.Location);
+				UHOLCombatSoundSubsystem::RaiseOrder(GetWorld(), UHOLCombatSoundSubsystem::MoveKind, Own, Under.Location); // AR6-d: a follow answers as a move
 				return;
 			}
 		}
@@ -1545,6 +1550,7 @@ void AHOLPlayerController::OrderAt(const FVector2D& ViewportFraction, const bool
 			UE_LOG(LogHOLMatch, Display, TEXT("Order: %d units attack %s%s"), Own.Num(), *DescribeBuilding(EnemyBuilding), bShift ? TEXT(", queued") : TEXT(""));
 			RequestAttackBuilding(Own, EnemyBuilding, bShift);
 			OnAttackOrderGiven.Broadcast(EnemyBuilding->GetActorLocation());
+			UHOLCombatSoundSubsystem::RaiseOrder(GetWorld(), UHOLCombatSoundSubsystem::AttackKind, Own, EnemyBuilding->GetActorLocation()); // AR6-d
 			return;
 		}
 		// D485 (EtapeDefini L): one of the player's finished buildings taking deliveries (its sites went above): the units
@@ -1556,6 +1562,7 @@ void AHOLPlayerController::OrderAt(const FVector2D& ViewportFraction, const bool
 			UE_LOG(LogHOLMatch, Display, TEXT("Order: %d units drop off at %s%s"), Own.Num(), *DescribeBuilding(Site), bShift ? TEXT(", queued") : TEXT(""));
 			RequestDropOffUnits(Own, Site, Ground, bShift);
 			OnOrderGiven.Broadcast(Site->GetActorLocation());
+			UHOLCombatSoundSubsystem::RaiseOrder(GetWorld(), UHOLCombatSoundSubsystem::GatherKind, Own, Site->GetActorLocation()); // AR6-d: a drop-off answers as a gather
 			return;
 		}
 		// F7 lot 4b (D693 « ordre sur un bâtiment », Retours/Q-garrison-ui.md Q2 default A: after the deposits): one of the player's own
@@ -1565,6 +1572,7 @@ void AHOLPlayerController::OrderAt(const FVector2D& ViewportFraction, const bool
 			UE_LOG(LogHOLMatch, Display, TEXT("Order: %d units garrison %s"), Own.Num(), *DescribeBuilding(Site));
 			RequestGarrisonUnits(Own, Site);
 			OnOrderGiven.Broadcast(Site->GetActorLocation());
+			UHOLCombatSoundSubsystem::RaiseOrder(GetWorld(), UHOLCombatSoundSubsystem::GarrisonKind, Own, Site->GetActorLocation()); // AR6-d
 			return;
 		}
 		if (Source)
@@ -1573,11 +1581,13 @@ void AHOLPlayerController::OrderAt(const FVector2D& ViewportFraction, const bool
 				*Sources->GetTypeNames()[Source->TypeIndex].ToString(), Source->Location.X, Source->Location.Y, bShift ? TEXT(", queued") : TEXT(""));
 			RequestGatherUnits(Own, SourceIndex, bShift);
 			OnOrderGiven.Broadcast(Source->Location);
+			UHOLCombatSoundSubsystem::RaiseOrder(GetWorld(), UHOLCombatSoundSubsystem::GatherKind, Own, Source->Location); // AR6-d
 			return;
 		}
 		UE_LOG(LogHOLMatch, Display, TEXT("Order: %d units to (%.0f, %.0f)%s"), Own.Num(), Ground.X, Ground.Y, bShift ? TEXT(", queued") : TEXT(""));
 		RequestMoveUnits(Own, Ground, bShift);
 		OnOrderGiven.Broadcast(Ground);
+		UHOLCombatSoundSubsystem::RaiseOrder(GetWorld(), UHOLCombatSoundSubsystem::MoveKind, Own, Ground); // AR6-d
 	}
 	else if (AHOLBuilding* Building = GetOwnSelection())
 	{
@@ -3150,6 +3160,7 @@ void AHOLPlayerController::AttackMoveAt(const FVector2D& ViewportFraction, const
 				bQueue ? TEXT(", queued") : TEXT(""));
 			RequestAttackUnit(Soldiers, UnderId, bQueue);
 			OnAttackOrderGiven.Broadcast(Under.Location);
+			UHOLCombatSoundSubsystem::RaiseOrder(GetWorld(), UHOLCombatSoundSubsystem::AttackKind, Soldiers, Under.Location); // AR6-d
 			return;
 		}
 		if (UnderBuilding && Camps.IsPassiveAdversary(UnderBuilding->GetOwnerPlayer(), Me) && UnderBuilding->IsSeenHere() && !UnderBuilding->IsFoundation())
@@ -3157,12 +3168,14 @@ void AHOLPlayerController::AttackMoveAt(const FVector2D& ViewportFraction, const
 			UE_LOG(LogHOLMatch, Display, TEXT("Order: %d units attack-move on %s (neutral): a direct attack%s"), Soldiers.Num(), *DescribeBuilding(UnderBuilding), bQueue ? TEXT(", queued") : TEXT(""));
 			RequestAttackBuilding(Soldiers, UnderBuilding, bQueue);
 			OnAttackOrderGiven.Broadcast(UnderBuilding->GetActorLocation());
+			UHOLCombatSoundSubsystem::RaiseOrder(GetWorld(), UHOLCombatSoundSubsystem::AttackKind, Soldiers, UnderBuilding->GetActorLocation()); // AR6-d
 			return;
 		}
 	}
 	UE_LOG(LogHOLMatch, Display, TEXT("Order: %d units attack-move to (%.0f, %.0f)%s"), Soldiers.Num(), Ground.X, Ground.Y, bQueue ? TEXT(", queued") : TEXT(""));
 	RequestAttackMove(Soldiers, Ground, bQueue);
 	OnAttackOrderGiven.Broadcast(Ground);
+	UHOLCombatSoundSubsystem::RaiseOrder(GetWorld(), UHOLCombatSoundSubsystem::AttackKind, Soldiers, Ground); // AR6-d
 }
 
 void AHOLPlayerController::SetFactionAim(int32 Index, double RangeCm)
@@ -3491,6 +3504,7 @@ void AHOLPlayerController::RequestPlaceBuilding(const FName TypeName, const FVec
 			// The brief mark of an order (J4.6) on the foundation they go to (D313).
 			OnOrderGiven.Broadcast(Point);
 		}
+		UHOLCombatSoundSubsystem::RaisePlacement(GetWorld(), TypeName, Point); // AR6-d: the foundation laid rings the building's ConstructionSound
 		if (!HOLRpcScriptRoute_Haldir1117n::RoutePlaceBuilding(this, TypeName, Point, Builders, bQueue)) { HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("PlaceBuilding")); }
 	}
 }
@@ -3584,6 +3598,7 @@ void AHOLPlayerController::RequestPlaceWallLine(const FName TypeName, const FVec
 			UE_LOG(LogHOLMatch, Display, TEXT("Placement: %d units sent to build the line%s"), Builders.Num(), bQueue ? TEXT(", queued") : TEXT(""));
 			OnOrderGiven.Broadcast(Start); // the brief mark of an order (J4.6), on the first foundation
 		}
+		UHOLCombatSoundSubsystem::RaisePlacement(GetWorld(), TypeName, Start); // AR6-d: once for the line, on its first foundation
 		if (!HOLRpcScriptRoute_Haldir1117n::RoutePlaceWallLine(this, TypeName, Start, End, Builders, bQueue)) { HOLRpcScriptRoute_Haldir1117n::LogNotSent(TEXT("PlaceWallLine")); }
 	}
 }
@@ -5456,6 +5471,7 @@ void AHOLPlayerController::OrderLineAt(const FVector2D& Start, const FVector2D& 
 		RequestMoveUnitsInLine(Own, GroundStart, GroundEnd, bWithWidth, bShift);
 	}
 	OnOrderGiven.Broadcast(Middle);
+	UHOLCombatSoundSubsystem::RaiseOrder(GetWorld(), UHOLCombatSoundSubsystem::MoveKind, Own, Middle); // AR6-d
 }
 
 void AHOLPlayerController::HandleDeselect()

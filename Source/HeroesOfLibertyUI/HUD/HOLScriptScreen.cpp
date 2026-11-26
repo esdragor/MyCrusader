@@ -460,6 +460,7 @@ void UHOLScriptScreen::ObserveMinorEvents(FHOLMinorEventsWatch& Watch, const TAr
 		{
 			++Watch.BuildingsFinished;
 			Watch.LastBuildingLocation = FVector2D(Building->GetActorLocation().X, Building->GetActorLocation().Y);
+			Watch.LastBuildingType = Building->GetTypeName();
 		}
 	}
 	if (Watch.bPrimed && ResearchesDone > Watch.ResearchesSeen)

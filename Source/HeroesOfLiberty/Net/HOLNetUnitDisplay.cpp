@@ -16,7 +16,8 @@
 #include "Presentation/HOLUnitAnimation.h"
 #include "Simulation/HOLCombatRules.h"
 #include "Simulation/HOLSimulationFragments.h"
-#include "Simulation/HOLUnitTypes.h"
+#include "Simulation/HOLUnitTypes.h"
+#include "Presentation/HOLCombatSoundSubsystem.h"
 
 namespace UE::HeroesOfLiberty::NetDisplay
 {
@@ -37,6 +38,8 @@ UHOLNetUnitDisplayProcessor::UHOLNetUnitDisplayProcessor()
 	: EntityQuery(*this)
 {
 	ExecutionFlags = static_cast<int32>(EProcessorExecutionFlags::Client);
+	// AR6-d: a replayed blow raises its sound event, which the script's game screen plays (script = game thread).
+	bRequiresGameThreadExecution = true;
 	ExecutionOrder.ExecuteBefore.Add(UE::Mass::ProcessorGroupNames::LODCollector);
 	ExecutionOrder.ExecuteBefore.Add(UE::Mass::ProcessorGroupNames::Representation);
 }
@@ -123,7 +126,8 @@ void UHOLNetUnitDisplayProcessor::Execute(FMassEntityManager& EntityManager, FMa
 			// arrow at each step the replayed cool-down runs out, from where it is drawn to where its target is drawn, as
 			// long as it stays Attacking (a new target keeps the cadence, as on the server). Not Attacking, the cool-down
 			// keeps running down (hit and run, J7c, retour d'essai 8): attacking again, it resumes from what is left.
-			if (!bShooter || Display.State.Activity != EHOLUnitActivity::Attacking)
+			// AR6-d: every striker's cadence is replayed (a melee blow rings its Attack sound here too); only a shooter's draws arrows.
+			if (Display.State.Activity != EHOLUnitActivity::Attacking)
 			{
 				Display.StopShots();
 				continue;
@@ -141,6 +145,12 @@ void UHOLNetUnitDisplayProcessor::Execute(FMassEntityManager& EntityManager, FMa
 			{
 				++Display.ShotStep;
 				if (!HOLCombat::TickAttack(Display.ShotCooldownMs, StepMs, IntervalMs))
+				{
+					continue;
+				}
+				// AR6-d: the blow's (or the release's) sound on this client, once per replayed blow, where the striker is drawn.
+				UHOLCombatSoundSubsystem::RaiseForSlot(World, Constants.TypeName, UnitStates[EntityIt].OwnerPlayer, UHOLCombatSoundSubsystem::AttackSlot, Drawn.GetLocation());
+				if (!bShooter)
 				{
 					continue;
 				}

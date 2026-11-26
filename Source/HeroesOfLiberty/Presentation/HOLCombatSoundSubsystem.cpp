@@ -43,17 +43,41 @@ void UHOLCombatSoundSubsystem::RaiseForSlot(const UWorld* World, const FName Typ
 
 void UHOLCombatSoundSubsystem::RaiseOrder(const UWorld* World, const FName Kind, const TConstArrayView<uint32> Units, const FVector& Point)
 {
-	// RED STUB (AR6-d): nothing raised yet.
+	UHOLCombatSoundSubsystem* Sounds = World ? World->GetSubsystem<UHOLCombatSoundSubsystem>() : nullptr;
+	if (Sounds == nullptr || Units.IsEmpty())
+	{
+		return;
+	}
+	const FName TypeName = GetFirstUnitType(World, Units);
+	Sounds->Count(TypeName, OrderSlot);
+	Sounds->OnOrderSound.Broadcast(Kind, TypeName, Point);
 }
 
 void UHOLCombatSoundSubsystem::RaisePlacement(const UWorld* World, const FName BuildingType, const FVector& Point)
 {
-	// RED STUB (AR6-d): nothing raised yet.
+	UHOLCombatSoundSubsystem* Sounds = World ? World->GetSubsystem<UHOLCombatSoundSubsystem>() : nullptr;
+	if (Sounds == nullptr || BuildingType.IsNone())
+	{
+		return;
+	}
+	Sounds->Count(BuildingType, ConstructionSlot);
+	Sounds->OnOrderSound.Broadcast(PlaceKind, BuildingType, Point);
 }
 
 FName UHOLCombatSoundSubsystem::GetFirstUnitType(const UWorld* World, const TConstArrayView<uint32> Units)
 {
-	// RED STUB (AR6-d).
+	if (World == nullptr)
+	{
+		return NAME_None;
+	}
+	for (const uint32 UnitId : Units)
+	{
+		FHOLUnitView View;
+		if (HOLUnitView::Find(*World, UnitId, View))
+		{
+			return View.TypeName;
+		}
+	}
 	return NAME_None;
 }
 

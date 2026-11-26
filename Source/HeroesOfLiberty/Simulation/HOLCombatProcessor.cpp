@@ -991,6 +991,8 @@ void UHOLCombatProcessor::ReleaseBuildingArrows(const UWorld& World, const int64
 		}
 		// F8 T7b: a client draws this tower's arrows from a replicated count (AHOLBuilding::OnRep_ArrowShot); the server writes it once per release, with the last target and the number of arrows.
 		Step.Building->RecordArrowShot(Enemy.Location, FlightMs, ArrowCount);
+		// AR6-d: the volley's sound, once per release (not per arrow), at the roof (solo / host; a client rings it from OnRep_ArrowShot).
+		UHOLCombatSoundSubsystem::RaiseForSlot(&World, Step.Building->GetTypeName(), Step.OwnerPlayer, UHOLCombatSoundSubsystem::AttackSlot, FVector(Step.Box.GetCenter(), Row->Height));
 		// The next arrow in one interval of the row (BuildingAttackInterval), counted from the time this one was due (the carry below zero stays).
 		Cooldown->RemainingMs += FMath::Max(1, HOLCombat::ToMilliseconds(Row->BuildingAttackInterval));
 	}
