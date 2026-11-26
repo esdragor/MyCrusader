@@ -274,6 +274,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
 	static void DestroyBuildingWithRefund(AHOLBuilding* Building);
 
+	/** UHOLConstructionSubsystem::RemoveWithRefundPercent(*Building, Percent): the path of the bridge's OrderRemoveOwnBuildingRefund (D921). Nothing for null. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
+	static void RemoveBuildingWithRefundPercent(AHOLBuilding* Building, int32 Percent);
+
 	/** UHOLAIToolsLibrary::GetSlotLevel(World, Slot): EHOLAIDifficulty as an int of an AI slot (a held seat reads Normal = 1), -1 for a slot that is not an AI. */
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|TestWorld")
 	static int32 GetSlotLevel(UHOLTestWorldHandle* TestWorld, int32 Slot);

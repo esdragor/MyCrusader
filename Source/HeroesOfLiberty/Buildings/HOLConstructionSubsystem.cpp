@@ -664,6 +664,13 @@ FHOLResources UHOLConstructionSubsystem::RefundProductionQueue(AHOLBuilding& Bui
 	return Refund;
 }
 
+FHOLResources UHOLConstructionSubsystem::RemoveWithRefundPercent(AHOLBuilding& Building, const int32 Percent)
+{
+	// STUB of the red: destroys, credits nothing.
+	DestroyBuilding(Building);
+	return FHOLResources();
+}
+
 void UHOLConstructionSubsystem::DestroyBuilding(AHOLBuilding& Building)
 {
 	UWorld* World = Building.GetWorld();
