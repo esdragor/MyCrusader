@@ -16,7 +16,8 @@
 #include "Presentation/HOLUnitAnimation.h"
 #include "Simulation/HOLCombatRules.h"
 #include "Simulation/HOLSimulationFragments.h"
-#include "Simulation/HOLUnitTypes.h"
+#include "Simulation/HOLUnitTypes.h"
+#include "Presentation/HOLCombatSoundSubsystem.h"
 
 namespace UE::HeroesOfLiberty::NetDisplay
 {
@@ -37,6 +38,8 @@ UHOLNetUnitDisplayProcessor::UHOLNetUnitDisplayProcessor()
 	: EntityQuery(*this)
 {
 	ExecutionFlags = static_cast<int32>(EProcessorExecutionFlags::Client);
+	// AR6-d: a replayed blow raises its sound event, which the script's game screen plays (script = game thread).
+	bRequiresGameThreadExecution = true;
 	ExecutionOrder.ExecuteBefore.Add(UE::Mass::ProcessorGroupNames::LODCollector);
 	ExecutionOrder.ExecuteBefore.Add(UE::Mass::ProcessorGroupNames::Representation);
 }
@@ -47,6 +50,8 @@ void UHOLNetUnitDisplayProcessor::ConfigureQueries(const TSharedRef<FMassEntityM
 	EntityQuery.AddRequirement<FHOLNetUnitDisplayFragment>(EMassFragmentAccess::ReadWrite);
 	EntityQuery.AddRequirement<FTransformFragment>(EMassFragmentAccess::ReadWrite);
 	EntityQuery.AddRequirement<FHOLPreviousTransformFragment>(EMassFragmentAccess::ReadWrite);
+	// AR0-a4: the owner's slot of a shooter (its faction's projectile).
+	EntityQuery.AddRequirement<FHOLUnitStateFragment>(EMassFragmentAccess::ReadOnly);
 	EntityQuery.AddConstSharedRequirement<FHOLUnitTypeConstants>();
 }
 
@@ -72,6 +77,7 @@ void UHOLNetUnitDisplayProcessor::Execute(FMassEntityManager& EntityManager, FMa
 		const bool bShooter = ArrowDisplay && HOLCombat::IsRangedAttack(Constants.AttackRange);
 		const int32 IntervalMs = HOLCombat::ToMilliseconds(Constants.AttackInterval);
 		const TArrayView<FHOLNetUnitDisplayFragment> Displays = Context.GetMutableFragmentView<FHOLNetUnitDisplayFragment>();
+		const TConstArrayView<FHOLUnitStateFragment> UnitStates = Context.GetFragmentView<FHOLUnitStateFragment>();
 		const TArrayView<FTransformFragment> Transforms = Context.GetMutableFragmentView<FTransformFragment>();
 		const TArrayView<FHOLPreviousTransformFragment> PreviousTransforms = Context.GetMutableFragmentView<FHOLPreviousTransformFragment>();
 
@@ -120,7 +126,8 @@ void UHOLNetUnitDisplayProcessor::Execute(FMassEntityManager& EntityManager, FMa
 			// arrow at each step the replayed cool-down runs out, from where it is drawn to where its target is drawn, as
 			// long as it stays Attacking (a new target keeps the cadence, as on the server). Not Attacking, the cool-down
 			// keeps running down (hit and run, J7c, retour d'essai 8): attacking again, it resumes from what is left.
-			if (!bShooter || Display.State.Activity != EHOLUnitActivity::Attacking)
+			// AR6-d: every striker's cadence is replayed (a melee blow rings its Attack sound here too); only a shooter's draws arrows.
+			if (Display.State.Activity != EHOLUnitActivity::Attacking)
 			{
 				Display.StopShots();
 				continue;
@@ -141,6 +148,12 @@ void UHOLNetUnitDisplayProcessor::Execute(FMassEntityManager& EntityManager, FMa
 				{
 					continue;
 				}
+				// AR6-d: the blow's (or the release's) sound on this client, once per replayed blow, where the striker is drawn.
+				UHOLCombatSoundSubsystem::RaiseForSlot(World, Constants.TypeName, UnitStates[EntityIt].OwnerPlayer, UHOLCombatSoundSubsystem::AttackSlot, Drawn.GetLocation());
+				if (!bShooter)
+				{
+					continue;
+				}
 				const FMassEntityHandle Target = Reception->GetTargetEntity(Display.State);
 				const FTransformFragment* TargetTransform = EntityManager.IsEntityValid(Target) ? EntityManager.GetFragmentDataPtr<FTransformFragment>(Target) : nullptr;
 				// D345.2b: an arrow at a building flies to the nearest point of its body.
@@ -152,7 +165,7 @@ void UHOLNetUnitDisplayProcessor::Execute(FMassEntityManager& EntityManager, FMa
 					Launch.From = Drawn.GetLocation();
 					Launch.To = FVector(Wall.X, Wall.Y, Drawn.GetLocation().Z);
 					Launch.FlightMs = HOLCombat::GetArrowFlightMilliseconds(FVector2D(Launch.From), Wall, HOLCombat::GetArrowSpeed());
-					Launch.ShooterType = Constants.TypeName;
+					HOLArrowLaunches::SetUnitShooter(Launch, Constants.TypeName, UnitStates[EntityIt].OwnerPlayer);
 					ArrowDisplay->Launch(Launch);
 					continue;
 				}
@@ -166,7 +179,7 @@ void UHOLNetUnitDisplayProcessor::Execute(FMassEntityManager& EntityManager, FMa
 				Launch.Target = Target;
 				Launch.FlightMs = HOLCombat::GetArrowFlightMilliseconds(FVector2D(Launch.From), FVector2D(Launch.To), HOLCombat::GetArrowSpeed());
 				// Its type's projectile (AR9): the bolt of a Crossbowman, known here as on the server; nothing more received.
-				Launch.ShooterType = Constants.TypeName;
+				HOLArrowLaunches::SetUnitShooter(Launch, Constants.TypeName, UnitStates[EntityIt].OwnerPlayer);
 				ArrowDisplay->Launch(Launch);
 			}
 			// Its gesture's phase (UHOLInterpolatedInstancesProcessor): its next release, from the clock's present.

@@ -89,3 +89,63 @@ void Test_GarrisonFrameButtonsTolerateAShortTypeListAndAnotherPlayersBuilding(FU
 	TArray<FHOLGarrisonButtonView> None = HOLGarrisonFrameRules::ButtonsFor(Other, OneType);
 	T.AssertEquals(None.Num(), 0, "another player's building: no button");
 }
+// D924 (AR0-a2): the occupant's icon is the type's art asset icon (DA_Art_<Type>.Icon) when it sets one, the conventional path otherwise.
+void Test_GarrisonFrameUnitIconPathReadsTheArtAssetFirst(FUnitTest& T)
+{
+	UHOLArtVisualRegistry::ClearTestArtVisuals();
+	UHOLArtVisualRegistry::AddTestArtVisualIcon(n"Spearman", NAME_None, "/Game/Art/Units/Spearman/T_Icon_Spearman.T_Icon_Spearman");
+	const FString FromAsset = HOLGarrisonFrameRules::UnitIconPath("Spearman");
+	const FString Conventional = HOLGarrisonFrameRules::UnitIconPath("Archer");
+	UHOLArtVisualRegistry::ClearTestArtVisuals();
+	T.AssertEquals(FromAsset, "/Game/Art/Units/Spearman/T_Icon_Spearman.T_Icon_Spearman", "a type whose art asset sets an icon: that icon");
+	T.AssertEquals(Conventional, "/Game/UI/Icons/Units/T_Unit_Archer.T_Unit_Archer", "a type without art asset: the conventional path");
+}
+
+void Test_GarrisonFrameUnitIconPathReadsTheOwnersFactionFirst(FUnitTest& T)
+{
+	// AR0-a3: the icon of the occupant owner's faction variant (DA_Art_<Type>_<Faction>) first, the common asset for another faction.
+	UHOLArtVisualRegistry::ClearTestArtVisuals();
+	UHOLArtVisualRegistry::AddTestArtVisualIcon(n"Spearman", NAME_None, "/Game/Art/Units/Spearman/T_Icon_Spearman.T_Icon_Spearman");
+	UHOLArtVisualRegistry::AddTestArtVisualIcon(n"Spearman", n"Legions", "/Game/Art/Units/Spearman/T_Icon_Spearman_Legions.T_Icon_Spearman_Legions");
+	const FString Own = HOLGarrisonFrameRules::UnitIconPath("Spearman", "Legions");
+	const FString Other = HOLGarrisonFrameRules::UnitIconPath("Spearman", "Dawn");
+	TArray<int> Occupants;
+	Occupants.Add(12);
+	TArray<FString> OneType;
+	OneType.Add("Spearman");
+	FHOLGarrisonView View = HOLGarrisonFrameRules::ViewFor(Occupants, 5, true, true);
+	TArray<FHOLGarrisonButtonView> Buttons = HOLGarrisonFrameRules::ButtonsFor(View, OneType, "Legions");
+	UHOLArtVisualRegistry::ClearTestArtVisuals();
+	T.AssertEquals(Own, "/Game/Art/Units/Spearman/T_Icon_Spearman_Legions.T_Icon_Spearman_Legions", "a Legions occupant: his faction's icon");
+	T.AssertEquals(Other, "/Game/Art/Units/Spearman/T_Icon_Spearman.T_Icon_Spearman", "an occupant of another faction: the common icon");
+	T.AssertEquals(Buttons.Num(), 1, "one occupant, one button");
+	if (Buttons.Num() == 1)
+		T.AssertEquals(Buttons[0].IconPath, "/Game/Art/Units/Spearman/T_Icon_Spearman_Legions.T_Icon_Spearman_Legions", "the button of a Legions building's occupant: the Legions icon");
+}
+
+void Test_GarrisonFrameOwnerFactionKeyGivesTheFactionsIcon(FUnitTest& T)
+{
+	// AR0-a4: the frame reads its local player's faction index (AHOLGameState::GetSlotFaction) as a key: a Legions player sees his occupants' Legions icon.
+	UHOLArtVisualRegistry::ClearTestArtVisuals();
+	UHOLArtVisualRegistry::AddTestArtVisualIcon(n"Spearman", NAME_None, "/Game/Art/Units/Spearman/T_Icon_Spearman.T_Icon_Spearman");
+	UHOLArtVisualRegistry::AddTestArtVisualIcon(n"Spearman", n"Legions", "/Game/Art/Units/Spearman/T_Icon_Spearman_Legions.T_Icon_Spearman_Legions");
+	TArray<int> Occupants;
+	Occupants.Add(12);
+	TArray<FString> OneType;
+	OneType.Add("Spearman");
+	FHOLGarrisonView View = HOLGarrisonFrameRules::ViewFor(Occupants, 5, true, true);
+	const FString LegionsKey = HOLGarrisonFrameRules::OwnerFactionKey(int(EHOLFaction::BlackLegions));
+	const FString DawnKey = HOLGarrisonFrameRules::OwnerFactionKey(int(EHOLFaction::DawnOrder));
+	const FString NoKey = HOLGarrisonFrameRules::OwnerFactionKey(-1);
+	TArray<FHOLGarrisonButtonView> LegionsButtons = HOLGarrisonFrameRules::ButtonsFor(View, OneType, LegionsKey);
+	TArray<FHOLGarrisonButtonView> DawnButtons = HOLGarrisonFrameRules::ButtonsFor(View, OneType, DawnKey);
+	UHOLArtVisualRegistry::ClearTestArtVisuals();
+	T.AssertEquals(LegionsButtons.Num(), 1, "one occupant: one button");
+	T.AssertEquals(DawnButtons.Num(), 1, "one occupant: one button (Dawn)");
+	if (LegionsButtons.Num() == 1 && DawnButtons.Num() == 1)
+	{
+		T.AssertEquals(LegionsButtons[0].IconPath, "/Game/Art/Units/Spearman/T_Icon_Spearman_Legions.T_Icon_Spearman_Legions", "a Legions player's occupant: the Legions icon");
+		T.AssertEquals(DawnButtons[0].IconPath, "/Game/Art/Units/Spearman/T_Icon_Spearman.T_Icon_Spearman", "a Dawn player's occupant: the common icon (no Dawn variant)");
+	}
+	T.AssertEquals(NoKey, "", "no slot: no faction key");
+}

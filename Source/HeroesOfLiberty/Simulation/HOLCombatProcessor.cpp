@@ -25,6 +25,7 @@
 #include "MassMovementFragments.h"
 #include "MassNavigationFragments.h"
 #include "Presentation/HOLArrowSubsystem.h"
+#include "Presentation/HOLCombatSoundSubsystem.h"
 #include "Simulation/HOLBuildFragments.h"
 #include "Siege/HOLDeployRules.h"
 #include "Simulation/HOLDeployProcessor.h"
@@ -984,12 +985,14 @@ void UHOLCombatProcessor::ReleaseBuildingArrows(const UWorld& World, const int64
 				Launch.To = Enemy.Location;
 				Launch.Target = Enemy.Entity;
 				Launch.FlightMs = FlightMs;
-				Launch.ShooterType = NAME_None;
+				HOLArrowLaunches::SetBuildingShooter(Launch, Step.Building->GetTypeName(), Step.OwnerPlayer);
 				ArrowDisplay->Launch(Launch);
 			}
 		}
 		// F8 T7b: a client draws this tower's arrows from a replicated count (AHOLBuilding::OnRep_ArrowShot); the server writes it once per release, with the last target and the number of arrows.
 		Step.Building->RecordArrowShot(Enemy.Location, FlightMs, ArrowCount);
+		// AR6-d: the volley's sound, once per release (not per arrow), at the roof (solo / host; a client rings it from OnRep_ArrowShot).
+		UHOLCombatSoundSubsystem::RaiseForSlot(&World, Step.Building->GetTypeName(), Step.OwnerPlayer, UHOLCombatSoundSubsystem::AttackSlot, FVector(Step.Box.GetCenter(), Row->Height));
 		// The next arrow in one interval of the row (BuildingAttackInterval), counted from the time this one was due (the carry below zero stays).
 		Cooldown->RemainingMs += FMath::Max(1, HOLCombat::ToMilliseconds(Row->BuildingAttackInterval));
 	}
@@ -2848,6 +2851,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 						Launch.To = FVector(Aim.X, Aim.Y, Fighter.Location.Z);
 						Launch.FlightMs = FlightMs;
 						Launch.ShooterType = Constants.TypeName;
+						Launch.ShooterSlot = Fighter.State->OwnerPlayer;
 						ArrowDisplay->Launch(Launch);
 					}
 					continue;
@@ -3392,6 +3396,8 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 			++Combat.Hits;
 			++TotalHits;
 			++TotalArrowsReleased;
+			// AR6-c: the shot's sound, once per blow (solo / host / client; no subsystem on a dedicated server).
+			UHOLCombatSoundSubsystem::RaiseForSlot(World, Constants.TypeName, Fighter.State->OwnerPlayer, UHOLCombatSoundSubsystem::AttackSlot, Fighter.Location);
 			// Drawn here in solo / host (J7c.2b, the same process; a dedicated server has no arrow display).
 			if (UHOLArrowSubsystem* ArrowDisplay = World->GetSubsystem<UHOLArrowSubsystem>())
 			{
@@ -3401,6 +3407,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 				Launch.Target = Enemy.Entity;
 				Launch.FlightMs = FlightMs;
 				Launch.ShooterType = Constants.TypeName;
+				Launch.ShooterSlot = Fighter.State->OwnerPlayer;
 				ArrowDisplay->Launch(Launch);
 			}
 			if (Combat.FirstHitStep < 0)
@@ -3433,6 +3440,8 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 		++Combat.Hits;
 		Combat.DamageDealt += Dealt;
 		++TotalHits;
+		// AR6-c: the blow's sound, once per blow (solo / host / client; no subsystem on a dedicated server).
+		UHOLCombatSoundSubsystem::RaiseForSlot(World, Constants.TypeName, Fighter.State->OwnerPlayer, UHOLCombatSoundSubsystem::AttackSlot, Fighter.Location);
 		if (Combat.FirstHitStep < 0)
 		{
 			Combat.FirstHitStep = StepIndex;

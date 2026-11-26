@@ -75,12 +75,21 @@ public:
 	virtual TStatId GetStatId() const override;
 	virtual bool IsTickable() const override { return bActive; }
 
+	/**
+	 * D924 (AR0-a2): the mesh scale a unit of this type and faction is drawn at, its art asset over the CSV row's (RowValue),
+	 * resolved once per (type, faction) and kept (MakeView runs per unit and per frame: no resolver walk per call).
+	 */
+	float GetArtMeshScale(FName TypeName, FName FactionKey, float RowValue) const;
+
 protected:
 	virtual bool DoesSupportWorldType(const EWorldType::Type WorldType) const override;
 	virtual void OnWorldBeginPlay(UWorld& InWorld) override;
 	virtual void Deinitialize() override;
 
 private:
+	/** GetArtMeshScale's cache: (type, faction) -> the resolved scale (the art assets do not change during a match). */
+	mutable TMap<TPair<FName, FName>, float> ArtMeshScales;
+
 	/** What the client last read in one slot of the shared actor. */
 	struct FSlot
 	{

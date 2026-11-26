@@ -286,9 +286,20 @@ UHOLScenarioPanelScript ScenarioPanel;
 	UFUNCTION(BlueprintOverride)
 	void BuildingSelected(const FString& TypeName)
 	{
+		// AR6-a: the building's art asset sound first, then its family's table cue. AR6-b: the local player's faction variant
+		// (DA_Art_<Type>_<Faction>, HOLFactionRulesRead::GetFactionKey of his slot's faction), field by field over the common asset.
 		const int Event = HOLAudioBuildings::SelectEventFor(TypeName);
-		if (Event >= 0)
-			Sound(Event);
+		if (Audio != nullptr)
+			Audio.PlayTyped(Event, FName(TypeName), LocalFactionName(), n"Selection");
+	}
+
+	// AR6-b: the local player's faction key (FName, NAME_None without a slot or a game state).
+	FName LocalFactionName()
+	{
+		AHOLGameState State = Cast<AHOLGameState>(Gameplay::GetGameState());
+		const int Slot = GetLocalSlot();
+		const int FactionIndex = State != nullptr && Slot >= 0 ? State.GetSlotFaction(Slot) : -1;
+		return FactionIndex < 0 ? NAME_None : FName(HOLFactionRulesRead::GetFactionKey(FactionIndex));
 	}
 	bool bVolcanoShown = false;
 
@@ -300,10 +311,35 @@ UHOLScenarioPanelScript ScenarioPanel;
 		return Audio.Play(Event);
 	}
 
+	UFUNCTION()
+	void HandleCombatSound(FName TypeName, FName Faction, FName Slot, FVector Location)
+	{
+		if (Audio != nullptr)
+			Audio.PlayCombat(TypeName, Faction, Slot, Location);
+	}
+
+	// AR6-d: an order of the local player (UHOLCombatSoundSubsystem::OnOrderSound): the Order sound of the type that answers (its art asset first; the
+	// table's order cues are silent by the user's choice), or the building's Construction sound for a foundation laid (Kind Place).
+	UFUNCTION()
+	void HandleOrderSound(FName Kind, FName TypeName, FVector Point)
+	{
+		Log(n"LogHOLMatch", f"Order sound: {Kind} {TypeName}");
+		if (Audio != nullptr)
+			Audio.PlayTyped(HOLArtSound::OrderEventFor(Kind), TypeName, LocalFactionName(), HOLArtSound::OrderSlotFor(Kind));
+	}
+
 	UFUNCTION(BlueprintOverride)
 	void OnInitialized()
 	{
 		Audio = Cast<UHOLAudioPlayer>(NewObject(this, UHOLAudioPlayer));
+		// AR6-c: a blow or a death of the simulation (UHOLCombatSoundSubsystem, never on a dedicated server) plays the type's art sound.
+		UHOLCombatSoundSubsystem CombatSounds = UHOLCombatSoundSubsystem::Get();
+		if (CombatSounds != nullptr)
+		{
+			CombatSounds.OnCombatSound.AddUFunction(this, n"HandleCombatSound");
+			// AR6-d: the local player's orders and foundations laid ring the type's Order / Construction sound.
+			CombatSounds.OnOrderSound.AddUFunction(this, n"HandleOrderSound");
+		}
 		UOverlay Frame = Cast<UOverlay>(ConstructWidget(UOverlay, n"ScriptFrame"));
 		SetRootWidget(Frame);
 		BuildHeroBlock(Frame);
@@ -1656,6 +1692,10 @@ UHOLScenarioPanelScript ScenarioPanel;
 	// (UHOLScriptScreen::GetMinorEventsNow, cumulative counters) is a line in the thread, the short alert sound and a ping on the minimap, one line
 	// per kind every 30 s (HOLAlertRules::MinorStep). Nothing for a spectator.
 	FHOLMinorWatch MinorWatch;
+	// AR6-d: the finished buildings already heard (their ConstructionSound rings once each, outside the alert's 30 s window); -1 = not primed yet.
+	int BuildingsHeard = -1;
+	// AR6-d: a building's own Construction sound rang this refresh: the minor alert of that refresh plays no provisional ping over it.
+	bool bConstructionSoundRang = false;
 
 	void RefreshMinorAlerts()
 	{
@@ -1665,6 +1705,11 @@ UHOLScenarioPanelScript ScenarioPanel;
 		FVector2D ResearchPlace;
 		if (!GetMinorEventsNow(Buildings, Researches, BuildingPlace, ResearchPlace))
 			return;
+		// AR6-d: a build that ended (the counter went up): the last finished building's ConstructionSound (its art asset only; -1 = no table cue).
+		bConstructionSoundRang = false;
+		if (BuildingsHeard >= 0 && Buildings > BuildingsHeard && Audio != nullptr)
+			bConstructionSoundRang = Audio.PlayTyped(-1, GetLastFinishedBuildingType(), LocalFactionName(), n"Construction");
+		BuildingsHeard = Buildings;
 		const float Now = Gameplay::GetTimeSeconds();
 		FHOLMinorStep Step = HOLAlertRules::MinorStep(MinorWatch, Buildings, Researches, Now);
 		if (Step.Building.bShow)
@@ -1679,7 +1724,9 @@ UHOLScenarioPanelScript ScenarioPanel;
 	{
 		AddThreadLine(HOLAlertRules::MinorAlertText(Kind), Alert.LineSeconds);
 		// The kind's own sound of the audio table (D804 B); the provisional ping when it cannot play (no player, cooldown, sound missing).
-		if (Audio == nullptr || !Audio.Play(Alert.AudioEvent))
+		// AR6-d: no ping over a finished building's own Construction sound (one sound, not two).
+		const bool bOwnSound = Kind == EHOLMinorAlertKind::BuildingDone && bConstructionSoundRang;
+		if (!bOwnSound && (Audio == nullptr || !Audio.Play(Alert.AudioEvent)))
 			PlayAlertSound();
 		if (Alert.bPingMinimap && (Math::Abs(Place.X) > 1.0 || Math::Abs(Place.Y) > 1.0))
 		{

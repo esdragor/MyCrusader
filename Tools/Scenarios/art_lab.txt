@@ -1,0 +1,16 @@
+# Atelier en une commande (ArtistesInProgress.md, lot AR1-e) : hol.Art.Lab dans une partie Plain en cours : combat coupe, construction rapide et ressources,
+# galerie complete (hol.Art.Gallery All, foret degagee), eclairage Herbe fraiche (hol.Art.Light), camera sur la galerie des unites, aide des commandes hol.Art.* a l'ecran.
+# Plain, toi contre une IA. 1 minute au plus.
+frames 40
+panel hide
+hol.Art.Lab
+waitlog Art lab: done
+frames 60
+capture al_units
+note Atelier pose : galerie des unites a l'ecran, aide des commandes hol.Art.* en haut a gauche. Entree = batiments.
+waitkey Entree : batiments
+hol.Art.GalleryFrame Buildings South
+waitlog Art gallery frame: family=Buildings part=South
+frames 40
+capture al_buildings
+note Batiments sous l'eclairage Herbe fraiche. Fin.

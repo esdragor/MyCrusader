@@ -15,6 +15,7 @@
 #include "Match/HOLMatchConfig.h"
 #include "Simulation/HOLSimulationSubsystem.h"
 #include "Match/HOLStartRules.h"
+#include "Art/HOLArtVisual.h"
 #include "Misc/AutomationTest.h"
 #include "Simulation/HOLCombatProcessor.h"
 #include "Simulation/HOLCombatRules.h"
@@ -109,7 +110,7 @@ bool FHOLRegicideKingTypeTest::RunTest(const FString& Parameters)
 	TestFalse(TEXT("The Peasant does not (unchanged)"), Peasant->Ripostes);
 	TestTrue(TEXT("No gathering, nothing carried"), King->GatherRates.Food <= 0.f && King->GatherRates.Wood <= 0.f
 		&& King->GatherRates.Stone <= 0.f && King->GatherRates.Gold <= 0.f && King->CarryCapacity == 0);
-	TestEqual(TEXT("No building gesture"), King->BuildSequence, -1);
+	TestEqual(TEXT("No building gesture"), [&] { FHOLUnitTypeConstants C = King->ToConstants(TEXT("King")); HOLArtVisual::Apply(nullptr, C, TEXT("King"), NAME_None); return C.BuildSequence; }(), -1);
 	const FHOLUnitTypeConstants KingConstants = King->ToConstants(TEXT("King"));
 	TestTrue(TEXT("Its constants carry the riposte"), KingConstants.bRipostes);
 	TestFalse(TEXT("Never healed"), HOLCanBeHealed(KingConstants.ArmorCategoryMask));
