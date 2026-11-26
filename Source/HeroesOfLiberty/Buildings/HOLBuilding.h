@@ -222,6 +222,9 @@ public:
 	 * and its box on the ground turned by its yaw. What units walk around, stand by and are kept out of (D310).
 	 */
 	FVector2D GetBodySize() const;
+
+	/** The visible size of this building's shapes (UHOLBuildingSettings::GetVisualSize of GetPieceFootprint): a wall piece is 1/hol.Wall.SubDivision of its row (ELROND-1125mf). */
+	FVector2D GetVisualPieceSize(const FHOLBuildingTypeRow& Type) const;
 	FBox2D GetBodyBounds() const;
 	/**
 	 * EtapeDefini J loop 8: its visible wall's box on the ground (D324): GetBodyBounds widened by BodyInset - VisualInset on

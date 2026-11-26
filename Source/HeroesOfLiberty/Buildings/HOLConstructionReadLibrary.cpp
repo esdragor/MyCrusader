@@ -50,6 +50,11 @@ FHOLConstructionBox UHOLConstructionReadLibrary::MakeBox(const FVector2D& Min, c
 	return Out;
 }
 
+FVector2D UHOLConstructionReadLibrary::GetPieceFootprint(const FName TypeName, const FVector2D& Footprint, const int32 SubDivision)
+{
+	return HOLConstruction::GetPieceFootprint(TypeName, Footprint, SubDivision);
+}
+
 FHOLConstructionBox UHOLConstructionReadLibrary::SnapWallPiece(const FVector2D& Point, const FVector2D& Footprint, const double Grid, const int32 SubDivision)
 {
 	return ConstructionRead_FromBox(HOLConstruction::SnapWallPiece(Point, Footprint, Grid, SubDivision));

@@ -1445,6 +1445,20 @@ void Test_Construction_MainCentreOneBuilder(FUnitTest& T)
 	T.AssertTrue(Four < BuildSteps && Four > BuildSteps / 4, "4 builders: faster than one, slower than 4x");
 }
 
+// ELROND-1125mf: the footprint a piece covers (used for the foundation / ghost / rubble shapes, not only the placement): a palisade or stone wall at SubDivision 4 is 1 m x 1 m, never the 4 m of its row; other types and SubDivision 1 keep the row footprint.
+void Test_Construction_PieceFootprint(FUnitTest& T)
+{
+	FVector2D Row(400.0, 400.0);
+	FVector2D Palisade = HOLConstructionRead::GetPieceFootprint(n"Palisade", Row, 4);
+	T.AssertTrue(ConNearV(Palisade, FVector2D(100.0, 100.0)), "Palisade at SubDivision 4: 1 m x 1 m");
+	FVector2D Stone = HOLConstructionRead::GetPieceFootprint(n"StoneWall", Row, 4);
+	T.AssertTrue(ConNearV(Stone, FVector2D(100.0, 100.0)), "StoneWall at SubDivision 4: 1 m x 1 m");
+	FVector2D Coarse = HOLConstructionRead::GetPieceFootprint(n"Palisade", Row, 1);
+	T.AssertTrue(ConNearV(Coarse, Row), "Palisade at SubDivision 1: the 4 m row footprint");
+	FVector2D House = HOLConstructionRead::GetPieceFootprint(n"House", FVector2D(600.0, 600.0), 4);
+	T.AssertTrue(ConNearV(House, FVector2D(600.0, 600.0)), "a house is never divided");
+}
+
 // D898 G4: a wall piece (the 400 x 400 row footprint, SubDivision 4) snaps on the 1 m sub-grid and is 1 m wide; a 600 x 600 house at SubDivision 1 stays on the 4 m grid.
 void Test_Construction_WallPieceSubGrid(FUnitTest& T)
 {
