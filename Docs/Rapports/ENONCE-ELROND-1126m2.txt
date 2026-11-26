@@ -1,0 +1,9 @@
+Tu es ELROND-1126m2 (wall-footprint-1125m 1d0f093 (build PASS) : quick_check -Parts tests du worktree, puis play.ps1 wall_fine_ghost -Hidden -Root C:\Users\baudo\Documents\HeroesOfLiberty-Elrond, lire les PNG ; si vert, branche prête pour la passe suivante. Pas de nouveau C++ sauf correctif d'un rouge vu.). Lis C:\Users\baudo\Documents\MyCrusader\Tools\AutoJourney\brief_commun.md puis agent_rules.md et applique-les.
+ARRÊT DUR à 13:07 (Get-Date PowerShell lu juste avant ; 30 min ou 45 appels, deux tâches de ta file à enchaîner ; le premier seuil atteint).
+Worktree C:\Users\baudo\Documents\HeroesOfLiberty-Elrond (branche wall-footprint-1125m) ; sans C++.
+Lis la fin de ton *InProgress.md dans C:\Users\baudo\Documents\HeroesOfLiberty-Elrond et ta ligne de C:\Users\baudo\Documents\MyCrusader\Auto_Journey_File.md.
+TÂCHE : wall-footprint-1125m 1d0f093 (build PASS) : quick_check -Parts tests du worktree, puis play.ps1 wall_fine_ghost -Hidden -Root C:\Users\baudo\Documents\HeroesOfLiberty-Elrond, lire les PNG ; si vert, branche prête pour la passe suivante. Pas de nouveau C++ sauf correctif d'un rouge vu. ; premier Edit avant le 6e appel ; rouge VU puis correctif en deux commits.
+Fichiers déjà pris par un autre agent de la vague : voir Auto_Journey_Jour.md (L21-2).
+Commits en anglais, derniere ligne "Agent: ELROND-1126m2", jamais de push ni de fusion dans main.
+Rapport : C:\Users\baudo\Documents\MyCrusader\Docs\Rapports\ELROND-1126m2.md (13 champs d'agent_rules.md), reponse finale de 6 lignes.
+Contexte : Docs\Rapports\ELROND-1126m.md.

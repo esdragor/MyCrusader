@@ -1,0 +1,19 @@
+# ARWEN-1126m2 : pre-vol spec_voie_queue (spec-voie-1125m, sans C++)
+
+APPELS_DECLARES: ~52 (au-dela de 45 : la cause du rouge a demande ~20 lectures ; 2e tache de la file NON prise)
+HEURE_DEBUT/HEURE_FIN: 11:31:34 / ~11:46
+PREMIER_BUILD: sans C++   BUILD: sans C++   LAUNCHCHECK_DEBUT: sans C++
+TEST_ROUGE: aucun commit de test (le rouge est le pre-vol lui-meme) ; ROUGE VU a 11:33 : `preflight spec_voie_queue : FAIL (4)`, `timeout at step 50: waitlog Production: slot 0 queued InfirmaryBrother`, PNG `spec_voie_queue_queued` absent ; assertit l'effet : oui (file de production reelle)   TEST_ROUGE_SEPARE: non (outil/scenario : le rouge n'est pas un test commitable ; deux commits de correctif separes ci-dessous)
+COMMITS: 2 sur spec-voie-1125m (derniere a 11:42, seuil 30 min OK) : 25093f5 (check.ps1 + play.ps1) et dbc33dd (spec_voie_queue .txt/.look), merge_main_fait: oui (HEAD contenait deja main 5dc2318)
+TESTS: preflight spec_voie_queue : 1er run FAIL 11:33 (95 s), 2e run FAIL 11:41 (96 s, siege Templars OK mais mauvaise case), 3e run PASS 11:43 (35 s, check PASS, sanity OK) ; TESTS_TAUTOLOGIQUES: 0
+ESSAIS: spec_voie_queue : preflight PASS MAIS LOGIQUE SEULEMENT, PAS de fiche E : le PNG `spec_voie_queue_refused` ouvert et vu montre que le clic SANS voie a MIS le Frere infirmier en file (Nourriture 5100 / Or 5100, Population 4/70, un soldat bleu devant la Chapelle ; journal 10.43.22 `Production: slot 0 queued InfirmaryBrother` AVANT le `Specialization: slot 0 tier 1 option 1 applied`). Le 2e clic (apres la voie Foi) met un 2e Frere en file. before.png et refused.png ouverts et vus ; queued.png non ouvert (budget). Commande : powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Arwen\Tools\Scenarios\play.ps1 spec_voie_queue -Hidden -Root C:\Users\baudo\Documents\HeroesOfLiberty-Arwen
+QUESTIONS: aucune
+FAIT / RESTE:
+- CAUSE 1 (scenario/outil) : l'ecran Nouvelle partie lance tout scenario et joue un siege Templier comme l'Aube sans le cheat de faction (HOLFactionChoice::Sanitize, HOLNewGameScreen.cpp:921) : log `Match factions: slot 0 Dawn`, grille Chapelle = Moine + Voeu seulement, pas de Frere. Correctif 25093f5 : check.ps1 (L59) et play.ps1 (L65-67) ajoutent `hol.Faction.Cheat 1,` a -ExecCmds quand le .json du scenario contient "Templars" (outil partage, valable pour tout scenario Templier futur ; sans C++).
+- CAUSE 2 (scenario) : le Moine est Dawn-only (UnitTypes.csv Faction=Dawn), donc la Chapelle d'un siege Templier n'a que le Frere infirmier, en case A (GridCell00), pas Z (GridCell01). Correctif dbc33dd : clics GridCell00, notes et .look dits case A.
+- BUG PRODUIT TROUVE (non corrige) : le vrai clic de la case A d'un siege Templier SANS voie met le Frere en file ; la porte de voie (HOLPlayerOrders.as:214 HOLSpecUnlock::CanProduce, HOLSpecializationBoardScript.SeatMayProduce) n'est donc pas sur le chemin du clic joueur (a verifier : HOLPlayerController.cpp:2907 / la grille cote client -> AskQueueProduction ; les tests Test_TemplarsSeatQueues... et HOLPlayerOrdersBoard_Test passent car ils appellent la fonction, pas le clic). Le scenario est le rouge de ce bug : la note 2/3 est fausse tant qu'il existe. Prochaine tache : trouver quel appel du clic saute la porte, test rouge d'abord.
+- RESTE : 2e tache de la file non faite ; passe d'integration (Haldir) ; fiche E seulement une fois le bug corrige.
+NON VÉRIFIÉ: queued.png non ouvert ; chemin exact du clic qui saute la porte non lu ; Placeholders.txt non concerne ; EtapeDefini.md et Auto_Journey_File.md non mis a jour par moi (budget d'appels) ; merge de main non rejoue.
+PROCESSUS_DETACHES: voir stray_processes.ps1 lance en dernier geste (sortie dans la reponse de l'appel)
+ANOMALIES_PROCESSUS: aucune ; 3 lancements d'editeur masques (-RenderOffScreen) par preflight
+GIT_STATUS_PRINCIPALE: docs seuls (ce rapport) : oui

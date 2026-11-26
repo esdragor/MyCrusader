@@ -26,7 +26,11 @@ namespace HOLFactionRules
 			"Dawn_Holy_Monk,Dawn,Holy,Monk\n"
 			"Legions_Worker,Legions,Worker,Zombie\n"
 			"Legions_Hero,Legions,Hero,Hero\n"
-			"Legions_MainCentre,Legions,MainCentre,MainCentre\n");
+			"Legions_MainCentre,Legions,MainCentre,MainCentre\n"
+			"Templars_Worker,Templars,Worker,Peasant\n"
+			"Templars_Hero,Templars,Hero,Hero\n"
+			"Templars_MainCentre,Templars,MainCentre,MainCentre\n"
+			"Templars_Holy_Monk,Templars,Holy,Monk\n");
 		// Generated from Tools/Data/FactionOverrides.csv by Tools/Data/make_builtin_overrides.py (run it after editing the CSV);
 		// the test HeroesOfLiberty.Match.Factions.Tables keeps the two equal, line by line.
 		// BEGIN generated overrides

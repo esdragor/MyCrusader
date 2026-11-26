@@ -1,0 +1,56 @@
+# A1 (ARWEN-1125h) : la porte de production par voie (HOLPlayerOrdersBoard.as QueueProductionAnswer -> HOLSpecUnlock::CanProduce) au VRAI clic. Siege Templier (slot 0, spec_voie_queue.json) sans voie : vrai clic souris sur la case du Frere infirmier (GridCell00) de la Chapelle = refus, 0 unite en file ; puis hol.Cheat.Specialization 1 1 (Foi) et meme clic = mise en file (1 dans la file), l'unite sort. 3 minutes au plus.
+waitlog Starting hero of slot 0 spawned at
+hol.AI.ThinkSteps 100000
+hol.Sanity.Watch 1
+hol.Cheat.Resources 5000
+hol.Cheat.Population 60
+hol.Cheat.Tier 1
+hol.Prod.BuildTime 2
+frames 2
+hol.Camera.FocusNear 2500 2500
+hol.Cheat.SpawnBuilding Chapel 0 2500 2500
+waitlog Cheat: spawned Chapel of slot 0
+hol.Camera.FocusNear 2500 2500
+hol.Camera.Zoom -3
+frames 40
+hol.Spec.Report
+waitlog Specialization state slot 0 local: pending tier 0 option
+waitlog chosen -1 -1 -1
+# Selection de la Chapelle par sa categorie (F3 : hol.Select.Category, comme forge_lignes).
+frames 30
+hol.Select.Category Military
+waitlog Selection: Chapel
+frames 30
+hol.HUD.Report
+waitlog HUD cells
+capture spec_voie_queue_before
+notereset 1/3 : siege Templier sans voie, Chapelle selectionnee, grille de commande visible : case A Frere infirmier (seule case : le Moine est de l'Aube, un siege Templier ne le voit pas).
+# Geste reel 1 : sans voie, le vrai clic sur la case du Frere infirmier est REFUSE par la porte du serveur.
+hol.Mouse.Click GridCell00
+waitlog Mouse click GridCell00 x1 at
+# Le refus ne journalise rien (AskQueueProduction renvoie 0 sans log) et la ligne RpcEconomy n'existe pas en -game : attente par images (30, sous le seuil FrameWaits).
+frames 30
+wait 2
+frames 8
+capture spec_voie_queue_refused
+notereset 2/3 : apres le clic sans voie : aucune unite en file (pas de pastille de production sur le Frere infirmier), le journal n'a aucune ligne « queued InfirmaryBrother ».
+# La voie 1 (Foi) du palier 1 est appliquee tout de suite (triche, memes regles du tableau).
+hol.Cheat.Specialization 1 1
+waitlog Specialization: slot 0 tier 1 option 1 applied
+hol.Spec.Report
+waitlog Specialization state slot 0 local: pending tier 0 option
+waitlog chosen 1 -1 -1
+frames 30
+hol.HUD.Report
+waitlog HUD cells
+# Geste reel 2 : le MEME vrai clic est maintenant accepte : la premiere unite de la file (1 dans la file) puis elle sort.
+hol.Mouse.Click GridCell00
+waitlog Mouse click GridCell00 x1 at
+waitlog Production: slot 0 queued InfirmaryBrother (1 in the queue
+wait 1
+frames 8
+capture spec_voie_queue_queued
+waitlog Production: InfirmaryBrother of slot 0 done
+frames 8
+notereset 3/3 : voie Foi appliquee, meme clic : le Frere infirmier est en file puis sort de la Chapelle.
+hol.Test.Sanity

@@ -1,6 +1,7 @@
 # Auto_Journey : fin de seance, chaque worktree recupere main dans sa branche (git merge main), puis son binaire est remis a jour.
 # Usage : powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\MyCrusader\Tools\AutoJourney\sync_worktrees.ps1 [-DryRun] [-NoBuild] [-WaitBuilds]
 # Regles : jamais de push ; un worktree avec des fichiers SUIVIS modifies (travail non commite) est saute et signale (ni fusion ni build) ;
+# un worktree PRIS (1re ligne d'IN_USE.txt : OCCUPE, ou branche PRETE tant que -SkipReadyBranches vaut $true, L29-6) est saute (ni fusion ni build) ;
 # un conflit annule la fusion (merge --abort) et est signale ; main lui-meme est ignore.
 # BUILD (2026-11-05, Auto_Journey_Checklist L6-5) : un binaire perime donne 3 a 5 faux rouges (CommandGrid, Technologies, Map.Table).
 # Apres la fusion, chaque worktree dont le CODE a change (Source, Script, Content, Tools/Data entre l'ancien et le nouveau HEAD),
@@ -24,7 +25,10 @@ param(
     [string]$FakeBuild = '',
     # L14-3 : un worktree avec un commit de moins de 2 h hors de main et absent de '## Agents du <date>' de ce fichier est SAUTE
     # (autre session de l'utilisateur) ; defaut <copie principale>\Auto_Journey_Jour.md.
-    [string]$JourFile = ''
+    [string]$JourFile = '',
+    # L29-6 (2026-11-26) : un worktree dont IN_USE.txt dit OCCUPE, ou annonce une branche PRETE (elle attend integrate.ps1), est saute ;
+    # $false = seul OCCUPE saute (Retours\Q-sync-branche-prete-1126m.md : une ligne a changer).
+    [bool]$SkipReadyBranches = $true
 )
 
 $main = Join-Path $Docs 'MyCrusader'
@@ -70,6 +74,8 @@ foreach ($d in $dirs) {
     if (-not $branch) { Write-Output "$name | ? | pas un worktree git"; continue }
     $dirty = @(git -C $d status --porcelain --untracked-files=no 2>$null | Where-Object { $_ -notmatch 'IN_USE\.txt' -and $_ -notmatch 'HeroesOfLiberty\.uproject' })
     if ($dirty.Count -gt 0) { Write-Output ("{0} | {1} | SAUTE : {2} fichier(s) suivi(s) modifie(s) non commite(s)" -f $name, $branch, $dirty.Count); continue }
+    $taken = Get-InUseTakenNote $d $SkipReadyBranches
+    if ($taken) { Write-Output ("{0} | {1} | SAUTE ({2}) : ni fusion ni build" -f $name, $branch, $taken); continue }
     $foreign = Get-ForeignSessionNote $d $JourFile
     if ($foreign) { Write-Output ("{0} | {1} | SAUTE ({2}) : ni fusion ni build ; ajouter le worktree au tableau s'il est de la seance" -f $name, $branch, $foreign); continue }
     $behind = [int]((git -C $d rev-list --count 'HEAD..main' 2>$null))
