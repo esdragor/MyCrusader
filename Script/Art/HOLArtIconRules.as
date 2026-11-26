@@ -185,15 +185,15 @@ namespace HOLArtIconRules
 	// AR5-f: a plain slab under the object hides the map's ground (grass, the owner's coloured ground) for every family.
 	bool UsesFloor(const FString& Family)
 	{
-		// RED STUB (AR5-f): buildings only, as AR5-d.
-		return Family == "Buildings";
+		// Every family of the game (AR5-d had it under the buildings only).
+		return Family == "Units" || Family == "Sources" || Family == "Buildings";
 	}
 
 	// AR5-f: the slab's top (cm) over the ground height GroundZ under the object: a building's at +5 (covers its owner's coloured ground),
 	// a unit's or a source's at +1 (its feet or its base stand on the ground: nothing cut).
 	double FloorTopZ(const FString& Family, double GroundZ)
 	{
-		// RED STUB (AR5-f).
-		return GroundZ + 5.0;
+		// Buildings +5, units and sources +1.
+		return Family == "Buildings" ? GroundZ + 5.0 : GroundZ + 1.0;
 	}
 }
