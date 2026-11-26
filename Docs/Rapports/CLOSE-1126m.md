@@ -9,3 +9,5 @@ HEURE_DEBUT: 17:05. Limite 30 min / 45 appels.
 5) Verdict version : nouvelle version OUI (0.4.3 publiee 2026-11-24T13:51Z = 14:51 ; 686 commits de main depuis dont 308 sur Source/Script/Content/Config ; D920 = bloqueur de 0.4.4, fait) ; NON publiee ; x.txt + x.en.txt + x.ja.txt exiges.
 
 Voir la fin du fichier pour le resultat du gate Close et les commits de docs.
+
+GATE CLOSE (premier passage 17:2x, avant fin des builds) : 19 FAIL = retard sur main (chaque commit de docs recule les autres d un commit), DLL perimees pendant les builds de sync (Arwen, Haldir, Galadriel), Glorfindel et Sauron en retard de 55/56 commits (branches pretes art-runtime-b0-1126ar / art-listen-1126ar, sautees par design L29-6, hors perimetre : -Exclude Glorfindel,Sauron). Un 2e sync -WaitBuilds puis gate Close -Exclude Glorfindel,Sauron tournent en tache de fond : sorties C:\Usersaudo\AppData\Local\Temp\claude\sync1126c.txt et gate2.txt (a relire). WARN restants : 6 essais A ESSAYER au geste interne (E-art_gallery, E-art_icon, E-art_lab, E-duel_challenge_accept, E-wall_fine_block, E-wall_fine_ghost), reponse non traitee E-deploy_far.md, EOL mixtes dans des worktrees (eol_check -Fix).
