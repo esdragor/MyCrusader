@@ -1563,7 +1563,7 @@ for (FString Command : Commands)
 			int Removed = 0;
 			for (int RetireIndex = 0; RetireIndex < ToRetire.Num(); RetireIndex++)
 			{
-				if (HOLRpcBridge::OrderRemoveOwnBuilding(this, StandingBuildings[ToRetire[RetireIndex]]))
+				if (HOLRpcBridge::OrderRemoveOwnBuildingRefund(this, StandingBuildings[ToRetire[RetireIndex]], HOLWallLine::GateRefundPercent()))
 					Removed++;
 			}
 			Log(n"LogHOLMatch", f"RpcOrder: gate pose retires {Removed} palisade pieces for sender slot {Slot}");
@@ -1625,7 +1625,7 @@ for (FString Command : Commands)
 			int Removed = 0;
 			for (int RetireIndex = 0; RetireIndex < ToRetire.Num(); RetireIndex++)
 			{
-				if (HOLRpcBridge::OrderRemoveOwnBuilding(this, StandingBuildings[ToRetire[RetireIndex]]))
+				if (HOLRpcBridge::OrderRemoveOwnBuildingRefund(this, StandingBuildings[ToRetire[RetireIndex]], HOLWallLine::GateRefundPercent()))
 					Removed++;
 			}
 			Log(n"LogHOLMatch", f"RpcOrder: gate line retires {Removed} palisade pieces for sender slot {Slot}");

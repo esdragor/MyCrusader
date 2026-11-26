@@ -221,6 +221,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Rpc")
 	static bool OrderRemoveOwnBuilding(AActor* RpcActor, AHOLBuilding* Building);
 
+	/** D921 (FARAMIR-1126m3): OrderRemoveOwnBuilding with the owner's slot credited RefundPercent % (0..100) of the building's table cost, rounded down per resource. The gate's replacement of palisades passes HOLWallLine::GateRefundPercent(). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Rpc")
+	static bool OrderRemoveOwnBuildingRefund(AActor* RpcActor, AHOLBuilding* Building, int32 RefundPercent);
+
 	/** TypeName is the FName of the building type; the builders are UnitIds. */
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Rpc")
 	static bool OrderPlaceBuilding(AActor* RpcActor, FName TypeName, double X, double Y, double Z, const TArray<int32>& UnitIds, bool bQueue, int32 CostPercent, int32 CostCellIndex);

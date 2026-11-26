@@ -87,7 +87,7 @@ public:
 	 */
 	static void DestroyBuilding(AHOLBuilding& Building);
 
-	/** D921 (FARAMIR-1126m3): credits the owner's slot with Percent % of the building's table cost (per resource, rounded down: HOLWallLine::GateRefundOf's rounding), then DestroyBuilding. Returns what was credited. Server only. STUB of the red: credits nothing. */
+	/** D921 (FARAMIR-1126m3): credits the owner's slot with Percent % of the building's table cost (per resource, rounded down: HOLWallLine::GateRefundOf's rounding), then DestroyBuilding. Returns what was credited. Server only. */
 	static FHOLResources RemoveWithRefundPercent(AHOLBuilding& Building, int32 Percent);
 
 	/**

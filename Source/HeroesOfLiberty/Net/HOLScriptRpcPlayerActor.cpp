@@ -506,6 +506,18 @@ bool UHOLRpcBridgeLibrary::OrderRemoveOwnBuilding(AActor* RpcActor, AHOLBuilding
 	return true;
 }
 
+bool UHOLRpcBridgeLibrary::OrderRemoveOwnBuildingRefund(AActor* RpcActor, AHOLBuilding* Building, const int32 RefundPercent)
+{
+	// D921: the same guards as OrderRemoveOwnBuilding (own finished building), plus the credit of RefundPercent % of its table cost (UHOLConstructionSubsystem::RemoveWithRefundPercent).
+	const int32 Slot = GetSenderSlot(RpcActor);
+	if (!Building || Slot == INDEX_NONE || static_cast<int32>(Building->GetOwnerPlayer()) != Slot || !Building->IsFinished())
+	{
+		return false;
+	}
+	UHOLConstructionSubsystem::RemoveWithRefundPercent(*Building, FMath::Clamp(RefundPercent, 0, 100));
+	return true;
+}
+
 bool UHOLRpcBridgeLibrary::OrderCancelBuilding(AActor* RpcActor, AHOLBuilding* Building)
 {
 	AHOLPlayerController* Controller = HOLRpcBridgeL1_Haldir1117o::OwnerController(RpcActor);
