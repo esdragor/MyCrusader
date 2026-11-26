@@ -32,6 +32,28 @@ void Test_TemplarsSeatQueuesTheInfirmaryBrother(FUnitTest& T)
 	T.AssertEquals(0, Sergeant, "a Templars seat: the Temple Sergeant (same column) is accepted too");
 }
 
+// D920 (Q-chapel-faction = A, ARWEN-1126m): the Chapel is built by the Dawn (it forms the Monk) AND by the Templars (they form the Infirmary Brother).
+// Read from the compiled BuildingTypes table (the `Faction` column that FTable::Allows splits on ';'): red while the row says `Dawn` only, so a
+// Templars seat's builders never get the Chapel cell and the Infirmary Brother stays unreachable.
+bool TBChapelColumnHas(FName Key)
+{
+	FHOLBuildingTypeRow Chapel;
+	const bool bFound = HOLConstructionRead::FindBuildingType(n"Chapel", Chapel);
+	if (!bFound)
+	{
+		return false;
+	}
+	const FString Column = ";" + Chapel.Faction.ToString() + ";";
+	return Column.Contains(";" + Key.ToString() + ";");
+}
+
+void Test_ChapelIsBuiltByDawnAndTemplarsOnly(FUnitTest& T)
+{
+	T.AssertTrue(TBChapelColumnHas(n"Templars"), "Chapel Faction column holds Templars (D920): a Templars seat builds the Chapel");
+	T.AssertTrue(TBChapelColumnHas(n"Dawn"), "Chapel Faction column keeps Dawn (it forms the Monk)");
+	T.AssertFalse(TBChapelColumnHas(n"Legions"), "Chapel Faction column does not hold Legions");
+}
+
 void Test_TemplarsBrotherStaysClosedToOtherSeats(FUnitTest& T)
 {
 	// Guard of the fix: giving the Templars rows must not open their units to the others (column `Templars` only).
