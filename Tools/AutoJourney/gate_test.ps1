@@ -466,6 +466,30 @@ $eScn = & powershell -NoProfile -ExecutionPolicy Bypass -File $Gate -Phase Essay
 Check ($eScn -match "(?m)^FAIL .*fixb" -and -not ($eScn -match "(?m)^FAIL .*introuvable")) 'essay: -Essay <nom du scenario> retrouve la fiche par play.ps1 <scenario> (FAIL fixb)' $eScn
 $eNone = & powershell -NoProfile -ExecutionPolicy Bypass -File $Gate -Phase Essay -Root $G -RetoursDir $RetE -Essay E-none | Out-String
 Check ($eNone -match "(?m)^WARN .*branches:") 'essay: aucune branche citee -> WARN (ajouter la ligne branches:)' $eNone
+# FARAMIR-1126m, L29-5 (BUG deploy_far, 2026-11-25 : la commande donnee, play.ps1 d'un worktree en rebuild, ne s'est jamais lancee) : le gate Essay valide la
+# commande EXACTE de la fiche (derniere ligne "Lancer UNE commande :") : play.ps1 du MEME worktree que son -Root, -Root = le -Root du gate, scenario present dans ce worktree.
+$cmdScn = Join-Path $G 'Tools\Scenarios'
+New-Item -ItemType Directory -Path $cmdScn -Force | Out-Null
+Set-Content -Path (Join-Path $cmdScn 'okscn.txt') -Value "# scenario factice`nquit"
+$Other = Join-Path $Tmp 'HeroesOfLiberty-Other'
+function Add-Fiche([string]$Name, [string[]]$Lines) {
+  Set-Content -Path (Join-Path $RetE "E-$Name.md") -Encoding UTF8 -Value (@("# [$A ESSAYER] E-$Name : essai", "GESTE: r$($E)el", 'branches: fixa') + $Lines)
+}
+Add-Fiche 'cmdok' @("Lancer UNE commande : ``powershell -ExecutionPolicy Bypass -File $G\Tools\Scenarios\play.ps1 okscn -Root $G``")
+Add-Fiche 'cmdplay' @("Lancer UNE commande : ``powershell -ExecutionPolicy Bypass -File $Other\Tools\Scenarios\play.ps1 okscn -Root $G``")
+Add-Fiche 'cmdroot' @("Lancer UNE commande : ``powershell -ExecutionPolicy Bypass -File $Other\Tools\Scenarios\play.ps1 okscn -Root $Other``")
+Add-Fiche 'cmdscn' @("Lancer UNE commande : ``powershell -ExecutionPolicy Bypass -File $G\Tools\Scenarios\play.ps1 nosuchscn -Root $G``")
+Add-Fiche 'cmdlast' @("Lancer UNE commande : ``powershell -ExecutionPolicy Bypass -File $Other\Tools\Scenarios\play.ps1 okscn -Root $Other``", "Recette (autre worktree) : PASS", "Lancer UNE commande : ``powershell -ExecutionPolicy Bypass -File $G\Tools\Scenarios\play.ps1 okscn -Root $G``")
+$cOk = & powershell -NoProfile -ExecutionPolicy Bypass -File $Gate -Phase Essay -Root $G -RetoursDir $RetE -Essay E-cmdok | Out-String
+Check ($cOk -match '(?m)^PASS .*commande' -and -not ($cOk -match '(?m)^FAIL .*commande')) 'essay: commande de la fiche (play.ps1 et -Root du -Root du gate, scenario present) -> PASS' $cOk
+$cPlay = & powershell -NoProfile -ExecutionPolicy Bypass -File $Gate -Phase Essay -Root $G -RetoursDir $RetE -Essay E-cmdplay | Out-String
+Check ($cPlay -match "(?m)^FAIL .*play\.ps1 d'un autre worktree") 'essay: play.ps1 d''un autre worktree que son -Root -> FAIL' $cPlay
+$cRoot = & powershell -NoProfile -ExecutionPolicy Bypass -File $Gate -Phase Essay -Root $G -RetoursDir $RetE -Essay E-cmdroot | Out-String
+Check ($cRoot -match '(?m)^FAIL .*-Root de la commande differe') 'essay: -Root de la commande different du -Root du gate -> FAIL' $cRoot
+$cScn = & powershell -NoProfile -ExecutionPolicy Bypass -File $Gate -Phase Essay -Root $G -RetoursDir $RetE -Essay E-cmdscn | Out-String
+Check ($cScn -match '(?m)^FAIL .*scenario nosuchscn introuvable') 'essay: scenario de la commande absent du worktree -> FAIL' $cScn
+$cLast = & powershell -NoProfile -ExecutionPolicy Bypass -File $Gate -Phase Essay -Root $G -RetoursDir $RetE -Essay E-cmdlast | Out-String
+Check ($cLast -match '(?m)^PASS .*commande' -and -not ($cLast -match '(?m)^FAIL .*commande')) 'essay: seule la DERNIERE commande de la fiche compte (anciennes commandes d''autres worktrees ignorees) -> PASS' $cLast
 # FARAMIR-1121a : un mot de 'branches:' qui se resout en commit (sha) est accepte et controle comme ancetre du -Root ; le texte entre parentheses est ignore
 $shaA = (git -C $G rev-parse --short fixa).Trim()
 $shaB = (git -C $G rev-parse --short fixb).Trim()
