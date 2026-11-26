@@ -33,13 +33,16 @@ namespace HOLArtRuntimeLoad
 		}
 		if (Slash >= 0)
 			Base = Base.Mid(Slash + 1);
+		// An explicit list: in the packaged trial of 2026-11-26 the test "upper case differs from lower case" kept no letter
+		// (every name came out "Model").
+		const FString Allowed = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
 		FString Out = "";
 		for (int K = 0; K < Base.Len(); K++)
 		{
 			const FString C = Base.Mid(K, 1);
 			if (C == ".")
 				break;
-			if (C.IsNumeric() || C.ToUpper() != C.ToLower())
+			if (Allowed.Contains(C))
 				Out += C;
 		}
 		return Out.IsEmpty() ? "Model" : Out;
