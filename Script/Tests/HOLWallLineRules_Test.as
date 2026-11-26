@@ -934,3 +934,29 @@ void Test_IsolatedGatePoseRetiresTheFinishedPalisadesUnderIt(FUnitTest& T)
 	TArray<int> ByPalisade = HOLWallLine::GatePoseRetireIndices(n"Palisade", OnRow, 100.0, 4, 0, Cells, Types, Owners, Finished);
 	T.AssertEquals(0, ByPalisade.Num(), "laying a palisade alone retires nothing");
 }
+// D921 (Q-porte-remplacement-remboursement = B): a gate refunds a share (hol.Wall.GateRefundPercent, default 25) of the tile price per palisade piece it retires. The count of pieces comes from the REAL
+// retire rule (GateRetireIndices), the refund from GateRefundOf: 6 finished own palisade pieces under a 4-sub-cell gate -> 4 retired x 5 Wood x 25 / 100 = 5.0 -> 5; 0 percent = the old behaviour (nothing).
+void Test_GateRefundsAShareOfTheRetiredPalisades(FUnitTest& T)
+{
+	TArray<FIntPoint> Cells;
+	TArray<FName> Types;
+	TArray<int> Owners;
+	TArray<bool> Finished;
+	for (int X = 3; X <= 8; X++)
+	{
+		Cells.Add(FIntPoint(X, 0));
+		Types.Add(n"Palisade");
+		Owners.Add(0);
+		Finished.Add(true);
+	}
+	const FVector Point = HOLWallLine::CellToPoint(FIntPoint(5, 0), 100.0, 0.0);
+	TArray<int> Retired = HOLWallLine::GateRetireIndices(n"PalisadeGate", Point, 100.0, 4, true, 0, Cells, Types, Owners, Finished);
+	T.AssertTrue(Retired.Num() > 0, "the gate retires some finished palisade pieces (the chain under test)");
+	const int Expected = (Retired.Num() * 5 * 25) / 100;
+	T.AssertTrue(Expected > 0, "the expected refund is not zero (the test would pass on the stub otherwise)");
+	T.AssertEquals(Expected, HOLWallLine::GateRefundOf(Retired.Num(), 5, 25), "retired pieces x tile price x 25 percent, rounded down");
+	T.AssertEquals(0, HOLWallLine::GateRefundOf(Retired.Num(), 5, 0), "0 percent: the old behaviour, nothing refunded");
+	T.AssertEquals(0, HOLWallLine::GateRefundOf(0, 5, 25), "no piece retired: nothing refunded");
+	T.AssertEquals(7, HOLWallLine::GateRefundOf(6, 5, 25), "6 x 5 x 25 / 100 = 7.5 -> 7, never more than paid");
+	T.AssertEquals(25, HOLWallLine::GateRefundPercent(), "the cvar default is 25");
+}
