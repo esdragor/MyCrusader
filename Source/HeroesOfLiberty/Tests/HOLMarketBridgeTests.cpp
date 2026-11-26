@@ -102,4 +102,64 @@ bool FHOLMarketServerBoardTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+// CLAUDE-1125s (D836 point 4): the grid's Trade cell quotes through the script board (UHOLMarketSubsystem::Quote), no C++ copy of Sell / BuyWithGold.
+// Figures worked by hand on the standard row (tax 30 %, step 3): a lot of food at 80 sells for 80 * 70 / 100 = 56 gold, the price falls to 77;
+// 100 gold buy 100 * 100 / ceil(80 * 1.30) = 10000 / 104 = 96 food, the price rises to 83; stone at 120: 84 gold (117), 10000 / 156 = 64 (123).
+// The quote is what the server charges: the same lot through Apply (the order's call) gives the same gold and goods.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLMarketGridQuoteTest, "HeroesOfLiberty.Market.GridQuote", UE::HeroesOfLiberty::Tests::MarketBridge::Flags)
+
+bool FHOLMarketGridQuoteTest::RunTest(const FString& Parameters)
+{
+	UWorld* World = UWorld::CreateWorld(EWorldType::Game, /*bInformEngineOfWorld*/ false);
+	FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);
+	Context.SetCurrentWorld(World);
+	World->InitializeActorsForPlay(FURL());
+
+	if (TestNotNull(TEXT("the script board of the market"), UHOLMarketSubsystem::Find(World)))
+	{
+		const HOLMarket::FSettings Settings = UE::HeroesOfLiberty::Tests::MarketBridge::StandardSettings();
+		const HOLMarket::FBook Rest = UHOLMarketSubsystem::NewBook(World, Settings);
+		const int32 Food = static_cast<int32>(EHOLResource::Food);
+		const int32 Stone = static_cast<int32>(EHOLResource::Stone);
+
+		const HOLMarket::FTrade SellFood = UHOLMarketSubsystem::Quote(World, Settings, Rest, Food, 1, false);
+		TestTrue(TEXT("a lot of food sold: quoted"), SellFood.bOk);
+		TestEqual(TEXT("100 food at 80, tax 30 %: 56 gold"), SellFood.Gold, 56);
+		TestEqual(TEXT("100 food leave"), SellFood.Units, 100);
+		TestEqual(TEXT("the food price falls by a step: 77"), SellFood.Book.Prices[Food], 77);
+
+		const HOLMarket::FTrade BuyFood = UHOLMarketSubsystem::Quote(World, Settings, Rest, Food, 1, true);
+		TestTrue(TEXT("100 gold of food bought: quoted"), BuyFood.bOk);
+		TestEqual(TEXT("100 gold buy 10000 / 104 = 96 food"), BuyFood.Units, 96);
+		TestEqual(TEXT("100 gold leave"), BuyFood.Gold, 100);
+		TestEqual(TEXT("the food price rises by a step: 83"), BuyFood.Book.Prices[Food], 83);
+
+		const HOLMarket::FTrade SellStone = UHOLMarketSubsystem::Quote(World, Settings, Rest, Stone, 1, false);
+		TestEqual(TEXT("100 stone at 120: 84 gold"), SellStone.Gold, 84);
+		TestEqual(TEXT("the stone price falls to 117"), SellStone.Book.Prices[Stone], 117);
+		const HOLMarket::FTrade BuyStone = UHOLMarketSubsystem::Quote(World, Settings, Rest, Stone, 1, true);
+		TestEqual(TEXT("100 gold buy 10000 / 156 = 64 stone"), BuyStone.Units, 64);
+		TestEqual(TEXT("the stone price rises to 123"), BuyStone.Book.Prices[Stone], 123);
+
+		// The quote ignores the stock (the cell is greyed apart): a player with nothing still reads the price.
+		FHOLResources After;
+		const HOLMarket::FTrade Sold = UHOLMarketSubsystem::Apply(World, Settings, Rest, FHOLResources(1000, 0, 0, 0), EHOLResource::Food, 1, false, After);
+		TestTrue(TEXT("the server's sale of the same lot is the quote (gold)"), Sold.bOk && Sold.Gold == SellFood.Gold && Sold.Units == SellFood.Units);
+		const HOLMarket::FTrade Bought = UHOLMarketSubsystem::Apply(World, Settings, Rest, FHOLResources(0, 0, 0, 1000), EHOLResource::Food, 1, true, After);
+		TestTrue(TEXT("the server's purchase of the same lot is the quote (goods)"), Bought.bOk && Bought.Units == BuyFood.Units && Bought.Gold == BuyFood.Gold);
+	}
+
+	// No world, no board: refused, nothing invented, the book given back. The error is said once per process (the grid asks at every
+	// refresh), so it is expected here without a count (-1: every matching message, none required).
+	AddExpectedError(TEXT("no script board in this world, the quote is refused"), EAutomationExpectedErrorFlags::Contains, -1);
+	HOLMarket::FBook Given;
+	Given.Prices[0] = 91;
+	const HOLMarket::FTrade NoBoard = UHOLMarketSubsystem::Quote(nullptr, UE::HeroesOfLiberty::Tests::MarketBridge::StandardSettings(), Given, 0, 1, false);
+	TestTrue(TEXT("without a board the quote is refused for the board"), !NoBoard.bOk && NoBoard.Reason == FName(TEXT("board")) && NoBoard.Book.Prices[0] == 91);
+
+	GEngine->DestroyWorldContext(World);
+	World->DestroyWorld(false);
+	return true;
+}
+
 #endif
