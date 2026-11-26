@@ -1,7 +1,7 @@
 # open_editor.ps1 (D927, AR7-d) : ouvre l'editeur sur un poste d'artiste sans Visual Studio. Lance par OpenEditor.cmd (double-clic).
 # 1. trouve le moteur nomme par EngineAssociation du .uproject (registre HKCU, ecrit par Tools\Art\register_engine.ps1) ;
 # 2. refuse des DLL faites pour un autre moteur (BuildId de UnrealEditor.modules du kit et du moteur) ;
-# 3. recopie le kit ArtistBinaries\Win64 dans Binaries\Win64, sauf sur un poste de developpement (Intermediate\Build present) sans -Force ;
+# 3. recopie le kit ArtistBinaries\Win64 dans Binaries\Win64, sauf sur un poste de developpement (Intermediate\Build\Win64) sans -Force ;
 # 4. avertit (WARN) si du C++ a ete commite apres le commit dont sortent les DLL du kit ;
 # 5. lance UnrealEditor.exe sur le .uproject (avec -DryRun : imprime la ligne LAUNCH sans lancer).
 # Codes : 0 lance (ou DryRun) ; 1 refus (FAIL, message pour l'artiste).
@@ -37,9 +37,11 @@ $EngineId = Get-BuildId (Join-Path $EngineRoot 'Engine\Binaries\Win64\UnrealEdit
 if (-not $KitId) { Stop-Fail "pas de kit $Kit\UnrealEditor.modules : faites git pull, ou demandez la publication des DLL" }
 if ($KitId -ne $EngineId) { Stop-Fail "les DLL du kit sont faites pour un autre moteur (BuildId $KitId, moteur $EngineId) : demandez le zip du moteur a jour" }
 
-$DevMachine = Test-Path (Join-Path $Root 'Intermediate\Build')
+# Poste de developpement = sorties de compilation C++ (Intermediate\Build\Win64). L'editeur lui-meme ecrit Intermediate\Build\BuildRules
+# (UBT -Mode=QueryTargets) sur un poste d'artiste : ce n'est pas un signe de compilation (vu le 2026-11-26).
+$DevMachine = Test-Path (Join-Path $Root 'Intermediate\Build\Win64')
 if ($DevMachine -and -not $Force) {
-  Write-Output 'open_editor : poste de developpement (Intermediate\Build present) : DLL locales gardees (-Force pour prendre le kit)'
+  Write-Output 'open_editor : poste de developpement (Intermediate\Build\Win64 present) : DLL locales gardees (-Force pour prendre le kit)'
 } else {
   New-Item -ItemType Directory -Force $Bin | Out-Null
   $Copied = 0

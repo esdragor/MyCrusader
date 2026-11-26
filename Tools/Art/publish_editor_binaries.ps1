@@ -3,7 +3,7 @@
 # A lancer par la session principale apres chaque integration dans main qui touche le C++, depuis le worktree d'integration
 # compile, puis commiter ArtistBinaries (fichiers en LFS, .gitattributes).
 # Usage : powershell -ExecutionPolicy Bypass -File Tools\Art\publish_editor_binaries.ps1 -From <arbre compile> [-Root <depot qui recoit>] [-DryRun]
-# Copie : UnrealEditor.modules et les DLL qu'il nomme (pas de .pdb) ; ecrit source_commit.txt (commit de -From, date).
+# Copie : UnrealEditor.modules, <Projet>Editor.target et les DLL que nomme UnrealEditor.modules (pas de .pdb) ; ecrit source_commit.txt (commit de -From, date).
 # Refuse (FAIL, code 1) : C++ non commite dans -From (Source, *.uproject) ; DLL plus vieilles que le dernier commit C++ ;
 # fichier nomme absent. Code 0 = copie faite (ou plan imprime avec -DryRun).
 param(
@@ -18,7 +18,10 @@ $Bin = Join-Path $From 'Binaries\Win64'
 $Modules = Join-Path $Bin 'UnrealEditor.modules'
 if (-not (Test-Path $Modules)) { Stop-Fail "pas de $Modules (arbre non compile ?)" }
 try { $Json = Get-Content -Raw $Modules | ConvertFrom-Json } catch { Stop-Fail "UnrealEditor.modules illisible : $_" }
-$Files = @('UnrealEditor.modules') + @($Json.Modules.PSObject.Properties | ForEach-Object { "$($_.Value)" })
+# <Projet>Editor.target : sans lui, l'editeur d'un projet a code demande de compiler ("Missing target file", vu le 2026-11-26).
+$Project = Get-ChildItem $From -Filter '*.uproject' -File | Select-Object -First 1
+if (-not $Project) { Stop-Fail "aucun .uproject dans $From" }
+$Files = @('UnrealEditor.modules', "$($Project.BaseName)Editor.target") + @($Json.Modules.PSObject.Properties | ForEach-Object { "$($_.Value)" })
 foreach ($Name in $Files) { if (-not (Test-Path (Join-Path $Bin $Name))) { Stop-Fail "$Name absent de $Bin" } }
 
 $Dirty = @(& git.exe -C $From status --porcelain -- Source '*.uproject' 2>&1 | ForEach-Object { "$_" } | Where-Object { $_ })
