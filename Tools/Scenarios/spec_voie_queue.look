@@ -1,0 +1,4 @@
+# <nom de capture> | ce que l'utilisateur doit voir
+spec_voie_queue_before | OBJET : la Chapelle posee (batiment unique au centre), selectionnee ; en bas a droite la grille de commande avec une case remplie : A « Frere infirmier » (texte lisible ; pas de Moine : il est de l'Aube) ; aucune file de production
+spec_voie_queue_refused | OBJET : apres le vrai clic sur la case A « Frere infirmier » SANS voie : la grille est inchangee et AUCUNE pastille / icone de file de production n'apparait pour la Chapelle (0 unite en file)
+spec_voie_queue_queued | OBJET : apres hol.Cheat.Specialization 1 1 (Foi) et le MEME clic sur la case A « Frere infirmier » : une icone de file de production (1 unite) est affichee pour la Chapelle

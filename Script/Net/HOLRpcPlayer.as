@@ -237,6 +237,15 @@ int QueueProductionRefusal(int SenderSlot, bool bHasBuilding)
 	return EconomySeatRefusal(SenderSlot, bHasBuilding);
 }
 
+// ServerQueueProduction, lane gate (ARWEN-1126m3): the real click does not pass HOLPlayerOrders::QueueProductionFor, so the RPC asks the seat's own
+// read (the specialization board) here; 4 = a lane unit the seat has not unlocked. No board (a test world) = the order goes on, as QueueProductionAnswer.
+int QueueProductionLaneRefusal(UHOLSpecializationBoardScript Seats, int SenderSlot, FName TypeName)
+{
+	if (Seats == nullptr)
+		return 0;
+	return Seats.SeatMayProduce(SenderSlot, TypeName) ? 0 : 4;
+}
+
 // ServerCancelProduction: seat, building, then 3 a negative queue index.
 int CancelProductionRefusal(int SenderSlot, bool bHasBuilding, int Index)
 {
@@ -1339,6 +1348,12 @@ for (FString Command : Commands)
 		if (Refusal != 0)
 		{
 			Log(n"LogHOLMatch", f"RpcEconomy: queue refused ({Refusal}) for sender slot {Slot}");
+			return;
+		}
+		const int LaneRefusal = HOLRpc::QueueProductionLaneRefusal(UHOLSpecializationBoardScript::Get(), Slot, TypeName);
+		if (LaneRefusal != 0)
+		{
+			Log(n"LogHOLMatch", f"RpcEconomy: queue refused ({LaneRefusal}, lane not unlocked) for sender slot {Slot} type {TypeName}");
 			return;
 		}
 		Log(n"LogHOLMatch", f"RpcEconomy: queue received by the server: slot {Slot} type {TypeName}");
