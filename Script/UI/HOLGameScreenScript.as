@@ -286,9 +286,20 @@ UHOLScenarioPanelScript ScenarioPanel;
 	UFUNCTION(BlueprintOverride)
 	void BuildingSelected(const FString& TypeName)
 	{
+		// AR6-a: the building's art asset sound first, then its family's table cue. AR6-b: the local player's faction variant
+		// (DA_Art_<Type>_<Faction>, HOLFactionRulesRead::GetFactionKey of his slot's faction), field by field over the common asset.
 		const int Event = HOLAudioBuildings::SelectEventFor(TypeName);
-		if (Event >= 0)
-			Sound(Event);
+		if (Audio != nullptr)
+			Audio.PlayTyped(Event, FName(TypeName), LocalFactionName(), n"Selection");
+	}
+
+	// AR6-b: the local player's faction key (FName, NAME_None without a slot or a game state).
+	FName LocalFactionName()
+	{
+		AHOLGameState State = Cast<AHOLGameState>(Gameplay::GetGameState());
+		const int Slot = GetLocalSlot();
+		const int FactionIndex = State != nullptr && Slot >= 0 ? State.GetSlotFaction(Slot) : -1;
+		return FactionIndex < 0 ? NAME_None : FName(HOLFactionRulesRead::GetFactionKey(FactionIndex));
 	}
 	bool bVolcanoShown = false;
 
@@ -300,10 +311,21 @@ UHOLScenarioPanelScript ScenarioPanel;
 		return Audio.Play(Event);
 	}
 
+	UFUNCTION()
+	void HandleCombatSound(FName TypeName, FName Faction, FName Slot, FVector Location)
+	{
+		if (Audio != nullptr)
+			Audio.PlayCombat(TypeName, Faction, Slot, Location);
+	}
+
 	UFUNCTION(BlueprintOverride)
 	void OnInitialized()
 	{
 		Audio = Cast<UHOLAudioPlayer>(NewObject(this, UHOLAudioPlayer));
+		// AR6-c: a blow or a death of the simulation (UHOLCombatSoundSubsystem, never on a dedicated server) plays the type's art sound.
+		UHOLCombatSoundSubsystem CombatSounds = UHOLCombatSoundSubsystem::Get();
+		if (CombatSounds != nullptr)
+			CombatSounds.OnCombatSound.AddUFunction(this, n"HandleCombatSound");
 		UOverlay Frame = Cast<UOverlay>(ConstructWidget(UOverlay, n"ScriptFrame"));
 		SetRootWidget(Frame);
 		BuildHeroBlock(Frame);

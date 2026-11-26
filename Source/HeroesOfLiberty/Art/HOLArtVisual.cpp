@@ -10,6 +10,7 @@
 #include "Engine/Engine.h"
 #include "Engine/GameInstance.h"
 #include "Engine/Texture2D.h"
+#include "Sound/SoundBase.h"
 #include "UObject/Package.h"
 #include "Engine/World.h"
 #include "Match/HOLFactionRules.h"
@@ -147,6 +148,37 @@ void UHOLArtVisualRegistry::AddTestArtVisualIcon(const FName TypeName, const FNa
 	Asset->TypeName = TypeName;
 	Asset->Faction = Faction;
 	Asset->Icon = TSoftObjectPtr<UTexture2D>(FSoftObjectPath(IconPath));
+	HOLArtVisual::AddTestEntry(Asset);
+}
+
+namespace
+{
+	TSoftObjectPtr<USoundBase>* SoundSlot(UHOLArtVisual& Asset, const FName Slot)
+	{
+		if (Slot == TEXT("Selection")) return &Asset.SelectionSound;
+		if (Slot == TEXT("Order")) return &Asset.OrderSound;
+		if (Slot == TEXT("Attack")) return &Asset.AttackSound;
+		if (Slot == TEXT("Death")) return &Asset.DeathSound;
+		if (Slot == TEXT("Construction")) return &Asset.ConstructionSound;
+		return nullptr;
+	}
+}
+
+FString UHOLArtVisual::GetSoundPath(const FName Slot) const
+{
+	const TSoftObjectPtr<USoundBase>* Sound = SoundSlot(const_cast<UHOLArtVisual&>(*this), Slot);
+	return Sound && !Sound->IsNull() ? Sound->ToSoftObjectPath().ToString() : FString();
+}
+
+void UHOLArtVisualRegistry::AddTestArtVisualSound(const FName TypeName, const FName Faction, const FName Slot, const FString& SoundPath)
+{
+	UHOLArtVisual* Asset = NewObject<UHOLArtVisual>(GetTransientPackage());
+	Asset->TypeName = TypeName;
+	Asset->Faction = Faction;
+	if (TSoftObjectPtr<USoundBase>* Sound = SoundSlot(*Asset, Slot))
+	{
+		*Sound = TSoftObjectPtr<USoundBase>(FSoftObjectPath(SoundPath));
+	}
 	HOLArtVisual::AddTestEntry(Asset);
 }
 

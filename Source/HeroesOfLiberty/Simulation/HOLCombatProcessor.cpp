@@ -25,6 +25,7 @@
 #include "MassMovementFragments.h"
 #include "MassNavigationFragments.h"
 #include "Presentation/HOLArrowSubsystem.h"
+#include "Presentation/HOLCombatSoundSubsystem.h"
 #include "Simulation/HOLBuildFragments.h"
 #include "Siege/HOLDeployRules.h"
 #include "Simulation/HOLDeployProcessor.h"
@@ -3393,6 +3394,8 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 			++Combat.Hits;
 			++TotalHits;
 			++TotalArrowsReleased;
+			// AR6-c: the shot's sound, once per blow (solo / host / client; no subsystem on a dedicated server).
+			UHOLCombatSoundSubsystem::RaiseForSlot(World, Constants.TypeName, Fighter.State->OwnerPlayer, UHOLCombatSoundSubsystem::AttackSlot, Fighter.Location);
 			// Drawn here in solo / host (J7c.2b, the same process; a dedicated server has no arrow display).
 			if (UHOLArrowSubsystem* ArrowDisplay = World->GetSubsystem<UHOLArrowSubsystem>())
 			{
@@ -3435,6 +3438,8 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 		++Combat.Hits;
 		Combat.DamageDealt += Dealt;
 		++TotalHits;
+		// AR6-c: the blow's sound, once per blow (solo / host / client; no subsystem on a dedicated server).
+		UHOLCombatSoundSubsystem::RaiseForSlot(World, Constants.TypeName, Fighter.State->OwnerPlayer, UHOLCombatSoundSubsystem::AttackSlot, Fighter.Location);
 		if (Combat.FirstHitStep < 0)
 		{
 			Combat.FirstHitStep = StepIndex;

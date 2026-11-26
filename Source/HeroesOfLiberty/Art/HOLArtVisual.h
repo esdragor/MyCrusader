@@ -13,6 +13,7 @@ class USkeletalMesh;
 class UTexture2D;
 class UAnimSequence;
 class UAnimSequenceTransformProviderData;
+class USoundBase;
 struct FHOLUnitTypeConstants;
 
 /** AR3-a: one animation by reference per resource (gathering, walking with a load, standing with a load). */
@@ -244,6 +245,27 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Register")
 	FString SourceUrl;
 
+	/** AR6-a: the sounds of this type (empty = the audio table, Script\Audio\HOLAudioTable.as); the faction's asset first. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Sounds")
+	TSoftObjectPtr<USoundBase> SelectionSound;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Sounds")
+	TSoftObjectPtr<USoundBase> OrderSound;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Sounds")
+	TSoftObjectPtr<USoundBase> AttackSound;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Sounds")
+	TSoftObjectPtr<USoundBase> DeathSound;
+
+	/** A building's construction sound (empty for a unit or a source). */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Art|Sounds")
+	TSoftObjectPtr<USoundBase> ConstructionSound;
+
+	/** AR6-a: the path of one sound slot (Selection, Order, Attack, Death, Construction), empty when unset; script binding. */
+	UFUNCTION(BlueprintPure, Category = "Art|Sounds")
+	FString GetSoundPath(FName Slot) const;
+
 	/** Writes the fields this asset sets over the constants (the ones it leaves empty are untouched). */
 	void ApplyTo(FHOLUnitTypeConstants& Constants) const;
 };
@@ -279,6 +301,10 @@ public:
 	/** Script tests: an in-memory asset of (type, faction) whose Icon is IconPath, answering until ClearTestArtVisuals. */
 	UFUNCTION(BlueprintCallable, Category = "HOL|Art|Tests")
 	static void AddTestArtVisualIcon(FName TypeName, FName Faction, const FString& IconPath);
+
+	/** AR6-a, tests: a test asset of (TypeName, Faction) whose sound Slot is SoundPath (Script\Audio\HOLArtSound_Test.as). */
+	UFUNCTION(BlueprintCallable, Category = "HOL|Art|Tests")
+	static void AddTestArtVisualSound(FName TypeName, FName Faction, FName Slot, const FString& SoundPath);
 
 	UFUNCTION(BlueprintCallable, Category = "HOL|Art|Tests")
 	static void ClearTestArtVisuals();
