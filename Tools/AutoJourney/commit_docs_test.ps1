@@ -159,8 +159,9 @@ Put $Repo 'EtapeDefini.md' "head`r`nmine: v3 EOL`nmiddle`r`nother: v1`nend`r`n"
 $oB = & powershell -NoProfile -ExecutionPolicy Bypass -File $Tool -Root $Repo -Only 'EtapeDefini.md' -Message 'Docs: eol' | Out-String
 $cB = $LASTEXITCODE
 $blobB = (Git $Repo show 'HEAD:EtapeDefini.md' | Out-String)
+$sizeB = [int](Git $Repo cat-file -s 'HEAD:EtapeDefini.md' | Out-String).Trim()   # octets du blob (Out-String ajoute des CR aux lignes, il ne peut pas les compter)
 $eolB = (Git $Repo ls-files --eol -- EtapeDefini.md | Out-String)
-Check ($cB -eq 0 -and $blobB -match 'mine: v3 EOL' -and $blobB -notmatch "`r") 'EtapeDefini.md a fins melees: commite, blob sans CR' "out=$oB blob=$blobB"
+Check ($cB -eq 0 -and $blobB -match 'mine: v3 EOL' -and $sizeB -eq "head`nmine: v3 EOL`nmiddle`nother: v1`nend`n".Length) 'EtapeDefini.md a fins melees: commite, blob en LF sans aucun CR' "out=$oB size=$sizeB blob=$blobB"
 Check ($eolB -match 'w/crlf' -and $eolB -notmatch 'w/(mixed|lf)') 'EtapeDefini.md a fins melees: arbre remis en CRLF (eol_check -Fix avant l''add)' $eolB
 Check (-not (Git $Repo diff --stat -- EtapeDefini.md | Out-String).Trim()) 'EtapeDefini.md a fins melees: aucun diff restant sur le fichier' (Git $Repo diff --stat -- EtapeDefini.md | Out-String)
 
