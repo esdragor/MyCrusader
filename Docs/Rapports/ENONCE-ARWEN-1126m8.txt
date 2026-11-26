@@ -1,0 +1,9 @@
+Tu es ARWEN-1126m8 (Sur arwen-1126m7 : vérifier les autres scénarios à clic en pixels (alert_population, nomad_start, signals_altclick, et grep hol.Mouse.Click dans Tools\Scenarios) contre le viewport 1280x720 ; corriger les pixels faux, rejouer chaque scénario corrigé -Hidden. Sans C++. Butoir 17:45.). Lis C:\Users\baudo\Documents\MyCrusader\Tools\AutoJourney\brief_commun.md puis agent_rules.md et applique-les.
+ARRÊT DUR à 16:49 (Get-Date PowerShell lu juste avant ; 30 min ou 45 appels, deux tâches de ta file à enchaîner ; le premier seuil atteint).
+Worktree C:\Users\baudo\Documents\HeroesOfLiberty-Arwen (branche integ-100b) ; sans C++.
+Lis la fin de ton *InProgress.md dans C:\Users\baudo\Documents\HeroesOfLiberty-Arwen et ta ligne de C:\Users\baudo\Documents\MyCrusader\Auto_Journey_File.md.
+TÂCHE : Sur arwen-1126m7 : vérifier les autres scénarios à clic en pixels (alert_population, nomad_start, signals_altclick, et grep hol.Mouse.Click dans Tools\Scenarios) contre le viewport 1280x720 ; corriger les pixels faux, rejouer chaque scénario corrigé -Hidden. Sans C++. Butoir 17:45. ; premier Edit avant le 6e appel ; rouge VU puis correctif en deux commits.
+Fichiers déjà pris par un autre agent de la vague : voir Auto_Journey_Jour.md (L21-2).
+Commits en anglais, derniere ligne "Agent: ARWEN-1126m8", jamais de push ni de fusion dans main.
+Rapport : C:\Users\baudo\Documents\MyCrusader\Docs\Rapports\ARWEN-1126m8.md (13 champs d'agent_rules.md), reponse finale de 6 lignes.
+Contexte : Docs\Rapports\ARWEN-1126m7.md. La branche est peut-être déjà prise par integ-102 : nouveaux commits à la suite, la principale les fusionnera.

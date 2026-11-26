@@ -1,0 +1,11 @@
+# CLOSE-1126m : cloture de l'Auto_Journey du 2026-11-26 (arret utilisateur vers 17:05), main = 5dbaae1
+
+HEURE_DEBUT: 17:05. Limite 30 min / 45 appels.
+
+1) GALADRIEL-1126m5 : worktree Galadriel, branche orbit-block-1126m3 (b5735ed, build PASS 16:53, tests non lances). Aucun fichier suivi modifie (seulement des logs non suivis GALADRIEL_*.log / .txt) : rien a commiter. IN_USE.txt remis en `libre`. Glorfindel et Haldir non touches par moi.
+2) sync_worktrees.ps1 SANS -NoBuild : Celeborn, Elrond, Galadriel (341672a), Haldir mis a jour et build lance (priorite basse) ; Faramir deja a jour ; Arwen SAUTE (2 journaux suivis non commites : ScenariosInProgress.md, SpecializationInProgress.md) -> commites par nom (1da3cd8, integ-100b, docs seulement), 2e sync -WaitBuilds ; Glorfindel et Sauron SAUTES par design (L29-6 : branche prete, art-runtime-b0-1126ar et art-listen-1126ar attendent integrate.ps1).
+3) Bilan du 2026-11-26 + Lecons appliquees 2026-11-26 dans Auto_Journey_Jour.md (passes integ-100 FAIL collision Haldir, integ-100b 77b857a, integ-101 45e2b80, integ-102 FAIL 8 regressions, integ-102b 5dbaae1 ; budget ~225k ; verdict version).
+4) Auto_Journey_File.md : 6 lignes `[ ]` en tete (orbit-block-1126m3, defi T D923, faction_aim_free 600,380, wall_fine_ghost ~4 m, wall_gate_replace Q, UE_LOG diag integ-100b f887556 / ne jamais fusionner integ-100b). Auto_Journey_Retours.md : ligne [A REPONDRE] « Nouvelle version du launcher ? » ; E-spec_voie_queue PRET (fiche deja a jour : VU A L'ECRAN, gate Essay PASS). EtapeDefini.md : ligne CLOSE-1126m. Placeholders.txt relu : rien a ajouter ni retirer (je n'ai pas pu verifier une icone de la case T du defi D923 : aucune ligne existante, a confirmer par le prochain agent C++).
+5) Verdict version : nouvelle version OUI (0.4.3 publiee 2026-11-24T13:51Z = 14:51 ; 686 commits de main depuis dont 308 sur Source/Script/Content/Config ; D920 = bloqueur de 0.4.4, fait) ; NON publiee ; x.txt + x.en.txt + x.ja.txt exiges.
+
+Voir la fin du fichier pour le resultat du gate Close et les commits de docs.

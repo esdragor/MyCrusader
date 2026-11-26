@@ -11,8 +11,9 @@ PNG OUVERTS et vus :
 - spec_voie_queue_refused : même vue, infobulle Frère infirmier (100 nourriture, 100 or) ; ressources inchangées (5200 / 5200), aucune barre de file. Journal : `RpcEconomy: queue refused (4, lane not unlocked) for sender slot 0 type InfirmaryBrother`.
 - spec_voie_queue_queued : après la voie Foi et le même clic, nourriture et or 5100 (coût payé), barre de production « Frère infirmier » avec « Clic : annuler » au-dessus de la grille. Journal : `Production: slot 0 queued InfirmaryBrother (1 in the queue ...)` puis `InfirmaryBrother of slot 0 done at step 174 (1 born here)`.
 Ancien défaut (ARWEN-1125i : case Z vide, Frère infirmier absent de la grille) : plus reproduit ; le scénario clique maintenant la case A.
+RECETTE-1126m (2026-11-26 16:2x, Faramir integ-101 = main 45e2b80 moins 1 ligne) : preflight.ps1 spec_voie_queue -Root Faramir PASS (28 s, 3 PNG ouverts et vus : refused sans file, queued avec barre Frere infirmier ; journal queued seulement apres la voie Foi) ; commande ci-dessus = Faramir (le gate Essay refusait la commande Arwen) ; branche spec-voie-1125m : le worktree la contient.
 NON VÉRIFIÉ : son non entendu ; le texte de la note sur le 3e PNG est encore la note 2/3 (la note 3/3 arrive 3 s après la capture) ; la voie Foi est posée par cheat, pas par le bouton de spécialisation ; le Frère infirmier né n'est pas capturé à l'écran (journal seulement).
 
 Commande complète (règle 13, 2026-11-14) : chaque commande est écrite en entier, copiable telle quelle.
-Lancer UNE commande : `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Arwen\Tools\Scenarios\play.ps1 spec_voie_queue -Root C:\Users\baudo\Documents\HeroesOfLiberty-Arwen`
+Lancer UNE commande : `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Faramir\Tools\Scenarios\play.ps1 spec_voie_queue -Root C:\Users\baudo\Documents\HeroesOfLiberty-Faramir`
 Durée : environ 1 min. Réponse attendue : `OK`, `BUG: ...` ou `REGLAGE: ...`.

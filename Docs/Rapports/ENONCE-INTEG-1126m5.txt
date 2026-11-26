@@ -1,0 +1,9 @@
+Tu es INTEG-1126m5 (Passe integ-102 dans Galadriel : integrate.ps1 -Branch integ-102 -Greens orbit-block-1126m3 (-DryRun d'abord) sur main 45e2b80. Build + tests + quick_check net,build verts, session_gate -Phase Merge -End 18:00 -Branches integ-102 sans FAIL, git merge dans main dans C:\Users\baudo\Documents\MyCrusader (D888, jamais de push).). Lis C:\Users\baudo\Documents\MyCrusader\Tools\AutoJourney\brief_commun.md puis agent_rules.md et applique-les.
+ARRÊT DUR à 16:45 (Get-Date PowerShell lu juste avant ; 30 min ou 45 appels, deux tâches de ta file à enchaîner ; le premier seuil atteint).
+Worktree C:\Users\baudo\Documents\HeroesOfLiberty-Galadriel (branche orbit-block-1126m3) ; C++ : raison dite dans la tache.
+Lis la fin de ton *InProgress.md dans C:\Users\baudo\Documents\HeroesOfLiberty-Galadriel et ta ligne de C:\Users\baudo\Documents\MyCrusader\Auto_Journey_File.md.
+TÂCHE : Passe integ-102 dans Galadriel : integrate.ps1 -Branch integ-102 -Greens orbit-block-1126m3 (-DryRun d'abord) sur main 45e2b80. Build + tests + quick_check net,build verts, session_gate -Phase Merge -End 18:00 -Branches integ-102 sans FAIL, git merge dans main dans C:\Users\baudo\Documents\MyCrusader (D888, jamais de push). ; premier Edit avant le 6e appel ; rouge VU puis correctif en deux commits.
+Fichiers déjà pris par un autre agent de la vague : voir Auto_Journey_Jour.md (L21-2).
+Commits en anglais, derniere ligne "Agent: INTEG-1126m5", jamais de push ni de fusion dans main.
+Rapport : C:\Users\baudo\Documents\MyCrusader\Docs\Rapports\INTEG-1126m5.md (13 champs d'agent_rules.md), reponse finale de 6 lignes.
+Butoir 17:50 : sinon laisser integ-102 prête et le dire. Puis IN_USE libre, EtapeDefini.md, Auto_Journey_File.md, ligne de passe au Jour. Contexte : Docs\Rapports\GALADRIEL-1126m4.md, INTEG-1126m4.md.
