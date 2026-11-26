@@ -7,6 +7,20 @@
 
 namespace HOLArtRuntimeLoad
 {
+	// Why File is not imported: "" when it can be tried, "empty" (no path), "format" (not .fbx / .glb / .gltf / .obj), "missing" (no such file).
+	// The command refuses before Interchange is asked (tested by HOLArtRuntimeLoad_Test.as).
+	FString Refusal(const FString& File)
+	{
+		if (File.TrimStartAndEnd().IsEmpty())
+			return "empty";
+		const FString Lower = File.ToLower();
+		if (!Lower.EndsWith(".fbx") && !Lower.EndsWith(".glb") && !Lower.EndsWith(".gltf") && !Lower.EndsWith(".obj"))
+			return "format";
+		if (!FPaths::FileExists(File))
+			return "missing";
+		return "";
+	}
+
 	// The name of the package folder for File (its base name, letters and digits only).
 	FString PackageNameOf(const FString& File)
 	{
@@ -41,6 +55,12 @@ void HOLArtRuntimeLoadCommand(const TArray<FString>& Args)
 		return;
 	}
 	const FString File = Args[0];
+	const FString Refused = HOLArtRuntimeLoad::Refusal(File);
+	if (!Refused.IsEmpty())
+	{
+		Log(n"LogHOLMatch", f"RuntimeLoad: refused {Refused}: {File}");
+		return;
+	}
 	const bool bBuildings = Args.Num() > 1 && Args[1] == "Buildings";
 	const FString Name = HOLArtRuntimeLoad::PackageNameOf(File);
 	const FString ContentPath = f"/Game/RuntimeImport/{Name}";
