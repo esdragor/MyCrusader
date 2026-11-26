@@ -275,7 +275,9 @@ namespace UE::HeroesOfLiberty::Dev
 				Window.Ordered.Add(bOrdered ? 1 : 0);
 				Window.Flanking.Add(Combat && Combat->bFlanking ? 1 : 0);
 					// Q-sanity-circling = C: the walk round one side to the claimed place is tolerated, a turn back on its steps is not (HOLSanity::FTrace::PlaceWalk).
-					Window.PlaceWalk.Add(Combat && PlaceWalkIsManoeuvre != 0 && Combat->bHasPlace && Combat->bApproaching ? 1 : 0);
+					// BUG-ai_peasant-spin: a gatherer's walk to its spot or to the deposit goes round the source body the same way.
+					const FHOLGatherFragment* StepGather = EntityManager.GetFragmentDataPtr<FHOLGatherFragment>(Entity);
+					Window.PlaceWalk.Add(PlaceWalkIsManoeuvre != 0 && HOLSanity::IsPlaceWalk(Combat && Combat->bHasPlace && Combat->bApproaching, StepGather ? StepGather->Phase : EHOLGatherPhase::None) ? 1 : 0);
 				{
 					const FMassVelocityFragment* StepVelocity = EntityManager.GetFragmentDataPtr<FMassVelocityFragment>(Entity);
 					int32 TargetUnit = -1;

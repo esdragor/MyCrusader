@@ -132,7 +132,7 @@ namespace HOLSanity
 	 */
 	inline bool IsPlaceWalk(const bool bCombatPlace, const EHOLGatherPhase GatherPhase)
 	{
-		return bCombatPlace;
+		return bCombatPlace || GatherPhase == EHOLGatherPhase::ToSource || GatherPhase == EHOLGatherPhase::ToDeposit;
 	}
 
 	inline FResult Analyse(const FTrace& Trace, const float StepSeconds, const FSettings& Settings = FSettings())
