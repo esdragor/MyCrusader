@@ -21,8 +21,11 @@ hol.HUD.Report
 note Population 9 / 10 : 9 Paysans, ton forum loge 10. Le fil de messages (en haut a droite) est vide.
 waitkey Appuie sur Entree et ne touche plus a rien : le scenario clique lui-meme ton forum et appuie lui-meme deux fois sur A
 # 1. Geste reel : clic gauche sur le forum (au centre de l'ecran, la camera est au-dessus de lui), puis la vraie touche A.
+# ARWEN-1126m8: the camera still moves after the last zoom step (the log line 'Camera height 3000 cm' comes before it settles above the forum): a click right after it hit the ground beside the forum (selection none, red 3 times); 3 s of settling (what a capture takes) selects MainCentre.
+wait 3
 hol.Mouse.Click 960 540
-frames 10
+# The HUD reads the selection 4 times a second (GroupRefreshInterval 0.25 s): 10 frames (~0.24 s) can fall before the refresh (HUD report said selection none while Select report said MainCentre); wait 0.5 s instead (ARWEN-1126m8).
+wait 0.5
 hol.HUD.Report
 waitlog HUD cells: A:
 hol.UI.Key A 0 0.1
