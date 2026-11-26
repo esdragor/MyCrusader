@@ -248,3 +248,8 @@ FString UHOLFactionRulesReadLibrary::GetSlotStartType(const FString& RolesText, 
 	}
 	return FString();
 }
+
+FString UHOLFactionRulesReadLibrary::GetFactionKey(const int32 FactionIndex)
+{
+	return HOLFactionRules::GetFactionKey(static_cast<EHOLFaction>(FactionIndex)).ToString();
+}

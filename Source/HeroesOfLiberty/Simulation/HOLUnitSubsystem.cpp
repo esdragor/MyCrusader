@@ -2,6 +2,7 @@
 
 #include "Simulation/HOLUnitSubsystem.h"
 
+#include "Art/HOLArtVisual.h"
 #include "Match/HOLFactionRules.h"
 #include "Match/HOLMatchStatsSubsystem.h"
 #include "Match/HOLSpecializationSubsystem.h"
@@ -319,15 +320,20 @@ FName UHOLUnitSubsystem::GetTemplateKey(const FName TypeName, const FName Factio
 	}
 	const FHOLUnitTypeRow* Base = FindTypeRow(TypeName);
 	const FHOLUnitTypeRow* ForFaction = FindTypeRow(TypeName, FactionKey);
-	if (!Base || ForFaction == Base)
+	// D924: a faction art asset (DA_Art_<Type>_<Faction>) gives the faction its own type even without an override row.
+	if (!Base || (ForFaction == Base && !HOLArtVisual::HasFactionAsset(GetWorld(), TypeName, FactionKey)))
 	{
 		return TypeName;
 	}
-	const auto Crc = [TypeName](const FHOLUnitTypeRow& Row)
+	const UWorld* World = GetWorld();
+	const auto Crc = [TypeName, World](const FHOLUnitTypeRow& Row, const FName ArtFaction)
 	{
-		return UE::StructUtils::GetStructInstanceCrc32(FConstStructView::Make(Row.ToConstants(TypeName)));
+		// The same resolver as FindTemplate's (D924): the CRC sees the constants the template will be built with.
+		FHOLUnitTypeConstants Constants = Row.ToConstants(TypeName);
+		HOLArtVisual::Apply(World, Constants, TypeName, ArtFaction);
+		return UE::StructUtils::GetStructInstanceCrc32(FConstStructView::Make(Constants));
 	};
-	if (Crc(*Base) == Crc(*ForFaction))
+	if (Crc(*Base, NAME_None) == Crc(ForFaction ? *ForFaction : *Base, FactionKey))
 	{
 		return TypeName;
 	}
@@ -395,6 +401,9 @@ const FMassEntityTemplate* UHOLUnitSubsystem::FindTemplate(const FName TypeName,
 	}
 
 	FHOLUnitTypeConstants Constants = Row->ToConstants(TypeName);
+	// D924: the art visual (DA_Art_<Type>[_<Faction>] under /Game/Art) replaces the CSV fields it sets, field by field:
+	// the faction's asset, then the type's common one, then the row. Same resolver as GetTemplateKey's CRC.
+	HOLArtVisual::Apply(GetWorld(), Constants, TypeName, CacheName == TypeName ? NAME_None : FactionKey);
 
 	// Instanced skeletal mesh (D232), drawn when the type has one and its animation provider loads; the static mesh
 	// stays the fallback (AnimToTexture, D232). A dedicated server draws nothing (Mass' visualization trait adds nothing
