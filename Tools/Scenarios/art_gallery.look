@@ -1,0 +1,8 @@
+ag_units | Unites : un exemplaire de chaque ligne de UnitTypes en grille, chacune avec son etiquette jaune au sol (nom de type, nom affiche)
+ag_buildings | Batiments, moitie nord de la grille : les premieres rangees entieres de BuildingTypes, chacun avec son etiquette jaune au sol, aucune foret du terrain dans la grille
+ag_buildings_south | Batiments, moitie sud de la grille : les dernieres rangees entieres (Siege, Barracks, MainCentre...), chacun avec son etiquette jaune, aucune foret du terrain dans la grille
+ag_sources | Sources : la vraie source (filon d'or, filon de pierre, arbre, baies...) de chaque ligne de SourceTypes en grille, aucun cylindre, avec son etiquette jaune au sol
+ag_marks | Reperes d'echelle sur la moitie sud des batiments : a cote de chaque batiment une barre rouge de 1,80 m, le contour cyan de son emprise au sol, les lignes blanches (cases de 4 m) et grises (sous-cases), un poteau orange de la hauteur Height
+ag_light_steppe | Meme cadre que ag_marks sous l'eclairage Steppe seche (hol.Art.Light dry_steppe) : sol jaune-brun, lumiere chaude, different de ag_marks
+ag_light_snow | Meme cadre sous l'eclairage Neige (hol.Art.Light snow) : sol clair et froid, lumiere bleutee, different de ag_light_steppe ; etiquettes jaunes cernees de noir, lisibles sur le sol blanc
+ag_focus | Vue rapprochee (hol.Art.Focus MainCentre) sous la Neige : le centre principal entier, sa barre rouge de 1,80 m a sa droite, son emprise cyan et son etiquette jaune cernee de noir lisible sur le sol blanc

@@ -26,5 +26,11 @@ waitlog Garrison: slot 0 puts
 frames 20
 note 2. APRES : les Lanciers sont entres dans la tour (3 places) : ils ont disparu de l'ecran, la tour les garde.
 capture tower_wood_garrison_after
+hol.Camera.FocusNear 4600 0
+frames 2
+hol.Select.LeftClickGround -12400 0
+frames 10
+note 3. CADRE DE GARNISON (AR5-e) : un vrai clic gauche sur la tour la selectionne ; chaque occupant montre l icone de la cabine (T_Unit_Spearman) au lieu du nom.
+capture tower_wood_garrison_frame
 hol.Test.Sanity
 quit

@@ -43,9 +43,8 @@ struct HEROESOFLIBERTY_API FHOLSourceTypeRow : public FTableRowBase
 	UPROPERTY(EditAnywhere, Category = "Presentation", meta = (ClampMin = "1", ForceUnits = "cm"))
 	float Height = 600.f;
 
-	/** Final model; empty = the provisional shape of D297 (trunk and cone, ball of berries, grey or golden blocks). */
-	UPROPERTY(EditAnywhere, Category = "Presentation")
-	TSoftObjectPtr<UStaticMesh> Mesh;
+	// AR0-d2 (3): no Mesh column any more; the final model is the type's DA_Art (HOLArtVisual::ResolveMesh), none = the
+	// provisional shape of D297 (trunk and cone, ball of berries, grey or golden blocks).
 
 	/**
 	 * How many gatherers work it at once (IA1.2): 0 = as many as the spots around its body (every 100 cm on the circle,

@@ -55,6 +55,62 @@ class UHOLAudioPlayer : UObject
 		return true;
 	}
 
+	// AR6-a / AR6-d: the sound of a type (Slot = Selection, Order, Construction; callers: BuildingSelected, HandleOrderSound, RefreshMinorAlerts): its art asset's sound when one is set (HOLArtSound), played at 100 % within the
+	// event's cooldown; else the table's cue of Event (-1 = no cue: silent). True when a sound was started.
+	bool PlayTyped(int Event, FName TypeName, FName Faction, FName Slot)
+	{
+		const FString ArtPath = HOLArtSound::PathFor(this, TypeName, Faction, Slot);
+		if (ArtPath.IsEmpty())
+			return Play(Event);
+		Prepare();
+		const int NowMs = int(Gameplay::GetTimeSeconds() * 1000.0);
+		if (HOLAudio::IsValid(Event))
+		{
+			if (LastMs[Event] >= 0 && NowMs - LastMs[Event] < HOLAudio::CueFor(Event).CooldownMs)
+				return false;
+		}
+		USoundBase Sound = Cast<USoundBase>(LoadObject(nullptr, ArtPath));
+		if (Sound == nullptr)
+		{
+			Log(n"LogHOLMatch", f"cue missing art {TypeName} {Slot} asset {ArtPath}");
+			return Play(Event);
+		}
+		Gameplay::PlaySound2D(Sound, 1.0, 1.0);
+		if (HOLAudio::IsValid(Event))
+			LastMs[Event] = NowMs;
+		PlayedCount++;
+		LastLine = f"cue played art {TypeName} {Slot} asset {ArtPath}";
+		Log(n"LogHOLMatch", LastLine);
+		return true;
+	}
+
+	// AR6-b: end times of the typed combat sounds still counted (HOLArtSound::TryStartVoice, at most MaxCombatVoices at once).
+	TArray<float> CombatVoiceEnds;
+
+	// AR6-b: a typed combat sound (Slot = Attack or Death) of a unit of TypeName owned by Faction, played in 3D at Location. Only an art
+	// asset's sound plays (the table has no attack or death cue: no art sound = silent, the game unchanged). The voice limit refuses the
+	// sound when MaxCombatVoices are playing. True when a sound was started. Caller: HOLGameScreenScript.HandleCombatSound (UHOLCombatSoundSubsystem:
+	// blows, shots, tower volleys, bodies laid; on a remote client its replayed blows and the volleys its towers show, AR6-c / AR6-d).
+	bool PlayCombat(FName TypeName, FName Faction, FName Slot, FVector Location)
+	{
+		const FString ArtPath = HOLArtSound::PathFor(this, TypeName, Faction, Slot);
+		if (ArtPath.IsEmpty())
+			return false;
+		if (!HOLArtSound::TryStartVoice(CombatVoiceEnds, Gameplay::GetTimeSeconds(), HOLArtSound::CombatVoiceSeconds, HOLArtSound::MaxCombatVoices))
+			return false;
+		USoundBase Sound = Cast<USoundBase>(LoadObject(nullptr, ArtPath));
+		if (Sound == nullptr)
+		{
+			Log(n"LogHOLMatch", f"cue missing art {TypeName} {Slot} asset {ArtPath}");
+			return false;
+		}
+		Gameplay::PlaySoundAtLocation(Sound, Location, FRotator(), 1.0, 1.0);
+		PlayedCount++;
+		LastLine = f"cue played art {TypeName} {Slot} asset {ArtPath} 3d";
+		Log(n"LogHOLMatch", LastLine);
+		return true;
+	}
+
 	// Loads and plays the plan's sound in 2D, logs it. False (and "cue missing" in the log) when the sound wave cannot be loaded.
 	bool Start(FHOLAudioPlan Plan)
 	{

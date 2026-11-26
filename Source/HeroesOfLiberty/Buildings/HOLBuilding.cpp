@@ -3,6 +3,8 @@
 #include "Buildings/HOLBuilding.h"
 
 #include "AI/NavigationSystemBase.h"
+#include "Art/HOLArtVisual.h"
+#include "Match/HOLFactionRules.h"
 #include "Buildings/HOLBuildingTypes.h"
 #include "Buildings/HOLConstructionRules.h"
 #include "Buildings/HOLRubble.h"
@@ -28,7 +30,8 @@
 #include "Iris/ReplicationSystem/Filtering/NetObjectFilter.h"
 #include "Iris/ReplicationSystem/ReplicationSystem.h"
 #include "Net/Iris/ReplicationSystem/EngineReplicationBridge.h"
-#include "Net/Iris/ReplicationSystem/ReplicationSystemUtil.h"
+#include "Net/Iris/ReplicationSystem/ReplicationSystemUtil.h"
+#include "Presentation/HOLCombatSoundSubsystem.h"
 #endif
 
 namespace
@@ -412,11 +415,13 @@ void AHOLBuilding::ShowArrowShot(uint16 OldCount)
 	Launch.From = FVector(GetFootprintBounds().GetCenter(), Row->Height);
 	Launch.To = ArrowShotTo;
 	Launch.FlightMs = ArrowShotFlightMs;
-	Launch.ShooterType = NAME_None;
+	HOLArrowLaunches::SetBuildingShooter(Launch, GetTypeName(), GetOwnerPlayer());
 	for (int32 Shot = 0; Shot < Released; ++Shot)
 	{
 		ArrowDisplay->Launch(Launch);
 	}
+	// AR6-d: the volley's sound on a client, once per replicated release (the server's processor rings its own).
+	UHOLCombatSoundSubsystem::RaiseForSlot(World, GetTypeName(), GetOwnerPlayer(), UHOLCombatSoundSubsystem::AttackSlot, Launch.From);
 }
 
 void AHOLBuilding::OnRep_ArrowShot(uint16 OldCount)
@@ -927,12 +932,14 @@ void AHOLBuilding::RefreshVisuals()
 				BuildFoundationShape(*Type);
 			}
 			PieceParent = RiseRoot;
-			if (Type->Mesh.IsNull() && Type->Walkable)
+			// D924 (AR0-a2): the art asset's mesh first (owner's faction, then common), the CSV row's last.
+			const bool bNoMesh = GetVisualMesh(*Type).IsNull();
+			if (bNoMesh && Type->Walkable)
 			{
 				// Walked over (IA1.2 F8, the farm): a flat field.
 				BuildFieldShape(*Type);
 			}
-			else if (Type->Mesh.IsNull())
+			else if (bNoMesh)
 			{
 				BuildProvisionalShape(*Type);
 			}
@@ -1232,12 +1239,19 @@ void AHOLBuilding::BuildGhostShape(const FHOLBuildingTypeRow& Type)
 	}
 }
 
+TSoftObjectPtr<UStaticMesh> AHOLBuilding::GetVisualMesh(const FHOLBuildingTypeRow& Type) const
+{
+	return TSoftObjectPtr<UStaticMesh>(HOLArtVisual::ResolveMesh(GetWorld(), TypeName,
+		HOLFactionRules::GetSlotFactionKey(GetWorld(), OwnerPlayer), FSoftObjectPath()));
+}
+
 void AHOLBuilding::BuildFinalMesh(const FHOLBuildingTypeRow& Type)
 {
-	UStaticMesh* Mesh = Type.Mesh.LoadSynchronous();
+	const TSoftObjectPtr<UStaticMesh> VisualMesh = GetVisualMesh(Type);
+	UStaticMesh* Mesh = VisualMesh.LoadSynchronous();
 	if (!Mesh)
 	{
-		UE_LOG(LogHOLMatch, Error, TEXT("Building type %s: mesh %s not found"), *TypeName.ToString(), *Type.Mesh.ToString());
+		UE_LOG(LogHOLMatch, Error, TEXT("Building type %s: mesh %s not found"), *TypeName.ToString(), *VisualMesh.ToString());
 		return;
 	}
 	UStaticMeshComponent* Piece = NewObject<UStaticMeshComponent>(this);
