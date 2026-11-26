@@ -6,6 +6,7 @@
 #include "Match/HOLGameState.h"
 #include "Match/HOLMatchConfig.h"
 #include "Match/HOLPlayerState.h"
+#include "Player/HOLPlayerController.h"
 #include "UObject/Package.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
@@ -1222,5 +1223,15 @@ bool UHOLTestWorldLibrary::SetPlayerSpecialization(AHOLPlayerState* Player, cons
 	return Player && Player->SetSpecialization(View);
 #else
 	return false;
+#endif
+}
+
+AHOLPlayerController* UHOLTestWorldLibrary::SpawnPlayerController(UHOLTestWorldHandle* TestWorld)
+{
+#if WITH_DEV_AUTOMATION_TESTS
+	UWorld* World = TestWorld ? TestWorld->GetTestWorld() : nullptr;
+	return World ? World->SpawnActor<AHOLPlayerController>() : nullptr;
+#else
+	return nullptr;
 #endif
 }
