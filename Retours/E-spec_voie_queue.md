@@ -1,18 +1,18 @@
-# [À ESSAYER] spec_voie_queue - LOGIQUE SEULEMENT (preflight FAIL, ARWEN-1125i)
+# [À ESSAYER] E-spec_voie_queue : un siège Templiers clique le Frère infirmier dans la Chapelle : refusé sans voie, mis en file après la voie Foi
 
-GESTE: réel (hol.Mouse.Click GridCell01 = vrai clic sur SCommonButton, vu au journal)
+STATUT : VU À L'ÉCRAN (3 PNG ouverts et vus, refus et mise en file prouvés au journal)
+GESTE: réel (vrai clic hol.Mouse.Click GridCell00 = « Mouse click GridCell00 x1 at 226,477: on SCommonButton » au journal ; la voie Foi est posée par hol.Cheat.Specialization 1 1, interne, seul le clic est réel)
 SON: non entendu
 branches: spec-voie-1125m
-statut: LOGIQUE SEULEMENT - pas VU À L'ÉCRAN, ne pas jouer avant correction
 
-Essai : siège Templiers (slot 0), Chapelle posée par cheat, clic réel sur la case Z (Frère infirmier) sans voie = refus ; après `hol.Cheat.Specialization 1 1` (Foi) le même clic = mise en file.
+Pré-vol (2026-11-26 14:21, ARWEN-1126m4, C:\Users\baudo\Documents\HeroesOfLiberty-Arwen, main f172741) : `preflight.ps1 spec_voie_queue -Root C:\Users\baudo\Documents\HeroesOfLiberty-Arwen` PASS (56 s, 3 PNG, sanity OK, aucun avertissement). `session_gate.ps1 -Phase Essay -Root C:\Users\baudo\Documents\HeroesOfLiberty-Arwen -Essay spec_voie_queue` : aucun FAIL (binaire du 13:50 >= dernier code, le worktree contient le tip de spec-voie-1125m).
+PNG OUVERTS et vus :
+- spec_voie_queue_before : Chapelle (bâtiment bleu au centre) sélectionnée ; grille en bas à droite avec UNE case remplie, A « Frère infirmier » (pas de Moine : il est de l'Aube) ; aucune file de production.
+- spec_voie_queue_refused : même vue, infobulle Frère infirmier (100 nourriture, 100 or) ; ressources inchangées (5200 / 5200), aucune barre de file. Journal : `RpcEconomy: queue refused (4, lane not unlocked) for sender slot 0 type InfirmaryBrother`.
+- spec_voie_queue_queued : après la voie Foi et le même clic, nourriture et or 5100 (coût payé), barre de production « Frère infirmier » avec « Clic : annuler » au-dessus de la grille. Journal : `Production: slot 0 queued InfirmaryBrother (1 in the queue ...)` puis `InfirmaryBrother of slot 0 done at step 174 (1 born here)`.
+Ancien défaut (ARWEN-1125i : case Z vide, Frère infirmier absent de la grille) : plus reproduit ; le scénario clique maintenant la case A.
+NON VÉRIFIÉ : son non entendu ; le texte de la note sur le 3e PNG est encore la note 2/3 (la note 3/3 arrive 3 s après la capture) ; la voie Foi est posée par cheat, pas par le bouton de spécialisation ; le Frère infirmier né n'est pas capturé à l'écran (journal seulement).
 
-Rejouer : `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Arwen\Tools\Scenarios\play.ps1 spec_voie_queue -Hidden -Root C:\Users\baudo\Documents\HeroesOfLiberty-Arwen`
-
-## Vu (2026-11-25 16:55, PNG before et refused ouverts)
-- Chapelle sélectionnée, grille : A Moine, W Vœu de pauvreté ; la case Z (cellule 1 = GridCell01) est VIDE : le Frère infirmier n'est pas dans la grille de la Chapelle du siège Templiers.
-- Après la voie Foi (log `Specialization: slot 0 tier 1 option 1 applied`, `chosen 1 -1 -1`), `hol.HUD.Report` donne la même grille (A Moine, W Vœu de pauvreté) : toujours pas de Frère infirmier.
-- Le 2e clic ne met rien en file : `waitlog Production: slot 0 queued InfirmaryBrother (1 in the queue` expire au step 50 ; capture `queued` jamais prise.
-
-## Défaut (à corriger, pas du scénario)
-Le filtre de grille `HOLFactionRules::FilterProduces` (HOLPlayerController.cpp:2303, 2340) retire le Frère infirmier (UnitTypes.csv Faction=Templars) de la grille de la Chapelle (BuildingTypes.csv Faction=Dawn) pour un siège Templiers, voie ou pas. Cause exacte non cherchée (budget d'appels) ; hypothèse : la table des factions lue au runtime n'a pas de ligne Templars (cf. HOLTemplarsBrother_Test.as, 736f246). Colonne Faction de la Chapelle non touchée.
+Commande complète (règle 13, 2026-11-14) : chaque commande est écrite en entier, copiable telle quelle.
+Lancer UNE commande : `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Arwen\Tools\Scenarios\play.ps1 spec_voie_queue -Root C:\Users\baudo\Documents\HeroesOfLiberty-Arwen`
+Durée : environ 1 min. Réponse attendue : `OK`, `BUG: ...` ou `REGLAGE: ...`.

@@ -1,0 +1,9 @@
+﻿Heure PowerShell : 11:04  main = 5dc2318
+HeroesOfLiberty-Arwen | spec-voie-1125m | mis a jour (+181 de main) = ff51b25 ; code change : build lance (priorite basse, pid 53400, sortie C:\Users\baudo\Documents\HeroesOfLiberty-Arwen\Saved\Logs\sync_build.out)
+HeroesOfLiberty-Celeborn | art-lab-1125ar | mis a jour (+78 de main) = 5dc2318 ; code change : build lance (priorite basse, pid 50472, sortie C:\Users\baudo\Documents\HeroesOfLiberty-Celeborn\Saved\Logs\sync_build.out)
+HeroesOfLiberty-Elrond | wall-footprint-1125m | CONFLIT annule (1 fichier(s) : Source/HeroesOfLiberty/Buildings/HOLBuilding.cpp)
+HeroesOfLiberty-Faramir | tests-bindings-1125s | mis a jour (+181 de main) = 604b49a ; code change : build lance (priorite basse, pid 40768, sortie C:\Users\baudo\Documents\HeroesOfLiberty-Faramir\Saved\Logs\sync_build.out)
+HeroesOfLiberty-Galadriel | morale-look-fix-1125m | mis a jour (+181 de main) = bc2a921 ; code change : build lance (priorite basse, pid 53516, sortie C:\Users\baudo\Documents\HeroesOfLiberty-Galadriel\Saved\Logs\sync_build.out)
+HeroesOfLiberty-Glorfindel | art-runtime-b0-1126ar | mis a jour (+6 de main) = 5dc2318
+HeroesOfLiberty-Haldir | integ-97-art | mis a jour (+9 de main) = 5dc2318
+HeroesOfLiberty-Sauron | art-sound2-1126ar | mis a jour (+12 de main) = 5dc2318

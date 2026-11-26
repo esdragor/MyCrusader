@@ -7,9 +7,9 @@
 #include "Match/HOLResources.h"
 
 /**
- * The Market's exchange rule where the simulation runs (M4a, GDD 5.5, D70, D84, D582): the server prices every trade here.
- * The same rule as Script/Economy/HOLMarketRules.as (which the AI and the interface use to quote), whole numbers only so
- * that the server and the clients agree to the last gold piece; both are tested on the same figures (the Market.csv ones).
+ * The Market's numbers on the C++ side (M4a, GDD 5.5, D70, D84, D582): the settings, the book and the trade's result, as the bridge
+ * UHOLMarketSubsystem carries them. The exchange rule itself is Script/Economy/HOLMarketRules.as alone (D836 point 4), whole numbers only
+ * so that the server and the clients agree to the last gold piece.
  * Resources by index: 0 food, 1 wood, 2 stone, 3 gold (gold is the money, it has no tradable price).
  */
 /** D372 (tributes, GDD 5.5): the Market keeps a tax on a gift. What a gift reaches the receiver as is the script's rule (Script/Economy/HOLTributeRules.as), reached through UHOLMarketSubsystem::SettleTribute; only the default tax figure stays here. */
@@ -62,11 +62,8 @@ namespace HOLMarket
 	};
 
 	HEROESOFLIBERTY_API FSettings SettingsFromRow(const FHOLMarketRow& Row);
-	/** Sells Lots lots of Resource out of Stock, at the tax FeePercent (the black market's is lower, D69); each lot at the price the one before left. */
-	HEROESOFLIBERTY_API FTrade Sell(const FSettings& Settings, const FBook& Book, int32 Resource, int32 Lots, int32 Stock, int32 FeePercent);
-	/** Buys Lots lots of 100 GOLD of Resource (the interface: "100 gold for X goods"): each lot gives 100 * 100 / (the lot's price plus the tax) goods, rounded down, at the price the one before left, and raises it by a step. Units = the goods, Gold = 100 per lot. */
-	HEROESOFLIBERTY_API FTrade BuyWithGold(const FSettings& Settings, const FBook& Book, int32 Resource, int32 Lots, int32 GoldStock, int32 FeePercent);
-	// Buy and Apply are the script's only (HOLMarket::Buy / HOLMarket::Apply of Script/Economy/HOLMarketRules.as, reached by UHOLMarketSubsystem::Apply). Sell and BuyWithGold stay for the Slate quote (HOLGameScreen).
+	// Sell, BuyWithGold, Buy and Apply are the script's only (Script/Economy/HOLMarketRules.as, D836 point 4): the server's trade through
+	// UHOLMarketSubsystem::Apply, the grid's quote through UHOLMarketSubsystem::Quote (CLAUDE-1125s removed the last C++ copy).
 
 	/** The Standard row of /Game/Match/MarketRates (make_market.py), as settings; false (logged) if the table or the row is missing. */
 	HEROESOFLIBERTY_API bool LoadStandardSettings(FSettings& OutSettings);

@@ -190,3 +190,27 @@ void Test_ArtIconBuildingFramedOnItsFootprint(FUnitTest& T)
 	}
 	T.AssertTrue(bBarracks && Checked > 1, f"the Barracks and the other buildings checked ({Checked})");
 }
+
+// AR5-f: every family stands on the plain slab (units and sources were shot on the grass), an unknown family on nothing.
+void Test_ArtIconFloorUnderEveryFamily(FUnitTest& T)
+{
+	const bool bUnits = HOLArtIconRules::UsesFloor("Units");
+	const bool bSources = HOLArtIconRules::UsesFloor("Sources");
+	const bool bBuildings = HOLArtIconRules::UsesFloor("Buildings");
+	const bool bOther = HOLArtIconRules::UsesFloor("Decor");
+	T.AssertTrue(bUnits, "a unit stands on the slab");
+	T.AssertTrue(bSources, "a source stands on the slab");
+	T.AssertTrue(bBuildings, "a building stands on the slab");
+	T.AssertFalse(bOther, "an unknown family has no slab");
+}
+
+// AR5-f: the slab's top is just over the real ground for a unit or a source (feet and base not cut), higher for a building (its coloured ground hidden).
+void Test_ArtIconFloorTopFollowsTheGround(FUnitTest& T)
+{
+	const double UnitTop = HOLArtIconRules::FloorTopZ("Units", 237.0);
+	const double SourceTop = HOLArtIconRules::FloorTopZ("Sources", -40.0);
+	const double BuildingTop = HOLArtIconRules::FloorTopZ("Buildings", 237.0);
+	T.AssertTrue(Math::Abs(UnitTop - 238.0) < 0.01, f"unit: top at ground + 1 cm ({UnitTop})");
+	T.AssertTrue(Math::Abs(SourceTop - (-39.0)) < 0.01, f"source: top at ground + 1 cm ({SourceTop})");
+	T.AssertTrue(Math::Abs(BuildingTop - 242.0) < 0.01, f"building: top at ground + 5 cm ({BuildingTop})");
+}
