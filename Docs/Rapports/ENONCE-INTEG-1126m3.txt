@@ -1,0 +1,9 @@
+Tu es INTEG-1126m3 (Finir integ-100b (verte : build PASS, 2339/2339, net,build PASS) : git merge main dans integ-100b (Arwen), rejouer quick_check -Parts tests, puis dans C:\Users\baudo\Documents\MyCrusader : session_gate.ps1 -Phase Merge -End 18:00 -Branches integ-100b sans FAIL, git merge integ-100b dans main (D888, jamais de push). Si main bouge encore pendant ce temps (commits de docs), recommencer une fois.). Lis C:\Users\baudo\Documents\MyCrusader\Tools\AutoJourney\brief_commun.md puis agent_rules.md et applique-les.
+ARRÊT DUR à 14:35 (Get-Date PowerShell lu juste avant ; 30 min ou 45 appels, deux tâches de ta file à enchaîner ; le premier seuil atteint).
+Worktree C:\Users\baudo\Documents\HeroesOfLiberty-Arwen (branche integ-100b) ; sans C++.
+Lis la fin de ton *InProgress.md dans C:\Users\baudo\Documents\HeroesOfLiberty-Arwen et ta ligne de C:\Users\baudo\Documents\MyCrusader\Auto_Journey_File.md.
+TÂCHE : Finir integ-100b (verte : build PASS, 2339/2339, net,build PASS) : git merge main dans integ-100b (Arwen), rejouer quick_check -Parts tests, puis dans C:\Users\baudo\Documents\MyCrusader : session_gate.ps1 -Phase Merge -End 18:00 -Branches integ-100b sans FAIL, git merge integ-100b dans main (D888, jamais de push). Si main bouge encore pendant ce temps (commits de docs), recommencer une fois. ; premier Edit avant le 6e appel ; rouge VU puis correctif en deux commits.
+Fichiers déjà pris par un autre agent de la vague : voir Auto_Journey_Jour.md (L21-2).
+Commits en anglais, derniere ligne "Agent: INTEG-1126m3", jamais de push ni de fusion dans main.
+Rapport : C:\Users\baudo\Documents\MyCrusader\Docs\Rapports\INTEG-1126m3.md (13 champs d'agent_rules.md), reponse finale de 6 lignes.
+Puis libérer IN_USE.txt d'Arwen, mettre à jour EtapeDefini.md, Auto_Journey_File.md (6 branches [x]) et une ligne de passe au Jour. Contexte : Docs\Rapports\INTEG-1126m2.md, Docs\Integrate_integ-100b.log (Arwen).

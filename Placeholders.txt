@@ -153,7 +153,7 @@ Un chantier ne se clôt pas sans avoir relu ce fichier.
 - Icônes T_Icon (allié, ennemi, aura, bannière, serrez les rangs, emblème du héros ; dessinées par script) [style]
 - Icônes des boutons de la grille de commandes (cellules à texte, l'icône est prévue par le code mais aucune texture) [rien]
 - Portraits d'unités / de bâtiments (seul l'emblème du héros existe) [rien]
-- Fond des icones de la cabine hol.Art.Icon (mur uni et sol uni sous un batiment = cube du moteur /Engine/BasicShapes/Cube, materiau de base gris fonce a grille, poses derriere / sous l'objet ; AR5-b, AR5-d, GLORFINDEL-1125ar6) [forme]
+- Fond des icones de la cabine hol.Art.Icon (mur uni et sol uni sous chaque objet, unites et sources comprises depuis AR5-f = cube du moteur /Engine/BasicShapes/Cube, materiau de base gris fonce a grille, poses derriere / sous l'objet ; AR5-b, AR5-d, GLORFINDEL-1125ar6) [forme]
 - Icônes des ressources (nourriture, bois, pierre, or) [rien] ; sur les cases du Marché (D781), un carré de la couleur de la ressource en tient lieu (galadriel-tab, 2026-11-13)
 - Icônes des technologies [rien]
 - Minimap (résolution) [style]

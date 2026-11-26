@@ -446,7 +446,19 @@ public:
 	 * Attack-move mode (J7b.3, the grid's A): the next left click on the ground sends the selected soldiers there (Shift:
 	 * queued); a right click or Escape leaves it.
 	 */
-	bool IsAttackMoveArmed() const { return bAttackMoveArmed; }
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|GridAction")
+	bool IsAttackMoveArmed() const { return FactionAimIndex == GridAttackMoveMode; }
+	/**
+	 * The grid's armed modes as the script numbers them (HOLCommandGridAction::GetAimAttackMove / GetAimBanner, Script\Player\HOLCommandGridAction.as;
+	 * a change there is made here too). The grid arms them through SetArmedMode (G-5a); Script/Tests/HOLControllerArmedMode_Test.as checks them through the script's own GetAim* numbers.
+	 */
+	static constexpr int32 GridAttackMoveMode = 100;
+	static constexpr int32 GridBannerMode = 101;
+	/** The cursor this controller wants (PlayerTick applies it): the red attack cross while the attack-move waits for its point, else the arrow (A.2). */
+	EMouseCursor::Type GetWantedMouseCursor() const;
+	/** GetWantedMouseCursor as EMouseCursor's number, for the script's tests (compare with HOLCommandGridRead::GetCursorCrosshairs / GetCursorDefault). */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|GridAction")
+	int32 GetWantedMouseCursorIndex() const { return static_cast<int32>(GetWantedMouseCursor()); }
 	/** The attack-move of the mode at a viewport point (a left click, or hol.Select.AttackMove). */
 	void AttackMoveAt(const FVector2D& ViewportFraction, bool bQueue);
 	/** Scripted checks: a real left click at a viewport point, as the input's press and release (hol.Select.LeftClickGround). */
@@ -457,7 +469,8 @@ public:
 	 * Banner aiming (J8c.4, the grid's Z with the hero commanded): the next left click on the ground plants it there (the
 	 * server checks the reach); a right click or Escape leaves it.
 	 */
-	bool IsBannerArmed() const { return bBannerArmed; }
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|GridAction")
+	bool IsBannerArmed() const { return FactionAimIndex == GridBannerMode; }
 	/**
 	 * Faction power aiming (D839, GALADRIEL-1120f): the aim of the faction power Index (-1: none). While it is armed a left click on
 	 * the ground never selects: it is kept for the script (ConsumeFactionAimClick), which casts or cancels. Escape, a right click
@@ -469,6 +482,7 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Faction")
 	int32 GetFactionAim() const;
 	/** The reach given to the last SetFactionAim (cm), drawn by the selection markers while the aim is armed. */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Faction")
 	double GetFactionAimRangeCm() const;
 	/** The ground click the aim kept (point and aimed power); true once, then it is emptied. The aim itself stays armed. */
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Faction")
@@ -489,12 +503,13 @@ public:
 	/** The ground click the armed mode kept (point and mode); true once, then emptied (ConsumeFactionAimClick). */
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|GridAction")
 	bool ConsumeArmedClick(FVector& OutPoint, int32& OutMode);
-	/** Scripted checks: the Escape key (HandleDeselect), and a right click press (HandleOrder). */
+	/** Scripted checks: the Escape key (HandleDeselect), and a right click press (HandleOrder). Callable from the script's tests (CLAUDE-1125s). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|GridAction")
 	void ScriptEscape();
-	void ScriptRightClick();	/** The banner of the mode planted at a viewport point (a left click, or hol.Select.Banner). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|GridAction")
+	void ScriptRightClick();
+	/** The banner of the mode planted at a viewport point (a left click, or hol.Select.Banner). */
 	void PlantBannerAt(const FVector2D& ViewportFraction);
-	/** S1-d (D862): the left click that puts the Monk's Seal of Light down (the armed Monk of the grid's LightSeal cell); sends ServerCastUnitAbility. */
-	void PlantMonkSealAt(const FVector2D& ViewportFraction);
 	/** The player's own hero among the units commanded (the active subgroup's, J8c.4); 0 when he is not. */
 	uint32 GetCommandHero() const;
 	/** The ground point under the cursor (the test cursor when set): the banner's aim draws its aura there (J8c.4). */
@@ -965,13 +980,6 @@ private:
 	FVector2D LastClickPixels = FVector2D::ZeroVector;
 	/** Right button held (J7a.4): where it was pressed; its release orders there, or along the drag. */
 	bool bOrderPressed = false;
-	/** Attack-move mode (J7b.3): the next left click on the ground gives the order. */
-	bool bAttackMoveArmed = false;
-	/** Banner aiming (J8c.4): the next left click on the ground plants the hero's banner. */
-	bool bBannerArmed = false;
-	/** S1-d (D862): the grid's Seal of Light cell armed, the next left click on the ground puts it down; MonkSealUnit is the Monk that casts it. */
-	bool bMonkSealArmed = false;
-	uint32 MonkSealUnit = 0;
 	/** Faction power aiming (D839): the aimed power (-1: none), the reach to draw, and the ground click kept for the script. */
 	int32 FactionAimIndex = -1;
 	double FactionAimRangeCm = 800.0;

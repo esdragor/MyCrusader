@@ -37,6 +37,8 @@ class AHOLArtIconBooth : AActor
 	FName Current = NAME_None;
 	FString Family;
 	FVector Spot;
+	// AR5-f: the ground height (cm) under Spot, read by a vertical trace when the type is placed.
+	double GroundZ = 0.0;
 	int Wait = 0;
 	int Written = 0;
 	// AR5-d: one spot counter per family (AR5-c shared one: the sources, last of 51, went 6 rows down).
@@ -111,6 +113,8 @@ class AHOLArtIconBooth : AActor
 			Spot = FVector(-6000.0 + 2500.0 * double(Index % 6), -6000.0 - 4500.0 * double(Math::IntegerDivisionTrunc(Index, 6)), 0.0);
 		const int Clear = Family == "Buildings" ? 6000 : 3000;
 		System::ExecuteConsoleCommand(f"hol.Decor.ClearNear {Math::RoundToInt(Spot.X)} {Math::RoundToInt(Spot.Y)} {Clear} Trees");
+		// AR5-f: the real ground height under the spot, read BEFORE the object stands there (a building's roof would be hit).
+		GroundZ = GroundAt(Spot);
 		StandIn.SetVisibility(false);
 		Floor.SetVisibility(false);
 		bool bMade = false;
@@ -139,6 +143,16 @@ class AHOLArtIconBooth : AActor
 		Wait = 45;
 	}
 
+	// The first thing hit straight down through At (the landscape once the scenery is cleared), Spot.Z when nothing is hit.
+	double GroundAt(FVector At)
+	{
+		FHitResult Hit;
+		TArray<AActor> Ignored;
+		const bool bHit = System::LineTraceSingle(FVector(At.X, At.Y, 50000.0), FVector(At.X, At.Y, -50000.0), ETraceTypeQuery::TraceTypeQuery1,
+			false, Ignored, EDrawDebugTrace::None, Hit, true);
+		return bHit ? Hit.ImpactPoint.Z : At.Z;
+	}
+
 	void SourceBounds(double& OutHeight, double& OutRadius)
 	{
 		OutHeight = 150.0;
@@ -161,8 +175,9 @@ class AHOLArtIconBooth : AActor
 	{
 		double Height = 180.0;
 		double Radius = 60.0;
-		double Ground = Spot.Z;
-		bool bFloor = false;
+		double Ground = GroundZ;
+		// AR5-f: the plain slab under every family (units and sources were shot on the grass).
+		const bool bFloor = HOLArtIconRules::UsesFloor(Family);
 		if (Family == "Buildings")
 		{
 			TArray<AHOLBuilding> Buildings;
@@ -192,7 +207,6 @@ class AHOLArtIconBooth : AActor
 				Height = TableHeight;
 				Radius = TableRadius;
 			}
-			bFloor = true;
 		}
 		else if (Family == "Units")
 		{
@@ -214,8 +228,9 @@ class AHOLArtIconBooth : AActor
 		Backdrop.SetWorldLocationAndRotation(Spot + Flat * Gap + FVector(0.0, 0.0, Side * 0.5 - 50.0), FRotator(0.0, Shot.Rotation.Yaw, 0.0));
 		Backdrop.SetWorldScale3D(FVector(0.1, Side * 0.01, Side * 0.01));
 		Backdrop.SetVisibility(true);
-		// A thin plain slab whose top is 5 cm above the building's ground point (hides the coloured ground under it).
-		Floor.SetWorldLocationAndRotation(FVector(Spot.X, Spot.Y, Ground + 4.0), FRotator(0.0, Shot.Rotation.Yaw, 0.0));
+		// A thin plain slab (2 cm) whose top is HOLArtIconRules::FloorTopZ over the ground: +5 under a building (hides its coloured ground),
+		// +1 under a unit or a source (the feet and the base stay whole, the grass is hidden).
+		Floor.SetWorldLocationAndRotation(FVector(Spot.X, Spot.Y, HOLArtIconRules::FloorTopZ(Family, Ground) - 1.0), FRotator(0.0, Shot.Rotation.Yaw, 0.0));
 		Floor.SetWorldScale3D(FVector(Side * 0.01, Side * 0.01, 0.02));
 		Floor.SetVisibility(bFloor);
 		Key.SetWorldLocation(Eye + FVector(0.0, 0.0, Shot.Distance * 0.5));

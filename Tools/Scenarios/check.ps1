@@ -56,7 +56,7 @@ if (-not $Removed) {
 # One of the 2 editor slots of the machine (EditorSlot.ps1, L7-3): wait for our turn instead of piling one more editor on the others.
 if (-not (Enter-EditorSlot -Name $Name -Root $Root -Max 2 -WaitSeconds 1500)) { Write-Host "check $Name : FAIL (no editor slot after 25 min: 2 editors already run on this machine)"; exit 1 }
 $env:UE_SKIP_UBT_SDK_SETUP = "1"
-$Arguments = "`"$UProject`" -game -RenderOffScreen -nosound -unattended -nosplash -culture=$(if ($env:HOL_CHECK_CULTURE) { $env:HOL_CHECK_CULTURE } else { "fr" }) -LiveCoding=0 -asdebugport=0 -saveddirsuffix=Tests -abslog=`"$Log`"$(if ($PlayerName) { " -PlayerName=$PlayerName" }) -ExecCmds=`"hol.Scenario $Name`""
+$Arguments = "`"$UProject`" -game -RenderOffScreen -nosound -unattended -nosplash -culture=$(if ($env:HOL_CHECK_CULTURE) { $env:HOL_CHECK_CULTURE } else { "fr" }) -LiveCoding=0 -asdebugport=0 -saveddirsuffix=Tests -abslog=`"$Log`"$(if ($PlayerName) { " -PlayerName=$PlayerName" }) -ExecCmds=`"$(if (Select-String -LiteralPath (Join-Path $Root "Tools\Scenarios\$Name.json") -Pattern '"Templars"' -Quiet -ErrorAction SilentlyContinue) { "hol.Faction.Cheat 1," })hol.Scenario $Name`""
 $Process = Start-Process -FilePath (Join-Path $EngineDir "UnrealEditor.exe") -ArgumentList $Arguments -PassThru -WindowStyle Hidden
 $Start = Get-Date
 $Result = "FAIL (timeout after $TimeoutSeconds s)"
