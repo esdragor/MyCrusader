@@ -1,0 +1,17 @@
+# ARWEN-1126m7 : un VRAI clic gauche (hol.Mouse.Click X Y, pixels du viewport 1280x720) sur le Mangonneau au centre doit le selectionner. Meme debut que deploy_far. ATTENDU : "Selection: Mangonel" ; le pixel est le CENTRE du viewport 1280x720 du jeu masque (640 360) : 533 300 (centre d un viewport 1066x600) rate l engin. 1 minute au plus.
+waitlog Starting hero of slot 0 spawned at
+hol.AI.ThinkSteps 100000
+hol.Cheat.Resources 5000
+hol.Cheat.Population 40
+hol.Siege.Deployable 1
+hol.Camera.FocusNear 3000 1500
+frames 2
+hol.Units.Spawn 1 -13400 1500 0 Mangonel 0
+waitunits 7
+frames 20
+hol.Camera.FocusNear 3000 1500
+frames 2
+hol.Mouse.Click 640 360
+waitlog Selection: Mangonel
+hol.Select.Report
+quit

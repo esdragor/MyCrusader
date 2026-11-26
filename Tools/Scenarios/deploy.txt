@@ -12,13 +12,13 @@ hol.Camera.FocusNear 3000 1500
 frames 2
 hol.Cheat.SpawnBuilding House 1 5300 0
 waitlog Cheat: spawned House of slot 1
-# ARWEN-1123pd (geste reel) : le Mangonneau nait au point EXACT que FocusNear 3000 1500 met au centre de l'ecran (point absolu -13400 1500), pour que le vrai clic au centre du viewport (hol.Mouse.Click 533 300 : viewport cache 1066x600, centre 533,300) le touche. play.ps1 -Hidden ne pose plus le curseur virtuel pour hol.Mouse.Click <x> <y>.
+# ARWEN-1123pd (geste reel) : le Mangonneau nait au point EXACT que FocusNear 3000 1500 met au centre de l'ecran (point absolu -13400 1500), pour que le vrai clic au centre du viewport (hol.Mouse.Click 640 360 : viewport cache 1066x600, centre 533,300) le touche. play.ps1 -Hidden ne pose plus le curseur virtuel pour hol.Mouse.Click <x> <y>.
 hol.Units.Spawn 1 -13400 1500 0 Mangonel 0
 waitunits 7
 frames 20
 hol.Camera.FocusNear 3000 1500
 frames 2
-hol.Mouse.Click 533 300
+hol.Mouse.Click 640 360
 waitlog Selection: Mangonel
 frames 20
 hol.HUD.Report
@@ -53,7 +53,7 @@ capture deploy_fire_hit
 notereset
 hol.Camera.FocusNear 3000 1500
 frames 2
-hol.Mouse.Click 533 300
+hol.Mouse.Click 640 360
 waitlog Selection: Mangonel
 frames 10
 hol.UI.Key D 0 0.1

@@ -15,7 +15,7 @@ waitunits 7
 frames 20
 hol.Camera.FocusNear 3000 1500
 frames 2
-hol.Mouse.Click 533 300
+hol.Mouse.Click 640 360
 waitlog Selection: Mangonel
 frames 20
 hol.HUD.Report
