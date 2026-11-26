@@ -20,6 +20,9 @@ struct FHOLGridActionContext
 	bool bMonkUnit = false;
 	// The id of the first selected Monk (the caster of the Seal of Light), -1 when none.
 	int MonkUnitId = -1;
+	// D923: a Virtuous Knight is selected and the first of them (the caster of the Challenge), -1 when none.
+	bool bKnightUnit = false;
+	int KnightUnitId = -1;
 }
 
 struct FHOLGridActionView
@@ -31,6 +34,8 @@ struct FHOLGridActionView
 	int RangeCm = 0;
 	// For Arm of the Seal: the casting unit.
 	int UnitId = -1;
+	// For Send of a unit ability without aim (D923, the Knight's challenge): its id in HOLUnitAbilityTable, -1 none; the caster is UnitId.
+	int AbilityId = -1;
 	// The short name of the cell's action for hol.HUD.Report / the journal.
 	FName Report;
 	// For Refuse: why (HOLCommandGridKeys::CheckBuild / CheckProduction), for hol.HUD.Report through HOLCommandGridKeys::Describe.

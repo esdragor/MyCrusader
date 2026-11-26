@@ -51,6 +51,8 @@ enum class EHOLGridCommand : uint8
 	UngarrisonAll,
 	/** Sceau de lumiere (Monk, GLORFINDEL-1123a): the selection holds a Monk (Context.bMonkUnit); the cell and the ground aim stay in HOLCommandGridRules.as, the RPC call in script. */
 	LightSeal,
+	/** D923 (FARAMIR-1126m3): the Virtuous Knight's challenge (Context.bKnightUnit); cell HOLCommandGridRules::GetKnightChallengeCell (T); cast without aim: the script's answer carries the ability id and the caster. */
+	KnightChallenge,
 };
 
 /** A cell's command and the type it names (the unit produced, the building placed). */
@@ -172,6 +174,8 @@ struct FHOLGridContext
 	bool bRageUnit = false;
 	/** Sceau de lumiere: a Monk is among the units commanded (the cell is chosen by HOLCommandGridRules.as, no rule here). */
 	bool bMonkUnit = false;
+	/** D923: a Virtuous Knight is among the units commanded (the cell is chosen by HOLCommandGridRules.as). */
+	bool bKnightUnit = false;
 	int32 HeroLevel = 0;
 	int32 HeroCooldownSeconds[3] = {};
 	/** The types builders build, their cell and their age (BuildGridSlot, Age of the building type table). */

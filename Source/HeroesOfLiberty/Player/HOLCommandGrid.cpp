@@ -118,6 +118,7 @@ namespace HOLCommandGrid
 	{
 		Context.bRageUnit |= TypeName == FName(TEXT("DamnedWarrior"));
 		Context.bMonkUnit |= TypeName == FName(TEXT("Monk"));
+		Context.bKnightUnit |= TypeName == FName(TEXT("VirtuousKnight"));
 	}
 	int32 GetHeroAbilityCell(const EHOLHeroAbility Ability)
 	{
