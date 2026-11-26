@@ -260,9 +260,30 @@ Les fiches sont lues au démarrage du jeu : après un enregistrement, arrêtez p
 
 ## 11. Taille des fichiers et travail à plusieurs
 
-Le projet est sur GitHub : **un fichier de plus de 100 Mo est refusé**. Gardez chaque fichier sous cette limite
-(textures en 2048 ou moins, fichiers sources lourds hors du projet). Il n'y a pas encore de verrou de fichier : prévenez
-l'équipe avant de modifier une fiche ou un modèle qu'un autre a pu toucher (un `.uasset` ne se fusionne pas).
+Les fichiers d'art passent par **Git LFS** (gros fichiers rangés à part, avec verrous) : tout ce qui est sous
+`Content/Art/` (fiches, modèles, textures importés) et sous `ArtSource/` à la racine du projet (vos fichiers sources :
+FBX, PSD, textures sources ; ce dossier n'entre pas dans le jeu). Rangez vos sources dans
+`ArtSource/<Units|Buildings|Sources>/<Type>/`, comme dans `Content/Art`.
+
+**Une fois par poste** : installez Git LFS (https://git-lfs.com) puis tapez `git lfs install` dans un terminal.
+
+**Verrouiller avant de modifier.** Un `.uasset` ne se fusionne pas : si deux personnes modifient le même fichier, le
+travail de l'une est perdu. Avant de toucher un fichier existant, prenez son verrou ; tant que vous ne l'avez pas, le
+fichier est en lecture seule sur votre poste (l'éditeur refuse de l'enregistrer : c'est voulu). Dans un terminal ouvert
+dans le dossier du projet :
+
+| Pour | Tapez |
+|---|---|
+| voir qui tient quoi | `git lfs locks` |
+| prendre un fichier | `git lfs lock Content/Art/Units/Spearman/DA_Art_Spearman.uasset` |
+| le rendre, **après** avoir envoyé (push) votre travail | `git lfs unlock Content/Art/Units/Spearman/DA_Art_Spearman.uasset` |
+
+Si `lock` répond que le fichier est déjà verrouillé, il affiche le nom de la personne : voyez avec elle. Un fichier
+**neuf** (nouveau modèle, nouvelle texture) n'a pas besoin de verrou tant qu'il n'est pas envoyé. L'éditeur (Source
+Control « Git ») n'affiche pas encore les verrous : passez par le terminal.
+
+Le stockage LFS du compte GitHub est limité : gardez les textures en 2048 ou moins et ne versionnez pas les exports
+intermédiaires. Hors de ces deux dossiers, un fichier de plus de 100 Mo reste refusé par GitHub.
 
 ## 12. À venir (pas encore dans le jeu)
 
@@ -317,7 +338,14 @@ Ces points sont en préparation ; ce guide sera mis à jour quand ils seront dan
    colonnes `MeshYawOffset` / `MeshScale` de `UnitTypes.csv` (encore présentes dans 0f81c1e, en-tête ligne 1).
 9. Transform Provider et `Layers` : `TransformProviderFactory.cpp:32`, `:111`, `AnimSequenceTransformProviderData.h:662`,
    `Tools/Editor/make_skinned_mannequin.py:148` (note précédente, non relue). Console : `Config/DefaultInput.ini:95-96`.
-   100 Mo / pas de LFS : `.gitattributes:6-14`. Registre de licences : `Docs/assets_art.csv:1`.
+   Registre de licences : `Docs/assets_art.csv:1`.
+   Git LFS (D926) : fin de `.gitattributes` (`Content/Art/**`, `ArtSource/**` : `filter=lfs diff=lfs merge=lfs -text
+   lockable`, après les lignes `binary` qu'elles remplacent) ; les 51 DA_Art convertis en pointeurs par
+   `git add --renormalize` (commit f026453, historique non réécrit) ; test `Tools/Tests/art_lfs_test.ps1`. Poste des
+   agents : `git config lfs.setlockablereadonly false` (sinon les DA_Art sont en lecture seule et les scripts d'éditeur
+   `make_art_visuals.py` / `import_art_icons.py` ne peuvent plus les écrire) ; hooks `git lfs install` posés le
+   2026-11-26 (`pre-push` envoie les objets LFS). Plugin « Git » de l'éditeur 5.8 : lit la version de git-lfs
+   (`GitSourceControlUtils.cpp:428`) mais ne prend aucun verrou : verrous en ligne de commande.
 10. À venir, branches hors de `main` 0f81c1e (`git merge-base --is-ancestor`) : `art-strip-1125ar` (retrait des colonnes,
     champs par ressource, check_placeholders par DA_Art), `art-editor2-1125ar` (menu AnimSequence, See in the Workshop,
     contrôles Projectile / MuzzleSmoke / triangles SkeletalMesh), `art-anim-1125ar` (animations par référence),
