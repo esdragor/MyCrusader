@@ -31,7 +31,8 @@ hol.Mouse.LogDragEnd 1
 hol.Mouse.Drag 200 360 1000 360 90
 waitlog Drag end: foreground=
 waitlog RpcOrder: place wall line received by the server
-waitlog Construction: slot 0 finished Palisade at (-19400, 1800)
+# RECETTE-1126m : the last piece position moves with the camera (-19400 or -18200 seen), so no exact-coordinate waitlog: 10 pieces finish in ~12 s
+wait 14
 wait 1
 hol.Build.Report
 note 2. AVANT : la palissade est finie sur la ligne (les murs pleins, pas des fondations) ; le Bois de la barre de ressources a baisse de 5 par case.
