@@ -140,4 +140,46 @@ bool FHOLCombatSoundEventsTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+// AR6-d (ArtistesInProgress.md): an order of the local player raises one Order sound event of the type of the first commanded unit this machine knows
+// (HOLUnitView::Find), nothing without a unit; a foundation laid raises one Construction event of its building type. Counted by the subsystem itself.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLOrderSoundEventsTest, "HeroesOfLiberty.Audio.OrderSoundEvents", UE::HeroesOfLiberty::Tests::CombatSound::Flags)
+
+bool FHOLOrderSoundEventsTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::CombatSound;
+
+	UWorld* World = UWorld::CreateWorld(EWorldType::Game, /*bInformEngineOfWorld*/ false);
+	FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);
+	Context.SetCurrentWorld(World);
+	World->InitializeActorsForPlay(FURL());
+
+	UHOLUnitSubsystem* Units = World->GetSubsystem<UHOLUnitSubsystem>();
+	UHOLCombatSoundSubsystem* Sounds = World->GetSubsystem<UHOLCombatSoundSubsystem>();
+	if (TestNotNull(TEXT("units"), Units) && TestNotNull(TEXT("the sound subsystem in a game world"), Sounds))
+	{
+		const FName ManAtArms(TEXT("ManAtArms"));
+		const FName House(TEXT("House"));
+		const uint32 Soldier = PlaceUnit(*Units, ManAtArms, 0, FVector(0.0, 0.0, 0.0));
+		TestTrue(TEXT("a Man-at-arms born"), Soldier != 0);
+		const uint32 Ids[] = { Soldier };
+		TestEqual(TEXT("the first unit's type"), UHOLCombatSoundSubsystem::GetFirstUnitType(World, Ids), ManAtArms);
+		TestEqual(TEXT("no unit: no type"), UHOLCombatSoundSubsystem::GetFirstUnitType(World, TConstArrayView<uint32>()), FName(NAME_None));
+
+		const int32 OrdersBefore = Sounds->GetEventCount(UHOLCombatSoundSubsystem::OrderSlot);
+		const int32 TypedBefore = Sounds->GetEventCountFor(ManAtArms, UHOLCombatSoundSubsystem::OrderSlot);
+		UHOLCombatSoundSubsystem::RaiseOrder(World, UHOLCombatSoundSubsystem::MoveKind, Ids, FVector(500.0, 0.0, 0.0));
+		TestEqual(TEXT("one Order event per order"), Sounds->GetEventCount(UHOLCombatSoundSubsystem::OrderSlot) - OrdersBefore, 1);
+		TestEqual(TEXT("the Order event is the Man-at-arms'"), Sounds->GetEventCountFor(ManAtArms, UHOLCombatSoundSubsystem::OrderSlot) - TypedBefore, 1);
+		UHOLCombatSoundSubsystem::RaiseOrder(World, UHOLCombatSoundSubsystem::MoveKind, TConstArrayView<uint32>(), FVector::ZeroVector);
+		TestEqual(TEXT("an order without units rings nothing"), Sounds->GetEventCount(UHOLCombatSoundSubsystem::OrderSlot) - OrdersBefore, 1);
+
+		const int32 PlacedBefore = Sounds->GetEventCountFor(House, UHOLCombatSoundSubsystem::ConstructionSlot);
+		UHOLCombatSoundSubsystem::RaisePlacement(World, House, FVector(2000.0, 0.0, 0.0));
+		TestEqual(TEXT("a foundation laid rings its building's Construction once"), Sounds->GetEventCountFor(House, UHOLCombatSoundSubsystem::ConstructionSlot) - PlacedBefore, 1);
+	}
+	GEngine->DestroyWorldContext(World);
+	World->DestroyWorld(/*bInformEngineOfWorld*/ false);
+	return true;
+}
+
 #endif

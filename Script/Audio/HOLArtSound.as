@@ -1,5 +1,7 @@
 // AR6-a (D924): the sound of a type read from its art asset (DA_Art_<Type>[_<Faction>], fields SelectionSound, OrderSound, AttackSound,
-// DeathSound, ConstructionSound of UHOLArtVisual) before the sound table (HOLAudioTable.as). Field by field: the faction's asset, then the
+// DeathSound, ConstructionSound of UHOLArtVisual) before the sound table (HOLAudioTable.as). Who rings each slot (AR6-d): Selection = the player selects a
+// building; Order = an order of the local player (UHOLCombatSoundSubsystem::OnOrderSound); Attack = a blow, a shot, a tower's volley (OnCombatSound, on a
+// remote client too: its replayed blows); Death = a body laid; Construction = a foundation laid (Place) and a build that ends (HOLGameScreenScript). Field by field: the faction's asset, then the
 // type's common asset, then the table's file. Pure apart from the registry read; nothing played here (HOLAudioPlayer.PlayTyped plays).
 namespace HOLArtSound
 {
@@ -43,5 +45,28 @@ namespace HOLArtSound
 			return false;
 		VoiceEnds.Add(Now + Length);
 		return true;
+	}
+
+	// AR6-d: the table's event of an order of Kind (UHOLCombatSoundSubsystem's kinds: Move, Attack, Gather, Build, Garrison; Place = a foundation laid,
+	// no table cue), -1 for no event. The five order cues are silent by the user's choice (HOLAudioTable.as): only an art asset's Order sound is heard.
+	int OrderEventFor(FName Kind)
+	{
+		if (Kind == n"Move")
+			return HOLAudioEvent::OrderMove;
+		if (Kind == n"Attack")
+			return HOLAudioEvent::OrderAttack;
+		if (Kind == n"Gather")
+			return HOLAudioEvent::OrderGather;
+		if (Kind == n"Build")
+			return HOLAudioEvent::OrderBuild;
+		if (Kind == n"Garrison")
+			return HOLAudioEvent::OrderGarrison;
+		return -1;
+	}
+
+	// AR6-d: the art asset's slot an order of Kind rings: Construction for a foundation laid, Order otherwise.
+	FName OrderSlotFor(FName Kind)
+	{
+		return Kind == n"Place" ? n"Construction" : n"Order";
 	}
 }

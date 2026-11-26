@@ -30,7 +30,8 @@
 #include "Iris/ReplicationSystem/Filtering/NetObjectFilter.h"
 #include "Iris/ReplicationSystem/ReplicationSystem.h"
 #include "Net/Iris/ReplicationSystem/EngineReplicationBridge.h"
-#include "Net/Iris/ReplicationSystem/ReplicationSystemUtil.h"
+#include "Net/Iris/ReplicationSystem/ReplicationSystemUtil.h"
+#include "Presentation/HOLCombatSoundSubsystem.h"
 #endif
 
 namespace
@@ -419,6 +420,8 @@ void AHOLBuilding::ShowArrowShot(uint16 OldCount)
 	{
 		ArrowDisplay->Launch(Launch);
 	}
+	// AR6-d: the volley's sound on a client, once per replicated release (the server's processor rings its own).
+	UHOLCombatSoundSubsystem::RaiseForSlot(World, GetTypeName(), GetOwnerPlayer(), UHOLCombatSoundSubsystem::AttackSlot, Launch.From);
 }
 
 void AHOLBuilding::OnRep_ArrowShot(uint16 OldCount)

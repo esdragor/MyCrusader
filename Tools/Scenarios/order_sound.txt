@@ -1,0 +1,15 @@
+# Son d'ordre (AR6-d, SAURON-1126s1) : un Homme d'armes selectionne recoit un VRAI clic droit au sol ; l'ecran de jeu recoit l'ordre (UHOLCombatSoundSubsystem::OnOrderSound) et journalise 'Order sound: Move ManAtArms' avant de jouer le son d'ordre de sa fiche (muet sans son d'artiste).
+# Plain, toi (slot 0) contre une IA gelee (slot 1). Points absolus comme deploy.txt (FocusNear 3000 1500 = point -13400 1500).
+waitlog Starting hero of slot 0 spawned at
+hol.AI.ThinkSteps 100000
+hol.Camera.FocusNear 3000 1500
+frames 2
+hol.Units.Spawn 1 -13400 1500 0 ManAtArms 0
+frames 20
+hol.Select.Type ManAtArms last
+waitlog Select type ManAtArms: 1 units
+hol.Select.RightClickGround -13400 -1000
+waitlog Scripted right click at
+waitlog Order: 1 units to (
+waitlog Order sound: Move ManAtArms
+quit

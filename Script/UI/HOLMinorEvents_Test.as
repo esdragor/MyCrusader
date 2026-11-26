@@ -28,6 +28,8 @@ void Test_MinorEventsBuildingFinished(FUnitTest& T)
 	int AfterHouse = Watch.BuildingsFinished;
 	T.AssertEquals(1, AfterHouse, "one finished building appeared: the count went up by one");
 	T.AssertTrue(Watch.LastBuildingLocation.X > 1000.0, "the last place is the house's, computed from the building");
+	// AR6-d: its type too (the ConstructionSound of the building that ends rings).
+	T.AssertTrue(Watch.LastBuildingType == n"House", f"the last type is the house's (got {Watch.LastBuildingType})");
 
 	// The same buildings again: nothing more.
 	UHOLScriptScreen::ObserveMinorEvents(Watch, Finished, 0);
