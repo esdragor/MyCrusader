@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Simulation/HOLCombatRules.h"
+#include "Simulation/HOLSimulationFragments.h"
 
 /**
  * The rules of hol.Test.Sanity (Auto_Journey, "Qualité des essais"): what a trial must never show, decided here from a
@@ -123,6 +124,16 @@ namespace HOLSanity
 		int32 Reversals = 0;
 		float OrderedShare = 0.f;
 	};
+
+	/**
+	 * Whether a step is a place walk, the walk round ONE side of a body to the place a unit claimed (FTrace::PlaceWalk). A soldier closing on its target's
+	 * place is one (bCombatPlace); a gatherer walking to its spot at the source or carrying its load to the deposit is another (BUG-ai_peasant-spin: the
+	 * detour round the source body to the far-side spot read as a spin, 1520 cm of path for 0 cm net in 8 s).
+	 */
+	inline bool IsPlaceWalk(const bool bCombatPlace, const EHOLGatherPhase GatherPhase)
+	{
+		return bCombatPlace;
+	}
 
 	inline FResult Analyse(const FTrace& Trace, const float StepSeconds, const FSettings& Settings = FSettings())
 	{

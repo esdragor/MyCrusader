@@ -188,6 +188,18 @@ bool FHOLSanityMotionTest::RunTest(const FString& Parameters)
 		TestFalse(TEXT("a circle made all along on a place walk (one side) is not a spin"), HOLSanity::Analyse(PlaceWalking(Circle), Step).bSpin);
 		TestTrue(TEXT("the same circle without the place-walk flag is still a spin"), HOLSanity::Analyse(Make(Circle, true), Step).bSpin);
 		TestTrue(TEXT("a wobbling (to and fro) walk on a place walk is still a tremor"), HOLSanity::Analyse(PlaceWalking([](int32 I) { return FVector2D(35. * I, (I % 2) ? 14. : 0.); }), Step).bShake);
+		// BUG-ai_peasant-spin (GALADRIEL-1126m): a gatherer walking round the source body to its far-side spot or to the deposit is on a place walk,
+		// whatever the combat says; the flag the audit records comes from IsPlaceWalk, so the circle must not be a spin once it says so.
+		const auto GatherWalking = [&Make](const TFunction<FVector2D(int32)>& Place, const EHOLGatherPhase Phase)
+		{
+			HOLSanity::FTrace Trace = Make(Place, true);
+			Trace.PlaceWalk.Init(HOLSanity::IsPlaceWalk(false, Phase) ? 1 : 0, Trace.Places.Num());
+			return Trace;
+		};
+		TestFalse(TEXT("a gatherer's circle on the walk to the deposit is not a spin"), HOLSanity::Analyse(GatherWalking(Circle, EHOLGatherPhase::ToDeposit), Step).bSpin);
+		TestFalse(TEXT("a gatherer's circle on the walk to its spot at the source is not a spin"), HOLSanity::Analyse(GatherWalking(Circle, EHOLGatherPhase::ToSource), Step).bSpin);
+		TestTrue(TEXT("the same circle by a unit that is not gathering is still a spin"), HOLSanity::Analyse(GatherWalking(Circle, EHOLGatherPhase::None), Step).bSpin);
+		TestTrue(TEXT("a wobbling (to and fro) walk on the way to the deposit is still a tremor"), HOLSanity::Analyse(GatherWalking([](int32 I) { return FVector2D(35. * I, (I % 2) ? 14. : 0.); }, EHOLGatherPhase::ToDeposit), Step).bShake);
 		// Q-sanity-micro = A: the 8 s rule has the floor of the 2 s one (a path over 6 radii). A soldier that fidgets 0.5 cm a step round a 2 cm circle
 	// (80 cm in 8 s, 40 radians of turning, ordered) was counted a spinner (the old rule: no floor); a real loop of 503 cm still is.
 	HOLSanity::FSettings NoFloor;
