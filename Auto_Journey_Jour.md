@@ -10,6 +10,12 @@ Historique du test du 2026-10-30 : `Docs\Archive\Auto_Journey_Test1_2026-10-30.m
 
 ## Agents du 2026-11-25
 
+### Séance du soir (19:20 -> 20:30, session principale, chantier Artistes)
+fin repoussée à 20:30 à la demande de l'utilisateur (2721b8a) ; check-list lue (L29) à 19:2x par la session principale (L29-2 chaîne suivie jusqu'au .cpp : HOLUnitSubsystem.cpp:397 ; L29-7 énoncé avec fichier:ligne du premier Edit ; L29-8 EtapeDefini.md remis en CRLF) ; lot AR0-a (D924, ArtistesInProgress.md) + AR0-b en parallèle
+
+| Agent | Worktree | Branche | Début | Tâche | C++ |
+|---|---|---|---|---|---|
+
 ### Séance de l'après-midi (15:04 -> 19:04, autonome)
 fin et mode demandés à 15:04 (fin 19:04, autonome ; priorité Docs\Priorite_Socle_Factions_2026-11-16.md) ; session étrangère active vue à 15:0x (Faramir, market-quote-1125s, commit 14:59, SessionEnd était 15:15)
 check-list lue (L28) à 15:09 après le nettoyage 0a (commits 14e113c, 4754030, 7246200, bcedc73) ; veilleur 30 min (xx:13 / xx:43) et alarme 18:49 posés
@@ -70,6 +76,46 @@ Tableau des agents, plan de lancement ETAPE0-1125m, avances de main et anomalies
 | DOCS-1125a | HeroesOfLiberty-MyCrusader | main | Docs: close 1125a | docs de cloture de la seance de l'apres-midi (Retours, File, Jour, EtapeDefini) | sans C++ |
 | TOOLS-1125a | HeroesOfLiberty-Glorfindel | glorfindel-wave3-1125a | - | points 2,3,5 budget : launch_agent enonce fichier + after_commit.ps1 | sans C++ |
 | DOCS-1125b | HeroesOfLiberty-MyCrusader | main | - | points 1,3,4 budget : hook L19-1, resume Auto_Journey, brief_commun | sans C++ |
+| GLORFINDEL-1125ar | HeroesOfLiberty-Glorfindel | art-visual-1125ar | - | AR0-a table visuelle D924 (C++ resolveur, registre, tests Mass) | C++ : raison dite dans la tache |
+| CELEBORN-1125ar | HeroesOfLiberty-Celeborn | art-manifest-1125ar | - | AR0-b manifeste ArtVisuals.csv + check_placeholders (sans C++) | sans C++ |
+| SAURON-1125ar | HeroesOfLiberty-Sauron | art-gallery-1125ar | - | AR1-a galerie de l Atelier hol.Art.Gallery (sans C++) | sans C++ |
+| CELEBORN-1125ar2 | HeroesOfLiberty-Celeborn | art-try-1125ar | - | AR4-a Jouer avec hol.Art.Try (sans C++) | sans C++ |
+| HALDIR-1125ar | HeroesOfLiberty-Haldir | art-visual2-1125ar | - | AR0-a2 resolveur visuel aux lecteurs restants (C++ reception, fleches, batiments, ressources, icone) | C++ : raison dite dans la tache |
+| HALDIR-1125ar2 | HeroesOfLiberty-Haldir | art-migrate-1125ar | - | AR0-d1 creer les DA_Art depuis le CSV + test migration (C++ test Mass) | C++ : raison dite dans la tache |
+| SAURON-1125ar2 | HeroesOfLiberty-Sauron | art-editor-1125ar | - | AR2-a menus d editeur Verifier / Creer le DA_Art (Angelscript) | sans C++ |
+| CELEBORN-1125ar3 | HeroesOfLiberty-Celeborn | art-doc-1125ar | - | AR7-a Docs ARTISTES.md (sans C++) | sans C++ |
+| SAURON-1125ar3 | HeroesOfLiberty-Sauron | art-editor-1125ar | - | AR2-a correctif de compilation des menus d editeur (C++ liaison + script) | C++ : raison dite dans la tache |
+| HALDIR-1125ar3 | HeroesOfLiberty-Haldir | art-strip-1125ar | - | AR0-d2 champs restants dans DA_Art puis retrait des colonnes visuelles du CSV (C++) | C++ : raison dite dans la tache |
+| CELEBORN-1125ar4 | HeroesOfLiberty-Celeborn | art-gallery2-1125ar | - | AR1-b / AR4-b vraies sources dans la galerie, selection de hol.Art.Try (C++ liaison AddSource) | C++ : raison dite dans la tache |
+| SAURON-1125ar4 | HeroesOfLiberty-Sauron | art-faction-1125ar | - | AR0-a3 faction du tireur et de l occupant pour Projectile, MuzzleSmoke, Icon (C++) | C++ : raison dite dans la tache |
+| HALDIR-1125ar4 | HeroesOfLiberty-Haldir | art-strip-1125ar | - | AR0-d2 etape 2 retrait des colonnes visuelles du CSV (C++) | C++ : raison dite dans la tache |
+| CELEBORN-1125ar5 | HeroesOfLiberty-Celeborn | art-gallery2-1125ar | - | AR4-b / AR1-b finitions des scenarios art_try et art_gallery (sans C++) | sans C++ |
+| CELEBORN-1125ar6 | HeroesOfLiberty-Celeborn | art-gallery2-1125ar | - | AR4-b / AR1-b tir visible dans art_try, cadrage ag_buildings (sans C++) | sans C++ |
+| SAURON-1125ar5 | HeroesOfLiberty-Sauron | art-faction-1125ar | - | AR0-a4 faction locale pour la garnison, fleches client et batiments (C++) | C++ : raison dite dans la tache |
+| HALDIR-1125ar5 | HeroesOfLiberty-Haldir | art-strip-1125ar | - | AR0-d2 etape 3 tests neutres, colonnes CSV, Mesh batiments et sources (C++) | C++ : raison dite dans la tache |
+| GLORFINDEL-1125ar2 | HeroesOfLiberty-Glorfindel | art-scripts-1125ar | - | AR0-d2 etape 3b scripts d editeur ecrivent le DA_Art (sans C++) | sans C++ |
+| GLORFINDEL-1125ar3 | HeroesOfLiberty-Glorfindel | art-icons-1125ar | - | AR5-a cabine de capture des icones hol.Art.Icon (sans C++) | sans C++ |
+| CELEBORN-1125ar7 | HeroesOfLiberty-Celeborn | art-gallery2-1125ar | - | AR1-c reperes d echelle et eclairage des biomes dans la galerie (sans C++) | sans C++ |
+| SAURON-1125ar6 | HeroesOfLiberty-Sauron | art-editor2-1125ar | - | AR2-b controles manquants, menu AnimSequence, Voir dans l Atelier (script) | sans C++ |
+| HALDIR-1125ar6 | HeroesOfLiberty-Haldir | art-strip-1125ar | - | AR0-d2 etape 3 fin : merge main, Mesh batiments et sources, check_placeholders par DA_Art (C++) | C++ : raison dite dans la tache |
+| GLORFINDEL-1125ar4 | HeroesOfLiberty-Glorfindel | art-icons-1125ar | - | AR5-b icones bien cadrees, fond neutre, hol.Art.Icon All (sans C++) | sans C++ |
+| HALDIR-1125ar7 | HeroesOfLiberty-Haldir | art-strip-1125ar | - | AR0-d2 point 3 Mesh des batiments et des sources retire du CSV (C++) | C++ : raison dite dans la tache |
+| SAURON-1125ar7 | HeroesOfLiberty-Sauron | art-anim-1125ar | - | AR3-a animations par reference dans le DA_Art (C++) | C++ : raison dite dans la tache |
+| GLORFINDEL-1125ar5 | HeroesOfLiberty-Glorfindel | art-icons-1125ar | - | AR5-c cause du plantage de hol.Art.Icon All, vraies sources, toutes les icones | C++ : raison dite dans la tache |
+| CELEBORN-1125ar8 | HeroesOfLiberty-Celeborn | art-doc2-1125ar | - | AR7-b Docs ARTISTES.md a jour (sans C++) | sans C++ |
+| HALDIR-1125ar8 | HeroesOfLiberty-Haldir | art-strip-1125ar | - | AR0-d2 point 3 compile, regen, vert | C++ : raison dite dans la tache |
+| SAURON-1125ar8 | HeroesOfLiberty-Sauron | art-anim-1125ar | - | AR3-b references d animation ecrites dans les DA_Art, merge art-scripts et main | C++ : raison dite dans la tache |
+| CELEBORN-1125ar9 | HeroesOfLiberty-Celeborn | art-gallery3-1125ar | - | AR1-d galerie : case lue du jeu, noms de biomes, etiquettes, hol.Art.Focus (sans C++) | sans C++ |
+| GLORFINDEL-1125ar6 | HeroesOfLiberty-Glorfindel | art-icons-1125ar | - | AR5-d sources de la cabine, cadrage des batiments, art_icon_all PASS | sans C++ |
+| CELEBORN-1125ar10 | HeroesOfLiberty-Celeborn | net-reds-1125ar | - | BUG net 2 clients / net hero return : cause d abord, puis correctif | C++ : raison dite dans la tache |
+| SAURON-1125ar9 | HeroesOfLiberty-Sauron | art-anim-1125ar | - | AR3 merge du main e95d467 (AR0-d2) dans art-anim, build, vert | C++ : raison dite dans la tache |
+| GLORFINDEL-1125ar7 | HeroesOfLiberty-Glorfindel | art-iconimport-1125ar | - | AR5-e import des icones en Texture2D, champ Icon des DA_Art (sans C++) | sans C++ |
+| SAURON-1125ar10 | HeroesOfLiberty-Sauron | art-sound-1125ar | - | AR6-a sons par type dans le DA_Art (C++ champs + script) | C++ : raison dite dans la tache |
+| CELEBORN-1125ar11 | HeroesOfLiberty-Celeborn | net-reds-1125ar | - | BUG net : tests apres merge et rejeu du besoin FARAMIR-1124si (triche au slot IA) | sans C++ |
+| SAURON-1125ar11 | HeroesOfLiberty-Sauron | art-sound-1125ar | - | AR6-b sons d ordre, d attaque, de mort, de construction par type (C++ evenements + script) | C++ : raison dite dans la tache |
+| CELEBORN-1125ar12 | HeroesOfLiberty-Celeborn | art-lab-1125ar | - | AR1-e commande unique hol.Art.Lab (sans C++) | sans C++ |
+| GLORFINDEL-1125ar8 | HeroesOfLiberty-Glorfindel | art-iconimport-1125ar | - | AR5-e merge main 714fe0b, DA_Art de main + reimport des icones | C++ : raison dite dans la tache |
+| SAURON-1125ar12 | HeroesOfLiberty-Sauron | art-sound-1125ar | - | AR6-c evenements C++ des sons : attaque, mort, ordre, construction | C++ : raison dite dans la tache |
 
 ### Bilan du 2026-11-25 après-midi
 **CLÔTURE 18:07** : main = 32bf45e (outils du budget, points 1-5 demandés par l'utilisateur : ca593e2 + tools-budget-1125a, gate_test 143/143) ; sync de fin faite ; session_gate Close : 2 FAIL ACCEPTÉS (exception écrite) : Arwen +10 (Templars fc3b85f..6cbbdbe, attend Q-chapel-faction) et Galadriel +5 (4f3c147 spin = faux positif Sanity, non intégré) ; Elrond / Faramir exclus (session étrangère ; la sync a fusionné main dans tests-bindings-1125s de Faramir) ; Merge gate non relancé pour tools-budget-1125a (outils seuls, diff Source/Script/Config vide).
