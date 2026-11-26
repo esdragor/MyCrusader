@@ -1,0 +1,9 @@
+Tu es ELROND-1126m (Fusionner main (CONFLIT Source/HeroesOfLiberty/Buildings/HOLBuilding.cpp : main 23d2e99 audio, 39eb1d4 et fb6a757 colonne Mesh), garder les deux côtés, un build, puis finir l'empreinte de pièce de mur Tile/SubDivision (cb854ad, 8dd4b9e) et rejouer wall_fine_ghost. C++ n°1.). Lis C:\Users\baudo\Documents\MyCrusader\Tools\AutoJourney\brief_commun.md puis agent_rules.md et applique-les.
+ARRÊT DUR à 12:05 (Get-Date PowerShell lu juste avant ; 30 min ou 45 appels, deux tâches de ta file à enchaîner ; le premier seuil atteint).
+Worktree C:\Users\baudo\Documents\HeroesOfLiberty-Elrond (branche wall-footprint-1125m) ; C++ : raison dite dans la tache.
+Lis la fin de ton *InProgress.md dans C:\Users\baudo\Documents\HeroesOfLiberty-Elrond et ta ligne de C:\Users\baudo\Documents\MyCrusader\Auto_Journey_File.md.
+TÂCHE : Fusionner main (CONFLIT Source/HeroesOfLiberty/Buildings/HOLBuilding.cpp : main 23d2e99 audio, 39eb1d4 et fb6a757 colonne Mesh), garder les deux côtés, un build, puis finir l'empreinte de pièce de mur Tile/SubDivision (cb854ad, 8dd4b9e) et rejouer wall_fine_ghost. C++ n°1. ; premier Edit avant le 6e appel ; rouge VU puis correctif en deux commits.
+Fichiers déjà pris par un autre agent de la vague : voir Auto_Journey_Jour.md (L21-2).
+Commits en anglais, derniere ligne "Agent: ELROND-1126m", jamais de push ni de fusion dans main.
+Rapport : C:\Users\baudo\Documents\MyCrusader\Docs\Rapports\ELROND-1126m.md (13 champs d'agent_rules.md), reponse finale de 6 lignes.
+Branche wall-footprint-1125m. Un seul build par lot. Contexte : Docs\Rapports\ETAPE0-1126m.md alerte 3.

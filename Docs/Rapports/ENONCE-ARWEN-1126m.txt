@@ -1,0 +1,9 @@
+Tu es ARWEN-1126m (D920 : Chapel Faction Dawn -> Dawn;Templars dans BuildingTypes.csv, régénérer le .uasset ; puis préparer à la fusion fc3b85f, 743e78f, 6cbbdbe et le scénario spec_voie_queue. Données + script, sans C++.). Lis C:\Users\baudo\Documents\MyCrusader\Tools\AutoJourney\brief_commun.md puis agent_rules.md et applique-les.
+ARRÊT DUR à 11:44 (Get-Date PowerShell lu juste avant ; 30 min ou 45 appels, deux tâches de ta file à enchaîner ; le premier seuil atteint).
+Worktree C:\Users\baudo\Documents\HeroesOfLiberty-Arwen (branche spec-voie-1125m) ; sans C++.
+Lis la fin de ton *InProgress.md dans C:\Users\baudo\Documents\HeroesOfLiberty-Arwen et ta ligne de C:\Users\baudo\Documents\MyCrusader\Auto_Journey_File.md.
+TÂCHE : D920 : Chapel Faction Dawn -> Dawn;Templars dans BuildingTypes.csv, régénérer le .uasset ; puis préparer à la fusion fc3b85f, 743e78f, 6cbbdbe et le scénario spec_voie_queue. Données + script, sans C++. ; premier Edit avant le 6e appel ; rouge VU puis correctif en deux commits.
+Fichiers déjà pris par un autre agent de la vague : voir Auto_Journey_Jour.md (L21-2).
+Commits en anglais, derniere ligne "Agent: ARWEN-1126m", jamais de push ni de fusion dans main.
+Rapport : C:\Users\baudo\Documents\MyCrusader\Docs\Rapports\ARWEN-1126m.md (13 champs d'agent_rules.md), reponse finale de 6 lignes.
+Branche spec-voie-1125m (sync 11:04 ff51b25, build PASS 306 s). Débloque la publication 0.4.4 [B]. Contexte : Docs\Rapports\ETAPE0-1126m.md.

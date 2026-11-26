@@ -1,0 +1,20 @@
+# SAURON-1126m : outils L29-6 (sync_worktrees saute les worktrees pris) et L29-8 (commit_docs -Lines)
+
+Joueur : aucun effet en jeu (outils de fin de séance et de docs). Branche `tools-l29-1126m` (worktree HeroesOfLiberty-Sauron, depuis main 99a1306), BRANCHE PRÊTE, jamais fusionnée, jamais poussée.
+
+APPELS_DECLARES: ~24 (arrêt à 45 vus par toi ; le seuil de 80 se juge sur `tool_uses`)
+HEURE_DEBUT/HEURE_FIN: 11:29:32 / 11:43:34
+PREMIER_BUILD: sans C++   BUILD: sans objet (aucun build)   LAUNCHCHECK_DEBUT: sans C++
+TEST_ROUGE: L29-6 53acb56 (sync_worktrees_test : 4 FAIL vus à 11:32, OCCUPE et « BRANCHE PRETE » fusionnés à tort ; HEAD avant/après comparé) ; L29-8 da485c8 (commit_docs_test : 6 FAIL vus à 11:37, -Lines ignoré donc fichier entier commité, fins de ligne mêlées gardées) ; assertit l'effet : oui (git rev-parse HEAD, git show HEAD:EtapeDefini.md, git ls-files --eol)   TEST_ROUGE_SEPARE: oui (test seul, deux fois ; pour L29-8 le correctif a aussi resserré une assertion du test : le blob se mesure par `git cat-file -s`, car `Out-String` ajoute des CR)
+COMMITS: 5 (53acb56, 5522077, da485c8, 1923508, af9e539 journal), dernier à 11:43, merge_main_fait: non (inutile : branche créée depuis main 99a1306, sans C++)
+TESTS: sync_worktrees_test.ps1 PASS (cas 9 : 6 PASS, 0 FAIL ; 4 FAIL avant correctif) ; commit_docs_test.ps1 PASS (0 FAIL ; 6 FAIL avant correctif) ; TESTS_TAUTOLOGIQUES: 0
+ESSAIS: aucun (outils sans rendu)
+QUESTIONS: `Retours\Q-sync-branche-prete-1126m.md` [À RÉPONDRE] ; défaut codé A (sauter aussi les branches PRETE) derrière `[bool]$SkipReadyBranches = $true` dans le `param` de `sync_worktrees.ps1`
+FAIT / RESTE:
+- L29-6 FAIT : `Get-InUseTakenNote` dans `Tools\AutoJourney\ForeignSession.ps1` (1re ligne d'IN_USE.txt : `OCCUPE`, ou `PRETE/PRETES` si -SkipReadyBranches) ; `sync_worktrees.ps1` la lit après le contrôle `$dirty` et avant `Get-ForeignSessionNote` ; sortie `<nom> | <branche> | SAUTE (pris : <ligne>) : ni fusion ni build`. En-tête du script mis à jour.
+- L29-8 FAIT : `commit_docs.ps1 -Only <un fichier> -Lines "t1||t2"` (séparateur `||` car `-File` passe une liste en une seule chaîne ; alias de paramètre `Lines`, variable `$LineTexts`) : index temporaire (read-tree HEAD + `git apply --cached --unidiff-zero` du patch -U0 filtré aux blocs dont une ligne +/- contient un texte + commit-tree + update-ref + `reset` du chemin) ; les lignes des autres sessions restent modifiées dans l'arbre. Codes : 4 (plusieurs fichiers ou fichier non suivi), 5 (aucun texte trouvé). `eol_check.ps1 -Root <Root> -Fix` lancé avant tout commit qui porte EtapeDefini.md (aussi sans -Lines).
+- RESTE : la session principale fusionne la branche ; la ligne L29-6 / L29-8 de `Auto_Journey_Checklist.md` est à elle ; question Q-sync-branche-prete à trancher (défaut A).
+NON VÉRIFIÉ: (1) `-Lines` jamais lancé sur le vrai `EtapeDefini.md` de la copie principale (dépôt jetable seulement) ; (2) `eol_check -Fix` ne corrige que les fichiers à fins MÊLÉES (`w/mixed`) : un `EtapeDefini.md` passé en LF pur (`w/lf`) n'est pas remis en CRLF par lui (git normalise alors le diff, le blob reste en LF) ; (3) `eol_check` parcourt tout l'arbre de `-Root` (git ls-files --eol) : coût sur la copie principale non mesuré ; (4) le commit `-Lines` passe par `commit-tree` : aucun hook de commit n'est lancé ; (5) `-Lines` ne sélectionne pas un bloc par numéro de ligne : deux blocs portant le même texte sont tous deux pris ; (6) sync_worktrees sur les vrais worktrees non lancé (test jetable seulement).
+PROCESSUS_DETACHES: aucun processus detache pour C:\Users\baudo\Documents\HeroesOfLiberty-Sauron
+ANOMALIES_PROCESSUS: aucune ; piège relevé : `$Lines` et `$lines` sont la même variable en PowerShell (un paramètre `-Lines` écrasait la liste des lignes de statut de commit_docs.ps1 : 15 FAIL au premier essai, corrigé par le renommage)
+GIT_STATUS_PRINCIPALE: copie principale : docs seulement (ArtistesInProgress.md, Auto_Journey_File.md, Auto_Journey_Jour.md, Docs/SessionEnd.txt, EtapeDefini.md modifiés ; rapports et Retours non suivis ; Retours\Q-sync-branche-prete-1126m.md neuf) ; hors docs voulus inchangée : oui

@@ -1,0 +1,9 @@
+Tu es FARAMIR-1126m (BUG deploy_far (Auto_Journey_File.md l.11, Reponse: de Retours), puis L29-5 (gate Essay valide la commande exacte de la fiche E). Script, sans C++.). Lis C:\Users\baudo\Documents\MyCrusader\Tools\AutoJourney\brief_commun.md puis agent_rules.md et applique-les.
+ARRÊT DUR à 12:05 (Get-Date PowerShell lu juste avant ; 30 min ou 45 appels, deux tâches de ta file à enchaîner ; le premier seuil atteint).
+Worktree C:\Users\baudo\Documents\HeroesOfLiberty-Faramir (branche tests-bindings-1125s) ; sans C++.
+Lis la fin de ton *InProgress.md dans C:\Users\baudo\Documents\HeroesOfLiberty-Faramir et ta ligne de C:\Users\baudo\Documents\MyCrusader\Auto_Journey_File.md.
+TÂCHE : BUG deploy_far (Auto_Journey_File.md l.11, Reponse: de Retours), puis L29-5 (gate Essay valide la commande exacte de la fiche E). Script, sans C++. ; premier Edit avant le 6e appel ; rouge VU puis correctif en deux commits.
+Fichiers déjà pris par un autre agent de la vague : voir Auto_Journey_Jour.md (L21-2).
+Commits en anglais, derniere ligne "Agent: FARAMIR-1126m", jamais de push ni de fusion dans main.
+Rapport : C:\Users\baudo\Documents\MyCrusader\Docs\Rapports\FARAMIR-1126m.md (13 champs d'agent_rules.md), reponse finale de 6 lignes.
+Branche tests-bindings-1125s, en cours de fusion dans main par INTEG-1126m (Haldir) : ne pas toucher HOLPlayerController.cpp ; nouvelle branche depuis main si besoin. Fiche Retours\BUG-deploy_far* ou E-deploy_far : lire la Reponse:. Contexte : Docs\Rapports\ETAPE0-1126m.md.

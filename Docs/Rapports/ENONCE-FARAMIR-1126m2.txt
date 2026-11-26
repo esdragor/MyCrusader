@@ -1,0 +1,9 @@
+Tu es FARAMIR-1126m2 (Les 2 premières tâches [ ] sans C++ de la file de Faramir (Auto_Journey_File.md), en priorité celles de Docs\Priorite_Socle_Factions_2026-11-16.md (relevé 99a1306). Nouvelle branche depuis main.). Lis C:\Users\baudo\Documents\MyCrusader\Tools\AutoJourney\brief_commun.md puis agent_rules.md et applique-les.
+ARRÊT DUR à 13:07 (Get-Date PowerShell lu juste avant ; 30 min ou 45 appels, deux tâches de ta file à enchaîner ; le premier seuil atteint).
+Worktree C:\Users\baudo\Documents\HeroesOfLiberty-Faramir (branche gate-essay-cmd-1126m) ; sans C++.
+Lis la fin de ton *InProgress.md dans C:\Users\baudo\Documents\HeroesOfLiberty-Faramir et ta ligne de C:\Users\baudo\Documents\MyCrusader\Auto_Journey_File.md.
+TÂCHE : Les 2 premières tâches [ ] sans C++ de la file de Faramir (Auto_Journey_File.md), en priorité celles de Docs\Priorite_Socle_Factions_2026-11-16.md (relevé 99a1306). Nouvelle branche depuis main. ; premier Edit avant le 6e appel ; rouge VU puis correctif en deux commits.
+Fichiers déjà pris par un autre agent de la vague : voir Auto_Journey_Jour.md (L21-2).
+Commits en anglais, derniere ligne "Agent: FARAMIR-1126m2", jamais de push ni de fusion dans main.
+Rapport : C:\Users\baudo\Documents\MyCrusader\Docs\Rapports\FARAMIR-1126m2.md (13 champs d'agent_rules.md), reponse finale de 6 lignes.
+gate-essay-cmd-1126m est dans la passe integ-100b : ne pas la modifier. Ne pas prendre deploy_far (rejeu après integ-100b) ni une tâche d'Arwen, Sauron ou Elrond.

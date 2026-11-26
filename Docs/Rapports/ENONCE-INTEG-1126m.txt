@@ -1,0 +1,9 @@
+Tu es INTEG-1126m (Passe d'intégration integ-100 : integrate.ps1 -DryRun puis fusion dans main de market-quote-1125s puis tests-bindings-1125s (build + tests verts, session_gate -Phase Merge sans FAIL, D888 : fusion locale, jamais de push).). Lis C:\Users\baudo\Documents\MyCrusader\Tools\AutoJourney\brief_commun.md puis agent_rules.md et applique-les.
+ARRÊT DUR à 11:58 (Get-Date PowerShell lu juste avant ; 30 min ou 45 appels, deux tâches de ta file à enchaîner ; le premier seuil atteint).
+Worktree C:\Users\baudo\Documents\HeroesOfLiberty-Haldir (branche integ-97-art) ; sans C++.
+Lis la fin de ton *InProgress.md dans C:\Users\baudo\Documents\HeroesOfLiberty-Haldir et ta ligne de C:\Users\baudo\Documents\MyCrusader\Auto_Journey_File.md.
+TÂCHE : Passe d'intégration integ-100 : integrate.ps1 -DryRun puis fusion dans main de market-quote-1125s puis tests-bindings-1125s (build + tests verts, session_gate -Phase Merge sans FAIL, D888 : fusion locale, jamais de push). ; premier Edit avant le 6e appel ; rouge VU puis correctif en deux commits.
+Fichiers déjà pris par un autre agent de la vague : voir Auto_Journey_Jour.md (L21-2).
+Commits en anglais, derniere ligne "Agent: INTEG-1126m", jamais de push ni de fusion dans main.
+Rapport : C:\Users\baudo\Documents\MyCrusader\Docs\Rapports\INTEG-1126m.md (13 champs d'agent_rules.md), reponse finale de 6 lignes.
+Haldir sert aussi aux intégrations de la séance art (integ-NN-art) : vérifier IN_USE et ArtistesInProgress.md d'abord ; si tenu, s'arrêter et le dire. Conflit = résolu en gardant les deux côtés, sinon rapport. Contexte : Docs\Rapports\ETAPE0-1126m.md alerte 5, Docs\Rapports\PREP-1126m.md.
