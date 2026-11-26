@@ -10,9 +10,11 @@ hol.Gather.LogWalks 1
 hol.Gather.LogDeposits 1
 waitlog AI slot 1 step
 hol.Cheat.Resources 1000
+# Besoin FARAMIR-1124si (7e0613c, garde par 86e5398) : la triche de ressources atteint aussi le slot IA en solo (jamais un autre humain)
+waitlog Cheat: slot 1 resources
 hol.Cheat.Population 200
 hol.Camera.FocusNear 2800 0 enemy
-# L'IA a 0 bois (camp + moulin payes au debut, cheat de ressources = slot 0 seulement) : on la laisse recolter 110 s AVANT les Lanciers (TowerWood = 100 bois)
+# Avant 7e0613c l'IA avait 0 bois (camp + moulin payes au debut, cheat = slot 0 seulement) : les 2 x 55 s de recolte avant les Lanciers sont gardes (TowerWood = 100 bois)
 wait 55
 wait 55
 frames 2

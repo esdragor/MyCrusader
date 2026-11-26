@@ -1,3 +1,4 @@
 # <nom de capture> | ce que l'utilisateur doit voir
 tower_wood_garrison_before | la Tour de guet en bois du joueur au centre bas de l'ecran, 3 Lanciers bleus selectionnes (cercles blancs) juste au nord de la tour, dehors ; panneau « Lancier (3) » en bas a gauche
 tower_wood_garrison_after | la meme tour, les 3 Lanciers ont DISPARU de l'ecran (entres dans la garnison), plus de cercles ni de panneau « Lancier (3) » (selection vide)
+tower_wood_garrison_frame | la tour selectionnee, cadre de garnison en bas : 3 boutons d occupant avec l ICONE du Lancier (image de la cabine), pas le mot Spearman

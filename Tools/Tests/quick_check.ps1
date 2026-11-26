@@ -6741,6 +6741,13 @@ if ($Parts -contains "net") {
     $CheatGranted = @(if (Test-Path $NetServerLog) { Select-String -Path $NetServerLog -Pattern "Cheat: slot \d resources" |
         Where-Object { -not $ReturnMarkLine.Count -or $_.LineNumber -lt $ReturnMarkLine[0] } }).Count
     $Checks["server: client 1's cheat refused ($CheatRefused), the army's granted ($CheatGranted of 2)"] = $CheatRefused -eq 1 -and $CheatGranted -eq 2
+    # CELEBORN-1125ar10 (BUG-net-cheat-hero-return, 7e0613c): one resources cheat changes one human slot's stock only, never the
+    # other player's: after the hero-return mark only Bob (slot 1) sends resources cheats, so every "Cheat: slot N resources" line
+    # there names slot 1 (a slot 0 line = Alice's stock changed by Bob's cheat, the cause of the two net reds of 2026-11-25).
+    $AfterReturnSlots = @(if ((Test-Path $NetServerLog) -and $ReturnMarkLine.Count) { Select-String -Path $NetServerLog -Pattern "Cheat: slot (\d) resources" |
+        Where-Object { $_.LineNumber -gt $ReturnMarkLine[0] } | ForEach-Object { $_.Matches[0].Groups[1].Value } })
+    $AliceTouched = @($AfterReturnSlots | Where-Object { $_ -ne "1" }).Count
+    $Checks["server: Bob's resources cheats reach his slot only ($($AfterReturnSlots.Count) lines after the return mark, $AliceTouched on another slot)"] = $AfterReturnSlots.Count -ge 2 -and $AliceTouched -eq 0
     # D799: slot 1 made Nomad by the server: client 1's own grid knows it and shows its first forum's true price (150 wood, 400 stone,
     # computed by the client's script board); slot 0 stays standard there (its forum complete, not that price). Its centre stands: cell closed.
     $NomadLines = @(if ($Client1Log -and (Test-Path $Client1Log)) { Select-String -Path $Client1Log -Pattern "Nomad report: slot (\d) nomad (\d), forum complete (\d), forum cell open (\d), forum price wood (\d+) stone (\d+)" | ForEach-Object { $_.Matches[0] } })

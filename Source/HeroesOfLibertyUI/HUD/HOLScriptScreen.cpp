@@ -441,6 +441,11 @@ bool UHOLScriptScreen::GetMinorEventsNow(int32& OutBuildingsFinished, int32& Out
 	return PlayerState != nullptr && World != nullptr;
 }
 
+FName UHOLScriptScreen::GetLastFinishedBuildingType() const
+{
+	return MinorWatch.LastBuildingType;
+}
+
 void UHOLScriptScreen::ObserveMinorEvents(FHOLMinorEventsWatch& Watch, const TArray<AHOLBuilding*>& FinishedBuildings, const int32 ResearchesDone)
 {
 	for (const AHOLBuilding* Building : FinishedBuildings)
@@ -455,6 +460,7 @@ void UHOLScriptScreen::ObserveMinorEvents(FHOLMinorEventsWatch& Watch, const TAr
 		{
 			++Watch.BuildingsFinished;
 			Watch.LastBuildingLocation = FVector2D(Building->GetActorLocation().X, Building->GetActorLocation().Y);
+			Watch.LastBuildingType = Building->GetTypeName();
 		}
 	}
 	if (Watch.bPrimed && ResearchesDone > Watch.ResearchesSeen)

@@ -2,6 +2,7 @@
 
 #include "Presentation/HOLArrowSubsystem.h"
 
+#include "Art/HOLArtVisual.h"
 #include "Components/InstancedStaticMeshComponent.h"
 #include "Engine/StaticMesh.h"
 #include "Engine/World.h"
@@ -11,6 +12,7 @@
 #include "MassCommonFragments.h"
 #include "MassEntityManager.h"
 #include "MassEntitySubsystem.h"
+#include "Match/HOLFactionRules.h"
 #include "Simulation/HOLSimulationSettings.h"
 #include "Simulation/HOLUnitTypes.h"
 
@@ -80,15 +82,14 @@ TStatId UHOLArrowSubsystem::GetStatId() const
 	RETURN_QUICK_DECLARE_CYCLE_STAT(UHOLArrowSubsystem, STATGROUP_Tickables);
 }
 
-UStaticMesh* UHOLArrowSubsystem::GetProjectileMesh(const FName ShooterType)
+UStaticMesh* UHOLArrowSubsystem::GetProjectileMesh(const FName ShooterType, const FName ShooterFaction)
 {
 	// The shooter type's Projectile column (AR9); the arrow when it is empty or the type unknown.
-	const UHOLSimulationSettings* Settings = GetDefault<UHOLSimulationSettings>();
-	const UDataTable* UnitTypes = Settings ? Settings->UnitTypesTable.LoadSynchronous() : nullptr;
-	const FHOLUnitTypeRow* Row = UnitTypes && !ShooterType.IsNone() ? UnitTypes->FindRow<FHOLUnitTypeRow>(ShooterType, TEXT("Arrows"), false) : nullptr;
-	if (Row && !Row->Projectile.IsNull())
+	// D924 (AR0-a2): the art asset of the shooter type first (AR0-a3: the shooter's faction variant, then the common one), none (D925) last: the arrow.
+	const TSoftObjectPtr<UStaticMesh> Projectile(HOLArtVisual::ResolveProjectile(GetWorld(), ShooterType, ShooterFaction, FSoftObjectPath()));
+	if (!Projectile.IsNull())
 	{
-		if (UStaticMesh* Mesh = Row->Projectile.LoadSynchronous())
+		if (UStaticMesh* Mesh = Projectile.LoadSynchronous())
 		{
 			return Mesh;
 		}
@@ -96,12 +97,10 @@ UStaticMesh* UHOLArrowSubsystem::GetProjectileMesh(const FName ShooterType)
 	return LoadObject<UStaticMesh>(nullptr, ArrowMeshPath);
 }
 
-UStaticMesh* UHOLArrowSubsystem::GetMuzzleSmokeMesh(const FName ShooterType)
+UStaticMesh* UHOLArrowSubsystem::GetMuzzleSmokeMesh(const FName ShooterType, const FName ShooterFaction)
 {
-	const UHOLSimulationSettings* Settings = GetDefault<UHOLSimulationSettings>();
-	const UDataTable* UnitTypes = Settings ? Settings->UnitTypesTable.LoadSynchronous() : nullptr;
-	const FHOLUnitTypeRow* Row = UnitTypes && !ShooterType.IsNone() ? UnitTypes->FindRow<FHOLUnitTypeRow>(ShooterType, TEXT("Arrows"), false) : nullptr;
-	return Row && !Row->MuzzleSmoke.IsNull() ? Row->MuzzleSmoke.LoadSynchronous() : nullptr;
+	const TSoftObjectPtr<UStaticMesh> Smoke(HOLArtVisual::ResolveMuzzleSmoke(GetWorld(), ShooterType, ShooterFaction, FSoftObjectPath()));
+	return Smoke.IsNull() ? nullptr : Smoke.LoadSynchronous();
 }
 
 const UInstancedStaticMeshComponent* UHOLArrowSubsystem::GetInstances(const UStaticMesh* Mesh) const
@@ -110,33 +109,33 @@ const UInstancedStaticMeshComponent* UHOLArrowSubsystem::GetInstances(const USta
 	return Group != INDEX_NONE ? Instances[Group].Get() : nullptr;
 }
 
-int32 UHOLArrowSubsystem::FindOrAddGroup(const FName ShooterType)
+int32 UHOLArrowSubsystem::FindOrAddGroup(const FName ShooterType, const FName ShooterFaction)
 {
-	if (const int32* Known = GroupByType.Find(ShooterType))
+	if (const int32* Known = GroupByType.Find(TPair<FName, FName>(ShooterType, ShooterFaction)))
 	{
 		return *Known;
 	}
-	GroupByType.Add(ShooterType, INDEX_NONE);
-	UStaticMesh* Mesh = GetProjectileMesh(ShooterType);
+	GroupByType.Add(TPair<FName, FName>(ShooterType, ShooterFaction), INDEX_NONE);
+	UStaticMesh* Mesh = GetProjectileMesh(ShooterType, ShooterFaction);
 	if (!GetWorld() || !Mesh)
 	{
 		UE_LOG(LogHOLPresentation, Warning, TEXT("Arrows: no projectile mesh for %s (nor %s), its shots not drawn"), *ShooterType.ToString(), ArrowMeshPath);
 		return INDEX_NONE;
 	}
 	const int32 Group = FindOrAddMeshGroup(Mesh);
-	GroupByType.Add(ShooterType, Group);
+	GroupByType.Add(TPair<FName, FName>(ShooterType, ShooterFaction), Group);
 	return Group;
 }
 
-int32 UHOLArrowSubsystem::FindOrAddSmokeGroup(const FName ShooterType)
+int32 UHOLArrowSubsystem::FindOrAddSmokeGroup(const FName ShooterType, const FName ShooterFaction)
 {
-	if (const int32* Known = SmokeGroupByType.Find(ShooterType))
+	if (const int32* Known = SmokeGroupByType.Find(TPair<FName, FName>(ShooterType, ShooterFaction)))
 	{
 		return *Known;
 	}
-	UStaticMesh* Mesh = GetMuzzleSmokeMesh(ShooterType);
+	UStaticMesh* Mesh = GetMuzzleSmokeMesh(ShooterType, ShooterFaction);
 	const int32 Group = Mesh ? FindOrAddMeshGroup(Mesh, /*NumCustomData: the opacity*/ 1) : INDEX_NONE;
-	SmokeGroupByType.Add(ShooterType, Group);
+	SmokeGroupByType.Add(TPair<FName, FName>(ShooterType, ShooterFaction), Group);
 	return Group;
 }
 
@@ -199,10 +198,12 @@ void UHOLArrowSubsystem::Launch(const FHOLArrowLaunch& Launch)
 	Arrow.Target = Launch.Target;
 	Arrow.Start = World->GetTimeSeconds();
 	Arrow.Duration = GetFlightDurationSeconds(Launch.FlightMs);
-	Arrow.Group = FindOrAddGroup(Launch.ShooterType);
+	// AR0-a3: the shooter's faction (its owner slot's), whose art asset variant is drawn first; no slot: the common asset.
+	const FName ShooterFaction = Launch.ShooterSlot != INDEX_NONE ? HOLFactionRules::GetSlotFactionKey(World, Launch.ShooterSlot) : FName();
+	Arrow.Group = FindOrAddGroup(Launch.ShooterType, ShooterFaction);
 	++Launched;
 	// A gun's shot (the Arquebusier): a puff of powder smoke at the muzzle, ahead of the shooter at his shoulder's height.
-	const int32 SmokeGroup = FindOrAddSmokeGroup(Launch.ShooterType);
+	const int32 SmokeGroup = FindOrAddSmokeGroup(Launch.ShooterType, ShooterFaction);
 	if (SmokeGroup != INDEX_NONE)
 	{
 		FPuff& Puff = Puffs.AddDefaulted_GetRef();
@@ -367,5 +368,21 @@ void UHOLArrowSubsystem::Tick(float DeltaTime)
 		{
 			Component->SetCustomDataValue(Index, 0, Opacities[Index], Index == Opacities.Num() - 1);
 		}
+	}
+}
+
+namespace HOLArrowLaunches
+{
+	void SetUnitShooter(FHOLArrowLaunch& Launch, const FName UnitType, const int32 OwnerSlot)
+	{
+		Launch.ShooterType = UnitType;
+		Launch.ShooterSlot = OwnerSlot;
+	}
+
+	void SetBuildingShooter(FHOLArrowLaunch& Launch, const FName BuildingType, const int32 OwnerSlot)
+	{
+		// The building type is not a unit row: its art asset alone can give a projectile (DA_Art_<Building>_<Faction>, DA_Art_<Building>), else SM_Arrow as before.
+		Launch.ShooterType = BuildingType;
+		Launch.ShooterSlot = OwnerSlot;
 	}
 }

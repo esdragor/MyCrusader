@@ -493,7 +493,7 @@ void UHOLInterpolatedInstancesProcessor::Execute(FMassEntityManager& EntityManag
 							// HOLCombat::StartAttack, less the step that brought the state). Its hit at the type's share of the loop.
 							const float SecondsToHit = Combat
 								? HOLUnitAnimation::GetSecondsToHit(Combat->CooldownMs, StepMs) + (1.f - Alpha) * StepSeconds
-								: NetDisplay && NetDisplay->ShotStep >= 0 ? NetDisplay->ShotSecondsToHit
+								: NetDisplay && NetDisplay->ShotStep >= 0 && HOLCombat::IsRangedAttack(Constants.AttackRange) ? NetDisplay->ShotSecondsToHit
 								: HOLUnitAnimation::GetSecondsToHit(HOLCombat::GetWindUpMilliseconds(HOLCombat::ToMilliseconds(Constants.AttackInterval),
 									Constants.AttackWindUpPercent) - StepMs, StepMs);
 							AnimData.Position = HOLUnitAnimation::GetStrikeStartPosition(Length, Choice.PlayRate, SecondsToHit,

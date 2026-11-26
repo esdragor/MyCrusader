@@ -12,6 +12,7 @@
 #include "MassRepresentationFragments.h"
 #include "Match/HOLFactionRules.h"
 #include "Net/HOLNetUnitDisplay.h"
+#include "Presentation/HOLCombatSoundSubsystem.h"
 #include "Presentation/HOLUnitAnimation.h"
 #include "Simulation/HOLCombatRules.h"
 #include "Simulation/HOLSimulationSettings.h"
@@ -170,6 +171,8 @@ void HOLCorpse::Lay(FMassEntityManager& EntityManager, UHOLUnitSubsystem& Units,
 			{
 				Representation->PrevTransform = Seed.Corpse.Base;
 			}
+			// AR6-c: the death's sound, once per body laid (the simulation in solo / host, the reception on a client; never on a dedicated server).
+			UHOLCombatSoundSubsystem::Raise(Units.GetWorld(), TypeSeeds.TypeName, TypeSeeds.FactionKey, UHOLCombatSoundSubsystem::DeathSlot, Seed.Corpse.Base.GetLocation());
 		}
 	}
 }

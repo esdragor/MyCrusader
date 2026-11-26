@@ -16,6 +16,7 @@
 #include "MassProcessingContext.h"
 #include "Match/HOLGameState.h"
 #include "Presentation/HOLArrowSubsystem.h"
+#include "Presentation/HOLCombatSoundSubsystem.h"
 #include "Misc/AutomationTest.h"
 #include "Simulation/HOLCombatProcessor.h"
 #include "Simulation/HOLCombatRules.h"
@@ -62,6 +63,8 @@ namespace UE::HeroesOfLiberty::Tests::BuildingShot
 		int64 ReleasedAfterLeave = 0;
 		/** F8 T7: the arrows the display subsystem was asked to draw during the window (-1: no display subsystem in the world). */
 		int64 Launched = -1;
+		/** AR6-d: the Attack sound events of the tower type raised during the window (UHOLCombatSoundSubsystem, -1: no subsystem in the world). */
+		int32 TowerAttackSounds = -1;
 		/** S3-a: the launch lines hol.Combat.LogBuildingShots wrote during the window (UHOLCombatProcessor::GetTotalBuildingShotsLogged), and whether at any step they differed from the arrows released by then. */
 		int64 LaunchLogged = 0;
 		bool bLaunchLogBehind = false;
@@ -284,6 +287,8 @@ namespace UE::HeroesOfLiberty::Tests::BuildingShot
 					ReleasedBefore = UHOLCombatProcessor::GetTotalArrowsReleased();
 				}
 				const UHOLArrowSubsystem* ArrowDisplay = World->GetSubsystem<UHOLArrowSubsystem>(); const int64 LaunchedBefore = ArrowDisplay ? ArrowDisplay->GetLaunchedCount() : 0; const float Start = HealthOf(Victim);
+				const UHOLCombatSoundSubsystem* Sounds = World->GetSubsystem<UHOLCombatSoundSubsystem>();
+				const int32 SoundsBefore = Sounds ? Sounds->GetEventCountFor(Options.TowerType, UHOLCombatSoundSubsystem::AttackSlot) : 0;
 				Result.Steps = FMath::CeilToInt(Options.Seconds / StepSeconds) + 1;
 				int64 Seen = ReleasedBefore; const int64 LoggedBefore = UHOLCombatProcessor::GetTotalBuildingShotsLogged();
 				for (int32 Index = 0; Index < Result.Steps; ++Index)
@@ -321,6 +326,7 @@ namespace UE::HeroesOfLiberty::Tests::BuildingShot
 				Result.bRan = true;
 				Result.HealthLost = Start - HealthOf(Victim);
 				Result.Released = UHOLCombatProcessor::GetTotalArrowsReleased() - ReleasedBefore; Result.Launched = ArrowDisplay ? ArrowDisplay->GetLaunchedCount() - LaunchedBefore : -1;
+				Result.TowerAttackSounds = Sounds ? Sounds->GetEventCountFor(Options.TowerType, UHOLCombatSoundSubsystem::AttackSlot) - SoundsBefore : -1;
 				Result.ReleasedAfterLeave = Result.Released - Result.ReleasedAtLeave;
 				Result.EntriesAlive = Combat->GetBuildingCooldownCount();
 				Result.Cost = Combat->GetBuildingShotCost();
@@ -883,6 +889,44 @@ bool FHOLBuildingShotDisplayTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLBuildingShotSoundTest, "HeroesOfLiberty.Combat.BuildingShotSound", UE::HeroesOfLiberty::Tests::BuildingShot::Flags)
+
+// AR6-d (ArtistesInProgress.md): a tower's volley rings its type's Attack sound ONCE (not once per arrow). Two occupants make volleys of 3 arrows; the
+// sound events of the tower type (counted by UHOLCombatSoundSubsystem) against the arrows the processor released (both counted by the code under test).
+bool FHOLBuildingShotSoundTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::BuildingShot;
+	UDataTable* Table = const_cast<UDataTable*>(GetDefault<UHOLBuildingSettings>()->BuildingTypesTable.LoadSynchronous());
+	const FHOLBuildingTypeRow* HouseRow = Table ? Table->FindRow<FHOLBuildingTypeRow>(HOLBuildingTypeNames::House, TEXT("building shot sound test")) : nullptr;
+	IConsoleVariable* CombatEnabled = IConsoleManager::Get().FindConsoleVariable(TEXT("hol.Combat.Enabled"));
+	if (!TestNotNull(TEXT("the building type table and its House row"), HouseRow) || !TestNotNull(TEXT("hol.Combat.Enabled"), CombatEnabled))
+	{
+		return false;
+	}
+	const int32 FormerCombat = CombatEnabled->GetInt();
+	CombatEnabled->Set(1, ECVF_SetByCode);
+	FHOLBuildingTypeRow TowerRow = *HouseRow;
+	TowerRow.BuildingAttack = 5;
+	TowerRow.BuildingAttackInterval = 1.625f;
+	TowerRow.BuildingAttackRange = 3000.f;
+	TowerRow.BuildingFiresEmpty = true;
+	Table->AddRow(TestShotTowerType, TowerRow);
+
+	FShotOptions Volleys;
+	Volleys.VictimHealth = 100000.f;
+	Volleys.Occupants = 2;
+	const FShotResult Shot = RunScenario(*this, EHOLConstructionState::Finished, 3, 1000.0, Volleys);
+	if (TestTrue(TEXT("the scenario ran and the tower released volleys"), Shot.bRan && Shot.Released >= 3)
+		&& TestTrue(TEXT("the world has the sound subsystem"), Shot.TowerAttackSounds >= 0))
+	{
+		TestEqual(TEXT("volleys of 3 arrows (1 + 2 occupants)"), Shot.Released % 3, static_cast<int64>(0));
+		TestEqual(TEXT("one Attack sound of the tower type per volley, not per arrow"), static_cast<int64>(Shot.TowerAttackSounds), Shot.Released / 3);
+	}
+	Table->RemoveRow(TestShotTowerType);
+	CombatEnabled->Set(FormerCombat, ECVF_SetByCode);
+	return true;
+}
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLBuildingShotCostTest, "HeroesOfLiberty.Combat.BuildingShotCost", UE::HeroesOfLiberty::Tests::BuildingShot::Flags)
 
