@@ -48,6 +48,32 @@ namespace HOLArtRuntimeLoad
 		return Out.IsEmpty() ? "Model" : Out;
 	}
 
+	// AR8-b (the atelier screen, HOLAtelierScreen.as): imports File by Interchange's runtime import into /Game/RuntimeImport/<name><Index>
+	// (a new package for each load: the same file loaded again after a change on the disk is imported again) and returns its first static mesh,
+	// nullptr when the import gives none. The caller checks Refusal(File) first.
+	UStaticMesh ImportStaticMesh(const FString& File, int Index)
+	{
+		UInterchangeManager Manager = UInterchangeManager::GetInterchangeManagerScripted();
+		if (Manager == nullptr)
+			return nullptr;
+		UInterchangeSourceData Source = UInterchangeManager::CreateSourceData(File);
+		if (Source == nullptr)
+			return nullptr;
+		FImportAssetParameters Params;
+		Params.bIsAutomated = true;
+		TArray<UObject> Imported;
+		const FString ContentPath = f"/Game/RuntimeImport/{PackageNameOf(File)}{Index}";
+		if (!Manager.ImportAsset(ContentPath, Source, Params, Imported))
+			return nullptr;
+		for (UObject Object : Imported)
+		{
+			UStaticMesh Mesh = Cast<UStaticMesh>(Object);
+			if (Mesh != nullptr)
+				return Mesh;
+		}
+		return nullptr;
+	}
+
 }
 
 void HOLArtRuntimeLoadCommand(const TArray<FString>& Args)

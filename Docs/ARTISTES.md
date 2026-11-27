@@ -346,6 +346,38 @@ powershell -ExecutionPolicy Bypass -File Tools\Art\apply_art_send.ps1 -From <env
 - Ensuite : `Tools\check_placeholders.ps1`, un coup d'œil (`hol.Art.Icon <Type>`), commit sur une branche, intégration
   habituelle.
 
+## 11 ter. L'atelier léger dans le jeu : `-Atelier` (sans éditeur, D930)
+
+Pour un **bâtiment ou une ressource** en glTF / glb seulement (les unités et le FBX passent par l'éditeur emballé, D929).
+
+1. **Lancer** le jeu publié (celui du lanceur) avec l'argument `-Atelier` (raccourci : cible `...\HeroesOfLiberty.exe -Atelier`).
+   Le jeu va droit à l'atelier : une partie Plain où toute la galerie est posée (un exemplaire de chaque type, étiquettes,
+   repères d'échelle au sol), combat coupé, et l'écran d'atelier en haut à gauche. Sans `-Atelier`, le jeu est celui des joueurs.
+2. **Poser le modèle** dans `Documents\HeroesOfLiberty\Atelier\Entrees\` (le dossier est créé à la première ouverture et
+   affiché à l'écran ; il contient un `LISEZMOI.txt`). Un `.gltf` vient avec ses fichiers (`.bin`, textures) à côté.
+3. **Choisir le type** : boutons `<` `>` (bâtiments puis sources), ou son nom tapé puis « Choisir ». Un type d'unité est
+   refusé (« unités : par l'éditeur »).
+4. **Charger** : taper le nom du fichier (par exemple `maison.glb`) puis « Charger ». Le modèle remplace celui de **ce type
+   seulement** dans la galerie (les autres bâtiments ne changent pas) et la caméra s'en approche. Une ressource : le modèle
+   est posé sur sa place de la galerie.
+5. **Régler** : rotation (-15, -1, +1, +15 degrés) et échelle (-0.1, -0.01, +0.01, +0.1), valeurs affichées. Ce sont les
+   valeurs que le jeu appliquera au modèle (rotation et échelle de la fiche).
+6. **Remplir** : auteur, faction (vide = toutes), licence (fichier ou pack, source, licence, adresse), notes, statut
+   (`final` ou `provisional`, bouton).
+7. **Enregistrer** : l'envoi est écrit dans `Documents\HeroesOfLiberty\Atelier\Envois\<Type>[_<Faction>]_<aaaammjj-hhmm>\`
+   (`manifest.json`, `preview.png`), chemin affiché à l'écran. Avant d'écrire, tout ce qui manque est listé (aucun modèle
+   chargé, licence incomplète...) et rien n'est écrit.
+   **Pour l'instant, un `.glb` n'est pas copié par le jeu** : copiez-le vous-même dans le dossier de l'envoi sous le nom
+   `model.glb` (le message à l'écran donne le nom et le chemin). Un `.gltf` est copié (`model.gltf`) ; ses `.bin` et
+   textures sont à copier à côté.
+8. **Renvoyer** le dossier de l'envoi (ou son zip, clic droit > Compresser) à l'équipe. De notre côté :
+   `Tools\Art\apply_art_send.ps1 -From <dossier> -DryRun` puis sans `-DryRun` (section 11 bis).
+
+Limites connues : dans le jeu publié, les matériaux du glTF sont « à plat » (couleurs de base, B0) ; dans l'éditeur lancé
+en `-game` (essais des agents), l'import est refusé (« utilisez le jeu publié ») car Interchange y arrête le jeu. Commandes
+de la même chose pour les essais : `hol.Art.Atelier.Open`, `.Type <Type>`, `.Load <fichier>`, `.Set <champ> <valeur>`,
+`.Save` (scénario `art_atelier`).
+
 ## 12. À venir (pas encore dans le jeu)
 
 Ces points sont en préparation ; ce guide sera mis à jour quand ils seront dans le jeu.
