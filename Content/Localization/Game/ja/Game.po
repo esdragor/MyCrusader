@@ -452,7 +452,7 @@ msgstr "相手の姿勢：{0}"
 #: Script/Factions/HOLFactionPowerServer.as(203)
 msgctxt "HOLFactionSlot,PowerRefusedHonor"
 msgid "Honneur insuffisant"
-msgstr "名誉が足りません"
+msgstr "名誉が足りない"
 
 #. Key:	PowerReady
 #. SourceLocation:	Script/Factions/HOLPowerDisplay.as(55)
@@ -599,70 +599,70 @@ msgstr "呪われた戦士は10秒間、40%強く、25%速く攻撃する（任�
 #: Script/Player/HOLCommandGridFace.as(100)
 msgctxt "HOLCommandGridFace,BannerShort"
 msgid "Bannière"
-msgstr ""
+msgstr "旗"
 
 #. Key:	CloseRanksShort
 #. SourceLocation:	Script/Player/HOLCommandGridFace.as(100)
 #: Script/Player/HOLCommandGridFace.as(100)
 msgctxt "HOLCommandGridFace,CloseRanksShort"
 msgid "Rangs"
-msgstr ""
+msgstr "隊列"
 
 #. Key:	BannerName
 #. SourceLocation:	Script/Player/HOLCommandGridFace.as(103)
 #: Script/Player/HOLCommandGridFace.as(103)
 msgctxt "HOLCommandGridFace,BannerName"
 msgid "Bannière de l'Aube"
-msgstr ""
+msgstr "暁の旗"
 
 #. Key:	CloseRanksName
 #. SourceLocation:	Script/Player/HOLCommandGridFace.as(103)
 #: Script/Player/HOLCommandGridFace.as(103)
 msgctxt "HOLCommandGridFace,CloseRanksName"
 msgid "Serrez les rangs"
-msgstr ""
+msgstr "隊列を固めよ"
 
 #. Key:	LightSealShort
 #. SourceLocation:	Script/Player/HOLCommandGridFace.as(60)
 #: Script/Player/HOLCommandGridFace.as(60)
 msgctxt "HOLCommandGridFace,LightSealShort"
 msgid "Sceau"
-msgstr ""
+msgstr "封印"
 
 #. Key:	LightSealName
 #. SourceLocation:	Script/Player/HOLCommandGridFace.as(66)
 #: Script/Player/HOLCommandGridFace.as(66)
 msgctxt "HOLCommandGridFace,LightSealName"
 msgid "Sceau de lumière"
-msgstr ""
+msgstr "光の封印"
 
 #. Key:	KnightChallengeShort
 #. SourceLocation:	Script/Player/HOLCommandGridFace.as(73)
 #: Script/Player/HOLCommandGridFace.as(73)
 msgctxt "HOLCommandGridFace,KnightChallengeShort"
 msgid "Défi"
-msgstr ""
+msgstr "挑戦"
 
 #. Key:	KnightChallengeName
 #. SourceLocation:	Script/Player/HOLCommandGridFace.as(79)
 #: Script/Player/HOLCommandGridFace.as(79)
 msgctxt "HOLCommandGridFace,KnightChallengeName"
 msgid "Défi du Chevalier"
-msgstr ""
+msgstr "騎士の挑戦"
 
 #. Key:	NecroticRageShort
 #. SourceLocation:	Script/Player/HOLCommandGridFace.as(84)
 #: Script/Player/HOLCommandGridFace.as(84)
 msgctxt "HOLCommandGridFace,NecroticRageShort"
 msgid "Rage"
-msgstr ""
+msgstr "怒り"
 
 #. Key:	NecroticRageName
 #. SourceLocation:	Script/Player/HOLCommandGridFace.as(90)
 #: Script/Player/HOLCommandGridFace.as(90)
 msgctxt "HOLCommandGridFace,NecroticRageName"
 msgid "Rage nécrotique"
-msgstr ""
+msgstr "死霊の怒り"
 
 #. Key:	Effect80
 #. SourceLocation:	Script/Talents/HOLTalentNames.as(100)

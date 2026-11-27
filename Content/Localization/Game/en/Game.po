@@ -599,70 +599,70 @@ msgstr "The Damned Warrior strikes 40% harder and 25% faster for 10 s (rage cast
 #: Script/Player/HOLCommandGridFace.as(100)
 msgctxt "HOLCommandGridFace,BannerShort"
 msgid "Bannière"
-msgstr ""
+msgstr "Banner"
 
 #. Key:	CloseRanksShort
 #. SourceLocation:	Script/Player/HOLCommandGridFace.as(100)
 #: Script/Player/HOLCommandGridFace.as(100)
 msgctxt "HOLCommandGridFace,CloseRanksShort"
 msgid "Rangs"
-msgstr ""
+msgstr "Ranks"
 
 #. Key:	BannerName
 #. SourceLocation:	Script/Player/HOLCommandGridFace.as(103)
 #: Script/Player/HOLCommandGridFace.as(103)
 msgctxt "HOLCommandGridFace,BannerName"
 msgid "Bannière de l'Aube"
-msgstr ""
+msgstr "Banner of the Dawn"
 
 #. Key:	CloseRanksName
 #. SourceLocation:	Script/Player/HOLCommandGridFace.as(103)
 #: Script/Player/HOLCommandGridFace.as(103)
 msgctxt "HOLCommandGridFace,CloseRanksName"
 msgid "Serrez les rangs"
-msgstr ""
+msgstr "Close Ranks"
 
 #. Key:	LightSealShort
 #. SourceLocation:	Script/Player/HOLCommandGridFace.as(60)
 #: Script/Player/HOLCommandGridFace.as(60)
 msgctxt "HOLCommandGridFace,LightSealShort"
 msgid "Sceau"
-msgstr ""
+msgstr "Seal"
 
 #. Key:	LightSealName
 #. SourceLocation:	Script/Player/HOLCommandGridFace.as(66)
 #: Script/Player/HOLCommandGridFace.as(66)
 msgctxt "HOLCommandGridFace,LightSealName"
 msgid "Sceau de lumière"
-msgstr ""
+msgstr "Seal of Light"
 
 #. Key:	KnightChallengeShort
 #. SourceLocation:	Script/Player/HOLCommandGridFace.as(73)
 #: Script/Player/HOLCommandGridFace.as(73)
 msgctxt "HOLCommandGridFace,KnightChallengeShort"
 msgid "Défi"
-msgstr ""
+msgstr "Challenge"
 
 #. Key:	KnightChallengeName
 #. SourceLocation:	Script/Player/HOLCommandGridFace.as(79)
 #: Script/Player/HOLCommandGridFace.as(79)
 msgctxt "HOLCommandGridFace,KnightChallengeName"
 msgid "Défi du Chevalier"
-msgstr ""
+msgstr "Knight's Challenge"
 
 #. Key:	NecroticRageShort
 #. SourceLocation:	Script/Player/HOLCommandGridFace.as(84)
 #: Script/Player/HOLCommandGridFace.as(84)
 msgctxt "HOLCommandGridFace,NecroticRageShort"
 msgid "Rage"
-msgstr ""
+msgstr "Rage"
 
 #. Key:	NecroticRageName
 #. SourceLocation:	Script/Player/HOLCommandGridFace.as(90)
 #: Script/Player/HOLCommandGridFace.as(90)
 msgctxt "HOLCommandGridFace,NecroticRageName"
 msgid "Rage nécrotique"
-msgstr ""
+msgstr "Necrotic Rage"
 
 #. Key:	Effect80
 #. SourceLocation:	Script/Talents/HOLTalentNames.as(100)

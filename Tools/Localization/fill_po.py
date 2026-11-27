@@ -822,6 +822,21 @@ TRANSLATIONS = {
     "HOLAtelier,RefuseEmpty": ("no file chosen", "ファイルが選択されていません"),
     "HOLAtelier,RefuseEditorGame": ("import impossible in the editor run with -game: use the published game", "-game で起動したエディターでは読み込めません：公開版のゲームを使ってください"),
     "HOLAtelier,RefuseImport": ("import impossible (no static mesh in the file)", "読み込めません（ファイルに固定メッシュがありません）"),
+
+    # SAURON-1127ar2: 11 texts of other chantiers found by the GatherText of 2026-11-27 without a translation (the faces of the
+    # command grid, the Honor refusal of the faction slot). Names taken from the keys already translated (HOLHeroBlock,
+    # HOLUnitAbilityTable, HOLGameScreen,NecroticRage*); PROVISIONAL, to be read again by the user.
+    "HOLCommandGridFace,BannerShort": ("Banner", "旗"),
+    "HOLCommandGridFace,BannerName": ("Banner of the Dawn", "暁の旗"),
+    "HOLCommandGridFace,CloseRanksShort": ("Ranks", "隊列"),
+    "HOLCommandGridFace,CloseRanksName": ("Close Ranks", "隊列を固めよ"),
+    "HOLCommandGridFace,LightSealShort": ("Seal", "封印"),
+    "HOLCommandGridFace,LightSealName": ("Seal of Light", "光の封印"),
+    "HOLCommandGridFace,KnightChallengeShort": ("Challenge", "挑戦"),
+    "HOLCommandGridFace,KnightChallengeName": ("Knight's Challenge", "騎士の挑戦"),
+    "HOLCommandGridFace,NecroticRageShort": ("Rage", "怒り"),
+    "HOLCommandGridFace,NecroticRageName": ("Necrotic Rage", "死霊の怒り"),
+    "HOLFactionSlot,PowerRefusedHonor": ("Not enough Honor", "名誉が足りない"),
 }
 
 CULTURES = {"en": 0, "ja": 1}
