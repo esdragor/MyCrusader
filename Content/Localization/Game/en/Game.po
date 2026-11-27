@@ -711,7 +711,7 @@ msgstr "Seal of Light"
 #: Script/Player/HOLCommandGridFace.as(97)
 msgctxt "HOLCommandGridFace,LightSealEffect"
 msgid "Puis clic au sol, à 8 m du Moine au plus : une zone de {0} m de rayon pendant {1} s ; les ennemis dedans sont ralentis de {2} % ; recharge 40 s"
-msgstr "Then click the ground, up to 8 m from the Monk: a zone of {0} m radius for {1} s; the enemies in it are slowed by {2} %; cooldown 40 s"
+msgstr "Then click the ground, up to 8 m from the Monk: a zone of {0} m radius for {1} s, enemies inside are slowed by {2} %; cooldown 40 s"
 
 #. Key:	Effect80
 #. SourceLocation:	Script/Talents/HOLTalentNames.as(100)

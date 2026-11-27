@@ -840,7 +840,7 @@ TRANSLATIONS = {
     "HOLCommandGridFace,NecroticRageShort": ("Rage", "怒り"),
     "HOLCommandGridFace,NecroticRageName": ("Necrotic Rage", "死霊の怒り"),
     # HALDIR-1127ar3: the Seal's tooltip, {0} radius m, {1} duration s, {2} slow % (the other tooltips reuse the HOLGameScreen keys above).
-    "HOLCommandGridFace,LightSealEffect": ("Then click the ground, up to 8 m from the Monk: a zone of {0} m radius for {1} s; the enemies in it are slowed by {2} %; cooldown 40 s", "続けて修道士から8 m以内の地面をクリック：半径{0} mの領域が{1}秒間持続し、内部の敵を{2} %減速；再使用 40秒"),
+    "HOLCommandGridFace,LightSealEffect": ("Then click the ground, up to 8 m from the Monk: a zone of {0} m radius for {1} s, enemies inside are slowed by {2} %; cooldown 40 s", "続けて修道士から8 m以内の地面をクリック：半径{0} mの領域が{1}秒間続き、範囲内の敵の移動速度 −{2} %；再使用 40秒"),
     "HOLFactionSlot,PowerRefusedHonor": ("Not enough Honor", "名誉が足りません"),
 }
 
