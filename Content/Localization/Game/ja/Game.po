@@ -74,7 +74,7 @@ msgstr "モデルが読み込まれていません"
 #: Script/Art/Atelier/HOLAtelierRules.as(95)
 msgctxt "HOLAtelier,RefuseFileOrPack"
 msgid "licence incomplète : fichier ou pack vide"
-msgstr "ライセンスが不完全：ファイルまたはパックが空です"
+msgstr "ライセンスが不完全：素材名が空です"
 
 #. Key:	RefuseSource
 #. SourceLocation:	Script/Art/Atelier/HOLAtelierRules.as(96)
@@ -179,7 +179,7 @@ msgstr "勢力（空欄＝すべて）"
 #: Script/Art/Atelier/HOLAtelierScreen.as(28)
 msgctxt "HOLAtelier,FileOrPack"
 msgid "Licence : fichier ou pack"
-msgstr "ライセンス：ファイル／パック"
+msgstr "ライセンス：素材名"
 
 #. Key:	Source
 #. SourceLocation:	Script/Art/Atelier/HOLAtelierScreen.as(29)
