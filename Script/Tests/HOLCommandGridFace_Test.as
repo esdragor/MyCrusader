@@ -98,3 +98,29 @@ void Test_CGFHeroAbility(FUnitTest& T)
 	FString LockedLabel = LockedFace.Label.ToString();
 	T.AssertEquals("Bannière", LockedLabel, "a locked ability shows no seconds");
 }
+
+// HeroesOfLiberty.CommandGridFace.CulturePatterns (HALDIR-1127ar3): the seconds under a label and the rage's tooltip come from a LOCALIZED pattern
+// (ja "{0}\n{1}秒", en "... cooldown {6} s"), never " s" glued in script. Through the chain: the pattern's translation read from
+// Content/Localization/Game/<culture>/Game.locres by its namespace and key (HOLScreenTest::GetLocalizedTextIn), filled by HOLCommandGridFace.
+// RED while the patterns are plain strings (no key, nothing in the locres). To SEE RED again: make CooldownPattern return FText::FromString.
+void Test_CGFCulturePatterns(FUnitTest& T)
+{
+	const FString CooldownJa = HOLCommandGridFace::Fill(HOLScreenTest::GetLocalizedTextIn("ja", HOLCommandGridFace::CooldownPattern()), "封印", "12");
+	T.AssertEquals("封印\n12秒", CooldownJa, "ja: the seconds with 秒, no space");
+	const FString CooldownEn = HOLCommandGridFace::Fill(HOLScreenTest::GetLocalizedTextIn("en", HOLCommandGridFace::CooldownPattern()), "Seal", "12");
+	T.AssertEquals("Seal\n12 s", CooldownEn, "en: the seconds with s");
+
+	FHOLGridFaceFacts Facts;
+	Facts.Numbers.Add(10);
+	Facts.Numbers.Add(40);
+	Facts.Numbers.Add(25);
+	Facts.Numbers.Add(3);
+	Facts.Numbers.Add(30);
+	Facts.Numbers.Add(20);
+	Facts.Numbers.Add(40);
+	const FString RageEn = HOLCommandGridFace::FillNumbers(HOLScreenTest::GetLocalizedTextIn("en", HOLCommandGridFace::RageEffectPattern()), Facts);
+	T.AssertEquals("10 s: +40 % damage, +25 % attack rate, 3 HP lost per blow dealt. Refused under 30 HP, it ends at 20 HP; cooldown 40 s", RageEn,
+		"en: the rage's tooltip in English with its numbers");
+	const FString RageJa = HOLCommandGridFace::FillNumbers(HOLScreenTest::GetLocalizedTextIn("ja", HOLCommandGridFace::RageEffectPattern()), Facts);
+	T.AssertTrue(RageJa.StartsWith("10秒間"), "ja: the rage's tooltip starts with 10秒間 (" + RageJa + ")");
+}

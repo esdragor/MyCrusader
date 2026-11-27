@@ -18,7 +18,7 @@ namespace HOLAtelierText
 		if (Key == "Title") return NSLOCTEXT("HOLAtelier", "Title", "Atelier : modèle fixe (bâtiment ou source)");
 		if (Key == "Type") return NSLOCTEXT("HOLAtelier", "Type", "Type");
 		if (Key == "Choose") return NSLOCTEXT("HOLAtelier", "Choose", "Choisir");
-		if (Key == "Folder") return NSLOCTEXT("HOLAtelier", "Folder", "Modèles (.glb / .gltf) dans :");
+		if (Key == "Folder") return NSLOCTEXT("HOLAtelier", "Folder", "Modèles (.glb / .gltf) dans : {0}");
 		if (Key == "File") return NSLOCTEXT("HOLAtelier", "File", "Fichier");
 		if (Key == "Load") return NSLOCTEXT("HOLAtelier", "Load", "Charger");
 		if (Key == "Yaw") return NSLOCTEXT("HOLAtelier", "Yaw", "Rotation (degrés)");
@@ -32,17 +32,31 @@ namespace HOLAtelierText
 		if (Key == "Notes") return NSLOCTEXT("HOLAtelier", "Notes", "Notes");
 		if (Key == "Status") return NSLOCTEXT("HOLAtelier", "Status", "Statut");
 		if (Key == "Save") return NSLOCTEXT("HOLAtelier", "Save", "Enregistrer");
-		if (Key == "Loaded") return NSLOCTEXT("HOLAtelier", "Loaded", "Modèle chargé à la place de");
-		if (Key == "Saved") return NSLOCTEXT("HOLAtelier", "Saved", "Envoi écrit dans");
+		if (Key == "Loaded") return NSLOCTEXT("HOLAtelier", "Loaded", "Modèle chargé à la place de {0} : {1}");
+		if (Key == "Saved") return NSLOCTEXT("HOLAtelier", "Saved", "Envoi écrit dans {0}");
 		if (Key == "Refresh") return NSLOCTEXT("HOLAtelier", "Refresh", "Rafraîchir");
 		if (Key == "NoModels") return NSLOCTEXT("HOLAtelier", "NoModels", "aucun .glb / .gltf dans ce dossier : posez-y votre modèle puis Rafraîchir");
-		if (Key == "Copied") return NSLOCTEXT("HOLAtelier", "Copied", "Modèle copié dans l'envoi sous le nom");
-		if (Key == "CopyByHand") return NSLOCTEXT("HOLAtelier", "CopyFailed", "Modèle non copié : copiez votre fichier dans ce dossier sous le nom");
+		if (Key == "Copied") return NSLOCTEXT("HOLAtelier", "Copied", "Modèle copié dans l'envoi sous le nom {0}");
+		if (Key == "CopyByHand") return NSLOCTEXT("HOLAtelier", "CopyFailed", "Modèle non copié : copiez votre fichier ({1}) dans ce dossier sous le nom {0}");
 		if (Key == "CopyExtra") return NSLOCTEXT("HOLAtelier", "CopyExtra", "Copiez aussi à côté les fichiers que le .gltf nomme (.bin, textures).");
 		if (Key == "NoPreview") return NSLOCTEXT("HOLAtelier", "NoPreview", "aperçu (preview.png) non écrit");
 		if (Key == "Refused") return NSLOCTEXT("HOLAtelier", "Refused", "Non enregistré :");
+		// HALDIR-1127ar3: "name : reason" with the culture's separator (en "{0}: {1}", ja "{0}：{1}").
+		if (Key == "Pair") return NSLOCTEXT("HOLAtelier", "Pair", "{0} : {1}");
 		if (Key == "SendBack") return NSLOCTEXT("HOLAtelier", "SendBack", "Renvoyez ce dossier (ou son zip).");
 		return FText::FromString(Key);
+	}
+
+	// HALDIR-1127ar3: a localized pattern filled, {0} and {1} replaced (the culture's separator kept: fr "{0} : {1}", en "{0}: {1}", ja "{0}：{1}").
+	FString Fill(const FString& Pattern, const FString& First, const FString& Second = "")
+	{
+		return Pattern.Replace("{0}", First).Replace("{1}", Second);
+	}
+
+	// The message Key of the current culture with its values in their place.
+	FString Format(const FString& Key, const FString& First, const FString& Second = "")
+	{
+		return Fill(Get(Key).ToString(), First, Second);
 	}
 }
 
@@ -118,7 +132,7 @@ class UHOLAtelierScreen : UUserWidget
 		TypeBox = Field(n"AtelierTypeBox", TypeRow, 120.0);
 		AddTo(TypeRow, MakeButtonText(n"AtelierChooseType", HOLAtelierText::Get("Choose"), n"OnChooseType"));
 
-		Column.AddChildToVerticalBox(Label(FText::FromString(HOLAtelierText::Get("Folder").ToString() + " " + HOLAtelier::EntreesDir())));
+		Column.AddChildToVerticalBox(Label(FText::FromString(HOLAtelierText::Format("Folder", HOLAtelier::EntreesDir()))));
 		UHorizontalBox FileRow = Row(Column);
 		AddTo(FileRow, Label(HOLAtelierText::Get("File")));
 		AddTo(FileRow, MakeButton(n"AtelierPrevModel", "<", n"OnPrevModel"));
@@ -250,7 +264,7 @@ class UHOLAtelierScreen : UUserWidget
 		const FString Refused = HOLAtelier::TypeRefusal(Name, Buildings, Sources, Units);
 		if (!Refused.IsEmpty())
 		{
-			ShowMessage(Name + " : " + HOLAtelier::RefusalText(Refused).ToString());
+			ShowMessage(HOLAtelierText::Format("Pair", Name, HOLAtelier::RefusalText(Refused).ToString()));
 			Log(n"LogHOLMatch", f"Atelier: type refused {Refused} {Name}");
 			return Refused;
 		}
@@ -315,7 +329,7 @@ class UHOLAtelierScreen : UUserWidget
 		}
 		if (!Refused.IsEmpty())
 		{
-			ShowMessage(Path + " : " + HOLAtelier::RefusalText(Refused).ToString());
+			ShowMessage(HOLAtelierText::Format("Pair", Path, HOLAtelier::RefusalText(Refused).ToString()));
 			Log(n"LogHOLMatch", f"Atelier: load refused {Refused} {Path}");
 			return Refused;
 		}
@@ -326,9 +340,7 @@ class UHOLAtelierScreen : UUserWidget
 		if (FileOrPackBox.GetText().ToString().TrimStartAndEnd().IsEmpty())
 			FileOrPackBox.SetText(FText::FromString(FPaths::GetCleanFilename(Path)));
 		const int Drawn = Apply();
-		const FString LoadedWord = HOLAtelierText::Get("Loaded").ToString();
-		const FString LoadedName = FPaths::GetCleanFilename(Path);
-		ShowMessage(f"{LoadedWord} {Send.Type} : {LoadedName}");
+		ShowMessage(HOLAtelierText::Format("Loaded", Send.Type, FPaths::GetCleanFilename(Path)));
 		Log(n"LogHOLMatch", f"Atelier: loaded {Path} mesh={Mesh.Name} type={Send.Type} pieces={Drawn}");
 		System::ExecuteConsoleCommand(f"hol.Art.Focus {Send.Type} 18");
 		return "";
@@ -364,7 +376,7 @@ class UHOLAtelierScreen : UUserWidget
 		const int Found = Models.FindIndex(ModelName.TrimStartAndEnd());
 		if (Found < 0)
 		{
-			ShowMessage(ModelName + " : " + HOLAtelier::RefusalText("missing").ToString());
+			ShowMessage(HOLAtelierText::Format("Pair", ModelName, HOLAtelier::RefusalText("missing").ToString()));
 			Log(n"LogHOLMatch", f"Atelier: load refused missing {ModelName} (not in the list)");
 			return "missing";
 		}
@@ -622,11 +634,11 @@ class UHOLAtelierScreen : UUserWidget
 				bExtra = Gltf.Contains("\"uri\"") && Gltf.Replace("\"uri\":\"data:", "").Replace("\"uri\": \"data:", "").Contains("\"uri\"");
 		}
 		const bool bPreview = CapturePreview(Folder);
-		FString Text = HOLAtelierText::Get("Saved").ToString() + " " + Folder;
+		FString Text = HOLAtelierText::Format("Saved", Folder);
 		if (bCopied)
-			Text += "\n" + HOLAtelierText::Get("Copied").ToString() + " " + ModelName;
+			Text += "\n" + HOLAtelierText::Format("Copied", ModelName);
 		else
-			Text += "\n" + HOLAtelierText::Get("CopyByHand").ToString() + " " + ModelName + " : " + Send.ModelFile;
+			Text += "\n" + HOLAtelierText::Format("CopyByHand", ModelName, Send.ModelFile);
 		if (bExtra)
 			Text += "\n" + HOLAtelierText::Get("CopyExtra").ToString();
 		if (!bPreview)
