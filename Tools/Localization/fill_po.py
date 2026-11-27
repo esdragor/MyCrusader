@@ -825,6 +825,9 @@ TRANSLATIONS = {
     "HOLAtelier,RefuseEmpty": ("no file chosen", "ファイルが選択されていません"),
     "HOLAtelier,RefuseEditorGame": ("cannot import in the editor run with -game: use the published game", "-game で起動したエディターでは読み込めません：公開版のゲームを使ってください"),
     "HOLAtelier,RefuseImport": ("cannot import (no static mesh in the file)", "読み込めません（ファイルにスタティックメッシュがありません）"),
+    # HALDIR-1127ar6: the status row's words (the manifest keeps the raw final / provisional).
+    "HOLAtelier,StatusFinal": ("final", "確定"),
+    "HOLAtelier,StatusProvisional": ("provisional", "暫定"),
 
     # SAURON-1127ar2: 11 texts of other chantiers found by the GatherText of 2026-11-27 without a translation (the faces of the
     # command grid, the Honor refusal of the faction slot). Names taken from the keys already translated (HOLHeroBlock,
