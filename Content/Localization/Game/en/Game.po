@@ -4,8 +4,8 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: Game\n"
-"POT-Creation-Date: 2026-11-27 10:18\n"
-"PO-Revision-Date: 2026-11-27 10:18\n"
+"POT-Creation-Date: 2026-11-27 12:31\n"
+"PO-Revision-Date: 2026-11-27 12:31\n"
 "Language-Team: \n"
 "Language: en\n"
 "MIME-Version: 1.0\n"
@@ -129,8 +129,8 @@ msgstr "Choose"
 #. SourceLocation:	Script/Art/Atelier/HOLAtelierScreen.as(21)
 #: Script/Art/Atelier/HOLAtelierScreen.as(21)
 msgctxt "HOLAtelier,Folder"
-msgid "Modèles (.glb / .gltf) dans :"
-msgstr "Models (.glb / .gltf) in:"
+msgid "Modèles (.glb / .gltf) dans : {0}"
+msgstr "Models (.glb / .gltf) in: {0}"
 
 #. Key:	File
 #. SourceLocation:	Script/Art/Atelier/HOLAtelierScreen.as(22)
@@ -227,15 +227,15 @@ msgstr "Save"
 #. SourceLocation:	Script/Art/Atelier/HOLAtelierScreen.as(35)
 #: Script/Art/Atelier/HOLAtelierScreen.as(35)
 msgctxt "HOLAtelier,Loaded"
-msgid "Modèle chargé à la place de"
-msgstr "Model loaded in place of"
+msgid "Modèle chargé à la place de {0} : {1}"
+msgstr "Model loaded in place of {0}: {1}"
 
 #. Key:	Saved
 #. SourceLocation:	Script/Art/Atelier/HOLAtelierScreen.as(36)
 #: Script/Art/Atelier/HOLAtelierScreen.as(36)
 msgctxt "HOLAtelier,Saved"
-msgid "Envoi écrit dans"
-msgstr "Submission written to"
+msgid "Envoi écrit dans {0}"
+msgstr "Submission written to {0}"
 
 #. Key:	Refresh
 #. SourceLocation:	Script/Art/Atelier/HOLAtelierScreen.as(37)
@@ -255,15 +255,15 @@ msgstr "no .glb / .gltf in this folder: add your model, then Refresh"
 #. SourceLocation:	Script/Art/Atelier/HOLAtelierScreen.as(39)
 #: Script/Art/Atelier/HOLAtelierScreen.as(39)
 msgctxt "HOLAtelier,Copied"
-msgid "Modèle copié dans l'envoi sous le nom"
-msgstr "Model copied into the submission as"
+msgid "Modèle copié dans l'envoi sous le nom {0}"
+msgstr "Model copied into the submission as {0}"
 
 #. Key:	CopyFailed
 #. SourceLocation:	Script/Art/Atelier/HOLAtelierScreen.as(40)
 #: Script/Art/Atelier/HOLAtelierScreen.as(40)
 msgctxt "HOLAtelier,CopyFailed"
-msgid "Modèle non copié : copiez votre fichier dans ce dossier sous le nom"
-msgstr "Model not copied: copy your file into this folder as"
+msgid "Modèle non copié : copiez votre fichier ({1}) dans ce dossier sous le nom {0}"
+msgstr "Model not copied: copy your file ({1}) into this folder as {0}"
 
 #. Key:	CopyExtra
 #. SourceLocation:	Script/Art/Atelier/HOLAtelierScreen.as(41)
@@ -286,9 +286,16 @@ msgctxt "HOLAtelier,Refused"
 msgid "Non enregistré :"
 msgstr "Not saved:"
 
+#. Key:	Pair
+#. SourceLocation:	Script/Art/Atelier/HOLAtelierScreen.as(45)
+#: Script/Art/Atelier/HOLAtelierScreen.as(45)
+msgctxt "HOLAtelier,Pair"
+msgid "{0} : {1}"
+msgstr "{0}: {1}"
+
 #. Key:	SendBack
-#. SourceLocation:	Script/Art/Atelier/HOLAtelierScreen.as(44)
-#: Script/Art/Atelier/HOLAtelierScreen.as(44)
+#. SourceLocation:	Script/Art/Atelier/HOLAtelierScreen.as(46)
+#: Script/Art/Atelier/HOLAtelierScreen.as(46)
 msgctxt "HOLAtelier,SendBack"
 msgid "Renvoyez ce dossier (ou son zip)."
 msgstr "Send this folder back (or its zip)."
@@ -594,75 +601,117 @@ msgctxt "HOLMoraleTable,DescriptionNecroticRage"
 msgid "Le Guerrier damné frappe 40 % plus fort et 25 % plus vite pendant 10 s (rage lancée à la demande, voir UnitAbilities.csv)."
 msgstr "The Damned Warrior strikes 40% harder and 25% faster for 10 s (rage cast on demand, see UnitAbilities.csv)."
 
-#. Key:	BannerShort
-#. SourceLocation:	Script/Player/HOLCommandGridFace.as(100)
-#: Script/Player/HOLCommandGridFace.as(100)
-msgctxt "HOLCommandGridFace,BannerShort"
-msgid "Bannière"
-msgstr "Banner"
-
-#. Key:	CloseRanksShort
-#. SourceLocation:	Script/Player/HOLCommandGridFace.as(100)
-#: Script/Player/HOLCommandGridFace.as(100)
-msgctxt "HOLCommandGridFace,CloseRanksShort"
-msgid "Rangs"
-msgstr "Ranks"
-
-#. Key:	BannerName
-#. SourceLocation:	Script/Player/HOLCommandGridFace.as(103)
-#: Script/Player/HOLCommandGridFace.as(103)
-msgctxt "HOLCommandGridFace,BannerName"
-msgid "Bannière de l'Aube"
-msgstr "Banner of the Dawn"
-
-#. Key:	CloseRanksName
-#. SourceLocation:	Script/Player/HOLCommandGridFace.as(103)
-#: Script/Player/HOLCommandGridFace.as(103)
-msgctxt "HOLCommandGridFace,CloseRanksName"
-msgid "Serrez les rangs"
-msgstr "Close Ranks"
-
-#. Key:	LightSealShort
-#. SourceLocation:	Script/Player/HOLCommandGridFace.as(60)
-#: Script/Player/HOLCommandGridFace.as(60)
-msgctxt "HOLCommandGridFace,LightSealShort"
-msgid "Sceau"
-msgstr "Seal"
-
-#. Key:	LightSealName
-#. SourceLocation:	Script/Player/HOLCommandGridFace.as(66)
-#: Script/Player/HOLCommandGridFace.as(66)
-msgctxt "HOLCommandGridFace,LightSealName"
-msgid "Sceau de lumière"
-msgstr "Seal of Light"
-
 #. Key:	KnightChallengeShort
-#. SourceLocation:	Script/Player/HOLCommandGridFace.as(73)
-#: Script/Player/HOLCommandGridFace.as(73)
+#. SourceLocation:	Script/Player/HOLCommandGridFace.as(102)
+#: Script/Player/HOLCommandGridFace.as(102)
 msgctxt "HOLCommandGridFace,KnightChallengeShort"
 msgid "Défi"
 msgstr "Challenge"
 
 #. Key:	KnightChallengeName
-#. SourceLocation:	Script/Player/HOLCommandGridFace.as(79)
-#: Script/Player/HOLCommandGridFace.as(79)
+#. SourceLocation:	Script/Player/HOLCommandGridFace.as(108)
+#: Script/Player/HOLCommandGridFace.as(108)
 msgctxt "HOLCommandGridFace,KnightChallengeName"
 msgid "Défi du Chevalier"
 msgstr "Knight's Challenge"
 
 #. Key:	NecroticRageShort
-#. SourceLocation:	Script/Player/HOLCommandGridFace.as(84)
-#: Script/Player/HOLCommandGridFace.as(84)
+#. SourceLocation:	Script/Player/HOLCommandGridFace.as(113)
+#: Script/Player/HOLCommandGridFace.as(113)
 msgctxt "HOLCommandGridFace,NecroticRageShort"
 msgid "Rage"
 msgstr "Rage"
 
 #. Key:	NecroticRageName
-#. SourceLocation:	Script/Player/HOLCommandGridFace.as(90)
-#: Script/Player/HOLCommandGridFace.as(90)
+#. SourceLocation:	Script/Player/HOLCommandGridFace.as(119)
+#: Script/Player/HOLCommandGridFace.as(119)
 msgctxt "HOLCommandGridFace,NecroticRageName"
 msgid "Rage nécrotique"
 msgstr "Necrotic Rage"
+
+#. Key:	BannerShort
+#. SourceLocation:	Script/Player/HOLCommandGridFace.as(127)
+#: Script/Player/HOLCommandGridFace.as(127)
+msgctxt "HOLCommandGridFace,BannerShort"
+msgid "Bannière"
+msgstr "Banner"
+
+#. Key:	CloseRanksShort
+#. SourceLocation:	Script/Player/HOLCommandGridFace.as(127)
+#: Script/Player/HOLCommandGridFace.as(127)
+msgctxt "HOLCommandGridFace,CloseRanksShort"
+msgid "Rangs"
+msgstr "Ranks"
+
+#. Key:	BannerName
+#. SourceLocation:	Script/Player/HOLCommandGridFace.as(130)
+#: Script/Player/HOLCommandGridFace.as(130)
+msgctxt "HOLCommandGridFace,BannerName"
+msgid "Bannière de l'Aube"
+msgstr "Banner of the Dawn"
+
+#. Key:	CloseRanksName
+#. SourceLocation:	Script/Player/HOLCommandGridFace.as(130)
+#: Script/Player/HOLCommandGridFace.as(130)
+msgctxt "HOLCommandGridFace,CloseRanksName"
+msgid "Serrez les rangs"
+msgstr "Close Ranks"
+
+#. Key:	HeroAbilityLocked
+#. SourceLocation:	Script/Player/HOLCommandGridFace.as(133)
+#: Script/Player/HOLCommandGridFace.as(133)
+msgctxt "HOLGameScreen,HeroAbilityLocked"
+msgid "Niveau {0} requis"
+msgstr "Requires level {0}"
+
+#. Key:	BannerEffect
+#. SourceLocation:	Script/Player/HOLCommandGridFace.as(137)
+#: Script/Player/HOLCommandGridFace.as(137)
+msgctxt "HOLGameScreen,BannerEffect"
+msgid "Puis clic au sol, à 16 m du héros au plus : son aura (−15 % de dégâts reçus à 12 m) pendant 45 s ; recharge 120 s"
+msgstr "Then click the ground, up to 16 m from the hero: his aura (−15 % damage taken within 12 m) for 45 s; cooldown 120 s"
+
+#. Key:	CloseRanksEffect
+#. SourceLocation:	Script/Player/HOLCommandGridFace.as(141)
+#: Script/Player/HOLCommandGridFace.as(141)
+msgctxt "HOLGameScreen,CloseRanksEffect"
+msgid "Immobilise 15 s les unités à 12 m du héros (formation défensive) : elles restent sur place et reçoivent −25 % de dégâts ; recharge 60 s"
+msgstr "Immobilizes your units within 12 m of the hero for 15 s (defensive formation): they hold their ground and take −25 % damage; cooldown 60 s"
+
+#. Key:	HeroAbilityCooldown
+#. SourceLocation:	Script/Player/HOLCommandGridFace.as(37)
+#: Script/Player/HOLCommandGridFace.as(37)
+msgctxt "HOLGameScreen,HeroAbilityCooldown"
+msgid "{0}\n{1} s"
+msgstr "{0}\n{1} s"
+
+#. Key:	NecroticRageEffect
+#. SourceLocation:	Script/Player/HOLCommandGridFace.as(43)
+#: Script/Player/HOLCommandGridFace.as(43)
+msgctxt "HOLGameScreen,NecroticRageEffect"
+msgid "{0} s : +{1} % de dégâts, +{2} % de cadence, {3} PV perdus par coup porté. Refusée sous {4} PV, elle s'arrête à {5} PV ; recharge {6} s"
+msgstr "{0} s: +{1} % damage, +{2} % attack rate, {3} HP lost per blow dealt. Refused under {4} HP, it ends at {5} HP; cooldown {6} s"
+
+#. Key:	LightSealShort
+#. SourceLocation:	Script/Player/HOLCommandGridFace.as(90)
+#: Script/Player/HOLCommandGridFace.as(90)
+msgctxt "HOLCommandGridFace,LightSealShort"
+msgid "Sceau"
+msgstr "Seal"
+
+#. Key:	LightSealName
+#. SourceLocation:	Script/Player/HOLCommandGridFace.as(96)
+#: Script/Player/HOLCommandGridFace.as(96)
+msgctxt "HOLCommandGridFace,LightSealName"
+msgid "Sceau de lumière"
+msgstr "Seal of Light"
+
+#. Key:	LightSealEffect
+#. SourceLocation:	Script/Player/HOLCommandGridFace.as(97)
+#: Script/Player/HOLCommandGridFace.as(97)
+msgctxt "HOLCommandGridFace,LightSealEffect"
+msgid "Puis clic au sol, à 8 m du Moine au plus : une zone de {0} m de rayon pendant {1} s ; les ennemis dedans sont ralentis de {2} % ; recharge 40 s"
+msgstr "Then click the ground, up to 8 m from the Monk: a zone of {0} m radius for {1} s; the enemies in it are slowed by {2} %; cooldown 40 s"
 
 #. Key:	Effect80
 #. SourceLocation:	Script/Talents/HOLTalentNames.as(100)

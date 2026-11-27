@@ -786,7 +786,7 @@ TRANSLATIONS = {
     "HOLAtelier,Title": ("Atelier: static model (building or resource)", "アトリエ：静的モデル（建物または資源）"),
     "HOLAtelier,Type": ("Type", "種類"),
     "HOLAtelier,Choose": ("Choose", "選択"),
-    "HOLAtelier,Folder": ("Models (.glb / .gltf) in:", "モデル（.glb / .gltf）の場所："),
+    "HOLAtelier,Folder": ("Models (.glb / .gltf) in: {0}", "モデル（.glb / .gltf）の場所：{0}"),
     "HOLAtelier,File": ("File", "ファイル"),
     "HOLAtelier,Load": ("Load", "読み込み"),
     "HOLAtelier,Refresh": ("Refresh", "更新"),
@@ -802,10 +802,12 @@ TRANSLATIONS = {
     "HOLAtelier,Notes": ("Notes", "メモ"),
     "HOLAtelier,Status": ("Status", "状態"),
     "HOLAtelier,Save": ("Save", "保存"),
-    "HOLAtelier,Loaded": ("Model loaded in place of", "モデルを読み込みました。差し替え先："),
-    "HOLAtelier,Saved": ("Submission written to", "送付フォルダーを書き出しました："),
-    "HOLAtelier,Copied": ("Model copied into the submission as", "モデルを送付フォルダーにコピーしました。名前："),
-    "HOLAtelier,CopyFailed": ("Model not copied: copy your file into this folder as", "モデルをコピーできませんでした。このフォルダーに次の名前でファイルをコピーしてください："),
+    "HOLAtelier,Loaded": ("Model loaded in place of {0}: {1}", "{0}の代わりにモデルを読み込みました：{1}"),
+    "HOLAtelier,Saved": ("Submission written to {0}", "送付フォルダーを書き出しました：{0}"),
+    "HOLAtelier,Copied": ("Model copied into the submission as {0}", "モデルを送付フォルダーにコピーしました。名前：{0}"),
+    "HOLAtelier,CopyFailed": ("Model not copied: copy your file ({1}) into this folder as {0}", "モデルをコピーできませんでした。ファイル（{1}）をこのフォルダーに次の名前でコピーしてください：{0}"),
+    # HALDIR-1127ar3: "name : reason" of the atelier's refusals, the culture's separator.
+    "HOLAtelier,Pair": ("{0}: {1}", "{0}：{1}"),
     "HOLAtelier,CopyExtra": ("Also copy next to it the files the .gltf refers to (.bin, textures).", ".gltf が参照するファイル（.bin、テクスチャ）も同じ場所にコピーしてください。"),
     "HOLAtelier,NoPreview": ("preview (preview.png) not written", "プレビュー（preview.png）は書き出されていません"),
     "HOLAtelier,Refused": ("Not saved:", "保存されませんでした："),
@@ -837,6 +839,8 @@ TRANSLATIONS = {
     "HOLCommandGridFace,KnightChallengeName": ("Knight's Challenge", "騎士の挑戦"),
     "HOLCommandGridFace,NecroticRageShort": ("Rage", "怒り"),
     "HOLCommandGridFace,NecroticRageName": ("Necrotic Rage", "死霊の怒り"),
+    # HALDIR-1127ar3: the Seal's tooltip, {0} radius m, {1} duration s, {2} slow % (the other tooltips reuse the HOLGameScreen keys above).
+    "HOLCommandGridFace,LightSealEffect": ("Then click the ground, up to 8 m from the Monk: a zone of {0} m radius for {1} s; the enemies in it are slowed by {2} %; cooldown 40 s", "続けて修道士から8 m以内の地面をクリック：半径{0} mの領域が{1}秒間持続し、内部の敵を{2} %減速；再使用 40秒"),
     "HOLFactionSlot,PowerRefusedHonor": ("Not enough Honor", "名誉が足りません"),
 }
 

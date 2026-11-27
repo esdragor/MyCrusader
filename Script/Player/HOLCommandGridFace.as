@@ -30,16 +30,17 @@ struct FHOLGridCellLookView
 
 namespace HOLCommandGridFace
 {
-	// HALDIR-1127ar3: the pattern of a label with its seconds under it (fr / en "{0}\n{1} s", ja "{0}\n{1}秒"). STUB (red): not a localized text yet.
+	// HALDIR-1127ar3: the pattern of a label with its seconds under it (fr / en "{0}\n{1} s", ja "{0}\n{1}秒"). Key of the former C++ face
+	// (HOLGameScreen.cpp, kept so that its translations stay: Tools/Localization/fill_po.py).
 	FText CooldownPattern()
 	{
-		return FText::FromString("{0}\n{1} s");
+		return NSLOCTEXT("HOLGameScreen", "HeroAbilityCooldown", "{0}\n{1} s");
 	}
 
-	// HALDIR-1127ar3: the pattern of the rage's tooltip, {0}..{6} = FHOLGridFaceFacts::Numbers. STUB (red): not a localized text yet.
+	// HALDIR-1127ar3: the pattern of the rage's tooltip, {0}..{6} = FHOLGridFaceFacts::Numbers (key of the former C++ face).
 	FText RageEffectPattern()
 	{
-		return FText::FromString("{0} s : +{1} % de dégâts, +{2} % de cadence, {3} PV perdus par coup porté. Refusée sous {4} PV, elle s'arrête à {5} PV ; recharge {6} s");
+		return NSLOCTEXT("HOLGameScreen", "NecroticRageEffect", "{0} s : +{1} % de dégâts, +{2} % de cadence, {3} PV perdus par coup porté. Refusée sous {4} PV, elle s'arrête à {5} PV ; recharge {6} s");
 	}
 
 	// A localized pattern filled: {0} and {1} replaced (the culture's order, separators and units kept; HOLDiplomacyPanelText::Format's way).
@@ -66,7 +67,7 @@ namespace HOLCommandGridFace
 		{
 			return Short;
 		}
-		return FText::FromString(Short.ToString() + "\n" + Seconds + " s");
+		return FText::FromString(Fill(CooldownPattern().ToString(), Short.ToString(), "" + Seconds));
 	}
 
 	int NumberAt(const FHOLGridFaceFacts& Facts, int Index)
@@ -93,8 +94,7 @@ namespace HOLCommandGridFace
 			}
 			Result.ReportName = n"LightSeal";
 			Result.TooltipName = NSLOCTEXT("HOLCommandGridFace", "LightSealName", "Sceau de lumière");
-			Result.TooltipEffect = FText::FromString("Puis clic au sol, à 8 m du Moine au plus : une zone de " + NumberAt(Facts, 0) + " m de rayon pendant "
-				+ NumberAt(Facts, 1) + " s ; les ennemis dedans sont ralentis de " + NumberAt(Facts, 2) + " % ; recharge 40 s");
+			Result.TooltipEffect = FText::FromString(FillNumbers(NSLOCTEXT("HOLCommandGridFace", "LightSealEffect", "Puis clic au sol, à 8 m du Moine au plus : une zone de {0} m de rayon pendant {1} s ; les ennemis dedans sont ralentis de {2} % ; recharge 40 s").ToString(), Facts));
 		}
 		else if (Command.Command == EHOLGridCommandKind::KnightChallenge)
 		{
@@ -117,9 +117,7 @@ namespace HOLCommandGridFace
 			}
 			Result.ReportName = n"NecroticRage";
 			Result.TooltipName = NSLOCTEXT("HOLCommandGridFace", "NecroticRageName", "Rage nécrotique");
-			Result.TooltipEffect = FText::FromString("" + NumberAt(Facts, 0) + " s : +" + NumberAt(Facts, 1) + " % de dégâts, +" + NumberAt(Facts, 2)
-				+ " % de cadence, " + NumberAt(Facts, 3) + " PV perdus par coup porté. Refusée sous " + NumberAt(Facts, 4) + " PV, elle s'arrête à "
-				+ NumberAt(Facts, 5) + " PV ; recharge " + NumberAt(Facts, 6) + " s");
+			Result.TooltipEffect = FText::FromString(FillNumbers(RageEffectPattern().ToString(), Facts));
 		}
 		else if (Command.Command == EHOLGridCommandKind::HeroAbility)
 		{
@@ -132,15 +130,15 @@ namespace HOLCommandGridFace
 			Result.TooltipName = bBanner ? NSLOCTEXT("HOLCommandGridFace", "BannerName", "Bannière de l'Aube") : NSLOCTEXT("HOLCommandGridFace", "CloseRanksName", "Serrez les rangs");
 			if (bLocked)
 			{
-				Result.TooltipEffect = FText::FromString("Niveau " + Facts.UnlockLevel + " requis");
+				Result.TooltipEffect = FText::FromString(Fill(NSLOCTEXT("HOLGameScreen", "HeroAbilityLocked", "Niveau {0} requis").ToString(), "" + Facts.UnlockLevel));
 			}
 			else if (bBanner)
 			{
-				Result.TooltipEffect = FText::FromString("Puis clic au sol, à 16 m du héros au plus : son aura (−15 % de dégâts reçus à 12 m) pendant 45 s ; recharge 120 s");
+				Result.TooltipEffect = NSLOCTEXT("HOLGameScreen", "BannerEffect", "Puis clic au sol, à 16 m du héros au plus : son aura (−15 % de dégâts reçus à 12 m) pendant 45 s ; recharge 120 s");
 			}
 			else
 			{
-				Result.TooltipEffect = FText::FromString("Immobilise 15 s les unités à 12 m du héros (formation défensive) : elles restent sur place et reçoivent −25 % de dégâts ; recharge 60 s");
+				Result.TooltipEffect = NSLOCTEXT("HOLGameScreen", "CloseRanksEffect", "Immobilise 15 s les unités à 12 m du héros (formation défensive) : elles restent sur place et reçoivent −25 % de dégâts ; recharge 60 s");
 			}
 		}
 		return Result;
