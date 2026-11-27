@@ -42,7 +42,8 @@ hol.Camera.Focus 0 1050
 hol.Combat.Enabled 1
 wait 0.6
 hol.HUD.Report
-waitlog duel window: Défi envoyé au héros du joueur 2
+# HALDIR-1127ar6: the window's id line (no culture), not its French title: the scenario passes in -Culture en / ja too.
+waitlog duel window id: sent to slot 1 no button
 capture duel_window
 hol.Duel.ForceAnswer 1 1
 waitlog slot 1 accepts at step
