@@ -3818,4 +3818,6 @@ Réalisation 2026-11-26 (AR7-c, art-lfs-1126ar) : sources d'art rangées sous `A
 
 **D930** (Artistes, entrée et distribution de l'atelier léger, précise D929 ; questions posées en séance = « argument -Atelier » et « le jeu publié », 2026-11-27) : l'atelier léger vit **dans le jeu publié** (même paquet que les joueurs, par le lanceur ; pas de paquet à part) et s'ouvre quand le jeu est lancé avec l'argument **`-Atelier`** (raccourci fourni à l'artiste) : le jeu va droit au niveau d'atelier ; aucun bouton dans le menu principal, rien de visible pour un joueur. Lot AR8-b, chantier `ArtistesInProgress.md`.
 
-Prochain numéro : **D931**.
+**D931** (Artistes, fichiers de l'atelier léger, précise D930 ; question posée en séance = « liaison C++ », 2026-11-27) : l'écran d'atelier liste le dossier d'entrée et copie le modèle de l'artiste dans l'envoi par **deux fonctions C++ exposées au script** (copier un fichier, lister les fichiers d'un dossier par extension), petites et testées ; pas de greffon BlueprintFileUtils, pas de copie à la main. C++ par exception (liaison à exposer au script) ; build et republication du kit d'éditeur après intégration. Lot AR8-c, chantier `ArtistesInProgress.md`.
+
+Prochain numéro : **D932**.
