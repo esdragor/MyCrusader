@@ -20,57 +20,36 @@ def log(text):
     unreal.log("apply_art_send: " + text)
 
 
-def static_meshes(task, folder):
-    """The static meshes made by the import (the task's objects, else the folder's static meshes)."""
-    found = []
-    paths = []
-    try:
-        paths = list(task.get_editor_property("imported_object_paths"))
-    except Exception:
-        paths = []
-    for path in paths:
-        asset = unreal.load_asset(str(path))
-        if isinstance(asset, unreal.StaticMesh) and asset not in found:
-            found.append(asset)
-    if not found:
-        for path in unreal.EditorAssetLibrary.list_assets(folder, recursive=False, include_folder=False):
-            asset = unreal.load_asset(path)
-            if isinstance(asset, unreal.StaticMesh):
-                found.append(asset)
-    return found
-
-
-def object_path(package_path):
-    return "%s.%s" % (package_path, package_path.rsplit("/", 1)[1])
-
-
 def import_mesh(plan):
+    """Interchange puts the import under <destination>/<source name>/{StaticMeshes,Materials,Textures}: the import goes to
+    <folder>/<SM name>_Parts (one parts folder per mesh, so a faction variant never replaces the materials of another), then
+    the static mesh moves to <folder>/SM_<Type>[_<Faction>] (an older one there is replaced)."""
     folder, mesh_path = plan["folder"], plan["mesh"]
     mesh_name = mesh_path.rsplit("/", 1)[1]
-    before = set(str(p) for p in unreal.EditorAssetLibrary.list_assets(folder, recursive=False, include_folder=False))
+    parts = "%s/%s_Parts" % (folder, mesh_name)
     task = unreal.AssetImportTask()
     task.set_editor_property("filename", plan["model"])
-    task.set_editor_property("destination_path", folder)
+    task.set_editor_property("destination_path", parts)
     task.set_editor_property("destination_name", mesh_name)
     task.set_editor_property("automated", True)
     task.set_editor_property("replace_existing", True)
     task.set_editor_property("save", True)
     unreal.AssetToolsHelpers.get_asset_tools().import_asset_tasks([task])
-    meshes = static_meshes(task, folder)
-    named = [m for m in meshes if m.get_name() == mesh_name]
-    if named:
-        mesh = named[0]
-    else:
-        new = [m for m in meshes if object_path(m.get_path_name().split(".")[0]) not in before
-               and m.get_path_name().split(".")[0] not in before]
-        if len(new) != 1:
-            raise RuntimeError("%d new static mesh(es) after the import of %s (one expected): %s"
-                               % (len(new), plan["model"], [m.get_path_name() for m in meshes]))
-        mesh = new[0]
-        old = mesh.get_path_name().split(".")[0]
-        if not unreal.EditorAssetLibrary.rename_asset(old, mesh_path):
-            raise RuntimeError("could not rename %s to %s" % (old, mesh_path))
-        mesh = unreal.load_asset(mesh_path)
+    meshes = []
+    for path in unreal.EditorAssetLibrary.list_assets(parts, recursive=True, include_folder=False):
+        asset = unreal.load_asset(path)
+        if isinstance(asset, unreal.StaticMesh):
+            meshes.append(asset)
+    if len(meshes) != 1:
+        raise RuntimeError("%d static mesh(es) under %s after the import of %s (one expected): %s"
+                           % (len(meshes), parts, plan["model"], [m.get_path_name() for m in meshes]))
+    old = meshes[0].get_path_name().split(".")[0]
+    if unreal.EditorAssetLibrary.does_asset_exist(mesh_path):
+        if not unreal.EditorAssetLibrary.delete_asset(mesh_path):
+            raise RuntimeError("could not delete the older " + mesh_path)
+    if not unreal.EditorAssetLibrary.rename_asset(old, mesh_path):
+        raise RuntimeError("could not move %s to %s" % (old, mesh_path))
+    mesh = unreal.load_asset(mesh_path)
     if mesh is None or not unreal.EditorAssetLibrary.save_loaded_asset(mesh, False):
         raise RuntimeError("could not save " + mesh_path)
     log("imported %s -> %s (%d material slot(s))" % (plan["model"], mesh.get_path_name(), len(mesh.get_editor_property("static_materials"))))

@@ -196,6 +196,11 @@ if (-not $NoEditor) {
         mesh = $MeshPath; art = $ArtPath; yaw = $Yaw; scale = $Scale; status = $ArtStatus }
     [IO.File]::WriteAllText($PlanFile, ($Plan | ConvertTo-Json), (New-Object Text.UTF8Encoding $false))
     New-Item -ItemType Directory -Force (Split-Path $Log) | Out-Null
+    # Content/Art/** is LFS "lockable" (D926): git checks those files out read-only; the editor could not save them.
+    $ContentDir = Join-Path $Root "Content\Art\$Family\$Type"
+    $Writable = @("DA_Art_$Type$Suffix.uasset", "SM_$Type$Suffix.uasset" | ForEach-Object { Join-Path $ContentDir $_ } | Where-Object { Test-Path -LiteralPath $_ })
+    if (Test-Path -LiteralPath (Join-Path $ContentDir "SM_$Type$($Suffix)_Parts")) { $Writable += @(Get-ChildItem -LiteralPath (Join-Path $ContentDir "SM_$Type$($Suffix)_Parts") -Recurse -File | ForEach-Object FullName) }
+    foreach ($f in $Writable) { $item = Get-Item -LiteralPath $f; if ($item.IsReadOnly) { $item.IsReadOnly = $false; Write-Output "  lecture seule levee (LFS lockable) : $($f.Substring($Root.Length + 1))" } }
     $env:HOL_ART_SEND_PLAN = $PlanFile
     $EditorArgs = @($UProject.FullName, '-run=pythonscript', "-script=$Script", '-unattended', '-nosplash', '-nosound', '-Multiprocess', '-LiveCoding=0', "-abslog=$Log")
     Write-Output "apply_art_send : editeur cache (journal $Log)"
