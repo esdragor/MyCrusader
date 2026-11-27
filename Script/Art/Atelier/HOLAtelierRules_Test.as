@@ -78,6 +78,25 @@ void Test_AtelierSendFolderName(FUnitTest& T)
 	T.AssertEquals("House_Templars_20261127-0905", HOLAtelier::SendFolderName("House", "Templars", When), "a faction variant");
 }
 
+// HALDIR-1127ar4: the send's folder in the panel's message (it overflowed the panel): from the Documents folder, cut in its middle.
+void Test_AtelierShownPath(FUnitTest& T)
+{
+	const FString Documents = "C:/Users/Artist/Documents/";
+	const FString Send = "C:/Users/Artist/Documents/HeroesOfLiberty/Atelier/Envois/House_Templars_20261127-0905_2";
+	FString Shown = HOLAtelier::ShownPath(Send, Documents, 80);
+	T.AssertEquals("Documents/HeroesOfLiberty/Atelier/Envois/House_Templars_20261127-0905_2", Shown, "under Documents: from the Documents folder's own name");
+	Shown = HOLAtelier::ShownPath("C:\\Users\\Artist\\Documents\\HeroesOfLiberty\\Atelier\\Envois\\House", "C:\\Users\\Artist\\Documents", 80);
+	T.AssertEquals("Documents/HeroesOfLiberty/Atelier/Envois/House", Shown, "back slashes, Documents without its last slash");
+	Shown = HOLAtelier::ShownPath(Send, Documents, 48);
+	T.AssertEquals("Documents/Heroes…/House_Templars_20261127-0905_2", Shown, "longer than 48: its start, …, its last folder");
+	const int Length = Shown.Len();
+	T.AssertEquals(48, Length, "cut to MaxChars");
+	Shown = HOLAtelier::ShownPath("D:/Art/Envois/House", Documents, 80);
+	T.AssertEquals("D:/Art/Envois/House", Shown, "elsewhere and short: as it is");
+	Shown = HOLAtelier::ShownPath("D:/A_very_long_folder_name_without_any_slash_at_all_x", Documents, 20);
+	T.AssertEquals("D:/A_very…h_at_all_x", Shown, "a last folder longer than the room: cut in its middle too");
+}
+
 void Test_AtelierModelPaths(FUnitTest& T)
 {
 	const FString Entrees = "C:/Users/Artist/Documents/HeroesOfLiberty/Atelier/Entrees/";

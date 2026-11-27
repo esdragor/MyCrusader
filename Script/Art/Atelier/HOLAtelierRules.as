@@ -196,6 +196,43 @@ namespace HOLAtelier
 		return "";
 	}
 
+	// HALDIR-1127ar4: a folder as the atelier panel shows it: under the Documents folder, from that folder's own name
+	// ("Documents/HeroesOfLiberty/Atelier/Envois/House_..."), and longer than MaxChars cut in its middle with "…" (its start
+	// and its last folder kept): the panel's message stays inside the panel in every language.
+	FString ShownPath(const FString& Path, const FString& Documents, int MaxChars)
+	{
+		FString Shown = Path.Replace("\\", "/");
+		FString Root = Documents.Replace("\\", "/");
+		if (!Root.IsEmpty() && !Root.EndsWith("/"))
+			Root += "/";
+		if (!Root.IsEmpty() && Shown.StartsWith(Root))
+		{
+			// The Documents folder's own name (its last part), never a word of the game: the user finds it under that name.
+			const FString Bare = Root.LeftChop(1);
+			int Cut = Bare.Len() - 1;
+			while (Cut >= 0 && Bare.Mid(Cut, 1) != "/")
+				Cut--;
+			Shown = Bare.RightChop(Cut + 1) + "/" + Shown.RightChop(Root.Len());
+		}
+		if (Shown.Len() <= MaxChars || MaxChars < 3)
+			return Shown;
+		// The room left by "…": the last folder kept whole when the start keeps at least a quarter of it, else cut in two halves.
+		const int Room = MaxChars - 1;
+		int Slash = Shown.Len() - 1;
+		while (Slash >= 0 && Shown.Mid(Slash, 1) != "/")
+			Slash--;
+		int TailLen = Slash >= 0 ? Shown.Len() - Slash : Room;
+		if (TailLen > Room - Room / 4)
+			TailLen = Room - Room / 2;
+		return Shown.Left(Room - TailLen) + "…" + Shown.Right(TailLen);
+	}
+
+	// The atelier panel's way: from the user's Documents folder, 56 characters at most (one line of the 560 px message).
+	FString ShownPathHere(const FString& Path)
+	{
+		return ShownPath(Path, FPlatformProcess::UserDir(), 56);
+	}
+
 	// <Documents>/HeroesOfLiberty/Atelier/
 	FString AtelierDir()
 	{

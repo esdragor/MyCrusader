@@ -18,7 +18,8 @@ frames 2
 hol.Select.ClickGround -12200 2600
 frames 10
 hol.HUD.Report
-waitlog HUD cells: A: Lancier squelette; Z: Garde noire; E: Guerrier damné
+# Language-independent (any -Culture): the grid's ids in the HUD report, not the translated cell names (the Legions' names are checked by legions_roster).
+waitlog grid A=Spearman enabled Z=ManAtArms enabled E=DamnedWarrior enabled
 hol.Select.Grid 2
 waitlog Production: DamnedWarrior of slot 0 done
 frames 30

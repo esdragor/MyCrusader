@@ -18,7 +18,8 @@ frames 2
 hol.Select.ClickGround -12200 2600
 frames 10
 hol.HUD.Report
-waitlog HUD cells: A: Lancier squelette; Z: Garde noire; E: Guerrier damné
+# Language-independent (any -Culture): the grid's ids in the HUD report, not the translated cell names (the Legions' names are checked by legions_roster).
+waitlog grid A=Spearman enabled Z=ManAtArms enabled E=DamnedWarrior enabled
 # 2. Key E: the Damned Warrior is produced.
 # Real key (L14-5): hol.UI.Key sends a Slate keyboard event, the path of a real key (model deploy).
 hol.UI.Key E 0 0.1
@@ -36,8 +37,8 @@ frames 2
 hol.Select.ClickUnit -1
 frames 10
 hol.HUD.Report
-waitlog HUD selection name: Guerrier damné$
-waitlog HUD cells: E: Rage
+waitlog selection DamnedWarrior (own)
+waitlog grid E=NecroticRage enabled
 capture legions_warrior_button
 # 5. The real key E of the Rage cell (L14-5: was hol.HUD.Click GridCell02, an internal call; a real mouse click on a HUD cell has no scenario verb yet, hol.UI.Click only reaches menu screens): the order reaches the simulation, the rage is cast.
 hol.UI.Key E 0 0.1

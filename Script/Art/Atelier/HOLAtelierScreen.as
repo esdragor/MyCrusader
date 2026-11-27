@@ -132,7 +132,7 @@ class UHOLAtelierScreen : UUserWidget
 		TypeBox = Field(n"AtelierTypeBox", TypeRow, 120.0);
 		AddTo(TypeRow, MakeButtonText(n"AtelierChooseType", HOLAtelierText::Get("Choose"), n"OnChooseType"));
 
-		Column.AddChildToVerticalBox(Label(FText::FromString(HOLAtelierText::Format("Folder", HOLAtelier::EntreesDir()))));
+		Column.AddChildToVerticalBox(Label(FText::FromString(HOLAtelierText::Format("Folder", HOLAtelier::ShownPathHere(HOLAtelier::EntreesDir())))));
 		UHorizontalBox FileRow = Row(Column);
 		AddTo(FileRow, Label(HOLAtelierText::Get("File")));
 		AddTo(FileRow, MakeButton(n"AtelierPrevModel", "<", n"OnPrevModel"));
@@ -177,6 +177,8 @@ class UHOLAtelierScreen : UUserWidget
 		UHorizontalBox SaveRow = Row(Column);
 		AddTo(SaveRow, MakeButtonText(n"AtelierSave", HOLAtelierText::Get("Save"), n"OnSave"));
 		MessageText = Label(FText::FromString(""));
+		// HALDIR-1127ar4: a long message (the send's folder, a refusal) wraps inside the 560 px instead of running out of the panel.
+		Cast<UTextLayoutWidget>(MessageText).SetAutoWrapText(true);
 		Column.AddChildToVerticalBox(Sized(MessageText, 560.0));
 
 		Send.Type = Fixed.IsValidIndex(TypeIndex) ? Fixed[TypeIndex] : "";
@@ -329,7 +331,7 @@ class UHOLAtelierScreen : UUserWidget
 		}
 		if (!Refused.IsEmpty())
 		{
-			ShowMessage(HOLAtelierText::Format("Pair", Path, HOLAtelier::RefusalText(Refused).ToString()));
+			ShowMessage(HOLAtelierText::Format("Pair", HOLAtelier::ShownPathHere(Path), HOLAtelier::RefusalText(Refused).ToString()));
 			Log(n"LogHOLMatch", f"Atelier: load refused {Refused} {Path}");
 			return Refused;
 		}
@@ -634,11 +636,11 @@ class UHOLAtelierScreen : UUserWidget
 				bExtra = Gltf.Contains("\"uri\"") && Gltf.Replace("\"uri\":\"data:", "").Replace("\"uri\": \"data:", "").Contains("\"uri\"");
 		}
 		const bool bPreview = CapturePreview(Folder);
-		FString Text = HOLAtelierText::Format("Saved", Folder);
+		FString Text = HOLAtelierText::Format("Saved", HOLAtelier::ShownPathHere(Folder));
 		if (bCopied)
 			Text += "\n" + HOLAtelierText::Format("Copied", ModelName);
 		else
-			Text += "\n" + HOLAtelierText::Format("CopyByHand", ModelName, Send.ModelFile);
+			Text += "\n" + HOLAtelierText::Format("CopyByHand", ModelName, HOLAtelier::ShownPathHere(Send.ModelFile));
 		if (bExtra)
 			Text += "\n" + HOLAtelierText::Get("CopyExtra").ToString();
 		if (!bPreview)

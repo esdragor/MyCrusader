@@ -711,7 +711,7 @@ msgstr "光の封印"
 #: Script/Player/HOLCommandGridFace.as(97)
 msgctxt "HOLCommandGridFace,LightSealEffect"
 msgid "Puis clic au sol, à 8 m du Moine au plus : une zone de {0} m de rayon pendant {1} s ; les ennemis dedans sont ralentis de {2} % ; recharge 40 s"
-msgstr "続けて修道士から8 m以内の地面をクリック：半径{0} mの領域が{1}秒間持続し、内部の敵を{2} %減速；再使用 40秒"
+msgstr "続けて修道士から8 m以内の地面をクリック：半径{0} mの領域が{1}秒間続き、範囲内の敵の移動速度 −{2} %；再使用 40秒"
 
 #. Key:	Effect80
 #. SourceLocation:	Script/Talents/HOLTalentNames.as(100)
