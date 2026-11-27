@@ -39,21 +39,21 @@ msgstr "no file chosen"
 #: Script/Art/Atelier/HOLAtelierRules.as(103)
 msgctxt "HOLAtelier,RefuseEditorGame"
 msgid "import impossible dans l'éditeur lancé en -game : utilisez le jeu publié"
-msgstr "import impossible in the editor run with -game: use the published game"
+msgstr "cannot import in the editor run with -game: use the published game"
 
 #. Key:	RefuseImport
 #. SourceLocation:	Script/Art/Atelier/HOLAtelierRules.as(104)
 #: Script/Art/Atelier/HOLAtelierRules.as(104)
 msgctxt "HOLAtelier,RefuseImport"
 msgid "import impossible (aucun maillage fixe dans le fichier)"
-msgstr "import impossible (no static mesh in the file)"
+msgstr "cannot import (no static mesh in the file)"
 
 #. Key:	RefuseUnit
 #. SourceLocation:	Script/Art/Atelier/HOLAtelierRules.as(92)
 #: Script/Art/Atelier/HOLAtelierRules.as(92)
 msgctxt "HOLAtelier,RefuseUnit"
 msgid "unités : par l'éditeur"
-msgstr "units: through the editor"
+msgstr "units: use the editor"
 
 #. Key:	RefuseUnknown
 #. SourceLocation:	Script/Art/Atelier/HOLAtelierRules.as(93)
@@ -74,21 +74,21 @@ msgstr "no model loaded"
 #: Script/Art/Atelier/HOLAtelierRules.as(95)
 msgctxt "HOLAtelier,RefuseFileOrPack"
 msgid "licence incomplète : fichier ou pack vide"
-msgstr "incomplete licence: file or pack empty"
+msgstr "incomplete license: file or pack empty"
 
 #. Key:	RefuseSource
 #. SourceLocation:	Script/Art/Atelier/HOLAtelierRules.as(96)
 #: Script/Art/Atelier/HOLAtelierRules.as(96)
 msgctxt "HOLAtelier,RefuseSource"
 msgid "licence incomplète : source vide"
-msgstr "incomplete licence: source empty"
+msgstr "incomplete license: source empty"
 
 #. Key:	RefuseLicence
 #. SourceLocation:	Script/Art/Atelier/HOLAtelierRules.as(97)
 #: Script/Art/Atelier/HOLAtelierRules.as(97)
 msgctxt "HOLAtelier,RefuseLicence"
 msgid "licence incomplète : licence vide"
-msgstr "incomplete licence: licence empty"
+msgstr "incomplete license: license empty"
 
 #. Key:	RefuseScale
 #. SourceLocation:	Script/Art/Atelier/HOLAtelierRules.as(98)
@@ -109,7 +109,7 @@ msgstr "status: final or provisional"
 #: Script/Art/Atelier/HOLAtelierScreen.as(18)
 msgctxt "HOLAtelier,Title"
 msgid "Atelier : modèle fixe (bâtiment ou source)"
-msgstr "Atelier: fixed model (building or source)"
+msgstr "Atelier: static model (building or resource)"
 
 #. Key:	Type
 #. SourceLocation:	Script/Art/Atelier/HOLAtelierScreen.as(19)
@@ -179,28 +179,28 @@ msgstr "Faction (empty = all)"
 #: Script/Art/Atelier/HOLAtelierScreen.as(28)
 msgctxt "HOLAtelier,FileOrPack"
 msgid "Licence : fichier ou pack"
-msgstr "Licence: file or pack"
+msgstr "License: file or pack"
 
 #. Key:	Source
 #. SourceLocation:	Script/Art/Atelier/HOLAtelierScreen.as(29)
 #: Script/Art/Atelier/HOLAtelierScreen.as(29)
 msgctxt "HOLAtelier,Source"
 msgid "Licence : source"
-msgstr "Licence: source"
+msgstr "License: source"
 
 #. Key:	Licence
 #. SourceLocation:	Script/Art/Atelier/HOLAtelierScreen.as(30)
 #: Script/Art/Atelier/HOLAtelierScreen.as(30)
 msgctxt "HOLAtelier,Licence"
 msgid "Licence"
-msgstr "Licence"
+msgstr "License"
 
 #. Key:	Url
 #. SourceLocation:	Script/Art/Atelier/HOLAtelierScreen.as(31)
 #: Script/Art/Atelier/HOLAtelierScreen.as(31)
 msgctxt "HOLAtelier,Url"
 msgid "Licence : adresse (url)"
-msgstr "Licence: address (url)"
+msgstr "License: address (URL)"
 
 #. Key:	Notes
 #. SourceLocation:	Script/Art/Atelier/HOLAtelierScreen.as(32)
@@ -228,14 +228,14 @@ msgstr "Save"
 #: Script/Art/Atelier/HOLAtelierScreen.as(35)
 msgctxt "HOLAtelier,Loaded"
 msgid "Modèle chargé à la place de"
-msgstr "Model loaded in the place of"
+msgstr "Model loaded in place of"
 
 #. Key:	Saved
 #. SourceLocation:	Script/Art/Atelier/HOLAtelierScreen.as(36)
 #: Script/Art/Atelier/HOLAtelierScreen.as(36)
 msgctxt "HOLAtelier,Saved"
 msgid "Envoi écrit dans"
-msgstr "Send written in"
+msgstr "Submission written to"
 
 #. Key:	Refresh
 #. SourceLocation:	Script/Art/Atelier/HOLAtelierScreen.as(37)
@@ -249,28 +249,28 @@ msgstr "Refresh"
 #: Script/Art/Atelier/HOLAtelierScreen.as(38)
 msgctxt "HOLAtelier,NoModels"
 msgid "aucun .glb / .gltf dans ce dossier : posez-y votre modèle puis Rafraîchir"
-msgstr "no .glb / .gltf in this folder: put your model there, then Refresh"
+msgstr "no .glb / .gltf in this folder: add your model, then Refresh"
 
 #. Key:	Copied
 #. SourceLocation:	Script/Art/Atelier/HOLAtelierScreen.as(39)
 #: Script/Art/Atelier/HOLAtelierScreen.as(39)
 msgctxt "HOLAtelier,Copied"
 msgid "Modèle copié dans l'envoi sous le nom"
-msgstr "Model copied into the send as"
+msgstr "Model copied into the submission as"
 
 #. Key:	CopyFailed
 #. SourceLocation:	Script/Art/Atelier/HOLAtelierScreen.as(40)
 #: Script/Art/Atelier/HOLAtelierScreen.as(40)
 msgctxt "HOLAtelier,CopyFailed"
 msgid "Modèle non copié : copiez votre fichier dans ce dossier sous le nom"
-msgstr "Model not copied: copy your file into this folder under the name"
+msgstr "Model not copied: copy your file into this folder as"
 
 #. Key:	CopyExtra
 #. SourceLocation:	Script/Art/Atelier/HOLAtelierScreen.as(41)
 #: Script/Art/Atelier/HOLAtelierScreen.as(41)
 msgctxt "HOLAtelier,CopyExtra"
 msgid "Copiez aussi à côté les fichiers que le .gltf nomme (.bin, textures)."
-msgstr "Also copy beside it the files the .gltf names (.bin, textures)."
+msgstr "Also copy next to it the files the .gltf refers to (.bin, textures)."
 
 #. Key:	NoPreview
 #. SourceLocation:	Script/Art/Atelier/HOLAtelierScreen.as(42)
