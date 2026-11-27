@@ -44,6 +44,18 @@ namespace HOLAtelierText
 		if (Key == "SendBack") return NSLOCTEXT("HOLAtelier", "SendBack", "Renvoyez ce dossier (ou son zip).");
 		return FText::FromString(Key);
 	}
+
+	// HALDIR-1127ar3: a localized pattern filled, {0} and {1} replaced (the culture's separator kept: fr "{0} : {1}", en "{0}: {1}", ja "{0}：{1}").
+	FString Fill(const FString& Pattern, const FString& First, const FString& Second = "")
+	{
+		return Pattern.Replace("{0}", First).Replace("{1}", Second);
+	}
+
+	// The message Key of the current culture with its values in their place.
+	FString Format(const FString& Key, const FString& First, const FString& Second = "")
+	{
+		return Fill(Get(Key).ToString(), First, Second);
+	}
 }
 
 class UHOLAtelierScreen : UUserWidget

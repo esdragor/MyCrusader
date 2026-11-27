@@ -30,6 +30,35 @@ struct FHOLGridCellLookView
 
 namespace HOLCommandGridFace
 {
+	// HALDIR-1127ar3: the pattern of a label with its seconds under it (fr / en "{0}\n{1} s", ja "{0}\n{1}秒"). STUB (red): not a localized text yet.
+	FText CooldownPattern()
+	{
+		return FText::FromString("{0}\n{1} s");
+	}
+
+	// HALDIR-1127ar3: the pattern of the rage's tooltip, {0}..{6} = FHOLGridFaceFacts::Numbers. STUB (red): not a localized text yet.
+	FText RageEffectPattern()
+	{
+		return FText::FromString("{0} s : +{1} % de dégâts, +{2} % de cadence, {3} PV perdus par coup porté. Refusée sous {4} PV, elle s'arrête à {5} PV ; recharge {6} s");
+	}
+
+	// A localized pattern filled: {0} and {1} replaced (the culture's order, separators and units kept; HOLDiplomacyPanelText::Format's way).
+	FString Fill(const FString& Pattern, const FString& First, const FString& Second = "")
+	{
+		return Pattern.Replace("{0}", First).Replace("{1}", Second);
+	}
+
+	// A localized pattern filled with the facts' numbers: {N} = Facts.Numbers[N].
+	FString FillNumbers(const FString& Pattern, const FHOLGridFaceFacts& Facts)
+	{
+		FString Out = Pattern;
+		for (int Index = 0; Index < Facts.Numbers.Num(); Index++)
+		{
+			Out = Out.Replace("{" + Index + "}", "" + Facts.Numbers[Index]);
+		}
+		return Out;
+	}
+
 	// The label with the seconds left under it ("Sceau\n12 s"), HOLGameScreen.cpp 1337 / 1364 / 1317.
 	FText WithCooldown(const FText& Short, int Seconds)
 	{
