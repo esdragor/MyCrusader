@@ -10,12 +10,36 @@ namespace HOLUnitSelectSound
 	// stays silent; an empty selection never rings.
 	bool IsNewSelection(const TArray<int>& Previous, const TArray<int>& Current)
 	{
+		if (Current.Num() == 0)
+			return false;
+		for (int Id : Current)
+		{
+			if (!Previous.Contains(Id))
+				return true;
+		}
 		return false;
 	}
 
 	// The type that rings for a selection whose units are of these types: the most numerous, the first met on a tie; None for none.
 	FName SoundingType(const TArray<FName>& Types)
 	{
-		return NAME_None;
+		FName Best = NAME_None;
+		int BestCount = 0;
+		for (int Index = 0; Index < Types.Num(); Index++)
+		{
+			int Count = 0;
+			for (const FName& Other : Types)
+			{
+				if (Other == Types[Index])
+					Count++;
+			}
+			// Strictly more: on a tie the type met first keeps the place.
+			if (Count > BestCount)
+			{
+				Best = Types[Index];
+				BestCount = Count;
+			}
+		}
+		return Best;
 	}
 }
