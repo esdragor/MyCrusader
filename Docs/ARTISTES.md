@@ -322,6 +322,30 @@ Control « Git ») n'affiche pas encore les verrous : passez par le terminal.
 Le stockage LFS du compte GitHub est limité : gardez les textures en 2048 ou moins et ne versionnez pas les exports
 intermédiaires. Hors de ces deux dossiers, un fichier de plus de 100 Mo reste refusé par GitHub.
 
+## 11 bis. Envoi d'un modèle fixe (pour nous, D929)
+
+Un artiste sans éditeur renvoie, pour un **bâtiment ou une ressource** (jamais une unité : celles-ci passent par
+l'éditeur emballé), un **envoi** : un dossier `<Type>[_<Faction>]_<aaaammjj-hhmm>` (ou son zip) avec `manifest.json`
+(format 1 : type, faction, famille, modèle, yaw, scale, status final ou provisional, licence), le modèle `.glb` / `.gltf`
+et un `preview.png` facultatif. Pour l'appliquer, dans le worktree d'intégration, éditeur fermé :
+
+```
+powershell -ExecutionPolicy Bypass -File Tools\Art\apply_art_send.ps1 -From <envoi.zip ou dossier> -DryRun
+powershell -ExecutionPolicy Bypass -File Tools\Art\apply_art_send.ps1 -From <envoi.zip ou dossier>
+```
+
+- `-DryRun` imprime le plan (fichiers et champs qui changeraient) sans rien écrire. Un envoi faux (type inconnu ou
+  d'unité, famille, faction, modèle absent ou pas glTF, licence incomplète, échelle <= 0, statut) est refusé en entier,
+  toutes les raisons listées, rien n'est écrit (code 1).
+- Sans `-DryRun` : la source va dans `ArtSource/<Famille>/<Type>/<envoi>/` (LFS), l'éditeur caché importe le modèle en
+  `SM_<Type>[_<Faction>]` (matériaux dans `SM_..._Parts`) et remplit la fiche `DA_Art_<Type>[_<Faction>]` (Mesh, rotation
+  et échelle surchargées, statut) ; `Tools/Data/ArtVisuals.csv` et `Docs/assets_art.csv` (licence) sont mis à jour.
+  `final` retire la ligne du type de `Placeholders.txt` et de `Tools/Data/placeholders_map.csv` ; `provisional` les garde.
+- Les fichiers d'art LFS « lockable » sont en lecture seule : l'outil lève ce drapeau sur la fiche et le modèle qu'il
+  réécrit (prenez le verrou `git lfs lock` si un artiste travaille sur le même type).
+- Ensuite : `Tools\check_placeholders.ps1`, un coup d'œil (`hol.Art.Icon <Type>`), commit sur une branche, intégration
+  habituelle.
+
 ## 12. À venir (pas encore dans le jeu)
 
 Ces points sont en préparation ; ce guide sera mis à jour quand ils seront dans le jeu.
