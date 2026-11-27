@@ -173,22 +173,26 @@ namespace HOLAtelier
 	// The models the artist put in the folder Entrees (names only, sorted): the screen's list, refreshed by its button.
 	TArray<FString> ListModels(const FString& Entrees)
 	{
-		// AR8-c red step: nothing listed yet.
-		return TArray<FString>();
+		return UHOLArtVisualRegistry::ListArtFiles(Entrees, ModelExtensions());
 	}
 
 	// The model chosen after a step (+1 / -1) in a list of Count names, wrapping round; -1 for an empty list; from none (-1): the first.
 	int StepIndex(int Index, int Count, int Step)
 	{
-		// AR8-c red step.
-		return -1;
+		if (Count <= 0)
+			return -1;
+		if (Index < 0 || Index >= Count)
+			return 0;
+		return ((Index + Step) % Count + Count) % Count;
 	}
 
 	// "Save": copies the model into the send folder as model.<ext> (a file already there is never replaced). Returns the name written
 	// (model.glb / model.gltf), "" when nothing was copied.
 	FString CopyModelToSend(const FString& ModelFile, const FString& Folder)
 	{
-		// AR8-c red step: not copied yet.
+		const FString Name = SendModelName(ModelFile);
+		if (UHOLArtVisualRegistry::CopyArtFile(ModelFile, Folder + "/" + Name, false))
+			return Name;
 		return "";
 	}
 

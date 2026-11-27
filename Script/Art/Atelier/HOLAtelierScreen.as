@@ -2,11 +2,12 @@
 // menu launches a Plain match (UHOLAtelierEntry, "launch"), the match becomes hol.Art.Lab (gallery, scale marks, light) and the atelier
 // screen opens ("lab"). Without the argument nothing changes (no button in the menu). Rules: HOLAtelierRules.as.
 // The screen: a FIXED type (buildings and sources; a unit is refused, "unités : par l'éditeur"), a .glb / .gltf from the known folder
-// <Documents>\HeroesOfLiberty\Atelier\Entrees\ (named in a field: listing a folder needs a binding the script does not have), loaded by
+// <Documents>\HeroesOfLiberty\Atelier\Entrees\ (chosen in the list of that folder, < > and "Rafraîchir"; AR8-c, D931), loaded by
 // Interchange's runtime import IN THE PLACE OF THAT TYPE'S MODEL ONLY, yaw and scale, licence, author, status, notes; "Save" writes
-// <Documents>\HeroesOfLiberty\Atelier\Envois\<Type>[_<Faction>]_<aaaammjj-hhmm>\ (manifest.json format 1, the model's copy, preview.png),
-// the send Tools\Art\apply_art_send.ps1 applies. Console commands (scenario art_atelier, same functions as the buttons):
-//   hol.Art.Atelier.Open | .Type <Type> | .Load <file> | .Set <yaw|scale|status|author|faction|file_or_pack|source|licence|url|notes> <value> | .Save
+// <Documents>\HeroesOfLiberty\Atelier\Envois\<Type>[_<Faction>]_<aaaammjj-hhmm>\ (manifest.json format 1, the model copied as
+// model.glb / model.gltf, preview.png), the send Tools\Art\apply_art_send.ps1 applies. Console commands (scenario art_atelier, same
+// functions as the buttons):
+//   hol.Art.Atelier.Open | .Type <Type> | .Refresh | .Load <name in the list | full path> | .Set <yaw|scale|status|author|faction|file_or_pack|source|licence|url|notes> <value> | .Save
 
 const FConsoleVariable CVar_ArtAtelierState("hol.Art.Atelier.State", 0);
 
@@ -33,7 +34,10 @@ namespace HOLAtelierText
 		if (Key == "Save") return NSLOCTEXT("HOLAtelier", "Save", "Enregistrer");
 		if (Key == "Loaded") return NSLOCTEXT("HOLAtelier", "Loaded", "Modèle chargé à la place de");
 		if (Key == "Saved") return NSLOCTEXT("HOLAtelier", "Saved", "Envoi écrit dans");
-		if (Key == "CopyByHand") return NSLOCTEXT("HOLAtelier", "CopyByHand", "À faire à la main : copiez votre fichier dans ce dossier sous le nom");
+		if (Key == "Refresh") return NSLOCTEXT("HOLAtelier", "Refresh", "Rafraîchir");
+		if (Key == "NoModels") return NSLOCTEXT("HOLAtelier", "NoModels", "aucun .glb / .gltf dans ce dossier : posez-y votre modèle puis Rafraîchir");
+		if (Key == "Copied") return NSLOCTEXT("HOLAtelier", "Copied", "Modèle copié dans l'envoi sous le nom");
+		if (Key == "CopyByHand") return NSLOCTEXT("HOLAtelier", "CopyFailed", "Modèle non copié : copiez votre fichier dans ce dossier sous le nom");
 		if (Key == "CopyExtra") return NSLOCTEXT("HOLAtelier", "CopyExtra", "Copiez aussi à côté les fichiers que le .gltf nomme (.bin, textures).");
 		if (Key == "NoPreview") return NSLOCTEXT("HOLAtelier", "NoPreview", "aperçu (preview.png) non écrit");
 		if (Key == "Refused") return NSLOCTEXT("HOLAtelier", "Refused", "Non enregistré :");
@@ -69,7 +73,10 @@ class UHOLAtelierScreen : UUserWidget
 	UCommonTextBlock StatusText;
 	UCommonTextBlock MessageText;
 	UEditableTextBox TypeBox;
-	UEditableTextBox FileBox;
+	// The models of Entrees (names, sorted; HOLAtelier::ListModels) and the one chosen (-1: none).
+	TArray<FString> Models;
+	int ModelIndex = -1;
+	UCommonTextBlock ModelText;
 	UEditableTextBox AuthorBox;
 	UEditableTextBox FactionBox;
 	UEditableTextBox FileOrPackBox;
@@ -114,7 +121,11 @@ class UHOLAtelierScreen : UUserWidget
 		Column.AddChildToVerticalBox(Label(FText::FromString(HOLAtelierText::Get("Folder").ToString() + " " + HOLAtelier::EntreesDir())));
 		UHorizontalBox FileRow = Row(Column);
 		AddTo(FileRow, Label(HOLAtelierText::Get("File")));
-		FileBox = Field(n"AtelierFileBox", FileRow, 300.0);
+		AddTo(FileRow, MakeButton(n"AtelierPrevModel", "<", n"OnPrevModel"));
+		ModelText = Label(FText::FromString(""));
+		AddTo(FileRow, Sized(ModelText, 300.0));
+		AddTo(FileRow, MakeButton(n"AtelierNextModel", ">", n"OnNextModel"));
+		AddTo(FileRow, MakeButtonText(n"AtelierRefresh", HOLAtelierText::Get("Refresh"), n"OnRefresh"));
 		AddTo(FileRow, MakeButtonText(n"AtelierLoad", HOLAtelierText::Get("Load"), n"OnLoad"));
 
 		UHorizontalBox YawRow = Row(Column);
@@ -157,6 +168,7 @@ class UHOLAtelierScreen : UUserWidget
 		Send.Type = Fixed.IsValidIndex(TypeIndex) ? Fixed[TypeIndex] : "";
 		Send.Family = HOLAtelier::FamilyOf(Send.Type, Buildings, Sources, Units);
 		ShowValues();
+		RefreshModels();
 	}
 
 	UCommonTextBlock Label(FText Text)
@@ -322,10 +334,75 @@ class UHOLAtelierScreen : UUserWidget
 		return "";
 	}
 
+	// Reads the models of Entrees again (the chosen one kept when it is still there, else the first). Returns how many.
+	int RefreshModels()
+	{
+		const FString Kept = Models.IsValidIndex(ModelIndex) ? Models[ModelIndex] : "";
+		Models = HOLAtelier::ListModels(HOLAtelier::EntreesDir());
+		const int Found = Models.FindIndex(Kept);
+		ModelIndex = Found >= 0 ? Found : HOLAtelier::StepIndex(-1, Models.Num(), 1);
+		ShowModel();
+		FString Names = "";
+		for (const FString& Name : Models)
+			Names += " " + Name;
+		Log(n"LogHOLMatch", f"Atelier: models {Models.Num()}{Names}");
+		return Models.Num();
+	}
+
+	void ShowModel()
+	{
+		if (Models.IsValidIndex(ModelIndex))
+			ModelText.SetText(FText::FromString(f"{Models[ModelIndex]} ({ModelIndex + 1}/{Models.Num()})"));
+		else
+			ModelText.SetText(HOLAtelierText::Get("NoModels"));
+	}
+
+	// Chooses a model of the list by its name and loads it. Returns the refusal key or "" (a name not in the list: "missing").
+	FString PickModel(const FString& Name)
+	{
+		RefreshModels();
+		const int Found = Models.FindIndex(Name.TrimStartAndEnd());
+		if (Found < 0)
+		{
+			ShowMessage(Name + " : " + HOLAtelier::RefusalText("missing").ToString());
+			Log(n"LogHOLMatch", f"Atelier: load refused missing {Name} (not in the list)");
+			return "missing";
+		}
+		ModelIndex = Found;
+		ShowModel();
+		Log(n"LogHOLMatch", f"Atelier: picked {Models[ModelIndex]} {ModelIndex + 1}/{Models.Num()}");
+		return LoadModel(Models[ModelIndex]);
+	}
+
+	UFUNCTION()
+	void OnPrevModel()
+	{
+		ModelIndex = HOLAtelier::StepIndex(ModelIndex, Models.Num(), -1);
+		ShowModel();
+	}
+
+	UFUNCTION()
+	void OnNextModel()
+	{
+		ModelIndex = HOLAtelier::StepIndex(ModelIndex, Models.Num(), 1);
+		ShowModel();
+	}
+
+	UFUNCTION()
+	void OnRefresh()
+	{
+		RefreshModels();
+	}
+
 	UFUNCTION()
 	void OnLoad()
 	{
-		LoadModel(FileBox.GetText().ToString());
+		if (!Models.IsValidIndex(ModelIndex))
+		{
+			ShowMessage(HOLAtelier::RefusalText("empty").ToString());
+			return;
+		}
+		LoadModel(Models[ModelIndex]);
 	}
 
 	// Draws the loaded model in the place of the chosen type: the first visible piece of each building of the type takes the model
@@ -492,7 +569,6 @@ class UHOLAtelierScreen : UUserWidget
 		else if (Name == "licence") Box = LicenceBox;
 		else if (Name == "url") Box = UrlBox;
 		else if (Name == "notes") Box = NotesBox;
-		else if (Name == "file") Box = FileBox;
 		if (Box == nullptr)
 			return false;
 		Box.SetText(FText::FromString(Value));
@@ -524,25 +600,32 @@ class UHOLAtelierScreen : UUserWidget
 			Log(n"LogHOLMatch", f"Atelier: save refused{Keys}");
 			return "";
 		}
-		const FString Folder = HOLAtelier::EnvoisDir() + HOLAtelier::SendFolderName(Send.Type, Send.Faction, FDateTime::Now());
+		// A second save in the same minute gets its own folder (_2, _3...): a send is never mixed with another one.
+		const FString Base = HOLAtelier::EnvoisDir() + HOLAtelier::SendFolderName(Send.Type, Send.Faction, FDateTime::Now());
+		FString Folder = Base;
+		int Again = 2;
+		while (FPaths::DirectoryExists(Folder))
+		{
+			Folder = Base + f"_{Again}";
+			Again++;
+		}
 		const FString ModelName = HOLAtelier::SendModelName(Send.ModelFile);
 		const bool bManifest = FFileHelper::SaveStringToFile(HOLAtelier::ManifestJson(Send), Folder + "/manifest.json", FFileHelper::EEncodingOptions::ForceUTF8WithoutBOM);
-		// The copy of the model: a .gltf is text (copied here); a .glb is binary and the script has no file copy (NOT DONE: binding asked,
-		// GLORFINDEL-1127ar2 report): the artist copies it by hand, the message says where and under which name.
-		bool bCopied = false;
+		// The model copied as model.glb / model.gltf (AR8-c, D931: UHOLArtVisualRegistry::CopyArtFile, byte for byte).
+		const bool bCopied = !HOLAtelier::CopyModelToSend(Send.ModelFile, Folder).IsEmpty();
+		// A .gltf that names other files (.bin, textures): those are not copied, the message says so.
 		bool bExtra = false;
 		if (ModelName == "model.gltf")
 		{
 			FString Gltf;
 			if (FFileHelper::LoadFileToString(Gltf, Send.ModelFile))
-			{
-				bCopied = FFileHelper::SaveStringToFile(Gltf, Folder + "/" + ModelName, FFileHelper::EEncodingOptions::ForceUTF8WithoutBOM);
 				bExtra = Gltf.Contains("\"uri\"") && Gltf.Replace("\"uri\":\"data:", "").Replace("\"uri\": \"data:", "").Contains("\"uri\"");
-			}
 		}
 		const bool bPreview = CapturePreview(Folder);
 		FString Text = HOLAtelierText::Get("Saved").ToString() + " " + Folder;
-		if (!bCopied)
+		if (bCopied)
+			Text += "\n" + HOLAtelierText::Get("Copied").ToString() + " " + ModelName;
+		else
 			Text += "\n" + HOLAtelierText::Get("CopyByHand").ToString() + " " + ModelName + " : " + Send.ModelFile;
 		if (bExtra)
 			Text += "\n" + HOLAtelierText::Get("CopyExtra").ToString();
@@ -654,7 +737,8 @@ namespace HOLAtelierOpen
 			Screen.AddToViewport(40);
 			Entry.Screen = Screen;
 			// The folder of the models exists from the first opening (a note in it says what goes there).
-			FFileHelper::SaveStringToFile("Posez ici vos modeles .glb / .gltf (batiments et sources), puis tapez leur nom dans l'atelier.\n", HOLAtelier::EntreesDir() + "LISEZMOI.txt", FFileHelper::EEncodingOptions::ForceUTF8WithoutBOM);
+			FFileHelper::SaveStringToFile("Posez ici vos modeles .glb / .gltf (batiments et sources), puis choisissez-les dans la liste de l'atelier (bouton Rafraichir).\n", HOLAtelier::EntreesDir() + "LISEZMOI.txt", FFileHelper::EEncodingOptions::ForceUTF8WithoutBOM);
+			Screen.RefreshModels();
 		}
 		System::ExecuteConsoleCommand("hol.Art.GalleryFrame Buildings South", Controller);
 		Log(n"LogHOLMatch", f"Atelier: open entrees={HOLAtelier::EntreesDir()} envois={HOLAtelier::EnvoisDir()}");
@@ -697,9 +781,19 @@ void HOLArtAtelierLoadCommand(const TArray<FString>& Args)
 	UHOLAtelierScreen Screen = HOLAtelierOpen::Screen();
 	if (Screen == nullptr)
 		return;
-	const FString Name = HOLAtelierOpen::Joined(Args, 0);
-	Screen.SetField("file", Name);
-	Screen.LoadModel(Name);
+	// A name: chosen in the list of Entrees (as the < > buttons do); a full path: loaded from there (developers).
+	const FString Name = HOLAtelierOpen::Joined(Args, 0).TrimStartAndEnd();
+	if (Name.Contains(":") || Name.StartsWith("/") || Name.StartsWith("\\"))
+		Screen.LoadModel(Name);
+	else
+		Screen.PickModel(Name);
+}
+
+void HOLArtAtelierRefreshCommand(const TArray<FString>& Args)
+{
+	UHOLAtelierScreen Screen = HOLAtelierOpen::Screen();
+	if (Screen != nullptr)
+		Screen.RefreshModels();
 }
 
 void HOLArtAtelierSetCommand(const TArray<FString>& Args)
@@ -721,6 +815,7 @@ void HOLArtAtelierSaveCommand(const TArray<FString>& Args)
 
 const FConsoleCommand HOLArtAtelierOpenConsole("hol.Art.Atelier.Open", n"HOLArtAtelierOpenCommand");
 const FConsoleCommand HOLArtAtelierTypeConsole("hol.Art.Atelier.Type", n"HOLArtAtelierTypeCommand");
+const FConsoleCommand HOLArtAtelierRefreshConsole("hol.Art.Atelier.Refresh", n"HOLArtAtelierRefreshCommand");
 const FConsoleCommand HOLArtAtelierLoadConsole("hol.Art.Atelier.Load", n"HOLArtAtelierLoadCommand");
 const FConsoleCommand HOLArtAtelierSetConsole("hol.Art.Atelier.Set", n"HOLArtAtelierSetCommand");
 const FConsoleCommand HOLArtAtelierSaveConsole("hol.Art.Atelier.Save", n"HOLArtAtelierSaveCommand");
