@@ -1,6 +1,7 @@
 aa_open | L'ecran d'atelier en haut a gauche (type House, dossier des modeles Documents\HeroesOfLiberty\Atelier\Entrees\, champs de licence, Enregistrer) au-dessus de la galerie des batiments de hol.Art.Lab
 aa_unit_refused | Message de l'ecran : "Spearman : unités : par l'éditeur", le type reste House
 aa_save_refused | Message "Non enregistré :" avec aucun modèle chargé et la licence incomplète (fichier ou pack, source, licence)
+aa_list | Ligne Fichier de l'écran : un modèle de Entrees choisi dans la liste, "maison_cube.glb (k/N)" entre < et >, boutons Rafraîchir et Charger (AR8-c, plus de champ à taper)
 aa_loaded | La Maison de la galerie dessinee avec le modele d'essai (forum.glb de B0) a la place de son modele, les autres batiments inchanges, reperes d'echelle au sol
 aa_tuned | Le meme modele tourne de 45 degres, echelle 1.2 ; valeurs 45 et 1.2 affichees, champs de licence remplis
-aa_saved | Message "Envoi écrit dans ...\Atelier\Envois\House_<aaaammjj-hhmm>" et la consigne de copier le .glb sous le nom model.glb
+aa_saved | Message "Envoi écrit dans ...\Atelier\Envois\House_<aaaammjj-hhmm>" puis "Modèle copié dans l'envoi sous le nom model.glb" (AR8-c : plus de consigne de copie à la main)
