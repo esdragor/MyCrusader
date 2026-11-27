@@ -12,13 +12,16 @@ void Test_ArtListenSlotsInOrder(FUnitTest& T)
 }
 
 // Which slot the game rings for which family (where the code raises it: building selection, unit orders, blows and tower volleys,
-// bodies, foundation laid and building finished). A unit's selection has no sound hook in the game: never played.
+// bodies, foundation laid and building finished, a new selection of units).
 void Test_ArtListenSlotPlayedByFamily(FUnitTest& T)
 {
 	T.AssertTrue(HOLArtListen::SlotPlayedFor("Units", n"Order"), "a unit's order rings");
 	T.AssertTrue(HOLArtListen::SlotPlayedFor("Units", n"Attack"), "a unit's blow rings");
 	T.AssertTrue(HOLArtListen::SlotPlayedFor("Units", n"Death"), "a unit's death rings");
-	T.AssertFalse(HOLArtListen::SlotPlayedFor("Units", n"Selection"), "a unit's selection is never rung by the game");
+	// SAURON-1127ar1: a new selection of units rings its type's Selection sound (HOLUnitSelectSound); no table cue, so silent without art.
+	T.AssertTrue(HOLArtListen::SlotPlayedFor("Units", n"Selection"), "a unit's selection rings");
+	const FString UnitSelection = HOLArtListen::Diagnostic(HOLArtListen::SlotPlayedFor("Units", n"Selection"), "", HOLArtListen::TableCueFor(n"ManAtArms", "Units", n"Selection"));
+	T.AssertEquals("silent", UnitSelection, "a unit's selection without art sound is silent, not never played");
 	T.AssertFalse(HOLArtListen::SlotPlayedFor("Units", n"Construction"), "a unit has no construction");
 	T.AssertTrue(HOLArtListen::SlotPlayedFor("Buildings", n"Selection"), "a building's selection rings");
 	T.AssertTrue(HOLArtListen::SlotPlayedFor("Buildings", n"Attack"), "a tower's volley rings");
