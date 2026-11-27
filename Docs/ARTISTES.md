@@ -357,7 +357,8 @@ Pour un **bâtiment ou une ressource** en glTF / glb seulement (les unités et l
    affiché à l'écran ; il contient un `LISEZMOI.txt`). Un `.gltf` vient avec ses fichiers (`.bin`, textures) à côté.
 3. **Choisir le type** : boutons `<` `>` (bâtiments puis sources), ou son nom tapé puis « Choisir ». Un type d'unité est
    refusé (« unités : par l'éditeur »).
-4. **Charger** : taper le nom du fichier (par exemple `maison.glb`) puis « Charger ». Le modèle remplace celui de **ce type
+4. **Charger** : choisir le fichier dans la liste du dossier `Entrees` (boutons `<` `>` ; « Rafraîchir » relit le dossier
+   après y avoir posé un fichier), puis « Charger ». Le modèle remplace celui de **ce type
    seulement** dans la galerie (les autres bâtiments ne changent pas) et la caméra s'en approche. Une ressource : le modèle
    est posé sur sa place de la galerie.
 5. **Régler** : rotation (-15, -1, +1, +15 degrés) et échelle (-0.1, -0.01, +0.01, +0.1), valeurs affichées. Ce sont les
@@ -365,17 +366,16 @@ Pour un **bâtiment ou une ressource** en glTF / glb seulement (les unités et l
 6. **Remplir** : auteur, faction (vide = toutes), licence (fichier ou pack, source, licence, adresse), notes, statut
    (`final` ou `provisional`, bouton).
 7. **Enregistrer** : l'envoi est écrit dans `Documents\HeroesOfLiberty\Atelier\Envois\<Type>[_<Faction>]_<aaaammjj-hhmm>\`
-   (`manifest.json`, `preview.png`), chemin affiché à l'écran. Avant d'écrire, tout ce qui manque est listé (aucun modèle
-   chargé, licence incomplète...) et rien n'est écrit.
-   **Pour l'instant, un `.glb` n'est pas copié par le jeu** : copiez-le vous-même dans le dossier de l'envoi sous le nom
-   `model.glb` (le message à l'écran donne le nom et le chemin). Un `.gltf` est copié (`model.gltf`) ; ses `.bin` et
-   textures sont à copier à côté.
+   (`manifest.json`, le modèle copié en `model.glb` ou `model.gltf`, `preview.png`), chemin affiché à l'écran. Avant
+   d'écrire, tout ce qui manque est listé (aucun modèle chargé, licence incomplète...) et rien n'est écrit. **Aucune copie à
+   la main** (D931) : le jeu copie le fichier choisi dans l'envoi. Seule exception : les `.bin` et textures qu'un `.gltf`
+   nomme sont à copier à côté (le message le dit). Deux enregistrements dans la même minute : le second va dans `..._2`.
 8. **Renvoyer** le dossier de l'envoi (ou son zip, clic droit > Compresser) à l'équipe. De notre côté :
    `Tools\Art\apply_art_send.ps1 -From <dossier> -DryRun` puis sans `-DryRun` (section 11 bis).
 
 Limites connues : dans le jeu publié, les matériaux du glTF sont « à plat » (couleurs de base, B0) ; dans l'éditeur lancé
 en `-game` (essais des agents), l'import est refusé (« utilisez le jeu publié ») car Interchange y arrête le jeu. Commandes
-de la même chose pour les essais : `hol.Art.Atelier.Open`, `.Type <Type>`, `.Load <fichier>`, `.Set <champ> <valeur>`,
+de la même chose pour les essais : `hol.Art.Atelier.Open`, `.Type <Type>`, `.Refresh`, `.Load <nom de la liste>`, `.Set <champ> <valeur>`,
 `.Save` (scénario `art_atelier`).
 
 ## 12. À venir (pas encore dans le jeu)

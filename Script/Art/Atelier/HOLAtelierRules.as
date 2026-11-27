@@ -161,6 +161,41 @@ namespace HOLAtelier
 		return "model." + FPaths::GetExtension(ModelFile, false).ToLower();
 	}
 
+	// AR8-c (D931): the extensions of the models the atelier lists and loads.
+	TArray<FString> ModelExtensions()
+	{
+		TArray<FString> Out;
+		Out.Add("glb");
+		Out.Add("gltf");
+		return Out;
+	}
+
+	// The models the artist put in the folder Entrees (names only, sorted): the screen's list, refreshed by its button.
+	TArray<FString> ListModels(const FString& Entrees)
+	{
+		return UHOLArtVisualRegistry::ListArtFiles(Entrees, ModelExtensions());
+	}
+
+	// The model chosen after a step (+1 / -1) in a list of Count names, wrapping round; -1 for an empty list; from none (-1): the first.
+	int StepIndex(int Index, int Count, int Step)
+	{
+		if (Count <= 0)
+			return -1;
+		if (Index < 0 || Index >= Count)
+			return 0;
+		return (((Index + Step) % Count) + Count) % Count;
+	}
+
+	// "Save": copies the model into the send folder as model.<ext> (a file already there is never replaced). Returns the name written
+	// (model.glb / model.gltf), "" when nothing was copied.
+	FString CopyModelToSend(const FString& ModelFile, const FString& Folder)
+	{
+		const FString Name = SendModelName(ModelFile);
+		if (UHOLArtVisualRegistry::CopyArtFile(ModelFile, Folder + "/" + Name, false))
+			return Name;
+		return "";
+	}
+
 	// <Documents>/HeroesOfLiberty/Atelier/
 	FString AtelierDir()
 	{

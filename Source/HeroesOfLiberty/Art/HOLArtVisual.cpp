@@ -7,6 +7,8 @@
 #include "AssetRegistry/AssetRegistryModule.h"
 #include "AssetRegistry/IAssetRegistry.h"
 #include "Misc/PackageName.h"
+#include "HAL/FileManager.h"
+#include "Misc/Paths.h"
 #include "Engine/Engine.h"
 #include "Engine/GameInstance.h"
 #include "Engine/Texture2D.h"
@@ -213,6 +215,60 @@ bool UHOLArtVisualRegistry::TryArtVisualSound(const UObject* WorldContextObject,
 void UHOLArtVisualRegistry::ClearTestArtVisuals()
 {
 	HOLArtVisual::ClearTestEntries();
+}
+
+bool UHOLArtVisualRegistry::CopyArtFile(const FString& From, const FString& To, const bool bOverwrite)
+{
+	IFileManager& Files = IFileManager::Get();
+	if (From.IsEmpty() || To.IsEmpty() || !Files.FileExists(*From))
+	{
+		return false;
+	}
+	if (FPaths::IsSamePath(From, To))
+	{
+		return false;
+	}
+	if (!bOverwrite && Files.FileExists(*To))
+	{
+		return false;
+	}
+	const FString Folder = FPaths::GetPath(To);
+	if (!Folder.IsEmpty() && !Files.MakeDirectory(*Folder, true))
+	{
+		return false;
+	}
+	return Files.Copy(*To, *From, bOverwrite, true) == COPY_OK;
+}
+
+TArray<FString> UHOLArtVisualRegistry::ListArtFiles(const FString& Folder, const TArray<FString>& Extensions)
+{
+	TArray<FString> Names;
+	if (Folder.IsEmpty() || !FPaths::DirectoryExists(Folder))
+	{
+		return Names;
+	}
+	TArray<FString> Wanted;
+	for (const FString& Extension : Extensions)
+	{
+		FString Clean = Extension.TrimStartAndEnd();
+		Clean.RemoveFromStart(TEXT("."));
+		if (!Clean.IsEmpty())
+		{
+			Wanted.Add(Clean);
+		}
+	}
+	TArray<FString> Found;
+	IFileManager::Get().FindFiles(Found, *FPaths::Combine(Folder, TEXT("*")), true, false);
+	for (const FString& Name : Found)
+	{
+		const FString Extension = FPaths::GetExtension(Name);
+		if (Wanted.ContainsByPredicate([&Extension](const FString& One) { return One.Equals(Extension, ESearchCase::IgnoreCase); }))
+		{
+			Names.Add(Name);
+		}
+	}
+	Names.Sort([](const FString& A, const FString& B) { return A.Compare(B, ESearchCase::IgnoreCase) < 0; });
+	return Names;
 }
 
 void UHOLArtVisualRegistry::BuildMap(const TArray<const UHOLArtVisual*>& Assets, TMap<FKey, const UHOLArtVisual*>& OutMap, TArray<FString>& OutErrors)

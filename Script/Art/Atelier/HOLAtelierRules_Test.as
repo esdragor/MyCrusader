@@ -148,3 +148,59 @@ void Test_AtelierSaveRefusals(FUnitTest& T)
 	T.AssertTrue(UnitRefused.Contains("type_unit"), "a unit type is never written");
 	T.AssertTrue(UnitRefused.Contains("status"), "status: final or provisional exactly");
 }
+
+// AR8-c (D931): the list of the models of Entrees and the copy of the chosen one into the send (no copy by hand any more).
+FString AtelierTestDir(const FString& Leaf)
+{
+	const FDateTime Now = FDateTime::Now();
+	const FString Stamp = HOLAtelier::StampOf(Now);
+	const int Draw = Math::RandRange(0, 999999);
+	return FPaths::ConvertRelativePathToFull(FPaths::ProjectSavedDir() + f"Tests/Atelier/{Leaf}_{Stamp}_{Now.GetSecond()}_{Draw}/");
+}
+
+void Test_AtelierModelList(FUnitTest& T)
+{
+	const FString Entrees = AtelierTestDir("entrees") + "Entrees/";
+	FFileHelper::SaveStringToFile("m", Entrees + "maison.glb", FFileHelper::EEncodingOptions::ForceUTF8WithoutBOM);
+	FFileHelper::SaveStringToFile("a", Entrees + "Arbre.gltf", FFileHelper::EEncodingOptions::ForceUTF8WithoutBOM);
+	FFileHelper::SaveStringToFile("b", Entrees + "Arbre.bin", FFileHelper::EEncodingOptions::ForceUTF8WithoutBOM);
+	FFileHelper::SaveStringToFile("l", Entrees + "LISEZMOI.txt", FFileHelper::EEncodingOptions::ForceUTF8WithoutBOM);
+	const TArray<FString> Names = HOLAtelier::ListModels(Entrees);
+	T.AssertEquals(2, Names.Num(), "the .glb and the .gltf of Entrees, not the note nor the .bin");
+	if (Names.Num() == 2)
+	{
+		T.AssertEquals("Arbre.gltf", Names[0], "sorted by name");
+		T.AssertEquals("maison.glb", Names[1], "sorted by name");
+	}
+}
+
+void Test_AtelierModelStep(FUnitTest& T)
+{
+	T.AssertEquals(1, HOLAtelier::StepIndex(0, 3, 1), "next");
+	T.AssertEquals(0, HOLAtelier::StepIndex(2, 3, 1), "after the last: the first");
+	T.AssertEquals(2, HOLAtelier::StepIndex(0, 3, -1), "before the first: the last");
+	T.AssertEquals(0, HOLAtelier::StepIndex(-1, 3, 1), "none chosen yet: the first");
+	T.AssertEquals(-1, HOLAtelier::StepIndex(0, 0, 1), "an empty list: none");
+}
+
+void Test_AtelierCopyModelIntoTheSend(FUnitTest& T)
+{
+	const FString Dir = AtelierTestDir("send");
+	const FString Model = Dir + "Entrees/Ma Maison.glb";
+	FFileHelper::SaveStringToFile("glb bytes", Model, FFileHelper::EEncodingOptions::ForceUTF8WithoutBOM);
+	const FString Folder = Dir + "Envois/House_20261127-1200";
+	const FString Written = HOLAtelier::CopyModelToSend(Model, Folder);
+	T.AssertEquals("model.glb", Written, "the model copied under the name the manifest gives");
+	FString Copy;
+	FFileHelper::LoadFileToString(Copy, Folder + "/model.glb");
+	T.AssertEquals("glb bytes", Copy, "the same content in the send");
+	const FString Again = HOLAtelier::CopyModelToSend(Model, Folder);
+	T.AssertEquals("", Again, "a model already in the send is not replaced");
+
+	const FString Gltf = Dir + "Entrees/arbre.GLTF";
+	FFileHelper::SaveStringToFile("{ \"asset\": {} }", Gltf, FFileHelper::EEncodingOptions::ForceUTF8WithoutBOM);
+	const FString GltfWritten = HOLAtelier::CopyModelToSend(Gltf, Dir + "Envois/Tree_20261127-1201");
+	T.AssertEquals("model.gltf", GltfWritten, "a .gltf: model.gltf");
+	const FString Missing = HOLAtelier::CopyModelToSend(Dir + "Entrees/absent.glb", Dir + "Envois/House_20261127-1202");
+	T.AssertEquals("", Missing, "a missing model: nothing copied");
+}
