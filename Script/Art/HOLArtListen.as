@@ -22,11 +22,12 @@ namespace HOLArtListen
 
 	// Does the game ring Slot for a type of Family? Where the code raises it: a building's selection (HOLGameScreenScript.BuildingSelected),
 	// a unit's order (UHOLCombatSoundSubsystem::RaiseOrder), a unit's blow and a tower's volley (Attack), a unit's body (Death), a foundation
-	// laid and a building finished (Construction). A unit's selection has no sound hook in the game; a source rings nothing.
+	// laid and a building finished (Construction), a new selection of units (HOLGameScreenScript.RingUnitSelection, SAURON-1127ar1: the
+	// asset's sound only, TableCueFor has none, so "silent" without one); a source rings nothing.
 	bool SlotPlayedFor(const FString& Family, FName Slot)
 	{
 		if (Family == "Units")
-			return Slot == n"Order" || Slot == n"Attack" || Slot == n"Death";
+			return Slot == n"Selection" || Slot == n"Order" || Slot == n"Attack" || Slot == n"Death";
 		if (Family == "Buildings")
 			return Slot == n"Selection" || Slot == n"Attack" || Slot == n"Construction";
 		return false;

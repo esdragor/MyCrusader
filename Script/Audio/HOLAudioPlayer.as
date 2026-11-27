@@ -55,7 +55,7 @@ class UHOLAudioPlayer : UObject
 		return true;
 	}
 
-	// AR6-a / AR6-d: the sound of a type (Slot = Selection, Order, Construction; callers: BuildingSelected, HandleOrderSound, RefreshMinorAlerts): its art asset's sound when one is set (HOLArtSound), played at 100 % within the
+	// AR6-a / AR6-d: the sound of a type (Slot = Selection, Order, Construction; callers: BuildingSelected, RingUnitSelection, HandleOrderSound, RefreshMinorAlerts): its art asset's sound when one is set (HOLArtSound), played at 100 % within the
 	// event's cooldown; else the table's cue of Event (-1 = no cue: silent). True when a sound was started.
 	bool PlayTyped(int Event, FName TypeName, FName Faction, FName Slot)
 	{

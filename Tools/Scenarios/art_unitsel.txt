@@ -1,0 +1,34 @@
+# Son de selection d'une unite (SAURON-1127ar1, ArtistesInProgress.md defaut 2) : hol.Art.TrySound pose en memoire un son de selection dans la fiche de l'Homme d'armes ;
+# selectionner les Hommes d'armes sonne UNE fois ("cue played art ManAtArms Selection") ; la meme selection reaffirmee ne sonne pas ; les Paysans (pas de son de fiche) : silence ;
+# les Hommes d'armes de nouveau apres les Paysans : une 2e ligne. Attendu : exactement 2 lignes "cue played art ManAtArms Selection" avant "unitsel listen", aucune "Peasant Selection".
+# Plain, toi (slot 0) contre une IA gelee (slot 1). Points comme art_listen.txt.
+waitlog Starting hero of slot 0 spawned at
+hol.AI.ThinkSteps 100000
+hol.Art.TrySound ManAtArms Selection /Game/Audio/Kenney/interface-sounds/SW_confirmation_001.SW_confirmation_001
+waitlog Art try sound: ManAtArms Selection
+hol.Camera.FocusNear 3000 1500
+frames 2
+hol.Units.Spawn 2 -13400 1500 0 ManAtArms 0
+frames 20
+mark unitsel first selection
+hol.Select.Type ManAtArms
+waitlog cue played art ManAtArms Selection
+frames 30
+mark unitsel same selection again
+hol.Select.Type ManAtArms
+waitlog Select type ManAtArms:
+frames 30
+mark unitsel peasants
+hol.Select.Type Peasant
+waitlog Select type Peasant:
+frames 30
+mark unitsel men at arms after the peasants
+hol.Select.Type ManAtArms
+waitlog cue played art ManAtArms Selection
+frames 30
+mark unitsel listen
+hol.Art.Listen Peasant
+waitlog Art listen: Peasant Selection silent
+hol.Art.Listen ManAtArms
+waitlog Art listen: ManAtArms Selection art /Game/Audio/Kenney/interface-sounds/SW_confirmation_001
+quit
