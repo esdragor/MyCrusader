@@ -69,6 +69,8 @@ $UProject = Join-Path $Project "HeroesOfLiberty.uproject"
 if (-not (Test-Path $UProject)) { Write-Host "build : FAIL (no HeroesOfLiberty.uproject in $Project)"; exit 1 }
 # L14-7 (2026-11-14): the binary check of L12-4 printed by the build itself (forgotten by ~8 C++ agents as an instruction).
 . (Join-Path $PSScriptRoot "Scenarios\LaunchCheck.ps1")
+# HALDIR-1127ar1: Get-SourceFingerprint / Get-BuildSourcePath (HOL_BuildSource.txt written after the editor build, read by integrate.ps1)
+. (Join-Path $PSScriptRoot "AutoJourney\build_source.ps1")
 $StaleAtStart = Get-StaleBinaryProblem $Project
 Write-Host ("build : LaunchCheck debut (Get-StaleBinaryProblem) : " + $(if ($StaleAtStart) { $StaleAtStart } else { "vide (each dll newer than its sources)" }))
 $Association = (Get-Content $UProject -Raw | ConvertFrom-Json).EngineAssociation
@@ -362,6 +364,9 @@ try {
             Write-Host "build : free virtual memory $Vm GB after $Waited s$Still"
             $LoadText = "vm $Vm GB waited $Waited s$Still"
         } else { $LoadText = "vm $Vm GB" }
+        # HALDIR-1127ar1: fingerprint of the C++ compiled (Tools\AutoJourney\build_source.ps1), taken before and after the build
+        $IsEditor = ($Target -eq "HeroesOfLibertyEditor")
+        if ($IsEditor) { $SourceBefore = Get-SourceFingerprint $Project }
         $StartedAt = Get-Date
         $Clock = [Diagnostics.Stopwatch]::StartNew()
         if ($FakeBuild) { & $FakeBuild *> $Log }
@@ -375,6 +380,18 @@ try {
         $Slow = Get-SlowVerdict $Seconds $Ticket.priority $Actions   # before Log-Build: the median is of the EARLIER builds
         if ($Slow) { Write-Host "build : $Slow; load: $LoadText (machine saturee ? diagnostic de charge)"; $LoadText = "$LoadText; $Slow" }
         Log-Build $Worktree $RequestedAt $StartedAt (Get-Date) $Outcome ($Behind -join "+") $Ticket.priority
+        if ($IsEditor) {
+            # PASS: <Root>\Binaries\Win64\HOL_BuildSource.txt = the fingerprint ("dirty" if Source / the .uproject changed during the build);
+            # FAIL: erased (integrate.ps1 then rebuilds instead of trusting the DLL). Binaries/ is ignored by git.
+            $SourceFile = Get-BuildSourcePath $Project
+            if ($Code -eq 0) {
+                $SourceAfter = Get-SourceFingerprint $Project
+                $Print = if ($SourceAfter -eq $SourceBefore) { $SourceAfter } else { "dirty" }
+                New-Item -ItemType Directory -Force (Split-Path $SourceFile) | Out-Null
+                [IO.File]::WriteAllText($SourceFile, $Print + "`r`n", $Utf8)
+                Write-Host "build : HOL_BuildSource.txt = $Print"
+            } else { Remove-Item $SourceFile -Force -ErrorAction SilentlyContinue }
+        }
         if ($Code -eq 0) {
             Write-Host "build : PASS ($Target $Config, $Worktree, $Seconds s)"
             $Result = 0

@@ -46,6 +46,8 @@ Put $Repo 'Tools/Data/UnitTypes.csv' 'id,hp'
 Put $Repo 'Content/Units/UnitTypes.uasset' 'unit-v1'
 Put $Repo 'Tools/Data/BuildingTypes.csv' 'id,hp'
 Put $Repo 'Content/Buildings/BuildingTypes.uasset' 'bld-v1'
+Put $Repo 'HeroesOfLiberty.uproject' '{}'
+Put $Repo '.gitignore' "Binaries/`n"
 Git $Repo add -A | Out-Null
 Git $Repo commit -q -m init | Out-Null
 foreach ($B in 'red-as', 'red-cpp', 'g1', 'g2', 'gcpp') { Git $Repo branch $B main | Out-Null }
@@ -60,6 +62,16 @@ CommitOn $Repo 'gboth' 'Tools/Data/UnitTypes.csv' "id,hp`nnew,1" | Out-Null
 CommitOn $Repo 'gboth' 'Content/Units/UnitTypes.uasset' 'unit-v2' | Out-Null
 Git $Repo checkout -q main | Out-Null
 $Base = @('-Root', $Repo, '-Branch', 'integ-x', '-DryRun')
+# HALDIR-1127ar1: the DLL of the worktree carries <Root>\Binaries\Win64\HOL_BuildSource.txt (written by build.ps1 after a PASS) = the fingerprint
+# of the C++ it was built from. Computed HERE with raw git (independent of the tool): "source=<tree of Source> uproject=<blob of the .uproject>".
+$DllFile = Join-Path $Repo 'Binaries\Win64\HOL_BuildSource.txt'
+function Main-Fingerprint { return "source=$((Git $Repo rev-parse 'main:Source' | Out-String).Trim()) uproject=$((Git $Repo rev-parse 'main:HeroesOfLiberty.uproject' | Out-String).Trim())" }
+function Set-DllSource([string]$Text) {
+  if (-not $Text) { Remove-Item $DllFile -Force -ErrorAction SilentlyContinue; return }
+  New-Item -ItemType Directory -Path (Split-Path $DllFile -Parent) -Force | Out-Null
+  [IO.File]::WriteAllText($DllFile, $Text)
+}
+Set-DllSource (Main-Fingerprint)   # cases 1-8: the DLL matches the C++ of main (only C++ in the change set decides)
 
 # 1. Script only, one red, two greens given as ONE comma list (the -File trap): every step in order, no build.
 $P = Run-Plan ($Base + @('-Reds', $RedAs, '-Greens', 'g1,g2'))
@@ -92,7 +104,8 @@ $P = Run-Plan ($Base + @('-Reds', "$RedCpp,$RedAs", '-Greens', 'g1'))
 $BuildLines = @($P.Lines | Where-Object { $_ -match '^PLAN \d+ build ' })
 $RedLines = @($P.Lines | Where-Object { $_ -match '^PLAN \d+ red ' })
 Check ($RedLines.Count -eq 2) 'two reds in one comma list: 2 red steps' "count=$($RedLines.Count)"
-Check (($BuildLines.Count -eq 2) -and ($BuildLines[0] -notmatch 'SKIP') -and ($BuildLines[1] -match 'SKIP')) 'C++ in a red: first build runs, second skipped' ($BuildLines -join ' | ')
+# HALDIR-1127ar1: the green has no C++, but the build of the reds leaves a DLL with the reds' C++ (not main's) -> the second build runs too.
+Check (($BuildLines.Count -eq 2) -and ($BuildLines[0] -notmatch 'SKIP') -and ($BuildLines[1] -notmatch 'SKIP') -and ($BuildLines[1] -match 'rouges')) 'C++ in a red only: first build runs, second runs too (the reds DLL is not main''s C++)' ($BuildLines -join ' | ')
 
 # 4. No reds: the red stage is skipped (no cherry-pick, no tests of the reds), the greens still merge.
 $P = Run-Plan ($Base + @('-Greens', 'g1'))
@@ -244,6 +257,51 @@ Check (($R.Code -eq 0) -and ($R.Text -match 'regen: inutile')) 'real run, CSV an
 $R = Run-Regen 'gcsv' '2'
 $Subject = (Git $Repo log -1 --format=%s $R.Branch | Out-String).Trim()
 Check (($R.Code -eq 1) -and ($R.Text -match 'regen: FAIL') -and ($R.Text -match 'INTEGRATE integ-regen\d+ : FAIL') -and ($Subject -ne 'Regen tables after merge')) 'regen script exits 2: exit 1, "regen: FAIL", nothing committed' "code=$($R.Code) subject=$Subject out=$($R.Text)"
+Git $Repo checkout -q -f main | Out-Null
+
+# 9. DLL of the worktree vs the C++ of main (HALDIR-1127ar1; integ-98-art 2026-11-26: the DLL of Haldir came from integ-100, 3 C++ tests of main
+#    missing -> 2328 instead of 2330, the proof ran on a foreign DLL). Without C++ in the reds / greens, a build is skipped ONLY when
+#    HOL_BuildSource.txt exists and equals the fingerprint of main; otherwise it runs, with a readable reason in the plan and the summary.
+function Build-Lines($Plan) { return @($Plan.Lines | Where-Object { $_ -match '^PLAN \d+ build ' }) }
+$MainPrint = Main-Fingerprint
+# 9a. Foreign fingerprint (a DLL built from another branch): both builds run, the plan names the two fingerprints.
+Set-DllSource 'source=0123456789abcdef0123456789abcdef01234567 uproject=89abcdef0123456789abcdef0123456789abcdef'
+$P = Run-Plan ($Base + @('-Reds', $RedAs, '-Greens', 'g1,g2'))
+$BuildLines = Build-Lines $P
+Check (($BuildLines.Count -eq 2) -and (@($BuildLines | Where-Object { $_ -match 'SKIP' }).Count -eq 0)) 'foreign DLL, script only: both builds run (was SKIP)' ($BuildLines -join ' | ')
+Check (@($BuildLines | Where-Object { ($_ -match 'ne correspond pas au C\+\+ de main') -and ($_ -match 'source=0123456789abcdef') -and ($_ -match [regex]::Escape($MainPrint)) }).Count -eq 2) 'foreign DLL: the plan gives the reason with both fingerprints' ($BuildLines -join ' | ')
+# 9b. No fingerprint file (never built by build.ps1, or a FAIL erased it): the builds run, reason "absente".
+Set-DllSource ''
+$P = Run-Plan ($Base + @('-Reds', $RedAs, '-Greens', 'g1'))
+$BuildLines = Build-Lines $P
+Check ((@($BuildLines | Where-Object { $_ -match 'SKIP' }).Count -eq 0) -and (@($BuildLines | Where-Object { $_ -match 'absente' }).Count -eq 2)) 'no HOL_BuildSource.txt: both builds run, reason "absente"' ($BuildLines -join ' | ')
+# 9c. "dirty" (built from a dirty tree, matches no commit): the builds run.
+Set-DllSource 'dirty'
+$P = Run-Plan ($Base + @('-Greens', 'g1'))
+$BuildLines = Build-Lines $P
+Check (($BuildLines.Count -eq 2) -and ($BuildLines[1] -notmatch 'SKIP') -and ($BuildLines[1] -match 'empreinte dirty')) 'fingerprint "dirty": the green build runs' ($BuildLines -join ' | ')
+# 9d. Matching fingerprint: both builds SKIP, the reason says the DLL is the C++ of main.
+Set-DllSource $MainPrint
+$P = Run-Plan ($Base + @('-Reds', $RedAs, '-Greens', 'g1'))
+$BuildLines = Build-Lines $P
+Check ((@($BuildLines | Where-Object { $_ -match 'SKIP' }).Count -eq 2) -and (@($BuildLines | Where-Object { $_ -match 'empreinte' }).Count -eq 2)) 'matching DLL: both builds SKIP, reason names the fingerprint' ($BuildLines -join ' | ')
+# 9e. REAL run (-SkipBuildTests): the summary says why the green build ran / was skipped.
+$script:CaseNo++
+$Out = @(& powershell.exe -NoProfile -ExecutionPolicy Bypass -File $Tool -Root $Repo -Branch "integ-dll$($script:CaseNo)" -Greens g1 -SkipBuildTests 2>&1 | ForEach-Object { "$_" })
+Check (($Out -join "`n") -match 'build verts : SKIP \(.*empreinte') 'real run, matching DLL: "build verts : SKIP (... empreinte ...)"' ($Out -join ' | ')
+Git $Repo checkout -q -f main | Out-Null
+Set-DllSource 'source=0123456789abcdef0123456789abcdef01234567 uproject=89abcdef0123456789abcdef0123456789abcdef'
+$script:CaseNo++
+$Out = @(& powershell.exe -NoProfile -ExecutionPolicy Bypass -File $Tool -Root $Repo -Branch "integ-dll$($script:CaseNo)" -Greens g1 -SkipBuildTests 2>&1 | ForEach-Object { "$_" })
+Check ((($Out -join "`n") -match 'build verts : PASS .*ne correspond pas au C\+\+ de main') -and (($Out -join "`n") -notmatch 'build verts : SKIP')) 'real run, foreign DLL: the green build runs, the summary says why' ($Out -join ' | ')
+Git $Repo checkout -q -f main | Out-Null
+# 9f. The real trap: a C++ file DELETED on main after the DLL was built (the date check of Get-StaleBinaryProblem cannot see it).
+Set-DllSource $MainPrint
+Git $Repo rm -q 'Source/a.cpp' | Out-Null
+Git $Repo commit -q -m 'main deletes a.cpp' | Out-Null
+$P = Run-Plan ($Base + @('-Greens', 'g1'))
+$BuildLines = Build-Lines $P
+Check (($BuildLines.Count -eq 2) -and ($BuildLines[1] -notmatch 'SKIP') -and ($BuildLines[1] -match 'ne correspond pas au C\+\+ de main')) 'a .cpp deleted on main after the build: the green build runs' ($BuildLines -join ' | ')
 Git $Repo checkout -q -f main | Out-Null
 Remove-Item -Recurse -Force $Tmp -ErrorAction SilentlyContinue
 Write-Output "integrate_test : $(if ($Fails) { "$Fails FAIL" } else { 'PASS' })"

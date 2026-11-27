@@ -98,5 +98,36 @@ $r = Invoke-Tool @($wt, '-QueueDir', $q, '-CsvPath', $csv, '-FakeBuild', $badc)
 Check ($r.Code -eq 1 -and (Result-Text $wt) -match '^FAIL\b') "real build.ps1 FAIL through the tool (exit $($r.Code))"
 Check ((Result-Text $wt) -match 'last error: .*error C2143') 'last error of the real FAIL is reported'
 
+# 8. HALDIR-1127ar1: the REAL build.ps1 writes <Root>\Binaries\Win64\HOL_BuildSource.txt after a PASS of the editor target = fingerprint of the
+#    C++ it compiled ("source=<tree of HEAD:Source> uproject=<blob of HEAD:*.uproject>", computed HERE with raw git), "dirty" when Source or the
+#    .uproject differs from HEAD; a FAIL erases it (integrate.ps1 compares it with main before skipping a build).
+Write-Output '[8] real build.ps1 writes HOL_BuildSource.txt (fingerprint of the compiled C++)'
+$ErrorActionPreference = 'Continue'
+$wt = New-Wt 'wt8'
+Copy-Item (Join-Path (Split-Path -Parent (Split-Path -Parent $here)) 'HeroesOfLiberty.uproject') $wt
+New-Item -ItemType Directory -Force (Join-Path $wt 'Source') | Out-Null
+[IO.File]::WriteAllText((Join-Path $wt 'Source\a.cpp'), 'int a;')
+[IO.File]::WriteAllText((Join-Path $wt '.gitignore'), "Binaries/`nSaved/`n")
+foreach ($g in @(@('init', '-q', '-b', 'main'), @('config', 'user.name', 'Test'), @('config', 'user.email', 'test@example.com'), @('config', 'core.autocrlf', 'false'), @('add', '-A'), @('commit', '-q', '-m', 'init'))) { & git.exe -C $wt @g 2>&1 | Out-Null }
+$print = "source=$((& git.exe -C $wt rev-parse 'HEAD:Source' | Out-String).Trim()) uproject=$((& git.exe -C $wt rev-parse 'HEAD:HeroesOfLiberty.uproject' | Out-String).Trim())"
+$srcFile = Join-Path $wt 'Binaries\Win64\HOL_BuildSource.txt'
+function Src-Text { if (Test-Path $srcFile) { ([IO.File]::ReadAllText($srcFile)).Trim() } else { '<absent>' } }
+$q = Join-Path $tmp 'state8'; $csv = Join-Path $tmp 'q8.csv'
+function Invoke-Build($fake) { $o = & powershell -NoProfile -ExecutionPolicy Bypass -File $realBuild -Root $wt -QueueDir $q -CsvPath $csv -FakeBuild $fake 2>&1 | ForEach-Object { "$_" }; [pscustomobject]@{ Code = $LASTEXITCODE; Out = ($o -join "`n") } }
+$r = Invoke-Build $okc
+Check ($r.Code -eq 0 -and (Src-Text) -eq $print) "PASS on a clean tree: HOL_BuildSource.txt = '$print' (got '$(Src-Text)', exit $($r.Code))"
+[IO.File]::WriteAllText((Join-Path $wt 'Source\a.cpp'), 'int a2;')
+$r = Invoke-Build $okc
+Check ($r.Code -eq 0 -and (Src-Text) -eq 'dirty') "PASS on a dirty Source: HOL_BuildSource.txt = 'dirty' (got '$(Src-Text)')"
+& git.exe -C $wt checkout -q -- Source 2>&1 | Out-Null
+$r = Invoke-Build $okc
+Check ((Src-Text) -eq $print) "PASS again on the clean tree: fingerprint back (got '$(Src-Text)')"
+$r = Invoke-Build $badc
+Check ($r.Code -eq 1 -and (Src-Text) -eq '<absent>') "FAIL: HOL_BuildSource.txt erased (got '$(Src-Text)', exit $($r.Code))"
+$r = Invoke-Build $okc
+$o = & powershell -NoProfile -ExecutionPolicy Bypass -File $realBuild -Root $wt -Target HeroesOfLibertyServer -QueueDir $q -CsvPath $csv -FakeBuild $badc 2>&1
+Check ((Src-Text) -eq $print) "FAIL of another target (Server): the editor fingerprint is kept (got '$(Src-Text)')"
+$ErrorActionPreference = 'Stop'
+
 Remove-Item $tmp -Recurse -Force -ErrorAction SilentlyContinue
 if ($failures -eq 0) { Write-Output 'build_wait_test : PASS'; exit 0 } else { Write-Output "build_wait_test : FAIL ($failures)"; exit 1 }
