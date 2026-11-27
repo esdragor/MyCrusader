@@ -21,13 +21,15 @@
 # Test: Tools\Art\apply_art_send_test.ps1.
 param(
     [Parameter(Mandatory = $true)][string]$From,
-    [string]$Root = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path,
+    # Default: the tree of this script (computed below: $PSScriptRoot is empty in a param default under powershell -File, 5.1).
+    [string]$Root = '',
     [switch]$DryRun,
     [switch]$NoEditor,
     [string]$Engine = 'C:\UE\UE_5.8_HOL'
 )
 $ErrorActionPreference = 'Stop'
 $Inv = [Globalization.CultureInfo]::InvariantCulture
+if (-not $Root) { $Root = Join-Path (Split-Path -Parent $MyInvocation.MyCommand.Path) '..\..' }
 $Root = (Resolve-Path -LiteralPath $Root).Path.TrimEnd('\')
 $Data = Join-Path $Root 'Tools\Data'
 $Refusals = New-Object System.Collections.Generic.List[string]
