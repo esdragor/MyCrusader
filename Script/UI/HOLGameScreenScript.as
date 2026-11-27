@@ -1585,6 +1585,7 @@ UHOLScenarioPanelScript ScenarioPanel;
 		if (AgePanels != nullptr)
 			AgePanels.Refresh();
 		RefreshSelectionBlock();
+		RingUnitSelection();
 		if (Audio != nullptr)
 			Audio.PlayDueRepeats();
 		RefreshDiplomacy();
@@ -1665,6 +1666,33 @@ UHOLScenarioPanelScript ScenarioPanel;
 	{
 		if (CommandGrid != nullptr)
 			CommandGrid.Refresh();
+		// The grid redraws when the selection changes: its sound rings now rather than at the next timer step (the same memo, rung once).
+		RingUnitSelection();
+	}
+
+	// SAURON-1127ar1 (ArtistesInProgress.md, Reprise defect 2): the local player's own selected units, as last read (HOLUnitSelectSound).
+	TArray<int> LastSelectedUnitIds;
+
+	// A NEW selection of the local player's own units (HOLUnitSelectSound::IsNewSelection) rings the Selection sound of its most numerous
+	// type (SoundingType) by the buildings' path: the art asset's SelectionSound for the local faction, else nothing (event -1: the table
+	// has no unit selection cue). The same selection reaffirmed, or one that only lost units, stays silent. Read at each Refresh and grid redraw.
+	void RingUnitSelection()
+	{
+		AHOLPlayerController Controller = Cast<AHOLPlayerController>(GetOwningPlayer());
+		if (Controller == nullptr)
+			return;
+		TArray<int> Ids;
+		HOLControllerCommand::OwnSelectedUnitIds(Controller, Ids);
+		const bool bNew = HOLUnitSelectSound::IsNewSelection(LastSelectedUnitIds, Ids);
+		LastSelectedUnitIds = Ids;
+		if (!bNew || Audio == nullptr)
+			return;
+		TArray<FName> Types;
+		for (int Id : Ids)
+			Types.Add(HOLUnitScript::GetUnitType(Id));
+		const FName TypeName = HOLUnitSelectSound::SoundingType(Types);
+		if (TypeName != NAME_None)
+			Audio.PlayTyped(-1, TypeName, LocalFactionName(), n"Selection");
 	}
 
 	// D202, Q-alerts-minor default A: the population full line in the thread of messages (muted, no ping), once when the population
