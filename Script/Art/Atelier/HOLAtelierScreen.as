@@ -92,7 +92,7 @@ class UHOLAtelierScreen : UUserWidget
 		UCanvasPanel Canvas = Cast<UCanvasPanel>(ConstructWidget(UCanvasPanel, n"AtelierRoot"));
 		SetRootWidget(Canvas);
 		UBorder Panel = Cast<UBorder>(ConstructWidget(UBorder, n"AtelierPanel"));
-		Panel.SetBrushColor(FLinearColor(0.05, 0.05, 0.08, 0.88));
+		Panel.SetBrushColor(FLinearColor(0.05, 0.05, 0.08, 1.0));
 		Panel.SetPadding(FMargin(10.0, 8.0, 10.0, 8.0));
 		UCanvasPanelSlot PanelSlot = Canvas.AddChildToCanvas(Panel);
 		PanelSlot.SetAutoSize(true);
@@ -284,9 +284,15 @@ class UHOLAtelierScreen : UUserWidget
 		if (Refused.IsEmpty() && !Lower.EndsWith(".glb") && !Lower.EndsWith(".gltf"))
 			Refused = "format";
 		// The editor binary run with -game (play.ps1, the agents' scenarios): Interchange's material factory makes a MaterialInstanceConstant,
-		// which asserts GIsEditor and stops the game (seen 2026-11-27, GLORFINDEL-1127ar2). Only the published game (or the editor itself) imports.
+		// which asserts GIsEditor and stops the game (seen 2026-11-27, GLORFINDEL-1127ar2). There only a model without materials is imported
+		// (its JSON names no "materials"); the published game imports any glTF / glb.
 		if (Refused.IsEmpty() && FPlatformProcess::ExecutableName().Contains("UnrealEditor") && HOLAtelier::HasSwitch(FCommandLine::Get(), "game"))
-			Refused = "editor_game";
+		{
+			FString Text;
+			const bool bRead = FFileHelper::LoadFileToString(Text, Path);
+			if (!bRead || !Text.Contains("\"asset\"") || Text.Contains("\"materials\""))
+				Refused = "editor_game";
+		}
 		UStaticMesh Mesh = nullptr;
 		if (Refused.IsEmpty())
 		{
@@ -309,6 +315,8 @@ class UHOLAtelierScreen : UUserWidget
 			FileOrPackBox.SetText(FText::FromString(FPaths::GetCleanFilename(Path)));
 		const int Drawn = Apply();
 		const FString LoadedWord = HOLAtelierText::Get("Loaded").ToString();
+		const FString LoadedName = FPaths::GetCleanFilename(Path);
+		ShowMessage(f"{LoadedWord} {Send.Type} : {LoadedName}");
 		Log(n"LogHOLMatch", f"Atelier: loaded {Path} mesh={Mesh.Name} type={Send.Type} pieces={Drawn}");
 		System::ExecuteConsoleCommand(f"hol.Art.Focus {Send.Type} 18");
 		return "";
@@ -637,7 +645,10 @@ namespace HOLAtelierOpen
 		CVar_ArtAtelierState.SetInt(2);
 		if (Entry.Screen == nullptr)
 		{
-			System::ExecuteConsoleCommand("hol.Art.Lab", Controller);
+			// The steps of hol.Art.Lab without its on-screen help (it would cover the screen): combat off, fast construction, gallery and marks, light.
+			const TArray<FString> Steps = HOLArtLab::Steps(HOLArtLab::DefaultBiome());
+			for (const FString& Line : Steps)
+				System::ExecuteConsoleCommand(Line, Controller);
 			UHOLAtelierScreen Screen = Cast<UHOLAtelierScreen>(WidgetBlueprint::CreateWidget(UHOLAtelierScreen, Controller));
 			Screen.Build();
 			Screen.AddToViewport(40);
