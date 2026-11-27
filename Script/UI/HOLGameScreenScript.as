@@ -3103,6 +3103,8 @@ UHOLScenarioPanelScript ScenarioPanel;
 			+ (HeroView.bVisible && TalentSeenCount >= 0 ? "\ntalent window: " + (bTalentWindowOpen ? "open | " + TalentWindowTexts : "closed") : "")
 			+ (FactionSlotTexts.IsEmpty() ? "" : "\nfaction slot: " + FactionSlotTexts)
 			+ (DuelView.Kind != EHOLDuelWindowKind::None ? "\nduel window: " + DuelTexts : "")
+			// HALDIR-1127ar6: the window's kind and opponent in words of no culture (the scenarios wait for this line, not the shown title).
+			+ (DuelView.Kind != EHOLDuelWindowKind::None ? "\nduel window id: " + (DuelView.Kind == EHOLDuelWindowKind::Incoming ? "incoming from" : "sent to") + f" slot {DuelView.OpponentSlot}" + (DuelView.bCanAnswer ? " answer" : " no button") : "")
 			+ (AILevelTexts.IsEmpty() ? "" : "\nai level: " + AILevelTexts)
 			+ (VolcanoTexts.IsEmpty() ? "" : "\nvolcano: " + VolcanoTexts)
 			+ (SiteTexts.IsEmpty() ? "" : "\nsacred: " + SiteTexts)

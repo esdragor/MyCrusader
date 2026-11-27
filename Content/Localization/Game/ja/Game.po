@@ -4,8 +4,8 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: Game\n"
-"POT-Creation-Date: 2026-11-27 12:31\n"
-"PO-Revision-Date: 2026-11-27 12:31\n"
+"POT-Creation-Date: 2026-11-27 15:02\n"
+"PO-Revision-Date: 2026-11-27 15:02\n"
 "Language-Team: \n"
 "Language: ja\n"
 "MIME-Version: 1.0\n"
@@ -299,6 +299,20 @@ msgstr "{0}：{1}"
 msgctxt "HOLAtelier,SendBack"
 msgid "Renvoyez ce dossier (ou son zip)."
 msgstr "このフォルダー（またはその zip）を送り返してください。"
+
+#. Key:	StatusFinal
+#. SourceLocation:	Script/Art/Atelier/HOLAtelierScreen.as(54)
+#: Script/Art/Atelier/HOLAtelierScreen.as(54)
+msgctxt "HOLAtelier,StatusFinal"
+msgid "final"
+msgstr "確定"
+
+#. Key:	StatusProvisional
+#. SourceLocation:	Script/Art/Atelier/HOLAtelierScreen.as(55)
+#: Script/Art/Atelier/HOLAtelierScreen.as(55)
+msgctxt "HOLAtelier,StatusProvisional"
+msgid "provisoire"
+msgstr "暫定"
 
 #. Key:	Title
 #. SourceLocation:	Script/Diplomacy/HOLDiplomacyPanel.as(194)

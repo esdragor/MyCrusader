@@ -47,6 +47,15 @@ namespace HOLAtelierText
 		return FText::FromString(Key);
 	}
 
+	// HALDIR-1127ar6: the word shown for a manifest status ("final" / "provisional", the raw values apply_art_send.ps1 reads), in the
+	// culture of the game; any other value is shown as it is.
+	FText StatusLabel(const FString& Status)
+	{
+		if (Status == "final") return NSLOCTEXT("HOLAtelier", "StatusFinal", "final");
+		if (Status == "provisional") return NSLOCTEXT("HOLAtelier", "StatusProvisional", "provisoire");
+		return FText::FromString(Status);
+	}
+
 	// HALDIR-1127ar3: a localized pattern filled, {0} and {1} replaced (the culture's separator kept: fr "{0} : {1}", en "{0}: {1}", ja "{0}：{1}").
 	FString Fill(const FString& Pattern, const FString& First, const FString& Second = "")
 	{
@@ -172,7 +181,7 @@ class UHOLAtelierScreen : UUserWidget
 		AddTo(StatusRow, Label(HOLAtelierText::Get("Status")));
 		StatusText = Label(FText::FromString(""));
 		AddTo(StatusRow, Sized(StatusText, 110.0));
-		AddTo(StatusRow, MakeButton(n"AtelierStatus", "final / provisional", n"OnStatus"));
+		AddTo(StatusRow, MakeButton(n"AtelierStatus", HOLAtelierText::StatusLabel("final").ToString() + " / " + HOLAtelierText::StatusLabel("provisional").ToString(), n"OnStatus"));
 
 		UHorizontalBox SaveRow = Row(Column);
 		AddTo(SaveRow, MakeButtonText(n"AtelierSave", HOLAtelierText::Get("Save"), n"OnSave"));
@@ -250,7 +259,7 @@ class UHOLAtelierScreen : UUserWidget
 		TypeText.SetText(FText::FromString(Send.Type + " (" + Send.Family + ")"));
 		YawText.SetText(FText::FromString(HOLAtelier::NumberText(Send.Yaw)));
 		ScaleText.SetText(FText::FromString(HOLAtelier::NumberText(Send.Scale)));
-		StatusText.SetText(FText::FromString(Send.Status));
+		StatusText.SetText(HOLAtelierText::StatusLabel(Send.Status));
 	}
 
 	void ShowMessage(const FString& Text)
