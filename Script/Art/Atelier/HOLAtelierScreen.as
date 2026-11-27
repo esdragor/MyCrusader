@@ -283,6 +283,12 @@ class UHOLAtelierScreen : UUserWidget
 		const FString Lower = Path.ToLower();
 		if (Refused.IsEmpty() && !Lower.EndsWith(".glb") && !Lower.EndsWith(".gltf"))
 			Refused = "format";
+#if EDITOR
+		// The editor binary run with -game (play.ps1, the agents' scenarios): Interchange's material factory makes a MaterialInstanceConstant,
+		// which asserts GIsEditor and stops the game (seen 2026-11-27, GLORFINDEL-1127ar2). Only the published game (or the editor itself) imports.
+		if (Refused.IsEmpty() && HOLAtelier::HasSwitch(FCommandLine::Get(), "game"))
+			Refused = "editor_game";
+#endif
 		UStaticMesh Mesh = nullptr;
 		if (Refused.IsEmpty())
 		{

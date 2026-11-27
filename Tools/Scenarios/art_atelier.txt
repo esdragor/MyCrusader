@@ -1,0 +1,37 @@
+# Atelier leger (AR8-b, D930) : l'ecran d'atelier ouvert sur hol.Art.Lab (le meme chemin que le jeu lance avec -Atelier), un type d'unite refuse,
+# un enregistrement refuse (aucun modele), puis House : modele d'essai charge depuis Documents\HeroesOfLiberty\Atelier\Entrees\maison_essai.glb, rotation 45, echelle 1.2,
+# licence remplie, Enregistrer -> Documents\HeroesOfLiberty\Atelier\Envois\House_<aaaammjj-hhmm>\. Plain, toi contre une IA. 2 minutes au plus.
+frames 40
+panel hide
+hol.Art.Atelier.Open
+waitlog Atelier: open
+frames 60
+capture aa_open
+hol.Art.Atelier.Type Spearman
+waitlog Atelier: type refused type_unit
+frames 10
+capture aa_unit_refused
+hol.Art.Atelier.Save
+waitlog Atelier: save refused
+frames 10
+capture aa_save_refused
+hol.Art.Atelier.Type House
+waitlog Atelier: type House
+hol.Art.Atelier.Load maison_essai.glb
+waitlog Atelier: loaded
+frames 90
+capture aa_loaded
+hol.Art.Atelier.Set yaw 45
+hol.Art.Atelier.Set scale 1.2
+hol.Art.Atelier.Set author Essai Glorfindel
+hol.Art.Atelier.Set source B0 forum.glb (essai)
+hol.Art.Atelier.Set licence CC0
+hol.Art.Atelier.Set url https://example.org/essai
+hol.Art.Atelier.Set notes essai AR8-b
+frames 30
+capture aa_tuned
+hol.Art.Atelier.Save
+waitlog Atelier: saved
+frames 20
+capture aa_saved
+note Envoi ecrit (chemin a l'ecran). Fin.

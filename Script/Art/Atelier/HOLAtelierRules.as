@@ -29,18 +29,24 @@ struct FHOLAtelierSend
 
 namespace HOLAtelier
 {
-	// True when the command line carries the switch -Atelier (case ignored; -AtelierX is another switch).
-	bool IsAsked(const FString& CommandLine)
+	// True when the command line carries the switch -<Name> (case ignored; -<Name>X is another switch).
+	bool HasSwitch(const FString& CommandLine, const FString& Name)
 	{
 		TArray<FString> Tokens;
 		TArray<FString> Switches;
 		FCommandLine::Parse(CommandLine, Tokens, Switches);
 		for (const FString& Switch : Switches)
 		{
-			if (Switch.ToLower() == "atelier")
+			if (Switch.ToLower() == Name.ToLower())
 				return true;
 		}
 		return false;
+	}
+
+	// True when the command line carries the switch -Atelier.
+	bool IsAsked(const FString& CommandLine)
+	{
+		return HasSwitch(CommandLine, "atelier");
 	}
 
 	// What the atelier does when a map starts: "launch" (main menu: launch the atelier's match), "lab" (the Plain map: hol.Art.Lab
@@ -94,6 +100,7 @@ namespace HOLAtelier
 		if (Key == "format") return NSLOCTEXT("HOLAtelier", "RefuseFormat", "fichier : .glb ou .gltf seulement");
 		if (Key == "missing") return NSLOCTEXT("HOLAtelier", "RefuseMissing", "fichier introuvable");
 		if (Key == "empty") return NSLOCTEXT("HOLAtelier", "RefuseEmpty", "aucun fichier choisi");
+		if (Key == "editor_game") return NSLOCTEXT("HOLAtelier", "RefuseEditorGame", "import impossible dans l'éditeur lancé en -game : utilisez le jeu publié");
 		if (Key == "import") return NSLOCTEXT("HOLAtelier", "RefuseImport", "import impossible (aucun maillage fixe dans le fichier)");
 		return FText::FromString(Key);
 	}
