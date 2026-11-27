@@ -358,14 +358,14 @@ class UHOLAtelierScreen : UUserWidget
 	}
 
 	// Chooses a model of the list by its name and loads it. Returns the refusal key or "" (a name not in the list: "missing").
-	FString PickModel(const FString& Name)
+	FString PickModel(const FString& ModelName)
 	{
 		RefreshModels();
-		const int Found = Models.FindIndex(Name.TrimStartAndEnd());
+		const int Found = Models.FindIndex(ModelName.TrimStartAndEnd());
 		if (Found < 0)
 		{
-			ShowMessage(Name + " : " + HOLAtelier::RefusalText("missing").ToString());
-			Log(n"LogHOLMatch", f"Atelier: load refused missing {Name} (not in the list)");
+			ShowMessage(ModelName + " : " + HOLAtelier::RefusalText("missing").ToString());
+			Log(n"LogHOLMatch", f"Atelier: load refused missing {ModelName} (not in the list)");
 			return "missing";
 		}
 		ModelIndex = Found;

@@ -183,7 +183,7 @@ namespace HOLAtelier
 			return -1;
 		if (Index < 0 || Index >= Count)
 			return 0;
-		return ((Index + Step) % Count + Count) % Count;
+		return (((Index + Step) % Count) + Count) % Count;
 	}
 
 	// "Save": copies the model into the send folder as model.<ext> (a file already there is never replaced). Returns the name written
