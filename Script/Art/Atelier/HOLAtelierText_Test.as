@@ -19,3 +19,24 @@ void Test_AtelierMessagePatterns(FUnitTest& T)
 	const FString PairFr = HOLAtelierText::Format("Pair", "House", "x");
 	T.AssertEquals("House : x", PairFr, "fr: the French separator");
 }
+
+// HALDIR-1127ar6: the atelier's status row shows a word of the culture, not the raw manifest value ("provisional" read in French and
+// Japanese before). Through the chain: HOLAtelierText::StatusLabel (the function ShowValues and the status button call), its
+// translation read from Content/Localization/Game/<culture>/Game.locres. The manifest keeps the raw value (Test_AtelierManifest).
+// RED while StatusLabel returns the raw value. To SEE RED again: make StatusLabel return FText::FromString(Status).
+// HeroesOfLiberty.Atelier.StatusLabels
+void Test_AtelierStatusLabels(FUnitTest& T)
+{
+	const FString ProvisionalFr = HOLAtelierText::StatusLabel("provisional").ToString();
+	T.AssertEquals("provisoire", ProvisionalFr, "fr (the tests' culture): the French word");
+	const FString FinalFr = HOLAtelierText::StatusLabel("final").ToString();
+	T.AssertEquals("final", FinalFr, "fr: final");
+	const FString ProvisionalEn = HOLScreenTest::GetLocalizedTextIn("en", HOLAtelierText::StatusLabel("provisional"));
+	T.AssertEquals("provisional", ProvisionalEn, "en: provisional");
+	const FString ProvisionalJa = HOLScreenTest::GetLocalizedTextIn("ja", HOLAtelierText::StatusLabel("provisional"));
+	T.AssertEquals("暫定", ProvisionalJa, "ja: provisional");
+	const FString FinalJa = HOLScreenTest::GetLocalizedTextIn("ja", HOLAtelierText::StatusLabel("final"));
+	T.AssertEquals("確定", FinalJa, "ja: final");
+	const FString Other = HOLAtelierText::StatusLabel("draft").ToString();
+	T.AssertEquals("draft", Other, "another value: shown as it is");
+}

@@ -47,6 +47,13 @@ namespace HOLAtelierText
 		return FText::FromString(Key);
 	}
 
+	// HALDIR-1127ar6: the word shown for a manifest status ("final" / "provisional", the raw values apply_art_send.ps1 reads), in the
+	// culture of the game; any other value is shown as it is. STUB (red): the raw value.
+	FText StatusLabel(const FString& Status)
+	{
+		return FText::FromString(Status);
+	}
+
 	// HALDIR-1127ar3: a localized pattern filled, {0} and {1} replaced (the culture's separator kept: fr "{0} : {1}", en "{0}: {1}", ja "{0}：{1}").
 	FString Fill(const FString& Pattern, const FString& First, const FString& Second = "")
 	{
