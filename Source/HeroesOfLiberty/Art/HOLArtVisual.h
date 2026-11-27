@@ -317,6 +317,21 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "HOL|Art|Tests")
 	static void ClearTestArtVisuals();
 
+	/**
+	 * AR8-c (D931), script (the atelier's "Save", HOLAtelierScreen.as): copies the file From to To, byte for byte (a .glb is binary),
+	 * making To's folder. Refuses (false, nothing written): an empty path, a missing From, From == To, an existing To unless bOverwrite.
+	 * Tested by Script\Art\Atelier\HOLArtFiles_Test.as.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "HOL|Art|Files")
+	static bool CopyArtFile(const FString& From, const FString& To, bool bOverwrite);
+
+	/**
+	 * AR8-c (D931), script (the atelier's list of models): the names (no folder) of the files of Folder, its subfolders left out, whose
+	 * extension is one of Extensions ("glb" or ".glb", case ignored), sorted by name (case ignored). Empty for a missing folder.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "HOL|Art|Files")
+	static TArray<FString> ListArtFiles(const FString& Folder, const TArray<FString>& Extensions);
+
 	/** Builds the (type, faction) map of the assets; a key met twice = one error naming both files, the first one kept. */
 	static void BuildMap(const TArray<const UHOLArtVisual*>& Assets, TMap<FKey, const UHOLArtVisual*>& OutMap, TArray<FString>& OutErrors);
 

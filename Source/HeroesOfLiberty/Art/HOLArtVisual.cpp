@@ -215,6 +215,18 @@ void UHOLArtVisualRegistry::ClearTestArtVisuals()
 	HOLArtVisual::ClearTestEntries();
 }
 
+bool UHOLArtVisualRegistry::CopyArtFile(const FString& From, const FString& To, const bool bOverwrite)
+{
+	// AR8-c red step: not copied yet.
+	return false;
+}
+
+TArray<FString> UHOLArtVisualRegistry::ListArtFiles(const FString& Folder, const TArray<FString>& Extensions)
+{
+	// AR8-c red step: nothing listed yet.
+	return TArray<FString>();
+}
+
 void UHOLArtVisualRegistry::BuildMap(const TArray<const UHOLArtVisual*>& Assets, TMap<FKey, const UHOLArtVisual*>& OutMap, TArray<FString>& OutErrors)
 {
 	for (const UHOLArtVisual* Asset : Assets)
