@@ -18,7 +18,8 @@ param(
     [string] $PlayerName = "",   # -PlayerName=<name> on the game's command line: the local player of a scenario whose Human seats are NAMED (playerName in the .json) needs a name, otherwise it is a spectator
     [int] $TimeoutSec = 300,     # -Hidden only: the longest wait for the game to end, then it is closed
     [switch] $NoWait,            # -Hidden only: do not wait, do not close (old behaviour)
-    [switch] $DryRun             # print the command line, start nothing
+    [switch] $DryRun,            # print the command line, start nothing
+    [string] $Culture = "fr"     # HALDIR-1127ar2: the game's language (-culture=<fr|en|ja>), to look at a screen in English or Japanese; French by default as before
 )
 
 if (-not $Root) { $Root = Resolve-Path "$PSScriptRoot\..\.." }
@@ -59,7 +60,7 @@ Write-Host "play: scenario $Name ($UProject)"
 # The game starts without waiting behind another copy's build (UBT's SDK check, up to minutes) and with its Angelscript
 # debug server on a free port, where no VS Code connects (on the default one the game froze, 2026-10-27).
 $env:UE_SKIP_UBT_SDK_SETUP = "1"
-$GameArgs = @("`"$UProject`"", "-game", "-nosplash", "-culture=fr", "-LiveCoding=0", "-asdebugport=0")
+$GameArgs = @("`"$UProject`"", "-game", "-nosplash", "-culture=$Culture", "-LiveCoding=0", "-asdebugport=0")
 if ($PlayerName) { $GameArgs += "-PlayerName=$PlayerName" }
 # Hidden: the virtual cursor first (a console variable, it survives the scenario's `open`), then the scenario.
 $ExecCmds = "hol.Scenario $Name"
