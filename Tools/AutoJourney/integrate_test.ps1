@@ -279,7 +279,7 @@ Check ((@($BuildLines | Where-Object { $_ -match 'SKIP' }).Count -eq 0) -and (@(
 Set-DllSource 'dirty'
 $P = Run-Plan ($Base + @('-Greens', 'g1'))
 $BuildLines = Build-Lines $P
-Check (@($BuildLines | Where-Object { $_ -match 'SKIP' }).Count -eq 0) 'fingerprint "dirty": the green build runs' ($BuildLines -join ' | ')
+Check (($BuildLines.Count -eq 2) -and ($BuildLines[1] -notmatch 'SKIP') -and ($BuildLines[1] -match 'empreinte dirty')) 'fingerprint "dirty": the green build runs' ($BuildLines -join ' | ')
 # 9d. Matching fingerprint: both builds SKIP, the reason says the DLL is the C++ of main.
 Set-DllSource $MainPrint
 $P = Run-Plan ($Base + @('-Reds', $RedAs, '-Greens', 'g1'))
@@ -301,7 +301,7 @@ Git $Repo rm -q 'Source/a.cpp' | Out-Null
 Git $Repo commit -q -m 'main deletes a.cpp' | Out-Null
 $P = Run-Plan ($Base + @('-Greens', 'g1'))
 $BuildLines = Build-Lines $P
-Check ((@($BuildLines | Where-Object { $_ -match 'SKIP' }).Count -eq 0) -and (($BuildLines -join ' ') -match 'ne correspond pas au C\+\+ de main')) 'a .cpp deleted on main after the build: the green build runs' ($BuildLines -join ' | ')
+Check (($BuildLines.Count -eq 2) -and ($BuildLines[1] -notmatch 'SKIP') -and ($BuildLines[1] -match 'ne correspond pas au C\+\+ de main')) 'a .cpp deleted on main after the build: the green build runs' ($BuildLines -join ' | ')
 Git $Repo checkout -q -f main | Out-Null
 Remove-Item -Recurse -Force $Tmp -ErrorAction SilentlyContinue
 Write-Output "integrate_test : $(if ($Fails) { "$Fails FAIL" } else { 'PASS' })"

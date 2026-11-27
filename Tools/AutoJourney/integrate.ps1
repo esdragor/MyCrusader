@@ -6,6 +6,8 @@
 # main, rouges retires", L20-6 ; les verts portent les memes commits, un bouchon de rouge remplace dans sa branche ne conflite plus) ; merge des verts (tips) un par un ; build (seulement si C++ dans
 # un vert) ; quick_check -Parts tests (doit etre vert) ; quick_check -Parts <Parts> ; resume court (10 lignes) imprime ET ecrit dans
 # <Root>\Docs\Integrate_<Branch>.txt (sortie complete : Docs\Integrate_<Branch>.log).
+# DLL (HALDIR-1127ar1) : un build sans C++ dans les rouges / verts n'est saute QUE si <Root>\Binaries\Win64\HOL_BuildSource.txt (ecrit par build.ps1)
+# vaut l'empreinte du C++ de main (Tools\AutoJourney\build_source.ps1) ; sinon il est lance, raison dans le plan et le resume.
 # Tables (GALADRIEL-1123pa, DIAG-1123a) : apres le merge des verts et avant leur build / tests, si Tools/Data/UnitTypes.csv ou BuildingTypes.csv a change sans que le .uasset
 # correspondant ait ete regenere dans les verts, lance regen_tables.ps1, verifie son code, commite le .uasset ("Regen tables after merge") ; le resume dit "regen: lance / inutile / FAIL".
 # -DryRun : imprime le plan (lignes "PLAN <n> <genre> : <commande>" ou "... : SKIP (<raison>)") sans rien creer ni lancer (lit seulement git).
@@ -47,6 +49,18 @@ $RedsCpp = $false
 foreach ($RedItem in $RedList) { if (@(Git-Out diff-tree --no-commit-id --name-only -r $RedItem) -match $CppPattern) { $RedsCpp = $true } }
 $GreensCpp = $false
 foreach ($GreenItem in $GreenList) { if (@(Git-Out diff --name-only "main...$GreenItem") -match $CppPattern) { $GreensCpp = $true } }
+# HALDIR-1127ar1 (integ-98-art, 2026-11-26: DLL of another branch, 2328 tests instead of 2330): without C++ in the reds / greens, a build is
+# skipped ONLY when <Root>\Binaries\Win64\HOL_BuildSource.txt (written by build.ps1) equals the fingerprint of main's C++ (build_source.ps1).
+. (Join-Path $PSScriptRoot 'build_source.ps1')
+function Get-BuildDecision([bool] $HasCpp, [string] $Where, [bool] $RedsBuilt = $false) {
+  # @{ Skip = reason to skip, or '' ; Why = reason to build when it is not the C++ of the change set }
+  if ($HasCpp) { return @{ Skip = ''; Why = '' } }
+  if ($RedsBuilt) { return @{ Skip = ''; Why = "le build des rouges (C++) laisse une DLL qui n'est pas le C++ de main" } }
+  $Problem = Get-DllSourceProblem $Root 'main'
+  if ($Problem) { return @{ Skip = ''; Why = $Problem } }
+  return @{ Skip = "pas de C++ (.cpp/.h) dans les $Where, DLL du worktree = C++ de main (empreinte $(Get-SourceFingerprint $Root 'main'))"; Why = '' }
+}
+$DllProblem = Get-DllSourceProblem $Root 'main'
 
 # Tables: a CSV of Tools/Data and the .uasset that regen_tables.ps1 builds from it (make_unit_types.py / make_building_types.py).
 $Tables = @(
@@ -73,14 +87,15 @@ $LogPath = Join-Path $Root "Docs\Integrate_$Branch.log"
 
 # The plan: one record per step. Kind is what the summary and the test read; Skip is the reason, or '' when the step runs.
 $Plan = New-Object System.Collections.ArrayList
-function Add-Step([string] $Kind, [string] $Text, [string] $Skip = '', [scriptblock] $Action = $null) {
+function Add-Step([string] $Kind, [string] $Text, [string] $Skip = '', [scriptblock] $Action = $null, [string] $Why = '') {
   if ($SkipBuildTests -and -not $Skip -and ($Kind -in 'build', 'tests', 'parts')) { $Skip = '-SkipBuildTests (reserve au test)' }
-  [void] $Plan.Add([pscustomobject]@{ Kind = $Kind; Text = $Text; Skip = $Skip; Action = $Action })
+  [void] $Plan.Add([pscustomobject]@{ Kind = $Kind; Text = $Text; Skip = $Skip; Action = $Action; Why = $Why })
 }
 Add-Step 'branch' "git -C $Root switch -c $Branch main"
 if ($RedList.Count) { foreach ($RedItem in $RedList) { Add-Step 'red' "git -C $Root cherry-pick $RedItem" } }
 else { Add-Step 'red' 'cherry-pick' 'pas de rouge' }
-Add-Step 'build' $BuildCmd $(if (-not $RedList.Count) { 'pas de rouge' } elseif (-not $RedsCpp) { 'pas de C++ (.cpp/.h) dans les rouges' } else { '' })
+$RedBuild = $(if ($RedList.Count) { Get-BuildDecision $RedsCpp 'rouges' } else { @{ Skip = 'pas de rouge'; Why = '' } })
+Add-Step 'build' $BuildCmd $RedBuild.Skip $null $RedBuild.Why
 Add-Step 'tests' "$QcCmd -Parts tests" $(if ($RedList.Count) { '' } else { 'pas de rouge' })
 # L20-6: the reds only served to see the tests fail; the greens carry the same commits (a red may hold a stub that a later commit of its own
 # branch replaces -> conflict if the cherry-picks stay). The integration branch holds only what this script created: back to main, then the greens.
@@ -89,7 +104,8 @@ Add-Step 'reset' "git -C $Root reset --hard $MainSha" $(if ($RedList.Count) { ''
 if ($GreenList.Count) { foreach ($GreenItem in $GreenList) { Add-Step 'green' "git -C $Root merge --no-ff --no-edit $GreenItem" } }
 else { Add-Step 'green' 'merge' 'pas de vert' }
 Add-Step 'regen' $RegenCmd $(if (-not $GreenList.Count) { 'pas de vert' } elseif ($SkipBuildTests -and -not $RegenGiven) { '-SkipBuildTests (reserve au test)' } elseif (-not $RegenNeed.Count) { 'aucun CSV de table change sans son .uasset dans les verts' } else { '' })
-Add-Step 'build' $BuildCmd $(if (-not $GreenList.Count) { 'pas de vert' } elseif (-not $GreensCpp) { 'pas de C++ (.cpp/.h) dans les verts' } else { '' })
+$GreenBuild = $(if ($GreenList.Count) { Get-BuildDecision $GreensCpp 'verts' ($RedList.Count -and $RedsCpp) } else { @{ Skip = 'pas de vert'; Why = '' } })
+Add-Step 'build' $BuildCmd $GreenBuild.Skip $null $GreenBuild.Why
 Add-Step 'tests' "$QcCmd -Parts tests"
 Add-Step 'parts' "$QcCmd -Parts $PartsText"
 Add-Step 'summary' "ecrit $SummaryPath"
@@ -98,7 +114,7 @@ if ($DryRun) {
   $Number = 0
   foreach ($Step in $Plan) {
     $Number++
-    if ($Step.Skip) { Write-Output "PLAN $Number $($Step.Kind) : SKIP ($($Step.Skip))" } else { Write-Output "PLAN $Number $($Step.Kind) : $($Step.Text)" }
+    if ($Step.Skip) { Write-Output "PLAN $Number $($Step.Kind) : SKIP ($($Step.Skip))" } else { Write-Output "PLAN $Number $($Step.Kind) : $($Step.Text)$(if ($Step.Why) { " (raison : $($Step.Why))" })" }
   }
   # L27-1 (2026-11-24): the DryRun SIMULATES the git part with `git merge-tree --write-tree` (no worktree, no index, no branch touched; only unreachable
   # objects are written) so a doomed integration fails in seconds, not after a 564 s build (integ-73a) or a 442 s test run (integ-72).
@@ -129,7 +145,7 @@ if ($DryRun) {
       break
     } else { $SimFail += "vert '$GreenItem' : git merge-tree a echoue (code $SimCode) : $($SimOut -join ' | ')"; break }
   }
-  Write-Output "integrate : DryRun (rien cree, rien lance) ; rouges=$($RedList.Count) verts=$($GreenList.Count) C++ rouges=$RedsCpp verts=$GreensCpp"
+  Write-Output "integrate : DryRun (rien cree, rien lance) ; rouges=$($RedList.Count) verts=$($GreenList.Count) C++ rouges=$RedsCpp verts=$GreensCpp ; DLL : $(if ($DllProblem) { $DllProblem } else { 'C++ de main' })"
   if ($SimFail.Count) { foreach ($Line in $SimFail) { Write-Output "integrate : DRYRUN FAIL : $Line" }; exit 1 }
   Write-Output 'integrate : DryRun simulation git : PASS (parents des rouges presents, verts sans conflit)'
   exit 0
@@ -200,18 +216,20 @@ foreach ($RedItem in $RedList) {
 $Rows['branche+rouges'] = "PASS ($Picked cherry-pick, $(Stage-Time $T0))"
 Log "integrate : branche $Branch creee, $Picked rouge(s) appliques"
 
-function Build-Stage([string] $Key, [bool] $Needed, [string] $Why) {
-  if (-not $Needed) { $Rows[$Key] = "SKIP ($Why)"; Log "integrate : $Key SKIP ($Why)"; return }
+function Build-Stage([string] $Key, $Decision) {
+  # $Decision = Get-BuildDecision evaluated NOW (HALDIR-1127ar1: the DLL may have changed since the plan, e.g. after the build of the reds)
+  if ($Decision.Skip) { $Rows[$Key] = "SKIP ($($Decision.Skip))"; Log "integrate : $Key SKIP ($($Decision.Skip))"; return }
   $Since = Get-Date
-  Log "integrate : $Key ..."
+  $Reason = $(if ($Decision.Why) { " ; raison : $($Decision.Why)" } else { '' })
+  Log "integrate : $Key ...$Reason"
   $Run = Run-Native $BuildCmd
-  if ($Run.Code -ne 0) { $Rows[$Key] = "FAIL (code $($Run.Code), $(Stage-Time $Since))"; Write-Summary 'FAIL (build)'; exit 1 }
-  $Rows[$Key] = "PASS ($(Stage-Time $Since))"
+  if ($Run.Code -ne 0) { $Rows[$Key] = "FAIL (code $($Run.Code), $(Stage-Time $Since)$Reason)"; Write-Summary 'FAIL (build)'; exit 1 }
+  $Rows[$Key] = "PASS ($(Stage-Time $Since)$Reason)"
 }
 
 # 2-3. Build + tests of the reds: the reds MUST be seen red here.
 if ($RedList.Count) {
-  Build-Stage 'build rouges' $RedsCpp 'pas de C++ dans les rouges'
+  Build-Stage 'build rouges' (Get-BuildDecision $RedsCpp 'rouges')
   $Since = Get-Date
   Log 'integrate : tests des rouges ...'
   $Run = Run-Native "$QcCmd -Parts tests"
@@ -270,7 +288,7 @@ if ($RegenStep.Skip -or -not $RegenNow.Count) {
 }
 
 # 5-7. Build, tests (must be green), final parts.
-Build-Stage 'build verts' $GreensCpp 'pas de C++ dans les verts'
+Build-Stage 'build verts' (Get-BuildDecision $GreensCpp 'verts' ($RedList.Count -and $RedsCpp))
 $Since = Get-Date
 Log 'integrate : tests (apres les verts) ...'
 $Run = Run-Native "$QcCmd -Parts tests"
