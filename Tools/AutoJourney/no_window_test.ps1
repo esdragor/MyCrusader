@@ -4,7 +4,7 @@
 # Tools\**\*.ps1 carries -WindowStyle Hidden (or $WinStyle, which is Hidden unless -Visible), and a launch with -game or -server also
 # has -nullrhi or -RenderOffScreen in its argument string; `& UnrealEditor-Cmd.exe` calls carry -nullrhi.
 # Exempt by design (the user's own window): Tools\Scenarios\play.ps1 without -Hidden (checked separately below) and Tools\Scenarios\ai_lobby.ps1
-# (a trial the user plays) and Tools\Scenarios\ecran_multijoueur.ps1 (same, modelled on ai_lobby.ps1). No editor is started here: the test reads the scripts and runs on fake scripts in %TEMP%.
+# (a trial the user plays) and Tools\Scenarios\ecran_multijoueur.ps1 (same, modelled on ai_lobby.ps1). Tools\Art\open_editor.ps1 (D927: opens the editor for the artist, a visible window by purpose). No editor is started here: the test reads the scripts and runs on fake scripts in %TEMP%.
 # L14-8 suite (2026-11-14) : the scenarios too (Tools\Scenarios\*.txt or -ScenarioDir): a `frames N` > 30 that waits for the game (same function as
 # check.ps1, Tools\Scenarios\FrameWaits.ps1). Default Warn (question Retours\Q-frames-refus.md, option B coded): "WARN frames <scenario> : ..." lines
 # (15 at most) and a count line "WARN frames waits: N in M scenario(s)", exit unchanged; -FrameWaits Fail or HOL_CHECK_FRAMES=fail = FAIL.
@@ -16,7 +16,7 @@ $Here = Split-Path -Parent $MyInvocation.MyCommand.Path
 if (-not $Root) { $Root = (Resolve-Path (Join-Path $Here '..\..')).Path }
 $Tools = Join-Path $Root 'Tools'
 # ecran_multijoueur.ps1 (SAURON-1120sb): a trial the user plays (D840 ECR-3, header "le jeu en fenetre ... modele ai_lobby.ps1"), window wanted.
-$Exempt = @('play.ps1', 'ai_lobby.ps1', 'ecran_multijoueur.ps1', 'no_window_test.ps1')
+$Exempt = @('play.ps1', 'ai_lobby.ps1', 'ecran_multijoueur.ps1', 'open_editor.ps1', 'no_window_test.ps1')
 $Fails = 0
 function Check([bool] $Ok, [string] $Name, [string] $Detail = '') {
     if ($Ok) { Write-Output "PASS $Name" } else { $script:Fails++; Write-Output "FAIL $Name $Detail" }
