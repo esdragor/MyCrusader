@@ -196,6 +196,14 @@ namespace HOLAtelier
 		return "";
 	}
 
+	// HALDIR-1127ar4: a folder as the atelier panel shows it: under the Documents folder, from that folder's own name
+	// ("Documents/HeroesOfLiberty/Atelier/Envois/House_..."), and longer than MaxChars cut in its middle with "…" (its start
+	// and its last folder kept): the panel's message stays inside the panel in every language.
+	FString ShownPath(const FString& Path, const FString& Documents, int MaxChars)
+	{
+		return Path;
+	}
+
 	// <Documents>/HeroesOfLiberty/Atelier/
 	FString AtelierDir()
 	{
